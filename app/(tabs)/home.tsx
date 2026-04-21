@@ -6,11 +6,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSession } from '../../lib/session';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import { certificatesApi, questionnairesApi, storageApi, templatesApi, isExpiringSoon } from '../../lib/services';
+import { certificatesApi, projectsApi, questionnairesApi, storageApi, templatesApi, isExpiringSoon } from '../../lib/services';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { theme } from '../../lib/theme';
 import { Card, Chip, SectionHeader } from '../../components/ui';
-import type { Certificate, Questionnaire, Template } from '../../types/models';
+import type { Certificate, Project, Questionnaire, Template } from '../../types/models';
 
 export default function HomeScreen() {
   const { state } = useSession();
@@ -18,18 +18,21 @@ export default function HomeScreen() {
   const [certs, setCerts] = useState<Certificate[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [recent, setRecent] = useState<Questionnaire[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const [c, t, r] = await Promise.all([
+      const [c, t, r, p] = await Promise.all([
         certificatesApi.list().catch(() => []),
         templatesApi.list().catch(() => []),
         questionnairesApi.recent(5).catch(() => []),
+        projectsApi.list().catch(() => []),
       ]);
       setCerts(c);
       setTemplates(t);
       setRecent(r);
+      setProjects(p);
     } catch {
       // ignore
     }
@@ -155,6 +158,58 @@ export default function HomeScreen() {
             </View>
           </>
         ) : null}
+
+        <View style={{ marginTop: 20, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingBottom: 2 }}>
+          <Text style={{ flex: 1, fontSize: 11, fontWeight: '700', color: theme.colors.inkSoft, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+            ჩემი პროექტები
+          </Text>
+          <Pressable onPress={() => router.push('/(tabs)/projects' as any)} hitSlop={8}>
+            <Text style={{ fontSize: 13, color: theme.colors.accent, fontWeight: '600' }}>ყველა</Text>
+          </Pressable>
+        </View>
+        <View style={{ gap: 10, paddingHorizontal: 16, marginTop: 10, marginBottom: 8 }}>
+          {projects.length === 0 ? (
+            <Card padding={14}>
+              <Text style={{ color: theme.colors.inkSoft, textAlign: 'center', fontSize: 13 }}>
+                პროექტები ჯერ არ გაქვს. დაამატე პირველი.
+              </Text>
+              <Pressable
+                onPress={() => router.push('/(tabs)/projects' as any)}
+                style={{ marginTop: 10, alignItems: 'center' }}
+              >
+                <Text style={{ color: theme.colors.accent, fontWeight: '600' }}>+ ახალი პროექტი</Text>
+              </Pressable>
+            </Card>
+          ) : (
+            projects.slice(0, 3).map(p => (
+              <Pressable key={p.id} onPress={() => router.push(`/projects/${p.id}` as any)}>
+                <Card padding={12}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <View style={styles.projectIcon}>
+                      <Ionicons name="folder" size={20} color={theme.colors.accent} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontWeight: '600', color: theme.colors.ink }}>{p.name}</Text>
+                      {p.company_name || p.address ? (
+                        <Text style={{ fontSize: 11, color: theme.colors.inkSoft, marginTop: 2 }} numberOfLines={1}>
+                          {[p.company_name, p.address].filter(Boolean).join(' · ')}
+                        </Text>
+                      ) : null}
+                    </View>
+                    <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
+                  </View>
+                </Card>
+              </Pressable>
+            ))
+          )}
+          {projects.length > 3 ? (
+            <Pressable onPress={() => router.push('/(tabs)/projects' as any)}>
+              <Text style={{ color: theme.colors.accent, fontWeight: '600', textAlign: 'center', paddingVertical: 6 }}>
+                კიდევ {projects.length - 3} პროექტი →
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -221,6 +276,14 @@ const styles = StyleSheet.create({
     width: 62,
     height: 62,
     borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  projectIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: theme.colors.accentSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },

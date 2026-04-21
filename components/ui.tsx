@@ -112,9 +112,39 @@ export function Chip({
   );
 }
 
-export function SectionHeader({ title }: { title: string }) {
-  return <Text style={styles.sectionHeader}>{title}</Text>;
+export function SectionHeader({
+  title,
+  action,
+}: {
+  title: string;
+  action?: { label: string; onPress: () => void };
+}) {
+  if (!action) {
+    return <Text style={styles.sectionHeader}>{title}</Text>;
+  }
+  return (
+    <View style={sectionHeaderStyles.row}>
+      <Text style={[styles.sectionHeader, { paddingHorizontal: 0 }]}>{title}</Text>
+      <Pressable onPress={action.onPress} hitSlop={8}>
+        <Text style={sectionHeaderStyles.action}>{action.label}</Text>
+      </Pressable>
+    </View>
+  );
 }
+
+const sectionHeaderStyles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+  },
+  action: {
+    color: theme.colors.accent,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+});
 
 export function ErrorText({ children }: { children: ReactNode }) {
   if (!children) return null;

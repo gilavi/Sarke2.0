@@ -44,6 +44,11 @@ export const projectsApi = {
         .single(),
     );
   },
+  update: async (id: string, patch: Partial<Pick<Project, 'name' | 'company_name' | 'address'>>) => {
+    return throwIfError(
+      await supabase.from('projects').update(patch).eq('id', id).select().single(),
+    );
+  },
   remove: async (id: string) => {
     const { error } = await supabase.from('projects').delete().eq('id', id);
     if (error) throw error;
@@ -64,6 +69,23 @@ export const projectsApi = {
         .select()
         .single(),
     );
+  },
+  deleteSigner: async (id: string) => {
+    const { error } = await supabase.from('project_signers').delete().eq('id', id);
+    if (error) throw error;
+  },
+  stats: async (): Promise<Record<string, { drafts: number; completed: number }>> => {
+    const { data, error } = await supabase
+      .from('questionnaires')
+      .select('project_id,status');
+    if (error) throw error;
+    const map: Record<string, { drafts: number; completed: number }> = {};
+    for (const row of (data ?? []) as Array<{ project_id: string; status: string }>) {
+      const s = (map[row.project_id] ??= { drafts: 0, completed: 0 });
+      if (row.status === 'completed') s.completed += 1;
+      else s.drafts += 1;
+    }
+    return map;
   },
 };
 
@@ -139,6 +161,10 @@ export const questionnairesApi = {
       .from('questionnaires')
       .update({ status: 'completed', pdf_url: pdfUrl, completed_at: new Date().toISOString() })
       .eq('id', id);
+    if (error) throw error;
+  },
+  remove: async (id: string) => {
+    const { error } = await supabase.from('questionnaires').delete().eq('id', id);
     if (error) throw error;
   },
 };
