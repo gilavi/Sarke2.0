@@ -1,6 +1,6 @@
 # Sarke 2.0
 
-iOS app for შრომის უსაფრთხოების ექსპერტები (labor safety experts). Lets an expert create a project, fill a checklist-style questionnaire on their iPhone, collect signatures, and generate a PDF inspection report.
+Expo (React Native) app for შრომის უსაფრთხოების ექსპერტები. Lets an expert create a project, fill a checklist-style questionnaire on their phone, collect signatures, and generate a PDF inspection report.
 
 MVP scope: two seeded templates, both in ქართული:
 - **ფასადის ხარაჩოს შემოწმების აქტი** (façade scaffolding inspection)
@@ -8,99 +8,61 @@ MVP scope: two seeded templates, both in ქართული:
 
 ## Stack
 
-- SwiftUI (iOS 17+), Swift 5.9, Xcode 15+
-- Supabase (Postgres + Auth + Storage)
-- TPPDF (PDF generation)
-- PencilKit (signature canvas)
+- Expo SDK 55 + expo-router (file-based)
+- React Native 0.81, React 19
+- Supabase (Postgres + Auth + Storage) — same backend as v1
+- `expo-image-picker` for photos, `expo-print` + `expo-sharing` for PDF, `react-native-signature-canvas` for signatures
 
-## First-time setup
+The native SwiftUI port lives on the [`ios-legacy`](https://github.com/gilavi/Sarke2.0/tree/ios-legacy) branch.
 
-### 1. Tooling
-
-Install **XcodeGen** (generates `Sarke2.xcodeproj` from `project.yml`):
+## Running locally
 
 ```sh
-# via Mint
-brew install mint
-mint install yonaskolb/xcodegen
-
-# or from source
-git clone https://github.com/yonaskolb/XcodeGen.git && cd XcodeGen && make install
+npm install --legacy-peer-deps   # peer conflicts around Radix/React 19
+npx expo start                   # opens dev server
 ```
 
-### 2. Supabase
+Scan the QR in the terminal with **Expo Go** on your phone. The Supabase URL and anon key are baked into `app.json` → `expo.extra`.
 
-Create a project at https://supabase.com, then:
+### Typecheck
 
 ```sh
-supabase link --project-ref <your-ref>
-supabase db push          # applies migrations/0001_init.sql
-psql $DB_URL -f supabase/seed/01_system_templates.sql
+npm run typecheck
 ```
 
-In the Supabase dashboard → Storage, create four public-read buckets:
-- `certificates`
-- `answer-photos`
-- `pdfs`
-- `signatures`
+## Supabase
 
-### 3. Secrets
+Schema + seed already applied to the hosted project. Relevant files preserved here for reference:
+- `supabase/migrations/0001_init.sql` — tables + RLS
+- `supabase/seed/01_system_templates.sql` — system templates (also inserted via REST in v1)
 
-```sh
-cp Config/Secrets.sample.xcconfig Config/Secrets.xcconfig
-# edit Secrets.xcconfig with SUPABASE_URL and SUPABASE_ANON_KEY
-```
-
-### 4. Generate & open
-
-```sh
-xcodegen
-open Sarke2.xcodeproj
-```
-
-Select the **Sarke2** scheme and an iPhone simulator → Cmd+R.
-
-### 5. Fonts
-
-Download [Noto Sans Georgian](https://fonts.google.com/noto/specimen/Noto+Sans+Georgian) Regular + Bold and drop the `.ttf` files into `Sarke2/Resources/Fonts/` before building. Without them the PDF will fall back to a system font that sometimes drops ქართული glyphs.
-
-## TestFlight
-
-1. Xcode → Product → Archive
-2. Organizer → Distribute App → App Store Connect → Upload
-3. appstoreconnect.apple.com → TestFlight → add testers
-
-Requires an active Apple Developer Program membership on the signing team.
+Storage buckets in use: `certificates`, `answer-photos`, `pdfs`, `signatures`.
 
 ## Directory layout
 
 ```
-Sarke2/                 SwiftUI app sources
-  App/                  Entry, router, session gate
-  Core/                 Supabase client, theme, localization
-  Features/             Feature-per-folder
-    Auth/
-    Home/
-    Projects/
-    Questionnaire/
-      Wizard/
-      Signing/
-      PDF/
-    Certificates/
-    History/
-    Regulations/
-    Templates/
-  Models/               Codable DB models
-  Services/             Data services
-  Shared/               Reusable UI
-  Resources/            Assets, localizations, fonts
-supabase/
-  migrations/           Schema + RLS
-  seed/                 System templates
-Config/                 xcconfig files (Secrets.xcconfig gitignored)
-project.yml             XcodeGen manifest
+app/                  expo-router routes
+  (auth)/             login + register
+  (tabs)/             home, projects, regulations, more
+  projects/           create + detail + signer
+  questionnaire/      wizard + signing
+  template/           quick-start
+  certificates/       list + add
+  history.tsx, templates.tsx
+components/ui.tsx     Button, Card, Input, Chip, Screen
+lib/
+  supabase.ts         Supabase client
+  session.tsx         Auth provider
+  services.ts         Data layer
+  theme.ts            Design tokens
+  pdf.ts              HTML -> PDF template
+types/models.ts       DB types
+supabase/             SQL
 ```
 
-## License
+## Follow-ups
 
-Private — all rights reserved.
+- Signature capture (react-native-signature-canvas) — currently the signing screen lists required signers and generates a PDF with blank lines; drawn signatures land next
+- Comment sheet on wizard steps
+- Profile/settings hidden beyond sign-out
+- Font: bundle Noto Sans Georgian for the PDF to avoid WebView fallback

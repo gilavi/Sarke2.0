@@ -1,0 +1,54 @@
+{
+  "expo": {
+    "name": "Sarke",
+    "slug": "sarke2",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "scheme": "sarke",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F6F2EA"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "ge.sarke.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "კამერა გამოიყენება ხარაჩოს და ქამრების ფოტოების ატვირთვისთვის.",
+        "NSPhotoLibraryUsageDescription": "ფოტოების არჩევა სისტემის ბიბლიოთეკიდან."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#F6F2EA"
+      },
+      "package": "ge.sarke.app",
+      "edgeToEdgeEnabled": true
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "აპი ითხოვს წვდომას გალერეაზე ფოტოების ასატვირთად.",
+          "cameraPermission": "კამერა გამოიყენება ფოტოების გადასაღებად."
+        }
+      ]
+    ],
+    "extra": {
+      "supabaseUrl": "https://seskuthiopywrgntsgfw.supabase.co",
+      "supabaseAnonKey": "sb_publishable_OF_L2E27-Uv8MMw87fWfSA_znD7moYY"
+    },
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
