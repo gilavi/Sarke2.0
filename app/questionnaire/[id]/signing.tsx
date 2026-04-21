@@ -210,16 +210,33 @@ export default function SigningScreen() {
       const blob = await res.blob();
       const path = `${questionnaire.id}/${role}-${Date.now()}.png`;
       await storageApi.upload(STORAGE_BUCKETS.signatures, path, blob, 'image/png');
+      const resolvedName = fullName || (role === 'expert' ? expertDefaultName : 'ხელმომწერი');
       const saved = (await signaturesApi.upsert({
         questionnaire_id: questionnaire.id,
         signer_role: role,
-        full_name: fullName || (role === 'expert' ? expertDefaultName : 'ხელმომწერი'),
+        full_name: resolvedName,
         phone: null,
         position: null,
         signature_png_url: path,
       })) as unknown as SignatureRecord;
       setExistingSigs(prev => [...prev.filter(s => s.signer_role !== role), saved]);
       setSigImages(prev => ({ ...prev, [role]: dataUrl }));
+      // Persist signature back onto the project roster so future questionnaires
+      // on this project pre-populate it (no more re-drawing every time).
+      try {
+        const updatedSigner = await projectsApi.saveRosterSignature({
+          project_id: questionnaire.project_id,
+          role,
+          full_name: resolvedName,
+          signature_png_url: path,
+        });
+        setSigners(prev => {
+          const without = prev.filter(s => s.id !== updatedSigner.id);
+          return [...without, updatedSigner];
+        });
+      } catch {
+        // Non-fatal: the questionnaire signature was saved; only the roster copy failed.
+      }
       toast.success('ხელმოწერა შენახულია');
     } catch (e: any) {
       toast.error(`შენახვა ვერ მოხერხდა: ${e?.message ?? 'ქსელის შეცდომა'}`);

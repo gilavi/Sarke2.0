@@ -70,6 +70,52 @@ export const projectsApi = {
         .single(),
     );
   },
+  // Persist a drawn signature onto the roster entry (matched by project+role+name)
+  // so it's reusable on the next questionnaire for this project.
+  saveRosterSignature: async (args: {
+    project_id: string;
+    role: ProjectSigner['role'];
+    full_name: string;
+    phone?: string | null;
+    position?: string | null;
+    signature_png_url: string;
+  }): Promise<ProjectSigner> => {
+    const found = await supabase
+      .from('project_signers')
+      .select('*')
+      .eq('project_id', args.project_id)
+      .eq('role', args.role)
+      .eq('full_name', args.full_name)
+      .maybeSingle();
+    if (found.error) throw found.error;
+    if (found.data) {
+      const patch: Partial<ProjectSigner> = { signature_png_url: args.signature_png_url };
+      if (args.phone !== undefined) patch.phone = args.phone;
+      if (args.position !== undefined) patch.position = args.position;
+      return throwIfError(
+        await supabase
+          .from('project_signers')
+          .update(patch)
+          .eq('id', (found.data as ProjectSigner).id)
+          .select()
+          .single(),
+      );
+    }
+    return throwIfError(
+      await supabase
+        .from('project_signers')
+        .insert({
+          project_id: args.project_id,
+          role: args.role,
+          full_name: args.full_name,
+          phone: args.phone ?? null,
+          position: args.position ?? null,
+          signature_png_url: args.signature_png_url,
+        })
+        .select()
+        .single(),
+    );
+  },
   deleteSigner: async (id: string) => {
     const { error } = await supabase.from('project_signers').delete().eq('id', id);
     if (error) throw error;
