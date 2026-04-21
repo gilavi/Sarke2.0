@@ -1,0 +1,30 @@
+## macOS
+.DS_Store
+
+## Xcode
+xcuserdata/
+*.xcworkspace/xcuserdata/
+DerivedData/
+build/
+*.xcuserstate
+*.xcscmblueprint
+
+## Swift Package Manager
+.swiftpm/
+Packages/
+Package.resolved
+
+## xcodegen output (regenerated)
+Sarke2.xcodeproj/
+
+## Secrets
+Config/Secrets.xcconfig
+.env
+.env.local
+
+## Supabase CLI
+supabase/.branches
+supabase/.temp
+
+## Node / tooling (if any)
+node_modules/

@@ -1,0 +1,4 @@
+/* Sarke 2.0 — ka (Georgian). Most strings are inline in Swift but this file
+   exists so the `ka` locale is registered and future externalized keys land here. */
+
+"app.name" = "Sarke";
