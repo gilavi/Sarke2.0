@@ -1,14 +1,16 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useActionSheet } from '@expo/react-native-action-sheet';
 import { Button, Card, Chip, Screen, SectionHeader } from '../../components/ui';
 import {
   projectsApi,
   questionnairesApi,
   templatesApi,
 } from '../../lib/services';
+import { useToast } from '../../lib/toast';
 import { theme } from '../../lib/theme';
 import type { Project, ProjectSigner, Questionnaire, Template } from '../../types/models';
 import { SIGNER_ROLE_LABEL } from '../../types/models';
@@ -16,6 +18,8 @@ import { SIGNER_ROLE_LABEL } from '../../types/models';
 export default function ProjectDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { showActionSheetWithOptions } = useActionSheet();
+  const toast = useToast();
   const [projects, setProjects] = useState<Project[]>([]);
   const [signers, setSigners] = useState<ProjectSigner[]>([]);
   const [questionnaires, setQuestionnaires] = useState<Questionnaire[]>([]);
@@ -45,17 +49,32 @@ export default function ProjectDetail() {
 
   const chooseTemplate = () => {
     const systemT = templates.filter(t => t.is_system);
-    const options = systemT.map(t => ({ text: t.name, onPress: () => startWith(t) }));
-    Alert.alert('აირჩიე შაბლონი', '', [...options, { text: 'გაუქმება', style: 'cancel' }]);
+    if (systemT.length === 0) {
+      toast.error('შაბლონი არ არის ხელმისაწვდომი');
+      return;
+    }
+    const titles = systemT.map(t => t.name);
+    showActionSheetWithOptions(
+      {
+        title: 'აირჩიე შაბლონი',
+        options: [...titles, 'გაუქმება'],
+        cancelButtonIndex: titles.length,
+      },
+      idx => {
+        if (idx == null || idx === titles.length) return;
+        void startWith(systemT[idx]);
+      },
+    );
   };
 
   const startWith = async (template: Template) => {
     if (!id) return;
     try {
       const q = (await questionnairesApi.create({ projectId: id, templateId: template.id })) as unknown as Questionnaire;
-      router.push({ pathname: '/questionnaire/[id]', params: { id: q.id } });
+      toast.success('კითხვარი შექმნილია');
+      router.push(`/questionnaire/${q.id}` as any);
     } catch (e: any) {
-      Alert.alert('შეცდომა', e?.message ?? '');
+      toast.error(e?.message ?? 'შექმნა ვერ მოხერხდა');
     }
   };
 
@@ -91,7 +110,7 @@ export default function ProjectDetail() {
           </View>
           <Pressable
             onPress={() =>
-              router.push({ pathname: '/projects/[id]/signer', params: { id: id! } })
+              router.push(`/projects/${id}/signer` as any)
             }
           >
             <View style={styles.addRow}>
@@ -110,7 +129,7 @@ export default function ProjectDetail() {
                 <Pressable
                   key={q.id}
                   onPress={() =>
-                    router.push({ pathname: '/questionnaire/[id]', params: { id: q.id } })
+                    router.push(`/questionnaire/${q.id}` as any)
                   }
                 >
                   <Card padding={12}>

@@ -58,7 +58,7 @@ export default function ProjectsScreen() {
         renderItem={({ item }) => (
           <Pressable
             onPress={() =>
-              router.push({ pathname: '/projects/[id]', params: { id: item.id } })
+              router.push(`/projects/${item.id}` as any)
             }
           >
             <Card padding={14}>

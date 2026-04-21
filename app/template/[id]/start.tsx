@@ -48,7 +48,7 @@ export default function StartTemplateScreen() {
       }
       if (!projectId) return;
       const q = (await questionnairesApi.create({ projectId, templateId: template.id })) as unknown as Questionnaire;
-      router.replace({ pathname: '/questionnaire/[id]', params: { id: q.id } });
+      router.replace(`/questionnaire/${q.id}` as any);
     } catch (e: any) {
       Alert.alert('შეცდომა', e?.message ?? '');
     } finally {

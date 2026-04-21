@@ -7,7 +7,7 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "scheme": "sarke",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -48,7 +48,7 @@
       "supabaseAnonKey": "sb_publishable_OF_L2E27-Uv8MMw87fWfSA_znD7moYY"
     },
     "experiments": {
-      "typedRoutes": true
+      "typedRoutes": false
     }
   }
 }

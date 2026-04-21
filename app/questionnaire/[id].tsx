@@ -1,9 +1,10 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Button, Card, Screen } from '../../components/ui';
 import {
   answersApi,
@@ -12,6 +13,7 @@ import {
   templatesApi,
 } from '../../lib/services';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
+import { useToast } from '../../lib/toast';
 import { theme } from '../../lib/theme';
 import type {
   Answer,
@@ -21,6 +23,8 @@ import type {
   Questionnaire,
   Template,
 } from '../../types/models';
+
+const stepKey = (qid: string) => `wizard:${qid}:step`;
 
 // --- Flat steps ---
 
@@ -50,6 +54,7 @@ function buildSteps(questions: Question[], harnessRowCount: number): FlatStep[] 
 export default function QuestionnaireWizard() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const toast = useToast();
 
   const [questionnaire, setQuestionnaire] = useState<Questionnaire | null>(null);
   const [template, setTemplate] = useState<Template | null>(null);
@@ -60,7 +65,7 @@ export default function QuestionnaireWizard() {
   const [loading, setLoading] = useState(true);
   const [harnessRowCount, setHarnessRowCount] = useState(5);
   const [conclusion, setConclusion] = useState('');
-  const [isSafe, setIsSafe] = useState(true);
+  const [isSafe, setIsSafe] = useState<boolean | null>(null);
   const [harnessName, setHarnessName] = useState('');
 
   const load = useCallback(async () => {
@@ -77,7 +82,7 @@ export default function QuestionnaireWizard() {
       const t = allT.find(x => x.id === q.template_id) ?? null;
       setTemplate(t);
       setConclusion(q.conclusion_text ?? '');
-      setIsSafe(q.is_safe_for_use ?? true);
+      setIsSafe(q.is_safe_for_use ?? null);
       setHarnessName(q.harness_name ?? '');
       if (t) {
         const qs = await templatesApi.questions(t.id);
@@ -92,12 +97,24 @@ export default function QuestionnaireWizard() {
         setAnswers(map);
         setPhotos(pmap);
       }
+      // Resume where the user left off
+      const savedStep = await AsyncStorage.getItem(stepKey(id));
+      if (savedStep) {
+        const parsed = parseInt(savedStep, 10);
+        if (!Number.isNaN(parsed)) setStepIndex(parsed);
+      }
     } catch {
       // ignore
     } finally {
       setLoading(false);
     }
   }, [id]);
+
+  // Persist step index as the user progresses
+  useEffect(() => {
+    if (!id || loading) return;
+    void AsyncStorage.setItem(stepKey(id), String(stepIndex));
+  }, [id, stepIndex, loading]);
 
   useFocusEffect(
     useCallback(() => {
@@ -172,20 +189,46 @@ export default function QuestionnaireWizard() {
 
   const saveConclusionAndGo = async () => {
     if (!questionnaire) return;
+    if (isSafe === null) {
+      toast.error('ჯერ აირჩიე უსაფრთხოების სტატუსი');
+      return;
+    }
     await questionnairesApi.update({
       id: questionnaire.id,
       conclusion_text: conclusion,
       is_safe_for_use: isSafe,
       harness_name: harnessName || null,
     });
-    router.push({ pathname: '/questionnaire/[id]/signing', params: { id: questionnaire.id } });
+    router.push(`/questionnaire/${questionnaire.id}/signing` as any);
   };
 
-  if (loading || !step) {
+  if (loading) {
+    return (
+      <Screen>
+        <Stack.Screen options={{ headerShown: true, title: 'იტვირთება...' }} />
+        <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator color={theme.colors.accent} />
+        </SafeAreaView>
+      </Screen>
+    );
+  }
+
+  // Completed questionnaire -> result view, not wizard
+  if (questionnaire?.status === 'completed') {
+    return (
+      <ResultView
+        questionnaire={questionnaire}
+        template={template}
+        onClose={() => router.back()}
+      />
+    );
+  }
+
+  if (!step) {
     return (
       <Screen>
         <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator color={theme.colors.accent} />
+          <Text style={{ color: theme.colors.inkSoft }}>შინაარსი ვერ ჩაიტვირთა.</Text>
         </SafeAreaView>
       </Screen>
     );
@@ -314,13 +357,9 @@ function QuestionStep({
         </View>
       ) : null}
       {question.type === 'freetext' ? (
-        <TextInput
-          multiline
-          value={answer?.value_text ?? ''}
-          onChangeText={t => onAnswer(question, a => ({ ...a, value_text: t }))}
-          style={styles.textarea}
-          placeholder="შეავსე აქ..."
-          placeholderTextColor={theme.colors.inkFaint}
+        <DebouncedFreetext
+          initial={answer?.value_text ?? ''}
+          onCommit={value => onAnswer(question, a => ({ ...a, value_text: value }))}
         />
       ) : null}
       {question.type === 'photo_upload' ? (
@@ -330,15 +369,78 @@ function QuestionStep({
         </>
       ) : null}
 
-      <View style={{ flexDirection: 'row', gap: 8 }}>
-        <Button
-          title="ფოტო"
-          variant="secondary"
-          onPress={onPickPhoto}
-          style={{ flex: 1 }}
-        />
-      </View>
+      {question.type !== 'photo_upload' ? (
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <Button
+            title={
+              answer && photosByAnswer[answer.id]?.length
+                ? `ფოტო (${photosByAnswer[answer.id].length})`
+                : 'ფოტო'
+            }
+            variant="secondary"
+            onPress={onPickPhoto}
+            style={{ flex: 1 }}
+          />
+        </View>
+      ) : null}
+      {answer && question.type !== 'photo_upload' ? (
+        <PhotoGrid photos={photosByAnswer[answer.id] ?? []} />
+      ) : null}
     </View>
+  );
+}
+
+function DebouncedFreetext({
+  initial,
+  onCommit,
+}: {
+  initial: string;
+  onCommit: (value: string) => void;
+}) {
+  const [text, setText] = useState(initial);
+  const lastCommitted = useRef(initial);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    // Sync external updates (e.g., first load)
+    if (initial !== lastCommitted.current) {
+      setText(initial);
+      lastCommitted.current = initial;
+    }
+  }, [initial]);
+
+  useEffect(() => {
+    if (text === lastCommitted.current) return;
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      lastCommitted.current = text;
+      onCommit(text);
+    }, 500);
+    return () => {
+      if (timer.current) clearTimeout(timer.current);
+    };
+  }, [text, onCommit]);
+
+  useEffect(() => {
+    return () => {
+      // Flush pending value on unmount (page change)
+      if (text !== lastCommitted.current) {
+        lastCommitted.current = text;
+        onCommit(text);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <TextInput
+      multiline
+      value={text}
+      onChangeText={setText}
+      style={styles.textarea}
+      placeholder="შეავსე აქ..."
+      placeholderTextColor={theme.colors.inkFaint}
+    />
   );
 }
 
@@ -484,7 +586,7 @@ function ConclusionStep({
 }: {
   conclusion: string;
   onConclusion: (s: string) => void;
-  isSafe: boolean;
+  isSafe: boolean | null;
   onIsSafe: (b: boolean) => void;
   template: Template | null;
   harnessName: string;
@@ -515,20 +617,44 @@ function ConclusionStep({
           placeholderTextColor={theme.colors.inkFaint}
         />
       </View>
-      <Pressable
-        onPress={() => onIsSafe(!isSafe)}
-        style={[
-          styles.checkboxRow,
-          isSafe && { backgroundColor: theme.colors.accentSoft, borderColor: theme.colors.accent },
-        ]}
-      >
-        <Ionicons
-          name={isSafe ? 'checkbox' : 'square-outline'}
-          size={24}
-          color={isSafe ? theme.colors.accent : theme.colors.inkSoft}
-        />
-        <Text style={{ fontSize: 15, fontWeight: '600' }}>უსაფრთხოა ექსპლუატაციისთვის</Text>
-      </Pressable>
+      <View>
+        <Text style={styles.label}>უსაფრთხოების სტატუსი</Text>
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <Pressable
+            onPress={() => onIsSafe(true)}
+            style={[
+              styles.safetyOption,
+              isSafe === true && { backgroundColor: theme.colors.accentSoft, borderColor: theme.colors.accent },
+            ]}
+          >
+            <Ionicons
+              name={isSafe === true ? 'checkmark-circle' : 'ellipse-outline'}
+              size={22}
+              color={isSafe === true ? theme.colors.accent : theme.colors.inkSoft}
+            />
+            <Text style={{ fontSize: 14, fontWeight: '600' }}>უსაფრთხოა</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => onIsSafe(false)}
+            style={[
+              styles.safetyOption,
+              isSafe === false && { backgroundColor: theme.colors.dangerSoft, borderColor: theme.colors.danger },
+            ]}
+          >
+            <Ionicons
+              name={isSafe === false ? 'close-circle' : 'ellipse-outline'}
+              size={22}
+              color={isSafe === false ? theme.colors.danger : theme.colors.inkSoft}
+            />
+            <Text style={{ fontSize: 14, fontWeight: '600' }}>არ არის უსაფრთხო</Text>
+          </Pressable>
+        </View>
+        {isSafe === null ? (
+          <Text style={{ fontSize: 12, color: theme.colors.danger, marginTop: 6 }}>
+            აუცილებლად აირჩიე სტატუსი.
+          </Text>
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -537,12 +663,113 @@ function PhotoGrid({ photos }: { photos: AnswerPhoto[] }) {
   if (!photos.length) return null;
   return (
     <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-      {photos.map(p => (
-        <View key={p.id} style={styles.photoThumb}>
-          <Ionicons name="image" size={20} color={theme.colors.accent} />
-        </View>
-      ))}
+      {photos.map(p => {
+        const url = storageApi.publicUrl(STORAGE_BUCKETS.answerPhotos, p.storage_path);
+        return (
+          <Image
+            key={p.id}
+            source={{ uri: url }}
+            style={styles.photoThumb}
+            resizeMode="cover"
+          />
+        );
+      })}
     </View>
+  );
+}
+
+// ----- Result view for completed questionnaires -----
+
+import * as Sharing from 'expo-sharing';
+import { storageApi as storageFor } from '../../lib/services';
+import { STORAGE_BUCKETS as BUCKETS } from '../../lib/supabase';
+import * as FS from 'expo-file-system/legacy';
+
+function ResultView({
+  questionnaire,
+  template,
+  onClose,
+}: {
+  questionnaire: Questionnaire;
+  template: Template | null;
+  onClose: () => void;
+}) {
+  const toast = useToast();
+  const [sharing, setSharing] = useState(false);
+
+  const share = async () => {
+    if (!questionnaire.pdf_url) {
+      toast.error('PDF ჯერ არ არის დაგენერირებული');
+      return;
+    }
+    setSharing(true);
+    try {
+      const url = storageFor.publicUrl(BUCKETS.pdfs, questionnaire.pdf_url);
+      const localUri = (FS.cacheDirectory ?? FS.documentDirectory!) + `${questionnaire.id}.pdf`;
+      const { uri } = await FS.downloadAsync(url, localUri);
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, { mimeType: 'application/pdf' });
+      }
+    } catch (e: any) {
+      toast.error(e?.message ?? 'გახსნა ვერ მოხერხდა');
+    } finally {
+      setSharing(false);
+    }
+  };
+
+  return (
+    <Screen>
+      <Stack.Screen options={{ headerShown: true, title: 'დასრულდა' }} />
+      <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
+        <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }}>
+          <View style={{ alignItems: 'center', gap: 10, paddingVertical: 30 }}>
+            <View
+              style={{
+                width: 72,
+                height: 72,
+                borderRadius: 36,
+                backgroundColor: theme.colors.accentSoft,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Ionicons name="checkmark-circle" size={48} color={theme.colors.accent} />
+            </View>
+            <Text style={{ fontSize: 22, fontWeight: '800', color: theme.colors.ink }}>
+              კითხვარი დასრულებულია
+            </Text>
+            <Text style={{ color: theme.colors.inkSoft, textAlign: 'center' }}>
+              {template?.name ?? 'კითხვარი'}
+              {'\n'}
+              {new Date(questionnaire.completed_at ?? questionnaire.created_at).toLocaleString('ka')}
+            </Text>
+          </View>
+
+          <Card>
+            <Text style={{ fontSize: 11, color: theme.colors.inkSoft, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              დასკვნა
+            </Text>
+            <Text style={{ marginTop: 6, color: theme.colors.ink }}>
+              {questionnaire.conclusion_text || '—'}
+            </Text>
+            <Text
+              style={{
+                marginTop: 10,
+                fontWeight: '700',
+                color: questionnaire.is_safe_for_use === false ? theme.colors.danger : theme.colors.accent,
+              }}
+            >
+              {questionnaire.is_safe_for_use === false
+                ? '✗ არ არის უსაფრთხო ექსპლუატაციისთვის'
+                : '✓ უსაფრთხოა ექსპლუატაციისთვის'}
+            </Text>
+          </Card>
+
+          <Button title="PDF-ის გახსნა / გაზიარება" onPress={share} loading={sharing} />
+          <Button title="დახურვა" variant="secondary" onPress={onClose} />
+        </ScrollView>
+      </SafeAreaView>
+    </Screen>
   );
 }
 
@@ -634,6 +861,17 @@ const styles = StyleSheet.create({
     padding: 14,
     backgroundColor: theme.colors.subtleSurface,
     borderRadius: 14,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  safetyOption: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 12,
+    backgroundColor: theme.colors.subtleSurface,
+    borderRadius: 12,
     borderWidth: 2,
     borderColor: 'transparent',
   },

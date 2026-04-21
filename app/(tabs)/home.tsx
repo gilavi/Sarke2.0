@@ -4,13 +4,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSession } from '../../lib/session';
-import { certificatesApi, questionnairesApi, templatesApi, isExpiringSoon } from '../../lib/services';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
+import { certificatesApi, questionnairesApi, storageApi, templatesApi, isExpiringSoon } from '../../lib/services';
+import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { theme } from '../../lib/theme';
 import { Card, Chip, SectionHeader } from '../../components/ui';
 import type { Certificate, Questionnaire, Template } from '../../types/models';
 
 export default function HomeScreen() {
-  const { state, signOut } = useSession();
+  const { state } = useSession();
   const router = useRouter();
   const [certs, setCerts] = useState<Certificate[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -51,7 +54,21 @@ export default function HomeScreen() {
   };
 
   const startTemplate = (template: Template) => {
-    router.push({ pathname: '/template/[id]/start', params: { id: template.id } });
+    router.push(`/template/${template.id}/start` as any);
+  };
+
+  const sharePdf = async (path: string) => {
+    try {
+      const url = storageApi.publicUrl(STORAGE_BUCKETS.pdfs, path);
+      const name = path.split('/').pop() ?? 'report.pdf';
+      const localUri = (FileSystem.cacheDirectory ?? FileSystem.documentDirectory!) + name;
+      const { uri } = await FileSystem.downloadAsync(url, localUri);
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, { mimeType: 'application/pdf' });
+      }
+    } catch {
+      // ignore
+    }
   };
 
   return (
@@ -69,7 +86,7 @@ export default function HomeScreen() {
             </Text>
             <Text style={{ color: theme.colors.inkSoft, marginTop: 4 }}>რას შევამოწმებთ დღეს?</Text>
           </View>
-          <Pressable onPress={signOut} hitSlop={8}>
+          <Pressable onPress={() => router.push('/(tabs)/more' as any)} hitSlop={8} accessibilityLabel="profile">
             <Ionicons name="person-circle" size={32} color={theme.colors.accent} />
           </Pressable>
         </View>
@@ -114,7 +131,9 @@ export default function HomeScreen() {
                 <Pressable
                   key={q.id}
                   onPress={() =>
-                    router.push({ pathname: '/questionnaire/[id]', params: { id: q.id } })
+                    q.status === 'completed' && q.pdf_url
+                      ? sharePdf(q.pdf_url)
+                      : router.push(`/questionnaire/${q.id}` as any)
                   }
                 >
                   <Card padding={12}>

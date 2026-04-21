@@ -1,10 +1,13 @@
+import '../lib/polyfills';
 import { useEffect } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { ActivityIndicator, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { ActionSheetProvider } from '@expo/react-native-action-sheet';
 import { SessionProvider, useSession } from '../lib/session';
+import { ToastProvider } from '../lib/toast';
 import { theme } from '../lib/theme';
 
 function AuthGate() {
@@ -39,10 +42,14 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <SessionProvider>
-          <StatusBar style="dark" />
-          <AuthGate />
-        </SessionProvider>
+        <ActionSheetProvider>
+          <ToastProvider>
+            <SessionProvider>
+              <StatusBar style="dark" />
+              <AuthGate />
+            </SessionProvider>
+          </ToastProvider>
+        </ActionSheetProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

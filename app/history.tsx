@@ -3,6 +3,8 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import { Card, Chip, Screen } from '../components/ui';
 import { projectsApi, questionnairesApi, storageApi, templatesApi } from '../lib/services';
 import { STORAGE_BUCKETS } from '../lib/supabase';
@@ -41,8 +43,13 @@ export default function HistoryScreen() {
   const openPdf = async (q: Questionnaire) => {
     if (!q.pdf_url) return;
     try {
-      storageApi.publicUrl(STORAGE_BUCKETS.pdfs, q.pdf_url);
-      // No inline viewer yet; surface via sharing in a follow-up.
+      const url = storageApi.publicUrl(STORAGE_BUCKETS.pdfs, q.pdf_url);
+      const name = q.pdf_url.split('/').pop() ?? 'report.pdf';
+      const localUri = (FileSystem.cacheDirectory ?? FileSystem.documentDirectory!) + name;
+      const { uri } = await FileSystem.downloadAsync(url, localUri);
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, { mimeType: 'application/pdf' });
+      }
     } catch {}
   };
 
@@ -78,7 +85,7 @@ export default function HistoryScreen() {
               <Pressable
                 onPress={() =>
                   item.status === 'draft'
-                    ? router.push({ pathname: '/questionnaire/[id]', params: { id: item.id } })
+                    ? router.push(`/questionnaire/${item.id}` as any)
                     : openPdf(item)
                 }
               >

@@ -66,25 +66,35 @@ export default function CertificatesScreen() {
             </View>
           }
           renderItem={({ item }) => (
-            <Pressable onLongPress={() => remove(item)}>
-              <Card padding={14}>
-                <Text style={{ fontWeight: '600', color: theme.colors.ink }}>{item.type}</Text>
-                {item.number ? (
-                  <Text style={{ color: theme.colors.inkSoft, fontSize: 13 }}>№ {item.number}</Text>
-                ) : null}
-                {item.expires_at ? (
-                  <Text
-                    style={{
-                      fontSize: 12,
-                      color: isExpiringSoon(item) ? theme.colors.warn : theme.colors.inkSoft,
-                      marginTop: 2,
-                    }}
-                  >
-                    ვადა: {new Date(item.expires_at).toLocaleDateString('ka')}
-                  </Text>
-                ) : null}
-              </Card>
-            </Pressable>
+            <Card padding={14}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontWeight: '600', color: theme.colors.ink }}>{item.type}</Text>
+                  {item.number ? (
+                    <Text style={{ color: theme.colors.inkSoft, fontSize: 13 }}>№ {item.number}</Text>
+                  ) : null}
+                  {item.expires_at ? (
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        color: isExpiringSoon(item) ? theme.colors.warn : theme.colors.inkSoft,
+                        marginTop: 2,
+                      }}
+                    >
+                      ვადა: {new Date(item.expires_at).toLocaleDateString('ka')}
+                    </Text>
+                  ) : null}
+                </View>
+                <Pressable
+                  onPress={() => remove(item)}
+                  hitSlop={10}
+                  accessibilityLabel="remove"
+                  style={{ padding: 6 }}
+                >
+                  <Ionicons name="trash-outline" size={20} color={theme.colors.danger} />
+                </Pressable>
+              </View>
+            </Card>
           )}
         />
       </SafeAreaView>
