@@ -1,7 +1,11 @@
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
+import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
 import { supabase } from './supabase';
 import type { AppUser } from '../types/models';
+
+WebBrowser.maybeCompleteAuthSession();
 
 type SessionState =
   | { status: 'loading' }
@@ -11,12 +15,13 @@ type SessionState =
 interface SessionCtx {
   state: SessionState;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   register: (args: {
     email: string;
     password: string;
     firstName: string;
     lastName: string;
-  }) => Promise<void>;
+  }) => Promise<{ needsEmailVerification: boolean }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -62,20 +67,33 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       },
-      register: async ({ email, password, firstName, lastName }) => {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: { first_name: firstName, last_name: lastName },
-          },
+      signInWithGoogle: async () => {
+        const redirectUrl = Linking.createURL('auth/callback');
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: { redirectTo: redirectUrl, skipBrowserRedirect: true },
         });
         if (error) throw error;
-        const { error: signInError } = await supabase.auth.signInWithPassword({
+        if (!data.url) throw new Error('No OAuth URL returned');
+        const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
+        if (result.type === 'success') {
+          const { error: sessionError } = await supabase.auth.exchangeCodeForSession(result.url);
+          if (sessionError) throw sessionError;
+        } else if (result.type !== 'dismiss') {
+          throw new Error('Google sign-in failed');
+        }
+      },
+      register: async ({ email, password, firstName, lastName }) => {
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
+          options: { data: { first_name: firstName, last_name: lastName } },
         });
-        if (signInError) throw signInError;
+        if (error) throw error;
+        if (!data.session) {
+          return { needsEmailVerification: true };
+        }
+        return { needsEmailVerification: false };
       },
       signOut: async () => {
         await supabase.auth.signOut();
