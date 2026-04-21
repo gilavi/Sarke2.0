@@ -1,13 +1,18 @@
 import '../lib/polyfills';
 import { useEffect } from 'react';
+import * as Linking from 'expo-linking';
 import { Stack, useRouter, useSegments } from 'expo-router';
+import { supabase } from '../lib/supabase';
 import { ActivityIndicator, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ActionSheetProvider } from '@expo/react-native-action-sheet';
 import { SessionProvider, useSession } from '../lib/session';
+import { TERMS_VERSION } from '../lib/terms';
 import { ToastProvider } from '../lib/toast';
+import { OfflineProvider } from '../lib/offline';
+import { OfflineBanner } from '../components/OfflineBanner';
 import { theme } from '../lib/theme';
 
 function AuthGate() {
@@ -15,15 +20,46 @@ function AuthGate() {
   const segments = useSegments();
   const router = useRouter();
 
+  // Handle Supabase password-recovery deep links (sarke://reset?code=...).
+  // Exchange the PKCE code for a session, then route to the reset form.
+  useEffect(() => {
+    const handle = async (url: string | null) => {
+      if (!url) return;
+      const parsed = Linking.parse(url);
+      const code = (parsed.queryParams?.code as string | undefined) ?? undefined;
+      const isReset = parsed.path === 'reset' || parsed.hostname === 'reset';
+      if (!isReset || !code) return;
+      try {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) throw error;
+        router.replace('/(auth)/reset');
+      } catch {
+        router.replace('/(auth)/forgot');
+      }
+    };
+    void Linking.getInitialURL().then(handle);
+    const sub = Linking.addEventListener('url', (e) => void handle(e.url));
+    return () => sub.remove();
+  }, [router]);
+
   useEffect(() => {
     if (state.status === 'loading') return;
     const inAuth = segments[0] === '(auth)';
+    const inTerms = segments[0] === 'terms';
+    const inReset = inAuth && (segments as string[])[1] === 'reset';
+    if (inReset) return; // let the reset flow run regardless of session state
     if (state.status === 'signedOut' && !inAuth) {
       router.replace('/(auth)/login');
-    } else if (state.status === 'signedIn' && inAuth) {
-      router.replace('/(tabs)/home');
+    } else if (state.status === 'signedIn') {
+      const needsTerms =
+        !state.user?.tc_accepted_version || state.user.tc_accepted_version !== TERMS_VERSION;
+      if (needsTerms && !inTerms) {
+        router.replace('/terms');
+      } else if (!needsTerms && (inAuth || inTerms)) {
+        router.replace('/(tabs)/home');
+      }
     }
-  }, [state.status, segments]);
+  }, [state, segments]);
 
   if (state.status === 'loading') {
     return (
@@ -44,10 +80,13 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <ActionSheetProvider>
           <ToastProvider>
-            <SessionProvider>
-              <StatusBar style="dark" />
-              <AuthGate />
-            </SessionProvider>
+            <OfflineProvider>
+              <SessionProvider>
+                <StatusBar style="dark" />
+                <OfflineBanner />
+                <AuthGate />
+              </SessionProvider>
+            </OfflineProvider>
           </ToastProvider>
         </ActionSheetProvider>
       </SafeAreaProvider>

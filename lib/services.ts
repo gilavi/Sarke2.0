@@ -205,6 +205,14 @@ export const signaturesApi = {
         .single(),
     );
   },
+  remove: async (questionnaireId: string, role: SignatureRecord['signer_role']) => {
+    const { error } = await supabase
+      .from('signatures')
+      .delete()
+      .eq('questionnaire_id', questionnaireId)
+      .eq('signer_role', role);
+    if (error) throw error;
+  },
 };
 
 // -------- Certificates --------

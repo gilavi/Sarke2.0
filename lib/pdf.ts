@@ -1,5 +1,7 @@
 import type {
   Answer,
+  AnswerPhoto,
+  Certificate,
   Project,
   Question,
   Questionnaire,
@@ -8,7 +10,11 @@ import type {
 } from '../types/models';
 import { SIGNER_ROLE_LABEL } from '../types/models';
 
-// Minimal HTML -> PDF. expo-print renders this with the system WebView.
+export interface PdfCertificate extends Certificate {
+  file_data_url?: string;
+}
+
+// photosByAnswer: answer.id -> array of AnswerPhoto with pre-fetched data URLs in storage_path
 export function buildPdfHtml(args: {
   questionnaire: Questionnaire;
   template: Template;
@@ -16,10 +22,24 @@ export function buildPdfHtml(args: {
   questions: Question[];
   answers: Answer[];
   signatures: SignatureRecord[];
+  photosByAnswer?: Record<string, AnswerPhoto[]>;
+  certificates?: PdfCertificate[];
 }): string {
-  const { questionnaire, template, project, questions, answers, signatures } = args;
+  const {
+    questionnaire,
+    template,
+    project,
+    questions,
+    answers,
+    signatures,
+    photosByAnswer = {},
+    certificates = [],
+  } = args;
   const answerFor = (q: Question) => answers.find(a => a.question_id === q.id);
   const date = new Date(questionnaire.created_at).toLocaleDateString('ka');
+
+  // Collect overflow photos (3rd+ per question) for appendix
+  const appendixPhotos: Array<{ questionTitle: string; photos: AnswerPhoto[]; isFailed: boolean }> = [];
 
   const sections = Array.from(new Set(questions.map(q => q.section))).sort();
   const body = sections
@@ -27,18 +47,38 @@ export function buildPdfHtml(args: {
       const items = questions
         .filter(q => q.section === section)
         .sort((a, b) => a.order - b.order)
-        .map(q => renderQuestion(q, answerFor(q)))
+        .map(q => {
+          const ans = answerFor(q);
+          const photos = ans ? (photosByAnswer[ans.id] ?? []) : [];
+          const isFailed = ans?.value_bool === false;
+          if (photos.length > 2) {
+            appendixPhotos.push({ questionTitle: q.title, photos: photos.slice(2), isFailed });
+          }
+          return renderQuestion(q, ans, photos.slice(0, 2), isFailed);
+        })
         .join('');
       return `<section>${items}</section>`;
     })
     .join('');
 
+  const appendixHtml = appendixPhotos.length > 0
+    ? `<div class="page-break"></div>
+       <h2>დანართი: დამატებითი ფოტოები</h2>
+       ${appendixPhotos.map(({ questionTitle, photos, isFailed }) => `
+         <div class="qa"><strong>${escapeHtml(questionTitle)}</strong>
+           <div class="photo-grid">${photos.map(p => renderPhoto(p, isFailed)).join('')}</div>
+         </div>`).join('')}`
+    : '';
+
   return `<!doctype html>
 <html>
   <head>
     <meta charset="utf-8" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-      body { font-family: -apple-system, BlinkMacSystemFont, "Noto Sans Georgian", "Helvetica", sans-serif; padding: 28px; color: #1A1A1A; font-size: 12px; }
+      body { font-family: "Noto Sans Georgian", -apple-system, BlinkMacSystemFont, "Helvetica", sans-serif; padding: 28px; color: #1A1A1A; font-size: 12px; }
       h1 { font-size: 20px; margin: 0 0 6px; }
       h2 { font-size: 14px; margin: 14px 0 6px; }
       h3 { font-size: 13px; margin: 8px 0 4px; }
@@ -55,6 +95,12 @@ export function buildPdfHtml(args: {
       .sig { border-top: 1px solid #E8E1D4; padding-top: 10px; margin-top: 22px; }
       .sig .line { border-bottom: 1px solid #1A1A1A; margin-top: 30px; width: 260px; height: 2px; }
       .conclusion { padding: 10px; background: #F6F2EA; border-radius: 6px; }
+      .photo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
+      .photo-cell { display: flex; flex-direction: column; gap: 4px; }
+      .photo-cell img { width: 100%; height: 160px; object-fit: cover; border-radius: 4px; border: 2px solid #E8E1D4; }
+      .photo-cell.failed img { border-color: #C0433C; }
+      .photo-caption { font-size: 10px; color: #4A4A4A; }
+      .page-break { page-break-before: always; }
     </style>
   </head>
   <body>
@@ -68,6 +114,8 @@ export function buildPdfHtml(args: {
 
     ${body}
 
+    ${appendixHtml}
+
     <h2>დასკვნითი ნაწილი</h2>
     <div class="conclusion">${escapeHtml(questionnaire.conclusion_text ?? '—')}</div>
     <p class="${questionnaire.is_safe_for_use === false ? 'bad' : 'ok'}">
@@ -79,37 +127,69 @@ export function buildPdfHtml(args: {
     <h2>ხელმოწერები</h2>
     ${(template.required_signer_roles ?? []).map(role => {
       const sig = signatures.find(s => s.signer_role === role);
+      const sigImg = sig?.signature_png_url
+        ? `<img src="${sig.signature_png_url}" alt="ხელმოწერა" style="max-width: 260px; max-height: 80px; display: block; margin-top: 12px;" />`
+        : `<div class="line"></div>`;
       return `
       <div class="sig">
         <h3>${SIGNER_ROLE_LABEL[role] ?? role}</h3>
         <p>სახელი გვარი: ${escapeHtml(sig?.full_name ?? '')}<br/>
            ტელ: ${escapeHtml(sig?.phone ?? '')}<br/>
            პოზიცია: ${escapeHtml(sig?.position ?? '')}</p>
-        <div class="line"></div>
+        ${sigImg}
       </div>`;
     }).join('')}
+
+    ${certificates.length > 0 ? `
+    <div class="page-break"></div>
+    <h2>თანდართული სერტიფიკატები</h2>
+    ${certificates.map(c => `
+      <div class="qa">
+        <h3>${escapeHtml(c.type)}</h3>
+        <p class="muted">
+          ${c.number ? `№ ${escapeHtml(c.number)}<br/>` : ''}
+          ${c.issued_at ? `გაცემის თარიღი: ${escapeHtml(c.issued_at)}<br/>` : ''}
+          ${c.expires_at ? `ვადა: ${escapeHtml(c.expires_at)}` : ''}
+        </p>
+        ${c.file_data_url
+          ? `<img src="${c.file_data_url}" alt="${escapeHtml(c.type)}" style="max-width: 100%; margin-top: 8px; border: 1px solid #E8E1D4; border-radius: 4px;" />`
+          : ''}
+      </div>
+    `).join('')}
+    ` : ''}
   </body>
 </html>`;
 }
 
-function renderQuestion(q: Question, answer: Answer | undefined): string {
+function renderPhoto(photo: AnswerPhoto, isFailed: boolean): string {
+  const caption = photo.caption ? escapeHtml(photo.caption) : '';
+  return `<div class="photo-cell${isFailed ? ' failed' : ''}">
+    <img src="${photo.storage_path}" alt="ფოტო" />
+    ${caption ? `<div class="photo-caption">${caption}</div>` : ''}
+  </div>`;
+}
+
+function renderQuestion(q: Question, answer: Answer | undefined, inlinePhotos: AnswerPhoto[] = [], isFailed = false): string {
   const comment = answer?.comment
     ? `<p class="muted">კომენტარი: ${escapeHtml(answer.comment)}</p>`
+    : '';
+  const photosHtml = inlinePhotos.length > 0
+    ? `<div class="photo-grid">${inlinePhotos.map(p => renderPhoto(p, isFailed)).join('')}</div>`
     : '';
   switch (q.type) {
     case 'yesno': {
       const v = answer?.value_bool;
       const label = v === true ? '<span class="ok">✓ კი</span>' : v === false ? '<span class="bad">✗ არა</span>' : '—';
-      return `<div class="qa"><strong>${escapeHtml(q.title)}</strong><br/>${label}${comment}</div>`;
+      return `<div class="qa"><strong>${escapeHtml(q.title)}</strong><br/>${label}${comment}${photosHtml}</div>`;
     }
     case 'measure': {
       const v = answer?.value_num;
-      return `<div class="qa"><strong>${escapeHtml(q.title)}</strong><br/>${v ?? '—'} ${escapeHtml(q.unit ?? '')}${comment}</div>`;
+      return `<div class="qa"><strong>${escapeHtml(q.title)}</strong><br/>${v ?? '—'} ${escapeHtml(q.unit ?? '')}${comment}${photosHtml}</div>`;
     }
     case 'freetext':
-      return `<div class="qa"><strong>${escapeHtml(q.title)}</strong><br/>${escapeHtml(answer?.value_text ?? '—')}${comment}</div>`;
+      return `<div class="qa"><strong>${escapeHtml(q.title)}</strong><br/>${escapeHtml(answer?.value_text ?? '—')}${comment}${photosHtml}</div>`;
     case 'photo_upload':
-      return `<div class="qa"><strong>${escapeHtml(q.title)}</strong><br/><em>ფოტოები: მიმაგრებულია აპში.</em>${comment}</div>`;
+      return `<div class="qa"><strong>${escapeHtml(q.title)}</strong>${photosHtml.length ? photosHtml : '<br/><em>ფოტოები: მიმაგრებულია აპში.</em>'}${comment}</div>`;
     case 'component_grid': {
       const rows = q.grid_rows ?? [];
       const cols = q.grid_cols ?? [];

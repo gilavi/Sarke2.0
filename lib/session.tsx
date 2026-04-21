@@ -20,6 +20,7 @@ interface SessionCtx {
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   refreshUser: () => Promise<void>;
+  acceptTerms: (version: string) => Promise<void>;
 }
 
 const Ctx = createContext<SessionCtx | null>(null);
@@ -86,6 +87,28 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       refreshUser: async () => {
         const { data } = await supabase.auth.getSession();
         if (data.session) await loadUser(data.session);
+      },
+      acceptTerms: async version => {
+        if (state.status !== 'signedIn') throw new Error('Not signed in');
+        const authUser = state.session.user;
+        const meta = (authUser.user_metadata ?? {}) as Record<string, unknown>;
+        // Upsert so acceptance succeeds even if the public.users row is missing
+        // (e.g. user predates the handle_new_user trigger).
+        const { error } = await supabase
+          .from('users')
+          .upsert(
+            {
+              id: authUser.id,
+              email: authUser.email ?? state.user?.email ?? '',
+              first_name: state.user?.first_name ?? (meta.first_name as string) ?? '',
+              last_name: state.user?.last_name ?? (meta.last_name as string) ?? '',
+              tc_accepted_version: version,
+              tc_accepted_at: new Date().toISOString(),
+            },
+            { onConflict: 'id' },
+          );
+        if (error) throw error;
+        await loadUser(state.session);
       },
     }),
     [state],

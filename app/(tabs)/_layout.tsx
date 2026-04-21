@@ -28,6 +28,13 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="certificates"
+        options={{
+          title: 'სერტიფიკატები',
+          tabBarIcon: ({ color, size }) => <Ionicons name="ribbon" color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
         name="regulations"
         options={{
           title: 'რეგულაციები',

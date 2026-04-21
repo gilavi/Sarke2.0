@@ -50,7 +50,7 @@ export default function StartTemplateScreen() {
       const q = (await questionnairesApi.create({ projectId, templateId: template.id })) as unknown as Questionnaire;
       router.replace(`/questionnaire/${q.id}` as any);
     } catch (e: any) {
-      Alert.alert('შეცდომა', e?.message ?? '');
+      Alert.alert('კითხვარი ვერ შეიქმნა', e?.message ?? 'ქსელის შეცდომა');
     } finally {
       setBusy(false);
     }

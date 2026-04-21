@@ -96,7 +96,7 @@ export default function MoreScreen() {
             primary={`${certs.length}`}
             secondary={certs.length === 0 ? 'ცარიელია' : expiring > 0 ? `${expiring} იწურება` : 'ყველა აქტიური'}
             badge={expiring > 0 ? `${expiring} იწურება` : undefined}
-            onPress={() => router.push('/certificates')}
+            onPress={() => router.push('/(tabs)/certificates' as any)}
           />
           <HubTile
             title="შაბლონები"
@@ -117,6 +117,21 @@ export default function MoreScreen() {
             onPress={() => router.push('/(tabs)/regulations')}
           />
         </View>
+
+        <Pressable
+          onPress={() => router.push('/terms?mode=view' as any)}
+          style={{
+            flexDirection: 'row',
+            gap: 8,
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingVertical: 12,
+            marginHorizontal: 16,
+          }}
+        >
+          <Ionicons name="document-text-outline" size={16} color={theme.colors.inkSoft} />
+          <Text style={{ color: theme.colors.inkSoft, fontWeight: '600' }}>წესები და პირობები</Text>
+        </Pressable>
 
         <Pressable
           onPress={signOut}

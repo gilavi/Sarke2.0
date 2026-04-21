@@ -11,6 +11,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useSession } from '../../lib/session';
 import { theme } from '../../lib/theme';
 import { Button, Card, ErrorText, Field, Input } from '../../components/ui';
@@ -88,6 +89,7 @@ function Segment({ active, title, onPress }: { active: boolean; title: string; o
 
 function LoginForm() {
   const { signIn } = useSession();
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
@@ -127,6 +129,9 @@ function LoginForm() {
         loading={busy}
         disabled={!email || !password}
       />
+      <Pressable onPress={() => router.push('/(auth)/forgot')} style={{ alignSelf: 'center', paddingVertical: 6 }}>
+        <Text style={{ color: theme.colors.accent, fontWeight: '600' }}>დაგავიწყდა პაროლი?</Text>
+      </Pressable>
     </View>
   );
 }

@@ -23,6 +23,8 @@ export interface AppUser {
   first_name: string;
   last_name: string;
   created_at: string;
+  tc_accepted_version: string | null;
+  tc_accepted_at: string | null;
 }
 
 export interface Certificate {

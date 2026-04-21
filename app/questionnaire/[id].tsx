@@ -8,32 +8,42 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Button, Card, Screen } from '../../components/ui';
 import {
   answersApi,
+  certificatesApi,
   questionnairesApi,
   storageApi,
   templatesApi,
 } from '../../lib/services';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { useToast } from '../../lib/toast';
+import { useOffline } from '../../lib/offline';
 import { theme } from '../../lib/theme';
 import type {
   Answer,
   AnswerPhoto,
+  Certificate,
   GridValues,
   Question,
   Questionnaire,
   Template,
 } from '../../types/models';
+import { supabase } from '../../lib/supabase';
 
 const stepKey = (qid: string) => `wizard:${qid}:step`;
+const harnessCountKey = (qid: string) => `wizard:${qid}:harnessCount`;
 
 // --- Flat steps ---
 
 type FlatStep =
   | { kind: 'question'; question: Question }
   | { kind: 'gridRow'; question: Question; row: string }
+  | { kind: 'certificates' }
   | { kind: 'conclusion' };
 
-function buildSteps(questions: Question[], harnessRowCount: number): FlatStep[] {
+function buildSteps(
+  questions: Question[],
+  harnessRowCount: number,
+  requiredCertTypes: string[],
+): FlatStep[] {
   const sorted = [...questions].sort((a, b) =>
     a.section === b.section ? a.order - b.order : a.section - b.section,
   );
@@ -47,6 +57,9 @@ function buildSteps(questions: Question[], harnessRowCount: number): FlatStep[] 
       steps.push({ kind: 'question', question: q });
     }
   }
+  if (requiredCertTypes.length > 0) {
+    steps.push({ kind: 'certificates' });
+  }
   steps.push({ kind: 'conclusion' });
   return steps;
 }
@@ -55,6 +68,7 @@ export default function QuestionnaireWizard() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const toast = useToast();
+  const offline = useOffline();
 
   const [questionnaire, setQuestionnaire] = useState<Questionnaire | null>(null);
   const [template, setTemplate] = useState<Template | null>(null);
@@ -67,6 +81,7 @@ export default function QuestionnaireWizard() {
   const [conclusion, setConclusion] = useState('');
   const [isSafe, setIsSafe] = useState<boolean | null>(null);
   const [harnessName, setHarnessName] = useState('');
+  const [certs, setCerts] = useState<Certificate[]>([]);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -78,37 +93,56 @@ export default function QuestionnaireWizard() {
       ]);
       const q = allQ.find(x => x.id === id);
       if (!q) throw new Error('არ მოიძებნა');
-      setQuestionnaire(q);
-      const t = allT.find(x => x.id === q.template_id) ?? null;
+      // Fold any locally-queued questionnaire patch over the remote row.
+      const localPatch = await offline.hydrateQuestionnairePatch(q.id);
+      const qMerged: Questionnaire = { ...q, ...(localPatch ?? {}) };
+      setQuestionnaire(qMerged);
+      const t = allT.find(x => x.id === qMerged.template_id) ?? null;
       setTemplate(t);
-      setConclusion(q.conclusion_text ?? '');
-      setIsSafe(q.is_safe_for_use ?? null);
-      setHarnessName(q.harness_name ?? '');
+      setConclusion(qMerged.conclusion_text ?? '');
+      setIsSafe(qMerged.is_safe_for_use ?? null);
+      setHarnessName(qMerged.harness_name ?? '');
       if (t) {
         const qs = await templatesApi.questions(t.id);
         setQuestions(qs);
-        const existing = await answersApi.list(q.id);
+        const existing = await answersApi.list(qMerged.id).catch(() => [] as Answer[]);
         const map: Record<string, Answer> = {};
         const pmap: Record<string, AnswerPhoto[]> = {};
         for (const a of existing) {
           map[a.question_id] = a;
           pmap[a.id] = await answersApi.photos(a.id).catch(() => []);
         }
+        // Overlay cached-local answers so unsynced edits survive app restarts.
+        const cached = await offline.hydrateAnswers(qMerged.id);
+        for (const [questionId, a] of Object.entries(cached)) {
+          map[questionId] = a;
+        }
         setAnswers(map);
         setPhotos(pmap);
+        await offline.cacheAnswers(qMerged.id, map);
       }
+      setCerts(await certificatesApi.list().catch(() => []));
       // Resume where the user left off
-      const savedStep = await AsyncStorage.getItem(stepKey(id));
+      const [savedStep, savedHarness] = await Promise.all([
+        AsyncStorage.getItem(stepKey(id)),
+        AsyncStorage.getItem(harnessCountKey(id)),
+      ]);
       if (savedStep) {
         const parsed = parseInt(savedStep, 10);
         if (!Number.isNaN(parsed)) setStepIndex(parsed);
       }
-    } catch {
-      // ignore
+      if (savedHarness) {
+        const parsed = parseInt(savedHarness, 10);
+        if (!Number.isNaN(parsed) && parsed >= 1 && parsed <= 15) {
+          setHarnessRowCount(parsed);
+        }
+      }
+    } catch (e: any) {
+      toast.error(`ჩატვირთვა ვერ მოხერხდა: ${e?.message ?? 'ქსელის შეცდომა'}`);
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, toast]);
 
   // Persist step index as the user progresses
   useEffect(() => {
@@ -116,13 +150,23 @@ export default function QuestionnaireWizard() {
     void AsyncStorage.setItem(stepKey(id), String(stepIndex));
   }, [id, stepIndex, loading]);
 
+  // Persist harness row count per questionnaire so returning users see the same grid size
+  useEffect(() => {
+    if (!id || loading) return;
+    void AsyncStorage.setItem(harnessCountKey(id), String(harnessRowCount));
+  }, [id, harnessRowCount, loading]);
+
   useFocusEffect(
     useCallback(() => {
       void load();
     }, [load]),
   );
 
-  const steps = useMemo(() => buildSteps(questions, harnessRowCount), [questions, harnessRowCount]);
+  const requiredCertTypes = template?.required_cert_types ?? [];
+  const steps = useMemo(
+    () => buildSteps(questions, harnessRowCount, requiredCertTypes),
+    [questions, harnessRowCount, requiredCertTypes.join(',')],
+  );
   const step = steps[stepIndex];
 
   const patchAnswer = async (question: Question, mutate: (a: Answer) => Answer) => {
@@ -140,11 +184,25 @@ export default function QuestionnaireWizard() {
         comment: null,
       } as Answer);
     const next = mutate({ ...current });
+    // Optimistic update so UI feels instant
+    setAnswers(prev => {
+      const updated = { ...prev, [question.id]: next };
+      void offline.cacheAnswers(questionnaire.id, updated);
+      return updated;
+    });
     try {
-      const saved = (await answersApi.upsert(next as Answer)) as unknown as Answer;
-      setAnswers(prev => ({ ...prev, [question.id]: saved }));
-    } catch {
-      // swallow
+      await offline.enqueueAnswerUpsert({
+        id: next.id,
+        questionnaire_id: next.questionnaire_id,
+        question_id: next.question_id,
+        value_bool: next.value_bool,
+        value_num: next.value_num,
+        value_text: next.value_text,
+        grid_values: next.grid_values,
+        comment: next.comment,
+      });
+    } catch (e: any) {
+      toast.error(`პასუხი ვერ შეინახა: ${e?.message ?? 'ქსელის შეცდომა'}`);
     }
   };
 
@@ -182,24 +240,33 @@ export default function QuestionnaireWizard() {
       const photo = (await answersApi.addPhoto(answer.id, path)) as unknown as AnswerPhoto;
       const answerId = answer.id;
       setPhotos(prev => ({ ...prev, [answerId]: [...(prev[answerId] ?? []), photo] }));
-    } catch {
-      // ignore
+      toast.success('ფოტო აიტვირთა');
+    } catch (e: any) {
+      toast.error(`ფოტო ვერ აიტვირთა: ${e?.message ?? 'ქსელის შეცდომა'}`);
     }
   };
 
   const saveConclusionAndGo = async () => {
     if (!questionnaire) return;
-    if (isSafe === null) {
-      toast.error('ჯერ აირჩიე უსაფრთხოების სტატუსი');
+    const missing: string[] = [];
+    if (isSafe === null) missing.push('უსაფრთხოების სტატუსი');
+    if (!conclusion.trim()) missing.push('დასკვნა');
+    if (template?.category === 'harness' && !harnessName.trim()) missing.push('ღვედის დასახელება');
+    if (missing.length > 0) {
+      toast.error(`შეავსე: ${missing.join(', ')}`);
       return;
     }
-    await questionnairesApi.update({
-      id: questionnaire.id,
-      conclusion_text: conclusion,
-      is_safe_for_use: isSafe,
-      harness_name: harnessName || null,
-    });
-    router.push(`/questionnaire/${questionnaire.id}/signing` as any);
+    try {
+      await offline.enqueueQuestionnaireUpdate({
+        id: questionnaire.id,
+        conclusion_text: conclusion,
+        is_safe_for_use: isSafe,
+        harness_name: harnessName || null,
+      });
+      router.push(`/questionnaire/${questionnaire.id}/signing` as any);
+    } catch (e: any) {
+      toast.error(`დასკვნის შენახვა ვერ მოხერხდა: ${e?.message ?? 'ქსელის შეცდომა'}`);
+    }
   };
 
   if (loading) {
@@ -274,6 +341,12 @@ export default function QuestionnaireWizard() {
               onAnswer={patchAnswer}
               onPickPhoto={() => pickPhoto(step.question)}
             />
+          ) : step.kind === 'certificates' ? (
+            <CertificatesStep
+              requiredTypes={requiredCertTypes}
+              certs={certs}
+              onCertsChange={setCerts}
+            />
           ) : (
             <ConclusionStep
               conclusion={conclusion}
@@ -299,7 +372,17 @@ export default function QuestionnaireWizard() {
             <Button
               title="შემდეგი"
               style={{ flex: 2 }}
-              onPress={() => setStepIndex(i => Math.min(steps.length - 1, i + 1))}
+              onPress={() => {
+                if (step.kind === 'question' && step.question.type === 'measure') {
+                  const value = answers[step.question.id]?.value_num ?? null;
+                  const err = measureError(step.question, value);
+                  if (err) {
+                    toast.error(err);
+                    return;
+                  }
+                }
+                setStepIndex(i => Math.min(steps.length - 1, i + 1));
+              }}
             />
           ) : (
             <Button
@@ -355,6 +438,13 @@ function QuestionStep({
             <Text style={styles.choiceText}>არა</Text>
           </Pressable>
         </View>
+      ) : null}
+      {question.type === 'measure' ? (
+        <MeasureInput
+          question={question}
+          initial={answer?.value_num ?? null}
+          onCommit={num => onAnswer(question, a => ({ ...a, value_num: num }))}
+        />
       ) : null}
       {question.type === 'freetext' ? (
         <DebouncedFreetext
@@ -441,6 +531,102 @@ function DebouncedFreetext({
       placeholder="შეავსე აქ..."
       placeholderTextColor={theme.colors.inkFaint}
     />
+  );
+}
+
+// Parse "1,5" or "1.5" to a number; returns null if empty/invalid.
+function parseMeasure(s: string): number | null {
+  const cleaned = s.replace(',', '.').trim();
+  if (!cleaned) return null;
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : null;
+}
+
+// Returns an error string if the measure is out of range, null otherwise.
+function measureError(q: Question, value: number | null): string | null {
+  if (value === null) return null;
+  if (q.min_val != null && value < q.min_val) {
+    return `მინიმუმი: ${q.min_val}${q.unit ? ' ' + q.unit : ''}`;
+  }
+  if (q.max_val != null && value > q.max_val) {
+    return `მაქსიმუმი: ${q.max_val}${q.unit ? ' ' + q.unit : ''}`;
+  }
+  return null;
+}
+
+function MeasureInput({
+  question,
+  initial,
+  onCommit,
+}: {
+  question: Question;
+  initial: number | null;
+  onCommit: (value: number | null) => void;
+}) {
+  const [text, setText] = useState(initial == null ? '' : String(initial));
+  const lastCommitted = useRef<number | null>(initial);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (initial !== lastCommitted.current) {
+      setText(initial == null ? '' : String(initial));
+      lastCommitted.current = initial;
+    }
+  }, [initial]);
+
+  useEffect(() => {
+    const parsed = parseMeasure(text);
+    if (parsed === lastCommitted.current) return;
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      lastCommitted.current = parsed;
+      onCommit(parsed);
+    }, 500);
+    return () => {
+      if (timer.current) clearTimeout(timer.current);
+    };
+  }, [text, onCommit]);
+
+  useEffect(() => {
+    return () => {
+      const parsed = parseMeasure(text);
+      if (parsed !== lastCommitted.current) {
+        lastCommitted.current = parsed;
+        onCommit(parsed);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const parsed = parseMeasure(text);
+  const error = measureError(question, parsed);
+  const hasRange = question.min_val != null || question.max_val != null;
+
+  return (
+    <View style={{ gap: 6 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        <TextInput
+          value={text}
+          onChangeText={setText}
+          keyboardType="decimal-pad"
+          placeholder="0"
+          placeholderTextColor={theme.colors.inkFaint}
+          style={[styles.input, { flex: 1 }]}
+        />
+        {question.unit ? (
+          <Text style={{ fontWeight: '600', color: theme.colors.inkSoft }}>{question.unit}</Text>
+        ) : null}
+      </View>
+      {hasRange ? (
+        <Text style={{ fontSize: 12, color: theme.colors.inkSoft }}>
+          დიაპაზონი: {question.min_val ?? '—'} – {question.max_val ?? '—'}
+          {question.unit ? ` ${question.unit}` : ''}
+        </Text>
+      ) : null}
+      {error ? (
+        <Text style={{ fontSize: 12, color: theme.colors.danger }}>{error}</Text>
+      ) : null}
+    </View>
   );
 }
 
@@ -575,6 +761,110 @@ function GridRowStep({
   );
 }
 
+function CertificatesStep({
+  requiredTypes,
+  certs,
+  onCertsChange,
+}: {
+  requiredTypes: string[];
+  certs: Certificate[];
+  onCertsChange: (next: Certificate[]) => void;
+}) {
+  const toast = useToast();
+  const [uploadingFor, setUploadingFor] = useState<string | null>(null);
+
+  const uploadForType = async (certType: string) => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      toast.error('ფოტოზე წვდომა არ არის');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+    });
+    if (result.canceled || result.assets.length === 0) return;
+    setUploadingFor(certType);
+    try {
+      const user = (await supabase.auth.getUser()).data.user;
+      if (!user) throw new Error('არ ხარ შესული');
+      const asset = result.assets[0];
+      const res = await fetch(asset.uri);
+      const blob = await res.blob();
+      const ext = asset.mimeType?.split('/')[1] ?? 'jpg';
+      const path = `${user.id}/${Date.now()}.${ext}`;
+      await storageApi.upload(
+        STORAGE_BUCKETS.certificates,
+        path,
+        blob,
+        asset.mimeType ?? 'image/jpeg',
+      );
+      const cert = (await certificatesApi.upsert({
+        id: crypto.randomUUID(),
+        user_id: user.id,
+        type: certType,
+        number: null,
+        issued_at: new Date().toISOString().slice(0, 10),
+        expires_at: null,
+        file_url: path,
+      })) as unknown as Certificate;
+      onCertsChange([cert, ...certs.filter(c => c.id !== cert.id)]);
+      toast.success('სერტიფიკატი აიტვირთა');
+    } catch (e: any) {
+      toast.error(`ატვირთვა ვერ მოხერხდა: ${e?.message ?? 'ქსელის შეცდომა'}`);
+    } finally {
+      setUploadingFor(null);
+    }
+  };
+
+  return (
+    <View style={{ gap: 14 }}>
+      <Text style={{ fontSize: 20, fontWeight: '700', color: theme.colors.ink }}>
+        საჭირო სერტიფიკატები
+      </Text>
+      <Text style={{ fontSize: 13, color: theme.colors.inkSoft }}>
+        დაურთე უკვე ატვირთული სერტიფიკატი ან ატვირთე ახალი — ინსპექციიდან გასვლა არაა საჭირო.
+      </Text>
+      {requiredTypes.map(t => {
+        const matches = certs.filter(c => c.type === t);
+        const available = matches.filter(c => {
+          if (!c.expires_at) return true;
+          return new Date(c.expires_at).getTime() > Date.now();
+        });
+        return (
+          <View key={t} style={styles.certBlock}>
+            <Text style={{ fontWeight: '700', color: theme.colors.ink }}>{t}</Text>
+            {available.length > 0 ? (
+              <View style={{ gap: 6, marginTop: 8 }}>
+                {available.map(c => (
+                  <View key={c.id} style={styles.certRow}>
+                    <Ionicons name="checkmark-circle" size={18} color={theme.colors.accent} />
+                    <Text style={{ flex: 1, color: theme.colors.ink }} numberOfLines={1}>
+                      {c.number ? `№ ${c.number}` : 'ატვირთულია'}
+                      {c.expires_at ? ` · ${new Date(c.expires_at).toLocaleDateString('ka')}` : ''}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <Text style={{ fontSize: 12, color: theme.colors.warn, marginTop: 6 }}>
+                ატვირთული არ არის.
+              </Text>
+            )}
+            <Button
+              title={uploadingFor === t ? 'იტვირთება...' : '+ ახლავე ატვირთვა'}
+              variant="secondary"
+              onPress={() => void uploadForType(t)}
+              loading={uploadingFor === t}
+              style={{ marginTop: 10 }}
+            />
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 function ConclusionStep({
   conclusion,
   onConclusion,
@@ -592,33 +882,49 @@ function ConclusionStep({
   harnessName: string;
   onHarnessName: (s: string) => void;
 }) {
+  const needsHarness = template?.category === 'harness';
+  const harnessEmpty = needsHarness && !harnessName.trim();
+  const conclusionEmpty = !conclusion.trim();
+
   return (
     <View style={{ gap: 14 }}>
-      {template?.category === 'harness' ? (
+      {needsHarness ? (
         <View>
-          <Text style={styles.label}>ღვედის დასახელება</Text>
+          <Text style={styles.label}>
+            ღვედის დასახელება <Text style={{ color: theme.colors.danger }}>*</Text>
+          </Text>
           <TextInput
             value={harnessName}
             onChangeText={onHarnessName}
-            style={styles.input}
+            style={[styles.input, harnessEmpty && styles.inputError]}
             placeholder="მაგ. Petzl NEWTON"
             placeholderTextColor={theme.colors.inkFaint}
           />
+          {harnessEmpty ? (
+            <Text style={styles.fieldError}>სავალდებულო ველი</Text>
+          ) : null}
         </View>
       ) : null}
       <View>
-        <Text style={styles.label}>დასკვნა</Text>
+        <Text style={styles.label}>
+          დასკვნა <Text style={{ color: theme.colors.danger }}>*</Text>
+        </Text>
         <TextInput
           multiline
           value={conclusion}
           onChangeText={onConclusion}
-          style={styles.textarea}
+          style={[styles.textarea, conclusionEmpty && styles.inputError]}
           placeholder="აღწერე დეტალურად..."
           placeholderTextColor={theme.colors.inkFaint}
         />
+        {conclusionEmpty ? (
+          <Text style={styles.fieldError}>სავალდებულო ველი</Text>
+        ) : null}
       </View>
       <View>
-        <Text style={styles.label}>უსაფრთხოების სტატუსი</Text>
+        <Text style={styles.label}>
+          უსაფრთხოების სტატუსი <Text style={{ color: theme.colors.danger }}>*</Text>
+        </Text>
         <View style={{ flexDirection: 'row', gap: 10 }}>
           <Pressable
             onPress={() => onIsSafe(true)}
@@ -650,9 +956,7 @@ function ConclusionStep({
           </Pressable>
         </View>
         {isSafe === null ? (
-          <Text style={{ fontSize: 12, color: theme.colors.danger, marginTop: 6 }}>
-            აუცილებლად აირჩიე სტატუსი.
-          </Text>
+          <Text style={styles.fieldError}>აუცილებლად აირჩიე სტატუსი.</Text>
         ) : null}
       </View>
     </View>
@@ -864,6 +1168,16 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'transparent',
   },
+  certBlock: {
+    backgroundColor: theme.colors.subtleSurface,
+    borderRadius: 12,
+    padding: 14,
+  },
+  certRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   safetyOption: {
     flex: 1,
     flexDirection: 'row',
@@ -874,6 +1188,14 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 2,
     borderColor: 'transparent',
+  },
+  inputError: {
+    borderColor: theme.colors.danger,
+  },
+  fieldError: {
+    fontSize: 12,
+    color: theme.colors.danger,
+    marginTop: 4,
   },
   photoThumb: {
     width: 80,
