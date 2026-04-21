@@ -2,7 +2,7 @@ import Foundation
 import UIKit
 import TPPDF
 
-final class PDFRenderer {
+struct PDFRenderer {
     let questionnaire: Questionnaire
     let template: Template
     let questions: [Question]
@@ -14,23 +14,6 @@ final class PDFRenderer {
     let harnessName: String
     let harnessRowCount: Int
     let certificates: [Certificate]
-
-    init(questionnaire: Questionnaire, template: Template, questions: [Question],
-         answers: [Answer], photosByAnswer: [UUID: [AnswerPhoto]],
-         signatures: [SignatureRecord], conclusionText: String, isSafeForUse: Bool,
-         harnessName: String, harnessRowCount: Int, certificates: [Certificate]) {
-        self.questionnaire = questionnaire
-        self.template = template
-        self.questions = questions
-        self.answers = answers
-        self.photosByAnswer = photosByAnswer
-        self.signatures = signatures
-        self.conclusionText = conclusionText
-        self.isSafeForUse = isSafeForUse
-        self.harnessName = harnessName
-        self.harnessRowCount = harnessRowCount
-        self.certificates = certificates
-    }
 
     private var titleFont: UIFont {
         UIFont(name: "NotoSansGeorgian-Bold", size: 18) ?? .boldSystemFont(ofSize: 18)
@@ -69,7 +52,9 @@ final class PDFRenderer {
         addConclusion(to: document)
         document.add(.contentLeft, text: "")
         document.createNewPage()
-        addSignatures(to: document)
+
+        let signatureImages = await loadSignatureImages()
+        addSignatures(to: document, images: signatureImages)
 
         if !certificates.isEmpty {
             document.createNewPage()
@@ -104,7 +89,7 @@ final class PDFRenderer {
                 ("კომპანია", questionnaire.harnessName ?? ""),
                 ("თარიღი", questionnaire.createdAt.formatted(date: .long, time: .omitted))
             ]
-            if template.category == "harness" {
+            if template.categoryKind == .harness {
                 base.insert(("ღვედის დასახელება", harnessName), at: 0)
             }
             return base
@@ -233,7 +218,18 @@ final class PDFRenderer {
                          .foregroundColor: isSafeForUse ? UIColor.systemGreen : UIColor.systemRed]))
     }
 
-    private func addSignatures(to doc: PDFDocument) {
+    private func loadSignatureImages() async -> [UUID: UIImage] {
+        var result: [UUID: UIImage] = [:]
+        for record in signatures {
+            if let data = try? await StorageService.download(bucket: .signatures, path: record.signaturePngUrl),
+               let img = UIImage(data: data) {
+                result[record.id] = img
+            }
+        }
+        return result
+    }
+
+    private func addSignatures(to doc: PDFDocument, images: [UUID: UIImage]) {
         doc.add(.contentLeft, attributedText: NSAttributedString(
             string: "ხელმოწერები", attributes: [.font: headerFont]))
         doc.add(space: 8)
@@ -243,10 +239,6 @@ final class PDFRenderer {
                 string: record.signerRole.georgianName,
                 attributes: [.font: headerFont, .foregroundColor: UIColor.darkGray]))
 
-            Task {
-                // Synchronous signature download isn't ideal; load beforehand if needed.
-            }
-
             let info = """
             სახელი გვარი: \(record.fullName)
             ტელეფონი: \(record.phone ?? "—")
@@ -255,8 +247,8 @@ final class PDFRenderer {
             doc.add(.contentLeft, attributedText: NSAttributedString(
                 string: info, attributes: [.font: bodyFont]))
 
-            if let cachedImage = try? downloadImageSync(bucket: .signatures, path: record.signaturePngUrl) {
-                doc.add(.contentLeft, image: PDFImage(image: cachedImage, size: CGSize(width: 180, height: 60), options: [.resize]))
+            if let img = images[record.id] {
+                doc.add(.contentLeft, image: PDFImage(image: img, size: CGSize(width: 180, height: 60), options: [.resize]))
             }
             doc.add(space: 12)
         }
@@ -276,15 +268,4 @@ final class PDFRenderer {
         }
     }
 
-    // Helper that synchronously bridges an async download. Used in sections that can't suspend.
-    private func downloadImageSync(bucket: StorageBucket, path: String) throws -> UIImage? {
-        let semaphore = DispatchSemaphore(value: 0)
-        var data: Data?
-        Task {
-            data = try? await StorageService.download(bucket: bucket, path: path)
-            semaphore.signal()
-        }
-        semaphore.wait()
-        return data.flatMap(UIImage.init(data:))
-    }
 }

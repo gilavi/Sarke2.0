@@ -10,7 +10,7 @@ struct SigningView: View {
     @State private var certs: [Certificate] = []
     @State private var showingCertPrompt = false
     @State private var isGenerating = false
-    @State private var generatedPDF: URL?
+    @State private var generatedPDF: IdentifiableURL?
     @State private var errorMessage: String?
 
     private var requiredRoles: [SignerRole] { vm.template.requiredSignerRoles }
@@ -74,8 +74,8 @@ struct SigningView: View {
         .sheet(isPresented: $showingCertPrompt) {
             NavigationStack { CertificatesView() }
         }
-        .sheet(item: $generatedPDF) { url in
-            PDFShareSheet(url: url)
+        .sheet(item: $generatedPDF) { wrapper in
+            PDFShareSheet(url: wrapper.url)
         }
     }
 
@@ -163,14 +163,12 @@ struct SigningView: View {
                 try await StorageService.upload(data: data, bucket: .pdfs, path: path, contentType: "application/pdf")
                 try await QuestionnaireService.complete(id: vm.questionnaire.id, pdfUrl: path)
             }
-            generatedPDF = url
+            generatedPDF = IdentifiableURL(url: url)
         } catch {
             errorMessage = error.localizedDescription
         }
     }
 }
-
-extension URL: @retroactive Identifiable { public var id: String { absoluteString } }
 
 // MARK: - Live sign sheet (expert or in-person signer)
 

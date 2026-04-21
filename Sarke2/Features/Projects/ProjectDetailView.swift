@@ -91,10 +91,10 @@ struct ProjectDetailView: View {
     private func load() async {
         async let s = (try? await ProjectService.signers(projectId: project.id)) ?? []
         async let t = (try? await TemplateService.list()) ?? []
-        async let allQ = (try? await QuestionnaireService.recent(limit: 200)) ?? []
+        async let q = (try? await QuestionnaireService.list(projectId: project.id)) ?? []
         signers = await s
         templates = await t
-        questionnaires = (await allQ).filter { $0.projectId == project.id }
+        questionnaires = await q
     }
 }
 

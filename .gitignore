@@ -28,3 +28,4 @@ supabase/.temp
 
 ## Node / tooling (if any)
 node_modules/
+.claude/

@@ -6,38 +6,29 @@ struct ProjectsListView: View {
     @State private var showingCreate = false
 
     var body: some View {
-        List {
-            if projects.isEmpty && !isLoading {
-                ContentUnavailableView(
-                    "პროექტი არ არის",
-                    systemImage: "folder.badge.plus",
-                    description: Text("დააჭირე + ღილაკს ახალი პროექტის შესაქმნელად.")
-                )
-            }
-            ForEach(projects) { project in
-                NavigationLink(value: project) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(project.name).font(.headline)
-                        if let company = project.companyName, !company.isEmpty {
-                            Text(company).font(.subheadline).foregroundStyle(.secondary)
-                        }
-                        if let addr = project.address, !addr.isEmpty {
-                            Text(addr).font(.caption).foregroundStyle(.tertiary)
-                        }
+        ScrollView {
+            VStack(spacing: 12) {
+                if projects.isEmpty && !isLoading {
+                    empty.padding(.top, 60)
+                }
+                ForEach(projects) { project in
+                    NavigationLink(value: project) {
+                        row(for: project)
                     }
+                    .buttonStyle(.plain)
                 }
             }
-            .onDelete { offsets in
-                Task { await deleteProjects(at: offsets) }
-            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
         }
+        .screenBackground()
         .navigationTitle("პროექტები")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    showingCreate = true
-                } label: {
-                    Image(systemName: "plus")
+                Button { showingCreate = true } label: {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title2)
+                        .foregroundStyle(Theme.accent)
                 }
             }
         }
@@ -51,18 +42,51 @@ struct ProjectsListView: View {
         }
     }
 
+    private func row(for project: Project) -> some View {
+        HStack(spacing: 14) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 12).fill(Theme.accentSoft)
+                    .frame(width: 46, height: 46)
+                Image(systemName: "folder.fill")
+                    .foregroundStyle(Theme.accent)
+            }
+            VStack(alignment: .leading, spacing: 3) {
+                Text(project.name)
+                    .font(.display(16, weight: .semibold))
+                    .foregroundStyle(Theme.ink)
+                if let company = project.companyName, !company.isEmpty {
+                    Text(company).font(.footnote).foregroundStyle(Theme.inkSoft)
+                }
+                if let addr = project.address, !addr.isEmpty {
+                    Text(addr).font(.caption).foregroundStyle(Theme.inkSoft.opacity(0.75))
+                }
+            }
+            Spacer()
+            Image(systemName: "chevron.right").foregroundStyle(Theme.inkSoft.opacity(0.5))
+        }
+        .card(padding: 14)
+    }
+
+    private var empty: some View {
+        VStack(spacing: 14) {
+            Image(systemName: "folder.badge.plus")
+                .font(.system(size: 56))
+                .foregroundStyle(Theme.accent.opacity(0.6))
+            Text("პროექტი არ არის")
+                .font(.display(20, weight: .semibold))
+                .foregroundStyle(Theme.ink)
+            Text("დააჭირე + ღილაკს ახალი პროექტის\nშესაქმნელად.")
+                .font(.footnote)
+                .foregroundStyle(Theme.inkSoft)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
     @MainActor
     private func load() async {
         isLoading = true; defer { isLoading = false }
         projects = (try? await ProjectService.list()) ?? []
-    }
-
-    @MainActor
-    private func deleteProjects(at offsets: IndexSet) async {
-        for i in offsets {
-            try? await ProjectService.delete(projects[i].id)
-        }
-        await load()
     }
 }
 
@@ -77,21 +101,33 @@ struct CreateProjectSheet: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                TextField("სახელი", text: $name)
-                TextField("კომპანია", text: $company)
-                TextField("მისამართი", text: $address)
+            ScrollView {
+                VStack(spacing: 14) {
+                    labeledField(label: "სახელი") {
+                        TextField("მაგ. \"ვაკე-საბურთალოს ობიექტი\"", text: $name)
+                            .textFieldStyle(.rounded)
+                    }
+                    labeledField(label: "კომპანია") {
+                        TextField("შემკვეთი", text: $company).textFieldStyle(.rounded)
+                    }
+                    labeledField(label: "მისამართი") {
+                        TextField("ობიექტის მისამართი", text: $address).textFieldStyle(.rounded)
+                    }
+
+                    Button { Task { await save() } } label: {
+                        Text("შენახვა")
+                    }
+                    .buttonStyle(.primary)
+                    .disabled(name.isEmpty || isSaving)
+                    .padding(.top, 8)
+                }
+                .padding(20)
             }
+            .screenBackground()
             .navigationTitle("ახალი პროექტი")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("გაუქმება") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("შენახვა") {
-                        Task { await save() }
-                    }
-                    .disabled(name.isEmpty || isSaving)
-                }
             }
         }
     }

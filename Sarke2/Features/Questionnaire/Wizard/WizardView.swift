@@ -1,5 +1,11 @@
 import SwiftUI
 
+enum WizardStep: Hashable {
+    case question(Question)
+    case gridRow(Question, row: String, rowIndex: Int)
+    case conclusion
+}
+
 struct WizardView: View {
     @State private var vm: WizardViewModel
     @State private var stepIndex = 0
@@ -9,10 +15,25 @@ struct WizardView: View {
         _vm = State(initialValue: WizardViewModel(questionnaire: questionnaire, template: template))
     }
 
-    // Each step: one question OR the conclusion screen at the end
-    private var stepCount: Int {
-        vm.orderedQuestions.count + 1   // +1 = conclusion
+    private var flatSteps: [WizardStep] {
+        var steps: [WizardStep] = []
+        for q in vm.orderedQuestions {
+            if q.type == .componentGrid, let rows = q.gridRows {
+                // For harness template, only show active N-rows
+                let isHarness = rows.first == "N1"
+                let activeRows = isHarness ? Array(rows.prefix(vm.harnessRowCount)) : rows
+                for (i, row) in activeRows.enumerated() {
+                    steps.append(.gridRow(q, row: row, rowIndex: i))
+                }
+            } else {
+                steps.append(.question(q))
+            }
+        }
+        steps.append(.conclusion)
+        return steps
     }
+
+    private var stepCount: Int { flatSteps.count }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -27,12 +48,11 @@ struct WizardView: View {
 
             if vm.isLoading {
                 Spacer(); ProgressView(); Spacer()
-            } else if stepIndex < vm.orderedQuestions.count {
-                let question = vm.orderedQuestions[stepIndex]
-                QuestionStepView(vm: vm, question: question)
-                    .id(question.id)
             } else {
-                ConclusionStepView(vm: vm)
+                let steps = flatSteps
+                let safeIndex = min(stepIndex, steps.count - 1)
+                stepView(for: steps[safeIndex])
+                    .id(safeIndex)
             }
 
             HStack {
@@ -74,6 +94,18 @@ struct WizardView: View {
             SigningView(vm: vm)
         }
     }
+
+    @ViewBuilder
+    private func stepView(for step: WizardStep) -> some View {
+        switch step {
+        case .question(let q):
+            QuestionStepView(vm: vm, question: q)
+        case .gridRow(let q, let row, _):
+            GridRowStepView(vm: vm, question: q, row: row)
+        case .conclusion:
+            ConclusionStepView(vm: vm)
+        }
+    }
 }
 
 // MARK: - Single question step
@@ -95,12 +127,12 @@ struct QuestionStepView: View {
                     YesNoQuestionView(vm: vm, question: question)
                 case .measure:
                     MeasureQuestionView(vm: vm, question: question)
-                case .componentGrid:
-                    ComponentGridQuestionView(vm: vm, question: question)
                 case .freetext:
                     FreetextQuestionView(vm: vm, question: question)
                 case .photoUpload:
                     PhotoUploadQuestionView(vm: vm, question: question)
+                case .componentGrid:
+                    EmptyView() // routed to GridRowStepView via flatSteps
                 }
 
                 HStack {

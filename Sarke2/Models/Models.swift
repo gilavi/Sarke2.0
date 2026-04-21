@@ -26,6 +26,28 @@ enum QuestionType: String, Codable {
 
 enum QuestionnaireStatus: String, Codable { case draft, completed }
 
+enum TemplateCategory: String {
+    case xaracho
+    case harness
+    case other
+
+    init(raw: String?) {
+        self = TemplateCategory(rawValue: raw ?? "") ?? .other
+    }
+
+    var iconName: String {
+        switch self {
+        case .xaracho: return "building.columns.fill"
+        case .harness: return "figure.climbing"
+        case .other:   return "checkmark.seal.fill"
+        }
+    }
+}
+
+extension Template {
+    var categoryKind: TemplateCategory { TemplateCategory(raw: category) }
+}
+
 // MARK: - Users
 
 struct AppUser: Codable, Identifiable, Hashable {

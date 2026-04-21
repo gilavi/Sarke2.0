@@ -97,14 +97,13 @@ struct AddCertificateSheet: View {
 
     @MainActor
     private func save() async {
+        guard let user = try? await SupabaseService.shared.auth.session.user else { return }
         var filePath: String? = nil
         if let data = photoData {
-            guard let user = try? await SupabaseService.shared.auth.session.user else { return }
             let path = "\(user.id.uuidString)/\(UUID().uuidString).jpg"
             try? await StorageService.upload(data: data, bucket: .certificates, path: path, contentType: "image/jpeg")
             filePath = path
         }
-        guard let user = try? await SupabaseService.shared.auth.session.user else { return }
         let cert = Certificate(
             id: UUID(),
             userId: user.id,

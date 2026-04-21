@@ -4,7 +4,7 @@ struct HistoryView: View {
     @State private var questionnaires: [Questionnaire] = []
     @State private var templates: [Template] = []
     @State private var projects: [Project] = []
-    @State private var sharingURL: URL?
+    @State private var sharingURL: IdentifiableURL?
 
     var body: some View {
         List {
@@ -38,8 +38,8 @@ struct HistoryView: View {
         .navigationTitle("ისტორია")
         .task { await load() }
         .refreshable { await load() }
-        .sheet(item: $sharingURL) { url in
-            PDFShareSheet(url: url)
+        .sheet(item: $sharingURL) { wrapper in
+            PDFShareSheet(url: wrapper.url)
         }
     }
 
@@ -58,6 +58,6 @@ struct HistoryView: View {
         guard let data = try? await StorageService.download(bucket: .pdfs, path: path) else { return }
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(path.split(separator: "/").last.map(String.init) ?? "report.pdf")
         try? data.write(to: url)
-        sharingURL = url
+        sharingURL = IdentifiableURL(url: url)
     }
 }

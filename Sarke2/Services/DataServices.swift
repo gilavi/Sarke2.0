@@ -108,6 +108,15 @@ enum QuestionnaireService {
             .value
     }
 
+    static func list(projectId: UUID) async throws -> [Questionnaire] {
+        try await db.from("questionnaires")
+            .select()
+            .eq("project_id", value: projectId)
+            .order("created_at", ascending: false)
+            .execute()
+            .value
+    }
+
     static func create(projectId: UUID, templateId: UUID, harnessName: String? = nil) async throws -> Questionnaire {
         guard let user = try? await db.auth.session.user else { throw DataError.notSignedIn }
         struct Payload: Encodable {

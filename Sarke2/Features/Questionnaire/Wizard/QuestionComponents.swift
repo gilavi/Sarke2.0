@@ -64,7 +64,7 @@ struct MeasureQuestionView: View {
             }
         }
         .onAppear {
-            if let v = vm.answersByQuestion[question.id]?.valueNum { text = String(v) }
+            if let v = vm.answersByQuestion[question.id]?.valueNum { text = v.clean }
         }
         .onChange(of: text) { _, newValue in
             Task {
@@ -90,118 +90,157 @@ private extension Double {
     }
 }
 
-// MARK: - Component grid
+// MARK: - Component grid — one row per step
 
-struct ComponentGridQuestionView: View {
+struct GridRowStepView: View {
     @Bindable var vm: WizardViewModel
     let question: Question
+    let row: String
+
+    @State private var commentSheet = false
+    @State private var photoSheet = false
+
+    private var cols: [String] { question.gridCols ?? [] }
+    private var isHarness: Bool { (question.gridRows ?? []).first == "N1" }
+
+    // For harness, each column is an independent component with a 2-way toggle.
+    // For others, all columns are mutually-exclusive statuses and the user picks one.
+    private var isMultiField: Bool { isHarness }
 
     var body: some View {
-        let rows = displayRows
-        let cols = question.gridCols ?? []
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                Text(question.title).font(.footnote).foregroundStyle(.secondary)
+                Text(row).font(.title2.bold())
 
-        VStack(alignment: .leading, spacing: 12) {
-            if isHarnessGrid {
-                Stepper("რამდენი ქამარი?  (\(vm.harnessRowCount))",
-                        value: $vm.harnessRowCount, in: 1...15)
-                    .padding(.bottom, 4)
-            }
-
-            ScrollView(.horizontal) {
-                VStack(spacing: 0) {
-                    HStack(spacing: 0) {
-                        cellHeader("", width: 140)
+                if isHarness {
+                    // Set number of harnesses on the first row's step
+                    if row == "N1" {
+                        Stepper("რამდენი ქამარი სულ?  (\(vm.harnessRowCount))",
+                                value: $vm.harnessRowCount, in: 1...15)
+                            .padding(.vertical, 4)
+                    }
+                    VStack(spacing: 10) {
                         ForEach(cols, id: \.self) { col in
-                            cellHeader(col, width: 120)
+                            harnessRow(col: col)
                         }
                     }
-                    ForEach(rows, id: \.self) { row in
-                        HStack(spacing: 0) {
-                            cellHeader(row, width: 140, leading: true)
-                            ForEach(cols, id: \.self) { col in
-                                cell(row: row, col: col)
-                            }
+                } else {
+                    VStack(spacing: 12) {
+                        ForEach(cols, id: \.self) { col in
+                            statusButton(col: col)
                         }
                     }
                 }
+
+                HStack {
+                    Button { commentSheet = true } label: {
+                        Label(commentLabel, systemImage: "text.bubble")
+                    }.buttonStyle(.bordered)
+                    Button { photoSheet = true } label: {
+                        Label("ფოტო", systemImage: "camera")
+                    }.buttonStyle(.bordered)
+                }
             }
+            .padding()
         }
+        .sheet(isPresented: $commentSheet) { CommentSheet(vm: vm, question: question) }
+        .sheet(isPresented: $photoSheet) { PhotoPickerSheet(vm: vm, question: question) }
     }
 
-    private var isHarnessGrid: Bool {
-        (question.gridRows ?? []).first == "N1"
+    private var currentValues: [String: String] {
+        vm.answersByQuestion[question.id]?.gridValues?[row] ?? [:]
     }
 
-    private var displayRows: [String] {
-        let base = question.gridRows ?? []
-        if isHarnessGrid { return Array(base.prefix(vm.harnessRowCount)) }
-        return base
-    }
-
-    private func cellHeader(_ text: String, width: CGFloat, leading: Bool = false) -> some View {
-        Text(text)
-            .font(.caption.weight(.medium))
-            .multilineTextAlignment(leading ? .leading : .center)
-            .frame(width: width, minHeight: 44, alignment: leading ? .leading : .center)
-            .padding(6)
-            .background(Theme.subtleSurface)
-            .overlay(Rectangle().stroke(.gray.opacity(0.25)))
-    }
-
-    private func cell(row: String, col: String) -> some View {
-        let values = vm.answersByQuestion[question.id]?.gridValues ?? [:]
-        let current = values[row]?[col]
-        let options = optionsFor(col: col)
-
-        return Menu {
-            ForEach(options, id: \.self) { opt in
-                Button(opt) {
-                    Task { await setValue(opt, row: row, col: col) }
-                }
-            }
-            if current != nil {
-                Button("გასუფთავება", role: .destructive) {
-                    Task { await setValue(nil, row: row, col: col) }
-                }
-            }
+    private func statusButton(col: String) -> some View {
+        let selected = currentValues.values.contains(col)
+        return Button {
+            Task { await selectExclusive(col: col) }
         } label: {
-            Text(current ?? "—")
-                .font(.caption)
-                .frame(width: 120, minHeight: 44)
-                .background(color(for: current).opacity(0.18))
-                .overlay(Rectangle().stroke(.gray.opacity(0.25)))
+            HStack {
+                Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                    .foregroundStyle(selected ? color(for: col) : .gray)
+                Text(col)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                    .multilineTextAlignment(.leading)
+                Spacer()
+            }
+            .padding(.vertical, 14)
+            .padding(.horizontal, 14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(selected ? color(for: col).opacity(0.18) : Theme.subtleSurface)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius))
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.cornerRadius)
+                    .stroke(selected ? color(for: col) : .clear, lineWidth: 2)
+            )
         }
+        .buttonStyle(.plain)
     }
 
-    private func optionsFor(col: String) -> [String] {
-        // Scaffolding columns expect ✓; harness columns expect ვარგისია/დაზიანებულია
-        if col.localizedCaseInsensitiveContains("Shoulder") ||
-           col.localizedCaseInsensitiveContains("D-Ring") ||
-           col.localizedCaseInsensitiveContains("Strap") ||
-           col.localizedCaseInsensitiveContains("Rope") ||
-           col.localizedCaseInsensitiveContains("Carabiner") ||
-           col.localizedCaseInsensitiveContains("Absorber") ||
-           col.localizedCaseInsensitiveContains("Hook") ||
-           col.localizedCaseInsensitiveContains("Belt") {
-            return ["ვარგისია", "დაზიანებულია"]
+    private func harnessRow(col: String) -> some View {
+        let value = currentValues[col]
+        return HStack {
+            Text(col).font(.subheadline).frame(maxWidth: .infinity, alignment: .leading)
+            HStack(spacing: 8) {
+                choiceChip("✓", color: .green, isSelected: value == "ვარგისია") {
+                    Task { await setField(col: col, value: "ვარგისია") }
+                }
+                choiceChip("✗", color: .red, isSelected: value == "დაზიანებულია") {
+                    Task { await setField(col: col, value: "დაზიანებულია") }
+                }
+            }
         }
-        return ["✓", "✗"]
+        .padding(10)
+        .background(Theme.subtleSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 
-    private func color(for value: String?) -> Color {
-        switch value {
-        case "ვარგისია", "✓", "გამართულია": return .green
-        case "დაზიანებულია", "✗", "აღენიშნება დაზიანება": return .red
+    private func choiceChip(_ label: String, color: Color, isSelected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(label)
+                .font(.headline)
+                .frame(width: 40, height: 34)
+                .background(isSelected ? color.opacity(0.25) : Color(.systemBackground))
+                .foregroundStyle(isSelected ? color : .secondary)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(isSelected ? color : Color.gray.opacity(0.3), lineWidth: 1.5)
+                )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func color(for col: String) -> Color {
+        switch col {
+        case "გამართულია": return .green
+        case "აღენიშნება დაზიანება": return .red
         case "არ გააჩნია": return .gray
-        default: return .clear
+        default: return Theme.accent
         }
     }
 
-    private func setValue(_ value: String?, row: String, col: String) async {
+    private var commentLabel: String {
+        let has = (vm.answersByQuestion[question.id]?.comment?.isEmpty == false)
+        return has ? "კომენტარი ✓" : "კომენტარი"
+    }
+
+    // Exclusive: store `{ row: { col: col } }` — one key equals the chosen column.
+    private func selectExclusive(col: String) async {
+        await vm.saveAnswer(for: question) { answer in
+            var grid = answer.gridValues ?? [:]
+            grid[row] = [col: col]
+            answer.gridValues = grid
+        }
+    }
+
+    private func setField(col: String, value: String) async {
         await vm.saveAnswer(for: question) { answer in
             var grid = answer.gridValues ?? [:]
             var cols = grid[row] ?? [:]
-            if let value { cols[col] = value } else { cols.removeValue(forKey: col) }
+            cols[col] = value
             grid[row] = cols
             answer.gridValues = grid
         }
@@ -383,7 +422,7 @@ struct ConclusionStepView: View {
 
     var body: some View {
         Form {
-            if vm.template.category == "harness" {
+            if vm.template.categoryKind == .harness {
                 Section("ღვედის დასახელება") {
                     TextField("მაგ. Petzl NEWTON", text: $vm.harnessName)
                 }
