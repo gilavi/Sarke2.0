@@ -74,8 +74,10 @@ struct Certificate: Codable, Identifiable, Hashable {
     let userId: UUID
     var type: String
     var number: String?
-    var issuedAt: Date?
-    var expiresAt: Date?
+    // Stored as ISO "YYYY-MM-DD" strings (Postgres `date` column).
+    // Swift's default ISO8601 decoder rejects date-only strings, so keep as String.
+    var issuedAt: String?
+    var expiresAt: String?
     var fileUrl: String?
 
     enum CodingKeys: String, CodingKey {
@@ -87,9 +89,26 @@ struct Certificate: Codable, Identifiable, Hashable {
         case fileUrl = "file_url"
     }
 
+    private static let dateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.calendar = Calendar(identifier: .iso8601)
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "yyyy-MM-dd"
+        return f
+    }()
+
+    var issuedDate: Date? { issuedAt.flatMap { Self.dateFormatter.date(from: $0) } }
+    var expiresDate: Date? { expiresAt.flatMap { Self.dateFormatter.date(from: $0) } }
+
     var isExpiring: Bool {
-        guard let expiresAt else { return false }
-        return expiresAt.timeIntervalSinceNow < 60 * 60 * 24 * 30
+        guard let d = expiresDate else { return false }
+        return d.timeIntervalSinceNow < 60 * 60 * 24 * 30
+    }
+}
+
+extension Certificate {
+    static func dateString(_ d: Date) -> String {
+        dateFormatter.string(from: d)
     }
 }
 

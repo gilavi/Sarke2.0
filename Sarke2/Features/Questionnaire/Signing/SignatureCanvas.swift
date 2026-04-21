@@ -26,19 +26,17 @@ struct SignatureCanvasSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("შენახვა") {
-                        let img = renderImage()
-                        onDone(img)
+                        guard !canvas.drawing.bounds.isEmpty else { return }
+                        onDone(renderImage())
                         dismiss()
                     }
-                    .disabled(canvas.drawing.bounds.isEmpty)
                 }
             }
         }
     }
 
     private func renderImage() -> UIImage {
-        let drawingBounds = canvas.drawing.bounds
-        let bounds = drawingBounds.isEmpty ? canvas.bounds : drawingBounds.insetBy(dx: -10, dy: -10)
+        let bounds = canvas.drawing.bounds.insetBy(dx: -10, dy: -10)
         return canvas.drawing.image(from: bounds, scale: UIScreen.main.scale)
     }
 }

@@ -7,12 +7,17 @@ enum WizardStep: Hashable {
 }
 
 struct WizardView: View {
+    @Environment(\.dismiss) private var dismiss
     @State private var vm: WizardViewModel
     @State private var stepIndex = 0
     @State private var goingToSigning = false
+    @State private var confirmExit = false
+    @State private var confirmProceedUnanswered = false
 
     init(questionnaire: Questionnaire, template: Template) {
-        _vm = State(initialValue: WizardViewModel(questionnaire: questionnaire, template: template))
+        let model = WizardViewModel(questionnaire: questionnaire, template: template)
+        _vm = State(initialValue: model)
+        _stepIndex = State(initialValue: model.savedStepIndex)
     }
 
     private var flatSteps: [WizardStep] {
@@ -75,9 +80,10 @@ struct WizardView: View {
                     .buttonStyle(.borderedProminent)
                 } else {
                     Button {
-                        Task {
-                            await vm.saveConclusion()
-                            goingToSigning = true
+                        if vm.unansweredQuestions.isEmpty {
+                            proceedToSigning()
+                        } else {
+                            confirmProceedUnanswered = true
                         }
                     } label: {
                         Label("ხელმოწერაზე გადასვლა", systemImage: "signature")
@@ -89,9 +95,39 @@ struct WizardView: View {
         }
         .navigationTitle(vm.template.name)
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button { confirmExit = true } label: {
+                    Label("დახურვა", systemImage: "xmark")
+                }
+            }
+        }
         .task { await vm.load() }
+        .onChange(of: stepIndex) { _, newValue in
+            vm.savedStepIndex = newValue
+        }
         .navigationDestination(isPresented: $goingToSigning) {
             SigningView(vm: vm)
+        }
+        .confirmationDialog("გახსნილი კითხვარი შენახულია ავტომატურად.",
+                            isPresented: $confirmExit,
+                            titleVisibility: .visible) {
+            Button("გასვლა") { dismiss() }
+            Button("გაგრძელება", role: .cancel) { }
+        }
+        .confirmationDialog("\(vm.unansweredQuestions.count) კითხვა უპასუხოდაა. მაინც გააგრძელებ?",
+                            isPresented: $confirmProceedUnanswered,
+                            titleVisibility: .visible) {
+            Button("გაგრძელება") { proceedToSigning() }
+            Button("დაბრუნება", role: .cancel) { }
+        }
+    }
+
+    private func proceedToSigning() {
+        Task {
+            await vm.saveConclusion()
+            goingToSigning = true
         }
     }
 

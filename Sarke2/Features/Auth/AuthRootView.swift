@@ -100,6 +100,8 @@ struct LoginForm: View {
     @State private var password = ""
     @State private var isWorking = false
     @State private var errorMessage: String?
+    @State private var infoMessage: String?
+    @State private var showingReset = false
 
     var body: some View {
         VStack(spacing: 14) {
@@ -115,10 +117,23 @@ struct LoginForm: View {
                     .textFieldStyle(.rounded)
             }
 
+            HStack {
+                Spacer()
+                Button("პაროლი დაგავიწყდა?") { showingReset = true }
+                    .font(.footnote)
+                    .foregroundStyle(Theme.accent)
+            }
+
             if let errorMessage {
                 Text(errorMessage)
                     .font(.footnote)
                     .foregroundStyle(Theme.danger)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            if let infoMessage {
+                Text(infoMessage)
+                    .font(.footnote)
+                    .foregroundStyle(Theme.accent)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
 
@@ -133,14 +148,78 @@ struct LoginForm: View {
             .buttonStyle(.primary)
             .disabled(isWorking || email.isEmpty || password.isEmpty)
         }
+        .sheet(isPresented: $showingReset) {
+            PasswordResetSheet(prefilledEmail: email) { sentTo in
+                infoMessage = "პაროლის აღდგენის ბმული გაიგზავნა: \(sentTo)"
+            }
+        }
     }
 
     @MainActor
     private func signIn() async {
         isWorking = true; defer { isWorking = false }
-        errorMessage = nil
+        errorMessage = nil; infoMessage = nil
         do {
             try await session.signIn(email: email, password: password)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+}
+
+// MARK: - Password reset sheet
+
+struct PasswordResetSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(SessionStore.self) private var session
+    let prefilledEmail: String
+    var onSent: (String) -> Void
+
+    @State private var email: String
+    @State private var isWorking = false
+    @State private var errorMessage: String?
+
+    init(prefilledEmail: String, onSent: @escaping (String) -> Void) {
+        self.prefilledEmail = prefilledEmail
+        self.onSent = onSent
+        _email = State(initialValue: prefilledEmail)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("პაროლის აღდგენა") {
+                    TextField("იმეილი", text: $email)
+                        .keyboardType(.emailAddress)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                    Text("გამოგეგზავნება ბმული პაროლის განახლებისთვის.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                if let errorMessage {
+                    Text(errorMessage).foregroundStyle(.red).font(.footnote)
+                }
+            }
+            .navigationTitle("აღდგენა")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("დახურვა") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("გაგზავნა") { Task { await send() } }
+                        .disabled(email.isEmpty || isWorking)
+                }
+            }
+        }
+    }
+
+    @MainActor
+    private func send() async {
+        isWorking = true; defer { isWorking = false }
+        errorMessage = nil
+        do {
+            try await session.resetPassword(email: email)
+            onSent(email)
+            dismiss()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -159,6 +238,7 @@ struct RegisterForm: View {
     @State private var password = ""
     @State private var isWorking = false
     @State private var errorMessage: String?
+    @State private var infoMessage: String?
 
     var body: some View {
         VStack(spacing: 14) {
@@ -187,6 +267,12 @@ struct RegisterForm: View {
                     .foregroundStyle(Theme.danger)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
+            if let infoMessage {
+                Text(infoMessage)
+                    .font(.footnote)
+                    .foregroundStyle(Theme.accent)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
 
             Button {
                 Task { await register() }
@@ -208,15 +294,21 @@ struct RegisterForm: View {
     @MainActor
     private func register() async {
         isWorking = true; defer { isWorking = false }
-        errorMessage = nil
+        errorMessage = nil; infoMessage = nil
         do {
             try await session.register(
                 email: email, password: password,
                 firstName: firstName, lastName: lastName
             )
-            try await session.signIn(email: email, password: password)
         } catch {
             errorMessage = error.localizedDescription
+            return
+        }
+        // Try immediate sign-in. If it fails, project likely requires email confirmation.
+        do {
+            try await session.signIn(email: email, password: password)
+        } catch {
+            infoMessage = "შეამოწმე იმეილი და დაადასტურე რეგისტრაცია, შემდეგ შეხვალ."
         }
     }
 }

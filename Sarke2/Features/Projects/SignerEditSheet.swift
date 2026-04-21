@@ -14,6 +14,7 @@ struct SignerEditSheet: View {
     @State private var signatureImage: UIImage?
     @State private var showingCanvas = false
     @State private var isSaving = false
+    @State private var errorMessage: String?
 
     var body: some View {
         NavigationStack {
@@ -34,6 +35,9 @@ struct SignerEditSheet: View {
                     Button(signatureImage == nil ? "ხელის მოწერა" : "ხელახლა მოწერა") {
                         showingCanvas = true
                     }
+                }
+                if let errorMessage {
+                    Section { Text(errorMessage).foregroundStyle(.red).font(.footnote) }
                 }
             }
             .navigationTitle(existing == nil ? "დამატება" : "რედაქტირება")
@@ -62,28 +66,32 @@ struct SignerEditSheet: View {
     @MainActor
     private func save() async {
         isSaving = true; defer { isSaving = false }
+        errorMessage = nil
 
-        var signatureURL = existing?.signaturePngUrl
-        if let img = signatureImage, let data = img.pngData() {
-            let path = "\(projectId.uuidString)/\(role.rawValue)-\(UUID().uuidString).png"
-            if (try? await StorageService.upload(
-                data: data, bucket: .signatures, path: path, contentType: "image/png"
-            )) != nil {
+        do {
+            var signatureURL = existing?.signaturePngUrl
+            if let img = signatureImage, let data = img.pngData() {
+                let path = "\(projectId.uuidString)/\(role.rawValue)-\(UUID().uuidString).png"
+                try await StorageService.upload(data: data, bucket: .signatures, path: path, contentType: "image/png")
                 signatureURL = path
             }
-        }
 
-        let signer = ProjectSigner(
-            id: existing?.id ?? UUID(),
-            projectId: projectId,
-            role: role,
-            fullName: fullName,
-            phone: phone.isEmpty ? nil : phone,
-            position: position.isEmpty ? nil : position,
-            signaturePngUrl: signatureURL
-        )
-        _ = try? await ProjectService.upsertSigner(signer)
-        await onSaved()
-        dismiss()
+            let signer = ProjectSigner(
+                id: existing?.id ?? UUID(),
+                projectId: projectId,
+                role: role,
+                fullName: fullName,
+                phone: phone.isEmpty ? nil : phone,
+                position: position.isEmpty ? nil : position,
+                signaturePngUrl: signatureURL
+            )
+            _ = try await ProjectService.upsertSigner(signer)
+            await onSaved()
+            Haptic.success()
+            dismiss()
+        } catch {
+            Haptic.error()
+            errorMessage = error.localizedDescription
+        }
     }
 }

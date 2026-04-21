@@ -2,13 +2,15 @@ import SwiftUI
 
 struct ProjectsListView: View {
     @State private var projects: [Project] = []
-    @State private var isLoading = false
+    @State private var isLoading = true
     @State private var showingCreate = false
 
     var body: some View {
         ScrollView {
             VStack(spacing: 12) {
-                if projects.isEmpty && !isLoading {
+                if isLoading && projects.isEmpty {
+                    ProgressView().padding(.top, 80)
+                } else if projects.isEmpty {
                     empty.padding(.top, 60)
                 }
                 ForEach(projects) { project in

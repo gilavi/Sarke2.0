@@ -150,21 +150,29 @@ struct HomeView: View {
     private var recentList: some View {
         VStack(spacing: 10) {
             ForEach(recent.prefix(5)) { q in
-                HStack {
-                    let t = templates.first(where: { $0.id == q.templateId })
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(t?.name ?? "კითხვარი")
-                            .font(.display(14, weight: .semibold))
-                            .foregroundStyle(Theme.ink)
-                            .lineLimit(1)
-                        Text(q.createdAt.formatted(date: .abbreviated, time: .shortened))
-                            .font(.caption)
-                            .foregroundStyle(Theme.inkSoft)
+                if let t = templates.first(where: { $0.id == q.templateId }) {
+                    NavigationLink {
+                        WizardView(questionnaire: q, template: t)
+                    } label: {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(t.name)
+                                    .font(.display(14, weight: .semibold))
+                                    .foregroundStyle(Theme.ink)
+                                    .lineLimit(1)
+                                Text(q.createdAt.formatted(date: .abbreviated, time: .shortened))
+                                    .font(.caption)
+                                    .foregroundStyle(Theme.inkSoft)
+                            }
+                            Spacer()
+                            statusPill(q.status)
+                            Image(systemName: "chevron.right")
+                                .foregroundStyle(Theme.inkSoft.opacity(0.5))
+                        }
+                        .card(padding: 12)
                     }
-                    Spacer()
-                    statusPill(q.status)
+                    .buttonStyle(.plain)
                 }
-                .card(padding: 12)
             }
         }
         .padding(.horizontal, 16)

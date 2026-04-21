@@ -7,9 +7,11 @@ struct SigningView: View {
     @State private var collected: [SignerRole: SignatureRecord] = [:]
     @State private var liveCanvasRole: SignerRole?
     @State private var picking: SignerRole?
+    @State private var addingSignerRole: SignerRole?
     @State private var certs: [Certificate] = []
     @State private var showingCertPrompt = false
     @State private var isGenerating = false
+    @State private var progressStage: String?
     @State private var generatedPDF: IdentifiableURL?
     @State private var errorMessage: String?
 
@@ -41,13 +43,21 @@ struct SigningView: View {
                 Text(errorMessage).foregroundStyle(.red)
             }
 
+            if vm.isSafeForUse == nil {
+                Section {
+                    Label("აირჩიე უსაფრთხოების სტატუსი (დასკვნის გვერდზე) გენერაციამდე.",
+                          systemImage: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                }
+            }
+
             Section {
                 Button {
                     Task { await generate() }
                 } label: {
-                    HStack {
+                    HStack(spacing: 10) {
                         if isGenerating { ProgressView() }
-                        Text("PDF-ის დაგენერირება")
+                        Text(progressStage ?? "PDF-ის დაგენერირება")
                     }
                     .frame(maxWidth: .infinity)
                 }
@@ -63,12 +73,23 @@ struct SigningView: View {
             }
         }
         .sheet(item: $picking) { role in
-            PickRosterSignerSheet(projectId: vm.questionnaire.projectId, role: role, signers: signers) { signer in
-                Task {
-                    if let rec = await upsertSignature(from: signer) {
-                        collected[role] = rec
+            PickRosterSignerSheet(
+                projectId: vm.questionnaire.projectId,
+                role: role,
+                signers: signers,
+                onPicked: { signer in
+                    Task {
+                        if let rec = await upsertSignature(from: signer) {
+                            collected[role] = rec
+                        }
                     }
-                }
+                },
+                onRequestAdd: { addingSignerRole = role }
+            )
+        }
+        .sheet(item: $addingSignerRole) { role in
+            SignerEditSheet(projectId: vm.questionnaire.projectId, role: role, existing: nil) {
+                await load()
             }
         }
         .sheet(isPresented: $showingCertPrompt) {
@@ -110,7 +131,8 @@ struct SigningView: View {
     private var readyToGenerate: Bool {
         let allSigned = requiredRoles.allSatisfy { collected[$0] != nil }
         let certsOK = Set(vm.template.requiredCertTypes).isSubset(of: Set(certs.map(\.type)))
-        return allSigned && certsOK
+        let safetyDecided = vm.isSafeForUse != nil
+        return allSigned && certsOK && safetyDecided
     }
 
     @MainActor
@@ -141,7 +163,7 @@ struct SigningView: View {
 
     @MainActor
     private func generate() async {
-        isGenerating = true; defer { isGenerating = false }
+        isGenerating = true; defer { isGenerating = false; progressStage = nil }
         errorMessage = nil
         do {
             let renderer = PDFRenderer(
@@ -152,19 +174,23 @@ struct SigningView: View {
                 photosByAnswer: vm.photosByAnswer,
                 signatures: Array(collected.values),
                 conclusionText: vm.conclusionText,
-                isSafeForUse: vm.isSafeForUse,
+                isSafeForUse: vm.isSafeForUse ?? false,
                 harnessName: vm.harnessName,
                 harnessRowCount: vm.harnessRowCount,
-                certificates: certs.filter { vm.template.requiredCertTypes.contains($0.type) }
+                certificates: certs.filter { vm.template.requiredCertTypes.contains($0.type) },
+                onProgress: { stage in Task { @MainActor in progressStage = stage } }
             )
             let url = try await renderer.render()
+            progressStage = "აიტვირთება..."
             let path = "\(vm.questionnaire.id.uuidString).pdf"
-            if let data = try? Data(contentsOf: url) {
-                try await StorageService.upload(data: data, bucket: .pdfs, path: path, contentType: "application/pdf")
-                try await QuestionnaireService.complete(id: vm.questionnaire.id, pdfUrl: path)
-            }
+            let data = try Data(contentsOf: url)
+            try await StorageService.upload(data: data, bucket: .pdfs, path: path, contentType: "application/pdf")
+            try await QuestionnaireService.complete(id: vm.questionnaire.id, pdfUrl: path)
+            vm.clearSavedStep()
+            Haptic.success()
             generatedPDF = IdentifiableURL(url: url)
         } catch {
+            Haptic.error()
             errorMessage = error.localizedDescription
         }
     }
@@ -184,6 +210,7 @@ struct LiveSignSheet: View {
     @State private var signatureImage: UIImage?
     @State private var showingCanvas = false
     @State private var isSaving = false
+    @State private var errorMessage: String?
 
     var body: some View {
         NavigationStack {
@@ -200,6 +227,9 @@ struct LiveSignSheet: View {
                     Button(signatureImage == nil ? "ხელის მოწერა" : "ხელახლა მოწერა") {
                         showingCanvas = true
                     }
+                }
+                if let errorMessage {
+                    Section { Text(errorMessage).foregroundStyle(.red).font(.footnote) }
                 }
             }
             .navigationTitle("ხელმოწერა")
@@ -223,6 +253,7 @@ struct LiveSignSheet: View {
     @MainActor
     private func save() async {
         isSaving = true; defer { isSaving = false }
+        errorMessage = nil
         guard let img = signatureImage, let data = img.pngData() else { return }
         let path = "questionnaire/\(questionnaireId.uuidString)/\(role.rawValue).png"
         do {
@@ -238,9 +269,13 @@ struct LiveSignSheet: View {
                 signedAt: Date()
             )
             let saved = try await SignatureService.upsert(rec)
+            Haptic.success()
             onSigned(saved)
             dismiss()
-        } catch { /* ignore */ }
+        } catch {
+            Haptic.error()
+            errorMessage = error.localizedDescription
+        }
     }
 }
 
@@ -252,15 +287,29 @@ struct PickRosterSignerSheet: View {
     let role: SignerRole
     let signers: [ProjectSigner]
     var onPicked: (ProjectSigner) -> Void
+    var onRequestAdd: (() -> Void)? = nil
 
     var body: some View {
         NavigationStack {
             List {
                 let filtered = signers.filter { $0.role == role && $0.signaturePngUrl != nil }
                 if filtered.isEmpty {
-                    ContentUnavailableView("ხელმომწერი არ არის",
-                                           systemImage: "person.slash",
-                                           description: Text("დაამატე ამ როლისთვის ხელმომწერი პროექტის გვერდზე."))
+                    VStack(spacing: 12) {
+                        ContentUnavailableView("ხელმომწერი არ არის",
+                                               systemImage: "person.slash",
+                                               description: Text("დაამატე ახალი ხელმომწერი ამ პროექტისთვის."))
+                        if let onRequestAdd {
+                            Button {
+                                dismiss()
+                                onRequestAdd()
+                            } label: {
+                                Label("ხელმომწერის დამატება", systemImage: "person.badge.plus")
+                            }
+                            .buttonStyle(.borderedProminent)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 20)
                 }
                 ForEach(filtered) { signer in
                     Button {

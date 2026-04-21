@@ -14,6 +14,7 @@ struct PDFRenderer {
     let harnessName: String
     let harnessRowCount: Int
     let certificates: [Certificate]
+    var onProgress: ((String) -> Void)? = nil
 
     private var titleFont: UIFont {
         UIFont(name: "NotoSansGeorgian-Bold", size: 18) ?? .boldSystemFont(ofSize: 18)
@@ -28,7 +29,8 @@ struct PDFRenderer {
     func render() async throws -> URL {
         let document = PDFDocument(format: .a4)
 
-        // Title
+        onProgress?("კითხვარის გადაწერა...")
+
         document.add(.contentCenter, attributedText: NSAttributedString(
             string: template.name,
             attributes: [.font: titleFont]
@@ -38,7 +40,6 @@ struct PDFRenderer {
         addHeaderFields(to: document)
         document.add(space: 10)
 
-        // Grouped by section
         let sections = Dictionary(grouping: questions) { $0.section }
         for sectionIdx in sections.keys.sorted() {
             let sectionQuestions = (sections[sectionIdx] ?? []).sorted(by: { $0.order < $1.order })
@@ -53,10 +54,12 @@ struct PDFRenderer {
         document.add(.contentLeft, text: "")
         document.createNewPage()
 
+        onProgress?("ხელმოწერების ჩამოტვირთვა...")
         let signatureImages = await loadSignatureImages()
         addSignatures(to: document, images: signatureImages)
 
         if !certificates.isEmpty {
+            onProgress?("სერტიფიკატების ჩამოტვირთვა...")
             document.createNewPage()
             document.add(.contentLeft, attributedText: NSAttributedString(
                 string: "თანდართული სერტიფიკატები",
@@ -76,6 +79,7 @@ struct PDFRenderer {
             }
         }
 
+        onProgress?("PDF-ის აგება...")
         let generator = PDFGenerator(document: document)
         let fileURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("\(questionnaire.id.uuidString).pdf")

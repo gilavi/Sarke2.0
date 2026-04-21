@@ -36,6 +36,7 @@ struct YesNoQuestionView: View {
     }
 
     private func save(_ value: Bool) async {
+        Haptic.tap()
         await vm.saveAnswer(for: question) { $0.valueBool = value }
     }
 }
@@ -46,6 +47,7 @@ struct MeasureQuestionView: View {
     @Bindable var vm: WizardViewModel
     let question: Question
     @State private var text: String = ""
+    @State private var debounce: Task<Void, Never>?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -67,10 +69,18 @@ struct MeasureQuestionView: View {
             if let v = vm.answersByQuestion[question.id]?.valueNum { text = v.clean }
         }
         .onChange(of: text) { _, newValue in
-            Task {
+            debounce?.cancel()
+            debounce = Task {
+                try? await Task.sleep(for: .milliseconds(500))
+                if Task.isCancelled { return }
                 let num = Double(newValue.replacingOccurrences(of: ",", with: "."))
                 await vm.saveAnswer(for: question) { $0.valueNum = num }
             }
+        }
+        .onDisappear {
+            debounce?.cancel()
+            let num = Double(text.replacingOccurrences(of: ",", with: "."))
+            Task { await vm.saveAnswer(for: question) { $0.valueNum = num } }
         }
     }
 
@@ -119,6 +129,9 @@ struct GridRowStepView: View {
                         Stepper("რამდენი ქამარი სულ?  (\(vm.harnessRowCount))",
                                 value: $vm.harnessRowCount, in: 1...15)
                             .padding(.vertical, 4)
+                            .onChange(of: vm.harnessRowCount) { _, _ in
+                                Task { await vm.pruneOrphanHarnessRows(for: question) }
+                            }
                     }
                     VStack(spacing: 10) {
                         ForEach(cols, id: \.self) { col in
@@ -229,6 +242,7 @@ struct GridRowStepView: View {
 
     // Exclusive: store `{ row: { col: col } }` — one key equals the chosen column.
     private func selectExclusive(col: String) async {
+        Haptic.tap()
         await vm.saveAnswer(for: question) { answer in
             var grid = answer.gridValues ?? [:]
             grid[row] = [col: col]
@@ -237,6 +251,7 @@ struct GridRowStepView: View {
     }
 
     private func setField(col: String, value: String) async {
+        Haptic.tap()
         await vm.saveAnswer(for: question) { answer in
             var grid = answer.gridValues ?? [:]
             var cols = grid[row] ?? [:]
@@ -253,6 +268,7 @@ struct FreetextQuestionView: View {
     @Bindable var vm: WizardViewModel
     let question: Question
     @State private var text = ""
+    @State private var debounce: Task<Void, Never>?
 
     var body: some View {
         TextEditor(text: $text)
@@ -264,9 +280,17 @@ struct FreetextQuestionView: View {
                 text = vm.answersByQuestion[question.id]?.valueText ?? ""
             }
             .onChange(of: text) { _, newValue in
-                Task {
+                debounce?.cancel()
+                debounce = Task {
+                    try? await Task.sleep(for: .milliseconds(500))
+                    if Task.isCancelled { return }
                     await vm.saveAnswer(for: question) { $0.valueText = newValue }
                 }
+            }
+            .onDisappear {
+                debounce?.cancel()
+                let snapshot = text
+                Task { await vm.saveAnswer(for: question) { $0.valueText = snapshot } }
             }
     }
 }
@@ -422,6 +446,14 @@ struct ConclusionStepView: View {
 
     var body: some View {
         Form {
+            if !vm.unansweredQuestions.isEmpty {
+                Section {
+                    Label("\(vm.unansweredQuestions.count) კითხვა უპასუხოდ დარჩა. შეამოწმე კითხვარი.",
+                          systemImage: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                }
+            }
+
             if vm.template.categoryKind == .harness {
                 Section("ღვედის დასახელება") {
                     TextField("მაგ. Petzl NEWTON", text: $vm.harnessName)
@@ -430,8 +462,21 @@ struct ConclusionStepView: View {
             Section("დასკვნა") {
                 TextEditor(text: $vm.conclusionText).frame(minHeight: 140)
             }
-            Section {
-                Toggle("უსაფრთხოა ექსპლუატაციისთვის", isOn: $vm.isSafeForUse)
+            Section("უსაფრთხოების დასკვნა") {
+                Picker("სტატუსი", selection: Binding(
+                    get: { vm.isSafeForUse },
+                    set: { vm.isSafeForUse = $0 }
+                )) {
+                    Text("აირჩიე").tag(Bool?.none)
+                    Text("✓ უსაფრთხოა").tag(Bool?.some(true))
+                    Text("✗ არ არის უსაფრთხო").tag(Bool?.some(false))
+                }
+                .pickerStyle(.inline)
+                .labelsHidden()
+                if vm.isSafeForUse == nil {
+                    Text("აუცილებლად აირჩიე უსაფრთხოების სტატუსი PDF-ის დაგენერირებამდე.")
+                        .font(.caption).foregroundStyle(.red)
+                }
             }
         }
     }

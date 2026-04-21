@@ -146,3 +146,20 @@ struct IdentifiableURL: Identifiable {
     let url: URL
     var id: String { url.absoluteString }
 }
+
+// MARK: - Haptics
+
+enum Haptic {
+    static func tap() {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    }
+    static func success() {
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+    }
+    static func warning() {
+        UINotificationFeedbackGenerator().notificationOccurred(.warning)
+    }
+    static func error() {
+        UINotificationFeedbackGenerator().notificationOccurred(.error)
+    }
+}

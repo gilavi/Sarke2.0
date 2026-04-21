@@ -9,9 +9,9 @@ final class WizardViewModel {
     var answersByQuestion: [UUID: Answer] = [:]
     var photosByAnswer: [UUID: [AnswerPhoto]] = [:]
     var conclusionText: String = ""
-    var isSafeForUse: Bool = true
+    var isSafeForUse: Bool? = nil
     var harnessName: String = ""
-    var harnessRowCount: Int = 5          // how many N-rows are actually present
+    var harnessRowCount: Int = 5
     var isLoading = false
     var errorMessage: String?
 
@@ -20,7 +20,7 @@ final class WizardViewModel {
         self.template = template
         self.conclusionText = questionnaire.conclusionText ?? ""
         self.harnessName = questionnaire.harnessName ?? ""
-        self.isSafeForUse = questionnaire.isSafeForUse ?? true
+        self.isSafeForUse = questionnaire.isSafeForUse
     }
 
     @MainActor
@@ -38,13 +38,67 @@ final class WizardViewModel {
         }
     }
 
-    // Grouped by section/order
     var orderedQuestions: [Question] {
         questions.sorted { lhs, rhs in
             if lhs.section != rhs.section { return lhs.section < rhs.section }
             return lhs.order < rhs.order
         }
     }
+
+    // MARK: - Validation
+
+    func isAnswered(_ q: Question) -> Bool {
+        guard let a = answersByQuestion[q.id] else { return false }
+        switch q.type {
+        case .yesno:    return a.valueBool != nil
+        case .measure:  return a.valueNum != nil
+        case .freetext: return !(a.valueText?.isEmpty ?? true)
+        case .componentGrid:
+            let rows = visibleGridRows(for: q)
+            let grid = a.gridValues ?? [:]
+            return rows.allSatisfy { !(grid[$0]?.isEmpty ?? true) }
+        case .photoUpload:
+            return !(photosByAnswer[a.id]?.isEmpty ?? true)
+        }
+    }
+
+    func visibleGridRows(for q: Question) -> [String] {
+        let base = q.gridRows ?? []
+        if base.first == "N1" { return Array(base.prefix(harnessRowCount)) }
+        return base
+    }
+
+    var unansweredQuestions: [Question] {
+        orderedQuestions.filter { !isAnswered($0) }
+    }
+
+    // MARK: - Step index persistence
+
+    private var stepKey: String { "wizard.stepIndex.\(questionnaire.id.uuidString)" }
+
+    var savedStepIndex: Int {
+        get { UserDefaults.standard.integer(forKey: stepKey) }
+        set { UserDefaults.standard.set(newValue, forKey: stepKey) }
+    }
+
+    func clearSavedStep() {
+        UserDefaults.standard.removeObject(forKey: stepKey)
+    }
+
+    // MARK: - Harness orphan pruning
+
+    @MainActor
+    func pruneOrphanHarnessRows(for q: Question) async {
+        guard (q.gridRows ?? []).first == "N1" else { return }
+        guard let a = answersByQuestion[q.id], var grid = a.gridValues else { return }
+        let visible = Set(visibleGridRows(for: q))
+        let before = grid.keys.count
+        grid = grid.filter { visible.contains($0.key) }
+        guard grid.count != before else { return }
+        await saveAnswer(for: q) { $0.gridValues = grid }
+    }
+
+    // MARK: - Mutations
 
     @MainActor
     @discardableResult

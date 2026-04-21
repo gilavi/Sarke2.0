@@ -70,4 +70,8 @@ final class SessionStore {
     func signOut() async throws {
         try await SupabaseService.shared.auth.signOut()
     }
+
+    func resetPassword(email: String) async throws {
+        try await SupabaseService.shared.auth.resetPasswordForEmail(email)
+    }
 }
