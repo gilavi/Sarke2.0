@@ -92,8 +92,21 @@ export function buildPdfHtml(args: {
       .muted { color: #4A4A4A; }
       .ok { color: #147A4F; font-weight: 600; }
       .bad { color: #C0433C; font-weight: 600; }
-      .sig { border-top: 1px solid #E8E1D4; padding-top: 10px; margin-top: 22px; }
-      .sig .line { border-bottom: 1px solid #1A1A1A; margin-top: 30px; width: 260px; height: 2px; }
+      .sig-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 10px; }
+      .sig-block {
+        page-break-inside: avoid;
+        background: #FFFFFF;
+        border: 1px solid #E8E1D4;
+        border-radius: 6px;
+        padding: 10px 12px;
+      }
+      .sig-block h3 { margin: 0 0 2px; font-size: 12px; letter-spacing: 0.3px; text-transform: uppercase; color: #4A4A4A; font-weight: 600; }
+      .sig-block .name { margin: 0; font-size: 14px; font-weight: 700; color: #1A1A1A; }
+      .sig-block .sub { margin: 2px 0 0; font-size: 10px; color: #4A4A4A; }
+      .sig-block .line { border-bottom: 1px solid #1A1A1A; height: 2px; margin-top: 42px; }
+      .sig-block img.sig-img { display: block; max-width: 180px; max-height: 80px; margin: 8px 0 4px; }
+      .sig-block.not-present { background: #F6F2EA; }
+      .sig-block.not-present .placeholder { color: #4A4A4A; font-size: 11px; font-style: italic; margin-top: 4px; }
       .conclusion { padding: 10px; background: #F6F2EA; border-radius: 6px; }
       .photo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
       .photo-cell { display: flex; flex-direction: column; gap: 4px; }
@@ -125,20 +138,9 @@ export function buildPdfHtml(args: {
     </p>
 
     <h2>ხელმოწერები</h2>
-    ${(template.required_signer_roles ?? []).map(role => {
-      const sig = signatures.find(s => s.signer_role === role);
-      const sigImg = sig?.signature_png_url
-        ? `<img src="${sig.signature_png_url}" alt="ხელმოწერა" style="max-width: 260px; max-height: 80px; display: block; margin-top: 12px;" />`
-        : `<div class="line"></div>`;
-      return `
-      <div class="sig">
-        <h3>${SIGNER_ROLE_LABEL[role] ?? role}</h3>
-        <p>სახელი გვარი: ${escapeHtml(sig?.full_name ?? '')}<br/>
-           ტელ: ${escapeHtml(sig?.phone ?? '')}<br/>
-           პოზიცია: ${escapeHtml(sig?.position ?? '')}</p>
-        ${sigImg}
-      </div>`;
-    }).join('')}
+    <div class="sig-grid">
+    ${renderSignatureBlocks(signatures, template.required_signer_roles ?? [])}
+    </div>
 
     ${certificates.length > 0 ? `
     <div class="page-break"></div>
@@ -217,4 +219,62 @@ function escapeHtml(s: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+/**
+ * Build the signature section: 2-col grid, expert first, then each required
+ * role. For signed rows we inline the PNG; for not_present rows we render
+ * a line + "(არ იყო დამსწრე)"; for missing (never addressed) rows we show
+ * an empty signature line with the role label only.
+ */
+function renderSignatureBlocks(
+  signatures: SignatureRecord[],
+  requiredRoles: SignatureRecord['signer_role'][],
+): string {
+  // Expert always first when present
+  const expertSig = signatures.find(s => s.signer_role === 'expert');
+  const hasExpertInRoles = requiredRoles.includes('expert');
+  const orderedRoles: SignatureRecord['signer_role'][] = hasExpertInRoles
+    ? ['expert', ...requiredRoles.filter(r => r !== 'expert')]
+    : expertSig
+      ? ['expert', ...requiredRoles]
+      : requiredRoles;
+
+  return orderedRoles
+    .map(role => {
+      const sig = signatures.find(s => s.signer_role === role);
+      const label = role === 'expert' ? 'ექსპერტი' : SIGNER_ROLE_LABEL[role] ?? role;
+
+      if (sig?.status === 'signed' && sig.signature_png_url) {
+        return `
+      <div class="sig-block">
+        <h3>${escapeHtml(label)}</h3>
+        <p class="name">${escapeHtml(sig.full_name || '—')}</p>
+        ${sig.position ? `<p class="sub">${escapeHtml(sig.position)}</p>` : ''}
+        <img class="sig-img" src="${sig.signature_png_url}" alt="ხელმოწერა" />
+        ${sig.signed_at ? `<p class="sub">${escapeHtml(new Date(sig.signed_at).toLocaleDateString('ka'))}</p>` : ''}
+      </div>`;
+      }
+
+      if (sig?.status === 'not_present') {
+        const name = sig.full_name || sig.person_name || label;
+        return `
+      <div class="sig-block not-present">
+        <h3>${escapeHtml(label)}</h3>
+        <p class="name">${escapeHtml(name)}</p>
+        <div class="line"></div>
+        <p class="placeholder">(არ იყო დამსწრე)</p>
+      </div>`;
+      }
+
+      // No record at all — empty line
+      return `
+      <div class="sig-block">
+        <h3>${escapeHtml(label)}</h3>
+        <p class="name">${escapeHtml(label)}</p>
+        <div class="line"></div>
+        <p class="sub">&nbsp;</p>
+      </div>`;
+    })
+    .join('');
 }
