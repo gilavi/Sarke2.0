@@ -63,10 +63,11 @@ export function buildPdfHtml(args: {
 
   const appendixHtml = appendixPhotos.length > 0
     ? `<div class="page-break"></div>
-       <h2>დანართი: დამატებითი ფოტოები</h2>
+       <h2>დანართი — დამატებითი ფოტოები</h2>
        ${appendixPhotos.map(({ questionTitle, photos, isFailed }) => `
-         <div class="qa"><strong>${escapeHtml(questionTitle)}</strong>
-           <div class="photo-grid">${photos.map(p => renderPhoto(p, isFailed)).join('')}</div>
+         <div class="qa appendix-group">
+           <p class="appendix-sub">${escapeHtml(questionTitle)}</p>
+           <div class="photo-grid">${photos.map(p => renderPhoto(p, isFailed, questionTitle)).join('')}</div>
          </div>`).join('')}`
     : '';
 
