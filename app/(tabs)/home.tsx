@@ -144,24 +144,36 @@ export default function HomeScreen() {
           </Pressable>
         ) : null}
 
-        {/* ───────── PROJECTS CAROUSEL ───────── */}
+        {/* ───────── PROJECTS ───────── */}
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionHeader}>პროექტები</Text>
-          <Pressable onPress={() => router.push('/(tabs)/projects' as any)} hitSlop={8}>
-            <Text style={styles.sectionLink}>ყველა</Text>
-          </Pressable>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+            <Pressable
+              onPress={() => router.push('/projects/new' as any)}
+              style={styles.sectionAddBtn}
+              hitSlop={8}
+            >
+              <Ionicons name="add" size={16} color={theme.colors.accent} />
+            </Pressable>
+            <Pressable onPress={() => router.push('/(tabs)/projects' as any)} hitSlop={8}>
+              <Text style={styles.sectionLink}>ყველა</Text>
+            </Pressable>
+          </View>
         </View>
 
         {projects.length === 0 ? (
-          <View style={[styles.sectionWrap, { marginTop: 8 }]}>
+          <Pressable
+            onPress={() => router.push('/projects/new' as any)}
+            style={{ paddingHorizontal: HPAD, marginTop: 10 }}
+          >
             <View style={styles.emptyProjects}>
-              <Ionicons name="folder-open-outline" size={28} color={theme.colors.inkFaint} />
-              <Text style={styles.emptyProjectsText}>პროექტები ჯერ არ გაქვს</Text>
-              <Pressable onPress={() => router.push('/(tabs)/projects' as any)}>
-                <Text style={styles.emptyProjectsCta}>+ დაამატე პირველი</Text>
-              </Pressable>
+              <View style={styles.emptyPlusIcon}>
+                <Ionicons name="add" size={24} color={theme.colors.accent} />
+              </View>
+              <Text style={styles.emptyProjectsCta}>ახალი პროექტი</Text>
+              <Text style={styles.emptyProjectsText}>შექმენი პირველი</Text>
             </View>
-          </View>
+          </Pressable>
         ) : isProjectsCarousel ? (
           <ScrollView
             horizontal
@@ -176,6 +188,16 @@ export default function HomeScreen() {
                 onPress={() => router.push(`/projects/${p.id}` as any)}
               />
             ))}
+            {/* New project card always at the end of the scroll */}
+            <Pressable
+              onPress={() => router.push('/projects/new' as any)}
+              style={{ width: Math.round(projectCardWidth * 0.72) }}
+            >
+              <View style={styles.newProjectCard}>
+                <Ionicons name="add-circle-outline" size={28} color={theme.colors.accent} />
+                <Text style={styles.newProjectCardText}>ახალი</Text>
+              </View>
+            </Pressable>
           </ScrollView>
         ) : (
           <View style={{ flexDirection: 'row', paddingHorizontal: HPAD, paddingTop: 10, gap: GAP }}>
@@ -514,26 +536,60 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: theme.colors.inkSoft,
   },
+  sectionAddBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: theme.colors.accentSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
   emptyProjects: {
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    backgroundColor: theme.colors.card,
+    gap: 6,
+    backgroundColor: theme.colors.accentSoft,
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: theme.colors.hairline,
+    borderWidth: 1.5,
+    borderColor: theme.colors.accent + '33',
     borderStyle: 'dashed',
-    paddingVertical: 28,
+    paddingVertical: 32,
+  },
+  emptyPlusIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: theme.colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
   },
   emptyProjectsText: {
-    fontSize: 13,
+    fontSize: 12,
     color: theme.colors.inkSoft,
   },
   emptyProjectsCta: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: theme.colors.ink,
+  },
+  newProjectCard: {
+    flex: 1,
+    backgroundColor: theme.colors.accentSoft,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: theme.colors.accent + '33',
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 20,
+  },
+  newProjectCardText: {
     fontSize: 13,
     fontWeight: '700',
     color: theme.colors.accent,
-    marginTop: 2,
   },
 
   // RECENT
