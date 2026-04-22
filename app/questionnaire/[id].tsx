@@ -83,37 +83,54 @@ export default function QuestionnaireWizard() {
   const [harnessName, setHarnessName] = useState('');
   const [certs, setCerts] = useState<Certificate[]>([]);
 
+  // Cancellation token for in-flight load(). Each load() run gets its own
+  // object; when the screen blurs we flip `cancelled = true` on the active
+  // token so a late-returning fetch can't overwrite fresh local state
+  // (e.g. user edits between focus events).
+  const loadCtrlRef = useRef<{ cancelled: boolean }>({ cancelled: false });
+
   const load = useCallback(async () => {
     if (!id) return;
+    // Invalidate any prior in-flight load and start a new token.
+    loadCtrlRef.current.cancelled = true;
+    const ctrl = { cancelled: false };
+    loadCtrlRef.current = ctrl;
     setLoading(true);
     try {
       const q = await questionnairesApi.getById(id);
+      if (ctrl.cancelled) return;
       if (!q) throw new Error('არ მოიძებნა');
       // Fold any locally-queued questionnaire patch over the remote row.
       const localPatch = await offline.hydrateQuestionnairePatch(q.id);
+      if (ctrl.cancelled) return;
       const qMerged: Questionnaire = { ...q, ...(localPatch ?? {}) };
       setQuestionnaire(qMerged);
       const t = await templatesApi.getById(qMerged.template_id);
+      if (ctrl.cancelled) return;
       setTemplate(t);
       setConclusion(qMerged.conclusion_text ?? '');
       setIsSafe(qMerged.is_safe_for_use ?? null);
       setHarnessName(qMerged.harness_name ?? '');
       if (t) {
         const qs = await templatesApi.questions(t.id);
+        if (ctrl.cancelled) return;
         setQuestions(qs);
         let remoteOk = true;
         const existing = await answersApi.list(qMerged.id).catch(() => {
           remoteOk = false;
           return [] as Answer[];
         });
+        if (ctrl.cancelled) return;
         const map: Record<string, Answer> = {};
         const pmap: Record<string, AnswerPhoto[]> = {};
         for (const a of existing) {
           map[a.question_id] = a;
           pmap[a.id] = await answersApi.photos(a.id).catch(() => []);
+          if (ctrl.cancelled) return;
         }
         // Overlay cached-local answers so unsynced edits survive app restarts.
         const cached = await offline.hydrateAnswers(qMerged.id);
+        if (ctrl.cancelled) return;
         for (const [questionId, a] of Object.entries(cached)) {
           map[questionId] = a;
         }
@@ -126,12 +143,15 @@ export default function QuestionnaireWizard() {
           await offline.cacheAnswers(qMerged.id, map);
         }
       }
-      setCerts(await certificatesApi.list().catch(() => []));
+      const freshCerts = await certificatesApi.list().catch(() => []);
+      if (ctrl.cancelled) return;
+      setCerts(freshCerts);
       // Resume where the user left off
       const [savedStep, savedHarness] = await Promise.all([
         AsyncStorage.getItem(stepKey(id)),
         AsyncStorage.getItem(harnessCountKey(id)),
       ]);
+      if (ctrl.cancelled) return;
       if (savedStep) {
         const parsed = parseInt(savedStep, 10);
         if (!Number.isNaN(parsed)) setStepIndex(parsed);
@@ -143,9 +163,10 @@ export default function QuestionnaireWizard() {
         }
       }
     } catch (e: any) {
+      if (ctrl.cancelled) return;
       toast.error(`ჩატვირთვა ვერ მოხერხდა: ${e?.message ?? 'ქსელის შეცდომა'}`);
     } finally {
-      setLoading(false);
+      if (!ctrl.cancelled) setLoading(false);
     }
   }, [id, toast]);
 
@@ -164,6 +185,11 @@ export default function QuestionnaireWizard() {
   useFocusEffect(
     useCallback(() => {
       void load();
+      return () => {
+        // Screen lost focus — invalidate the in-flight load so its late
+        // setState calls can't clobber edits made on the next focus.
+        loadCtrlRef.current.cancelled = true;
+      };
     }, [load]),
   );
 
@@ -995,10 +1021,7 @@ function PhotoGrid({ photos }: { photos: AnswerPhoto[] }) {
 
 // ----- Result view for completed questionnaires -----
 
-import * as Sharing from 'expo-sharing';
-import { storageApi as storageFor } from '../../lib/services';
-import { STORAGE_BUCKETS as BUCKETS } from '../../lib/supabase';
-import * as FS from 'expo-file-system/legacy';
+import { shareStoredPdf } from '../../lib/sharePdf';
 
 function ResultView({
   questionnaire,
@@ -1019,12 +1042,7 @@ function ResultView({
     }
     setSharing(true);
     try {
-      const url = storageFor.publicUrl(BUCKETS.pdfs, questionnaire.pdf_url);
-      const localUri = (FS.cacheDirectory ?? FS.documentDirectory!) + `${questionnaire.id}.pdf`;
-      const { uri } = await FS.downloadAsync(url, localUri);
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, { mimeType: 'application/pdf' });
-      }
+      await shareStoredPdf(questionnaire.pdf_url);
     } catch (e: any) {
       toast.error(e?.message ?? 'გახსნა ვერ მოხერხდა');
     } finally {

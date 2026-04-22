@@ -20,12 +20,11 @@ import { Button, Card, Field, Input, Screen } from '../../components/ui';
 import {
   projectsApi,
   questionnairesApi,
-  storageApi,
   templatesApi,
 } from '../../lib/services';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { useToast } from '../../lib/toast';
-import { blobToDataUrl } from '../../lib/blob';
+import { getStorageImageDataUrl } from '../../lib/imageUrl';
 import { theme } from '../../lib/theme';
 import type { Project, ProjectSigner, Questionnaire, Template } from '../../types/models';
 import { SIGNER_ROLE_LABEL } from '../../types/models';
@@ -65,15 +64,10 @@ export default function ProjectDetail() {
       s
         .filter(x => x.signature_png_url)
         .map(async x => {
-          try {
-            const blob = await storageApi.download(
-              STORAGE_BUCKETS.signatures,
-              x.signature_png_url!,
-            );
-            previews[x.id] = await blobToDataUrl(blob);
-          } catch {
-            previews[x.id] = storageApi.publicUrl(STORAGE_BUCKETS.signatures, x.signature_png_url!);
-          }
+          previews[x.id] = await getStorageImageDataUrl(
+            STORAGE_BUCKETS.signatures,
+            x.signature_png_url!,
+          );
         }),
     );
     setSignerPreviews(previews);

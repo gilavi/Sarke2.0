@@ -16,20 +16,43 @@ import type { Certificate, Questionnaire, Template } from '../../types/models';
 export default function CertificatesScreen() {
   const router = useRouter();
   const [certs, setCerts] = useState<Certificate[]>([]);
-  const [questionnaires, setQuestionnaires] = useState<Questionnaire[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [linkedOpen, setLinkedOpen] = useState<Certificate | null>(null);
+  const [linkedQuestionnaires, setLinkedQuestionnaires] = useState<Questionnaire[]>([]);
+  const [linkedLoading, setLinkedLoading] = useState(false);
 
   const load = useCallback(async () => {
-    const [c, q, t] = await Promise.all([
+    const [c, t] = await Promise.all([
       certificatesApi.list().catch(() => []),
-      questionnairesApi.recent(500).catch(() => []),
       templatesApi.list().catch(() => []),
     ]);
     setCerts(c);
-    setQuestionnaires(q);
     setTemplates(t);
   }, []);
+
+  /**
+   * Load the inspections linked to a cert only when the modal opens.
+   * Previously we pulled the last 500 questionnaires on every focus — heavy
+   * and usually wasted because the linked modal is tapped rarely.
+   */
+  const openLinkedFor = useCallback(
+    async (cert: Certificate) => {
+      setLinkedOpen(cert);
+      setLinkedLoading(true);
+      try {
+        const matchingTemplateIds = templates
+          .filter(t => t.required_cert_types.includes(cert.type))
+          .map(t => t.id);
+        const qs = await questionnairesApi.listByTemplateIds(matchingTemplateIds);
+        setLinkedQuestionnaires(qs);
+      } catch {
+        setLinkedQuestionnaires([]);
+      } finally {
+        setLinkedLoading(false);
+      }
+    },
+    [templates],
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -89,7 +112,7 @@ export default function CertificatesScreen() {
         renderItem={({ item }) => {
           const status = statusOf(item);
           return (
-            <Pressable onPress={() => status !== 'ok' ? setLinkedOpen(item) : undefined}>
+            <Pressable onPress={() => status !== 'ok' ? openLinkedFor(item) : undefined}>
               <Card padding={14}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                   <View style={{ flex: 1 }}>
@@ -121,11 +144,16 @@ export default function CertificatesScreen() {
 
       <LinkedInspectionsSheet
         cert={linkedOpen}
-        questionnaires={questionnaires}
+        loading={linkedLoading}
+        questionnaires={linkedQuestionnaires}
         templates={templates}
-        onClose={() => setLinkedOpen(null)}
+        onClose={() => {
+          setLinkedOpen(null);
+          setLinkedQuestionnaires([]);
+        }}
         onOpen={qid => {
           setLinkedOpen(null);
+          setLinkedQuestionnaires([]);
           router.push(`/questionnaire/${qid}` as any);
         }}
       />
@@ -149,22 +177,19 @@ function LinkedInspectionsSheet({
   cert,
   questionnaires,
   templates,
+  loading,
   onClose,
   onOpen,
 }: {
   cert: Certificate | null;
   questionnaires: Questionnaire[];
   templates: Template[];
+  loading: boolean;
   onClose: () => void;
   onOpen: (qid: string) => void;
 }) {
-  const linked = useMemo(() => {
-    if (!cert) return [];
-    const matchingTemplates = new Set(
-      templates.filter(t => t.required_cert_types.includes(cert.type)).map(t => t.id),
-    );
-    return questionnaires.filter(q => matchingTemplates.has(q.template_id));
-  }, [cert, questionnaires, templates]);
+  // Already filtered server-side by openLinkedFor(), just pass through.
+  const linked = questionnaires;
 
   return (
     <Modal

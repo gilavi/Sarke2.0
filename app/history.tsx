@@ -3,11 +3,9 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import * as FileSystem from 'expo-file-system/legacy';
-import * as Sharing from 'expo-sharing';
 import { Card, Chip, Screen } from '../components/ui';
-import { projectsApi, questionnairesApi, storageApi, templatesApi } from '../lib/services';
-import { STORAGE_BUCKETS } from '../lib/supabase';
+import { projectsApi, questionnairesApi, templatesApi } from '../lib/services';
+import { shareStoredPdf } from '../lib/sharePdf';
 import { theme } from '../lib/theme';
 import type { Project, Questionnaire, Template } from '../types/models';
 
@@ -21,8 +19,10 @@ export default function HistoryScreen() {
   const [filter, setFilter] = useState<Filter>('all');
 
   const load = useCallback(async () => {
+    // 200 is plenty for any individual expert — full-history pagination can
+    // come later. 500 was loading ~15x more data than ever displayed.
     const [allQ, allT, allP] = await Promise.all([
-      questionnairesApi.recent(500).catch(() => []),
+      questionnairesApi.recent(200).catch(() => []),
       templatesApi.list().catch(() => []),
       projectsApi.list().catch(() => []),
     ]);
@@ -43,13 +43,7 @@ export default function HistoryScreen() {
   const openPdf = async (q: Questionnaire) => {
     if (!q.pdf_url) return;
     try {
-      const url = storageApi.publicUrl(STORAGE_BUCKETS.pdfs, q.pdf_url);
-      const name = q.pdf_url.split('/').pop() ?? 'report.pdf';
-      const localUri = (FileSystem.cacheDirectory ?? FileSystem.documentDirectory!) + name;
-      const { uri } = await FileSystem.downloadAsync(url, localUri);
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, { mimeType: 'application/pdf' });
-      }
+      await shareStoredPdf(q.pdf_url);
     } catch {}
   };
 

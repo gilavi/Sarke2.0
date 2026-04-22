@@ -8,7 +8,7 @@ import { Button, Field, Input, Screen } from '../../../components/ui';
 import { projectsApi, storageApi } from '../../../lib/services';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import { useToast } from '../../../lib/toast';
-import { blobToDataUrl } from '../../../lib/blob';
+import { getStorageImageDataUrl } from '../../../lib/imageUrl';
 import { theme } from '../../../lib/theme';
 import type { ProjectSigner, SignerRole } from '../../../types/models';
 import { SIGNER_ROLE_LABEL } from '../../../types/models';
@@ -45,13 +45,9 @@ export default function SignerForm() {
       setPhone(s.phone ?? '');
       setPosition(s.position ?? '');
       if (s.signature_png_url) {
-        try {
-          const blob = await storageApi.download(STORAGE_BUCKETS.signatures, s.signature_png_url);
-          const dataUrl = await blobToDataUrl(blob);
-          setSigPreview(dataUrl);
-        } catch {
-          setSigPreview(storageApi.publicUrl(STORAGE_BUCKETS.signatures, s.signature_png_url));
-        }
+        setSigPreview(
+          await getStorageImageDataUrl(STORAGE_BUCKETS.signatures, s.signature_png_url),
+        );
       }
     } catch (e: any) {
       toast.error(e?.message ?? 'ჩატვირთვა ვერ მოხერხდა');

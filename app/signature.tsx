@@ -8,8 +8,7 @@ import { SignatureCanvas } from '../components/SignatureCanvas';
 import { useSession } from '../lib/session';
 import { useToast } from '../lib/toast';
 import { saveExpertSignature } from '../lib/signatures';
-import { storageApi } from '../lib/services';
-import { blobToDataUrl } from '../lib/blob';
+import { getStorageImageDataUrl } from '../lib/imageUrl';
 import { STORAGE_BUCKETS } from '../lib/supabase';
 import { theme } from '../lib/theme';
 
@@ -31,15 +30,7 @@ export default function SignatureSettingsScreen() {
 
   const loadPreview = useCallback(async () => {
     if (!user?.saved_signature_url) return setPreview(null);
-    try {
-      const blob = await storageApi.download(
-        STORAGE_BUCKETS.signatures,
-        user.saved_signature_url,
-      );
-      setPreview(await blobToDataUrl(blob));
-    } catch {
-      setPreview(storageApi.publicUrl(STORAGE_BUCKETS.signatures, user.saved_signature_url));
-    }
+    setPreview(await getStorageImageDataUrl(STORAGE_BUCKETS.signatures, user.saved_signature_url));
   }, [user?.saved_signature_url]);
 
   useEffect(() => {

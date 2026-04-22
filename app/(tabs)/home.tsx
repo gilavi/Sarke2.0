@@ -4,10 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSession } from '../../lib/session';
-import * as FileSystem from 'expo-file-system/legacy';
-import * as Sharing from 'expo-sharing';
-import { certificatesApi, projectsApi, questionnairesApi, storageApi, templatesApi, isExpiringSoon } from '../../lib/services';
-import { STORAGE_BUCKETS } from '../../lib/supabase';
+import { certificatesApi, projectsApi, questionnairesApi, templatesApi, isExpiringSoon } from '../../lib/services';
+import { shareStoredPdf } from '../../lib/sharePdf';
 import { theme } from '../../lib/theme';
 import { Card, Chip, SectionHeader } from '../../components/ui';
 import type { Certificate, Project, Questionnaire, Template } from '../../types/models';
@@ -62,15 +60,9 @@ export default function HomeScreen() {
 
   const sharePdf = async (path: string) => {
     try {
-      const url = storageApi.publicUrl(STORAGE_BUCKETS.pdfs, path);
-      const name = path.split('/').pop() ?? 'report.pdf';
-      const localUri = (FileSystem.cacheDirectory ?? FileSystem.documentDirectory!) + name;
-      const { uri } = await FileSystem.downloadAsync(url, localUri);
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, { mimeType: 'application/pdf' });
-      }
+      await shareStoredPdf(path);
     } catch {
-      // ignore
+      // ignore — silent fail matches existing behavior
     }
   };
 

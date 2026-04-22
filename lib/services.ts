@@ -245,6 +245,44 @@ export const questionnairesApi = {
     const { error } = await supabase.from('questionnaires').delete().eq('id', id);
     if (error) throw error;
   },
+  /**
+   * Aggregate counts for the logged-in user. Cheap — only fetches the status
+   * and created_at columns. Used for More / hub stat pills.
+   */
+  counts: async (): Promise<{
+    total: number;
+    drafts: number;
+    completed: number;
+    latestCreatedAt: string | null;
+  }> => {
+    const { data, error } = await supabase
+      .from('questionnaires')
+      .select('status,created_at')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    let drafts = 0;
+    let completed = 0;
+    for (const row of (data ?? []) as Array<{ status: string }>) {
+      if (row.status === 'completed') completed += 1;
+      else drafts += 1;
+    }
+    const latestCreatedAt = (data?.[0] as { created_at?: string } | undefined)?.created_at ?? null;
+    return { total: (data?.length ?? 0), drafts, completed, latestCreatedAt };
+  },
+  /**
+   * Server-side filter by template_ids — used by the certificates tab to find
+   * inspections that reference a cert type (via their template's required_cert_types).
+   */
+  listByTemplateIds: async (templateIds: string[]): Promise<Questionnaire[]> => {
+    if (templateIds.length === 0) return [];
+    const { data, error } = await supabase
+      .from('questionnaires')
+      .select('*')
+      .in('template_id', templateIds)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data ?? [];
+  },
 };
 
 // -------- Answers --------

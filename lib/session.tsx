@@ -3,6 +3,7 @@ import type { Session } from '@supabase/supabase-js';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { supabase } from './supabase';
+import { purgeUserScopedStorage } from './storage-purge';
 import type { AppUser } from '../types/models';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -43,14 +44,25 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    // Track the last authenticated user id so we can detect account switches
+    // on a shared device and purge the previous user's draft/offline data
+    // before the new user starts writing.
+    let lastUserId: string | null = null;
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) {
+        lastUserId = data.session.user.id;
         void loadUser(data.session);
       } else {
         setState({ status: 'signedOut' });
       }
     });
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      const nextUserId = session?.user?.id ?? null;
+      if (event === 'SIGNED_OUT' || (lastUserId && nextUserId && nextUserId !== lastUserId)) {
+        // Sign-out or account switch — drop anything keyed to the previous user.
+        void purgeUserScopedStorage();
+      }
+      lastUserId = nextUserId;
       if (session) {
         void loadUser(session);
       } else {

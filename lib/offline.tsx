@@ -152,7 +152,14 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
   >(
     async (payload) => {
       const ops = await readQueue();
-      let merged = { ...payload };
+      // If the patch marks the questionnaire completed and no completed_at
+      // was supplied, stamp one now. Otherwise a flush that lands hours later
+      // would mark the row completed with a null timestamp and break audit.
+      const stamped: typeof payload =
+        payload.status === 'completed' && !payload.completed_at
+          ? { ...payload, completed_at: new Date().toISOString() }
+          : payload;
+      let merged = { ...stamped };
       const filtered: QueueOp[] = [];
       for (const op of ops) {
         if (op.kind === 'questionnaire_update' && op.payload.id === payload.id) {

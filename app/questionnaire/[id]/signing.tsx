@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
@@ -21,7 +21,7 @@ import {
 } from '../../../lib/services';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import { uploadSignature } from '../../../lib/signatures';
-import { blobToDataUrl } from '../../../lib/blob';
+import { getStorageImageDataUrl } from '../../../lib/imageUrl';
 import { theme } from '../../../lib/theme';
 import type {
   Answer,
@@ -64,12 +64,23 @@ export default function SigningScreen() {
   const user = state.status === 'signedIn' ? state.user : null;
   const expertDefaultName = user ? `${user.first_name} ${user.last_name}`.trim() : 'ექსპერტი';
 
+  // Cancellation token: invalidate any in-flight load() when the screen blurs
+  // so late-returning fetches can't clobber state touched on the next focus
+  // (e.g. a signature the user just added).
+  const loadCtrlRef = useRef<{ cancelled: boolean }>({ cancelled: false });
+
   const load = useCallback(async () => {
     if (!id) return;
+    loadCtrlRef.current.cancelled = true;
+    const ctrl = { cancelled: false };
+    loadCtrlRef.current = ctrl;
+
     const q = await questionnairesApi.getById(id).catch(() => null);
+    if (ctrl.cancelled) return;
     setQuestionnaire(q);
     if (!q) return;
     const t = await templatesApi.getById(q.template_id).catch(() => null);
+    if (ctrl.cancelled) return;
     setTemplate(t);
     const [proj, qs, ans, ps, sigs, cs] = await Promise.all([
       projectsApi.getById(q.project_id).catch(() => null),
@@ -79,6 +90,7 @@ export default function SigningScreen() {
       signaturesApi.list(q.id).catch(() => []),
       certificatesApi.list().catch(() => []),
     ]);
+    if (ctrl.cancelled) return;
     setProject(proj);
     setQuestions(qs);
     setAnswers(ans);
@@ -105,6 +117,7 @@ export default function SigningScreen() {
         if (ps2.length > 0) photoMap[a.id] = ps2;
       }),
     );
+    if (ctrl.cancelled) return;
     setPhotosByAnswer(photoMap);
 
     // Load sig image previews
@@ -112,20 +125,22 @@ export default function SigningScreen() {
     await Promise.all(
       sigs.map(async s => {
         if (!s.signature_png_url) return;
-        try {
-          const blob = await storageApi.download(STORAGE_BUCKETS.signatures, s.signature_png_url);
-          sigMap[s.signer_role] = await blobToDataUrl(blob);
-        } catch {
-          sigMap[s.signer_role] = storageApi.publicUrl(STORAGE_BUCKETS.signatures, s.signature_png_url);
-        }
+        sigMap[s.signer_role] = await getStorageImageDataUrl(
+          STORAGE_BUCKETS.signatures,
+          s.signature_png_url,
+        );
       }),
     );
+    if (ctrl.cancelled) return;
     setSigImages(sigMap);
   }, [id]);
 
   useFocusEffect(
     useCallback(() => {
       void load();
+      return () => {
+        loadCtrlRef.current.cancelled = true;
+      };
     }, [load]),
   );
 
@@ -139,13 +154,8 @@ export default function SigningScreen() {
       return;
     }
     (async () => {
-      try {
-        const blob = await storageApi.download(STORAGE_BUCKETS.signatures, url);
-        const dataUrl = await blobToDataUrl(blob);
-        if (!cancelled) setExpertSigUrl(dataUrl);
-      } catch {
-        if (!cancelled) setExpertSigUrl(storageApi.publicUrl(STORAGE_BUCKETS.signatures, url));
-      }
+      const dataUrl = await getStorageImageDataUrl(STORAGE_BUCKETS.signatures, url);
+      if (!cancelled) setExpertSigUrl(dataUrl);
     })();
     return () => {
       cancelled = true;
@@ -211,19 +221,11 @@ export default function SigningScreen() {
         person_name: signer.full_name,
       }));
       setExistingSigs(prev => [...prev.filter(s => s.signer_role !== role), saved]);
-      try {
-        const blob = await storageApi.download(
-          STORAGE_BUCKETS.signatures,
-          signer.signature_png_url,
-        );
-        const dataUrl = await blobToDataUrl(blob);
-        setSigImages(prev => ({ ...prev, [role]: dataUrl }));
-      } catch {
-        setSigImages(prev => ({
-          ...prev,
-          [role]: storageApi.publicUrl(STORAGE_BUCKETS.signatures, signer.signature_png_url!),
-        }));
-      }
+      const dataUrl = await getStorageImageDataUrl(
+        STORAGE_BUCKETS.signatures,
+        signer.signature_png_url,
+      );
+      setSigImages(prev => ({ ...prev, [role]: dataUrl }));
       toast.success('ავტომატურად შევსებულია');
     } catch (e: any) {
       toast.error(e?.message ?? 'შეცდომა');
@@ -342,18 +344,10 @@ export default function SigningScreen() {
       // Inline expert signature into a synthetic SignatureRecord for the PDF
       let expertDataUrl = expertSigUrl;
       if (!expertDataUrl && user.saved_signature_url) {
-        try {
-          const blob = await storageApi.download(
-            STORAGE_BUCKETS.signatures,
-            user.saved_signature_url,
-          );
-          expertDataUrl = await blobToDataUrl(blob);
-        } catch {
-          expertDataUrl = storageApi.publicUrl(
-            STORAGE_BUCKETS.signatures,
-            user.saved_signature_url,
-          );
-        }
+        expertDataUrl = await getStorageImageDataUrl(
+          STORAGE_BUCKETS.signatures,
+          user.saved_signature_url,
+        );
       }
       const expertRec: SignatureRecord = {
         id: 'expert-auto',
@@ -374,21 +368,13 @@ export default function SigningScreen() {
           .map(async s => {
             if (s.status === 'not_present' || !s.signature_png_url) return s;
             if (s.signature_png_url.startsWith('data:')) return s;
-            try {
-              const blob = await storageApi.download(
+            return {
+              ...s,
+              signature_png_url: await getStorageImageDataUrl(
                 STORAGE_BUCKETS.signatures,
                 s.signature_png_url,
-              );
-              return { ...s, signature_png_url: await blobToDataUrl(blob) };
-            } catch {
-              return {
-                ...s,
-                signature_png_url: storageApi.publicUrl(
-                  STORAGE_BUCKETS.signatures,
-                  s.signature_png_url,
-                ),
-              };
-            }
+              ),
+            };
           }),
       );
       const sigsForPdf = [expertRec, ...otherSigs];
@@ -398,20 +384,13 @@ export default function SigningScreen() {
       await Promise.all(
         Object.entries(photosByAnswer).map(async ([answerId, photos]) => {
           photosForPdf[answerId] = await Promise.all(
-            photos.map(async p => {
-              try {
-                const blob = await storageApi.download(
-                  STORAGE_BUCKETS.answerPhotos,
-                  p.storage_path,
-                );
-                return { ...p, storage_path: await blobToDataUrl(blob) };
-              } catch {
-                return {
-                  ...p,
-                  storage_path: storageApi.publicUrl(STORAGE_BUCKETS.answerPhotos, p.storage_path),
-                };
-              }
-            }),
+            photos.map(async p => ({
+              ...p,
+              storage_path: await getStorageImageDataUrl(
+                STORAGE_BUCKETS.answerPhotos,
+                p.storage_path,
+              ),
+            })),
           );
         }),
       );
@@ -424,15 +403,10 @@ export default function SigningScreen() {
         if (!cert) continue;
         let fileDataUrl: string | undefined;
         if (cert.file_url) {
-          try {
-            const blob = await storageApi.download(
-              STORAGE_BUCKETS.certificates,
-              cert.file_url,
-            );
-            fileDataUrl = await blobToDataUrl(blob);
-          } catch {
-            fileDataUrl = storageApi.publicUrl(STORAGE_BUCKETS.certificates, cert.file_url);
-          }
+          fileDataUrl = await getStorageImageDataUrl(
+            STORAGE_BUCKETS.certificates,
+            cert.file_url,
+          );
         }
         attachedCerts.push({ ...cert, file_data_url: fileDataUrl });
       }

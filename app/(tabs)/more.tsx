@@ -13,12 +13,17 @@ import {
   templatesApi,
 } from '../../lib/services';
 import { theme } from '../../lib/theme';
-import type { Certificate, Project, Questionnaire, Template } from '../../types/models';
+import type { Certificate, Project, Template } from '../../types/models';
 
 export default function MoreScreen() {
   const { state, signOut } = useSession();
   const router = useRouter();
-  const [history, setHistory] = useState<Questionnaire[]>([]);
+  const [counts, setCounts] = useState<{ total: number; drafts: number; completed: number; latestCreatedAt: string | null }>({
+    total: 0,
+    drafts: 0,
+    completed: 0,
+    latestCreatedAt: null,
+  });
   const [certs, setCerts] = useState<Certificate[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -26,13 +31,15 @@ export default function MoreScreen() {
   useFocusEffect(
     useCallback(() => {
       void (async () => {
-        const [h, c, t, p] = await Promise.all([
-          questionnairesApi.recent(500).catch(() => []),
+        const [cs, c, t, p] = await Promise.all([
+          questionnairesApi
+            .counts()
+            .catch(() => ({ total: 0, drafts: 0, completed: 0, latestCreatedAt: null })),
           certificatesApi.list().catch(() => []),
           templatesApi.list().catch(() => []),
           projectsApi.list().catch(() => []),
         ]);
-        setHistory(h);
+        setCounts(cs);
         setCerts(c);
         setTemplates(t);
         setProjects(p);
@@ -41,12 +48,11 @@ export default function MoreScreen() {
   );
 
   const user = state.status === 'signedIn' ? state.user : null;
-  const completed = history.filter(q => q.status === 'completed').length;
-  const drafts = history.filter(q => q.status === 'draft').length;
+  const completed = counts.completed;
+  const drafts = counts.drafts;
   const expiring = certs.filter(isExpiringSoon).length;
   const systemTpl = templates.filter(t => t.is_system).length;
   const initials = `${(user?.first_name?.[0] ?? '')}${(user?.last_name?.[0] ?? '')}`.trim() || '·';
-  const latest = history[0];
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top']}>
@@ -84,8 +90,8 @@ export default function MoreScreen() {
             icon="time"
             tint={theme.colors.accent}
             bg={theme.colors.accentSoft}
-            primary={`${history.length}`}
-            secondary={latest ? `ბოლო: ${relativeTime(latest.created_at)}` : 'ცარიელია'}
+            primary={`${counts.total}`}
+            secondary={counts.latestCreatedAt ? `ბოლო: ${relativeTime(counts.latestCreatedAt)}` : 'ცარიელია'}
             onPress={() => router.push('/history')}
           />
           <HubTile
