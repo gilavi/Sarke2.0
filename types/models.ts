@@ -113,6 +113,7 @@ export interface AnswerPhoto {
   answer_id: string;
   storage_path: string;
   caption: string | null;
+  created_at: string;
 }
 
 export type SignatureStatus = 'signed' | 'not_present';
