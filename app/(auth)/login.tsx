@@ -15,6 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useSession } from '../../lib/session';
+import { useToast } from '../../lib/toast';
 import { theme } from '../../lib/theme';
 import { Button, Card, Field, Input } from '../../components/ui';
 
@@ -88,6 +89,7 @@ export default function AuthScreen() {
 
 function ForgotPasswordModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { resetPassword } = useSession();
+  const toast = useToast();
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
@@ -104,7 +106,7 @@ function ForgotPasswordModal({ visible, onClose }: { visible: boolean; onClose: 
       await resetPassword(email.trim());
       setSent(true);
     } catch (e: any) {
-      Alert.alert('შეცდომა', friendlyError(e?.message));
+      toast.error(friendlyError(e?.message));
     } finally {
       setBusy(false);
     }

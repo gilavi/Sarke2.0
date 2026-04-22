@@ -8,6 +8,7 @@ import { Button, Field, Input, Screen } from '../../../components/ui';
 import { projectsApi, storageApi } from '../../../lib/services';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import { useToast } from '../../../lib/toast';
+import { blobToDataUrl } from '../../../lib/blob';
 import { theme } from '../../../lib/theme';
 import type { ProjectSigner, SignerRole } from '../../../types/models';
 import { SIGNER_ROLE_LABEL } from '../../../types/models';
@@ -272,15 +273,6 @@ function SignatureCaptureModal({
       </View>
     </Modal>
   );
-}
-
-function blobToDataUrl(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(String(reader.result ?? ''));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(blob);
-  });
 }
 
 const styles = StyleSheet.create({

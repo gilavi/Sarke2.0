@@ -29,6 +29,7 @@ const questionnaireKey = (qid: string) => `@offline:questionnaire:${qid}`;
 
 type OfflineContextValue = {
   isOnline: boolean;
+  netReady: boolean;
   pendingCount: number;
   enqueueAnswerUpsert: (payload: AnswerUpsertPayload) => Promise<void>;
   enqueueQuestionnaireUpdate: (payload: QuestionnaireUpdatePayload) => Promise<void>;
@@ -62,6 +63,7 @@ async function writeQueueRaw(ops: QueueOp[]): Promise<void> {
 
 export function OfflineProvider({ children }: { children: React.ReactNode }) {
   const [isOnline, setIsOnline] = useState(true);
+  const [netReady, setNetReady] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const flushing = useRef(false);
   const onlineRef = useRef(true);
@@ -107,10 +109,20 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     void readQueue().then((q) => setPendingCount(q.length));
+    // Seed current state once before subscribing, so the first render
+    // after `netReady` reflects reality instead of the `true` default.
+    void NetInfo.fetch().then((s) => {
+      const online = !!s.isConnected && s.isInternetReachable !== false;
+      onlineRef.current = online;
+      setIsOnline(online);
+      setNetReady(true);
+      if (online) void flush();
+    });
     const unsub = NetInfo.addEventListener((s) => {
       const online = !!s.isConnected && s.isInternetReachable !== false;
       onlineRef.current = online;
       setIsOnline(online);
+      setNetReady(true);
       if (online) void flush();
     });
     return () => unsub();
@@ -190,6 +202,7 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
 
   const value: OfflineContextValue = {
     isOnline,
+    netReady,
     pendingCount,
     enqueueAnswerUpsert,
     enqueueQuestionnaireUpdate,

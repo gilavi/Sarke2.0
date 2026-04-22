@@ -11,11 +11,16 @@ import type {
   Template,
 } from '../types/models';
 
-const throwIfError = <T>(res: { data: T | null; error: { message: string } | null }): T => {
+/**
+ * Narrow Supabase's wide `.select().single()` response to a concrete entity
+ * shape the callers declared. We deliberately type-assert here so API
+ * callers don't have to sprinkle `as unknown as T` at every call site.
+ */
+function throwIfError<T>(res: { data: unknown; error: { message: string } | null }): T {
   if (res.error) throw new Error(res.error.message);
   if (res.data == null) throw new Error('No data');
-  return res.data;
-};
+  return res.data as T;
+}
 
 // -------- Projects --------
 
@@ -28,10 +33,19 @@ export const projectsApi = {
     if (error) throw error;
     return data ?? [];
   },
-  create: async (args: { name: string; companyName?: string | null; address?: string | null }) => {
+  getById: async (id: string): Promise<Project | null> => {
+    const { data, error } = await supabase
+      .from('projects')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw error;
+    return (data as Project | null) ?? null;
+  },
+  create: async (args: { name: string; companyName?: string | null; address?: string | null }): Promise<Project> => {
     const user = (await supabase.auth.getUser()).data.user;
     if (!user) throw new Error('Not signed in');
-    return throwIfError(
+    return throwIfError<Project>(
       await supabase
         .from('projects')
         .insert({
@@ -44,8 +58,8 @@ export const projectsApi = {
         .single(),
     );
   },
-  update: async (id: string, patch: Partial<Pick<Project, 'name' | 'company_name' | 'address'>>) => {
-    return throwIfError(
+  update: async (id: string, patch: Partial<Pick<Project, 'name' | 'company_name' | 'address'>>): Promise<Project> => {
+    return throwIfError<Project>(
       await supabase.from('projects').update(patch).eq('id', id).select().single(),
     );
   },
@@ -61,8 +75,8 @@ export const projectsApi = {
     if (error) throw error;
     return data ?? [];
   },
-  upsertSigner: async (signer: Partial<ProjectSigner> & { project_id: string; role: ProjectSigner['role']; full_name: string }) => {
-    return throwIfError(
+  upsertSigner: async (signer: Partial<ProjectSigner> & { project_id: string; role: ProjectSigner['role']; full_name: string }): Promise<ProjectSigner> => {
+    return throwIfError<ProjectSigner>(
       await supabase
         .from('project_signers')
         .upsert(signer)
@@ -92,7 +106,7 @@ export const projectsApi = {
       const patch: Partial<ProjectSigner> = { signature_png_url: args.signature_png_url };
       if (args.phone !== undefined) patch.phone = args.phone;
       if (args.position !== undefined) patch.position = args.position;
-      return throwIfError(
+      return throwIfError<ProjectSigner>(
         await supabase
           .from('project_signers')
           .update(patch)
@@ -101,7 +115,7 @@ export const projectsApi = {
           .single(),
       );
     }
-    return throwIfError(
+    return throwIfError<ProjectSigner>(
       await supabase
         .from('project_signers')
         .insert({
@@ -147,6 +161,15 @@ export const templatesApi = {
     if (error) throw error;
     return data ?? [];
   },
+  getById: async (id: string): Promise<Template | null> => {
+    const { data, error } = await supabase
+      .from('templates')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw error;
+    return (data as Template | null) ?? null;
+  },
   questions: async (templateId: string): Promise<Question[]> => {
     const { data, error } = await supabase
       .from('questions')
@@ -171,6 +194,15 @@ export const questionnairesApi = {
     if (error) throw error;
     return data ?? [];
   },
+  getById: async (id: string): Promise<Questionnaire | null> => {
+    const { data, error } = await supabase
+      .from('questionnaires')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw error;
+    return (data as Questionnaire | null) ?? null;
+  },
   listByProject: async (projectId: string): Promise<Questionnaire[]> => {
     const { data, error } = await supabase
       .from('questionnaires')
@@ -180,10 +212,10 @@ export const questionnairesApi = {
     if (error) throw error;
     return data ?? [];
   },
-  create: async (args: { projectId: string; templateId: string; harnessName?: string }) => {
+  create: async (args: { projectId: string; templateId: string; harnessName?: string }): Promise<Questionnaire> => {
     const user = (await supabase.auth.getUser()).data.user;
     if (!user) throw new Error('Not signed in');
-    return throwIfError(
+    return throwIfError<Questionnaire>(
       await supabase
         .from('questionnaires')
         .insert({
@@ -197,8 +229,8 @@ export const questionnairesApi = {
         .single(),
     );
   },
-  update: async (q: Partial<Questionnaire> & { id: string }) => {
-    return throwIfError(
+  update: async (q: Partial<Questionnaire> & { id: string }): Promise<Questionnaire> => {
+    return throwIfError<Questionnaire>(
       await supabase.from('questionnaires').update(q).eq('id', q.id).select().single(),
     );
   },
@@ -226,8 +258,8 @@ export const answersApi = {
     if (error) throw error;
     return data ?? [];
   },
-  upsert: async (a: Partial<Answer> & { questionnaire_id: string; question_id: string }) => {
-    return throwIfError(
+  upsert: async (a: Partial<Answer> & { questionnaire_id: string; question_id: string }): Promise<Answer> => {
+    return throwIfError<Answer>(
       await supabase
         .from('answers')
         .upsert(a, { onConflict: 'questionnaire_id,question_id' })
@@ -243,8 +275,8 @@ export const answersApi = {
     if (error) throw error;
     return data ?? [];
   },
-  addPhoto: async (answerId: string, storagePath: string, caption?: string) => {
-    return throwIfError(
+  addPhoto: async (answerId: string, storagePath: string, caption?: string): Promise<AnswerPhoto> => {
+    return throwIfError<AnswerPhoto>(
       await supabase
         .from('answer_photos')
         .insert({ answer_id: answerId, storage_path: storagePath, caption: caption ?? null })
@@ -265,8 +297,8 @@ export const signaturesApi = {
     if (error) throw error;
     return data ?? [];
   },
-  upsert: async (s: Omit<SignatureRecord, 'id' | 'signed_at'> & { id?: string }) => {
-    return throwIfError(
+  upsert: async (s: Omit<SignatureRecord, 'id' | 'signed_at'> & { id?: string }): Promise<SignatureRecord> => {
+    return throwIfError<SignatureRecord>(
       await supabase
         .from('signatures')
         .upsert(
@@ -298,8 +330,8 @@ export const certificatesApi = {
     if (error) throw error;
     return data ?? [];
   },
-  upsert: async (c: Certificate) => {
-    return throwIfError(
+  upsert: async (c: Certificate): Promise<Certificate> => {
+    return throwIfError<Certificate>(
       await supabase.from('certificates').upsert(c).select().single(),
     );
   },

@@ -29,11 +29,12 @@ export default function StartTemplateScreen() {
   const [busy, setBusy] = useState(false);
 
   const refresh = useCallback(async () => {
-    const [all, ps] = await Promise.all([
-      templatesApi.list().catch(() => []),
+    if (!id) return;
+    const [t, ps] = await Promise.all([
+      templatesApi.getById(id).catch(() => null),
       projectsApi.list().catch(() => []),
     ]);
-    setTemplate(all.find(t => t.id === id) ?? null);
+    setTemplate(t);
     setProjects(ps);
     setSelected(prev => prev ?? ps[0]?.id ?? null);
   }, [id]);
@@ -51,7 +52,7 @@ export default function StartTemplateScreen() {
       const q = (await questionnairesApi.create({
         projectId: selected,
         templateId: template.id,
-      })) as unknown as Questionnaire;
+      }));
       router.replace(`/questionnaire/${q.id}` as any);
     } catch (e: any) {
       toast.error(e?.message ?? 'კითხვარი ვერ შეიქმნა');
@@ -184,7 +185,7 @@ function CreateProjectSheet({
         name: name.trim(),
         companyName: company.trim() || null,
         address: address.trim() || null,
-      })) as unknown as Project;
+      }));
       toast.success('პროექტი შეიქმნა');
       setName('');
       setCompany('');

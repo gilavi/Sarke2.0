@@ -25,6 +25,7 @@ import {
 } from '../../lib/services';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { useToast } from '../../lib/toast';
+import { blobToDataUrl } from '../../lib/blob';
 import { theme } from '../../lib/theme';
 import type { Project, ProjectSigner, Questionnaire, Template } from '../../types/models';
 import { SIGNER_ROLE_LABEL } from '../../types/models';
@@ -47,13 +48,13 @@ export default function ProjectDetail() {
 
   const load = useCallback(async () => {
     if (!id) return;
-    const [ps, s, q, t] = await Promise.all([
-      projectsApi.list().catch(() => []),
+    const [p, s, q, t] = await Promise.all([
+      projectsApi.getById(id).catch(() => null),
       projectsApi.signers(id).catch(() => []),
       questionnairesApi.listByProject(id).catch(() => []),
       templatesApi.list().catch(() => []),
     ]);
-    setProject(ps.find(p => p.id === id) ?? null);
+    setProject(p);
     setSigners(s);
     setQuestionnaires(q);
     setTemplates(t);
@@ -109,7 +110,7 @@ export default function ProjectDetail() {
           const q = (await questionnairesApi.create({
             projectId: id,
             templateId: t.id,
-          })) as unknown as Questionnaire;
+          }));
           router.push(`/questionnaire/${q.id}` as any);
         } catch (e: any) {
           toast.error(e?.message ?? 'შექმნა ვერ მოხერხდა');
@@ -406,7 +407,7 @@ function EditProjectSheet({
         name: name.trim(),
         company_name: company.trim() || null,
         address: address.trim() || null,
-      })) as unknown as Project;
+      }));
       onSaved(saved);
     } catch (e: any) {
       toast.error(e?.message ?? 'შენახვა ვერ მოხერხდა');
@@ -452,15 +453,6 @@ function EditProjectSheet({
       </View>
     </Modal>
   );
-}
-
-function blobToDataUrl(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(String(reader.result ?? ''));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(blob);
-  });
 }
 
 const styles = StyleSheet.create({

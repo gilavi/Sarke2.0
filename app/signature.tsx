@@ -9,6 +9,7 @@ import { useSession } from '../lib/session';
 import { useToast } from '../lib/toast';
 import { saveExpertSignature } from '../lib/signatures';
 import { storageApi } from '../lib/services';
+import { blobToDataUrl } from '../lib/blob';
 import { STORAGE_BUCKETS } from '../lib/supabase';
 import { theme } from '../lib/theme';
 
@@ -135,15 +136,6 @@ export default function SignatureSettingsScreen() {
       />
     </Screen>
   );
-}
-
-function blobToDataUrl(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(String(reader.result ?? ''));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(blob);
-  });
 }
 
 const styles = StyleSheet.create({

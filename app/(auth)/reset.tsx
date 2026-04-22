@@ -5,11 +5,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
+import { useSession } from '../../lib/session';
 import { Button, Card, ErrorText, Field, Input } from '../../components/ui';
 import { theme } from '../../lib/theme';
 
 export default function ResetPasswordScreen() {
   const router = useRouter();
+  const { signOut } = useSession();
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [busy, setBusy] = useState(false);
@@ -68,8 +70,13 @@ export default function ResetPasswordScreen() {
                     პაროლი შეცვლილია
                   </Text>
                   <Button
-                    title="გაგრძელება"
-                    onPress={() => router.replace('/(tabs)/home')}
+                    title="შესვლა"
+                    onPress={async () => {
+                      // End the temporary recovery session so the user signs
+                      // in fresh with the new password (no stale half-state).
+                      await signOut().catch(() => {});
+                      router.replace('/(auth)/login');
+                    }}
                   />
                 </View>
               ) : (

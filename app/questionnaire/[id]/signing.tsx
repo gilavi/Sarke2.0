@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
@@ -21,6 +21,7 @@ import {
 } from '../../../lib/services';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import { uploadSignature } from '../../../lib/signatures';
+import { blobToDataUrl } from '../../../lib/blob';
 import { theme } from '../../../lib/theme';
 import type {
   Answer,
@@ -65,24 +66,20 @@ export default function SigningScreen() {
 
   const load = useCallback(async () => {
     if (!id) return;
-    const [allQ, allT] = await Promise.all([
-      questionnairesApi.recent(500),
-      templatesApi.list(),
-    ]);
-    const q = allQ.find(x => x.id === id) ?? null;
+    const q = await questionnairesApi.getById(id).catch(() => null);
     setQuestionnaire(q);
     if (!q) return;
-    const t = allT.find(x => x.id === q.template_id) ?? null;
+    const t = await templatesApi.getById(q.template_id).catch(() => null);
     setTemplate(t);
-    const [allP, qs, ans, ps, sigs, cs] = await Promise.all([
-      projectsApi.list().catch(() => []),
+    const [proj, qs, ans, ps, sigs, cs] = await Promise.all([
+      projectsApi.getById(q.project_id).catch(() => null),
       t ? templatesApi.questions(t.id) : Promise.resolve([] as Question[]),
       answersApi.list(q.id).catch(() => []),
       projectsApi.signers(q.project_id).catch(() => []),
       signaturesApi.list(q.id).catch(() => []),
       certificatesApi.list().catch(() => []),
     ]);
-    setProject(allP.find(p => p.id === q.project_id) ?? null);
+    setProject(proj);
     setQuestions(qs);
     setAnswers(ans);
     setSigners(ps);
@@ -132,35 +129,28 @@ export default function SigningScreen() {
     }, [load]),
   );
 
-  // Fetch the expert's saved-signature preview when user changes
-  useFocusEffect(
-    useCallback(() => {
-      let cancelled = false;
-      (async () => {
-        if (!user?.saved_signature_url) {
-          setExpertSigUrl(null);
-          return;
-        }
-        try {
-          const blob = await storageApi.download(
-            STORAGE_BUCKETS.signatures,
-            user.saved_signature_url,
-          );
-          const url = await blobToDataUrl(blob);
-          if (!cancelled) setExpertSigUrl(url);
-        } catch {
-          if (!cancelled) {
-            setExpertSigUrl(
-              storageApi.publicUrl(STORAGE_BUCKETS.signatures, user.saved_signature_url!),
-            );
-          }
-        }
-      })();
-      return () => {
-        cancelled = true;
-      };
-    }, [user?.saved_signature_url]),
-  );
+  // Preview expert saved signature (reacts only when the URL changes, not on
+  // every focus — avoids the re-download the old twin useFocusEffect caused).
+  useEffect(() => {
+    let cancelled = false;
+    const url = user?.saved_signature_url;
+    if (!url) {
+      setExpertSigUrl(null);
+      return;
+    }
+    (async () => {
+      try {
+        const blob = await storageApi.download(STORAGE_BUCKETS.signatures, url);
+        const dataUrl = await blobToDataUrl(blob);
+        if (!cancelled) setExpertSigUrl(dataUrl);
+      } catch {
+        if (!cancelled) setExpertSigUrl(storageApi.publicUrl(STORAGE_BUCKETS.signatures, url));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.saved_signature_url]);
 
   const templateRoles = template?.required_signer_roles ?? [];
   const otherRoles = useMemo(
@@ -173,7 +163,6 @@ export default function SigningScreen() {
   const signedRoles = new Set(
     existingSigs.filter(s => s.status === 'signed').map(s => s.signer_role),
   );
-  const addressedRoles = new Set(existingSigs.map(s => s.signer_role));
 
   // Expert auto-counts when saved_signature_url is set.
   const totalRequired = (expertRequired ? 1 : 0) + otherRoles.length;
@@ -220,7 +209,7 @@ export default function SigningScreen() {
         signature_png_url: signer.signature_png_url,
         status: 'signed',
         person_name: signer.full_name,
-      })) as unknown as SignatureRecord;
+      }));
       setExistingSigs(prev => [...prev.filter(s => s.signer_role !== role), saved]);
       try {
         const blob = await storageApi.download(
@@ -257,7 +246,7 @@ export default function SigningScreen() {
         signature_png_url: path,
         status: 'signed',
         person_name: personName,
-      })) as unknown as SignatureRecord;
+      }));
       setExistingSigs(prev => [...prev.filter(s => s.signer_role !== role), saved]);
       setSigImages(prev => ({ ...prev, [role]: `data:image/png;base64,${base64}` }));
 
@@ -291,7 +280,7 @@ export default function SigningScreen() {
         signature_png_url: null,
         status: 'not_present',
         person_name: personName,
-      })) as unknown as SignatureRecord;
+      }));
       setExistingSigs(prev => [...prev.filter(s => s.signer_role !== role), saved]);
       setSigImages(prev => {
         const copy = { ...prev };
@@ -792,15 +781,6 @@ function RoleCard({
       )}
     </View>
   );
-}
-
-function blobToDataUrl(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(String(reader.result ?? ''));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(blob);
-  });
 }
 
 const styles = StyleSheet.create({

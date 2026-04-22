@@ -87,17 +87,13 @@ export default function QuestionnaireWizard() {
     if (!id) return;
     setLoading(true);
     try {
-      const [allQ, allT] = await Promise.all([
-        questionnairesApi.recent(500),
-        templatesApi.list(),
-      ]);
-      const q = allQ.find(x => x.id === id);
+      const q = await questionnairesApi.getById(id);
       if (!q) throw new Error('არ მოიძებნა');
       // Fold any locally-queued questionnaire patch over the remote row.
       const localPatch = await offline.hydrateQuestionnairePatch(q.id);
       const qMerged: Questionnaire = { ...q, ...(localPatch ?? {}) };
       setQuestionnaire(qMerged);
-      const t = allT.find(x => x.id === qMerged.template_id) ?? null;
+      const t = await templatesApi.getById(qMerged.template_id);
       setTemplate(t);
       setConclusion(qMerged.conclusion_text ?? '');
       setIsSafe(qMerged.is_safe_for_use ?? null);
@@ -105,7 +101,11 @@ export default function QuestionnaireWizard() {
       if (t) {
         const qs = await templatesApi.questions(t.id);
         setQuestions(qs);
-        const existing = await answersApi.list(qMerged.id).catch(() => [] as Answer[]);
+        let remoteOk = true;
+        const existing = await answersApi.list(qMerged.id).catch(() => {
+          remoteOk = false;
+          return [] as Answer[];
+        });
         const map: Record<string, Answer> = {};
         const pmap: Record<string, AnswerPhoto[]> = {};
         for (const a of existing) {
@@ -119,7 +119,12 @@ export default function QuestionnaireWizard() {
         }
         setAnswers(map);
         setPhotos(pmap);
-        await offline.cacheAnswers(qMerged.id, map);
+        // Only re-cache when the remote fetch succeeded; otherwise keep
+        // whatever the cache already had so we don't clobber unsynced edits
+        // with an empty merge.
+        if (remoteOk) {
+          await offline.cacheAnswers(qMerged.id, map);
+        }
       }
       setCerts(await certificatesApi.list().catch(() => []));
       // Resume where the user left off
@@ -162,10 +167,16 @@ export default function QuestionnaireWizard() {
     }, [load]),
   );
 
-  const requiredCertTypes = template?.required_cert_types ?? [];
+  // Stable reference: re-join only when the underlying array changes, not on
+  // every render. The memoized steps below depend on this key.
+  const requiredCertTypesKey = (template?.required_cert_types ?? []).join(',');
+  const requiredCertTypes = useMemo(
+    () => template?.required_cert_types ?? [],
+    [requiredCertTypesKey],
+  );
   const steps = useMemo(
     () => buildSteps(questions, harnessRowCount, requiredCertTypes),
-    [questions, harnessRowCount, requiredCertTypes.join(',')],
+    [questions, harnessRowCount, requiredCertTypes],
   );
   const step = steps[stepIndex];
 
@@ -234,10 +245,10 @@ export default function QuestionnaireWizard() {
           id: crypto.randomUUID(),
           questionnaire_id: questionnaire.id,
           question_id: question.id,
-        })) as unknown as Answer;
+        }));
         setAnswers(prev => ({ ...prev, [question.id]: answer as Answer }));
       }
-      const photo = (await answersApi.addPhoto(answer.id, path)) as unknown as AnswerPhoto;
+      const photo = (await answersApi.addPhoto(answer.id, path));
       const answerId = answer.id;
       setPhotos(prev => ({ ...prev, [answerId]: [...(prev[answerId] ?? []), photo] }));
       toast.success('ფოტო აიტვირთა');
@@ -807,7 +818,7 @@ function CertificatesStep({
         issued_at: new Date().toISOString().slice(0, 10),
         expires_at: null,
         file_url: path,
-      })) as unknown as Certificate;
+      }));
       onCertsChange([cert, ...certs.filter(c => c.id !== cert.id)]);
       toast.success('სერტიფიკატი აიტვირთა');
     } catch (e: any) {

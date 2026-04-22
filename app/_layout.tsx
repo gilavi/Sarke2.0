@@ -16,6 +16,12 @@ import { OfflineProvider } from '../lib/offline';
 import { OfflineBanner } from '../components/OfflineBanner';
 import { theme } from '../lib/theme';
 
+// Codes we've already tried to exchange. Prevents a double-exchange when both
+// `getInitialURL()` (cold start) and the `url` listener (warm app) fire for the
+// same recovery link — the second exchange would fail and replace the user's
+// session with an error.
+const exchangedCodes = new Set<string>();
+
 function AuthGate() {
   const { state } = useSession();
   const segments = useSegments();
@@ -30,6 +36,12 @@ function AuthGate() {
       const code = (parsed.queryParams?.code as string | undefined) ?? undefined;
       const isReset = parsed.path === 'reset' || parsed.hostname === 'reset';
       if (!isReset || !code) return;
+      if (exchangedCodes.has(code)) {
+        // Already handled this code in this session — just route.
+        router.replace('/(auth)/reset');
+        return;
+      }
+      exchangedCodes.add(code);
       try {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (error) throw error;

@@ -110,22 +110,35 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         if (state.status !== 'signedIn') throw new Error('Not signed in');
         const authUser = state.session.user;
         const meta = (authUser.user_metadata ?? {}) as Record<string, unknown>;
-        // Upsert so acceptance succeeds even if the public.users row is missing
-        // (e.g. user predates the handle_new_user trigger).
-        const { error } = await supabase
-          .from('users')
-          .upsert(
-            {
-              id: authUser.id,
-              email: authUser.email ?? state.user?.email ?? '',
-              first_name: state.user?.first_name ?? (meta.first_name as string) ?? '',
-              last_name: state.user?.last_name ?? (meta.last_name as string) ?? '',
+        // If the row exists, just patch the TC columns — do NOT overwrite
+        // first_name / last_name with blanks. Upsert would happily clobber
+        // existing NOT NULL names when we only know empty fallbacks.
+        if (state.user) {
+          const { error } = await supabase
+            .from('users')
+            .update({
               tc_accepted_version: version,
               tc_accepted_at: new Date().toISOString(),
-            },
-            { onConflict: 'id' },
-          );
-        if (error) throw error;
+            })
+            .eq('id', authUser.id);
+          if (error) throw error;
+        } else {
+          // Row missing (trigger didn't run). Best-effort insert with whatever
+          // names we can recover from auth metadata. Fall back to the email
+          // local-part so NOT NULL columns always get a non-empty value.
+          const emailLocal = (authUser.email ?? '').split('@')[0] || 'user';
+          const firstName = (meta.first_name as string) || emailLocal;
+          const lastName = (meta.last_name as string) || '';
+          const { error } = await supabase.from('users').insert({
+            id: authUser.id,
+            email: authUser.email ?? '',
+            first_name: firstName,
+            last_name: lastName,
+            tc_accepted_version: version,
+            tc_accepted_at: new Date().toISOString(),
+          });
+          if (error) throw error;
+        }
         await loadUser(state.session);
       },
     }),

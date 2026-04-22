@@ -4,8 +4,11 @@ import { useOffline } from '../lib/offline';
 import { theme } from '../lib/theme';
 
 export function OfflineBanner() {
-  const { isOnline, pendingCount } = useOffline();
+  const { isOnline, netReady, pendingCount } = useOffline();
   const insets = useSafeAreaInsets();
+  // Don't show anything until NetInfo has reported at least once — prevents
+  // the "online → offline" flash on cold start when the device has no signal.
+  if (!netReady) return null;
   if (isOnline && pendingCount === 0) return null;
 
   const offline = !isOnline;
