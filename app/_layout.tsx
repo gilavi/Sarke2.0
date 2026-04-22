@@ -9,6 +9,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ActionSheetProvider } from '@expo/react-native-action-sheet';
 import { SessionProvider, useSession } from '../lib/session';
+import { flushPendingSignatures } from '../lib/signatures';
 import { TERMS_VERSION } from '../lib/terms';
 import { ToastProvider } from '../lib/toast';
 import { OfflineProvider } from '../lib/offline';
@@ -58,6 +59,8 @@ function AuthGate() {
       } else if (!needsTerms && (inAuth || inTerms)) {
         router.replace('/(tabs)/home');
       }
+      // Opportunistic retry of any signature uploads that failed earlier.
+      void flushPendingSignatures().catch(() => {});
     }
   }, [state, segments]);
 

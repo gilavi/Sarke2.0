@@ -181,6 +181,8 @@ export default function SigningScreen() {
         phone: signer.phone,
         position: signer.position,
         signature_png_url: signer.signature_png_url,
+        status: 'signed',
+        person_name: null,
       })) as unknown as SignatureRecord;
       setExistingSigs(prev => [...prev.filter(s => s.signer_role !== role), saved]);
       // Fetch preview
@@ -218,6 +220,8 @@ export default function SigningScreen() {
         phone: null,
         position: null,
         signature_png_url: path,
+        status: 'signed',
+        person_name: null,
       })) as unknown as SignatureRecord;
       setExistingSigs(prev => [...prev.filter(s => s.signer_role !== role), saved]);
       setSigImages(prev => ({ ...prev, [role]: dataUrl }));
@@ -282,6 +286,12 @@ export default function SigningScreen() {
 
   const generate = async () => {
     if (!questionnaire || !template || !project) return;
+    // Require the expert's saved signature before any PDF can be generated.
+    if (!user?.saved_signature_url) {
+      router.push('/signature?first=1' as any);
+      toast.info('ჯერ დახაზეთ თქვენი ხელმოწერა');
+      return;
+    }
     setBusy(true);
     try {
       const sigsForPdf = await Promise.all(

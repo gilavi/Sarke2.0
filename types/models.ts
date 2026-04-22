@@ -25,6 +25,7 @@ export interface AppUser {
   created_at: string;
   tc_accepted_version: string | null;
   tc_accepted_at: string | null;
+  saved_signature_url: string | null;
 }
 
 export interface Certificate {
@@ -114,6 +115,8 @@ export interface AnswerPhoto {
   caption: string | null;
 }
 
+export type SignatureStatus = 'signed' | 'not_present';
+
 export interface SignatureRecord {
   id: string;
   questionnaire_id: string;
@@ -121,6 +124,10 @@ export interface SignatureRecord {
   full_name: string;
   phone: string | null;
   position: string | null;
-  signature_png_url: string;
+  /** NULL when status === 'not_present'. */
+  signature_png_url: string | null;
   signed_at: string;
+  status: SignatureStatus;
+  /** Ad-hoc name for signers not tied to a project_signers row. */
+  person_name: string | null;
 }

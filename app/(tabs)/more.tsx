@@ -119,6 +119,23 @@ export default function MoreScreen() {
         </View>
 
         <Pressable
+          onPress={() => router.push('/signature' as any)}
+          style={{
+            flexDirection: 'row',
+            gap: 8,
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingVertical: 12,
+            marginHorizontal: 16,
+          }}
+        >
+          <Ionicons name="create-outline" size={16} color={theme.colors.inkSoft} />
+          <Text style={{ color: theme.colors.inkSoft, fontWeight: '600' }}>
+            {user?.saved_signature_url ? 'ჩემი ხელმოწერა' : 'დახაზეთ თქვენი ხელმოწერა'}
+          </Text>
+        </Pressable>
+
+        <Pressable
           onPress={() => router.push('/terms?mode=view' as any)}
           style={{
             flexDirection: 'row',
