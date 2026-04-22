@@ -537,12 +537,19 @@ export default function SigningScreen() {
               {otherRoles.map(role => {
                 const sig = existingSigs.find(s => s.signer_role === role);
                 const img = sigImages[role];
-                const roster = signers.find(
-                  s =>
-                    s.role === role &&
-                    s.full_name.trim() === (nameInputs[role] ?? '').trim() &&
-                    s.signature_png_url,
-                );
+                const typed = (nameInputs[role] ?? '').trim().toLowerCase();
+                const roster = typed
+                  ? signers.find(
+                      s =>
+                        s.role === role &&
+                        s.full_name.trim().toLowerCase() === typed &&
+                        s.signature_png_url,
+                    )
+                  : undefined;
+                const autoFilled =
+                  sig?.status === 'signed' &&
+                  !!roster &&
+                  sig.signature_png_url === roster.signature_png_url;
                 return (
                   <RoleCard
                     key={role}
@@ -552,6 +559,7 @@ export default function SigningScreen() {
                     nameInput={nameInputs[role] ?? ''}
                     onNameChange={n => setName(role, n)}
                     hasAutoFillAvailable={!!roster}
+                    autoFilled={autoFilled}
                     onSign={() => startSign(role)}
                     onMarkNotPresent={() => markNotPresent(role)}
                     onClear={() => clearRole(role)}
@@ -670,6 +678,7 @@ function RoleCard({
   nameInput,
   onNameChange,
   hasAutoFillAvailable,
+  autoFilled,
   onSign,
   onMarkNotPresent,
   onClear,
@@ -680,6 +689,7 @@ function RoleCard({
   nameInput: string;
   onNameChange: (name: string) => void;
   hasAutoFillAvailable: boolean;
+  autoFilled: boolean;
   onSign: () => void;
   onMarkNotPresent: () => void;
   onClear: () => void;
@@ -725,9 +735,19 @@ function RoleCard({
 
       {/* Signature preview when signed */}
       {state === 'signed' && signatureImg ? (
-        <View style={styles.sigThumb}>
-          <Image source={{ uri: signatureImg }} style={styles.sigThumbImg} resizeMode="contain" />
-        </View>
+        <>
+          <View style={styles.sigThumb}>
+            <Image source={{ uri: signatureImg }} style={styles.sigThumbImg} resizeMode="contain" />
+          </View>
+          {autoFilled ? (
+            <View style={styles.autoFilledChip}>
+              <Ionicons name="flash" size={11} color={theme.colors.accent} />
+              <Text style={{ color: theme.colors.accent, fontSize: 11, fontWeight: '700' }}>
+                ავტომატურად შევსებული — გადახაზვა ›
+              </Text>
+            </View>
+          ) : null}
+        </>
       ) : null}
 
       {/* Name input only when empty — baked name when signed */}
@@ -869,6 +889,17 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 14,
     color: theme.colors.ink,
+  },
+  autoFilledChip: {
+    marginTop: 8,
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: theme.colors.accentSoft,
   },
   notPresentChip: {
     backgroundColor: theme.colors.subtleSurface,
