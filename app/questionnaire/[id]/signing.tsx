@@ -1,13 +1,13 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
-import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useActionSheet } from '@expo/react-native-action-sheet';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-import SignatureScreen, { type SignatureViewRef } from 'react-native-signature-canvas';
 import { Button, Card, Screen } from '../../../components/ui';
+import { SignatureCanvas } from '../../../components/SignatureCanvas';
 import { useToast } from '../../../lib/toast';
 import { useSession } from '../../../lib/session';
 import {
@@ -20,6 +20,7 @@ import {
   templatesApi,
 } from '../../../lib/services';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
+import { uploadSignature } from '../../../lib/signatures';
 import { theme } from '../../../lib/theme';
 import type {
   Answer,
@@ -51,11 +52,16 @@ export default function SigningScreen() {
   const [signers, setSigners] = useState<ProjectSigner[]>([]);
   const [existingSigs, setExistingSigs] = useState<SignatureRecord[]>([]);
   const [certs, setCerts] = useState<Certificate[]>([]);
-  const [selectedCerts, setSelectedCerts] = useState<Record<string, string>>({}); // certType -> cert.id
+  const [selectedCerts, setSelectedCerts] = useState<Record<string, string>>({});
   const [photosByAnswer, setPhotosByAnswer] = useState<Record<string, AnswerPhoto[]>>({});
   const [busy, setBusy] = useState(false);
-  const [capture, setCapture] = useState<{ role: SignerRole; presetName: string } | null>(null);
-  const [sigImages, setSigImages] = useState<Record<string, string>>({}); // signer_role -> data URL preview
+  const [expertSigUrl, setExpertSigUrl] = useState<string | null>(null);
+  const [sigImages, setSigImages] = useState<Record<string, string>>({}); // role -> data URL
+  const [nameInputs, setNameInputs] = useState<Record<string, string>>({}); // role -> person name
+  const [capture, setCapture] = useState<{ role: SignerRole; personName: string } | null>(null);
+
+  const user = state.status === 'signedIn' ? state.user : null;
+  const expertDefaultName = user ? `${user.first_name} ${user.last_name}`.trim() : 'ექსპერტი';
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -82,13 +88,19 @@ export default function SigningScreen() {
     setSigners(ps);
     setExistingSigs(sigs);
     setCerts(cs);
-    // Auto-select first matching cert for each required type
+
     const initialSelected: Record<string, string> = {};
     for (const type of t?.required_cert_types ?? []) {
       const m = cs.find(c => c.type === type);
       if (m) initialSelected[type] = m.id;
     }
     setSelectedCerts(initialSelected);
+
+    // Pre-fill name inputs from existing sigs
+    const names: Record<string, string> = {};
+    for (const s of sigs) names[s.signer_role] = s.full_name ?? '';
+    setNameInputs(prev => ({ ...prev, ...names }));
+
     const photoMap: Record<string, AnswerPhoto[]> = {};
     await Promise.all(
       ans.map(async a => {
@@ -97,7 +109,8 @@ export default function SigningScreen() {
       }),
     );
     setPhotosByAnswer(photoMap);
-    // Fetch signature previews
+
+    // Load sig image previews
     const sigMap: Record<string, string> = {};
     await Promise.all(
       sigs.map(async s => {
@@ -119,56 +132,80 @@ export default function SigningScreen() {
     }, [load]),
   );
 
-  const requiredRoles = template?.required_signer_roles ?? [];
-  const requiredCertTypes = template?.required_cert_types ?? [];
-  const user = state.status === 'signedIn' ? state.user : null;
-  const expertDefaultName = user ? `${user.first_name} ${user.last_name}`.trim() : '';
-
-  const signersByRole = useMemo(() => {
-    const m: Record<string, ProjectSigner[]> = {};
-    for (const s of signers) {
-      (m[s.role] ??= []).push(s);
-    }
-    return m;
-  }, [signers]);
-
-  const pickSignerForRole = (role: SignerRole) => {
-    const options: string[] = [];
-    const actions: (() => void)[] = [];
-
-    const roster = signersByRole[role] ?? [];
-    for (const s of roster) {
-      const label = s.signature_png_url ? `${s.full_name} · შენახული ხელმოწერით` : s.full_name;
-      options.push(label);
-      actions.push(() => {
-        if (s.signature_png_url) {
-          void applyRoster(role, s);
-        } else {
-          setCapture({ role, presetName: s.full_name });
+  // Fetch the expert's saved-signature preview when user changes
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      (async () => {
+        if (!user?.saved_signature_url) {
+          setExpertSigUrl(null);
+          return;
         }
-      });
+        try {
+          const blob = await storageApi.download(
+            STORAGE_BUCKETS.signatures,
+            user.saved_signature_url,
+          );
+          const url = await blobToDataUrl(blob);
+          if (!cancelled) setExpertSigUrl(url);
+        } catch {
+          if (!cancelled) {
+            setExpertSigUrl(
+              storageApi.publicUrl(STORAGE_BUCKETS.signatures, user.saved_signature_url!),
+            );
+          }
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, [user?.saved_signature_url]),
+  );
+
+  const templateRoles = template?.required_signer_roles ?? [];
+  const otherRoles = useMemo(
+    () => templateRoles.filter(r => r !== 'expert'),
+    [templateRoles],
+  );
+  const expertRequired = templateRoles.includes('expert');
+  const requiredCertTypes = template?.required_cert_types ?? [];
+
+  const signedRoles = new Set(
+    existingSigs.filter(s => s.status === 'signed').map(s => s.signer_role),
+  );
+  const addressedRoles = new Set(existingSigs.map(s => s.signer_role));
+
+  // Expert auto-counts when saved_signature_url is set.
+  const totalRequired = (expertRequired ? 1 : 0) + otherRoles.length;
+  const totalSigned =
+    (expertRequired && user?.saved_signature_url ? 1 : 0) +
+    otherRoles.filter(r => signedRoles.has(r)).length;
+
+  // ----- Actions -----
+
+  const setName = (role: SignerRole, name: string) => {
+    setNameInputs(prev => ({ ...prev, [role]: name }));
+  };
+
+  const startSign = async (role: SignerRole) => {
+    const personName = (nameInputs[role] ?? '').trim();
+    if (!personName) {
+      toast.error('ჯერ შეიყვანე სახელი და გვარი');
+      return;
     }
 
-    // Always offer "draw new"
-    options.push('ახალი ხელმოწერის დახატვა');
-    actions.push(() => {
-      const preset =
-        role === 'expert' ? expertDefaultName : '';
-      setCapture({ role, presetName: preset });
-    });
-    options.push('გაუქმება');
+    // Auto-fill: look for an existing sig for the same person_name in this project's roster
+    if (project) {
+      const match = signers.find(
+        s => s.role === role && s.full_name.trim() === personName && s.signature_png_url,
+      );
+      if (match) {
+        void applyRoster(role, match);
+        return;
+      }
+    }
 
-    showActionSheetWithOptions(
-      {
-        title: SIGNER_ROLE_LABEL[role],
-        options,
-        cancelButtonIndex: options.length - 1,
-      },
-      idx => {
-        if (idx == null || idx === options.length - 1) return;
-        actions[idx]?.();
-      },
-    );
+    setCapture({ role, personName });
   };
 
   const applyRoster = async (role: SignerRole, signer: ProjectSigner) => {
@@ -182,12 +219,14 @@ export default function SigningScreen() {
         position: signer.position,
         signature_png_url: signer.signature_png_url,
         status: 'signed',
-        person_name: null,
+        person_name: signer.full_name,
       })) as unknown as SignatureRecord;
       setExistingSigs(prev => [...prev.filter(s => s.signer_role !== role), saved]);
-      // Fetch preview
       try {
-        const blob = await storageApi.download(STORAGE_BUCKETS.signatures, signer.signature_png_url);
+        const blob = await storageApi.download(
+          STORAGE_BUCKETS.signatures,
+          signer.signature_png_url,
+        );
         const dataUrl = await blobToDataUrl(blob);
         setSigImages(prev => ({ ...prev, [role]: dataUrl }));
       } catch {
@@ -196,58 +235,76 @@ export default function SigningScreen() {
           [role]: storageApi.publicUrl(STORAGE_BUCKETS.signatures, signer.signature_png_url!),
         }));
       }
-      toast.success('ხელმოწერა დამატებულია');
+      toast.success('ავტომატურად შევსებულია');
     } catch (e: any) {
       toast.error(e?.message ?? 'შეცდომა');
     }
   };
 
-  const onCaptured = async (role: SignerRole, base64Png: string, fullName: string) => {
-    if (!questionnaire) return;
+  const onCaptured = async (base64: string) => {
+    if (!capture || !questionnaire) return;
+    const { role, personName } = capture;
     setCapture(null);
     try {
-      const cleaned = base64Png.replace(/^data:image\/png;base64,/, '');
-      const dataUrl = `data:image/png;base64,${cleaned}`;
-      const res = await fetch(dataUrl);
-      const blob = await res.blob();
       const path = `${questionnaire.id}/${role}-${Date.now()}.png`;
-      await storageApi.upload(STORAGE_BUCKETS.signatures, path, blob, 'image/png');
-      const resolvedName = fullName || (role === 'expert' ? expertDefaultName : 'ხელმომწერი');
+      await uploadSignature(path, base64);
       const saved = (await signaturesApi.upsert({
         questionnaire_id: questionnaire.id,
         signer_role: role,
-        full_name: resolvedName,
+        full_name: personName,
         phone: null,
         position: null,
         signature_png_url: path,
         status: 'signed',
-        person_name: null,
+        person_name: personName,
       })) as unknown as SignatureRecord;
       setExistingSigs(prev => [...prev.filter(s => s.signer_role !== role), saved]);
-      setSigImages(prev => ({ ...prev, [role]: dataUrl }));
-      // Persist signature back onto the project roster so future questionnaires
-      // on this project pre-populate it (no more re-drawing every time).
+      setSigImages(prev => ({ ...prev, [role]: `data:image/png;base64,${base64}` }));
+
+      // Persist onto the project roster for future auto-fill
       try {
-        const updatedSigner = await projectsApi.saveRosterSignature({
+        await projectsApi.saveRosterSignature({
           project_id: questionnaire.project_id,
           role,
-          full_name: resolvedName,
+          full_name: personName,
           signature_png_url: path,
         });
-        setSigners(prev => {
-          const without = prev.filter(s => s.id !== updatedSigner.id);
-          return [...without, updatedSigner];
-        });
       } catch {
-        // Non-fatal: the questionnaire signature was saved; only the roster copy failed.
+        // non-fatal
       }
       toast.success('ხელმოწერა შენახულია');
     } catch (e: any) {
-      toast.error(`შენახვა ვერ მოხერხდა: ${e?.message ?? 'ქსელის შეცდომა'}`);
+      toast.error(e?.message ?? 'შენახვა ვერ მოხერხდა');
     }
   };
 
-  const removeSignature = async (role: SignerRole) => {
+  const markNotPresent = async (role: SignerRole) => {
+    if (!questionnaire) return;
+    const personName = (nameInputs[role] ?? '').trim() || null;
+    try {
+      const saved = (await signaturesApi.upsert({
+        questionnaire_id: questionnaire.id,
+        signer_role: role,
+        full_name: personName ?? '',
+        phone: null,
+        position: null,
+        signature_png_url: null,
+        status: 'not_present',
+        person_name: personName,
+      })) as unknown as SignatureRecord;
+      setExistingSigs(prev => [...prev.filter(s => s.signer_role !== role), saved]);
+      setSigImages(prev => {
+        const copy = { ...prev };
+        delete copy[role];
+        return copy;
+      });
+      toast.info('არ იყო დამსწრე');
+    } catch (e: any) {
+      toast.error(e?.message ?? 'შეცდომა');
+    }
+  };
+
+  const clearRole = async (role: SignerRole) => {
     if (!questionnaire) return;
     try {
       await signaturesApi.remove(questionnaire.id, role);
@@ -286,36 +343,78 @@ export default function SigningScreen() {
 
   const generate = async () => {
     if (!questionnaire || !template || !project) return;
-    // Require the expert's saved signature before any PDF can be generated.
     if (!user?.saved_signature_url) {
-      router.push('/signature?first=1' as any);
       toast.info('ჯერ დახაზეთ თქვენი ხელმოწერა');
+      router.push('/signature?first=1' as any);
       return;
     }
     setBusy(true);
     try {
-      const sigsForPdf = await Promise.all(
-        existingSigs.map(async s => {
-          if (!s.signature_png_url) return s;
-          if (s.signature_png_url.startsWith('data:')) return s;
-          try {
-            const blob = await storageApi.download(STORAGE_BUCKETS.signatures, s.signature_png_url);
-            return { ...s, signature_png_url: await blobToDataUrl(blob) };
-          } catch {
-            return {
-              ...s,
-              signature_png_url: storageApi.publicUrl(STORAGE_BUCKETS.signatures, s.signature_png_url),
-            };
-          }
-        }),
+      // Inline expert signature into a synthetic SignatureRecord for the PDF
+      let expertDataUrl = expertSigUrl;
+      if (!expertDataUrl && user.saved_signature_url) {
+        try {
+          const blob = await storageApi.download(
+            STORAGE_BUCKETS.signatures,
+            user.saved_signature_url,
+          );
+          expertDataUrl = await blobToDataUrl(blob);
+        } catch {
+          expertDataUrl = storageApi.publicUrl(
+            STORAGE_BUCKETS.signatures,
+            user.saved_signature_url,
+          );
+        }
+      }
+      const expertRec: SignatureRecord = {
+        id: 'expert-auto',
+        questionnaire_id: questionnaire.id,
+        signer_role: 'expert',
+        full_name: expertDefaultName,
+        phone: null,
+        position: 'შრომის უსაფრთხოების სპეციალისტი',
+        signature_png_url: expertDataUrl ?? null,
+        signed_at: new Date().toISOString(),
+        status: 'signed',
+        person_name: expertDefaultName,
+      };
+
+      const otherSigs = await Promise.all(
+        existingSigs
+          .filter(s => s.signer_role !== 'expert')
+          .map(async s => {
+            if (s.status === 'not_present' || !s.signature_png_url) return s;
+            if (s.signature_png_url.startsWith('data:')) return s;
+            try {
+              const blob = await storageApi.download(
+                STORAGE_BUCKETS.signatures,
+                s.signature_png_url,
+              );
+              return { ...s, signature_png_url: await blobToDataUrl(blob) };
+            } catch {
+              return {
+                ...s,
+                signature_png_url: storageApi.publicUrl(
+                  STORAGE_BUCKETS.signatures,
+                  s.signature_png_url,
+                ),
+              };
+            }
+          }),
       );
+      const sigsForPdf = [expertRec, ...otherSigs];
+
+      // Pre-embed photos
       const photosForPdf: Record<string, AnswerPhoto[]> = {};
       await Promise.all(
         Object.entries(photosByAnswer).map(async ([answerId, photos]) => {
           photosForPdf[answerId] = await Promise.all(
             photos.map(async p => {
               try {
-                const blob = await storageApi.download(STORAGE_BUCKETS.answerPhotos, p.storage_path);
+                const blob = await storageApi.download(
+                  STORAGE_BUCKETS.answerPhotos,
+                  p.storage_path,
+                );
                 return { ...p, storage_path: await blobToDataUrl(blob) };
               } catch {
                 return {
@@ -327,17 +426,20 @@ export default function SigningScreen() {
           );
         }),
       );
-      // Resolve attached certificates
+
       const attachedCerts: Array<Certificate & { file_data_url?: string }> = [];
       for (const type of requiredCertTypes) {
-        const id = selectedCerts[type];
-        if (!id) continue;
-        const cert = certs.find(c => c.id === id);
+        const selectedId = selectedCerts[type];
+        if (!selectedId) continue;
+        const cert = certs.find(c => c.id === selectedId);
         if (!cert) continue;
         let fileDataUrl: string | undefined;
         if (cert.file_url) {
           try {
-            const blob = await storageApi.download(STORAGE_BUCKETS.certificates, cert.file_url);
+            const blob = await storageApi.download(
+              STORAGE_BUCKETS.certificates,
+              cert.file_url,
+            );
             fileDataUrl = await blobToDataUrl(blob);
           } catch {
             fileDataUrl = storageApi.publicUrl(STORAGE_BUCKETS.certificates, cert.file_url);
@@ -345,6 +447,7 @@ export default function SigningScreen() {
         }
         attachedCerts.push({ ...cert, file_data_url: fileDataUrl });
       }
+
       const html = buildPdfHtml({
         questionnaire,
         template,
@@ -374,11 +477,12 @@ export default function SigningScreen() {
 
   return (
     <Screen>
-      <Stack.Screen options={{ headerShown: true, title: 'შეჯამება და PDF' }} />
+      <Stack.Screen options={{ headerShown: true, title: 'ხელმოწერები' }} />
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
-        <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }}>
+        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 120, gap: 14 }}>
+          {/* Summary card */}
           <Card>
-            <Text style={styles.cardLabel}>შეჯამება</Text>
+            <Text style={styles.eyebrow}>შეჯამება</Text>
             <Text style={{ fontSize: 17, fontWeight: '700', color: theme.colors.ink, marginTop: 6 }}>
               {template?.name ?? 'კითხვარი'}
             </Text>
@@ -388,7 +492,7 @@ export default function SigningScreen() {
               </Text>
             ) : null}
             <View style={{ height: 10 }} />
-            <Text style={styles.cardLabel}>დასკვნა</Text>
+            <Text style={styles.eyebrow}>დასკვნა</Text>
             <Text style={{ color: theme.colors.ink, marginTop: 4 }}>
               {questionnaire?.conclusion_text || '—'}
             </Text>
@@ -396,78 +500,62 @@ export default function SigningScreen() {
             <Text
               style={{
                 fontWeight: '700',
-                color: questionnaire?.is_safe_for_use === false ? theme.colors.danger : theme.colors.accent,
+                color:
+                  questionnaire?.is_safe_for_use === false ? theme.colors.danger : theme.colors.accent,
               }}
             >
               {questionnaire?.is_safe_for_use === false
                 ? '✗ არ არის უსაფრთხო ექსპლუატაციისთვის'
                 : '✓ უსაფრთხოა ექსპლუატაციისთვის'}
             </Text>
-            <View style={{ height: 10 }} />
-            <View style={{ flexDirection: 'row', gap: 14 }}>
-              <Text style={{ fontSize: 12, color: theme.colors.inkSoft }}>
-                პასუხი: <Text style={{ fontWeight: '700', color: theme.colors.ink }}>{answers.length}</Text>
-              </Text>
-              <Text style={{ fontSize: 12, color: theme.colors.inkSoft }}>
-                ფოტო:{' '}
-                <Text style={{ fontWeight: '700', color: theme.colors.ink }}>
-                  {Object.values(photosByAnswer).reduce((n, arr) => n + arr.length, 0)}
-                </Text>
-              </Text>
-            </View>
           </Card>
 
           {/* Signatures */}
           <Card>
-            <Text style={styles.cardLabel}>ხელმოწერები</Text>
-            <View style={{ gap: 10, marginTop: 10 }}>
-              {requiredRoles.map(role => {
+            <View style={styles.sectionHead}>
+              <Text style={styles.eyebrow}>ხელმოწერები</Text>
+              <View style={styles.progressBadge}>
+                <Ionicons name="checkmark-circle" size={12} color={theme.colors.accent} />
+                <Text style={styles.progressText}>
+                  {totalSigned} / {totalRequired} ხელმოწერილი
+                </Text>
+              </View>
+            </View>
+
+            {/* Expert card — pre-signed, locked */}
+            {expertRequired ? (
+              <ExpertCard
+                name={expertDefaultName}
+                signatureUrl={expertSigUrl}
+                hasSaved={!!user?.saved_signature_url}
+                onOpenSignature={() => router.push('/signature' as any)}
+              />
+            ) : null}
+
+            {/* Other role cards */}
+            <View style={{ gap: 10, marginTop: expertRequired ? 10 : 0 }}>
+              {otherRoles.map(role => {
                 const sig = existingSigs.find(s => s.signer_role === role);
                 const img = sigImages[role];
+                const roster = signers.find(
+                  s =>
+                    s.role === role &&
+                    s.full_name.trim() === (nameInputs[role] ?? '').trim() &&
+                    s.signature_png_url,
+                );
                 return (
-                  <View key={role} style={styles.roleRow}>
-                    <View style={{ flex: 1, gap: 4 }}>
-                      <Text style={{ fontWeight: '600', color: theme.colors.ink }}>
-                        {SIGNER_ROLE_LABEL[role]}
-                      </Text>
-                      {sig ? (
-                        <Text style={{ fontSize: 11, color: theme.colors.inkSoft }}>
-                          {sig.full_name}
-                        </Text>
-                      ) : null}
-                      {img ? (
-                        <View style={styles.sigPreview}>
-                          <Image
-                            source={{ uri: img }}
-                            style={{ width: '100%', height: '100%' }}
-                            resizeMode="contain"
-                          />
-                        </View>
-                      ) : null}
-                    </View>
-                    <View style={{ gap: 6 }}>
-                      <Button
-                        title={sig ? 'ცვლა' : 'მოწერა'}
-                        variant={sig ? 'secondary' : 'primary'}
-                        onPress={() => pickSignerForRole(role)}
-                      />
-                      {sig ? (
-                        <Pressable onPress={() => removeSignature(role)} hitSlop={8}>
-                          <Text
-                            style={{
-                              color: theme.colors.danger,
-                              fontSize: 11,
-                              fontWeight: '600',
-                              textAlign: 'center',
-                              paddingVertical: 4,
-                            }}
-                          >
-                            წაშლა
-                          </Text>
-                        </Pressable>
-                      ) : null}
-                    </View>
-                  </View>
+                  <RoleCard
+                    key={role}
+                    role={role}
+                    signature={sig}
+                    signatureImg={img}
+                    nameInput={nameInputs[role] ?? ''}
+                    onNameChange={n => setName(role, n)}
+                    hasAutoFillAvailable={!!roster}
+                    onSign={() => startSign(role)}
+                    onMarkNotPresent={() => markNotPresent(role)}
+                    onClear={() => clearRole(role)}
+                  />
                 );
               })}
             </View>
@@ -476,13 +564,13 @@ export default function SigningScreen() {
           {/* Certificates */}
           {requiredCertTypes.length > 0 ? (
             <Card>
-              <Text style={styles.cardLabel}>სერტიფიკატები</Text>
+              <Text style={styles.eyebrow}>სერტიფიკატები</Text>
               <View style={{ gap: 10, marginTop: 10 }}>
                 {requiredCertTypes.map(type => {
                   const selectedId = selectedCerts[type];
                   const selected = selectedId ? certs.find(c => c.id === selectedId) : null;
                   return (
-                    <Pressable key={type} onPress={() => pickCert(type)} style={styles.roleRow}>
+                    <Pressable key={type} onPress={() => pickCert(type)} style={styles.certRow}>
                       <View style={{ flex: 1 }}>
                         <Text style={{ fontWeight: '600', color: theme.colors.ink }}>{type}</Text>
                         <Text style={{ fontSize: 11, color: theme.colors.inkSoft, marginTop: 2 }}>
@@ -504,89 +592,185 @@ export default function SigningScreen() {
               </View>
             </Card>
           ) : null}
-
-          <Button title="PDF-ის დაგენერირება" onPress={generate} loading={busy} />
         </ScrollView>
+
+        <View style={styles.footer}>
+          <Button title="დასრულება და PDF" onPress={generate} loading={busy} />
+        </View>
       </SafeAreaView>
 
-      <SignatureCaptureModal
-        capture={capture}
+      <SignatureCanvas
+        visible={capture !== null}
+        personName={capture?.personName ?? ''}
         onCancel={() => setCapture(null)}
-        onDone={onCaptured}
+        onConfirm={onCaptured}
       />
     </Screen>
   );
 }
 
-function SignatureCaptureModal({
-  capture,
-  onCancel,
-  onDone,
+// ===== Cards =====
+
+function ExpertCard({
+  name,
+  signatureUrl,
+  hasSaved,
+  onOpenSignature,
 }: {
-  capture: { role: SignerRole; presetName: string } | null;
-  onCancel: () => void;
-  onDone: (role: SignerRole, base64Png: string, fullName: string) => void;
+  name: string;
+  signatureUrl: string | null;
+  hasSaved: boolean;
+  onOpenSignature: () => void;
 }) {
-  const [fullName, setFullName] = useState('');
-  const ref = useRef<SignatureViewRef>(null);
+  return (
+    <View style={[styles.card, styles.cardExpert]}>
+      <View style={styles.roleHeader}>
+        <View style={styles.lockedBadge}>
+          <Ionicons name="lock-closed" size={10} color={theme.colors.white} />
+          <Text style={{ color: theme.colors.white, fontSize: 10, fontWeight: '700' }}>
+            ავტო
+          </Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 11, color: theme.colors.accent, fontWeight: '600' }}>
+            ექსპერტი
+          </Text>
+          <Text style={{ fontSize: 14, fontWeight: '700', color: theme.colors.ink, marginTop: 1 }}>
+            {name}
+          </Text>
+        </View>
+        {hasSaved ? (
+          <Ionicons name="checkmark-circle" size={22} color={theme.colors.accent} />
+        ) : null}
+      </View>
+      {hasSaved && signatureUrl ? (
+        <View style={styles.sigThumb}>
+          <Image source={{ uri: signatureUrl }} style={styles.sigThumbImg} resizeMode="contain" />
+        </View>
+      ) : (
+        <View style={styles.missingRow}>
+          <Text style={{ color: theme.colors.warn, fontSize: 12, fontWeight: '600', flex: 1 }}>
+            ჯერ არ გაქვს შენახული ხელმოწერა
+          </Text>
+          <Pressable onPress={onOpenSignature}>
+            <Text style={{ color: theme.colors.accent, fontWeight: '700', fontSize: 13 }}>
+              დახატვა ›
+            </Text>
+          </Pressable>
+        </View>
+      )}
+    </View>
+  );
+}
 
-  // Reset name when capture opens
-  useMemo(() => {
-    if (capture) setFullName(capture.presetName);
-  }, [capture?.role, capture?.presetName]);
-
-  const handleOK = (sig: string) => {
-    if (!capture) return;
-    onDone(capture.role, sig, fullName.trim() || capture.presetName);
-    setFullName('');
-  };
-
-  const handleSave = () => ref.current?.readSignature();
-  const handleClear = () => ref.current?.clearSignature();
-
-  const webStyle = `
-    .m-signature-pad { box-shadow: none; border: none; background: #fff; margin: 0; }
-    .m-signature-pad--body { border: 1px solid #E8E1D4; }
-    .m-signature-pad--footer { display: none; }
-    body, html { background: #fff; margin: 0; }
-  `;
+function RoleCard({
+  role,
+  signature,
+  signatureImg,
+  nameInput,
+  onNameChange,
+  hasAutoFillAvailable,
+  onSign,
+  onMarkNotPresent,
+  onClear,
+}: {
+  role: SignerRole;
+  signature: SignatureRecord | undefined;
+  signatureImg: string | undefined;
+  nameInput: string;
+  onNameChange: (name: string) => void;
+  hasAutoFillAvailable: boolean;
+  onSign: () => void;
+  onMarkNotPresent: () => void;
+  onClear: () => void;
+}) {
+  const state: 'empty' | 'signed' | 'not_present' =
+    signature?.status === 'signed'
+      ? 'signed'
+      : signature?.status === 'not_present'
+        ? 'not_present'
+        : 'empty';
 
   return (
-    <Modal visible={capture !== null} animationType="slide" transparent onRequestClose={onCancel}>
-      <View style={styles.modalBackdrop}>
-        <View style={styles.modalCard}>
-          <View style={styles.modalHeader}>
-            <Text style={{ fontSize: 16, fontWeight: '700', color: theme.colors.ink, flex: 1 }}>
-              {capture ? SIGNER_ROLE_LABEL[capture.role] : ''}
+    <View style={[styles.card, state === 'signed' && styles.cardSigned]}>
+      <View style={styles.roleHeader}>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 11, color: theme.colors.inkSoft, fontWeight: '600' }}>
+            {SIGNER_ROLE_LABEL[role]}
+          </Text>
+          {state !== 'empty' && signature?.full_name ? (
+            <Text
+              style={{
+                fontSize: 14,
+                fontWeight: '700',
+                color: theme.colors.ink,
+                marginTop: 1,
+              }}
+              numberOfLines={1}
+            >
+              {signature.full_name}
             </Text>
-            <Pressable onPress={onCancel} hitSlop={10}>
-              <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
-            </Pressable>
+          ) : null}
+        </View>
+        {state === 'signed' ? (
+          <Ionicons name="checkmark-circle" size={22} color={theme.colors.accent} />
+        ) : state === 'not_present' ? (
+          <View style={styles.notPresentChip}>
+            <Text style={{ color: theme.colors.inkSoft, fontSize: 11, fontWeight: '700' }}>
+              არ არის დამსწრე
+            </Text>
           </View>
+        ) : null}
+      </View>
+
+      {/* Signature preview when signed */}
+      {state === 'signed' && signatureImg ? (
+        <View style={styles.sigThumb}>
+          <Image source={{ uri: signatureImg }} style={styles.sigThumbImg} resizeMode="contain" />
+        </View>
+      ) : null}
+
+      {/* Name input only when empty — baked name when signed */}
+      {state === 'empty' ? (
+        <>
           <TextInput
-            value={fullName}
-            onChangeText={setFullName}
+            value={nameInput}
+            onChangeText={onNameChange}
             placeholder="სახელი გვარი"
             placeholderTextColor={theme.colors.inkFaint}
             style={styles.nameInput}
           />
-          <View style={styles.canvasBox}>
-            <SignatureScreen
-              ref={ref}
-              onOK={handleOK}
-              webStyle={webStyle}
-              descriptionText=""
-              autoClear={false}
-              imageType="image/png"
+          {hasAutoFillAvailable ? (
+            <Text style={{ fontSize: 11, color: theme.colors.accent, marginTop: 4 }}>
+              ✓ მონიშვნის შემდეგ ავტომატურად შევსდება
+            </Text>
+          ) : null}
+          <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+            <Button title="ხელმოწერა" onPress={onSign} style={{ flex: 1.4 }} />
+            <Button
+              title="არ არის დამსწრე"
+              variant="secondary"
+              onPress={onMarkNotPresent}
+              style={{ flex: 1 }}
             />
           </View>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <Button title="გასუფთავება" variant="secondary" style={{ flex: 1 }} onPress={handleClear} />
-            <Button title="შენახვა" style={{ flex: 1.4 }} onPress={handleSave} />
-          </View>
+        </>
+      ) : state === 'signed' ? (
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+          <Button title="გადახაზვა" variant="secondary" onPress={onSign} style={{ flex: 1 }} />
+          <Pressable onPress={onClear} style={styles.smallRemove}>
+            <Ionicons name="trash-outline" size={18} color={theme.colors.danger} />
+          </Pressable>
         </View>
-      </View>
-    </Modal>
+      ) : (
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+          <Button title="ხელმოწერა" onPress={onSign} style={{ flex: 1 }} />
+          <Pressable onPress={onClear} style={styles.smallRemove}>
+            <Ionicons name="close" size={18} color={theme.colors.inkSoft} />
+          </Pressable>
+        </View>
+      )}
+    </View>
   );
 }
 
@@ -600,13 +784,109 @@ function blobToDataUrl(blob: Blob): Promise<string> {
 }
 
 const styles = StyleSheet.create({
-  cardLabel: {
+  eyebrow: {
     fontSize: 11,
     color: theme.colors.inkSoft,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+    fontWeight: '600',
   },
-  roleRow: {
+  sectionHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  progressBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: theme.colors.accentSoft,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  progressText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: theme.colors.accent,
+  },
+
+  card: {
+    backgroundColor: theme.colors.subtleSurface,
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  cardExpert: {
+    backgroundColor: theme.colors.accentSoft,
+    borderColor: theme.colors.accent,
+  },
+  cardSigned: {
+    backgroundColor: theme.colors.card,
+    borderColor: theme.colors.accent,
+  },
+  roleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  lockedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: theme.colors.accent,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  sigThumb: {
+    marginTop: 10,
+    height: 64,
+    backgroundColor: theme.colors.white,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: theme.colors.hairline,
+    overflow: 'hidden',
+  },
+  sigThumbImg: { width: '100%', height: '100%' },
+  missingRow: {
+    marginTop: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.warnSoft,
+    padding: 8,
+    borderRadius: 8,
+  },
+  nameInput: {
+    marginTop: 10,
+    backgroundColor: theme.colors.white,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: theme.colors.hairline,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: theme.colors.ink,
+  },
+  notPresentChip: {
+    backgroundColor: theme.colors.subtleSurface,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: theme.colors.hairline,
+  },
+  smallRemove: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    backgroundColor: theme.colors.subtleSurface,
+  },
+  certRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
@@ -614,48 +894,14 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.subtleSurface,
     borderRadius: 12,
   },
-  sigPreview: {
-    marginTop: 8,
-    height: 52,
-    width: 160,
-    backgroundColor: theme.colors.card,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: theme.colors.hairline,
-    overflow: 'hidden',
-  },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'flex-end',
-  },
-  modalCard: {
-    backgroundColor: theme.colors.background,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+  footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     padding: 16,
-    gap: 12,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  nameInput: {
     backgroundColor: theme.colors.card,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: theme.colors.hairline,
-    padding: 12,
-    fontSize: 15,
-    color: theme.colors.ink,
-  },
-  canvasBox: {
-    height: 260,
-    backgroundColor: theme.colors.white,
-    borderRadius: 12,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: theme.colors.hairline,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.hairline,
   },
 });
