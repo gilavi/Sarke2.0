@@ -2,22 +2,35 @@ import { storageApi } from './services';
 import { blobToDataUrl } from './blob';
 
 /**
- * Fetch a storage object and return it as a base64 `data:` URL, falling back
- * to a public URL if the authenticated download fails (e.g. network hiccup,
- * missing permissions, or the bucket is actually public).
+ * Fetch a storage object and return it as a base64 `data:` URL.
  *
- * Used throughout the app to render signatures, answer photos, and certificate
- * files reliably in `<Image>` components and in the PDF WebView (which can't
- * reach the Supabase signed-URL endpoint during print).
+ * Strategy (in order):
+ *  1. Authenticated blob download → base64 data URL  (works for private buckets)
+ *  2. Signed URL (60-min expiry)                      (fallback if blob fails)
+ *  3. Public URL                                      (last resort for public buckets)
+ *
+ * A data URL is always preferred because the PDF WebView can't reach
+ * Supabase signed-URL endpoints during expo-print rendering.
  */
 export async function getStorageImageDataUrl(
   bucket: string,
   path: string,
 ): Promise<string> {
+  // 1. Try direct authenticated download → embed as base64
   try {
     const blob = await storageApi.download(bucket, path);
     return await blobToDataUrl(blob);
   } catch {
-    return storageApi.publicUrl(bucket, path);
+    // fall through
   }
+
+  // 2. Try a short-lived signed URL
+  try {
+    return await storageApi.signedUrl(bucket, path, 3600);
+  } catch {
+    // fall through
+  }
+
+  // 3. Last resort: public URL (only works if bucket is set to public)
+  return storageApi.publicUrl(bucket, path);
 }

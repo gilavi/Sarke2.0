@@ -69,7 +69,7 @@ export default function StartTemplateScreen() {
 
   return (
     <Screen>
-      <Stack.Screen options={{ headerShown: true, title: 'ახალი კითხვარი' }} />
+      <Stack.Screen options={{ headerShown: true, title: 'ახალი კითხვარი', presentation: 'modal' }} />
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
         <ScrollView contentContainerStyle={styles.scroll}>
           <View style={{ gap: 4 }}>
@@ -315,7 +315,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
     padding: 16,
     paddingTop: 10,
-    paddingBottom: 28,
+    paddingBottom: 44,
   },
   modalHandle: {
     width: 40,

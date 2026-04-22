@@ -596,40 +596,34 @@ function ExpertCard({
   return (
     <View style={[styles.card, styles.cardExpert]}>
       <View style={styles.roleHeader}>
-        <View style={styles.lockedBadge}>
-          <Ionicons name="lock-closed" size={10} color={theme.colors.white} />
-          <Text style={{ color: theme.colors.white, fontSize: 10, fontWeight: '700' }}>
-            ავტო
-          </Text>
-        </View>
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 11, color: theme.colors.accent, fontWeight: '600' }}>
-            ექსპერტი
-          </Text>
-          <Text style={{ fontSize: 14, fontWeight: '700', color: theme.colors.ink, marginTop: 1 }}>
-            {name}
-          </Text>
+          <Text style={{ fontSize: 11, color: theme.colors.accent, fontWeight: '600' }}>ექსპერტი</Text>
+          <Text style={{ fontSize: 14, fontWeight: '700', color: theme.colors.ink, marginTop: 1 }}>{name}</Text>
         </View>
-        {hasSaved ? (
-          <Ionicons name="checkmark-circle" size={22} color={theme.colors.accent} />
-        ) : null}
+        {hasSaved
+          ? <Ionicons name="checkmark-circle" size={22} color={theme.colors.accent} />
+          : <Pressable onPress={onOpenSignature} hitSlop={10}>
+              <Text style={{ color: theme.colors.warn, fontSize: 13, fontWeight: '700' }}>დახატვა ›</Text>
+            </Pressable>
+        }
       </View>
       {hasSaved && signatureUrl ? (
-        <View style={styles.sigThumb}>
-          <Image source={{ uri: signatureUrl }} style={styles.sigThumbImg} resizeMode="contain" />
-        </View>
-      ) : (
-        <View style={styles.missingRow}>
-          <Text style={{ color: theme.colors.warn, fontSize: 12, fontWeight: '600', flex: 1 }}>
-            ჯერ არ გაქვს შენახული ხელმოწერა
+        <Pressable onPress={onOpenSignature}>
+          <View style={styles.sigThumb}>
+            <Image source={{ uri: signatureUrl }} style={styles.sigThumbImg} resizeMode="contain" />
+          </View>
+          <Text style={{ fontSize: 11, color: theme.colors.inkSoft, marginTop: 4, textAlign: 'right' }}>
+            შეცვლა ›
           </Text>
-          <Pressable onPress={onOpenSignature}>
-            <Text style={{ color: theme.colors.accent, fontWeight: '700', fontSize: 13 }}>
-              დახატვა ›
-            </Text>
-          </Pressable>
-        </View>
-      )}
+        </Pressable>
+      ) : !hasSaved ? (
+        <Pressable onPress={onOpenSignature} style={styles.missingRow}>
+          <Ionicons name="create-outline" size={16} color={theme.colors.warn} />
+          <Text style={{ color: theme.colors.warn, fontSize: 12, fontWeight: '600', flex: 1 }}>
+            ჯერ არ გაქვს შენახული ხელმოწერა. შეეხე დასახატად.
+          </Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -713,7 +707,6 @@ function RoleCard({
         </>
       ) : null}
 
-      {/* Name input only when empty — baked name when signed */}
       {state === 'empty' ? (
         <>
           <TextInput
@@ -725,30 +718,37 @@ function RoleCard({
           />
           {hasAutoFillAvailable ? (
             <Text style={{ fontSize: 11, color: theme.colors.accent, marginTop: 4 }}>
-              ✓ მონიშვნის შემდეგ ავტომატურად შევსდება
+              ✓ ავტომატურად შევსდება
             </Text>
           ) : null}
-          <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
-            <Button title="ხელმოწერა" onPress={onSign} style={{ flex: 1.4 }} />
-            <Button
-              title="არ არის დამსწრე"
-              variant="secondary"
-              onPress={onMarkNotPresent}
-              style={{ flex: 1 }}
-            />
-          </View>
+          <Button title="ხელმოწერა" onPress={onSign} style={{ marginTop: 10 }} />
+          <Pressable onPress={onMarkNotPresent} style={{ marginTop: 8, alignItems: 'center' }}>
+            <Text style={{ fontSize: 12, color: theme.colors.inkSoft }}>არ არის დამსწრე</Text>
+          </Pressable>
         </>
       ) : state === 'signed' ? (
-        <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
-          <Button title="გადახაზვა" variant="secondary" onPress={onSign} style={{ flex: 1 }} />
-          <Pressable onPress={onClear} style={styles.smallRemove}>
-            <Ionicons name="trash-outline" size={18} color={theme.colors.danger} />
-          </Pressable>
-        </View>
+        <Pressable onPress={onSign}>
+          <View style={styles.sigThumb}>
+            {signatureImg
+              ? <Image source={{ uri: signatureImg }} style={styles.sigThumbImg} resizeMode="contain" />
+              : <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name="checkmark-circle" size={24} color={theme.colors.accent} />
+                </View>
+            }
+          </View>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
+            <Text style={{ fontSize: 11, color: theme.colors.inkSoft }}>შეეხე გადასახაზად</Text>
+            <Pressable onPress={onClear} hitSlop={10}>
+              <Text style={{ fontSize: 11, color: theme.colors.danger }}>გასუფთავება</Text>
+            </Pressable>
+          </View>
+        </Pressable>
       ) : (
-        <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
-          <Button title="ხელმოწერა" onPress={onSign} style={{ flex: 1 }} />
-          <Pressable onPress={onClear} style={styles.smallRemove}>
+        /* not_present */
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 8 }}>
+          <Text style={{ flex: 1, fontSize: 12, color: theme.colors.inkSoft }}>არ იყო დამსწრე</Text>
+          <Button title="ხელმოწერა" onPress={onSign} style={{ flex: 0 }} />
+          <Pressable onPress={onClear} hitSlop={10}>
             <Ionicons name="close" size={18} color={theme.colors.inkSoft} />
           </Pressable>
         </View>

@@ -558,7 +558,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
     padding: 16,
     paddingTop: 10,
-    paddingBottom: 28,
+    paddingBottom: 44,
   },
   modalHandle: {
     width: 40,

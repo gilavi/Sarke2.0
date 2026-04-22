@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
+import { projectAvatar } from '../../lib/projectAvatar';
 import { Button, Card } from '../../components/ui';
 import { projectsApi } from '../../lib/services';
 import { useToast } from '../../lib/toast';
@@ -193,8 +194,8 @@ function ProjectRow({
       <Pressable onPress={onOpen}>
         <Card padding={14}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <View style={styles.iconBox}>
-              <Ionicons name="folder" size={22} color={theme.colors.accent} />
+            <View style={[styles.iconBox, { backgroundColor: projectAvatar(project.id).color + '22' }]}>
+              <Text style={{ fontSize: 22 }}>{projectAvatar(project.id).emoji}</Text>
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.rowTitle} numberOfLines={1}>

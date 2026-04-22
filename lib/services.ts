@@ -395,6 +395,11 @@ export const storageApi = {
     if (error) throw error;
     return data;
   },
+  signedUrl: async (bucket: string, path: string, expiresIn = 3600): Promise<string> => {
+    const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, expiresIn);
+    if (error) throw error;
+    return data.signedUrl;
+  },
   publicUrl: (bucket: string, path: string) =>
     supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl,
 };

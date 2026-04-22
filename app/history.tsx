@@ -3,24 +3,23 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Card, Chip, Screen } from '../components/ui';
+import { Card, Screen } from '../components/ui';
 import { projectsApi, questionnairesApi, templatesApi } from '../lib/services';
 import { shareStoredPdf } from '../lib/sharePdf';
 import { theme } from '../lib/theme';
 import type { Project, Questionnaire, Template } from '../types/models';
 
-type Filter = 'all' | 'drafts' | 'completed';
+type ListItem =
+  | { kind: 'header'; label: string }
+  | { kind: 'row'; q: Questionnaire };
 
 export default function HistoryScreen() {
   const router = useRouter();
   const [qs, setQs] = useState<Questionnaire[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [filter, setFilter] = useState<Filter>('all');
 
   const load = useCallback(async () => {
-    // 200 is plenty for any individual expert — full-history pagination can
-    // come later. 500 was loading ~15x more data than ever displayed.
     const [allQ, allT, allP] = await Promise.all([
       questionnairesApi.recent(200).catch(() => []),
       templatesApi.list().catch(() => []),
@@ -37,8 +36,18 @@ export default function HistoryScreen() {
     }, [load]),
   );
 
-  const filtered =
-    filter === 'all' ? qs : qs.filter(q => (filter === 'drafts' ? q.status === 'draft' : q.status === 'completed'));
+  const drafts = qs.filter(q => q.status === 'draft');
+  const completed = qs.filter(q => q.status === 'completed');
+
+  const items: ListItem[] = [];
+  if (drafts.length > 0) {
+    items.push({ kind: 'header', label: 'დრაფტები' });
+    drafts.forEach(q => items.push({ kind: 'row', q }));
+  }
+  if (completed.length > 0) {
+    items.push({ kind: 'header', label: 'დასრულებული' });
+    completed.forEach(q => items.push({ kind: 'row', q }));
+  }
 
   const openPdf = async (q: Questionnaire) => {
     if (!q.pdf_url) return;
@@ -51,36 +60,25 @@ export default function HistoryScreen() {
     <Screen>
       <Stack.Screen options={{ headerShown: true, title: 'ისტორია' }} />
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
-        <View style={{ padding: 16 }}>
-          <View style={styles.segment}>
-            {(['all', 'drafts', 'completed'] as const).map(f => (
-              <Pressable
-                key={f}
-                onPress={() => setFilter(f)}
-                style={[styles.segmentItem, filter === f && styles.segmentItemActive]}
-              >
-                <Text
-                  style={{ color: filter === f ? theme.colors.white : theme.colors.inkSoft, fontWeight: '600' }}
-                >
-                  {f === 'all' ? 'ყველა' : f === 'drafts' ? 'დრაფტები' : 'დასრულდა'}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
         <FlatList
-          data={filtered}
-          keyExtractor={q => q.id}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 20, gap: 10 }}
+          data={items}
+          keyExtractor={(item, i) => (item.kind === 'header' ? `h-${i}` : item.q.id)}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 20, gap: 8 }}
           renderItem={({ item }) => {
-            const t = templates.find(t => t.id === item.template_id);
-            const p = projects.find(p => p.id === item.project_id);
+            if (item.kind === 'header') {
+              return (
+                <Text style={styles.sectionTitle}>{item.label}</Text>
+              );
+            }
+            const { q } = item;
+            const t = templates.find(t => t.id === q.template_id);
+            const p = projects.find(p => p.id === q.project_id);
             return (
               <Pressable
                 onPress={() =>
-                  item.status === 'draft'
-                    ? router.push(`/questionnaire/${item.id}` as any)
-                    : openPdf(item)
+                  q.status === 'draft'
+                    ? router.push(`/questionnaire/${q.id}` as any)
+                    : openPdf(q)
                 }
               >
                 <Card padding={12}>
@@ -90,14 +88,14 @@ export default function HistoryScreen() {
                         styles.icon,
                         {
                           backgroundColor:
-                            item.status === 'completed' ? theme.colors.accentSoft : theme.colors.warnSoft,
+                            q.status === 'completed' ? theme.colors.accentSoft : theme.colors.warnSoft,
                         },
                       ]}
                     >
                       <Ionicons
-                        name={item.status === 'completed' ? 'checkmark-circle' : 'document-text'}
+                        name={q.status === 'completed' ? 'checkmark-circle' : 'document-text'}
                         size={20}
-                        color={item.status === 'completed' ? theme.colors.accent : theme.colors.warn}
+                        color={q.status === 'completed' ? theme.colors.accent : theme.colors.warn}
                       />
                     </View>
                     <View style={{ flex: 1 }}>
@@ -108,7 +106,7 @@ export default function HistoryScreen() {
                         <Text style={{ fontSize: 11, color: theme.colors.inkSoft }}>{p.name}</Text>
                       ) : null}
                       <Text style={{ fontSize: 10, color: theme.colors.inkFaint }}>
-                        {new Date(item.created_at).toLocaleString('ka')}
+                        {new Date(q.created_at).toLocaleString('ka')}
                       </Text>
                     </View>
                     <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
@@ -129,14 +127,15 @@ export default function HistoryScreen() {
 }
 
 const styles = StyleSheet.create({
-  segment: {
-    flexDirection: 'row',
-    padding: 4,
-    backgroundColor: theme.colors.subtleSurface,
-    borderRadius: 999,
+  sectionTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: theme.colors.inkSoft,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginTop: 8,
+    marginBottom: 2,
   },
-  segmentItem: { flex: 1, paddingVertical: 8, borderRadius: 999, alignItems: 'center' },
-  segmentItemActive: { backgroundColor: theme.colors.accent },
   icon: {
     width: 40,
     height: 40,

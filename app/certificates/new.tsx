@@ -1,29 +1,14 @@
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useRouter } from 'expo-router';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
 import { Button, Field, Input, Screen } from '../../components/ui';
 import { certificatesApi, storageApi } from '../../lib/services';
 import { STORAGE_BUCKETS, supabase } from '../../lib/supabase';
 import { theme } from '../../lib/theme';
-
-function addMonths(months: number): string {
-  const d = new Date();
-  d.setMonth(d.getMonth() + months);
-  return d.toISOString().slice(0, 10);
-}
-
-const dateChip = StyleSheet.create({
-  row: { flexDirection: 'row', gap: 8, marginTop: 8, flexWrap: 'wrap' },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: '#EFEAE0',
-    borderRadius: 999,
-  },
-  text: { fontSize: 12, fontWeight: '600', color: '#4A4A4A' },
-});
 
 const TYPES: { value: string; label: string }[] = [
   { value: 'xaracho_inspector', label: 'ხარაჩოს ინსპექტორი' },
@@ -31,16 +16,26 @@ const TYPES: { value: string; label: string }[] = [
   { value: 'general', label: 'სხვა' },
 ];
 
+function formatDate(d: Date) {
+  return d.toLocaleDateString('ka', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+function toISO(d: Date) {
+  return d.toISOString().slice(0, 10);
+}
+
 export default function AddCertificate() {
   const router = useRouter();
   const [type, setType] = useState('xaracho_inspector');
   const [number, setNumber] = useState('');
-  const [issued, setIssued] = useState(new Date().toISOString().slice(0, 10));
-  const [expires, setExpires] = useState(
-    new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-  );
+  const [issued, setIssued] = useState(new Date());
+  const [expires, setExpires] = useState(() => {
+    const d = new Date();
+    d.setFullYear(d.getFullYear() + 1);
+    return d;
+  });
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [picker, setPicker] = useState<'issued' | 'expires' | null>(null);
 
   const pickPhoto = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -49,13 +44,7 @@ export default function AddCertificate() {
     if (!res.canceled && res.assets.length) setPhotoUri(res.assets[0].uri);
   };
 
-  const isValidDate = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(new Date(s).getTime());
-
   const save = async () => {
-    if (!isValidDate(issued) || !isValidDate(expires)) {
-      Alert.alert('თარიღი არასწორია', 'გამოიყენე ფორმატი YYYY-MM-DD.');
-      return;
-    }
     setBusy(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -73,8 +62,8 @@ export default function AddCertificate() {
         user_id: user.id,
         type,
         number: number || null,
-        issued_at: issued,
-        expires_at: expires,
+        issued_at: toISO(issued),
+        expires_at: toISO(expires),
         file_url: filePath,
       });
       router.back();
@@ -90,51 +79,141 @@ export default function AddCertificate() {
       <Stack.Screen options={{ headerShown: true, title: 'ახალი სერტიფიკატი' }} />
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
         <ScrollView contentContainerStyle={{ padding: 20, gap: 14 }}>
+
+          {/* Type */}
           <Field label="ტიპი">
             <View style={{ gap: 8 }}>
               {TYPES.map(t => (
-                <Button
+                <Pressable
                   key={t.value}
-                  title={t.label}
-                  variant={type === t.value ? 'primary' : 'secondary'}
                   onPress={() => setType(t.value)}
-                />
+                  style={[styles.typeRow, type === t.value && styles.typeRowActive]}
+                >
+                  <View style={[styles.radio, type === t.value && styles.radioActive]}>
+                    {type === t.value && <Ionicons name="checkmark" size={13} color={theme.colors.white} />}
+                  </View>
+                  <Text style={{ fontWeight: '600', color: theme.colors.ink }}>{t.label}</Text>
+                </Pressable>
               ))}
             </View>
           </Field>
+
+          {/* Number */}
           <Field label="ნომერი">
-            <Input value={number} onChangeText={setNumber} />
+            <Input value={number} onChangeText={setNumber} placeholder="№ სერტიფიკატის ნომერი" />
           </Field>
+
+          {/* Issue date */}
           <Field label="გაცემის თარიღი">
-            <Input value={issued} onChangeText={setIssued} placeholder="YYYY-MM-DD" keyboardType="numbers-and-punctuation" />
-            <View style={dateChip.row}>
-              <Pressable style={dateChip.chip} onPress={() => setIssued(addMonths(0))}>
-                <Text style={dateChip.text}>დღეს</Text>
-              </Pressable>
-              <Pressable style={dateChip.chip} onPress={() => setIssued(addMonths(-12))}>
-                <Text style={dateChip.text}>-1 წელი</Text>
-              </Pressable>
+            <Pressable onPress={() => setPicker('issued')} style={styles.dateBtn}>
+              <Ionicons name="calendar-outline" size={18} color={theme.colors.accent} />
+              <Text style={styles.dateBtnText}>{formatDate(issued)}</Text>
+              <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
+            </Pressable>
+          </Field>
+
+          {/* Expiry date */}
+          <Field label="ვადის გასვლის თარიღი">
+            <Pressable onPress={() => setPicker('expires')} style={styles.dateBtn}>
+              <Ionicons name="calendar-outline" size={18} color={theme.colors.accent} />
+              <Text style={styles.dateBtnText}>{formatDate(expires)}</Text>
+              <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
+            </Pressable>
+            <View style={styles.chips}>
+              {[{ label: '+1 წელი', months: 12 }, { label: '+3 წელი', months: 36 }, { label: '+5 წელი', months: 60 }].map(c => (
+                <Pressable key={c.label} style={styles.chip} onPress={() => {
+                  const d = new Date(issued);
+                  d.setMonth(d.getMonth() + c.months);
+                  setExpires(d);
+                }}>
+                  <Text style={styles.chipText}>{c.label}</Text>
+                </Pressable>
+              ))}
             </View>
           </Field>
-          <Field label="ვადა">
-            <Input value={expires} onChangeText={setExpires} placeholder="YYYY-MM-DD" keyboardType="numbers-and-punctuation" />
-            <View style={dateChip.row}>
-              <Pressable style={dateChip.chip} onPress={() => setExpires(addMonths(12))}>
-                <Text style={dateChip.text}>+1 წელი</Text>
-              </Pressable>
-              <Pressable style={dateChip.chip} onPress={() => setExpires(addMonths(36))}>
-                <Text style={dateChip.text}>+3 წელი</Text>
-              </Pressable>
-              <Pressable style={dateChip.chip} onPress={() => setExpires(addMonths(60))}>
-                <Text style={dateChip.text}>+5 წელი</Text>
-              </Pressable>
-            </View>
-          </Field>
-          <Button title={photoUri ? 'შეცვალე ფოტო' : 'ფოტოს არჩევა'} variant="secondary" onPress={pickPhoto} />
-          {photoUri ? <Text style={{ color: theme.colors.accent }}>ფოტო არჩეულია ✓</Text> : null}
+
+          {/* Photo */}
+          <Button
+            title={photoUri ? '✓ ფოტო არჩეულია — შეცვლა' : 'სერტიფიკატის ფოტო'}
+            variant="secondary"
+            onPress={pickPhoto}
+          />
+
           <Button title="შენახვა" onPress={save} loading={busy} />
         </ScrollView>
       </SafeAreaView>
+
+      {/* Date picker bottom sheet */}
+      <Modal visible={picker !== null} transparent animationType="slide" onRequestClose={() => setPicker(null)}>
+        <Pressable style={styles.backdrop} onPress={() => setPicker(null)}>
+          <Pressable style={styles.sheet} onPress={e => e.stopPropagation()}>
+            <View style={styles.sheetHandle} />
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>
+                {picker === 'issued' ? 'გაცემის თარიღი' : 'ვადის გასვლა'}
+              </Text>
+              <Pressable onPress={() => setPicker(null)} hitSlop={12}>
+                <Text style={{ color: theme.colors.accent, fontWeight: '700', fontSize: 15 }}>მზადაა</Text>
+              </Pressable>
+            </View>
+            <DateTimePicker
+              value={picker === 'issued' ? issued : expires}
+              mode="date"
+              display="spinner"
+              locale="ka-GE"
+              onChange={(_, date) => {
+                if (!date) return;
+                if (picker === 'issued') setIssued(date);
+                else setExpires(date);
+              }}
+              style={{ height: 200 }}
+            />
+          </Pressable>
+        </Pressable>
+      </Modal>
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  typeRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    padding: 14, borderRadius: 12,
+    backgroundColor: theme.colors.card,
+    borderWidth: 2, borderColor: theme.colors.hairline,
+  },
+  typeRowActive: { borderColor: theme.colors.accent, backgroundColor: theme.colors.accentSoft },
+  radio: {
+    width: 20, height: 20, borderRadius: 10,
+    borderWidth: 2, borderColor: theme.colors.hairline,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: theme.colors.white,
+  },
+  radioActive: { backgroundColor: theme.colors.accent, borderColor: theme.colors.accent },
+  dateBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: theme.colors.card,
+    borderRadius: 12, borderWidth: 1, borderColor: theme.colors.hairline,
+    paddingHorizontal: 14, paddingVertical: 14,
+  },
+  dateBtnText: { flex: 1, fontSize: 15, color: theme.colors.ink, fontWeight: '500' },
+  chips: { flexDirection: 'row', gap: 8, marginTop: 8 },
+  chip: { paddingHorizontal: 12, paddingVertical: 6, backgroundColor: theme.colors.subtleSurface, borderRadius: 999 },
+  chipText: { fontSize: 12, fontWeight: '600', color: theme.colors.inkSoft },
+  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  sheet: {
+    backgroundColor: theme.colors.background,
+    borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    paddingHorizontal: 20, paddingBottom: 40, paddingTop: 12,
+  },
+  sheetHandle: {
+    width: 44, height: 4, borderRadius: 2,
+    backgroundColor: theme.colors.hairline,
+    alignSelf: 'center', marginBottom: 14,
+  },
+  sheetHeader: {
+    flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'space-between', marginBottom: 4,
+  },
+  sheetTitle: { fontSize: 16, fontWeight: '700', color: theme.colors.ink },
+});

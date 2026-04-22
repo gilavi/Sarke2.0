@@ -64,61 +64,67 @@ export function SignatureCanvas({ visible, personName, onCancel, onConfirm }: Pr
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onCancel}>
-      <View style={styles.root}>
-        <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
-          <View style={styles.header}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.eyebrow}>ხელმოწერა</Text>
-              <Text style={styles.title} numberOfLines={1}>
-                {personName || 'ხელმომწერი'}
-              </Text>
-            </View>
-            <Pressable onPress={onCancel} hitSlop={12} style={styles.closeBtn}>
-              <Ionicons name="close" size={22} color={theme.colors.ink} />
+      <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.eyebrow}>ხელმოწერა</Text>
+            <Text style={styles.title} numberOfLines={1}>
+              {personName || 'ხელმომწერი'}
+            </Text>
+          </View>
+          {hasStroke && (
+            <Pressable onPress={handleClear} hitSlop={12} style={[styles.headerBtn, { marginRight: 8 }]}>
+              <Ionicons name="refresh" size={18} color={theme.colors.inkSoft} />
             </Pressable>
-          </View>
+          )}
+          <Pressable onPress={onCancel} hitSlop={12} style={styles.headerBtn}>
+            <Ionicons name="close" size={22} color={theme.colors.ink} />
+          </Pressable>
+        </View>
 
-          <View style={styles.canvasWrap}>
-            <SignatureScreen
-              ref={ref}
-              onOK={handleOK}
-              onBegin={() => setHasStroke(true)}
-              onEnd={() => setHasStroke(true)}
-              webStyle={webStyle}
-              descriptionText=""
-              autoClear={false}
-              imageType="image/png"
-              backgroundColor="rgba(255,255,255,1)"
-              penColor="#000000"
-              minWidth={1.2}
-              maxWidth={3}
-            />
-            <View pointerEvents="none" style={styles.baseline} />
-          </View>
+        {/* Canvas — fixed height so buttons always sit close below */}
+        <View style={styles.canvasWrap}>
+          <SignatureScreen
+            ref={ref}
+            onOK={handleOK}
+            onBegin={() => setHasStroke(true)}
+            onEnd={() => setHasStroke(true)}
+            webStyle={webStyle}
+            descriptionText=""
+            autoClear={false}
+            imageType="image/png"
+            backgroundColor="rgba(255,255,255,1)"
+            penColor="#000000"
+            minWidth={1.2}
+            maxWidth={3}
+          />
+          {/* Dashed sign-here line */}
+          <View pointerEvents="none" style={styles.baseline} />
+          {/* Hint — only shown before first stroke */}
+          {!hasStroke && (
+            <View pointerEvents="none" style={styles.hintWrap}>
+              <Text style={styles.hintText}>ამ სივრცეში ხელი მოაწერეთ</Text>
+            </View>
+          )}
+        </View>
 
-          <View style={styles.footer}>
-            <Button
-              title="გასუფთავება"
-              variant="secondary"
-              onPress={handleClear}
-              style={{ flex: 1 }}
-              disabled={!hasStroke}
-            />
-            <Button
-              title="გაუქმება"
-              variant="secondary"
-              onPress={onCancel}
-              style={{ flex: 1 }}
-            />
-            <Button
-              title="დადასტურება"
-              onPress={handleConfirm}
-              disabled={!hasStroke}
-              style={{ flex: 1.4 }}
-            />
-          </View>
-        </SafeAreaView>
-      </View>
+        {/* Buttons */}
+        <View style={styles.footer}>
+          <Button
+            title="გაუქმება"
+            variant="secondary"
+            onPress={onCancel}
+            style={{ flex: 1 }}
+          />
+          <Button
+            title="დადასტურება"
+            onPress={handleConfirm}
+            disabled={!hasStroke}
+            style={{ flex: 1.6 }}
+          />
+        </View>
+      </SafeAreaView>
     </Modal>
   );
 }
@@ -130,7 +136,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingTop: 8,
+    paddingBottom: 12,
   },
   eyebrow: {
     fontSize: 11,
@@ -141,16 +148,24 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 20, fontWeight: '800', color: theme.colors.ink, marginTop: 2 },
   closeBtn: {
-    width: 40,
-    height: 40,
+    width: 36,
+    height: 36,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 20,
+    borderRadius: 18,
+    backgroundColor: theme.colors.subtleSurface,
+  },
+  headerBtn: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 18,
     backgroundColor: theme.colors.subtleSurface,
   },
   canvasWrap: {
     flex: 1,
-    marginHorizontal: 16,
+    marginHorizontal: 12,
     backgroundColor: theme.colors.white,
     borderRadius: 16,
     borderWidth: 1,
@@ -159,7 +174,7 @@ const styles = StyleSheet.create({
   },
   baseline: {
     position: 'absolute',
-    bottom: 28,
+    bottom: 32,
     left: 24,
     right: 24,
     height: 1,
@@ -167,9 +182,21 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     borderColor: theme.colors.hairline,
   },
+  hintWrap: {
+    position: 'absolute',
+    bottom: 10,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  hintText: {
+    fontSize: 12,
+    color: theme.colors.inkFaint,
+  },
   footer: {
     flexDirection: 'row',
     gap: 10,
     padding: 16,
+    paddingTop: 14,
   },
 });

@@ -4,18 +4,15 @@ import { useOffline } from '../lib/offline';
 import { theme } from '../lib/theme';
 
 export function OfflineBanner() {
-  const { isOnline, netReady, pendingCount } = useOffline();
+  const { isOnline, netReady } = useOffline();
   const insets = useSafeAreaInsets();
   // Don't show anything until NetInfo has reported at least once — prevents
   // the "online → offline" flash on cold start when the device has no signal.
   if (!netReady) return null;
-  if (isOnline && pendingCount === 0) return null;
+  if (isOnline) return null;
 
-  const offline = !isOnline;
-  const text = offline
-    ? 'ხაზგარეშე — ცვლილებები ინახება ლოკალურად'
-    : `სინქრონიზაცია... (${pendingCount})`;
-  const bg = offline ? theme.colors.warn : theme.colors.harnessTint;
+  const text = 'ხაზგარეშე — ცვლილებები ინახება ლოკალურად';
+  const bg = theme.colors.warn;
 
   return (
     <View style={{ backgroundColor: bg, paddingTop: insets.top }}>

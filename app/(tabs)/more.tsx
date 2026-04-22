@@ -124,45 +124,27 @@ export default function MoreScreen() {
           />
         </View>
 
-        <Pressable
-          onPress={() => router.push('/signature' as any)}
-          style={{
-            flexDirection: 'row',
-            gap: 8,
-            alignItems: 'center',
-            justifyContent: 'center',
-            paddingVertical: 12,
-            marginHorizontal: 16,
-          }}
-        >
-          <Ionicons name="create-outline" size={16} color={theme.colors.inkSoft} />
-          <Text style={{ color: theme.colors.inkSoft, fontWeight: '600' }}>
-            {user?.saved_signature_url ? 'ჩემი ხელმოწერა' : 'დახაზეთ თქვენი ხელმოწერა'}
-          </Text>
-        </Pressable>
-
-        <Pressable
-          onPress={() => router.push('/terms?mode=view' as any)}
-          style={{
-            flexDirection: 'row',
-            gap: 8,
-            alignItems: 'center',
-            justifyContent: 'center',
-            paddingVertical: 12,
-            marginHorizontal: 16,
-          }}
-        >
-          <Ionicons name="document-text-outline" size={16} color={theme.colors.inkSoft} />
-          <Text style={{ color: theme.colors.inkSoft, fontWeight: '600' }}>წესები და პირობები</Text>
-        </Pressable>
-
-        <Pressable
-          onPress={signOut}
-          style={[styles.signOut, { marginHorizontal: 16 }]}
-        >
-          <Ionicons name="log-out-outline" size={18} color={theme.colors.danger} />
-          <Text style={{ color: theme.colors.danger, fontWeight: '600' }}>გასვლა</Text>
-        </Pressable>
+        {/* Settings rows */}
+        <View style={[styles.settingsCard, { marginHorizontal: 16 }]}>
+          <SettingsRow
+            icon="create-outline"
+            label={user?.saved_signature_url ? 'ჩემი ხელმოწერა' : 'ხელმოწერის დახატვა'}
+            onPress={() => router.push('/signature' as any)}
+          />
+          <View style={styles.divider} />
+          <SettingsRow
+            icon="document-text-outline"
+            label="წესები და პირობები"
+            onPress={() => router.push('/terms?mode=view' as any)}
+          />
+          <View style={styles.divider} />
+          <SettingsRow
+            icon="log-out-outline"
+            label="გასვლა"
+            onPress={signOut}
+            danger
+          />
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -208,34 +190,37 @@ function HubTile({
 }) {
   return (
     <Pressable onPress={onPress} style={{ flex: 1, minWidth: '45%' }}>
-      <Card style={{ gap: 10 }}>
+      <Card style={{ gap: 8 }}>
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
           <View style={[styles.tileIcon, { backgroundColor: bg }]}>
             <Ionicons name={icon} size={20} color={tint} />
           </View>
           {badge ? (
-            <View
-              style={{
-                backgroundColor: theme.colors.warnSoft,
-                paddingHorizontal: 8,
-                paddingVertical: 3,
-                borderRadius: 999,
-              }}
-            >
-              <Text style={{ fontSize: 11, fontWeight: '600', color: theme.colors.warn }}>
-                {badge}
-              </Text>
+            <View style={{ backgroundColor: theme.colors.warnSoft, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 }}>
+              <Text style={{ fontSize: 11, fontWeight: '600', color: theme.colors.warn }}>{badge}</Text>
             </View>
           ) : null}
         </View>
         <Text style={{ fontSize: 28, fontWeight: '900', color: theme.colors.ink }}>{primary}</Text>
-        <View>
-          <Text style={{ fontWeight: '600', color: theme.colors.ink }}>{title}</Text>
-          <Text style={{ fontSize: 11, color: theme.colors.inkSoft }} numberOfLines={1}>
-            {secondary}
-          </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontWeight: '600', color: theme.colors.ink }}>{title}</Text>
+            <Text style={{ fontSize: 11, color: theme.colors.inkSoft }} numberOfLines={1}>{secondary}</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={14} color={theme.colors.inkFaint} />
         </View>
       </Card>
+    </Pressable>
+  );
+}
+
+function SettingsRow({ icon, label, onPress, danger }: { icon: any; label: string; onPress: () => void; danger?: boolean }) {
+  const color = danger ? theme.colors.danger : theme.colors.ink;
+  return (
+    <Pressable onPress={onPress} style={styles.settingsRow}>
+      <Ionicons name={icon} size={18} color={danger ? theme.colors.danger : theme.colors.inkSoft} />
+      <Text style={{ flex: 1, fontSize: 15, fontWeight: '500', color }}>{label}</Text>
+      <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
     </Pressable>
   );
 }
@@ -290,5 +275,25 @@ const styles = StyleSheet.create({
     padding: 14,
     backgroundColor: theme.colors.dangerSoft,
     borderRadius: 14,
+  },
+  settingsCard: {
+    backgroundColor: theme.colors.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: theme.colors.hairline,
+    overflow: 'hidden',
+    marginBottom: 24,
+  },
+  settingsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: theme.colors.hairline,
+    marginLeft: 46,
   },
 });

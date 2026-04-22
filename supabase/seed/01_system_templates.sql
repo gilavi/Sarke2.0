@@ -65,14 +65,12 @@ insert into questions (template_id, section, "order", type, title, grid_rows, gr
  ('22222222-2222-2222-2222-222222222222', 1, 1, 'component_grid',
    'უსაფრთხოების ღვედების შემოწმება',
    '["N1","N2","N3","N4","N5","N6","N7","N8","N9","N10","N11","N12","N13","N14","N15"]'::jsonb,
-   '["Shoulder Straps / მხრის ღვედები","Chest Strap / მკერდის ღვედი","Side D-Ring / გვერდითი D-ბეჭდები","Leg Straps / ფეხის ღვედი","Waist Belt / წელის ღვედი","Locking Hook / ჩამკეტიანი კავი","Rope Protector / თოკის დამცავი","Safety Rope / დამცავი თოკი","Locking Carabiner / ჩამკეტი კარაბინი","Energy Absorber / ენერგიის შთანთქმის მოწყობილობა"]'::jsonb);
+   -- EN keys kept here for future i18n switcher:
+   -- ["Shoulder Straps","Chest Strap","Side D-Ring","Leg Straps","Waist Belt",
+   --  "Locking Hook","Rope Protector","Safety Rope","Locking Carabiner","Energy Absorber"]
+   '["მხრის ღვედები","მკერდის ღვედი","გვერდითი D-ბეჭდები","ფეხის ღვედი","წელის ღვედი","ჩამკეტიანი კავი","თოკის დამცავი","დამცავი თოკი","ჩამკეტი კარაბინი","ენერგიის შთანთქმის მოწყობილობა"]'::jsonb);
 
--- Section 2: photos
-insert into questions (template_id, section, "order", type, title) values
- ('22222222-2222-2222-2222-222222222222', 2, 1, 'photo_upload',
-   'ქამრების ფოტოები');
-
--- Section 3: conclusion
+-- Section 2: conclusion
 insert into questions (template_id, section, "order", type, title) values
  ('22222222-2222-2222-2222-222222222222', 3, 1, 'freetext',
    'დასკვნითი ნაწილი');
