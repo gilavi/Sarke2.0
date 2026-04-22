@@ -51,7 +51,7 @@ export default function TermsScreen() {
 
   return (
     <Screen>
-      <Stack.Screen options={{ headerShown: viewOnly, title: body.heading, headerBackTitle: 'უკან' }} />
+      <Stack.Screen options={{ headerShown: viewOnly, title: body.heading }} />
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
         <ScrollView contentContainerStyle={{ padding: 20, gap: 14 }}>
           <View style={styles.langRow}>

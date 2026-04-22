@@ -341,9 +341,12 @@ export default function QuestionnaireWizard() {
   return (
     <Screen>
       <Stack.Screen
-        options={{ headerShown: true, title: template?.name ?? 'კითხვარი', headerBackTitle: 'უკან' }}
+        // Static "კითხვარი" gives the user a clear location. Template names
+        // are often too long for iOS nav bars and get truncated ugly; the
+        // name surfaces instead on the start screen and step progress.
+        options={{ headerShown: true, title: 'კითხვარი' }}
       />
-      <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
+      <SafeAreaView style={{ flex: 1 }} edges={[]}>
         <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
           <View style={styles.progressBg}>
             <View
@@ -1155,7 +1158,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingTop: 12,
+    paddingBottom: 28,
     borderTopWidth: 1,
     borderTopColor: theme.colors.hairline,
     backgroundColor: theme.colors.card,

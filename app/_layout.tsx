@@ -85,7 +85,26 @@ function AuthGate() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.colors.background } }} />
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: theme.colors.background },
+        // Consistent header styling for every pushed screen. Individual screens
+        // set `headerShown: true` + their own title; these defaults cover the
+        // rest (back-button label, typography, tint, no shadow) so we never
+        // leak group names like "(tabs)" into the back button and every
+        // header looks the same.
+        headerBackTitle: 'უკან',
+        headerTintColor: theme.colors.accent,
+        headerTitleStyle: {
+          color: theme.colors.ink,
+          fontWeight: '700',
+          fontSize: 17,
+        },
+        headerStyle: { backgroundColor: theme.colors.background },
+        headerShadowVisible: false,
+      }}
+    />
   );
 }
 

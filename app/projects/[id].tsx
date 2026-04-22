@@ -158,10 +158,21 @@ export default function ProjectDetail() {
       <Stack.Screen
         options={{
           headerShown: true,
-          title: project?.name ?? 'პროექტი',
+          // Static title gives context ("you're on a project page"). The
+          // actual project name is the hero inside the first card, which is
+          // more scannable than cramming it into a narrow header.
+          title: 'პროექტი',
           headerRight: () => (
-            <Pressable onPress={() => setEditing(true)} hitSlop={10}>
-              <Ionicons name="create-outline" size={22} color={theme.colors.accent} />
+            <Pressable
+              onPress={() => setEditing(true)}
+              hitSlop={10}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+              accessibilityLabel="რედაქტირება"
+            >
+              <Ionicons name="create-outline" size={18} color={theme.colors.accent} />
+              <Text style={{ color: theme.colors.accent, fontWeight: '600', fontSize: 15 }}>
+                რედაქტ.
+              </Text>
             </Pressable>
           ),
         }}

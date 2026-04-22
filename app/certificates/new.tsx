@@ -87,7 +87,7 @@ export default function AddCertificate() {
 
   return (
     <Screen>
-      <Stack.Screen options={{ headerShown: true, title: 'სერტიფიკატი' }} />
+      <Stack.Screen options={{ headerShown: true, title: 'ახალი სერტიფიკატი' }} />
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
         <ScrollView contentContainerStyle={{ padding: 20, gap: 14 }}>
           <Field label="ტიპი">
