@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -344,7 +344,31 @@ export default function QuestionnaireWizard() {
         // Static "კითხვარი" gives the user a clear location. Template names
         // are often too long for iOS nav bars and get truncated ugly; the
         // name surfaces instead on the start screen and step progress.
-        options={{ headerShown: true, title: 'კითხვარი' }}
+        options={{
+          headerShown: true,
+          title: 'კითხვარი',
+          headerRight: () => (
+            <Pressable
+              hitSlop={10}
+              onPress={() => {
+                Alert.alert(
+                  'გასვლა',
+                  'კითხვარი შენახულია დრაფტად. შეგიძლია გააგრძელო მოგვიანებით.',
+                  [
+                    { text: 'გაგრძელება', style: 'cancel' },
+                    {
+                      text: 'გასვლა',
+                      style: 'destructive',
+                      onPress: () => router.replace('/(tabs)/home' as any),
+                    },
+                  ],
+                );
+              }}
+            >
+              <Text style={{ color: theme.colors.inkSoft, fontSize: 15 }}>გასვლა</Text>
+            </Pressable>
+          ),
+        }}
       />
       <SafeAreaView style={{ flex: 1 }} edges={[]}>
         <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
@@ -361,44 +385,47 @@ export default function QuestionnaireWizard() {
           </Text>
         </View>
 
-        <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
-          {step.kind === 'question' ? (
-            <QuestionStep
-              question={step.question}
-              answer={answers[step.question.id]}
-              photosByAnswer={photos}
-              onAnswer={patchAnswer}
-              onPickPhoto={() => pickPhoto(step.question)}
-            />
-          ) : step.kind === 'gridRow' ? (
-            <GridRowStep
-              question={step.question}
-              row={step.row}
-              answer={answers[step.question.id]}
-              isFirstRow={step.row === (step.question.grid_rows?.[0] ?? '')}
-              harnessRowCount={harnessRowCount}
-              setHarnessRowCount={setHarnessRowCount}
-              onAnswer={patchAnswer}
-              onPickPhoto={() => pickPhoto(step.question)}
-            />
-          ) : step.kind === 'certificates' ? (
-            <CertificatesStep
-              requiredTypes={requiredCertTypes}
-              certs={certs}
-              onCertsChange={setCerts}
-            />
-          ) : (
-            <ConclusionStep
-              conclusion={conclusion}
-              onConclusion={setConclusion}
-              isSafe={isSafe}
-              onIsSafe={setIsSafe}
-              template={template}
-              harnessName={harnessName}
-              onHarnessName={setHarnessName}
-            />
-          )}
-        </ScrollView>
+        {step.kind === 'gridRow' ? (
+          // Full-height layout for grid rows — options are large and thumb-friendly
+          <GridRowStep
+            question={step.question}
+            row={step.row}
+            answer={answers[step.question.id]}
+            isFirstRow={step.row === (step.question.grid_rows?.[0] ?? '')}
+            harnessRowCount={harnessRowCount}
+            setHarnessRowCount={setHarnessRowCount}
+            onAnswer={patchAnswer}
+            onPickPhoto={() => pickPhoto(step.question)}
+          />
+        ) : (
+          <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
+            {step.kind === 'question' ? (
+              <QuestionStep
+                question={step.question}
+                answer={answers[step.question.id]}
+                photosByAnswer={photos}
+                onAnswer={patchAnswer}
+                onPickPhoto={() => pickPhoto(step.question)}
+              />
+            ) : step.kind === 'certificates' ? (
+              <CertificatesStep
+                requiredTypes={requiredCertTypes}
+                certs={certs}
+                onCertsChange={setCerts}
+              />
+            ) : (
+              <ConclusionStep
+                conclusion={conclusion}
+                onConclusion={setConclusion}
+                isSafe={isSafe}
+                onIsSafe={setIsSafe}
+                template={template}
+                harnessName={harnessName}
+                onHarnessName={setHarnessName}
+              />
+            )}
+          </ScrollView>
+        )}
 
         <View style={styles.footer}>
           <Button
@@ -670,6 +697,13 @@ function MeasureInput({
   );
 }
 
+// Returns a tint/bg pair for scaffold status columns
+function scaffoldColStyle(col: string): { tint: string; bg: string; icon: string } {
+  if (col.includes('დაზიანება')) return { tint: theme.colors.danger, bg: theme.colors.dangerSoft, icon: 'close-circle' };
+  if (col.includes('გამართულია')) return { tint: theme.colors.accent, bg: theme.colors.accentSoft, icon: 'checkmark-circle' };
+  return { tint: theme.colors.inkSoft, bg: theme.colors.subtleSurface, icon: 'remove-circle' };
+}
+
 function GridRowStep({
   question,
   row,
@@ -696,7 +730,10 @@ function GridRowStep({
   const setValue = (col: string, value: string | null, exclusive: boolean) => {
     onAnswer(question, a => {
       const grid: GridValues = { ...(a.grid_values ?? {}) };
-      const cur: Record<string, string> = exclusive ? {} : { ...(grid[row] ?? {}) };
+      const prev = grid[row] ?? {};
+      const cur: Record<string, string> = exclusive ? {} : { ...prev };
+      // Preserve comment when switching status options exclusively
+      if (exclusive && prev['კომენტარი']) cur['კომენტარი'] = prev['კომენტარი'];
       if (value === null) delete cur[col];
       else cur[col] = value;
       grid[row] = cur;
@@ -704,12 +741,83 @@ function GridRowStep({
     });
   };
 
+  // Scaffold (non-harness): full-height flex layout with big status buttons
+  if (!isHarness) {
+    const statusCols = cols.filter(c => c !== 'კომენტარი');
+    const hasComment = cols.includes('კომენტარი');
+    // Determine which status col is selected (exclusive)
+    const selectedStatus = statusCols.find(c => values[c] !== undefined) ?? null;
+
+    return (
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 24, gap: 10 }}>
+        {/* Component name header */}
+        <Text style={{ fontSize: 12, color: theme.colors.inkSoft, marginBottom: 0 }}>{question.title}</Text>
+        <Text style={{ fontSize: 26, fontWeight: '800', color: theme.colors.ink, marginBottom: 6 }}>{row}</Text>
+
+        {/* Status buttons — compact rows */}
+        <View style={{ gap: 8 }}>
+          {statusCols.map(col => {
+            const isSelected = selectedStatus === col;
+            const { tint, bg, icon } = scaffoldColStyle(col);
+            return (
+              <Pressable
+                key={col}
+                onPress={() => setValue(col, col, true)}
+                style={[
+                  styles.statusOption,
+                  isSelected && { backgroundColor: bg, borderColor: tint },
+                ]}
+              >
+                <Ionicons
+                  name={isSelected ? (icon as any) : 'ellipse-outline'}
+                  size={22}
+                  color={isSelected ? tint : theme.colors.inkFaint}
+                />
+                <Text
+                  style={{
+                    flex: 1,
+                    fontSize: 15,
+                    fontWeight: '600',
+                    color: isSelected ? tint : theme.colors.ink,
+                  }}
+                >
+                  {col}
+                </Text>
+                {isSelected && (
+                  <Ionicons name="checkmark-circle" size={18} color={tint} />
+                )}
+              </Pressable>
+            );
+          })}
+        </View>
+
+        {/* Comment field */}
+        {hasComment ? (
+          <TextInput
+            value={values['კომენტარი'] ?? ''}
+            onChangeText={text => setValue('კომენტარი', text || null, false)}
+            placeholder="კომენტარი (სურვილისამებრ)"
+            placeholderTextColor={theme.colors.inkFaint}
+            style={[styles.input, { marginTop: 10 }]}
+          />
+        ) : null}
+
+        {/* Photo button */}
+        <Pressable onPress={onPickPhoto} style={styles.photoRowBtn}>
+          <Ionicons name="camera-outline" size={18} color={theme.colors.inkSoft} />
+          <Text style={{ color: theme.colors.inkSoft, fontSize: 13 }}>ფოტო</Text>
+        </Pressable>
+      </ScrollView>
+    );
+  }
+
+  // Harness: scrollable list of components with ✓/✗ chips
   return (
-    <View style={{ gap: 14 }}>
+    <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }}>
       <Text style={{ fontSize: 11, color: theme.colors.inkSoft }}>{question.title}</Text>
       <Text style={{ fontSize: 24, fontWeight: '800', color: theme.colors.ink }}>{row}</Text>
 
-      {isHarness && isFirstRow ? (
+      {isFirstRow ? (
         <View
           style={{
             flexDirection: 'row',
@@ -733,71 +841,49 @@ function GridRowStep({
         </View>
       ) : null}
 
-      {isHarness ? (
-        <View style={{ gap: 8 }}>
-          {cols.map(col => {
-            const current = values[col];
-            return (
-              <View key={col} style={styles.harnessRow}>
-                <Text style={{ flex: 1, fontSize: 13 }}>{col}</Text>
-                <View style={{ flexDirection: 'row', gap: 6 }}>
-                  <Pressable
-                    onPress={() => setValue(col, 'ვარგისია', false)}
-                    style={[
-                      styles.chip,
-                      current === 'ვარგისია' && {
-                        backgroundColor: theme.colors.accentSoft,
-                        borderColor: theme.colors.accent,
-                      },
-                    ]}
-                  >
-                    <Text style={{ color: current === 'ვარგისია' ? theme.colors.accent : theme.colors.inkSoft }}>
-                      ✓
-                    </Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={() => setValue(col, 'დაზიანებულია', false)}
-                    style={[
-                      styles.chip,
-                      current === 'დაზიანებულია' && {
-                        backgroundColor: theme.colors.dangerSoft,
-                        borderColor: theme.colors.danger,
-                      },
-                    ]}
-                  >
-                    <Text style={{ color: current === 'დაზიანებულია' ? theme.colors.danger : theme.colors.inkSoft }}>
-                      ✗
-                    </Text>
-                  </Pressable>
-                </View>
+      <View style={{ gap: 8 }}>
+        {cols.map(col => {
+          const current = values[col];
+          return (
+            <View key={col} style={styles.harnessRow}>
+              <Text style={{ flex: 1, fontSize: 13 }}>{col}</Text>
+              <View style={{ flexDirection: 'row', gap: 6 }}>
+                <Pressable
+                  onPress={() => setValue(col, 'ვარგისია', false)}
+                  style={[
+                    styles.chip,
+                    current === 'ვარგისია' && {
+                      backgroundColor: theme.colors.accentSoft,
+                      borderColor: theme.colors.accent,
+                    },
+                  ]}
+                >
+                  <Text style={{ color: current === 'ვარგისია' ? theme.colors.accent : theme.colors.inkSoft }}>
+                    ✓
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setValue(col, 'დაზიანებულია', false)}
+                  style={[
+                    styles.chip,
+                    current === 'დაზიანებულია' && {
+                      backgroundColor: theme.colors.dangerSoft,
+                      borderColor: theme.colors.danger,
+                    },
+                  ]}
+                >
+                  <Text style={{ color: current === 'დაზიანებულია' ? theme.colors.danger : theme.colors.inkSoft }}>
+                    ✗
+                  </Text>
+                </Pressable>
               </View>
-            );
-          })}
-        </View>
-      ) : (
-        <View style={{ gap: 12 }}>
-          {cols.map(col => {
-            const selected = Object.values(values).includes(col);
-            return (
-              <Pressable
-                key={col}
-                onPress={() => setValue(col, col, true)}
-                style={[styles.statusOption, selected && { borderColor: theme.colors.accent, backgroundColor: theme.colors.accentSoft }]}
-              >
-                <Ionicons
-                  name={selected ? 'checkmark-circle' : 'ellipse-outline'}
-                  size={22}
-                  color={selected ? theme.colors.accent : theme.colors.inkSoft}
-                />
-                <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.ink }}>{col}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      )}
+            </View>
+          );
+        })}
+      </View>
 
       <Button title="ფოტო" variant="secondary" onPress={onPickPhoto} />
-    </View>
+    </ScrollView>
   );
 }
 
@@ -1173,6 +1259,26 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
     backgroundColor: theme.colors.subtleSurface,
     borderRadius: 14,
+  },
+  scaffoldOptionBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: theme.colors.hairline,
+    backgroundColor: theme.colors.card,
+  },
+  photoRowBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    marginTop: 8,
+    borderRadius: 12,
+    backgroundColor: theme.colors.subtleSurface,
   },
   harnessRow: {
     flexDirection: 'row',
