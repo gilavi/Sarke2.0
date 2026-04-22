@@ -167,7 +167,8 @@ export function buildPdfHtml(args: {
 function renderPhoto(photo: AnswerPhoto, isFailed: boolean, questionTitle: string): string {
   const titlePart = escapeHtml(questionTitle.slice(0, 50));
   const timePart = photo.created_at ? formatDate(photo.created_at) : '';
-  const caption = timePart ? `${titlePart} — ${timePart}` : titlePart;
+  const captionText = timePart ? `${titlePart} — ${timePart}` : titlePart;
+  const captionPrefix = isFailed ? '⚠ ' : '';
   const noteCaption = photo.caption ? `<div class="photo-caption muted">${escapeHtml(photo.caption)}</div>` : '';
   return `<div class="photo-cell${isFailed ? ' failed' : ''}">
     <img
@@ -176,7 +177,7 @@ function renderPhoto(photo: AnswerPhoto, isFailed: boolean, questionTitle: strin
       onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"
     />
     <div class="photo-missing" style="display:none;">სურათი მიუწვდომელია</div>
-    <div class="photo-caption">${caption}</div>
+    <div class="photo-caption${isFailed ? ' caption-failed' : ''}">${captionPrefix}${captionText}</div>
     ${noteCaption}
   </div>`;
 }
