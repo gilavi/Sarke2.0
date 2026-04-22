@@ -104,7 +104,12 @@ function AuthGate() {
         headerStyle: { backgroundColor: theme.colors.background },
         headerShadowVisible: false,
       }}
-    />
+    >
+      <Stack.Screen
+        name="new-inspection"
+        options={{ presentation: 'modal', headerShown: false }}
+      />
+    </Stack>
   );
 }
 

@@ -4,11 +4,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSession } from '../../lib/session';
+import { projectAvatar } from '../../lib/projectAvatar';
 import { certificatesApi, projectsApi, questionnairesApi, templatesApi, isExpiringSoon } from '../../lib/services';
 import { shareStoredPdf } from '../../lib/sharePdf';
 import { theme } from '../../lib/theme';
 import { Card, Chip, SectionHeader } from '../../components/ui';
 import type { Certificate, Project, Questionnaire, Template } from '../../types/models';
+
 
 export default function HomeScreen() {
   const { state } = useSession();
@@ -45,17 +47,12 @@ export default function HomeScreen() {
   const user = state.status === 'signedIn' ? state.user : null;
   const firstName = user?.first_name ?? '';
   const greeting = greetingFor(firstName);
-  const systemTemplates = templates.filter(t => t.is_system);
   const showCertBanner = certs.length === 0 || certs.some(isExpiringSoon);
 
   const onRefresh = async () => {
     setRefreshing(true);
     await load();
     setRefreshing(false);
-  };
-
-  const startTemplate = (template: Template) => {
-    router.push(`/template/${template.id}/start` as any);
   };
 
   const sharePdf = async (path: string) => {
@@ -79,11 +76,10 @@ export default function HomeScreen() {
             <Text style={{ fontSize: 32, fontWeight: '900', color: theme.colors.ink }}>
               {greeting}
             </Text>
-            <Text style={{ color: theme.colors.inkSoft, marginTop: 4 }}>რას შევამოწმებთ დღეს?</Text>
+            <Text style={{ color: theme.colors.inkSoft, marginTop: 4 }}>
+              დააჭირე <Text style={{ color: theme.colors.accent, fontWeight: '700' }}>+</Text> ახალი შემოწმების დასაწყებად.
+            </Text>
           </View>
-          <Pressable onPress={() => router.push('/(tabs)/more' as any)} hitSlop={8} accessibilityLabel="profile">
-            <Ionicons name="person-circle" size={32} color={theme.colors.accent} />
-          </Pressable>
         </View>
 
         {showCertBanner ? (
@@ -107,21 +103,64 @@ export default function HomeScreen() {
           </Pressable>
         ) : null}
 
-        <SectionHeader title="სწრაფი დაწყება" />
-        <View style={{ gap: 12, paddingHorizontal: 16, marginTop: 10 }}>
-          {systemTemplates.map(t => (
-            <Pressable key={t.id} onPress={() => startTemplate(t)}>
-              <QuickTile template={t} />
+        <View style={{ marginTop: 6, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingBottom: 2 }}>
+          <Text style={{ flex: 1, fontSize: 11, fontWeight: '700', color: theme.colors.inkSoft, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+            ჩემი პროექტები
+          </Text>
+          <Pressable onPress={() => router.push('/(tabs)/projects' as any)} hitSlop={8}>
+            <Text style={{ fontSize: 13, color: theme.colors.accent, fontWeight: '600' }}>ყველა</Text>
+          </Pressable>
+        </View>
+        <View style={{ gap: 10, paddingHorizontal: 16, marginTop: 10, marginBottom: 8 }}>
+          {projects.length === 0 ? (
+            <Card padding={14}>
+              <Text style={{ color: theme.colors.inkSoft, textAlign: 'center', fontSize: 13 }}>
+                პროექტები ჯერ არ გაქვს. დაამატე პირველი.
+              </Text>
+              <Pressable
+                onPress={() => router.push('/(tabs)/projects' as any)}
+                style={{ marginTop: 10, alignItems: 'center' }}
+              >
+                <Text style={{ color: theme.colors.accent, fontWeight: '600' }}>+ ახალი პროექტი</Text>
+              </Pressable>
+            </Card>
+          ) : (
+            projects.slice(0, 3).map(p => (
+              <Pressable key={p.id} onPress={() => router.push(`/projects/${p.id}` as any)}>
+                <Card padding={12}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <View style={[styles.projectIcon, { backgroundColor: projectAvatar(p.id).color + '22' }]}>
+                      <Text style={{ fontSize: 20 }}>{projectAvatar(p.id).emoji}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontWeight: '600', color: theme.colors.ink }}>{p.name}</Text>
+                      {p.company_name || p.address ? (
+                        <Text style={{ fontSize: 11, color: theme.colors.inkSoft, marginTop: 2 }} numberOfLines={1}>
+                          {[p.company_name, p.address].filter(Boolean).join(' · ')}
+                        </Text>
+                      ) : null}
+                    </View>
+                    <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
+                  </View>
+                </Card>
+              </Pressable>
+            ))
+          )}
+          {projects.length > 3 ? (
+            <Pressable onPress={() => router.push('/(tabs)/projects' as any)}>
+              <Text style={{ color: theme.colors.accent, fontWeight: '600', textAlign: 'center', paddingVertical: 6 }}>
+                კიდევ {projects.length - 3} პროექტი →
+              </Text>
             </Pressable>
-          ))}
+          ) : null}
         </View>
 
         {recent.length > 0 ? (
           <>
-            <View style={{ marginTop: 20 }}>
+            <View style={{ marginTop: 4 }}>
               <SectionHeader title="ბოლოდროინდელი" />
             </View>
-            <View style={{ gap: 10, paddingHorizontal: 16, marginTop: 10 }}>
+            <View style={{ gap: 10, paddingHorizontal: 16, marginTop: 10, marginBottom: 8 }}>
               {recent.map(q => (
                 <Pressable
                   key={q.id}
@@ -150,85 +189,8 @@ export default function HomeScreen() {
             </View>
           </>
         ) : null}
-
-        <View style={{ marginTop: 20, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingBottom: 2 }}>
-          <Text style={{ flex: 1, fontSize: 11, fontWeight: '700', color: theme.colors.inkSoft, textTransform: 'uppercase', letterSpacing: 0.8 }}>
-            ჩემი პროექტები
-          </Text>
-          <Pressable onPress={() => router.push('/(tabs)/projects' as any)} hitSlop={8}>
-            <Text style={{ fontSize: 13, color: theme.colors.accent, fontWeight: '600' }}>ყველა</Text>
-          </Pressable>
-        </View>
-        <View style={{ gap: 10, paddingHorizontal: 16, marginTop: 10, marginBottom: 8 }}>
-          {projects.length === 0 ? (
-            <Card padding={14}>
-              <Text style={{ color: theme.colors.inkSoft, textAlign: 'center', fontSize: 13 }}>
-                პროექტები ჯერ არ გაქვს. დაამატე პირველი.
-              </Text>
-              <Pressable
-                onPress={() => router.push('/(tabs)/projects' as any)}
-                style={{ marginTop: 10, alignItems: 'center' }}
-              >
-                <Text style={{ color: theme.colors.accent, fontWeight: '600' }}>+ ახალი პროექტი</Text>
-              </Pressable>
-            </Card>
-          ) : (
-            projects.slice(0, 3).map(p => (
-              <Pressable key={p.id} onPress={() => router.push(`/projects/${p.id}` as any)}>
-                <Card padding={12}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                    <View style={styles.projectIcon}>
-                      <Ionicons name="folder" size={20} color={theme.colors.accent} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontWeight: '600', color: theme.colors.ink }}>{p.name}</Text>
-                      {p.company_name || p.address ? (
-                        <Text style={{ fontSize: 11, color: theme.colors.inkSoft, marginTop: 2 }} numberOfLines={1}>
-                          {[p.company_name, p.address].filter(Boolean).join(' · ')}
-                        </Text>
-                      ) : null}
-                    </View>
-                    <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
-                  </View>
-                </Card>
-              </Pressable>
-            ))
-          )}
-          {projects.length > 3 ? (
-            <Pressable onPress={() => router.push('/(tabs)/projects' as any)}>
-              <Text style={{ color: theme.colors.accent, fontWeight: '600', textAlign: 'center', paddingVertical: 6 }}>
-                კიდევ {projects.length - 3} პროექტი →
-              </Text>
-            </Pressable>
-          ) : null}
-        </View>
       </ScrollView>
     </SafeAreaView>
-  );
-}
-
-function QuickTile({ template }: { template: Template }) {
-  const isHarness = template.category === 'harness';
-  const tint = isHarness ? theme.colors.harnessTint : theme.colors.accent;
-  const bg = isHarness ? theme.colors.harnessSoft : theme.colors.accentSoft;
-  const icon = isHarness ? 'body' : 'construct';
-  return (
-    <Card>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-        <View style={[styles.tileIcon, { backgroundColor: bg }]}>
-          <Ionicons name={icon as any} size={28} color={tint} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.ink }}>
-            {template.name}
-          </Text>
-          <Text style={{ fontSize: 12, color: theme.colors.inkSoft, marginTop: 2 }}>
-            კითხვარის გახსნა
-          </Text>
-        </View>
-        <Ionicons name="chevron-forward" size={18} color={theme.colors.inkFaint} />
-      </View>
-    </Card>
   );
 }
 
@@ -261,13 +223,6 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     backgroundColor: theme.colors.warnSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tileIcon: {
-    width: 62,
-    height: 62,
-    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
