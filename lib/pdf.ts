@@ -86,7 +86,7 @@ export function buildPdfHtml(args: {
       .meta { border: 1px solid #E8E1D4; border-collapse: collapse; width: 100%; margin: 12px 0; }
       .meta td { border: 1px solid #E8E1D4; padding: 6px 10px; }
       .meta td.key { background: #F6F2EA; font-weight: 600; width: 28%; }
-      .qa { margin: 8px 0; }
+      .qa { margin: 8px 0; page-break-inside: avoid; }
       .grid { border: 1px solid #E8E1D4; border-collapse: collapse; width: 100%; margin: 8px 0; }
       .grid th, .grid td { border: 1px solid #E8E1D4; padding: 5px 8px; font-size: 11px; }
       .grid th { background: #F6F2EA; }
@@ -109,12 +109,20 @@ export function buildPdfHtml(args: {
       .sig-block.not-present { background: #F6F2EA; }
       .sig-block.not-present .placeholder { color: #4A4A4A; font-size: 11px; font-style: italic; margin-top: 4px; }
       .conclusion { padding: 10px; background: #F6F2EA; border-radius: 6px; }
-      .photo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
-      .photo-cell { display: flex; flex-direction: column; gap: 4px; }
-      .photo-cell img { width: 100%; height: 160px; object-fit: cover; border-radius: 4px; border: 2px solid #E8E1D4; }
-      .photo-cell.failed img { border-color: #C0433C; }
-      .photo-caption { font-size: 10px; color: #4A4A4A; }
+      .photo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; page-break-inside: avoid; }
+      .photo-cell { display: flex; flex-direction: column; gap: 4px; page-break-inside: avoid; }
+      .photo-cell img { width: 100%; max-width: 48%; min-width: 100%; max-height: 180px; object-fit: cover; border-radius: 4px; border: 1px solid #E8E1D4; }
+      .photo-cell.failed img { border: 3px solid #D32F2F; }
+      .photo-missing { display: flex; align-items: center; justify-content: center; height: 120px; background: #F6F2EA; border-radius: 4px; border: 1px dashed #C8C0B0; font-size: 11px; color: #888; }
+      .photo-caption { font-size: 9pt; color: #666; text-align: center; margin-top: 2px; }
+      .caption-failed { color: #D32F2F; }
+      .appendix-sub { font-weight: 600; font-size: 12px; color: #1A1A1A; margin: 6px 0 4px; }
       .page-break { page-break-before: always; }
+      @media print {
+        .qa { page-break-inside: avoid; }
+        .photo-grid { page-break-inside: avoid; }
+        .photo-cell { page-break-inside: avoid; }
+      }
     </style>
   </head>
   <body>
