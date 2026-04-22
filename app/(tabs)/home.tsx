@@ -1,8 +1,20 @@
-import { useCallback, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import {
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useActionSheet } from '@expo/react-native-action-sheet';
 import { useSession } from '../../lib/session';
 import { projectAvatar } from '../../lib/projectAvatar';
 import {
@@ -14,6 +26,8 @@ import {
 } from '../../lib/services';
 import { shareStoredPdf } from '../../lib/sharePdf';
 import { theme } from '../../lib/theme';
+import { Button, Field, Input } from '../../components/ui';
+import { useToast } from '../../lib/toast';
 import type { Certificate, Project, Questionnaire, Template } from '../../types/models';
 
 export default function HomeScreen() {
@@ -24,6 +38,7 @@ export default function HomeScreen() {
   const [recent, setRecent] = useState<Questionnaire[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [pickerVisible, setPickerVisible] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -109,14 +124,14 @@ export default function HomeScreen() {
               </View>
             </Pressable>
           ) : (
-            <Pressable onPress={() => router.push('/new-inspection' as any)}>
+            <Pressable onPress={() => setPickerVisible(true)}>
               <View style={styles.startCard}>
                 <View style={styles.startIcon}>
                   <Ionicons name="add" size={26} color={theme.colors.accent} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.startTitle}>ახალი შემოწმება</Text>
-                  <Text style={styles.startSub}>აირჩიე ტიპი და დაიწყე</Text>
+                  <Text style={styles.startSub}>აირჩიე პროექტი და დაიწყე</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color={theme.colors.accent} />
               </View>
@@ -126,7 +141,7 @@ export default function HomeScreen() {
 
         {/* ───────── CERT BANNER (warn only) ───────── */}
         {showCertBanner ? (
-          <Pressable onPress={() => router.push('/certificates')}>
+          <Pressable onPress={() => router.push('/certificates' as any)}>
             <View style={styles.certBanner}>
               <View style={styles.bannerIcon}>
                 <Ionicons name={certs.length === 0 ? 'cloud-upload-outline' : 'warning'} size={18} color={theme.colors.warn} />
@@ -149,7 +164,7 @@ export default function HomeScreen() {
           <Text style={styles.sectionHeader}>პროექტები</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
             <Pressable
-              onPress={() => router.push('/projects/new' as any)}
+              onPress={() => setPickerVisible(true)}
               style={styles.sectionAddBtn}
               hitSlop={8}
             >
@@ -163,7 +178,7 @@ export default function HomeScreen() {
 
         {projects.length === 0 ? (
           <Pressable
-            onPress={() => router.push('/projects/new' as any)}
+            onPress={() => setPickerVisible(true)}
             style={{ paddingHorizontal: HPAD, marginTop: 10 }}
           >
             <View style={styles.emptyProjects}>
@@ -190,7 +205,7 @@ export default function HomeScreen() {
             ))}
             {/* New project card always at the end of the scroll */}
             <Pressable
-              onPress={() => router.push('/projects/new' as any)}
+              onPress={() => setPickerVisible(true)}
               style={{ width: Math.round(projectCardWidth * 0.72) }}
             >
               <View style={styles.newProjectCard}>
@@ -280,12 +295,202 @@ export default function HomeScreen() {
 
       {/* Persistent new-inspection FAB */}
       <Pressable
-        onPress={() => router.push('/new-inspection' as any)}
+        onPress={() => setPickerVisible(true)}
         style={styles.fab}
       >
         <Ionicons name="add" size={28} color={theme.colors.white} />
       </Pressable>
+
+      <ProjectPickerSheet
+        visible={pickerVisible}
+        projects={projects}
+        templates={templates}
+        onClose={() => setPickerVisible(false)}
+        onCreated={load}
+      />
     </SafeAreaView>
+  );
+}
+
+// ──────────── PROJECT PICKER SHEET ────────────
+
+function ProjectPickerSheet({
+  visible,
+  projects,
+  templates,
+  onClose,
+  onCreated,
+}: {
+  visible: boolean;
+  projects: Project[];
+  templates: Template[];
+  onClose: () => void;
+  onCreated: () => Promise<void>;
+}) {
+  const router = useRouter();
+  const toast = useToast();
+  const { showActionSheetWithOptions } = useActionSheet();
+  const [view, setView] = useState<'list' | 'new'>('list');
+  const [name, setName] = useState('');
+  const [company, setCompany] = useState('');
+  const [address, setAddress] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  // Reset form + view every time the sheet opens
+  useEffect(() => {
+    if (visible) {
+      setView('list');
+      setName('');
+      setCompany('');
+      setAddress('');
+      setBusy(false);
+    }
+  }, [visible]);
+
+  const pickTemplate = (projectId: string) => {
+    const system = templates.filter(t => t.is_system);
+    if (system.length === 0) {
+      toast.error('შაბლონი არ არის');
+      return;
+    }
+    const options = [...system.map(t => t.name), 'გაუქმება'];
+    showActionSheetWithOptions(
+      { title: 'აირჩიე შაბლონი', options, cancelButtonIndex: options.length - 1 },
+      async idx => {
+        if (idx == null || idx === options.length - 1) return;
+        const tpl = system[idx];
+        try {
+          onClose();
+          const q = await questionnairesApi.create({ projectId, templateId: tpl.id });
+          router.push(`/questionnaire/${q.id}` as any);
+        } catch (e: any) {
+          toast.error(e?.message ?? 'შექმნა ვერ მოხერხდა');
+        }
+      },
+    );
+  };
+
+  const createProject = async () => {
+    if (!name.trim()) return;
+    setBusy(true);
+    try {
+      await projectsApi.create({ name: name.trim(), companyName: company.trim() || null, address: address.trim() || null });
+      await onCreated();
+      onClose();
+    } catch (e: any) {
+      toast.error(e?.message ?? 'შექმნა ვერ მოხერხდა');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <Pressable style={pickerStyles.backdrop} onPress={onClose}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={{ width: '100%' }}
+        >
+          {/* Stop touches inside the card from closing the sheet */}
+          <Pressable style={pickerStyles.card} onPress={() => {}}>
+            <View style={pickerStyles.handle} />
+
+            {view === 'list' ? (
+              <>
+                {/* Sheet header */}
+                <View style={pickerStyles.sheetHeader}>
+                  <Text style={pickerStyles.sheetTitle}>შემოწმების დაწყება</Text>
+                  <Pressable onPress={onClose} hitSlop={10}>
+                    <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
+                  </Pressable>
+                </View>
+
+                {/* Project list */}
+                {projects.length === 0 ? (
+                  <View style={pickerStyles.emptyState}>
+                    <Ionicons name="folder-open-outline" size={36} color={theme.colors.inkFaint} />
+                    <Text style={pickerStyles.emptyText}>პროექტი ჯერ არ გაქვს</Text>
+                    <Text style={pickerStyles.emptySubText}>დაამატე ქვემოთ</Text>
+                  </View>
+                ) : (
+                  <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
+                    {projects.map(p => {
+                      const av = projectAvatar(p.id);
+                      return (
+                        <Pressable
+                          key={p.id}
+                          onPress={() => pickTemplate(p.id)}
+                          style={pickerStyles.projectRow}
+                        >
+                          <View style={[pickerStyles.avatarBubble, { backgroundColor: av.color + '22' }]}>
+                            <Text style={{ fontSize: 22 }}>{av.emoji}</Text>
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={pickerStyles.rowName} numberOfLines={1}>{p.name}</Text>
+                            {p.company_name ? (
+                              <Text style={pickerStyles.rowSub} numberOfLines={1}>{p.company_name}</Text>
+                            ) : null}
+                          </View>
+                          <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
+                        </Pressable>
+                      );
+                    })}
+                  </ScrollView>
+                )}
+
+                {/* Add new project row */}
+                <Pressable onPress={() => setView('new')} style={pickerStyles.addNewRow}>
+                  <View style={pickerStyles.addNewIcon}>
+                    <Ionicons name="add" size={18} color={theme.colors.accent} />
+                  </View>
+                  <Text style={pickerStyles.addNewText}>ახალი პროექტის დამატება</Text>
+                  <Ionicons name="chevron-forward" size={16} color={theme.colors.accent} />
+                </Pressable>
+              </>
+            ) : (
+              <>
+                {/* New project form header with back button */}
+                <View style={pickerStyles.sheetHeader}>
+                  <Pressable onPress={() => setView('list')} hitSlop={10} style={{ marginRight: 10 }}>
+                    <Ionicons name="arrow-back" size={22} color={theme.colors.accent} />
+                  </Pressable>
+                  <Text style={[pickerStyles.sheetTitle, { flex: 1 }]}>ახალი პროექტი</Text>
+                  <Pressable onPress={onClose} hitSlop={10}>
+                    <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
+                  </Pressable>
+                </View>
+
+                {/* Form fields */}
+                <View style={{ gap: 12, marginTop: 4 }}>
+                  <Field label="სახელი">
+                    <Input
+                      value={name}
+                      onChangeText={setName}
+                      placeholder="მაგ. ვაკე-საბურთალოს ობიექტი"
+                      autoFocus
+                    />
+                  </Field>
+                  <Field label="კომპანია">
+                    <Input value={company} onChangeText={setCompany} placeholder="შემკვეთი" />
+                  </Field>
+                  <Field label="მისამართი">
+                    <Input value={address} onChangeText={setAddress} placeholder="ობიექტის მისამართი" />
+                  </Field>
+                </View>
+
+                <Button
+                  title="შექმნა"
+                  onPress={createProject}
+                  loading={busy}
+                  disabled={!name.trim()}
+                  style={{ marginTop: 16 }}
+                />
+              </>
+            )}
+          </Pressable>
+        </KeyboardAvoidingView>
+      </Pressable>
+    </Modal>
   );
 }
 
@@ -411,7 +616,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  // RESUME CARD — subtle, same visual weight as other cards
+  // RESUME CARD
   resumeCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -677,5 +882,106 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.45,
     shadowRadius: 12,
     elevation: 10,
+  },
+});
+
+const pickerStyles = StyleSheet.create({
+  backdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  card: {
+    backgroundColor: theme.colors.background,
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
+    padding: 16,
+    paddingTop: 10,
+    paddingBottom: 44,
+  },
+  handle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: theme.colors.hairline,
+    alignSelf: 'center',
+    marginBottom: 14,
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  sheetTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: theme.colors.ink,
+  },
+  projectRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.colors.hairline,
+  },
+  avatarBubble: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rowName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: theme.colors.ink,
+  },
+  rowSub: {
+    fontSize: 12,
+    color: theme.colors.inkSoft,
+    marginTop: 2,
+  },
+  addNewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    backgroundColor: theme.colors.accentSoft,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: theme.colors.accent + '33',
+  },
+  addNewIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: theme.colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addNewText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '700',
+    color: theme.colors.accent,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    gap: 6,
+  },
+  emptyText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: theme.colors.ink,
+    marginTop: 8,
+  },
+  emptySubText: {
+    fontSize: 13,
+    color: theme.colors.inkSoft,
   },
 });

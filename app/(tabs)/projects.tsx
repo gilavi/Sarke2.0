@@ -2,6 +2,9 @@ import { useCallback, useMemo, useState } from 'react';
 import {
   Alert,
   FlatList,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -14,7 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { projectAvatar } from '../../lib/projectAvatar';
-import { Button, Card } from '../../components/ui';
+import { Button, Card, Field, Input } from '../../components/ui';
 import { projectsApi } from '../../lib/services';
 import { useToast } from '../../lib/toast';
 import { theme } from '../../lib/theme';
@@ -30,6 +33,7 @@ export default function ProjectsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [query, setQuery] = useState('');
+  const [creating, setCreating] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -152,7 +156,7 @@ export default function ProjectsScreen() {
               {!query ? (
                 <Button
                   title="+ ახალი პროექტი"
-                  onPress={() => router.push('/projects/new')}
+                  onPress={() => setCreating(true)}
                   style={{ marginTop: 14, width: 240 }}
                 />
               ) : null}
@@ -162,12 +166,101 @@ export default function ProjectsScreen() {
       />
 
       <Pressable
-        onPress={() => router.push('/projects/new')}
+        onPress={() => setCreating(true)}
         style={[styles.fab, theme.shadow.button]}
       >
         <Ionicons name="add" size={28} color={theme.colors.white} />
       </Pressable>
+
+      <CreateProjectSheet
+        visible={creating}
+        onClose={() => setCreating(false)}
+        onCreated={p => {
+          setProjects(prev => [p, ...prev.filter(x => x.id !== p.id)]);
+          setCreating(false);
+          toast.success('პროექტი შეიქმნა');
+        }}
+      />
     </SafeAreaView>
+  );
+}
+
+function CreateProjectSheet({
+  visible,
+  onClose,
+  onCreated,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onCreated: (p: Project) => void;
+}) {
+  const toast = useToast();
+  const [name, setName] = useState('');
+  const [company, setCompany] = useState('');
+  const [address, setAddress] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const save = async () => {
+    if (!name.trim()) return;
+    setBusy(true);
+    try {
+      const p = await projectsApi.create({
+        name: name.trim(),
+        companyName: company.trim() || null,
+        address: address.trim() || null,
+      });
+      setName('');
+      setCompany('');
+      setAddress('');
+      onCreated(p);
+    } catch (e: any) {
+      toast.error(e?.message ?? 'ვერ შეიქმნა');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <View style={styles.modalBackdrop}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHandle} />
+            <View style={styles.modalHeader}>
+              <Text style={{ fontSize: 18, fontWeight: '800', color: theme.colors.ink, flex: 1 }}>
+                ახალი პროექტი
+              </Text>
+              <Pressable onPress={onClose} hitSlop={10}>
+                <Ionicons name="close" size={24} color={theme.colors.inkSoft} />
+              </Pressable>
+            </View>
+            <View style={{ gap: 12, marginTop: 8 }}>
+              <Field label="სახელი">
+                <Input
+                  value={name}
+                  onChangeText={setName}
+                  placeholder="მაგ. ვაკე-საბურთალოს ობიექტი"
+                  autoFocus
+                />
+              </Field>
+              <Field label="კომპანია">
+                <Input value={company} onChangeText={setCompany} placeholder="შემკვეთი" />
+              </Field>
+              <Field label="მისამართი">
+                <Input value={address} onChangeText={setAddress} placeholder="ობიექტის მისამართი" />
+              </Field>
+            </View>
+            <Button
+              title="შენახვა"
+              onPress={save}
+              loading={busy}
+              disabled={!name.trim()}
+              style={{ marginTop: 14 }}
+            />
+          </View>
+        </KeyboardAvoidingView>
+      </View>
+    </Modal>
   );
 }
 
@@ -321,5 +414,30 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  modalCard: {
+    backgroundColor: theme.colors.background,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 16,
+    paddingTop: 10,
+    paddingBottom: 44,
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: theme.colors.hairline,
+    alignSelf: 'center',
+    marginBottom: 10,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 });

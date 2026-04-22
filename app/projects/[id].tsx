@@ -24,12 +24,11 @@ import {
 } from '../../lib/services';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { useToast } from '../../lib/toast';
-import { getStorageImageDataUrl } from '../../lib/imageUrl';
+import { getStorageImageDisplayUrl } from '../../lib/imageUrl';
+import { projectAvatar } from '../../lib/projectAvatar';
 import { theme } from '../../lib/theme';
 import type { Project, ProjectSigner, Questionnaire, Template } from '../../types/models';
 import { SIGNER_ROLE_LABEL } from '../../types/models';
-
-type SubTab = 'drafts' | 'completed';
 
 export default function ProjectDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -42,21 +41,23 @@ export default function ProjectDetail() {
   const [signerPreviews, setSignerPreviews] = useState<Record<string, string>>({});
   const [questionnaires, setQuestionnaires] = useState<Questionnaire[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
-  const [tab, setTab] = useState<SubTab>('drafts');
+  const [otherProjects, setOtherProjects] = useState<Project[]>([]);
   const [editing, setEditing] = useState(false);
 
   const load = useCallback(async () => {
     if (!id) return;
-    const [p, s, q, t] = await Promise.all([
+    const [p, s, q, t, all] = await Promise.all([
       projectsApi.getById(id).catch(() => null),
       projectsApi.signers(id).catch(() => []),
       questionnairesApi.listByProject(id).catch(() => []),
       templatesApi.list().catch(() => []),
+      projectsApi.list().catch(() => []),
     ]);
     setProject(p);
     setSigners(s);
     setQuestionnaires(q);
     setTemplates(t);
+    setOtherProjects(all.filter(x => x.id !== id));
 
     // Lazy-load sig thumbnails
     const previews: Record<string, string> = {};
@@ -64,7 +65,7 @@ export default function ProjectDetail() {
       s
         .filter(x => x.signature_png_url)
         .map(async x => {
-          previews[x.id] = await getStorageImageDataUrl(
+          previews[x.id] = await getStorageImageDisplayUrl(
             STORAGE_BUCKETS.signatures,
             x.signature_png_url!,
           );
@@ -150,8 +151,6 @@ export default function ProjectDetail() {
       },
     ]);
   };
-
-  const listToShow = tab === 'drafts' ? drafts : completed;
 
   return (
     <Screen>
@@ -262,72 +261,146 @@ export default function ProjectDetail() {
             </View>
           </Card>
 
-          {/* Questionnaires */}
+          {/* Questionnaires — two always-visible sections, no tabs */}
           <Card>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
               <Text style={styles.eyebrow}>კითხვარები</Text>
-              <Text style={{ color: theme.colors.inkSoft, fontSize: 12 }}>
-                {questionnaires.length}
-              </Text>
+              <Text style={{ color: theme.colors.inkSoft, fontSize: 12 }}>{questionnaires.length}</Text>
             </View>
-            <View style={styles.segment}>
-              <Segment
-                active={tab === 'drafts'}
-                label={`დრაფტები · ${drafts.length}`}
-                onPress={() => setTab('drafts')}
-              />
-              <Segment
-                active={tab === 'completed'}
-                label={`დასრულდა · ${completed.length}`}
-                onPress={() => setTab('completed')}
-              />
-            </View>
-            <View style={{ gap: 8, marginTop: 10 }}>
-              {listToShow.length === 0 ? (
-                <Text style={{ color: theme.colors.inkSoft, fontSize: 13, paddingVertical: 12 }}>
-                  ცარიელია
-                </Text>
+
+            {/* ── Drafts section ── */}
+            <View style={styles.qSection}>
+              <View style={styles.qSectionHeader}>
+                <View style={[styles.qSectionDot, { backgroundColor: theme.colors.warnSoft }]}>
+                  <Ionicons name="time" size={11} color={theme.colors.warn} />
+                </View>
+                <Text style={styles.qSectionLabel}>დრაფტები</Text>
+                <Text style={styles.qSectionCount}>{drafts.length}</Text>
+              </View>
+              {drafts.length === 0 ? (
+                <Text style={styles.qEmpty}>ცარიელია</Text>
               ) : (
-                listToShow.map(q => {
-                  const template = templates.find(t => t.id === q.template_id);
-                  return (
-                    <Swipeable
-                      key={q.id}
-                      renderRightActions={() => (
-                        <Pressable
-                          onPress={() => deleteQuestionnaire(q)}
-                          style={styles.swipeDelete}
-                        >
-                          <Ionicons name="trash" size={18} color={theme.colors.white} />
-                        </Pressable>
-                      )}
-                      overshootRight={false}
-                    >
-                      <Pressable
-                        onPress={() => router.push(`/questionnaire/${q.id}` as any)}
-                        style={styles.qRow}
+                <View style={{ gap: 8, marginTop: 8 }}>
+                  {drafts.map(q => {
+                    const template = templates.find(t => t.id === q.template_id);
+                    return (
+                      <Swipeable
+                        key={q.id}
+                        renderRightActions={() => (
+                          <Pressable onPress={() => deleteQuestionnaire(q)} style={styles.swipeDelete}>
+                            <Ionicons name="trash" size={18} color={theme.colors.white} />
+                          </Pressable>
+                        )}
+                        overshootRight={false}
                       >
-                        <Ionicons
-                          name={q.status === 'completed' ? 'checkmark-circle' : 'document-text'}
-                          size={20}
-                          color={q.status === 'completed' ? theme.colors.accent : theme.colors.warn}
-                        />
-                        <View style={{ flex: 1 }}>
-                          <Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.ink }}>
-                            {template?.name ?? 'კითხვარი'}
-                          </Text>
-                          <Text style={{ fontSize: 11, color: theme.colors.inkSoft, marginTop: 2 }}>
-                            {new Date(q.created_at).toLocaleString('ka')}
-                          </Text>
-                        </View>
-                        <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
-                      </Pressable>
-                    </Swipeable>
-                  );
-                })
+                        <Pressable
+                          onPress={() => router.push(`/questionnaire/${q.id}` as any)}
+                          style={styles.qRow}
+                        >
+                          <View style={[styles.qStatusDot, { backgroundColor: theme.colors.warnSoft }]}>
+                            <Ionicons name="document-text" size={14} color={theme.colors.warn} />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.ink }}>
+                              {template?.name ?? 'კითხვარი'}
+                            </Text>
+                            <Text style={{ fontSize: 11, color: theme.colors.inkSoft, marginTop: 2 }}>
+                              {new Date(q.created_at).toLocaleString('ka')}
+                            </Text>
+                          </View>
+                          <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
+                        </Pressable>
+                      </Swipeable>
+                    );
+                  })}
+                </View>
+              )}
+            </View>
+
+            {/* Divider */}
+            <View style={styles.qDivider} />
+
+            {/* ── Completed section ── */}
+            <View style={styles.qSection}>
+              <View style={styles.qSectionHeader}>
+                <View style={[styles.qSectionDot, { backgroundColor: theme.colors.harnessSoft }]}>
+                  <Ionicons name="checkmark" size={11} color={theme.colors.harnessTint} />
+                </View>
+                <Text style={styles.qSectionLabel}>დასრულებული</Text>
+                <Text style={styles.qSectionCount}>{completed.length}</Text>
+              </View>
+              {completed.length === 0 ? (
+                <Text style={styles.qEmpty}>ცარიელია</Text>
+              ) : (
+                <View style={{ gap: 8, marginTop: 8 }}>
+                  {completed.map(q => {
+                    const template = templates.find(t => t.id === q.template_id);
+                    return (
+                      <Swipeable
+                        key={q.id}
+                        renderRightActions={() => (
+                          <Pressable onPress={() => deleteQuestionnaire(q)} style={styles.swipeDelete}>
+                            <Ionicons name="trash" size={18} color={theme.colors.white} />
+                          </Pressable>
+                        )}
+                        overshootRight={false}
+                      >
+                        <Pressable
+                          onPress={() => router.push(`/questionnaire/${q.id}` as any)}
+                          style={styles.qRow}
+                        >
+                          <View style={[styles.qStatusDot, { backgroundColor: theme.colors.harnessSoft }]}>
+                            <Ionicons name="checkmark-circle" size={14} color={theme.colors.harnessTint} />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.ink }}>
+                              {template?.name ?? 'კითხვარი'}
+                            </Text>
+                            <Text style={{ fontSize: 11, color: theme.colors.inkSoft, marginTop: 2 }}>
+                              {new Date(q.created_at).toLocaleString('ka')}
+                            </Text>
+                          </View>
+                          <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
+                        </Pressable>
+                      </Swipeable>
+                    );
+                  })}
+                </View>
               )}
             </View>
           </Card>
+
+          {otherProjects.length > 0 ? (
+            <View style={styles.otherSection}>
+              <Text style={styles.otherHeader}>სხვა პროექტები</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ gap: 8, paddingRight: 8 }}
+              >
+                {otherProjects.slice(0, 10).map(op => {
+                  const av = projectAvatar(op.id);
+                  return (
+                    <Pressable
+                      key={op.id}
+                      onPress={() => router.replace(`/projects/${op.id}` as any)}
+                      style={styles.otherChip}
+                    >
+                      <View style={[styles.otherChipIcon, { backgroundColor: av.color + '22' }]}>
+                        <Text style={{ fontSize: 14 }}>{av.emoji}</Text>
+                      </View>
+                      <Text
+                        style={styles.otherChipText}
+                        numberOfLines={1}
+                      >
+                        {op.name}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          ) : null}
         </ScrollView>
 
         <View style={styles.footer}>
@@ -346,33 +419,6 @@ export default function ProjectDetail() {
         }}
       />
     </Screen>
-  );
-}
-
-function Segment({
-  active,
-  label,
-  onPress,
-}: {
-  active: boolean;
-  label: string;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={[styles.segmentItem, active && styles.segmentItemActive]}
-    >
-      <Text
-        style={{
-          color: active ? theme.colors.white : theme.colors.inkSoft,
-          fontWeight: '600',
-          fontSize: 12,
-        }}
-      >
-        {label}
-      </Text>
-    </Pressable>
   );
 }
 
@@ -508,20 +554,53 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: theme.colors.accentSoft,
   },
-  segment: {
+  // Questionnaire sections (no tabs)
+  qSection: {
+    marginTop: 14,
+  },
+  qSectionHeader: {
     flexDirection: 'row',
-    padding: 4,
-    backgroundColor: theme.colors.subtleSurface,
-    borderRadius: 999,
-    marginTop: 10,
-  },
-  segmentItem: {
-    flex: 1,
-    paddingVertical: 8,
-    borderRadius: 999,
     alignItems: 'center',
+    gap: 8,
   },
-  segmentItemActive: { backgroundColor: theme.colors.accent },
+  qSectionDot: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  qSectionLabel: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '700',
+    color: theme.colors.inkSoft,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  qSectionCount: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: theme.colors.inkFaint,
+  },
+  qEmpty: {
+    fontSize: 13,
+    color: theme.colors.inkFaint,
+    paddingVertical: 10,
+    paddingLeft: 30,
+  },
+  qDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: theme.colors.hairline,
+    marginTop: 14,
+  },
+  qStatusDot: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   qRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -569,4 +648,41 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   modalHeader: { flexDirection: 'row', alignItems: 'center' },
+
+  otherSection: {
+    marginTop: 8,
+    gap: 8,
+    opacity: 0.85,
+  },
+  otherHeader: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: theme.colors.inkFaint,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  otherChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    backgroundColor: theme.colors.subtleSurface,
+    borderWidth: 1,
+    borderColor: theme.colors.hairline,
+    maxWidth: 180,
+  },
+  otherChipIcon: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  otherChipText: {
+    fontSize: 12,
+    color: theme.colors.inkSoft,
+    flexShrink: 1,
+  },
 });

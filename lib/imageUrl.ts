@@ -34,3 +34,27 @@ export async function getStorageImageDataUrl(
   // 3. Last resort: public URL (only works if bucket is set to public)
   return storageApi.publicUrl(bucket, path);
 }
+
+/**
+ * URL intended for direct display in a React Native `<Image>` — prefers a
+ * signed URL so the network layer handles the fetch instead of FileReader.
+ * `getStorageImageDataUrl` is still used for PDF rendering, where the
+ * WebView can't reach Supabase endpoints.
+ */
+export async function getStorageImageDisplayUrl(
+  bucket: string,
+  path: string,
+): Promise<string> {
+  try {
+    return await storageApi.signedUrl(bucket, path, 3600);
+  } catch {
+    // fall through
+  }
+  try {
+    const blob = await storageApi.download(bucket, path);
+    return await blobToDataUrl(blob);
+  } catch {
+    // fall through
+  }
+  return storageApi.publicUrl(bucket, path);
+}

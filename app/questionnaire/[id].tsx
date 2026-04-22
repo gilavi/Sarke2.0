@@ -353,13 +353,35 @@ export default function QuestionnaireWizard() {
               onPress={() => {
                 Alert.alert(
                   'გასვლა',
-                  'კითხვარი შენახულია დრაფტად. შეგიძლია გააგრძელო მოგვიანებით.',
+                  'შეინახო დრაფტად და გააგრძელო მოგვიანებით, თუ საერთოდ წაშალო?',
                   [
                     { text: 'გაგრძელება', style: 'cancel' },
                     {
-                      text: 'გასვლა',
-                      style: 'destructive',
+                      text: 'დრაფტად შენახვა',
                       onPress: () => router.replace('/(tabs)/home' as any),
+                    },
+                    {
+                      text: 'წაშლა',
+                      style: 'destructive',
+                      onPress: () => {
+                        Alert.alert('წაშლა?', 'კითხვარი სამუდამოდ წაიშლება.', [
+                          { text: 'გაუქმება', style: 'cancel' },
+                          {
+                            text: 'წაშლა',
+                            style: 'destructive',
+                            onPress: async () => {
+                              if (!id) return;
+                              try {
+                                await questionnairesApi.remove(id);
+                                toast.success('წაიშალა');
+                                router.replace('/(tabs)/home' as any);
+                              } catch (e: any) {
+                                toast.error(e?.message ?? 'ვერ წაიშალა');
+                              }
+                            },
+                          },
+                        ]);
+                      },
                     },
                   ],
                 );

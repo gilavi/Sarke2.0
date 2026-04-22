@@ -8,7 +8,7 @@ import { Button, Field, Input, Screen } from '../../../components/ui';
 import { projectsApi, storageApi } from '../../../lib/services';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import { useToast } from '../../../lib/toast';
-import { getStorageImageDataUrl } from '../../../lib/imageUrl';
+import { getStorageImageDisplayUrl } from '../../../lib/imageUrl';
 import { theme } from '../../../lib/theme';
 import type { ProjectSigner, SignerRole } from '../../../types/models';
 import { SIGNER_ROLE_LABEL } from '../../../types/models';
@@ -46,7 +46,7 @@ export default function SignerForm() {
       setPosition(s.position ?? '');
       if (s.signature_png_url) {
         setSigPreview(
-          await getStorageImageDataUrl(STORAGE_BUCKETS.signatures, s.signature_png_url),
+          await getStorageImageDisplayUrl(STORAGE_BUCKETS.signatures, s.signature_png_url),
         );
       }
     } catch (e: any) {

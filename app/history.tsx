@@ -1,11 +1,13 @@
 import { useCallback, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { Card, Screen } from '../components/ui';
 import { projectsApi, questionnairesApi, templatesApi } from '../lib/services';
 import { shareStoredPdf } from '../lib/sharePdf';
+import { useToast } from '../lib/toast';
 import { theme } from '../lib/theme';
 import type { Project, Questionnaire, Template } from '../types/models';
 
@@ -15,6 +17,7 @@ type ListItem =
 
 export default function HistoryScreen() {
   const router = useRouter();
+  const toast = useToast();
   const [qs, setQs] = useState<Questionnaire[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -56,6 +59,25 @@ export default function HistoryScreen() {
     } catch {}
   };
 
+  const onDelete = (q: Questionnaire) => {
+    Alert.alert('წაშლა?', 'კითხვარი სამუდამოდ წაიშლება.', [
+      { text: 'გაუქმება', style: 'cancel' },
+      {
+        text: 'წაშლა',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await questionnairesApi.remove(q.id);
+            setQs(prev => prev.filter(x => x.id !== q.id));
+            toast.success('წაიშალა');
+          } catch (e: any) {
+            toast.error(e?.message ?? 'ვერ წაიშალა');
+          }
+        },
+      },
+    ]);
+  };
+
   return (
     <Screen>
       <Stack.Screen options={{ headerShown: true, title: 'ისტორია' }} />
@@ -74,45 +96,57 @@ export default function HistoryScreen() {
             const t = templates.find(t => t.id === q.template_id);
             const p = projects.find(p => p.id === q.project_id);
             return (
-              <Pressable
-                onPress={() =>
-                  q.status === 'draft'
-                    ? router.push(`/questionnaire/${q.id}` as any)
-                    : openPdf(q)
-                }
+              <Swipeable
+                renderRightActions={() => (
+                  <Pressable onPress={() => onDelete(q)} style={styles.swipeDelete}>
+                    <Ionicons name="trash" size={18} color={theme.colors.white} />
+                    <Text style={{ color: theme.colors.white, fontSize: 11, fontWeight: '700' }}>
+                      წაშლა
+                    </Text>
+                  </Pressable>
+                )}
+                overshootRight={false}
               >
-                <Card padding={12}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                    <View
-                      style={[
-                        styles.icon,
-                        {
-                          backgroundColor:
-                            q.status === 'completed' ? theme.colors.accentSoft : theme.colors.warnSoft,
-                        },
-                      ]}
-                    >
-                      <Ionicons
-                        name={q.status === 'completed' ? 'checkmark-circle' : 'document-text'}
-                        size={20}
-                        color={q.status === 'completed' ? theme.colors.accent : theme.colors.warn}
-                      />
+                <Pressable
+                  onPress={() =>
+                    q.status === 'draft'
+                      ? router.push(`/questionnaire/${q.id}` as any)
+                      : openPdf(q)
+                  }
+                >
+                  <Card padding={12}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                      <View
+                        style={[
+                          styles.icon,
+                          {
+                            backgroundColor:
+                              q.status === 'completed' ? theme.colors.accentSoft : theme.colors.warnSoft,
+                          },
+                        ]}
+                      >
+                        <Ionicons
+                          name={q.status === 'completed' ? 'checkmark-circle' : 'document-text'}
+                          size={20}
+                          color={q.status === 'completed' ? theme.colors.accent : theme.colors.warn}
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontWeight: '600', color: theme.colors.ink }}>
+                          {t?.name ?? 'კითხვარი'}
+                        </Text>
+                        {p ? (
+                          <Text style={{ fontSize: 11, color: theme.colors.inkSoft }}>{p.name}</Text>
+                        ) : null}
+                        <Text style={{ fontSize: 10, color: theme.colors.inkFaint }}>
+                          {new Date(q.created_at).toLocaleString('ka')}
+                        </Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
                     </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontWeight: '600', color: theme.colors.ink }}>
-                        {t?.name ?? 'კითხვარი'}
-                      </Text>
-                      {p ? (
-                        <Text style={{ fontSize: 11, color: theme.colors.inkSoft }}>{p.name}</Text>
-                      ) : null}
-                      <Text style={{ fontSize: 10, color: theme.colors.inkFaint }}>
-                        {new Date(q.created_at).toLocaleString('ka')}
-                      </Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
-                  </View>
-                </Card>
-              </Pressable>
+                  </Card>
+                </Pressable>
+              </Swipeable>
             );
           }}
           ListEmptyComponent={
@@ -142,5 +176,14 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  swipeDelete: {
+    width: 86,
+    backgroundColor: theme.colors.danger,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    marginLeft: 8,
+    borderRadius: 12,
   },
 });

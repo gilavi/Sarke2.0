@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -52,7 +52,8 @@ export default function MoreScreen() {
   const drafts = counts.drafts;
   const expiring = certs.filter(isExpiringSoon).length;
   const systemTpl = templates.filter(t => t.is_system).length;
-  const initials = `${(user?.first_name?.[0] ?? '')}${(user?.last_name?.[0] ?? '')}`.trim() || '·';
+  const avatarSeed = encodeURIComponent(user?.id ?? user?.email ?? 'guest');
+  const avatarUrl = `https://api.dicebear.com/9.x/adventurer/png?seed=${avatarSeed}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf&size=128`;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top']}>
@@ -64,9 +65,7 @@ export default function MoreScreen() {
         {/* Profile */}
         <Card style={{ marginHorizontal: 16 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-            <View style={styles.avatar}>
-              <Text style={{ color: theme.colors.white, fontSize: 22, fontWeight: '700' }}>{initials}</Text>
-            </View>
+            <Image source={{ uri: avatarUrl }} style={styles.avatar} />
             <View style={{ flex: 1 }}>
               <Text style={{ fontWeight: '600', fontSize: 17, color: theme.colors.ink }}>
                 {`${user?.first_name ?? ''} ${user?.last_name ?? ''}`.trim() || '—'}
@@ -242,9 +241,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: theme.colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: theme.colors.subtleSurface,
   },
   statPill: {
     flex: 1,

@@ -21,7 +21,7 @@ import {
 } from '../../../lib/services';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import { uploadSignature } from '../../../lib/signatures';
-import { getStorageImageDataUrl } from '../../../lib/imageUrl';
+import { getStorageImageDataUrl, getStorageImageDisplayUrl } from '../../../lib/imageUrl';
 import { theme } from '../../../lib/theme';
 import type {
   Answer,
@@ -125,7 +125,7 @@ export default function SigningScreen() {
     await Promise.all(
       sigs.map(async s => {
         if (!s.signature_png_url) return;
-        sigMap[s.signer_role] = await getStorageImageDataUrl(
+        sigMap[s.signer_role] = await getStorageImageDisplayUrl(
           STORAGE_BUCKETS.signatures,
           s.signature_png_url,
         );
@@ -154,7 +154,7 @@ export default function SigningScreen() {
       return;
     }
     (async () => {
-      const dataUrl = await getStorageImageDataUrl(STORAGE_BUCKETS.signatures, url);
+      const dataUrl = await getStorageImageDisplayUrl(STORAGE_BUCKETS.signatures, url);
       if (!cancelled) setExpertSigUrl(dataUrl);
     })();
     return () => {
@@ -221,7 +221,7 @@ export default function SigningScreen() {
         person_name: signer.full_name,
       }));
       setExistingSigs(prev => [...prev.filter(s => s.signer_role !== role), saved]);
-      const dataUrl = await getStorageImageDataUrl(
+      const dataUrl = await getStorageImageDisplayUrl(
         STORAGE_BUCKETS.signatures,
         signer.signature_png_url,
       );
