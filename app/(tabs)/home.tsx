@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,33 +23,38 @@ export default function HomeScreen() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [recent, setRecent] = useState<Questionnaire[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [counts, setCounts] = useState<{ total: number; drafts: number; completed: number }>({
-    total: 0,
-    drafts: 0,
-    completed: 0,
-  });
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const [c, t, r, p, cs] = await Promise.all([
+      const [c, t, r, p] = await Promise.all([
         certificatesApi.list().catch(() => []),
         templatesApi.list().catch(() => []),
         questionnairesApi.recent(10).catch(() => []),
         projectsApi.list().catch(() => []),
-        questionnairesApi.counts().catch(() => ({ total: 0, drafts: 0, completed: 0, latestCreatedAt: null })),
       ]);
       setCerts(c);
       setTemplates(t);
       setRecent(r);
       setProjects(p);
-      setCounts(cs);
     } catch {
       // ignore
     }
   }, []);
 
   useFocusEffect(useCallback(() => { void load(); }, [load]));
+
+  const { width: screenWidth } = useWindowDimensions();
+  const HPAD = 20;
+  const GAP = 12;
+  // Projects layout: 1 = full width, 2 = half each, 3+ = carousel (~42% → 2 full + 3rd clipped)
+  const projectCardWidth =
+    projects.length === 1
+      ? screenWidth - HPAD * 2
+      : projects.length === 2
+      ? (screenWidth - HPAD * 2 - GAP) / 2
+      : Math.round(screenWidth * 0.42);
+  const isProjectsCarousel = projects.length > 2;
 
   const user = state.status === 'signedIn' ? state.user : null;
   const firstName = user?.first_name ?? '';
@@ -74,7 +79,7 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top']}>
       <ScrollView
-        contentContainerStyle={{ paddingTop: 12, paddingBottom: 40 }}
+        contentContainerStyle={{ paddingTop: 12, paddingBottom: 100 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.accent} />}
       >
         {/* ───────── HERO ───────── */}
@@ -89,7 +94,7 @@ export default function HomeScreen() {
             <Pressable onPress={() => router.push(`/questionnaire/${latestDraft.id}` as any)}>
               <View style={styles.resumeCard}>
                 <View style={styles.resumeIcon}>
-                  <Ionicons name="play" size={22} color={theme.colors.white} />
+                  <Ionicons name="play" size={16} color={theme.colors.accent} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.resumeEyebrow}>გააგრძელე დრაფტი</Text>
@@ -100,7 +105,7 @@ export default function HomeScreen() {
                     {relativeTime(latestDraft.created_at)}
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color={theme.colors.white} />
+                <Ionicons name="chevron-forward" size={18} color={theme.colors.inkFaint} />
               </View>
             </Pressable>
           ) : (
@@ -117,28 +122,6 @@ export default function HomeScreen() {
               </View>
             </Pressable>
           )}
-        </View>
-
-        {/* ───────── STATS ───────── */}
-        <View style={[styles.statRow, { marginTop: 20 }]}>
-          <StatTile
-            value={counts.completed}
-            label="დასრულდა"
-            tint={theme.colors.harnessTint}
-          />
-          <StatTile
-            value={counts.drafts}
-            label="დრაფტი"
-            tint={theme.colors.warn}
-            onPress={() => router.push('/history' as any)}
-          />
-          <StatTile
-            value={expiringCount}
-            label={expiringCount === 0 ? 'სერტ.' : 'იწურება'}
-            tint={expiringCount > 0 ? theme.colors.danger : theme.colors.accent}
-            onPress={() => router.push('/certificates' as any)}
-            alert={expiringCount > 0}
-          />
         </View>
 
         {/* ───────── CERT BANNER (warn only) ───────── */}
@@ -179,35 +162,32 @@ export default function HomeScreen() {
               </Pressable>
             </View>
           </View>
-        ) : (
+        ) : isProjectsCarousel ? (
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 10, paddingBottom: 4, gap: 12 }}
+            contentContainerStyle={{ paddingHorizontal: HPAD, paddingTop: 10, paddingBottom: 4, gap: GAP }}
           >
-            {projects.slice(0, 8).map(p => {
-              const av = projectAvatar(p.id);
-              return (
-                <Pressable key={p.id} onPress={() => router.push(`/projects/${p.id}` as any)}>
-                  <View style={styles.projectCard}>
-                    <View style={[styles.projectEmoji, { backgroundColor: av.color + '22' }]}>
-                      <Text style={{ fontSize: 26 }}>{av.emoji}</Text>
-                    </View>
-                    <Text style={styles.projectName} numberOfLines={2}>{p.name}</Text>
-                    {p.company_name ? (
-                      <Text style={styles.projectSub} numberOfLines={1}>{p.company_name}</Text>
-                    ) : null}
-                  </View>
-                </Pressable>
-              );
-            })}
-            {projects.length > 8 ? (
-              <Pressable onPress={() => router.push('/(tabs)/projects' as any)} style={styles.projectCardMore}>
-                <Ionicons name="arrow-forward" size={22} color={theme.colors.accent} />
-                <Text style={styles.projectMoreText}>ყველა</Text>
-              </Pressable>
-            ) : null}
+            {projects.slice(0, 8).map(p => (
+              <ProjectCard
+                key={p.id}
+                project={p}
+                width={projectCardWidth}
+                onPress={() => router.push(`/projects/${p.id}` as any)}
+              />
+            ))}
           </ScrollView>
+        ) : (
+          <View style={{ flexDirection: 'row', paddingHorizontal: HPAD, paddingTop: 10, gap: GAP }}>
+            {projects.map(p => (
+              <ProjectCard
+                key={p.id}
+                project={p}
+                width={projectCardWidth}
+                onPress={() => router.push(`/projects/${p.id}` as any)}
+              />
+            ))}
+          </View>
         )}
 
         {/* ───────── RECENT ACTIVITY ───────── */}
@@ -275,32 +255,43 @@ export default function HomeScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Persistent new-inspection FAB */}
+      <Pressable
+        onPress={() => router.push('/new-inspection' as any)}
+        style={styles.fab}
+      >
+        <Ionicons name="add" size={28} color={theme.colors.white} />
+      </Pressable>
     </SafeAreaView>
   );
 }
 
-// ──────────── STAT TILE ────────────
+// ──────────── PROJECT CARD ────────────
 
-function StatTile({
-  value,
-  label,
-  tint,
+function ProjectCard({
+  project,
+  width,
   onPress,
-  alert,
 }: {
-  value: number;
-  label: string;
-  tint: string;
-  onPress?: () => void;
-  alert?: boolean;
+  project: Project;
+  width: number;
+  onPress: () => void;
 }) {
-  const Inner = (
-    <View style={[styles.statTile, alert && { borderColor: tint + '55', backgroundColor: tint + '0E' }]}>
-      <Text style={[styles.statValue, { color: tint }]}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
+  const av = projectAvatar(project.id);
+  return (
+    <Pressable onPress={onPress} style={{ width }}>
+      <View style={styles.projectCard}>
+        <View style={[styles.projectEmoji, { backgroundColor: av.color + '22' }]}>
+          <Text style={{ fontSize: 26 }}>{av.emoji}</Text>
+        </View>
+        <Text style={styles.projectName} numberOfLines={2}>{project.name}</Text>
+        {project.company_name ? (
+          <Text style={styles.projectSub} numberOfLines={1}>{project.company_name}</Text>
+        ) : null}
+      </View>
+    </Pressable>
   );
-  return onPress ? <Pressable onPress={onPress} style={{ flex: 1 }}>{Inner}</Pressable> : <View style={{ flex: 1 }}>{Inner}</View>;
 }
 
 // ──────────── HELPERS ────────────
@@ -398,43 +389,40 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  // RESUME CARD
+  // RESUME CARD — subtle, same visual weight as other cards
   resumeCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    backgroundColor: theme.colors.accent,
-    borderRadius: 18,
-    padding: 18,
-    shadowColor: theme.colors.accent,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.28,
-    shadowRadius: 12,
-    elevation: 6,
+    gap: 12,
+    backgroundColor: theme.colors.card,
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: theme.colors.hairline,
   },
   resumeIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: theme.colors.accentSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
   resumeEyebrow: {
-    color: 'rgba(255,255,255,0.85)',
+    color: theme.colors.accent,
     fontSize: 11,
     fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    letterSpacing: 0.6,
     marginBottom: 2,
   },
   resumeTitle: {
-    color: theme.colors.white,
-    fontSize: 17,
+    color: theme.colors.ink,
+    fontSize: 15,
     fontWeight: '700',
   },
   resumeMeta: {
-    color: 'rgba(255,255,255,0.75)',
+    color: theme.colors.inkSoft,
     fontSize: 12,
     marginTop: 2,
   },
@@ -469,35 +457,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  // STATS
-  statRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    gap: 10,
-  },
-  statTile: {
-    backgroundColor: theme.colors.card,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: theme.colors.hairline,
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    alignItems: 'flex-start',
-    gap: 2,
-  },
-  statValue: {
-    fontSize: 26,
-    fontWeight: '900',
-    letterSpacing: -0.5,
-  },
-  statLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: theme.colors.inkSoft,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-
   // CERT BANNER
   certBanner: {
     flexDirection: 'row',
@@ -530,7 +489,6 @@ const styles = StyleSheet.create({
 
   // PROJECTS CAROUSEL
   projectCard: {
-    width: 140,
     backgroundColor: theme.colors.card,
     borderRadius: 16,
     borderWidth: 1,
@@ -555,21 +513,6 @@ const styles = StyleSheet.create({
   projectSub: {
     fontSize: 11,
     color: theme.colors.inkSoft,
-  },
-  projectCardMore: {
-    width: 90,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: theme.colors.accent + '33',
-    backgroundColor: theme.colors.accentSoft,
-  },
-  projectMoreText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: theme.colors.accent,
   },
   emptyProjects: {
     alignItems: 'center',
@@ -660,5 +603,23 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: theme.colors.ink,
     lineHeight: 19,
+  },
+
+  // FAB
+  fab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 24,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: theme.colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: theme.colors.accent,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.45,
+    shadowRadius: 12,
+    elevation: 10,
   },
 });
