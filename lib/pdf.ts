@@ -38,7 +38,7 @@ export function buildPdfHtml(args: {
   const answerFor = (q: Question) => answers.find(a => a.question_id === q.id);
   const date = new Date(questionnaire.created_at).toLocaleDateString('ka');
 
-  // Collect overflow photos (3rd+ per question) for appendix
+  // Collect overflow photos (7th+ per question) for appendix
   const appendixPhotos: Array<{ questionTitle: string; photos: AnswerPhoto[]; isFailed: boolean }> = [];
 
   const sections = Array.from(new Set(questions.map(q => q.section))).sort();
@@ -51,10 +51,10 @@ export function buildPdfHtml(args: {
           const ans = answerFor(q);
           const photos = ans ? (photosByAnswer[ans.id] ?? []) : [];
           const isFailed = ans?.value_bool === false;
-          if (photos.length > 2) {
-            appendixPhotos.push({ questionTitle: q.title, photos: photos.slice(2), isFailed });
+          if (photos.length > 6) {
+            appendixPhotos.push({ questionTitle: q.title, photos: photos.slice(6), isFailed });
           }
-          return renderQuestion(q, ans, photos.slice(0, 2), isFailed);
+          return renderQuestion(q, ans, photos.slice(0, 6), isFailed);
         })
         .join('');
       return `<section>${items}</section>`;
@@ -163,11 +163,20 @@ export function buildPdfHtml(args: {
 </html>`;
 }
 
-function renderPhoto(photo: AnswerPhoto, isFailed: boolean): string {
-  const caption = photo.caption ? escapeHtml(photo.caption) : '';
+function renderPhoto(photo: AnswerPhoto, isFailed: boolean, questionTitle: string): string {
+  const titlePart = escapeHtml(questionTitle.slice(0, 50));
+  const timePart = photo.created_at ? formatDate(photo.created_at) : '';
+  const caption = timePart ? `${titlePart} — ${timePart}` : titlePart;
+  const noteCaption = photo.caption ? `<div class="photo-caption muted">${escapeHtml(photo.caption)}</div>` : '';
   return `<div class="photo-cell${isFailed ? ' failed' : ''}">
-    <img src="${photo.storage_path}" alt="ფოტო" />
-    ${caption ? `<div class="photo-caption">${caption}</div>` : ''}
+    <img
+      src="${photo.storage_path}"
+      alt="ფოტო"
+      onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"
+    />
+    <div class="photo-missing" style="display:none;">სურათი მიუწვდომელია</div>
+    <div class="photo-caption">${caption}</div>
+    ${noteCaption}
   </div>`;
 }
 
@@ -176,7 +185,7 @@ function renderQuestion(q: Question, answer: Answer | undefined, inlinePhotos: A
     ? `<p class="muted">კომენტარი: ${escapeHtml(answer.comment)}</p>`
     : '';
   const photosHtml = inlinePhotos.length > 0
-    ? `<div class="photo-grid">${inlinePhotos.map(p => renderPhoto(p, isFailed)).join('')}</div>`
+    ? `<div class="photo-grid">${inlinePhotos.map(p => renderPhoto(p, isFailed, q.title)).join('')}</div>`
     : '';
   switch (q.type) {
     case 'yesno': {
@@ -191,7 +200,7 @@ function renderQuestion(q: Question, answer: Answer | undefined, inlinePhotos: A
     case 'freetext':
       return `<div class="qa"><strong>${escapeHtml(q.title)}</strong><br/>${escapeHtml(answer?.value_text ?? '—')}${comment}${photosHtml}</div>`;
     case 'photo_upload':
-      return `<div class="qa"><strong>${escapeHtml(q.title)}</strong>${photosHtml.length ? photosHtml : '<br/><em>ფოტოები: მიმაგრებულია აპში.</em>'}${comment}</div>`;
+      return `<div class="qa"><strong>${escapeHtml(q.title)}</strong>${photosHtml}${comment}</div>`;
     case 'component_grid': {
       const rows = q.grid_rows ?? [];
       const cols = q.grid_cols ?? [];
@@ -211,6 +220,16 @@ function renderQuestion(q: Question, answer: Answer | undefined, inlinePhotos: A
     default:
       return '';
   }
+}
+
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yyyy = d.getFullYear();
+  const hh = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  return `${dd}.${mm}.${yyyy} ${hh}:${min}`;
 }
 
 function escapeHtml(s: string): string {
