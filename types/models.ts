@@ -84,6 +84,7 @@ export interface Question {
 export interface Questionnaire {
   id: string;
   project_id: string;
+  project_item_id: string | null;
   template_id: string;
   user_id: string;
   status: QuestionnaireStatus;
@@ -114,6 +115,41 @@ export interface AnswerPhoto {
   storage_path: string;
   caption: string | null;
   created_at: string;
+}
+
+export interface ProjectItem {
+  id: string;
+  project_id: string;
+  name: string;
+  category: string | null;
+  created_at: string;
+}
+
+export interface Schedule {
+  id: string;
+  project_item_id: string;
+  last_inspected_at: string | null;
+  next_due_at: string | null;
+  interval_days: number;
+  google_event_id: string | null;
+  created_at: string;
+}
+
+/**
+ * Schedule with its parent project_item + project joined in, shaped to
+ * match the Supabase select used by schedulesApi (nested relations).
+ */
+export interface ScheduleWithItem extends Schedule {
+  project_items: {
+    id: string;
+    name: string;
+    project_id: string;
+    projects: {
+      id: string;
+      name: string;
+      company_name: string | null;
+    } | null;
+  } | null;
 }
 
 export type SignatureStatus = 'signed' | 'not_present';

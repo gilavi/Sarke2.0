@@ -1,3 +1,4 @@
+import * as FileSystem from 'expo-file-system/legacy';
 import { storageApi } from './services';
 import { blobToDataUrl } from './blob';
 
@@ -5,18 +6,45 @@ import { blobToDataUrl } from './blob';
  * Fetch a storage object and return it as a base64 `data:` URL.
  *
  * Strategy (in order):
- *  1. Authenticated blob download → base64 data URL  (works for private buckets)
- *  2. Signed URL (60-min expiry)                      (fallback if blob fails)
- *  3. Public URL                                      (last resort for public buckets)
- *
- * A data URL is always preferred because the PDF WebView can't reach
- * Supabase signed-URL endpoints during expo-print rendering.
+ *  1. Signed URL → native `FileSystem.downloadAsync` → `readAsStringAsync(base64)`.
+ *     This is the most reliable path on React Native: no Blob, no FileReader,
+ *     no streaming quirks. It is what expo-print needs for `<img src="data:...">`.
+ *  2. Authenticated Supabase blob download → `blobToDataUrl`.
+ *     Fallback for environments where a signed URL can't be issued.
+ *  3. Raw signed URL / public URL.
+ *     Last resort — the PDF WebView usually can't reach these during render,
+ *     but we return *something* rather than blowing up.
  */
 export async function getStorageImageDataUrl(
   bucket: string,
   path: string,
 ): Promise<string> {
-  // 1. Try direct authenticated download → embed as base64
+  // 1. Signed URL + native file download → base64
+  try {
+    const signed = await storageApi.signedUrl(bucket, path, 3600);
+    const ext = normalizedExt(path);
+    const tmp = `${FileSystem.cacheDirectory ?? FileSystem.documentDirectory}pdf-embed-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext || 'bin'}`;
+    try {
+      const res = await FileSystem.downloadAsync(signed, tmp);
+      if (res.status !== 200) throw new Error(`download status ${res.status}`);
+      const base64 = await FileSystem.readAsStringAsync(tmp, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      if (!base64) throw new Error('empty base64');
+      const mime =
+        contentTypeFromHeaders(res.headers) ??
+        inferMime(ext) ??
+        'image/jpeg';
+      return `data:${mime};base64,${base64}`;
+    } finally {
+      // Best-effort cleanup; never block caller on it.
+      FileSystem.deleteAsync(tmp, { idempotent: true }).catch(() => undefined);
+    }
+  } catch {
+    // fall through
+  }
+
+  // 2. Authenticated download + FileReader / arrayBuffer fallback
   try {
     const blob = await storageApi.download(bucket, path);
     return await blobToDataUrl(blob);
@@ -24,15 +52,13 @@ export async function getStorageImageDataUrl(
     // fall through
   }
 
-  // 2. Try a short-lived signed URL
+  // 3. Last-resort remote URL (likely won't render in the PDF WebView, but we
+  // always return a valid-looking string so callers don't have to branch).
   try {
     return await storageApi.signedUrl(bucket, path, 3600);
   } catch {
-    // fall through
+    return storageApi.publicUrl(bucket, path);
   }
-
-  // 3. Last resort: public URL (only works if bucket is set to public)
-  return storageApi.publicUrl(bucket, path);
 }
 
 /**
@@ -57,4 +83,33 @@ export async function getStorageImageDisplayUrl(
     // fall through
   }
   return storageApi.publicUrl(bucket, path);
+}
+
+function normalizedExt(path: string): string {
+  const raw = (path.split('?')[0] ?? '').split('.').pop() ?? '';
+  return raw.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function inferMime(ext: string): string | undefined {
+  const map: Record<string, string> = {
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    webp: 'image/webp',
+    gif: 'image/gif',
+    heic: 'image/heic',
+    heif: 'image/heif',
+    pdf: 'application/pdf',
+  };
+  return map[ext];
+}
+
+function contentTypeFromHeaders(
+  headers: Record<string, string> | undefined,
+): string | undefined {
+  if (!headers) return undefined;
+  const raw = headers['content-type'] ?? headers['Content-Type'];
+  if (!raw) return undefined;
+  const first = raw.split(';')[0];
+  return first ? first.trim() : undefined;
 }

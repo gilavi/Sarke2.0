@@ -15,10 +15,13 @@ import {
   certificatesApi,
   projectsApi,
   questionnairesApi,
+  schedulesApi,
   signaturesApi,
   storageApi,
   templatesApi,
 } from '../../../lib/services';
+import { googleCalendar } from '../../../lib/googleCalendar';
+import { scheduleReminder } from '../../../lib/notifications';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import { uploadSignature } from '../../../lib/signatures';
 import { getStorageImageDataUrl, getStorageImageDisplayUrl } from '../../../lib/imageUrl';
@@ -37,6 +40,24 @@ import type {
 } from '../../../types/models';
 import { SIGNER_ROLE_LABEL } from '../../../types/models';
 import { buildPdfHtml } from '../../../lib/pdf';
+
+/**
+ * After a questionnaire completes, the DB trigger advances the matching
+ * schedules row. Re-fetch it and push to Google Calendar if connected, plus
+ * reschedule the local 24h reminder. Best-effort — swallow failures.
+ */
+async function syncScheduleForCompletion(projectItemId: string | null) {
+  if (!projectItemId) return;
+  const all = await schedulesApi.list().catch(() => null);
+  if (!all) return;
+  const updated = all.find(s => s.project_item_id === projectItemId);
+  if (!updated) return;
+  await scheduleReminder(updated).catch(() => undefined);
+  const connected = await googleCalendar.isConnected().catch(() => false);
+  if (connected) {
+    await googleCalendar.pushDueDate(updated).catch(() => undefined);
+  }
+}
 
 export default function SigningScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -195,8 +216,12 @@ export default function SigningScreen() {
 
     // Auto-fill: look for an existing sig for the same person_name in this project's roster
     if (project) {
+      const typed = personName.toLowerCase();
       const match = signers.find(
-        s => s.role === role && s.full_name.trim() === personName && s.signature_png_url,
+        s =>
+          s.role === role &&
+          s.full_name.trim().toLowerCase() === typed &&
+          s.signature_png_url,
       );
       if (match) {
         void applyRoster(role, match);
@@ -426,6 +451,8 @@ export default function SigningScreen() {
       const blob = await (await fetch(uri)).blob();
       await storageApi.upload(STORAGE_BUCKETS.pdfs, fileName, blob, 'application/pdf');
       await questionnairesApi.complete(questionnaire.id, fileName);
+      // Best-effort Google Calendar sync for the newly-advanced schedule.
+      void syncScheduleForCompletion(questionnaire.project_item_id).catch(() => undefined);
       toast.success('PDF შეიქმნა');
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri, { mimeType: 'application/pdf' });
@@ -501,12 +528,12 @@ export default function SigningScreen() {
                 const sig = existingSigs.find(s => s.signer_role === role);
                 const img = sigImages[role];
                 const typed = (nameInputs[role] ?? '').trim().toLowerCase();
+                const rosterCandidates = signers.filter(
+                  s => s.role === role && s.signature_png_url,
+                );
                 const roster = typed
-                  ? signers.find(
-                      s =>
-                        s.role === role &&
-                        s.full_name.trim().toLowerCase() === typed &&
-                        s.signature_png_url,
+                  ? rosterCandidates.find(
+                      s => s.full_name.trim().toLowerCase() === typed,
                     )
                   : undefined;
                 const autoFilled =
@@ -523,6 +550,11 @@ export default function SigningScreen() {
                     onNameChange={n => setName(role, n)}
                     hasAutoFillAvailable={!!roster}
                     autoFilled={autoFilled}
+                    rosterCandidates={rosterCandidates}
+                    onPickRoster={signer => {
+                      setName(role, signer.full_name);
+                      void applyRoster(role, signer);
+                    }}
                     onSign={() => startSign(role)}
                     onMarkNotPresent={() => markNotPresent(role)}
                     onClear={() => clearRole(role)}
@@ -636,6 +668,8 @@ function RoleCard({
   onNameChange,
   hasAutoFillAvailable,
   autoFilled,
+  rosterCandidates,
+  onPickRoster,
   onSign,
   onMarkNotPresent,
   onClear,
@@ -647,6 +681,8 @@ function RoleCard({
   onNameChange: (name: string) => void;
   hasAutoFillAvailable: boolean;
   autoFilled: boolean;
+  rosterCandidates: ProjectSigner[];
+  onPickRoster: (signer: ProjectSigner) => void;
   onSign: () => void;
   onMarkNotPresent: () => void;
   onClear: () => void;
@@ -709,6 +745,25 @@ function RoleCard({
 
       {state === 'empty' ? (
         <>
+          {rosterCandidates.length > 0 ? (
+            <View style={styles.rosterBlock}>
+              <Text style={styles.rosterLabel}>შენახული პროექტიდან</Text>
+              <View style={styles.rosterChipRow}>
+                {rosterCandidates.map(c => (
+                  <Pressable
+                    key={c.id}
+                    onPress={() => onPickRoster(c)}
+                    style={styles.rosterChip}
+                  >
+                    <Ionicons name="person-circle" size={16} color={theme.colors.accent} />
+                    <Text style={styles.rosterChipText} numberOfLines={1}>
+                      {c.full_name}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          ) : null}
           <TextInput
             value={nameInput}
             onChangeText={onNameChange}
@@ -843,6 +898,40 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 14,
     color: theme.colors.ink,
+  },
+  rosterBlock: {
+    marginTop: 10,
+    gap: 6,
+  },
+  rosterLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: theme.colors.inkFaint,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  rosterChipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  rosterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    backgroundColor: theme.colors.accentSoft,
+    borderWidth: 1,
+    borderColor: theme.colors.accent,
+    maxWidth: 200,
+  },
+  rosterChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: theme.colors.accent,
+    flexShrink: 1,
   },
   autoFilledChip: {
     marginTop: 8,

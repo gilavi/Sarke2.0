@@ -4,9 +4,12 @@ import type {
   AnswerPhoto,
   Certificate,
   Project,
+  ProjectItem,
   ProjectSigner,
   Question,
   Questionnaire,
+  Schedule,
+  ScheduleWithItem,
   SignatureRecord,
   Template,
 } from '../types/models';
@@ -212,7 +215,12 @@ export const questionnairesApi = {
     if (error) throw error;
     return data ?? [];
   },
-  create: async (args: { projectId: string; templateId: string; harnessName?: string }): Promise<Questionnaire> => {
+  create: async (args: {
+    projectId: string;
+    templateId: string;
+    harnessName?: string;
+    projectItemId?: string | null;
+  }): Promise<Questionnaire> => {
     const user = (await supabase.auth.getUser()).data.user;
     if (!user) throw new Error('Not signed in');
     return throwIfError<Questionnaire>(
@@ -224,6 +232,7 @@ export const questionnairesApi = {
           user_id: user.id,
           status: 'draft',
           harness_name: args.harnessName ?? null,
+          project_item_id: args.projectItemId ?? null,
         })
         .select()
         .single(),
@@ -375,6 +384,118 @@ export const certificatesApi = {
   },
   remove: async (id: string) => {
     const { error } = await supabase.from('certificates').delete().eq('id', id);
+    if (error) throw error;
+  },
+};
+
+// -------- Project items --------
+
+export const projectItemsApi = {
+  listByProject: async (projectId: string): Promise<ProjectItem[]> => {
+    const { data, error } = await supabase
+      .from('project_items')
+      .select('*')
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data ?? [];
+  },
+  create: async (args: { projectId: string; name: string; category?: string | null }): Promise<ProjectItem> => {
+    return throwIfError<ProjectItem>(
+      await supabase
+        .from('project_items')
+        .insert({
+          project_id: args.projectId,
+          name: args.name,
+          category: args.category ?? null,
+        })
+        .select()
+        .single(),
+    );
+  },
+  remove: async (id: string) => {
+    const { error } = await supabase.from('project_items').delete().eq('id', id);
+    if (error) throw error;
+  },
+};
+
+// -------- Schedules --------
+
+const SCHEDULE_JOIN =
+  '*, project_items!inner(id, name, project_id, projects!inner(id, name, company_name))';
+
+export const schedulesApi = {
+  /** All schedules the current user can see (joined with item + project). */
+  list: async (): Promise<ScheduleWithItem[]> => {
+    const { data, error } = await supabase
+      .from('schedules')
+      .select(SCHEDULE_JOIN)
+      .order('next_due_at', { ascending: true });
+    if (error) throw error;
+    return (data ?? []) as unknown as ScheduleWithItem[];
+  },
+  /** Schedules with next_due_at falling between fromIso and toIso (inclusive). */
+  upcoming: async (fromIso: string, toIso: string): Promise<ScheduleWithItem[]> => {
+    const { data, error } = await supabase
+      .from('schedules')
+      .select(SCHEDULE_JOIN)
+      .gte('next_due_at', fromIso)
+      .lte('next_due_at', toIso)
+      .order('next_due_at', { ascending: true });
+    if (error) throw error;
+    return (data ?? []) as unknown as ScheduleWithItem[];
+  },
+  /** Manually mark an item as inspected now. Normally the DB trigger handles this. */
+  markInspected: async (scheduleId: string, completedAtIso: string): Promise<Schedule> => {
+    const existing = await supabase
+      .from('schedules')
+      .select('interval_days')
+      .eq('id', scheduleId)
+      .maybeSingle();
+    if (existing.error) throw existing.error;
+    const intervalDays =
+      ((existing.data as { interval_days?: number } | null)?.interval_days) ?? 10;
+    const completed = new Date(completedAtIso);
+    const next = new Date(completed.getTime() + intervalDays * 24 * 60 * 60 * 1000);
+    return throwIfError<Schedule>(
+      await supabase
+        .from('schedules')
+        .update({
+          last_inspected_at: completedAtIso,
+          next_due_at: next.toISOString(),
+        })
+        .eq('id', scheduleId)
+        .select()
+        .single(),
+    );
+  },
+  /** Ensure a schedules row exists for an item; default interval 10 days. */
+  upsertForItem: async (projectItemId: string, intervalDays = 10): Promise<Schedule> => {
+    const existing = await supabase
+      .from('schedules')
+      .select('*')
+      .eq('project_item_id', projectItemId)
+      .maybeSingle();
+    if (existing.error) throw existing.error;
+    if (existing.data) return existing.data as Schedule;
+    return throwIfError<Schedule>(
+      await supabase
+        .from('schedules')
+        .insert({
+          project_item_id: projectItemId,
+          interval_days: intervalDays,
+          next_due_at: new Date(Date.now() + intervalDays * 24 * 60 * 60 * 1000).toISOString(),
+        })
+        .select()
+        .single(),
+    );
+  },
+  /** Persist the Google Calendar event id after a successful sync. */
+  setGoogleEventId: async (scheduleId: string, googleEventId: string | null) => {
+    const { error } = await supabase
+      .from('schedules')
+      .update({ google_event_id: googleEventId })
+      .eq('id', scheduleId);
     if (error) throw error;
   },
 };

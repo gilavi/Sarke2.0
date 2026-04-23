@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -185,6 +185,11 @@ export default function ProjectsScreen() {
   );
 }
 
+/**
+ * Bottom-sheet form for creating a new project — mirrors the sheet pattern
+ * used by ProjectPickerSheet in app/(tabs)/home.tsx (backdrop tap-to-close,
+ * inner Pressable stops propagation, rounded handle, slide animation).
+ */
 function CreateProjectSheet({
   visible,
   onClose,
@@ -200,6 +205,15 @@ function CreateProjectSheet({
   const [address, setAddress] = useState('');
   const [busy, setBusy] = useState(false);
 
+  useEffect(() => {
+    if (visible) {
+      setName('');
+      setCompany('');
+      setAddress('');
+      setBusy(false);
+    }
+  }, [visible]);
+
   const save = async () => {
     if (!name.trim()) return;
     setBusy(true);
@@ -209,9 +223,6 @@ function CreateProjectSheet({
         companyName: company.trim() || null,
         address: address.trim() || null,
       });
-      setName('');
-      setCompany('');
-      setAddress('');
       onCreated(p);
     } catch (e: any) {
       toast.error(e?.message ?? 'ვერ შეიქმნა');
@@ -222,19 +233,21 @@ function CreateProjectSheet({
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.modalBackdrop}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalHandle} />
-            <View style={styles.modalHeader}>
-              <Text style={{ fontSize: 18, fontWeight: '800', color: theme.colors.ink, flex: 1 }}>
-                ახალი პროექტი
-              </Text>
+      <Pressable style={sheetStyles.backdrop} onPress={onClose}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={{ width: '100%' }}
+        >
+          {/* Stop touches inside the card from closing the sheet */}
+          <Pressable style={sheetStyles.card} onPress={() => {}}>
+            <View style={sheetStyles.handle} />
+            <View style={sheetStyles.sheetHeader}>
+              <Text style={[sheetStyles.sheetTitle, { flex: 1 }]}>ახალი პროექტი</Text>
               <Pressable onPress={onClose} hitSlop={10}>
-                <Ionicons name="close" size={24} color={theme.colors.inkSoft} />
+                <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
               </Pressable>
             </View>
-            <View style={{ gap: 12, marginTop: 8 }}>
+            <View style={{ gap: 12, marginTop: 4 }}>
               <Field label="სახელი">
                 <Input
                   value={name}
@@ -251,15 +264,15 @@ function CreateProjectSheet({
               </Field>
             </View>
             <Button
-              title="შენახვა"
+              title="შექმნა"
               onPress={save}
               loading={busy}
               disabled={!name.trim()}
-              style={{ marginTop: 14 }}
+              style={{ marginTop: 16 }}
             />
-          </View>
+          </Pressable>
         </KeyboardAvoidingView>
-      </View>
+      </Pressable>
     </Modal>
   );
 }
@@ -415,29 +428,38 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  modalBackdrop: {
+});
+
+const sheetStyles = StyleSheet.create({
+  backdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'flex-end',
   },
-  modalCard: {
+  card: {
     backgroundColor: theme.colors.background,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
     padding: 16,
     paddingTop: 10,
     paddingBottom: 44,
   },
-  modalHandle: {
+  handle: {
     width: 40,
     height: 4,
     borderRadius: 2,
     backgroundColor: theme.colors.hairline,
     alignSelf: 'center',
-    marginBottom: 10,
+    marginBottom: 14,
   },
-  modalHeader: {
+  sheetHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 14,
+  },
+  sheetTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: theme.colors.ink,
   },
 });

@@ -162,18 +162,9 @@ export default function HomeScreen() {
         {/* ───────── PROJECTS ───────── */}
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionHeader}>პროექტები</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-            <Pressable
-              onPress={() => setPickerVisible(true)}
-              style={styles.sectionAddBtn}
-              hitSlop={8}
-            >
-              <Ionicons name="add" size={16} color={theme.colors.accent} />
-            </Pressable>
-            <Pressable onPress={() => router.push('/(tabs)/projects' as any)} hitSlop={8}>
-              <Text style={styles.sectionLink}>ყველა</Text>
-            </Pressable>
-          </View>
+          <Pressable onPress={() => router.push('/(tabs)/projects' as any)} hitSlop={8}>
+            <Text style={styles.sectionLink}>ყველა</Text>
+          </Pressable>
         </View>
 
         {projects.length === 0 ? (
@@ -741,15 +732,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: theme.colors.inkSoft,
   },
-  sectionAddBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: theme.colors.accentSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
   emptyProjects: {
     alignItems: 'center',
     justifyContent: 'center',

@@ -13,7 +13,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#F6F2EA"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "ge.sarke.app",
@@ -41,11 +43,22 @@
           "photosPermission": "აპი ითხოვს წვდომას გალერეაზე ფოტოების ასატვირთად.",
           "cameraPermission": "კამერა გამოიყენება ფოტოების გადასაღებად."
         }
+      ],
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#147A4F"
+        }
       ]
     ],
     "extra": {
       "supabaseUrl": "https://seskuthiopywrgntsgfw.supabase.co",
-      "supabaseAnonKey": "sb_publishable_OF_L2E27-Uv8MMw87fWfSA_znD7moYY"
+      "supabaseAnonKey": "sb_publishable_OF_L2E27-Uv8MMw87fWfSA_znD7moYY",
+      "googleIosClientId": "",
+      "googleAndroidClientId": "",
+      "googleWebClientId": ""
     },
     "experiments": {
       "typedRoutes": false

@@ -12,12 +12,15 @@ import {
   questionnairesApi,
   templatesApi,
 } from '../../lib/services';
+import { googleCalendar } from '../../lib/googleCalendar';
+import { useToast } from '../../lib/toast';
 import { theme } from '../../lib/theme';
 import type { Certificate, Project, Template } from '../../types/models';
 
 export default function MoreScreen() {
   const { state, signOut } = useSession();
   const router = useRouter();
+  const toast = useToast();
   const [counts, setCounts] = useState<{ total: number; drafts: number; completed: number; latestCreatedAt: string | null }>({
     total: 0,
     drafts: 0,
@@ -27,25 +30,44 @@ export default function MoreScreen() {
   const [certs, setCerts] = useState<Certificate[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [googleConnected, setGoogleConnected] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
       void (async () => {
-        const [cs, c, t, p] = await Promise.all([
+        const [cs, c, t, p, gc] = await Promise.all([
           questionnairesApi
             .counts()
             .catch(() => ({ total: 0, drafts: 0, completed: 0, latestCreatedAt: null })),
           certificatesApi.list().catch(() => []),
           templatesApi.list().catch(() => []),
           projectsApi.list().catch(() => []),
+          googleCalendar.isConnected().catch(() => false),
         ]);
         setCounts(cs);
         setCerts(c);
         setTemplates(t);
         setProjects(p);
+        setGoogleConnected(gc);
       })();
     }, []),
   );
+
+  const toggleGoogle = async () => {
+    try {
+      if (googleConnected) {
+        await googleCalendar.disconnect();
+        setGoogleConnected(false);
+        toast.success('Google კალენდარი გაითიშა');
+      } else {
+        await googleCalendar.connect();
+        setGoogleConnected(true);
+        toast.success('Google კალენდარი შეერთდა');
+      }
+    } catch (e: any) {
+      toast.error(e?.message ?? 'ვერ მოხერხდა');
+    }
+  };
 
   const user = state.status === 'signedIn' ? state.user : null;
   const completed = counts.completed;
@@ -129,6 +151,12 @@ export default function MoreScreen() {
             icon="create-outline"
             label={user?.saved_signature_url ? 'ჩემი ხელმოწერა' : 'ხელმოწერის დახატვა'}
             onPress={() => router.push('/signature' as any)}
+          />
+          <View style={styles.divider} />
+          <SettingsRow
+            icon="calendar-outline"
+            label={googleConnected ? 'Google კალენდარი · შეერთდა' : 'Google კალენდარი · შეერთება'}
+            onPress={toggleGoogle}
           />
           <View style={styles.divider} />
           <SettingsRow
