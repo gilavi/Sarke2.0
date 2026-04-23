@@ -319,8 +319,11 @@ export default function QuestionnaireWizard() {
     );
   }
 
-  // Completed questionnaire -> result view, not wizard
+  // Completed inspection -> bounce to the new dedicated detail screen. The
+  // old ResultView is kept below for legacy navigations that went through
+  // router.back() into a stale stack, but `/inspections/[id]` is canonical.
   if (questionnaire?.status === 'completed') {
+    router.replace(`/inspections/${questionnaire.id}` as any);
     return (
       <ResultView
         questionnaire={questionnaire}

@@ -5,31 +5,50 @@ import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { Card, Screen } from '../components/ui';
-import { projectsApi, questionnairesApi, templatesApi } from '../lib/services';
+import {
+  certificatesApi,
+  inspectionsApi,
+  projectsApi,
+  templatesApi,
+} from '../lib/services';
 import { useToast } from '../lib/toast';
 import { theme } from '../lib/theme';
-import type { Project, Questionnaire, Template } from '../types/models';
+import type { Inspection, Project, Template } from '../types/models';
 
 type ListItem =
   | { kind: 'header'; label: string }
-  | { kind: 'row'; q: Questionnaire };
+  | { kind: 'row'; q: Inspection };
 
 export default function HistoryScreen() {
   const router = useRouter();
   const toast = useToast();
-  const [qs, setQs] = useState<Questionnaire[]>([]);
+  const [qs, setQs] = useState<Inspection[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  // inspection_id → number of attached certificate PDFs; used for the
+  // per-row count badge so users can see "this inspection has 2 PDFs".
+  const [certCounts, setCertCounts] = useState<Record<string, number>>({});
 
   const load = useCallback(async () => {
     const [allQ, allT, allP] = await Promise.all([
-      questionnairesApi.recent(200).catch(() => []),
+      inspectionsApi.recent(200).catch(() => []),
       templatesApi.list().catch(() => []),
       projectsApi.list().catch(() => []),
     ]);
     setQs(allQ);
     setTemplates(allT);
     setProjects(allP);
+    // Only bother fetching cert counts for completed inspections — drafts
+    // can't have certs by definition.
+    const completedIds = allQ.filter(i => i.status === 'completed').map(i => i.id);
+    if (completedIds.length > 0) {
+      const counts = await certificatesApi
+        .countsByInspection(completedIds)
+        .catch(() => ({} as Record<string, number>));
+      setCertCounts(counts);
+    } else {
+      setCertCounts({});
+    }
   }, []);
 
   useFocusEffect(
@@ -51,15 +70,15 @@ export default function HistoryScreen() {
     completed.forEach(q => items.push({ kind: 'row', q }));
   }
 
-  const onDelete = (q: Questionnaire) => {
-    Alert.alert('წაშლა?', 'კითხვარი სამუდამოდ წაიშლება.', [
+  const onDelete = (q: Inspection) => {
+    Alert.alert('წაშლა?', 'ინსპექცია სამუდამოდ წაიშლება.', [
       { text: 'გაუქმება', style: 'cancel' },
       {
         text: 'წაშლა',
         style: 'destructive',
         onPress: async () => {
           try {
-            await questionnairesApi.remove(q.id);
+            await inspectionsApi.remove(q.id);
             setQs(prev => prev.filter(x => x.id !== q.id));
             toast.success('წაიშალა');
           } catch (e: any) {
@@ -100,10 +119,12 @@ export default function HistoryScreen() {
                 overshootRight={false}
               >
                 <Pressable
-                  // Both draft and completed land on the inspection route.
-                  // Completed-state branching (view cert list) is handled on
-                  // that screen; PDF opening no longer happens inline.
-                  onPress={() => router.push(`/questionnaire/${q.id}` as any)}
+                  // Draft → resume wizard; completed → inspection detail.
+                  onPress={() =>
+                    q.status === 'completed'
+                      ? router.push(`/inspections/${q.id}` as any)
+                      : router.push(`/questionnaire/${q.id}` as any)
+                  }
                 >
                   <Card padding={12}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
@@ -124,7 +145,7 @@ export default function HistoryScreen() {
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text style={{ fontWeight: '600', color: theme.colors.ink }}>
-                          {t?.name ?? 'კითხვარი'}
+                          {t?.name ?? 'ინსპექცია'}
                         </Text>
                         {p ? (
                           <Text style={{ fontSize: 11, color: theme.colors.inkSoft }}>{p.name}</Text>
@@ -133,6 +154,16 @@ export default function HistoryScreen() {
                           {new Date(q.created_at).toLocaleString('ka')}
                         </Text>
                       </View>
+                      {certCounts[q.id] ? (
+                        <View style={styles.certBadge}>
+                          <Ionicons
+                            name="document-text"
+                            size={11}
+                            color={theme.colors.accent}
+                          />
+                          <Text style={styles.certBadgeText}>{certCounts[q.id]}</Text>
+                        </View>
+                      ) : null}
                       <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
                     </View>
                   </Card>
@@ -176,5 +207,19 @@ const styles = StyleSheet.create({
     gap: 4,
     marginLeft: 8,
     borderRadius: 12,
+  },
+  certBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: theme.colors.accentSoft,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+  certBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: theme.colors.accent,
   },
 });

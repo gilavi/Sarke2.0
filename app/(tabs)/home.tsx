@@ -232,7 +232,7 @@ export default function HomeScreen() {
                   // certificates list lives there).
                   onPress={() =>
                     q.status === 'completed'
-                      ? router.push(`/questionnaire/${q.id}` as any)
+                      ? router.push(`/inspections/${q.id}` as any)
                       : router.push(`/questionnaire/${q.id}` as any)
                   }
                   style={[styles.recentRow, i > 0 && styles.recentRowBorder]}

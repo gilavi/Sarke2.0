@@ -116,14 +116,14 @@ export default function MoreScreen() {
             onPress={() => router.push('/history')}
           />
           <HubTile
-            title="სერტიფიკატები"
+            title="კვალიფიკაცია"
             icon="ribbon"
             tint={theme.colors.certTint}
             bg={theme.colors.certSoft}
             primary={`${certs.length}`}
             secondary={certs.length === 0 ? 'ცარიელია' : expiring > 0 ? `${expiring} იწურება` : 'ყველა აქტიური'}
             badge={expiring > 0 ? `${expiring} იწურება` : undefined}
-            onPress={() => router.push('/(tabs)/certificates' as any)}
+            onPress={() => router.push('/qualifications' as any)}
           />
           <HubTile
             title="შაბლონები"

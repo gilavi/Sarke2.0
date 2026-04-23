@@ -4,21 +4,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useActionSheet } from '@expo/react-native-action-sheet';
-import * as Print from 'expo-print';
-import * as Sharing from 'expo-sharing';
 import { Button, Card, Screen } from '../../../components/ui';
 import { SignatureCanvas } from '../../../components/SignatureCanvas';
 import { useToast } from '../../../lib/toast';
 import { useSession } from '../../../lib/session';
 import {
   answersApi,
-  certificatesApi,
   inspectionsApi,
   projectsApi,
   qualificationsApi,
   schedulesApi,
   signaturesApi,
-  storageApi,
   templatesApi,
 } from '../../../lib/services';
 import { googleCalendar } from '../../../lib/googleCalendar';
@@ -40,7 +36,8 @@ import type {
   Template,
 } from '../../../types/models';
 import { SIGNER_ROLE_LABEL } from '../../../types/models';
-import { buildPdfHtml } from '../../../lib/pdf';
+// PDF generation moved to `app/certificates/new.tsx` — reached via the
+// inspection-done fork screen after signing completes.
 
 /**
  * After a questionnaire completes, the DB trigger advances the matching
@@ -359,6 +356,16 @@ export default function SigningScreen() {
     );
   };
 
+  /**
+   * Commit the signatures and close out the inspection. PDF generation moved
+   * to the dedicated `/certificates/new` screen — here we just flip the
+   * inspection to `completed` and hand off to the end-of-flow fork.
+   *
+   * The expert signature image still needs to be persisted as a proper
+   * signature row (the on-screen "expert" card has always captured implicitly
+   * from the user's saved signature); the existing signature rows collected
+   * via the signing UI are already saved on the fly.
+   */
   const generate = async () => {
     if (!questionnaire || !template || !project) return;
     if (!user?.saved_signature_url) {
@@ -368,109 +375,29 @@ export default function SigningScreen() {
     }
     setBusy(true);
     try {
-      // Inline expert signature into a synthetic SignatureRecord for the PDF
-      let expertDataUrl = expertSigUrl;
-      if (!expertDataUrl && user.saved_signature_url) {
-        expertDataUrl = await getStorageImageDataUrl(
-          STORAGE_BUCKETS.signatures,
-          user.saved_signature_url,
-        );
-      }
-      const expertRec: SignatureRecord = {
-        id: 'expert-auto',
-        inspection_id: questionnaire.id,
-        signer_role: 'expert',
-        full_name: expertDefaultName,
-        phone: null,
-        position: 'შრომის უსაფრთხოების სპეციალისტი',
-        signature_png_url: expertDataUrl ?? null,
-        signed_at: new Date().toISOString(),
-        status: 'signed',
-        person_name: expertDefaultName,
-      };
-
-      const otherSigs = await Promise.all(
-        existingSigs
-          .filter(s => s.signer_role !== 'expert')
-          .map(async s => {
-            if (s.status === 'not_present' || !s.signature_png_url) return s;
-            if (s.signature_png_url.startsWith('data:')) return s;
-            return {
-              ...s,
-              signature_png_url: await getStorageImageDataUrl(
-                STORAGE_BUCKETS.signatures,
-                s.signature_png_url,
-              ),
-            };
-          }),
-      );
-      const sigsForPdf = [expertRec, ...otherSigs];
-
-      // Pre-embed photos
-      const photosForPdf: Record<string, AnswerPhoto[]> = {};
-      await Promise.all(
-        Object.entries(photosByAnswer).map(async ([answerId, photos]) => {
-          photosForPdf[answerId] = await Promise.all(
-            photos.map(async p => ({
-              ...p,
-              storage_path: await getStorageImageDataUrl(
-                STORAGE_BUCKETS.answerPhotos,
-                p.storage_path,
-              ),
-            })),
-          );
-        }),
-      );
-
-      const attachedQuals: Array<Qualification & { file_data_url?: string }> = [];
-      for (const type of requiredCertTypes) {
-        const selectedId = selectedCerts[type];
-        if (!selectedId) continue;
-        const qual = quals.find(c => c.id === selectedId);
-        if (!qual) continue;
-        let fileDataUrl: string | undefined;
-        if (qual.file_url) {
-          fileDataUrl = await getStorageImageDataUrl(
-            STORAGE_BUCKETS.certificates,
-            qual.file_url,
-          );
-        }
-        attachedQuals.push({ ...qual, file_data_url: fileDataUrl });
+      // Persist the expert's signature row if it isn't there yet so
+      // downstream cert generation has a real DB record to render from
+      // instead of the synthetic one used previously.
+      const hasExpertRow = existingSigs.some(s => s.signer_role === 'expert');
+      if (!hasExpertRow) {
+        await signaturesApi.upsert({
+          signer_role: 'expert',
+          full_name: expertDefaultName,
+          phone: null,
+          position: 'შრომის უსაფრთხოების სპეციალისტი',
+          signature_png_url: user.saved_signature_url,
+          status: 'signed',
+          person_name: expertDefaultName,
+          inspection_id: questionnaire.id,
+        }).catch(() => undefined);
       }
 
-      const html = buildPdfHtml({
-        questionnaire,
-        template,
-        project,
-        questions,
-        answers,
-        signatures: sigsForPdf,
-        photosByAnswer: photosForPdf,
-        certificates: attachedQuals,
-      });
-      const { uri } = await Print.printToFileAsync({ html });
-      // Unique filename per certificate — an inspection can have many.
-      const fileName = `${questionnaire.id}-${Date.now()}.pdf`;
-      const blob = await (await fetch(uri)).blob();
-      await storageApi.upload(STORAGE_BUCKETS.pdfs, fileName, blob, 'application/pdf');
-      // Flip inspection → completed, then record the generated certificate.
-      // These are two separate writes; if the second fails the user still has
-      // a valid completed inspection and can retry generation.
       await inspectionsApi.finish(questionnaire.id);
-      await certificatesApi.create({
-        inspectionId: questionnaire.id,
-        templateId: questionnaire.template_id,
-        pdfUrl: fileName,
-        isSafeForUse: questionnaire.is_safe_for_use,
-        conclusionText: questionnaire.conclusion_text,
-      });
       // Best-effort Google Calendar sync for the newly-advanced schedule.
       void syncScheduleForCompletion(questionnaire.project_item_id).catch(() => undefined);
-      toast.success('PDF შეიქმნა');
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, { mimeType: 'application/pdf' });
-      }
-      router.back();
+      // Hand off to the fork screen. User decides from there whether to
+      // generate a PDF now or just save the inspection.
+      router.replace(`/inspections/${questionnaire.id}/done` as any);
     } catch (e: any) {
       toast.error(e?.message ?? 'შეცდომა');
     } finally {
@@ -611,7 +538,7 @@ export default function SigningScreen() {
         </ScrollView>
 
         <View style={styles.footer}>
-          <Button title="დასრულება და PDF" onPress={generate} loading={busy} />
+          <Button title="ინსპექციის დასრულება" onPress={generate} loading={busy} />
         </View>
       </SafeAreaView>
 

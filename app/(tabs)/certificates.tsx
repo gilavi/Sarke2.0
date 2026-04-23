@@ -1,63 +1,65 @@
-// NOTE (0006 decoupling): this screen currently shows the expert's
-// professional qualifications (xaracho_inspector etc.). It will be
-// repurposed to show generated PDF certificates in a follow-up; for now
-// the route path is kept as `certificates` to avoid deep-link breakage
-// while the rename is in-flight.
+// Certificates tab — list of generated PDF certificates.
+//
+// Each row is a `certificates` table entry (a PDF derived from a completed
+// inspection). Tap → share the PDF. Tap the link icon → open the parent
+// inspection detail screen. Swipe delete removes the certificate row but
+// leaves the underlying inspection intact.
+//
+// The expert's own qualifications (xaracho_inspector etc.) now live at
+// `/qualifications` (reached from the More tab).
 import { useCallback, useMemo, useState } from 'react';
-import { Alert, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Alert,
+  FlatList,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { Card } from '../../components/ui';
 import {
+  certificatesApi,
   inspectionsApi,
-  isExpiringSoon,
-  qualificationsApi,
+  projectsApi,
   templatesApi,
 } from '../../lib/services';
+import { shareStoredPdf } from '../../lib/sharePdf';
+import { useToast } from '../../lib/toast';
 import { theme } from '../../lib/theme';
-import type { Inspection, Qualification, Template } from '../../types/models';
+import type {
+  Certificate,
+  Inspection,
+  Project,
+  Template,
+} from '../../types/models';
 
 export default function CertificatesScreen() {
   const router = useRouter();
-  const [certs, setCerts] = useState<Qualification[]>([]);
+  const toast = useToast();
+  const [certs, setCerts] = useState<Certificate[]>([]);
+  const [inspections, setInspections] = useState<Inspection[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
-  const [linkedOpen, setLinkedOpen] = useState<Qualification | null>(null);
-  const [linkedInspections, setLinkedInspections] = useState<Inspection[]>([]);
-  const [linkedLoading, setLinkedLoading] = useState(false);
+  const [projects, setProjects] = useState<Project[]>([]);
 
   const load = useCallback(async () => {
-    const [c, t] = await Promise.all([
-      qualificationsApi.list().catch(() => []),
+    // Load certificates plus enough surrounding metadata to render each row
+    // with its template+project context. Batched so the list is rendered in
+    // a single paint.
+    const [cs, ts, ps, insps] = await Promise.all([
+      certificatesApi.list().catch(() => []),
       templatesApi.list().catch(() => []),
+      projectsApi.list().catch(() => []),
+      inspectionsApi.recent(500).catch(() => []),
     ]);
-    setCerts(c);
-    setTemplates(t);
+    setCerts(cs);
+    setTemplates(ts);
+    setProjects(ps);
+    setInspections(insps);
   }, []);
-
-  /**
-   * Load the inspections linked to a cert only when the modal opens.
-   * Previously we pulled the last 500 questionnaires on every focus — heavy
-   * and usually wasted because the linked modal is tapped rarely.
-   */
-  const openLinkedFor = useCallback(
-    async (cert: Qualification) => {
-      setLinkedOpen(cert);
-      setLinkedLoading(true);
-      try {
-        const matchingTemplateIds = templates
-          .filter(t => t.required_cert_types.includes(cert.type))
-          .map(t => t.id);
-        const qs = await inspectionsApi.listByTemplateIds(matchingTemplateIds);
-        setLinkedInspections(qs);
-      } catch {
-        setLinkedInspections([]);
-      } finally {
-        setLinkedLoading(false);
-      }
-    },
-    [templates],
-  );
 
   useFocusEffect(
     useCallback(() => {
@@ -65,184 +67,127 @@ export default function CertificatesScreen() {
     }, [load]),
   );
 
-  const remove = (c: Qualification) => {
-    Alert.alert('წაშლა?', c.number ?? c.type, [
-      { text: 'გაუქმება', style: 'cancel' },
-      {
-        text: 'წაშლა',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await qualificationsApi.remove(c.id);
-            void load();
-          } catch (e: any) {
-            Alert.alert('წაშლა ვერ მოხერხდა', e?.message ?? 'ქსელის შეცდომა');
-          }
-        },
-      },
-    ]);
+  // O(1) lookups — rendering 100+ rows otherwise becomes quadratic on the
+  // find() calls.
+  const inspectionById = useMemo(
+    () => new Map(inspections.map(i => [i.id, i])),
+    [inspections],
+  );
+  const templateById = useMemo(
+    () => new Map(templates.map(t => [t.id, t])),
+    [templates],
+  );
+  const projectById = useMemo(
+    () => new Map(projects.map(p => [p.id, p])),
+    [projects],
+  );
+
+  const sharePdf = async (cert: Certificate) => {
+    try { await shareStoredPdf(cert.pdf_url); }
+    catch (e: any) { toast.error(e?.message ?? 'ვერ გაიხსნა'); }
   };
 
-  const statusOf = (c: Qualification): 'expired' | 'expiring' | 'ok' => {
-    if (!c.expires_at) return 'ok';
-    const exp = new Date(c.expires_at).getTime();
-    if (exp < Date.now()) return 'expired';
-    if (isExpiringSoon(c)) return 'expiring';
-    return 'ok';
+  const openInspection = (cert: Certificate) => {
+    router.push(`/inspections/${cert.inspection_id}` as any);
+  };
+
+  const deleteCert = (cert: Certificate) => {
+    Alert.alert(
+      'წაშლა?',
+      'PDF წაიშლება. ინსპექცია უცვლელი დარჩება.',
+      [
+        { text: 'გაუქმება', style: 'cancel' },
+        {
+          text: 'წაშლა',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await certificatesApi.remove(cert.id);
+              setCerts(prev => prev.filter(c => c.id !== cert.id));
+              toast.success('წაიშალა');
+            } catch (e: any) {
+              toast.error(e?.message ?? 'ვერ წაიშალა');
+            }
+          },
+        },
+      ],
+    );
   };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.title}>სერტიფიკატები</Text>
-        <Pressable onPress={() => router.push('/certificates/new')} hitSlop={10}>
-          <Ionicons name="add-circle" size={30} color={theme.colors.accent} />
-        </Pressable>
       </View>
       <FlatList
         data={certs}
         keyExtractor={c => c.id}
-        contentContainerStyle={{ padding: 16, gap: 12 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 100, gap: 10 }}
         ListEmptyComponent={
-          <View style={{ alignItems: 'center', paddingVertical: 60, gap: 10 }}>
-            <Ionicons name="ribbon" size={46} color={theme.colors.accent} style={{ opacity: 0.6 }} />
+          <View style={styles.empty}>
+            <Ionicons name="document-text" size={46} color={theme.colors.accent} style={{ opacity: 0.6 }} />
             <Text style={{ fontSize: 18, fontWeight: '700', color: theme.colors.ink }}>
               ცარიელია
             </Text>
             <Text style={{ color: theme.colors.inkSoft, textAlign: 'center' }}>
-              დაამატე სერტიფიკატი, რომ PDF-ებს{'\n'}თან ერთოდეს.
+              დაასრულე ინსპექცია და დააგენერირე პირველი PDF სერტიფიკატი.
             </Text>
           </View>
         }
         renderItem={({ item }) => {
-          const status = statusOf(item);
+          const insp = inspectionById.get(item.inspection_id) ?? null;
+          const tpl = templateById.get(item.template_id) ?? null;
+          const proj = insp ? (projectById.get(insp.project_id) ?? null) : null;
           return (
-            <Pressable onPress={() => status !== 'ok' ? openLinkedFor(item) : undefined}>
-              <Card padding={14}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontWeight: '600', color: theme.colors.ink }}>{item.type}</Text>
-                    {item.number ? (
-                      <Text style={{ color: theme.colors.inkSoft, fontSize: 13 }}>№ {item.number}</Text>
-                    ) : null}
-                    {item.expires_at ? (
-                      <Text style={{ fontSize: 12, color: theme.colors.inkSoft, marginTop: 2 }}>
-                        ვადა: {new Date(item.expires_at).toLocaleDateString('ka')}
+            <Swipeable
+              renderRightActions={() => (
+                <Pressable onPress={() => deleteCert(item)} style={styles.swipeDelete}>
+                  <Ionicons name="trash" size={18} color={theme.colors.white} />
+                  <Text style={{ color: theme.colors.white, fontWeight: '700', fontSize: 11 }}>
+                    წაშლა
+                  </Text>
+                </Pressable>
+              )}
+              overshootRight={false}
+            >
+              <Pressable onPress={() => sharePdf(item)}>
+                <Card padding={12}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <View style={styles.dot}>
+                      <Ionicons name="document-text" size={18} color={theme.colors.accent} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.rowTitle} numberOfLines={1}>
+                        {tpl?.name ?? 'სერტიფიკატი'}
                       </Text>
-                    ) : null}
+                      <Text style={styles.rowMeta} numberOfLines={1}>
+                        {proj?.name ?? '—'}
+                      </Text>
+                      <Text style={styles.rowDate}>
+                        {new Date(item.generated_at).toLocaleString('ka')}
+                      </Text>
+                    </View>
+                    <Pressable
+                      onPress={() => openInspection(item)}
+                      hitSlop={10}
+                      style={{ padding: 6 }}
+                      accessibilityLabel="open parent inspection"
+                    >
+                      <Ionicons
+                        name="open-outline"
+                        size={18}
+                        color={theme.colors.inkSoft}
+                      />
+                    </Pressable>
+                    <Ionicons name="share-outline" size={18} color={theme.colors.inkFaint} />
                   </View>
-                  <StatusBadge status={status} />
-                  <Pressable
-                    onPress={() => remove(item)}
-                    hitSlop={10}
-                    accessibilityLabel="remove"
-                    style={{ padding: 6 }}
-                  >
-                    <Ionicons name="trash-outline" size={20} color={theme.colors.danger} />
-                  </Pressable>
-                </View>
-              </Card>
-            </Pressable>
+                </Card>
+              </Pressable>
+            </Swipeable>
           );
         }}
       />
-
-      <LinkedInspectionsSheet
-        cert={linkedOpen}
-        loading={linkedLoading}
-        questionnaires={linkedInspections}
-        templates={templates}
-        onClose={() => {
-          setLinkedOpen(null);
-          setLinkedInspections([]);
-        }}
-        onOpen={qid => {
-          setLinkedOpen(null);
-          setLinkedInspections([]);
-          router.push(`/questionnaire/${qid}` as any);
-        }}
-      />
     </SafeAreaView>
-  );
-}
-
-function StatusBadge({ status }: { status: 'expired' | 'expiring' | 'ok' }) {
-  if (status === 'ok') return null;
-  const label = status === 'expired' ? 'ვადა გასულია' : 'იწურება';
-  const bg = status === 'expired' ? theme.colors.dangerSoft : theme.colors.warnSoft;
-  const fg = status === 'expired' ? theme.colors.danger : theme.colors.warn;
-  return (
-    <View style={{ backgroundColor: bg, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999 }}>
-      <Text style={{ fontSize: 11, fontWeight: '700', color: fg }}>{label}</Text>
-    </View>
-  );
-}
-
-function LinkedInspectionsSheet({
-  cert,
-  questionnaires,
-  templates,
-  loading,
-  onClose,
-  onOpen,
-}: {
-  cert: Qualification | null;
-  questionnaires: Inspection[];
-  templates: Template[];
-  loading: boolean;
-  onClose: () => void;
-  onOpen: (qid: string) => void;
-}) {
-  // Already filtered server-side by openLinkedFor(), just pass through.
-  const linked = questionnaires;
-
-  return (
-    <Modal
-      visible={cert !== null}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
-    >
-      <Pressable style={styles.sheetBackdrop} onPress={onClose}>
-        <Pressable style={styles.sheet} onPress={e => e.stopPropagation()}>
-          <View style={styles.sheetHandle} />
-          <Text style={{ fontSize: 18, fontWeight: '700', color: theme.colors.ink, marginBottom: 10 }}>
-            დაკავშირებული ინსპექციები
-          </Text>
-          {cert ? (
-            <Text style={{ color: theme.colors.inkSoft, fontSize: 13, marginBottom: 14 }}>
-              {cert.type} · ვადა: {cert.expires_at ? new Date(cert.expires_at).toLocaleDateString('ka') : '—'}
-            </Text>
-          ) : null}
-          <ScrollView style={{ maxHeight: 380 }}>
-            {linked.length === 0 ? (
-              <Text style={{ color: theme.colors.inkSoft, textAlign: 'center', paddingVertical: 20 }}>
-                ამ სერტიფიკატს არცერთი ინსპექცია არ ეყრდნობა.
-              </Text>
-            ) : (
-              linked.map(q => {
-                const t = templates.find(x => x.id === q.template_id);
-                return (
-                  <Pressable key={q.id} onPress={() => onOpen(q.id)}>
-                    <View style={styles.linkedRow}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ fontWeight: '600', color: theme.colors.ink }}>
-                          {t?.name ?? 'კითხვარი'}
-                        </Text>
-                        <Text style={{ fontSize: 11, color: theme.colors.inkSoft }}>
-                          {new Date(q.created_at).toLocaleString('ka')} · {q.status === 'completed' ? 'დასრულდა' : 'დრაფტი'}
-                        </Text>
-                      </View>
-                      <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
-                    </View>
-                  </Pressable>
-                );
-              })
-            )}
-          </ScrollView>
-        </Pressable>
-      </Pressable>
-    </Modal>
   );
 }
 
@@ -255,32 +200,29 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   title: { fontSize: 22, fontWeight: '700', color: theme.colors.ink },
-  sheetBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    backgroundColor: theme.colors.background,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-    paddingBottom: 32,
-  },
-  sheetHandle: {
-    width: 44,
-    height: 4,
-    backgroundColor: theme.colors.hairline,
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: 14,
-  },
-  linkedRow: {
-    flexDirection: 'row',
+  empty: {
     alignItems: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.hairline,
+    paddingVertical: 60,
+    gap: 10,
+  },
+  dot: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: theme.colors.accentSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rowTitle: { fontSize: 15, fontWeight: '700', color: theme.colors.ink },
+  rowMeta: { fontSize: 12, color: theme.colors.inkSoft, marginTop: 1 },
+  rowDate: { fontSize: 11, color: theme.colors.inkFaint, marginTop: 2 },
+  swipeDelete: {
+    width: 86,
+    backgroundColor: theme.colors.danger,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    marginLeft: 8,
+    borderRadius: 12,
   },
 });
