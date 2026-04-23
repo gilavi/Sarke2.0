@@ -1,22 +1,32 @@
 import type {
   Answer,
   AnswerPhoto,
-  Certificate,
+  Inspection,
   Project,
+  Qualification,
   Question,
-  Questionnaire,
   SignatureRecord,
   Template,
 } from '../types/models';
 import { SIGNER_ROLE_LABEL } from '../types/models';
 
-export interface PdfCertificate extends Certificate {
+/**
+ * Qualification row augmented with a base64-encoded image data URL so the
+ * HTML/WebView rendering pipeline can embed the proof image without making
+ * a network call at render time.
+ *
+ * Name kept as `PdfCertificate` for backward-compat with existing imports;
+ * this represents the expert's professional credential attached to the PDF,
+ * not the generated PDF itself (which is now its own `Certificate` entity).
+ */
+export interface PdfCertificate extends Qualification {
   file_data_url?: string;
 }
 
 // photosByAnswer: answer.id -> array of AnswerPhoto with pre-fetched data URLs in storage_path
 export function buildPdfHtml(args: {
-  questionnaire: Questionnaire;
+  /** Parameter name kept for backward-compat; type is now `Inspection`. */
+  questionnaire: Inspection;
   template: Template;
   project: Project;
   questions: Question[];

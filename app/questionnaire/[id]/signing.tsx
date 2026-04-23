@@ -13,8 +13,9 @@ import { useSession } from '../../../lib/session';
 import {
   answersApi,
   certificatesApi,
+  inspectionsApi,
   projectsApi,
-  questionnairesApi,
+  qualificationsApi,
   schedulesApi,
   signaturesApi,
   storageApi,
@@ -29,11 +30,11 @@ import { theme } from '../../../lib/theme';
 import type {
   Answer,
   AnswerPhoto,
-  Certificate,
+  Inspection,
   Project,
   ProjectSigner,
+  Qualification,
   Question,
-  Questionnaire,
   SignatureRecord,
   SignerRole,
   Template,
@@ -66,14 +67,15 @@ export default function SigningScreen() {
   const { showActionSheetWithOptions } = useActionSheet();
   const { state } = useSession();
 
-  const [questionnaire, setQuestionnaire] = useState<Questionnaire | null>(null);
+  const [questionnaire, setQuestionnaire] = useState<Inspection | null>(null);
   const [template, setTemplate] = useState<Template | null>(null);
   const [project, setProject] = useState<Project | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [signers, setSigners] = useState<ProjectSigner[]>([]);
   const [existingSigs, setExistingSigs] = useState<SignatureRecord[]>([]);
-  const [certs, setCerts] = useState<Certificate[]>([]);
+  /** User's uploaded professional qualifications (e.g. xaracho_inspector). */
+  const [quals, setQuals] = useState<Qualification[]>([]);
   const [selectedCerts, setSelectedCerts] = useState<Record<string, string>>({});
   const [photosByAnswer, setPhotosByAnswer] = useState<Record<string, AnswerPhoto[]>>({});
   const [busy, setBusy] = useState(false);
@@ -96,20 +98,20 @@ export default function SigningScreen() {
     const ctrl = { cancelled: false };
     loadCtrlRef.current = ctrl;
 
-    const q = await questionnairesApi.getById(id).catch(() => null);
+    const q = await inspectionsApi.getById(id).catch(() => null);
     if (ctrl.cancelled) return;
     setQuestionnaire(q);
     if (!q) return;
     const t = await templatesApi.getById(q.template_id).catch(() => null);
     if (ctrl.cancelled) return;
     setTemplate(t);
-    const [proj, qs, ans, ps, sigs, cs] = await Promise.all([
+    const [proj, qs, ans, ps, sigs, qualsList] = await Promise.all([
       projectsApi.getById(q.project_id).catch(() => null),
       t ? templatesApi.questions(t.id) : Promise.resolve([] as Question[]),
       answersApi.list(q.id).catch(() => []),
       projectsApi.signers(q.project_id).catch(() => []),
       signaturesApi.list(q.id).catch(() => []),
-      certificatesApi.list().catch(() => []),
+      qualificationsApi.list().catch(() => []),
     ]);
     if (ctrl.cancelled) return;
     setProject(proj);
@@ -117,11 +119,11 @@ export default function SigningScreen() {
     setAnswers(ans);
     setSigners(ps);
     setExistingSigs(sigs);
-    setCerts(cs);
+    setQuals(qualsList);
 
     const initialSelected: Record<string, string> = {};
     for (const type of t?.required_cert_types ?? []) {
-      const m = cs.find(c => c.type === type);
+      const m = qualsList.find(c => c.type === type);
       if (m) initialSelected[type] = m.id;
     }
     setSelectedCerts(initialSelected);
@@ -236,7 +238,7 @@ export default function SigningScreen() {
     if (!questionnaire || !signer.signature_png_url) return;
     try {
       const saved = (await signaturesApi.upsert({
-        questionnaire_id: questionnaire.id,
+        inspection_id: questionnaire.id,
         signer_role: role,
         full_name: signer.full_name,
         phone: signer.phone,
@@ -265,7 +267,7 @@ export default function SigningScreen() {
       const path = `${questionnaire.id}/${role}-${Date.now()}.png`;
       await uploadSignature(path, base64);
       const saved = (await signaturesApi.upsert({
-        questionnaire_id: questionnaire.id,
+        inspection_id: questionnaire.id,
         signer_role: role,
         full_name: personName,
         phone: null,
@@ -299,7 +301,7 @@ export default function SigningScreen() {
     const personName = (nameInputs[role] ?? '').trim() || null;
     try {
       const saved = (await signaturesApi.upsert({
-        questionnaire_id: questionnaire.id,
+        inspection_id: questionnaire.id,
         signer_role: role,
         full_name: personName ?? '',
         phone: null,
@@ -336,12 +338,12 @@ export default function SigningScreen() {
   };
 
   const pickCert = (certType: string) => {
-    const matches = certs.filter(c => c.type === certType);
+    const matches = quals.filter(c => c.type === certType);
     if (matches.length === 0) {
       showActionSheetWithOptions(
         { title: 'სერტიფიკატი არ არის', options: ['ატვირთვა', 'გაუქმება'], cancelButtonIndex: 1 },
         idx => {
-          if (idx === 0) router.push('/certificates' as any);
+          if (idx === 0) router.push('/qualifications' as any);
         },
       );
       return;
@@ -376,7 +378,7 @@ export default function SigningScreen() {
       }
       const expertRec: SignatureRecord = {
         id: 'expert-auto',
-        questionnaire_id: questionnaire.id,
+        inspection_id: questionnaire.id,
         signer_role: 'expert',
         full_name: expertDefaultName,
         phone: null,
@@ -420,20 +422,20 @@ export default function SigningScreen() {
         }),
       );
 
-      const attachedCerts: Array<Certificate & { file_data_url?: string }> = [];
+      const attachedQuals: Array<Qualification & { file_data_url?: string }> = [];
       for (const type of requiredCertTypes) {
         const selectedId = selectedCerts[type];
         if (!selectedId) continue;
-        const cert = certs.find(c => c.id === selectedId);
-        if (!cert) continue;
+        const qual = quals.find(c => c.id === selectedId);
+        if (!qual) continue;
         let fileDataUrl: string | undefined;
-        if (cert.file_url) {
+        if (qual.file_url) {
           fileDataUrl = await getStorageImageDataUrl(
             STORAGE_BUCKETS.certificates,
-            cert.file_url,
+            qual.file_url,
           );
         }
-        attachedCerts.push({ ...cert, file_data_url: fileDataUrl });
+        attachedQuals.push({ ...qual, file_data_url: fileDataUrl });
       }
 
       const html = buildPdfHtml({
@@ -444,13 +446,24 @@ export default function SigningScreen() {
         answers,
         signatures: sigsForPdf,
         photosByAnswer: photosForPdf,
-        certificates: attachedCerts,
+        certificates: attachedQuals,
       });
       const { uri } = await Print.printToFileAsync({ html });
-      const fileName = `${questionnaire.id}.pdf`;
+      // Unique filename per certificate — an inspection can have many.
+      const fileName = `${questionnaire.id}-${Date.now()}.pdf`;
       const blob = await (await fetch(uri)).blob();
       await storageApi.upload(STORAGE_BUCKETS.pdfs, fileName, blob, 'application/pdf');
-      await questionnairesApi.complete(questionnaire.id, fileName);
+      // Flip inspection → completed, then record the generated certificate.
+      // These are two separate writes; if the second fails the user still has
+      // a valid completed inspection and can retry generation.
+      await inspectionsApi.finish(questionnaire.id);
+      await certificatesApi.create({
+        inspectionId: questionnaire.id,
+        templateId: questionnaire.template_id,
+        pdfUrl: fileName,
+        isSafeForUse: questionnaire.is_safe_for_use,
+        conclusionText: questionnaire.conclusion_text,
+      });
       // Best-effort Google Calendar sync for the newly-advanced schedule.
       void syncScheduleForCompletion(questionnaire.project_item_id).catch(() => undefined);
       toast.success('PDF შეიქმნა');
@@ -571,7 +584,7 @@ export default function SigningScreen() {
               <View style={{ gap: 10, marginTop: 10 }}>
                 {requiredCertTypes.map(type => {
                   const selectedId = selectedCerts[type];
-                  const selected = selectedId ? certs.find(c => c.id === selectedId) : null;
+                  const selected = selectedId ? quals.find(c => c.id === selectedId) : null;
                   return (
                     <Pressable key={type} onPress={() => pickCert(type)} style={styles.certRow}>
                       <View style={{ flex: 1 }}>

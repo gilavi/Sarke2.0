@@ -9,7 +9,8 @@ import { Button, Card, Screen } from '../../components/ui';
 import {
   answersApi,
   certificatesApi,
-  questionnairesApi,
+  inspectionsApi,
+  qualificationsApi,
   storageApi,
   templatesApi,
 } from '../../lib/services';
@@ -22,8 +23,9 @@ import type {
   AnswerPhoto,
   Certificate,
   GridValues,
+  Inspection,
+  Qualification,
   Question,
-  Questionnaire,
   Template,
 } from '../../types/models';
 import { supabase } from '../../lib/supabase';
@@ -70,7 +72,7 @@ export default function QuestionnaireWizard() {
   const toast = useToast();
   const offline = useOffline();
 
-  const [questionnaire, setQuestionnaire] = useState<Questionnaire | null>(null);
+  const [questionnaire, setQuestionnaire] = useState<Inspection | null>(null);
   const [template, setTemplate] = useState<Template | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [answers, setAnswers] = useState<Record<string, Answer>>({});
@@ -81,7 +83,7 @@ export default function QuestionnaireWizard() {
   const [conclusion, setConclusion] = useState('');
   const [isSafe, setIsSafe] = useState<boolean | null>(null);
   const [harnessName, setHarnessName] = useState('');
-  const [certs, setCerts] = useState<Certificate[]>([]);
+  const [qualifications, setQualifications] = useState<Qualification[]>([]);
 
   // Cancellation token for in-flight load(). Each load() run gets its own
   // object; when the screen blurs we flip `cancelled = true` on the active
@@ -97,13 +99,13 @@ export default function QuestionnaireWizard() {
     loadCtrlRef.current = ctrl;
     setLoading(true);
     try {
-      const q = await questionnairesApi.getById(id);
+      const q = await inspectionsApi.getById(id);
       if (ctrl.cancelled) return;
       if (!q) throw new Error('არ მოიძებნა');
-      // Fold any locally-queued questionnaire patch over the remote row.
+      // Fold any locally-queued inspection patch over the remote row.
       const localPatch = await offline.hydrateQuestionnairePatch(q.id);
       if (ctrl.cancelled) return;
-      const qMerged: Questionnaire = { ...q, ...(localPatch ?? {}) };
+      const qMerged: Inspection = { ...q, ...(localPatch ?? {}) };
       setQuestionnaire(qMerged);
       const t = await templatesApi.getById(qMerged.template_id);
       if (ctrl.cancelled) return;
@@ -143,9 +145,9 @@ export default function QuestionnaireWizard() {
           await offline.cacheAnswers(qMerged.id, map);
         }
       }
-      const freshCerts = await certificatesApi.list().catch(() => []);
+      const freshQuals = await qualificationsApi.list().catch(() => []);
       if (ctrl.cancelled) return;
-      setCerts(freshCerts);
+      setQualifications(freshQuals);
       // Resume where the user left off
       const [savedStep, savedHarness] = await Promise.all([
         AsyncStorage.getItem(stepKey(id)),
@@ -212,7 +214,7 @@ export default function QuestionnaireWizard() {
       answers[question.id] ??
       ({
         id: crypto.randomUUID(),
-        questionnaire_id: questionnaire.id,
+        inspection_id: questionnaire.id,
         question_id: question.id,
         value_bool: null,
         value_num: null,
@@ -230,7 +232,7 @@ export default function QuestionnaireWizard() {
     try {
       await offline.enqueueAnswerUpsert({
         id: next.id,
-        questionnaire_id: next.questionnaire_id,
+        inspection_id: next.inspection_id,
         question_id: next.question_id,
         value_bool: next.value_bool,
         value_num: next.value_num,
@@ -269,7 +271,7 @@ export default function QuestionnaireWizard() {
       if (!answer) {
         answer = (await answersApi.upsert({
           id: crypto.randomUUID(),
-          questionnaire_id: questionnaire.id,
+          inspection_id: questionnaire.id,
           question_id: question.id,
         }));
         setAnswers(prev => ({ ...prev, [question.id]: answer as Answer }));
@@ -372,7 +374,7 @@ export default function QuestionnaireWizard() {
                             onPress: async () => {
                               if (!id) return;
                               try {
-                                await questionnairesApi.remove(id);
+                                await inspectionsApi.remove(id);
                                 toast.success('წაიშალა');
                                 router.replace('/(tabs)/home' as any);
                               } catch (e: any) {
@@ -430,10 +432,10 @@ export default function QuestionnaireWizard() {
                 onPickPhoto={() => pickPhoto(step.question)}
               />
             ) : step.kind === 'certificates' ? (
-              <CertificatesStep
+              <QualificationsStep
                 requiredTypes={requiredCertTypes}
-                certs={certs}
-                onCertsChange={setCerts}
+                quals={qualifications}
+                onQualsChange={setQualifications}
               />
             ) : (
               <ConclusionStep
@@ -909,19 +911,24 @@ function GridRowStep({
   );
 }
 
-function CertificatesStep({
+/**
+ * Wizard step that asks the inspector to attach required professional
+ * qualifications (xaracho_inspector, etc.) to this inspection. Those
+ * attached quals get included in the generated PDF certificate downstream.
+ */
+function QualificationsStep({
   requiredTypes,
-  certs,
-  onCertsChange,
+  quals,
+  onQualsChange,
 }: {
   requiredTypes: string[];
-  certs: Certificate[];
-  onCertsChange: (next: Certificate[]) => void;
+  quals: Qualification[];
+  onQualsChange: (next: Qualification[]) => void;
 }) {
   const toast = useToast();
   const [uploadingFor, setUploadingFor] = useState<string | null>(null);
 
-  const uploadForType = async (certType: string) => {
+  const uploadForType = async (qualType: string) => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
       toast.error('ფოტოზე წვდომა არ არის');
@@ -932,7 +939,7 @@ function CertificatesStep({
       quality: 0.8,
     });
     if (result.canceled || result.assets.length === 0) return;
-    setUploadingFor(certType);
+    setUploadingFor(qualType);
     try {
       const user = (await supabase.auth.getUser()).data.user;
       if (!user) throw new Error('არ ხარ შესული');
@@ -947,16 +954,16 @@ function CertificatesStep({
         blob,
         asset.mimeType ?? 'image/jpeg',
       );
-      const cert = (await certificatesApi.upsert({
+      const qual = (await qualificationsApi.upsert({
         id: crypto.randomUUID(),
         user_id: user.id,
-        type: certType,
+        type: qualType,
         number: null,
         issued_at: new Date().toISOString().slice(0, 10),
         expires_at: null,
         file_url: path,
       }));
-      onCertsChange([cert, ...certs.filter(c => c.id !== cert.id)]);
+      onQualsChange([qual, ...quals.filter(c => c.id !== qual.id)]);
       toast.success('სერტიფიკატი აიტვირთა');
     } catch (e: any) {
       toast.error(`ატვირთვა ვერ მოხერხდა: ${e?.message ?? 'ქსელის შეცდომა'}`);
@@ -974,7 +981,7 @@ function CertificatesStep({
         დაურთე უკვე ატვირთული სერტიფიკატი ან ატვირთე ახალი — ინსპექციიდან გასვლა არაა საჭირო.
       </Text>
       {requiredTypes.map(t => {
-        const matches = certs.filter(c => c.type === t);
+        const matches = quals.filter(c => c.type === t);
         const available = matches.filter(c => {
           if (!c.expires_at) return true;
           return new Date(c.expires_at).getTime() > Date.now();
@@ -1134,26 +1141,43 @@ function PhotoGrid({ photos }: { photos: AnswerPhoto[] }) {
 
 import { shareStoredPdf } from '../../lib/sharePdf';
 
+/**
+ * Summary view shown when the inspection is already completed. Fetches the
+ * latest generated certificate (if any) so the user can re-share it. Creating
+ * additional certificates is handled by the dedicated `/certificates/new`
+ * route — this view just surfaces what's already there.
+ */
 function ResultView({
   questionnaire,
   template,
   onClose,
 }: {
-  questionnaire: Questionnaire;
+  questionnaire: Inspection;
   template: Template | null;
   onClose: () => void;
 }) {
   const toast = useToast();
+  const router = useRouter();
   const [sharing, setSharing] = useState(false);
+  const [latestCert, setLatestCert] = useState<Certificate | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void certificatesApi
+      .listByInspection(questionnaire.id)
+      .then(list => { if (!cancelled) setLatestCert(list[0] ?? null); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [questionnaire.id]);
 
   const share = async () => {
-    if (!questionnaire.pdf_url) {
-      toast.error('PDF ჯერ არ არის დაგენერირებული');
+    if (!latestCert) {
+      toast.error('სერტიფიკატი ჯერ არ არის დაგენერირებული');
       return;
     }
     setSharing(true);
     try {
-      await shareStoredPdf(questionnaire.pdf_url);
+      await shareStoredPdf(latestCert.pdf_url);
     } catch (e: any) {
       toast.error(e?.message ?? 'გახსნა ვერ მოხერხდა');
     } finally {
@@ -1209,7 +1233,14 @@ function ResultView({
             </Text>
           </Card>
 
-          <Button title="PDF-ის გახსნა / გაზიარება" onPress={share} loading={sharing} />
+          {latestCert ? (
+            <Button title="PDF-ის გახსნა / გაზიარება" onPress={share} loading={sharing} />
+          ) : null}
+          <Button
+            title={latestCert ? 'ახალი სერტიფიკატის გენერაცია' : 'სერტიფიკატის გენერაცია'}
+            variant={latestCert ? 'secondary' : 'primary'}
+            onPress={() => router.push(`/certificates/new?inspectionId=${questionnaire.id}` as any)}
+          />
           <Button title="დახურვა" variant="secondary" onPress={onClose} />
         </ScrollView>
       </SafeAreaView>

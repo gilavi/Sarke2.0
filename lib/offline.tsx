@@ -9,15 +9,17 @@ import React, {
   useState,
 } from 'react';
 import { supabase } from './supabase';
-import type { Answer, Questionnaire } from '../types/models';
+import type { Answer, Inspection } from '../types/models';
 
 type AnswerUpsertPayload = Partial<Answer> & {
   id: string;
-  questionnaire_id: string;
+  inspection_id: string;
   question_id: string;
 };
 
-type QuestionnaireUpdatePayload = Partial<Questionnaire> & { id: string };
+// Name kept for cache-key stability across the 0006 rename; payload now
+// targets the `inspections` table. See enqueueQuestionnaireUpdate JSDoc.
+type QuestionnaireUpdatePayload = Partial<Inspection> & { id: string };
 
 type QueueOp =
   | { kind: 'answer_upsert'; payload: AnswerUpsertPayload }
@@ -35,7 +37,7 @@ type OfflineContextValue = {
   enqueueQuestionnaireUpdate: (payload: QuestionnaireUpdatePayload) => Promise<void>;
   hydrateAnswers: (qid: string) => Promise<Record<string, Answer>>;
   cacheAnswers: (qid: string, answers: Record<string, Answer>) => Promise<void>;
-  hydrateQuestionnairePatch: (qid: string) => Promise<Partial<Questionnaire> | null>;
+  hydrateQuestionnairePatch: (qid: string) => Promise<Partial<Inspection> | null>;
   flush: () => Promise<void>;
 };
 
@@ -85,12 +87,12 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
           if (op.kind === 'answer_upsert') {
             const { error } = await supabase
               .from('answers')
-              .upsert(op.payload, { onConflict: 'questionnaire_id,question_id' });
+              .upsert(op.payload, { onConflict: 'inspection_id,question_id' });
             if (error) throw error;
           } else {
             const { id, ...rest } = op.payload;
             const { error } = await supabase
-              .from('questionnaires')
+              .from('inspections')
               .update(rest)
               .eq('id', id);
             if (error) throw error;
@@ -131,12 +133,12 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
   const enqueueAnswerUpsert = useCallback<OfflineContextValue['enqueueAnswerUpsert']>(
     async (payload) => {
       const ops = await readQueue();
-      // Coalesce: drop any prior pending upsert for the same (questionnaire, question).
+      // Coalesce: drop any prior pending upsert for the same (inspection, question).
       const filtered = ops.filter(
         (o) =>
           !(
             o.kind === 'answer_upsert' &&
-            o.payload.questionnaire_id === payload.questionnaire_id &&
+            o.payload.inspection_id === payload.inspection_id &&
             o.payload.question_id === payload.question_id
           ),
       );
@@ -147,12 +149,18 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
     [flush, setQueue],
   );
 
+  /**
+   * Enqueue a partial update against the `inspections` table. Method name
+   * still says "Questionnaire" to preserve AsyncStorage cache keys from
+   * before the 0006 rename — a key change would silently orphan any
+   * in-flight drafts on upgrade. Semantics: inspection.
+   */
   const enqueueQuestionnaireUpdate = useCallback<
     OfflineContextValue['enqueueQuestionnaireUpdate']
   >(
     async (payload) => {
       const ops = await readQueue();
-      // If the patch marks the questionnaire completed and no completed_at
+      // If the patch marks the inspection completed and no completed_at
       // was supplied, stamp one now. Otherwise a flush that lands hours later
       // would mark the row completed with a null timestamp and break audit.
       const stamped: typeof payload =
@@ -201,7 +209,7 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
     const raw = await AsyncStorage.getItem(questionnaireKey(qid));
     if (!raw) return null;
     try {
-      return JSON.parse(raw) as Partial<Questionnaire>;
+      return JSON.parse(raw) as Partial<Inspection>;
     } catch {
       return null;
     }

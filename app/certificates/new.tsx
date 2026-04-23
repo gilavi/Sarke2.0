@@ -6,7 +6,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { Button, Field, Input, Screen } from '../../components/ui';
-import { certificatesApi, storageApi } from '../../lib/services';
+import { qualificationsApi, storageApi } from '../../lib/services';
 import { STORAGE_BUCKETS, supabase } from '../../lib/supabase';
 import { theme } from '../../lib/theme';
 
@@ -57,7 +57,7 @@ export default function AddCertificate() {
         await storageApi.upload(STORAGE_BUCKETS.certificates, path, blob, 'image/jpeg');
         filePath = path;
       }
-      await certificatesApi.upsert({
+      await qualificationsApi.upsert({
         id: crypto.randomUUID(),
         user_id: user.id,
         type,

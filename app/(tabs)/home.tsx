@@ -18,24 +18,25 @@ import { useActionSheet } from '@expo/react-native-action-sheet';
 import { useSession } from '../../lib/session';
 import { projectAvatar } from '../../lib/projectAvatar';
 import {
-  certificatesApi,
+  qualificationsApi,
   isExpiringSoon,
   projectsApi,
   questionnairesApi,
   templatesApi,
 } from '../../lib/services';
-import { shareStoredPdf } from '../../lib/sharePdf';
+// shareStoredPdf import removed — PDF sharing now lives on the inspection
+// detail screen (which fetches certificates list) post 0006 decoupling.
 import { theme } from '../../lib/theme';
 import { Button, Field, Input } from '../../components/ui';
 import { useToast } from '../../lib/toast';
-import type { Certificate, Project, Questionnaire, Template } from '../../types/models';
+import type { Inspection, Project, Qualification, Template } from '../../types/models';
 
 export default function HomeScreen() {
   const { state } = useSession();
   const router = useRouter();
-  const [certs, setCerts] = useState<Certificate[]>([]);
+  const [certs, setCerts] = useState<Qualification[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
-  const [recent, setRecent] = useState<Questionnaire[]>([]);
+  const [recent, setRecent] = useState<Inspection[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [pickerVisible, setPickerVisible] = useState(false);
@@ -43,7 +44,7 @@ export default function HomeScreen() {
   const load = useCallback(async () => {
     try {
       const [c, t, r, p] = await Promise.all([
-        certificatesApi.list().catch(() => []),
+        qualificationsApi.list().catch(() => []),
         templatesApi.list().catch(() => []),
         questionnairesApi.recent(10).catch(() => []),
         projectsApi.list().catch(() => []),
@@ -83,10 +84,6 @@ export default function HomeScreen() {
     setRefreshing(true);
     await load();
     setRefreshing(false);
-  };
-
-  const sharePdf = async (path: string) => {
-    try { await shareStoredPdf(path); } catch { /* silent */ }
   };
 
   const templateName = (id: string) => templates.find(t => t.id === id)?.name ?? 'კითხვარი';
@@ -231,9 +228,11 @@ export default function HomeScreen() {
               {recent.slice(0, 4).map((q, i) => (
                 <Pressable
                   key={q.id}
+                  // Draft → resume wizard; completed → inspection detail (its
+                  // certificates list lives there).
                   onPress={() =>
-                    q.status === 'completed' && q.pdf_url
-                      ? sharePdf(q.pdf_url)
+                    q.status === 'completed'
+                      ? router.push(`/questionnaire/${q.id}` as any)
                       : router.push(`/questionnaire/${q.id}` as any)
                   }
                   style={[styles.recentRow, i > 0 && styles.recentRowBorder]}
@@ -259,11 +258,7 @@ export default function HomeScreen() {
                     </Text>
                     <Text style={styles.recentMeta}>{relativeTime(q.created_at)}</Text>
                   </View>
-                  <Ionicons
-                    name={q.status === 'completed' && q.pdf_url ? 'share-outline' : 'chevron-forward'}
-                    size={16}
-                    color={theme.colors.inkFaint}
-                  />
+                  <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
                 </Pressable>
               ))}
             </View>

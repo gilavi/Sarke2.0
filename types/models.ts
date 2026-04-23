@@ -1,4 +1,5 @@
-// Domain types mirrored from the Supabase schema (supabase/migrations/0001_init.sql).
+// Domain types mirrored from the Supabase schema.
+// See migrations 0001..0006 for the authoritative source.
 
 export type SignerRole = 'expert' | 'xaracho_supervisor' | 'xaracho_assembler';
 
@@ -15,7 +16,17 @@ export type QuestionType =
   | 'freetext'
   | 'photo_upload';
 
-export type QuestionnaireStatus = 'draft' | 'completed';
+/**
+ * Inspection lifecycle status.
+ *
+ * NOTE: still called `questionnaire_status` in Postgres (enum type) — we
+ * didn't rename the enum in 0006 to avoid a schema-ripple. The TS-side
+ * alias is the right abstraction from the app's point of view.
+ */
+export type InspectionStatus = 'draft' | 'completed';
+
+/** @deprecated Use `InspectionStatus`. Kept so legacy imports compile. */
+export type QuestionnaireStatus = InspectionStatus;
 
 export interface AppUser {
   id: string;
@@ -28,7 +39,13 @@ export interface AppUser {
   saved_signature_url: string | null;
 }
 
-export interface Certificate {
+/**
+ * The expert's professional qualification (e.g. xaracho_inspector certificate
+ * with number + issue/expiry + photo). Attached to generated certificates as
+ * proof of qualification. This is the row formerly known as `Certificate` —
+ * renamed in 0006 to free up that name for the PDF-output concept.
+ */
+export interface Qualification {
   id: string;
   user_id: string;
   type: string;
@@ -63,6 +80,11 @@ export interface Template {
   name: string;
   category: string | null;
   is_system: boolean;
+  /**
+   * `qualifications.type` values the template requires (e.g.
+   * `['xaracho_inspector']`). Column is still named `required_cert_types`
+   * in Postgres; renaming deferred to a later migration.
+   */
   required_cert_types: string[];
   required_signer_roles: SignerRole[];
 }
@@ -81,26 +103,33 @@ export interface Question {
   grid_cols: string[] | null;
 }
 
-export interface Questionnaire {
+/**
+ * Immutable record of what happened on site. The data captured here
+ * (answers + photos + conclusion + signatures) is the source of truth.
+ * A certificate (PDF) is a derived artefact — see `Certificate`.
+ */
+export interface Inspection {
   id: string;
   project_id: string;
   project_item_id: string | null;
   template_id: string;
   user_id: string;
-  status: QuestionnaireStatus;
+  status: InspectionStatus;
   harness_name: string | null;
   conclusion_text: string | null;
   is_safe_for_use: boolean | null;
-  pdf_url: string | null;
   created_at: string;
   completed_at: string | null;
 }
+
+/** @deprecated Use `Inspection`. Kept so legacy imports compile. */
+export type Questionnaire = Inspection;
 
 export type GridValues = Record<string, Record<string, string>>;
 
 export interface Answer {
   id: string;
-  questionnaire_id: string;
+  inspection_id: string;
   question_id: string;
   value_bool: boolean | null;
   value_num: number | null;
@@ -156,7 +185,7 @@ export type SignatureStatus = 'signed' | 'not_present';
 
 export interface SignatureRecord {
   id: string;
-  questionnaire_id: string;
+  inspection_id: string;
   signer_role: SignerRole;
   full_name: string;
   phone: string | null;
@@ -167,4 +196,25 @@ export interface SignatureRecord {
   status: SignatureStatus;
   /** Ad-hoc name for signers not tied to a project_signers row. */
   person_name: string | null;
+}
+
+/**
+ * Generated PDF derived from an inspection. One inspection can have many
+ * certificates over time (re-generated with different templates/params).
+ *
+ * `is_safe_for_use` and `conclusion_text` are SNAPSHOTTED at generation
+ * time so re-displaying an old certificate doesn't surprise the reader if
+ * the underlying inspection row has since been edited.
+ */
+export interface Certificate {
+  id: string;
+  inspection_id: string;
+  user_id: string;
+  template_id: string;
+  pdf_url: string;
+  is_safe_for_use: boolean | null;
+  conclusion_text: string | null;
+  /** Arbitrary template parameters captured at generation time. */
+  params: Record<string, unknown>;
+  generated_at: string;
 }

@@ -6,7 +6,6 @@ import { Ionicons } from '@expo/vector-icons';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { Card, Screen } from '../components/ui';
 import { projectsApi, questionnairesApi, templatesApi } from '../lib/services';
-import { shareStoredPdf } from '../lib/sharePdf';
 import { useToast } from '../lib/toast';
 import { theme } from '../lib/theme';
 import type { Project, Questionnaire, Template } from '../types/models';
@@ -51,13 +50,6 @@ export default function HistoryScreen() {
     items.push({ kind: 'header', label: 'დასრულებული' });
     completed.forEach(q => items.push({ kind: 'row', q }));
   }
-
-  const openPdf = async (q: Questionnaire) => {
-    if (!q.pdf_url) return;
-    try {
-      await shareStoredPdf(q.pdf_url);
-    } catch {}
-  };
 
   const onDelete = (q: Questionnaire) => {
     Alert.alert('წაშლა?', 'კითხვარი სამუდამოდ წაიშლება.', [
@@ -108,11 +100,10 @@ export default function HistoryScreen() {
                 overshootRight={false}
               >
                 <Pressable
-                  onPress={() =>
-                    q.status === 'draft'
-                      ? router.push(`/questionnaire/${q.id}` as any)
-                      : openPdf(q)
-                  }
+                  // Both draft and completed land on the inspection route.
+                  // Completed-state branching (view cert list) is handled on
+                  // that screen; PDF opening no longer happens inline.
+                  onPress={() => router.push(`/questionnaire/${q.id}` as any)}
                 >
                   <Card padding={12}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>

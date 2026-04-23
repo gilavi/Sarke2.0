@@ -3,11 +3,12 @@ import type {
   Answer,
   AnswerPhoto,
   Certificate,
+  Inspection,
   Project,
   ProjectItem,
   ProjectSigner,
+  Qualification,
   Question,
-  Questionnaire,
   Schedule,
   ScheduleWithItem,
   SignatureRecord,
@@ -88,7 +89,7 @@ export const projectsApi = {
     );
   },
   // Persist a drawn signature onto the roster entry (matched by project+role+name)
-  // so it's reusable on the next questionnaire for this project.
+  // so it's reusable on the next inspection for this project.
   saveRosterSignature: async (args: {
     project_id: string;
     role: ProjectSigner['role'];
@@ -139,7 +140,7 @@ export const projectsApi = {
   },
   stats: async (): Promise<Record<string, { drafts: number; completed: number }>> => {
     const { data, error } = await supabase
-      .from('questionnaires')
+      .from('inspections')
       .select('project_id,status');
     if (error) throw error;
     const map: Record<string, { drafts: number; completed: number }> = {};
@@ -185,30 +186,34 @@ export const templatesApi = {
   },
 };
 
-// -------- Questionnaires --------
+// -------- Inspections --------
+//
+// Formerly `questionnairesApi`. The screens and offline queue still refer to
+// "questionnaire" in some cache keys and route paths; those can be renamed
+// piecemeal. At the domain/API boundary, we use `inspection` exclusively.
 
-export const questionnairesApi = {
-  recent: async (limit = 100): Promise<Questionnaire[]> => {
+export const inspectionsApi = {
+  recent: async (limit = 100): Promise<Inspection[]> => {
     const { data, error } = await supabase
-      .from('questionnaires')
+      .from('inspections')
       .select('*')
       .order('created_at', { ascending: false })
       .limit(limit);
     if (error) throw error;
     return data ?? [];
   },
-  getById: async (id: string): Promise<Questionnaire | null> => {
+  getById: async (id: string): Promise<Inspection | null> => {
     const { data, error } = await supabase
-      .from('questionnaires')
+      .from('inspections')
       .select('*')
       .eq('id', id)
       .maybeSingle();
     if (error) throw error;
-    return (data as Questionnaire | null) ?? null;
+    return (data as Inspection | null) ?? null;
   },
-  listByProject: async (projectId: string): Promise<Questionnaire[]> => {
+  listByProject: async (projectId: string): Promise<Inspection[]> => {
     const { data, error } = await supabase
-      .from('questionnaires')
+      .from('inspections')
       .select('*')
       .eq('project_id', projectId)
       .order('created_at', { ascending: false });
@@ -220,12 +225,12 @@ export const questionnairesApi = {
     templateId: string;
     harnessName?: string;
     projectItemId?: string | null;
-  }): Promise<Questionnaire> => {
+  }): Promise<Inspection> => {
     const user = (await supabase.auth.getUser()).data.user;
     if (!user) throw new Error('Not signed in');
-    return throwIfError<Questionnaire>(
+    return throwIfError<Inspection>(
       await supabase
-        .from('questionnaires')
+        .from('inspections')
         .insert({
           project_id: args.projectId,
           template_id: args.templateId,
@@ -238,26 +243,26 @@ export const questionnairesApi = {
         .single(),
     );
   },
-  update: async (q: Partial<Questionnaire> & { id: string }): Promise<Questionnaire> => {
-    return throwIfError<Questionnaire>(
-      await supabase.from('questionnaires').update(q).eq('id', q.id).select().single(),
+  update: async (q: Partial<Inspection> & { id: string }): Promise<Inspection> => {
+    return throwIfError<Inspection>(
+      await supabase.from('inspections').update(q).eq('id', q.id).select().single(),
     );
   },
-  complete: async (id: string, pdfUrl: string) => {
+  /**
+   * Flip status to `completed` without generating a PDF. The PDF (certificate)
+   * is now a separate artefact created via `certificatesApi.generate()`.
+   */
+  finish: async (id: string): Promise<void> => {
     const { error } = await supabase
-      .from('questionnaires')
-      .update({ status: 'completed', pdf_url: pdfUrl, completed_at: new Date().toISOString() })
+      .from('inspections')
+      .update({ status: 'completed', completed_at: new Date().toISOString() })
       .eq('id', id);
     if (error) throw error;
   },
   remove: async (id: string) => {
-    const { error } = await supabase.from('questionnaires').delete().eq('id', id);
+    const { error } = await supabase.from('inspections').delete().eq('id', id);
     if (error) throw error;
   },
-  /**
-   * Aggregate counts for the logged-in user. Cheap — only fetches the status
-   * and created_at columns. Used for More / hub stat pills.
-   */
   counts: async (): Promise<{
     total: number;
     drafts: number;
@@ -265,7 +270,7 @@ export const questionnairesApi = {
     latestCreatedAt: string | null;
   }> => {
     const { data, error } = await supabase
-      .from('questionnaires')
+      .from('inspections')
       .select('status,created_at')
       .order('created_at', { ascending: false });
     if (error) throw error;
@@ -278,14 +283,10 @@ export const questionnairesApi = {
     const latestCreatedAt = (data?.[0] as { created_at?: string } | undefined)?.created_at ?? null;
     return { total: (data?.length ?? 0), drafts, completed, latestCreatedAt };
   },
-  /**
-   * Server-side filter by template_ids — used by the certificates tab to find
-   * inspections that reference a cert type (via their template's required_cert_types).
-   */
-  listByTemplateIds: async (templateIds: string[]): Promise<Questionnaire[]> => {
+  listByTemplateIds: async (templateIds: string[]): Promise<Inspection[]> => {
     if (templateIds.length === 0) return [];
     const { data, error } = await supabase
-      .from('questionnaires')
+      .from('inspections')
       .select('*')
       .in('template_id', templateIds)
       .order('created_at', { ascending: false });
@@ -294,22 +295,25 @@ export const questionnairesApi = {
   },
 };
 
+/** @deprecated Use `inspectionsApi`. Re-exported so older imports still work. */
+export const questionnairesApi = inspectionsApi;
+
 // -------- Answers --------
 
 export const answersApi = {
-  list: async (questionnaireId: string): Promise<Answer[]> => {
+  list: async (inspectionId: string): Promise<Answer[]> => {
     const { data, error } = await supabase
       .from('answers')
       .select('*')
-      .eq('questionnaire_id', questionnaireId);
+      .eq('inspection_id', inspectionId);
     if (error) throw error;
     return data ?? [];
   },
-  upsert: async (a: Partial<Answer> & { questionnaire_id: string; question_id: string }): Promise<Answer> => {
+  upsert: async (a: Partial<Answer> & { inspection_id: string; question_id: string }): Promise<Answer> => {
     return throwIfError<Answer>(
       await supabase
         .from('answers')
-        .upsert(a, { onConflict: 'questionnaire_id,question_id' })
+        .upsert(a, { onConflict: 'inspection_id,question_id' })
         .select()
         .single(),
     );
@@ -334,13 +338,16 @@ export const answersApi = {
 };
 
 // -------- Signatures --------
+//
+// Scoped to `inspection_id` for now. Moving signatures onto certificates is
+// part of the separate signature redesign.
 
 export const signaturesApi = {
-  list: async (questionnaireId: string): Promise<SignatureRecord[]> => {
+  list: async (inspectionId: string): Promise<SignatureRecord[]> => {
     const { data, error } = await supabase
       .from('signatures')
       .select('*')
-      .eq('questionnaire_id', questionnaireId);
+      .eq('inspection_id', inspectionId);
     if (error) throw error;
     return data ?? [];
   },
@@ -350,36 +357,130 @@ export const signaturesApi = {
         .from('signatures')
         .upsert(
           { ...s, signed_at: new Date().toISOString() },
-          { onConflict: 'questionnaire_id,signer_role' },
+          { onConflict: 'inspection_id,signer_role' },
         )
         .select()
         .single(),
     );
   },
-  remove: async (questionnaireId: string, role: SignatureRecord['signer_role']) => {
+  remove: async (inspectionId: string, role: SignatureRecord['signer_role']) => {
     const { error } = await supabase
       .from('signatures')
       .delete()
-      .eq('questionnaire_id', questionnaireId)
+      .eq('inspection_id', inspectionId)
       .eq('signer_role', role);
     if (error) throw error;
   },
 };
 
-// -------- Certificates --------
+// -------- Qualifications (expert's professional certificates) --------
+//
+// Formerly `certificatesApi`. Handles the xaracho_inspector / harness_inspector
+// / … credentials the expert uploads to their profile — attached to generated
+// PDFs as proof of qualification. Shape identical to the pre-0006 API.
 
-export const certificatesApi = {
-  list: async (): Promise<Certificate[]> => {
+export const qualificationsApi = {
+  list: async (): Promise<Qualification[]> => {
     const { data, error } = await supabase
-      .from('certificates')
+      .from('qualifications')
       .select('*')
       .order('created_at', { ascending: false });
     if (error) throw error;
     return data ?? [];
   },
-  upsert: async (c: Certificate): Promise<Certificate> => {
+  upsert: async (q: Qualification): Promise<Qualification> => {
+    return throwIfError<Qualification>(
+      await supabase.from('qualifications').upsert(q).select().single(),
+    );
+  },
+  remove: async (id: string) => {
+    const { error } = await supabase.from('qualifications').delete().eq('id', id);
+    if (error) throw error;
+  },
+};
+
+// -------- Certificates (generated PDFs) --------
+//
+// A certificate is a PDF derived from an inspection. One inspection : many
+// certificates. Generation is explicit — callers pass a pre-rendered PDF path
+// (already uploaded to Storage) plus a snapshot of the inspection payload, so
+// the rendering concern stays in `lib/pdf.ts` + the screen that orchestrates
+// signature capture. This keeps the API testable without a PDF backend.
+
+export const certificatesApi = {
+  /** All certificates visible to the current user (RLS-scoped). */
+  list: async (): Promise<Certificate[]> => {
+    const { data, error } = await supabase
+      .from('certificates')
+      .select('*')
+      .order('generated_at', { ascending: false });
+    if (error) throw error;
+    return data ?? [];
+  },
+  getById: async (id: string): Promise<Certificate | null> => {
+    const { data, error } = await supabase
+      .from('certificates')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw error;
+    return (data as Certificate | null) ?? null;
+  },
+  listByInspection: async (inspectionId: string): Promise<Certificate[]> => {
+    const { data, error } = await supabase
+      .from('certificates')
+      .select('*')
+      .eq('inspection_id', inspectionId)
+      .order('generated_at', { ascending: false });
+    if (error) throw error;
+    return data ?? [];
+  },
+  /**
+   * Cheap count-per-inspection used by list screens to show a "N attached"
+   * badge without paying for full certificate rows.
+   */
+  countsByInspection: async (inspectionIds: string[]): Promise<Record<string, number>> => {
+    if (inspectionIds.length === 0) return {};
+    const { data, error } = await supabase
+      .from('certificates')
+      .select('inspection_id')
+      .in('inspection_id', inspectionIds);
+    if (error) throw error;
+    const counts: Record<string, number> = {};
+    for (const row of (data ?? []) as Array<{ inspection_id: string }>) {
+      counts[row.inspection_id] = (counts[row.inspection_id] ?? 0) + 1;
+    }
+    return counts;
+  },
+  /**
+   * Persist a new certificate row. The caller is responsible for rendering
+   * the PDF and uploading it to the `pdfs` bucket; this just records the
+   * metadata + snapshot.
+   */
+  create: async (args: {
+    inspectionId: string;
+    templateId: string;
+    pdfUrl: string;
+    isSafeForUse: boolean | null;
+    conclusionText: string | null;
+    params?: Record<string, unknown>;
+  }): Promise<Certificate> => {
+    const user = (await supabase.auth.getUser()).data.user;
+    if (!user) throw new Error('Not signed in');
     return throwIfError<Certificate>(
-      await supabase.from('certificates').upsert(c).select().single(),
+      await supabase
+        .from('certificates')
+        .insert({
+          inspection_id: args.inspectionId,
+          user_id: user.id,
+          template_id: args.templateId,
+          pdf_url: args.pdfUrl,
+          is_safe_for_use: args.isSafeForUse,
+          conclusion_text: args.conclusionText,
+          params: args.params ?? {},
+        })
+        .select()
+        .single(),
     );
   },
   remove: async (id: string) => {
@@ -527,8 +628,8 @@ export const storageApi = {
 
 // -------- Helpers --------
 
-export function isExpiringSoon(cert: Certificate): boolean {
-  if (!cert.expires_at) return false;
-  const exp = new Date(cert.expires_at).getTime();
+export function isExpiringSoon(q: Qualification): boolean {
+  if (!q.expires_at) return false;
+  const exp = new Date(q.expires_at).getTime();
   return exp - Date.now() < 30 * 24 * 60 * 60 * 1000;
 }

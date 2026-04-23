@@ -1,3 +1,8 @@
+// NOTE (0006 decoupling): this screen currently shows the expert's
+// professional qualifications (xaracho_inspector etc.). It will be
+// repurposed to show generated PDF certificates in a follow-up; for now
+// the route path is kept as `certificates` to avoid deep-link breakage
+// while the rename is in-flight.
 import { useCallback, useMemo, useState } from 'react';
 import { Alert, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -5,25 +10,25 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '../../components/ui';
 import {
-  certificatesApi,
+  inspectionsApi,
   isExpiringSoon,
-  questionnairesApi,
+  qualificationsApi,
   templatesApi,
 } from '../../lib/services';
 import { theme } from '../../lib/theme';
-import type { Certificate, Questionnaire, Template } from '../../types/models';
+import type { Inspection, Qualification, Template } from '../../types/models';
 
 export default function CertificatesScreen() {
   const router = useRouter();
-  const [certs, setCerts] = useState<Certificate[]>([]);
+  const [certs, setCerts] = useState<Qualification[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
-  const [linkedOpen, setLinkedOpen] = useState<Certificate | null>(null);
-  const [linkedQuestionnaires, setLinkedQuestionnaires] = useState<Questionnaire[]>([]);
+  const [linkedOpen, setLinkedOpen] = useState<Qualification | null>(null);
+  const [linkedInspections, setLinkedInspections] = useState<Inspection[]>([]);
   const [linkedLoading, setLinkedLoading] = useState(false);
 
   const load = useCallback(async () => {
     const [c, t] = await Promise.all([
-      certificatesApi.list().catch(() => []),
+      qualificationsApi.list().catch(() => []),
       templatesApi.list().catch(() => []),
     ]);
     setCerts(c);
@@ -36,17 +41,17 @@ export default function CertificatesScreen() {
    * and usually wasted because the linked modal is tapped rarely.
    */
   const openLinkedFor = useCallback(
-    async (cert: Certificate) => {
+    async (cert: Qualification) => {
       setLinkedOpen(cert);
       setLinkedLoading(true);
       try {
         const matchingTemplateIds = templates
           .filter(t => t.required_cert_types.includes(cert.type))
           .map(t => t.id);
-        const qs = await questionnairesApi.listByTemplateIds(matchingTemplateIds);
-        setLinkedQuestionnaires(qs);
+        const qs = await inspectionsApi.listByTemplateIds(matchingTemplateIds);
+        setLinkedInspections(qs);
       } catch {
-        setLinkedQuestionnaires([]);
+        setLinkedInspections([]);
       } finally {
         setLinkedLoading(false);
       }
@@ -60,7 +65,7 @@ export default function CertificatesScreen() {
     }, [load]),
   );
 
-  const remove = (c: Certificate) => {
+  const remove = (c: Qualification) => {
     Alert.alert('წაშლა?', c.number ?? c.type, [
       { text: 'გაუქმება', style: 'cancel' },
       {
@@ -68,7 +73,7 @@ export default function CertificatesScreen() {
         style: 'destructive',
         onPress: async () => {
           try {
-            await certificatesApi.remove(c.id);
+            await qualificationsApi.remove(c.id);
             void load();
           } catch (e: any) {
             Alert.alert('წაშლა ვერ მოხერხდა', e?.message ?? 'ქსელის შეცდომა');
@@ -78,7 +83,7 @@ export default function CertificatesScreen() {
     ]);
   };
 
-  const statusOf = (c: Certificate): 'expired' | 'expiring' | 'ok' => {
+  const statusOf = (c: Qualification): 'expired' | 'expiring' | 'ok' => {
     if (!c.expires_at) return 'ok';
     const exp = new Date(c.expires_at).getTime();
     if (exp < Date.now()) return 'expired';
@@ -145,15 +150,15 @@ export default function CertificatesScreen() {
       <LinkedInspectionsSheet
         cert={linkedOpen}
         loading={linkedLoading}
-        questionnaires={linkedQuestionnaires}
+        questionnaires={linkedInspections}
         templates={templates}
         onClose={() => {
           setLinkedOpen(null);
-          setLinkedQuestionnaires([]);
+          setLinkedInspections([]);
         }}
         onOpen={qid => {
           setLinkedOpen(null);
-          setLinkedQuestionnaires([]);
+          setLinkedInspections([]);
           router.push(`/questionnaire/${qid}` as any);
         }}
       />
@@ -181,8 +186,8 @@ function LinkedInspectionsSheet({
   onClose,
   onOpen,
 }: {
-  cert: Certificate | null;
-  questionnaires: Questionnaire[];
+  cert: Qualification | null;
+  questionnaires: Inspection[];
   templates: Template[];
   loading: boolean;
   onClose: () => void;

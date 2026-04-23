@@ -6,16 +6,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { Card } from '../../components/ui';
 import { useSession } from '../../lib/session';
 import {
-  certificatesApi,
+  inspectionsApi,
   isExpiringSoon,
   projectsApi,
-  questionnairesApi,
+  qualificationsApi,
   templatesApi,
 } from '../../lib/services';
 import { googleCalendar } from '../../lib/googleCalendar';
 import { useToast } from '../../lib/toast';
 import { theme } from '../../lib/theme';
-import type { Certificate, Project, Template } from '../../types/models';
+import type { Project, Qualification, Template } from '../../types/models';
 
 export default function MoreScreen() {
   const { state, signOut } = useSession();
@@ -27,7 +27,7 @@ export default function MoreScreen() {
     completed: 0,
     latestCreatedAt: null,
   });
-  const [certs, setCerts] = useState<Certificate[]>([]);
+  const [certs, setCerts] = useState<Qualification[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [googleConnected, setGoogleConnected] = useState(false);
@@ -36,10 +36,10 @@ export default function MoreScreen() {
     useCallback(() => {
       void (async () => {
         const [cs, c, t, p, gc] = await Promise.all([
-          questionnairesApi
+          inspectionsApi
             .counts()
             .catch(() => ({ total: 0, drafts: 0, completed: 0, latestCreatedAt: null })),
-          certificatesApi.list().catch(() => []),
+          qualificationsApi.list().catch(() => []),
           templatesApi.list().catch(() => []),
           projectsApi.list().catch(() => []),
           googleCalendar.isConnected().catch(() => false),
