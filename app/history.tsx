@@ -123,7 +123,7 @@ export default function HistoryScreen() {
                   onPress={() =>
                     q.status === 'completed'
                       ? router.push(`/inspections/${q.id}` as any)
-                      : router.push(`/questionnaire/${q.id}` as any)
+                      : router.push(`/inspections/${q.id}/wizard` as any)
                   }
                 >
                   <Card padding={12}>

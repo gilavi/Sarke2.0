@@ -103,7 +103,7 @@ export default function HomeScreen() {
         {/* ───────── CONTINUE / START ───────── */}
         <View style={styles.sectionWrap}>
           {latestDraft ? (
-            <Pressable onPress={() => router.push(`/questionnaire/${latestDraft.id}` as any)}>
+            <Pressable onPress={() => router.push(`/inspections/${latestDraft.id}/wizard` as any)}>
               <View style={styles.resumeCard}>
                 <View style={styles.resumeIcon}>
                   <Ionicons name="play" size={16} color={theme.colors.accent} />
@@ -233,7 +233,7 @@ export default function HomeScreen() {
                   onPress={() =>
                     q.status === 'completed'
                       ? router.push(`/inspections/${q.id}` as any)
-                      : router.push(`/questionnaire/${q.id}` as any)
+                      : router.push(`/inspections/${q.id}/wizard` as any)
                   }
                   style={[styles.recentRow, i > 0 && styles.recentRowBorder]}
                 >
@@ -348,7 +348,7 @@ function ProjectPickerSheet({
         try {
           onClose();
           const q = await questionnairesApi.create({ projectId, templateId: tpl.id });
-          router.push(`/questionnaire/${q.id}` as any);
+          router.push(`/inspections/${q.id}/wizard` as any);
         } catch (e: any) {
           toast.error(e?.message ?? 'შექმნა ვერ მოხერხდა');
         }

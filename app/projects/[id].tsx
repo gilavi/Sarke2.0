@@ -106,7 +106,7 @@ export default function ProjectDetail() {
             projectId: id,
             templateId: t.id,
           }));
-          router.push(`/questionnaire/${q.id}` as any);
+          router.push(`/inspections/${q.id}/wizard` as any);
         } catch (e: any) {
           toast.error(e?.message ?? 'შექმნა ვერ მოხერხდა');
         }
@@ -294,7 +294,7 @@ export default function ProjectDetail() {
                         overshootRight={false}
                       >
                         <Pressable
-                          onPress={() => router.push(`/questionnaire/${q.id}` as any)}
+                          onPress={() => router.push(`/inspections/${q.id}/wizard` as any)}
                           style={styles.qRow}
                         >
                           <View style={[styles.qStatusDot, { backgroundColor: theme.colors.warnSoft }]}>
@@ -346,7 +346,7 @@ export default function ProjectDetail() {
                         overshootRight={false}
                       >
                         <Pressable
-                          onPress={() => router.push(`/questionnaire/${q.id}` as any)}
+                          onPress={() => router.push(`/inspections/${q.id}/wizard` as any)}
                           style={styles.qRow}
                         >
                           <View style={[styles.qStatusDot, { backgroundColor: theme.colors.harnessSoft }]}>

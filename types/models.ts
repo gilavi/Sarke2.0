@@ -82,10 +82,9 @@ export interface Template {
   is_system: boolean;
   /**
    * `qualifications.type` values the template requires (e.g.
-   * `['xaracho_inspector']`). Column is still named `required_cert_types`
-   * in Postgres; renaming deferred to a later migration.
+   * `['xaracho_inspector']`). Renamed from `required_cert_types` in 0007.
    */
-  required_cert_types: string[];
+  required_qualifications: string[];
   required_signer_roles: SignerRole[];
 }
 

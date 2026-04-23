@@ -181,7 +181,7 @@ export default function CalendarScreen() {
             templateId: tpl.id,
             projectItemId: schedule.project_item_id,
           });
-          router.push(`/questionnaire/${q.id}` as any);
+          router.push(`/inspections/${q.id}/wizard` as any);
         } catch (e: any) {
           toast.error(e?.message ?? 'შექმნა ვერ მოხერხდა');
         }

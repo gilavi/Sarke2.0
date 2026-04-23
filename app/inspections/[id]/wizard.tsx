@@ -5,30 +5,28 @@ import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-rou
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Button, Card, Screen } from '../../components/ui';
+import { Button, Card, Screen } from '../../../components/ui';
 import {
   answersApi,
-  certificatesApi,
   inspectionsApi,
   qualificationsApi,
   storageApi,
   templatesApi,
-} from '../../lib/services';
-import { STORAGE_BUCKETS } from '../../lib/supabase';
-import { useToast } from '../../lib/toast';
-import { useOffline } from '../../lib/offline';
-import { theme } from '../../lib/theme';
+} from '../../../lib/services';
+import { STORAGE_BUCKETS } from '../../../lib/supabase';
+import { useToast } from '../../../lib/toast';
+import { useOffline } from '../../../lib/offline';
+import { theme } from '../../../lib/theme';
 import type {
   Answer,
   AnswerPhoto,
-  Certificate,
   GridValues,
   Inspection,
   Qualification,
   Question,
   Template,
-} from '../../types/models';
-import { supabase } from '../../lib/supabase';
+} from '../../../types/models';
+import { supabase } from '../../../lib/supabase';
 
 const stepKey = (qid: string) => `wizard:${qid}:step`;
 const harnessCountKey = (qid: string) => `wizard:${qid}:harnessCount`;
@@ -197,9 +195,9 @@ export default function QuestionnaireWizard() {
 
   // Stable reference: re-join only when the underlying array changes, not on
   // every render. The memoized steps below depend on this key.
-  const requiredCertTypesKey = (template?.required_cert_types ?? []).join(',');
+  const requiredCertTypesKey = (template?.required_qualifications ?? []).join(',');
   const requiredCertTypes = useMemo(
-    () => template?.required_cert_types ?? [],
+    () => template?.required_qualifications ?? [],
     [requiredCertTypesKey],
   );
   const steps = useMemo(
@@ -302,7 +300,7 @@ export default function QuestionnaireWizard() {
         is_safe_for_use: isSafe,
         harness_name: harnessName || null,
       });
-      router.push(`/questionnaire/${questionnaire.id}/signing` as any);
+      router.push(`/inspections/${questionnaire.id}/signing` as any);
     } catch (e: any) {
       toast.error(`დასკვნის შენახვა ვერ მოხერხდა: ${e?.message ?? 'ქსელის შეცდომა'}`);
     }
@@ -319,18 +317,10 @@ export default function QuestionnaireWizard() {
     );
   }
 
-  // Completed inspection -> bounce to the new dedicated detail screen. The
-  // old ResultView is kept below for legacy navigations that went through
-  // router.back() into a stale stack, but `/inspections/[id]` is canonical.
+  // Completed inspection → bounce to the dedicated detail screen. The
+  // redirect fires in an effect so we don't mutate navigation during render.
   if (questionnaire?.status === 'completed') {
-    router.replace(`/inspections/${questionnaire.id}` as any);
-    return (
-      <ResultView
-        questionnaire={questionnaire}
-        template={template}
-        onClose={() => router.back()}
-      />
-    );
+    return <CompletedRedirect id={questionnaire.id} />;
   }
 
   if (!step) {
@@ -1140,115 +1130,17 @@ function PhotoGrid({ photos }: { photos: AnswerPhoto[] }) {
   );
 }
 
-// ----- Result view for completed questionnaires -----
-
-import { shareStoredPdf } from '../../lib/sharePdf';
-
 /**
- * Summary view shown when the inspection is already completed. Fetches the
- * latest generated certificate (if any) so the user can re-share it. Creating
- * additional certificates is handled by the dedicated `/certificates/new`
- * route — this view just surfaces what's already there.
+ * Blank placeholder that fires a one-shot redirect to the inspection detail
+ * screen. Used when the wizard route is hit for an already-completed
+ * inspection — the canonical landing is `/inspections/[id]`, not here.
  */
-function ResultView({
-  questionnaire,
-  template,
-  onClose,
-}: {
-  questionnaire: Inspection;
-  template: Template | null;
-  onClose: () => void;
-}) {
-  const toast = useToast();
+function CompletedRedirect({ id }: { id: string }) {
   const router = useRouter();
-  const [sharing, setSharing] = useState(false);
-  const [latestCert, setLatestCert] = useState<Certificate | null>(null);
-
   useEffect(() => {
-    let cancelled = false;
-    void certificatesApi
-      .listByInspection(questionnaire.id)
-      .then(list => { if (!cancelled) setLatestCert(list[0] ?? null); })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [questionnaire.id]);
-
-  const share = async () => {
-    if (!latestCert) {
-      toast.error('სერტიფიკატი ჯერ არ არის დაგენერირებული');
-      return;
-    }
-    setSharing(true);
-    try {
-      await shareStoredPdf(latestCert.pdf_url);
-    } catch (e: any) {
-      toast.error(e?.message ?? 'გახსნა ვერ მოხერხდა');
-    } finally {
-      setSharing(false);
-    }
-  };
-
-  return (
-    <Screen>
-      <Stack.Screen options={{ headerShown: true, title: 'დასრულდა' }} />
-      <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
-        <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }}>
-          <View style={{ alignItems: 'center', gap: 10, paddingVertical: 30 }}>
-            <View
-              style={{
-                width: 72,
-                height: 72,
-                borderRadius: 36,
-                backgroundColor: theme.colors.accentSoft,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Ionicons name="checkmark-circle" size={48} color={theme.colors.accent} />
-            </View>
-            <Text style={{ fontSize: 22, fontWeight: '800', color: theme.colors.ink }}>
-              კითხვარი დასრულებულია
-            </Text>
-            <Text style={{ color: theme.colors.inkSoft, textAlign: 'center' }}>
-              {template?.name ?? 'კითხვარი'}
-              {'\n'}
-              {new Date(questionnaire.completed_at ?? questionnaire.created_at).toLocaleString('ka')}
-            </Text>
-          </View>
-
-          <Card>
-            <Text style={{ fontSize: 11, color: theme.colors.inkSoft, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-              დასკვნა
-            </Text>
-            <Text style={{ marginTop: 6, color: theme.colors.ink }}>
-              {questionnaire.conclusion_text || '—'}
-            </Text>
-            <Text
-              style={{
-                marginTop: 10,
-                fontWeight: '700',
-                color: questionnaire.is_safe_for_use === false ? theme.colors.danger : theme.colors.accent,
-              }}
-            >
-              {questionnaire.is_safe_for_use === false
-                ? '✗ არ არის უსაფრთხო ექსპლუატაციისთვის'
-                : '✓ უსაფრთხოა ექსპლუატაციისთვის'}
-            </Text>
-          </Card>
-
-          {latestCert ? (
-            <Button title="PDF-ის გახსნა / გაზიარება" onPress={share} loading={sharing} />
-          ) : null}
-          <Button
-            title={latestCert ? 'ახალი სერტიფიკატის გენერაცია' : 'სერტიფიკატის გენერაცია'}
-            variant={latestCert ? 'secondary' : 'primary'}
-            onPress={() => router.push(`/certificates/new?inspectionId=${questionnaire.id}` as any)}
-          />
-          <Button title="დახურვა" variant="secondary" onPress={onClose} />
-        </ScrollView>
-      </SafeAreaView>
-    </Screen>
-  );
+    router.replace(`/inspections/${id}` as any);
+  }, [id, router]);
+  return null;
 }
 
 const styles = StyleSheet.create({

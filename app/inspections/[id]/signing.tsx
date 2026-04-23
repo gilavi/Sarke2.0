@@ -119,7 +119,7 @@ export default function SigningScreen() {
     setQuals(qualsList);
 
     const initialSelected: Record<string, string> = {};
-    for (const type of t?.required_cert_types ?? []) {
+    for (const type of t?.required_qualifications ?? []) {
       const m = qualsList.find(c => c.type === type);
       if (m) initialSelected[type] = m.id;
     }
@@ -188,7 +188,7 @@ export default function SigningScreen() {
     [templateRoles],
   );
   const expertRequired = templateRoles.includes('expert');
-  const requiredCertTypes = template?.required_cert_types ?? [];
+  const requiredCertTypes = template?.required_qualifications ?? [];
 
   const signedRoles = new Set(
     existingSigs.filter(s => s.status === 'signed').map(s => s.signer_role),

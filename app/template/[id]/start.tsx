@@ -53,7 +53,7 @@ export default function StartTemplateScreen() {
         projectId: selected,
         templateId: template.id,
       }));
-      router.replace(`/questionnaire/${q.id}` as any);
+      router.replace(`/inspections/${q.id}/wizard` as any);
     } catch (e: any) {
       toast.error(e?.message ?? 'კითხვარი ვერ შეიქმნა');
     } finally {

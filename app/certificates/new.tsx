@@ -110,7 +110,7 @@ export default function GenerateCertificateScreen() {
       // Preselect the first available (non-expired) qual for each required
       // type, matching today's behavior from the signing screen.
       const initial: Record<string, string> = {};
-      for (const t of tpl?.required_cert_types ?? []) {
+      for (const t of tpl?.required_qualifications ?? []) {
         const first = qualsList.find(q => q.type === t);
         if (first) initial[t] = first.id;
       }
@@ -132,7 +132,7 @@ export default function GenerateCertificateScreen() {
 
   useEffect(() => { void load(); }, [load]);
 
-  const requiredCertTypes = template?.required_cert_types ?? [];
+  const requiredCertTypes = template?.required_qualifications ?? [];
 
   const pickQual = (certType: string) => {
     const matches = quals.filter(q => q.type === certType);

@@ -5,7 +5,7 @@
 // CTA. Shows inspection metadata + its attached certificates, and offers
 // a CTA to generate another certificate from the same inspection.
 //
-// Draft inspections still route through `/questionnaire/[id]` (wizard).
+// Draft inspections still route through `/inspections/[id]/wizard`.
 import { useCallback, useState } from 'react';
 import {
   Alert,
@@ -55,7 +55,7 @@ export default function InspectionDetailScreen() {
       // If this is still a draft, bounce into the wizard — the detail view
       // only makes sense once the inspection is immutable.
       if (insp.status === 'draft') {
-        router.replace(`/questionnaire/${insp.id}` as any);
+        router.replace(`/inspections/${insp.id}/wizard` as any);
         return;
       }
       const [tpl, proj, cs] = await Promise.all([

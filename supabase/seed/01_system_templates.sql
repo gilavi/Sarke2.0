@@ -3,7 +3,7 @@
 
 -- ---------- Template A: ფასადის ხარაჩოს შემოწმების აქტი ----------
 
-insert into templates (id, owner_id, name, category, is_system, required_cert_types, required_signer_roles)
+insert into templates (id, owner_id, name, category, is_system, required_qualifications, required_signer_roles)
 values (
   '11111111-1111-1111-1111-111111111111',
   null,
@@ -47,7 +47,7 @@ insert into questions (template_id, section, "order", type, title) values
 
 -- ---------- Template B: დამცავი ქამრების შემოწმების აქტი ----------
 
-insert into templates (id, owner_id, name, category, is_system, required_cert_types, required_signer_roles)
+insert into templates (id, owner_id, name, category, is_system, required_qualifications, required_signer_roles)
 values (
   '22222222-2222-2222-2222-222222222222',
   null,
