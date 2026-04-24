@@ -3,7 +3,7 @@ import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useActionSheet } from '@expo/react-native-action-sheet';
+import { useBottomSheet } from '../../../components/BottomSheet';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { Button, Card, Screen } from '../../../components/ui';
@@ -63,7 +63,7 @@ export default function SigningScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const toast = useToast();
-  const { showActionSheetWithOptions } = useActionSheet();
+  const showActionSheetWithOptions = useBottomSheet();
   const { state } = useSession();
 
   const [questionnaire, setQuestionnaire] = useState<Questionnaire | null>(null);

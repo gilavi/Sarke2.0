@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useActionSheet } from '@expo/react-native-action-sheet';
+import { useBottomSheet } from '../../components/BottomSheet';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Card } from '../../components/ui';
 import {
@@ -88,7 +88,7 @@ function buildMonthGrid(year: number, month: number): Date[] {
 export default function CalendarScreen() {
   const router = useRouter();
   const toast = useToast();
-  const { showActionSheetWithOptions } = useActionSheet();
+  const showActionSheetWithOptions = useBottomSheet();
   const [month, setMonth] = useState(() => startOfMonth(new Date()));
   const [schedules, setSchedules] = useState<ScheduleWithItem[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);

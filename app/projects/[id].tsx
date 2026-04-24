@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useActionSheet } from '@expo/react-native-action-sheet';
+import { useBottomSheet } from '../../components/BottomSheet';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { Button, Card, Field, Input, Screen } from '../../components/ui';
 import {
@@ -33,7 +33,7 @@ import { SIGNER_ROLE_LABEL } from '../../types/models';
 export default function ProjectDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { showActionSheetWithOptions } = useActionSheet();
+  const showActionSheetWithOptions = useBottomSheet();
   const toast = useToast();
 
   const [project, setProject] = useState<Project | null>(null);

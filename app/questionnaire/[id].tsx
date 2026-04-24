@@ -13,6 +13,7 @@ import {
   storageApi,
   templatesApi,
 } from '../../lib/services';
+import { getStorageImageDisplayUrl } from '../../lib/imageUrl';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { useToast } from '../../lib/toast';
 import { useOffline } from '../../lib/offline';
@@ -276,7 +277,11 @@ export default function QuestionnaireWizard() {
       }
       const photo = (await answersApi.addPhoto(answer.id, path));
       const answerId = answer.id;
-      setPhotos(prev => ({ ...prev, [answerId]: [...(prev[answerId] ?? []), photo] }));
+      // Use the local URI as storage_path so the thumbnail appears immediately
+      // without waiting for a signed URL round-trip. On screen re-focus, the
+      // server-returned path takes over and PhotoThumb fetches a signed URL.
+      const photoForDisplay: AnswerPhoto = { ...photo, storage_path: asset.uri };
+      setPhotos(prev => ({ ...prev, [answerId]: [...(prev[answerId] ?? []), photoForDisplay] }));
       toast.success('ფოტო აიტვირთა');
     } catch (e: any) {
       toast.error(`ფოტო ვერ აიტვირთა: ${e?.message ?? 'ქსელის შეცდომა'}`);
@@ -1111,21 +1116,31 @@ function ConclusionStep({
   );
 }
 
+function PhotoThumb({ photo }: { photo: AnswerPhoto }) {
+  // Local device URIs (fresh upload) can be used directly without a network round-trip.
+  const isLocal = /^(file|content|ph|asset):\/\//.test(photo.storage_path);
+  const [uri, setUri] = useState<string | null>(isLocal ? photo.storage_path : null);
+
+  useEffect(() => {
+    if (isLocal) return;
+    let cancelled = false;
+    getStorageImageDisplayUrl(STORAGE_BUCKETS.answerPhotos, photo.storage_path)
+      .then(url => { if (!cancelled) setUri(url); })
+      .catch(() => {
+        if (!cancelled) setUri(storageApi.publicUrl(STORAGE_BUCKETS.answerPhotos, photo.storage_path));
+      });
+    return () => { cancelled = true; };
+  }, [photo.storage_path, isLocal]);
+
+  if (!uri) return <View style={styles.photoThumb} />;
+  return <Image source={{ uri }} style={styles.photoThumb} resizeMode="cover" />;
+}
+
 function PhotoGrid({ photos }: { photos: AnswerPhoto[] }) {
   if (!photos.length) return null;
   return (
     <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-      {photos.map(p => {
-        const url = storageApi.publicUrl(STORAGE_BUCKETS.answerPhotos, p.storage_path);
-        return (
-          <Image
-            key={p.id}
-            source={{ uri: url }}
-            style={styles.photoThumb}
-            resizeMode="cover"
-          />
-        );
-      })}
+      {photos.map(p => <PhotoThumb key={p.id} photo={p} />)}
     </View>
   );
 }
