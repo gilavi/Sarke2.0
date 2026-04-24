@@ -93,7 +93,7 @@ export default function CertificatesScreen() {
 
   const deleteCert = (cert: Certificate) => {
     Alert.alert(
-      'წაშლა?',
+      'PDF რეპორტის წაშლა?',
       'PDF წაიშლება. ინსპექცია უცვლელი დარჩება.',
       [
         { text: 'გაუქმება', style: 'cancel' },
@@ -117,7 +117,7 @@ export default function CertificatesScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.title}>სერტიფიკატები</Text>
+        <Text style={styles.title}>PDF რეპორტები</Text>
       </View>
       <FlatList
         data={certs}
@@ -130,7 +130,7 @@ export default function CertificatesScreen() {
               ცარიელია
             </Text>
             <Text style={{ color: theme.colors.inkSoft, textAlign: 'center' }}>
-              დაასრულე ინსპექცია და დააგენერირე პირველი PDF სერტიფიკატი.
+              დაასრულე ინსპექცია და დააგენერირე პირველი PDF რეპორტი.
             </Text>
           </View>
         }
@@ -158,7 +158,7 @@ export default function CertificatesScreen() {
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.rowTitle} numberOfLines={1}>
-                        {tpl?.name ?? 'სერტიფიკატი'}
+                        {tpl?.name ?? 'PDF რეპორტი'}
                       </Text>
                       <Text style={styles.rowMeta} numberOfLines={1}>
                         {proj?.name ?? '—'}

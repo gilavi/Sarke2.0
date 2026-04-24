@@ -21,6 +21,7 @@ import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-rou
 import { Ionicons } from '@expo/vector-icons';
 import { Button, Card, Screen } from '../../components/ui';
 import {
+  answersApi,
   certificatesApi,
   inspectionsApi,
   projectsApi,
@@ -29,7 +30,7 @@ import {
 import { shareStoredPdf } from '../../lib/sharePdf';
 import { useToast } from '../../lib/toast';
 import { theme } from '../../lib/theme';
-import type { Certificate, Inspection, Project, Template } from '../../types/models';
+import type { Answer, Certificate, Inspection, Project, Question, Template } from '../../types/models';
 
 export default function InspectionDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -39,6 +40,8 @@ export default function InspectionDetailScreen() {
   const [template, setTemplate] = useState<Template | null>(null);
   const [project, setProject] = useState<Project | null>(null);
   const [certs, setCerts] = useState<Certificate[]>([]);
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [answers, setAnswers] = useState<Answer[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -66,6 +69,15 @@ export default function InspectionDetailScreen() {
       setTemplate(tpl);
       setProject(proj);
       setCerts(cs);
+      // Load questions + answers so we can show what was filled in
+      if (tpl) {
+        const [qs, ans] = await Promise.all([
+          templatesApi.questions(tpl.id).catch(() => [] as Question[]),
+          answersApi.list(insp.id).catch(() => [] as Answer[]),
+        ]);
+        setQuestions(qs);
+        setAnswers(ans);
+      }
     } finally {
       setLoading(false);
     }
@@ -84,7 +96,7 @@ export default function InspectionDetailScreen() {
 
   const deleteCert = (cert: Certificate) => {
     Alert.alert(
-      'სერტიფიკატის წაშლა?',
+      'PDF რეპორტის წაშლა?',
       'ეს წაშლის დაგენერირებულ PDF-ს. ინსპექცია უცვლელი დარჩება.',
       [
         { text: 'გაუქმება', style: 'cancel' },
@@ -170,13 +182,80 @@ export default function InspectionDetailScreen() {
             </Text>
           </Card>
 
-          {/* Certificates list */}
+          {/* Answers / questions filled in */}
+          {questions.length > 0 ? (
+            <View style={{ marginTop: 4 }}>
+              <Text style={styles.sectionTitle}>პასუხები ({answers.length} / {questions.length})</Text>
+              <Card>
+                {questions
+                  .sort((a, b) => a.section === b.section ? a.order - b.order : a.section - b.section)
+                  .map((q, idx) => {
+                    const ans = answers.find(a => a.question_id === q.id);
+                    let valueText = '—';
+                    if (ans) {
+                      if (q.type === 'yesno') {
+                        valueText = ans.value_bool === true ? '✓ კი' : ans.value_bool === false ? '✗ არა' : '—';
+                      } else if (q.type === 'measure') {
+                        valueText = ans.value_num != null ? `${ans.value_num}${q.unit ? ' ' + q.unit : ''}` : '—';
+                      } else if (q.type === 'freetext') {
+                        valueText = ans.value_text || '—';
+                      } else if (q.type === 'photo_upload') {
+                        valueText = 'ფოტო';
+                      } else if (q.type === 'component_grid') {
+                        const grid = ans.grid_values;
+                        if (grid) {
+                          const rows = Object.keys(grid);
+                          valueText = rows.length > 0 ? `${rows.length} კომპონენტი` : '—';
+                        }
+                      }
+                    }
+                    const isLast = idx === questions.length - 1;
+                    return (
+                      <View
+                        key={q.id}
+                        style={{
+                          paddingVertical: 10,
+                          borderBottomWidth: isLast ? 0 : StyleSheet.hairlineWidth,
+                          borderBottomColor: theme.colors.hairline,
+                          flexDirection: 'row',
+                          gap: 10,
+                          alignItems: 'flex-start',
+                        }}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 13, color: theme.colors.ink }} numberOfLines={2}>
+                            {q.title}
+                          </Text>
+                        </View>
+                        <Text
+                          style={{
+                            fontSize: 13,
+                            fontWeight: '600',
+                            color: ans
+                              ? (q.type === 'yesno' && ans.value_bool === false ? theme.colors.danger : theme.colors.accent)
+                              : theme.colors.inkFaint,
+                            flexShrink: 0,
+                            maxWidth: 120,
+                            textAlign: 'right',
+                          }}
+                          numberOfLines={2}
+                        >
+                          {valueText}
+                        </Text>
+                      </View>
+                    );
+                  })}
+              </Card>
+            </View>
+          ) : null}
+
+          {/* PDF reports list */}
           <View style={{ marginTop: 4 }}>
-            <Text style={styles.sectionTitle}>სერტიფიკატები ({certs.length})</Text>
+            <Text style={styles.sectionTitle}>PDF რეპორტები ({certs.length})</Text>
             {certs.length === 0 ? (
               <Card>
                 <Text style={{ color: theme.colors.inkSoft, fontSize: 13 }}>
-                  ამ ინსპექციისთვის ჯერ არ არის დაგენერირებული სერტიფიკატი.
+                  ამ ინსპექციისთვის ჯერ არ არის დაგენერირებული PDF რეპორტი.
                 </Text>
               </Card>
             ) : (
@@ -229,7 +308,7 @@ export default function InspectionDetailScreen() {
           </View>
 
           <Button
-            title={certs.length === 0 ? 'სერტიფიკატის გენერაცია' : 'ახალი სერტიფიკატის გენერაცია'}
+            title={certs.length === 0 ? 'PDF რეპორტის გენერაცია' : 'ახალი PDF რეპორტის გენერაცია'}
             onPress={generateNew}
             style={{ marginTop: 10 }}
           />

@@ -9,7 +9,6 @@ import { Button, Card, Screen } from '../../../components/ui';
 import {
   answersApi,
   inspectionsApi,
-  qualificationsApi,
   storageApi,
   templatesApi,
 } from '../../../lib/services';
@@ -22,11 +21,9 @@ import type {
   AnswerPhoto,
   GridValues,
   Inspection,
-  Qualification,
   Question,
   Template,
 } from '../../../types/models';
-import { supabase } from '../../../lib/supabase';
 
 const stepKey = (qid: string) => `wizard:${qid}:step`;
 const harnessCountKey = (qid: string) => `wizard:${qid}:harnessCount`;
@@ -36,13 +33,11 @@ const harnessCountKey = (qid: string) => `wizard:${qid}:harnessCount`;
 type FlatStep =
   | { kind: 'question'; question: Question }
   | { kind: 'gridRow'; question: Question; row: string }
-  | { kind: 'certificates' }
   | { kind: 'conclusion' };
 
 function buildSteps(
   questions: Question[],
   harnessRowCount: number,
-  requiredCertTypes: string[],
 ): FlatStep[] {
   const sorted = [...questions].sort((a, b) =>
     a.section === b.section ? a.order - b.order : a.section - b.section,
@@ -56,9 +51,6 @@ function buildSteps(
     } else {
       steps.push({ kind: 'question', question: q });
     }
-  }
-  if (requiredCertTypes.length > 0) {
-    steps.push({ kind: 'certificates' });
   }
   steps.push({ kind: 'conclusion' });
   return steps;
@@ -81,7 +73,6 @@ export default function QuestionnaireWizard() {
   const [conclusion, setConclusion] = useState('');
   const [isSafe, setIsSafe] = useState<boolean | null>(null);
   const [harnessName, setHarnessName] = useState('');
-  const [qualifications, setQualifications] = useState<Qualification[]>([]);
 
   // Cancellation token for in-flight load(). Each load() run gets its own
   // object; when the screen blurs we flip `cancelled = true` on the active
@@ -143,9 +134,6 @@ export default function QuestionnaireWizard() {
           await offline.cacheAnswers(qMerged.id, map);
         }
       }
-      const freshQuals = await qualificationsApi.list().catch(() => []);
-      if (ctrl.cancelled) return;
-      setQualifications(freshQuals);
       // Resume where the user left off
       const [savedStep, savedHarness] = await Promise.all([
         AsyncStorage.getItem(stepKey(id)),
@@ -193,16 +181,9 @@ export default function QuestionnaireWizard() {
     }, [load]),
   );
 
-  // Stable reference: re-join only when the underlying array changes, not on
-  // every render. The memoized steps below depend on this key.
-  const requiredCertTypesKey = (template?.required_qualifications ?? []).join(',');
-  const requiredCertTypes = useMemo(
-    () => template?.required_qualifications ?? [],
-    [requiredCertTypesKey],
-  );
   const steps = useMemo(
-    () => buildSteps(questions, harnessRowCount, requiredCertTypes),
-    [questions, harnessRowCount, requiredCertTypes],
+    () => buildSteps(questions, harnessRowCount),
+    [questions, harnessRowCount],
   );
   const step = steps[stepIndex];
 
@@ -300,9 +281,11 @@ export default function QuestionnaireWizard() {
         is_safe_for_use: isSafe,
         harness_name: harnessName || null,
       });
-      router.push(`/inspections/${questionnaire.id}/signing` as any);
+      // Finish the inspection directly — no signing step in this flow.
+      await inspectionsApi.finish(questionnaire.id);
+      router.replace(`/inspections/${questionnaire.id}/done` as any);
     } catch (e: any) {
-      toast.error(`დასკვნის შენახვა ვერ მოხერხდა: ${e?.message ?? 'ქსელის შეცდომა'}`);
+      toast.error(`ინსპექციის დასრულება ვერ მოხერხდა: ${e?.message ?? 'ქსელის შეცდომა'}`);
     }
   };
 
@@ -424,12 +407,6 @@ export default function QuestionnaireWizard() {
                 onAnswer={patchAnswer}
                 onPickPhoto={() => pickPhoto(step.question)}
               />
-            ) : step.kind === 'certificates' ? (
-              <QualificationsStep
-                requiredTypes={requiredCertTypes}
-                quals={qualifications}
-                onQualsChange={setQualifications}
-              />
             ) : (
               <ConclusionStep
                 conclusion={conclusion}
@@ -470,7 +447,7 @@ export default function QuestionnaireWizard() {
             />
           ) : (
             <Button
-              title="ხელმოწერაზე გადასვლა"
+              title="დასრულება"
               style={{ flex: 2 }}
               onPress={saveConclusionAndGo}
             />
@@ -904,114 +881,6 @@ function GridRowStep({
   );
 }
 
-/**
- * Wizard step that asks the inspector to attach required professional
- * qualifications (xaracho_inspector, etc.) to this inspection. Those
- * attached quals get included in the generated PDF certificate downstream.
- */
-function QualificationsStep({
-  requiredTypes,
-  quals,
-  onQualsChange,
-}: {
-  requiredTypes: string[];
-  quals: Qualification[];
-  onQualsChange: (next: Qualification[]) => void;
-}) {
-  const toast = useToast();
-  const [uploadingFor, setUploadingFor] = useState<string | null>(null);
-
-  const uploadForType = async (qualType: string) => {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      toast.error('ფოტოზე წვდომა არ არის');
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.8,
-    });
-    if (result.canceled || result.assets.length === 0) return;
-    setUploadingFor(qualType);
-    try {
-      const user = (await supabase.auth.getUser()).data.user;
-      if (!user) throw new Error('არ ხარ შესული');
-      const asset = result.assets[0];
-      const res = await fetch(asset.uri);
-      const blob = await res.blob();
-      const ext = asset.mimeType?.split('/')[1] ?? 'jpg';
-      const path = `${user.id}/${Date.now()}.${ext}`;
-      await storageApi.upload(
-        STORAGE_BUCKETS.certificates,
-        path,
-        blob,
-        asset.mimeType ?? 'image/jpeg',
-      );
-      const qual = (await qualificationsApi.upsert({
-        id: crypto.randomUUID(),
-        user_id: user.id,
-        type: qualType,
-        number: null,
-        issued_at: new Date().toISOString().slice(0, 10),
-        expires_at: null,
-        file_url: path,
-      }));
-      onQualsChange([qual, ...quals.filter(c => c.id !== qual.id)]);
-      toast.success('სერტიფიკატი აიტვირთა');
-    } catch (e: any) {
-      toast.error(`ატვირთვა ვერ მოხერხდა: ${e?.message ?? 'ქსელის შეცდომა'}`);
-    } finally {
-      setUploadingFor(null);
-    }
-  };
-
-  return (
-    <View style={{ gap: 14 }}>
-      <Text style={{ fontSize: 20, fontWeight: '700', color: theme.colors.ink }}>
-        საჭირო სერტიფიკატები
-      </Text>
-      <Text style={{ fontSize: 13, color: theme.colors.inkSoft }}>
-        დაურთე უკვე ატვირთული სერტიფიკატი ან ატვირთე ახალი — ინსპექციიდან გასვლა არაა საჭირო.
-      </Text>
-      {requiredTypes.map(t => {
-        const matches = quals.filter(c => c.type === t);
-        const available = matches.filter(c => {
-          if (!c.expires_at) return true;
-          return new Date(c.expires_at).getTime() > Date.now();
-        });
-        return (
-          <View key={t} style={styles.certBlock}>
-            <Text style={{ fontWeight: '700', color: theme.colors.ink }}>{t}</Text>
-            {available.length > 0 ? (
-              <View style={{ gap: 6, marginTop: 8 }}>
-                {available.map(c => (
-                  <View key={c.id} style={styles.certRow}>
-                    <Ionicons name="checkmark-circle" size={18} color={theme.colors.accent} />
-                    <Text style={{ flex: 1, color: theme.colors.ink }} numberOfLines={1}>
-                      {c.number ? `№ ${c.number}` : 'ატვირთულია'}
-                      {c.expires_at ? ` · ${new Date(c.expires_at).toLocaleDateString('ka')}` : ''}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            ) : (
-              <Text style={{ fontSize: 12, color: theme.colors.warn, marginTop: 6 }}>
-                ატვირთული არ არის.
-              </Text>
-            )}
-            <Button
-              title={uploadingFor === t ? 'იტვირთება...' : '+ ახლავე ატვირთვა'}
-              variant="secondary"
-              onPress={() => void uploadForType(t)}
-              loading={uploadingFor === t}
-              style={{ marginTop: 10 }}
-            />
-          </View>
-        );
-      })}
-    </View>
-  );
-}
 
 function ConclusionStep({
   conclusion,
@@ -1254,16 +1123,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 2,
     borderColor: 'transparent',
-  },
-  certBlock: {
-    backgroundColor: theme.colors.subtleSurface,
-    borderRadius: 12,
-    padding: 14,
-  },
-  certRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
   },
   safetyOption: {
     flex: 1,

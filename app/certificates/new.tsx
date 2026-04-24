@@ -138,7 +138,7 @@ export default function GenerateCertificateScreen() {
     const matches = quals.filter(q => q.type === certType);
     if (matches.length === 0) {
       showActionSheetWithOptions(
-        { title: 'სერტიფიკატი არ არის', options: ['ატვირთვა', 'გაუქმება'], cancelButtonIndex: 1 },
+        { title: 'კვალიფიკაცია არ არის', options: ['ატვირთვა', 'გაუქმება'], cancelButtonIndex: 1 },
         idx => {
           if (idx === 0) router.push('/qualifications/new' as any);
         },
@@ -164,8 +164,8 @@ export default function GenerateCertificateScreen() {
     if (!inspection || !template || !project) return;
     if (missingQualTypes.length > 0) {
       Alert.alert(
-        'აკლია სერტიფიკატი',
-        `მიუთითე სერტიფიკატი: ${missingQualTypes.join(', ')}`,
+        'აკლია კვალიფიკაცია',
+        `მიუთითე კვალიფიკაციის სერტიფიკატი: ${missingQualTypes.join(', ')}`,
       );
       return;
     }
@@ -272,7 +272,7 @@ export default function GenerateCertificateScreen() {
         isSafeForUse: inspection.is_safe_for_use,
         conclusionText: inspection.conclusion_text,
       });
-      toast.success('სერტიფიკატი შეიქმნა');
+      toast.success('PDF რეპორტი შეიქმნა');
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri, { mimeType: 'application/pdf' });
       }
@@ -289,7 +289,7 @@ export default function GenerateCertificateScreen() {
   if (loading) {
     return (
       <Screen>
-        <Stack.Screen options={{ headerShown: true, title: 'სერტიფიკატის გენერაცია' }} />
+        <Stack.Screen options={{ headerShown: true, title: 'PDF რეპორტის გენერაცია' }} />
         <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <Text style={{ color: theme.colors.inkSoft }}>იტვირთება…</Text>
         </SafeAreaView>
@@ -300,7 +300,7 @@ export default function GenerateCertificateScreen() {
   if (!inspection || !template) {
     return (
       <Screen>
-        <Stack.Screen options={{ headerShown: true, title: 'სერტიფიკატის გენერაცია' }} />
+        <Stack.Screen options={{ headerShown: true, title: 'PDF რეპორტის გენერაცია' }} />
         <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
           <Text style={{ color: theme.colors.inkSoft, textAlign: 'center' }}>
             ინსპექცია ვერ მოიძებნა. სცადე ხელახლა.
@@ -312,7 +312,7 @@ export default function GenerateCertificateScreen() {
 
   return (
     <Screen>
-      <Stack.Screen options={{ headerShown: true, title: 'სერტიფიკატის გენერაცია' }} />
+      <Stack.Screen options={{ headerShown: true, title: 'PDF რეპორტის გენერაცია' }} />
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 120, gap: 14 }}>
           <Card>
@@ -329,7 +329,7 @@ export default function GenerateCertificateScreen() {
 
           {requiredCertTypes.length > 0 ? (
             <Card>
-              <Text style={styles.eyebrow}>სერტიფიკატები</Text>
+              <Text style={styles.eyebrow}>კვალიფიკაციის სერტიფიკატები</Text>
               <View style={{ gap: 10, marginTop: 10 }}>
                 {requiredCertTypes.map(t => {
                   const selectedId = selectedQuals[t];
@@ -351,17 +351,6 @@ export default function GenerateCertificateScreen() {
               </View>
             </Card>
           ) : null}
-
-          <Card>
-            <Text style={styles.eyebrow}>ხელმოწერები</Text>
-            <Text style={{ marginTop: 6, color: theme.colors.inkSoft, fontSize: 13 }}>
-              ინსპექციის ხელმოწერები გადმოვა PDF-ში იმ სახით, როგორც ხელმოწერის
-              ეტაპზე დაფიქსირდა.
-            </Text>
-            <Text style={{ marginTop: 8, color: theme.colors.ink, fontWeight: '600' }}>
-              {signatures.length} ხელმოწერა + ექსპერტი
-            </Text>
-          </Card>
 
           <Button
             title={busy ? 'მიმდინარეობს…' : 'PDF-ის გენერაცია'}
