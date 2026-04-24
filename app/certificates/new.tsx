@@ -265,12 +265,19 @@ export default function GenerateCertificateScreen() {
       const fileName = `${inspection.id}-${Date.now()}.pdf`;
       const blob = await (await fetch(uri)).blob();
       await storageApi.upload(STORAGE_BUCKETS.pdfs, fileName, blob, 'application/pdf');
+      // Snapshot the attached qualification types and expert name into params
+      // so the cert list can show meaningful info without re-fetching.
+      const expertName = user ? `${user.first_name} ${user.last_name}`.trim() : null;
       await certificatesApi.create({
         inspectionId: inspection.id,
         templateId: inspection.template_id,
         pdfUrl: fileName,
         isSafeForUse: inspection.is_safe_for_use,
         conclusionText: inspection.conclusion_text,
+        params: {
+          expertName,
+          qualTypes: attachedQuals.map(q => ({ type: q.type, number: q.number ?? null })),
+        },
       });
       toast.success('PDF რეპორტი შეიქმნა');
       if (await Sharing.isAvailableAsync()) {

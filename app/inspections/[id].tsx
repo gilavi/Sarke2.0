@@ -203,44 +203,85 @@ export default function InspectionDetailScreen() {
                 data={certs}
                 keyExtractor={c => c.id}
                 ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
-                renderItem={({ item }) => (
-                  <Pressable onPress={() => sharePdf(item)}>
-                    <Card padding={12}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                        <View style={styles.certDot}>
-                          <Ionicons
-                            name="document-text"
-                            size={18}
-                            color={theme.colors.accent}
-                          />
+                renderItem={({ item, index }) => {
+                  const isSafe = item.is_safe_for_use;
+                  const params = item.params as {
+                    expertName?: string | null;
+                    qualTypes?: { type: string; number: string | null }[];
+                  };
+                  const qualTypes = params?.qualTypes ?? [];
+                  const expertName = params?.expertName ?? null;
+                  return (
+                    <Pressable onPress={() => sharePdf(item)}>
+                      <Card padding={12}>
+                        {/* Header row: icon + title + actions */}
+                        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
+                          <View style={[
+                            styles.certDot,
+                            isSafe === false && { backgroundColor: theme.colors.dangerSoft },
+                          ]}>
+                            <Ionicons
+                              name="document-text"
+                              size={18}
+                              color={isSafe === false ? theme.colors.danger : theme.colors.accent}
+                            />
+                          </View>
+                          <View style={{ flex: 1, gap: 4 }}>
+                            {/* Title row: "PDF #N" + safety badge */}
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                              <Text style={styles.certTitle}>PDF #{index + 1}</Text>
+                              <View style={[
+                                styles.certBadge,
+                                isSafe === false
+                                  ? { backgroundColor: theme.colors.dangerSoft }
+                                  : { backgroundColor: theme.colors.accentSoft },
+                              ]}>
+                                <Text style={[
+                                  styles.certBadgeText,
+                                  { color: isSafe === false ? theme.colors.danger : theme.colors.accent },
+                                ]}>
+                                  {isSafe === false ? 'არ არის უსაფრთხო' : 'უსაფრთხოა'}
+                                </Text>
+                              </View>
+                            </View>
+                            {/* Date */}
+                            <Text style={styles.certMeta}>
+                              {new Date(item.generated_at).toLocaleString('ka')}
+                            </Text>
+                            {/* Expert */}
+                            {expertName ? (
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                <Ionicons name="person-outline" size={11} color={theme.colors.inkFaint} />
+                                <Text style={styles.certMeta}>{expertName}</Text>
+                              </View>
+                            ) : null}
+                            {/* Qual certs */}
+                            {qualTypes.length > 0 ? (
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                <Ionicons name="ribbon-outline" size={11} color={theme.colors.inkFaint} />
+                                <Text style={styles.certMeta} numberOfLines={1}>
+                                  {qualTypes.map(q => q.number ? `${q.type} №${q.number}` : q.type).join(' · ')}
+                                </Text>
+                              </View>
+                            ) : null}
+                          </View>
+                          {/* Actions */}
+                          <View style={{ gap: 4 }}>
+                            <Pressable
+                              hitSlop={10}
+                              onPress={() => deleteCert(item)}
+                              style={{ padding: 6 }}
+                              accessibilityLabel="delete certificate"
+                            >
+                              <Ionicons name="trash-outline" size={18} color={theme.colors.danger} />
+                            </Pressable>
+                            <Ionicons name="share-outline" size={18} color={theme.colors.inkFaint} style={{ padding: 6 }} />
+                          </View>
                         </View>
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.certTitle}>PDF</Text>
-                          <Text style={styles.certMeta}>
-                            {new Date(item.generated_at).toLocaleString('ka')}
-                          </Text>
-                        </View>
-                        <Pressable
-                          hitSlop={10}
-                          onPress={() => deleteCert(item)}
-                          style={{ padding: 6 }}
-                          accessibilityLabel="delete certificate"
-                        >
-                          <Ionicons
-                            name="trash-outline"
-                            size={18}
-                            color={theme.colors.danger}
-                          />
-                        </Pressable>
-                        <Ionicons
-                          name="share-outline"
-                          size={18}
-                          color={theme.colors.inkFaint}
-                        />
-                      </View>
-                    </Card>
-                  </Pressable>
-                )}
+                      </Card>
+                    </Pressable>
+                  );
+                }}
               />
             )}
           </View>
@@ -480,5 +521,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   certTitle: { fontWeight: '700', fontSize: 14, color: theme.colors.ink },
-  certMeta: { fontSize: 12, color: theme.colors.inkSoft, marginTop: 2 },
+  certMeta: { fontSize: 11, color: theme.colors.inkSoft },
+  certBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 999,
+  },
+  certBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
 });
