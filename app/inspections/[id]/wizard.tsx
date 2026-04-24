@@ -249,15 +249,21 @@ export default function QuestionnaireWizard() {
         blob,
         asset.mimeType ?? 'image/jpeg',
       );
-      let answer = answers[question.id];
-      if (!answer) {
-        answer = (await answersApi.upsert({
-          id: crypto.randomUUID(),
-          inspection_id: questionnaire.id,
-          question_id: question.id,
-        }));
-        setAnswers(prev => ({ ...prev, [question.id]: answer as Answer }));
-      }
+      // Always upsert to Supabase directly so the answer row exists
+      // server-side before we insert answer_photos (RLS join requires it).
+      const existing = answers[question.id];
+      const answer = await answersApi.upsert({
+        id: existing?.id ?? crypto.randomUUID(),
+        inspection_id: questionnaire.id,
+        question_id: question.id,
+        value_bool: existing?.value_bool ?? null,
+        value_num: existing?.value_num ?? null,
+        value_text: existing?.value_text ?? null,
+        grid_values: existing?.grid_values ?? null,
+        comment: existing?.comment ?? null,
+        notes: existing?.notes ?? null,
+      });
+      if (!existing) setAnswers(prev => ({ ...prev, [question.id]: answer }));
       const photo = (await answersApi.addPhoto(answer.id, path));
       const answerId = answer.id;
       // Use the local URI as storage_path so the thumbnail appears immediately
@@ -648,20 +654,41 @@ function DebouncedNotes({
 }) {
   const [text, setText] = useState(initial ?? '');
   const lastCommitted = useRef(initial ?? '');
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (initial !== lastCommitted.current) {
-      setText(initial ?? '');
-      lastCommitted.current = initial ?? '';
+    const nextInitial = initial ?? '';
+    if (nextInitial !== lastCommitted.current) {
+      setText(nextInitial);
+      lastCommitted.current = nextInitial;
     }
   }, [initial]);
 
-  const handleBlur = () => {
-    if (text !== lastCommitted.current) {
+  // Debounced commit — matches the freetext/measure pattern so notes survive
+  // backgrounding, keyboard dismiss, etc. without waiting on onBlur.
+  useEffect(() => {
+    if (text === lastCommitted.current) return;
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
       lastCommitted.current = text;
       onCommit(text);
-    }
-  };
+    }, 500);
+    return () => {
+      if (timer.current) clearTimeout(timer.current);
+    };
+  }, [text, onCommit]);
+
+  // Flush pending value on unmount so a mid-typed note isn't lost when the
+  // user taps Next/Back before the debounce fires.
+  useEffect(() => {
+    return () => {
+      if (text !== lastCommitted.current) {
+        lastCommitted.current = text;
+        onCommit(text);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <View>
@@ -670,7 +697,6 @@ function DebouncedNotes({
         multiline
         value={text}
         onChangeText={setText}
-        onBlur={handleBlur}
         style={[styles.textarea, { minHeight: 100 }]}
         placeholder="დამატებითი კომენტარი (არასავალდებულო)"
         placeholderTextColor={theme.colors.inkFaint}
@@ -1030,7 +1056,7 @@ function ConclusionStep({
         <Text style={styles.label}>
           უსაფრთხოების სტატუსი <Text style={{ color: theme.colors.danger }}>*</Text>
         </Text>
-        <View style={{ flexDirection: 'row', gap: 10 }}>
+        <View style={{ gap: 10 }}>
           <Pressable
             onPress={() => onIsSafe(true)}
             style={[
@@ -1285,11 +1311,10 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   safetyOption: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    padding: 12,
+    padding: 14,
     backgroundColor: theme.colors.subtleSurface,
     borderRadius: 12,
     borderWidth: 2,

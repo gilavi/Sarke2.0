@@ -336,8 +336,20 @@ export const answersApi = {
     );
   },
   removePhoto: async (photoId: string) => {
+    // Read the storage path first so we can also delete the blob in the
+    // `answer-photos` bucket — otherwise deleting the row leaks the file.
+    const { data: existing } = await supabase
+      .from('answer_photos')
+      .select('storage_path')
+      .eq('id', photoId)
+      .maybeSingle();
     const { error } = await supabase.from('answer_photos').delete().eq('id', photoId);
     if (error) throw error;
+    const path = (existing as { storage_path?: string } | null)?.storage_path;
+    if (path) {
+      // Best-effort: don't fail the operation if the blob is already gone.
+      await supabase.storage.from('answer-photos').remove([path]).catch(() => undefined);
+    }
   },
 };
 
@@ -488,8 +500,19 @@ export const certificatesApi = {
     );
   },
   remove: async (id: string) => {
+    // Read the pdf path first so we can delete the blob in the `pdfs`
+    // bucket too — otherwise the file stays forever.
+    const { data: existing } = await supabase
+      .from('certificates')
+      .select('pdf_url')
+      .eq('id', id)
+      .maybeSingle();
     const { error } = await supabase.from('certificates').delete().eq('id', id);
     if (error) throw error;
+    const path = (existing as { pdf_url?: string } | null)?.pdf_url;
+    if (path) {
+      await supabase.storage.from('pdfs').remove([path]).catch(() => undefined);
+    }
   },
 };
 

@@ -1,11 +1,5 @@
 import { createContext, ReactNode, useCallback, useContext, useRef, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, {
-  runOnJS,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '../lib/theme';
 
@@ -35,89 +29,71 @@ interface SheetState {
 
 export function BottomSheetProvider({ children }: { children: ReactNode }) {
   const [sheet, setSheet] = useState<SheetState | null>(null);
-  const translateY = useSharedValue(400);
   const callbackRef = useRef<((idx: number | undefined) => void) | null>(null);
   const insets = useSafeAreaInsets();
 
-  const dismiss = useCallback(
-    (idx: number | undefined) => {
-      const cb = callbackRef.current;
-      callbackRef.current = null;
-      translateY.value = withTiming(400, { duration: 250 }, () => {
-        runOnJS(setSheet)(null);
-      });
-      cb?.(idx);
-    },
-    [translateY],
-  );
+  const dismiss = useCallback((idx: number | undefined) => {
+    const cb = callbackRef.current;
+    callbackRef.current = null;
+    setSheet(null);
+    cb?.(idx);
+  }, []);
 
-  const show: ShowBottomSheet = useCallback(
-    (options, callback) => {
-      callbackRef.current = callback;
-      translateY.value = 400;
-      setSheet({ options });
-      translateY.value = withTiming(0, { duration: 300 });
-    },
-    [translateY],
-  );
-
-  const animStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.value }],
-  }));
+  const show: ShowBottomSheet = useCallback((options, callback) => {
+    callbackRef.current = callback;
+    setSheet({ options });
+  }, []);
 
   return (
     <Ctx.Provider value={show}>
       {children}
-      {sheet ? (
-        <Modal
-          transparent
-          animationType="none"
-          onRequestClose={() => dismiss(sheet.options.cancelButtonIndex)}
+      <Modal
+        visible={!!sheet}
+        transparent
+        animationType="slide"
+        onRequestClose={() => dismiss(sheet?.options.cancelButtonIndex)}
+      >
+        <Pressable
+          style={styles.backdrop}
+          onPress={() => dismiss(sheet?.options.cancelButtonIndex)}
         >
-          <Pressable
-            style={styles.backdrop}
-            onPress={() => dismiss(sheet.options.cancelButtonIndex)}
-          >
-            <Animated.View
-              style={[styles.sheet, animStyle, { paddingBottom: insets.bottom + 8 }]}
-            >
-              {/* Inner Pressable stops backdrop tap from propagating through the sheet */}
-              <Pressable>
-                {sheet.options.title ? (
-                  <Text style={styles.title}>{sheet.options.title}</Text>
-                ) : (
-                  <View style={styles.handle} />
-                )}
-                {sheet.options.options.map((opt, i) => {
-                  const isCancel = i === sheet.options.cancelButtonIndex;
-                  const isDestructive = i === sheet.options.destructiveButtonIndex;
-                  return (
-                    <Pressable
-                      key={i}
-                      onPress={() => dismiss(i)}
-                      style={({ pressed }) => [
-                        styles.option,
-                        isCancel && styles.cancelOption,
-                        pressed && styles.optionPressed,
+          <View style={[styles.sheet, { paddingBottom: insets.bottom + 8 }]}>
+            {/* Inner Pressable stops backdrop tap from propagating through the sheet */}
+            <Pressable>
+              {sheet?.options.title ? (
+                <Text style={styles.title}>{sheet.options.title}</Text>
+              ) : (
+                <View style={styles.handle} />
+              )}
+              {sheet?.options.options.map((opt, i) => {
+                const isCancel = i === sheet.options.cancelButtonIndex;
+                const isDestructive = i === sheet.options.destructiveButtonIndex;
+                return (
+                  <Pressable
+                    key={i}
+                    onPress={() => dismiss(i)}
+                    style={({ pressed }) => [
+                      styles.option,
+                      isCancel && styles.cancelOption,
+                      pressed && styles.optionPressed,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.optionText,
+                        isCancel && styles.cancelText,
+                        isDestructive && styles.destructiveText,
                       ]}
                     >
-                      <Text
-                        style={[
-                          styles.optionText,
-                          isCancel && styles.cancelText,
-                          isDestructive && styles.destructiveText,
-                        ]}
-                      >
-                        {opt}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </Pressable>
-            </Animated.View>
-          </Pressable>
-        </Modal>
-      ) : null}
+                      {opt}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
     </Ctx.Provider>
   );
 }

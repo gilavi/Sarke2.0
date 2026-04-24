@@ -5,7 +5,7 @@
 // (using the local file:// URI stored in cert.params.localUri at
 // generation time). Falls back to a "preview unavailable" state for seeded
 // mock certs that were never actually printed.
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -17,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { WebView } from 'react-native-webview';
 import { Screen } from '../../components/ui';
@@ -24,8 +25,10 @@ import {
   certificatesApi,
   inspectionsApi,
   projectsApi,
+  storageApi,
   templatesApi,
 } from '../../lib/services';
+import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { shareStoredPdf } from '../../lib/sharePdf';
 import { useToast } from '../../lib/toast';
 import { theme } from '../../lib/theme';
@@ -50,6 +53,10 @@ export default function CertificateDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [webviewLoading, setWebviewLoading] = useState(true);
   const [sharing, setSharing] = useState(false);
+  // Resolved PDF URI to feed the WebView — prefer the device-local file://
+  // (fast, works offline); on miss or WebView error, download from storage.
+  const [resolvedUri, setResolvedUri] = useState<string | null>(null);
+  const [resolveError, setResolveError] = useState(false);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -78,13 +85,45 @@ export default function CertificateDetailScreen() {
 
   useFocusEffect(useCallback(() => { void load(); }, [load]));
 
+  // Resolve PDF source: try local file:// first, then fall back to
+  // downloading cert.pdf_url from storage into the app cache.
+  useEffect(() => {
+    if (!cert) return;
+    let cancelled = false;
+    setResolveError(false);
+    setWebviewLoading(true);
+    (async () => {
+      const params = cert.params as CertParams;
+      const local = params?.localUri;
+      if (local) {
+        const info = await FileSystem.getInfoAsync(local).catch(() => ({ exists: false }));
+        if (!cancelled && info.exists) { setResolvedUri(local); return; }
+      }
+      // Fall back to the storage copy.
+      try {
+        if (!cert.pdf_url) throw new Error('no pdf_url');
+        const name = cert.pdf_url.split('/').pop() ?? `${cert.id}.pdf`;
+        const cacheBase = FileSystem.cacheDirectory ?? FileSystem.documentDirectory;
+        if (!cacheBase) throw new Error('no cache dir');
+        const target = `${cacheBase}cert-preview-${cert.id}-${name}`;
+        const signed = await storageApi.signedUrl(STORAGE_BUCKETS.pdfs, cert.pdf_url, 3600)
+          .catch(() => storageApi.publicUrl(STORAGE_BUCKETS.pdfs, cert.pdf_url));
+        const res = await FileSystem.downloadAsync(signed, target);
+        if (res.status !== 200) throw new Error(`download ${res.status}`);
+        if (!cancelled) setResolvedUri(target);
+      } catch {
+        if (!cancelled) { setResolvedUri(null); setResolveError(true); setWebviewLoading(false); }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [cert]);
+
   const share = async () => {
     if (!cert) return;
     setSharing(true);
     try {
-      const params = cert.params as CertParams;
-      if (params?.localUri && await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(params.localUri, { mimeType: 'application/pdf' });
+      if (resolvedUri && await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(resolvedUri, { mimeType: 'application/pdf' });
       } else {
         await shareStoredPdf(cert.pdf_url);
       }
@@ -107,7 +146,6 @@ export default function CertificateDetailScreen() {
   }
 
   const params = cert.params as CertParams;
-  const localUri = params?.localUri;
   const isSafe = cert.is_safe_for_use;
   const safeColor = isSafe === false ? theme.colors.danger : theme.colors.accent;
   const safeBg = isSafe === false ? theme.colors.dangerSoft : theme.colors.accentSoft;
@@ -189,7 +227,7 @@ export default function CertificateDetailScreen() {
 
         {/* ── PDF preview ─────────────────────────────────────────────── */}
         <View style={{ flex: 1, backgroundColor: theme.colors.subtleSurface }}>
-          {localUri ? (
+          {resolvedUri ? (
             <>
               {webviewLoading ? (
                 <View style={styles.webviewLoader}>
@@ -200,21 +238,28 @@ export default function CertificateDetailScreen() {
                 </View>
               ) : null}
               <WebView
-                source={{ uri: localUri }}
+                source={{ uri: resolvedUri }}
                 style={[styles.webview, webviewLoading && { opacity: 0 }]}
                 onLoadEnd={() => setWebviewLoading(false)}
                 onError={() => {
                   setWebviewLoading(false);
-                  toast.error('PDF ვერ გაიხსნა');
+                  setResolveError(true);
                 }}
               />
             </>
-          ) : (
+          ) : resolveError ? (
             <View style={styles.noPreview}>
               <Ionicons name="document-text-outline" size={48} color={theme.colors.inkFaint} />
               <Text style={styles.noPreviewText}>PDF preview unavailable</Text>
               <Text style={styles.noPreviewSub}>
-                ეს PDF სერვერიდან სიმულაციის გარეშე ხელმისაწვდომია. გაზიარებისთვის დააჭირე Share.
+                ამ მოწყობილობაზე ლოკალური ასლი არ არის. გაზიარებისთვის დააჭირე Share.
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.webviewLoader}>
+              <ActivityIndicator color={theme.colors.accent} />
+              <Text style={{ marginTop: 8, color: theme.colors.inkSoft, fontSize: 13 }}>
+                PDF იტვირთება…
               </Text>
             </View>
           )}

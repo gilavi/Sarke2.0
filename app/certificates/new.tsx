@@ -48,14 +48,21 @@ import type {
   Qualification,
   Question,
   SignatureRecord,
+  SignerRole,
   Template,
 } from '../../types/models';
+import { SIGNER_ROLE_LABEL } from '../../types/models';
 
 // ── Types ────────────────────────────────────────────────────────────────────
+
+// Roles that can be picked for "other signers" (expert is always the
+// current user and doesn't appear in this list).
+const OTHER_SIGNER_ROLES: SignerRole[] = ['xaracho_supervisor', 'xaracho_assembler'];
 
 interface AdditionalSigner {
   id: string;
   name: string;
+  role: SignerRole;
   /** base64 PNG (with data: prefix) captured via SignatureCanvas */
   dataUrl: string | null;
 }
@@ -203,6 +210,7 @@ export default function GenerateCertificateScreen() {
   };
 
   const uploadQual = async (certType: string) => {
+    if (!user) { toast.error('ავტორიზაცია საჭიროა'); return; }
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) { toast.error('ფოტოზე წვდომა არ არის'); return; }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -216,11 +224,11 @@ export default function GenerateCertificateScreen() {
       const res = await fetch(asset.uri);
       const blob = await res.blob();
       const ext = asset.mimeType?.split('/')[1] ?? 'jpg';
-      const path = `${Date.now()}.${ext}`;
+      const path = `${user.id}/${Date.now()}.${ext}`;
       await storageApi.upload(STORAGE_BUCKETS.certificates, path, blob, asset.mimeType ?? 'image/jpeg');
       const qual = await qualificationsApi.upsert({
         id: crypto.randomUUID(),
-        user_id: 'me',
+        user_id: user.id,
         type: certType,
         number: null,
         issued_at: new Date().toISOString().slice(0, 10),
@@ -264,6 +272,7 @@ export default function GenerateCertificateScreen() {
     const newSigner: AdditionalSigner = {
       id: crypto.randomUUID(),
       name: '',
+      role: 'xaracho_supervisor',
       dataUrl: null,
     };
     setAdditionalSigners(prev => [...prev, newSigner]);
@@ -271,6 +280,18 @@ export default function GenerateCertificateScreen() {
 
   const updateSignerName = (id: string, name: string) => {
     setAdditionalSigners(prev => prev.map(s => s.id === id ? { ...s, name } : s));
+  };
+
+  const pickSignerRole = (signerId: string) => {
+    const options = [...OTHER_SIGNER_ROLES.map(r => SIGNER_ROLE_LABEL[r]), 'გაუქმება'];
+    showActionSheetWithOptions(
+      { title: 'როლი', options, cancelButtonIndex: options.length - 1 },
+      idx => {
+        if (idx == null || idx === options.length - 1) return;
+        const role = OTHER_SIGNER_ROLES[idx];
+        setAdditionalSigners(prev => prev.map(s => s.id === signerId ? { ...s, role } : s));
+      },
+    );
   };
 
   const removeSigner = (id: string) => {
@@ -317,21 +338,56 @@ export default function GenerateCertificateScreen() {
         person_name: expertName,
       };
 
-      // Additional signers
-      const otherRecs: SignatureRecord[] = additionalSigners
-        .filter(s => s.name.trim())
-        .map(s => ({
+      // Additional signers — upload each signature to storage, then persist
+      // both the row in `signatures` and keep a data-URL copy for PDF embedding.
+      const otherRecs: SignatureRecord[] = [];
+      for (const s of additionalSigners.filter(x => x.name.trim())) {
+        let storagePath: string | null = null;
+        if (s.dataUrl) {
+          // Convert data URL → Blob via fetch (RN supports this without atob).
+          const blob = await (await fetch(s.dataUrl)).blob();
+          const path = `${inspection.id}/${s.id}-${Date.now()}.png`;
+          await storageApi.upload(STORAGE_BUCKETS.signatures, path, blob, 'image/png');
+          storagePath = path;
+        }
+        otherRecs.push({
           id: s.id,
           inspection_id: inspection.id,
-          signer_role: 'xaracho_supervisor' as const,
+          signer_role: s.role,
           full_name: s.name.trim(),
           phone: null,
           position: null,
-          signature_png_url: s.dataUrl,
+          signature_png_url: s.dataUrl, // data URL for PDF embedding
           signed_at: new Date().toISOString(),
-          status: s.dataUrl ? ('signed' as const) : ('not_present' as const),
+          status: s.dataUrl ? 'signed' : 'not_present',
           person_name: s.name.trim(),
-        }));
+        });
+        // Persist to DB (storage path, not data URL) so the inspection has
+        // a real audit trail.
+        await signaturesApi.upsert({
+          id: s.id,
+          inspection_id: inspection.id,
+          signer_role: s.role,
+          full_name: s.name.trim(),
+          phone: null,
+          position: null,
+          signature_png_url: storagePath,
+          status: s.dataUrl ? 'signed' : 'not_present',
+          person_name: s.name.trim(),
+        }).catch(() => { /* non-blocking: PDF still generates */ });
+      }
+      // Persist the expert's signature record too
+      await signaturesApi.upsert({
+        id: crypto.randomUUID(),
+        inspection_id: inspection.id,
+        signer_role: 'expert',
+        full_name: expertName,
+        phone: null,
+        position: 'შრომის უსაფრთხოების სპეციალისტი',
+        signature_png_url: user?.saved_signature_url ?? null,
+        status: 'signed',
+        person_name: expertName,
+      }).catch(() => { /* non-blocking */ });
 
       const sigsForPdf = [expertRec, ...otherRecs];
 
@@ -522,6 +578,11 @@ export default function GenerateCertificateScreen() {
                         <Ionicons name="close-circle" size={20} color={theme.colors.inkFaint} />
                       </Pressable>
                     </View>
+                    <Pressable onPress={() => pickSignerRole(signer.id)} style={styles.roleRow}>
+                      <Ionicons name="person-circle-outline" size={16} color={theme.colors.inkSoft} />
+                      <Text style={styles.roleText}>{SIGNER_ROLE_LABEL[signer.role]}</Text>
+                      <Ionicons name="chevron-down" size={14} color={theme.colors.inkFaint} />
+                    </Pressable>
                     {signer.dataUrl ? (
                       <View style={styles.sigThumb}>
                         <Image
@@ -770,6 +831,24 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     fontSize: 14,
     color: theme.colors.ink,
+  },
+  roleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: theme.colors.card,
+    borderWidth: 1,
+    borderColor: theme.colors.hairline,
+    alignSelf: 'flex-start',
+  },
+  roleText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: theme.colors.inkSoft,
   },
 
   // Qual certs

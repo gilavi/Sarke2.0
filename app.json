@@ -59,7 +59,7 @@
       "googleIosClientId": "",
       "googleAndroidClientId": "",
       "googleWebClientId": "",
-      "useMockData": true
+      "useMockData": false
     },
     "experiments": {
       "typedRoutes": false
