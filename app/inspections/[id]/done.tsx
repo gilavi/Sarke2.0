@@ -6,7 +6,6 @@
 // generate a PDF report now or view the inspection detail later.
 import { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   ScrollView,
   StyleSheet,
   Text,
@@ -16,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Button, Card, Screen } from '../../../components/ui';
+import { Skeleton, SkeletonCard } from '../../../components/Skeleton';
 import {
   inspectionsApi,
   projectsApi,
@@ -83,9 +83,19 @@ export default function InspectionDoneScreen() {
 
           {/* Summary card */}
           {loading ? (
-            <View style={{ alignItems: 'center', padding: 20 }}>
-              <ActivityIndicator color={theme.colors.accent} />
-            </View>
+            <SkeletonCard>
+              <Skeleton width={90} height={10} />
+              <View style={{ height: 10 }} />
+              <Skeleton width={'80%'} height={18} />
+              <View style={{ height: 6 }} />
+              <Skeleton width={'50%'} height={12} />
+              <View style={{ height: 14 }} />
+              <Skeleton width={'65%'} height={14} />
+              <View style={{ height: 8 }} />
+              <Skeleton width={'95%'} height={12} />
+              <View style={{ height: 4 }} />
+              <Skeleton width={'70%'} height={12} />
+            </SkeletonCard>
           ) : inspection ? (
             <Card>
               <Text style={styles.eyebrow}>შეჯამება</Text>

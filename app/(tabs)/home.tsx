@@ -28,6 +28,7 @@ import {
 // detail screen (which fetches certificates list) post 0006 decoupling.
 import { theme } from '../../lib/theme';
 import { Button, Field, Input } from '../../components/ui';
+import { Skeleton } from '../../components/Skeleton';
 import { useToast } from '../../lib/toast';
 import type { Inspection, Project, Qualification, Template } from '../../types/models';
 
@@ -40,6 +41,10 @@ export default function HomeScreen() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [pickerVisible, setPickerVisible] = useState(false);
+  // `loaded` flips true after the first fetch finishes (success or not) so
+  // we know when to swap skeletons for real content. Pull-to-refresh doesn't
+  // re-show skeletons — the RefreshControl spinner already signals that.
+  const [loaded, setLoaded] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -55,6 +60,8 @@ export default function HomeScreen() {
       setProjects(p);
     } catch {
       // ignore
+    } finally {
+      setLoaded(true);
     }
   }, []);
 
@@ -164,7 +171,17 @@ export default function HomeScreen() {
           </Pressable>
         </View>
 
-        {projects.length === 0 ? (
+        {!loaded && projects.length === 0 ? (
+          <View style={{ flexDirection: 'row', paddingHorizontal: HPAD, paddingTop: 10, gap: GAP }}>
+            {Array.from({ length: 2 }).map((_, i) => (
+              <View key={i} style={[styles.projectCard, { width: (screenWidth - HPAD * 2 - GAP) / 2, gap: 10 }]}>
+                <Skeleton width={48} height={48} radius={12} />
+                <Skeleton width={'80%'} height={14} />
+                <Skeleton width={'50%'} height={11} />
+              </View>
+            ))}
+          </View>
+        ) : projects.length === 0 ? (
           <Pressable
             onPress={() => setPickerVisible(true)}
             style={{ paddingHorizontal: HPAD, marginTop: 10 }}
@@ -216,7 +233,30 @@ export default function HomeScreen() {
         )}
 
         {/* ───────── RECENT ACTIVITY ───────── */}
-        {recent.length > 0 ? (
+        {!loaded && recent.length === 0 ? (
+          <>
+            <View style={[styles.sectionHeaderRow, { marginTop: 28 }]}>
+              <Text style={styles.sectionHeader}>ბოლო აქტივობა</Text>
+            </View>
+            <View style={[styles.recentList, { marginTop: 8 }]}>
+              {Array.from({ length: 3 }).map((_, i) => (
+                <View
+                  key={i}
+                  style={[
+                    styles.recentRow,
+                    i > 0 && styles.recentRowBorder,
+                  ]}
+                >
+                  <Skeleton width={30} height={30} radius={15} />
+                  <View style={{ flex: 1, gap: 6 }}>
+                    <Skeleton width={'70%'} height={14} />
+                    <Skeleton width={'35%'} height={11} />
+                  </View>
+                </View>
+              ))}
+            </View>
+          </>
+        ) : recent.length > 0 ? (
           <>
             <View style={[styles.sectionHeaderRow, { marginTop: 28 }]}>
               <Text style={styles.sectionHeader}>ბოლო აქტივობა</Text>

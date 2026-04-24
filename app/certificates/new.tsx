@@ -23,6 +23,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { Button, Card, Screen } from '../../components/ui';
+import { SkeletonCard, SkeletonListCard } from '../../components/Skeleton';
 import { SignatureCanvas } from '../../components/SignatureCanvas';
 import {
   answersApi,
@@ -503,8 +504,13 @@ export default function GenerateCertificateScreen() {
     return (
       <Screen>
         <Stack.Screen options={{ headerShown: true, title: 'PDF რეპორტის გენერაცია' }} />
-        <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <Text style={{ color: theme.colors.inkSoft }}>იტვირთება…</Text>
+        <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
+          <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }}>
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonListCard rows={2} />
+            <SkeletonListCard rows={2} />
+          </ScrollView>
         </SafeAreaView>
       </Screen>
     );

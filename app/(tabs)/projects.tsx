@@ -18,6 +18,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { projectAvatar } from '../../lib/projectAvatar';
 import { Button, Card, Field, Input } from '../../components/ui';
+import { Skeleton } from '../../components/Skeleton';
 import { projectsApi } from '../../lib/services';
 import { useToast } from '../../lib/toast';
 import { theme } from '../../lib/theme';
@@ -140,7 +141,13 @@ export default function ProjectsScreen() {
           />
         }
         ListEmptyComponent={
-          !loading ? (
+          loading ? (
+            <View style={{ gap: 10 }}>
+              {Array.from({ length: 5 }).map((_, i) => (
+                <ProjectRowSkeleton key={i} />
+              ))}
+            </View>
+          ) : (
             <View style={styles.empty}>
               <View style={styles.emptyIllustration}>
                 <Ionicons name="folder-open" size={56} color={theme.colors.accent} />
@@ -161,7 +168,7 @@ export default function ProjectsScreen() {
                 />
               ) : null}
             </View>
-          ) : null
+          )
         }
       />
 
@@ -274,6 +281,20 @@ function CreateProjectSheet({
         </KeyboardAvoidingView>
       </Pressable>
     </Modal>
+  );
+}
+
+function ProjectRowSkeleton() {
+  return (
+    <Card padding={14}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <Skeleton width={44} height={44} radius={12} />
+        <View style={{ flex: 1, gap: 8 }}>
+          <Skeleton width={'60%'} height={15} />
+          <Skeleton width={'40%'} height={11} />
+        </View>
+      </View>
+    </Card>
   );
 }
 

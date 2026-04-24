@@ -20,6 +20,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Button, Card, Screen } from '../../components/ui';
+import { Skeleton, SkeletonCard, SkeletonListCard } from '../../components/Skeleton';
 import {
   answersApi,
   certificatesApi,
@@ -124,8 +125,26 @@ export default function InspectionDetailScreen() {
     return (
       <Screen>
         <Stack.Screen options={{ headerShown: true, title: 'ინსპექცია' }} />
-        <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <Text style={{ color: theme.colors.inkSoft }}>იტვირთება…</Text>
+        <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
+          <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }}>
+            <SkeletonCard>
+              <Skeleton width={80} height={10} />
+              <View style={{ height: 8 }} />
+              <Skeleton width={'80%'} height={20} />
+              <View style={{ height: 6 }} />
+              <Skeleton width={'40%'} height={12} />
+              <View style={{ height: 6 }} />
+              <Skeleton width={110} height={22} radius={999} />
+            </SkeletonCard>
+            <SkeletonCard>
+              <Skeleton width={70} height={10} />
+              <View style={{ height: 8 }} />
+              <Skeleton width={'90%'} height={14} />
+              <View style={{ height: 4 }} />
+              <Skeleton width={'75%'} height={14} />
+            </SkeletonCard>
+            <SkeletonListCard rows={3} />
+          </ScrollView>
         </SafeAreaView>
       </Screen>
     );

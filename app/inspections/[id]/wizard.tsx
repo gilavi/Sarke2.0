@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Button, Card, Screen } from '../../../components/ui';
+import { SkeletonWizard } from '../../../components/Skeleton';
 import {
   answersApi,
   inspectionsApi,
@@ -352,9 +353,9 @@ export default function QuestionnaireWizard() {
   if (loading) {
     return (
       <Screen>
-        <Stack.Screen options={{ headerShown: true, title: 'იტვირთება...' }} />
-        <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator color={theme.colors.accent} />
+        <Stack.Screen options={{ headerShown: true, title: 'კითხვარი' }} />
+        <SafeAreaView style={{ flex: 1 }} edges={[]}>
+          <SkeletonWizard />
         </SafeAreaView>
       </Screen>
     );

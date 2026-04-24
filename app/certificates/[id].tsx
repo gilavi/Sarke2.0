@@ -21,6 +21,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { WebView } from 'react-native-webview';
 import { Screen } from '../../components/ui';
+import { Skeleton, SkeletonPreview } from '../../components/Skeleton';
 import {
   certificatesApi,
   inspectionsApi,
@@ -136,8 +137,24 @@ export default function CertificateDetailScreen() {
     return (
       <Screen>
         <Stack.Screen options={{ headerShown: true, title: 'PDF რეპორტი' }} />
-        <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator color={theme.colors.accent} />
+        <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
+          {/* Meta strip skeleton mirrors the real header layout */}
+          <View style={styles.metaStrip}>
+            <Skeleton width={110} height={22} radius={999} />
+            <View style={{ flex: 1, gap: 6 }}>
+              <Skeleton width={'70%'} height={14} />
+              <Skeleton width={'40%'} height={11} />
+              <Skeleton width={'50%'} height={10} />
+            </View>
+          </View>
+          <View style={styles.chipsRow}>
+            <Skeleton width={100} height={20} radius={999} />
+            <Skeleton width={80} height={20} radius={999} />
+            <Skeleton width={60} height={20} radius={999} />
+          </View>
+          <View style={{ flex: 1, backgroundColor: theme.colors.subtleSurface }}>
+            <SkeletonPreview />
+          </View>
         </SafeAreaView>
       </Screen>
     );
