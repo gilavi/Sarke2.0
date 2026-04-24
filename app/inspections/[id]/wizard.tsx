@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Button, Card, Screen } from '../../../components/ui';
-import { SkeletonWizard } from '../../../components/Skeleton';
+import { Skeleton, SkeletonWizard } from '../../../components/Skeleton';
 import {
   answersApi,
   inspectionsApi,
@@ -1188,7 +1188,9 @@ function PhotoPreviewModal({
         {uri ? (
           <Image source={{ uri }} style={styles.previewImage} resizeMode="contain" />
         ) : (
-          <ActivityIndicator color="#fff" />
+          <View style={styles.previewImage}>
+            <Skeleton width={'100%'} height={'100%' as unknown as number} radius={12} />
+          </View>
         )}
         <Pressable
           style={styles.previewDeleteBtn}

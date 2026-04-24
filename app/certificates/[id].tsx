@@ -199,7 +199,7 @@ export default function CertificateDetailScreen() {
               size={13}
               color={safeColor}
             />
-            <Text style={[styles.safeBadgeText, { color: safeColor }]}>
+            <Text style={[styles.safeBadgeText, { color: safeColor }]} numberOfLines={1}>
               {isSafe === false ? 'არ არის უსაფრთხო' : 'უსაფრთხოა'}
             </Text>
           </View>
@@ -245,11 +245,8 @@ export default function CertificateDetailScreen() {
           {resolvedUri ? (
             <>
               {webviewLoading ? (
-                <View style={styles.webviewLoader}>
-                  <ActivityIndicator color={theme.colors.accent} />
-                  <Text style={{ marginTop: 8, color: theme.colors.inkSoft, fontSize: 13 }}>
-                    PDF იტვირთება…
-                  </Text>
+                <View style={StyleSheet.absoluteFillObject}>
+                  <SkeletonPreview />
                 </View>
               ) : null}
               <WebView
@@ -271,12 +268,7 @@ export default function CertificateDetailScreen() {
               </Text>
             </View>
           ) : (
-            <View style={styles.webviewLoader}>
-              <ActivityIndicator color={theme.colors.accent} />
-              <Text style={{ marginTop: 8, color: theme.colors.inkSoft, fontSize: 13 }}>
-                PDF იტვირთება…
-              </Text>
-            </View>
+            <SkeletonPreview />
           )}
         </View>
       </SafeAreaView>
@@ -299,11 +291,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 5,
     alignSelf: 'flex-start',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
     borderRadius: 999,
+    flexShrink: 0,
   },
-  safeBadgeText: { fontSize: 12, fontWeight: '700' },
+  safeBadgeText: { fontSize: 12, fontWeight: '700', flexShrink: 0 },
   templateName: { fontSize: 15, fontWeight: '700', color: theme.colors.ink, marginTop: 4 },
   metaSub: { fontSize: 12, color: theme.colors.inkSoft, marginTop: 1 },
   metaDate: { fontSize: 11, color: theme.colors.inkFaint, marginTop: 1 },

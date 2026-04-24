@@ -183,6 +183,7 @@ export default function InspectionDetailScreen() {
                   styles.statusPillText,
                   { color: inspection.is_safe_for_use === false ? theme.colors.danger : theme.colors.accent },
                 ]}
+                numberOfLines={1}
               >
                 {inspection.is_safe_for_use === false
                   ? 'არ არის უსაფრთხო'
@@ -250,11 +251,13 @@ export default function InspectionDetailScreen() {
 
                           {/* Body */}
                           <View style={{ flex: 1, gap: 3 }}>
-                            {/* Title + safety badge */}
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            {/* Title + safety badge — wrap so the Georgian
+                                "არ არის უსაფრთხო" label drops below the
+                                title in tight rows instead of getting cut. */}
+                            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
                               <Text style={styles.certTitle}>PDF #{index + 1}</Text>
                               <View style={[styles.certBadge, { backgroundColor: safeBg }]}>
-                                <Text style={[styles.certBadgeText, { color: safeColor }]}>
+                                <Text style={[styles.certBadgeText, { color: safeColor }]} numberOfLines={1}>
                                   {isSafe === false ? 'არ არის უსაფრთხო' : 'უსაფრთხოა'}
                                 </Text>
                               </View>
@@ -509,14 +512,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 5,
     alignSelf: 'flex-start',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 999,
     marginTop: 8,
+    flexShrink: 0,
   },
   statusPillText: {
     fontSize: 12,
     fontWeight: '700',
+    flexShrink: 0,
   },
   eyebrow: {
     fontSize: 11,
@@ -558,13 +563,15 @@ const styles = StyleSheet.create({
   certTitle: { fontWeight: '700', fontSize: 14, color: theme.colors.ink },
   certMeta: { fontSize: 11, color: theme.colors.inkSoft },
   certBadge: {
-    paddingHorizontal: 7,
-    paddingVertical: 2,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderRadius: 999,
+    flexShrink: 0,
   },
   certBadgeText: {
     fontSize: 10,
     fontWeight: '700',
+    flexShrink: 0,
   },
   infoBadge: {
     flexDirection: 'row',

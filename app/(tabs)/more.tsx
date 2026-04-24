@@ -235,7 +235,7 @@ function HubTile({
   onPress: () => void;
 }) {
   return (
-    <Pressable onPress={onPress} style={{ flex: 1, minWidth: '45%' }}>
+    <Pressable onPress={onPress} style={styles.hubTileWrap}>
       <Card style={{ gap: 8 }}>
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
           <View style={[styles.tileIcon, { backgroundColor: bg }]}>
@@ -312,6 +312,12 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     paddingHorizontal: 16,
     gap: 12,
+  },
+  // `flex: 1` with minWidth: '45%' was unreliable — gap math pushed items to
+  // their own row on some screen widths. Hard-setting 48% + wrap guarantees
+  // exactly two columns regardless of device.
+  hubTileWrap: {
+    width: '48%',
   },
   tileIcon: {
     width: 44,

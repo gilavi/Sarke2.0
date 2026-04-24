@@ -14,7 +14,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useBottomSheet } from '../../components/BottomSheet';
 import { useSession } from '../../lib/session';
 import { projectAvatar } from '../../lib/projectAvatar';
 import {
@@ -355,8 +354,11 @@ function ProjectPickerSheet({
 }) {
   const router = useRouter();
   const toast = useToast();
-  const showActionSheetWithOptions = useBottomSheet();
-  const [view, setView] = useState<'list' | 'new'>('list');
+  // Template picker is an inline view, NOT a nested BottomSheet — stacking
+  // Modals inside Modals is unreliable on iOS (the second one never becomes
+  // visible while the first is up, so tapping a project felt frozen).
+  const [view, setView] = useState<'list' | 'new' | 'template'>('list');
+  const [pickedProjectId, setPickedProjectId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
   const [address, setAddress] = useState('');
@@ -366,6 +368,7 @@ function ProjectPickerSheet({
   useEffect(() => {
     if (visible) {
       setView('list');
+      setPickedProjectId(null);
       setName('');
       setCompany('');
       setAddress('');
@@ -373,27 +376,30 @@ function ProjectPickerSheet({
     }
   }, [visible]);
 
+  const systemTemplates = templates.filter(t => t.is_system);
+
   const pickTemplate = (projectId: string) => {
-    const system = templates.filter(t => t.is_system);
-    if (system.length === 0) {
+    if (systemTemplates.length === 0) {
       toast.error('შაბლონი არ არის');
       return;
     }
-    const options = [...system.map(t => t.name), 'გაუქმება'];
-    showActionSheetWithOptions(
-      { title: 'აირჩიე შაბლონი', options, cancelButtonIndex: options.length - 1 },
-      async idx => {
-        if (idx == null || idx === options.length - 1) return;
-        const tpl = system[idx];
-        try {
-          onClose();
-          const q = await questionnairesApi.create({ projectId, templateId: tpl.id });
-          router.push(`/inspections/${q.id}/wizard` as any);
-        } catch (e: any) {
-          toast.error(e?.message ?? 'შექმნა ვერ მოხერხდა');
-        }
-      },
-    );
+    if (systemTemplates.length === 1) {
+      // Only one template — skip the picker step entirely.
+      void startInspection(projectId, systemTemplates[0].id);
+      return;
+    }
+    setPickedProjectId(projectId);
+    setView('template');
+  };
+
+  const startInspection = async (projectId: string, templateId: string) => {
+    try {
+      const q = await questionnairesApi.create({ projectId, templateId });
+      onClose();
+      router.push(`/inspections/${q.id}/wizard` as any);
+    } catch (e: any) {
+      toast.error(e?.message ?? 'შექმნა ვერ მოხერხდა');
+    }
   };
 
   const createProject = async () => {
@@ -472,6 +478,36 @@ function ProjectPickerSheet({
                   <Text style={pickerStyles.addNewText}>ახალი პროექტის დამატება</Text>
                   <Ionicons name="chevron-forward" size={16} color={theme.colors.accent} />
                 </Pressable>
+              </>
+            ) : view === 'template' ? (
+              <>
+                {/* Template picker header with back button */}
+                <View style={pickerStyles.sheetHeader}>
+                  <Pressable onPress={() => setView('list')} hitSlop={10} style={{ marginRight: 10 }}>
+                    <Ionicons name="arrow-back" size={22} color={theme.colors.accent} />
+                  </Pressable>
+                  <Text style={[pickerStyles.sheetTitle, { flex: 1 }]}>აირჩიე შაბლონი</Text>
+                  <Pressable onPress={onClose} hitSlop={10}>
+                    <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
+                  </Pressable>
+                </View>
+                <ScrollView style={{ maxHeight: 360 }} showsVerticalScrollIndicator={false}>
+                  {systemTemplates.map(t => (
+                    <Pressable
+                      key={t.id}
+                      onPress={() => pickedProjectId && void startInspection(pickedProjectId, t.id)}
+                      style={pickerStyles.projectRow}
+                    >
+                      <View style={[pickerStyles.avatarBubble, { backgroundColor: theme.colors.accentSoft }]}>
+                        <Ionicons name="document-text" size={22} color={theme.colors.accent} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={pickerStyles.rowName} numberOfLines={2}>{t.name}</Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
+                    </Pressable>
+                  ))}
+                </ScrollView>
               </>
             ) : (
               <>

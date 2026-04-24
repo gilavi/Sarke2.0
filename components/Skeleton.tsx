@@ -15,7 +15,7 @@ import { theme } from '../lib/theme';
 
 interface SkeletonProps {
   width?: number | `${number}%`;
-  height?: number;
+  height?: number | `${number}%`;
   radius?: number;
   style?: ViewStyle | ViewStyle[];
 }
@@ -55,7 +55,15 @@ export function Skeleton({ width, height = 14, radius = 8, style }: SkeletonProp
   return (
     <Animated.View
       style={[
-        { width: width as number, height, borderRadius: radius, backgroundColor: theme.colors.subtleSurface, opacity },
+        // Cast through unknown so `%` strings satisfy the number-typed props;
+        // RN accepts both at runtime.
+        {
+          width: width as unknown as number,
+          height: height as unknown as number,
+          borderRadius: radius,
+          backgroundColor: theme.colors.subtleSurface,
+          opacity,
+        },
         style,
       ]}
     />
