@@ -175,8 +175,12 @@ export default function SigningScreen() {
       return;
     }
     (async () => {
-      const dataUrl = await getStorageImageDisplayUrl(STORAGE_BUCKETS.signatures, url);
-      if (!cancelled) setExpertSigUrl(dataUrl);
+      try {
+        const dataUrl = await getStorageImageDisplayUrl(STORAGE_BUCKETS.signatures, url);
+        if (!cancelled) setExpertSigUrl(dataUrl);
+      } catch {
+        if (!cancelled) setExpertSigUrl(null);
+      }
     })();
     return () => {
       cancelled = true;
@@ -625,6 +629,7 @@ function ExpertCard({
   hasSaved: boolean;
   onOpenSignature: () => void;
 }) {
+  const [imgError, setImgError] = useState(false);
   return (
     <View style={[styles.card, styles.cardExpert]}>
       <View style={styles.roleHeader}>
@@ -639,23 +644,32 @@ function ExpertCard({
             </Pressable>
         }
       </View>
-      {hasSaved && signatureUrl ? (
+      {hasSaved ? (
         <Pressable onPress={onOpenSignature}>
           <View style={styles.sigThumb}>
-            <Image source={{ uri: signatureUrl }} style={styles.sigThumbImg} resizeMode="contain" />
+            {signatureUrl && !imgError ? (
+              <Image
+                source={{ uri: signatureUrl }}
+                style={styles.sigThumbImg}
+                resizeMode="contain"
+                onError={() => setImgError(true)}
+              />
+            ) : (
+              <Ionicons name="create-outline" size={22} color={theme.colors.inkSoft} />
+            )}
           </View>
           <Text style={{ fontSize: 11, color: theme.colors.inkSoft, marginTop: 4, textAlign: 'right' }}>
             შეცვლა ›
           </Text>
         </Pressable>
-      ) : !hasSaved ? (
+      ) : (
         <Pressable onPress={onOpenSignature} style={styles.missingRow}>
           <Ionicons name="create-outline" size={16} color={theme.colors.warn} />
           <Text style={{ color: theme.colors.warn, fontSize: 12, fontWeight: '600', flex: 1 }}>
             ჯერ არ გაქვს შენახული ხელმოწერა. შეეხე დასახატად.
           </Text>
         </Pressable>
-      ) : null}
+      )}
     </View>
   );
 }
@@ -726,23 +740,6 @@ function RoleCard({
         ) : null}
       </View>
 
-      {/* Signature preview when signed */}
-      {state === 'signed' && signatureImg ? (
-        <>
-          <View style={styles.sigThumb}>
-            <Image source={{ uri: signatureImg }} style={styles.sigThumbImg} resizeMode="contain" />
-          </View>
-          {autoFilled ? (
-            <View style={styles.autoFilledChip}>
-              <Ionicons name="flash" size={11} color={theme.colors.accent} />
-              <Text style={{ color: theme.colors.accent, fontSize: 11, fontWeight: '700' }}>
-                ავტომატურად შევსებული — გადახაზვა ›
-              </Text>
-            </View>
-          ) : null}
-        </>
-      ) : null}
-
       {state === 'empty' ? (
         <>
           {rosterCandidates.length > 0 ? (
@@ -782,22 +779,32 @@ function RoleCard({
           </Pressable>
         </>
       ) : state === 'signed' ? (
-        <Pressable onPress={onSign}>
-          <View style={styles.sigThumb}>
-            {signatureImg
-              ? <Image source={{ uri: signatureImg }} style={styles.sigThumbImg} resizeMode="contain" />
-              : <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                  <Ionicons name="checkmark-circle" size={24} color={theme.colors.accent} />
-                </View>
-            }
-          </View>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
-            <Text style={{ fontSize: 11, color: theme.colors.inkSoft }}>შეეხე გადასახაზად</Text>
-            <Pressable onPress={onClear} hitSlop={10}>
-              <Text style={{ fontSize: 11, color: theme.colors.danger }}>გასუფთავება</Text>
-            </Pressable>
-          </View>
-        </Pressable>
+        <>
+          <Pressable onPress={onSign}>
+            <View style={styles.sigThumb}>
+              {signatureImg
+                ? <Image source={{ uri: signatureImg }} style={styles.sigThumbImg} resizeMode="contain" />
+                : <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                    <Ionicons name="checkmark-circle" size={24} color={theme.colors.accent} />
+                  </View>
+              }
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
+              <Text style={{ fontSize: 11, color: theme.colors.inkSoft }}>შეეხე გადასახაზად</Text>
+              <Pressable onPress={onClear} hitSlop={10}>
+                <Text style={{ fontSize: 11, color: theme.colors.danger }}>გასუფთავება</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+          {autoFilled ? (
+            <View style={styles.autoFilledChip}>
+              <Ionicons name="flash" size={11} color={theme.colors.accent} />
+              <Text style={{ color: theme.colors.accent, fontSize: 11, fontWeight: '700' }}>
+                ავტომატურად შევსებული — გადახაზვა ›
+              </Text>
+            </View>
+          ) : null}
+        </>
       ) : (
         /* not_present */
         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 8 }}>

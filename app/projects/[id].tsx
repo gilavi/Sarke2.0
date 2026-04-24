@@ -221,11 +221,7 @@ export default function ProjectDetail() {
                   >
                     <View style={styles.sigThumb}>
                       {signerPreviews[s.id] ? (
-                        <Image
-                          source={{ uri: signerPreviews[s.id] }}
-                          style={{ width: '100%', height: '100%' }}
-                          resizeMode="contain"
-                        />
+                        <SafeSigImage uri={signerPreviews[s.id]} />
                       ) : (
                         <Ionicons name="person" size={20} color={theme.colors.inkFaint} />
                       )}
@@ -419,6 +415,19 @@ export default function ProjectDetail() {
         }}
       />
     </Screen>
+  );
+}
+
+function SafeSigImage({ uri }: { uri: string }) {
+  const [err, setErr] = useState(false);
+  if (err) return <Ionicons name="person" size={20} color={theme.colors.inkFaint} />;
+  return (
+    <Image
+      source={{ uri }}
+      style={{ width: '100%', height: '100%' }}
+      resizeMode="contain"
+      onError={() => setErr(true)}
+    />
   );
 }
 
