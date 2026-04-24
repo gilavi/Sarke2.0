@@ -749,10 +749,13 @@ export const schedulesApi = {
   },
 };
 
+// Transparent 1×1 PNG — safe to use as an <Image> source in mock mode.
+const MOCK_IMAGE_URI =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
 // Storage is entirely stubbed. Uploads pretend to succeed and return the
-// path; URL helpers produce a `mock://` scheme that screen code can render
-// via Image (iOS ignores unknown schemes, typically shows a broken image —
-// acceptable for UX testing).
+// path; URL helpers return a valid data URI so <Image> components render
+// without crashing (shows a blank/transparent placeholder).
 export const storageApi = {
   upload: async (
     _bucket: string,
@@ -764,10 +767,10 @@ export const storageApi = {
     // Return an empty Blob-ish object; not consumed in mock flows.
     return new Blob([], { type: 'application/octet-stream' });
   },
-  signedUrl: async (bucket: string, path: string): Promise<string> =>
-    `mock://${bucket}/${path}`,
-  publicUrl: (bucket: string, path: string) =>
-    `mock://${bucket}/${path}`,
+  signedUrl: async (_bucket: string, _path: string): Promise<string> =>
+    MOCK_IMAGE_URI,
+  publicUrl: (_bucket: string, _path: string) =>
+    MOCK_IMAGE_URI,
 };
 
 export function isExpiringSoon(q: Qualification): boolean {
