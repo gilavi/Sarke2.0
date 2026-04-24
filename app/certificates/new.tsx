@@ -312,6 +312,119 @@ export default function GenerateCertificateScreen() {
 
   // ── Generate ─────────────────────────────────────────────────────────────────
 
+  // --- Step helpers: small, named, composable. Order:
+  //     1. collect + persist signatures (audit trail)
+  //     2. build PDF asset bundle (photos/quals → data URLs)
+  //     3. render HTML → PDF file
+  //     4. upload PDF blob to storage
+  //     5. insert certificates row — rolling back (#4) on failure
+
+  const buildExpertRecord = async (): Promise<{ rec: SignatureRecord; expertName: string }> => {
+    const expertName = user ? `${user.first_name} ${user.last_name}`.trim() : 'ექსპერტი';
+    const expertDataUrl = user?.saved_signature_url
+      ? await getStorageImageDataUrl(STORAGE_BUCKETS.signatures, user.saved_signature_url)
+      : null;
+    const rec: SignatureRecord = {
+      id: 'expert-auto',
+      inspection_id: inspection!.id,
+      signer_role: 'expert',
+      full_name: expertName,
+      phone: null,
+      position: 'შრომის უსაფრთხოების სპეციალისტი',
+      signature_png_url: expertDataUrl, // data URL for PDF embedding
+      signed_at: new Date().toISOString(),
+      status: 'signed',
+      person_name: expertName,
+    };
+    return { rec, expertName };
+  };
+
+  // Upload additional signer PNGs to storage and persist signatures rows.
+  // Returns SignatureRecords with data-URL signature_png_url (for the PDF).
+  const persistAdditionalSigners = async (): Promise<SignatureRecord[]> => {
+    const recs: SignatureRecord[] = [];
+    for (const s of additionalSigners.filter(x => x.name.trim())) {
+      let storagePath: string | null = null;
+      if (s.dataUrl) {
+        const blob = await (await fetch(s.dataUrl)).blob();
+        const path = `${inspection!.id}/${s.id}-${Date.now()}.png`;
+        await storageApi.upload(STORAGE_BUCKETS.signatures, path, blob, 'image/png');
+        storagePath = path;
+      }
+      recs.push({
+        id: s.id,
+        inspection_id: inspection!.id,
+        signer_role: s.role,
+        full_name: s.name.trim(),
+        phone: null,
+        position: null,
+        signature_png_url: s.dataUrl,
+        signed_at: new Date().toISOString(),
+        status: s.dataUrl ? 'signed' : 'not_present',
+        person_name: s.name.trim(),
+      });
+      await signaturesApi.upsert({
+        id: s.id,
+        inspection_id: inspection!.id,
+        signer_role: s.role,
+        full_name: s.name.trim(),
+        phone: null,
+        position: null,
+        signature_png_url: storagePath,
+        status: s.dataUrl ? 'signed' : 'not_present',
+        person_name: s.name.trim(),
+      });
+    }
+    return recs;
+  };
+
+  const persistExpertSignature = async (expertName: string): Promise<void> => {
+    await signaturesApi.upsert({
+      id: crypto.randomUUID(),
+      inspection_id: inspection!.id,
+      signer_role: 'expert',
+      full_name: expertName,
+      phone: null,
+      position: 'შრომის უსაფრთხოების სპეციალისტი',
+      signature_png_url: user?.saved_signature_url ?? null,
+      status: 'signed',
+      person_name: expertName,
+    });
+  };
+
+  // Fetch photo + qual images as data URLs for PDF embedding.
+  const buildPdfAssets = async (): Promise<{
+    photosForPdf: Record<string, AnswerPhoto[]>;
+    attachedQuals: Array<Qualification & { file_data_url?: string }>;
+  }> => {
+    const photosForPdf: Record<string, AnswerPhoto[]> = {};
+    await Promise.all(
+      Object.entries(photosByAnswer).map(async ([answerId, photos]) => {
+        photosForPdf[answerId] = await Promise.all(
+          photos.map(async p => ({
+            ...p,
+            storage_path: await getStorageImageDataUrl(STORAGE_BUCKETS.answerPhotos, p.storage_path),
+          })),
+        );
+      }),
+    );
+    const allQualIds = [
+      ...requiredCertTypes.map(t => selectedQuals[t]).filter(Boolean),
+      ...extraQualIds,
+    ];
+    const attachedQuals: Array<Qualification & { file_data_url?: string }> = [];
+    for (const id of allQualIds) {
+      const qual = quals.find(q => q.id === id);
+      if (!qual) continue;
+      let fileDataUrl: string | undefined;
+      if (qual.file_url) {
+        fileDataUrl = await getStorageImageDataUrl(STORAGE_BUCKETS.certificates, qual.file_url);
+      }
+      attachedQuals.push({ ...qual, file_data_url: fileDataUrl });
+    }
+    return { photosForPdf, attachedQuals };
+  };
+
   const generate = async () => {
     if (!inspection || !template || !project) return;
     if (missingQualTypes.length > 0) {
@@ -319,107 +432,19 @@ export default function GenerateCertificateScreen() {
       return;
     }
     setBusy(true);
+    let uploadedPdfPath: string | null = null;
     try {
-      // Expert signature
-      const expertDataUrl = user?.saved_signature_url
-        ? await getStorageImageDataUrl(STORAGE_BUCKETS.signatures, user.saved_signature_url)
-        : null;
-      const expertName = user ? `${user.first_name} ${user.last_name}`.trim() : 'ექსპერტი';
-      const expertRec: SignatureRecord = {
-        id: 'expert-auto',
-        inspection_id: inspection.id,
-        signer_role: 'expert',
-        full_name: expertName,
-        phone: null,
-        position: 'შრომის უსაფრთხოების სპეციალისტი',
-        signature_png_url: expertDataUrl,
-        signed_at: new Date().toISOString(),
-        status: 'signed',
-        person_name: expertName,
-      };
-
-      // Additional signers — upload each signature to storage, then persist
-      // both the row in `signatures` and keep a data-URL copy for PDF embedding.
-      const otherRecs: SignatureRecord[] = [];
-      for (const s of additionalSigners.filter(x => x.name.trim())) {
-        let storagePath: string | null = null;
-        if (s.dataUrl) {
-          // Convert data URL → Blob via fetch (RN supports this without atob).
-          const blob = await (await fetch(s.dataUrl)).blob();
-          const path = `${inspection.id}/${s.id}-${Date.now()}.png`;
-          await storageApi.upload(STORAGE_BUCKETS.signatures, path, blob, 'image/png');
-          storagePath = path;
-        }
-        otherRecs.push({
-          id: s.id,
-          inspection_id: inspection.id,
-          signer_role: s.role,
-          full_name: s.name.trim(),
-          phone: null,
-          position: null,
-          signature_png_url: s.dataUrl, // data URL for PDF embedding
-          signed_at: new Date().toISOString(),
-          status: s.dataUrl ? 'signed' : 'not_present',
-          person_name: s.name.trim(),
-        });
-        // Persist to DB (storage path, not data URL) so the inspection has
-        // a real audit trail.
-        await signaturesApi.upsert({
-          id: s.id,
-          inspection_id: inspection.id,
-          signer_role: s.role,
-          full_name: s.name.trim(),
-          phone: null,
-          position: null,
-          signature_png_url: storagePath,
-          status: s.dataUrl ? 'signed' : 'not_present',
-          person_name: s.name.trim(),
-        }).catch(() => { /* non-blocking: PDF still generates */ });
-      }
-      // Persist the expert's signature record too
-      await signaturesApi.upsert({
-        id: crypto.randomUUID(),
-        inspection_id: inspection.id,
-        signer_role: 'expert',
-        full_name: expertName,
-        phone: null,
-        position: 'შრომის უსაფრთხოების სპეციალისტი',
-        signature_png_url: user?.saved_signature_url ?? null,
-        status: 'signed',
-        person_name: expertName,
-      }).catch(() => { /* non-blocking */ });
-
+      // 1. Signatures — persist first so the inspection has an audit trail
+      //    even if later PDF steps fail.
+      const { rec: expertRec, expertName } = await buildExpertRecord();
+      const otherRecs = await persistAdditionalSigners();
+      await persistExpertSignature(expertName);
       const sigsForPdf = [expertRec, ...otherRecs];
 
-      // Inline photos
-      const photosForPdf: Record<string, AnswerPhoto[]> = {};
-      await Promise.all(
-        Object.entries(photosByAnswer).map(async ([answerId, photos]) => {
-          photosForPdf[answerId] = await Promise.all(
-            photos.map(async p => ({
-              ...p,
-              storage_path: await getStorageImageDataUrl(STORAGE_BUCKETS.answerPhotos, p.storage_path),
-            })),
-          );
-        }),
-      );
+      // 2. Build the embed-ready asset bundle.
+      const { photosForPdf, attachedQuals } = await buildPdfAssets();
 
-      // Attach required + extra qualifications
-      const allQualIds = [
-        ...requiredCertTypes.map(t => selectedQuals[t]).filter(Boolean),
-        ...extraQualIds,
-      ];
-      const attachedQuals: Array<Qualification & { file_data_url?: string }> = [];
-      for (const id of allQualIds) {
-        const qual = quals.find(q => q.id === id);
-        if (!qual) continue;
-        let fileDataUrl: string | undefined;
-        if (qual.file_url) {
-          fileDataUrl = await getStorageImageDataUrl(STORAGE_BUCKETS.certificates, qual.file_url);
-        }
-        attachedQuals.push({ ...qual, file_data_url: fileDataUrl });
-      }
-
+      // 3. Render PDF.
       const html = buildPdfHtml({
         questionnaire: inspection,
         template,
@@ -431,9 +456,15 @@ export default function GenerateCertificateScreen() {
         certificates: attachedQuals,
       });
       const { uri } = await Print.printToFileAsync({ html });
+
+      // 4. Upload PDF blob. Remember the path so we can roll it back if (5) fails.
       const fileName = `${inspection.id}-${Date.now()}.pdf`;
       const blob = await (await fetch(uri)).blob();
       await storageApi.upload(STORAGE_BUCKETS.pdfs, fileName, blob, 'application/pdf');
+      uploadedPdfPath = fileName;
+
+      // 5. Insert certificate row. If this throws, delete the uploaded blob
+      //    so we don't leave orphans in storage.
       await certificatesApi.create({
         inspectionId: inspection.id,
         templateId: inspection.template_id,
@@ -449,12 +480,17 @@ export default function GenerateCertificateScreen() {
           localUri: uri,
         },
       });
+      uploadedPdfPath = null; // committed — no rollback needed
+
       toast.success('PDF რეპორტი შეიქმნა');
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri, { mimeType: 'application/pdf' });
       }
       router.replace(`/inspections/${inspection.id}` as any);
     } catch (e: any) {
+      if (uploadedPdfPath) {
+        await storageApi.remove(STORAGE_BUCKETS.pdfs, uploadedPdfPath);
+      }
       toast.error(e?.message ?? 'გენერაცია ვერ მოხერხდა');
     } finally {
       setBusy(false);

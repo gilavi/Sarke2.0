@@ -32,7 +32,7 @@ import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { shareStoredPdf } from '../../lib/sharePdf';
 import { useToast } from '../../lib/toast';
 import { theme } from '../../lib/theme';
-import type { Certificate, Inspection, Project, Template } from '../../types/models';
+import type { Certificate, Project, Template } from '../../types/models';
 
 type CertParams = {
   expertName?: string | null;
@@ -47,7 +47,6 @@ export default function CertificateDetailScreen() {
   const toast = useToast();
 
   const [cert, setCert] = useState<Certificate | null>(null);
-  const [inspection, setInspection] = useState<Inspection | null>(null);
   const [template, setTemplate] = useState<Template | null>(null);
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
@@ -70,7 +69,6 @@ export default function CertificateDetailScreen() {
       }
       setCert(c);
       const insp = await inspectionsApi.getById(c.inspection_id).catch(() => null);
-      setInspection(insp);
       if (!insp) return;
       const [tpl, proj] = await Promise.all([
         templatesApi.getById(insp.template_id).catch(() => null),

@@ -209,11 +209,13 @@ function seed(): MockDB {
     id: 'qual-1', user_id: MOCK_USER_ID, type: 'xaracho_inspector',
     number: 'XI-12345', issued_at: '2024-01-15', expires_at: '2027-01-15',
     file_url: 'mock/qual-1.jpg',
+    created_at: new Date(Date.now() - 365 * 864e5).toISOString(),
   };
   const qual2: Qualification = {
     id: 'qual-2', user_id: MOCK_USER_ID, type: 'harness_inspector',
     number: 'HI-67890', issued_at: '2023-06-01', expires_at: '2026-06-01',
     file_url: 'mock/qual-2.jpg',
+    created_at: new Date(Date.now() - 180 * 864e5).toISOString(),
   };
 
   return {
@@ -568,15 +570,18 @@ export const signaturesApi = {
 export const qualificationsApi = {
   list: async (): Promise<Qualification[]> => {
     const db = await load();
-    return [...db.qualifications];
+    return [...db.qualifications].sort((a, b) =>
+      b.created_at.localeCompare(a.created_at),
+    );
   },
-  upsert: async (q: Qualification): Promise<Qualification> => {
+  upsert: async (q: Omit<Qualification, 'created_at'> & { created_at?: string }): Promise<Qualification> => {
     const db = await load();
-    const existing = db.qualifications.find(x => x.id === q.id);
-    if (existing) Object.assign(existing, q);
-    else db.qualifications.push(q);
+    const withStamp: Qualification = { ...q, created_at: q.created_at ?? now() };
+    const existing = db.qualifications.find(x => x.id === withStamp.id);
+    if (existing) Object.assign(existing, withStamp);
+    else db.qualifications.push(withStamp);
     await save();
-    return existing ?? q;
+    return existing ?? withStamp;
   },
   remove: async (id: string) => {
     const db = await load();
@@ -771,6 +776,9 @@ export const storageApi = {
     MOCK_IMAGE_URI,
   publicUrl: (_bucket: string, _path: string) =>
     MOCK_IMAGE_URI,
+  remove: async (_bucket: string, _path: string): Promise<void> => {
+    // No-op in mock — no real blobs to clean up.
+  },
 };
 
 export function isExpiringSoon(q: Qualification): boolean {

@@ -120,11 +120,23 @@ export default function QuestionnaireWizard() {
           pmap[a.id] = await answersApi.photos(a.id).catch(() => []);
           if (ctrl.cancelled) return;
         }
-        // Overlay cached-local answers so unsynced edits survive app restarts.
+        // Overlay cached-local answers only for questions that still have a
+        // pending queue op — otherwise a stale cache would silently clobber
+        // fresh server data. When the remote fetch failed, we have no choice
+        // but to fall back to the full cache.
         const cached = await offline.hydrateAnswers(qMerged.id);
         if (ctrl.cancelled) return;
-        for (const [questionId, a] of Object.entries(cached)) {
-          map[questionId] = a;
+        if (remoteOk) {
+          const pending = await offline.pendingAnswerQuestionIds(qMerged.id);
+          if (ctrl.cancelled) return;
+          for (const qid of pending) {
+            const a = cached[qid];
+            if (a) map[qid] = a;
+          }
+        } else {
+          for (const [questionId, a] of Object.entries(cached)) {
+            map[questionId] = a;
+          }
         }
         setAnswers(map);
         setPhotos(pmap);
@@ -229,6 +241,12 @@ export default function QuestionnaireWizard() {
 
   const pickPhoto = async (question: Question) => {
     if (!questionnaire) return;
+    // Photo upload needs network (blob → storage + answer_photos insert).
+    // Fail fast with a clear message rather than producing misleading errors.
+    if (!offline.isOnline) {
+      toast.error('ფოტოს ასატვირთად საჭიროა ინტერნეტი');
+      return;
+    }
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) return;
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -239,6 +257,10 @@ export default function QuestionnaireWizard() {
     if (result.canceled || result.assets.length === 0) return;
     const asset = result.assets[0];
     try {
+      // Drain any pending answer edits for this question so the server copy
+      // of `answers` reflects the latest user input before we reference it.
+      await offline.flush();
+
       const res = await fetch(asset.uri);
       const blob = await res.blob();
       const ext = asset.mimeType?.split('/')[1] ?? 'jpg';
@@ -249,8 +271,9 @@ export default function QuestionnaireWizard() {
         blob,
         asset.mimeType ?? 'image/jpeg',
       );
-      // Always upsert to Supabase directly so the answer row exists
-      // server-side before we insert answer_photos (RLS join requires it).
+      // Ensure the answer row exists server-side (RLS on answer_photos joins
+      // through `answers`). Upsert is safe here — no concurrent edits at this
+      // point because we just flushed the queue.
       const existing = answers[question.id];
       const answer = await answersApi.upsert({
         id: existing?.id ?? crypto.randomUUID(),
@@ -304,14 +327,22 @@ export default function QuestionnaireWizard() {
       return;
     }
     try {
+      // Merge finish into the queued patch so the freeze trigger sees a
+      // single atomic update (status=completed + conclusion + safety + name).
+      // Splitting these would let an older flushed patch race against the
+      // freeze and wedge the queue permanently.
       await offline.enqueueQuestionnaireUpdate({
         id: questionnaire.id,
         conclusion_text: conclusion,
         is_safe_for_use: isSafe,
         harness_name: harnessName || null,
+        status: 'completed',
+        completed_at: new Date().toISOString(),
       });
-      // Finish the inspection directly — no signing step in this flow.
-      await inspectionsApi.finish(questionnaire.id);
+      // Flush now so the user sees errors (and a server-visible completion)
+      // before navigating away. Offline? The queue survives — done screen
+      // still renders from local state.
+      await offline.flush();
       router.replace(`/inspections/${questionnaire.id}/done` as any);
     } catch (e: any) {
       toast.error(`ინსპექციის დასრულება ვერ მოხერხდა: ${e?.message ?? 'ქსელის შეცდომა'}`);

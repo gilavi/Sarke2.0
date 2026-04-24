@@ -53,6 +53,7 @@ export interface Qualification {
   issued_at: string | null;
   expires_at: string | null;
   file_url: string | null;
+  created_at: string;
 }
 
 export interface Project {

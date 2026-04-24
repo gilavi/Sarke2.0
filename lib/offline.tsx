@@ -38,6 +38,8 @@ type OfflineContextValue = {
   hydrateAnswers: (qid: string) => Promise<Record<string, Answer>>;
   cacheAnswers: (qid: string, answers: Record<string, Answer>) => Promise<void>;
   hydrateQuestionnairePatch: (qid: string) => Promise<Partial<Inspection> | null>;
+  /** Question IDs with a still-pending answer upsert for the given inspection. */
+  pendingAnswerQuestionIds: (inspectionId: string) => Promise<Set<string>>;
   flush: () => Promise<void>;
 };
 
@@ -67,19 +69,28 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
   const [isOnline, setIsOnline] = useState(true);
   const [netReady, setNetReady] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
-  const flushing = useRef(false);
   const onlineRef = useRef(true);
+
+  // Serialize ALL queue mutations (enqueue + flush) through a single promise
+  // chain. Without this, concurrent readQueue → setQueue cycles race and
+  // silently drop ops. Every mutator appends to this chain via
+  // `runExclusive(fn)`; the returned promise resolves with the fn's result.
+  const queueLock = useRef<Promise<unknown>>(Promise.resolve());
+  const runExclusive = useCallback(<T,>(fn: () => Promise<T>): Promise<T> => {
+    const next = queueLock.current.then(fn, fn);
+    // Keep the chain alive even if fn throws, so the next caller still runs.
+    queueLock.current = next.catch(() => undefined);
+    return next;
+  }, []);
 
   const setQueue = useCallback(async (ops: QueueOp[]) => {
     await writeQueueRaw(ops);
     setPendingCount(ops.length);
   }, []);
 
-  const flush = useCallback(async () => {
-    if (flushing.current) return;
+  const flush = useCallback(async (): Promise<void> => {
     if (!onlineRef.current) return;
-    flushing.current = true;
-    try {
+    await runExclusive(async () => {
       let ops = await readQueue();
       while (ops.length > 0 && onlineRef.current) {
         const op = ops[0];
@@ -104,10 +115,8 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
           break;
         }
       }
-    } finally {
-      flushing.current = false;
-    }
-  }, [setQueue]);
+    });
+  }, [setQueue, runExclusive]);
 
   useEffect(() => {
     void readQueue().then((q) => setPendingCount(q.length));
@@ -132,21 +141,23 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
 
   const enqueueAnswerUpsert = useCallback<OfflineContextValue['enqueueAnswerUpsert']>(
     async (payload) => {
-      const ops = await readQueue();
-      // Coalesce: drop any prior pending upsert for the same (inspection, question).
-      const filtered = ops.filter(
-        (o) =>
-          !(
-            o.kind === 'answer_upsert' &&
-            o.payload.inspection_id === payload.inspection_id &&
-            o.payload.question_id === payload.question_id
-          ),
-      );
-      filtered.push({ kind: 'answer_upsert', payload });
-      await setQueue(filtered);
+      await runExclusive(async () => {
+        const ops = await readQueue();
+        // Coalesce: drop any prior pending upsert for the same (inspection, question).
+        const filtered = ops.filter(
+          (o) =>
+            !(
+              o.kind === 'answer_upsert' &&
+              o.payload.inspection_id === payload.inspection_id &&
+              o.payload.question_id === payload.question_id
+            ),
+        );
+        filtered.push({ kind: 'answer_upsert', payload });
+        await setQueue(filtered);
+      });
       if (onlineRef.current) void flush();
     },
-    [flush, setQueue],
+    [flush, setQueue, runExclusive],
   );
 
   /**
@@ -159,31 +170,33 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
     OfflineContextValue['enqueueQuestionnaireUpdate']
   >(
     async (payload) => {
-      const ops = await readQueue();
-      // If the patch marks the inspection completed and no completed_at
-      // was supplied, stamp one now. Otherwise a flush that lands hours later
-      // would mark the row completed with a null timestamp and break audit.
-      const stamped: typeof payload =
-        payload.status === 'completed' && !payload.completed_at
-          ? { ...payload, completed_at: new Date().toISOString() }
-          : payload;
-      let merged = { ...stamped };
-      const filtered: QueueOp[] = [];
-      for (const op of ops) {
-        if (op.kind === 'questionnaire_update' && op.payload.id === payload.id) {
-          // Merge older patch into the new one so nothing is lost.
-          merged = { ...op.payload, ...merged };
-        } else {
-          filtered.push(op);
+      await runExclusive(async () => {
+        const ops = await readQueue();
+        // If the patch marks the inspection completed and no completed_at
+        // was supplied, stamp one now. Otherwise a flush that lands hours later
+        // would mark the row completed with a null timestamp and break audit.
+        const stamped: typeof payload =
+          payload.status === 'completed' && !payload.completed_at
+            ? { ...payload, completed_at: new Date().toISOString() }
+            : payload;
+        let merged = { ...stamped };
+        const filtered: QueueOp[] = [];
+        for (const op of ops) {
+          if (op.kind === 'questionnaire_update' && op.payload.id === payload.id) {
+            // Merge older patch into the new one so nothing is lost.
+            merged = { ...op.payload, ...merged };
+          } else {
+            filtered.push(op);
+          }
         }
-      }
-      filtered.push({ kind: 'questionnaire_update', payload: merged });
-      // Also stash the merged patch so the screen can hydrate it before remote sync.
-      await AsyncStorage.setItem(questionnaireKey(payload.id), JSON.stringify(merged));
-      await setQueue(filtered);
+        filtered.push({ kind: 'questionnaire_update', payload: merged });
+        // Also stash the merged patch so the screen can hydrate it before remote sync.
+        await AsyncStorage.setItem(questionnaireKey(payload.id), JSON.stringify(merged));
+        await setQueue(filtered);
+      });
       if (onlineRef.current) void flush();
     },
-    [flush, setQueue],
+    [flush, setQueue, runExclusive],
   );
 
   const hydrateAnswers = useCallback<OfflineContextValue['hydrateAnswers']>(async (qid) => {
@@ -215,6 +228,19 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const pendingAnswerQuestionIds = useCallback<
+    OfflineContextValue['pendingAnswerQuestionIds']
+  >(async (inspectionId) => {
+    const ops = await readQueue();
+    const ids = new Set<string>();
+    for (const op of ops) {
+      if (op.kind === 'answer_upsert' && op.payload.inspection_id === inspectionId) {
+        ids.add(op.payload.question_id);
+      }
+    }
+    return ids;
+  }, []);
+
   const value: OfflineContextValue = {
     isOnline,
     netReady,
@@ -224,6 +250,7 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
     hydrateAnswers,
     cacheAnswers,
     hydrateQuestionnairePatch,
+    pendingAnswerQuestionIds,
     flush,
   };
 

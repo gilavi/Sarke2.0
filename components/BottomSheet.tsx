@@ -40,8 +40,13 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const show: ShowBottomSheet = useCallback((options, callback) => {
+    // If a sheet is already open, notify the previous caller that its
+    // prompt was superseded — otherwise their callback would silently
+    // never fire (orphaned, leaked).
+    const prev = callbackRef.current;
     callbackRef.current = callback;
     setSheet({ options });
+    prev?.(undefined);
   }, []);
 
   return (

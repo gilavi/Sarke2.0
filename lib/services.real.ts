@@ -404,9 +404,19 @@ export const qualificationsApi = {
     if (error) throw error;
     return data ?? [];
   },
-  upsert: async (q: Qualification): Promise<Qualification> => {
+  upsert: async (q: Omit<Qualification, 'created_at'> & { created_at?: string }): Promise<Qualification> => {
+    // Always stamp with the current auth uid. Callers can pass stale or
+    // placeholder user_ids — RLS would reject anyway, but overriding here
+    // turns a silent 403 into a predictable insert. created_at is handled
+    // by the table default when omitted.
+    const user = (await supabase.auth.getUser()).data.user;
+    if (!user) throw new Error('Not signed in');
     return throwIfError<Qualification>(
-      await supabase.from('qualifications').upsert(q).select().single(),
+      await supabase
+        .from('qualifications')
+        .upsert({ ...q, user_id: user.id }, { onConflict: 'id' })
+        .select()
+        .single(),
     );
   },
   remove: async (id: string) => {
@@ -457,10 +467,13 @@ export const certificatesApi = {
    */
   countsByInspection: async (inspectionIds: string[]): Promise<Record<string, number>> => {
     if (inspectionIds.length === 0) return {};
+    // Hard cap — list screens never need more than a few thousand cert
+    // fingerprints and an uncapped query on a big DB would blow up memory.
     const { data, error } = await supabase
       .from('certificates')
       .select('inspection_id')
-      .in('inspection_id', inspectionIds);
+      .in('inspection_id', inspectionIds)
+      .limit(10_000);
     if (error) throw error;
     const counts: Record<string, number> = {};
     for (const row of (data ?? []) as Array<{ inspection_id: string }>) {
@@ -651,6 +664,10 @@ export const storageApi = {
   },
   publicUrl: (bucket: string, path: string) =>
     supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl,
+  /** Best-effort blob delete. Swallows errors (file may already be gone). */
+  remove: async (bucket: string, path: string): Promise<void> => {
+    await supabase.storage.from(bucket).remove([path]).catch(() => undefined);
+  },
 };
 
 // -------- Helpers --------
