@@ -10,7 +10,6 @@ import { useCallback, useState } from 'react';
 import {
   Alert,
   FlatList,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -44,7 +43,6 @@ export default function InspectionDetailScreen() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [loading, setLoading] = useState(true);
-  const [previewCert, setPreviewCert] = useState<Certificate | null>(null);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -213,71 +211,66 @@ export default function InspectionDetailScreen() {
                   };
                   const qualTypes = params?.qualTypes ?? [];
                   const expertName = params?.expertName ?? null;
+                  const safeColor = isSafe === false ? theme.colors.danger : theme.colors.accent;
+                  const safeBg = isSafe === false ? theme.colors.dangerSoft : theme.colors.accentSoft;
                   return (
-                    <Pressable onPress={() => setPreviewCert(item)}>
+                    <Pressable onPress={() => sharePdf(item)}>
                       <Card padding={12}>
-                        {/* Header row: icon + title + actions */}
                         <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
-                          <View style={[
-                            styles.certDot,
-                            isSafe === false && { backgroundColor: theme.colors.dangerSoft },
-                          ]}>
-                            <Ionicons
-                              name="document-text"
-                              size={18}
-                              color={isSafe === false ? theme.colors.danger : theme.colors.accent}
-                            />
+                          {/* Icon */}
+                          <View style={[styles.certDot, { backgroundColor: safeBg }]}>
+                            <Ionicons name="document-text" size={18} color={safeColor} />
                           </View>
-                          <View style={{ flex: 1, gap: 4 }}>
-                            {/* Title row: "PDF #N" + safety badge */}
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+
+                          {/* Body */}
+                          <View style={{ flex: 1, gap: 6 }}>
+                            {/* Title + safety badge */}
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                               <Text style={styles.certTitle}>PDF #{index + 1}</Text>
-                              <View style={[
-                                styles.certBadge,
-                                isSafe === false
-                                  ? { backgroundColor: theme.colors.dangerSoft }
-                                  : { backgroundColor: theme.colors.accentSoft },
-                              ]}>
-                                <Text style={[
-                                  styles.certBadgeText,
-                                  { color: isSafe === false ? theme.colors.danger : theme.colors.accent },
-                                ]}>
+                              <View style={[styles.certBadge, { backgroundColor: safeBg }]}>
+                                <Text style={[styles.certBadgeText, { color: safeColor }]}>
                                   {isSafe === false ? 'არ არის უსაფრთხო' : 'უსაფრთხოა'}
                                 </Text>
                               </View>
                             </View>
+
                             {/* Date */}
                             <Text style={styles.certMeta}>
                               {new Date(item.generated_at).toLocaleString('ka')}
                             </Text>
-                            {/* Expert */}
-                            {expertName ? (
-                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                <Ionicons name="person-outline" size={11} color={theme.colors.inkFaint} />
-                                <Text style={styles.certMeta}>{expertName}</Text>
-                              </View>
-                            ) : null}
-                            {/* Qual certs */}
-                            {qualTypes.length > 0 ? (
-                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                <Ionicons name="ribbon-outline" size={11} color={theme.colors.inkFaint} />
-                                <Text style={styles.certMeta} numberOfLines={1}>
-                                  {qualTypes.map(q => q.number ? `${q.type} №${q.number}` : q.type).join(' · ')}
-                                </Text>
-                              </View>
-                            ) : null}
+
+                            {/* Badges row */}
+                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                              {expertName ? (
+                                <View style={styles.infoBadge}>
+                                  <Ionicons name="person-outline" size={11} color={theme.colors.inkSoft} />
+                                  <Text style={styles.infoBadgeText}>{expertName}</Text>
+                                </View>
+                              ) : null}
+                              {qualTypes.map(q => (
+                                <View key={q.type} style={styles.infoBadge}>
+                                  <Ionicons name="ribbon-outline" size={11} color={theme.colors.inkSoft} />
+                                  <Text style={styles.infoBadgeText}>
+                                    {q.number ? `№${q.number}` : q.type}
+                                  </Text>
+                                </View>
+                              ))}
+                            </View>
                           </View>
+
                           {/* Actions */}
-                          <View style={{ gap: 4 }}>
+                          <View style={{ alignItems: 'center', gap: 2 }}>
                             <Pressable
                               hitSlop={10}
                               onPress={() => deleteCert(item)}
                               style={{ padding: 6 }}
-                              accessibilityLabel="delete certificate"
+                              accessibilityLabel="delete"
                             >
                               <Ionicons name="trash-outline" size={18} color={theme.colors.danger} />
                             </Pressable>
-                            <Ionicons name="share-outline" size={18} color={theme.colors.inkFaint} style={{ padding: 6 }} />
+                            <View style={{ padding: 6 }}>
+                              <Ionicons name="share-outline" size={18} color={theme.colors.inkFaint} />
+                            </View>
                           </View>
                         </View>
                       </Card>
@@ -295,213 +288,9 @@ export default function InspectionDetailScreen() {
           />
         </ScrollView>
       </SafeAreaView>
-
-      {/* PDF preview sheet */}
-      <Modal
-        visible={previewCert !== null}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setPreviewCert(null)}
-      >
-        <Pressable
-          style={previewStyles.backdrop}
-          onPress={() => setPreviewCert(null)}
-        />
-        {previewCert ? (
-          <CertPreviewSheet
-            cert={previewCert}
-            templateName={template?.name ?? null}
-            projectName={project?.name ?? null}
-            onClose={() => setPreviewCert(null)}
-            onShare={() => {
-              void sharePdf(previewCert);
-              setPreviewCert(null);
-            }}
-          />
-        ) : null}
-      </Modal>
     </Screen>
   );
 }
-
-// ── CertPreviewSheet ─────────────────────────────────────────────────────────
-
-function CertPreviewSheet({
-  cert,
-  templateName,
-  projectName,
-  onClose,
-  onShare,
-}: {
-  cert: Certificate;
-  templateName: string | null;
-  projectName: string | null;
-  onClose: () => void;
-  onShare: () => void;
-}) {
-  const isSafe = cert.is_safe_for_use;
-  const params = cert.params as {
-    expertName?: string | null;
-    qualTypes?: { type: string; number: string | null }[];
-  };
-  const qualTypes = params?.qualTypes ?? [];
-  const expertName = params?.expertName ?? null;
-
-  const accentColor = isSafe === false ? theme.colors.danger : theme.colors.accent;
-  const accentBg = isSafe === false ? theme.colors.dangerSoft : theme.colors.accentSoft;
-
-  return (
-    <SafeAreaView style={previewStyles.sheet} edges={['bottom']}>
-      {/* Drag handle */}
-      <View style={previewStyles.handle} />
-
-      {/* Document card — mimics PDF header layout */}
-      <View style={[previewStyles.docCard, { borderTopColor: accentColor }]}>
-        {/* Status banner */}
-        <View style={[previewStyles.statusBanner, { backgroundColor: accentBg }]}>
-          <Ionicons
-            name={isSafe === false ? 'warning' : 'checkmark-circle'}
-            size={14}
-            color={accentColor}
-          />
-          <Text style={[previewStyles.statusBannerText, { color: accentColor }]}>
-            {isSafe === false ? 'არ არის უსაფრთხო ექსპლუატაციისთვის' : 'უსაფრთხოა ექსპლუატაციისთვის'}
-          </Text>
-        </View>
-
-        {/* Template + project */}
-        <Text style={previewStyles.docTitle} numberOfLines={2}>
-          {templateName ?? 'ინსპექცია'}
-        </Text>
-        {projectName ? (
-          <Text style={previewStyles.docMeta}>{projectName}</Text>
-        ) : null}
-        <Text style={previewStyles.docMeta}>
-          {new Date(cert.generated_at).toLocaleString('ka')}
-        </Text>
-
-        {/* Divider */}
-        <View style={previewStyles.divider} />
-
-        {/* Inspector + quals */}
-        {expertName ? (
-          <View style={previewStyles.metaRow}>
-            <Ionicons name="person-circle-outline" size={14} color={theme.colors.inkSoft} />
-            <Text style={previewStyles.metaText}>{expertName}</Text>
-          </View>
-        ) : null}
-        {qualTypes.map(q => (
-          <View key={q.type} style={previewStyles.metaRow}>
-            <Ionicons name="ribbon-outline" size={14} color={theme.colors.inkSoft} />
-            <Text style={previewStyles.metaText}>
-              {q.type}{q.number ? ` · №${q.number}` : ''}
-            </Text>
-          </View>
-        ))}
-
-        {/* Conclusion snippet */}
-        {cert.conclusion_text ? (
-          <>
-            <View style={previewStyles.divider} />
-            <Text style={previewStyles.conclusionLabel}>დასკვნა</Text>
-            <Text style={previewStyles.conclusionText} numberOfLines={3}>
-              {cert.conclusion_text}
-            </Text>
-          </>
-        ) : null}
-      </View>
-
-      {/* Actions */}
-      <View style={previewStyles.actions}>
-        <Button title="PDF გაზიარება" onPress={onShare} style={{ flex: 1 }} />
-        <Button title="დახურვა" variant="secondary" onPress={onClose} style={{ flex: 1 }} />
-      </View>
-    </SafeAreaView>
-  );
-}
-
-const previewStyles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-  },
-  sheet: {
-    backgroundColor: theme.colors.background,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-    gap: 16,
-  },
-  handle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: theme.colors.hairline,
-    alignSelf: 'center',
-    marginBottom: 4,
-  },
-  docCard: {
-    backgroundColor: theme.colors.card,
-    borderRadius: 14,
-    borderTopWidth: 4,
-    overflow: 'hidden',
-    padding: 16,
-    gap: 6,
-  },
-  statusBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    marginBottom: 4,
-  },
-  statusBannerText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  docTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: theme.colors.ink,
-    marginTop: 2,
-  },
-  docMeta: {
-    fontSize: 12,
-    color: theme.colors.inkSoft,
-  },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: theme.colors.hairline,
-    marginVertical: 8,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  metaText: {
-    fontSize: 13,
-    color: theme.colors.ink,
-  },
-  conclusionLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: theme.colors.inkSoft,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  conclusionText: {
-    fontSize: 13,
-    color: theme.colors.ink,
-    lineHeight: 18,
-  },
-  actions: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-});
 
 // ── Scorecard component ──────────────────────────────────────────────────────
 
@@ -736,5 +525,18 @@ const styles = StyleSheet.create({
   certBadgeText: {
     fontSize: 10,
     fontWeight: '700',
+  },
+  infoBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: theme.colors.subtleSurface,
+  },
+  infoBadgeText: {
+    fontSize: 11,
+    color: theme.colors.inkSoft,
   },
 });
