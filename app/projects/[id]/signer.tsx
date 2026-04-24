@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { Alert, Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -137,7 +137,12 @@ export default function SignerForm() {
         }}
       />
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
-        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24, gap: 14 }}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={{ flex: 1 }}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+        >
+          <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24, gap: 14 }}>
           <Field label="როლი">
             <View style={{ gap: 8 }}>
               {ROSTER_ROLES.map(r => (
@@ -197,7 +202,8 @@ export default function SignerForm() {
             disabled={!fullName.trim()}
             style={{ marginTop: 8 }}
           />
-        </ScrollView>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
 
       <SignatureCaptureModal

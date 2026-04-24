@@ -17,7 +17,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useActionSheet } from '@expo/react-native-action-sheet';
+import { useBottomSheet } from '../../components/BottomSheet';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Print from 'expo-print';
@@ -67,7 +67,7 @@ export default function GenerateCertificateScreen() {
   const inspectionId = urlParams.inspectionId ?? null;
   const router = useRouter();
   const toast = useToast();
-  const { showActionSheetWithOptions } = useActionSheet();
+  const showActionSheetWithOptions = useBottomSheet();
   const { state } = useSession();
   const user = state.status === 'signedIn' ? state.user : null;
 

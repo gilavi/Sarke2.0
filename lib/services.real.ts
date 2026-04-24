@@ -335,6 +335,10 @@ export const answersApi = {
         .single(),
     );
   },
+  removePhoto: async (photoId: string) => {
+    const { error } = await supabase.from('answer_photos').delete().eq('id', photoId);
+    if (error) throw error;
+  },
 };
 
 // -------- Signatures --------

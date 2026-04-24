@@ -135,6 +135,7 @@ export interface Answer {
   value_text: string | null;
   grid_values: GridValues | null;
   comment: string | null;
+  notes: string | null;
 }
 
 export interface AnswerPhoto {

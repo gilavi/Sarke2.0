@@ -222,7 +222,7 @@ export default function InspectionDetailScreen() {
                             <View style={styles.certThumbBody}>
                               <Ionicons name="document-text" size={12} color={theme.colors.inkFaint} />
                               <View style={{ gap: 3, marginTop: 5 }}>
-                                {['90%', '65%', '75%', '50%', '70%'].map((w, i) => (
+                                {(['90%', '65%', '75%', '50%', '70%'] as const).map((w, i) => (
                                   <View key={i} style={[styles.certThumbLine, { width: w, opacity: i > 1 ? 0.5 : 1 }]} />
                                 ))}
                               </View>

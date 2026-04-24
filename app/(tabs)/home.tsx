@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useActionSheet } from '@expo/react-native-action-sheet';
+import { useBottomSheet } from '../../components/BottomSheet';
 import { useSession } from '../../lib/session';
 import { projectAvatar } from '../../lib/projectAvatar';
 import {
@@ -315,7 +315,7 @@ function ProjectPickerSheet({
 }) {
   const router = useRouter();
   const toast = useToast();
-  const { showActionSheetWithOptions } = useActionSheet();
+  const showActionSheetWithOptions = useBottomSheet();
   const [view, setView] = useState<'list' | 'new'>('list');
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');

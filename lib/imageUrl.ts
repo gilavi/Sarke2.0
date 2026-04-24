@@ -6,14 +6,14 @@ import { blobToDataUrl } from './blob';
  * Fetch a storage object and return it as a base64 `data:` URL.
  *
  * Strategy (in order):
- *  1. Signed URL → native `FileSystem.downloadAsync` → `readAsStringAsync(base64)`.
- *     This is the most reliable path on React Native: no Blob, no FileReader,
- *     no streaming quirks. It is what expo-print needs for `<img src="data:...">`.
- *  2. Authenticated Supabase blob download → `blobToDataUrl`.
- *     Fallback for environments where a signed URL can't be issued.
- *  3. Raw signed URL / public URL.
- *     Last resort — the PDF WebView usually can't reach these during render,
- *     but we return *something* rather than blowing up.
+ *  1. Signed URL → native `FileSystem.downloadAsync` → `readAsStringAsync(Base64)`.
+ *     Most reliable on React Native — no Blob/FileReader quirks in Hermes.
+ *  2. Signed URL → `fetch()` → `blob()` → `blobToDataUrl`.
+ *     No FileSystem dependency; works when step 1 fails (e.g. temp-dir issues).
+ *  3. Authenticated Supabase blob download → `blobToDataUrl`.
+ *     Fallback when signed-URL generation fails but the session is valid.
+ *  4. Raw signed URL / public URL — last resort; the PDF WebView usually
+ *     can't load these, but we return *something* rather than blowing up.
  */
 export async function getStorageImageDataUrl(
   bucket: string,
@@ -23,28 +23,40 @@ export async function getStorageImageDataUrl(
   try {
     const signed = await storageApi.signedUrl(bucket, path, 3600);
     const ext = normalizedExt(path);
-    const tmp = `${FileSystem.cacheDirectory ?? FileSystem.documentDirectory}pdf-embed-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext || 'bin'}`;
-    try {
-      const res = await FileSystem.downloadAsync(signed, tmp);
-      if (res.status !== 200) throw new Error(`download status ${res.status}`);
-      const base64 = await FileSystem.readAsStringAsync(tmp, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-      if (!base64) throw new Error('empty base64');
-      const mime =
-        contentTypeFromHeaders(res.headers) ??
-        inferMime(ext) ??
-        'image/jpeg';
-      return `data:${mime};base64,${base64}`;
-    } finally {
-      // Best-effort cleanup; never block caller on it.
-      FileSystem.deleteAsync(tmp, { idempotent: true }).catch(() => undefined);
+    const cacheBase = FileSystem.cacheDirectory ?? FileSystem.documentDirectory;
+    if (cacheBase) {
+      const tmp = `${cacheBase}pdf-embed-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext || 'bin'}`;
+      try {
+        const res = await FileSystem.downloadAsync(signed, tmp);
+        if (res.status !== 200) throw new Error(`download status ${res.status}`);
+        const base64 = await FileSystem.readAsStringAsync(tmp, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        if (!base64) throw new Error('empty base64');
+        const mime = contentTypeFromHeaders(res.headers) ?? inferMime(ext) ?? 'image/jpeg';
+        return `data:${mime};base64,${base64}`;
+      } finally {
+        FileSystem.deleteAsync(tmp, { idempotent: true }).catch(() => undefined);
+      }
     }
   } catch {
     // fall through
   }
 
-  // 2. Authenticated download + FileReader / arrayBuffer fallback
+  // 2. Signed URL + fetch → blobToDataUrl (no FileSystem dependency)
+  try {
+    const signed = await storageApi.signedUrl(bucket, path, 3600);
+    const response = await fetch(signed);
+    if (response.ok) {
+      const blob = await response.blob();
+      const result = await blobToDataUrl(blob);
+      if (result.startsWith('data:')) return result;
+    }
+  } catch {
+    // fall through
+  }
+
+  // 3. Authenticated download + FileReader / arrayBuffer fallback
   try {
     const blob = await storageApi.download(bucket, path);
     return await blobToDataUrl(blob);
@@ -52,7 +64,7 @@ export async function getStorageImageDataUrl(
     // fall through
   }
 
-  // 3. Last-resort remote URL (likely won't render in the PDF WebView, but we
+  // 4. Last-resort remote URL (likely won't render in the PDF WebView, but we
   // always return a valid-looking string so callers don't have to branch).
   try {
     return await storageApi.signedUrl(bucket, path, 3600);

@@ -497,6 +497,7 @@ export const answersApi = {
         value_text: a.value_text ?? null,
         grid_values: a.grid_values ?? null,
         comment: a.comment ?? null,
+        notes: a.notes ?? null,
       };
       db.answers.push(row);
     }
@@ -523,6 +524,11 @@ export const answersApi = {
     db.answer_photos.push(photo);
     await save();
     return photo;
+  },
+  removePhoto: async (photoId: string) => {
+    const db = await load();
+    db.answer_photos = db.answer_photos.filter(p => p.id !== photoId);
+    await save();
   },
 };
 
