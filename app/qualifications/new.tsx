@@ -4,15 +4,19 @@
 // Previously lived at `app/certificates/new.tsx` — moved in 0006 decoupling
 // so `/certificates/new` can be repurposed as the PDF generator.
 import { useState } from 'react';
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useRouter } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { Button, Field, Input, Screen } from '../../components/ui';
+import { UploadOverlay } from '../../components/UploadOverlay';
 import { qualificationsApi, storageApi } from '../../lib/services';
 import { STORAGE_BUCKETS, supabase } from '../../lib/supabase';
+import { useToast } from '../../lib/toast';
+import { haptics } from '../../lib/haptics';
+import { friendlyError } from '../../lib/errorMap';
 import { theme } from '../../lib/theme';
 
 const TYPES: { value: string; label: string }[] = [
@@ -30,6 +34,7 @@ function toISO(d: Date) {
 
 export default function AddQualification() {
   const router = useRouter();
+  const toast = useToast();
   const [type, setType] = useState('xaracho_inspector');
   const [number, setNumber] = useState('');
   const [issued, setIssued] = useState(new Date());
@@ -71,9 +76,12 @@ export default function AddQualification() {
         expires_at: toISO(expires),
         file_url: filePath,
       });
+      haptics.success();
+      toast.success('სერტიფიკატი დაემატა');
       router.back();
-    } catch (e: any) {
-      Alert.alert('შეცდომა', e?.message ?? '');
+    } catch (e) {
+      haptics.error();
+      toast.error(friendlyError(e));
     } finally {
       setBusy(false);
     }
@@ -83,8 +91,13 @@ export default function AddQualification() {
     <Screen>
       <Stack.Screen options={{ headerShown: true, title: 'ახალი სერტიფიკატი' }} />
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
+       <KeyboardAvoidingView
+         style={{ flex: 1 }}
+         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+         keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+       >
         <ScrollView contentContainerStyle={{ padding: 20, gap: 14 }}>
-          <Field label="ტიპი">
+          <Field label="ტიპი" required>
             <View style={{ gap: 8 }}>
               {TYPES.map(t => (
                 <Pressable
@@ -105,7 +118,7 @@ export default function AddQualification() {
             <Input value={number} onChangeText={setNumber} placeholder="№ სერტიფიკატის ნომერი" />
           </Field>
 
-          <Field label="გაცემის თარიღი">
+          <Field label="გაცემის თარიღი" required>
             <Pressable onPress={() => setPicker('issued')} style={styles.dateBtn}>
               <Ionicons name="calendar-outline" size={18} color={theme.colors.accent} />
               <Text style={styles.dateBtnText}>{formatDate(issued)}</Text>
@@ -113,7 +126,7 @@ export default function AddQualification() {
             </Pressable>
           </Field>
 
-          <Field label="ვადის გასვლის თარიღი">
+          <Field label="ვადის გასვლის თარიღი" required>
             <Pressable onPress={() => setPicker('expires')} style={styles.dateBtn}>
               <Ionicons name="calendar-outline" size={18} color={theme.colors.accent} />
               <Text style={styles.dateBtnText}>{formatDate(expires)}</Text>
@@ -140,7 +153,12 @@ export default function AddQualification() {
 
           <Button title="შენახვა" onPress={save} loading={busy} />
         </ScrollView>
+       </KeyboardAvoidingView>
       </SafeAreaView>
+      <UploadOverlay
+        visible={busy && !!photoUri}
+        label="სერტიფიკატი იტვირთება…"
+      />
 
       <Modal visible={picker !== null} transparent animationType="slide" onRequestClose={() => setPicker(null)}>
         <Pressable style={styles.backdrop} onPress={() => setPicker(null)}>

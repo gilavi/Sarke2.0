@@ -1,7 +1,7 @@
 import '../lib/polyfills';
 import { useEffect } from 'react';
 import * as Linking from 'expo-linking';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { Stack, useGlobalSearchParams, useRouter, useSegments } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -15,6 +15,7 @@ import { TERMS_VERSION } from '../lib/terms';
 import { ToastProvider } from '../lib/toast';
 import { OfflineProvider } from '../lib/offline';
 import { OfflineBanner } from '../components/OfflineBanner';
+import { SyncStatusPill } from '../components/SyncStatusPill';
 import { theme } from '../lib/theme';
 
 // Codes we've already tried to exchange. Prevents a double-exchange when both
@@ -27,6 +28,7 @@ function AuthGate() {
   const { state } = useSession();
   const segments = useSegments();
   const router = useRouter();
+  const { mode } = useGlobalSearchParams<{ mode?: string }>();
 
   // Handle Supabase password-recovery deep links (sarke://reset?code=...).
   // Exchange the PKCE code for a session, then route to the reset form.
@@ -69,13 +71,13 @@ function AuthGate() {
         !state.user?.tc_accepted_version || state.user.tc_accepted_version !== TERMS_VERSION;
       if (needsTerms && !inTerms) {
         router.replace('/terms');
-      } else if (!needsTerms && (inAuth || inTerms)) {
+      } else if (!needsTerms && (inAuth || (inTerms && mode !== 'view'))) {
         router.replace('/(tabs)/home');
       }
       // Opportunistic retry of any signature uploads that failed earlier.
       void flushPendingSignatures().catch(() => {});
     }
-  }, [state, segments]);
+  }, [state, segments, mode]);
 
   if (state.status === 'loading') {
     // Subtle full-screen skeleton instead of a spinner — hides the auth
@@ -136,6 +138,7 @@ export default function RootLayout() {
               <SessionProvider>
                 <StatusBar style="dark" />
                 <OfflineBanner />
+                <SyncStatusPill />
                 <AuthGate />
               </SessionProvider>
             </OfflineProvider>

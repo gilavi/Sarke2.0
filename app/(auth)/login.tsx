@@ -16,32 +16,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useSession } from '../../lib/session';
 import { useToast } from '../../lib/toast';
+import { isEmail } from '../../lib/validators';
+import { friendlyError, isEmailTakenError } from '../../lib/errorMap';
 import { theme } from '../../lib/theme';
 import { Button, Card, Field, Input } from '../../components/ui';
 
 type Mode = 'login' | 'register';
-
-function friendlyError(msg: string): string {
-  const lower = (msg ?? '').toLowerCase();
-  if (lower.includes('invalid login credentials') || lower.includes('invalid credentials'))
-    return 'არასწორი ელ-ფოსტა ან პაროლი';
-  if (lower.includes('email not confirmed'))
-    return 'გთხოვთ, დაადასტუროთ ელ-ფოსტა, შემდეგ სცადეთ შესვლა';
-  if (lower.includes('password should be at least'))
-    return 'პაროლი უნდა შეიცავდეს მინიმუმ 6 სიმბოლოს';
-  if (lower.includes('rate limit') || lower.includes('too many'))
-    return 'ძალიან ბევრი მცდელობა. მოიცადეთ და კვლავ სცადეთ';
-  if (lower.includes('network') || lower.includes('fetch failed'))
-    return 'ქსელის შეცდომა. შეამოწმეთ ინტერნეტ კავშირი';
-  if (lower.includes('cancelled') || lower.includes('canceled'))
-    return 'შესვლა გაუქმდა';
-  return msg || 'უცნობი შეცდომა';
-}
-
-function isEmailTakenError(msg: string): boolean {
-  const lower = (msg ?? '').toLowerCase();
-  return lower.includes('already registered') || lower.includes('user already exists');
-}
 
 /* ─── Root Screen ─── */
 
@@ -190,6 +170,8 @@ function LoginForm({ onForgotPassword }: { onForgotPassword: () => void }) {
   const [busy, setBusy] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [emailTouched, setEmailTouched] = useState(false);
+  const emailError = emailTouched && email.trim() && !isEmail(email) ? 'არასწორი ელ-ფოსტა' : undefined;
 
   const handleSignIn = async () => {
     setBusy(true);
@@ -218,17 +200,19 @@ function LoginForm({ onForgotPassword }: { onForgotPassword: () => void }) {
 
   return (
     <View style={{ gap: 14 }}>
-      <Field label="იმეილი">
+      <Field label="იმეილი" required error={emailError}>
         <Input
           value={email}
           onChangeText={setEmail}
+          onBlur={() => setEmailTouched(true)}
           placeholder="you@example.com"
           keyboardType="email-address"
           autoCapitalize="none"
           autoCorrect={false}
+          error={emailError}
         />
       </Field>
-      <Field label="პაროლი">
+      <Field label="პაროლი" required>
         <View>
           <Input
             value={password}
@@ -236,7 +220,13 @@ function LoginForm({ onForgotPassword }: { onForgotPassword: () => void }) {
             placeholder="••••••••"
             secureTextEntry={!showPw}
           />
-          <Pressable onPress={() => setShowPw(v => !v)} style={styles.eyeBtn} hitSlop={10}>
+          <Pressable
+            onPress={() => setShowPw(v => !v)}
+            style={styles.eyeBtn}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel={showPw ? 'პაროლის დამალვა' : 'პაროლის ჩვენება'}
+          >
             <Ionicons
               name={showPw ? 'eye-off-outline' : 'eye-outline'}
               size={20}
@@ -245,11 +235,11 @@ function LoginForm({ onForgotPassword }: { onForgotPassword: () => void }) {
           </Pressable>
         </View>
       </Field>
-      <Pressable onPress={onForgotPassword} style={{ alignSelf: 'flex-end', marginTop: -4 }}>
+      <Pressable onPress={onForgotPassword} style={{ alignSelf: 'flex-end', marginTop: -4 }} accessibilityRole="button">
         <Text style={styles.linkText}>პაროლი დაგავიწყდა?</Text>
       </Pressable>
       {error ? <InlineError>{error}</InlineError> : null}
-      <Button title="შესვლა" onPress={handleSignIn} loading={busy} disabled={!email || !password} />
+      <Button title="შესვლა" onPress={handleSignIn} loading={busy} disabled={!email || !password || !!emailError} />
       <Divider />
       <GoogleButton onPress={handleGoogle} loading={googleBusy} />
     </View>

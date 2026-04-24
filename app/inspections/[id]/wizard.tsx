@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,6 +7,7 @@ import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Button, Card, Screen } from '../../../components/ui';
 import { Skeleton, SkeletonWizard } from '../../../components/Skeleton';
+import { UploadOverlay } from '../../../components/UploadOverlay';
 import {
   answersApi,
   inspectionsApi,
@@ -16,6 +17,8 @@ import {
 import { getStorageImageDisplayUrl } from '../../../lib/imageUrl';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import { useToast } from '../../../lib/toast';
+import { friendlyError } from '../../../lib/errorMap';
+import { haptics } from '../../../lib/haptics';
 import { useOffline } from '../../../lib/offline';
 import { theme } from '../../../lib/theme';
 import type {
@@ -75,6 +78,7 @@ export default function QuestionnaireWizard() {
   const [conclusion, setConclusion] = useState('');
   const [isSafe, setIsSafe] = useState<boolean | null>(null);
   const [harnessName, setHarnessName] = useState('');
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   // Cancellation token for in-flight load(). Each load() run gets its own
   // object; when the screen blurs we flip `cancelled = true` on the active
@@ -257,6 +261,7 @@ export default function QuestionnaireWizard() {
     });
     if (result.canceled || result.assets.length === 0) return;
     const asset = result.assets[0];
+    setUploadingPhoto(true);
     try {
       // Drain any pending answer edits for this question so the server copy
       // of `answers` reflects the latest user input before we reference it.
@@ -295,9 +300,13 @@ export default function QuestionnaireWizard() {
       // server-returned path takes over and PhotoThumb fetches a signed URL.
       const photoForDisplay: AnswerPhoto = { ...photo, storage_path: asset.uri };
       setPhotos(prev => ({ ...prev, [answerId]: [...(prev[answerId] ?? []), photoForDisplay] }));
+      haptics.success();
       toast.success('ფოტო აიტვირთა');
     } catch (e: any) {
-      toast.error(`ფოტო ვერ აიტვირთა: ${e?.message ?? 'ქსელის შეცდომა'}`);
+      haptics.error();
+      toast.error(`ფოტო ვერ აიტვირთა: ${friendlyError(e)}`);
+    } finally {
+      setUploadingPhoto(false);
     }
   };
 
@@ -389,6 +398,8 @@ export default function QuestionnaireWizard() {
           headerRight: () => (
             <Pressable
               hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel="გასვლა"
               onPress={() => {
                 Alert.alert(
                   'გასვლა',
@@ -403,6 +414,7 @@ export default function QuestionnaireWizard() {
                       text: 'წაშლა',
                       style: 'destructive',
                       onPress: () => {
+                        haptics.warning();
                         Alert.alert('წაშლა?', 'კითხვარი სამუდამოდ წაიშლება.', [
                           { text: 'გაუქმება', style: 'cancel' },
                           {
@@ -412,10 +424,11 @@ export default function QuestionnaireWizard() {
                               if (!id) return;
                               try {
                                 await inspectionsApi.remove(id);
+                                haptics.success();
                                 toast.success('წაიშალა');
                                 router.replace('/(tabs)/home' as any);
-                              } catch (e: any) {
-                                toast.error(e?.message ?? 'ვერ წაიშალა');
+                              } catch (e) {
+                                toast.error(friendlyError(e));
                               }
                             },
                           },
@@ -432,6 +445,11 @@ export default function QuestionnaireWizard() {
         }}
       />
       <SafeAreaView style={{ flex: 1 }} edges={[]}>
+       <KeyboardAvoidingView
+         style={{ flex: 1 }}
+         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+         keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+       >
         <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
           <View style={styles.progressBg}>
             <View
@@ -515,7 +533,9 @@ export default function QuestionnaireWizard() {
             />
           )}
         </View>
+       </KeyboardAvoidingView>
       </SafeAreaView>
+      <UploadOverlay visible={uploadingPhoto} label="ფოტო იტვირთება…" />
     </Screen>
   );
 }

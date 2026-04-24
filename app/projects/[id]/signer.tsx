@@ -5,9 +5,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import SignatureScreen, { type SignatureViewRef } from 'react-native-signature-canvas';
 import { Button, Field, Input, Screen } from '../../../components/ui';
+import { UploadOverlay } from '../../../components/UploadOverlay';
 import { projectsApi, storageApi } from '../../../lib/services';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import { useToast } from '../../../lib/toast';
+import { friendlyError } from '../../../lib/errorMap';
+import { haptics } from '../../../lib/haptics';
+import { isGeorgianPhone, normalizePhone } from '../../../lib/validators';
 import { getStorageImageDisplayUrl } from '../../../lib/imageUrl';
 import { theme } from '../../../lib/theme';
 import type { ProjectSigner, SignerRole } from '../../../types/models';
@@ -32,6 +36,14 @@ export default function SignerForm() {
   const [pendingSigData, setPendingSigData] = useState<string | null>(null); // base64 png to upload
   const [capturing, setCapturing] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [nameTouched, setNameTouched] = useState(false);
+  const [phoneTouched, setPhoneTouched] = useState(false);
+
+  const nameError = nameTouched && !fullName.trim() ? 'სავალდებულო ველი' : undefined;
+  const phoneError =
+    phoneTouched && phone.trim() && !isGeorgianPhone(phone)
+      ? 'ფორმატი: +995 5XX XXX XXX ან 32X XXX XXX'
+      : undefined;
 
   const load = useCallback(async () => {
     if (!id || !signerId) return;
@@ -70,7 +82,11 @@ export default function SignerForm() {
   };
 
   const save = async () => {
+    setNameTouched(true);
+    setPhoneTouched(true);
     if (!id || !fullName.trim()) return;
+    if (phone.trim() && !isGeorgianPhone(phone)) return;
+    const normalized = phone.trim() ? normalizePhone(phone) : null;
     setBusy(true);
     try {
       let sigPath = existing?.signature_png_url ?? null;
@@ -89,14 +105,16 @@ export default function SignerForm() {
         project_id: id,
         role,
         full_name: fullName.trim(),
-        phone: phone.trim() || null,
+        phone: normalized,
         position: position.trim() || null,
         signature_png_url: sigPath,
       });
+      haptics.success();
       toast.success(editing ? 'განახლდა' : 'დაემატა');
       router.back();
-    } catch (e: any) {
-      toast.error(e?.message ?? 'შენახვა ვერ მოხერხდა');
+    } catch (e) {
+      haptics.error();
+      toast.error(friendlyError(e));
     } finally {
       setBusy(false);
     }
@@ -104,6 +122,7 @@ export default function SignerForm() {
 
   const remove = () => {
     if (!existing) return;
+    haptics.warning();
     Alert.alert('წაშლა?', `${existing.full_name}`, [
       { text: 'გაუქმება', style: 'cancel' },
       {
@@ -112,10 +131,11 @@ export default function SignerForm() {
         onPress: async () => {
           try {
             await projectsApi.deleteSigner(existing.id);
+            haptics.success();
             toast.success('წაიშალა');
             router.back();
           } catch (e: any) {
-            toast.error(e?.message ?? 'ვერ წაიშალა');
+            toast.error(friendlyError(e));
           }
         },
       },
@@ -164,11 +184,24 @@ export default function SignerForm() {
             </View>
           </Field>
 
-          <Field label="სახელი გვარი">
-            <Input value={fullName} onChangeText={setFullName} placeholder="გიორგი ხელაძე" />
+          <Field label="სახელი გვარი" required error={nameError}>
+            <Input
+              value={fullName}
+              onChangeText={setFullName}
+              onBlur={() => setNameTouched(true)}
+              placeholder="გიორგი ხელაძე"
+              error={nameError}
+            />
           </Field>
-          <Field label="ტელეფონი">
-            <Input value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="+995 5XX XX XX XX" />
+          <Field label="ტელეფონი" error={phoneError}>
+            <Input
+              value={phone}
+              onChangeText={setPhone}
+              onBlur={() => setPhoneTouched(true)}
+              keyboardType="phone-pad"
+              placeholder="+995 5XX XXX XXX"
+              error={phoneError}
+            />
           </Field>
           <Field label="პოზიცია">
             <Input value={position} onChangeText={setPosition} placeholder="მაგ. ზედამხედველი" />
@@ -211,6 +244,10 @@ export default function SignerForm() {
         title={SIGNER_ROLE_LABEL[role]}
         onCancel={() => setCapturing(false)}
         onDone={onCaptured}
+      />
+      <UploadOverlay
+        visible={busy && sigDirty && !!pendingSigData}
+        label="ხელმოწერა იტვირთება…"
       />
     </Screen>
   );

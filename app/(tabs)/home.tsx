@@ -28,7 +28,9 @@ import {
 import { theme } from '../../lib/theme';
 import { Button, Field, Input } from '../../components/ui';
 import { Skeleton } from '../../components/Skeleton';
+import { ErrorState } from '../../components/ErrorState';
 import { useToast } from '../../lib/toast';
+import { friendlyError } from '../../lib/errorMap';
 import type { Inspection, Project, Qualification, Template } from '../../types/models';
 
 export default function HomeScreen() {
@@ -44,25 +46,35 @@ export default function HomeScreen() {
   // we know when to swap skeletons for real content. Pull-to-refresh doesn't
   // re-show skeletons — the RefreshControl spinner already signals that.
   const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  const toast = useToast();
 
-  const load = useCallback(async () => {
-    try {
-      const [c, t, r, p] = await Promise.all([
-        qualificationsApi.list().catch(() => []),
-        templatesApi.list().catch(() => []),
-        questionnairesApi.recent(10).catch(() => []),
-        projectsApi.list().catch(() => []),
-      ]);
-      setCerts(c);
-      setTemplates(t);
-      setRecent(r);
-      setProjects(p);
-    } catch {
-      // ignore
-    } finally {
-      setLoaded(true);
-    }
-  }, []);
+  const load = useCallback(
+    async (isRefresh = false) => {
+      try {
+        const [c, t, r, p] = await Promise.all([
+          qualificationsApi.list(),
+          templatesApi.list(),
+          questionnairesApi.recent(10),
+          projectsApi.list(),
+        ]);
+        setCerts(c);
+        setTemplates(t);
+        setRecent(r);
+        setProjects(p);
+        setError(null);
+      } catch (e) {
+        if (isRefresh) {
+          toast.error(friendlyError(e));
+        } else {
+          setError(e);
+        }
+      } finally {
+        setLoaded(true);
+      }
+    },
+    [toast],
+  );
 
   useFocusEffect(useCallback(() => { void load(); }, [load]));
 
@@ -88,11 +100,26 @@ export default function HomeScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await load();
+    await load(true);
     setRefreshing(false);
   };
 
   const templateName = (id: string) => templates.find(t => t.id === id)?.name ?? 'კითხვარი';
+
+  if (loaded && error && projects.length === 0 && recent.length === 0 && certs.length === 0 && templates.length === 0) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top']}>
+        <ErrorState
+          error={error}
+          onRetry={() => {
+            setError(null);
+            setLoaded(false);
+            void load();
+          }}
+        />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top']}>

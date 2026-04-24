@@ -8,7 +8,6 @@
 // Draft inspections still route through `/inspections/[id]/wizard`.
 import { useCallback, useState } from 'react';
 import {
-  Alert,
   FlatList,
   Pressable,
   ScrollView,
@@ -29,6 +28,9 @@ import {
   templatesApi,
 } from '../../lib/services';
 import { useToast } from '../../lib/toast';
+import { friendlyError } from '../../lib/errorMap';
+import { scheduleDelete } from '../../lib/pendingDeletes';
+import { haptics } from '../../lib/haptics';
 import { theme } from '../../lib/theme';
 import type { Answer, Certificate, Inspection, Project, Question, Template } from '../../types/models';
 
@@ -94,26 +96,22 @@ export default function InspectionDetailScreen() {
   };
 
   const deleteCert = (cert: Certificate) => {
-    Alert.alert(
-      'PDF რეპორტის წაშლა?',
-      'ეს წაშლის დაგენერირებულ PDF-ს. ინსპექცია უცვლელი დარჩება.',
-      [
-        { text: 'გაუქმება', style: 'cancel' },
-        {
-          text: 'წაშლა',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await certificatesApi.remove(cert.id);
-              setCerts(prev => prev.filter(c => c.id !== cert.id));
-              toast.success('წაიშალა');
-            } catch (e: any) {
-              toast.error(e?.message ?? 'ვერ წაიშალა');
-            }
-          },
-        },
-      ],
-    );
+    haptics.warning();
+    setCerts(prev => prev.filter(c => c.id !== cert.id));
+    scheduleDelete({
+      message: 'PDF რეპორტი წაიშალა',
+      toast,
+      onUndo: () => setCerts(prev => [cert, ...prev.filter(c => c.id !== cert.id)]),
+      onExecute: async () => {
+        try {
+          await certificatesApi.remove(cert.id);
+          haptics.success();
+        } catch (e) {
+          setCerts(prev => [cert, ...prev.filter(c => c.id !== cert.id)]);
+          toast.error(friendlyError(e));
+        }
+      },
+    });
   };
 
   const generateNew = () => {

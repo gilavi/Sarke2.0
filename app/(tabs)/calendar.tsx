@@ -14,6 +14,7 @@ import { useBottomSheet } from '../../components/BottomSheet';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Card } from '../../components/ui';
 import { Skeleton } from '../../components/Skeleton';
+import { ErrorState } from '../../components/ErrorState';
 import {
   questionnairesApi,
   schedulesApi,
@@ -22,6 +23,7 @@ import {
 import { googleCalendar } from '../../lib/googleCalendar';
 import { rescheduleAllFromDb } from '../../lib/notifications';
 import { useToast } from '../../lib/toast';
+import { friendlyError } from '../../lib/errorMap';
 import { theme } from '../../lib/theme';
 import type { ScheduleWithItem, Template } from '../../types/models';
 
@@ -96,18 +98,28 @@ export default function CalendarScreen() {
   const [selected, setSelected] = useState<Date>(() => startOfDay(new Date()));
   const [syncing, setSyncing] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState<unknown>(null);
 
-  const load = useCallback(async () => {
-    const [ss, ts] = await Promise.all([
-      schedulesApi.list().catch(() => [] as ScheduleWithItem[]),
-      templatesApi.list().catch(() => [] as Template[]),
-    ]);
-    setSchedules(ss);
-    setTemplates(ts);
-    // Rebuild local reminders from the fresh list — best-effort.
-    void rescheduleAllFromDb(ss);
-    setLoaded(true);
-  }, []);
+  const load = useCallback(
+    async (isRefresh = false) => {
+      try {
+        const [ss, ts] = await Promise.all([schedulesApi.list(), templatesApi.list()]);
+        setSchedules(ss);
+        setTemplates(ts);
+        setError(null);
+        void rescheduleAllFromDb(ss);
+      } catch (e) {
+        if (isRefresh) {
+          toast.error(friendlyError(e));
+        } else {
+          setError(e);
+        }
+      } finally {
+        setLoaded(true);
+      }
+    },
+    [toast],
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -209,6 +221,21 @@ export default function CalendarScreen() {
       setSyncing(false);
     }
   };
+
+  if (loaded && error && schedules.length === 0 && templates.length === 0) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top']}>
+        <ErrorState
+          error={error}
+          onRetry={() => {
+            setError(null);
+            setLoaded(false);
+            void load();
+          }}
+        />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top']}>
@@ -364,11 +391,56 @@ export default function CalendarScreen() {
               ))}
             </>
           ) : daySchedules.length === 0 ? (
-            <Card>
-              <Text style={{ color: theme.colors.inkSoft, fontSize: 13 }}>
-                შემოწმება არ არის ამ დღეს.
+            <View style={{ alignItems: 'center', paddingVertical: 28, gap: 10 }}>
+              <View
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 28,
+                  backgroundColor: theme.colors.accentSoft,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Ionicons name="calendar-clear-outline" size={26} color={theme.colors.accent} />
+              </View>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: theme.colors.ink }}>
+                ამ დღეს შემოწმება არ არის
               </Text>
-            </Card>
+              <Text
+                style={{
+                  fontSize: 13,
+                  color: theme.colors.inkSoft,
+                  textAlign: 'center',
+                  maxWidth: 280,
+                  marginBottom: 4,
+                }}
+              >
+                ან გადახვიდე სხვა დღეზე, ან დაიწყე ახალი ინსპექცია.
+              </Text>
+              <Pressable
+                onPress={() => router.push('/(tabs)/new-inspection' as any)}
+                accessibilityRole="button"
+                accessibilityLabel="ახალი ინსპექცია"
+                style={({ pressed }) => [
+                  {
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 6,
+                    paddingHorizontal: 14,
+                    paddingVertical: 10,
+                    borderRadius: theme.radius.pill,
+                    backgroundColor: theme.colors.accent,
+                  },
+                  pressed && { opacity: 0.85 },
+                ]}
+              >
+                <Ionicons name="add" size={16} color={theme.colors.white} />
+                <Text style={{ color: theme.colors.white, fontWeight: '700', fontSize: 14 }}>
+                  ახალი ინსპექცია
+                </Text>
+              </Pressable>
+            </View>
           ) : (
             daySchedules.map(s => {
               const projectName = s.project_items?.projects?.name ?? '—';

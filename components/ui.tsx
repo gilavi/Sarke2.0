@@ -1,5 +1,6 @@
-import { ReactNode } from 'react';
+import { ReactNode, useMemo } from 'react';
 import {
+  AccessibilityRole,
   ActivityIndicator,
   Pressable,
   PressableProps,
@@ -13,6 +14,7 @@ import {
   ViewStyle,
 } from 'react-native';
 import { theme } from '../lib/theme';
+import { haptics } from '../lib/haptics';
 
 export function Screen({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
   return <View style={[styles.screen, style]}>{children}</View>;
@@ -22,12 +24,24 @@ export function Card({
   children,
   style,
   padding = 16,
+  accessibilityLabel,
+  accessibilityRole,
 }: {
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
   padding?: number;
+  accessibilityLabel?: string;
+  accessibilityRole?: AccessibilityRole;
 }) {
-  return <View style={[styles.card, { padding }, theme.shadow.card, style]}>{children}</View>;
+  return (
+    <View
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole={accessibilityRole}
+      style={[styles.card, { padding }, theme.shadow.card, style]}
+    >
+      {children}
+    </View>
+  );
 }
 
 interface ButtonProps extends Omit<PressableProps, 'style'> {
@@ -35,13 +49,37 @@ interface ButtonProps extends Omit<PressableProps, 'style'> {
   loading?: boolean;
   variant?: 'primary' | 'ghost' | 'danger' | 'secondary';
   style?: StyleProp<ViewStyle>;
+  /**
+   * If false, disables the built-in haptic on press. Default true.
+   * Primary/secondary/ghost fire `haptics.tap()`; danger fires `haptics.warning()`.
+   */
+  haptic?: boolean;
 }
 
-export function Button({ title, loading, variant = 'primary', style, ...rest }: ButtonProps) {
+export function Button({
+  title,
+  loading,
+  variant = 'primary',
+  style,
+  haptic = true,
+  accessibilityLabel,
+  ...rest
+}: ButtonProps) {
+  const disabled = !!(rest.disabled || loading);
+  const handlePress: PressableProps['onPress'] = e => {
+    if (!disabled && haptic) {
+      variant === 'danger' ? haptics.warning() : haptics.tap();
+    }
+    rest.onPress?.(e);
+  };
   return (
     <Pressable
       {...rest}
-      disabled={rest.disabled || loading}
+      onPress={handlePress}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? title}
+      accessibilityState={{ disabled, busy: !!loading }}
       style={({ pressed }) => [
         styles.button,
         variant === 'primary' && styles.buttonPrimary,
@@ -49,7 +87,7 @@ export function Button({ title, loading, variant = 'primary', style, ...rest }: 
         variant === 'danger' && styles.buttonDanger,
         variant === 'secondary' && styles.buttonSecondary,
         pressed && { opacity: 0.92, transform: [{ scale: 0.99 }] },
-        (rest.disabled || loading) && { opacity: 0.6 },
+        disabled && { opacity: 0.6 },
         variant === 'primary' && theme.shadow.button,
         style,
       ]}
@@ -77,21 +115,44 @@ export function Label({ children, style }: { children: ReactNode; style?: StyleP
   return <Text style={[styles.label, style]}>{children}</Text>;
 }
 
-export function Field({ label, children }: { label: string; children: ReactNode }) {
+export function Field({
+  label,
+  required,
+  error,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  error?: string;
+  children: ReactNode;
+}) {
   return (
     <View style={{ gap: 6 }}>
-      <Label>{label.toUpperCase()}</Label>
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <Label>{label.toUpperCase()}</Label>
+        {required ? <Text style={styles.requiredMark}> *</Text> : null}
+      </View>
       {children}
+      {error ? <ErrorText>{error}</ErrorText> : null}
     </View>
   );
 }
 
-export function Input(props: TextInputProps) {
+interface InputUIProps extends TextInputProps {
+  error?: string;
+}
+
+export function Input({ error, accessibilityLabel, placeholder, style, ...props }: InputUIProps) {
+  const a11yLabel = accessibilityLabel ?? (typeof placeholder === 'string' ? placeholder : undefined);
   return (
     <TextInput
       placeholderTextColor={theme.colors.inkFaint}
+      placeholder={placeholder}
+      accessible
+      accessibilityLabel={a11yLabel}
+      accessibilityState={{ disabled: props.editable === false }}
       {...props}
-      style={[styles.input, props.style]}
+      style={[styles.input, error ? styles.inputError : null, style]}
     />
   );
 }
@@ -100,13 +161,19 @@ export function Chip({
   children,
   tint = theme.colors.accent,
   bg = theme.colors.accentSoft,
+  accessibilityLabel,
 }: {
   children: ReactNode;
   tint?: string;
   bg?: string;
+  accessibilityLabel?: string;
 }) {
+  const label = useMemo(
+    () => accessibilityLabel ?? (typeof children === 'string' ? (children as string) : undefined),
+    [accessibilityLabel, children],
+  );
   return (
-    <View style={[styles.chip, { backgroundColor: bg }]}>
+    <View accessible accessibilityLabel={label} style={[styles.chip, { backgroundColor: bg }]}>
       <Text style={{ color: tint, fontSize: 11, fontWeight: '600' }}>{children}</Text>
     </View>
   );
@@ -120,12 +187,23 @@ export function SectionHeader({
   action?: { label: string; onPress: () => void };
 }) {
   if (!action) {
-    return <Text style={styles.sectionHeader}>{title}</Text>;
+    return (
+      <Text accessibilityRole="header" style={styles.sectionHeader}>
+        {title}
+      </Text>
+    );
   }
   return (
     <View style={sectionHeaderStyles.row}>
-      <Text style={[styles.sectionHeader, { paddingHorizontal: 0 }]}>{title}</Text>
-      <Pressable onPress={action.onPress} hitSlop={8}>
+      <Text accessibilityRole="header" style={[styles.sectionHeader, { paddingHorizontal: 0 }]}>
+        {title}
+      </Text>
+      <Pressable
+        onPress={action.onPress}
+        accessibilityRole="button"
+        accessibilityLabel={action.label}
+        hitSlop={8}
+      >
         <Text style={sectionHeaderStyles.action}>{action.label}</Text>
       </Pressable>
     </View>
@@ -148,7 +226,11 @@ const sectionHeaderStyles = StyleSheet.create({
 
 export function ErrorText({ children }: { children: ReactNode }) {
   if (!children) return null;
-  return <Text style={styles.errorText}>{children}</Text>;
+  return (
+    <Text accessibilityLiveRegion="polite" style={styles.errorText}>
+      {children}
+    </Text>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -177,6 +259,12 @@ const styles = StyleSheet.create({
     color: theme.colors.inkSoft,
     letterSpacing: 0.5,
   },
+  requiredMark: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: theme.colors.danger,
+    letterSpacing: 0.5,
+  },
   input: {
     backgroundColor: theme.colors.card,
     borderRadius: 12,
@@ -186,6 +274,10 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 15,
     color: theme.colors.ink,
+  },
+  inputError: {
+    borderColor: theme.colors.danger,
+    borderWidth: 1,
   },
   chip: {
     paddingHorizontal: 8,
