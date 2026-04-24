@@ -27,7 +27,6 @@ import {
   projectsApi,
   templatesApi,
 } from '../../lib/services';
-import { shareStoredPdf } from '../../lib/sharePdf';
 import { useToast } from '../../lib/toast';
 import { theme } from '../../lib/theme';
 import type { Answer, Certificate, Inspection, Project, Question, Template } from '../../types/models';
@@ -89,9 +88,8 @@ export default function InspectionDetailScreen() {
     }, [load]),
   );
 
-  const sharePdf = async (cert: Certificate) => {
-    try { await shareStoredPdf(cert.pdf_url); }
-    catch (e: any) { toast.error(e?.message ?? 'ვერ გაიხსნა'); }
+  const openCertPreview = (cert: Certificate) => {
+    router.push(`/certificates/${cert.id}` as any);
   };
 
   const deleteCert = (cert: Certificate) => {
@@ -213,17 +211,26 @@ export default function InspectionDetailScreen() {
                   const expertName = params?.expertName ?? null;
                   const safeColor = isSafe === false ? theme.colors.danger : theme.colors.accent;
                   const safeBg = isSafe === false ? theme.colors.dangerSoft : theme.colors.accentSoft;
+                  const barColor = isSafe === false ? theme.colors.danger : theme.colors.accent;
                   return (
-                    <Pressable onPress={() => sharePdf(item)}>
+                    <Pressable onPress={() => openCertPreview(item)}>
                       <Card padding={12}>
-                        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
-                          {/* Icon */}
-                          <View style={[styles.certDot, { backgroundColor: safeBg }]}>
-                            <Ionicons name="document-text" size={18} color={safeColor} />
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                          {/* Thumbnail */}
+                          <View style={styles.certThumb}>
+                            <View style={[styles.certThumbBar, { backgroundColor: barColor }]} />
+                            <View style={styles.certThumbBody}>
+                              <Ionicons name="document-text" size={12} color={theme.colors.inkFaint} />
+                              <View style={{ gap: 3, marginTop: 5 }}>
+                                {['90%', '65%', '75%', '50%', '70%'].map((w, i) => (
+                                  <View key={i} style={[styles.certThumbLine, { width: w, opacity: i > 1 ? 0.5 : 1 }]} />
+                                ))}
+                              </View>
+                            </View>
                           </View>
 
                           {/* Body */}
-                          <View style={{ flex: 1, gap: 6 }}>
+                          <View style={{ flex: 1, gap: 3 }}>
                             {/* Title + safety badge */}
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                               <Text style={styles.certTitle}>PDF #{index + 1}</Text>
@@ -240,22 +247,24 @@ export default function InspectionDetailScreen() {
                             </Text>
 
                             {/* Badges row */}
-                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-                              {expertName ? (
-                                <View style={styles.infoBadge}>
-                                  <Ionicons name="person-outline" size={11} color={theme.colors.inkSoft} />
-                                  <Text style={styles.infoBadgeText}>{expertName}</Text>
-                                </View>
-                              ) : null}
-                              {qualTypes.map(q => (
-                                <View key={q.type} style={styles.infoBadge}>
-                                  <Ionicons name="ribbon-outline" size={11} color={theme.colors.inkSoft} />
-                                  <Text style={styles.infoBadgeText}>
-                                    {q.number ? `№${q.number}` : q.type}
-                                  </Text>
-                                </View>
-                              ))}
-                            </View>
+                            {(expertName || qualTypes.length > 0) ? (
+                              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 2 }}>
+                                {expertName ? (
+                                  <View style={styles.infoBadge}>
+                                    <Ionicons name="person-outline" size={10} color={theme.colors.inkSoft} />
+                                    <Text style={styles.infoBadgeText}>{expertName}</Text>
+                                  </View>
+                                ) : null}
+                                {qualTypes.map(q => (
+                                  <View key={q.type} style={styles.infoBadge}>
+                                    <Ionicons name="ribbon-outline" size={10} color={theme.colors.inkSoft} />
+                                    <Text style={styles.infoBadgeText}>
+                                      {q.number ? `№${q.number}` : q.type}
+                                    </Text>
+                                  </View>
+                                ))}
+                              </View>
+                            ) : null}
                           </View>
 
                           {/* Actions */}
@@ -268,9 +277,7 @@ export default function InspectionDetailScreen() {
                             >
                               <Ionicons name="trash-outline" size={18} color={theme.colors.danger} />
                             </Pressable>
-                            <View style={{ padding: 6 }}>
-                              <Ionicons name="share-outline" size={18} color={theme.colors.inkFaint} />
-                            </View>
+                            <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} style={{ padding: 6 }} />
                           </View>
                         </View>
                       </Card>
@@ -507,13 +514,27 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginBottom: 8,
   },
-  certDot: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: theme.colors.accentSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
+  certThumb: {
+    width: 50,
+    height: 70,
+    borderRadius: 7,
+    backgroundColor: theme.colors.white,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: theme.colors.hairline,
+    flexDirection: 'row',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  certThumbBar: { width: 4, height: '100%' },
+  certThumbBody: { flex: 1, padding: 6 },
+  certThumbLine: {
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: theme.colors.inkFaint,
   },
   certTitle: { fontWeight: '700', fontSize: 14, color: theme.colors.ink },
   certMeta: { fontSize: 11, color: theme.colors.inkSoft },

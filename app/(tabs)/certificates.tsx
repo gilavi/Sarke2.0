@@ -1,15 +1,10 @@
 // Certificates tab — list of generated PDF certificates.
 //
-// Each row is a `certificates` table entry (a PDF derived from a completed
-// inspection). Tap → share the PDF. Tap the link icon → open the parent
-// inspection detail screen. Swipe delete removes the certificate row but
-// leaves the underlying inspection intact.
-//
-// The expert's own qualifications (xaracho_inspector etc.) now live at
-// `/qualifications` (reached from the More tab).
+// Each row has a thumbnail (styled mini-document) + metadata badges.
+// Tap → cert preview/detail screen. Swipe delete removes the cert row
+// but leaves the underlying inspection intact.
 import { useCallback, useMemo, useState } from 'react';
 import {
-  Alert,
   FlatList,
   Pressable,
   StyleSheet,
@@ -27,7 +22,6 @@ import {
   projectsApi,
   templatesApi,
 } from '../../lib/services';
-import { shareStoredPdf } from '../../lib/sharePdf';
 import { useToast } from '../../lib/toast';
 import { theme } from '../../lib/theme';
 import type {
@@ -36,6 +30,64 @@ import type {
   Project,
   Template,
 } from '../../types/models';
+
+// ── Thumbnail ────────────────────────────────────────────────────────────────
+
+function CertThumbnail({ cert }: { cert: Certificate }) {
+  const isSafe = cert.is_safe_for_use;
+  const barColor = isSafe === false ? theme.colors.danger : theme.colors.accent;
+  return (
+    <View style={thumbStyles.wrapper}>
+      {/* Colored left bar — safety indicator */}
+      <View style={[thumbStyles.bar, { backgroundColor: barColor }]} />
+      {/* Document body */}
+      <View style={thumbStyles.body}>
+        <Ionicons name="document-text" size={14} color={theme.colors.inkFaint} />
+        <View style={{ gap: 4, marginTop: 6 }}>
+          <View style={[thumbStyles.line, { width: '90%' }]} />
+          <View style={[thumbStyles.line, { width: '70%' }]} />
+          <View style={[thumbStyles.line, { width: '80%', opacity: 0.5 }]} />
+          <View style={[thumbStyles.line, { width: '55%', opacity: 0.5 }]} />
+          <View style={[thumbStyles.line, { width: '75%', opacity: 0.35 }]} />
+        </View>
+      </View>
+    </View>
+  );
+}
+
+const thumbStyles = StyleSheet.create({
+  wrapper: {
+    width: 58,
+    height: 80,
+    borderRadius: 8,
+    backgroundColor: theme.colors.white,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: theme.colors.hairline,
+    flexDirection: 'row',
+    overflow: 'hidden',
+    // Subtle shadow
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  bar: {
+    width: 4,
+    height: '100%',
+  },
+  body: {
+    flex: 1,
+    padding: 7,
+  },
+  line: {
+    height: 5,
+    borderRadius: 2,
+    backgroundColor: theme.colors.inkFaint,
+  },
+});
+
+// ── Screen ───────────────────────────────────────────────────────────────────
 
 export default function CertificatesScreen() {
   const router = useRouter();
@@ -46,9 +98,6 @@ export default function CertificatesScreen() {
   const [projects, setProjects] = useState<Project[]>([]);
 
   const load = useCallback(async () => {
-    // Load certificates plus enough surrounding metadata to render each row
-    // with its template+project context. Batched so the list is rendered in
-    // a single paint.
     const [cs, ts, ps, insps] = await Promise.all([
       certificatesApi.list().catch(() => []),
       templatesApi.list().catch(() => []),
@@ -62,13 +111,9 @@ export default function CertificatesScreen() {
   }, []);
 
   useFocusEffect(
-    useCallback(() => {
-      void load();
-    }, [load]),
+    useCallback(() => { void load(); }, [load]),
   );
 
-  // O(1) lookups — rendering 100+ rows otherwise becomes quadratic on the
-  // find() calls.
   const inspectionById = useMemo(
     () => new Map(inspections.map(i => [i.id, i])),
     [inspections],
@@ -82,36 +127,18 @@ export default function CertificatesScreen() {
     [projects],
   );
 
-  const sharePdf = async (cert: Certificate) => {
-    try { await shareStoredPdf(cert.pdf_url); }
-    catch (e: any) { toast.error(e?.message ?? 'ვერ გაიხსნა'); }
+  const openPreview = (cert: Certificate) => {
+    router.push(`/certificates/${cert.id}` as any);
   };
 
-  const openInspection = (cert: Certificate) => {
-    router.push(`/inspections/${cert.inspection_id}` as any);
-  };
-
-  const deleteCert = (cert: Certificate) => {
-    Alert.alert(
-      'PDF რეპორტის წაშლა?',
-      'PDF წაიშლება. ინსპექცია უცვლელი დარჩება.',
-      [
-        { text: 'გაუქმება', style: 'cancel' },
-        {
-          text: 'წაშლა',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await certificatesApi.remove(cert.id);
-              setCerts(prev => prev.filter(c => c.id !== cert.id));
-              toast.success('წაიშალა');
-            } catch (e: any) {
-              toast.error(e?.message ?? 'ვერ წაიშალა');
-            }
-          },
-        },
-      ],
-    );
+  const deleteCert = async (cert: Certificate) => {
+    try {
+      await certificatesApi.remove(cert.id);
+      setCerts(prev => prev.filter(c => c.id !== cert.id));
+      toast.success('წაიშალა');
+    } catch (e: any) {
+      toast.error(e?.message ?? 'ვერ წაიშალა');
+    }
   };
 
   return (
@@ -138,6 +165,12 @@ export default function CertificatesScreen() {
           const insp = inspectionById.get(item.inspection_id) ?? null;
           const tpl = templateById.get(item.template_id) ?? null;
           const proj = insp ? (projectById.get(insp.project_id) ?? null) : null;
+          const params = item.params as {
+            expertName?: string | null;
+            qualTypes?: { type: string; number: string | null }[];
+          };
+          const expertName = params?.expertName ?? null;
+          const qualTypes = params?.qualTypes ?? [];
           return (
             <Swipeable
               renderRightActions={() => (
@@ -150,13 +183,14 @@ export default function CertificatesScreen() {
               )}
               overshootRight={false}
             >
-              <Pressable onPress={() => sharePdf(item)}>
+              <Pressable onPress={() => openPreview(item)}>
                 <Card padding={12}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                    <View style={styles.dot}>
-                      <Ionicons name="document-text" size={18} color={theme.colors.accent} />
-                    </View>
-                    <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    {/* PDF thumbnail */}
+                    <CertThumbnail cert={item} />
+
+                    {/* Metadata */}
+                    <View style={{ flex: 1, gap: 3 }}>
                       <Text style={styles.rowTitle} numberOfLines={1}>
                         {tpl?.name ?? 'PDF რეპორტი'}
                       </Text>
@@ -166,20 +200,28 @@ export default function CertificatesScreen() {
                       <Text style={styles.rowDate}>
                         {new Date(item.generated_at).toLocaleString('ka')}
                       </Text>
+
+                      {/* Expert / qual badges */}
+                      {(expertName || qualTypes.length > 0) ? (
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+                          {expertName ? (
+                            <View style={styles.badge}>
+                              <Ionicons name="person-outline" size={10} color={theme.colors.inkSoft} />
+                              <Text style={styles.badgeText}>{expertName}</Text>
+                            </View>
+                          ) : null}
+                          {qualTypes.map(q => (
+                            <View key={q.type} style={styles.badge}>
+                              <Ionicons name="ribbon-outline" size={10} color={theme.colors.inkSoft} />
+                              <Text style={styles.badgeText}>{q.number ? `№${q.number}` : q.type}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      ) : null}
                     </View>
-                    <Pressable
-                      onPress={() => openInspection(item)}
-                      hitSlop={10}
-                      style={{ padding: 6 }}
-                      accessibilityLabel="open parent inspection"
-                    >
-                      <Ionicons
-                        name="open-outline"
-                        size={18}
-                        color={theme.colors.inkSoft}
-                      />
-                    </Pressable>
-                    <Ionicons name="share-outline" size={18} color={theme.colors.inkFaint} />
+
+                    {/* Preview indicator */}
+                    <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
                   </View>
                 </Card>
               </Pressable>
@@ -205,17 +247,19 @@ const styles = StyleSheet.create({
     paddingVertical: 60,
     gap: 10,
   },
-  dot: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: theme.colors.accentSoft,
+  rowTitle: { fontSize: 14, fontWeight: '700', color: theme.colors.ink },
+  rowMeta: { fontSize: 12, color: theme.colors.inkSoft },
+  rowDate: { fontSize: 11, color: theme.colors.inkFaint },
+  badge: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 3,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 999,
+    backgroundColor: theme.colors.subtleSurface,
   },
-  rowTitle: { fontSize: 15, fontWeight: '700', color: theme.colors.ink },
-  rowMeta: { fontSize: 12, color: theme.colors.inkSoft, marginTop: 1 },
-  rowDate: { fontSize: 11, color: theme.colors.inkFaint, marginTop: 2 },
+  badgeText: { fontSize: 10, color: theme.colors.inkSoft },
   swipeDelete: {
     width: 86,
     backgroundColor: theme.colors.danger,

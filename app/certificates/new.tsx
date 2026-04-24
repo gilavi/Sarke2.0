@@ -388,6 +388,9 @@ export default function GenerateCertificateScreen() {
           expertName,
           qualTypes: attachedQuals.map(q => ({ type: q.type, number: q.number ?? null })),
           signerNames: otherRecs.map(s => s.full_name),
+          // Local file:// URI so the preview/share screen can open it
+          // directly without going through storage (works in mock mode too).
+          localUri: uri,
         },
       });
       toast.success('PDF რეპორტი შეიქმნა');
