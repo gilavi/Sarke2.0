@@ -201,6 +201,8 @@ export default function ProjectsScreen() {
       <Pressable
         onPress={() => setCreating(true)}
         style={[styles.fab, theme.shadow.button]}
+        accessibilityRole="button"
+        accessibilityLabel="ახალი პროექტი"
       >
         <Ionicons name="add" size={28} color={theme.colors.white} />
       </Pressable>
@@ -276,7 +278,7 @@ function CreateProjectSheet({
             <View style={sheetStyles.handle} />
             <View style={sheetStyles.sheetHeader}>
               <Text style={[sheetStyles.sheetTitle, { flex: 1 }]}>ახალი პროექტი</Text>
-              <Pressable onPress={onClose} hitSlop={10}>
+              <Pressable onPress={onClose} hitSlop={10} accessibilityRole="button" accessibilityLabel="დახურვა">
                 <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
               </Pressable>
             </View>
@@ -336,7 +338,12 @@ function ProjectRow({
   onDelete: () => void;
 }) {
   const renderRightActions = () => (
-    <Pressable onPress={onDelete} style={styles.swipeDelete}>
+    <Pressable
+      onPress={onDelete}
+      style={styles.swipeDelete}
+      accessibilityRole="button"
+      accessibilityLabel="პროექტის წაშლა"
+    >
       <Ionicons name="trash" size={20} color={theme.colors.white} />
       <Text style={{ color: theme.colors.white, fontWeight: '600', fontSize: 12 }}>წაშლა</Text>
     </Pressable>

@@ -270,7 +270,12 @@ export default function ProjectDetail() {
                 <Swipeable
                   key={s.id}
                   renderRightActions={() => (
-                    <Pressable onPress={() => deleteSigner(s)} style={styles.swipeDelete}>
+                    <Pressable
+                      onPress={() => deleteSigner(s)}
+                      style={styles.swipeDelete}
+                      accessibilityRole="button"
+                      accessibilityLabel="ხელმომწერის წაშლა"
+                    >
                       <Ionicons name="trash" size={18} color={theme.colors.white} />
                     </Pressable>
                   )}
@@ -346,7 +351,12 @@ export default function ProjectDetail() {
                       <Swipeable
                         key={q.id}
                         renderRightActions={() => (
-                          <Pressable onPress={() => deleteQuestionnaire(q)} style={styles.swipeDelete}>
+                          <Pressable
+                            onPress={() => deleteQuestionnaire(q)}
+                            style={styles.swipeDelete}
+                            accessibilityRole="button"
+                            accessibilityLabel="კითხვარის წაშლა"
+                          >
                             <Ionicons name="trash" size={18} color={theme.colors.white} />
                           </Pressable>
                         )}
@@ -398,7 +408,12 @@ export default function ProjectDetail() {
                       <Swipeable
                         key={q.id}
                         renderRightActions={() => (
-                          <Pressable onPress={() => deleteQuestionnaire(q)} style={styles.swipeDelete}>
+                          <Pressable
+                            onPress={() => deleteQuestionnaire(q)}
+                            style={styles.swipeDelete}
+                            accessibilityRole="button"
+                            accessibilityLabel="კითხვარის წაშლა"
+                          >
                             <Ionicons name="trash" size={18} color={theme.colors.white} />
                           </Pressable>
                         )}
@@ -549,7 +564,7 @@ function EditProjectSheet({
               <Text style={{ fontSize: 18, fontWeight: '800', color: theme.colors.ink, flex: 1 }}>
                 რედაქტირება
               </Text>
-              <Pressable onPress={onClose} hitSlop={10}>
+              <Pressable onPress={onClose} hitSlop={10} accessibilityRole="button" accessibilityLabel="დახურვა">
                 <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
               </Pressable>
             </View>

@@ -243,7 +243,14 @@ export default function CalendarScreen() {
         {/* Header */}
         <View style={styles.headerRow}>
           <Text style={styles.title}>კალენდარი</Text>
-          <Pressable onPress={syncGoogle} hitSlop={8} style={styles.syncBtn}>
+          <Pressable
+            onPress={syncGoogle}
+            hitSlop={8}
+            style={styles.syncBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Google კალენდართან სინქრონიზაცია"
+            accessibilityState={{ busy: syncing }}
+          >
             <Ionicons
               name={syncing ? 'sync' : 'cloud-upload-outline'}
               size={14}
@@ -277,7 +284,13 @@ export default function CalendarScreen() {
 
         {/* Month navigation */}
         <View style={styles.monthNav}>
-          <Pressable onPress={prevMonth} hitSlop={10} style={styles.chevBtn}>
+          <Pressable
+            onPress={prevMonth}
+            hitSlop={10}
+            style={styles.chevBtn}
+            accessibilityRole="button"
+            accessibilityLabel="წინა თვე"
+          >
             <Ionicons name="chevron-back" size={20} color={theme.colors.ink} />
           </Pressable>
           <View style={{ flex: 1, alignItems: 'center' }}>
@@ -288,7 +301,13 @@ export default function CalendarScreen() {
           <Pressable onPress={jumpToday} hitSlop={8} style={styles.todayBtn}>
             <Text style={styles.todayBtnText}>დღეს</Text>
           </Pressable>
-          <Pressable onPress={nextMonth} hitSlop={10} style={styles.chevBtn}>
+          <Pressable
+            onPress={nextMonth}
+            hitSlop={10}
+            style={styles.chevBtn}
+            accessibilityRole="button"
+            accessibilityLabel="შემდეგი თვე"
+          >
             <Ionicons name="chevron-forward" size={20} color={theme.colors.ink} />
           </Pressable>
         </View>

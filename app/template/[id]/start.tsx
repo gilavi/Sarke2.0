@@ -251,7 +251,7 @@ function CreateProjectSheet({
               <Text style={{ fontSize: 18, fontWeight: '800', color: theme.colors.ink, flex: 1 }}>
                 ახალი პროექტი
               </Text>
-              <Pressable onPress={onClose} hitSlop={10}>
+              <Pressable onPress={onClose} hitSlop={10} accessibilityRole="button" accessibilityLabel="დახურვა">
                 <Ionicons name="close" size={24} color={theme.colors.inkSoft} />
               </Pressable>
             </View>

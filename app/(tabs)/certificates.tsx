@@ -224,7 +224,12 @@ export default function CertificatesScreen() {
           return (
             <Swipeable
               renderRightActions={() => (
-                <Pressable onPress={() => deleteCert(item)} style={styles.swipeDelete}>
+                <Pressable
+                  onPress={() => deleteCert(item)}
+                  style={styles.swipeDelete}
+                  accessibilityRole="button"
+                  accessibilityLabel="PDF რეპორტის წაშლა"
+                >
                   <Ionicons name="trash" size={18} color={theme.colors.white} />
                   <Text style={{ color: theme.colors.white, fontWeight: '700', fontSize: 11 }}>
                     წაშლა

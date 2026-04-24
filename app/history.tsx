@@ -130,7 +130,12 @@ export default function HistoryScreen() {
             return (
               <Swipeable
                 renderRightActions={() => (
-                  <Pressable onPress={() => onDelete(q)} style={styles.swipeDelete}>
+                  <Pressable
+                    onPress={() => onDelete(q)}
+                    style={styles.swipeDelete}
+                    accessibilityRole="button"
+                    accessibilityLabel="ინსპექციის წაშლა"
+                  >
                     <Ionicons name="trash" size={18} color={theme.colors.white} />
                     <Text style={{ color: theme.colors.white, fontSize: 11, fontWeight: '700' }}>
                       წაშლა

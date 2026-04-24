@@ -86,7 +86,12 @@ export default function QualificationsScreen() {
           headerShown: true,
           title: 'კვალიფიკაცია',
           headerRight: () => (
-            <Pressable onPress={() => router.push('/qualifications/new' as any)} hitSlop={10}>
+            <Pressable
+              onPress={() => router.push('/qualifications/new' as any)}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel="ახალი სერტიფიკატი"
+            >
               <Ionicons name="add-circle" size={28} color={theme.colors.accent} />
             </Pressable>
           ),

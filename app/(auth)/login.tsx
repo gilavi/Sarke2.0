@@ -367,7 +367,7 @@ function ModalHeader({ title, onClose }: { title: string; onClose: () => void })
   return (
     <View style={styles.modalHeader}>
       <Text style={{ fontSize: 17, fontWeight: '700', color: theme.colors.ink }}>{title}</Text>
-      <Pressable onPress={onClose} hitSlop={12}>
+      <Pressable onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="დახურვა">
         <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
       </Pressable>
     </View>

@@ -349,6 +349,8 @@ export default function HomeScreen() {
       <Pressable
         onPress={() => setPickerVisible(true)}
         style={styles.fab}
+        accessibilityRole="button"
+        accessibilityLabel="ახალი შემოწმება"
       >
         <Ionicons name="add" size={28} color={theme.colors.white} />
       </Pressable>
@@ -459,7 +461,7 @@ function ProjectPickerSheet({
                 {/* Sheet header */}
                 <View style={pickerStyles.sheetHeader}>
                   <Text style={pickerStyles.sheetTitle}>შემოწმების დაწყება</Text>
-                  <Pressable onPress={onClose} hitSlop={10}>
+                  <Pressable onPress={onClose} hitSlop={10} accessibilityRole="button" accessibilityLabel="დახურვა">
                     <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
                   </Pressable>
                 </View>
@@ -510,11 +512,17 @@ function ProjectPickerSheet({
               <>
                 {/* Template picker header with back button */}
                 <View style={pickerStyles.sheetHeader}>
-                  <Pressable onPress={() => setView('list')} hitSlop={10} style={{ marginRight: 10 }}>
+                  <Pressable
+                    onPress={() => setView('list')}
+                    hitSlop={10}
+                    style={{ marginRight: 10 }}
+                    accessibilityRole="button"
+                    accessibilityLabel="უკან"
+                  >
                     <Ionicons name="arrow-back" size={22} color={theme.colors.accent} />
                   </Pressable>
                   <Text style={[pickerStyles.sheetTitle, { flex: 1 }]}>აირჩიე შაბლონი</Text>
-                  <Pressable onPress={onClose} hitSlop={10}>
+                  <Pressable onPress={onClose} hitSlop={10} accessibilityRole="button" accessibilityLabel="დახურვა">
                     <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
                   </Pressable>
                 </View>
@@ -540,11 +548,17 @@ function ProjectPickerSheet({
               <>
                 {/* New project form header with back button */}
                 <View style={pickerStyles.sheetHeader}>
-                  <Pressable onPress={() => setView('list')} hitSlop={10} style={{ marginRight: 10 }}>
+                  <Pressable
+                    onPress={() => setView('list')}
+                    hitSlop={10}
+                    style={{ marginRight: 10 }}
+                    accessibilityRole="button"
+                    accessibilityLabel="უკან"
+                  >
                     <Ionicons name="arrow-back" size={22} color={theme.colors.accent} />
                   </Pressable>
                   <Text style={[pickerStyles.sheetTitle, { flex: 1 }]}>ახალი პროექტი</Text>
-                  <Pressable onPress={onClose} hitSlop={10}>
+                  <Pressable onPress={onClose} hitSlop={10} accessibilityRole="button" accessibilityLabel="დახურვა">
                     <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
                   </Pressable>
                 </View>

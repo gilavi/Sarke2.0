@@ -618,7 +618,12 @@ function QuestionStep({
               <PhotoThumb photo={p} size={120} />
             </Pressable>
           ))}
-          <Pressable onPress={onPickPhoto} style={styles.addPhotoTile}>
+          <Pressable
+            onPress={onPickPhoto}
+            style={styles.addPhotoTile}
+            accessibilityRole="button"
+            accessibilityLabel="ფოტოს დამატება"
+          >
             <Ionicons name="add" size={32} color={theme.colors.inkSoft} />
           </Pressable>
         </ScrollView>
@@ -963,7 +968,12 @@ function GridRowStep({
         ) : null}
 
         {/* Photo button */}
-        <Pressable onPress={onPickPhoto} style={styles.photoRowBtn}>
+        <Pressable
+          onPress={onPickPhoto}
+          style={styles.photoRowBtn}
+          accessibilityRole="button"
+          accessibilityLabel="ფოტოს დამატება"
+        >
           <Ionicons name="camera-outline" size={18} color={theme.colors.inkSoft} />
           <Text style={{ color: theme.colors.inkSoft, fontSize: 13 }}>ფოტო</Text>
         </Pressable>
@@ -1222,7 +1232,12 @@ function PhotoPreviewModal({
           <Ionicons name="trash-outline" size={22} color="#fff" />
           <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>წაშლა</Text>
         </Pressable>
-        <Pressable style={styles.previewCloseBtn} onPress={onClose}>
+        <Pressable
+          style={styles.previewCloseBtn}
+          onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel="დახურვა"
+        >
           <Ionicons name="close" size={28} color="#fff" />
         </Pressable>
       </View>
