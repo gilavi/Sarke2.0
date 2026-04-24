@@ -112,7 +112,7 @@ export default function HomeScreen() {
             <Pressable onPress={() => router.push(`/inspections/${latestDraft.id}/wizard` as any)}>
               <View style={styles.resumeCard}>
                 <View style={styles.resumeIcon}>
-                  <Ionicons name="play" size={16} color={theme.colors.accent} />
+                  <Ionicons name="pencil" size={16} color={theme.colors.warn} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.resumeEyebrow}>გააგრძელე დრაფტი</Text>
@@ -286,7 +286,7 @@ export default function HomeScreen() {
                     ]}
                   >
                     <Ionicons
-                      name={q.status === 'completed' ? 'checkmark' : 'time-outline'}
+                      name={q.status === 'completed' ? 'checkmark' : 'pencil'}
                       size={14}
                       color={q.status === 'completed' ? theme.colors.harnessTint : theme.colors.warn}
                     />
@@ -693,12 +693,12 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: theme.colors.accentSoft,
+    backgroundColor: theme.colors.warnSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
   resumeEyebrow: {
-    color: theme.colors.accent,
+    color: theme.colors.warn,
     fontSize: 11,
     fontWeight: '700',
     textTransform: 'uppercase',

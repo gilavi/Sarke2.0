@@ -141,7 +141,7 @@ export default function HistoryScreen() {
                         ]}
                       >
                         <Ionicons
-                          name={q.status === 'completed' ? 'checkmark-circle' : 'document-text'}
+                          name={q.status === 'completed' ? 'checkmark-circle' : 'pencil'}
                           size={20}
                           color={q.status === 'completed' ? theme.colors.accent : theme.colors.warn}
                         />

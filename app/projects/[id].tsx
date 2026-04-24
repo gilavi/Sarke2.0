@@ -296,7 +296,7 @@ export default function ProjectDetail() {
             <View style={styles.qSection}>
               <View style={styles.qSectionHeader}>
                 <View style={[styles.qSectionDot, { backgroundColor: theme.colors.warnSoft }]}>
-                  <Ionicons name="time" size={11} color={theme.colors.warn} />
+                  <Ionicons name="pencil" size={11} color={theme.colors.warn} />
                 </View>
                 <Text style={styles.qSectionLabel}>დრაფტები</Text>
                 <Text style={styles.qSectionCount}>{drafts.length}</Text>
@@ -322,7 +322,7 @@ export default function ProjectDetail() {
                           style={styles.qRow}
                         >
                           <View style={[styles.qStatusDot, { backgroundColor: theme.colors.warnSoft }]}>
-                            <Ionicons name="document-text" size={14} color={theme.colors.warn} />
+                            <Ionicons name="pencil" size={14} color={theme.colors.warn} />
                           </View>
                           <View style={{ flex: 1 }}>
                             <Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.ink }}>
