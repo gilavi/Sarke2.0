@@ -267,7 +267,6 @@ export default function GenerateCertificateScreen() {
       await storageApi.upload(STORAGE_BUCKETS.pdfs, fileName, blob, 'application/pdf');
       // Snapshot the attached qualification types and expert name into params
       // so the cert list can show meaningful info without re-fetching.
-      const expertName = user ? `${user.first_name} ${user.last_name}`.trim() : null;
       await certificatesApi.create({
         inspectionId: inspection.id,
         templateId: inspection.template_id,
