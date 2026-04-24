@@ -138,19 +138,8 @@ export default function InspectionDetailScreen() {
       <Stack.Screen options={{ headerShown: true, title: 'ინსპექცია' }} />
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
         <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }}>
-          {/* Summary header */}
-          <View style={{ alignItems: 'center', gap: 8, paddingVertical: 18 }}>
-            <View style={styles.headerIcon}>
-              <Ionicons
-                name={inspection.is_safe_for_use === false ? 'warning' : 'checkmark-circle'}
-                size={38}
-                color={
-                  inspection.is_safe_for_use === false
-                    ? theme.colors.danger
-                    : theme.colors.accent
-                }
-              />
-            </View>
+          {/* Document header — title + meta + status badge */}
+          <View style={{ gap: 4, paddingBottom: 4 }}>
             <Text style={styles.templateName}>{template?.name ?? 'ინსპექცია'}</Text>
             {project ? (
               <Text style={styles.project}>{project.name}</Text>
@@ -158,6 +147,31 @@ export default function InspectionDetailScreen() {
             <Text style={styles.date}>
               {new Date(inspection.completed_at ?? inspection.created_at).toLocaleString('ka')}
             </Text>
+            {/* Small inline status pill */}
+            <View
+              style={[
+                styles.statusPill,
+                inspection.is_safe_for_use === false
+                  ? { backgroundColor: theme.colors.dangerSoft }
+                  : { backgroundColor: theme.colors.accentSoft },
+              ]}
+            >
+              <Ionicons
+                name={inspection.is_safe_for_use === false ? 'warning' : 'checkmark-circle'}
+                size={13}
+                color={inspection.is_safe_for_use === false ? theme.colors.danger : theme.colors.accent}
+              />
+              <Text
+                style={[
+                  styles.statusPillText,
+                  { color: inspection.is_safe_for_use === false ? theme.colors.danger : theme.colors.accent },
+                ]}
+              >
+                {inspection.is_safe_for_use === false
+                  ? 'არ არის უსაფრთხო'
+                  : 'უსაფრთხოა'}
+              </Text>
+            </View>
           </View>
 
           {/* Conclusion */}
@@ -165,20 +179,6 @@ export default function InspectionDetailScreen() {
             <Text style={styles.eyebrow}>დასკვნა</Text>
             <Text style={{ marginTop: 6, color: theme.colors.ink, lineHeight: 20 }}>
               {inspection.conclusion_text || '—'}
-            </Text>
-            <Text
-              style={{
-                marginTop: 10,
-                fontWeight: '700',
-                color:
-                  inspection.is_safe_for_use === false
-                    ? theme.colors.danger
-                    : theme.colors.accent,
-              }}
-            >
-              {inspection.is_safe_for_use === false
-                ? '✗ არ არის უსაფრთხო ექსპლუატაციისთვის'
-                : '✓ უსაფრთხოა ექსპლუატაციისთვის'}
             </Text>
           </Card>
 
@@ -435,22 +435,27 @@ const scorecardStyles = StyleSheet.create({
 });
 
 const styles = StyleSheet.create({
-  headerIcon: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: theme.colors.accentSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   templateName: {
     fontSize: 20,
     fontWeight: '800',
     color: theme.colors.ink,
-    textAlign: 'center',
   },
-  project: { fontSize: 13, color: theme.colors.inkSoft },
-  date: { fontSize: 12, color: theme.colors.inkFaint },
+  project: { fontSize: 13, color: theme.colors.inkSoft, marginTop: 2 },
+  date: { fontSize: 12, color: theme.colors.inkFaint, marginTop: 1 },
+  statusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    marginTop: 8,
+  },
+  statusPillText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
   eyebrow: {
     fontSize: 11,
     color: theme.colors.inkSoft,
