@@ -3,11 +3,12 @@ import { useEffect } from 'react';
 import * as Linking from 'expo-linking';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { supabase } from '../lib/supabase';
-import { ActivityIndicator, View } from 'react-native';
+import { View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { BottomSheetProvider } from '../components/BottomSheet';
+import { Skeleton } from '../components/Skeleton';
 import { SessionProvider, useSession } from '../lib/session';
 import { flushPendingSignatures } from '../lib/signatures';
 import { TERMS_VERSION } from '../lib/terms';
@@ -77,9 +78,21 @@ function AuthGate() {
   }, [state, segments]);
 
   if (state.status === 'loading') {
+    // Subtle full-screen skeleton instead of a spinner — hides the auth
+    // boot latency. If the user is heading into a draft/detail screen, the
+    // transition from this skeleton into the target screen's own skeleton
+    // feels continuous.
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background }}>
-        <ActivityIndicator color={theme.colors.accent} size="large" />
+      <View style={{ flex: 1, backgroundColor: theme.colors.background, paddingHorizontal: 20, paddingTop: 80, gap: 20 }}>
+        <Skeleton width={140} height={13} />
+        <Skeleton width={'75%'} height={30} />
+        <View style={{ height: 12 }} />
+        <Skeleton width={'100%'} height={72} radius={14} />
+        <Skeleton width={100} height={10} style={{ marginTop: 20 }} />
+        <View style={{ flexDirection: 'row', gap: 12 }}>
+          <Skeleton width={'48%'} height={120} radius={16} />
+          <Skeleton width={'48%'} height={120} radius={16} />
+        </View>
       </View>
     );
   }
