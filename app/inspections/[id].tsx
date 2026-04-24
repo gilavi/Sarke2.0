@@ -182,71 +182,9 @@ export default function InspectionDetailScreen() {
             </Text>
           </Card>
 
-          {/* Answers / questions filled in */}
+          {/* Inspection scorecard */}
           {questions.length > 0 ? (
-            <View style={{ marginTop: 4 }}>
-              <Text style={styles.sectionTitle}>პასუხები ({answers.length} / {questions.length})</Text>
-              <Card>
-                {questions
-                  .sort((a, b) => a.section === b.section ? a.order - b.order : a.section - b.section)
-                  .map((q, idx) => {
-                    const ans = answers.find(a => a.question_id === q.id);
-                    let valueText = '—';
-                    if (ans) {
-                      if (q.type === 'yesno') {
-                        valueText = ans.value_bool === true ? '✓ კი' : ans.value_bool === false ? '✗ არა' : '—';
-                      } else if (q.type === 'measure') {
-                        valueText = ans.value_num != null ? `${ans.value_num}${q.unit ? ' ' + q.unit : ''}` : '—';
-                      } else if (q.type === 'freetext') {
-                        valueText = ans.value_text || '—';
-                      } else if (q.type === 'photo_upload') {
-                        valueText = 'ფოტო';
-                      } else if (q.type === 'component_grid') {
-                        const grid = ans.grid_values;
-                        if (grid) {
-                          const rows = Object.keys(grid);
-                          valueText = rows.length > 0 ? `${rows.length} კომპონენტი` : '—';
-                        }
-                      }
-                    }
-                    const isLast = idx === questions.length - 1;
-                    return (
-                      <View
-                        key={q.id}
-                        style={{
-                          paddingVertical: 10,
-                          borderBottomWidth: isLast ? 0 : StyleSheet.hairlineWidth,
-                          borderBottomColor: theme.colors.hairline,
-                          flexDirection: 'row',
-                          gap: 10,
-                          alignItems: 'flex-start',
-                        }}
-                      >
-                        <View style={{ flex: 1 }}>
-                          <Text style={{ fontSize: 13, color: theme.colors.ink }} numberOfLines={2}>
-                            {q.title}
-                          </Text>
-                        </View>
-                        <Text
-                          style={{
-                            fontSize: 13,
-                            fontWeight: '600',
-                            color: ans
-                              ? (q.type === 'yesno' && ans.value_bool === false ? theme.colors.danger : theme.colors.accent)
-                              : theme.colors.inkFaint,
-                            flexShrink: 0,
-                            maxWidth: 120,
-                            textAlign: 'right',
-                          }}
-                          numberOfLines={2}
-                        >
-                          {valueText}
-                        </Text>
-                      </View>
-                    );
-                  })}
-              </Card>
-            </View>
+            <InspectionScorecard questions={questions} answers={answers} />
           ) : null}
 
           {/* PDF reports list */}
@@ -317,6 +255,184 @@ export default function InspectionDetailScreen() {
     </Screen>
   );
 }
+
+// ── Scorecard component ──────────────────────────────────────────────────────
+
+function InspectionScorecard({
+  questions,
+  answers,
+}: {
+  questions: Question[];
+  answers: Answer[];
+}) {
+  const answerMap = new Map(answers.map(a => [a.question_id, a]));
+
+  // Compute stats
+  let okCount = 0;
+  let issueCount = 0;
+  let skippedCount = 0;
+
+  const issueQuestions: { question: Question; label: string }[] = [];
+
+  for (const q of questions) {
+    const ans = answerMap.get(q.id);
+    if (!ans) {
+      skippedCount += 1;
+      continue;
+    }
+    if (q.type === 'yesno') {
+      if (ans.value_bool === false) {
+        issueCount += 1;
+        issueQuestions.push({ question: q, label: '✗ არა' });
+      } else if (ans.value_bool === true) {
+        okCount += 1;
+      } else {
+        skippedCount += 1;
+      }
+    } else if (q.type === 'measure') {
+      if (ans.value_num != null) okCount += 1;
+      else skippedCount += 1;
+    } else if (q.type === 'freetext') {
+      if (ans.value_text) okCount += 1;
+      else skippedCount += 1;
+    } else if (q.type === 'component_grid') {
+      if (ans.grid_values && Object.keys(ans.grid_values).length > 0) okCount += 1;
+      else skippedCount += 1;
+    } else {
+      // photo_upload etc.
+      okCount += 1;
+    }
+  }
+
+  const total = questions.length;
+
+  return (
+    <View style={{ marginTop: 4 }}>
+      <Text style={scorecardStyles.sectionTitle}>შეჯამება</Text>
+      <Card>
+        {/* Stats chips row */}
+        <View style={scorecardStyles.statsRow}>
+          <View style={scorecardStyles.statChip}>
+            <Text style={scorecardStyles.statNum}>{answers.length}/{total}</Text>
+            <Text style={scorecardStyles.statLabel}>შეავსე</Text>
+          </View>
+          <View style={[scorecardStyles.statChip, { backgroundColor: theme.colors.accentSoft }]}>
+            <Text style={[scorecardStyles.statNum, { color: theme.colors.accent }]}>{okCount}</Text>
+            <Text style={[scorecardStyles.statLabel, { color: theme.colors.accent }]}>გამართული</Text>
+          </View>
+          {issueCount > 0 ? (
+            <View style={[scorecardStyles.statChip, { backgroundColor: theme.colors.dangerSoft }]}>
+              <Text style={[scorecardStyles.statNum, { color: theme.colors.danger }]}>{issueCount}</Text>
+              <Text style={[scorecardStyles.statLabel, { color: theme.colors.danger }]}>პრობლემა</Text>
+            </View>
+          ) : null}
+          {skippedCount > 0 ? (
+            <View style={scorecardStyles.statChip}>
+              <Text style={scorecardStyles.statNum}>{skippedCount}</Text>
+              <Text style={scorecardStyles.statLabel}>გამოტოვ.</Text>
+            </View>
+          ) : null}
+        </View>
+
+        {/* Issues list */}
+        {issueCount === 0 && answers.length > 0 ? (
+          <View style={scorecardStyles.allOkRow}>
+            <Ionicons name="checkmark-circle" size={16} color={theme.colors.accent} />
+            <Text style={{ fontSize: 13, color: theme.colors.accent, fontWeight: '600' }}>
+              პრობლემა არ გამოვლინდა
+            </Text>
+          </View>
+        ) : issueQuestions.length > 0 ? (
+          <View style={{ marginTop: 12 }}>
+            <Text style={scorecardStyles.issueLabel}>გამოვლენილი პრობლემები</Text>
+            {issueQuestions.map((item, idx) => (
+              <View
+                key={item.question.id}
+                style={[
+                  scorecardStyles.issueRow,
+                  idx === issueQuestions.length - 1 && { borderBottomWidth: 0 },
+                ]}
+              >
+                <Ionicons name="warning" size={14} color={theme.colors.danger} style={{ marginTop: 1 }} />
+                <Text style={scorecardStyles.issueText} numberOfLines={2}>
+                  {item.question.title}
+                </Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
+      </Card>
+    </View>
+  );
+}
+
+const scorecardStyles = StyleSheet.create({
+  sectionTitle: {
+    fontSize: 11,
+    color: theme.colors.inkSoft,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  statChip: {
+    flex: 1,
+    minWidth: 60,
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    backgroundColor: theme.colors.subtleSurface,
+    borderRadius: 12,
+    gap: 2,
+  },
+  statNum: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: theme.colors.ink,
+  },
+  statLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: theme.colors.inkSoft,
+    textAlign: 'center',
+  },
+  allOkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: theme.colors.hairline,
+  },
+  issueLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: theme.colors.danger,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  issueRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    paddingVertical: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.colors.hairline,
+  },
+  issueText: {
+    flex: 1,
+    fontSize: 13,
+    color: theme.colors.ink,
+    lineHeight: 18,
+  },
+});
 
 const styles = StyleSheet.create({
   headerIcon: {
