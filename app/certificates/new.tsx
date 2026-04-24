@@ -1,32 +1,29 @@
-// Generate a certificate (PDF) from an existing completed inspection.
+// Generate a PDF report from an existing completed inspection.
 //
-// Reached from:
-//   - the inspection-done fork screen (`/inspections/[id]/done` → "generate"),
-//   - the inspection detail screen (`/inspections/[id]` → "ახალი სერტიფიკატი").
-//
-// Loads the inspection + everything needed to render the PDF, lets the
-// inspector pick which professional qualifications to attach, then renders
-// via `buildPdfHtml` → uploads to the `pdfs` bucket → inserts a
-// `certificates` row → shares via OS share sheet.
-//
-// Signing is explicitly out of scope — we read whatever signature rows were
-// already captured in the signing step. Re-signing would be a separate flow.
-import { useCallback, useEffect, useMemo, useState } from 'react';
+// Reached from the done screen or the inspection detail CTA.
+// Lets the inspector review/pick qualification certs, add extra certs,
+// confirm their own signature, and optionally collect other signers —
+// all before generating the PDF.
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useActionSheet } from '@expo/react-native-action-sheet';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { Button, Card, Screen } from '../../components/ui';
+import { SignatureCanvas } from '../../components/SignatureCanvas';
 import {
   answersApi,
   certificatesApi,
@@ -39,7 +36,7 @@ import {
 } from '../../lib/services';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { useSession } from '../../lib/session';
-import { getStorageImageDataUrl } from '../../lib/imageUrl';
+import { getStorageImageDataUrl, getStorageImageDisplayUrl } from '../../lib/imageUrl';
 import { buildPdfHtml } from '../../lib/pdf';
 import { useToast } from '../../lib/toast';
 import { theme } from '../../lib/theme';
@@ -54,28 +51,52 @@ import type {
   Template,
 } from '../../types/models';
 
+// ── Types ────────────────────────────────────────────────────────────────────
+
+interface AdditionalSigner {
+  id: string;
+  name: string;
+  /** base64 PNG (with data: prefix) captured via SignatureCanvas */
+  dataUrl: string | null;
+}
+
+// ── Screen ───────────────────────────────────────────────────────────────────
+
 export default function GenerateCertificateScreen() {
-  const params = useLocalSearchParams<{ inspectionId?: string }>();
-  const inspectionId = params.inspectionId ?? null;
+  const urlParams = useLocalSearchParams<{ inspectionId?: string }>();
+  const inspectionId = urlParams.inspectionId ?? null;
   const router = useRouter();
   const toast = useToast();
   const { showActionSheetWithOptions } = useActionSheet();
   const { state } = useSession();
   const user = state.status === 'signedIn' ? state.user : null;
 
+  // Core data
   const [inspection, setInspection] = useState<Inspection | null>(null);
   const [template, setTemplate] = useState<Template | null>(null);
   const [project, setProject] = useState<Project | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [answers, setAnswers] = useState<Answer[]>([]);
-  const [signatures, setSignatures] = useState<SignatureRecord[]>([]);
-  const [quals, setQuals] = useState<Qualification[]>([]);
-  // qualification-type → selected qualification id; defaults to first match
-  // per required type when the screen opens.
-  const [selectedQuals, setSelectedQuals] = useState<Record<string, string>>({});
   const [photosByAnswer, setPhotosByAnswer] = useState<Record<string, AnswerPhoto[]>>({});
+  const [quals, setQuals] = useState<Qualification[]>([]);
+
+  // Required cert selection: certType → qualId
+  const [selectedQuals, setSelectedQuals] = useState<Record<string, string>>({});
+  // Extra certs (beyond required), each is a qualId
+  const [extraQualIds, setExtraQualIds] = useState<string[]>([]);
+  // Additional signers (besides the expert)
+  const [additionalSigners, setAdditionalSigners] = useState<AdditionalSigner[]>([]);
+  // Expert signature display URL (data URL for Image)
+  const [expertSigDisplayUrl, setExpertSigDisplayUrl] = useState<string | null>(null);
+  // Which signer we're currently capturing a signature for (by id)
+  const [captureSignerId, setCaptureSignerId] = useState<string | null>(null);
+  // Which qual type we're uploading for
+  const [uploadingFor, setUploadingFor] = useState<string | null>(null);
+
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+
+  // ── Load ────────────────────────────────────────────────────────────────────
 
   const load = useCallback(async () => {
     if (!inspectionId) {
@@ -94,21 +115,18 @@ export default function GenerateCertificateScreen() {
       setInspection(insp);
       const tpl = await templatesApi.getById(insp.template_id).catch(() => null);
       setTemplate(tpl);
-      const [proj, qs, ans, sigs, qualsList] = await Promise.all([
+      const [proj, qs, ans, qualsList] = await Promise.all([
         projectsApi.getById(insp.project_id).catch(() => null),
         tpl ? templatesApi.questions(tpl.id).catch(() => [] as Question[]) : Promise.resolve([] as Question[]),
         answersApi.list(insp.id).catch(() => []),
-        signaturesApi.list(insp.id).catch(() => []),
         qualificationsApi.list().catch(() => []),
       ]);
       setProject(proj);
       setQuestions(qs);
       setAnswers(ans);
-      setSignatures(sigs);
       setQuals(qualsList);
 
-      // Preselect the first available (non-expired) qual for each required
-      // type, matching today's behavior from the signing screen.
+      // Pre-select first available qual for each required type
       const initial: Record<string, string> = {};
       for (const t of tpl?.required_qualifications ?? []) {
         const first = qualsList.find(q => q.type === t);
@@ -116,7 +134,7 @@ export default function GenerateCertificateScreen() {
       }
       setSelectedQuals(initial);
 
-      // Fetch photos for each answer that has any.
+      // Fetch answer photos
       const photoMap: Record<string, AnswerPhoto[]> = {};
       await Promise.all(
         ans.map(async a => {
@@ -132,20 +150,48 @@ export default function GenerateCertificateScreen() {
 
   useEffect(() => { void load(); }, [load]);
 
+  // Load expert signature preview
+  useEffect(() => {
+    let cancelled = false;
+    if (!user?.saved_signature_url) { setExpertSigDisplayUrl(null); return; }
+    getStorageImageDisplayUrl(STORAGE_BUCKETS.signatures, user.saved_signature_url)
+      .then(url => { if (!cancelled) setExpertSigDisplayUrl(url); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [user?.saved_signature_url]);
+
+  // ── Derived ─────────────────────────────────────────────────────────────────
+
   const requiredCertTypes = template?.required_qualifications ?? [];
+
+  const missingQualTypes = useMemo(
+    () => requiredCertTypes.filter(t => !selectedQuals[t]),
+    [requiredCertTypes, selectedQuals],
+  );
+
+  // Qual IDs already in use (required + extra) — exclude from "add extra" picker
+  const usedQualIds = useMemo(() => {
+    const ids = new Set(Object.values(selectedQuals));
+    extraQualIds.forEach(id => ids.add(id));
+    return ids;
+  }, [selectedQuals, extraQualIds]);
+
+  // ── Cert actions ─────────────────────────────────────────────────────────────
 
   const pickQual = (certType: string) => {
     const matches = quals.filter(q => q.type === certType);
     if (matches.length === 0) {
-      showActionSheetWithOptions(
-        { title: 'კვალიფიკაცია არ არის', options: ['ატვირთვა', 'გაუქმება'], cancelButtonIndex: 1 },
-        idx => {
-          if (idx === 0) router.push('/qualifications/new' as any);
-        },
+      Alert.alert(
+        'კვალიფიკაცია არ არის',
+        'ატვირთე სერტიფიკატი ან ახლავე ატვირთე ახალი.',
+        [
+          { text: 'გაუქმება', style: 'cancel' },
+          { text: 'ატვირთვა', onPress: () => void uploadQual(certType) },
+        ],
       );
       return;
     }
-    const options = matches.map(m => `${m.type}${m.number ? ` · ${m.number}` : ''}`);
+    const options = matches.map(m => `${m.type}${m.number ? ` · №${m.number}` : ''}`);
     options.push('გაუქმება');
     showActionSheetWithOptions(
       { title: certType, options, cancelButtonIndex: options.length - 1 },
@@ -156,96 +202,164 @@ export default function GenerateCertificateScreen() {
     );
   };
 
-  const missingQualTypes = useMemo(() => {
-    return requiredCertTypes.filter(t => !selectedQuals[t]);
-  }, [requiredCertTypes, selectedQuals]);
+  const uploadQual = async (certType: string) => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) { toast.error('ფოტოზე წვდომა არ არის'); return; }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+    });
+    if (result.canceled || result.assets.length === 0) return;
+    setUploadingFor(certType);
+    try {
+      const asset = result.assets[0];
+      const res = await fetch(asset.uri);
+      const blob = await res.blob();
+      const ext = asset.mimeType?.split('/')[1] ?? 'jpg';
+      const path = `${Date.now()}.${ext}`;
+      await storageApi.upload(STORAGE_BUCKETS.certificates, path, blob, asset.mimeType ?? 'image/jpeg');
+      const qual = await qualificationsApi.upsert({
+        id: crypto.randomUUID(),
+        user_id: 'me',
+        type: certType,
+        number: null,
+        issued_at: new Date().toISOString().slice(0, 10),
+        expires_at: null,
+        file_url: path,
+      });
+      setQuals(prev => [qual, ...prev.filter(q => q.id !== qual.id)]);
+      setSelectedQuals(prev => ({ ...prev, [certType]: qual.id }));
+      toast.success('სერტიფიკატი აიტვირთა');
+    } catch (e: any) {
+      toast.error(e?.message ?? 'ატვირთვა ვერ მოხერხდა');
+    } finally {
+      setUploadingFor(null);
+    }
+  };
+
+  const addExtraQual = () => {
+    const available = quals.filter(q => !usedQualIds.has(q.id));
+    if (available.length === 0) {
+      toast.info('სხვა კვალიფიკაცია არ არის');
+      return;
+    }
+    const options = available.map(q => `${q.type}${q.number ? ` · №${q.number}` : ''}`);
+    options.push('გაუქმება');
+    showActionSheetWithOptions(
+      { title: 'დამატებითი სერტიფიკატი', options, cancelButtonIndex: options.length - 1 },
+      idx => {
+        if (idx == null || idx === options.length - 1) return;
+        setExtraQualIds(prev => [...prev, available[idx].id]);
+      },
+    );
+  };
+
+  const removeExtraQual = (id: string) => {
+    setExtraQualIds(prev => prev.filter(x => x !== id));
+  };
+
+  // ── Signer actions ──────────────────────────────────────────────────────────
+
+  const addSigner = () => {
+    const newSigner: AdditionalSigner = {
+      id: crypto.randomUUID(),
+      name: '',
+      dataUrl: null,
+    };
+    setAdditionalSigners(prev => [...prev, newSigner]);
+  };
+
+  const updateSignerName = (id: string, name: string) => {
+    setAdditionalSigners(prev => prev.map(s => s.id === id ? { ...s, name } : s));
+  };
+
+  const removeSigner = (id: string) => {
+    setAdditionalSigners(prev => prev.filter(s => s.id !== id));
+  };
+
+  const onSignatureCaptured = (base64: string) => {
+    if (!captureSignerId) return;
+    setAdditionalSigners(prev =>
+      prev.map(s =>
+        s.id === captureSignerId
+          ? { ...s, dataUrl: `data:image/png;base64,${base64}` }
+          : s,
+      ),
+    );
+    setCaptureSignerId(null);
+  };
+
+  // ── Generate ─────────────────────────────────────────────────────────────────
 
   const generate = async () => {
     if (!inspection || !template || !project) return;
     if (missingQualTypes.length > 0) {
-      Alert.alert(
-        'აკლია კვალიფიკაცია',
-        `მიუთითე კვალიფიკაციის სერტიფიკატი: ${missingQualTypes.join(', ')}`,
-      );
+      Alert.alert('აკლია კვალიფიკაცია', `მიუთითე: ${missingQualTypes.join(', ')}`);
       return;
     }
     setBusy(true);
     try {
-      // Inline the expert's saved signature so the PDF has an image path
-      // even for the implicit expert row (matches pre-0006 behavior).
-      const expertFromDb = signatures.find(s => s.signer_role === 'expert');
+      // Expert signature
       const expertDataUrl = user?.saved_signature_url
         ? await getStorageImageDataUrl(STORAGE_BUCKETS.signatures, user.saved_signature_url)
         : null;
       const expertName = user ? `${user.first_name} ${user.last_name}`.trim() : 'ექსპერტი';
-      const expertRec: SignatureRecord = expertFromDb
-        ? {
-            ...expertFromDb,
-            signature_png_url: expertFromDb.signature_png_url
-              ? await getStorageImageDataUrl(STORAGE_BUCKETS.signatures, expertFromDb.signature_png_url)
-              : expertDataUrl,
-          }
-        : {
-            id: 'expert-auto',
-            inspection_id: inspection.id,
-            signer_role: 'expert',
-            full_name: expertName,
-            phone: null,
-            position: 'შრომის უსაფრთხოების სპეციალისტი',
-            signature_png_url: expertDataUrl,
-            signed_at: new Date().toISOString(),
-            status: 'signed',
-            person_name: expertName,
-          };
+      const expertRec: SignatureRecord = {
+        id: 'expert-auto',
+        inspection_id: inspection.id,
+        signer_role: 'expert',
+        full_name: expertName,
+        phone: null,
+        position: 'შრომის უსაფრთხოების სპეციალისტი',
+        signature_png_url: expertDataUrl,
+        signed_at: new Date().toISOString(),
+        status: 'signed',
+        person_name: expertName,
+      };
 
-      // Inline other signatures' images as data URLs so the WebView render
-      // doesn't fire off fresh Supabase requests for each.
-      const otherSigs = await Promise.all(
-        signatures
-          .filter(s => s.signer_role !== 'expert')
-          .map(async s => {
-            if (s.status === 'not_present' || !s.signature_png_url) return s;
-            if (s.signature_png_url.startsWith('data:')) return s;
-            return {
-              ...s,
-              signature_png_url: await getStorageImageDataUrl(
-                STORAGE_BUCKETS.signatures,
-                s.signature_png_url,
-              ),
-            };
-          }),
-      );
-      const sigsForPdf = [expertRec, ...otherSigs];
+      // Additional signers
+      const otherRecs: SignatureRecord[] = additionalSigners
+        .filter(s => s.name.trim())
+        .map(s => ({
+          id: s.id,
+          inspection_id: inspection.id,
+          signer_role: 'xaracho_supervisor' as const,
+          full_name: s.name.trim(),
+          phone: null,
+          position: null,
+          signature_png_url: s.dataUrl,
+          signed_at: new Date().toISOString(),
+          status: s.dataUrl ? ('signed' as const) : ('not_present' as const),
+          person_name: s.name.trim(),
+        }));
 
-      // Inline photos.
+      const sigsForPdf = [expertRec, ...otherRecs];
+
+      // Inline photos
       const photosForPdf: Record<string, AnswerPhoto[]> = {};
       await Promise.all(
         Object.entries(photosByAnswer).map(async ([answerId, photos]) => {
           photosForPdf[answerId] = await Promise.all(
             photos.map(async p => ({
               ...p,
-              storage_path: await getStorageImageDataUrl(
-                STORAGE_BUCKETS.answerPhotos,
-                p.storage_path,
-              ),
+              storage_path: await getStorageImageDataUrl(STORAGE_BUCKETS.answerPhotos, p.storage_path),
             })),
           );
         }),
       );
 
-      // Attach the user-picked qualifications.
+      // Attach required + extra qualifications
+      const allQualIds = [
+        ...requiredCertTypes.map(t => selectedQuals[t]).filter(Boolean),
+        ...extraQualIds,
+      ];
       const attachedQuals: Array<Qualification & { file_data_url?: string }> = [];
-      for (const t of requiredCertTypes) {
-        const id = selectedQuals[t];
-        if (!id) continue;
+      for (const id of allQualIds) {
         const qual = quals.find(q => q.id === id);
         if (!qual) continue;
         let fileDataUrl: string | undefined;
         if (qual.file_url) {
-          fileDataUrl = await getStorageImageDataUrl(
-            STORAGE_BUCKETS.certificates,
-            qual.file_url,
-          );
+          fileDataUrl = await getStorageImageDataUrl(STORAGE_BUCKETS.certificates, qual.file_url);
         }
         attachedQuals.push({ ...qual, file_data_url: fileDataUrl });
       }
@@ -261,12 +375,9 @@ export default function GenerateCertificateScreen() {
         certificates: attachedQuals,
       });
       const { uri } = await Print.printToFileAsync({ html });
-      // Unique filename per certificate — an inspection can have many.
       const fileName = `${inspection.id}-${Date.now()}.pdf`;
       const blob = await (await fetch(uri)).blob();
       await storageApi.upload(STORAGE_BUCKETS.pdfs, fileName, blob, 'application/pdf');
-      // Snapshot the attached qualification types and expert name into params
-      // so the cert list can show meaningful info without re-fetching.
       await certificatesApi.create({
         inspectionId: inspection.id,
         templateId: inspection.template_id,
@@ -276,14 +387,13 @@ export default function GenerateCertificateScreen() {
         params: {
           expertName,
           qualTypes: attachedQuals.map(q => ({ type: q.type, number: q.number ?? null })),
+          signerNames: otherRecs.map(s => s.full_name),
         },
       });
       toast.success('PDF რეპორტი შეიქმნა');
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri, { mimeType: 'application/pdf' });
       }
-      // Land on the inspection detail so the user can see their new cert
-      // in the list, download again, etc.
       router.replace(`/inspections/${inspection.id}` as any);
     } catch (e: any) {
       toast.error(e?.message ?? 'გენერაცია ვერ მოხერხდა');
@@ -291,6 +401,8 @@ export default function GenerateCertificateScreen() {
       setBusy(false);
     }
   };
+
+  // ── Render ───────────────────────────────────────────────────────────────────
 
   if (loading) {
     return (
@@ -316,11 +428,15 @@ export default function GenerateCertificateScreen() {
     );
   }
 
+  const captureSigner = additionalSigners.find(s => s.id === captureSignerId);
+
   return (
     <Screen>
       <Stack.Screen options={{ headerShown: true, title: 'PDF რეპორტის გენერაცია' }} />
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 120, gap: 14 }}>
+
+          {/* ── Inspection summary ─────────────────────────────── */}
           <Card>
             <Text style={styles.eyebrow}>ინსპექცია</Text>
             <Text style={styles.inspTitle}>{template.name}</Text>
@@ -328,36 +444,200 @@ export default function GenerateCertificateScreen() {
             <Text style={styles.inspMeta}>
               {new Date(inspection.completed_at ?? inspection.created_at).toLocaleString('ka')}
             </Text>
-            <Text style={{ marginTop: 10, color: theme.colors.ink }} numberOfLines={3}>
-              {inspection.conclusion_text || '—'}
-            </Text>
+            {inspection.conclusion_text ? (
+              <Text style={{ marginTop: 8, color: theme.colors.ink, fontSize: 13, lineHeight: 18 }} numberOfLines={3}>
+                {inspection.conclusion_text}
+              </Text>
+            ) : null}
           </Card>
 
+          {/* ── My signature ───────────────────────────────────── */}
+          <Card>
+            <Text style={styles.eyebrow}>ჩემი ხელმოწერა</Text>
+            <View style={styles.expertRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.expertName}>
+                  {user ? `${user.first_name} ${user.last_name}`.trim() : 'ექსპერტი'}
+                </Text>
+                <Text style={styles.expertRole}>შრომის უსაფრთხოების სპეციალისტი</Text>
+              </View>
+              {user?.saved_signature_url ? (
+                <Ionicons name="checkmark-circle" size={22} color={theme.colors.accent} />
+              ) : (
+                <Pressable
+                  onPress={() => router.push('/signature' as any)}
+                  style={styles.drawBtn}
+                >
+                  <Text style={styles.drawBtnText}>დახაზვა ›</Text>
+                </Pressable>
+              )}
+            </View>
+            {expertSigDisplayUrl ? (
+              <View style={styles.sigThumb}>
+                <Image
+                  source={{ uri: expertSigDisplayUrl }}
+                  style={{ width: '100%', height: '100%' }}
+                  resizeMode="contain"
+                />
+              </View>
+            ) : (
+              <Pressable onPress={() => router.push('/signature' as any)} style={styles.missingRow}>
+                <Ionicons name="create-outline" size={14} color={theme.colors.warn} />
+                <Text style={{ fontSize: 12, color: theme.colors.warn }}>
+                  ხელმოწერა ჯერ არ არის შენახული — შეეხე დასახატად
+                </Text>
+              </Pressable>
+            )}
+          </Card>
+
+          {/* ── Other signers ──────────────────────────────────── */}
+          <Card>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.eyebrow}>სხვა ხელმომწერები</Text>
+              <Pressable onPress={addSigner} style={styles.addBtn}>
+                <Ionicons name="add" size={14} color={theme.colors.accent} />
+                <Text style={styles.addBtnText}>დამატება</Text>
+              </Pressable>
+            </View>
+            {additionalSigners.length === 0 ? (
+              <Text style={{ fontSize: 12, color: theme.colors.inkSoft, marginTop: 6 }}>
+                სურვილისამებრ — დაამატე სხვა ხელმომწერი
+              </Text>
+            ) : (
+              <View style={{ gap: 10, marginTop: 10 }}>
+                {additionalSigners.map(signer => (
+                  <View key={signer.id} style={styles.signerCard}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <TextInput
+                        style={styles.nameInput}
+                        value={signer.name}
+                        onChangeText={t => updateSignerName(signer.id, t)}
+                        placeholder="სახელი გვარი"
+                        placeholderTextColor={theme.colors.inkFaint}
+                      />
+                      <Pressable hitSlop={8} onPress={() => removeSigner(signer.id)}>
+                        <Ionicons name="close-circle" size={20} color={theme.colors.inkFaint} />
+                      </Pressable>
+                    </View>
+                    {signer.dataUrl ? (
+                      <View style={styles.sigThumb}>
+                        <Image
+                          source={{ uri: signer.dataUrl }}
+                          style={{ width: '100%', height: '100%' }}
+                          resizeMode="contain"
+                        />
+                        <Pressable
+                          onPress={() => setCaptureSignerId(signer.id)}
+                          style={styles.resignOverlay}
+                        >
+                          <Text style={{ fontSize: 11, color: theme.colors.inkSoft }}>
+                            შეცვლა ›
+                          </Text>
+                        </Pressable>
+                      </View>
+                    ) : (
+                      <Button
+                        title="ხელმოწერა"
+                        variant="secondary"
+                        onPress={() => {
+                          if (!signer.name.trim()) {
+                            toast.error('ჯერ შეიყვანე სახელი');
+                            return;
+                          }
+                          setCaptureSignerId(signer.id);
+                        }}
+                        style={{ marginTop: 6 }}
+                      />
+                    )}
+                  </View>
+                ))}
+              </View>
+            )}
+          </Card>
+
+          {/* ── Required qualification certs ───────────────────── */}
           {requiredCertTypes.length > 0 ? (
             <Card>
               <Text style={styles.eyebrow}>კვალიფიკაციის სერტიფიკატები</Text>
               <View style={{ gap: 10, marginTop: 10 }}>
-                {requiredCertTypes.map(t => {
-                  const selectedId = selectedQuals[t];
-                  const selected = selectedId ? quals.find(c => c.id === selectedId) : null;
+                {requiredCertTypes.map(certType => {
+                  const selectedId = selectedQuals[certType];
+                  const selected = selectedId ? quals.find(q => q.id === selectedId) : null;
+                  const hasAny = quals.some(q => q.type === certType);
+                  const isUploading = uploadingFor === certType;
                   return (
-                    <Pressable key={t} onPress={() => pickQual(t)} style={styles.qualRow}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.qualTitle}>{t}</Text>
-                        <Text style={styles.qualMeta}>
-                          {selected
-                            ? selected.number ? `№ ${selected.number}` : 'არჩეული'
-                            : 'ჯერ არ არის არჩეული'}
-                        </Text>
+                    <View key={certType} style={styles.qualBlock}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        {selected ? (
+                          <Ionicons name="checkmark-circle" size={18} color={theme.colors.accent} />
+                        ) : (
+                          <Ionicons name="alert-circle" size={18} color={theme.colors.warn} />
+                        )}
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.qualTitle}>{certType}</Text>
+                          <Text style={styles.qualMeta}>
+                            {selected
+                              ? (selected.number ? `№ ${selected.number}` : 'ატვირთულია')
+                              : 'არ არის არჩეული'}
+                          </Text>
+                        </View>
+                        <Pressable onPress={() => pickQual(certType)} style={styles.changeBtn}>
+                          <Text style={styles.changeBtnText}>
+                            {hasAny ? 'შეცვლა' : 'არჩევა'}
+                          </Text>
+                        </Pressable>
                       </View>
-                      <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
-                    </Pressable>
+                      {!selected ? (
+                        <Button
+                          title={isUploading ? 'იტვირთება…' : '+ ახლავე ატვირთვა'}
+                          variant="secondary"
+                          loading={isUploading}
+                          onPress={() => void uploadQual(certType)}
+                          style={{ marginTop: 8 }}
+                        />
+                      ) : null}
+                    </View>
                   );
                 })}
               </View>
             </Card>
           ) : null}
 
+          {/* ── Extra certs ─────────────────────────────────────── */}
+          <Card>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.eyebrow}>დამატებითი სერტიფიკატები</Text>
+              <Pressable onPress={addExtraQual} style={styles.addBtn}>
+                <Ionicons name="add" size={14} color={theme.colors.accent} />
+                <Text style={styles.addBtnText}>დამატება</Text>
+              </Pressable>
+            </View>
+            {extraQualIds.length === 0 ? (
+              <Text style={{ fontSize: 12, color: theme.colors.inkSoft, marginTop: 6 }}>
+                სურვილისამებრ — დაამატე სხვა კვალიფიკაციის სერტიფიკატი
+              </Text>
+            ) : (
+              <View style={{ gap: 8, marginTop: 10 }}>
+                {extraQualIds.map(id => {
+                  const q = quals.find(x => x.id === id);
+                  if (!q) return null;
+                  return (
+                    <View key={id} style={styles.extraRow}>
+                      <Ionicons name="ribbon-outline" size={14} color={theme.colors.accent} />
+                      <Text style={{ flex: 1, fontSize: 13, color: theme.colors.ink }}>
+                        {q.type}{q.number ? ` · №${q.number}` : ''}
+                      </Text>
+                      <Pressable hitSlop={8} onPress={() => removeExtraQual(id)}>
+                        <Ionicons name="close-circle" size={18} color={theme.colors.inkFaint} />
+                      </Pressable>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+          </Card>
+
+          {/* ── Generate button ─────────────────────────────────── */}
           <Button
             title={busy ? 'მიმდინარეობს…' : 'PDF-ის გენერაცია'}
             onPress={generate}
@@ -366,9 +646,19 @@ export default function GenerateCertificateScreen() {
           />
         </ScrollView>
       </SafeAreaView>
+
+      {/* Signature capture modal */}
+      <SignatureCanvas
+        visible={captureSignerId !== null}
+        personName={captureSigner?.name ?? ''}
+        onCancel={() => setCaptureSignerId(null)}
+        onConfirm={onSignatureCaptured}
+      />
     </Screen>
   );
 }
+
+// ── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   eyebrow: {
@@ -389,13 +679,101 @@ const styles = StyleSheet.create({
     color: theme.colors.inkSoft,
     marginTop: 2,
   },
-  qualRow: {
+
+  // Expert
+  expertRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    padding: 12,
-    backgroundColor: theme.colors.subtleSurface,
+    marginTop: 10,
+  },
+  expertName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: theme.colors.ink,
+  },
+  expertRole: {
+    fontSize: 11,
+    color: theme.colors.inkSoft,
+    marginTop: 1,
+  },
+  drawBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: theme.colors.warnSoft,
+  },
+  drawBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: theme.colors.warn,
+  },
+  missingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 10,
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: theme.colors.warnSoft,
+  },
+  sigThumb: {
+    marginTop: 10,
+    height: 60,
+    backgroundColor: theme.colors.white,
     borderRadius: 10,
+    borderWidth: 1,
+    borderColor: theme.colors.hairline,
+    overflow: 'hidden',
+  },
+  resignOverlay: {
+    position: 'absolute',
+    bottom: 4,
+    right: 6,
+  },
+
+  // Signers
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  addBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: theme.colors.accentSoft,
+  },
+  addBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: theme.colors.accent,
+  },
+  signerCard: {
+    backgroundColor: theme.colors.subtleSurface,
+    borderRadius: 12,
+    padding: 10,
+  },
+  nameInput: {
+    flex: 1,
+    backgroundColor: theme.colors.card,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: theme.colors.hairline,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 14,
+    color: theme.colors.ink,
+  },
+
+  // Qual certs
+  qualBlock: {
+    backgroundColor: theme.colors.subtleSurface,
+    borderRadius: 12,
+    padding: 12,
   },
   qualTitle: {
     fontSize: 14,
@@ -406,5 +784,26 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: theme.colors.inkSoft,
     marginTop: 2,
+  },
+  changeBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    backgroundColor: theme.colors.subtleSurface,
+    borderWidth: 1,
+    borderColor: theme.colors.hairline,
+  },
+  changeBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: theme.colors.ink,
+  },
+  extraRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 10,
+    backgroundColor: theme.colors.subtleSurface,
+    borderRadius: 10,
   },
 });
