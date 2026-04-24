@@ -194,6 +194,9 @@ function renderQuestion(q: Question, answer: Answer | undefined, inlinePhotos: A
   const comment = answer?.comment
     ? `<p class="muted">კომენტარი: ${escapeHtml(answer.comment)}</p>`
     : '';
+  const notes = answer?.notes
+    ? `<div style="background:#F6F2EA;padding:6px 10px;border-radius:4px;margin-top:4px;"><span style="font-style:italic;color:#4A4A4A;">შენიშვნა: ${escapeHtml(answer.notes)}</span></div>`
+    : '';
   const photosHtml = inlinePhotos.length > 0
     ? `<div class="photo-grid">${inlinePhotos.map(p => renderPhoto(p, isFailed, q.title)).join('')}</div>`
     : '';
@@ -201,16 +204,16 @@ function renderQuestion(q: Question, answer: Answer | undefined, inlinePhotos: A
     case 'yesno': {
       const v = answer?.value_bool;
       const label = v === true ? '<span class="ok">✓ კი</span>' : v === false ? '<span class="bad">✗ არა</span>' : '—';
-      return `<div class="qa"><strong>${escapeHtml(q.title)}</strong><br/>${label}${comment}${photosHtml}</div>`;
+      return `<div class="qa"><strong>${escapeHtml(q.title)}</strong><br/>${label}${comment}${notes}${photosHtml}</div>`;
     }
     case 'measure': {
       const v = answer?.value_num;
-      return `<div class="qa"><strong>${escapeHtml(q.title)}</strong><br/>${v ?? '—'} ${escapeHtml(q.unit ?? '')}${comment}${photosHtml}</div>`;
+      return `<div class="qa"><strong>${escapeHtml(q.title)}</strong><br/>${v ?? '—'} ${escapeHtml(q.unit ?? '')}${comment}${notes}${photosHtml}</div>`;
     }
     case 'freetext':
-      return `<div class="qa"><strong>${escapeHtml(q.title)}</strong><br/>${escapeHtml(answer?.value_text ?? '—')}${comment}${photosHtml}</div>`;
+      return `<div class="qa"><strong>${escapeHtml(q.title)}</strong><br/>${escapeHtml(answer?.value_text ?? '—')}${comment}${notes}${photosHtml}</div>`;
     case 'photo_upload':
-      return `<div class="qa"><strong>${escapeHtml(q.title)}</strong>${photosHtml}${comment}</div>`;
+      return `<div class="qa"><strong>${escapeHtml(q.title)}</strong>${photosHtml}${comment}${notes}</div>`;
     case 'component_grid': {
       const rows = q.grid_rows ?? [];
       const cols = q.grid_cols ?? [];
@@ -225,7 +228,7 @@ function renderQuestion(q: Question, answer: Answer | undefined, inlinePhotos: A
         })
         .join('');
       return `<div class="qa"><strong>${escapeHtml(q.title)}</strong>
-        <table class="grid"><tr><th></th>${head}</tr>${body}</table>${comment}</div>`;
+        <table class="grid"><tr><th></th>${head}</tr>${body}</table>${comment}${notes}</div>`;
     }
     default:
       return '';

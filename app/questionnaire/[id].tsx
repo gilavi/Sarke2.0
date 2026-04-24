@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -220,6 +220,7 @@ export default function QuestionnaireWizard() {
         value_text: null,
         grid_values: null,
         comment: null,
+        notes: null,
       } as Answer);
     const next = mutate({ ...current });
     // Optimistic update so UI feels instant
@@ -238,6 +239,7 @@ export default function QuestionnaireWizard() {
         value_text: next.value_text,
         grid_values: next.grid_values,
         comment: next.comment,
+        notes: next.notes,
       });
     } catch (e: any) {
       toast.error(`პასუხი ვერ შეინახა: ${e?.message ?? 'ქსელის შეცდომა'}`);
@@ -285,6 +287,22 @@ export default function QuestionnaireWizard() {
       toast.success('ფოტო აიტვირთა');
     } catch (e: any) {
       toast.error(`ფოტო ვერ აიტვირთა: ${e?.message ?? 'ქსელის შეცდომა'}`);
+    }
+  };
+
+  const deletePhoto = async (photo: AnswerPhoto) => {
+    try {
+      await answersApi.removePhoto(photo.id);
+      setPhotos(prev => {
+        const next: Record<string, AnswerPhoto[]> = {};
+        for (const [aid, list] of Object.entries(prev)) {
+          next[aid] = list.filter(p => p.id !== photo.id);
+        }
+        return next;
+      });
+      toast.success('ფოტო წაიშალა');
+    } catch (e: any) {
+      toast.error(`ფოტო ვერ წაიშალა: ${e?.message ?? 'ქსელის შეცდომა'}`);
     }
   };
 
@@ -433,6 +451,7 @@ export default function QuestionnaireWizard() {
                 photosByAnswer={photos}
                 onAnswer={patchAnswer}
                 onPickPhoto={() => pickPhoto(step.question)}
+                onDeletePhoto={deletePhoto}
               />
             ) : step.kind === 'certificates' ? (
               <CertificatesStep
@@ -499,77 +518,97 @@ function QuestionStep({
   photosByAnswer,
   onAnswer,
   onPickPhoto,
+  onDeletePhoto,
 }: {
   question: Question;
   answer: Answer | undefined;
   photosByAnswer: Record<string, AnswerPhoto[]>;
   onAnswer: (q: Question, m: (a: Answer) => Answer) => Promise<void>;
   onPickPhoto: () => void;
+  onDeletePhoto: (photo: AnswerPhoto) => Promise<void>;
 }) {
+  const [previewPhoto, setPreviewPhoto] = useState<AnswerPhoto | null>(null);
+  const answerPhotos = answer ? photosByAnswer[answer.id] ?? [] : [];
+
   return (
-    <View style={{ gap: 14 }}>
+    <View style={{ gap: 24 }}>
       <Text style={{ fontSize: 20, fontWeight: '700', color: theme.colors.ink }}>
         {question.title}
       </Text>
-      {question.type === 'yesno' ? (
-        <View style={{ flexDirection: 'row', gap: 12 }}>
-          <Pressable
-            onPress={() => onAnswer(question, a => ({ ...a, value_bool: true }))}
-            style={[
-              styles.choice,
-              answer?.value_bool === true && { backgroundColor: theme.colors.accentSoft, borderColor: theme.colors.accent },
-            ]}
-          >
-            <Text style={styles.choiceText}>კი</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => onAnswer(question, a => ({ ...a, value_bool: false }))}
-            style={[
-              styles.choice,
-              answer?.value_bool === false && { backgroundColor: theme.colors.dangerSoft, borderColor: theme.colors.danger },
-            ]}
-          >
-            <Text style={styles.choiceText}>არა</Text>
-          </Pressable>
-        </View>
-      ) : null}
-      {question.type === 'measure' ? (
-        <MeasureInput
-          question={question}
-          initial={answer?.value_num ?? null}
-          onCommit={num => onAnswer(question, a => ({ ...a, value_num: num }))}
-        />
-      ) : null}
-      {question.type === 'freetext' ? (
-        <DebouncedFreetext
-          initial={answer?.value_text ?? ''}
-          onCommit={value => onAnswer(question, a => ({ ...a, value_text: value }))}
-        />
-      ) : null}
-      {question.type === 'photo_upload' ? (
-        <>
-          <Button title="ფოტოების დამატება" variant="secondary" onPress={onPickPhoto} />
-          <PhotoGrid photos={(answer && photosByAnswer[answer.id]) ?? []} />
-        </>
-      ) : null}
 
-      {question.type !== 'photo_upload' ? (
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <Button
-            title={
-              answer && photosByAnswer[answer.id]?.length
-                ? `ფოტო (${photosByAnswer[answer.id].length})`
-                : 'ფოტო'
-            }
-            variant="secondary"
-            onPress={onPickPhoto}
-            style={{ flex: 1 }}
+      <View style={{ gap: 14 }}>
+        {question.type === 'yesno' ? (
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <Pressable
+              onPress={() => onAnswer(question, a => ({ ...a, value_bool: true }))}
+              style={[
+                styles.choice,
+                answer?.value_bool === true && { backgroundColor: theme.colors.accentSoft, borderColor: theme.colors.accent },
+              ]}
+            >
+              <Text style={styles.choiceText}>კი</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => onAnswer(question, a => ({ ...a, value_bool: false }))}
+              style={[
+                styles.choice,
+                answer?.value_bool === false && { backgroundColor: theme.colors.dangerSoft, borderColor: theme.colors.danger },
+              ]}
+            >
+              <Text style={styles.choiceText}>არა</Text>
+            </Pressable>
+          </View>
+        ) : null}
+        {question.type === 'measure' ? (
+          <MeasureInput
+            question={question}
+            initial={answer?.value_num ?? null}
+            onCommit={num => onAnswer(question, a => ({ ...a, value_num: num }))}
           />
-        </View>
-      ) : null}
-      {answer && question.type !== 'photo_upload' ? (
-        <PhotoGrid photos={photosByAnswer[answer.id] ?? []} />
-      ) : null}
+        ) : null}
+        {question.type === 'freetext' ? (
+          <DebouncedFreetext
+            initial={answer?.value_text ?? ''}
+            onCommit={value => onAnswer(question, a => ({ ...a, value_text: value }))}
+          />
+        ) : null}
+        {question.type === 'photo_upload' ? (
+          <Text style={{ color: theme.colors.inkSoft, fontSize: 14 }}>
+            დაამატე ფოტოები ქვემოთ მოცემული + ღილაკით
+          </Text>
+        ) : null}
+      </View>
+
+      {/* Photo row */}
+      <View style={{ gap: 8 }}>
+        <Text style={styles.photoCountLabel}>ფოტოები ({answerPhotos.length})</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingVertical: 4 }}>
+          {answerPhotos.map(p => (
+            <Pressable key={p.id} onPress={() => setPreviewPhoto(p)} style={styles.photoTile}>
+              <PhotoThumb photo={p} size={120} />
+            </Pressable>
+          ))}
+          <Pressable onPress={onPickPhoto} style={styles.addPhotoTile}>
+            <Ionicons name="add" size={32} color={theme.colors.inkSoft} />
+          </Pressable>
+        </ScrollView>
+      </View>
+
+      {/* Notes */}
+      <DebouncedNotes
+        initial={answer?.notes ?? null}
+        onCommit={value => onAnswer(question, a => ({ ...a, notes: value || null }))}
+      />
+
+      {/* Preview Modal */}
+      <PhotoPreviewModal
+        photo={previewPhoto}
+        visible={!!previewPhoto}
+        onClose={() => setPreviewPhoto(null)}
+        onDelete={async (photo) => {
+          await onDeletePhoto(photo);
+        }}
+      />
     </View>
   );
 }
@@ -625,6 +664,50 @@ function DebouncedFreetext({
       placeholder="შეავსე აქ..."
       placeholderTextColor={theme.colors.inkFaint}
     />
+  );
+}
+
+function DebouncedNotes({
+  initial,
+  onCommit,
+}: {
+  initial: string | null;
+  onCommit: (value: string) => void;
+}) {
+  const [text, setText] = useState(initial ?? '');
+  const lastCommitted = useRef(initial ?? '');
+
+  useEffect(() => {
+    if (initial !== lastCommitted.current) {
+      setText(initial ?? '');
+      lastCommitted.current = initial ?? '';
+    }
+  }, [initial]);
+
+  const handleBlur = () => {
+    if (text !== lastCommitted.current) {
+      lastCommitted.current = text;
+      onCommit(text);
+    }
+  };
+
+  return (
+    <View>
+      <Text style={styles.label}>შენიშვნა</Text>
+      <TextInput
+        multiline
+        value={text}
+        onChangeText={setText}
+        onBlur={handleBlur}
+        style={[styles.textarea, { minHeight: 100 }]}
+        placeholder="დამატებითი კომენტარი (არასავალდებულო)"
+        placeholderTextColor={theme.colors.inkFaint}
+        maxLength={500}
+      />
+      <Text style={[styles.label, { textAlign: 'right', marginTop: 4, marginBottom: 0 }]}>
+        {text.length}/500
+      </Text>
+    </View>
   );
 }
 
@@ -1116,7 +1199,7 @@ function ConclusionStep({
   );
 }
 
-function PhotoThumb({ photo }: { photo: AnswerPhoto }) {
+function PhotoThumb({ photo, size = 80 }: { photo: AnswerPhoto; size?: number }) {
   // Local device URIs (fresh upload) can be used directly without a network round-trip.
   const isLocal = /^(file|content|ph|asset):\/\//.test(photo.storage_path);
   const [uri, setUri] = useState<string | null>(isLocal ? photo.storage_path : null);
@@ -1132,8 +1215,70 @@ function PhotoThumb({ photo }: { photo: AnswerPhoto }) {
     return () => { cancelled = true; };
   }, [photo.storage_path, isLocal]);
 
-  if (!uri) return <View style={styles.photoThumb} />;
-  return <Image source={{ uri }} style={styles.photoThumb} resizeMode="cover" />;
+  const style = [styles.photoThumb, { width: size, height: size }];
+  if (!uri) return <View style={style} />;
+  return <Image source={{ uri }} style={style} resizeMode="cover" />;
+}
+
+function PhotoPreviewModal({
+  photo,
+  visible,
+  onClose,
+  onDelete,
+}: {
+  photo: AnswerPhoto | null;
+  visible: boolean;
+  onClose: () => void;
+  onDelete: (photo: AnswerPhoto) => Promise<void>;
+}) {
+  const [uri, setUri] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!photo) {
+      setUri(null);
+      return;
+    }
+    const isLocal = /^(file|content|ph|asset):\/\//.test(photo.storage_path);
+    if (isLocal) {
+      setUri(photo.storage_path);
+      return;
+    }
+    let cancelled = false;
+    getStorageImageDisplayUrl(STORAGE_BUCKETS.answerPhotos, photo.storage_path)
+      .then(url => { if (!cancelled) setUri(url); })
+      .catch(() => {
+        if (!cancelled) setUri(storageApi.publicUrl(STORAGE_BUCKETS.answerPhotos, photo.storage_path));
+      });
+    return () => { cancelled = true; };
+  }, [photo]);
+
+  if (!visible || !photo) return null;
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={styles.previewOverlay}>
+        <Pressable style={styles.previewBackdrop} onPress={onClose} />
+        {uri ? (
+          <Image source={{ uri }} style={styles.previewImage} resizeMode="contain" />
+        ) : (
+          <ActivityIndicator color="#fff" />
+        )}
+        <Pressable
+          style={styles.previewDeleteBtn}
+          onPress={async () => {
+            await onDelete(photo);
+            onClose();
+          }}
+        >
+          <Ionicons name="trash-outline" size={22} color="#fff" />
+          <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>წაშლა</Text>
+        </Pressable>
+        <Pressable style={styles.previewCloseBtn} onPress={onClose}>
+          <Ionicons name="close" size={28} color="#fff" />
+        </Pressable>
+      </View>
+    </Modal>
+  );
 }
 
 function PhotoGrid({ photos }: { photos: AnswerPhoto[] }) {
@@ -1378,6 +1523,65 @@ const styles = StyleSheet.create({
     height: 80,
     backgroundColor: theme.colors.subtleSurface,
     borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  photoCountLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: theme.colors.inkSoft,
+  },
+  photoTile: {
+    width: 120,
+    height: 120,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.hairline,
+    overflow: 'hidden',
+  },
+  addPhotoTile: {
+    width: 120,
+    height: 120,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: theme.colors.hairline,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.subtleSurface,
+  },
+  previewOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.92)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  previewBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  previewImage: {
+    width: '90%',
+    height: '70%',
+  },
+  previewDeleteBtn: {
+    position: 'absolute',
+    bottom: 60,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: theme.colors.danger,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 10,
+  },
+  previewCloseBtn: {
+    position: 'absolute',
+    top: 60,
+    right: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },
