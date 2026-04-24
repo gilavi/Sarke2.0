@@ -9,3 +9,9 @@ dist/
 .env.*.local
 .claude/
 
+# Native build output from `expo prebuild` / `expo run:ios|android`.
+# This is a managed Expo project — native dirs regenerate on demand
+# and shouldn't be tracked.
+ios/
+android/
+
