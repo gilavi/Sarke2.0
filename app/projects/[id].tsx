@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useBottomSheet } from '../../components/BottomSheet';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { Button, Card, Field, Input, Screen } from '../../components/ui';
+import { Skeleton, SkeletonCard, SkeletonListCard } from '../../components/Skeleton';
 import {
   projectsApi,
   questionnairesApi,
@@ -43,6 +44,9 @@ export default function ProjectDetail() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [otherProjects, setOtherProjects] = useState<Project[]>([]);
   const [editing, setEditing] = useState(false);
+  // Flips true after the first fetch finishes. Drives the skeleton → content
+  // swap; refocus doesn't re-show skeletons once we have data.
+  const [loaded, setLoaded] = useState(false);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -72,6 +76,7 @@ export default function ProjectDetail() {
         }),
     );
     setSignerPreviews(previews);
+    setLoaded(true);
   }, [id]);
 
   useFocusEffect(
@@ -151,6 +156,29 @@ export default function ProjectDetail() {
       },
     ]);
   };
+
+  if (!loaded && !project) {
+    return (
+      <Screen>
+        <Stack.Screen options={{ headerShown: true, title: 'პროექტი' }} />
+        <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
+          <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }}>
+            <SkeletonCard>
+              <Skeleton width={80} height={10} />
+              <View style={{ height: 8 }} />
+              <Skeleton width={'70%'} height={22} />
+              <View style={{ height: 10 }} />
+              <Skeleton width={'45%'} height={13} />
+              <View style={{ height: 4 }} />
+              <Skeleton width={'55%'} height={13} />
+            </SkeletonCard>
+            <SkeletonListCard rows={2} />
+            <SkeletonListCard rows={3} />
+          </ScrollView>
+        </SafeAreaView>
+      </Screen>
+    );
+  }
 
   return (
     <Screen>

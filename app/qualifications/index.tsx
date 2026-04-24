@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Card, Screen } from '../../components/ui';
+import { Skeleton } from '../../components/Skeleton';
 import { isExpiringSoon, qualificationsApi } from '../../lib/services';
 import { theme } from '../../lib/theme';
 import type { Qualification } from '../../types/models';
@@ -23,10 +24,12 @@ import type { Qualification } from '../../types/models';
 export default function QualificationsScreen() {
   const router = useRouter();
   const [quals, setQuals] = useState<Qualification[]>([]);
+  const [loaded, setLoaded] = useState(false);
 
   const load = useCallback(async () => {
     const q = await qualificationsApi.list().catch(() => []);
     setQuals(q);
+    setLoaded(true);
   }, []);
 
   useFocusEffect(
@@ -80,15 +83,32 @@ export default function QualificationsScreen() {
           keyExtractor={c => c.id}
           contentContainerStyle={{ padding: 16, gap: 12 }}
           ListEmptyComponent={
-            <View style={{ alignItems: 'center', paddingVertical: 60, gap: 10 }}>
-              <Ionicons name="ribbon" size={46} color={theme.colors.accent} style={{ opacity: 0.6 }} />
-              <Text style={{ fontSize: 18, fontWeight: '700', color: theme.colors.ink }}>
-                ცარიელია
-              </Text>
-              <Text style={{ color: theme.colors.inkSoft, textAlign: 'center' }}>
-                დაამატე სერტიფიკატი, რომ PDF-ებს{'\n'}თან ერთოდეს.
-              </Text>
-            </View>
+            !loaded ? (
+              <View style={{ gap: 12 }}>
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <Card key={i} padding={14}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                      <View style={{ flex: 1, gap: 8 }}>
+                        <Skeleton width={'55%'} height={14} />
+                        <Skeleton width={'35%'} height={11} />
+                        <Skeleton width={'45%'} height={11} />
+                      </View>
+                      <Skeleton width={70} height={22} radius={999} />
+                    </View>
+                  </Card>
+                ))}
+              </View>
+            ) : (
+              <View style={{ alignItems: 'center', paddingVertical: 60, gap: 10 }}>
+                <Ionicons name="ribbon" size={46} color={theme.colors.accent} style={{ opacity: 0.6 }} />
+                <Text style={{ fontSize: 18, fontWeight: '700', color: theme.colors.ink }}>
+                  ცარიელია
+                </Text>
+                <Text style={{ color: theme.colors.inkSoft, textAlign: 'center' }}>
+                  დაამატე სერტიფიკატი, რომ PDF-ებს{'\n'}თან ერთოდეს.
+                </Text>
+              </View>
+            )
           }
           renderItem={({ item }) => {
             const status = statusOf(item);

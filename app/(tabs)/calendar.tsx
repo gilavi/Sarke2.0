@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useBottomSheet } from '../../components/BottomSheet';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Card } from '../../components/ui';
+import { Skeleton } from '../../components/Skeleton';
 import {
   questionnairesApi,
   schedulesApi,
@@ -94,6 +95,7 @@ export default function CalendarScreen() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [selected, setSelected] = useState<Date>(() => startOfDay(new Date()));
   const [syncing, setSyncing] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   const load = useCallback(async () => {
     const [ss, ts] = await Promise.all([
@@ -104,6 +106,7 @@ export default function CalendarScreen() {
     setTemplates(ts);
     // Rebuild local reminders from the fresh list — best-effort.
     void rescheduleAllFromDb(ss);
+    setLoaded(true);
   }, []);
 
   useFocusEffect(
@@ -345,7 +348,22 @@ export default function CalendarScreen() {
               month: 'long',
             })}
           </Text>
-          {daySchedules.length === 0 ? (
+          {!loaded && daySchedules.length === 0 ? (
+            <>
+              {Array.from({ length: 2 }).map((_, i) => (
+                <Card key={i} padding={12}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <Skeleton width={36} height={36} radius={18} />
+                    <View style={{ flex: 1, gap: 8 }}>
+                      <Skeleton width={'65%'} height={14} />
+                      <Skeleton width={'40%'} height={11} />
+                    </View>
+                    <Skeleton width={72} height={30} radius={10} />
+                  </View>
+                </Card>
+              ))}
+            </>
+          ) : daySchedules.length === 0 ? (
             <Card>
               <Text style={{ color: theme.colors.inkSoft, fontSize: 13 }}>
                 შემოწმება არ არის ამ დღეს.

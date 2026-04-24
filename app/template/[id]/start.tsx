@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Button, Field, Input, Screen } from '../../../components/ui';
+import { Skeleton } from '../../../components/Skeleton';
 import { projectsApi, questionnairesApi, templatesApi } from '../../../lib/services';
 import { useToast } from '../../../lib/toast';
 import { theme } from '../../../lib/theme';
@@ -27,6 +28,7 @@ export default function StartTemplateScreen() {
   const [selected, setSelected] = useState<string | null>(null);
   const [showingCreate, setShowingCreate] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!id) return;
@@ -37,6 +39,7 @@ export default function StartTemplateScreen() {
     setTemplate(t);
     setProjects(ps);
     setSelected(prev => prev ?? ps[0]?.id ?? null);
+    setLoaded(true);
   }, [id]);
 
   useFocusEffect(
@@ -74,7 +77,11 @@ export default function StartTemplateScreen() {
         <ScrollView contentContainerStyle={styles.scroll}>
           <View style={{ gap: 4 }}>
             <Text style={styles.eyebrow}>შაბლონი</Text>
-            <Text style={styles.templateName}>{template?.name ?? '—'}</Text>
+            {template ? (
+              <Text style={styles.templateName}>{template.name}</Text>
+            ) : (
+              <Skeleton width={'80%'} height={22} />
+            )}
           </View>
 
           <View style={{ gap: 4, marginTop: 20 }}>
@@ -96,7 +103,19 @@ export default function StartTemplateScreen() {
             <Ionicons name="chevron-forward" size={18} color={theme.colors.inkFaint} />
           </Pressable>
 
-          {projects.length > 0 ? (
+          {!loaded && projects.length === 0 ? (
+            <View style={{ gap: 10 }}>
+              {Array.from({ length: 3 }).map((_, i) => (
+                <View key={i} style={styles.projectRow}>
+                  <Skeleton width={22} height={22} radius={11} />
+                  <View style={{ flex: 1, gap: 6 }}>
+                    <Skeleton width={'70%'} height={15} />
+                    <Skeleton width={'40%'} height={11} />
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : projects.length > 0 ? (
             <View style={{ gap: 10 }}>
               {projects.map(p => {
                 const isSelected = selected === p.id;

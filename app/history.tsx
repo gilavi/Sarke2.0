@@ -5,6 +5,7 @@ import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { Card, Screen } from '../components/ui';
+import { Skeleton } from '../components/Skeleton';
 import {
   certificatesApi,
   inspectionsApi,
@@ -28,6 +29,7 @@ export default function HistoryScreen() {
   // inspection_id → number of attached certificate PDFs; used for the
   // per-row count badge so users can see "this inspection has 2 PDFs".
   const [certCounts, setCertCounts] = useState<Record<string, number>>({});
+  const [loaded, setLoaded] = useState(false);
 
   const load = useCallback(async () => {
     const [allQ, allT, allP] = await Promise.all([
@@ -49,6 +51,7 @@ export default function HistoryScreen() {
     } else {
       setCertCounts({});
     }
+    setLoaded(true);
   }, []);
 
   useFocusEffect(
@@ -172,9 +175,26 @@ export default function HistoryScreen() {
             );
           }}
           ListEmptyComponent={
-            <View style={{ alignItems: 'center', paddingVertical: 60 }}>
-              <Text style={{ color: theme.colors.inkSoft }}>ცარიელია</Text>
-            </View>
+            !loaded ? (
+              <View style={{ gap: 10 }}>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Card key={i} padding={12}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                      <Skeleton width={40} height={40} radius={10} />
+                      <View style={{ flex: 1, gap: 8 }}>
+                        <Skeleton width={'65%'} height={14} />
+                        <Skeleton width={'40%'} height={11} />
+                      </View>
+                      <Skeleton width={18} height={18} radius={9} />
+                    </View>
+                  </Card>
+                ))}
+              </View>
+            ) : (
+              <View style={{ alignItems: 'center', paddingVertical: 60 }}>
+                <Text style={{ color: theme.colors.inkSoft }}>ცარიელია</Text>
+              </View>
+            )
           }
         />
       </SafeAreaView>

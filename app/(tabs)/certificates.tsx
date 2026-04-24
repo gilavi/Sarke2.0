@@ -16,6 +16,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { Card } from '../../components/ui';
+import { Skeleton } from '../../components/Skeleton';
 import {
   certificatesApi,
   inspectionsApi,
@@ -96,6 +97,7 @@ export default function CertificatesScreen() {
   const [inspections, setInspections] = useState<Inspection[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [loaded, setLoaded] = useState(false);
 
   const load = useCallback(async () => {
     const [cs, ts, ps, insps] = await Promise.all([
@@ -108,6 +110,7 @@ export default function CertificatesScreen() {
     setTemplates(ts);
     setProjects(ps);
     setInspections(insps);
+    setLoaded(true);
   }, []);
 
   useFocusEffect(
@@ -151,15 +154,37 @@ export default function CertificatesScreen() {
         keyExtractor={c => c.id}
         contentContainerStyle={{ padding: 16, paddingBottom: 100, gap: 10 }}
         ListEmptyComponent={
-          <View style={styles.empty}>
-            <Ionicons name="document-text" size={46} color={theme.colors.accent} style={{ opacity: 0.6 }} />
-            <Text style={{ fontSize: 18, fontWeight: '700', color: theme.colors.ink }}>
-              ცარიელია
-            </Text>
-            <Text style={{ color: theme.colors.inkSoft, textAlign: 'center' }}>
-              დაასრულე ინსპექცია და დააგენერირე პირველი PDF რეპორტი.
-            </Text>
-          </View>
+          !loaded ? (
+            <View style={{ gap: 10 }}>
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Card key={i} padding={12}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <Skeleton width={58} height={80} radius={8} />
+                    <View style={{ flex: 1, gap: 6 }}>
+                      <Skeleton width={'70%'} height={14} />
+                      <Skeleton width={'50%'} height={12} />
+                      <Skeleton width={'40%'} height={11} />
+                      <View style={{ flexDirection: 'row', gap: 4, marginTop: 4 }}>
+                        <Skeleton width={72} height={18} radius={999} />
+                        <Skeleton width={56} height={18} radius={999} />
+                      </View>
+                    </View>
+                    <Skeleton width={16} height={16} radius={8} />
+                  </View>
+                </Card>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.empty}>
+              <Ionicons name="document-text" size={46} color={theme.colors.accent} style={{ opacity: 0.6 }} />
+              <Text style={{ fontSize: 18, fontWeight: '700', color: theme.colors.ink }}>
+                ცარიელია
+              </Text>
+              <Text style={{ color: theme.colors.inkSoft, textAlign: 'center' }}>
+                დაასრულე ინსპექცია და დააგენერირე პირველი PDF რეპორტი.
+              </Text>
+            </View>
+          )
         }
         renderItem={({ item }) => {
           const insp = inspectionById.get(item.inspection_id) ?? null;

@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { templatesApi } from '../lib/services';
+import { Skeleton } from '../components/Skeleton';
 import { theme } from '../lib/theme';
 import type { Template } from '../types/models';
 
@@ -20,10 +21,14 @@ function metaFor(category: string) {
 export default function NewInspectionModal() {
   const router = useRouter();
   const [templates, setTemplates] = useState<Template[]>([]);
+  const [loaded, setLoaded] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
-      void templatesApi.list().then(ts => setTemplates(ts.filter(t => t.is_system)));
+      void templatesApi.list().then(ts => {
+        setTemplates(ts.filter(t => t.is_system));
+        setLoaded(true);
+      });
     }, []),
   );
 
@@ -56,14 +61,33 @@ export default function NewInspectionModal() {
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
-        {xaracho.length > 0 && (
-          <TemplateGroup label="ხარაჩო" templates={xaracho} onSelect={start} />
-        )}
-        {harness.length > 0 && (
-          <TemplateGroup label="სამუშაო ქამრები" templates={harness} onSelect={start} />
-        )}
-        {other.length > 0 && (
-          <TemplateGroup label="სხვა" templates={other} onSelect={start} />
+        {!loaded && templates.length === 0 ? (
+          <View style={styles.group}>
+            <Skeleton width={80} height={11} />
+            <View style={styles.groupCards}>
+              {Array.from({ length: 3 }).map((_, i) => (
+                <View key={i} style={styles.row}>
+                  <Skeleton width={46} height={46} radius={12} />
+                  <View style={{ flex: 1, gap: 8 }}>
+                    <Skeleton width={'70%'} height={15} />
+                    <Skeleton width={'40%'} height={11} />
+                  </View>
+                </View>
+              ))}
+            </View>
+          </View>
+        ) : (
+          <>
+            {xaracho.length > 0 && (
+              <TemplateGroup label="ხარაჩო" templates={xaracho} onSelect={start} />
+            )}
+            {harness.length > 0 && (
+              <TemplateGroup label="სამუშაო ქამრები" templates={harness} onSelect={start} />
+            )}
+            {other.length > 0 && (
+              <TemplateGroup label="სხვა" templates={other} onSelect={start} />
+            )}
+          </>
         )}
       </ScrollView>
     </SafeAreaView>

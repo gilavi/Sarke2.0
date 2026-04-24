@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '../../components/ui';
+import { Skeleton } from '../../components/Skeleton';
 import { useSession } from '../../lib/session';
 import {
   inspectionsApi,
@@ -31,6 +32,7 @@ export default function MoreScreen() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [googleConnected, setGoogleConnected] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -48,6 +50,7 @@ export default function MoreScreen() {
         setCerts(c);
         setTemplates(t);
         setProjects(p);
+        setLoaded(true);
         setGoogleConnected(gc);
       })();
     }, []),
@@ -99,9 +102,21 @@ export default function MoreScreen() {
 
         {/* Stat strip */}
         <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 16 }}>
-          <StatPill value={projects.length} label="პროექტი" tint={theme.colors.accent} />
-          <StatPill value={completed} label="დასრულდა" tint={theme.colors.harnessTint} />
-          <StatPill value={drafts} label="დრაფტი" tint={theme.colors.warn} />
+          <StatPill
+            value={loaded ? projects.length : null}
+            label="პროექტი"
+            tint={theme.colors.accent}
+          />
+          <StatPill
+            value={loaded ? completed : null}
+            label="დასრულდა"
+            tint={theme.colors.harnessTint}
+          />
+          <StatPill
+            value={loaded ? drafts : null}
+            label="დრაფტი"
+            tint={theme.colors.warn}
+          />
         </View>
 
         {/* Hub tiles */}
@@ -111,8 +126,8 @@ export default function MoreScreen() {
             icon="time"
             tint={theme.colors.accent}
             bg={theme.colors.accentSoft}
-            primary={`${counts.total}`}
-            secondary={counts.latestCreatedAt ? `ბოლო: ${relativeTime(counts.latestCreatedAt)}` : 'ცარიელია'}
+            primary={loaded ? `${counts.total}` : null}
+            secondary={loaded ? (counts.latestCreatedAt ? `ბოლო: ${relativeTime(counts.latestCreatedAt)}` : 'ცარიელია') : null}
             onPress={() => router.push('/history')}
           />
           <HubTile
@@ -120,9 +135,9 @@ export default function MoreScreen() {
             icon="ribbon"
             tint={theme.colors.certTint}
             bg={theme.colors.certSoft}
-            primary={`${certs.length}`}
-            secondary={certs.length === 0 ? 'ცარიელია' : expiring > 0 ? `${expiring} იწურება` : 'ყველა აქტიური'}
-            badge={expiring > 0 ? `${expiring} იწურება` : undefined}
+            primary={loaded ? `${certs.length}` : null}
+            secondary={loaded ? (certs.length === 0 ? 'ცარიელია' : expiring > 0 ? `${expiring} იწურება` : 'ყველა აქტიური') : null}
+            badge={loaded && expiring > 0 ? `${expiring} იწურება` : undefined}
             onPress={() => router.push('/qualifications' as any)}
           />
           <HubTile
@@ -130,8 +145,8 @@ export default function MoreScreen() {
             icon="documents"
             tint={theme.colors.harnessTint}
             bg={theme.colors.harnessSoft}
-            primary={`${templates.length}`}
-            secondary={systemTpl === templates.length ? 'სისტემური' : `${systemTpl} სისტემური`}
+            primary={loaded ? `${templates.length}` : null}
+            secondary={loaded ? (systemTpl === templates.length ? 'სისტემური' : `${systemTpl} სისტემური`) : null}
             onPress={() => router.push('/templates')}
           />
           <HubTile
@@ -177,10 +192,14 @@ export default function MoreScreen() {
   );
 }
 
-function StatPill({ value, label, tint }: { value: number; label: string; tint: string }) {
+function StatPill({ value, label, tint }: { value: number | null; label: string; tint: string }) {
   return (
     <View style={[styles.statPill]}>
-      <Text style={{ fontSize: 22, fontWeight: '800', color: tint }}>{value}</Text>
+      {value === null ? (
+        <Skeleton width={30} height={22} />
+      ) : (
+        <Text style={{ fontSize: 22, fontWeight: '800', color: tint }}>{value}</Text>
+      )}
       <Text
         style={{
           fontSize: 10,
@@ -210,8 +229,8 @@ function HubTile({
   icon: any;
   tint: string;
   bg: string;
-  primary: string;
-  secondary: string;
+  primary: string | null;
+  secondary: string | null;
   badge?: string;
   onPress: () => void;
 }) {
@@ -228,11 +247,19 @@ function HubTile({
             </View>
           ) : null}
         </View>
-        <Text style={{ fontSize: 28, fontWeight: '900', color: theme.colors.ink }}>{primary}</Text>
+        {primary === null ? (
+          <Skeleton width={40} height={28} />
+        ) : (
+          <Text style={{ fontSize: 28, fontWeight: '900', color: theme.colors.ink }}>{primary}</Text>
+        )}
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-          <View style={{ flex: 1 }}>
+          <View style={{ flex: 1, gap: 4 }}>
             <Text style={{ fontWeight: '600', color: theme.colors.ink }}>{title}</Text>
-            <Text style={{ fontSize: 11, color: theme.colors.inkSoft }} numberOfLines={1}>{secondary}</Text>
+            {secondary === null ? (
+              <Skeleton width={'70%'} height={11} />
+            ) : (
+              <Text style={{ fontSize: 11, color: theme.colors.inkSoft }} numberOfLines={1}>{secondary}</Text>
+            )}
           </View>
           <Ionicons name="chevron-forward" size={14} color={theme.colors.inkFaint} />
         </View>
