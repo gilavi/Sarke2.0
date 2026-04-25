@@ -354,7 +354,8 @@ function AnimatedFAB({ open, onPress }: { open: boolean; onPress: () => void }) 
       friction: 7,
       useNativeDriver: true,
     }).start();
-  }, [open, spin]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const rotation = spin.interpolate({
     inputRange: [0, 1],
@@ -386,7 +387,8 @@ function AnimatedDarkBackdrop({ visible, onPress }: { visible: boolean; onPress:
       easing: visible ? Easing.out(Easing.cubic) : Easing.in(Easing.cubic),
       useNativeDriver: true,
     }).start();
-  }, [visible, fade]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
 
   return (
     <Animated.View
@@ -471,7 +473,7 @@ function ProjectPickerSheet({
     if (!name.trim()) return;
     setBusy(true);
     try {
-      const newProject = await projectsApi.create({
+      const created = await projectsApi.create({
         name: name.trim(),
         companyName: company.trim() || null,
         address: address.trim() || null,
@@ -480,8 +482,13 @@ function ProjectPickerSheet({
       });
       await onCreated();
       // After creating project, proceed to template selection instead of closing
-      setPickedProjectId(newProject.id);
-      setView('template');
+      if (created?.id) {
+        setPickedProjectId(created.id);
+        setView('template');
+      } else {
+        // Fallback: if API doesn't return project, just close and let user pick manually
+        onClose();
+      }
     } catch (e) {
       toast.error(toErrorMessage(e, 'შექმნა ვერ მოხერხდა'));
     } finally {
