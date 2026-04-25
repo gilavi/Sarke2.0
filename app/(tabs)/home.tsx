@@ -28,6 +28,7 @@ import {
 // shareStoredPdf import removed — PDF sharing now lives on the inspection
 // detail screen (which fetches certificates list) post 0006 decoupling.
 import { theme } from '../../lib/theme';
+import { logError } from '../../lib/logError';
 import { Button, Field, Input } from '../../components/ui';
 import { Skeleton } from '../../components/Skeleton';
 import { MapPicker, type LatLng } from '../../components/MapPicker';
@@ -51,17 +52,17 @@ export default function HomeScreen() {
   const load = useCallback(async () => {
     try {
       const [c, t, r, p] = await Promise.all([
-        qualificationsApi.list().catch(() => []),
-        templatesApi.list().catch(() => []),
-        questionnairesApi.recent(10).catch(() => []),
-        projectsApi.list().catch(() => []),
+        qualificationsApi.list().catch((e) => { logError(e, 'home.qualifications'); return []; }),
+        templatesApi.list().catch((e) => { logError(e, 'home.templates'); return []; }),
+        questionnairesApi.recent(10).catch((e) => { logError(e, 'home.recent'); return []; }),
+        projectsApi.list().catch((e) => { logError(e, 'home.projects'); return []; }),
       ]);
       setCerts(c);
       setTemplates(t);
       setRecent(r);
       setProjects(p);
-    } catch {
-      // ignore
+    } catch (e) {
+      logError(e, 'home.load');
     } finally {
       setLoaded(true);
     }

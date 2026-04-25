@@ -41,6 +41,7 @@ import { getStorageImageDataUrl, getStorageImageDisplayUrl } from '../../lib/ima
 import { buildPdfHtml } from '../../lib/pdf';
 import { useToast } from '../../lib/toast';
 import { theme } from '../../lib/theme';
+import { logError } from '../../lib/logError';
 import type {
   Answer,
   AnswerPhoto,
@@ -121,13 +122,13 @@ export default function GenerateCertificateScreen() {
         return;
       }
       setInspection(insp);
-      const tpl = await templatesApi.getById(insp.template_id).catch(() => null);
+      const tpl = await templatesApi.getById(insp.template_id).catch((e) => { logError(e, 'certNew.template'); return null; });
       setTemplate(tpl);
       const [proj, qs, ans, qualsList] = await Promise.all([
-        projectsApi.getById(insp.project_id).catch(() => null),
-        tpl ? templatesApi.questions(tpl.id).catch(() => [] as Question[]) : Promise.resolve([] as Question[]),
-        answersApi.list(insp.id).catch(() => []),
-        qualificationsApi.list().catch(() => []),
+        projectsApi.getById(insp.project_id).catch((e) => { logError(e, 'certNew.project'); return null; }),
+        tpl ? templatesApi.questions(tpl.id).catch((e) => { logError(e, 'certNew.questions'); return [] as Question[]; }) : Promise.resolve([] as Question[]),
+        answersApi.list(insp.id).catch((e) => { logError(e, 'certNew.answers'); return [] as Answer[]; }),
+        qualificationsApi.list().catch((e) => { logError(e, 'certNew.qualifications'); return [] as Qualification[]; }),
       ]);
       setProject(proj);
       setQuestions(qs);
@@ -146,7 +147,7 @@ export default function GenerateCertificateScreen() {
       const photoMap: Record<string, AnswerPhoto[]> = {};
       await Promise.all(
         ans.map(async a => {
-          const ps = await answersApi.photos(a.id).catch(() => [] as AnswerPhoto[]);
+          const ps = await answersApi.photos(a.id).catch((e) => { logError(e, 'certNew.photos'); return [] as AnswerPhoto[]; });
           if (ps.length > 0) photoMap[a.id] = ps;
         }),
       );
@@ -164,7 +165,7 @@ export default function GenerateCertificateScreen() {
     if (!user?.saved_signature_url) { setExpertSigDisplayUrl(null); return; }
     getStorageImageDisplayUrl(STORAGE_BUCKETS.signatures, user.saved_signature_url)
       .then(url => { if (!cancelled) setExpertSigDisplayUrl(url); })
-      .catch(() => {});
+      .catch((e) => logError(e, 'certNew.expertSigUrl'));
     return () => { cancelled = true; };
   }, [user?.saved_signature_url]);
 

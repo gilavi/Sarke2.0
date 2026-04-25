@@ -33,6 +33,7 @@ import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { shareStoredPdf } from '../../lib/sharePdf';
 import { useToast } from '../../lib/toast';
 import { theme } from '../../lib/theme';
+import { logError } from '../../lib/logError';
 import type { Certificate, Project, Template } from '../../types/models';
 
 type CertParams = {
@@ -62,18 +63,18 @@ export default function CertificateDetailScreen() {
     if (!id) return;
     setLoading(true);
     try {
-      const c = await certificatesApi.getById(id).catch(() => null);
+      const c = await certificatesApi.getById(id).catch((e) => { logError(e, 'certDetail.cert'); return null; });
       if (!c) {
         toast.error('PDF ვერ მოიძებნა');
         router.back();
         return;
       }
       setCert(c);
-      const insp = await inspectionsApi.getById(c.inspection_id).catch(() => null);
+      const insp = await inspectionsApi.getById(c.inspection_id).catch((e) => { logError(e, 'certDetail.inspection'); return null; });
       if (!insp) return;
       const [tpl, proj] = await Promise.all([
-        templatesApi.getById(insp.template_id).catch(() => null),
-        projectsApi.getById(insp.project_id).catch(() => null),
+        templatesApi.getById(insp.template_id).catch((e) => { logError(e, 'certDetail.template'); return null; }),
+        projectsApi.getById(insp.project_id).catch((e) => { logError(e, 'certDetail.project'); return null; }),
       ]);
       setTemplate(tpl);
       setProject(proj);
@@ -106,11 +107,12 @@ export default function CertificateDetailScreen() {
         if (!cacheBase) throw new Error('no cache dir');
         const target = `${cacheBase}cert-preview-${cert.id}-${name}`;
         const signed = await storageApi.signedUrl(STORAGE_BUCKETS.pdfs, cert.pdf_url, 3600)
-          .catch(() => storageApi.publicUrl(STORAGE_BUCKETS.pdfs, cert.pdf_url));
+          .catch((e) => { logError(e, 'certDetail.signedUrl'); return storageApi.publicUrl(STORAGE_BUCKETS.pdfs, cert.pdf_url); });
         const res = await FileSystem.downloadAsync(signed, target);
         if (res.status !== 200) throw new Error(`download ${res.status}`);
         if (!cancelled) setResolvedUri(target);
-      } catch {
+      } catch (e) {
+        logError(e, 'certDetail.resolveUri');
         if (!cancelled) { setResolvedUri(null); setResolveError(true); setWebviewLoading(false); }
       }
     })();

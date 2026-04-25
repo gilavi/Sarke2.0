@@ -24,6 +24,7 @@ import { MapPicker, type LatLng } from '../../components/MapPicker';
 import { projectsApi } from '../../lib/services';
 import { useToast } from '../../lib/toast';
 import { theme } from '../../lib/theme';
+import { logError } from '../../lib/logError';
 import type { Project } from '../../types/models';
 
 type Stats = Record<string, { drafts: number; completed: number }>;
@@ -42,11 +43,12 @@ export default function ProjectsScreen() {
     try {
       const [ps, s] = await Promise.all([
         projectsApi.list(),
-        projectsApi.stats().catch(() => ({}) as Stats),
+        projectsApi.stats().catch((e) => { logError(e, 'projects.stats'); return {} as Stats; }),
       ]);
       setProjects(ps);
       setStats(s);
-    } catch {
+    } catch (e) {
+      logError(e, 'projects.load');
       setProjects([]);
     } finally {
       setLoading(false);
