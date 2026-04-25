@@ -710,12 +710,13 @@ export const remoteSigningApi = {
     return data as RemoteSigningRequest;
   },
 
-  markSent: async (id: string): Promise<void> => {
-    const { error } = await supabase
-      .from('remote_signing_requests')
-      .update({ status: 'sent', last_sent_at: new Date().toISOString() })
-      .eq('id', id);
+  /** Invoke the send-signing-sms Edge Function which calls Twilio and marks the row 'sent'. */
+  sendSMS: async (requestId: string): Promise<void> => {
+    const { data, error } = await supabase.functions.invoke('send-signing-sms', {
+      body: { requestId },
+    });
     if (error) throw error;
+    if ((data as { error?: string })?.error) throw new Error((data as { error: string }).error);
   },
 
   cancel: async (id: string): Promise<void> => {

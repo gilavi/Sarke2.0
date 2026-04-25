@@ -34,7 +34,7 @@ import { useToast } from '../../lib/toast';
 import { friendlyError } from '../../lib/errorMap';
 import { scheduleDelete } from '../../lib/pendingDeletes';
 import { haptics } from '../../lib/haptics';
-import { openSigningSMS } from '../../lib/sms';
+// openSigningSMS kept in lib/sms.ts as fallback; Twilio edge fn used instead.
 import { theme } from '../../lib/theme';
 import type {
   Answer,
@@ -162,29 +162,17 @@ export default function InspectionDetailScreen() {
       // Optimistic insert; refetch on focus reconciles.
       setRemoteRequests(prev => [row, ...prev]);
       setAddOpen(false);
-      // Open Messages immediately with the new token.
-      const opened = await openSigningSMS({
-        phone: row.signer_phone,
-        name: row.signer_name,
-        token: row.token,
-      });
-      if (opened) {
-        try {
-          await remoteSigningApi.markSent(row.id);
-          setRemoteRequests(prev =>
-            prev.map(r =>
-              r.id === row.id
-                ? { ...r, status: 'sent', last_sent_at: new Date().toISOString() }
-                : r,
-            ),
-          );
-        } catch {
-          // Best-effort; the next focus refetch will reconcile.
-        }
-        haptics.success();
-      } else {
-        toast.info('SMS აპლიკაცია ვერ გაიხსნა — ლინკი შენახულია');
-      }
+      // Send SMS via Twilio edge function.
+      await remoteSigningApi.sendSMS(row.id);
+      setRemoteRequests(prev =>
+        prev.map(r =>
+          r.id === row.id
+            ? { ...r, status: 'sent', last_sent_at: new Date().toISOString() }
+            : r,
+        ),
+      );
+      haptics.success();
+      toast.success('SMS გაიგზავნა');
     } catch (e) {
       toast.error(friendlyError(e));
     } finally {
@@ -193,27 +181,19 @@ export default function InspectionDetailScreen() {
   };
 
   const resendRemote = async (req: RemoteSigningRequest) => {
-    const opened = await openSigningSMS({
-      phone: req.signer_phone,
-      name: req.signer_name,
-      token: req.token,
-    });
-    if (opened) {
-      try {
-        await remoteSigningApi.markSent(req.id);
-        setRemoteRequests(prev =>
-          prev.map(r =>
-            r.id === req.id
-              ? { ...r, status: 'sent', last_sent_at: new Date().toISOString() }
-              : r,
-          ),
-        );
-        haptics.tap();
-      } catch {
-        // Ignore — focus refetch reconciles.
-      }
-    } else {
-      toast.error('SMS აპლიკაცია ვერ გაიხსნა');
+    try {
+      await remoteSigningApi.sendSMS(req.id);
+      setRemoteRequests(prev =>
+        prev.map(r =>
+          r.id === req.id
+            ? { ...r, status: 'sent', last_sent_at: new Date().toISOString() }
+            : r,
+        ),
+      );
+      haptics.tap();
+      toast.success('SMS ხელახლა გაიგზავნა');
+    } catch (e) {
+      toast.error(friendlyError(e));
     }
   };
 
