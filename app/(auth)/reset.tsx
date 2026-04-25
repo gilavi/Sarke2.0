@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/session';
 import { Button, Card, ErrorText, Field, Input } from '../../components/ui';
+import { logError } from '../../lib/logError';
 import { theme } from '../../lib/theme';
 
 export default function ResetPasswordScreen() {
@@ -74,7 +75,7 @@ export default function ResetPasswordScreen() {
                     onPress={async () => {
                       // End the temporary recovery session so the user signs
                       // in fresh with the new password (no stale half-state).
-                      await signOut().catch(() => {});
+                      await signOut().catch((e) => logError(e, 'reset.signOut'));
                       router.replace('/(auth)/login');
                     }}
                   />

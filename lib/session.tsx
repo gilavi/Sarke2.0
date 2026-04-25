@@ -4,6 +4,7 @@ import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { supabase } from './supabase';
 import { purgeUserScopedStorage } from './storage-purge';
+import { logError } from './logError';
 import type { AppUser } from '../types/models';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -50,39 +51,70 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     // on a shared device and purge the previous user's draft/offline data
     // before the new user starts writing.
     let lastUserId: string | null = null;
+    // Epoch guard: a stale getSession() result must not overwrite a later
+    // sign-out. Each safe-load gets a token; only the latest may commit state.
+    let epoch = 0;
+    let cancelled = false;
+
+    const safeLoadUser = async (session: Session) => {
+      const myEpoch = ++epoch;
+      try {
+        const { data } = await supabase
+          .from('users')
+          .select()
+          .eq('id', session.user.id)
+          .maybeSingle();
+        if (cancelled || myEpoch !== epoch) return;
+        setState({ status: 'signedIn', session, user: (data as AppUser | null) ?? null });
+      } catch (e) {
+        if (cancelled || myEpoch !== epoch) return;
+        logError(e, 'session.loadUser');
+        // Auth says signed-in; profile fetch failed. Keep the session so the
+        // user isn't bounced to login over a transient error.
+        setState({ status: 'signedIn', session, user: null });
+      }
+    };
 
     supabase.auth.getSession().then(({ data }) => {
+      if (cancelled) return;
       if (data.session) {
         lastUserId = data.session.user.id;
-        void loadUser(data.session);
+        void safeLoadUser(data.session);
       } else {
         setState({ status: 'signedOut' });
       }
     }).catch((e) => {
-      console.warn('[session] getSession failed', e);
+      if (cancelled) return;
+      logError(e, 'session.getSession');
       setState({ status: 'signedOut' });
     });
 
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (cancelled) return;
       const nextUserId = session?.user?.id ?? null;
       // Token expiry → sign out so AuthGate routes to /login instead of
       // leaving the user on a stale screen with a dead session.
       if (event === 'TOKEN_REFRESHED' && !session) {
+        epoch++;
         setState({ status: 'signedOut' });
         return;
       }
       if (event === 'SIGNED_OUT' || (lastUserId && nextUserId && nextUserId !== lastUserId)) {
-        void purgeUserScopedStorage();
+        void purgeUserScopedStorage().catch((e) => logError(e, 'session.purgeUserScopedStorage'));
       }
       lastUserId = nextUserId;
       if (session) {
-        void loadUser(session);
+        void safeLoadUser(session);
       } else {
+        epoch++;
         setState({ status: 'signedOut' });
       }
     });
 
-    return () => sub.subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
   const api = useMemo<SessionCtx>(

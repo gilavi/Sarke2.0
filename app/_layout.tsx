@@ -16,6 +16,7 @@ import { ToastProvider } from '../lib/toast';
 import { OfflineProvider } from '../lib/offline';
 import { OfflineBanner } from '../components/OfflineBanner';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import { logError } from '../lib/logError';
 import { theme } from '../lib/theme';
 
 // Codes we've already tried to exchange. Prevents a double-exchange when both
@@ -48,7 +49,8 @@ function AuthGate() {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (error) throw error;
         router.replace('/(auth)/reset');
-      } catch {
+      } catch (e) {
+        logError(e, '_layout.exchangeCodeForSession');
         router.replace('/(auth)/forgot');
       }
     };
@@ -74,7 +76,7 @@ function AuthGate() {
         router.replace('/(tabs)/home');
       }
       // Opportunistic retry of any signature uploads that failed earlier.
-      void flushPendingSignatures().catch(() => {});
+      void flushPendingSignatures().catch((e) => logError(e, '_layout.flushPendingSignatures'));
     }
   }, [state, segments]);
 
