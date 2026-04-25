@@ -1,4 +1,4 @@
-import { haptics } from './haptics';
+import { haptic } from './haptics';
 
 type ToastLike = {
   info: (
@@ -56,7 +56,7 @@ export function scheduleDelete({
   const undo = () => {
     if (settled) return;
     settled = true;
-    haptics.tap();
+    haptic.light();
     try {
       onUndo?.();
     } catch {}

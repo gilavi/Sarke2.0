@@ -33,7 +33,7 @@ import {
 import { useToast } from '../../lib/toast';
 import { friendlyError } from '../../lib/errorMap';
 import { scheduleDelete } from '../../lib/pendingDeletes';
-import { haptics } from '../../lib/haptics';
+import { haptic } from '../../lib/haptics';
 // openSigningSMS kept in lib/sms.ts as fallback; Twilio edge fn used instead.
 import { theme } from '../../lib/theme';
 import type {
@@ -78,7 +78,10 @@ export default function InspectionDetailScreen() {
       }
       setInspection(insp);
       // If this is still a draft, bounce into the wizard — the detail view
-      // only makes sense once the inspection is immutable.
+      // only makes sense once the inspection is immutable. The wizard does
+      // NOT mirror this redirect, so we won't ping-pong: even when a queued
+      // local "complete this" patch is sitting in storage, the wizard now
+      // ignores its `status` field and trusts the server's row.
       if (insp.status === 'draft') {
         router.replace(`/inspections/${insp.id}/wizard` as any);
         return;
@@ -120,7 +123,7 @@ export default function InspectionDetailScreen() {
   };
 
   const deleteCert = (cert: Certificate) => {
-    haptics.warning();
+    haptic.warn();
     setCerts(prev => prev.filter(c => c.id !== cert.id));
     scheduleDelete({
       message: 'PDF რეპორტი წაიშალა',
@@ -129,7 +132,7 @@ export default function InspectionDetailScreen() {
       onExecute: async () => {
         try {
           await certificatesApi.remove(cert.id);
-          haptics.success();
+          haptic.success();
         } catch (e) {
           setCerts(prev => [cert, ...prev.filter(c => c.id !== cert.id)]);
           toast.error(friendlyError(e));
@@ -171,7 +174,7 @@ export default function InspectionDetailScreen() {
             : r,
         ),
       );
-      haptics.success();
+      haptic.success();
       toast.success('SMS გაიგზავნა');
     } catch (e) {
       toast.error(friendlyError(e));
@@ -190,7 +193,7 @@ export default function InspectionDetailScreen() {
             : r,
         ),
       );
-      haptics.tap();
+      haptic.light();
       toast.success('SMS ხელახლა გაიგზავნა');
     } catch (e) {
       toast.error(friendlyError(e));
@@ -198,7 +201,7 @@ export default function InspectionDetailScreen() {
   };
 
   const cancelRemote = (req: RemoteSigningRequest) => {
-    haptics.warning();
+    haptic.warn();
     setRemoteRequests(prev => prev.filter(r => r.id !== req.id));
     scheduleDelete({
       message: 'მოთხოვნა წაიშალა',
@@ -207,7 +210,7 @@ export default function InspectionDetailScreen() {
       onExecute: async () => {
         try {
           await remoteSigningApi.cancel(req.id);
-          haptics.success();
+          haptic.success();
         } catch (e) {
           setRemoteRequests(prev => [req, ...prev.filter(r => r.id !== req.id)]);
           toast.error(friendlyError(e));

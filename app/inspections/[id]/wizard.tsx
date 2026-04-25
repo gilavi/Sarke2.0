@@ -62,6 +62,34 @@ function buildSteps(
 // Simple in-memory cache for photo display URLs to avoid redundant fetches
 const photoUrlCache = new Map<string, string>();
 
+// Whether the current step has any user input — flips the bottom button between
+// "გამოტოვება" (skip) and "შემდეგი" (next). Conclusion has its own validation.
+function hasAnswer(
+  step: FlatStep,
+  answers: Record<string, Answer>,
+  photos: Record<string, AnswerPhoto[]>,
+  conclusion: string,
+  isSafe: boolean | null,
+  harnessName: string,
+  template: Template | null,
+): boolean {
+  if (step.kind === 'conclusion') {
+    const harnessOk = template?.category !== 'harness' || harnessName.trim().length > 0;
+    return isSafe !== null && conclusion.trim().length > 0 && harnessOk;
+  }
+  const a = answers[step.question.id];
+  if (step.kind === 'gridRow') {
+    const row = (a?.grid_values ?? {})[step.row];
+    return !!row && Object.keys(row).some(k => k !== 'კომენტარი' || (row[k] && row[k].trim()));
+  }
+  const q = step.question;
+  if (q.type === 'yesno') return a?.value_bool === true || a?.value_bool === false;
+  if (q.type === 'measure') return a?.value_num != null;
+  if (q.type === 'freetext') return !!(a?.value_text && a.value_text.trim());
+  if (q.type === 'photo_upload') return !!a && (photos[a.id] ?? []).length > 0;
+  return false;
+}
+
 export default function QuestionnaireWizard() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -119,10 +147,19 @@ export default function QuestionnaireWizard() {
       const q = await inspectionsApi.getById(id);
       if (ctrl.cancelled) return;
       if (!q) throw new Error('არ მოიძებნა');
-      // Fold any locally-queued inspection patch over the remote row.
+      // Fold any locally-queued inspection patch over the remote row — but
+      // only the user-edit fields. Status/completed_at come from the server
+      // and must NOT be overlaid: a queued completion that hasn't flushed yet
+      // would otherwise trigger CompletedRedirect → detail-screen sees the
+      // still-draft server row → detail bounces back to /wizard → infinite loop.
       const localPatch = await offline.hydrateQuestionnairePatch(q.id);
       if (ctrl.cancelled) return;
-      const qMerged: Inspection = { ...q, ...(localPatch ?? {}) };
+      const safePatch = localPatch ? { ...localPatch } : null;
+      if (safePatch) {
+        delete (safePatch as Partial<Inspection>).status;
+        delete (safePatch as Partial<Inspection>).completed_at;
+      }
+      const qMerged: Inspection = { ...q, ...(safePatch ?? {}) };
       setQuestionnaire(qMerged);
       const t = await templatesApi.getById(qMerged.template_id);
       if (ctrl.cancelled) return;
@@ -392,15 +429,11 @@ export default function QuestionnaireWizard() {
 
   if (loading) {
     return (
-      <Screen>
-        <Stack.Screen options={{ headerShown: true, title: 'კითხვარი' }} />
-        <SafeAreaView style={{ flex: 1 }} edges={[]}>
-          <View style={{ padding: 16, paddingTop: 12 }}>
-            <View style={styles.progressSegments}>
-              <View style={[styles.progressSegment, styles.progressSegmentCurrent]} />
-              <View style={styles.progressSegment} />
-              <View style={styles.progressSegment} />
-            </View>
+      <Screen style={{ backgroundColor: theme.colors.card }}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+          <View style={styles.topBar}>
+            <Text style={styles.stepperText}> </Text>
           </View>
           <SkeletonWizard />
         </SafeAreaView>
@@ -424,157 +457,150 @@ export default function QuestionnaireWizard() {
     );
   }
 
-  return (
-    <Screen>
-      <Stack.Screen
-        // Static "კითხვარი" gives the user a clear location. Template names
-        // are often too long for iOS nav bars and get truncated ugly; the
-        // name surfaces instead on the start screen and step progress.
-        options={{
-          headerShown: true,
-          title: 'კითხვარი',
-          headerRight: () => (
-            <Pressable
-              hitSlop={10}
-              onPress={() => setExitModalVisible(true)}
-              style={({ pressed }) => [
-                {
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 4,
-                  paddingVertical: 6,
-                  paddingHorizontal: 12,
-                  borderRadius: 12,
-                  backgroundColor: theme.colors.subtleSurface,
-                  borderWidth: StyleSheet.hairlineWidth,
-                  borderColor: theme.colors.hairline,
-                },
-                pressed && { opacity: 0.7, backgroundColor: theme.colors.card },
-              ]}
-            >
-              <Ionicons name="exit-outline" size={16} color={theme.colors.inkSoft} />
-              <Text style={{ color: theme.colors.inkSoft, fontSize: 13, fontWeight: '600' }}>გასვლა</Text>
-            </Pressable>
-          ),
-        }}
-      />
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={{ flex: 1 }}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
-      >
-        {/* Modern segmented progress */}
-        <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 }}>
-          <View style={styles.progressSegments}>
-            {steps.map((s, i) => (
-              <View
-                key={i}
-                style={[
-                  styles.progressSegment,
-                  i <= stepIndex && styles.progressSegmentActive,
-                  i === stepIndex && styles.progressSegmentCurrent,
-                ]}
-              />
-            ))}
-          </View>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
-            <Text style={{ fontSize: 12, fontWeight: '600', color: theme.colors.accent }}>
-              {step.kind === 'question' ? (step.question.section ? `სექცია ${step.question.section}` : 'კითხვა') : step.kind === 'gridRow' ? 'კომპონენტი' : 'დასკვნა'}
-            </Text>
-            <Text style={{ fontSize: 12, color: theme.colors.inkSoft }}>
-              {stepIndex + 1} / {steps.length}
-            </Text>
-          </View>
-        </View>
+  const stepAnswered = hasAnswer(step, answers, photos, conclusion, isSafe, harnessName, template);
+  const isYesNo = step.kind === 'question' && step.question.type === 'yesno';
+  const isLast = stepIndex === steps.length - 1;
 
-        {step.kind === 'gridRow' ? (
-          // Full-height layout for grid rows — options are large and thumb-friendly
-          <Animated.View style={{ flex: 1, opacity: stepAnim }}>
-            <GridRowStep
-              question={step.question}
-              row={step.row}
-              answer={answers[step.question.id]}
-              isFirstRow={step.row === (step.question.grid_rows?.[0] ?? '')}
-              harnessRowCount={harnessRowCount}
-              setHarnessRowCount={setHarnessRowCount}
-              onAnswer={patchAnswer}
-              onPickPhoto={() => pickPhoto(step.question)}
-            />
-          </Animated.View>
-        ) : (
-          <Animated.View style={{ flex: 1, opacity: stepAnim }}>
-            <ScrollView
-              contentContainerStyle={{ padding: 16, gap: 16 }}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
-            >
-            {step.kind === 'question' ? (
-              <QuestionStep
+  const goNext = () => {
+    haptic.light();
+    if (step.kind === 'question' && step.question.type === 'measure') {
+      const value = answers[step.question.id]?.value_num ?? null;
+      const err = measureError(step.question, value);
+      if (err) {
+        haptic.error();
+        toast.error(err);
+        return;
+      }
+    }
+    setStepIndex(i => Math.min(steps.length - 1, i + 1));
+  };
+
+  return (
+    <Screen style={{ backgroundColor: theme.colors.card }}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.card }} edges={['top']}>
+        <View style={styles.topBar}>
+          <Text style={styles.stepperText}>
+            {stepIndex + 1} / {steps.length}
+          </Text>
+          <Pressable
+            hitSlop={12}
+            onPress={() => setExitModalVisible(true)}
+            style={({ pressed }) => [styles.closeBtn, pressed && { opacity: 0.6 }]}
+          >
+            <Ionicons name="close" size={28} color={theme.colors.ink} />
+          </Pressable>
+        </View>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={{ flex: 1 }}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
+        >
+          {step.kind === 'gridRow' ? (
+            <Animated.View style={{ flex: 1, opacity: stepAnim }}>
+              <GridRowStep
                 question={step.question}
+                row={step.row}
                 answer={answers[step.question.id]}
                 photosByAnswer={photos}
+                isFirstRow={step.row === (step.question.grid_rows?.[0] ?? '')}
+                harnessRowCount={harnessRowCount}
+                setHarnessRowCount={setHarnessRowCount}
                 onAnswer={patchAnswer}
                 onPickPhoto={() => pickPhoto(step.question)}
                 onDeletePhoto={deletePhoto}
               />
+            </Animated.View>
+          ) : (
+            <Animated.View style={{ flex: 1, opacity: stepAnim }}>
+              <ScrollView
+                contentContainerStyle={{ padding: 20, paddingBottom: 12, gap: 16 }}
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="interactive"
+              >
+                {step.kind === 'question' ? (
+                  <QuestionStep
+                    question={step.question}
+                    answer={answers[step.question.id]}
+                    photosByAnswer={photos}
+                    onAnswer={patchAnswer}
+                    onPickPhoto={() => pickPhoto(step.question)}
+                    onDeletePhoto={deletePhoto}
+                  />
+                ) : (
+                  <ConclusionStep
+                    conclusion={conclusion}
+                    onConclusion={setConclusion}
+                    isSafe={isSafe}
+                    onIsSafe={setIsSafe}
+                    template={template}
+                    harnessName={harnessName}
+                    onHarnessName={setHarnessName}
+                  />
+                )}
+              </ScrollView>
+            </Animated.View>
+          )}
+
+          <View style={styles.footer}>
+            {isYesNo ? (
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <Pressable
+                  onPress={() => {
+                    haptic.light();
+                    patchAnswer(step.question, a => ({ ...a, value_bool: true }));
+                  }}
+                  style={[
+                    styles.choice,
+                    answers[step.question.id]?.value_bool === true && {
+                      backgroundColor: theme.colors.accentSoft,
+                      borderColor: theme.colors.accent,
+                    },
+                  ]}
+                >
+                  <Text style={styles.choiceText}>კი</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    haptic.light();
+                    patchAnswer(step.question, a => ({ ...a, value_bool: false }));
+                  }}
+                  style={[
+                    styles.choice,
+                    answers[step.question.id]?.value_bool === false && {
+                      backgroundColor: theme.colors.dangerSoft,
+                      borderColor: theme.colors.danger,
+                    },
+                  ]}
+                >
+                  <Text style={styles.choiceText}>არა</Text>
+                </Pressable>
+              </View>
+            ) : null}
+            {isLast ? (
+              <Button
+                title="დასრულება"
+                style={{ paddingVertical: 14 }}
+                iconRight={<Ionicons name="checkmark" size={20} color={theme.colors.white} />}
+                onPress={() => {
+                  haptic.medium();
+                  saveConclusionAndGo();
+                }}
+              />
             ) : (
-              <ConclusionStep
-                conclusion={conclusion}
-                onConclusion={setConclusion}
-                isSafe={isSafe}
-                onIsSafe={setIsSafe}
-                template={template}
-                harnessName={harnessName}
-                onHarnessName={setHarnessName}
+              <Button
+                title={stepAnswered ? 'შემდეგი' : 'გამოტოვება'}
+                variant={stepAnswered ? 'primary' : 'secondary'}
+                style={{ paddingVertical: 14 }}
+                iconRight={
+                  stepAnswered ? (
+                    <Ionicons name="chevron-forward" size={18} color={theme.colors.white} />
+                  ) : undefined
+                }
+                onPress={goNext}
               />
             )}
-          </ScrollView>
-          </Animated.View>
-        )}
-
-        <View style={styles.footer}>
-          <Button
-            title="უკან"
-            variant="secondary"
-            style={{ flex: 1, paddingVertical: 14 }}
-            disabled={stepIndex === 0}
-            iconLeft={<Ionicons name="chevron-back" size={18} color={stepIndex === 0 ? theme.colors.inkFaint : theme.colors.ink} />}
-            onPress={() => {
-              haptic.light();
-              setStepIndex(i => Math.max(0, i - 1));
-            }}
-          />
-          {stepIndex < steps.length - 1 ? (
-            <Button
-              title="შემდეგი"
-              style={{ flex: 2, paddingVertical: 14 }}
-              iconRight={<Ionicons name="chevron-forward" size={18} color={theme.colors.white} />}
-              onPress={() => {
-                haptic.light();
-                if (step.kind === 'question' && step.question.type === 'measure') {
-                  const value = answers[step.question.id]?.value_num ?? null;
-                  const err = measureError(step.question, value);
-                  if (err) {
-                    haptic.error();
-                    toast.error(err);
-                    return;
-                  }
-                }
-                setStepIndex(i => Math.min(steps.length - 1, i + 1));
-              }}
-            />
-          ) : (
-            <Button
-              title="დასრულება"
-              style={{ flex: 2, paddingVertical: 14 }}
-              iconRight={<Ionicons name="checkmark" size={20} color={theme.colors.white} />}
-              onPress={() => {
-                haptic.medium();
-                saveConclusionAndGo();
-              }}
-            />
-          )}
-        </View>
+          </View>
 
         {/* Exit confirmation modal */}
         <Modal visible={exitModalVisible} transparent animationType="fade" onRequestClose={() => setExitModalVisible(false)}>
@@ -600,7 +626,7 @@ export default function QuestionnaireWizard() {
                   title="დრაფტად შენახვა"
                   onPress={() => {
                     setExitModalVisible(false);
-                    router.replace('/(tabs)/home' as any);
+                    router.back();
                   }}
                   iconLeft={<Ionicons name="archive-outline" size={18} color={theme.colors.white} />}
                 />
@@ -648,7 +674,7 @@ export default function QuestionnaireWizard() {
                       await inspectionsApi.remove(id);
                       haptic.success();
                       toast.success('წაიშალა');
-                      router.replace('/(tabs)/home' as any);
+                      router.back();
                     } catch (e: any) {
                       haptic.error();
                       toast.error(e?.message ?? 'ვერ წაიშალა');
@@ -660,7 +686,8 @@ export default function QuestionnaireWizard() {
             </View>
           </View>
         </Modal>
-      </KeyboardAvoidingView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
     </Screen>
   );
 }
@@ -683,99 +710,78 @@ const QuestionStep = memo(function QuestionStep({
   onDeletePhoto: (photo: AnswerPhoto) => Promise<void>;
 }) {
   const [previewPhoto, setPreviewPhoto] = useState<AnswerPhoto | null>(null);
+  const [noteOpen, setNoteOpen] = useState(false);
   const answerPhotos = answer ? photosByAnswer[answer.id] ?? [] : [];
+  const hasNote = !!(answer?.notes && answer.notes.length > 0);
+  const showNoteField = noteOpen || hasNote;
+  const hasPhotos = answerPhotos.length > 0;
 
   return (
-    <View style={{ gap: 20, paddingVertical: 8 }}>
-      <View style={styles.questionCard}>
-        <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.accent, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>
-          კითხვა
-        </Text>
-        <Text style={{ fontSize: 20, fontWeight: '700', color: theme.colors.ink, lineHeight: 28 }}>
-          {question.title}
-        </Text>
-      </View>
+    <View style={{ gap: 24, paddingTop: 24 }}>
+      <Text style={styles.questionTitle}>{question.title}</Text>
 
-      <View style={{ gap: 14 }}>
-        {question.type === 'yesno' ? (
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            <Pressable
-              onPress={() => {
-                haptic.light();
-                onAnswer(question, a => ({ ...a, value_bool: true }));
-              }}
-              style={[
-                styles.choice,
-                answer?.value_bool === true && { backgroundColor: theme.colors.accentSoft, borderColor: theme.colors.accent },
-              ]}
-            >
-              <Text style={styles.choiceText}>კი</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => {
-                haptic.light();
-                onAnswer(question, a => ({ ...a, value_bool: false }));
-              }}
-              style={[
-                styles.choice,
-                answer?.value_bool === false && { backgroundColor: theme.colors.dangerSoft, borderColor: theme.colors.danger },
-              ]}
-            >
-              <Text style={styles.choiceText}>არა</Text>
-            </Pressable>
-          </View>
-        ) : null}
-        {question.type === 'measure' ? (
-          <MeasureInput
-            question={question}
-            initial={answer?.value_num ?? null}
-            onCommit={num => onAnswer(question, a => ({ ...a, value_num: num }))}
-          />
-        ) : null}
-        {question.type === 'freetext' ? (
-          <DebouncedFreetext
-            initial={answer?.value_text ?? ''}
-            onCommit={value => onAnswer(question, a => ({ ...a, value_text: value }))}
-          />
-        ) : null}
-        {question.type === 'photo_upload' ? (
-          <Text style={{ color: theme.colors.inkSoft, fontSize: 14 }}>
-            დაამატე ფოტოები ქვემოთ მოცემული + ღილაკით
-          </Text>
-        ) : null}
-      </View>
+      {question.type === 'measure' ? (
+        <MeasureInput
+          question={question}
+          initial={answer?.value_num ?? null}
+          onCommit={num => onAnswer(question, a => ({ ...a, value_num: num }))}
+        />
+      ) : null}
+      {question.type === 'freetext' ? (
+        <DebouncedFreetext
+          initial={answer?.value_text ?? ''}
+          onCommit={value => onAnswer(question, a => ({ ...a, value_text: value }))}
+        />
+      ) : null}
+      {question.type === 'photo_upload' ? (
+        <Text style={{ color: theme.colors.inkSoft, fontSize: 14, textAlign: 'center' }}>
+          დაამატე ფოტოები ქვემოთ
+        </Text>
+      ) : null}
 
-      {/* Photo row */}
-      <View style={[styles.questionCard, { gap: 10 }]}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Text style={styles.photoCountLabel}>ფოტოები ({answerPhotos.length})</Text>
-          {answerPhotos.length > 0 && (
-            <Text style={{ fontSize: 11, color: theme.colors.inkFaint }}>
-              დააჭირე გასადიდებლად
-            </Text>
-          )}
+      {hasPhotos ? (
+        <View style={{ gap: 8 }}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 10, paddingVertical: 4 }}
+          >
+            {answerPhotos.map(p => (
+              <Pressable key={p.id} onPress={() => setPreviewPhoto(p)} style={styles.photoTile}>
+                <PhotoThumb photo={p} size={120} />
+              </Pressable>
+            ))}
+            <Pressable onPress={onPickPhoto} style={styles.addPhotoTile}>
+              <Ionicons name="add" size={32} color={theme.colors.inkSoft} />
+            </Pressable>
+          </ScrollView>
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingVertical: 4 }}>
-          {answerPhotos.map(p => (
-            <Pressable key={p.id} onPress={() => setPreviewPhoto(p)} style={styles.photoTile}>
-              <PhotoThumb photo={p} size={120} />
-            </Pressable>
-          ))}
-          <Pressable onPress={onPickPhoto} style={styles.addPhotoTile}>
-            <Ionicons name="add" size={32} color={theme.colors.inkSoft} />
-          </Pressable>
-        </ScrollView>
-      </View>
+      ) : null}
 
-      {/* Notes */}
-      <View style={styles.questionCard}>
+      {showNoteField ? (
         <DebouncedNotes
           initial={answer?.notes ?? null}
           onCommit={value => onAnswer(question, a => ({ ...a, notes: value || null }))}
         />
-      </View>
+      ) : null}
 
-      {/* Preview Modal */}
+      {!hasPhotos || !showNoteField ? (
+        <View style={styles.chipRow}>
+          {!hasPhotos ? (
+            <Pressable onPress={onPickPhoto} style={styles.assistChip}>
+              <Ionicons name="camera-outline" size={16} color={theme.colors.inkSoft} />
+              <Text style={styles.assistChipText}>ფოტო</Text>
+            </Pressable>
+          ) : null}
+          {!showNoteField ? (
+            <Pressable onPress={() => setNoteOpen(true)} style={styles.assistChip}>
+              <Ionicons name="create-outline" size={16} color={theme.colors.inkSoft} />
+              <Text style={styles.assistChipText}>შენიშვნა</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      ) : null}
+
       <PhotoPreviewModal
         photo={previewPhoto}
         visible={!!previewPhoto}
@@ -1013,24 +1019,31 @@ const GridRowStep = memo(function GridRowStep({
   question,
   row,
   answer,
+  photosByAnswer,
   isFirstRow,
   harnessRowCount,
   setHarnessRowCount,
   onAnswer,
   onPickPhoto,
+  onDeletePhoto,
 }: {
   question: Question;
   row: string;
   answer: Answer | undefined;
+  photosByAnswer: Record<string, AnswerPhoto[]>;
   isFirstRow: boolean;
   harnessRowCount: number;
   setHarnessRowCount: (n: number) => void;
   onAnswer: (q: Question, m: (a: Answer) => Answer) => Promise<void>;
   onPickPhoto: () => void;
+  onDeletePhoto: (photo: AnswerPhoto) => Promise<void>;
 }) {
   const cols = question.grid_cols ?? [];
   const isHarness = (question.grid_rows?.[0] ?? '') === 'N1';
   const values: Record<string, string> = (answer?.grid_values ?? {})[row] ?? {};
+  const answerPhotos = answer ? photosByAnswer[answer.id] ?? [] : [];
+  const hasPhotos = answerPhotos.length > 0;
+  const [previewPhoto, setPreviewPhoto] = useState<AnswerPhoto | null>(null);
 
   const setValue = (col: string, value: string | null, exclusive: boolean) => {
     onAnswer(question, a => {
@@ -1053,17 +1066,23 @@ const GridRowStep = memo(function GridRowStep({
     // Determine which status col is selected (exclusive)
     const selectedStatus = statusCols.find(c => values[c] !== undefined) ?? null;
 
+    const commentValue = values['კომენტარი'] ?? '';
+    const [commentOpen, setCommentOpen] = useState(false);
+    const showCommentField = !!commentValue || commentOpen;
+
     return (
       <ScrollView
-      contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 24, gap: 10 }}
-      keyboardShouldPersistTaps="handled"
-      keyboardDismissMode="interactive"
-    >
-        {/* Component name header */}
-        <Text style={{ fontSize: 12, color: theme.colors.inkSoft, marginBottom: 0 }}>{question.title}</Text>
-        <Text style={{ fontSize: 26, fontWeight: '800', color: theme.colors.ink, marginBottom: 6 }}>{row}</Text>
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24, gap: 16 }}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+      >
+        <View style={{ alignItems: 'center', paddingVertical: 8, gap: 4 }}>
+          <Text style={{ fontSize: 12, color: theme.colors.inkSoft }}>{question.title}</Text>
+          <Text style={{ fontSize: 28, fontWeight: '800', color: theme.colors.ink, textAlign: 'center' }}>
+            {row}
+          </Text>
+        </View>
 
-        {/* Status buttons — compact rows */}
         <View style={{ gap: 8 }}>
           {statusCols.map(col => {
             const isSelected = selectedStatus === col;
@@ -1100,22 +1119,62 @@ const GridRowStep = memo(function GridRowStep({
           })}
         </View>
 
-        {/* Comment field */}
-        {hasComment ? (
+        {hasPhotos ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 10, paddingVertical: 4 }}
+          >
+            {answerPhotos.map(p => (
+              <Pressable key={p.id} onPress={() => setPreviewPhoto(p)} style={styles.photoTile}>
+                <PhotoThumb photo={p} size={120} />
+              </Pressable>
+            ))}
+            <Pressable onPress={onPickPhoto} style={styles.addPhotoTile}>
+              <Ionicons name="add" size={32} color={theme.colors.inkSoft} />
+            </Pressable>
+          </ScrollView>
+        ) : null}
+
+        {hasComment && showCommentField ? (
           <TextInput
-            value={values['კომენტარი'] ?? ''}
+            value={commentValue}
             onChangeText={text => setValue('კომენტარი', text || null, false)}
-            placeholder="კომენტარი (სურვილისამებრ)"
+            placeholder="კომენტარი"
             placeholderTextColor={theme.colors.inkFaint}
-            style={[styles.input, { marginTop: 10 }]}
+            style={styles.input}
+            autoFocus
           />
         ) : null}
 
-        {/* Photo button */}
-        <Pressable onPress={onPickPhoto} style={styles.photoRowBtn}>
-          <Ionicons name="camera-outline" size={18} color={theme.colors.inkSoft} />
-          <Text style={{ color: theme.colors.inkSoft, fontSize: 13 }}>ფოტო</Text>
-        </Pressable>
+        {!hasPhotos || (hasComment && !showCommentField) ? (
+          <View style={styles.chipRow}>
+            {!hasPhotos ? (
+              <Pressable onPress={onPickPhoto} style={styles.assistChip}>
+                <Ionicons name="camera-outline" size={16} color={theme.colors.inkSoft} />
+                <Text style={styles.assistChipText}>ფოტო</Text>
+              </Pressable>
+            ) : null}
+            {hasComment && !showCommentField ? (
+              <Pressable
+                onPress={() => setCommentOpen(true)}
+                style={styles.assistChip}
+              >
+                <Ionicons name="create-outline" size={16} color={theme.colors.inkSoft} />
+                <Text style={styles.assistChipText}>კომენტარი</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
+
+        <PhotoPreviewModal
+          photo={previewPhoto}
+          visible={!!previewPhoto}
+          onClose={() => setPreviewPhoto(null)}
+          onDelete={async (photo) => {
+            await onDeletePhoto(photo);
+          }}
+        />
       </ScrollView>
     );
   }
@@ -1123,12 +1182,16 @@ const GridRowStep = memo(function GridRowStep({
   // Harness: scrollable list of components with ✓/✗ chips
   return (
     <ScrollView
-      contentContainerStyle={{ padding: 16, gap: 14 }}
+      contentContainerStyle={{ padding: 20, paddingTop: 16, gap: 16 }}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="interactive"
     >
-      <Text style={{ fontSize: 11, color: theme.colors.inkSoft }}>{question.title}</Text>
-      <Text style={{ fontSize: 24, fontWeight: '800', color: theme.colors.ink }}>{row}</Text>
+      <View style={{ alignItems: 'center', paddingVertical: 8, gap: 4 }}>
+        <Text style={{ fontSize: 12, color: theme.colors.inkSoft }}>{question.title}</Text>
+        <Text style={{ fontSize: 28, fontWeight: '800', color: theme.colors.ink, textAlign: 'center' }}>
+          {row}
+        </Text>
+      </View>
 
       {isFirstRow ? (
         <View
@@ -1136,9 +1199,7 @@ const GridRowStep = memo(function GridRowStep({
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'space-between',
-            backgroundColor: theme.colors.subtleSurface,
-            borderRadius: 12,
-            padding: 10,
+            paddingHorizontal: 4,
           }}
         >
           <Text style={{ fontWeight: '600' }}>რამდენი ქამარი სულ?</Text>
@@ -1195,7 +1256,38 @@ const GridRowStep = memo(function GridRowStep({
         })}
       </View>
 
-      <Button title="ფოტო" variant="secondary" onPress={onPickPhoto} />
+      {hasPhotos ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ gap: 10, paddingVertical: 4 }}
+        >
+          {answerPhotos.map(p => (
+            <Pressable key={p.id} onPress={() => setPreviewPhoto(p)} style={styles.photoTile}>
+              <PhotoThumb photo={p} size={120} />
+            </Pressable>
+          ))}
+          <Pressable onPress={onPickPhoto} style={styles.addPhotoTile}>
+            <Ionicons name="add" size={32} color={theme.colors.inkSoft} />
+          </Pressable>
+        </ScrollView>
+      ) : (
+        <View style={styles.chipRow}>
+          <Pressable onPress={onPickPhoto} style={styles.assistChip}>
+            <Ionicons name="camera-outline" size={16} color={theme.colors.inkSoft} />
+            <Text style={styles.assistChipText}>ფოტო</Text>
+          </Pressable>
+        </View>
+      )}
+
+      <PhotoPreviewModal
+        photo={previewPhoto}
+        visible={!!previewPhoto}
+        onClose={() => setPreviewPhoto(null)}
+        onDelete={async (photo) => {
+          await onDeletePhoto(photo);
+        }}
+      />
     </ScrollView>
   );
 });
@@ -1480,30 +1572,58 @@ function CompletedRedirect({ id }: { id: string }) {
 }
 
 const styles = StyleSheet.create({
-  progressSegments: {
-    flexDirection: 'row',
-    gap: 4,
+  topBar: {
+    height: 48,
+    paddingHorizontal: 16,
     alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.card,
   },
-  progressSegment: {
-    flex: 1,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: theme.colors.subtleSurface,
+  stepperText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.inkSoft,
   },
-  progressSegmentActive: {
-    backgroundColor: theme.colors.accentSoft,
+  closeBtn: {
+    position: 'absolute',
+    right: 12,
+    top: 0,
+    bottom: 0,
+    paddingHorizontal: 4,
+    justifyContent: 'center',
   },
-  progressSegmentCurrent: {
-    backgroundColor: theme.colors.accent,
+  questionTitle: {
+    fontSize: 26,
+    fontWeight: '700',
+    color: theme.colors.ink,
+    lineHeight: 34,
+    textAlign: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: theme.spacing(4),
   },
-  progressBg: {
-    height: 6,
-    backgroundColor: theme.colors.subtleSurface,
-    borderRadius: 3,
-    overflow: 'hidden',
+  chipRow: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    paddingTop: 4,
   },
-  progressFill: { height: 6, backgroundColor: theme.colors.accent },
+  assistChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: theme.radius.pill,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: theme.colors.hairline,
+    backgroundColor: theme.colors.card,
+  },
+  assistChipText: {
+    fontSize: 13,
+    color: theme.colors.inkSoft,
+    fontWeight: '500',
+  },
   choice: {
     flex: 1,
     paddingVertical: 18,
@@ -1543,18 +1663,11 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   footer: {
-    flexDirection: 'row',
     gap: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 16,
     backgroundColor: theme.colors.card,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: theme.colors.hairline,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 2,
   },
   confirmOverlay: {
     flex: 1,
@@ -1584,34 +1697,6 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
     backgroundColor: theme.colors.subtleSurface,
     borderRadius: 14,
-  },
-  scaffoldOptionBtn: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    borderRadius: 18,
-    borderWidth: 2,
-    borderColor: theme.colors.hairline,
-    backgroundColor: theme.colors.card,
-  },
-  questionCard: {
-    backgroundColor: theme.colors.card,
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: theme.colors.hairline,
-    ...theme.shadow.card,
-  },
-  photoRowBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 12,
-    marginTop: 8,
-    borderRadius: 12,
-    backgroundColor: theme.colors.subtleSurface,
   },
   harnessRow: {
     flexDirection: 'row',
@@ -1666,11 +1751,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-  },
-  photoCountLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: theme.colors.inkSoft,
   },
   photoTile: {
     width: 120,

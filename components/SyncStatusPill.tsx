@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useOffline } from '../lib/offline';
 import { theme } from '../lib/theme';
-import { haptics } from '../lib/haptics';
+import { haptic } from '../lib/haptics';
 
 /**
  * Small pill shown near the top-right when offline-queue `pendingCount > 0`.
@@ -66,7 +66,7 @@ export function SyncStatusPill() {
 
   const onPress = () => {
     if (mode !== 'pending' || !isOnline) return;
-    haptics.tap();
+    haptic.light();
     void flush();
   };
 
