@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Button, Card, Screen } from '../../../components/ui';
+import { QuestionAvatar, illustrationKeyFor } from '../../../components/QuestionAvatar';
 import { Skeleton, SkeletonWizard } from '../../../components/Skeleton';
 import {
   answersApi,
@@ -755,9 +756,14 @@ const QuestionStep = memo(function QuestionStep({
   const showNoteField = noteOpen || hasNote;
   const hasPhotos = answerPhotos.length > 0;
 
+  const illoKey = illustrationKeyFor(question.title);
+
   return (
     <View style={{ gap: 24, paddingTop: 24 }}>
-      <Text style={styles.questionTitle}>{question.title}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        {illoKey ? <QuestionAvatar illustrationKey={illoKey} /> : null}
+        <Text style={[styles.questionTitle, { flex: 1 }]}>{question.title}</Text>
+      </View>
 
       {question.type === 'measure' ? (
         <MeasureInput
@@ -1158,7 +1164,8 @@ const GridRowStep = memo(function GridRowStep({
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
       >
-        <View style={{ alignItems: 'center', paddingVertical: 8, gap: 4 }}>
+        <View style={{ alignItems: 'center', paddingVertical: 8, gap: 8 }}>
+          <QuestionAvatar illustrationKey={illustrationKeyFor(row)} />
           <Text style={{ fontSize: 12, color: theme.colors.inkSoft }}>{question.title}</Text>
           <Text style={{ fontSize: 28, fontWeight: '800', color: theme.colors.ink, textAlign: 'center' }}>
             {row}
@@ -1382,6 +1389,9 @@ const ConclusionStep = memo(function ConclusionStep({
 
   return (
     <View style={{ gap: 14 }}>
+      <View style={{ alignItems: 'center', paddingTop: 8 }}>
+        <QuestionAvatar illustrationKey="conclusion" />
+      </View>
       {needsHarness ? (
         <View>
           <Text style={styles.label}>
