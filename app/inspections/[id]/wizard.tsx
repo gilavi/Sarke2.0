@@ -437,8 +437,23 @@ export default function QuestionnaireWizard() {
             <Pressable
               hitSlop={10}
               onPress={() => setExitModalVisible(true)}
+              style={({ pressed }) => [
+                {
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 4,
+                  paddingVertical: 6,
+                  paddingHorizontal: 12,
+                  borderRadius: 12,
+                  backgroundColor: theme.colors.subtleSurface,
+                  borderWidth: StyleSheet.hairlineWidth,
+                  borderColor: theme.colors.hairline,
+                },
+                pressed && { opacity: 0.7, backgroundColor: theme.colors.card },
+              ]}
             >
-              <Text style={{ color: theme.colors.inkSoft, fontSize: 15 }}>გასვლა</Text>
+              <Ionicons name="exit-outline" size={16} color={theme.colors.inkSoft} />
+              <Text style={{ color: theme.colors.inkSoft, fontSize: 13, fontWeight: '600' }}>გასვლა</Text>
             </Pressable>
           ),
         }}
