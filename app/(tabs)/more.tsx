@@ -1,5 +1,15 @@
-import { useCallback, useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  Animated,
+  Easing,
+  Image,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,12 +26,14 @@ import {
 import { googleCalendar } from '../../lib/googleCalendar';
 import { useToast } from '../../lib/toast';
 import { theme } from '../../lib/theme';
+import { termsKa } from '../../lib/terms';
 import type { Project, Qualification, Template } from '../../types/models';
 
 export default function MoreScreen() {
   const { state, signOut } = useSession();
   const router = useRouter();
   const toast = useToast();
+  const [termsVisible, setTermsVisible] = useState(false);
   const [counts, setCounts] = useState<{ total: number; drafts: number; completed: number; latestCreatedAt: string | null }>({
     total: 0,
     drafts: 0,
@@ -177,7 +189,7 @@ export default function MoreScreen() {
           <SettingsRow
             icon="document-text-outline"
             label="წესები და პირობები"
-            onPress={() => router.push('/terms?mode=view' as any)}
+            onPress={() => setTermsVisible(true)}
           />
           <View style={styles.divider} />
           <SettingsRow
@@ -188,9 +200,139 @@ export default function MoreScreen() {
           />
         </View>
       </ScrollView>
+
+      {/* Terms & Privacy Modal — replaces broken /terms route navigation */}
+      <TermsModal visible={termsVisible} onClose={() => setTermsVisible(false)} />
     </SafeAreaView>
   );
 }
+
+// ───────── TERMS & PRIVACY MODAL ─────────
+
+function TermsModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const fade = useRef(new Animated.Value(0)).current;
+  const slide = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible) {
+      fade.setValue(0);
+      slide.setValue(0);
+      Animated.parallel([
+        Animated.timing(fade, { toValue: 1, duration: 280, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.spring(slide, { toValue: 1, friction: 9, tension: 80, useNativeDriver: true }),
+      ]).start();
+    }
+  }, [visible, fade, slide]);
+
+  const handleClose = () => {
+    Animated.parallel([
+      Animated.timing(fade, { toValue: 0, duration: 180, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
+      Animated.timing(slide, { toValue: 0, duration: 200, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
+    ]).start(() => onClose());
+  };
+
+  const translateY = slide.interpolate({ inputRange: [0, 1], outputRange: [500, 0] });
+
+  return (
+    <Modal visible={visible} transparent animationType="none" onRequestClose={handleClose} statusBarTranslucent>
+      <View style={StyleSheet.absoluteFillObject}>
+        {/* Dark overlay backdrop */}
+        <Animated.View
+          style={[
+            StyleSheet.absoluteFillObject,
+            { backgroundColor: 'rgba(0,0,0,0.55)', opacity: fade },
+          ]}
+        >
+          <Pressable style={StyleSheet.absoluteFillObject} onPress={handleClose} />
+        </Animated.View>
+
+        {/* Sheet */}
+        <Animated.View style={[termsStyles.sheet, { transform: [{ translateY }] }]}>
+          <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1 }}>
+            {/* Header */}
+            <View style={termsStyles.header}>
+              <Text style={termsStyles.headerTitle}>{termsKa.heading}</Text>
+              <Pressable onPress={handleClose} hitSlop={10} style={termsStyles.closeBtn}>
+                <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
+              </Pressable>
+            </View>
+
+            <ScrollView contentContainerStyle={{ padding: 20, gap: 14, paddingBottom: 40 }}>
+              <Text style={{ fontSize: 12, color: theme.colors.inkSoft }}>{termsKa.updated}</Text>
+
+              {termsKa.sections.map((s, i) => (
+                <Card key={i} style={{ gap: 8 }}>
+                  <Text style={{ fontWeight: '700', color: theme.colors.ink, fontSize: 15 }}>{s.title}</Text>
+                  <Text style={{ color: theme.colors.inkSoft, lineHeight: 20, fontSize: 13 }}>{s.body}</Text>
+                </Card>
+              ))}
+
+              {/* Privacy Policy section */}
+              <Card style={{ gap: 8, backgroundColor: theme.colors.accentSoft }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Ionicons name="shield-checkmark" size={18} color={theme.colors.accent} />
+                  <Text style={{ fontWeight: '700', color: theme.colors.accent, fontSize: 15 }}>კონფიდენციალურობის პოლიტიკა</Text>
+                </View>
+                <Text style={{ color: theme.colors.inkSoft, lineHeight: 20, fontSize: 13 }}>
+                  Sarke 2.0 არ იზიარებს თქვენს პერსონალურ მონაცემებს მესამე მხარესთან.{'\n\n'}
+                  • ფოტოები და ხელმოწერები ინახება მხოლოდ თქვენს პირად ანგარიშში{'\n'}
+                  • PDF ანგარიშები ხელმისაწვდომია მხოლოდ თქვენთვის და თქვენი ორგანიზაციისთვის{'\n'}
+                  • მონაცემთა წაშლა შესაძლებელია აპლიკაციის პარამეტრებიდან{'\n'}
+                  • ყველა მონაცემი დაცულია Supabase-ის უსაფრთხო სერვერებზე
+                </Text>
+              </Card>
+
+              <Text style={{ fontSize: 11, color: theme.colors.inkFaint, textAlign: 'center', marginTop: 8 }}>
+                © 2026 Sarke 2.0 · ყველა უფლება დაცულია
+              </Text>
+            </ScrollView>
+          </SafeAreaView>
+        </Animated.View>
+      </View>
+    </Modal>
+  );
+}
+
+const termsStyles = StyleSheet.create({
+  sheet: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    top: '8%',
+    backgroundColor: theme.colors.background,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 24,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.colors.hairline,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: theme.colors.ink,
+  },
+  closeBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: theme.colors.subtleSurface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});
 
 function StatPill({ value, label, tint }: { value: number | null; label: string; tint: string }) {
   return (

@@ -100,12 +100,21 @@ export default function QuestionnaireWizard() {
   const loadCtrlRef = useRef<{ cancelled: boolean }>({ cancelled: false });
 
   const load = useCallback(async () => {
-    if (!id) return;
     // Invalidate any prior in-flight load and start a new token.
     loadCtrlRef.current.cancelled = true;
     const ctrl = { cancelled: false };
     loadCtrlRef.current = ctrl;
     setLoading(true);
+    if (!id) {
+      setLoading(false);
+      return;
+    }
+    // Safety timeout: force-clear loading if something hangs
+    const timeoutId = setTimeout(() => {
+      if (!ctrl.cancelled) {
+        setLoading(false);
+      }
+    }, 15000);
     try {
       const q = await inspectionsApi.getById(id);
       if (ctrl.cancelled) return;
@@ -182,10 +191,14 @@ export default function QuestionnaireWizard() {
         }
       }
     } catch (e: any) {
-      if (ctrl.cancelled) return;
-      toast.error(`ჩატვირთვა ვერ მოხერხდა: ${e?.message ?? 'ქსელის შეცდომა'}`);
+      if (!ctrl.cancelled) {
+        toast.error(`ჩატვირთვა ვერ მოხერხდა: ${e?.message ?? 'ქსელის შეცდომა'}`);
+      }
     } finally {
-      if (!ctrl.cancelled) setLoading(false);
+      clearTimeout(timeoutId);
+      // Always clear loading — even if cancelled — so the UI doesn't stay
+      // stuck on skeletons when the screen regains focus.
+      setLoading(false);
     }
   }, [id, toast]);
 
@@ -201,15 +214,20 @@ export default function QuestionnaireWizard() {
     void AsyncStorage.setItem(harnessCountKey(id), String(harnessRowCount));
   }, [id, harnessRowCount, loading]);
 
+  // Load on mount AND when id changes (useFocusEffect alone misses the
+  // initial load if id is still resolving from params when the screen
+  // is already focused).
+  useEffect(() => {
+    if (id) void load();
+  }, [id]);
+
   useFocusEffect(
     useCallback(() => {
-      void load();
+      if (id) void load();
       return () => {
-        // Screen lost focus — invalidate the in-flight load so its late
-        // setState calls can't clobber edits made on the next focus.
         loadCtrlRef.current.cancelled = true;
       };
-    }, [load]),
+    }, [load, id]),
   );
 
   const steps = useMemo(

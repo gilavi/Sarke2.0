@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  Animated,
+  Easing,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -318,13 +320,11 @@ export default function HomeScreen() {
         </View>
       </ScrollView>
 
-      {/* Persistent new-inspection FAB */}
-      <Pressable
+      {/* Animated FAB — rotates + to × when sheet opens, pulses on press */}
+      <AnimatedFAB
+        open={pickerVisible}
         onPress={() => setPickerVisible(true)}
-        style={styles.fab}
-      >
-        <Ionicons name="add" size={28} color={theme.colors.white} />
-      </Pressable>
+      />
 
       <ProjectPickerSheet
         visible={pickerVisible}
@@ -338,6 +338,67 @@ export default function HomeScreen() {
 }
 
 // ──────────── PROJECT PICKER SHEET ────────────
+
+// ───────── ANIMATED FAB ─────────
+
+function AnimatedFAB({ open, onPress }: { open: boolean; onPress: () => void }) {
+  // Only the icon rotates — the button itself stays stable.
+  // Press feedback comes from Pressable's built-in opacity change.
+  const spin = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.spring(spin, {
+      toValue: open ? 1 : 0,
+      friction: 7,
+      useNativeDriver: true,
+    }).start();
+  }, [open, spin]);
+
+  const rotation = spin.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '45deg'],
+  });
+
+  return (
+    <Pressable onPress={onPress} style={styles.fabWrap}>
+      {({ pressed }) => (
+        <View style={[styles.fab, pressed && { opacity: 0.8 }]}>
+          <Animated.View style={{ transform: [{ rotate: rotation }] }}>
+            <Ionicons name="add" size={28} color={theme.colors.white} />
+          </Animated.View>
+        </View>
+      )}
+    </Pressable>
+  );
+}
+
+// ───────── ANIMATED DARK BACKDROP ─────────
+
+function AnimatedDarkBackdrop({ visible, onPress }: { visible: boolean; onPress: () => void }) {
+  const fade = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(fade, {
+      toValue: visible ? 1 : 0,
+      duration: visible ? 300 : 200,
+      easing: visible ? Easing.out(Easing.cubic) : Easing.in(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [visible, fade]);
+
+  return (
+    <Animated.View
+      style={[
+        StyleSheet.absoluteFillObject,
+        { backgroundColor: 'rgba(0,0,0,0.55)', opacity: fade },
+      ]}
+    >
+      <Pressable style={StyleSheet.absoluteFillObject} onPress={onPress} />
+    </Animated.View>
+  );
+}
+
+// ───────── PROJECT PICKER SHEET ─────────
 
 function ProjectPickerSheet({
   visible,
@@ -417,8 +478,10 @@ function ProjectPickerSheet({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <Pressable style={pickerStyles.backdrop} onPress={onClose}>
+    <Modal visible={visible} animationType="none" transparent onRequestClose={onClose} statusBarTranslucent>
+      <View style={pickerStyles.container}>
+        {/* Dark overlay backdrop with cross-fade */}
+        <AnimatedDarkBackdrop visible={visible} onPress={onClose} />
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={{ width: '100%' }}
@@ -559,7 +622,7 @@ function ProjectPickerSheet({
             )}
           </Pressable>
         </KeyboardAvoidingView>
-      </Pressable>
+      </View>
     </Modal>
   );
 }
@@ -928,10 +991,13 @@ const styles = StyleSheet.create({
   },
 
   // FAB
-  fab: {
+  fabWrap: {
     position: 'absolute',
     right: 20,
     bottom: 24,
+    zIndex: 50,
+  },
+  fab: {
     width: 60,
     height: 60,
     borderRadius: 30,
@@ -947,10 +1013,12 @@ const styles = StyleSheet.create({
 });
 
 const pickerStyles = StyleSheet.create({
-  backdrop: {
+  container: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'flex-end',
+  },
+  blurWrap: {
+    ...StyleSheet.absoluteFillObject,
   },
   card: {
     backgroundColor: theme.colors.background,

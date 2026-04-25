@@ -1,15 +1,11 @@
-// Bottom action sheet with a smooth RN Animated spring slide-in.
+// Bottom action sheet v5 — reliable dark overlay + spring + haptics.
 //
-// History: the first version used Reanimated 4 worklets and froze the app
-// (when a worklet didn't fire, the Modal backdrop stayed full-screen and
-// blocked every touch). The second version fell back to the Modal's
-// built-in `animationType="slide"` — reliable but stiff. This version uses
-// RN's core `Animated` API with `useNativeDriver: true` for a soft spring
-// in and quick ease-out on dismiss. Stays on the UI thread without any
-// worklet compilation step, so no chance of the old freeze.
-//
-// v3: backdrop and sheet are now fully independent — backdrop fades in-place
-// while the sheet slides up. No more "whole thing pops from bottom" feel.
+// History:
+// v1: Reanimated 4 worklets — froze the app.
+// v2: Modal's built-in `animationType="slide"` — reliable but stiff.
+// v3: RN core Animated with independent values — no freeze, flat gray.
+// v4: expo-blur backdrop — looked great but native module often fails.
+// v5: Semi-transparent dark overlay (reliable on all devices) + spring.
 
 import {
   createContext,
@@ -30,6 +26,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { haptic } from '../lib/haptics';
 import { theme } from '../lib/theme';
 
 export interface BottomSheetOptions {
@@ -62,29 +59,30 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
   const insets = useSafeAreaInsets();
 
   // Separate animated values for backdrop (fade) and sheet (slide).
-  // This prevents the "whole modal pops from bottom" visual bug.
   const backdropProgress = useRef(new Animated.Value(0)).current;
   const sheetProgress = useRef(new Animated.Value(0)).current;
 
   // Animate in whenever a sheet appears.
   useEffect(() => {
     if (sheet) {
-      // Backdrop fades in with a gentle ease — static position
+      // Backdrop fades in with cubic ease — static position
       Animated.timing(backdropProgress, {
         toValue: 1,
-        duration: 280,
+        duration: 300,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }).start();
-      // Sheet springs up from below — independent motion
+      // Sheet springs up with bounce — independent motion
       Animated.spring(sheetProgress, {
         toValue: 1,
-        damping: 24,
-        stiffness: 280,
-        mass: 0.85,
+        damping: 20,
+        stiffness: 300,
+        mass: 0.8,
         overshootClamping: false,
         useNativeDriver: true,
-      }).start();
+      }).start(() => {
+        haptic.medium();
+      });
     }
   }, [sheet, backdropProgress, sheetProgress]);
 
@@ -92,7 +90,6 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
     (idx: number | undefined) => {
       const cb = callbackRef.current;
       callbackRef.current = null;
-      // Quick coordinated exit — backdrop fades, sheet drops
       Animated.parallel([
         Animated.timing(backdropProgress, {
           toValue: 0,
@@ -118,7 +115,6 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
     (options, callback) => {
       const prev = callbackRef.current;
       callbackRef.current = callback;
-      // Reset both animations so the open plays from hidden state.
       backdropProgress.setValue(0);
       sheetProgress.setValue(0);
       setSheet({ options });
@@ -127,12 +123,14 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
     [backdropProgress, sheetProgress],
   );
 
-  // Sheet slides up from 320px below its final position
   const translateY = sheetProgress.interpolate({
     inputRange: [0, 1],
-    outputRange: [320, 0],
+    outputRange: [360, 0],
   });
-  // Backdrop simply fades — no movement
+  const sheetScale = sheetProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.94, 1],
+  });
   const backdropOpacity = backdropProgress.interpolate({
     inputRange: [0, 1],
     outputRange: [0, 1],
@@ -146,61 +144,77 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
         transparent
         animationType="none"
         onRequestClose={() => dismiss(sheet?.options.cancelButtonIndex)}
+        statusBarTranslucent
       >
         <View style={StyleSheet.absoluteFillObject}>
-          {/* Backdrop: fades in place, catches taps outside the sheet */}
+          {/* Dark overlay backdrop — reliable on all devices */}
           <Animated.View
             style={[
               StyleSheet.absoluteFillObject,
+              styles.backdrop,
               { opacity: backdropOpacity },
             ]}
-            pointerEvents="box-none"
           >
             <Pressable
-              style={styles.backdrop}
+              style={StyleSheet.absoluteFillObject}
               onPress={() => dismiss(sheet?.options.cancelButtonIndex)}
             />
           </Animated.View>
 
-          {/* Sheet: slides up independently */}
+          {/* Sheet slides up + scales independently */}
           <Animated.View
             style={[
               styles.sheetWrapper,
-              { paddingBottom: insets.bottom + 8, transform: [{ translateY }] },
+              {
+                paddingBottom: insets.bottom + 12,
+                transform: [
+                  { translateY },
+                  { scale: sheetScale },
+                ],
+              },
             ]}
           >
             <Pressable>
+              {/* Drag handle */}
+              <View style={styles.handleBar}>
+                <View style={styles.handle} />
+              </View>
+
               {sheet?.options.title ? (
                 <Text style={styles.title}>{sheet.options.title}</Text>
-              ) : (
-                <View style={styles.handle} />
-              )}
-              {sheet?.options.options.map((opt, i) => {
-                const isCancel = i === sheet.options.cancelButtonIndex;
-                const isDestructive = i === sheet.options.destructiveButtonIndex;
-                return (
-                  <Pressable
-                    key={i}
-                    onPress={() => dismiss(i)}
-                    style={({ pressed }) => [
-                      styles.option,
-                      i === 0 && !sheet.options.title && { borderTopWidth: 0 },
-                      isCancel && styles.cancelOption,
-                      pressed && styles.optionPressed,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.optionText,
-                        isCancel && styles.cancelText,
-                        isDestructive && styles.destructiveText,
+              ) : null}
+
+              <View style={styles.optionsContainer}>
+                {sheet?.options.options.map((opt, i) => {
+                  const isCancel = i === sheet.options.cancelButtonIndex;
+                  const isDestructive = i === sheet.options.destructiveButtonIndex;
+                  return (
+                    <Pressable
+                      key={i}
+                      onPress={() => {
+                        haptic.light();
+                        dismiss(i);
+                      }}
+                      style={({ pressed }) => [
+                        styles.option,
+                        i === 0 && !sheet.options.title && { borderTopWidth: 0 },
+                        isCancel && styles.cancelOption,
+                        pressed && styles.optionPressed,
                       ]}
                     >
-                      {opt}
-                    </Text>
-                  </Pressable>
-                );
-              })}
+                      <Text
+                        style={[
+                          styles.optionText,
+                          isCancel && styles.cancelText,
+                          isDestructive && styles.destructiveText,
+                        ]}
+                      >
+                        {opt}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
             </Pressable>
           </Animated.View>
         </View>
@@ -211,56 +225,66 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
 
 const styles = StyleSheet.create({
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: 'rgba(0,0,0,0.55)',
   },
   sheetWrapper: {
     position: 'absolute',
-    left: 0,
-    right: 0,
+    left: 10,
+    right: 10,
     bottom: 0,
   },
-  sheet: {
+  handleBar: {
+    alignItems: 'center',
+    paddingVertical: 10,
     backgroundColor: theme.colors.card,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    paddingTop: 6,
-    paddingHorizontal: 12,
-    overflow: 'hidden',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
   },
   handle: {
     width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: theme.colors.hairline,
-    alignSelf: 'center',
-    marginVertical: 10,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: theme.colors.inkFaint,
+    opacity: 0.35,
   },
   title: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: theme.colors.inkFaint,
+    fontSize: 13,
+    fontWeight: '700',
+    color: theme.colors.inkSoft,
     textAlign: 'center',
-    paddingVertical: 14,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: theme.colors.card,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
+  optionsContainer: {
+    backgroundColor: theme.colors.card,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    overflow: 'hidden',
+    paddingBottom: 8,
+  },
   option: {
     paddingVertical: 16,
+    paddingHorizontal: 16,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: theme.colors.hairline,
     alignItems: 'center',
+    marginHorizontal: 8,
   },
   cancelOption: {
-    marginTop: 8,
-    marginHorizontal: 0,
+    marginTop: 6,
+    marginHorizontal: 8,
     backgroundColor: theme.colors.subtleSurface,
     borderRadius: 14,
     borderTopWidth: 0,
     paddingVertical: 16,
   },
   optionPressed: {
-    opacity: 0.55,
+    opacity: 0.5,
+    backgroundColor: theme.colors.subtleSurface,
+    borderRadius: 12,
   },
   optionText: {
     fontSize: 16,
@@ -268,11 +292,11 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   cancelText: {
-    fontWeight: '600',
+    fontWeight: '700',
     color: theme.colors.inkSoft,
   },
   destructiveText: {
     color: theme.colors.danger,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 });
