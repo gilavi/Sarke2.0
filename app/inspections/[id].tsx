@@ -18,21 +18,34 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Button, Card, Screen } from '../../components/ui';
+import { Button, Card, Chip, Screen, SectionHeader } from '../../components/ui';
 import { Skeleton, SkeletonCard, SkeletonListCard } from '../../components/Skeleton';
+import { AddRemoteSignerModal, type AddRemoteSignerResult } from '../../components/AddRemoteSignerModal';
 import {
   answersApi,
   certificatesApi,
   inspectionsApi,
   projectsApi,
+  remoteSigningApi,
   templatesApi,
 } from '../../lib/services';
 import { useToast } from '../../lib/toast';
 import { friendlyError } from '../../lib/errorMap';
 import { scheduleDelete } from '../../lib/pendingDeletes';
 import { haptics } from '../../lib/haptics';
+import { openSigningSMS } from '../../lib/sms';
 import { theme } from '../../lib/theme';
-import type { Answer, Certificate, Inspection, Project, Question, Template } from '../../types/models';
+import type {
+  Answer,
+  Certificate,
+  Inspection,
+  Project,
+  Question,
+  RemoteSigningRequest,
+  RemoteSigningStatus,
+  Template,
+} from '../../types/models';
+import { SIGNER_ROLE_LABEL } from '../../types/models';
 
 export default function InspectionDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -45,6 +58,9 @@ export default function InspectionDetailScreen() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [remoteRequests, setRemoteRequests] = useState<RemoteSigningRequest[]>([]);
+  const [addOpen, setAddOpen] = useState(false);
+  const [addBusy, setAddBusy] = useState(false);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -63,14 +79,16 @@ export default function InspectionDetailScreen() {
         router.replace(`/inspections/${insp.id}/wizard` as any);
         return;
       }
-      const [tpl, proj, cs] = await Promise.all([
+      const [tpl, proj, cs, rsrs] = await Promise.all([
         templatesApi.getById(insp.template_id).catch(() => null),
         projectsApi.getById(insp.project_id).catch(() => null),
         certificatesApi.listByInspection(insp.id).catch(() => [] as Certificate[]),
+        remoteSigningApi.listByInspection(insp.id).catch(() => [] as RemoteSigningRequest[]),
       ]);
       setTemplate(tpl);
       setProject(proj);
       setCerts(cs);
+      setRemoteRequests(rsrs);
       // Load questions + answers so we can show what was filled in
       if (tpl) {
         const [qs, ans] = await Promise.all([
@@ -117,6 +135,99 @@ export default function InspectionDetailScreen() {
   const generateNew = () => {
     if (!inspection) return;
     router.push(`/certificates/new?inspectionId=${inspection.id}` as any);
+  };
+
+  // ── Remote-signing handlers ──────────────────────────────────────────────
+
+  const handleAddRemoteSigner = async (result: AddRemoteSignerResult) => {
+    if (!inspection) return;
+    if (certs.length === 0) {
+      toast.error('ჯერ დააგენერირე PDF რეპორტი');
+      return;
+    }
+    setAddBusy(true);
+    try {
+      const row = await remoteSigningApi.create({
+        inspectionId: inspection.id,
+        signerName: result.signerName,
+        signerPhone: result.signerPhone,
+        signerRole: result.signerRole,
+      });
+      // Optimistic insert; refetch on focus reconciles.
+      setRemoteRequests(prev => [row, ...prev]);
+      setAddOpen(false);
+      // Open Messages immediately with the new token.
+      const opened = await openSigningSMS({
+        phone: row.signer_phone,
+        name: row.signer_name,
+        token: row.token,
+      });
+      if (opened) {
+        try {
+          await remoteSigningApi.markSent(row.id);
+          setRemoteRequests(prev =>
+            prev.map(r =>
+              r.id === row.id
+                ? { ...r, status: 'sent', last_sent_at: new Date().toISOString() }
+                : r,
+            ),
+          );
+        } catch {
+          // Best-effort; the next focus refetch will reconcile.
+        }
+        haptics.success();
+      } else {
+        toast.info('SMS აპლიკაცია ვერ გაიხსნა — ლინკი შენახულია');
+      }
+    } catch (e) {
+      toast.error(friendlyError(e));
+    } finally {
+      setAddBusy(false);
+    }
+  };
+
+  const resendRemote = async (req: RemoteSigningRequest) => {
+    const opened = await openSigningSMS({
+      phone: req.signer_phone,
+      name: req.signer_name,
+      token: req.token,
+    });
+    if (opened) {
+      try {
+        await remoteSigningApi.markSent(req.id);
+        setRemoteRequests(prev =>
+          prev.map(r =>
+            r.id === req.id
+              ? { ...r, status: 'sent', last_sent_at: new Date().toISOString() }
+              : r,
+          ),
+        );
+        haptics.tap();
+      } catch {
+        // Ignore — focus refetch reconciles.
+      }
+    } else {
+      toast.error('SMS აპლიკაცია ვერ გაიხსნა');
+    }
+  };
+
+  const cancelRemote = (req: RemoteSigningRequest) => {
+    haptics.warning();
+    setRemoteRequests(prev => prev.filter(r => r.id !== req.id));
+    scheduleDelete({
+      message: 'მოთხოვნა წაიშალა',
+      toast,
+      onUndo: () => setRemoteRequests(prev => [req, ...prev.filter(r => r.id !== req.id)]),
+      onExecute: async () => {
+        try {
+          await remoteSigningApi.cancel(req.id);
+          haptics.success();
+        } catch (e) {
+          setRemoteRequests(prev => [req, ...prev.filter(r => r.id !== req.id)]);
+          toast.error(friendlyError(e));
+        }
+      },
+    });
   };
 
   if (loading || !inspection) {
@@ -313,11 +424,153 @@ export default function InspectionDetailScreen() {
             onPress={generateNew}
             style={{ marginTop: 10 }}
           />
+
+          {/* External (remote) signatures — async signature collection via SMS link. */}
+          <View style={{ marginTop: 12 }}>
+            <View style={{ paddingHorizontal: 0 }}>
+              <View style={remoteStyles.headerRow}>
+                <Text style={styles.sectionTitle}>გარე ხელისმოწერები ({remoteRequests.length})</Text>
+                <Pressable
+                  onPress={() => {
+                    if (certs.length === 0) {
+                      toast.error('ჯერ დააგენერირე PDF რეპორტი');
+                      return;
+                    }
+                    setAddOpen(true);
+                  }}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="ახალი მოთხოვნა"
+                >
+                  <Text style={remoteStyles.addLink}>+ ახალი</Text>
+                </Pressable>
+              </View>
+            </View>
+            {remoteRequests.length === 0 ? (
+              <Card>
+                <Text style={{ color: theme.colors.inkSoft, fontSize: 13 }}>
+                  გაგზავნე ხელის მოწერის ლინკი გარე ხელისმომწერებს SMS-ით.
+                </Text>
+              </Card>
+            ) : (
+              <View style={{ gap: 8 }}>
+                {remoteRequests.map(req => (
+                  <RemoteRequestRow
+                    key={req.id}
+                    request={req}
+                    onResend={() => resendRemote(req)}
+                    onCancel={() => cancelRemote(req)}
+                  />
+                ))}
+              </View>
+            )}
+          </View>
         </ScrollView>
       </SafeAreaView>
+      <AddRemoteSignerModal
+        visible={addOpen}
+        busy={addBusy}
+        onCancel={() => setAddOpen(false)}
+        onSubmit={handleAddRemoteSigner}
+      />
     </Screen>
   );
 }
+
+// ── Remote signing row ─────────────────────────────────────────────────────
+
+function statusVisuals(status: RemoteSigningStatus): { label: string; tint: string; bg: string } {
+  switch (status) {
+    case 'pending':
+      return { label: 'არ გაგზავნილა', tint: theme.colors.inkSoft, bg: theme.colors.subtleSurface };
+    case 'sent':
+      return { label: 'გაგზავნილია', tint: theme.colors.warn, bg: theme.colors.warnSoft };
+    case 'signed':
+      return { label: 'ხელმოწერილი', tint: theme.colors.accent, bg: theme.colors.accentSoft };
+    case 'declined':
+      return { label: 'უარი', tint: theme.colors.danger, bg: theme.colors.dangerSoft };
+    case 'expired':
+      return { label: 'ვადაგასული', tint: theme.colors.danger, bg: theme.colors.dangerSoft };
+  }
+}
+
+function RemoteRequestRow({
+  request,
+  onResend,
+  onCancel,
+}: {
+  request: RemoteSigningRequest;
+  onResend: () => void;
+  onCancel: () => void;
+}) {
+  const v = statusVisuals(request.status);
+  const isOpen = request.status === 'pending' || request.status === 'sent';
+  return (
+    <Card padding={12}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        <View style={remoteStyles.iconBox}>
+          <Ionicons name="paper-plane-outline" size={18} color={theme.colors.accent} />
+        </View>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={remoteStyles.name} numberOfLines={1}>
+            {request.signer_name}
+          </Text>
+          <Text style={remoteStyles.meta} numberOfLines={1}>
+            {SIGNER_ROLE_LABEL[request.signer_role]} · {request.signer_phone}
+          </Text>
+          {request.status === 'declined' && request.declined_reason ? (
+            <Text style={[remoteStyles.meta, { color: theme.colors.danger }]} numberOfLines={2}>
+              მიზეზი: {request.declined_reason}
+            </Text>
+          ) : null}
+          {request.status === 'signed' && request.signed_at ? (
+            <Text style={remoteStyles.meta} numberOfLines={1}>
+              {new Date(request.signed_at).toLocaleString('ka')}
+            </Text>
+          ) : null}
+        </View>
+        <Chip tint={v.tint} bg={v.bg}>
+          {v.label}
+        </Chip>
+      </View>
+      {isOpen ? (
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+          <Button
+            title={request.status === 'pending' ? 'გაგზავნე SMS' : 'ხელახლა გაგზავნე'}
+            variant="ghost"
+            style={{ flex: 1 }}
+            onPress={onResend}
+          />
+          <Button title="გაუქმება" variant="danger" style={{ flex: 1 }} onPress={onCancel} />
+        </View>
+      ) : null}
+    </Card>
+  );
+}
+
+const remoteStyles = StyleSheet.create({
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 8,
+  },
+  addLink: {
+    color: theme.colors.accent,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  iconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: theme.colors.accentSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  name: { fontSize: 15, fontWeight: '700', color: theme.colors.ink },
+  meta: { fontSize: 12, color: theme.colors.inkSoft },
+});
 
 // ── Scorecard component ──────────────────────────────────────────────────────
 
