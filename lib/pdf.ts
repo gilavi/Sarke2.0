@@ -188,11 +188,28 @@ function renderPhoto(photo: AnswerPhoto, isFailed: boolean, questionTitle: strin
   const captionText = timePart ? `${titlePart} — ${timePart}` : titlePart;
   const captionPrefix = isFailed ? '⚠ ' : '';
   const noteCaption = photo.caption ? `<div class="photo-caption muted">${escapeHtml(photo.caption)}</div>` : '';
+
+  // If storage_path is not a data URL, the WebView in expo-print can't load it
+  // (no auth cookies / bearer tokens). Render a clean placeholder instead.
+  const src = photo.storage_path;
+  const isDataUrl = src.startsWith('data:');
+  const isLocalFile = /^(file|content|ph|asset):\/\//.test(src);
+
+  if (!isDataUrl && !isLocalFile) {
+    return `<div class="photo-cell${isFailed ? ' failed' : ''}">
+      <div class="photo-missing" style="display:flex;">
+        <span>სურათი მიუწვდომელია</span>
+      </div>
+      <div class="photo-caption${isFailed ? ' caption-failed' : ''}">${captionPrefix}${captionText}</div>
+      ${noteCaption}
+    </div>`;
+  }
+
   return `<div class="photo-cell${isFailed ? ' failed' : ''}">
     <img
-      src="${photo.storage_path}"
+      src="${src}"
       alt="ფოტო"
-      onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"
+      onerror="this.style.display='none';this.parentElement.querySelector('.photo-missing').style.display='flex';"
     />
     <div class="photo-missing" style="display:none;">სურათი მიუწვდომელია</div>
     <div class="photo-caption${isFailed ? ' caption-failed' : ''}">${captionPrefix}${captionText}</div>

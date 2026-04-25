@@ -132,17 +132,22 @@ export default function InspectionDoneScreen() {
           <Button
             title="PDF რეპორტის გენერაცია"
             onPress={generatePdf}
+            iconRight={<Ionicons name="document-text" size={18} color={theme.colors.white} />}
+            style={{ paddingVertical: 14 }}
           />
           <Button
             title="ინსპექციის ნახვა"
             variant="secondary"
             onPress={viewInspection}
+            iconRight={<Ionicons name="eye" size={18} color={theme.colors.ink} />}
+            style={{ paddingVertical: 14 }}
           />
           <Button
             title="მთავარ გვერდზე"
             variant="ghost"
             onPress={() => router.replace('/(tabs)/home' as any)}
-            style={{ marginTop: 4 }}
+            iconRight={<Ionicons name="home" size={16} color={theme.colors.accent} />}
+            style={{ marginTop: 4, paddingVertical: 12 }}
           />
         </ScrollView>
       </SafeAreaView>

@@ -191,8 +191,14 @@ export default function HistoryScreen() {
                 ))}
               </View>
             ) : (
-              <View style={{ alignItems: 'center', paddingVertical: 60 }}>
-                <Text style={{ color: theme.colors.inkSoft }}>ცარიელია</Text>
+              <View style={styles.empty}>
+                <View style={styles.emptyCircle}>
+                  <Ionicons name="file-tray" size={44} color={theme.colors.accent} />
+                </View>
+                <Text style={styles.emptyTitle}>ისტორია ცარიელია</Text>
+                <Text style={styles.emptyBody}>
+                  დაასრულე ან შეაჩერე ინსპექცია — ის აქ გამოჩნდება.
+                </Text>
               </View>
             )
           }
@@ -241,5 +247,31 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: theme.colors.accent,
+  },
+  empty: {
+    alignItems: 'center',
+    paddingVertical: 60,
+    gap: 12,
+  },
+  emptyCircle: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: theme.colors.accentSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: theme.colors.ink,
+  },
+  emptyBody: {
+    fontSize: 14,
+    color: theme.colors.inkSoft,
+    textAlign: 'center',
+    lineHeight: 20,
+    paddingHorizontal: 24,
   },
 });

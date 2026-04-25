@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,8 +15,9 @@ import {
 } from '../../../lib/services';
 import { getStorageImageDisplayUrl } from '../../../lib/imageUrl';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
-import { useToast } from '../../../lib/toast';
+import { haptic } from '../../../lib/haptics';
 import { useOffline } from '../../../lib/offline';
+import { useToast } from '../../../lib/toast';
 import { theme } from '../../../lib/theme';
 import type {
   Answer,
@@ -58,6 +59,9 @@ function buildSteps(
   return steps;
 }
 
+// Simple in-memory cache for photo display URLs to avoid redundant fetches
+const photoUrlCache = new Map<string, string>();
+
 export default function QuestionnaireWizard() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -75,6 +79,19 @@ export default function QuestionnaireWizard() {
   const [conclusion, setConclusion] = useState('');
   const [isSafe, setIsSafe] = useState<boolean | null>(null);
   const [harnessName, setHarnessName] = useState('');
+  const [exitModalVisible, setExitModalVisible] = useState(false);
+  const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
+
+  // Step transition animation
+  const stepAnim = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    stepAnim.setValue(0);
+    Animated.timing(stepAnim, {
+      toValue: 1,
+      duration: 220,
+      useNativeDriver: true,
+    }).start();
+  }, [stepIndex]);
 
   // Cancellation token for in-flight load(). Each load() run gets its own
   // object; when the screen blurs we flip `cancelled = true` on the active
@@ -242,6 +259,7 @@ export default function QuestionnaireWizard() {
 
   const pickPhoto = async (question: Question) => {
     if (!questionnaire) return;
+    haptic.medium();
     // Photo upload needs network (blob → storage + answer_photos insert).
     // Fail fast with a clear message rather than producing misleading errors.
     if (!offline.isOnline) {
@@ -302,6 +320,7 @@ export default function QuestionnaireWizard() {
   };
 
   const deletePhoto = async (photo: AnswerPhoto) => {
+    haptic.medium();
     try {
       await answersApi.removePhoto(photo.id);
       setPhotos(prev => {
@@ -319,6 +338,7 @@ export default function QuestionnaireWizard() {
 
   const saveConclusionAndGo = async () => {
     if (!questionnaire) return;
+    haptic.medium();
     const missing: string[] = [];
     if (isSafe === null) missing.push('უსაფრთხოების სტატუსი');
     if (!conclusion.trim()) missing.push('დასკვნა');
@@ -344,8 +364,10 @@ export default function QuestionnaireWizard() {
       // before navigating away. Offline? The queue survives — done screen
       // still renders from local state.
       await offline.flush();
+      haptic.success();
       router.replace(`/inspections/${questionnaire.id}/done` as any);
     } catch (e: any) {
+      haptic.error();
       toast.error(`ინსპექციის დასრულება ვერ მოხერხდა: ${e?.message ?? 'ქსელის შეცდომა'}`);
     }
   };
@@ -355,6 +377,13 @@ export default function QuestionnaireWizard() {
       <Screen>
         <Stack.Screen options={{ headerShown: true, title: 'კითხვარი' }} />
         <SafeAreaView style={{ flex: 1 }} edges={[]}>
+          <View style={{ padding: 16, paddingTop: 12 }}>
+            <View style={styles.progressSegments}>
+              <View style={[styles.progressSegment, styles.progressSegmentCurrent]} />
+              <View style={styles.progressSegment} />
+              <View style={styles.progressSegment} />
+            </View>
+          </View>
           <SkeletonWizard />
         </SafeAreaView>
       </Screen>
@@ -389,77 +418,63 @@ export default function QuestionnaireWizard() {
           headerRight: () => (
             <Pressable
               hitSlop={10}
-              onPress={() => {
-                Alert.alert(
-                  'გასვლა',
-                  'შეინახო დრაფტად და გააგრძელო მოგვიანებით, თუ საერთოდ წაშალო?',
-                  [
-                    { text: 'გაგრძელება', style: 'cancel' },
-                    {
-                      text: 'დრაფტად შენახვა',
-                      onPress: () => router.replace('/(tabs)/home' as any),
-                    },
-                    {
-                      text: 'წაშლა',
-                      style: 'destructive',
-                      onPress: () => {
-                        Alert.alert('წაშლა?', 'კითხვარი სამუდამოდ წაიშლება.', [
-                          { text: 'გაუქმება', style: 'cancel' },
-                          {
-                            text: 'წაშლა',
-                            style: 'destructive',
-                            onPress: async () => {
-                              if (!id) return;
-                              try {
-                                await inspectionsApi.remove(id);
-                                toast.success('წაიშალა');
-                                router.replace('/(tabs)/home' as any);
-                              } catch (e: any) {
-                                toast.error(e?.message ?? 'ვერ წაიშალა');
-                              }
-                            },
-                          },
-                        ]);
-                      },
-                    },
-                  ],
-                );
-              }}
+              onPress={() => setExitModalVisible(true)}
             >
               <Text style={{ color: theme.colors.inkSoft, fontSize: 15 }}>გასვლა</Text>
             </Pressable>
           ),
         }}
       />
-      <SafeAreaView style={{ flex: 1 }} edges={[]}>
-        <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
-          <View style={styles.progressBg}>
-            <View
-              style={[
-                styles.progressFill,
-                { width: `${((stepIndex + 1) / steps.length) * 100}%` },
-              ]}
-            />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
+      >
+        {/* Modern segmented progress */}
+        <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 }}>
+          <View style={styles.progressSegments}>
+            {steps.map((s, i) => (
+              <View
+                key={i}
+                style={[
+                  styles.progressSegment,
+                  i <= stepIndex && styles.progressSegmentActive,
+                  i === stepIndex && styles.progressSegmentCurrent,
+                ]}
+              />
+            ))}
           </View>
-          <Text style={{ fontSize: 11, color: theme.colors.inkSoft, textAlign: 'center', marginTop: 4 }}>
-            {stepIndex + 1} / {steps.length}
-          </Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
+            <Text style={{ fontSize: 12, fontWeight: '600', color: theme.colors.accent }}>
+              {step.kind === 'question' ? (step.question.section ? `სექცია ${step.question.section}` : 'კითხვა') : step.kind === 'gridRow' ? 'კომპონენტი' : 'დასკვნა'}
+            </Text>
+            <Text style={{ fontSize: 12, color: theme.colors.inkSoft }}>
+              {stepIndex + 1} / {steps.length}
+            </Text>
+          </View>
         </View>
 
         {step.kind === 'gridRow' ? (
           // Full-height layout for grid rows — options are large and thumb-friendly
-          <GridRowStep
-            question={step.question}
-            row={step.row}
-            answer={answers[step.question.id]}
-            isFirstRow={step.row === (step.question.grid_rows?.[0] ?? '')}
-            harnessRowCount={harnessRowCount}
-            setHarnessRowCount={setHarnessRowCount}
-            onAnswer={patchAnswer}
-            onPickPhoto={() => pickPhoto(step.question)}
-          />
+          <Animated.View style={{ flex: 1, opacity: stepAnim }}>
+            <GridRowStep
+              question={step.question}
+              row={step.row}
+              answer={answers[step.question.id]}
+              isFirstRow={step.row === (step.question.grid_rows?.[0] ?? '')}
+              harnessRowCount={harnessRowCount}
+              setHarnessRowCount={setHarnessRowCount}
+              onAnswer={patchAnswer}
+              onPickPhoto={() => pickPhoto(step.question)}
+            />
+          </Animated.View>
         ) : (
-          <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
+          <Animated.View style={{ flex: 1, opacity: stepAnim }}>
+            <ScrollView
+              contentContainerStyle={{ padding: 16, gap: 16 }}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
+            >
             {step.kind === 'question' ? (
               <QuestionStep
                 question={step.question}
@@ -481,25 +496,33 @@ export default function QuestionnaireWizard() {
               />
             )}
           </ScrollView>
+          </Animated.View>
         )}
 
         <View style={styles.footer}>
           <Button
             title="უკან"
             variant="secondary"
-            style={{ flex: 1 }}
+            style={{ flex: 1, paddingVertical: 14 }}
             disabled={stepIndex === 0}
-            onPress={() => setStepIndex(i => Math.max(0, i - 1))}
+            iconLeft={<Ionicons name="chevron-back" size={18} color={stepIndex === 0 ? theme.colors.inkFaint : theme.colors.ink} />}
+            onPress={() => {
+              haptic.light();
+              setStepIndex(i => Math.max(0, i - 1));
+            }}
           />
           {stepIndex < steps.length - 1 ? (
             <Button
               title="შემდეგი"
-              style={{ flex: 2 }}
+              style={{ flex: 2, paddingVertical: 14 }}
+              iconRight={<Ionicons name="chevron-forward" size={18} color={theme.colors.white} />}
               onPress={() => {
+                haptic.light();
                 if (step.kind === 'question' && step.question.type === 'measure') {
                   const value = answers[step.question.id]?.value_num ?? null;
                   const err = measureError(step.question, value);
                   if (err) {
+                    haptic.error();
                     toast.error(err);
                     return;
                   }
@@ -510,19 +533,108 @@ export default function QuestionnaireWizard() {
           ) : (
             <Button
               title="დასრულება"
-              style={{ flex: 2 }}
-              onPress={saveConclusionAndGo}
+              style={{ flex: 2, paddingVertical: 14 }}
+              iconRight={<Ionicons name="checkmark" size={20} color={theme.colors.white} />}
+              onPress={() => {
+                haptic.medium();
+                saveConclusionAndGo();
+              }}
             />
           )}
         </View>
-      </SafeAreaView>
+
+        {/* Exit confirmation modal */}
+        <Modal visible={exitModalVisible} transparent animationType="fade" onRequestClose={() => setExitModalVisible(false)}>
+          <View style={styles.confirmOverlay}>
+            <Pressable style={styles.confirmBackdrop} onPress={() => setExitModalVisible(false)} />
+            <View style={styles.confirmCard}>
+              <View style={{ alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: theme.colors.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name="exit-outline" size={28} color={theme.colors.accent} />
+                </View>
+                <Text style={{ fontSize: 18, fontWeight: '700', color: theme.colors.ink }}>გასვლა</Text>
+                <Text style={{ fontSize: 14, color: theme.colors.inkSoft, textAlign: 'center', lineHeight: 20 }}>
+                  შეინახო დრაფტად და გააგრძელო მოგვიანებით, თუ საერთოდ წაშალო?
+                </Text>
+              </View>
+              <View style={{ gap: 8, marginTop: 4 }}>
+                <Button
+                  title="გაგრძელება"
+                  variant="secondary"
+                  onPress={() => setExitModalVisible(false)}
+                />
+                <Button
+                  title="დრაფტად შენახვა"
+                  onPress={() => {
+                    setExitModalVisible(false);
+                    router.replace('/(tabs)/home' as any);
+                  }}
+                  iconLeft={<Ionicons name="archive-outline" size={18} color={theme.colors.white} />}
+                />
+                <Button
+                  title="წაშლა"
+                  variant="danger"
+                  onPress={() => {
+                    setExitModalVisible(false);
+                    setDeleteConfirmVisible(true);
+                  }}
+                  iconLeft={<Ionicons name="trash-outline" size={18} color={theme.colors.danger} />}
+                />
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Delete confirmation modal */}
+        <Modal visible={deleteConfirmVisible} transparent animationType="fade" onRequestClose={() => setDeleteConfirmVisible(false)}>
+          <View style={styles.confirmOverlay}>
+            <Pressable style={styles.confirmBackdrop} onPress={() => setDeleteConfirmVisible(false)} />
+            <View style={styles.confirmCard}>
+              <View style={{ alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: theme.colors.dangerSoft, alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name="warning-outline" size={28} color={theme.colors.danger} />
+                </View>
+                <Text style={{ fontSize: 18, fontWeight: '700', color: theme.colors.ink }}>წაშლა?</Text>
+                <Text style={{ fontSize: 14, color: theme.colors.inkSoft, textAlign: 'center', lineHeight: 20 }}>
+                  კითხვარი სამუდამოდ წაიშლება.
+                </Text>
+              </View>
+              <View style={{ gap: 8, marginTop: 4 }}>
+                <Button
+                  title="გაუქმება"
+                  variant="secondary"
+                  onPress={() => setDeleteConfirmVisible(false)}
+                />
+                <Button
+                  title="წაშლა"
+                  variant="danger"
+                  onPress={async () => {
+                    setDeleteConfirmVisible(false);
+                    if (!id) return;
+                    try {
+                      await inspectionsApi.remove(id);
+                      haptic.success();
+                      toast.success('წაიშალა');
+                      router.replace('/(tabs)/home' as any);
+                    } catch (e: any) {
+                      haptic.error();
+                      toast.error(e?.message ?? 'ვერ წაიშალა');
+                    }
+                  }}
+                  iconLeft={<Ionicons name="trash" size={18} color={theme.colors.danger} />}
+                />
+              </View>
+            </View>
+          </View>
+        </Modal>
+      </KeyboardAvoidingView>
     </Screen>
   );
 }
 
 // ----- Step views -----
 
-function QuestionStep({
+const QuestionStep = memo(function QuestionStep({
   question,
   answer,
   photosByAnswer,
@@ -541,16 +653,24 @@ function QuestionStep({
   const answerPhotos = answer ? photosByAnswer[answer.id] ?? [] : [];
 
   return (
-    <View style={{ gap: 24 }}>
-      <Text style={{ fontSize: 20, fontWeight: '700', color: theme.colors.ink }}>
-        {question.title}
-      </Text>
+    <View style={{ gap: 20, paddingVertical: 8 }}>
+      <View style={styles.questionCard}>
+        <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.accent, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>
+          კითხვა
+        </Text>
+        <Text style={{ fontSize: 20, fontWeight: '700', color: theme.colors.ink, lineHeight: 28 }}>
+          {question.title}
+        </Text>
+      </View>
 
       <View style={{ gap: 14 }}>
         {question.type === 'yesno' ? (
           <View style={{ flexDirection: 'row', gap: 12 }}>
             <Pressable
-              onPress={() => onAnswer(question, a => ({ ...a, value_bool: true }))}
+              onPress={() => {
+                haptic.light();
+                onAnswer(question, a => ({ ...a, value_bool: true }));
+              }}
               style={[
                 styles.choice,
                 answer?.value_bool === true && { backgroundColor: theme.colors.accentSoft, borderColor: theme.colors.accent },
@@ -559,7 +679,10 @@ function QuestionStep({
               <Text style={styles.choiceText}>კი</Text>
             </Pressable>
             <Pressable
-              onPress={() => onAnswer(question, a => ({ ...a, value_bool: false }))}
+              onPress={() => {
+                haptic.light();
+                onAnswer(question, a => ({ ...a, value_bool: false }));
+              }}
               style={[
                 styles.choice,
                 answer?.value_bool === false && { backgroundColor: theme.colors.dangerSoft, borderColor: theme.colors.danger },
@@ -590,8 +713,15 @@ function QuestionStep({
       </View>
 
       {/* Photo row */}
-      <View style={{ gap: 8 }}>
-        <Text style={styles.photoCountLabel}>ფოტოები ({answerPhotos.length})</Text>
+      <View style={[styles.questionCard, { gap: 10 }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Text style={styles.photoCountLabel}>ფოტოები ({answerPhotos.length})</Text>
+          {answerPhotos.length > 0 && (
+            <Text style={{ fontSize: 11, color: theme.colors.inkFaint }}>
+              დააჭირე გასადიდებლად
+            </Text>
+          )}
+        </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingVertical: 4 }}>
           {answerPhotos.map(p => (
             <Pressable key={p.id} onPress={() => setPreviewPhoto(p)} style={styles.photoTile}>
@@ -605,10 +735,12 @@ function QuestionStep({
       </View>
 
       {/* Notes */}
-      <DebouncedNotes
-        initial={answer?.notes ?? null}
-        onCommit={value => onAnswer(question, a => ({ ...a, notes: value || null }))}
-      />
+      <View style={styles.questionCard}>
+        <DebouncedNotes
+          initial={answer?.notes ?? null}
+          onCommit={value => onAnswer(question, a => ({ ...a, notes: value || null }))}
+        />
+      </View>
 
       {/* Preview Modal */}
       <PhotoPreviewModal
@@ -621,7 +753,7 @@ function QuestionStep({
       />
     </View>
   );
-}
+});
 
 function DebouncedFreetext({
   initial,
@@ -844,7 +976,7 @@ function scaffoldColStyle(col: string): { tint: string; bg: string; icon: string
   return { tint: theme.colors.inkSoft, bg: theme.colors.subtleSurface, icon: 'remove-circle' };
 }
 
-function GridRowStep({
+const GridRowStep = memo(function GridRowStep({
   question,
   row,
   answer,
@@ -889,7 +1021,11 @@ function GridRowStep({
     const selectedStatus = statusCols.find(c => values[c] !== undefined) ?? null;
 
     return (
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 24, gap: 10 }}>
+      <ScrollView
+      contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 24, gap: 10 }}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="interactive"
+    >
         {/* Component name header */}
         <Text style={{ fontSize: 12, color: theme.colors.inkSoft, marginBottom: 0 }}>{question.title}</Text>
         <Text style={{ fontSize: 26, fontWeight: '800', color: theme.colors.ink, marginBottom: 6 }}>{row}</Text>
@@ -953,7 +1089,11 @@ function GridRowStep({
 
   // Harness: scrollable list of components with ✓/✗ chips
   return (
-    <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }}>
+    <ScrollView
+      contentContainerStyle={{ padding: 16, gap: 14 }}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="interactive"
+    >
       <Text style={{ fontSize: 11, color: theme.colors.inkSoft }}>{question.title}</Text>
       <Text style={{ fontSize: 24, fontWeight: '800', color: theme.colors.ink }}>{row}</Text>
 
@@ -1025,10 +1165,9 @@ function GridRowStep({
       <Button title="ფოტო" variant="secondary" onPress={onPickPhoto} />
     </ScrollView>
   );
-}
+});
 
-
-function ConclusionStep({
+const ConclusionStep = memo(function ConclusionStep({
   conclusion,
   onConclusion,
   isSafe,
@@ -1090,7 +1229,10 @@ function ConclusionStep({
         </Text>
         <View style={{ gap: 10 }}>
           <Pressable
-            onPress={() => onIsSafe(true)}
+            onPress={() => {
+              haptic.light();
+              onIsSafe(true);
+            }}
             style={[
               styles.safetyOption,
               isSafe === true && { backgroundColor: theme.colors.accentSoft, borderColor: theme.colors.accent },
@@ -1104,7 +1246,10 @@ function ConclusionStep({
             <Text style={{ fontSize: 14, fontWeight: '600' }}>უსაფრთხოა</Text>
           </Pressable>
           <Pressable
-            onPress={() => onIsSafe(false)}
+            onPress={() => {
+              haptic.light();
+              onIsSafe(false);
+            }}
             style={[
               styles.safetyOption,
               isSafe === false && { backgroundColor: theme.colors.dangerSoft, borderColor: theme.colors.danger },
@@ -1124,28 +1269,81 @@ function ConclusionStep({
       </View>
     </View>
   );
-}
+});
 
-function PhotoThumb({ photo, size = 80 }: { photo: AnswerPhoto; size?: number }) {
+const PhotoThumb = memo(function PhotoThumb({ photo, size = 80 }: { photo: AnswerPhoto; size?: number }) {
   // Local device URIs (fresh upload) can be used directly without a network round-trip.
   const isLocal = /^(file|content|ph|asset):\/\//.test(photo.storage_path);
   const [uri, setUri] = useState<string | null>(isLocal ? photo.storage_path : null);
+  const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(!isLocal);
+  const fadeAnim = useRef(new Animated.Value(isLocal ? 1 : 0)).current;
+
+  const load = useCallback(async () => {
+    if (isLocal) return;
+    const cacheKey = `${STORAGE_BUCKETS.answerPhotos}:${photo.storage_path}`;
+    if (photoUrlCache.has(cacheKey)) {
+      const url = photoUrlCache.get(cacheKey)!;
+      setUri(url);
+      setLoading(false);
+      setError(false);
+      fadeAnim.setValue(1);
+      return;
+    }
+    setLoading(true);
+    setError(false);
+    try {
+      const url = await getStorageImageDisplayUrl(STORAGE_BUCKETS.answerPhotos, photo.storage_path);
+      photoUrlCache.set(cacheKey, url);
+      setUri(url);
+      fadeAnim.setValue(0);
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 250,
+        useNativeDriver: true,
+      }).start();
+    } catch {
+      const fallback = storageApi.publicUrl(STORAGE_BUCKETS.answerPhotos, photo.storage_path);
+      photoUrlCache.set(cacheKey, fallback);
+      setUri(fallback);
+      fadeAnim.setValue(1);
+    } finally {
+      setLoading(false);
+    }
+  }, [photo.storage_path, isLocal, fadeAnim]);
 
   useEffect(() => {
-    if (isLocal) return;
-    let cancelled = false;
-    getStorageImageDisplayUrl(STORAGE_BUCKETS.answerPhotos, photo.storage_path)
-      .then(url => { if (!cancelled) setUri(url); })
-      .catch(() => {
-        if (!cancelled) setUri(storageApi.publicUrl(STORAGE_BUCKETS.answerPhotos, photo.storage_path));
-      });
-    return () => { cancelled = true; };
-  }, [photo.storage_path, isLocal]);
+    void load();
+  }, [load]);
 
-  const style = [styles.photoThumb, { width: size, height: size }];
-  if (!uri) return <View style={style} />;
-  return <Image source={{ uri }} style={style} resizeMode="cover" />;
-}
+  const containerStyle = [styles.photoThumb, { width: size, height: size }];
+
+  if (loading) {
+    return (
+      <View style={containerStyle}>
+        <Skeleton width={size * 0.6} height={size * 0.6} radius={size * 0.15} />
+      </View>
+    );
+  }
+
+  if (error || !uri) {
+    return (
+      <Pressable onPress={load} style={containerStyle}>
+        <Ionicons name="refresh" size={22} color={theme.colors.inkFaint} />
+        <Text style={{ fontSize: 10, color: theme.colors.inkFaint, marginTop: 4 }}>განახლება</Text>
+      </Pressable>
+    );
+  }
+
+  return (
+    <Animated.Image
+      source={{ uri }}
+      style={containerStyle}
+      resizeMode="cover"
+      onError={() => setError(true)}
+    />
+  );
+});
 
 function PhotoPreviewModal({
   photo,
@@ -1159,10 +1357,13 @@ function PhotoPreviewModal({
   onDelete: (photo: AnswerPhoto) => Promise<void>;
 }) {
   const [uri, setUri] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     if (!photo) {
       setUri(null);
+      setError(false);
       return;
     }
     const isLocal = /^(file|content|ph|asset):\/\//.test(photo.storage_path);
@@ -1170,12 +1371,15 @@ function PhotoPreviewModal({
       setUri(photo.storage_path);
       return;
     }
+    setLoading(true);
+    setError(false);
     let cancelled = false;
     getStorageImageDisplayUrl(STORAGE_BUCKETS.answerPhotos, photo.storage_path)
       .then(url => { if (!cancelled) setUri(url); })
       .catch(() => {
         if (!cancelled) setUri(storageApi.publicUrl(STORAGE_BUCKETS.answerPhotos, photo.storage_path));
-      });
+      })
+      .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [photo]);
 
@@ -1185,12 +1389,22 @@ function PhotoPreviewModal({
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.previewOverlay}>
         <Pressable style={styles.previewBackdrop} onPress={onClose} />
-        {uri ? (
-          <Image source={{ uri }} style={styles.previewImage} resizeMode="contain" />
-        ) : (
-          <View style={styles.previewImage}>
-            <Skeleton width={'100%'} height={'100%' as unknown as number} radius={12} />
+        {loading || !uri ? (
+          <View style={[styles.previewImage, { alignItems: 'center', justifyContent: 'center' }]}>
+            <Skeleton width={120} height={120} radius={12} />
           </View>
+        ) : error ? (
+          <View style={[styles.previewImage, { alignItems: 'center', justifyContent: 'center', gap: 12 }]}>
+            <Ionicons name="image-outline" size={48} color="rgba(255,255,255,0.5)" />
+            <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14 }}>ფოტო ვერ ჩაიტვირთა</Text>
+          </View>
+        ) : (
+          <Image
+            source={{ uri }}
+            style={styles.previewImage}
+            resizeMode="contain"
+            onError={() => setError(true)}
+          />
         )}
         <Pressable
           style={styles.previewDeleteBtn}
@@ -1233,6 +1447,23 @@ function CompletedRedirect({ id }: { id: string }) {
 }
 
 const styles = StyleSheet.create({
+  progressSegments: {
+    flexDirection: 'row',
+    gap: 4,
+    alignItems: 'center',
+  },
+  progressSegment: {
+    flex: 1,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: theme.colors.subtleSurface,
+  },
+  progressSegmentActive: {
+    backgroundColor: theme.colors.accentSoft,
+  },
+  progressSegmentCurrent: {
+    backgroundColor: theme.colors.accent,
+  },
   progressBg: {
     height: 6,
     backgroundColor: theme.colors.subtleSurface,
@@ -1242,12 +1473,13 @@ const styles = StyleSheet.create({
   progressFill: { height: 6, backgroundColor: theme.colors.accent },
   choice: {
     flex: 1,
-    paddingVertical: 16,
+    paddingVertical: 18,
     alignItems: 'center',
     backgroundColor: theme.colors.subtleSurface,
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 2,
     borderColor: 'transparent',
+    gap: 6,
   },
   choiceText: { fontSize: 18, fontWeight: '700' },
   textarea: {
@@ -1281,11 +1513,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 44,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.hairline,
+    paddingVertical: 12,
     backgroundColor: theme.colors.card,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: theme.colors.hairline,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  confirmOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  confirmBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  confirmCard: {
+    backgroundColor: theme.colors.card,
+    borderRadius: 20,
+    padding: 20,
+    width: '100%',
+    maxWidth: 340,
+    gap: 4,
+    ...theme.shadow.card,
   },
   statusOption: {
     flexDirection: 'row',
@@ -1306,6 +1561,14 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: theme.colors.hairline,
     backgroundColor: theme.colors.card,
+  },
+  questionCard: {
+    backgroundColor: theme.colors.card,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: theme.colors.hairline,
+    ...theme.shadow.card,
   },
   photoRowBtn: {
     flexDirection: 'row',
@@ -1369,6 +1632,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   photoCountLabel: {
     fontSize: 13,

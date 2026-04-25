@@ -12,6 +12,8 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { haptic } from '../lib/haptics';
 import { theme } from '../lib/theme';
 
 export function Screen({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
@@ -37,37 +39,58 @@ interface ButtonProps extends Omit<PressableProps, 'style'> {
   style?: StyleProp<ViewStyle>;
 }
 
-export function Button({ title, loading, variant = 'primary', style, ...rest }: ButtonProps) {
+export function Button({
+  title,
+  loading,
+  variant = 'primary',
+  style,
+  iconLeft,
+  iconRight,
+  onPress,
+  ...rest
+}: ButtonProps & {
+  iconLeft?: ReactNode;
+  iconRight?: ReactNode;
+}) {
   return (
     <Pressable
       {...rest}
       disabled={rest.disabled || loading}
+      onPress={e => {
+        haptic.light();
+        onPress?.(e);
+      }}
       style={({ pressed }) => [
         styles.button,
         variant === 'primary' && styles.buttonPrimary,
         variant === 'ghost' && styles.buttonGhost,
         variant === 'danger' && styles.buttonDanger,
         variant === 'secondary' && styles.buttonSecondary,
-        pressed && { opacity: 0.92, transform: [{ scale: 0.99 }] },
+        pressed && { opacity: 0.88, transform: [{ scale: 0.97 }] },
         (rest.disabled || loading) && { opacity: 0.6 },
         variant === 'primary' && theme.shadow.button,
+        (iconLeft || iconRight) ? { flexDirection: 'row', gap: 8, alignItems: 'center' } : undefined,
         style,
       ]}
     >
       {loading ? (
         <ActivityIndicator color={variant === 'primary' ? theme.colors.white : theme.colors.accent} />
       ) : (
-        <Text
-          style={[
-            styles.buttonText,
-            variant === 'primary' && { color: theme.colors.white },
-            variant === 'ghost' && { color: theme.colors.accent },
-            variant === 'danger' && { color: theme.colors.danger },
-            variant === 'secondary' && { color: theme.colors.ink },
-          ]}
-        >
-          {title}
-        </Text>
+        <>
+          {iconLeft}
+          <Text
+            style={[
+              styles.buttonText,
+              variant === 'primary' && { color: theme.colors.white },
+              variant === 'ghost' && { color: theme.colors.accent },
+              variant === 'danger' && { color: theme.colors.danger },
+              variant === 'secondary' && { color: theme.colors.ink },
+            ]}
+          >
+            {title}
+          </Text>
+          {iconRight}
+        </>
       )}
     </Pressable>
   );

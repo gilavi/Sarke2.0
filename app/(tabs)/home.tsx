@@ -445,7 +445,11 @@ function ProjectPickerSheet({
                     <Text style={pickerStyles.emptySubText}>დაამატე ქვემოთ</Text>
                   </View>
                 ) : (
-                  <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
+                  <ScrollView
+                    style={{ maxHeight: 320 }}
+                    showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
+                  >
                     {projects.map(p => {
                       const av = projectAvatar(p.id);
                       return (
@@ -491,7 +495,11 @@ function ProjectPickerSheet({
                     <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
                   </Pressable>
                 </View>
-                <ScrollView style={{ maxHeight: 360 }} showsVerticalScrollIndicator={false}>
+                <ScrollView
+                  style={{ maxHeight: 360 }}
+                  showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
+                >
                   {systemTemplates.map(t => (
                     <Pressable
                       key={t.id}

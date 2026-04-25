@@ -7,6 +7,9 @@
 // RN's core `Animated` API with `useNativeDriver: true` for a soft spring
 // in and quick ease-out on dismiss. Stays on the UI thread without any
 // worklet compilation step, so no chance of the old freeze.
+//
+// v3: backdrop and sheet are now fully independent — backdrop fades in-place
+// while the sheet slides up. No more "whole thing pops from bottom" feel.
 
 import {
   createContext,
@@ -58,61 +61,79 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
   const callbackRef = useRef<((idx: number | undefined) => void) | null>(null);
   const insets = useSafeAreaInsets();
 
-  // Drives both the card's slide and the backdrop's fade. 0 = hidden,
-  // 1 = fully shown. Using one value keeps the two animations in sync.
-  const progress = useRef(new Animated.Value(0)).current;
+  // Separate animated values for backdrop (fade) and sheet (slide).
+  // This prevents the "whole modal pops from bottom" visual bug.
+  const backdropProgress = useRef(new Animated.Value(0)).current;
+  const sheetProgress = useRef(new Animated.Value(0)).current;
 
   // Animate in whenever a sheet appears.
   useEffect(() => {
     if (sheet) {
-      Animated.spring(progress, {
+      // Backdrop fades in with a gentle ease — static position
+      Animated.timing(backdropProgress, {
         toValue: 1,
-        damping: 22,
-        stiffness: 260,
-        mass: 0.9,
+        duration: 280,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+      // Sheet springs up from below — independent motion
+      Animated.spring(sheetProgress, {
+        toValue: 1,
+        damping: 24,
+        stiffness: 280,
+        mass: 0.85,
         overshootClamping: false,
         useNativeDriver: true,
       }).start();
     }
-  }, [sheet, progress]);
+  }, [sheet, backdropProgress, sheetProgress]);
 
   const dismiss = useCallback(
     (idx: number | undefined) => {
       const cb = callbackRef.current;
       callbackRef.current = null;
-      // Quick ease-out on the way out; feels less laggy than the in-spring
-      // running in reverse.
-      Animated.timing(progress, {
-        toValue: 0,
-        duration: 180,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }).start(({ finished }) => {
+      // Quick coordinated exit — backdrop fades, sheet drops
+      Animated.parallel([
+        Animated.timing(backdropProgress, {
+          toValue: 0,
+          duration: 200,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(sheetProgress, {
+          toValue: 0,
+          duration: 220,
+          easing: Easing.in(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]).start(({ finished }) => {
         if (finished) setSheet(null);
       });
       cb?.(idx);
     },
-    [progress],
+    [backdropProgress, sheetProgress],
   );
 
   const show: ShowBottomSheet = useCallback(
     (options, callback) => {
       const prev = callbackRef.current;
       callbackRef.current = callback;
-      // Reset animation state so the re-open spring plays from the bottom.
-      progress.setValue(0);
+      // Reset both animations so the open plays from hidden state.
+      backdropProgress.setValue(0);
+      sheetProgress.setValue(0);
       setSheet({ options });
       prev?.(undefined);
     },
-    [progress],
+    [backdropProgress, sheetProgress],
   );
 
-  // Card slides up from ~340px below, backdrop fades 0→1.
-  const translateY = progress.interpolate({
+  // Sheet slides up from 320px below its final position
+  const translateY = sheetProgress.interpolate({
     inputRange: [0, 1],
-    outputRange: [340, 0],
+    outputRange: [320, 0],
   });
-  const backdropOpacity = progress.interpolate({
+  // Backdrop simply fades — no movement
+  const backdropOpacity = backdropProgress.interpolate({
     inputRange: [0, 1],
     outputRange: [0, 1],
   });
@@ -126,53 +147,63 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
         animationType="none"
         onRequestClose={() => dismiss(sheet?.options.cancelButtonIndex)}
       >
-        <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: backdropOpacity }]}>
-          <Pressable
-            style={styles.backdrop}
-            onPress={() => dismiss(sheet?.options.cancelButtonIndex)}
+        <View style={StyleSheet.absoluteFillObject}>
+          {/* Backdrop: fades in place, catches taps outside the sheet */}
+          <Animated.View
+            style={[
+              StyleSheet.absoluteFillObject,
+              { opacity: backdropOpacity },
+            ]}
+            pointerEvents="box-none"
           >
-            <Animated.View
-              style={[
-                styles.sheet,
-                { paddingBottom: insets.bottom + 8, transform: [{ translateY }] },
-              ]}
-            >
-              {/* Inner Pressable stops backdrop tap from propagating through the sheet */}
-              <Pressable>
-                {sheet?.options.title ? (
-                  <Text style={styles.title}>{sheet.options.title}</Text>
-                ) : (
-                  <View style={styles.handle} />
-                )}
-                {sheet?.options.options.map((opt, i) => {
-                  const isCancel = i === sheet.options.cancelButtonIndex;
-                  const isDestructive = i === sheet.options.destructiveButtonIndex;
-                  return (
-                    <Pressable
-                      key={i}
-                      onPress={() => dismiss(i)}
-                      style={({ pressed }) => [
-                        styles.option,
-                        isCancel && styles.cancelOption,
-                        pressed && styles.optionPressed,
+            <Pressable
+              style={styles.backdrop}
+              onPress={() => dismiss(sheet?.options.cancelButtonIndex)}
+            />
+          </Animated.View>
+
+          {/* Sheet: slides up independently */}
+          <Animated.View
+            style={[
+              styles.sheetWrapper,
+              { paddingBottom: insets.bottom + 8, transform: [{ translateY }] },
+            ]}
+          >
+            <Pressable>
+              {sheet?.options.title ? (
+                <Text style={styles.title}>{sheet.options.title}</Text>
+              ) : (
+                <View style={styles.handle} />
+              )}
+              {sheet?.options.options.map((opt, i) => {
+                const isCancel = i === sheet.options.cancelButtonIndex;
+                const isDestructive = i === sheet.options.destructiveButtonIndex;
+                return (
+                  <Pressable
+                    key={i}
+                    onPress={() => dismiss(i)}
+                    style={({ pressed }) => [
+                      styles.option,
+                      i === 0 && !sheet.options.title && { borderTopWidth: 0 },
+                      isCancel && styles.cancelOption,
+                      pressed && styles.optionPressed,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.optionText,
+                        isCancel && styles.cancelText,
+                        isDestructive && styles.destructiveText,
                       ]}
                     >
-                      <Text
-                        style={[
-                          styles.optionText,
-                          isCancel && styles.cancelText,
-                          isDestructive && styles.destructiveText,
-                        ]}
-                      >
-                        {opt}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </Pressable>
-            </Animated.View>
-          </Pressable>
-        </Animated.View>
+                      {opt}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </Pressable>
+          </Animated.View>
+        </View>
       </Modal>
     </Ctx.Provider>
   );
@@ -180,9 +211,14 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
 
 const styles = StyleSheet.create({
   backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'flex-end',
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  sheetWrapper: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   sheet: {
     backgroundColor: theme.colors.card,
