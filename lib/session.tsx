@@ -23,6 +23,8 @@ interface SessionCtx {
     firstName: string;
     lastName: string;
   }) => Promise<{ needsEmailVerification: boolean }>;
+  verifySignupOtp: (email: string, token: string) => Promise<void>;
+  resendSignupOtp: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -106,6 +108,21 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           return { needsEmailVerification: true };
         }
         return { needsEmailVerification: false };
+      },
+      verifySignupOtp: async (email, token) => {
+        const { error } = await supabase.auth.verifyOtp({
+          email: email.trim(),
+          token: token.trim(),
+          type: 'signup',
+        });
+        if (error) throw error;
+      },
+      resendSignupOtp: async email => {
+        const { error } = await supabase.auth.resend({
+          type: 'signup',
+          email: email.trim(),
+        });
+        if (error) throw error;
       },
       signOut: async () => {
         await supabase.auth.signOut();

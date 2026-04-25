@@ -11,6 +11,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -48,7 +49,6 @@ function isEmailTakenError(msg: string): boolean {
 export default function AuthScreen() {
   const [mode, setMode] = useState<Mode>('login');
   const [forgotOpen, setForgotOpen] = useState(false);
-  const [verifyEmail, setVerifyEmail] = useState<string | null>(null);
 
   return (
     <View style={{ flex: 1 }}>
@@ -71,7 +71,9 @@ export default function AuthScreen() {
                 <LoginForm onForgotPassword={() => setForgotOpen(true)} />
               ) : (
                 <RegisterForm
-                  onVerificationSent={(email) => setVerifyEmail(email)}
+                  onVerificationSent={(email) =>
+                    router.push({ pathname: '/(auth)/verify-email', params: { email } })
+                  }
                   onSwitchToLogin={() => setMode('login')}
                 />
               )}
@@ -80,7 +82,6 @@ export default function AuthScreen() {
         </KeyboardAvoidingView>
       </SafeAreaView>
       <ForgotPasswordModal visible={forgotOpen} onClose={() => setForgotOpen(false)} />
-      <VerificationSentModal email={verifyEmail} onClose={() => setVerifyEmail(null)} />
     </View>
   );
 }
@@ -147,33 +148,6 @@ function ForgotPasswordModal({ visible, onClose }: { visible: boolean; onClose: 
               <Button title="გაგზავნა" onPress={submit} loading={busy} disabled={!email.trim()} />
             </View>
           )}
-        </Card>
-      </View>
-    </Modal>
-  );
-}
-
-/* ─── Verification Sent Modal ─── */
-
-function VerificationSentModal({ email, onClose }: { email: string | null; onClose: () => void }) {
-  return (
-    <Modal visible={!!email} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <Card padding={24} style={styles.modalCard}>
-          <View style={{ alignItems: 'center', gap: 14 }}>
-            <View style={[styles.iconCircle, { width: 76, height: 76, borderRadius: 38 }]}>
-              <Ionicons name="checkmark-circle" size={48} color={theme.colors.accent} />
-            </View>
-            <Text style={{ fontSize: 19, fontWeight: '800', color: theme.colors.ink }}>
-              რეგისტრაცია წარმატებულია!
-            </Text>
-            <Text style={[styles.modalBody, { textAlign: 'center' }]}>
-              {'დადასტურების წერილი გაიგზავნა\n'}
-              <Text style={{ color: theme.colors.ink, fontWeight: '700' }}>{email ?? ''}</Text>
-              {'-ზე.\nგთხოვთ, შეამოწმოთ თქვენი ელ-ფოსტა.'}
-            </Text>
-            <Button title="კარგი" onPress={onClose} style={{ alignSelf: 'stretch' }} />
-          </View>
         </Card>
       </View>
     </Modal>
