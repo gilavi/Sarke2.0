@@ -1,44 +1,28 @@
-# Sarke 2.0 — Now With 47% More Bugs™
+# Sarke 2.0
 
-> *"შრომის უსაფრთხოების ექსპერტები ეძებენ აპს. ჩვენ კი აპს ვეძებთ ექსპერტებს."*
+Expo (React Native) app for შრომის უსაფრთხოების ექსპერტები. Lets an expert create a project, fill a checklist-style questionnaire on their phone, collect signatures, and generate a PDF inspection report.
 
-Expo (React Native) app for people who climb scaffolding and pretend it's safe. Lets an expert create a project, fill a checklist-style questionnaire on their phone, collect signatures from terrified workers, and generate a PDF report that nobody reads.
+MVP scope: two seeded templates, both in ქართული:
+- **ფასადის ხარაჩოს შემოწმების აქტი** (façade scaffolding inspection)
+- **დამცავი ქამრების შემოწმების აქტი** (fall-protection harness inspection)
 
----
+## Stack
 
-## 🏗️ MVP Scope (a.k.a. "What Actually Works")
+- Expo SDK 55 + expo-router (file-based)
+- React Native 0.81, React 19
+- Supabase (Postgres + Auth + Storage) — same backend as v1
+- `expo-image-picker` for photos, `expo-print` + `expo-sharing` for PDF, `react-native-signature-canvas` for signatures
 
-Two seeded templates, both in ქართული, because Google Translate doesn't know what a ხარაჩო is:
+The native SwiftUI port lives on the [`ios-legacy`](https://github.com/gilavi/Sarke2.0/tree/ios-legacy) branch.
 
-- **ფასადის ხარაჩოს შემოწმების აქტი** — faÇade scaffolding inspection (yes, the Ç is intentional, we fancy now)
-- **დამცავი ქამრების შემოწმების აქტი** — fall-protection harness inspection. If this fails, you're already dead.
-
----
-
-## 🧪 Stack (a.k.a. "Why Is My Laptop Fan Crying?")
-
-- **Expo SDK 55** + expo-router (file-based routing, because config files are for cowards)
-- **React Native 0.81**, React 19 — the bleeding edge where we all bleed
-- **Supabase** (Postgres + Auth + Storage) — same backend as v1, because why fix what barely works?
-- `expo-image-picker` for photos of broken things
-- `expo-print` + `expo-sharing` for PDFs that sit in Downloads folders forever
-- `react-native-signature-canvas` for signatures that look like a seismograph during an earthquake
-
-The native SwiftUI port lives on the [`ios-legacy`](https://github.com/gilavi/Sarke2.0/tree/ios-legacy) branch, where it rots in peace. RIP.
-
----
-
-## 🚀 Running Locally
+## Running locally
 
 ```sh
 npm install --legacy-peer-deps   # peer conflicts around Radix/React 19
-                                 # (yes, we know. no, we won't fix it.)
-npx expo start                   # opens dev server, your RAM weeps
+npx expo start                   # opens dev server
 ```
 
-Scan the QR in the terminal with **Expo Go** on your phone. If it crashes, restart your phone. Then your life. Then try again.
-
-The Supabase URL and anon key are baked into `app.json` → `expo.extra`. Security through obscurity, baby.
+Scan the QR in the terminal with **Expo Go** on your phone. The Supabase URL and anon key are baked into `app.json` → `expo.extra`.
 
 ### Typecheck
 
@@ -46,72 +30,39 @@ The Supabase URL and anon key are baked into `app.json` → `expo.extra`. Securi
 npm run typecheck
 ```
 
-Spoiler: it will fail. We ignore it. It's a lifestyle choice.
+## Supabase
 
----
-
-## 🐘 Supabase
-
-Schema + seed already applied to the hosted project. Relevant files preserved here for reference, mostly so we can blame the DB when things break:
-
+Schema + seed already applied to the hosted project. Relevant files preserved here for reference:
 - `supabase/migrations/0001_init.sql` — tables + RLS
-- `supabase/seed/01_system_templates.sql` — system templates
+- `supabase/seed/01_system_templates.sql` — system templates (also inserted via REST in v1)
 
-Storage buckets: `certificates`, `answer-photos`, `pdfs`, `signatures`. 
+Storage buckets in use: `certificates`, `answer-photos`, `pdfs`, `signatures`.
 
-> Fun fact: 90% of `answer-photos` are blurry pictures of rust taken with a shaking hand at 7 AM.
-
----
-
-## 📁 Directory Layout
+## Directory layout
 
 ```
-app/                  expo-router routes (the magic folder)
-  (auth)/             login + register + existential dread
+app/                  expo-router routes
+  (auth)/             login + register
   (tabs)/             home, projects, regulations, more
   projects/           create + detail + signer
-  questionnaire/      wizard + signing (where dreams go to die)
-  template/           quick-start (not that quick)
-  certificates/       list + add + regret
-  history.tsx         because you will need therapy
-customer_support/     just kidding, we don't have that
+  questionnaire/      wizard + signing
+  template/           quick-start
+  certificates/       list + add
+  history.tsx, templates.tsx
 components/ui.tsx     Button, Card, Input, Chip, Screen
-                      (glorified `<View>` wrappers)
 lib/
-  supabase.ts         Supabase client (our digital frenemy)
-  session.tsx         Auth provider (remembers you, judges you)
-  services.ts         Data layer (lies, mostly)
-  theme.ts            Design tokens (shades of "why is this blue?")
-  pdf.ts              HTML -> PDF template (black magic)
-  offline.tsx         "Works offline" they said. They lied.
-types/models.ts       DB types (TypeScript's greatest hits)
-supabase/             SQL incantations
+  supabase.ts         Supabase client
+  session.tsx         Auth provider
+  services.ts         Data layer
+  theme.ts            Design tokens
+  pdf.ts              HTML -> PDF template
+types/models.ts       DB types
+supabase/             SQL
 ```
 
----
+## Follow-ups
 
-## 🎯 Follow-ups (a.k.a. "Things We'll Never Do")
-
-- [ ] Signature capture that doesn't look like a toddler's crayon drawing
-- [ ] Comment sheet on wizard steps (for writing "HELP" in all caps)
-- [ ] Profile/settings screen (beyond sign-out, because who needs settings anyway)
-- [ ] Bundle Noto Sans Georgian for the PDF so it stops rendering as hieroglyphics
-- [ ] World peace
-- [ ] Fix that one bug where the app crashes if you look at it wrong
-- [ ] Buy Luka a coffee for dealing with this codebase
-
----
-
-## ⚠️ Known Issues
-
-1. The app crashes. Sometimes. We don't know why. You don't know why. Nobody knows why.
-2. If you rotate your phone during signature capture, the canvas rotates but your sanity doesn't.
-3. The PDF export takes 3-5 business days (on a fast phone).
-4. `npm install` downloads the entire internet. Twice.
-5. This README is 60% jokes, 40% cries for help.
-
----
-
-*Built with ❤️, ☕, and an unhealthy amount of `console.log` by a team of people who definitely read the docs (we didn't).*
-
-**© 2026 Sarke Industries** *(not a real industry)*
+- Signature capture (react-native-signature-canvas) — currently the signing screen lists required signers and generates a PDF with blank lines; drawn signatures land next
+- Comment sheet on wizard steps
+- Profile/settings hidden beyond sign-out
+- Font: bundle Noto Sans Georgian for the PDF to avoid WebView fallback
