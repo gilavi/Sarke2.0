@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Button, Card, Screen } from '../../../components/ui';
+import { QuestionAvatar, illustrationKeyFor } from '../../../components/QuestionAvatar';
 import { Skeleton, SkeletonWizard } from '../../../components/Skeleton';
 import {
   answersApi,
@@ -497,6 +498,7 @@ export default function QuestionnaireWizard() {
   const stepAnswered = hasAnswer(step, answers, photos, conclusion, isSafe, harnessName, template);
   const isYesNo = step.kind === 'question' && step.question.type === 'yesno';
   const isLast = stepIndex === steps.length - 1;
+  const isScaffoldRow = step.kind === 'gridRow' && (step.question.grid_rows?.[0] ?? '') !== 'N1';
 
   const goNext = () => {
     haptic.light();
@@ -546,6 +548,7 @@ export default function QuestionnaireWizard() {
                 onAnswer={patchAnswer}
                 onPickPhoto={() => pickPhoto(step.question)}
                 onDeletePhoto={deletePhoto}
+                onAdvance={goNext}
               />
             </Animated.View>
           ) : (
@@ -624,7 +627,7 @@ export default function QuestionnaireWizard() {
                   saveConclusionAndGo();
                 }}
               />
-            ) : (
+            ) : isScaffoldRow ? null : (
               <Button
                 title={stepAnswered ? 'შემდეგი' : 'გამოტოვება'}
                 variant={stepAnswered ? 'primary' : 'secondary'}
@@ -753,9 +756,14 @@ const QuestionStep = memo(function QuestionStep({
   const showNoteField = noteOpen || hasNote;
   const hasPhotos = answerPhotos.length > 0;
 
+  const illoKey = illustrationKeyFor(question.title);
+
   return (
     <View style={{ gap: 24, paddingTop: 24 }}>
-      <Text style={styles.questionTitle}>{question.title}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        {illoKey ? <QuestionAvatar illustrationKey={illoKey} /> : null}
+        <Text style={[styles.questionTitle, { flex: 1 }]}>{question.title}</Text>
+      </View>
 
       {question.type === 'measure' ? (
         <MeasureInput
@@ -1063,6 +1071,7 @@ const GridRowStep = memo(function GridRowStep({
   onAnswer,
   onPickPhoto,
   onDeletePhoto,
+  onAdvance,
 }: {
   question: Question;
   row: string;
@@ -1074,6 +1083,7 @@ const GridRowStep = memo(function GridRowStep({
   onAnswer: (q: Question, m: (a: Answer) => Answer) => Promise<void>;
   onPickPhoto: () => void;
   onDeletePhoto: (photo: AnswerPhoto) => Promise<void>;
+  onAdvance: () => void;
 }) {
   const cols = question.grid_cols ?? [];
   const isHarness = (question.grid_rows?.[0] ?? '') === 'N1';
@@ -1106,6 +1116,47 @@ const GridRowStep = memo(function GridRowStep({
     const commentValue = values['კომენტარი'] ?? '';
     const [commentOpen, setCommentOpen] = useState(false);
     const showCommentField = !!commentValue || commentOpen;
+    const noneCol = statusCols.find(c => c.includes('გააჩნია')) ?? null;
+    const detailCols = statusCols.filter(c => c !== noneCol);
+    const showDetails = selectedStatus !== null && selectedStatus !== noneCol;
+
+    const renderStatusButton = (col: string) => {
+      const isSelected = selectedStatus === col;
+      const { tint, bg, icon } = scaffoldColStyle(col);
+      const isNone = col === noneCol;
+      return (
+        <Pressable
+          key={col}
+          onPress={() => {
+            setValue(col, col, true);
+            if (isNone) onAdvance();
+          }}
+          style={[
+            styles.statusOption,
+            isSelected && { backgroundColor: bg, borderColor: tint },
+          ]}
+        >
+          <Ionicons
+            name={isSelected ? (icon as any) : 'ellipse-outline'}
+            size={22}
+            color={isSelected ? tint : theme.colors.inkFaint}
+          />
+          <Text
+            style={{
+              flex: 1,
+              fontSize: 15,
+              fontWeight: '600',
+              color: isSelected ? tint : theme.colors.ink,
+            }}
+          >
+            {col}
+          </Text>
+          {isSelected && (
+            <Ionicons name="checkmark-circle" size={18} color={tint} />
+          )}
+        </Pressable>
+      );
+    };
 
     return (
       <ScrollView
@@ -1113,96 +1164,82 @@ const GridRowStep = memo(function GridRowStep({
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
       >
-        <View style={{ alignItems: 'center', paddingVertical: 8, gap: 4 }}>
+        <View style={{ alignItems: 'center', paddingVertical: 8, gap: 8 }}>
+          <QuestionAvatar illustrationKey={illustrationKeyFor(row)} />
           <Text style={{ fontSize: 12, color: theme.colors.inkSoft }}>{question.title}</Text>
           <Text style={{ fontSize: 28, fontWeight: '800', color: theme.colors.ink, textAlign: 'center' }}>
             {row}
           </Text>
         </View>
 
+        {showDetails ? (
+          <>
+            {hasPhotos ? (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ gap: 10, paddingVertical: 4 }}
+              >
+                {answerPhotos.map(p => (
+                  <Pressable key={p.id} onPress={() => setPreviewPhoto(p)} style={styles.photoTile}>
+                    <PhotoThumb photo={p} size={120} />
+                  </Pressable>
+                ))}
+                <Pressable onPress={onPickPhoto} style={styles.addPhotoTile}>
+                  <Ionicons name="add" size={32} color={theme.colors.inkSoft} />
+                </Pressable>
+              </ScrollView>
+            ) : null}
+
+            {hasComment && showCommentField ? (
+              <TextInput
+                value={commentValue}
+                onChangeText={text => setValue('კომენტარი', text || null, false)}
+                placeholder="კომენტარი"
+                placeholderTextColor={theme.colors.inkFaint}
+                style={styles.input}
+                autoFocus
+              />
+            ) : null}
+
+            {!hasPhotos || (hasComment && !showCommentField) ? (
+              <View style={styles.chipRow}>
+                {!hasPhotos ? (
+                  <Pressable onPress={onPickPhoto} style={styles.assistChip}>
+                    <Ionicons name="camera-outline" size={16} color={theme.colors.inkSoft} />
+                    <Text style={styles.assistChipText}>ფოტო</Text>
+                  </Pressable>
+                ) : null}
+                {hasComment && !showCommentField ? (
+                  <Pressable
+                    onPress={() => setCommentOpen(true)}
+                    style={styles.assistChip}
+                  >
+                    <Ionicons name="create-outline" size={16} color={theme.colors.inkSoft} />
+                    <Text style={styles.assistChipText}>კომენტარი</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            ) : null}
+          </>
+        ) : null}
+
         <View style={{ gap: 8 }}>
-          {statusCols.map(col => {
-            const isSelected = selectedStatus === col;
-            const { tint, bg, icon } = scaffoldColStyle(col);
-            return (
-              <Pressable
-                key={col}
-                onPress={() => setValue(col, col, true)}
-                style={[
-                  styles.statusOption,
-                  isSelected && { backgroundColor: bg, borderColor: tint },
-                ]}
-              >
-                <Ionicons
-                  name={isSelected ? (icon as any) : 'ellipse-outline'}
-                  size={22}
-                  color={isSelected ? tint : theme.colors.inkFaint}
-                />
-                <Text
-                  style={{
-                    flex: 1,
-                    fontSize: 15,
-                    fontWeight: '600',
-                    color: isSelected ? tint : theme.colors.ink,
-                  }}
-                >
-                  {col}
-                </Text>
-                {isSelected && (
-                  <Ionicons name="checkmark-circle" size={18} color={tint} />
-                )}
-              </Pressable>
-            );
-          })}
+          {detailCols.map(renderStatusButton)}
+          {showDetails ? (
+            <Button
+              title="შემდეგი"
+              style={{ paddingVertical: 14 }}
+              iconRight={<Ionicons name="chevron-forward" size={18} color={theme.colors.white} />}
+              onPress={() => {
+                haptic.light();
+                onAdvance();
+              }}
+            />
+          ) : noneCol ? (
+            renderStatusButton(noneCol)
+          ) : null}
         </View>
-
-        {hasPhotos ? (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 10, paddingVertical: 4 }}
-          >
-            {answerPhotos.map(p => (
-              <Pressable key={p.id} onPress={() => setPreviewPhoto(p)} style={styles.photoTile}>
-                <PhotoThumb photo={p} size={120} />
-              </Pressable>
-            ))}
-            <Pressable onPress={onPickPhoto} style={styles.addPhotoTile}>
-              <Ionicons name="add" size={32} color={theme.colors.inkSoft} />
-            </Pressable>
-          </ScrollView>
-        ) : null}
-
-        {hasComment && showCommentField ? (
-          <TextInput
-            value={commentValue}
-            onChangeText={text => setValue('კომენტარი', text || null, false)}
-            placeholder="კომენტარი"
-            placeholderTextColor={theme.colors.inkFaint}
-            style={styles.input}
-            autoFocus
-          />
-        ) : null}
-
-        {!hasPhotos || (hasComment && !showCommentField) ? (
-          <View style={styles.chipRow}>
-            {!hasPhotos ? (
-              <Pressable onPress={onPickPhoto} style={styles.assistChip}>
-                <Ionicons name="camera-outline" size={16} color={theme.colors.inkSoft} />
-                <Text style={styles.assistChipText}>ფოტო</Text>
-              </Pressable>
-            ) : null}
-            {hasComment && !showCommentField ? (
-              <Pressable
-                onPress={() => setCommentOpen(true)}
-                style={styles.assistChip}
-              >
-                <Ionicons name="create-outline" size={16} color={theme.colors.inkSoft} />
-                <Text style={styles.assistChipText}>კომენტარი</Text>
-              </Pressable>
-            ) : null}
-          </View>
-        ) : null}
 
         <PhotoPreviewModal
           photo={previewPhoto}
@@ -1352,6 +1389,9 @@ const ConclusionStep = memo(function ConclusionStep({
 
   return (
     <View style={{ gap: 14 }}>
+      <View style={{ alignItems: 'center', paddingTop: 8 }}>
+        <QuestionAvatar illustrationKey="conclusion" />
+      </View>
       {needsHarness ? (
         <View>
           <Text style={styles.label}>
