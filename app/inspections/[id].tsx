@@ -43,15 +43,18 @@ export default function InspectionDetailScreen() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [notFound, setNotFound] = useState(false);
 
   const load = useCallback(async () => {
     if (!id) return;
     setLoading(true);
+    setLoadError(null);
+    setNotFound(false);
     try {
       const insp = await inspectionsApi.getById(id);
       if (!insp) {
-        toast.error('ინსპექცია ვერ მოიძებნა');
-        setLoading(false);
+        setNotFound(true);
         return;
       }
       setInspection(insp);
@@ -78,10 +81,12 @@ export default function InspectionDetailScreen() {
         setQuestions(qs);
         setAnswers(ans);
       }
+    } catch (e: any) {
+      setLoadError(e?.message ?? 'შეცდომა');
     } finally {
       setLoading(false);
     }
-  }, [id, router, toast]);
+  }, [id, router]);
 
   useFocusEffect(
     useCallback(() => {
@@ -121,7 +126,7 @@ export default function InspectionDetailScreen() {
     router.push(`/certificates/new?inspectionId=${inspection.id}` as any);
   };
 
-  if (loading || !inspection) {
+  if (loading) {
     return (
       <Screen>
         <Stack.Screen options={{ headerShown: true, title: 'ინსპექცია' }} />
@@ -145,6 +150,31 @@ export default function InspectionDetailScreen() {
             </SkeletonCard>
             <SkeletonListCard rows={3} />
           </ScrollView>
+        </SafeAreaView>
+      </Screen>
+    );
+  }
+
+  if (notFound || loadError || !inspection) {
+    return (
+      <Screen>
+        <Stack.Screen options={{ headerShown: true, title: 'ინსპექცია' }} />
+        <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, gap: 16 }}>
+            <Ionicons name="alert-circle-outline" size={48} color={theme.colors.inkFaint} />
+            <Text style={{ fontSize: 16, fontWeight: '700', color: theme.colors.ink, textAlign: 'center' }}>
+              {notFound ? 'ინსპექცია ვერ მოიძებნა' : 'ჩატვირთვის შეცდომა'}
+            </Text>
+            {loadError ? (
+              <Text style={{ fontSize: 13, color: theme.colors.inkSoft, textAlign: 'center' }}>{loadError}</Text>
+            ) : null}
+            {!notFound && (
+              <Button title="თავიდან ცდა" onPress={() => void load()} />
+            )}
+            <Pressable onPress={() => router.back()}>
+              <Text style={{ color: theme.colors.accent, fontSize: 14 }}>← უკან</Text>
+            </Pressable>
+          </View>
         </SafeAreaView>
       </Screen>
     );
