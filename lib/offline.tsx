@@ -9,6 +9,7 @@ import React, {
   useState,
 } from 'react';
 import { supabase } from './supabase';
+import { logError } from './logError';
 import type { Answer, Inspection } from '../types/models';
 
 type AnswerUpsertPayload = Partial<Answer> & {
@@ -76,7 +77,8 @@ async function readQueue(): Promise<QueueOp[]> {
   if (!raw) return [];
   try {
     return JSON.parse(raw) as QueueOp[];
-  } catch {
+  } catch (e) {
+    logError(e, 'offline.readQueue.parse');
     return [];
   }
 }
@@ -137,7 +139,7 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
         } catch (err) {
           const attempts = (op.attempts ?? 0) + 1;
           if (attempts >= MAX_OP_RETRIES) {
-            console.warn('[offline] dropping op after retries', op.kind, err);
+            logError(err, `offline.flush.drop.${op.kind}`);
             ops = ops.slice(1);
           } else {
             // Rotate to the back so subsequent ops still get a chance.
@@ -238,7 +240,8 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
     if (!raw) return {};
     try {
       return JSON.parse(raw) as Record<string, Answer>;
-    } catch {
+    } catch (e) {
+      logError(e, 'offline.hydrateAnswers.parse');
       return {};
     }
   }, []);
@@ -257,7 +260,8 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
     if (!raw) return null;
     try {
       return JSON.parse(raw) as Partial<Inspection>;
-    } catch {
+    } catch (e) {
+      logError(e, 'offline.hydrateQuestionnairePatch.parse');
       return null;
     }
   }, []);

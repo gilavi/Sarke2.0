@@ -386,7 +386,10 @@ export const answersApi = {
     const path = (existing as { storage_path?: string } | null)?.storage_path;
     if (path) {
       // Best-effort: don't fail the operation if the blob is already gone.
-      await supabase.storage.from('answer-photos').remove([path]).catch(() => undefined);
+      await supabase.storage
+        .from('answer-photos')
+        .remove([path])
+        .catch((e) => logError(e, 'answerPhotos.removeBlob'));
     }
   },
 };
@@ -562,7 +565,10 @@ export const certificatesApi = {
     if (error) throw error;
     const path = (existing as { pdf_url?: string } | null)?.pdf_url;
     if (path) {
-      await supabase.storage.from('pdfs').remove([path]).catch(() => undefined);
+      await supabase.storage
+        .from('pdfs')
+        .remove([path])
+        .catch((e) => logError(e, 'certificates.removeBlob'));
     }
   },
 };
@@ -794,9 +800,12 @@ export const storageApi = {
   },
   publicUrl: (bucket: string, path: string) =>
     supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl,
-  /** Best-effort blob delete. Swallows errors (file may already be gone). */
+  /** Best-effort blob delete. Logs failures (file may already be gone) but never throws. */
   remove: async (bucket: string, path: string): Promise<void> => {
-    await supabase.storage.from(bucket).remove([path]).catch(() => undefined);
+    await supabase.storage
+      .from(bucket)
+      .remove([path])
+      .catch((e) => logError(e, `storage.remove.${bucket}`));
   },
 };
 

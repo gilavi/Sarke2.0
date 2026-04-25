@@ -271,13 +271,17 @@ export default function QuestionnaireWizard() {
   // Persist step index as the user progresses
   useEffect(() => {
     if (!id || loading) return;
-    void AsyncStorage.setItem(stepKey(id), String(stepIndex));
+    AsyncStorage.setItem(stepKey(id), String(stepIndex)).catch((e) =>
+      logError(e, 'wizard.persistStep'),
+    );
   }, [id, stepIndex, loading]);
 
   // Persist harness row count per questionnaire so returning users see the same grid size
   useEffect(() => {
     if (!id || loading) return;
-    void AsyncStorage.setItem(harnessCountKey(id), String(harnessRowCount));
+    AsyncStorage.setItem(harnessCountKey(id), String(harnessRowCount)).catch((e) =>
+      logError(e, 'wizard.persistHarnessCount'),
+    );
   }, [id, harnessRowCount, loading]);
 
   // Load on mount AND when id changes (useFocusEffect alone misses the
@@ -1541,7 +1545,8 @@ function PhotoPreviewModal({
     let cancelled = false;
     getStorageImageDisplayUrl(STORAGE_BUCKETS.answerPhotos, photo.storage_path)
       .then(url => { if (!cancelled) setUri(url); })
-      .catch(() => {
+      .catch((e) => {
+        logError(e, 'wizard.photoDisplayUrl');
         if (!cancelled) setUri(storageApi.publicUrl(STORAGE_BUCKETS.answerPhotos, photo.storage_path));
       })
       .finally(() => { if (!cancelled) setLoading(false); });
