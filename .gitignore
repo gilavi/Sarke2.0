@@ -15,3 +15,6 @@ dist/
 ios/
 android/
 
+# Local Supabase CLI state (project ref, version cache). Generated on
+# `supabase link`; not source.
+supabase/.temp/
