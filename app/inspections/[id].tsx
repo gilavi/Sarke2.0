@@ -435,54 +435,58 @@ export default function InspectionDetailScreen() {
             style={{ marginTop: 10 }}
           />
 
-          {/* External (remote) signatures — async signature collection via SMS link. */}
-          <View style={{ marginTop: 12 }}>
-            <View style={{ paddingHorizontal: 0 }}>
-              <View style={remoteStyles.headerRow}>
-                <Text style={styles.sectionTitle}>გარე ხელისმოწერები ({remoteRequests.length})</Text>
-                <Pressable
-                  onPress={() => {
-                    if (certs.length === 0) {
-                      toast.error('ჯერ დააგენერირე PDF რეპორტი');
-                      return;
-                    }
-                    setAddOpen(true);
-                  }}
-                  hitSlop={8}
-                  accessibilityRole="button"
-                  accessibilityLabel="ახალი მოთხოვნა"
-                >
-                  <Text style={remoteStyles.addLink}>+ ახალი</Text>
-                </Pressable>
+          {/* External (remote) signatures — temporarily hidden. Code retained for re-enable. */}
+          {false && (
+            <View style={{ marginTop: 12 }}>
+              <View style={{ paddingHorizontal: 0 }}>
+                <View style={remoteStyles.headerRow}>
+                  <Text style={styles.sectionTitle}>გარე ხელისმოწერები ({remoteRequests.length})</Text>
+                  <Pressable
+                    onPress={() => {
+                      if (certs.length === 0) {
+                        toast.error('ჯერ დააგენერირე PDF რეპორტი');
+                        return;
+                      }
+                      setAddOpen(true);
+                    }}
+                    hitSlop={8}
+                    accessibilityRole="button"
+                    accessibilityLabel="ახალი მოთხოვნა"
+                  >
+                    <Text style={remoteStyles.addLink}>+ ახალი</Text>
+                  </Pressable>
+                </View>
               </View>
+              {remoteRequests.length === 0 ? (
+                <Card>
+                  <Text style={{ color: theme.colors.inkSoft, fontSize: 13 }}>
+                    გაგზავნე ხელის მოწერის ლინკი გარე ხელისმომწერებს SMS-ით.
+                  </Text>
+                </Card>
+              ) : (
+                <View style={{ gap: 8 }}>
+                  {remoteRequests.map(req => (
+                    <RemoteRequestRow
+                      key={req.id}
+                      request={req}
+                      onResend={() => resendRemote(req)}
+                      onCancel={() => cancelRemote(req)}
+                    />
+                  ))}
+                </View>
+              )}
             </View>
-            {remoteRequests.length === 0 ? (
-              <Card>
-                <Text style={{ color: theme.colors.inkSoft, fontSize: 13 }}>
-                  გაგზავნე ხელის მოწერის ლინკი გარე ხელისმომწერებს SMS-ით.
-                </Text>
-              </Card>
-            ) : (
-              <View style={{ gap: 8 }}>
-                {remoteRequests.map(req => (
-                  <RemoteRequestRow
-                    key={req.id}
-                    request={req}
-                    onResend={() => resendRemote(req)}
-                    onCancel={() => cancelRemote(req)}
-                  />
-                ))}
-              </View>
-            )}
-          </View>
+          )}
         </ScrollView>
       </SafeAreaView>
-      <AddRemoteSignerModal
-        visible={addOpen}
-        busy={addBusy}
-        onCancel={() => setAddOpen(false)}
-        onSubmit={handleAddRemoteSigner}
-      />
+      {false && (
+        <AddRemoteSignerModal
+          visible={addOpen}
+          busy={addBusy}
+          onCancel={() => setAddOpen(false)}
+          onSubmit={handleAddRemoteSigner}
+        />
+      )}
     </Screen>
   );
 }

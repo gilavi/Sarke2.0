@@ -37,13 +37,6 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="calendar"
-        options={{
-          title: 'კალენდარი',
-          tabBarIcon: ({ color, size }) => <Ionicons name="calendar" color={color} size={size} />,
-        }}
-      />
-      <Tabs.Screen
         name="more"
         options={{
           title: 'მეტი',
@@ -51,6 +44,7 @@ export default function TabsLayout() {
         }}
       />
       {/* Hidden routes — accessible via code, not tab bar */}
+      <Tabs.Screen name="calendar" options={{ tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
       <Tabs.Screen name="new-inspection" options={{ tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
       <Tabs.Screen name="certificates" options={{ tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
       <Tabs.Screen name="regulations" options={{ tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />

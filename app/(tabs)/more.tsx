@@ -181,12 +181,6 @@ export default function MoreScreen() {
           />
           <View style={styles.divider} />
           <SettingsRow
-            icon="calendar-outline"
-            label={googleConnected ? 'Google კალენდარი · შეერთდა' : 'Google კალენდარი · შეერთება'}
-            onPress={toggleGoogle}
-          />
-          <View style={styles.divider} />
-          <SettingsRow
             icon="document-text-outline"
             label="წესები და პირობები"
             onPress={() => setTermsVisible(true)}
