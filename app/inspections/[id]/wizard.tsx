@@ -413,8 +413,8 @@ export default function QuestionnaireWizard() {
       const photoForDisplay: AnswerPhoto = { ...photo, storage_path: asset.uri };
       setPhotos(prev => ({ ...prev, [answerId]: [...(prev[answerId] ?? []), photoForDisplay] }));
       toast.success('ფოტო აიტვირთა');
-    } catch (e: any) {
-      toast.error(`ფოტო ვერ აიტვირთა: ${e?.message ?? 'ქსელის შეცდომა'}`);
+    } catch (e) {
+      toast.error(`ფოტო ვერ აიტვირთა: ${toErrorMessage(e, 'ქსელის შეცდომა')}`);
     }
   };
 
@@ -430,8 +430,8 @@ export default function QuestionnaireWizard() {
         return next;
       });
       toast.success('ფოტო წაიშალა');
-    } catch (e: any) {
-      toast.error(`ფოტო ვერ წაიშალა: ${e?.message ?? 'ქსელის შეცდომა'}`);
+    } catch (e) {
+      toast.error(`ფოტო ვერ წაიშალა: ${toErrorMessage(e, 'ქსელის შეცდომა')}`);
     }
   };
 
@@ -465,9 +465,9 @@ export default function QuestionnaireWizard() {
       await offline.flush();
       haptic.success();
       router.replace(`/inspections/${questionnaire.id}/done` as any);
-    } catch (e: any) {
+    } catch (e) {
       haptic.error();
-      toast.error(`ინსპექციის დასრულება ვერ მოხერხდა: ${e?.message ?? 'ქსელის შეცდომა'}`);
+      toast.error(`ინსპექციის დასრულება ვერ მოხერხდა: ${toErrorMessage(e, 'ქსელის შეცდომა')}`);
     }
   };
 
@@ -719,9 +719,9 @@ export default function QuestionnaireWizard() {
                       haptic.success();
                       toast.success('წაიშალა');
                       router.back();
-                    } catch (e: any) {
+                    } catch (e) {
                       haptic.error();
-                      toast.error(e?.message ?? 'ვერ წაიშალა');
+                      toast.error(toErrorMessage(e, 'ვერ წაიშალა'));
                     }
                   }}
                   iconLeft={<Ionicons name="trash" size={18} color={theme.colors.danger} />}

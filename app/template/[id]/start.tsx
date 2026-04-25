@@ -17,6 +17,7 @@ import { Skeleton } from '../../../components/Skeleton';
 import { projectsApi, questionnairesApi, templatesApi } from '../../../lib/services';
 import { useToast } from '../../../lib/toast';
 import { theme } from '../../../lib/theme';
+import { toErrorMessage } from '../../../lib/logError';
 import type { Project, Questionnaire, Template } from '../../../types/models';
 
 export default function StartTemplateScreen() {
@@ -57,8 +58,8 @@ export default function StartTemplateScreen() {
         templateId: template.id,
       }));
       router.replace(`/inspections/${q.id}/wizard` as any);
-    } catch (e: any) {
-      toast.error(e?.message ?? 'კითხვარი ვერ შეიქმნა');
+    } catch (e) {
+      toast.error(toErrorMessage(e, 'კითხვარი ვერ შეიქმნა'));
     } finally {
       setBusy(false);
     }
@@ -210,8 +211,8 @@ function CreateProjectSheet({
       setCompany('');
       setAddress('');
       onCreated(p);
-    } catch (e: any) {
-      toast.error(e?.message ?? 'ვერ შეიქმნა');
+    } catch (e) {
+      toast.error(toErrorMessage(e, 'ვერ შეიქმნა'));
     } finally {
       setBusy(false);
     }

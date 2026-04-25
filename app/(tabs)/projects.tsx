@@ -24,7 +24,7 @@ import { MapPicker, type LatLng } from '../../components/MapPicker';
 import { projectsApi } from '../../lib/services';
 import { useToast } from '../../lib/toast';
 import { theme } from '../../lib/theme';
-import { logError } from '../../lib/logError';
+import { logError, toErrorMessage } from '../../lib/logError';
 import type { Project } from '../../types/models';
 
 type Stats = Record<string, { drafts: number; completed: number }>;
@@ -86,8 +86,8 @@ export default function ProjectsScreen() {
               await projectsApi.remove(project.id);
               setProjects(prev => prev.filter(p => p.id !== project.id));
               toast.success('წაიშალა');
-            } catch (e: any) {
-              toast.error(e?.message ?? 'ვერ წაიშალა');
+            } catch (e) {
+              toast.error(toErrorMessage(e, 'ვერ წაიშალა'));
             }
           },
         },
@@ -239,8 +239,8 @@ function CreateProjectSheet({
         longitude: pin?.longitude ?? null,
       });
       onCreated(p);
-    } catch (e: any) {
-      toast.error(e?.message ?? 'ვერ შეიქმნა');
+    } catch (e) {
+      toast.error(toErrorMessage(e, 'ვერ შეიქმნა'));
     } finally {
       setBusy(false);
     }

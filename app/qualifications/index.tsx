@@ -23,6 +23,7 @@ import { Skeleton } from '../../components/Skeleton';
 import { haptic } from '../../lib/haptics';
 import { isExpiringSoon, qualificationsApi } from '../../lib/services';
 import { theme } from '../../lib/theme';
+import { toErrorMessage } from '../../lib/logError';
 import type { Qualification } from '../../types/models';
 
 export default function QualificationsScreen() {
@@ -57,9 +58,9 @@ export default function QualificationsScreen() {
       await qualificationsApi.remove(deleteTarget.id);
       haptic.success();
       void load();
-    } catch (e: any) {
+    } catch (e) {
       haptic.error();
-      Alert.alert('წაშლა ვერ მოხერხდა', e?.message ?? 'ქსელის შეცდომა');
+      Alert.alert('წაშლა ვერ მოხერხდა', toErrorMessage(e, 'ქსელის შეცდომა'));
     }
     setDeleteTarget(null);
   };

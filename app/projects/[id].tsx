@@ -30,6 +30,7 @@ import { useToast } from '../../lib/toast';
 import { getStorageImageDisplayUrl } from '../../lib/imageUrl';
 import { projectAvatar } from '../../lib/projectAvatar';
 import { theme } from '../../lib/theme';
+import { toErrorMessage } from '../../lib/logError';
 import type { Project, ProjectSigner, Questionnaire, Template } from '../../types/models';
 import { SIGNER_ROLE_LABEL } from '../../types/models';
 
@@ -114,8 +115,8 @@ export default function ProjectDetail() {
             templateId: t.id,
           }));
           router.push(`/inspections/${q.id}/wizard` as any);
-        } catch (e: any) {
-          toast.error(e?.message ?? 'შექმნა ვერ მოხერხდა');
+        } catch (e) {
+          toast.error(toErrorMessage(e, 'შექმნა ვერ მოხერხდა'));
         }
       },
     );
@@ -132,8 +133,8 @@ export default function ProjectDetail() {
             await questionnairesApi.remove(q.id);
             setQuestionnaires(prev => prev.filter(x => x.id !== q.id));
             toast.success('წაიშალა');
-          } catch (e: any) {
-            toast.error(e?.message ?? 'ვერ წაიშალა');
+          } catch (e) {
+            toast.error(toErrorMessage(e, 'ვერ წაიშალა'));
           }
         },
       },
@@ -151,8 +152,8 @@ export default function ProjectDetail() {
             await projectsApi.deleteSigner(s.id);
             setSigners(prev => prev.filter(x => x.id !== s.id));
             toast.success('წაიშალა');
-          } catch (e: any) {
-            toast.error(e?.message ?? 'ვერ წაიშალა');
+          } catch (e) {
+            toast.error(toErrorMessage(e, 'ვერ წაიშალა'));
           }
         },
       },
@@ -537,8 +538,8 @@ function EditProjectSheet({
         longitude: pin?.longitude ?? null,
       }));
       onSaved(saved);
-    } catch (e: any) {
-      toast.error(e?.message ?? 'შენახვა ვერ მოხერხდა');
+    } catch (e) {
+      toast.error(toErrorMessage(e, 'შენახვა ვერ მოხერხდა'));
     } finally {
       setBusy(false);
     }

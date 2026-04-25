@@ -27,6 +27,7 @@ import { googleCalendar } from '../../lib/googleCalendar';
 import { useToast } from '../../lib/toast';
 import { theme } from '../../lib/theme';
 import { termsKa } from '../../lib/terms';
+import { toErrorMessage } from '../../lib/logError';
 import type { Project, Qualification, Template } from '../../types/models';
 
 export default function MoreScreen() {
@@ -79,8 +80,8 @@ export default function MoreScreen() {
         setGoogleConnected(true);
         toast.success('Google კალენდარი შეერთდა');
       }
-    } catch (e: any) {
-      toast.error(e?.message ?? 'ვერ მოხერხდა');
+    } catch (e) {
+      toast.error(toErrorMessage(e, 'ვერ მოხერხდა'));
     }
   };
 

@@ -8,6 +8,7 @@ import * as Linking from 'expo-linking';
 import { supabase } from '../../lib/supabase';
 import { Button, Card, ErrorText, Field, Input } from '../../components/ui';
 import { theme } from '../../lib/theme';
+import { toErrorMessage } from '../../lib/logError';
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
@@ -24,8 +25,8 @@ export default function ForgotPasswordScreen() {
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo });
       if (error) throw error;
       setSent(true);
-    } catch (e: any) {
-      setError(e?.message ?? 'უცნობი შეცდომა');
+    } catch (e) {
+      setError(toErrorMessage(e, 'უცნობი შეცდომა'));
     } finally {
       setBusy(false);
     }

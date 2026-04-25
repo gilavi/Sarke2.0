@@ -41,7 +41,7 @@ import { getStorageImageDataUrl, getStorageImageDisplayUrl } from '../../lib/ima
 import { buildPdfHtml } from '../../lib/pdf';
 import { useToast } from '../../lib/toast';
 import { theme } from '../../lib/theme';
-import { logError } from '../../lib/logError';
+import { logError, toErrorMessage } from '../../lib/logError';
 import type {
   Answer,
   AnswerPhoto,
@@ -240,8 +240,8 @@ export default function GenerateCertificateScreen() {
       setQuals(prev => [qual, ...prev.filter(q => q.id !== qual.id)]);
       setSelectedQuals(prev => ({ ...prev, [certType]: qual.id }));
       toast.success('სერტიფიკატი აიტვირთა');
-    } catch (e: any) {
-      toast.error(e?.message ?? 'ატვირთვა ვერ მოხერხდა');
+    } catch (e) {
+      toast.error(toErrorMessage(e, 'ატვირთვა ვერ მოხერხდა'));
     } finally {
       setUploadingFor(null);
     }
@@ -489,11 +489,11 @@ export default function GenerateCertificateScreen() {
         await Sharing.shareAsync(uri, { mimeType: 'application/pdf' });
       }
       router.replace(`/inspections/${inspection.id}` as any);
-    } catch (e: any) {
+    } catch (e) {
       if (uploadedPdfPath) {
         await storageApi.remove(STORAGE_BUCKETS.pdfs, uploadedPdfPath);
       }
-      toast.error(e?.message ?? 'გენერაცია ვერ მოხერხდა');
+      toast.error(toErrorMessage(e, 'გენერაცია ვერ მოხერხდა'));
     } finally {
       setBusy(false);
     }

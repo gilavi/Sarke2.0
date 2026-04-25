@@ -7,6 +7,7 @@ import { useSession } from '../lib/session';
 import { useToast } from '../lib/toast';
 import { termsEn, termsKa, TERMS_PUBLIC_URL, TERMS_VERSION, type TermsBody } from '../lib/terms';
 import { theme } from '../lib/theme';
+import { toErrorMessage } from '../lib/logError';
 
 export default function TermsScreen() {
   const { acceptTerms, signOut } = useSession();
@@ -25,8 +26,8 @@ export default function TermsScreen() {
     try {
       await acceptTerms(TERMS_VERSION);
       router.replace('/(tabs)/home');
-    } catch (e: any) {
-      toast.error(e?.message ?? 'ქსელის შეცდომა');
+    } catch (e) {
+      toast.error(toErrorMessage(e, 'ქსელის შეცდომა'));
     } finally {
       setBusy(false);
     }

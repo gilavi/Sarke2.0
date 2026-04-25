@@ -100,21 +100,35 @@ export function Label({ children, style }: { children: ReactNode; style?: StyleP
   return <Text style={[styles.label, style]}>{children}</Text>;
 }
 
-export function Field({ label, children }: { label: string; children: ReactNode }) {
+export function Field({
+  label,
+  children,
+  required,
+  error,
+}: {
+  label: string;
+  children: ReactNode;
+  required?: boolean;
+  error?: string;
+}) {
   return (
     <View style={{ gap: 6 }}>
-      <Label>{label.toUpperCase()}</Label>
+      <Label>
+        {label.toUpperCase()}
+        {required ? ' *' : ''}
+      </Label>
       {children}
+      {error ? <Text style={{ color: theme.colors.danger, fontSize: 12 }}>{error}</Text> : null}
     </View>
   );
 }
 
-export function Input(props: TextInputProps) {
+export function Input({ error, style, ...props }: TextInputProps & { error?: string }) {
   return (
     <TextInput
       placeholderTextColor={theme.colors.inkFaint}
       {...props}
-      style={[styles.input, props.style]}
+      style={[styles.input, error ? { borderColor: theme.colors.danger } : null, style]}
     />
   );
 }

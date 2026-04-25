@@ -7,7 +7,7 @@ import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/session';
 import { Button, Card, ErrorText, Field, Input } from '../../components/ui';
-import { logError } from '../../lib/logError';
+import { logError, toErrorMessage } from '../../lib/logError';
 import { theme } from '../../lib/theme';
 
 export default function ResetPasswordScreen() {
@@ -32,8 +32,8 @@ export default function ResetPasswordScreen() {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
       setDone(true);
-    } catch (e: any) {
-      setError(e?.message ?? 'უცნობი შეცდომა');
+    } catch (e) {
+      setError(toErrorMessage(e, 'უცნობი შეცდომა'));
     } finally {
       setBusy(false);
     }

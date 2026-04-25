@@ -10,6 +10,7 @@ import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import { useToast } from '../../../lib/toast';
 import { getStorageImageDisplayUrl } from '../../../lib/imageUrl';
 import { theme } from '../../../lib/theme';
+import { toErrorMessage } from '../../../lib/logError';
 import type { ProjectSigner, SignerRole } from '../../../types/models';
 import { SIGNER_ROLE_LABEL } from '../../../types/models';
 
@@ -49,8 +50,8 @@ export default function SignerForm() {
           await getStorageImageDisplayUrl(STORAGE_BUCKETS.signatures, s.signature_png_url),
         );
       }
-    } catch (e: any) {
-      toast.error(e?.message ?? 'ჩატვირთვა ვერ მოხერხდა');
+    } catch (e) {
+      toast.error(toErrorMessage(e, 'ჩატვირთვა ვერ მოხერხდა'));
     }
   }, [id, signerId, toast]);
 
@@ -95,8 +96,8 @@ export default function SignerForm() {
       });
       toast.success(editing ? 'განახლდა' : 'დაემატა');
       router.back();
-    } catch (e: any) {
-      toast.error(e?.message ?? 'შენახვა ვერ მოხერხდა');
+    } catch (e) {
+      toast.error(toErrorMessage(e, 'შენახვა ვერ მოხერხდა'));
     } finally {
       setBusy(false);
     }
@@ -114,8 +115,8 @@ export default function SignerForm() {
             await projectsApi.deleteSigner(existing.id);
             toast.success('წაიშალა');
             router.back();
-          } catch (e: any) {
-            toast.error(e?.message ?? 'ვერ წაიშალა');
+          } catch (e) {
+            toast.error(toErrorMessage(e, 'ვერ წაიშალა'));
           }
         },
       },

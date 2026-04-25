@@ -11,11 +11,18 @@ interface Toast {
   message: string;
 }
 
+type InfoOpts = {
+  duration?: number;
+  action?: { label: string; onPress: () => void };
+  onHide?: () => void;
+};
+
 interface ToastCtx {
   show: (msg: string, kind?: ToastKind) => void;
   success: (msg: string) => void;
   error: (msg: string) => void;
-  info: (msg: string) => void;
+  info: (msg: string, opts?: InfoOpts) => void;
+  hide: () => void;
 }
 
 const Ctx = createContext<ToastCtx | null>(null);
@@ -25,16 +32,32 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const opacity = useRef(new Animated.Value(0)).current;
   const idRef = useRef(0);
 
-  const show = useCallback((message: string, kind: ToastKind = 'info') => {
+  const hideRef = useRef<(() => void) | null>(null);
+
+  const hide = useCallback(() => {
+    hideRef.current?.();
+  }, []);
+
+  const show = useCallback((message: string, kind: ToastKind = 'info', opts?: InfoOpts) => {
     const id = ++idRef.current;
     setToast({ id, kind, message });
     Animated.timing(opacity, { toValue: 1, duration: 180, easing: Easing.out(Easing.ease), useNativeDriver: true }).start();
-    setTimeout(() => {
+    const holdMs = opts?.duration ?? 2600;
+    const timer = setTimeout(() => {
       if (idRef.current !== id) return;
       Animated.timing(opacity, { toValue: 0, duration: 180, useNativeDriver: true }).start(() => {
         setToast(cur => (cur?.id === id ? null : cur));
+        opts?.onHide?.();
       });
-    }, 2600);
+    }, holdMs);
+    hideRef.current = () => {
+      clearTimeout(timer);
+      idRef.current++;
+      Animated.timing(opacity, { toValue: 0, duration: 180, useNativeDriver: true }).start(() => {
+        setToast(null);
+      });
+      hideRef.current = null;
+    };
   }, [opacity]);
 
   const api = useMemo<ToastCtx>(
@@ -42,9 +65,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       show,
       success: m => show(m, 'success'),
       error: m => show(m, 'error'),
-      info: m => show(m, 'info'),
+      info: (m, opts) => show(m, 'info', opts),
+      hide,
     }),
-    [show],
+    [show, hide],
   );
 
   return (

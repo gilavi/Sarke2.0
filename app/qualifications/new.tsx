@@ -14,6 +14,7 @@ import { Button, Field, Input, Screen } from '../../components/ui';
 import { qualificationsApi, storageApi } from '../../lib/services';
 import { STORAGE_BUCKETS, supabase } from '../../lib/supabase';
 import { theme } from '../../lib/theme';
+import { toErrorMessage } from '../../lib/logError';
 
 const TYPES: { value: string; label: string }[] = [
   { value: 'xaracho_inspector', label: 'ხარაჩოს ინსპექტორი' },
@@ -72,8 +73,8 @@ export default function AddQualification() {
         file_url: filePath,
       });
       router.back();
-    } catch (e: any) {
-      Alert.alert('შეცდომა', e?.message ?? '');
+    } catch (e) {
+      Alert.alert('შეცდომა', toErrorMessage(e));
     } finally {
       setBusy(false);
     }

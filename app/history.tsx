@@ -14,6 +14,7 @@ import {
 } from '../lib/services';
 import { useToast } from '../lib/toast';
 import { theme } from '../lib/theme';
+import { toErrorMessage } from '../lib/logError';
 import type { Inspection, Project, Template } from '../types/models';
 
 type ListItem =
@@ -84,8 +85,8 @@ export default function HistoryScreen() {
             await inspectionsApi.remove(q.id);
             setQs(prev => prev.filter(x => x.id !== q.id));
             toast.success('წაიშალა');
-          } catch (e: any) {
-            toast.error(e?.message ?? 'ვერ წაიშალა');
+          } catch (e) {
+            toast.error(toErrorMessage(e, 'ვერ წაიშალა'));
           }
         },
       },

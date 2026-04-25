@@ -23,6 +23,7 @@ import { googleCalendar } from '../../lib/googleCalendar';
 import { rescheduleAllFromDb } from '../../lib/notifications';
 import { useToast } from '../../lib/toast';
 import { theme } from '../../lib/theme';
+import { toErrorMessage } from '../../lib/logError';
 import type { ScheduleWithItem, Template } from '../../types/models';
 
 const WEEKDAY_LABELS = ['ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ', 'კვი'];
@@ -185,8 +186,8 @@ export default function CalendarScreen() {
             projectItemId: schedule.project_item_id,
           });
           router.push(`/inspections/${q.id}/wizard` as any);
-        } catch (e: any) {
-          toast.error(e?.message ?? 'შექმნა ვერ მოხერხდა');
+        } catch (e) {
+          toast.error(toErrorMessage(e, 'შექმნა ვერ მოხერხდა'));
         }
       },
     );
@@ -203,8 +204,8 @@ export default function CalendarScreen() {
     try {
       const count = await googleCalendar.pushAll(schedules);
       toast.success(`დაემატა: ${count}`);
-    } catch (e: any) {
-      toast.error(e?.message ?? 'სინქრონიზაცია ვერ მოხერხდა');
+    } catch (e) {
+      toast.error(toErrorMessage(e, 'სინქრონიზაცია ვერ მოხერხდა'));
     } finally {
       setSyncing(false);
     }

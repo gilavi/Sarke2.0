@@ -28,7 +28,7 @@ import {
 // shareStoredPdf import removed — PDF sharing now lives on the inspection
 // detail screen (which fetches certificates list) post 0006 decoupling.
 import { theme } from '../../lib/theme';
-import { logError } from '../../lib/logError';
+import { logError, toErrorMessage } from '../../lib/logError';
 import { Button, Field, Input } from '../../components/ui';
 import { Skeleton } from '../../components/Skeleton';
 import { MapPicker, type LatLng } from '../../components/MapPicker';
@@ -462,8 +462,8 @@ function ProjectPickerSheet({
       const q = await questionnairesApi.create({ projectId, templateId });
       onClose();
       router.push(`/inspections/${q.id}/wizard` as any);
-    } catch (e: any) {
-      toast.error(e?.message ?? 'შექმნა ვერ მოხერხდა');
+    } catch (e) {
+      toast.error(toErrorMessage(e, 'შექმნა ვერ მოხერხდა'));
     }
   };
 
@@ -480,8 +480,8 @@ function ProjectPickerSheet({
       });
       await onCreated();
       onClose();
-    } catch (e: any) {
-      toast.error(e?.message ?? 'შექმნა ვერ მოხერხდა');
+    } catch (e) {
+      toast.error(toErrorMessage(e, 'შექმნა ვერ მოხერხდა'));
     } finally {
       setBusy(false);
     }

@@ -25,6 +25,7 @@ import {
 } from '../../lib/services';
 import { useToast } from '../../lib/toast';
 import { theme } from '../../lib/theme';
+import { toErrorMessage } from '../../lib/logError';
 import type {
   Certificate,
   Inspection,
@@ -139,8 +140,8 @@ export default function CertificatesScreen() {
       await certificatesApi.remove(cert.id);
       setCerts(prev => prev.filter(c => c.id !== cert.id));
       toast.success('წაიშალა');
-    } catch (e: any) {
-      toast.error(e?.message ?? 'ვერ წაიშალა');
+    } catch (e) {
+      toast.error(toErrorMessage(e, 'ვერ წაიშალა'));
     }
   };
 

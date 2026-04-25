@@ -11,6 +11,7 @@ import { saveExpertSignature } from '../lib/signatures';
 import { getStorageImageDataUrl } from '../lib/imageUrl';
 import { STORAGE_BUCKETS } from '../lib/supabase';
 import { theme } from '../lib/theme';
+import { toErrorMessage } from '../lib/logError';
 
 // Screen supports two modes:
 //  - `/signature` — view current + "ხელმოწერის შეცვლა" (from More tab)
@@ -46,8 +47,8 @@ export default function SignatureSettingsScreen() {
       setPreview(`data:image/png;base64,${base64}`);
       toast.success('ხელმოწერა შენახულია');
       if (isFirstTime) router.back();
-    } catch (e: any) {
-      toast.error(e?.message ?? 'შენახვა ვერ მოხერხდა');
+    } catch (e) {
+      toast.error(toErrorMessage(e, 'შენახვა ვერ მოხერხდა'));
     } finally {
       setBusy(false);
     }

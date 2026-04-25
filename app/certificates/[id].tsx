@@ -33,7 +33,7 @@ import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { shareStoredPdf } from '../../lib/sharePdf';
 import { useToast } from '../../lib/toast';
 import { theme } from '../../lib/theme';
-import { logError } from '../../lib/logError';
+import { logError, toErrorMessage } from '../../lib/logError';
 import type { Certificate, Project, Template } from '../../types/models';
 
 type CertParams = {
@@ -128,8 +128,8 @@ export default function CertificateDetailScreen() {
       } else {
         await shareStoredPdf(cert.pdf_url);
       }
-    } catch (e: any) {
-      toast.error(e?.message ?? 'ვერ გაიზიარა');
+    } catch (e) {
+      toast.error(toErrorMessage(e, 'ვერ გაიზიარა'));
     } finally {
       setSharing(false);
     }

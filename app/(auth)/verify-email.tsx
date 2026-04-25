@@ -16,6 +16,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useSession } from '../../lib/session';
 import { useToast } from '../../lib/toast';
 import { theme } from '../../lib/theme';
+import { toErrorMessage } from '../../lib/logError';
 import { Button, Card } from '../../components/ui';
 
 const CODE_LENGTH = 6;
@@ -74,8 +75,8 @@ export default function VerifyEmailScreen() {
     try {
       await verifySignupOtp(email, token);
       // AuthGate will redirect once the session lands.
-    } catch (e: any) {
-      setError(friendlyError(e?.message));
+    } catch (e) {
+      setError(friendlyError(toErrorMessage(e)));
       setCode('');
     } finally {
       setBusy(false);
@@ -90,8 +91,8 @@ export default function VerifyEmailScreen() {
       await resendSignupOtp(email);
       toast.success('კოდი გამოგზავნილია');
       setCooldown(RESEND_COOLDOWN_SEC);
-    } catch (e: any) {
-      toast.error(friendlyError(e?.message));
+    } catch (e) {
+      toast.error(friendlyError(toErrorMessage(e)));
     } finally {
       setResendBusy(false);
     }
