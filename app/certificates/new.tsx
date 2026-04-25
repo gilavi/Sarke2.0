@@ -6,6 +6,7 @@
 // all before generating the PDF.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Image,
   Pressable,
@@ -17,12 +18,19 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import Animated, {
+  FadeInUp,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { useBottomSheet } from '../../components/BottomSheet';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-import { Button, Card, Screen } from '../../components/ui';
+import { Button, Screen } from '../../components/ui';
 import { SkeletonCard, SkeletonListCard } from '../../components/Skeleton';
 import { SignatureCanvas } from '../../components/SignatureCanvas';
 import {
@@ -40,7 +48,6 @@ import { useSession } from '../../lib/session';
 import { getStorageImageDataUrl, getStorageImageDisplayUrl } from '../../lib/imageUrl';
 import { buildPdfHtml } from '../../lib/pdf';
 import { useToast } from '../../lib/toast';
-import { theme } from '../../lib/theme';
 import { logError, toErrorMessage } from '../../lib/logError';
 import type {
   Answer,
@@ -57,17 +64,31 @@ import { SIGNER_ROLE_LABEL } from '../../types/models';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-// Roles that can be picked for "other signers" (expert is always the
-// current user and doesn't appear in this list).
 const OTHER_SIGNER_ROLES: SignerRole[] = ['xaracho_supervisor', 'xaracho_assembler'];
 
 interface AdditionalSigner {
   id: string;
   name: string;
   role: SignerRole;
-  /** base64 PNG (with data: prefix) captured via SignatureCanvas */
   dataUrl: string | null;
 }
+
+// ── Constants ────────────────────────────────────────────────────────────────
+
+const COLORS = {
+  bg: '#F2F2F7',
+  surface: '#FFFFFF',
+  primary: '#147A4F',
+  textPrimary: '#000000',
+  textSecondary: '#8E8E93',
+  textTertiary: '#3C3C43',
+  hairline: '#E5E5EA',
+  danger: '#FF3B30',
+  warn: '#FF9500',
+  white: '#FFFFFF',
+};
+
+const STAGGER_MS = 50;
 
 // ── Screen ───────────────────────────────────────────────────────────────────
 
@@ -89,21 +110,17 @@ export default function GenerateCertificateScreen() {
   const [photosByAnswer, setPhotosByAnswer] = useState<Record<string, AnswerPhoto[]>>({});
   const [quals, setQuals] = useState<Qualification[]>([]);
 
-  // Required cert selection: certType → qualId
   const [selectedQuals, setSelectedQuals] = useState<Record<string, string>>({});
-  // Extra certs (beyond required), each is a qualId
   const [extraQualIds, setExtraQualIds] = useState<string[]>([]);
-  // Additional signers (besides the expert)
   const [additionalSigners, setAdditionalSigners] = useState<AdditionalSigner[]>([]);
-  // Expert signature display URL (data URL for Image)
   const [expertSigDisplayUrl, setExpertSigDisplayUrl] = useState<string | null>(null);
-  // Which signer we're currently capturing a signature for (by id)
   const [captureSignerId, setCaptureSignerId] = useState<string | null>(null);
-  // Which qual type we're uploading for
   const [uploadingFor, setUploadingFor] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+
+  const btnScale = useSharedValue(1);
 
   // ── Load ────────────────────────────────────────────────────────────────────
 
@@ -135,7 +152,6 @@ export default function GenerateCertificateScreen() {
       setAnswers(ans);
       setQuals(qualsList);
 
-      // Pre-select first available qual for each required type
       const initial: Record<string, string> = {};
       for (const t of tpl?.required_qualifications ?? []) {
         const first = qualsList.find(q => q.type === t);
@@ -143,7 +159,6 @@ export default function GenerateCertificateScreen() {
       }
       setSelectedQuals(initial);
 
-      // Fetch answer photos
       const photoMap: Record<string, AnswerPhoto[]> = {};
       await Promise.all(
         ans.map(async a => {
@@ -159,7 +174,6 @@ export default function GenerateCertificateScreen() {
 
   useEffect(() => { void load(); }, [load]);
 
-  // Load expert signature preview
   useEffect(() => {
     let cancelled = false;
     if (!user?.saved_signature_url) { setExpertSigDisplayUrl(null); return; }
@@ -178,7 +192,6 @@ export default function GenerateCertificateScreen() {
     [requiredCertTypes, selectedQuals],
   );
 
-  // Qual IDs already in use (required + extra) — exclude from "add extra" picker
   const usedQualIds = useMemo(() => {
     const ids = new Set(Object.values(selectedQuals));
     extraQualIds.forEach(id => ids.add(id));
@@ -314,13 +327,6 @@ export default function GenerateCertificateScreen() {
 
   // ── Generate ─────────────────────────────────────────────────────────────────
 
-  // --- Step helpers: small, named, composable. Order:
-  //     1. collect + persist signatures (audit trail)
-  //     2. build PDF asset bundle (photos/quals → data URLs)
-  //     3. render HTML → PDF file
-  //     4. upload PDF blob to storage
-  //     5. insert certificates row — rolling back (#4) on failure
-
   const buildExpertRecord = async (): Promise<{ rec: SignatureRecord; expertName: string }> => {
     const expertName = user ? `${user.first_name} ${user.last_name}`.trim() : 'ექსპერტი';
     const expertDataUrl = user?.saved_signature_url
@@ -333,7 +339,7 @@ export default function GenerateCertificateScreen() {
       full_name: expertName,
       phone: null,
       position: 'შრომის უსაფრთხოების სპეციალისტი',
-      signature_png_url: expertDataUrl, // data URL for PDF embedding
+      signature_png_url: expertDataUrl,
       signed_at: new Date().toISOString(),
       status: 'signed',
       person_name: expertName,
@@ -341,8 +347,6 @@ export default function GenerateCertificateScreen() {
     return { rec, expertName };
   };
 
-  // Upload additional signer PNGs to storage and persist signatures rows.
-  // Returns SignatureRecords with data-URL signature_png_url (for the PDF).
   const persistAdditionalSigners = async (): Promise<SignatureRecord[]> => {
     const recs: SignatureRecord[] = [];
     for (const s of additionalSigners.filter(x => x.name?.trim())) {
@@ -394,7 +398,6 @@ export default function GenerateCertificateScreen() {
     });
   };
 
-  // Fetch photo + qual images as data URLs for PDF embedding.
   const buildPdfAssets = async (): Promise<{
     photosForPdf: Record<string, AnswerPhoto[]>;
     attachedQuals: Array<Qualification & { file_data_url?: string }>;
@@ -436,17 +439,13 @@ export default function GenerateCertificateScreen() {
     setBusy(true);
     let uploadedPdfPath: string | null = null;
     try {
-      // 1. Signatures — persist first so the inspection has an audit trail
-      //    even if later PDF steps fail.
       const { rec: expertRec, expertName } = await buildExpertRecord();
       const otherRecs = await persistAdditionalSigners();
       await persistExpertSignature(expertName);
       const sigsForPdf = [expertRec, ...otherRecs];
 
-      // 2. Build the embed-ready asset bundle.
       const { photosForPdf, attachedQuals } = await buildPdfAssets();
 
-      // 3. Render PDF.
       const html = buildPdfHtml({
         questionnaire: inspection,
         template,
@@ -459,14 +458,11 @@ export default function GenerateCertificateScreen() {
       });
       const { uri } = await Print.printToFileAsync({ html });
 
-      // 4. Upload PDF blob. Remember the path so we can roll it back if (5) fails.
       const fileName = `${inspection.id}-${Date.now()}.pdf`;
       const blob = await (await fetch(uri)).blob();
       await storageApi.upload(STORAGE_BUCKETS.pdfs, fileName, blob, 'application/pdf');
       uploadedPdfPath = fileName;
 
-      // 5. Insert certificate row. If this throws, delete the uploaded blob
-      //    so we don't leave orphans in storage.
       await certificatesApi.create({
         inspectionId: inspection.id,
         templateId: inspection.template_id,
@@ -477,12 +473,10 @@ export default function GenerateCertificateScreen() {
           expertName,
           qualTypes: attachedQuals.map(q => ({ type: q.type, number: q.number ?? null })),
           signerNames: otherRecs.map(s => s.full_name),
-          // Local file:// URI so the preview/share screen can open it
-          // directly without going through storage (works in mock mode too).
           localUri: uri,
         },
       });
-      uploadedPdfPath = null; // committed — no rollback needed
+      uploadedPdfPath = null;
 
       toast.success('PDF რეპორტი შეიქმნა');
       if (await Sharing.isAvailableAsync()) {
@@ -499,13 +493,30 @@ export default function GenerateCertificateScreen() {
     }
   };
 
+  const onGeneratePressIn = () => {
+    btnScale.value = withTiming(0.98, { duration: 80 });
+  };
+  const onGeneratePressOut = () => {
+    btnScale.value = withSpring(1, { stiffness: 300, damping: 15 });
+  };
+  const btnAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: btnScale.value }],
+  }));
+
   // ── Render ───────────────────────────────────────────────────────────────────
 
   if (loading) {
     return (
       <Screen>
-        <Stack.Screen options={{ headerShown: true, title: 'PDF რეპორტის გენერაცია' }} />
+        <Stack.Screen options={{ headerShown: false }} />
         <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
+          <View style={s.header}>
+            <Pressable onPress={() => router.back()} style={s.headerBack}>
+              <Ionicons name="chevron-back" size={24} color={COLORS.textPrimary} />
+            </Pressable>
+            <Text style={s.headerTitle}>PDF რეპორტის გენერაცია</Text>
+            <View style={s.headerBack} />
+          </View>
           <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }}>
             <SkeletonCard />
             <SkeletonCard />
@@ -520,9 +531,9 @@ export default function GenerateCertificateScreen() {
   if (!inspection || !template) {
     return (
       <Screen>
-        <Stack.Screen options={{ headerShown: true, title: 'PDF რეპორტის გენერაცია' }} />
+        <Stack.Screen options={{ headerShown: false }} />
         <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-          <Text style={{ color: theme.colors.inkSoft, textAlign: 'center' }}>
+          <Text style={{ color: COLORS.textSecondary, textAlign: 'center' }}>
             ინსპექცია ვერ მოიძებნა. სცადე ხელახლა.
           </Text>
         </SafeAreaView>
@@ -531,404 +542,505 @@ export default function GenerateCertificateScreen() {
   }
 
   const captureSigner = additionalSigners.find(s => s.id === captureSignerId);
+  const expertName = user ? `${user.first_name} ${user.last_name}`.trim() : 'ექსპერტი';
+  const expertInitials = expertName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
   return (
     <Screen>
-      <Stack.Screen options={{ headerShown: true, title: 'PDF რეპორტის გენერაცია' }} />
+      <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
-        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 120, gap: 14 }}>
+        {/* Header */}
+        <View style={s.header}>
+          <Pressable onPress={() => router.back()} style={s.headerBack}>
+            <Ionicons name="chevron-back" size={24} color={COLORS.textPrimary} />
+          </Pressable>
+          <Text style={s.headerTitle}>PDF რეპორტის გენერაცია</Text>
+          <View style={s.headerBack} />
+        </View>
 
-          {/* ── Inspection summary ─────────────────────────────── */}
-          <Card>
-            <Text style={styles.eyebrow}>ინსპექცია</Text>
-            <Text style={styles.inspTitle}>{template.name}</Text>
-            {project ? <Text style={styles.inspMeta}>{project.name}</Text> : null}
-            <Text style={styles.inspMeta}>
+        <ScrollView contentContainerStyle={{ paddingBottom: 140 }} showsVerticalScrollIndicator={false}>
+          {/* Inspection Hero */}
+          <Animated.View entering={FadeInUp.duration(300).delay(0 * STAGGER_MS)} style={s.heroBlock}>
+            <Text style={s.heroLabel}>ინსპექცია</Text>
+            <Text style={s.heroTitle}>{template.name}</Text>
+            <Text style={s.heroDate}>
               {new Date(inspection.completed_at ?? inspection.created_at).toLocaleString('ka')}
             </Text>
-            {inspection.conclusion_text ? (
-              <Text style={{ marginTop: 8, color: theme.colors.ink, fontSize: 13, lineHeight: 18 }} numberOfLines={3}>
-                {inspection.conclusion_text}
-              </Text>
-            ) : null}
-          </Card>
+            {project ? <Text style={s.heroObject}>{project.name}</Text> : null}
+          </Animated.View>
 
-          {/* ── My signature ───────────────────────────────────── */}
-          <Card>
-            <Text style={styles.eyebrow}>ჩემი ხელმოწერა</Text>
-            <View style={styles.expertRow}>
+          <View style={s.divider} />
+
+          {/* Chief Inspector */}
+          <Animated.View entering={FadeInUp.duration(300).delay(1 * STAGGER_MS)} style={s.section}>
+            <Text style={s.sectionLabel}>ჩივი ხელმძღვანელი</Text>
+            <View style={s.expertRow}>
+              <View style={s.avatarCircle}>
+                <Text style={s.avatarText}>{expertInitials}</Text>
+              </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.expertName}>
-                  {user ? `${user.first_name} ${user.last_name}`.trim() : 'ექსპერტი'}
-                </Text>
-                <Text style={styles.expertRole}>შრომის უსაფრთხოების სპეციალისტი</Text>
+                <Text style={s.expertName}>{expertName}</Text>
+                <Text style={s.expertRole}>შრომის უსაფრთხოების სპეციალისტი</Text>
               </View>
               {user?.saved_signature_url ? (
-                <Ionicons name="checkmark-circle" size={22} color={theme.colors.accent} />
+                <Ionicons name="checkmark-circle" size={22} color={COLORS.primary} />
               ) : (
-                <Pressable
-                  onPress={() => router.push('/signature' as any)}
-                  style={styles.drawBtn}
-                >
-                  <Text style={styles.drawBtnText}>დახაზვა ›</Text>
+                <Pressable onPress={() => router.push('/signature' as any)}>
+                  <Text style={s.textLink}>დახაზვა</Text>
                 </Pressable>
               )}
             </View>
+
             {expertSigDisplayUrl ? (
-              <View style={styles.sigThumb}>
-                <Image
-                  source={{ uri: expertSigDisplayUrl }}
-                  style={{ width: '100%', height: '100%' }}
-                  resizeMode="contain"
-                />
-              </View>
+              <Animated.View entering={FadeInUp.duration(250)} style={s.sigPreviewWrap}>
+                <Image source={{ uri: expertSigDisplayUrl }} style={s.sigPreview} resizeMode="contain" />
+                <Pressable onPress={() => router.push('/signature' as any)}>
+                  <Text style={s.textLink}>შეცვლა</Text>
+                </Pressable>
+              </Animated.View>
             ) : (
-              <Pressable onPress={() => router.push('/signature' as any)} style={styles.missingRow}>
-                <Ionicons name="create-outline" size={14} color={theme.colors.warn} />
-                <Text style={{ fontSize: 12, color: theme.colors.warn }}>
-                  ხელმოწერა ჯერ არ არის შენახული — შეეხე დასახატად
-                </Text>
+              <Pressable onPress={() => router.push('/signature' as any)} style={s.sigPlaceholder}>
+                <Ionicons name="create-outline" size={20} color={COLORS.primary} />
+                <Text style={s.sigPlaceholderText}>ხელმოწერა</Text>
               </Pressable>
             )}
-          </Card>
+          </Animated.View>
 
-          {/* ── Other signers ──────────────────────────────────── */}
-          <Card>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.eyebrow}>სხვა ხელმომწერები</Text>
-              <Pressable onPress={addSigner} style={styles.addBtn}>
-                <Ionicons name="add" size={14} color={theme.colors.accent} />
-                <Text style={styles.addBtnText}>დამატება</Text>
-              </Pressable>
-            </View>
+          <View style={s.divider} />
+
+          {/* Other Signers */}
+          <Animated.View entering={FadeInUp.duration(300).delay(2 * STAGGER_MS)} style={s.section}>
+            <Text style={s.sectionLabel}>სხვა ხელმომწერები</Text>
             {additionalSigners.length === 0 ? (
-              <Text style={{ fontSize: 12, color: theme.colors.inkSoft, marginTop: 6 }}>
-                სურვილისამებრ — დაამატე სხვა ხელმომწერი
-              </Text>
+              <Text style={s.emptyHint}>სურვილისამებრ — დაამატე სხვა ხელმომწერი</Text>
             ) : (
-              <View style={{ gap: 10, marginTop: 10 }}>
+              <View style={{ gap: 10 }}>
                 {additionalSigners.map(signer => (
-                  <View key={signer.id} style={styles.signerCard}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                      <TextInput
-                        style={styles.nameInput}
-                        value={signer.name}
-                        onChangeText={t => updateSignerName(signer.id, t)}
-                        placeholder="სახელი გვარი"
-                        placeholderTextColor={theme.colors.inkFaint}
-                      />
-                      <Pressable hitSlop={8} onPress={() => removeSigner(signer.id)}>
-                        <Ionicons name="close-circle" size={20} color={theme.colors.inkFaint} />
-                      </Pressable>
-                    </View>
-                    <Pressable onPress={() => pickSignerRole(signer.id)} style={styles.roleRow}>
-                      <Ionicons name="person-circle-outline" size={16} color={theme.colors.inkSoft} />
-                      <Text style={styles.roleText}>{SIGNER_ROLE_LABEL[signer.role]}</Text>
-                      <Ionicons name="chevron-down" size={14} color={theme.colors.inkFaint} />
-                    </Pressable>
-                    {signer.dataUrl ? (
-                      <View style={styles.sigThumb}>
-                        <Image
-                          source={{ uri: signer.dataUrl }}
-                          style={{ width: '100%', height: '100%' }}
-                          resizeMode="contain"
+                  <View key={signer.id} style={s.signerRow}>
+                    <View style={{ flex: 1, gap: 6 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <TextInput
+                          style={s.signerInput}
+                          value={signer.name}
+                          onChangeText={t => updateSignerName(signer.id, t)}
+                          placeholder="სახელი გვარი"
+                          placeholderTextColor={COLORS.textSecondary}
                         />
-                        <Pressable
-                          onPress={() => setCaptureSignerId(signer.id)}
-                          style={styles.resignOverlay}
-                        >
-                          <Text style={{ fontSize: 11, color: theme.colors.inkSoft }}>
-                            შეცვლა ›
-                          </Text>
+                        <Pressable hitSlop={8} onPress={() => removeSigner(signer.id)}>
+                          <Ionicons name="close-circle" size={20} color={COLORS.textSecondary} />
                         </Pressable>
                       </View>
+                      <Pressable onPress={() => pickSignerRole(signer.id)} style={s.roleChip}>
+                        <Ionicons name="person-circle-outline" size={14} color={COLORS.textSecondary} />
+                        <Text style={s.roleChipText}>{SIGNER_ROLE_LABEL[signer.role]}</Text>
+                        <Ionicons name="chevron-down" size={12} color={COLORS.textSecondary} />
+                      </Pressable>
+                    </View>
+
+                    {signer.dataUrl ? (
+                      <Animated.View entering={FadeInUp.duration(250)} style={{ marginTop: 8 }}>
+                        <Image source={{ uri: signer.dataUrl }} style={s.sigPreviewSmall} resizeMode="contain" />
+                        <Pressable onPress={() => setCaptureSignerId(signer.id)}>
+                          <Text style={s.textLink}>შეცვლა</Text>
+                        </Pressable>
+                      </Animated.View>
                     ) : (
-                      <Button
-                        title="ხელმოწერა"
-                        variant="secondary"
+                      <Pressable
                         onPress={() => {
-                          if (!signer.name?.trim()) {
-                            toast.error('ჯერ შეიყვანე სახელი');
-                            return;
-                          }
+                          if (!signer.name?.trim()) { toast.error('ჯერ შეიყვანე სახელი'); return; }
                           setCaptureSignerId(signer.id);
                         }}
-                        style={{ marginTop: 6 }}
-                      />
+                        style={s.sigPlaceholderSmall}
+                      >
+                        <Ionicons name="create-outline" size={16} color={COLORS.primary} />
+                        <Text style={s.sigPlaceholderTextSmall}>ხელმოწერა</Text>
+                      </Pressable>
                     )}
                   </View>
                 ))}
               </View>
             )}
-          </Card>
+            <Pressable onPress={addSigner} style={s.ghostBtn}>
+              <Text style={s.ghostBtnText}>+ დამატება</Text>
+            </Pressable>
+          </Animated.View>
 
-          {/* ── Required qualification certs ───────────────────── */}
-          {requiredCertTypes.length > 0 ? (
-            <Card>
-              <Text style={styles.eyebrow}>კვალიფიკაციის სერტიფიკატები</Text>
-              <View style={{ gap: 10, marginTop: 10 }}>
+          <View style={s.divider} />
+
+          {/* Required Qualifications */}
+          {requiredCertTypes.length > 0 && (
+            <Animated.View entering={FadeInUp.duration(300).delay(3 * STAGGER_MS)} style={s.section}>
+              <Text style={s.sectionLabel}>კვალიფიკაციის სერტიფიკატები</Text>
+              <View style={{ gap: 8 }}>
                 {requiredCertTypes.map(certType => {
                   const selectedId = selectedQuals[certType];
                   const selected = selectedId ? quals.find(q => q.id === selectedId) : null;
                   const hasAny = quals.some(q => q.type === certType);
                   const isUploading = uploadingFor === certType;
                   return (
-                    <View key={certType} style={styles.qualBlock}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        {selected ? (
-                          <Ionicons name="checkmark-circle" size={18} color={theme.colors.accent} />
-                        ) : (
-                          <Ionicons name="alert-circle" size={18} color={theme.colors.warn} />
-                        )}
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.qualTitle}>{certType}</Text>
-                          <Text style={styles.qualMeta}>
-                            {selected
-                              ? (selected.number ? `№ ${selected.number}` : 'ატვირთულია')
-                              : 'არ არის არჩეული'}
-                          </Text>
-                        </View>
-                        <Pressable onPress={() => pickQual(certType)} style={styles.changeBtn}>
-                          <Text style={styles.changeBtnText}>
-                            {hasAny ? 'შეცვლა' : 'არჩევა'}
-                          </Text>
-                        </Pressable>
+                    <Pressable key={certType} onPress={() => pickQual(certType)} style={s.listRow}>
+                      <Ionicons
+                        name={selected ? 'checkmark-circle' : 'alert-circle'}
+                        size={18}
+                        color={selected ? COLORS.primary : COLORS.warn}
+                      />
+                      <View style={{ flex: 1 }}>
+                        <Text style={s.listRowTitle}>{certType}</Text>
+                        <Text style={s.listRowMeta}>
+                          {selected
+                            ? (selected.number ? `№ ${selected.number}` : 'ატვირთულია')
+                            : 'არ არის არჩეული'}
+                        </Text>
                       </View>
-                      {!selected ? (
-                        <Button
-                          title={isUploading ? 'იტვირთება…' : '+ ახლავე ატვირთვა'}
-                          variant="secondary"
-                          loading={isUploading}
-                          onPress={() => void uploadQual(certType)}
-                          style={{ marginTop: 8 }}
-                        />
-                      ) : null}
-                    </View>
+                      <Text style={s.textLink}>{hasAny ? 'შეცვლა' : 'არჩევა'}</Text>
+                    </Pressable>
                   );
                 })}
               </View>
-            </Card>
-          ) : null}
+              {requiredCertTypes.some(t => !selectedQuals[t]) && (
+                <Text style={{ fontSize: 12, color: COLORS.warn, marginTop: 8 }}>
+                  არჩიე ყველა საჭირო სერტიფიკატი
+                </Text>
+              )}
+            </Animated.View>
+          )}
 
-          {/* ── Extra certs ─────────────────────────────────────── */}
-          <Card>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.eyebrow}>დამატებითი სერტიფიკატები</Text>
-              <Pressable onPress={addExtraQual} style={styles.addBtn}>
-                <Ionicons name="add" size={14} color={theme.colors.accent} />
-                <Text style={styles.addBtnText}>დამატება</Text>
-              </Pressable>
-            </View>
+          {requiredCertTypes.length > 0 && <View style={s.divider} />}
+
+          {/* Extra Qualifications */}
+          <Animated.View entering={FadeInUp.duration(300).delay(4 * STAGGER_MS)} style={s.section}>
+            <Text style={s.sectionLabel}>დამატებითი სერტიფიკატები</Text>
             {extraQualIds.length === 0 ? (
-              <Text style={{ fontSize: 12, color: theme.colors.inkSoft, marginTop: 6 }}>
-                სურვილისამებრ — დაამატე სხვა კვალიფიკაციის სერტიფიკატი
-              </Text>
+              <Text style={s.emptyHint}>სურვილისამებრ — დაამატე სხვა კვალიფიკაციის სერტიფიკატი</Text>
             ) : (
-              <View style={{ gap: 8, marginTop: 10 }}>
+              <View style={{ gap: 8 }}>
                 {extraQualIds.map(id => {
                   const q = quals.find(x => x.id === id);
                   if (!q) return null;
                   return (
-                    <View key={id} style={styles.extraRow}>
-                      <Ionicons name="ribbon-outline" size={14} color={theme.colors.accent} />
-                      <Text style={{ flex: 1, fontSize: 13, color: theme.colors.ink }}>
-                        {q.type}{q.number ? ` · №${q.number}` : ''}
-                      </Text>
-                      <Pressable hitSlop={8} onPress={() => removeExtraQual(id)}>
-                        <Ionicons name="close-circle" size={18} color={theme.colors.inkFaint} />
-                      </Pressable>
-                    </View>
+                    <Pressable key={id} onPress={() => removeExtraQual(id)} style={s.listRow}>
+                      <Ionicons name="ribbon-outline" size={16} color={COLORS.primary} />
+                      <Text style={s.listRowTitle}>{q.type}{q.number ? ` · №${q.number}` : ''}</Text>
+                      <Text style={s.textLink}>წაშლა</Text>
+                    </Pressable>
                   );
                 })}
               </View>
             )}
-          </Card>
-
-          {/* ── Generate button ─────────────────────────────────── */}
-          <Button
-            title={busy ? 'მიმდინარეობს…' : 'PDF-ის გენერაცია'}
-            onPress={generate}
-            loading={busy}
-            disabled={busy || missingQualTypes.length > 0}
-          />
+            <Pressable onPress={addExtraQual} style={s.ghostBtn}>
+              <Text style={s.ghostBtnText}>+ დამატება</Text>
+            </Pressable>
+          </Animated.View>
         </ScrollView>
-      </SafeAreaView>
 
-      {/* Signature capture modal */}
-      <SignatureCanvas
-        visible={captureSignerId !== null}
-        personName={captureSigner?.name ?? ''}
-        onCancel={() => setCaptureSignerId(null)}
-        onConfirm={onSignatureCaptured}
-      />
+        {/* Bottom Action Bar */}
+        <View style={s.bottomBar}>
+          <Animated.View style={[{ width: '100%' }, btnAnimatedStyle]}>
+            <Pressable
+              onPress={generate}
+              onPressIn={onGeneratePressIn}
+              onPressOut={onGeneratePressOut}
+              disabled={busy || missingQualTypes.length > 0}
+              style={[
+                s.generateBtn,
+                (busy || missingQualTypes.length > 0) && { opacity: 0.6 },
+              ]}
+            >
+              {busy ? (
+                <ActivityIndicator size="small" color={COLORS.white} />
+              ) : (
+                <Text style={s.generateBtnText}>PDF-ის გენერაცია</Text>
+              )}
+            </Pressable>
+          </Animated.View>
+        </View>
+
+        {/* Signature capture modal */}
+        <SignatureCanvas
+          visible={captureSignerId !== null}
+          personName={captureSigner?.name ?? ''}
+          onCancel={() => setCaptureSignerId(null)}
+          onConfirm={onSignatureCaptured}
+        />
+      </SafeAreaView>
     </Screen>
   );
 }
 
 // ── Styles ───────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-  eyebrow: {
-    fontSize: 11,
-    color: theme.colors.inkSoft,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    fontWeight: '700',
-  },
-  inspTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: theme.colors.ink,
-    marginTop: 6,
-  },
-  inspMeta: {
-    fontSize: 12,
-    color: theme.colors.inkSoft,
-    marginTop: 2,
-  },
-
-  // Expert
-  expertRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginTop: 10,
-  },
-  expertName: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: theme.colors.ink,
-  },
-  expertRole: {
-    fontSize: 11,
-    color: theme.colors.inkSoft,
-    marginTop: 1,
-  },
-  drawBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: theme.colors.warnSoft,
-  },
-  drawBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: theme.colors.warn,
-  },
-  missingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 10,
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: theme.colors.warnSoft,
-  },
-  sigThumb: {
-    marginTop: 10,
-    height: 60,
-    backgroundColor: theme.colors.white,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: theme.colors.hairline,
-    overflow: 'hidden',
-  },
-  resignOverlay: {
-    position: 'absolute',
-    bottom: 4,
-    right: 6,
-  },
-
-  // Signers
-  sectionHeader: {
+const s = StyleSheet.create({
+  // Header
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.hairline,
+    backgroundColor: COLORS.surface,
   },
-  addBtn: {
-    flexDirection: 'row',
+  headerBack: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 999,
-    backgroundColor: theme.colors.accentSoft,
+    justifyContent: 'center',
   },
-  addBtnText: {
-    fontSize: 12,
+  headerTitle: {
+    fontSize: 18,
     fontWeight: '700',
-    color: theme.colors.accent,
-  },
-  signerCard: {
-    backgroundColor: theme.colors.subtleSurface,
-    borderRadius: 12,
-    padding: 10,
-  },
-  nameInput: {
-    flex: 1,
-    backgroundColor: theme.colors.card,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: theme.colors.hairline,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    fontSize: 14,
-    color: theme.colors.ink,
-  },
-  roleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: theme.colors.card,
-    borderWidth: 1,
-    borderColor: theme.colors.hairline,
-    alignSelf: 'flex-start',
-  },
-  roleText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: theme.colors.inkSoft,
+    color: COLORS.textPrimary,
+    textAlign: 'center',
   },
 
-  // Qual certs
-  qualBlock: {
-    backgroundColor: theme.colors.subtleSurface,
-    borderRadius: 12,
-    padding: 12,
+  // Hero
+  heroBlock: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
   },
-  qualTitle: {
-    fontSize: 14,
+  heroLabel: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
     fontWeight: '700',
-    color: theme.colors.ink,
+    marginBottom: 4,
   },
-  qualMeta: {
-    fontSize: 11,
-    color: theme.colors.inkSoft,
+  heroTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  heroDate: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
     marginTop: 2,
   },
-  changeBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    backgroundColor: theme.colors.subtleSurface,
-    borderWidth: 1,
-    borderColor: theme.colors.hairline,
+  heroObject: {
+    fontSize: 14,
+    color: COLORS.textTertiary,
+    marginTop: 2,
   },
-  changeBtnText: {
+
+  // Divider
+  divider: {
+    height: 1,
+    backgroundColor: COLORS.hairline,
+    marginHorizontal: 16,
+  },
+
+  // Sections
+  section: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+  },
+  sectionLabel: {
     fontSize: 12,
-    fontWeight: '600',
-    color: theme.colors.ink,
+    color: COLORS.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    fontWeight: '700',
+    marginBottom: 12,
   },
-  extraRow: {
+  emptyHint: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    marginBottom: 10,
+  },
+
+  // Expert row
+  expertRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  avatarCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    color: COLORS.white,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  expertName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  expertRole: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginTop: 1,
+  },
+
+  // Signature
+  sigPreviewWrap: {
+    marginTop: 12,
+    gap: 6,
+  },
+  sigPreview: {
+    width: '100%',
+    height: 60,
+    backgroundColor: COLORS.surface,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.hairline,
+  },
+  sigPreviewSmall: {
+    width: 120,
+    height: 50,
+    backgroundColor: COLORS.surface,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.hairline,
+  },
+  sigPlaceholder: {
+    marginTop: 12,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    padding: 10,
-    backgroundColor: theme.colors.subtleSurface,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    borderStyle: 'dashed',
+    alignSelf: 'flex-start',
+  },
+  sigPlaceholderText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  sigPlaceholderSmall: {
+    marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    borderStyle: 'dashed',
+    alignSelf: 'flex-start',
+  },
+  sigPlaceholderTextSmall: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+
+  // Signers
+  signerRow: {
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.hairline,
+  },
+  signerInput: {
+    flex: 1,
+    backgroundColor: COLORS.surface,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.hairline,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 14,
+    color: COLORS.textPrimary,
+  },
+  roleChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: COLORS.bg,
+  },
+  roleChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+  },
+
+  // List rows
+  listRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.hairline,
+  },
+  listRowTitle: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  listRowMeta: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginTop: 1,
+  },
+
+  // Ghost button
+  ghostBtn: {
+    marginTop: 12,
+    height: 44,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ghostBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+
+  // Bottom bar
+  bottomBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 24,
+    backgroundColor: COLORS.surface,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  generateBtn: {
+    height: 54,
+    borderRadius: 12,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  generateBtnText: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: COLORS.white,
+  },
+
+  // Link
+  textLink: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.primary,
   },
 });

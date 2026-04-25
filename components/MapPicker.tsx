@@ -44,12 +44,29 @@ export function MapPicker({ value, onChange, address, onAddressChange, height = 
   const mapRef = useRef<MapView | null>(null);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [hasLocationPermission, setHasLocationPermission] = useState<boolean | null>(null);
+  const [userLocation, setUserLocation] = useState<LatLng | null>(null);
   // Strings we wrote into `address` ourselves (via reverse-geocode) — don't
   // re-forward-geocode them or we ping-pong: pin → text → pin → text.
   const skipNextSearch = useRef<string | null>(null);
   // Track the last query we actually geocoded so we don't repeat work as the
   // user types past a string we already looked up.
   const lastGeocoded = useRef<string>('');
+
+  // Request location permission before map mount
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (cancelled) return;
+      setHasLocationPermission(status === 'granted');
+      if (status === 'granted') {
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        setUserLocation({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // When `value` changes from outside, animate the map to it.
   useEffect(() => {
@@ -146,10 +163,11 @@ export function MapPicker({ value, onChange, address, onAddressChange, height = 
       {searchError ? (
         <Text style={styles.searchErr}>{searchError}</Text>
       ) : null}
-      <View style={[styles.mapWrap, { height }]}>
+      <View style={[styles.mapWrap, { height }]} collapsable={false}>
         <MapView
           ref={mapRef}
           provider={PROVIDER_DEFAULT}
+          mapType="standard"
           style={StyleSheet.absoluteFill}
           initialRegion={initialRegion}
           onPress={handleMapPress}
@@ -160,6 +178,13 @@ export function MapPicker({ value, onChange, address, onAddressChange, height = 
               draggable
               onDragEnd={handleDragEnd}
               pinColor={theme.colors.accent}
+            />
+          ) : null}
+          {hasLocationPermission && userLocation && !value ? (
+            <Marker
+              coordinate={userLocation}
+              pinColor="#007AFF"
+              title="შენი მდებარეობა"
             />
           ) : null}
         </MapView>
