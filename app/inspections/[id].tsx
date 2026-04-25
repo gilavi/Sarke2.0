@@ -66,10 +66,13 @@ export default function InspectionDetailScreen() {
   const [addBusy, setAddBusy] = useState(false);
 
   const load = useCallback(async () => {
-    if (!id) return;
     setLoading(true);
     setLoadError(null);
     setNotFound(false);
+    if (!id) {
+      setLoading(false);
+      return;
+    }
     try {
       const insp = await inspectionsApi.getById(id);
       if (!insp) {
@@ -83,7 +86,7 @@ export default function InspectionDetailScreen() {
       // local "complete this" patch is sitting in storage, the wizard now
       // ignores its `status` field and trusts the server's row.
       if (insp.status === 'draft') {
-        router.replace(`/inspections/${insp.id}/wizard` as any);
+        router.push(`/inspections/${insp.id}/wizard` as any);
         return;
       }
       const [tpl, proj, cs, rsrs] = await Promise.all([

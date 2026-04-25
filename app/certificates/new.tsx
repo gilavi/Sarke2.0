@@ -345,7 +345,7 @@ export default function GenerateCertificateScreen() {
   // Returns SignatureRecords with data-URL signature_png_url (for the PDF).
   const persistAdditionalSigners = async (): Promise<SignatureRecord[]> => {
     const recs: SignatureRecord[] = [];
-    for (const s of additionalSigners.filter(x => x.name.trim())) {
+    for (const s of additionalSigners.filter(x => x.name?.trim())) {
       let storagePath: string | null = null;
       if (s.dataUrl) {
         const blob = await (await fetch(s.dataUrl)).blob();
@@ -357,24 +357,24 @@ export default function GenerateCertificateScreen() {
         id: s.id,
         inspection_id: inspection!.id,
         signer_role: s.role,
-        full_name: s.name.trim(),
+        full_name: s.name?.trim() ?? '',
         phone: null,
         position: null,
         signature_png_url: s.dataUrl,
         signed_at: new Date().toISOString(),
         status: s.dataUrl ? 'signed' : 'not_present',
-        person_name: s.name.trim(),
+        person_name: s.name?.trim() ?? '',
       });
       await signaturesApi.upsert({
         id: s.id,
         inspection_id: inspection!.id,
         signer_role: s.role,
-        full_name: s.name.trim(),
+        full_name: s.name?.trim() ?? '',
         phone: null,
         position: null,
         signature_png_url: storagePath,
         status: s.dataUrl ? 'signed' : 'not_present',
-        person_name: s.name.trim(),
+        person_name: s.name?.trim() ?? '',
       });
     }
     return recs;
@@ -647,7 +647,7 @@ export default function GenerateCertificateScreen() {
                         title="ხელმოწერა"
                         variant="secondary"
                         onPress={() => {
-                          if (!signer.name.trim()) {
+                          if (!signer.name?.trim()) {
                             toast.error('ჯერ შეიყვანე სახელი');
                             return;
                           }

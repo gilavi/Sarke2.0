@@ -1,7 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
-  Animated,
-  Easing,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -344,31 +342,17 @@ export default function HomeScreen() {
 // ───────── ANIMATED FAB ─────────
 
 function AnimatedFAB({ open, onPress }: { open: boolean; onPress: () => void }) {
-  // Only the icon rotates — the button itself stays stable.
-  // Press feedback comes from Pressable's built-in opacity change.
-  const spin = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.spring(spin, {
-      toValue: open ? 1 : 0,
-      friction: 7,
-      useNativeDriver: true,
-    }).start();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
-
-  const rotation = spin.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '45deg'],
-  });
-
+  // Simple icon rotation — no spring physics that can crash on some devices
   return (
     <Pressable onPress={onPress} style={styles.fabWrap}>
       {({ pressed }) => (
         <View style={[styles.fab, pressed && { opacity: 0.8 }]}>
-          <Animated.View style={{ transform: [{ rotate: rotation }] }}>
-            <Ionicons name="add" size={28} color={theme.colors.white} />
-          </Animated.View>
+          <Ionicons
+            name="add"
+            size={28}
+            color={theme.colors.white}
+            style={{ transform: [{ rotate: open ? '45deg' : '0deg' }] }}
+          />
         </View>
       )}
     </Pressable>
@@ -378,27 +362,18 @@ function AnimatedFAB({ open, onPress }: { open: boolean; onPress: () => void }) 
 // ───────── ANIMATED DARK BACKDROP ─────────
 
 function AnimatedDarkBackdrop({ visible, onPress }: { visible: boolean; onPress: () => void }) {
-  const fade = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.timing(fade, {
-      toValue: visible ? 1 : 0,
-      duration: visible ? 300 : 200,
-      easing: visible ? Easing.out(Easing.cubic) : Easing.in(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible]);
-
+  // Simple opacity fade — no complex animation that can crash
   return (
-    <Animated.View
+    <View
       style={[
         StyleSheet.absoluteFillObject,
-        { backgroundColor: 'rgba(0,0,0,0.55)', opacity: fade },
+        { backgroundColor: 'rgba(0,0,0,0.55)' },
+        visible ? { opacity: 1 } : { opacity: 0 },
       ]}
+      pointerEvents={visible ? 'auto' : 'none'}
     >
-      <Pressable style={StyleSheet.absoluteFillObject} onPress={onPress} />
-    </Animated.View>
+      {visible && <Pressable style={StyleSheet.absoluteFillObject} onPress={onPress} />}
+    </View>
   );
 }
 
@@ -473,6 +448,7 @@ function ProjectPickerSheet({
     if (!name.trim()) return;
     setBusy(true);
     try {
+      // Create project — API returns the created object directly
       const created = await projectsApi.create({
         name: name.trim(),
         companyName: company.trim() || null,
@@ -480,14 +456,19 @@ function ProjectPickerSheet({
         latitude: pin?.latitude ?? null,
         longitude: pin?.longitude ?? null,
       });
+      // Refresh dashboard
       await onCreated();
-      // After creating project, proceed to template selection instead of closing
+      // Use returned project directly (no stale prop issues)
       if (created?.id) {
         setPickedProjectId(created.id);
         setView('template');
+        setName('');
+        setCompany('');
+        setAddress('');
+        setPin(null);
       } else {
-        // Fallback: if API doesn't return project, just close and let user pick manually
         onClose();
+        toast.success('პროექტი შეიქმნა');
       }
     } catch (e) {
       toast.error(toErrorMessage(e, 'შექმნა ვერ მოხერხდა'));
@@ -1043,9 +1024,6 @@ const pickerStyles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'flex-end',
-  },
-  blurWrap: {
-    ...StyleSheet.absoluteFillObject,
   },
   card: {
     backgroundColor: theme.colors.background,

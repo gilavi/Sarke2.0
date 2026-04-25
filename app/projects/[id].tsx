@@ -444,7 +444,7 @@ export default function ProjectDetail() {
                   return (
                     <Pressable
                       key={op.id}
-                      onPress={() => router.replace(`/projects/${op.id}` as any)}
+                      onPress={() => router.push(`/projects/${op.id}` as any)}
                       style={styles.otherChip}
                     >
                       <View style={[styles.otherChipIcon, { backgroundColor: av.color + '22' }]}>

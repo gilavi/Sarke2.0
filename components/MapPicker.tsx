@@ -108,7 +108,7 @@ export function MapPicker({ value, onChange, address, onAddressChange, height = 
   // Debounced auto-geocode as the user types. Skips strings we just wrote
   // ourselves from reverse-geocoding, and skips repeats / very short input.
   useEffect(() => {
-    const q = address.trim();
+    const q = (address ?? '').trim();
     if (q.length < 3) return;
     if (skipNextSearch.current === address) {
       skipNextSearch.current = null;
