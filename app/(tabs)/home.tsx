@@ -471,7 +471,7 @@ function ProjectPickerSheet({
     if (!name.trim()) return;
     setBusy(true);
     try {
-      await projectsApi.create({
+      const newProject = await projectsApi.create({
         name: name.trim(),
         companyName: company.trim() || null,
         address: address.trim() || null,
@@ -479,7 +479,9 @@ function ProjectPickerSheet({
         longitude: pin?.longitude ?? null,
       });
       await onCreated();
-      onClose();
+      // After creating project, proceed to template selection instead of closing
+      setPickedProjectId(newProject.id);
+      setView('template');
     } catch (e) {
       toast.error(toErrorMessage(e, 'შექმნა ვერ მოხერხდა'));
     } finally {
@@ -622,12 +624,10 @@ function ProjectPickerSheet({
                     <Input value={company} onChangeText={setCompany} placeholder="შემკვეთი" />
                   </Field>
                   <Field label="მისამართი">
-                    <MapPicker
-                      value={pin}
-                      onChange={setPin}
-                      address={address}
-                      onAddressChange={setAddress}
-                    />
+                    <Input value={address} onChangeText={setAddress} placeholder="ობიექტის მისამართი" />
+                  </Field>
+                  <Field label="მდებარეობა რუკაზე">
+                    <MapPicker value={pin} onChange={setPin} addressHint={address} />
                   </Field>
                 </ScrollView>
 

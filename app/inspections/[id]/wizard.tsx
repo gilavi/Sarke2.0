@@ -148,21 +148,15 @@ export default function QuestionnaireWizard() {
   const loadCtrlRef = useRef<{ cancelled: boolean }>({ cancelled: false });
 
   const load = useCallback(async () => {
+    if (!id) {
+      setLoading(false);
+      return;
+    }
     // Invalidate any prior in-flight load and start a new token.
     loadCtrlRef.current.cancelled = true;
     const ctrl = { cancelled: false };
     loadCtrlRef.current = ctrl;
     setLoading(true);
-    if (!id) {
-      setLoading(false);
-      return;
-    }
-    // Safety timeout: force-clear loading if something hangs
-    const timeoutId = setTimeout(() => {
-      if (!ctrl.cancelled) {
-        setLoading(false);
-      }
-    }, 15000);
     try {
       const q = await inspectionsApi.getById(id);
       if (ctrl.cancelled) return;
@@ -261,7 +255,6 @@ export default function QuestionnaireWizard() {
         toast.error(`ჩატვირთვა ვერ მოხერხდა: ${toErrorMessage(e)}`);
       }
     } finally {
-      clearTimeout(timeoutId);
       // Always clear loading — even if cancelled — so the UI doesn't stay
       // stuck on skeletons when the screen regains focus.
       setLoading(false);
