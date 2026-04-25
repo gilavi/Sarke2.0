@@ -44,6 +44,12 @@ export function MapPicker({ value, onChange, address, onAddressChange, height = 
   const mapRef = useRef<MapView | null>(null);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  // Strings we wrote into `address` ourselves (via reverse-geocode) — don't
+  // re-forward-geocode them or we ping-pong: pin → text → pin → text.
+  const skipNextSearch = useRef<string | null>(null);
+  // Track the last query we actually geocoded so we don't repeat work as the
+  // user types past a string we already looked up.
+  const lastGeocoded = useRef<string>('');
 
   // When `value` changes from outside, animate the map to it.
   useEffect(() => {
@@ -60,7 +66,11 @@ export function MapPicker({ value, onChange, address, onAddressChange, height = 
       const parts = [r.street, r.name, r.city, r.region]
         .filter((p): p is string => !!p && p !== r.street);
       const formatted = [r.street, ...parts].filter(Boolean).join(', ');
-      if (formatted) onAddressChange(formatted);
+      if (formatted) {
+        skipNextSearch.current = formatted;
+        lastGeocoded.current = formatted;
+        onAddressChange(formatted);
+      }
     } catch (e) {
       logError(e, 'MapPicker.reverseGeocode');
     }
@@ -76,9 +86,7 @@ export function MapPicker({ value, onChange, address, onAddressChange, height = 
     void reverseGeocode(e.nativeEvent.coordinate);
   };
 
-  const handleSearch = async () => {
-    const q = address.trim();
-    if (!q) return;
+  const runSearch = async (q: string) => {
     setSearching(true);
     setSearchError(null);
     try {
@@ -97,6 +105,24 @@ export function MapPicker({ value, onChange, address, onAddressChange, height = 
     }
   };
 
+  // Debounced auto-geocode as the user types. Skips strings we just wrote
+  // ourselves from reverse-geocoding, and skips repeats / very short input.
+  useEffect(() => {
+    const q = address.trim();
+    if (q.length < 3) return;
+    if (skipNextSearch.current === address) {
+      skipNextSearch.current = null;
+      return;
+    }
+    if (q === lastGeocoded.current) return;
+    const handle = setTimeout(() => {
+      lastGeocoded.current = q;
+      void runSearch(q);
+    }, 600);
+    return () => clearTimeout(handle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [address]);
+
   const initialRegion: Region = value
     ? { ...value, ...PIN_DELTA }
     : FALLBACK_REGION;
@@ -111,19 +137,11 @@ export function MapPicker({ value, onChange, address, onAddressChange, height = 
             onAddressChange(t);
             if (searchError) setSearchError(null);
           }}
-          onSubmitEditing={handleSearch}
           placeholder="მისამართი"
           placeholderTextColor={theme.colors.inkFaint}
-          returnKeyType="search"
           style={styles.searchInput}
         />
-        <Pressable onPress={handleSearch} disabled={searching || !address.trim()} hitSlop={10}>
-          {searching ? (
-            <ActivityIndicator size="small" color={theme.colors.accent} />
-          ) : (
-            <Text style={[styles.searchBtn, !address.trim() && { opacity: 0.4 }]}>ძებნა</Text>
-          )}
-        </Pressable>
+        {searching ? <ActivityIndicator size="small" color={theme.colors.accent} /> : null}
       </View>
       {searchError ? (
         <Text style={styles.searchErr}>{searchError}</Text>
