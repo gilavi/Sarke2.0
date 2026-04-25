@@ -8,8 +8,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Image,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -26,11 +24,7 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { Button, Card, Screen } from '../../components/ui';
 import { SkeletonCard, SkeletonListCard } from '../../components/Skeleton';
-import { ErrorState } from '../../components/ErrorState';
 import { SignatureCanvas } from '../../components/SignatureCanvas';
-import { UploadOverlay } from '../../components/UploadOverlay';
-import { friendlyError } from '../../lib/errorMap';
-import { haptics } from '../../lib/haptics';
 import {
   answersApi,
   certificatesApi,
@@ -109,7 +103,6 @@ export default function GenerateCertificateScreen() {
 
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [loadError, setLoadError] = useState<unknown>(null);
 
   // ── Load ────────────────────────────────────────────────────────────────────
 
@@ -123,19 +116,18 @@ export default function GenerateCertificateScreen() {
     try {
       const insp = await inspectionsApi.getById(inspectionId);
       if (!insp) {
-        setLoadError(new Error('ინსპექცია ვერ მოიძებნა'));
+        toast.error('ინსპექცია ვერ მოიძებნა');
         setLoading(false);
         return;
       }
       setInspection(insp);
-      // Template fetch — if this fails, most UI is broken, so treat as fatal.
-      const tpl = await templatesApi.getById(insp.template_id);
+      const tpl = await templatesApi.getById(insp.template_id).catch(() => null);
       setTemplate(tpl);
       const [proj, qs, ans, qualsList] = await Promise.all([
-        projectsApi.getById(insp.project_id),
-        tpl ? templatesApi.questions(tpl.id) : Promise.resolve([] as Question[]),
-        answersApi.list(insp.id),
-        qualificationsApi.list(),
+        projectsApi.getById(insp.project_id).catch(() => null),
+        tpl ? templatesApi.questions(tpl.id).catch(() => [] as Question[]) : Promise.resolve([] as Question[]),
+        answersApi.list(insp.id).catch(() => []),
+        qualificationsApi.list().catch(() => []),
       ]);
       setProject(proj);
       setQuestions(qs);
@@ -150,8 +142,7 @@ export default function GenerateCertificateScreen() {
       }
       setSelectedQuals(initial);
 
-      // Fetch answer photos — non-critical, fall back silently per-answer so
-      // missing photos don't break the generator screen.
+      // Fetch answer photos
       const photoMap: Record<string, AnswerPhoto[]> = {};
       await Promise.all(
         ans.map(async a => {
@@ -160,9 +151,6 @@ export default function GenerateCertificateScreen() {
         }),
       );
       setPhotosByAnswer(photoMap);
-      setLoadError(null);
-    } catch (e) {
-      setLoadError(e);
     } finally {
       setLoading(false);
     }
@@ -495,18 +483,16 @@ export default function GenerateCertificateScreen() {
       });
       uploadedPdfPath = null; // committed — no rollback needed
 
-      haptics.success();
       toast.success('PDF რეპორტი შეიქმნა');
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri, { mimeType: 'application/pdf' });
       }
       router.replace(`/inspections/${inspection.id}` as any);
-    } catch (e) {
+    } catch (e: any) {
       if (uploadedPdfPath) {
         await storageApi.remove(STORAGE_BUCKETS.pdfs, uploadedPdfPath);
       }
-      haptics.error();
-      toast.error(friendlyError(e));
+      toast.error(e?.message ?? 'გენერაცია ვერ მოხერხდა');
     } finally {
       setBusy(false);
     }
@@ -534,15 +520,10 @@ export default function GenerateCertificateScreen() {
     return (
       <Screen>
         <Stack.Screen options={{ headerShown: true, title: 'PDF რეპორტის გენერაცია' }} />
-        <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
-          <ErrorState
-            error={loadError}
-            message={loadError ? undefined : 'ინსპექცია ვერ მოიძებნა. სცადე ხელახლა.'}
-            onRetry={() => {
-              setLoadError(null);
-              void load();
-            }}
-          />
+        <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <Text style={{ color: theme.colors.inkSoft, textAlign: 'center' }}>
+            ინსპექცია ვერ მოიძებნა. სცადე ხელახლა.
+          </Text>
         </SafeAreaView>
       </Screen>
     );
@@ -554,11 +535,6 @@ export default function GenerateCertificateScreen() {
     <Screen>
       <Stack.Screen options={{ headerShown: true, title: 'PDF რეპორტის გენერაცია' }} />
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
-       <KeyboardAvoidingView
-         style={{ flex: 1 }}
-         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-         keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
-       >
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 120, gap: 14 }}>
 
           {/* ── Inspection summary ─────────────────────────────── */}
@@ -775,7 +751,6 @@ export default function GenerateCertificateScreen() {
             disabled={busy || missingQualTypes.length > 0}
           />
         </ScrollView>
-       </KeyboardAvoidingView>
       </SafeAreaView>
 
       {/* Signature capture modal */}
@@ -784,10 +759,6 @@ export default function GenerateCertificateScreen() {
         personName={captureSigner?.name ?? ''}
         onCancel={() => setCaptureSignerId(null)}
         onConfirm={onSignatureCaptured}
-      />
-      <UploadOverlay
-        visible={busy || uploadingFor !== null}
-        label={uploadingFor ? 'სერტიფიკატი იტვირთება…' : 'PDF რეპორტი გენერირდება…'}
       />
     </Screen>
   );

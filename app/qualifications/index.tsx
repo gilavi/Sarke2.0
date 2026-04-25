@@ -5,6 +5,7 @@
 // the Certificates tab can be repurposed for generated PDF certificates.
 import { useCallback, useState } from 'react';
 import {
+  Alert,
   FlatList,
   Pressable,
   StyleSheet,
@@ -16,32 +17,19 @@ import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Card, Screen } from '../../components/ui';
 import { Skeleton } from '../../components/Skeleton';
-import { ErrorState } from '../../components/ErrorState';
 import { isExpiringSoon, qualificationsApi } from '../../lib/services';
-import { useToast } from '../../lib/toast';
-import { scheduleDelete } from '../../lib/pendingDeletes';
-import { haptics } from '../../lib/haptics';
-import { friendlyError } from '../../lib/errorMap';
 import { theme } from '../../lib/theme';
 import type { Qualification } from '../../types/models';
 
 export default function QualificationsScreen() {
   const router = useRouter();
-  const toast = useToast();
   const [quals, setQuals] = useState<Qualification[]>([]);
   const [loaded, setLoaded] = useState(false);
-  const [error, setError] = useState<unknown>(null);
 
   const load = useCallback(async () => {
-    try {
-      const q = await qualificationsApi.list();
-      setQuals(q);
-      setError(null);
-    } catch (e) {
-      setError(e);
-    } finally {
-      setLoaded(true);
-    }
+    const q = await qualificationsApi.list().catch(() => []);
+    setQuals(q);
+    setLoaded(true);
   }, []);
 
   useFocusEffect(
@@ -51,24 +39,21 @@ export default function QualificationsScreen() {
   );
 
   const remove = (q: Qualification) => {
-    haptics.warning();
-    // Optimistically hide; restore on undo or failure.
-    setQuals(curr => curr.filter(x => x.id !== q.id));
-    scheduleDelete({
-      message: 'სერტიფიკატი წაიშალა',
-      toast,
-      onUndo: () => setQuals(curr => [q, ...curr.filter(x => x.id !== q.id)]),
-      onExecute: async () => {
-        try {
-          await qualificationsApi.remove(q.id);
-          haptics.success();
-          void load();
-        } catch (e) {
-          setQuals(curr => [q, ...curr.filter(x => x.id !== q.id)]);
-          toast.error(friendlyError(e));
-        }
+    Alert.alert('წაშლა?', q.number ?? q.type, [
+      { text: 'გაუქმება', style: 'cancel' },
+      {
+        text: 'წაშლა',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await qualificationsApi.remove(q.id);
+            void load();
+          } catch (e: any) {
+            Alert.alert('წაშლა ვერ მოხერხდა', e?.message ?? 'ქსელის შეცდომა');
+          }
+        },
       },
-    });
+    ]);
   };
 
   const statusOf = (q: Qualification): 'expired' | 'expiring' | 'ok' => {
@@ -86,12 +71,7 @@ export default function QualificationsScreen() {
           headerShown: true,
           title: 'კვალიფიკაცია',
           headerRight: () => (
-            <Pressable
-              onPress={() => router.push('/qualifications/new' as any)}
-              hitSlop={10}
-              accessibilityRole="button"
-              accessibilityLabel="ახალი სერტიფიკატი"
-            >
+            <Pressable onPress={() => router.push('/qualifications/new' as any)} hitSlop={10}>
               <Ionicons name="add-circle" size={28} color={theme.colors.accent} />
             </Pressable>
           ),
@@ -118,15 +98,6 @@ export default function QualificationsScreen() {
                   </Card>
                 ))}
               </View>
-            ) : error ? (
-              <ErrorState
-                error={error}
-                onRetry={() => {
-                  setError(null);
-                  setLoaded(false);
-                  void load();
-                }}
-              />
             ) : (
               <View style={{ alignItems: 'center', paddingVertical: 60, gap: 10 }}>
                 <Ionicons name="ribbon" size={46} color={theme.colors.accent} style={{ opacity: 0.6 }} />

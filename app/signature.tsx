@@ -5,11 +5,8 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Button, Card, Screen } from '../components/ui';
 import { SignatureCanvas } from '../components/SignatureCanvas';
-import { UploadOverlay } from '../components/UploadOverlay';
 import { useSession } from '../lib/session';
 import { useToast } from '../lib/toast';
-import { friendlyError } from '../lib/errorMap';
-import { haptics } from '../lib/haptics';
 import { saveExpertSignature } from '../lib/signatures';
 import { getStorageImageDataUrl } from '../lib/imageUrl';
 import { STORAGE_BUCKETS } from '../lib/supabase';
@@ -47,12 +44,10 @@ export default function SignatureSettingsScreen() {
       await saveExpertSignature(base64);
       await refreshUser();
       setPreview(`data:image/png;base64,${base64}`);
-      haptics.success();
       toast.success('ხელმოწერა შენახულია');
       if (isFirstTime) router.back();
-    } catch (e) {
-      haptics.error();
-      toast.error(friendlyError(e));
+    } catch (e: any) {
+      toast.error(e?.message ?? 'შენახვა ვერ მოხერხდა');
     } finally {
       setBusy(false);
     }
@@ -130,7 +125,6 @@ export default function SignatureSettingsScreen() {
         onCancel={onCancelCapture}
         onConfirm={onConfirm}
       />
-      <UploadOverlay visible={busy} label="ხელმოწერა იტვირთება…" />
     </Screen>
   );
 }

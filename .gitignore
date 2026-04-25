@@ -15,8 +15,3 @@ dist/
 ios/
 android/
 
-
-# Workflow file — has to be added via GitHub web UI because the OAuth
-# token gh CLI uses lacks the `workflow` scope. Run
-# `gh auth refresh -s workflow` to enable pushing it from the CLI.
-.github/workflows/deploy-web.yml

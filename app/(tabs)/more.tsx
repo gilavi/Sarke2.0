@@ -5,7 +5,6 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '../../components/ui';
 import { Skeleton } from '../../components/Skeleton';
-import { ErrorState } from '../../components/ErrorState';
 import { useSession } from '../../lib/session';
 import {
   inspectionsApi,
@@ -16,7 +15,6 @@ import {
 } from '../../lib/services';
 import { googleCalendar } from '../../lib/googleCalendar';
 import { useToast } from '../../lib/toast';
-import { friendlyError } from '../../lib/errorMap';
 import { theme } from '../../lib/theme';
 import type { Project, Qualification, Template } from '../../types/models';
 
@@ -35,46 +33,28 @@ export default function MoreScreen() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [googleConnected, setGoogleConnected] = useState(false);
   const [loaded, setLoaded] = useState(false);
-  const [error, setError] = useState<unknown>(null);
-  const [retryTick, setRetryTick] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
-      let cancelled = false;
       void (async () => {
-        try {
-          const [cs, c, t, p, gc] = await Promise.all([
-            inspectionsApi.counts(),
-            qualificationsApi.list(),
-            templatesApi.list(),
-            projectsApi.list(),
-            // Google status is non-critical — fall back silently.
-            googleCalendar.isConnected().catch(() => false),
-          ]);
-          if (cancelled) return;
-          setCounts(cs);
-          setCerts(c);
-          setTemplates(t);
-          setProjects(p);
-          setGoogleConnected(gc);
-          setError(null);
-        } catch (e) {
-          if (!cancelled) setError(e);
-        } finally {
-          if (!cancelled) setLoaded(true);
-        }
+        const [cs, c, t, p, gc] = await Promise.all([
+          inspectionsApi
+            .counts()
+            .catch(() => ({ total: 0, drafts: 0, completed: 0, latestCreatedAt: null })),
+          qualificationsApi.list().catch(() => []),
+          templatesApi.list().catch(() => []),
+          projectsApi.list().catch(() => []),
+          googleCalendar.isConnected().catch(() => false),
+        ]);
+        setCounts(cs);
+        setCerts(c);
+        setTemplates(t);
+        setProjects(p);
+        setLoaded(true);
+        setGoogleConnected(gc);
       })();
-      return () => {
-        cancelled = true;
-      };
-    }, [retryTick]),
+    }, []),
   );
-
-  const retry = () => {
-    setError(null);
-    setLoaded(false);
-    setRetryTick(t => t + 1);
-  };
 
   const toggleGoogle = async () => {
     try {
@@ -99,14 +79,6 @@ export default function MoreScreen() {
   const systemTpl = templates.filter(t => t.is_system).length;
   const avatarSeed = encodeURIComponent(user?.id ?? user?.email ?? 'guest');
   const avatarUrl = `https://api.dicebear.com/9.x/adventurer/png?seed=${avatarSeed}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf&size=128`;
-
-  if (loaded && error && projects.length === 0 && certs.length === 0 && templates.length === 0) {
-    return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top']}>
-        <ErrorState error={error} onRetry={retry} />
-      </SafeAreaView>
-    );
-  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top']}>

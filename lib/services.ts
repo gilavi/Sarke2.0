@@ -34,5 +34,4 @@ export const certificatesApi = src.certificatesApi;
 export const projectItemsApi = src.projectItemsApi;
 export const schedulesApi = src.schedulesApi;
 export const storageApi = src.storageApi;
-export const remoteSigningApi = src.remoteSigningApi;
 export const isExpiringSoon = src.isExpiringSoon;

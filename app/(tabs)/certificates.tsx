@@ -17,7 +17,6 @@ import { Ionicons } from '@expo/vector-icons';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { Card } from '../../components/ui';
 import { Skeleton } from '../../components/Skeleton';
-import { ErrorState } from '../../components/ErrorState';
 import {
   certificatesApi,
   inspectionsApi,
@@ -25,7 +24,6 @@ import {
   templatesApi,
 } from '../../lib/services';
 import { useToast } from '../../lib/toast';
-import { friendlyError } from '../../lib/errorMap';
 import { theme } from '../../lib/theme';
 import type {
   Certificate,
@@ -100,34 +98,20 @@ export default function CertificatesScreen() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loaded, setLoaded] = useState(false);
-  const [error, setError] = useState<unknown>(null);
 
-  const load = useCallback(
-    async (isRefresh = false) => {
-      try {
-        const [cs, ts, ps, insps] = await Promise.all([
-          certificatesApi.list(),
-          templatesApi.list(),
-          projectsApi.list(),
-          inspectionsApi.recent(500),
-        ]);
-        setCerts(cs);
-        setTemplates(ts);
-        setProjects(ps);
-        setInspections(insps);
-        setError(null);
-      } catch (e) {
-        if (isRefresh) {
-          toast.error(friendlyError(e));
-        } else {
-          setError(e);
-        }
-      } finally {
-        setLoaded(true);
-      }
-    },
-    [toast],
-  );
+  const load = useCallback(async () => {
+    const [cs, ts, ps, insps] = await Promise.all([
+      certificatesApi.list().catch(() => []),
+      templatesApi.list().catch(() => []),
+      projectsApi.list().catch(() => []),
+      inspectionsApi.recent(500).catch(() => []),
+    ]);
+    setCerts(cs);
+    setTemplates(ts);
+    setProjects(ps);
+    setInspections(insps);
+    setLoaded(true);
+  }, []);
 
   useFocusEffect(
     useCallback(() => { void load(); }, [load]),
@@ -190,15 +174,6 @@ export default function CertificatesScreen() {
                 </Card>
               ))}
             </View>
-          ) : error ? (
-            <ErrorState
-              error={error}
-              onRetry={() => {
-                setError(null);
-                setLoaded(false);
-                void load();
-              }}
-            />
           ) : (
             <View style={styles.empty}>
               <Ionicons name="document-text" size={46} color={theme.colors.accent} style={{ opacity: 0.6 }} />
@@ -224,12 +199,7 @@ export default function CertificatesScreen() {
           return (
             <Swipeable
               renderRightActions={() => (
-                <Pressable
-                  onPress={() => deleteCert(item)}
-                  style={styles.swipeDelete}
-                  accessibilityRole="button"
-                  accessibilityLabel="PDF რეპორტის წაშლა"
-                >
+                <Pressable onPress={() => deleteCert(item)} style={styles.swipeDelete}>
                   <Ionicons name="trash" size={18} color={theme.colors.white} />
                   <Text style={{ color: theme.colors.white, fontWeight: '700', fontSize: 11 }}>
                     წაშლა

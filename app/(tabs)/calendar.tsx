@@ -14,7 +14,6 @@ import { useBottomSheet } from '../../components/BottomSheet';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Card } from '../../components/ui';
 import { Skeleton } from '../../components/Skeleton';
-import { ErrorState } from '../../components/ErrorState';
 import {
   questionnairesApi,
   schedulesApi,
@@ -23,7 +22,6 @@ import {
 import { googleCalendar } from '../../lib/googleCalendar';
 import { rescheduleAllFromDb } from '../../lib/notifications';
 import { useToast } from '../../lib/toast';
-import { friendlyError } from '../../lib/errorMap';
 import { theme } from '../../lib/theme';
 import type { ScheduleWithItem, Template } from '../../types/models';
 
@@ -98,28 +96,18 @@ export default function CalendarScreen() {
   const [selected, setSelected] = useState<Date>(() => startOfDay(new Date()));
   const [syncing, setSyncing] = useState(false);
   const [loaded, setLoaded] = useState(false);
-  const [error, setError] = useState<unknown>(null);
 
-  const load = useCallback(
-    async (isRefresh = false) => {
-      try {
-        const [ss, ts] = await Promise.all([schedulesApi.list(), templatesApi.list()]);
-        setSchedules(ss);
-        setTemplates(ts);
-        setError(null);
-        void rescheduleAllFromDb(ss);
-      } catch (e) {
-        if (isRefresh) {
-          toast.error(friendlyError(e));
-        } else {
-          setError(e);
-        }
-      } finally {
-        setLoaded(true);
-      }
-    },
-    [toast],
-  );
+  const load = useCallback(async () => {
+    const [ss, ts] = await Promise.all([
+      schedulesApi.list().catch(() => [] as ScheduleWithItem[]),
+      templatesApi.list().catch(() => [] as Template[]),
+    ]);
+    setSchedules(ss);
+    setTemplates(ts);
+    // Rebuild local reminders from the fresh list — best-effort.
+    void rescheduleAllFromDb(ss);
+    setLoaded(true);
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -222,35 +210,13 @@ export default function CalendarScreen() {
     }
   };
 
-  if (loaded && error && schedules.length === 0 && templates.length === 0) {
-    return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top']}>
-        <ErrorState
-          error={error}
-          onRetry={() => {
-            setError(null);
-            setLoaded(false);
-            void load();
-          }}
-        />
-      </SafeAreaView>
-    );
-  }
-
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top']}>
       <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
         {/* Header */}
         <View style={styles.headerRow}>
           <Text style={styles.title}>კალენდარი</Text>
-          <Pressable
-            onPress={syncGoogle}
-            hitSlop={8}
-            style={styles.syncBtn}
-            accessibilityRole="button"
-            accessibilityLabel="Google კალენდართან სინქრონიზაცია"
-            accessibilityState={{ busy: syncing }}
-          >
+          <Pressable onPress={syncGoogle} hitSlop={8} style={styles.syncBtn}>
             <Ionicons
               name={syncing ? 'sync' : 'cloud-upload-outline'}
               size={14}
@@ -284,13 +250,7 @@ export default function CalendarScreen() {
 
         {/* Month navigation */}
         <View style={styles.monthNav}>
-          <Pressable
-            onPress={prevMonth}
-            hitSlop={10}
-            style={styles.chevBtn}
-            accessibilityRole="button"
-            accessibilityLabel="წინა თვე"
-          >
+          <Pressable onPress={prevMonth} hitSlop={10} style={styles.chevBtn}>
             <Ionicons name="chevron-back" size={20} color={theme.colors.ink} />
           </Pressable>
           <View style={{ flex: 1, alignItems: 'center' }}>
@@ -301,13 +261,7 @@ export default function CalendarScreen() {
           <Pressable onPress={jumpToday} hitSlop={8} style={styles.todayBtn}>
             <Text style={styles.todayBtnText}>დღეს</Text>
           </Pressable>
-          <Pressable
-            onPress={nextMonth}
-            hitSlop={10}
-            style={styles.chevBtn}
-            accessibilityRole="button"
-            accessibilityLabel="შემდეგი თვე"
-          >
+          <Pressable onPress={nextMonth} hitSlop={10} style={styles.chevBtn}>
             <Ionicons name="chevron-forward" size={20} color={theme.colors.ink} />
           </Pressable>
         </View>
@@ -410,56 +364,11 @@ export default function CalendarScreen() {
               ))}
             </>
           ) : daySchedules.length === 0 ? (
-            <View style={{ alignItems: 'center', paddingVertical: 28, gap: 10 }}>
-              <View
-                style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: 28,
-                  backgroundColor: theme.colors.accentSoft,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Ionicons name="calendar-clear-outline" size={26} color={theme.colors.accent} />
-              </View>
-              <Text style={{ fontSize: 15, fontWeight: '700', color: theme.colors.ink }}>
-                ამ დღეს შემოწმება არ არის
+            <Card>
+              <Text style={{ color: theme.colors.inkSoft, fontSize: 13 }}>
+                შემოწმება არ არის ამ დღეს.
               </Text>
-              <Text
-                style={{
-                  fontSize: 13,
-                  color: theme.colors.inkSoft,
-                  textAlign: 'center',
-                  maxWidth: 280,
-                  marginBottom: 4,
-                }}
-              >
-                ან გადახვიდე სხვა დღეზე, ან დაიწყე ახალი ინსპექცია.
-              </Text>
-              <Pressable
-                onPress={() => router.push('/(tabs)/new-inspection' as any)}
-                accessibilityRole="button"
-                accessibilityLabel="ახალი ინსპექცია"
-                style={({ pressed }) => [
-                  {
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 6,
-                    paddingHorizontal: 14,
-                    paddingVertical: 10,
-                    borderRadius: theme.radius.pill,
-                    backgroundColor: theme.colors.accent,
-                  },
-                  pressed && { opacity: 0.85 },
-                ]}
-              >
-                <Ionicons name="add" size={16} color={theme.colors.white} />
-                <Text style={{ color: theme.colors.white, fontWeight: '700', fontSize: 14 }}>
-                  ახალი ინსპექცია
-                </Text>
-              </Pressable>
-            </View>
+            </Card>
           ) : (
             daySchedules.map(s => {
               const projectName = s.project_items?.projects?.name ?? '—';

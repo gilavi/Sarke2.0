@@ -25,5 +25,4 @@ export const STORAGE_BUCKETS = {
   answerPhotos: 'answer-photos',
   pdfs: 'pdfs',
   signatures: 'signatures',
-  remoteSignatures: 'remote-signatures',
 } as const;

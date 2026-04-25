@@ -65,9 +65,8 @@ export default function InspectionDoneScreen() {
 
   return (
     <Screen>
-      {/* Celebratory dead-end: forward nav only. Block swipe-back so the user
-          can't accidentally return to the completed wizard from here. */}
-      <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
+      {/* No header — celebratory dead-end screen, forward nav only. */}
+      <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
         <ScrollView contentContainerStyle={styles.scroll}>
           {/* Success header */}

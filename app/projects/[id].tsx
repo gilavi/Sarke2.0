@@ -18,7 +18,6 @@ import { useBottomSheet } from '../../components/BottomSheet';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { Button, Card, Field, Input, Screen } from '../../components/ui';
 import { Skeleton, SkeletonCard, SkeletonListCard } from '../../components/Skeleton';
-import { ErrorState } from '../../components/ErrorState';
 import {
   projectsApi,
   questionnairesApi,
@@ -26,9 +25,6 @@ import {
 } from '../../lib/services';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { useToast } from '../../lib/toast';
-import { friendlyError } from '../../lib/errorMap';
-import { scheduleDelete } from '../../lib/pendingDeletes';
-import { haptics } from '../../lib/haptics';
 import { getStorageImageDisplayUrl } from '../../lib/imageUrl';
 import { projectAvatar } from '../../lib/projectAvatar';
 import { theme } from '../../lib/theme';
@@ -51,50 +47,37 @@ export default function ProjectDetail() {
   // Flips true after the first fetch finishes. Drives the skeleton → content
   // swap; refocus doesn't re-show skeletons once we have data.
   const [loaded, setLoaded] = useState(false);
-  const [error, setError] = useState<unknown>(null);
 
-  const load = useCallback(
-    async (isRefresh = false) => {
-      if (!id) return;
-      try {
-        const [p, s, q, t, all] = await Promise.all([
-          projectsApi.getById(id),
-          projectsApi.signers(id),
-          questionnairesApi.listByProject(id),
-          templatesApi.list(),
-          projectsApi.list(),
-        ]);
-        setProject(p);
-        setSigners(s);
-        setQuestionnaires(q);
-        setTemplates(t);
-        setOtherProjects(all.filter(x => x.id !== id));
-        setError(null);
+  const load = useCallback(async () => {
+    if (!id) return;
+    const [p, s, q, t, all] = await Promise.all([
+      projectsApi.getById(id).catch(() => null),
+      projectsApi.signers(id).catch(() => []),
+      questionnairesApi.listByProject(id).catch(() => []),
+      templatesApi.list().catch(() => []),
+      projectsApi.list().catch(() => []),
+    ]);
+    setProject(p);
+    setSigners(s);
+    setQuestionnaires(q);
+    setTemplates(t);
+    setOtherProjects(all.filter(x => x.id !== id));
 
-        const previews: Record<string, string> = {};
-        await Promise.all(
-          s
-            .filter(x => x.signature_png_url)
-            .map(async x => {
-              previews[x.id] = await getStorageImageDisplayUrl(
-                STORAGE_BUCKETS.signatures,
-                x.signature_png_url!,
-              );
-            }),
-        );
-        setSignerPreviews(previews);
-      } catch (e) {
-        if (isRefresh) {
-          toast.error(friendlyError(e));
-        } else {
-          setError(e);
-        }
-      } finally {
-        setLoaded(true);
-      }
-    },
-    [id, toast],
-  );
+    // Lazy-load sig thumbnails
+    const previews: Record<string, string> = {};
+    await Promise.all(
+      s
+        .filter(x => x.signature_png_url)
+        .map(async x => {
+          previews[x.id] = await getStorageImageDisplayUrl(
+            STORAGE_BUCKETS.signatures,
+            x.signature_png_url!,
+          );
+        }),
+    );
+    setSignerPreviews(previews);
+    setLoaded(true);
+  }, [id]);
 
   useFocusEffect(
     useCallback(() => {
@@ -137,41 +120,41 @@ export default function ProjectDetail() {
   };
 
   const deleteQuestionnaire = (q: Questionnaire) => {
-    haptics.warning();
-    setQuestionnaires(prev => prev.filter(x => x.id !== q.id));
-    scheduleDelete({
-      message: 'კითხვარი წაიშალა',
-      toast,
-      onUndo: () => setQuestionnaires(prev => [q, ...prev.filter(x => x.id !== q.id)]),
-      onExecute: async () => {
-        try {
-          await questionnairesApi.remove(q.id);
-          haptics.success();
-        } catch (e) {
-          setQuestionnaires(prev => [q, ...prev.filter(x => x.id !== q.id)]);
-          toast.error(friendlyError(e));
-        }
+    Alert.alert('წაშლა?', 'კითხვარი სამუდამოდ წაიშლება.', [
+      { text: 'გაუქმება', style: 'cancel' },
+      {
+        text: 'წაშლა',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await questionnairesApi.remove(q.id);
+            setQuestionnaires(prev => prev.filter(x => x.id !== q.id));
+            toast.success('წაიშალა');
+          } catch (e: any) {
+            toast.error(e?.message ?? 'ვერ წაიშალა');
+          }
+        },
       },
-    });
+    ]);
   };
 
   const deleteSigner = (s: ProjectSigner) => {
-    haptics.warning();
-    setSigners(prev => prev.filter(x => x.id !== s.id));
-    scheduleDelete({
-      message: `${s.full_name} წაიშალა`,
-      toast,
-      onUndo: () => setSigners(prev => [s, ...prev.filter(x => x.id !== s.id)]),
-      onExecute: async () => {
-        try {
-          await projectsApi.deleteSigner(s.id);
-          haptics.success();
-        } catch (e) {
-          setSigners(prev => [s, ...prev.filter(x => x.id !== s.id)]);
-          toast.error(friendlyError(e));
-        }
+    Alert.alert('წაშლა?', s.full_name, [
+      { text: 'გაუქმება', style: 'cancel' },
+      {
+        text: 'წაშლა',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await projectsApi.deleteSigner(s.id);
+            setSigners(prev => prev.filter(x => x.id !== s.id));
+            toast.success('წაიშალა');
+          } catch (e: any) {
+            toast.error(e?.message ?? 'ვერ წაიშალა');
+          }
+        },
       },
-    });
+    ]);
   };
 
   if (!loaded && !project) {
@@ -192,24 +175,6 @@ export default function ProjectDetail() {
             <SkeletonListCard rows={2} />
             <SkeletonListCard rows={3} />
           </ScrollView>
-        </SafeAreaView>
-      </Screen>
-    );
-  }
-
-  if (loaded && error && !project) {
-    return (
-      <Screen>
-        <Stack.Screen options={{ headerShown: true, title: 'პროექტი' }} />
-        <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
-          <ErrorState
-            error={error}
-            onRetry={() => {
-              setError(null);
-              setLoaded(false);
-              void load();
-            }}
-          />
         </SafeAreaView>
       </Screen>
     );
@@ -270,12 +235,7 @@ export default function ProjectDetail() {
                 <Swipeable
                   key={s.id}
                   renderRightActions={() => (
-                    <Pressable
-                      onPress={() => deleteSigner(s)}
-                      style={styles.swipeDelete}
-                      accessibilityRole="button"
-                      accessibilityLabel="ხელმომწერის წაშლა"
-                    >
+                    <Pressable onPress={() => deleteSigner(s)} style={styles.swipeDelete}>
                       <Ionicons name="trash" size={18} color={theme.colors.white} />
                     </Pressable>
                   )}
@@ -351,12 +311,7 @@ export default function ProjectDetail() {
                       <Swipeable
                         key={q.id}
                         renderRightActions={() => (
-                          <Pressable
-                            onPress={() => deleteQuestionnaire(q)}
-                            style={styles.swipeDelete}
-                            accessibilityRole="button"
-                            accessibilityLabel="კითხვარის წაშლა"
-                          >
+                          <Pressable onPress={() => deleteQuestionnaire(q)} style={styles.swipeDelete}>
                             <Ionicons name="trash" size={18} color={theme.colors.white} />
                           </Pressable>
                         )}
@@ -408,12 +363,7 @@ export default function ProjectDetail() {
                       <Swipeable
                         key={q.id}
                         renderRightActions={() => (
-                          <Pressable
-                            onPress={() => deleteQuestionnaire(q)}
-                            style={styles.swipeDelete}
-                            accessibilityRole="button"
-                            accessibilityLabel="კითხვარის წაშლა"
-                          >
+                          <Pressable onPress={() => deleteQuestionnaire(q)} style={styles.swipeDelete}>
                             <Ionicons name="trash" size={18} color={theme.colors.white} />
                           </Pressable>
                         )}
@@ -564,7 +514,7 @@ function EditProjectSheet({
               <Text style={{ fontSize: 18, fontWeight: '800', color: theme.colors.ink, flex: 1 }}>
                 რედაქტირება
               </Text>
-              <Pressable onPress={onClose} hitSlop={10} accessibilityRole="button" accessibilityLabel="დახურვა">
+              <Pressable onPress={onClose} hitSlop={10}>
                 <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
               </Pressable>
             </View>

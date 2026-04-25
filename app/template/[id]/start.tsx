@@ -14,10 +14,8 @@ import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-rou
 import { Ionicons } from '@expo/vector-icons';
 import { Button, Field, Input, Screen } from '../../../components/ui';
 import { Skeleton } from '../../../components/Skeleton';
-import { ErrorState } from '../../../components/ErrorState';
 import { projectsApi, questionnairesApi, templatesApi } from '../../../lib/services';
 import { useToast } from '../../../lib/toast';
-import { friendlyError } from '../../../lib/errorMap';
 import { theme } from '../../../lib/theme';
 import type { Project, Questionnaire, Template } from '../../../types/models';
 
@@ -31,21 +29,17 @@ export default function StartTemplateScreen() {
   const [showingCreate, setShowingCreate] = useState(false);
   const [busy, setBusy] = useState(false);
   const [loaded, setLoaded] = useState(false);
-  const [error, setError] = useState<unknown>(null);
 
   const refresh = useCallback(async () => {
     if (!id) return;
-    try {
-      const [t, ps] = await Promise.all([templatesApi.getById(id), projectsApi.list()]);
-      setTemplate(t);
-      setProjects(ps);
-      setSelected(prev => prev ?? ps[0]?.id ?? null);
-      setError(null);
-    } catch (e) {
-      setError(e);
-    } finally {
-      setLoaded(true);
-    }
+    const [t, ps] = await Promise.all([
+      templatesApi.getById(id).catch(() => null),
+      projectsApi.list().catch(() => []),
+    ]);
+    setTemplate(t);
+    setProjects(ps);
+    setSelected(prev => prev ?? ps[0]?.id ?? null);
+    setLoaded(true);
   }, [id]);
 
   useFocusEffect(
@@ -75,24 +69,6 @@ export default function StartTemplateScreen() {
     setSelected(p.id);
     setShowingCreate(false);
   };
-
-  if (loaded && error && !template) {
-    return (
-      <Screen>
-        <Stack.Screen options={{ headerShown: true, title: 'ახალი კითხვარი', presentation: 'modal' }} />
-        <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
-          <ErrorState
-            error={error}
-            onRetry={() => {
-              setError(null);
-              setLoaded(false);
-              void refresh();
-            }}
-          />
-        </SafeAreaView>
-      </Screen>
-    );
-  }
 
   return (
     <Screen>
@@ -251,7 +227,7 @@ function CreateProjectSheet({
               <Text style={{ fontSize: 18, fontWeight: '800', color: theme.colors.ink, flex: 1 }}>
                 ახალი პროექტი
               </Text>
-              <Pressable onPress={onClose} hitSlop={10} accessibilityRole="button" accessibilityLabel="დახურვა">
+              <Pressable onPress={onClose} hitSlop={10}>
                 <Ionicons name="close" size={24} color={theme.colors.inkSoft} />
               </Pressable>
             </View>

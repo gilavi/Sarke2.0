@@ -1,12 +1,11 @@
 import { useCallback, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { Card, Screen } from '../components/ui';
 import { Skeleton } from '../components/Skeleton';
-import { ErrorState } from '../components/ErrorState';
 import {
   certificatesApi,
   inspectionsApi,
@@ -14,9 +13,6 @@ import {
   templatesApi,
 } from '../lib/services';
 import { useToast } from '../lib/toast';
-import { friendlyError } from '../lib/errorMap';
-import { scheduleDelete } from '../lib/pendingDeletes';
-import { haptics } from '../lib/haptics';
 import { theme } from '../lib/theme';
 import type { Inspection, Project, Template } from '../types/models';
 
@@ -34,43 +30,29 @@ export default function HistoryScreen() {
   // per-row count badge so users can see "this inspection has 2 PDFs".
   const [certCounts, setCertCounts] = useState<Record<string, number>>({});
   const [loaded, setLoaded] = useState(false);
-  const [error, setError] = useState<unknown>(null);
 
-  const load = useCallback(
-    async (isRefresh = false) => {
-      try {
-        const [allQ, allT, allP] = await Promise.all([
-          inspectionsApi.recent(200),
-          templatesApi.list(),
-          projectsApi.list(),
-        ]);
-        setQs(allQ);
-        setTemplates(allT);
-        setProjects(allP);
-        setError(null);
-        const completedIds = allQ.filter(i => i.status === 'completed').map(i => i.id);
-        if (completedIds.length > 0) {
-          // Cert counts are non-critical — fall back silently rather than
-          // wiping out the list.
-          const counts = await certificatesApi
-            .countsByInspection(completedIds)
-            .catch(() => ({} as Record<string, number>));
-          setCertCounts(counts);
-        } else {
-          setCertCounts({});
-        }
-      } catch (e) {
-        if (isRefresh) {
-          toast.error(friendlyError(e));
-        } else {
-          setError(e);
-        }
-      } finally {
-        setLoaded(true);
-      }
-    },
-    [toast],
-  );
+  const load = useCallback(async () => {
+    const [allQ, allT, allP] = await Promise.all([
+      inspectionsApi.recent(200).catch(() => []),
+      templatesApi.list().catch(() => []),
+      projectsApi.list().catch(() => []),
+    ]);
+    setQs(allQ);
+    setTemplates(allT);
+    setProjects(allP);
+    // Only bother fetching cert counts for completed inspections — drafts
+    // can't have certs by definition.
+    const completedIds = allQ.filter(i => i.status === 'completed').map(i => i.id);
+    if (completedIds.length > 0) {
+      const counts = await certificatesApi
+        .countsByInspection(completedIds)
+        .catch(() => ({} as Record<string, number>));
+      setCertCounts(counts);
+    } else {
+      setCertCounts({});
+    }
+    setLoaded(true);
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -92,22 +74,22 @@ export default function HistoryScreen() {
   }
 
   const onDelete = (q: Inspection) => {
-    haptics.warning();
-    setQs(prev => prev.filter(x => x.id !== q.id));
-    scheduleDelete({
-      message: 'ინსპექცია წაიშალა',
-      toast,
-      onUndo: () => setQs(prev => [q, ...prev.filter(x => x.id !== q.id)]),
-      onExecute: async () => {
-        try {
-          await inspectionsApi.remove(q.id);
-          haptics.success();
-        } catch (e) {
-          setQs(prev => [q, ...prev.filter(x => x.id !== q.id)]);
-          toast.error(friendlyError(e));
-        }
+    Alert.alert('წაშლა?', 'ინსპექცია სამუდამოდ წაიშლება.', [
+      { text: 'გაუქმება', style: 'cancel' },
+      {
+        text: 'წაშლა',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await inspectionsApi.remove(q.id);
+            setQs(prev => prev.filter(x => x.id !== q.id));
+            toast.success('წაიშალა');
+          } catch (e: any) {
+            toast.error(e?.message ?? 'ვერ წაიშალა');
+          }
+        },
       },
-    });
+    ]);
   };
 
   return (
@@ -130,12 +112,7 @@ export default function HistoryScreen() {
             return (
               <Swipeable
                 renderRightActions={() => (
-                  <Pressable
-                    onPress={() => onDelete(q)}
-                    style={styles.swipeDelete}
-                    accessibilityRole="button"
-                    accessibilityLabel="ინსპექციის წაშლა"
-                  >
+                  <Pressable onPress={() => onDelete(q)} style={styles.swipeDelete}>
                     <Ionicons name="trash" size={18} color={theme.colors.white} />
                     <Text style={{ color: theme.colors.white, fontSize: 11, fontWeight: '700' }}>
                       წაშლა
@@ -213,15 +190,6 @@ export default function HistoryScreen() {
                   </Card>
                 ))}
               </View>
-            ) : error ? (
-              <ErrorState
-                error={error}
-                onRetry={() => {
-                  setError(null);
-                  setLoaded(false);
-                  void load();
-                }}
-              />
             ) : (
               <View style={{ alignItems: 'center', paddingVertical: 60 }}>
                 <Text style={{ color: theme.colors.inkSoft }}>ცარიელია</Text>

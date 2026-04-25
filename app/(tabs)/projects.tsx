@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
   FlatList,
   KeyboardAvoidingView,
   Modal,
@@ -18,12 +19,8 @@ import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { projectAvatar } from '../../lib/projectAvatar';
 import { Button, Card, Field, Input } from '../../components/ui';
 import { Skeleton } from '../../components/Skeleton';
-import { ErrorState } from '../../components/ErrorState';
 import { projectsApi } from '../../lib/services';
 import { useToast } from '../../lib/toast';
-import { friendlyError } from '../../lib/errorMap';
-import { scheduleDelete } from '../../lib/pendingDeletes';
-import { haptics } from '../../lib/haptics';
 import { theme } from '../../lib/theme';
 import type { Project } from '../../types/models';
 
@@ -38,27 +35,21 @@ export default function ProjectsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [query, setQuery] = useState('');
   const [creating, setCreating] = useState(false);
-  const [error, setError] = useState<unknown>(null);
 
-  const load = useCallback(
-    async (isRefresh = false) => {
-      try {
-        const [ps, s] = await Promise.all([projectsApi.list(), projectsApi.stats()]);
-        setProjects(ps);
-        setStats(s);
-        setError(null);
-      } catch (e) {
-        if (isRefresh) {
-          toast.error(friendlyError(e));
-        } else {
-          setError(e);
-        }
-      } finally {
-        setLoading(false);
-      }
-    },
-    [toast],
-  );
+  const load = useCallback(async () => {
+    try {
+      const [ps, s] = await Promise.all([
+        projectsApi.list(),
+        projectsApi.stats().catch(() => ({}) as Stats),
+      ]);
+      setProjects(ps);
+      setStats(s);
+    } catch {
+      setProjects([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -78,34 +69,26 @@ export default function ProjectsScreen() {
   }, [projects, query]);
 
   const onDelete = (project: Project) => {
-    haptics.warning();
-    const index = projects.findIndex(p => p.id === project.id);
-    setProjects(prev => prev.filter(p => p.id !== project.id));
-    scheduleDelete({
-      message: `"${project.name}" წაიშალა`,
-      toast,
-      onUndo: () =>
-        setProjects(prev => {
-          const without = prev.filter(p => p.id !== project.id);
-          const restored = [...without];
-          restored.splice(Math.max(0, index), 0, project);
-          return restored;
-        }),
-      onExecute: async () => {
-        try {
-          await projectsApi.remove(project.id);
-          haptics.success();
-        } catch (e) {
-          setProjects(prev => {
-            const without = prev.filter(p => p.id !== project.id);
-            const restored = [...without];
-            restored.splice(Math.max(0, index), 0, project);
-            return restored;
-          });
-          toast.error(friendlyError(e));
-        }
-      },
-    });
+    Alert.alert(
+      'წაშლა?',
+      `"${project.name}" — ეს მოცილდება ყველა კითხვარსაც. გსურს გაგრძელება?`,
+      [
+        { text: 'გაუქმება', style: 'cancel' },
+        {
+          text: 'წაშლა',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await projectsApi.remove(project.id);
+              setProjects(prev => prev.filter(p => p.id !== project.id));
+              toast.success('წაიშალა');
+            } catch (e: any) {
+              toast.error(e?.message ?? 'ვერ წაიშალა');
+            }
+          },
+        },
+      ],
+    );
   };
 
   return (
@@ -151,7 +134,7 @@ export default function ProjectsScreen() {
             refreshing={refreshing}
             onRefresh={async () => {
               setRefreshing(true);
-              await load(true);
+              await load();
               setRefreshing(false);
             }}
             tintColor={theme.colors.accent}
@@ -164,15 +147,6 @@ export default function ProjectsScreen() {
                 <ProjectRowSkeleton key={i} />
               ))}
             </View>
-          ) : error ? (
-            <ErrorState
-              error={error}
-              onRetry={() => {
-                setError(null);
-                setLoading(true);
-                void load();
-              }}
-            />
           ) : (
             <View style={styles.empty}>
               <View style={styles.emptyIllustration}>
@@ -201,8 +175,6 @@ export default function ProjectsScreen() {
       <Pressable
         onPress={() => setCreating(true)}
         style={[styles.fab, theme.shadow.button]}
-        accessibilityRole="button"
-        accessibilityLabel="ახალი პროექტი"
       >
         <Ionicons name="add" size={28} color={theme.colors.white} />
       </Pressable>
@@ -278,7 +250,7 @@ function CreateProjectSheet({
             <View style={sheetStyles.handle} />
             <View style={sheetStyles.sheetHeader}>
               <Text style={[sheetStyles.sheetTitle, { flex: 1 }]}>ახალი პროექტი</Text>
-              <Pressable onPress={onClose} hitSlop={10} accessibilityRole="button" accessibilityLabel="დახურვა">
+              <Pressable onPress={onClose} hitSlop={10}>
                 <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
               </Pressable>
             </View>
@@ -338,12 +310,7 @@ function ProjectRow({
   onDelete: () => void;
 }) {
   const renderRightActions = () => (
-    <Pressable
-      onPress={onDelete}
-      style={styles.swipeDelete}
-      accessibilityRole="button"
-      accessibilityLabel="პროექტის წაშლა"
-    >
+    <Pressable onPress={onDelete} style={styles.swipeDelete}>
       <Ionicons name="trash" size={20} color={theme.colors.white} />
       <Text style={{ color: theme.colors.white, fontWeight: '600', fontSize: 12 }}>წაშლა</Text>
     </Pressable>
