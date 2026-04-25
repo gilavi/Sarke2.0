@@ -13,11 +13,12 @@ export type LoggedError = {
 /**
  * Convert anything thrown — Error, Supabase PostgrestError, OAuth error,
  * nested wrapper, plain string, unknown — into a stable message string.
+ * Pass `fallback` to override the default Georgian "unknown error" string.
  */
-export function toErrorMessage(e: unknown): string {
-  if (e == null) return 'უცნობი შეცდომა';
+export function toErrorMessage(e: unknown, fallback = 'უცნობი შეცდომა'): string {
+  if (e == null) return fallback;
   if (typeof e === 'string') return e;
-  if (e instanceof Error) return e.message || 'უცნობი შეცდომა';
+  if (e instanceof Error) return e.message || fallback;
   if (typeof e === 'object') {
     const anyE = e as {
       message?: unknown;
@@ -28,12 +29,12 @@ export function toErrorMessage(e: unknown): string {
     if (typeof anyE.message === 'string') return anyE.message;
     if (typeof anyE.error_description === 'string') return anyE.error_description;
     if (typeof anyE.details === 'string') return anyE.details;
-    if (anyE.error != null) return toErrorMessage(anyE.error);
+    if (anyE.error != null) return toErrorMessage(anyE.error, fallback);
   }
   try {
     return JSON.stringify(e);
   } catch {
-    return 'უცნობი შეცდომა';
+    return fallback;
   }
 }
 
