@@ -219,3 +219,30 @@ export interface Certificate {
   params: Record<string, unknown>;
   generated_at: string;
 }
+
+// ── Remote signing ────────────────────────────────────────────────────────────
+
+export type RemoteSigningStatus =
+  | 'pending'
+  | 'sent'
+  | 'signed'
+  | 'declined'
+  | 'expired';
+
+export interface RemoteSigningRequest {
+  id: string;
+  token: string;
+  inspection_id: string;
+  expert_user_id: string;
+  signer_name: string;
+  signer_phone: string;
+  signer_role: SignerRole;
+  status: RemoteSigningStatus;
+  pdf_signed_url: string | null;
+  signature_png_url: string | null;
+  signed_at: string | null;
+  declined_reason: string | null;
+  expires_at: string;
+  last_sent_at: string | null;
+  created_at: string;
+}

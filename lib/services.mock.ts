@@ -786,3 +786,54 @@ export function isExpiringSoon(q: Qualification): boolean {
   const exp = new Date(q.expires_at).getTime();
   return exp - Date.now() < 30 * 864e5;
 }
+
+// -------- Remote signing (mock) --------
+
+const _remoteSigningMem: import('../types/models').RemoteSigningRequest[] = [];
+
+export const remoteSigningApi = {
+  listByInspection: async (
+    inspectionId: string,
+  ): Promise<import('../types/models').RemoteSigningRequest[]> => {
+    return _remoteSigningMem
+      .filter(r => r.inspection_id === inspectionId)
+      .sort((a, b) => b.created_at.localeCompare(a.created_at));
+  },
+  create: async (args: {
+    inspectionId: string;
+    signerName: string;
+    signerPhone: string;
+    signerRole: import('../types/models').SignerRole;
+  }): Promise<import('../types/models').RemoteSigningRequest> => {
+    const now = new Date();
+    const expires = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+    const row: import('../types/models').RemoteSigningRequest = {
+      id: `mock-${Math.random().toString(36).slice(2, 10)}`,
+      token: Math.random().toString(36).slice(2, 18) + Math.random().toString(36).slice(2, 18),
+      inspection_id: args.inspectionId,
+      expert_user_id: 'mock-user',
+      signer_name: args.signerName,
+      signer_phone: args.signerPhone,
+      signer_role: args.signerRole,
+      status: 'pending',
+      pdf_signed_url: null,
+      signature_png_url: null,
+      signed_at: null,
+      declined_reason: null,
+      expires_at: expires.toISOString(),
+      last_sent_at: null,
+      created_at: now.toISOString(),
+    };
+    _remoteSigningMem.unshift(row);
+    return row;
+  },
+  markSent: async (id: string): Promise<void> => {
+    const r = _remoteSigningMem.find(x => x.id === id);
+    if (r) { r.status = 'sent'; r.last_sent_at = new Date().toISOString(); }
+  },
+  cancel: async (id: string): Promise<void> => {
+    const i = _remoteSigningMem.findIndex(x => x.id === id);
+    if (i >= 0) _remoteSigningMem.splice(i, 1);
+  },
+  signedSignatureUrl: async (_path: string): Promise<string> => MOCK_IMAGE_URI,
+};
