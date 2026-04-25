@@ -20,6 +20,7 @@ import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-rou
 import { Ionicons } from '@expo/vector-icons';
 import { Button, Card, Chip, Screen, SectionHeader } from '../../components/ui';
 import { Skeleton, SkeletonCard, SkeletonListCard } from '../../components/Skeleton';
+import { ErrorState } from '../../components/ErrorState';
 import { AddRemoteSignerModal, type AddRemoteSignerResult } from '../../components/AddRemoteSignerModal';
 import {
   answersApi,
@@ -58,6 +59,8 @@ export default function InspectionDetailScreen() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<unknown>(null);
+  const [notFound, setNotFound] = useState(false);
   const [remoteRequests, setRemoteRequests] = useState<RemoteSigningRequest[]>([]);
   const [addOpen, setAddOpen] = useState(false);
   const [addBusy, setAddBusy] = useState(false);
@@ -65,11 +68,12 @@ export default function InspectionDetailScreen() {
   const load = useCallback(async () => {
     if (!id) return;
     setLoading(true);
+    setLoadError(null);
+    setNotFound(false);
     try {
       const insp = await inspectionsApi.getById(id);
       if (!insp) {
-        toast.error('ინსპექცია ვერ მოიძებნა');
-        setLoading(false);
+        setNotFound(true);
         return;
       }
       setInspection(insp);
@@ -98,10 +102,12 @@ export default function InspectionDetailScreen() {
         setQuestions(qs);
         setAnswers(ans);
       }
+    } catch (e) {
+      setLoadError(e);
     } finally {
       setLoading(false);
     }
-  }, [id, router, toast]);
+  }, [id, router]);
 
   useFocusEffect(
     useCallback(() => {
@@ -229,6 +235,27 @@ export default function InspectionDetailScreen() {
       },
     });
   };
+
+  if (!loading && (notFound || loadError)) {
+    return (
+      <Screen>
+        <Stack.Screen options={{ headerShown: true, title: 'ინსპექცია' }} />
+        <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
+          <ErrorState
+            title={notFound ? 'ინსპექცია ვერ მოიძებნა' : 'ვერ ჩაიტვირთა'}
+            error={loadError ?? undefined}
+            message={notFound ? 'შესაძლოა წაიშალა ან არ გაქვს წვდომა.' : undefined}
+            icon={notFound ? 'alert-circle-outline' : 'cloud-offline-outline'}
+            onRetry={notFound ? undefined : () => void load()}
+            retrying={loading}
+          />
+          <View style={{ padding: 16 }}>
+            <Button title="მთავარ გვერდზე" variant="ghost" onPress={() => router.replace('/(tabs)/home' as any)} />
+          </View>
+        </SafeAreaView>
+      </Screen>
+    );
+  }
 
   if (loading || !inspection) {
     return (
