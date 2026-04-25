@@ -1,5 +1,7 @@
+import { toErrorMessage } from './logError';
+
 export function friendlyError(err: unknown): string {
-  const msg = extractMessage(err);
+  const msg = toErrorMessage(err);
   const lower = msg.toLowerCase();
 
   if (lower.includes('invalid login credentials') || lower.includes('invalid credentials'))
@@ -28,18 +30,11 @@ export function friendlyError(err: unknown): string {
 }
 
 export function isEmailTakenError(err: unknown): boolean {
-  const lower = extractMessage(err).toLowerCase();
+  const lower = toErrorMessage(err).toLowerCase();
   return lower.includes('already registered') || lower.includes('user already exists');
 }
 
-function extractMessage(err: unknown): string {
-  if (!err) return '';
-  if (typeof err === 'string') return err;
-  if (err instanceof Error) return err.message;
-  if (typeof err === 'object' && err !== null) {
-    const anyErr = err as { message?: string; error?: unknown };
-    if (typeof anyErr.message === 'string') return anyErr.message;
-    if (anyErr.error) return extractMessage(anyErr.error);
-  }
-  return String(err);
+export function isCancelledError(err: unknown): boolean {
+  const lower = toErrorMessage(err).toLowerCase();
+  return lower.includes('cancelled') || lower.includes('canceled');
 }

@@ -18,31 +18,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSession } from '../../lib/session';
 import { useToast } from '../../lib/toast';
 import { theme } from '../../lib/theme';
+import { isEmail } from '../../lib/validators';
+import { friendlyError, isCancelledError, isEmailTakenError } from '../../lib/errorMap';
 import { Button, Card, Field, Input } from '../../components/ui';
 
+const MIN_PASSWORD_LEN = 6;
+
 type Mode = 'login' | 'register';
-
-function friendlyError(msg: string): string {
-  const lower = (msg ?? '').toLowerCase();
-  if (lower.includes('invalid login credentials') || lower.includes('invalid credentials'))
-    return 'არასწორი ელ-ფოსტა ან პაროლი';
-  if (lower.includes('email not confirmed'))
-    return 'გთხოვთ, დაადასტუროთ ელ-ფოსტა, შემდეგ სცადეთ შესვლა';
-  if (lower.includes('password should be at least'))
-    return 'პაროლი უნდა შეიცავდეს მინიმუმ 6 სიმბოლოს';
-  if (lower.includes('rate limit') || lower.includes('too many'))
-    return 'ძალიან ბევრი მცდელობა. მოიცადეთ და კვლავ სცადეთ';
-  if (lower.includes('network') || lower.includes('fetch failed'))
-    return 'ქსელის შეცდომა. შეამოწმეთ ინტერნეტ კავშირი';
-  if (lower.includes('cancelled') || lower.includes('canceled'))
-    return 'შესვლა გაუქმდა';
-  return msg || 'უცნობი შეცდომა';
-}
-
-function isEmailTakenError(msg: string): boolean {
-  const lower = (msg ?? '').toLowerCase();
-  return lower.includes('already registered') || lower.includes('user already exists');
-}
 
 /* ─── Root Screen ─── */
 
@@ -106,8 +88,8 @@ function ForgotPasswordModal({ visible, onClose }: { visible: boolean; onClose: 
     try {
       await resetPassword(email.trim());
       setSent(true);
-    } catch (e: any) {
-      toast.error(friendlyError(e?.message));
+    } catch (e) {
+      toast.error(friendlyError(e));
     } finally {
       setBusy(false);
     }
@@ -166,12 +148,21 @@ function LoginForm({ onForgotPassword }: { onForgotPassword: () => void }) {
   const [error, setError] = useState<string | null>(null);
 
   const handleSignIn = async () => {
+    const trimmed = email.trim();
+    if (!isEmail(trimmed)) {
+      setError('გთხოვთ შეიყვანოთ ვალიდური ელ-ფოსტა');
+      return;
+    }
+    if (password.length < MIN_PASSWORD_LEN) {
+      setError(`პაროლი უნდა შეიცავდეს მინიმუმ ${MIN_PASSWORD_LEN} სიმბოლოს`);
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
-      await signIn(email.trim(), password);
-    } catch (e: any) {
-      setError(friendlyError(e?.message));
+      await signIn(trimmed, password);
+    } catch (e) {
+      setError(friendlyError(e));
     } finally {
       setBusy(false);
     }
@@ -182,9 +173,8 @@ function LoginForm({ onForgotPassword }: { onForgotPassword: () => void }) {
     setError(null);
     try {
       await signInWithGoogle();
-    } catch (e: any) {
-      const msg = friendlyError(e?.message);
-      if (msg !== 'შესვლა გაუქმდა') setError(msg);
+    } catch (e) {
+      if (!isCancelledError(e)) setError(friendlyError(e));
     } finally {
       setGoogleBusy(false);
     }
@@ -223,7 +213,12 @@ function LoginForm({ onForgotPassword }: { onForgotPassword: () => void }) {
         <Text style={styles.linkText}>პაროლი დაგავიწყდა?</Text>
       </Pressable>
       {error ? <InlineError>{error}</InlineError> : null}
-      <Button title="შესვლა" onPress={handleSignIn} loading={busy} disabled={!email || !password} />
+      <Button
+        title="შესვლა"
+        onPress={handleSignIn}
+        loading={busy}
+        disabled={!isEmail(email.trim()) || password.length < MIN_PASSWORD_LEN}
+      />
       <Divider />
       <GoogleButton onPress={handleGoogle} loading={googleBusy} />
     </View>
@@ -250,7 +245,10 @@ function RegisterForm({
   const [error, setError] = useState<string | null>(null);
 
   const canSubmit =
-    !!firstName.trim() && !!lastName.trim() && !!email.trim() && password.length >= 6;
+    !!firstName.trim() &&
+    !!lastName.trim() &&
+    isEmail(email.trim()) &&
+    password.length >= MIN_PASSWORD_LEN;
 
   const handleRegister = async () => {
     setBusy(true);
@@ -265,8 +263,8 @@ function RegisterForm({
       if (result.needsEmailVerification) {
         onVerificationSent(email.trim());
       }
-    } catch (e: any) {
-      if (isEmailTakenError(e?.message)) {
+    } catch (e) {
+      if (isEmailTakenError(e)) {
         Alert.alert(
           'ელ-ფოსტა უკვე გამოიყენება',
           'ამ ელ-ფოსტით ანგარიში უკვე არსებობს. გსურთ შესვლა?',
@@ -276,7 +274,7 @@ function RegisterForm({
           ],
         );
       } else {
-        setError(friendlyError(e?.message));
+        setError(friendlyError(e));
       }
     } finally {
       setBusy(false);
@@ -288,9 +286,8 @@ function RegisterForm({
     setError(null);
     try {
       await signInWithGoogle();
-    } catch (e: any) {
-      const msg = friendlyError(e?.message);
-      if (msg !== 'შესვლა გაუქმდა') setError(msg);
+    } catch (e) {
+      if (!isCancelledError(e)) setError(friendlyError(e));
     } finally {
       setGoogleBusy(false);
     }

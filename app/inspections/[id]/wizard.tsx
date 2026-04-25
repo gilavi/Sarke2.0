@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -16,7 +16,8 @@ import {
 import { getStorageImageDisplayUrl } from '../../../lib/imageUrl';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import { haptic } from '../../../lib/haptics';
-import { useOffline } from '../../../lib/offline';
+import { useOffline, stripServerFields } from '../../../lib/offline';
+import { logError, toErrorMessage } from '../../../lib/logError';
 import { useToast } from '../../../lib/toast';
 import { theme } from '../../../lib/theme';
 import type {
@@ -30,6 +31,24 @@ import type {
 
 const stepKey = (qid: string) => `wizard:${qid}:step`;
 const harnessCountKey = (qid: string) => `wizard:${qid}:harnessCount`;
+
+// Empty/null is always allowed — the user may not have answered yet.
+function isAnswerShapeValidForType(type: Question['type'], a: Answer): boolean {
+  switch (type) {
+    case 'yesno':
+      return a.value_bool === null || typeof a.value_bool === 'boolean';
+    case 'measure':
+      return a.value_num === null || typeof a.value_num === 'number';
+    case 'freetext':
+      return a.value_text === null || typeof a.value_text === 'string';
+    case 'component_grid':
+      return a.grid_values === null || (typeof a.grid_values === 'object' && !Array.isArray(a.grid_values));
+    case 'photo_upload':
+      return true; // photos are stored in answer_photos, not Answer.value_*
+    default:
+      return true;
+  }
+}
 
 // --- Flat steps ---
 
@@ -95,6 +114,7 @@ export default function QuestionnaireWizard() {
   const router = useRouter();
   const toast = useToast();
   const offline = useOffline();
+  const insets = useSafeAreaInsets();
 
   const [questionnaire, setQuestionnaire] = useState<Inspection | null>(null);
   const [template, setTemplate] = useState<Template | null>(null);
@@ -148,17 +168,11 @@ export default function QuestionnaireWizard() {
       if (ctrl.cancelled) return;
       if (!q) throw new Error('არ მოიძებნა');
       // Fold any locally-queued inspection patch over the remote row — but
-      // only the user-edit fields. Status/completed_at come from the server
-      // and must NOT be overlaid: a queued completion that hasn't flushed yet
-      // would otherwise trigger CompletedRedirect → detail-screen sees the
-      // still-draft server row → detail bounces back to /wizard → infinite loop.
+      // only the user-edit fields. Re-applying status/completed_at would
+      // bounce the wizard↔detail redirect.
       const localPatch = await offline.hydrateQuestionnairePatch(q.id);
       if (ctrl.cancelled) return;
-      const safePatch = localPatch ? { ...localPatch } : null;
-      if (safePatch) {
-        delete (safePatch as Partial<Inspection>).status;
-        delete (safePatch as Partial<Inspection>).completed_at;
-      }
+      const safePatch = localPatch ? stripServerFields(localPatch) : null;
       const qMerged: Inspection = { ...q, ...(safePatch ?? {}) };
       setQuestionnaire(qMerged);
       const t = await templatesApi.getById(qMerged.template_id);
@@ -172,8 +186,9 @@ export default function QuestionnaireWizard() {
         if (ctrl.cancelled) return;
         setQuestions(qs);
         let remoteOk = true;
-        const existing = await answersApi.list(qMerged.id).catch(() => {
+        const existing = await answersApi.list(qMerged.id).catch((err) => {
           remoteOk = false;
+          logError(err, 'wizard.answers.list');
           return [] as Answer[];
         });
         if (ctrl.cancelled) return;
@@ -181,8 +196,21 @@ export default function QuestionnaireWizard() {
         const pmap: Record<string, AnswerPhoto[]> = {};
         for (const a of existing) {
           map[a.question_id] = a;
-          pmap[a.id] = await answersApi.photos(a.id).catch(() => []);
-          if (ctrl.cancelled) return;
+        }
+        const photoResults = await Promise.all(
+          existing.map((a) =>
+            answersApi.photos(a.id).catch((err) => {
+              logError(err, 'wizard.answers.photos');
+              return [] as AnswerPhoto[];
+            }),
+          ),
+        );
+        if (ctrl.cancelled) return;
+        existing.forEach((a, i) => {
+          pmap[a.id] = photoResults[i];
+        });
+        if (!remoteOk) {
+          toast.info('მონაცემები ქეშიდან ჩაიტვირთა — სინქრონიზაცია მოხდება ხელახლა.');
         }
         // Overlay cached-local answers only for questions that still have a
         // pending queue op — otherwise a stale cache would silently clobber
@@ -227,9 +255,10 @@ export default function QuestionnaireWizard() {
           setHarnessRowCount(parsed);
         }
       }
-    } catch (e: any) {
+    } catch (e) {
       if (!ctrl.cancelled) {
-        toast.error(`ჩატვირთვა ვერ მოხერხდა: ${e?.message ?? 'ქსელის შეცდომა'}`);
+        logError(e, 'wizard.load');
+        toast.error(`ჩატვირთვა ვერ მოხერხდა: ${toErrorMessage(e)}`);
       }
     } finally {
       clearTimeout(timeoutId);
@@ -289,6 +318,16 @@ export default function QuestionnaireWizard() {
         notes: null,
       } as Answer);
     const next = mutate({ ...current });
+    if (!isAnswerShapeValidForType(question.type, next)) {
+      logError(
+        new Error(`answer/type mismatch: q=${question.id} type=${question.type}`),
+        'wizard.patchAnswer.shape',
+      );
+      // Don't enqueue a payload that the server schema would reject — the
+      // user can keep editing locally; surface a soft warning instead.
+      toast.error('პასუხის ფორმატი არასწორია — გთხოვთ შეასწოროთ');
+      return;
+    }
     // Optimistic update so UI feels instant
     setAnswers(prev => {
       const updated = { ...prev, [question.id]: next };
@@ -307,8 +346,9 @@ export default function QuestionnaireWizard() {
         comment: next.comment,
         notes: next.notes,
       });
-    } catch (e: any) {
-      toast.error(`პასუხი ვერ შეინახა: ${e?.message ?? 'ქსელის შეცდომა'}`);
+    } catch (e) {
+      logError(e, 'wizard.patchAnswer.enqueue');
+      toast.error(`პასუხი ვერ შეინახა: ${toErrorMessage(e)}`);
     }
   };
 
@@ -542,7 +582,7 @@ export default function QuestionnaireWizard() {
             </Animated.View>
           )}
 
-          <View style={styles.footer}>
+          <View style={[styles.footer, { paddingBottom: 16 + insets.bottom }]}>
             {isYesNo ? (
               <View style={{ flexDirection: 'row', gap: 12 }}>
                 <Pressable

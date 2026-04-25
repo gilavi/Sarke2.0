@@ -30,6 +30,7 @@ import {
 import { theme } from '../../lib/theme';
 import { Button, Field, Input } from '../../components/ui';
 import { Skeleton } from '../../components/Skeleton';
+import { MapPicker, type LatLng } from '../../components/MapPicker';
 import { useToast } from '../../lib/toast';
 import type { Inspection, Project, Qualification, Template } from '../../types/models';
 
@@ -423,6 +424,7 @@ function ProjectPickerSheet({
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
   const [address, setAddress] = useState('');
+  const [pin, setPin] = useState<LatLng | null>(null);
   const [busy, setBusy] = useState(false);
 
   // Reset form + view every time the sheet opens
@@ -433,6 +435,7 @@ function ProjectPickerSheet({
       setName('');
       setCompany('');
       setAddress('');
+      setPin(null);
       setBusy(false);
     }
   }, [visible]);
@@ -467,7 +470,13 @@ function ProjectPickerSheet({
     if (!name.trim()) return;
     setBusy(true);
     try {
-      await projectsApi.create({ name: name.trim(), companyName: company.trim() || null, address: address.trim() || null });
+      await projectsApi.create({
+        name: name.trim(),
+        companyName: company.trim() || null,
+        address: address.trim() || null,
+        latitude: pin?.latitude ?? null,
+        longitude: pin?.longitude ?? null,
+      });
       await onCreated();
       onClose();
     } catch (e: any) {
@@ -594,7 +603,12 @@ function ProjectPickerSheet({
                 </View>
 
                 {/* Form fields */}
-                <View style={{ gap: 12, marginTop: 4 }}>
+                <ScrollView
+                  keyboardShouldPersistTaps="handled"
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={{ gap: 12, paddingTop: 4, paddingBottom: 8 }}
+                  style={{ maxHeight: '78%' }}
+                >
                   <Field label="სახელი">
                     <Input
                       value={name}
@@ -609,7 +623,10 @@ function ProjectPickerSheet({
                   <Field label="მისამართი">
                     <Input value={address} onChangeText={setAddress} placeholder="ობიექტის მისამართი" />
                   </Field>
-                </View>
+                  <Field label="მდებარეობა რუკაზე">
+                    <MapPicker value={pin} onChange={setPin} addressHint={address} />
+                  </Field>
+                </ScrollView>
 
                 <Button
                   title="შექმნა"

@@ -152,12 +152,14 @@ function seed(): MockDB {
     id: 'proj-1', user_id: MOCK_USER_ID,
     name: 'ვაკე-საბურთალოს ობიექტი',
     company_name: 'Demo Construction', address: 'თბილისი',
+    latitude: 41.7151, longitude: 44.8271,
     created_at: new Date(Date.now() - 30 * 864e5).toISOString(),
   };
   const proj2: Project = {
     id: 'proj-2', user_id: MOCK_USER_ID,
     name: 'ისანის ობიექტი',
     company_name: 'BuildCo', address: 'თბილისი, ისანი',
+    latitude: null, longitude: null,
     created_at: new Date(Date.now() - 10 * 864e5).toISOString(),
   };
 
@@ -262,6 +264,8 @@ export const projectsApi = {
     name: string;
     companyName?: string | null;
     address?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
   }): Promise<Project> => {
     const db = await load();
     const p: Project = {
@@ -270,6 +274,8 @@ export const projectsApi = {
       name: args.name,
       company_name: args.companyName ?? null,
       address: args.address ?? null,
+      latitude: args.latitude ?? null,
+      longitude: args.longitude ?? null,
       created_at: now(),
     };
     db.projects.push(p);
@@ -278,7 +284,7 @@ export const projectsApi = {
   },
   update: async (
     id: string,
-    patch: Partial<Pick<Project, 'name' | 'company_name' | 'address'>>,
+    patch: Partial<Pick<Project, 'name' | 'company_name' | 'address' | 'latitude' | 'longitude'>>,
   ): Promise<Project> => {
     const db = await load();
     const p = db.projects.find(x => x.id === id);

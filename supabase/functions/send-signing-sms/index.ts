@@ -27,6 +27,33 @@ function json(data: unknown, status = 200) {
   });
 }
 
+// Strict E.164: '+' followed by 8–15 digits, first digit 1–9.
+function isE164(phone: string): boolean {
+  return /^\+[1-9]\d{7,14}$/.test(phone);
+}
+
+// Tight delays so the function never hangs the caller. Network exceptions
+// retry (likely the request never reached Twilio); 5xx is NOT retried
+// because Twilio may have actually queued the SMS — duplicate-send risk
+// outweighs transient-failure recovery. The client gets `retryable: true`
+// in the response and can re-invoke if it wants.
+const RETRY_DELAYS_MS = [200, 600];
+
+async function postTwilioWithRetry(
+  url: string,
+  init: RequestInit,
+): Promise<Response> {
+  for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
+    try {
+      return await fetch(url, init);
+    } catch (e) {
+      if (attempt >= RETRY_DELAYS_MS.length) throw e;
+      await new Promise((r) => setTimeout(r, RETRY_DELAYS_MS[attempt]));
+    }
+  }
+  throw new Error('twilio_unreachable');
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
@@ -70,6 +97,13 @@ Deno.serve(async (req) => {
       return json({ error: 'expired' }, 400);
     }
 
+    // Validate the signer phone is E.164 BEFORE we hit Twilio. A malformed
+    // number wastes a Twilio call and leaves the request stuck in 'pending'.
+    const signerPhone = (rsr.signer_phone as string | null)?.trim() ?? '';
+    if (!isE164(signerPhone)) {
+      return json({ error: 'invalid_phone', phone: signerPhone }, 400);
+    }
+
     // ── Build SMS body ────────────────────────────────────────────────────
     const signingUrl = `${SIGN_WEB_URL}/#/sign/${rsr.token}`;
     const smsBody =
@@ -86,26 +120,40 @@ Deno.serve(async (req) => {
       return json({ error: 'twilio_not_configured' }, 500);
     }
 
-    const twilioRes = await fetch(
-      `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: 'Basic ' + btoa(`${accountSid}:${authToken}`),
-          'Content-Type': 'application/x-www-form-urlencoded',
+    let twilioRes: Response;
+    try {
+      twilioRes = await postTwilioWithRetry(
+        `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: 'Basic ' + btoa(`${accountSid}:${authToken}`),
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            To: signerPhone,
+            From: fromNumber,
+            Body: smsBody,
+          }).toString(),
         },
-        body: new URLSearchParams({
-          To:   rsr.signer_phone as string,
-          From: fromNumber,
-          Body: smsBody,
-        }).toString(),
-      },
-    );
+      );
+    } catch (e) {
+      console.error('Twilio unreachable after retries:', e);
+      // Leave status as-is so the client can resend. Don't flip to 'sent'.
+      return json({ error: 'twilio_unreachable', retryable: true }, 502);
+    }
 
     if (!twilioRes.ok) {
-      const errBody = await twilioRes.json() as { message?: string };
-      console.error('Twilio error:', errBody);
-      return json({ error: errBody.message ?? 'twilio_error' }, 502);
+      const errBody = await twilioRes.json().catch(() => ({})) as { message?: string; code?: number };
+      console.error('Twilio error:', twilioRes.status, errBody);
+      return json(
+        {
+          error: errBody.message ?? 'twilio_error',
+          code: errBody.code,
+          retryable: twilioRes.status >= 500,
+        },
+        502,
+      );
     }
 
     // ── Mark sent ─────────────────────────────────────────────────────────

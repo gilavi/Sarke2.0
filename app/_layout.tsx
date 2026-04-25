@@ -15,6 +15,7 @@ import { TERMS_VERSION } from '../lib/terms';
 import { ToastProvider } from '../lib/toast';
 import { OfflineProvider } from '../lib/offline';
 import { OfflineBanner } from '../components/OfflineBanner';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 import { theme } from '../lib/theme';
 
 // Codes we've already tried to exchange. Prevents a double-exchange when both
@@ -130,17 +131,19 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <BottomSheetProvider>
-          <ToastProvider>
-            <OfflineProvider>
-              <SessionProvider>
-                <StatusBar style="dark" />
-                <OfflineBanner />
-                <AuthGate />
-              </SessionProvider>
-            </OfflineProvider>
-          </ToastProvider>
-        </BottomSheetProvider>
+        <ErrorBoundary>
+          <BottomSheetProvider>
+            <ToastProvider>
+              <OfflineProvider>
+                <SessionProvider>
+                  <StatusBar style="dark" />
+                  <OfflineBanner />
+                  <AuthGate />
+                </SessionProvider>
+              </OfflineProvider>
+            </ToastProvider>
+          </BottomSheetProvider>
+        </ErrorBoundary>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

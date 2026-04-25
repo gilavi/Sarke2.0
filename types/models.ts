@@ -62,6 +62,8 @@ export interface Project {
   name: string;
   company_name: string | null;
   address: string | null;
+  latitude: number | null;
+  longitude: number | null;
   created_at: string;
 }
 

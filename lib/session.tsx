@@ -50,6 +50,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     // on a shared device and purge the previous user's draft/offline data
     // before the new user starts writing.
     let lastUserId: string | null = null;
+
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) {
         lastUserId = data.session.user.id;
@@ -57,11 +58,20 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       } else {
         setState({ status: 'signedOut' });
       }
+    }).catch((e) => {
+      console.warn('[session] getSession failed', e);
+      setState({ status: 'signedOut' });
     });
+
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       const nextUserId = session?.user?.id ?? null;
+      // Token expiry → sign out so AuthGate routes to /login instead of
+      // leaving the user on a stale screen with a dead session.
+      if (event === 'TOKEN_REFRESHED' && !session) {
+        setState({ status: 'signedOut' });
+        return;
+      }
       if (event === 'SIGNED_OUT' || (lastUserId && nextUserId && nextUserId !== lastUserId)) {
-        // Sign-out or account switch — drop anything keyed to the previous user.
         void purgeUserScopedStorage();
       }
       lastUserId = nextUserId;
@@ -71,6 +81,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         setState({ status: 'signedOut' });
       }
     });
+
     return () => sub.subscription.unsubscribe();
   }, []);
 

@@ -7,6 +7,7 @@ import {
   Platform,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -19,6 +20,7 @@ import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { projectAvatar } from '../../lib/projectAvatar';
 import { Button, Card, Field, Input } from '../../components/ui';
 import { Skeleton } from '../../components/Skeleton';
+import { MapPicker, type LatLng } from '../../components/MapPicker';
 import { projectsApi } from '../../lib/services';
 import { useToast } from '../../lib/toast';
 import { theme } from '../../lib/theme';
@@ -210,6 +212,7 @@ function CreateProjectSheet({
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
   const [address, setAddress] = useState('');
+  const [pin, setPin] = useState<LatLng | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -217,6 +220,7 @@ function CreateProjectSheet({
       setName('');
       setCompany('');
       setAddress('');
+      setPin(null);
       setBusy(false);
     }
   }, [visible]);
@@ -229,6 +233,8 @@ function CreateProjectSheet({
         name: name.trim(),
         companyName: company.trim() || null,
         address: address.trim() || null,
+        latitude: pin?.latitude ?? null,
+        longitude: pin?.longitude ?? null,
       });
       onCreated(p);
     } catch (e: any) {
@@ -254,7 +260,12 @@ function CreateProjectSheet({
                 <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
               </Pressable>
             </View>
-            <View style={{ gap: 12, marginTop: 4 }}>
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ gap: 12, paddingTop: 4, paddingBottom: 8 }}
+              style={{ maxHeight: '78%' }}
+            >
               <Field label="სახელი">
                 <Input
                   value={name}
@@ -269,7 +280,10 @@ function CreateProjectSheet({
               <Field label="მისამართი">
                 <Input value={address} onChangeText={setAddress} placeholder="ობიექტის მისამართი" />
               </Field>
-            </View>
+              <Field label="მდებარეობა რუკაზე">
+                <MapPicker value={pin} onChange={setPin} addressHint={address} />
+              </Field>
+            </ScrollView>
             <Button
               title="შექმნა"
               onPress={save}

@@ -22,12 +22,32 @@ type AnswerUpsertPayload = Partial<Answer> & {
 type QuestionnaireUpdatePayload = Partial<Inspection> & { id: string };
 
 type QueueOp =
-  | { kind: 'answer_upsert'; payload: AnswerUpsertPayload }
-  | { kind: 'questionnaire_update'; payload: QuestionnaireUpdatePayload };
+  | { kind: 'answer_upsert'; payload: AnswerUpsertPayload; attempts?: number }
+  | { kind: 'questionnaire_update'; payload: QuestionnaireUpdatePayload; attempts?: number };
 
 const QUEUE_KEY = '@offline:queue';
 const answersKey = (qid: string) => `@offline:answers:${qid}`;
 const questionnaireKey = (qid: string) => `@offline:questionnaire:${qid}`;
+
+// Fields the server owns. Persisting them locally and merging back on reload
+// would re-apply a queued completion and trigger the wizard↔detail redirect loop.
+const SERVER_CANONICAL_INSPECTION_FIELDS = [
+  'status',
+  'completed_at',
+  'updated_at',
+  'created_at',
+  'user_id',
+] as const;
+
+export function stripServerFields<T extends Partial<Inspection>>(patch: T): T {
+  const out = { ...patch } as T & Record<string, unknown>;
+  for (const k of SERVER_CANONICAL_INSPECTION_FIELDS) {
+    delete out[k];
+  }
+  return out as T;
+}
+
+const MAX_OP_RETRIES = 3;
 
 type OfflineContextValue = {
   isOnline: boolean;
@@ -92,7 +112,11 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
     if (!onlineRef.current) return;
     await runExclusive(async () => {
       let ops = await readQueue();
-      while (ops.length > 0 && onlineRef.current) {
+      // Cap iterations to the starting count so a single bad payload
+      // can't stall the queue — failing ops rotate to the back.
+      let processed = 0;
+      const startCount = ops.length;
+      while (ops.length > 0 && onlineRef.current && processed < startCount) {
         const op = ops[0];
         try {
           if (op.kind === 'answer_upsert') {
@@ -110,10 +134,18 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
           }
           ops = ops.slice(1);
           await setQueue(ops);
-        } catch {
-          // Leave the op at head of queue; retry on next reconnect.
-          break;
+        } catch (err) {
+          const attempts = (op.attempts ?? 0) + 1;
+          if (attempts >= MAX_OP_RETRIES) {
+            console.warn('[offline] dropping op after retries', op.kind, err);
+            ops = ops.slice(1);
+          } else {
+            // Rotate to the back so subsequent ops still get a chance.
+            ops = [...ops.slice(1), { ...op, attempts }];
+          }
+          await setQueue(ops);
         }
+        processed++;
       }
     });
   }, [setQueue, runExclusive]);
@@ -190,8 +222,10 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
           }
         }
         filtered.push({ kind: 'questionnaire_update', payload: merged });
-        // Also stash the merged patch so the screen can hydrate it before remote sync.
-        await AsyncStorage.setItem(questionnaireKey(payload.id), JSON.stringify(merged));
+        // Cache patch must NOT include server-canonical fields: re-applying
+        // them on reload triggered the wizard↔detail redirect loop.
+        const cachePatch = stripServerFields(merged);
+        await AsyncStorage.setItem(questionnaireKey(payload.id), JSON.stringify(cachePatch));
         await setQueue(filtered);
       });
       if (onlineRef.current) void flush();

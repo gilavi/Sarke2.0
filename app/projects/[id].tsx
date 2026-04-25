@@ -14,10 +14,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { useBottomSheet } from '../../components/BottomSheet';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { Button, Card, Field, Input, Screen } from '../../components/ui';
 import { Skeleton, SkeletonCard, SkeletonListCard } from '../../components/Skeleton';
+import { MapPicker, type LatLng } from '../../components/MapPicker';
 import {
   projectsApi,
   questionnairesApi,
@@ -205,7 +207,7 @@ export default function ProjectDetail() {
         }}
       />
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
-        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 110, gap: 14 }}>
+        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24, gap: 14 }}>
           {/* Hero meta */}
           <Card>
             <Text style={styles.eyebrow}>პროექტი</Text>
@@ -220,6 +222,26 @@ export default function ProjectDetail() {
               <View style={styles.metaRow}>
                 <Ionicons name="location" size={14} color={theme.colors.inkSoft} />
                 <Text style={styles.metaText}>{project.address}</Text>
+              </View>
+            ) : null}
+            {project?.latitude != null && project?.longitude != null ? (
+              <View style={styles.miniMapWrap}>
+                <MapView
+                  provider={PROVIDER_DEFAULT}
+                  style={StyleSheet.absoluteFill}
+                  pointerEvents="none"
+                  initialRegion={{
+                    latitude: project.latitude,
+                    longitude: project.longitude,
+                    latitudeDelta: 0.01,
+                    longitudeDelta: 0.01,
+                  }}
+                >
+                  <Marker
+                    coordinate={{ latitude: project.latitude, longitude: project.longitude }}
+                    pinColor={theme.colors.accent}
+                  />
+                </MapView>
               </View>
             ) : null}
           </Card>
@@ -291,6 +313,20 @@ export default function ProjectDetail() {
               <Text style={styles.eyebrow}>კითხვარები</Text>
               <Text style={{ color: theme.colors.inkSoft, fontSize: 12 }}>{questionnaires.length}</Text>
             </View>
+
+            {/* New-questionnaire pill, mirrors the "+ ხელმომწერის დამატება"
+                button in the signers card so the two action affordances feel
+                consistent. Placed at the top so it's reachable without
+                scrolling past the lists. */}
+            <Pressable
+              onPress={startNewQuestionnaire}
+              style={[styles.addSignerRow, { marginTop: 10 }]}
+            >
+              <Ionicons name="add-circle" size={18} color={theme.colors.accent} />
+              <Text style={{ color: theme.colors.accent, fontWeight: '600' }}>
+                + ახალი კითხვარი
+              </Text>
+            </Pressable>
 
             {/* ── Drafts section ── */}
             <View style={styles.qSection}>
@@ -426,10 +462,6 @@ export default function ProjectDetail() {
             </View>
           ) : null}
         </ScrollView>
-
-        <View style={styles.footer}>
-          <Button title="+ ახალი კითხვარი" onPress={startNewQuestionnaire} />
-        </View>
       </SafeAreaView>
 
       <EditProjectSheet
@@ -474,6 +506,7 @@ function EditProjectSheet({
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
   const [address, setAddress] = useState('');
+  const [pin, setPin] = useState<LatLng | null>(null);
   const [busy, setBusy] = useState(false);
 
   // Sync when project changes / modal opens
@@ -483,6 +516,11 @@ function EditProjectSheet({
         setName(project.name);
         setCompany(project.company_name ?? '');
         setAddress(project.address ?? '');
+        setPin(
+          project.latitude != null && project.longitude != null
+            ? { latitude: project.latitude, longitude: project.longitude }
+            : null,
+        );
       }
     }, [visible, project]),
   );
@@ -495,6 +533,8 @@ function EditProjectSheet({
         name: name.trim(),
         company_name: company.trim() || null,
         address: address.trim() || null,
+        latitude: pin?.latitude ?? null,
+        longitude: pin?.longitude ?? null,
       }));
       onSaved(saved);
     } catch (e: any) {
@@ -518,7 +558,12 @@ function EditProjectSheet({
                 <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
               </Pressable>
             </View>
-            <View style={{ gap: 12, marginTop: 8 }}>
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ gap: 12, paddingTop: 8, paddingBottom: 8 }}
+              style={{ maxHeight: '78%' }}
+            >
               <Field label="სახელი">
                 <Input value={name} onChangeText={setName} />
               </Field>
@@ -528,7 +573,10 @@ function EditProjectSheet({
               <Field label="მისამართი">
                 <Input value={address} onChangeText={setAddress} />
               </Field>
-            </View>
+              <Field label="მდებარეობა რუკაზე">
+                <MapPicker value={pin} onChange={setPin} addressHint={address} />
+              </Field>
+            </ScrollView>
             <Button
               title="შენახვა"
               onPress={save}
@@ -656,15 +704,14 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
 
-  footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 16,
-    backgroundColor: theme.colors.card,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.hairline,
+  miniMapWrap: {
+    marginTop: 12,
+    height: 140,
+    borderRadius: 14,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: theme.colors.hairline,
+    backgroundColor: theme.colors.subtleSurface,
   },
 
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },

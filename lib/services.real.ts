@@ -17,16 +17,50 @@ import type {
   Template,
 } from '../types/models';
 import * as Crypto from 'expo-crypto';
+import { logError } from './logError';
+import {
+  isAnswer,
+  isInspection,
+  isProject,
+  isQuestion,
+  isTemplate,
+} from './guards';
 
-/**
- * Narrow Supabase's wide `.select().single()` response to a concrete entity
- * shape the callers declared. We deliberately type-assert here so API
- * callers don't have to sprinkle `as unknown as T` at every call site.
- */
-function throwIfError<T>(res: { data: unknown; error: { message: string } | null }): T {
+// Supabase boundary helpers. When a `guard` is supplied, schema drift throws
+// here with a logged context instead of leaking undefined fields into the UI.
+type SupabaseRes = { data: unknown; error: { message: string } | null };
+type GuardOpts<T> = { guard?: (v: unknown) => v is T; context?: string };
+
+function failShape(context: string | undefined, fallback: string): never {
+  const ctx = context ?? fallback;
+  const err = new Error(`shape mismatch at ${ctx}`);
+  logError(err, ctx);
+  throw err;
+}
+
+function throwIfError<T>(res: SupabaseRes, opts?: GuardOpts<T>): T {
   if (res.error) throw new Error(res.error.message);
   if (res.data == null) throw new Error('No data');
+  if (opts?.guard && !opts.guard(res.data)) failShape(opts.context, 'throwIfError');
   return res.data as T;
+}
+
+function throwIfErrorMaybe<T>(res: SupabaseRes, opts?: GuardOpts<T>): T | null {
+  if (res.error) throw new Error(res.error.message);
+  if (res.data == null) return null;
+  if (opts?.guard && !opts.guard(res.data)) failShape(opts.context, 'throwIfErrorMaybe');
+  return res.data as T;
+}
+
+function listOrThrow<T>(res: SupabaseRes, opts?: GuardOpts<T>): T[] {
+  if (res.error) throw new Error(res.error.message);
+  const rows = (res.data ?? []) as unknown[];
+  if (opts?.guard) {
+    for (const row of rows) {
+      if (!opts.guard(row)) failShape(opts.context, 'listOrThrow');
+    }
+  }
+  return rows as T[];
 }
 
 // -------- Projects --------
@@ -41,15 +75,18 @@ export const projectsApi = {
     return data ?? [];
   },
   getById: async (id: string): Promise<Project | null> => {
-    const { data, error } = await supabase
-      .from('projects')
-      .select('*')
-      .eq('id', id)
-      .maybeSingle();
-    if (error) throw error;
-    return (data as Project | null) ?? null;
+    return throwIfErrorMaybe<Project>(
+      await supabase.from('projects').select('*').eq('id', id).maybeSingle(),
+      { guard: isProject, context: 'projectsApi.getById' },
+    );
   },
-  create: async (args: { name: string; companyName?: string | null; address?: string | null }): Promise<Project> => {
+  create: async (args: {
+    name: string;
+    companyName?: string | null;
+    address?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+  }): Promise<Project> => {
     const user = (await supabase.auth.getUser()).data.user;
     if (!user) throw new Error('Not signed in');
     return throwIfError<Project>(
@@ -60,12 +97,17 @@ export const projectsApi = {
           name: args.name,
           company_name: args.companyName ?? null,
           address: args.address ?? null,
+          latitude: args.latitude ?? null,
+          longitude: args.longitude ?? null,
         })
         .select()
         .single(),
     );
   },
-  update: async (id: string, patch: Partial<Pick<Project, 'name' | 'company_name' | 'address'>>): Promise<Project> => {
+  update: async (
+    id: string,
+    patch: Partial<Pick<Project, 'name' | 'company_name' | 'address' | 'latitude' | 'longitude'>>,
+  ): Promise<Project> => {
     return throwIfError<Project>(
       await supabase.from('projects').update(patch).eq('id', id).select().single(),
     );
@@ -169,23 +211,21 @@ export const templatesApi = {
     return data ?? [];
   },
   getById: async (id: string): Promise<Template | null> => {
-    const { data, error } = await supabase
-      .from('templates')
-      .select('*')
-      .eq('id', id)
-      .maybeSingle();
-    if (error) throw error;
-    return (data as Template | null) ?? null;
+    return throwIfErrorMaybe<Template>(
+      await supabase.from('templates').select('*').eq('id', id).maybeSingle(),
+      { guard: isTemplate, context: 'templatesApi.getById' },
+    );
   },
   questions: async (templateId: string): Promise<Question[]> => {
-    const { data, error } = await supabase
-      .from('questions')
-      .select('*')
-      .eq('template_id', templateId)
-      .order('section')
-      .order('order');
-    if (error) throw error;
-    return data ?? [];
+    return listOrThrow<Question>(
+      await supabase
+        .from('questions')
+        .select('*')
+        .eq('template_id', templateId)
+        .order('section')
+        .order('order'),
+      { guard: isQuestion, context: 'templatesApi.questions' },
+    );
   },
 };
 
@@ -206,13 +246,10 @@ export const inspectionsApi = {
     return data ?? [];
   },
   getById: async (id: string): Promise<Inspection | null> => {
-    const { data, error } = await supabase
-      .from('inspections')
-      .select('*')
-      .eq('id', id)
-      .maybeSingle();
-    if (error) throw error;
-    return (data as Inspection | null) ?? null;
+    return throwIfErrorMaybe<Inspection>(
+      await supabase.from('inspections').select('*').eq('id', id).maybeSingle(),
+      { guard: isInspection, context: 'inspectionsApi.getById' },
+    );
   },
   listByProject: async (projectId: string): Promise<Inspection[]> => {
     const { data, error } = await supabase
@@ -305,12 +342,10 @@ export const questionnairesApi = inspectionsApi;
 
 export const answersApi = {
   list: async (inspectionId: string): Promise<Answer[]> => {
-    const { data, error } = await supabase
-      .from('answers')
-      .select('*')
-      .eq('inspection_id', inspectionId);
-    if (error) throw error;
-    return data ?? [];
+    return listOrThrow<Answer>(
+      await supabase.from('answers').select('*').eq('inspection_id', inspectionId),
+      { guard: isAnswer, context: 'answersApi.list' },
+    );
   },
   upsert: async (a: Partial<Answer> & { inspection_id: string; question_id: string }): Promise<Answer> => {
     return throwIfError<Answer>(
