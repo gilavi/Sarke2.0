@@ -374,7 +374,7 @@ export function illustrationKeyFor(text: string | null | undefined): Illustratio
 
 export function QuestionAvatar({
   illustrationKey,
-  size = 64,
+  size = 112,
 }: {
   illustrationKey: IllustrationKey | null;
   size?: number;
@@ -388,14 +388,12 @@ export function QuestionAvatar({
         height: size,
         borderRadius: size / 2,
         backgroundColor: TINT,
-        borderWidth: 1,
-        borderColor: STROKE,
         overflow: 'hidden',
         alignItems: 'center',
         justifyContent: 'center',
       }}
     >
-      <View style={{ width: size * 0.78, height: size * 0.78 }}>
+      <View style={{ width: size * 0.82, height: size * 0.82 }}>
         <Component />
       </View>
     </View>

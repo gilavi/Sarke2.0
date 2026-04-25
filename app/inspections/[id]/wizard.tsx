@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -67,6 +68,12 @@ function buildSteps(
   );
   const steps: FlatStep[] = [];
   for (const q of sorted) {
+    // Section 3 photo_upload is folded into the conclusion screen as
+    // "საერთო ფოტოები"; section 4 freetext duplicates the conclusion textarea.
+    // Keep the question rows in the DB so answers/photos still attach to a
+    // question_id, just skip the standalone steps.
+    if (q.type === 'photo_upload') continue;
+    if (q.type === 'freetext' && q.section === 4) continue;
     if (q.type === 'component_grid' && q.grid_rows) {
       const isHarness = q.grid_rows[0] === 'N1';
       const rows = isHarness ? q.grid_rows.slice(0, harnessRowCount) : q.grid_rows;
@@ -141,6 +148,10 @@ export default function QuestionnaireWizard() {
       useNativeDriver: true,
     }).start();
   }, [stepIndex]);
+
+  // First-render fade out of the skeleton — kicks in once data is ready.
+  const enterAnim = useRef(new Animated.Value(0)).current;
+  const enteredRef = useRef(false);
 
   // Cancellation token for in-flight load(). Each load() run gets its own
   // object; when the screen blurs we flip `cancelled = true` on the active
@@ -299,6 +310,15 @@ export default function QuestionnaireWizard() {
     [questions, harnessRowCount],
   );
   const step = steps[stepIndex];
+
+  // Section 3 photo_upload no longer has its own step — the answer/photos
+  // attach to it but render on the conclusion screen as "საერთო ფოტოები".
+  const photoQuestion = useMemo(
+    () => questions.find(q => q.type === 'photo_upload') ?? null,
+    [questions],
+  );
+  const photoAnswerId = photoQuestion ? answers[photoQuestion.id]?.id ?? null : null;
+  const generalPhotos: AnswerPhoto[] = photoAnswerId ? photos[photoAnswerId] ?? [] : [];
 
   const patchAnswer = async (question: Question, mutate: (a: Answer) => Answer) => {
     if (!questionnaire) return;
@@ -465,10 +485,18 @@ export default function QuestionnaireWizard() {
     }
   };
 
-  if (loading) {
+  // Hold the skeleton until everything we need to paint a real step has
+  // arrived: data done loading, template resolved, AND a valid step at the
+  // current index. Without the extra guards, react-18's between-await paints
+  // can briefly show step 0 before stepIndex jumps to a saved value.
+  const ready = !loading && !!template && !!step;
+  if (!ready) {
+    if (questionnaire?.status === 'completed') {
+      return <CompletedRedirect id={questionnaire.id} />;
+    }
     return (
       <Screen style={{ backgroundColor: theme.colors.card }}>
-        <Stack.Screen options={{ headerShown: false }} />
+        <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
         <SafeAreaView style={{ flex: 1 }} edges={['top']}>
           <View style={styles.topBar}>
             <Text style={styles.stepperText}> </Text>
@@ -485,14 +513,13 @@ export default function QuestionnaireWizard() {
     return <CompletedRedirect id={questionnaire.id} />;
   }
 
-  if (!step) {
-    return (
-      <Screen>
-        <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <Text style={{ color: theme.colors.inkSoft }}>შინაარსი ვერ ჩაიტვირთა.</Text>
-        </SafeAreaView>
-      </Screen>
-    );
+  if (!enteredRef.current) {
+    enteredRef.current = true;
+    Animated.timing(enterAnim, {
+      toValue: 1,
+      duration: 220,
+      useNativeDriver: true,
+    }).start();
   }
 
   const stepAnswered = hasAnswer(step, answers, photos, conclusion, isSafe, harnessName, template);
@@ -514,9 +541,33 @@ export default function QuestionnaireWizard() {
     setStepIndex(i => Math.min(steps.length - 1, i + 1));
   };
 
+  const goBack = () => {
+    haptic.light();
+    setStepIndex(i => Math.max(0, i - 1));
+  };
+
+  // Swipe-right anywhere on the wizard body goes to the previous step. We
+  // disable the native iOS swipe-back (gestureEnabled=false on Stack.Screen)
+  // so this can't accidentally exit the flow mid-inspection.
+  const swipeBack = useMemo(
+    () =>
+      Gesture.Pan()
+        .activeOffsetX([20, 999])
+        .failOffsetY([-20, 20])
+        .runOnJS(true)
+        .onEnd(e => {
+          if (e.translationX > 60 && stepIndex > 0) {
+            goBack();
+          }
+        }),
+    [stepIndex],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  );
+
   return (
     <Screen style={{ backgroundColor: theme.colors.card }}>
-      <Stack.Screen options={{ headerShown: false }} />
+      <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
+      <Animated.View style={{ flex: 1, opacity: enterAnim }}>
       <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.card }} edges={['top']}>
         <View style={styles.topBar}>
           <Text style={styles.stepperText}>
@@ -530,6 +581,7 @@ export default function QuestionnaireWizard() {
             <Ionicons name="close" size={28} color={theme.colors.ink} />
           </Pressable>
         </View>
+        <GestureDetector gesture={swipeBack}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={{ flex: 1 }}
@@ -576,6 +628,11 @@ export default function QuestionnaireWizard() {
                     template={template}
                     harnessName={harnessName}
                     onHarnessName={setHarnessName}
+                    photoQuestion={photoQuestion}
+                    photoAnswerId={photoAnswerId}
+                    photos={generalPhotos}
+                    onPickPhoto={() => photoQuestion && pickPhoto(photoQuestion)}
+                    onDeletePhoto={deletePhoto}
                   />
                 )}
               </ScrollView>
@@ -627,7 +684,15 @@ export default function QuestionnaireWizard() {
                   saveConclusionAndGo();
                 }}
               />
-            ) : isScaffoldRow ? null : (
+            ) : isScaffoldRow && step.kind === 'gridRow' ? (
+              <ScaffoldFooterButtons
+                question={step.question}
+                row={step.row}
+                answer={answers[step.question.id]}
+                onAnswer={patchAnswer}
+                onAdvance={goNext}
+              />
+            ) : (
               <Button
                 title={stepAnswered ? 'შემდეგი' : 'გამოტოვება'}
                 variant={stepAnswered ? 'primary' : 'secondary'}
@@ -727,7 +792,9 @@ export default function QuestionnaireWizard() {
           </View>
         </Modal>
         </KeyboardAvoidingView>
+        </GestureDetector>
       </SafeAreaView>
+      </Animated.View>
     </Screen>
   );
 }
@@ -759,10 +826,10 @@ const QuestionStep = memo(function QuestionStep({
   const illoKey = illustrationKeyFor(question.title);
 
   return (
-    <View style={{ gap: 24, paddingTop: 24 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+    <View style={{ gap: 20, paddingTop: 16 }}>
+      <View style={{ alignItems: 'center', gap: 14 }}>
         {illoKey ? <QuestionAvatar illustrationKey={illoKey} /> : null}
-        <Text style={[styles.questionTitle, { flex: 1 }]}>{question.title}</Text>
+        <Text style={[styles.questionTitle, { textAlign: 'center' }]}>{question.title}</Text>
       </View>
 
       {question.type === 'measure' ? (
@@ -1053,6 +1120,102 @@ function MeasureInput({
   );
 }
 
+// Renders the bottom action bar for scaffold grid rows: 3 status buttons by
+// default, or 2 detail buttons + a "შემდეგი" Button when option 1 or 2 is
+// selected. Lives in the global footer so the buttons sit at the same y as
+// the yes/no choice buttons on other steps.
+function ScaffoldFooterButtons({
+  question,
+  row,
+  answer,
+  onAnswer,
+  onAdvance,
+}: {
+  question: Question;
+  row: string;
+  answer: Answer | undefined;
+  onAnswer: (q: Question, m: (a: Answer) => Answer) => Promise<void>;
+  onAdvance: () => void;
+}) {
+  const cols = question.grid_cols ?? [];
+  const statusCols = cols.filter(c => c !== 'კომენტარი');
+  const values: Record<string, string> = (answer?.grid_values ?? {})[row] ?? {};
+  const selectedStatus = statusCols.find(c => values[c] !== undefined) ?? null;
+  const noneCol = statusCols.find(c => c.includes('გააჩნია')) ?? null;
+  const detailCols = statusCols.filter(c => c !== noneCol);
+  const showDetails = selectedStatus !== null && selectedStatus !== noneCol;
+
+  const setStatus = (col: string) => {
+    onAnswer(question, a => {
+      const grid: GridValues = { ...(a.grid_values ?? {}) };
+      const prev = grid[row] ?? {};
+      const cur: Record<string, string> = {};
+      if (prev['კომენტარი']) cur['კომენტარი'] = prev['კომენტარი'];
+      cur[col] = col;
+      grid[row] = cur;
+      return { ...a, grid_values: grid };
+    });
+  };
+
+  const renderStatusButton = (col: string) => {
+    const isSelected = selectedStatus === col;
+    const { tint, bg, icon } = scaffoldColStyle(col);
+    const isNone = col === noneCol;
+    return (
+      <Pressable
+        key={col}
+        onPress={() => {
+          haptic.light();
+          setStatus(col);
+          if (isNone) onAdvance();
+        }}
+        style={[
+          styles.statusOption,
+          isSelected && { backgroundColor: bg, borderColor: tint },
+        ]}
+      >
+        <Ionicons
+          name={isSelected ? (icon as any) : 'ellipse-outline'}
+          size={22}
+          color={isSelected ? tint : theme.colors.inkFaint}
+        />
+        <Text
+          style={{
+            flex: 1,
+            fontSize: 15,
+            fontWeight: '600',
+            color: isSelected ? tint : theme.colors.ink,
+          }}
+        >
+          {col}
+        </Text>
+        {isSelected && (
+          <Ionicons name="checkmark-circle" size={18} color={tint} />
+        )}
+      </Pressable>
+    );
+  };
+
+  return (
+    <View style={{ gap: 8 }}>
+      {detailCols.map(renderStatusButton)}
+      {showDetails ? (
+        <Button
+          title="შემდეგი"
+          style={{ paddingVertical: 14 }}
+          iconRight={<Ionicons name="chevron-forward" size={18} color={theme.colors.white} />}
+          onPress={() => {
+            haptic.light();
+            onAdvance();
+          }}
+        />
+      ) : noneCol ? (
+        renderStatusButton(noneCol)
+      ) : null}
+    </View>
+  );
+}
+
 // Returns a tint/bg pair for scaffold status columns
 function scaffoldColStyle(col: string): { tint: string; bg: string; icon: string } {
   if (col.includes('დაზიანება')) return { tint: theme.colors.danger, bg: theme.colors.dangerSoft, icon: 'close-circle' };
@@ -1117,46 +1280,7 @@ const GridRowStep = memo(function GridRowStep({
     const [commentOpen, setCommentOpen] = useState(false);
     const showCommentField = !!commentValue || commentOpen;
     const noneCol = statusCols.find(c => c.includes('გააჩნია')) ?? null;
-    const detailCols = statusCols.filter(c => c !== noneCol);
     const showDetails = selectedStatus !== null && selectedStatus !== noneCol;
-
-    const renderStatusButton = (col: string) => {
-      const isSelected = selectedStatus === col;
-      const { tint, bg, icon } = scaffoldColStyle(col);
-      const isNone = col === noneCol;
-      return (
-        <Pressable
-          key={col}
-          onPress={() => {
-            setValue(col, col, true);
-            if (isNone) onAdvance();
-          }}
-          style={[
-            styles.statusOption,
-            isSelected && { backgroundColor: bg, borderColor: tint },
-          ]}
-        >
-          <Ionicons
-            name={isSelected ? (icon as any) : 'ellipse-outline'}
-            size={22}
-            color={isSelected ? tint : theme.colors.inkFaint}
-          />
-          <Text
-            style={{
-              flex: 1,
-              fontSize: 15,
-              fontWeight: '600',
-              color: isSelected ? tint : theme.colors.ink,
-            }}
-          >
-            {col}
-          </Text>
-          {isSelected && (
-            <Ionicons name="checkmark-circle" size={18} color={tint} />
-          )}
-        </Pressable>
-      );
-    };
 
     return (
       <ScrollView
@@ -1164,10 +1288,9 @@ const GridRowStep = memo(function GridRowStep({
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
       >
-        <View style={{ alignItems: 'center', paddingVertical: 8, gap: 8 }}>
+        <View style={{ alignItems: 'center', paddingVertical: 8, gap: 12 }}>
           <QuestionAvatar illustrationKey={illustrationKeyFor(row)} />
-          <Text style={{ fontSize: 12, color: theme.colors.inkSoft }}>{question.title}</Text>
-          <Text style={{ fontSize: 28, fontWeight: '800', color: theme.colors.ink, textAlign: 'center' }}>
+          <Text style={{ fontSize: 22, fontWeight: '800', color: theme.colors.ink, textAlign: 'center' }}>
             {row}
           </Text>
         </View>
@@ -1223,23 +1346,6 @@ const GridRowStep = memo(function GridRowStep({
             ) : null}
           </>
         ) : null}
-
-        <View style={{ gap: 8 }}>
-          {detailCols.map(renderStatusButton)}
-          {showDetails ? (
-            <Button
-              title="შემდეგი"
-              style={{ paddingVertical: 14 }}
-              iconRight={<Ionicons name="chevron-forward" size={18} color={theme.colors.white} />}
-              onPress={() => {
-                haptic.light();
-                onAdvance();
-              }}
-            />
-          ) : noneCol ? (
-            renderStatusButton(noneCol)
-          ) : null}
-        </View>
 
         <PhotoPreviewModal
           photo={previewPhoto}
@@ -1374,6 +1480,11 @@ const ConclusionStep = memo(function ConclusionStep({
   template,
   harnessName,
   onHarnessName,
+  photoQuestion,
+  photoAnswerId,
+  photos,
+  onPickPhoto,
+  onDeletePhoto,
 }: {
   conclusion: string;
   onConclusion: (s: string) => void;
@@ -1382,13 +1493,20 @@ const ConclusionStep = memo(function ConclusionStep({
   template: Template | null;
   harnessName: string;
   onHarnessName: (s: string) => void;
+  photoQuestion: Question | null;
+  photoAnswerId: string | null;
+  photos: AnswerPhoto[];
+  onPickPhoto: () => void;
+  onDeletePhoto: (photo: AnswerPhoto) => Promise<void>;
 }) {
   const needsHarness = template?.category === 'harness';
   const harnessEmpty = needsHarness && !harnessName.trim();
   const conclusionEmpty = !conclusion.trim();
+  const [previewPhoto, setPreviewPhoto] = useState<AnswerPhoto | null>(null);
+  const hasPhotos = photos.length > 0;
 
   return (
-    <View style={{ gap: 14 }}>
+    <View style={{ gap: 18 }}>
       <View style={{ alignItems: 'center', paddingTop: 8 }}>
         <QuestionAvatar illustrationKey="conclusion" />
       </View>
@@ -1425,27 +1543,70 @@ const ConclusionStep = memo(function ConclusionStep({
           <Text style={styles.fieldError}>სავალდებულო ველი</Text>
         ) : null}
       </View>
-      <View>
-        <Text style={styles.label}>
-          უსაფრთხოების სტატუსი <Text style={{ color: theme.colors.danger }}>*</Text>
-        </Text>
-        <View style={{ gap: 10 }}>
+      {photoQuestion ? (
+        <View style={{ gap: 8 }}>
+          <Text style={styles.label}>საერთო ფოტოები</Text>
+          {hasPhotos ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 10, paddingVertical: 4 }}
+            >
+              {photos.map(p => (
+                <Pressable key={p.id} onPress={() => setPreviewPhoto(p)} style={styles.photoTile}>
+                  <PhotoThumb photo={p} size={120} />
+                </Pressable>
+              ))}
+              <Pressable onPress={onPickPhoto} style={styles.addPhotoTile}>
+                <Ionicons name="add" size={32} color={theme.colors.inkSoft} />
+              </Pressable>
+            </ScrollView>
+          ) : (
+            <View style={styles.chipRow}>
+              <Pressable onPress={onPickPhoto} style={styles.assistChip}>
+                <Ionicons name="camera-outline" size={16} color={theme.colors.inkSoft} />
+                <Text style={styles.assistChipText}>ფოტო</Text>
+              </Pressable>
+            </View>
+          )}
+          <PhotoPreviewModal
+            photo={previewPhoto}
+            visible={!!previewPhoto}
+            onClose={() => setPreviewPhoto(null)}
+            onDelete={async (photo) => {
+              await onDeletePhoto(photo);
+            }}
+          />
+        </View>
+      ) : null}
+      <View style={{ gap: 10, paddingTop: 4 }}>
+        <Text style={styles.decisionHeader}>გადაწყვეტილება</Text>
+        <View style={{ flexDirection: 'row', gap: 12 }}>
           <Pressable
             onPress={() => {
               haptic.light();
               onIsSafe(true);
             }}
             style={[
-              styles.safetyOption,
-              isSafe === true && { backgroundColor: theme.colors.accentSoft, borderColor: theme.colors.accent },
+              styles.decisionButton,
+              isSafe === true
+                ? { backgroundColor: theme.colors.accent, borderColor: theme.colors.accent }
+                : { backgroundColor: theme.colors.accentSoft, borderColor: theme.colors.accentSoft },
             ]}
           >
             <Ionicons
-              name={isSafe === true ? 'checkmark-circle' : 'ellipse-outline'}
-              size={22}
-              color={isSafe === true ? theme.colors.accent : theme.colors.inkSoft}
+              name="shield-checkmark"
+              size={28}
+              color={isSafe === true ? theme.colors.white : theme.colors.accent}
             />
-            <Text style={{ fontSize: 14, fontWeight: '600' }}>უსაფრთხოა</Text>
+            <Text
+              style={[
+                styles.decisionLabel,
+                { color: isSafe === true ? theme.colors.white : theme.colors.accent },
+              ]}
+            >
+              უსაფრთხოა
+            </Text>
           </Pressable>
           <Pressable
             onPress={() => {
@@ -1453,16 +1614,25 @@ const ConclusionStep = memo(function ConclusionStep({
               onIsSafe(false);
             }}
             style={[
-              styles.safetyOption,
-              isSafe === false && { backgroundColor: theme.colors.dangerSoft, borderColor: theme.colors.danger },
+              styles.decisionButton,
+              isSafe === false
+                ? { backgroundColor: theme.colors.danger, borderColor: theme.colors.danger }
+                : { backgroundColor: theme.colors.dangerSoft, borderColor: theme.colors.dangerSoft },
             ]}
           >
             <Ionicons
-              name={isSafe === false ? 'close-circle' : 'ellipse-outline'}
-              size={22}
-              color={isSafe === false ? theme.colors.danger : theme.colors.inkSoft}
+              name="warning"
+              size={28}
+              color={isSafe === false ? theme.colors.white : theme.colors.danger}
             />
-            <Text style={{ fontSize: 14, fontWeight: '600' }}>არ არის უსაფრთხო</Text>
+            <Text
+              style={[
+                styles.decisionLabel,
+                { color: isSafe === false ? theme.colors.white : theme.colors.danger },
+              ]}
+            >
+              არ არის უსაფრთხო
+            </Text>
           </Pressable>
         </View>
         {isSafe === null ? (
@@ -1812,6 +1982,29 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 2,
     borderColor: 'transparent',
+  },
+  decisionHeader: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+    color: theme.colors.inkSoft,
+  },
+  decisionButton: {
+    flex: 1,
+    minHeight: 92,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  decisionLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    textAlign: 'center',
   },
   inputError: {
     borderColor: theme.colors.danger,
