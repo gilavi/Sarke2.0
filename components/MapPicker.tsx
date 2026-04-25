@@ -20,11 +20,12 @@ type Props = {
   value: LatLng | null;
   onChange: (loc: LatLng | null) => void;
   /**
-   * Address text from the parent form. Used as the default search query
-   * the first time the search button is pressed, so the user doesn't have
-   * to retype what they already entered above.
+   * Controlled address text. The search box edits this directly, and tapping
+   * or dragging the pin on the map reverse-geocodes into it. There is no
+   * separate address Input above this component — this IS the address field.
    */
-  addressHint?: string;
+  address: string;
+  onAddressChange: (s: string) => void;
   height?: number;
 };
 
@@ -39,21 +40,10 @@ const FALLBACK_REGION: Region = {
 
 const PIN_DELTA = { latitudeDelta: 0.01, longitudeDelta: 0.01 };
 
-export function MapPicker({ value, onChange, addressHint, height = 220 }: Props) {
+export function MapPicker({ value, onChange, address, onAddressChange, height = 220 }: Props) {
   const mapRef = useRef<MapView | null>(null);
-  const [query, setQuery] = useState(addressHint ?? '');
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
-
-  // Keep the search box in sync if the parent address changes (e.g. user
-  // edits the address field above us). Only overwrite if the user hasn't
-  // typed something different into the search box.
-  useEffect(() => {
-    if (addressHint != null && (query === '' || query === addressHint)) {
-      setQuery(addressHint);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addressHint]);
 
   // When `value` changes from outside, animate the map to it.
   useEffect(() => {
@@ -62,16 +52,32 @@ export function MapPicker({ value, onChange, addressHint, height = 220 }: Props)
     }
   }, [value]);
 
+  const reverseGeocode = async (coord: LatLng) => {
+    try {
+      const results = await Location.reverseGeocodeAsync(coord);
+      if (!results.length) return;
+      const r = results[0];
+      const parts = [r.street, r.name, r.city, r.region]
+        .filter((p): p is string => !!p && p !== r.street);
+      const formatted = [r.street, ...parts].filter(Boolean).join(', ');
+      if (formatted) onAddressChange(formatted);
+    } catch (e) {
+      logError(e, 'MapPicker.reverseGeocode');
+    }
+  };
+
   const handleMapPress = (e: { nativeEvent: { coordinate: LatLng } }) => {
     onChange(e.nativeEvent.coordinate);
+    void reverseGeocode(e.nativeEvent.coordinate);
   };
 
   const handleDragEnd = (e: { nativeEvent: { coordinate: LatLng } }) => {
     onChange(e.nativeEvent.coordinate);
+    void reverseGeocode(e.nativeEvent.coordinate);
   };
 
   const handleSearch = async () => {
-    const q = query.trim();
+    const q = address.trim();
     if (!q) return;
     setSearching(true);
     setSearchError(null);
@@ -100,22 +106,22 @@ export function MapPicker({ value, onChange, addressHint, height = 220 }: Props)
       <View style={styles.searchRow}>
         <Ionicons name="search" size={16} color={theme.colors.inkFaint} />
         <TextInput
-          value={query}
+          value={address}
           onChangeText={(t) => {
-            setQuery(t);
+            onAddressChange(t);
             if (searchError) setSearchError(null);
           }}
           onSubmitEditing={handleSearch}
-          placeholder="მისამართის ძებნა"
+          placeholder="მისამართი"
           placeholderTextColor={theme.colors.inkFaint}
           returnKeyType="search"
           style={styles.searchInput}
         />
-        <Pressable onPress={handleSearch} disabled={searching || !query.trim()} hitSlop={10}>
+        <Pressable onPress={handleSearch} disabled={searching || !address.trim()} hitSlop={10}>
           {searching ? (
             <ActivityIndicator size="small" color={theme.colors.accent} />
           ) : (
-            <Text style={[styles.searchBtn, !query.trim() && { opacity: 0.4 }]}>ძებნა</Text>
+            <Text style={[styles.searchBtn, !address.trim() && { opacity: 0.4 }]}>ძებნა</Text>
           )}
         </Pressable>
       </View>

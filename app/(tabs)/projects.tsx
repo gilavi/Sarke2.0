@@ -280,10 +280,12 @@ function CreateProjectSheet({
                 <Input value={company} onChangeText={setCompany} placeholder="შემკვეთი" />
               </Field>
               <Field label="მისამართი">
-                <Input value={address} onChangeText={setAddress} placeholder="ობიექტის მისამართი" />
-              </Field>
-              <Field label="მდებარეობა რუკაზე">
-                <MapPicker value={pin} onChange={setPin} addressHint={address} />
+                <MapPicker
+                  value={pin}
+                  onChange={setPin}
+                  address={address}
+                  onAddressChange={setAddress}
+                />
               </Field>
             </ScrollView>
             <Button

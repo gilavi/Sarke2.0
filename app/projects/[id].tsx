@@ -572,10 +572,12 @@ function EditProjectSheet({
                 <Input value={company} onChangeText={setCompany} />
               </Field>
               <Field label="მისამართი">
-                <Input value={address} onChangeText={setAddress} />
-              </Field>
-              <Field label="მდებარეობა რუკაზე">
-                <MapPicker value={pin} onChange={setPin} addressHint={address} />
+                <MapPicker
+                  value={pin}
+                  onChange={setPin}
+                  address={address}
+                  onAddressChange={setAddress}
+                />
               </Field>
             </ScrollView>
             <Button
