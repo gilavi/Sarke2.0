@@ -1,0 +1,86 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Sarke 2.0 — Supabase REST",
+    "version": "1.0.0",
+    "description": "Placeholder. Run `node website/scripts/fetch-openapi.mjs` with a Supabase secret key to populate this file with the live PostgREST schema. The endpoints below are illustrative; see /database/schema for the authoritative schema."
+  },
+  "servers": [
+    {
+      "url": "https://seskuthiopywrgntsgfw.supabase.co/rest/v1",
+      "description": "Production"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "apikey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "apikey"
+      },
+      "bearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "security": [{"apikey": [], "bearer": []}],
+  "paths": {
+    "/projects": {
+      "get": {
+        "summary": "List projects (RLS-scoped to authed user)",
+        "tags": ["projects"],
+        "responses": {"200": {"description": "Array of Project rows"}}
+      },
+      "post": {
+        "summary": "Create a project",
+        "tags": ["projects"],
+        "responses": {"201": {"description": "Created"}}
+      }
+    },
+    "/inspections": {
+      "get": {
+        "summary": "List inspections",
+        "tags": ["inspections"],
+        "responses": {"200": {"description": "Array of Inspection rows"}}
+      }
+    },
+    "/templates": {
+      "get": {
+        "summary": "List templates (system + owned)",
+        "tags": ["templates"],
+        "responses": {"200": {"description": "Array of Template rows"}}
+      }
+    },
+    "/certificates": {
+      "get": {
+        "summary": "List generated certificates",
+        "tags": ["certificates"],
+        "responses": {"200": {"description": "Array of Certificate rows"}}
+      }
+    },
+    "/qualifications": {
+      "get": {
+        "summary": "List qualifications for the authed user",
+        "tags": ["qualifications"],
+        "responses": {"200": {"description": "Array of Qualification rows"}}
+      }
+    },
+    "/remote_signing_requests": {
+      "get": {
+        "summary": "List async signer invitations",
+        "tags": ["remote-signing"],
+        "responses": {"200": {"description": "Array of RemoteSigningRequest rows"}}
+      }
+    }
+  },
+  "tags": [
+    {"name": "projects"},
+    {"name": "inspections"},
+    {"name": "templates"},
+    {"name": "certificates"},
+    {"name": "qualifications"},
+    {"name": "remote-signing"}
+  ]
+}

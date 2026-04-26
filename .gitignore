@@ -18,3 +18,8 @@ android/
 # Local Supabase CLI state (project ref, version cache). Generated on
 # `supabase link`; not source.
 supabase/.temp/
+
+# Docusaurus build artefacts (the gh-pages workflow rebuilds on push).
+website/build/
+website/.docusaurus/
+website/.cache-loader/
