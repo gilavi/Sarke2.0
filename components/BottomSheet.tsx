@@ -1,11 +1,10 @@
-// Bottom action sheet v5 — reliable dark overlay + spring + haptics.
+// Bottom action sheet — unified component for menus AND form sheets.
 //
-// History:
-// v1: Reanimated 4 worklets — froze the app.
-// v2: Modal's built-in `animationType="slide"` — reliable but stiff.
-// v3: RN core Animated with independent values — no freeze, flat gray.
-// v4: expo-blur backdrop — looked great but native module often fails.
-// v5: Semi-transparent dark overlay (reliable on all devices) + spring.
+// Behaviors (all sheets):
+// - Spring-up + scale entrance with haptic
+// - Backdrop tap → cancel
+// - Swipe-down on body → cancel
+// - Scroll-down at top of BottomSheetScrollView → cancel
 
 import {
   createContext,
@@ -13,6 +12,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -21,25 +21,37 @@ import {
   Easing,
   Modal,
   Pressable,
+  ScrollView,
+  ScrollViewProps,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import {
+  Gesture,
+  GestureDetector,
+  NativeGesture,
+} from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { haptic } from '../lib/haptics';
 import { theme } from '../lib/theme';
 
 export interface BottomSheetOptions {
   title?: string;
-  options: string[];
+  /** Menu options. Ignored if `content` is provided. */
+  options?: string[];
   cancelButtonIndex?: number;
   destructiveButtonIndex?: number;
+  /** Custom body content (form sheets). When set, replaces the options list. */
+  content?: ReactNode | ((api: { dismiss: () => void }) => ReactNode);
+  /** Disable backdrop / swipe / scroll dismiss. Default true. */
+  dismissable?: boolean;
 }
 
 export type ShowBottomSheet = (
   options: BottomSheetOptions,
-  callback: (index: number | undefined) => void,
-) => void;
+  callback?: (index: number | undefined) => void,
+) => { dismiss: () => void };
 
 const Ctx = createContext<ShowBottomSheet | null>(null);
 
@@ -48,6 +60,14 @@ export function useBottomSheet(): ShowBottomSheet {
   if (!ctx) throw new Error('useBottomSheet must be used inside BottomSheetProvider');
   return ctx;
 }
+
+// Internal context for BottomSheetScrollView to register itself with the
+// active sheet (so scroll-down-at-top dismisses).
+interface ScrollCtx {
+  setScrollAtTop: (v: boolean) => void;
+  registerNative: (g: NativeGesture | null) => void;
+}
+const ScrollSheetCtx = createContext<ScrollCtx | null>(null);
 
 interface SheetState {
   options: BottomSheetOptions;
@@ -58,21 +78,24 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
   const callbackRef = useRef<((idx: number | undefined) => void) | null>(null);
   const insets = useSafeAreaInsets();
 
-  // Separate animated values for backdrop (fade) and sheet (slide).
   const backdropProgress = useRef(new Animated.Value(0)).current;
   const sheetProgress = useRef(new Animated.Value(0)).current;
+  // Drag offset in pixels (added on top of the spring-driven slide).
+  const dragY = useRef(new Animated.Value(0)).current;
 
-  // Animate in whenever a sheet appears.
+  const scrollAtTopRef = useRef(true);
+  const nativeGestureRef = useRef<NativeGesture | null>(null);
+  const [nativeGestureVersion, setNativeGestureVersion] = useState(0);
+
   useEffect(() => {
     if (sheet) {
-      // Backdrop fades in with cubic ease — static position
+      dragY.setValue(0);
       Animated.timing(backdropProgress, {
         toValue: 1,
         duration: 300,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }).start();
-      // Sheet springs up with bounce — independent motion
       Animated.spring(sheetProgress, {
         toValue: 1,
         damping: 20,
@@ -84,7 +107,7 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
         haptic.medium();
       });
     }
-  }, [sheet, backdropProgress, sheetProgress]);
+  }, [sheet, backdropProgress, sheetProgress, dragY]);
 
   const dismiss = useCallback(
     (idx: number | undefined) => {
@@ -111,22 +134,37 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
     [backdropProgress, sheetProgress],
   );
 
+  const cancelIndex = sheet?.options.cancelButtonIndex;
+  const dismissable = sheet?.options.dismissable !== false;
+
   const show: ShowBottomSheet = useCallback(
     (options, callback) => {
       const prev = callbackRef.current;
-      callbackRef.current = callback;
+      callbackRef.current = callback ?? null;
       backdropProgress.setValue(0);
       sheetProgress.setValue(0);
+      dragY.setValue(0);
       setSheet({ options });
       prev?.(undefined);
+      return {
+        dismiss: () => dismiss(options.cancelButtonIndex),
+      };
     },
-    [backdropProgress, sheetProgress],
+    [backdropProgress, sheetProgress, dragY, dismiss],
   );
 
-  const translateY = sheetProgress.interpolate({
+  const baseTranslateY = sheetProgress.interpolate({
     inputRange: [0, 1],
     outputRange: [360, 0],
   });
+  const translateY = Animated.add(
+    baseTranslateY,
+    dragY.interpolate({
+      inputRange: [0, 1000],
+      outputRange: [0, 1000],
+      extrapolateLeft: 'clamp',
+    }),
+  );
   const sheetScale = sheetProgress.interpolate({
     inputRange: [0, 1],
     outputRange: [0.94, 1],
@@ -136,90 +174,180 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
     outputRange: [0, 1],
   });
 
+  const panGesture = useMemo(() => {
+    const pan = Gesture.Pan()
+      .enabled(dismissable)
+      .activeOffsetY(10)
+      .failOffsetY(-12)
+      .onUpdate(e => {
+        // Only allow downward drag from the top of any inner scroll view.
+        if (!scrollAtTopRef.current) return;
+        const ty = Math.max(0, e.translationY);
+        dragY.setValue(ty);
+      })
+      .onEnd(e => {
+        const shouldDismiss = e.translationY > 80 || e.velocityY > 600;
+        if (shouldDismiss) {
+          dismiss(cancelIndex);
+        } else {
+          Animated.spring(dragY, {
+            toValue: 0,
+            damping: 18,
+            stiffness: 260,
+            mass: 0.7,
+            useNativeDriver: true,
+          }).start();
+        }
+      });
+    if (nativeGestureRef.current) {
+      return Gesture.Simultaneous(pan, nativeGestureRef.current);
+    }
+    return pan;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dismissable, cancelIndex, dismiss, nativeGestureVersion]);
+
+  const scrollCtx = useMemo<ScrollCtx>(
+    () => ({
+      setScrollAtTop: v => {
+        scrollAtTopRef.current = v;
+      },
+      registerNative: g => {
+        nativeGestureRef.current = g;
+        setNativeGestureVersion(v => v + 1);
+      },
+    }),
+    [],
+  );
+
+  const renderBody = () => {
+    if (!sheet) return null;
+    const { content, options, title, cancelButtonIndex, destructiveButtonIndex } = sheet.options;
+    if (content) {
+      return (
+        <View style={styles.contentBody}>
+          {typeof content === 'function'
+            ? content({ dismiss: () => dismiss(cancelButtonIndex) })
+            : content}
+        </View>
+      );
+    }
+    return (
+      <>
+        {title ? <Text style={styles.title}>{title}</Text> : null}
+        <View style={styles.optionsContainer}>
+          {options?.map((opt, i) => {
+            const isCancel = i === cancelButtonIndex;
+            const isDestructive = i === destructiveButtonIndex;
+            return (
+              <Pressable
+                key={i}
+                onPress={() => {
+                  haptic.light();
+                  dismiss(i);
+                }}
+                style={({ pressed }) => [
+                  styles.option,
+                  i === 0 && !title && { borderTopWidth: 0 },
+                  isCancel && styles.cancelOption,
+                  pressed && styles.optionPressed,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.optionText,
+                    isCancel && styles.cancelText,
+                    isDestructive && styles.destructiveText,
+                  ]}
+                >
+                  {opt}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </>
+    );
+  };
+
   return (
     <Ctx.Provider value={show}>
-      {children}
-      <Modal
-        visible={!!sheet}
-        transparent
-        animationType="none"
-        onRequestClose={() => dismiss(sheet?.options.cancelButtonIndex)}
-        statusBarTranslucent
-      >
-        <View style={StyleSheet.absoluteFillObject}>
-          {/* Dark overlay backdrop — reliable on all devices */}
-          <Animated.View
-            style={[
-              StyleSheet.absoluteFillObject,
-              styles.backdrop,
-              { opacity: backdropOpacity },
-            ]}
-          >
-            <Pressable
-              style={StyleSheet.absoluteFillObject}
-              onPress={() => dismiss(sheet?.options.cancelButtonIndex)}
-            />
-          </Animated.View>
+      <ScrollSheetCtx.Provider value={scrollCtx}>
+        {children}
+        <Modal
+          visible={!!sheet}
+          transparent
+          animationType="none"
+          onRequestClose={() => dismissable && dismiss(cancelIndex)}
+          statusBarTranslucent
+        >
+          <View style={StyleSheet.absoluteFillObject}>
+            <Animated.View
+              style={[
+                StyleSheet.absoluteFillObject,
+                styles.backdrop,
+                { opacity: backdropOpacity },
+              ]}
+            >
+              <Pressable
+                style={StyleSheet.absoluteFillObject}
+                onPress={() => dismissable && dismiss(cancelIndex)}
+              />
+            </Animated.View>
 
-          {/* Sheet slides up + scales independently */}
-          <Animated.View
-            style={[
-              styles.sheetWrapper,
-              {
-                paddingBottom: insets.bottom + 12,
-                transform: [
-                  { translateY },
-                  { scale: sheetScale },
-                ],
-              },
-            ]}
-          >
-            <Pressable>
-              {/* Drag handle */}
-              <View style={styles.handleBar}>
-                <View style={styles.handle} />
-              </View>
-
-              {sheet?.options.title ? (
-                <Text style={styles.title}>{sheet.options.title}</Text>
-              ) : null}
-
-              <View style={styles.optionsContainer}>
-                {sheet?.options.options.map((opt, i) => {
-                  const isCancel = i === sheet.options.cancelButtonIndex;
-                  const isDestructive = i === sheet.options.destructiveButtonIndex;
-                  return (
-                    <Pressable
-                      key={i}
-                      onPress={() => {
-                        haptic.light();
-                        dismiss(i);
-                      }}
-                      style={({ pressed }) => [
-                        styles.option,
-                        i === 0 && !sheet.options.title && { borderTopWidth: 0 },
-                        isCancel && styles.cancelOption,
-                        pressed && styles.optionPressed,
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.optionText,
-                          isCancel && styles.cancelText,
-                          isDestructive && styles.destructiveText,
-                        ]}
-                      >
-                        {opt}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </Pressable>
-          </Animated.View>
-        </View>
-      </Modal>
+            <Animated.View
+              style={[
+                styles.sheetWrapper,
+                {
+                  paddingBottom: insets.bottom + 12,
+                  transform: [{ translateY }, { scale: sheetScale }],
+                },
+              ]}
+            >
+              <GestureDetector gesture={panGesture}>
+                <View collapsable={false}>
+                  <View style={styles.handleBar}>
+                    <View style={styles.handle} />
+                  </View>
+                  {renderBody()}
+                </View>
+              </GestureDetector>
+            </Animated.View>
+          </View>
+        </Modal>
+      </ScrollSheetCtx.Provider>
     </Ctx.Provider>
+  );
+}
+
+/**
+ * ScrollView for use inside a BottomSheet `content`. When scrolled to the
+ * top, dragging further down dismisses the sheet (rather than scroll-bounce).
+ */
+export function BottomSheetScrollView({
+  onScroll,
+  scrollEventThrottle = 16,
+  ...rest
+}: ScrollViewProps) {
+  const ctx = useContext(ScrollSheetCtx);
+  const nativeGesture = useMemo(() => Gesture.Native(), []);
+
+  useEffect(() => {
+    ctx?.registerNative(nativeGesture);
+    return () => ctx?.registerNative(null);
+  }, [ctx, nativeGesture]);
+
+  return (
+    <GestureDetector gesture={nativeGesture}>
+      <ScrollView
+        {...rest}
+        bounces={false}
+        scrollEventThrottle={scrollEventThrottle}
+        onScroll={e => {
+          ctx?.setScrollAtTop(e.nativeEvent.contentOffset.y <= 0);
+          onScroll?.(e);
+        }}
+      />
+    </GestureDetector>
   );
 }
 
@@ -264,6 +392,15 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 24,
     overflow: 'hidden',
     paddingBottom: 8,
+  },
+  contentBody: {
+    backgroundColor: theme.colors.card,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    overflow: 'hidden',
+    paddingHorizontal: 16,
+    paddingTop: 4,
+    paddingBottom: 16,
   },
   option: {
     paddingVertical: 16,

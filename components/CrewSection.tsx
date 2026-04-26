@@ -1,10 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -12,6 +10,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { Button, Field, Input } from './ui';
+import { BottomSheetScrollView, useBottomSheet } from './BottomSheet';
 import { theme } from '../lib/theme';
 import { haptic } from '../lib/haptics';
 import type { CrewMember } from '../types/models';
@@ -45,15 +44,27 @@ export function CrewList({
   crew: CrewMember[];
   onChange: (next: CrewMember[]) => void | Promise<void>;
 }) {
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const showSheet = useBottomSheet();
 
   const removeMember = (id: string) => {
     haptic.medium();
     void onChange(crew.filter(m => m.id !== id));
   };
 
-  const addMember = (member: CrewMember) => {
-    void onChange([...crew, member]);
+  const openAddSheet = () => {
+    haptic.light();
+    const handle = showSheet({
+      content: ({ dismiss }) => (
+        <CrewMemberForm
+          onSave={member => {
+            void onChange([...crew, member]);
+            dismiss();
+          }}
+          onCancel={dismiss}
+        />
+      ),
+    });
+    return handle;
   };
 
   return (
@@ -102,55 +113,35 @@ export function CrewList({
         </Swipeable>
       ))}
 
-      <Pressable
-        onPress={() => {
-          haptic.light();
-          setSheetOpen(true);
-        }}
-        style={styles.addBtn}
-      >
+      <Pressable onPress={openAddSheet} style={styles.addBtn}>
         <Ionicons name="person-add" size={18} color={theme.colors.accent} />
         <Text style={{ color: theme.colors.accent, fontWeight: '600' }}>+ დამატება</Text>
       </Pressable>
-
-      <CrewMemberSheet
-        visible={sheetOpen}
-        onClose={() => setSheetOpen(false)}
-        onSave={member => {
-          addMember(member);
-          setSheetOpen(false);
-        }}
-      />
     </View>
   );
 }
 
 /**
- * Bottom sheet for adding a crew member. Used by both the project screen
- * and the inspection signing flow — keep the API minimal so it stays
- * drop-in.
+ * Form rendered inside the shared BottomSheet for adding a crew member.
+ * Imported by callers who want to render this content via `useBottomSheet().show({ content: … })`.
  */
-export function CrewMemberSheet({
-  visible,
-  onClose,
-  onSave,
+export function CrewMemberForm({
   initial,
+  onSave,
+  onCancel,
 }: {
-  visible: boolean;
-  onClose: () => void;
-  onSave: (member: CrewMember) => void;
-  /** When passed, the sheet is in edit mode. Currently we only ever add. */
   initial?: CrewMember;
+  onSave: (member: CrewMember) => void;
+  onCancel: () => void;
 }) {
-  const [name, setName] = useState('');
-  const [role, setRole] = useState('');
+  const [name, setName] = useState(initial?.name ?? '');
+  const [role, setRole] = useState(initial?.role ?? '');
 
+  // Reset on mount only; sheet is unmounted between opens.
   useEffect(() => {
-    if (visible) {
-      setName(initial?.name ?? '');
-      setRole(initial?.role ?? '');
-    }
-  }, [visible, initial]);
+    setName(initial?.name ?? '');
+    setRole(initial?.role ?? '');
+  }, [initial]);
 
   const canSave = useMemo(() => name.trim().length > 0 && role.trim().length > 0, [name, role]);
 
@@ -166,71 +157,50 @@ export function CrewMemberSheet({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={sheetStyles.backdrop}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <View style={sheetStyles.card}>
-            <View style={sheetStyles.handle} />
-            <View style={sheetStyles.header}>
-              <Text style={sheetStyles.title}>მონაწილის დამატება</Text>
-              <Pressable onPress={onClose} hitSlop={10}>
-                <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
-              </Pressable>
-            </View>
-            <ScrollView
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ gap: 14, paddingTop: 8, paddingBottom: 8 }}
-            >
-              <Field label="სახელი">
-                <Input
-                  value={name}
-                  onChangeText={setName}
-                  placeholder="მაგ. გიორგი მელაძე"
-                  autoFocus
-                />
-              </Field>
-              <Field label="როლი">
-                <View style={sheetStyles.chipRow}>
-                  {ROLE_PRESETS.map(preset => {
-                    const active = role.trim() === preset;
-                    return (
-                      <Pressable
-                        key={preset}
-                        onPress={() => {
-                          haptic.light();
-                          setRole(preset);
-                        }}
-                        style={[sheetStyles.chip, active && sheetStyles.chipActive]}
-                      >
-                        <Text
-                          style={[sheetStyles.chipText, active && sheetStyles.chipTextActive]}
-                        >
-                          {preset}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-                <Input
-                  value={role}
-                  onChangeText={setRole}
-                  placeholder="ან ჩაწერე სხვა როლი"
-                  style={{ marginTop: 8 }}
-                />
-              </Field>
-            </ScrollView>
-            <Button
-              title="შენახვა"
-              onPress={save}
-              disabled={!canSave}
-              style={{ marginTop: 14 }}
-            />
-          </View>
-        </KeyboardAvoidingView>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <View style={sheetStyles.header}>
+        <Text style={sheetStyles.title}>მონაწილის დამატება</Text>
+        <Pressable onPress={onCancel} hitSlop={10}>
+          <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
+        </Pressable>
       </View>
-    </Modal>
+      <BottomSheetScrollView
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ gap: 14, paddingTop: 8, paddingBottom: 8 }}
+      >
+        <Field label="სახელი">
+          <Input
+            value={name}
+            onChangeText={setName}
+            placeholder="მაგ. გიორგი მელაძე"
+            autoFocus
+          />
+        </Field>
+        <Field label="როლი">
+          <View style={sheetStyles.chipRow}>
+            {ROLE_PRESETS.map(preset => {
+              const active = role.trim() === preset;
+              return (
+                <Pressable
+                  key={preset}
+                  onPress={() => {
+                    haptic.light();
+                    setRole(preset);
+                  }}
+                  style={[sheetStyles.chip, active && sheetStyles.chipActive]}
+                >
+                  <Text style={[sheetStyles.chipText, active && sheetStyles.chipTextActive]}>
+                    {preset}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </Field>
+      </BottomSheetScrollView>
+      <Button title="შენახვა" onPress={save} disabled={!canSave} style={{ marginTop: 14 }} />
+    </KeyboardAvoidingView>
   );
 }
 
@@ -295,26 +265,6 @@ const styles = StyleSheet.create({
 });
 
 const sheetStyles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
-  card: {
-    backgroundColor: theme.colors.card,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 18,
-    paddingBottom: 28,
-  },
-  handle: {
-    alignSelf: 'center',
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: theme.colors.hairline,
-    marginBottom: 12,
-  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
