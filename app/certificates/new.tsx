@@ -403,13 +403,24 @@ export default function GenerateCertificateScreen() {
   const persistAdditionalSigners = async (): Promise<SignatureRecord[]> => {
     const recs: SignatureRecord[] = [];
 
+    // Pre-fetch existing signature rows so we can reuse their primary keys
+    // on conflict — the signatures table has a unique (inspection_id,
+    // signer_role) constraint, and the upsert's onConflict resolution can't
+    // change the row's `id` to a fresh UUID without violating the PK.
+    const existingSigs = await signaturesApi.list(inspection!.id).catch(() => [] as SignatureRecord[]);
+    const idForRole = (role: SignerRole): string => {
+      const hit = existingSigs.find(x => x.signer_role === role);
+      return hit?.id ?? crypto.randomUUID();
+    };
+
     // Ad-hoc signers: only persist when both a name AND a signature are present.
     for (const s of additionalSigners.filter(x => x.name?.trim() && x.dataUrl)) {
       const body = dataUrlToArrayBuffer(s.dataUrl!);
       const path = `${inspection!.id}/${s.id}-${Date.now()}.png`;
       await storageApi.upload(STORAGE_BUCKETS.signatures, path, body, 'image/png');
+      const rowId = idForRole(s.role);
       recs.push({
-        id: s.id,
+        id: rowId,
         inspection_id: inspection!.id,
         signer_role: s.role,
         full_name: s.name.trim(),
@@ -421,7 +432,7 @@ export default function GenerateCertificateScreen() {
         person_name: s.name.trim(),
       });
       await signaturesApi.upsert({
-        id: s.id,
+        id: rowId,
         inspection_id: inspection!.id,
         signer_role: s.role,
         full_name: s.name.trim(),
@@ -472,8 +483,13 @@ export default function GenerateCertificateScreen() {
           signature_png_url: path,
         }).catch((e) => logError(e, 'certNew.rosterUpsertRoster'));
       }
+      // Reuse the existing signatures-row id when one is already on file
+      // for this (inspection, role) — otherwise mint a fresh UUID. Using
+      // project_signer.id directly collides with the signatures.id PK
+      // when the same roster signer appears in multiple inspections.
+      const signatureRowId = idForRole(signer.role);
       recs.push({
-        id: signer.id,
+        id: signatureRowId,
         inspection_id: inspection!.id,
         signer_role: signer.role,
         full_name: signer.full_name,
@@ -485,7 +501,7 @@ export default function GenerateCertificateScreen() {
         person_name: signer.full_name,
       });
       await signaturesApi.upsert({
-        id: signer.id,
+        id: signatureRowId,
         inspection_id: inspection!.id,
         signer_role: signer.role,
         full_name: signer.full_name,
