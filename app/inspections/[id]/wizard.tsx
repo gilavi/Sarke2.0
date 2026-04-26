@@ -390,7 +390,7 @@ export default function QuestionnaireWizard() {
     }
   };
 
-  const pickPhoto = async (question: Question) => {
+  const pickPhoto = async (question: Question, rowKey?: string) => {
     if (!questionnaire) return;
     haptic.medium();
     // Photo upload needs network (blob → storage + answer_photos insert).
@@ -439,7 +439,12 @@ export default function QuestionnaireWizard() {
         notes: existing?.notes ?? null,
       });
       if (!existing) setAnswers(prev => ({ ...prev, [question.id]: answer }));
-      const photo = (await answersApi.addPhoto(answer.id, path));
+      // For component_grid questions a single answer holds all rows, so we
+      // tag each photo with `row:<rowKey>` in `caption` to scope it back to
+      // the row it was uploaded from. Other question types pass no rowKey
+      // and the caption stays null.
+      const caption = rowKey ? `row:${rowKey}` : undefined;
+      const photo = (await answersApi.addPhoto(answer.id, path, caption));
       const answerId = answer.id;
       // Use the local URI as storage_path so the thumbnail appears immediately
       // without waiting for a signed URL round-trip. On screen re-focus, the
@@ -614,7 +619,7 @@ export default function QuestionnaireWizard() {
                 harnessRowCount={harnessRowCount}
                 setHarnessRowCount={setHarnessRowCount}
                 onAnswer={patchAnswer}
-                onPickPhoto={() => pickPhoto(step.question)}
+                onPickPhoto={() => pickPhoto(step.question, step.row)}
                 onDeletePhoto={deletePhoto}
                 onAdvance={goNext}
               />
@@ -1310,7 +1315,12 @@ const GridRowStep = memo(function GridRowStep({
   const cols = question.grid_cols ?? [];
   const isHarness = (question.grid_rows?.[0] ?? '') === 'N1';
   const values: Record<string, string> = (answer?.grid_values ?? {})[row] ?? {};
-  const answerPhotos = answer ? photosByAnswer[answer.id] ?? [] : [];
+  // The whole component_grid shares one answer record; photos for that
+  // answer are tagged with `caption = "row:<row>"` at upload so we can scope
+  // them back to the row that uploaded them.
+  const allAnswerPhotos = answer ? photosByAnswer[answer.id] ?? [] : [];
+  const rowTag = `row:${row}`;
+  const answerPhotos = allAnswerPhotos.filter(p => p.caption === rowTag);
   const hasPhotos = answerPhotos.length > 0;
   const [previewPhoto, setPreviewPhoto] = useState<AnswerPhoto | null>(null);
 
@@ -1603,60 +1613,7 @@ const ConclusionStep = memo(function ConclusionStep({
           ) : null}
         </View>
       ) : null}
-      <View>
-        <Text style={styles.label}>
-          დასკვნა <Text style={{ color: theme.colors.danger }}>*</Text>
-        </Text>
-        <TextInput
-          multiline
-          value={conclusion}
-          onChangeText={onConclusion}
-          style={[styles.textarea, conclusionEmpty && styles.inputError]}
-          placeholder="აღწერე დეტალურად..."
-          placeholderTextColor={theme.colors.inkFaint}
-          inputAccessoryViewID={Platform.OS === 'ios' ? accessoryId : undefined}
-        />
-        {conclusionEmpty ? (
-          <Text style={styles.fieldError}>სავალდებულო ველი</Text>
-        ) : null}
-      </View>
-      {photoQuestion ? (
-        <View style={{ gap: 8 }}>
-          <Text style={styles.label}>საერთო ფოტოები</Text>
-          {hasPhotos ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ gap: 10, paddingVertical: 4 }}
-            >
-              {photos.map(p => (
-                <Pressable key={p.id} onPress={() => setPreviewPhoto(p)} style={styles.photoTile}>
-                  <PhotoThumb photo={p} size={120} />
-                </Pressable>
-              ))}
-              <Pressable onPress={onPickPhoto} style={styles.addPhotoTile}>
-                <Ionicons name="add" size={32} color={theme.colors.inkSoft} />
-              </Pressable>
-            </ScrollView>
-          ) : (
-            <View style={styles.chipRow}>
-              <Pressable onPress={onPickPhoto} style={styles.assistChip}>
-                <Ionicons name="camera-outline" size={16} color={theme.colors.inkSoft} />
-                <Text style={styles.assistChipText}>ფოტო</Text>
-              </Pressable>
-            </View>
-          )}
-          <PhotoPreviewModal
-            photo={previewPhoto}
-            visible={!!previewPhoto}
-            onClose={() => setPreviewPhoto(null)}
-            onDelete={async (photo) => {
-              await onDeletePhoto(photo);
-            }}
-          />
-        </View>
-      ) : null}
-      <View style={{ gap: 10, paddingTop: 4 }}>
+      <View style={{ gap: 10 }}>
         <Text style={styles.decisionHeader}>გადაწყვეტილება</Text>
         <View style={{ flexDirection: 'row', gap: 12 }}>
           <Pressable
@@ -1714,6 +1671,59 @@ const ConclusionStep = memo(function ConclusionStep({
         </View>
         {isSafe === null ? (
           <Text style={styles.fieldError}>აუცილებლად აირჩიე სტატუსი.</Text>
+        ) : null}
+      </View>
+      {photoQuestion ? (
+        <View style={{ gap: 8 }}>
+          <Text style={styles.label}>საერთო ფოტოები</Text>
+          {hasPhotos ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 10, paddingVertical: 4 }}
+            >
+              {photos.map(p => (
+                <Pressable key={p.id} onPress={() => setPreviewPhoto(p)} style={styles.photoTile}>
+                  <PhotoThumb photo={p} size={120} />
+                </Pressable>
+              ))}
+              <Pressable onPress={onPickPhoto} style={styles.addPhotoTile}>
+                <Ionicons name="add" size={32} color={theme.colors.inkSoft} />
+              </Pressable>
+            </ScrollView>
+          ) : (
+            <View style={styles.chipRow}>
+              <Pressable onPress={onPickPhoto} style={styles.assistChip}>
+                <Ionicons name="camera-outline" size={16} color={theme.colors.inkSoft} />
+                <Text style={styles.assistChipText}>ფოტო</Text>
+              </Pressable>
+            </View>
+          )}
+          <PhotoPreviewModal
+            photo={previewPhoto}
+            visible={!!previewPhoto}
+            onClose={() => setPreviewPhoto(null)}
+            onDelete={async (photo) => {
+              await onDeletePhoto(photo);
+            }}
+          />
+        </View>
+      ) : null}
+      <View>
+        <Text style={styles.label}>
+          დასკვნა <Text style={{ color: theme.colors.danger }}>*</Text>
+        </Text>
+        <TextInput
+          multiline
+          value={conclusion}
+          onChangeText={onConclusion}
+          style={[styles.textarea, conclusionEmpty && styles.inputError]}
+          placeholder="აღწერე დეტალურად..."
+          placeholderTextColor={theme.colors.inkFaint}
+          inputAccessoryViewID={Platform.OS === 'ios' ? accessoryId : undefined}
+        />
+        {conclusionEmpty ? (
+          <Text style={styles.fieldError}>სავალდებულო ველი</Text>
         ) : null}
       </View>
     </View>
@@ -2039,7 +2049,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.hairline,
     padding: 12,
-    minHeight: 140,
+    minHeight: 110,
+    maxHeight: 140,
     textAlignVertical: 'top',
     fontSize: 15,
     color: theme.colors.ink,
