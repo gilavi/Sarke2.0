@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { supabase, STORAGE_BUCKETS } from './supabase';
 import { storageApi } from './services';
+import { dataUrlToArrayBuffer } from './blob';
 
 const PENDING_KEY = 'pending-signatures';
 
@@ -12,14 +13,17 @@ interface PendingSignature {
 }
 
 /**
- * Normalize a drawn signature PNG: constrain to max 400x150, PNG encode.
+ * Normalize a drawn signature PNG: constrain to max 400px wide, PNG encode.
  * `base64` is the raw base64 string (no data: prefix) from SignatureCanvas.
  *
- * Returns a tuple of `{ base64, blob, contentType }` ready to upload.
+ * Returns `{ base64, body, contentType }` ready to upload. We hand back an
+ * `ArrayBuffer` (decoded from base64 ourselves) rather than going through
+ * `fetch(dataUrl).blob()` — that path is unreliable on Hermes and silently
+ * produces 0-byte uploads, which breaks every signature thumbnail and PDF.
  */
 export async function compressSignature(base64: string): Promise<{
   base64: string;
-  blob: Blob;
+  body: ArrayBuffer;
   contentType: string;
 }> {
   const dataUrl = `data:image/png;base64,${base64}`;
@@ -29,9 +33,9 @@ export async function compressSignature(base64: string): Promise<{
     { compress: 1, format: SaveFormat.PNG, base64: true },
   );
   const finalBase64 = out.base64 ?? base64;
-  const res = await fetch(`data:image/png;base64,${finalBase64}`);
-  const blob = await res.blob();
-  return { base64: finalBase64, blob, contentType: 'image/png' };
+  const body = dataUrlToArrayBuffer(`data:image/png;base64,${finalBase64}`);
+  if (body.byteLength === 0) throw new Error('signature body empty after base64 decode');
+  return { base64: finalBase64, body, contentType: 'image/png' };
 }
 
 /**
@@ -44,8 +48,8 @@ export async function uploadSignature(
   base64: string,
 ): Promise<{ path: string; pending: boolean }> {
   try {
-    const { blob, contentType } = await compressSignature(base64);
-    await storageApi.upload(STORAGE_BUCKETS.signatures, path, blob, contentType);
+    const { body, contentType } = await compressSignature(base64);
+    await storageApi.upload(STORAGE_BUCKETS.signatures, path, body, contentType);
     return { path, pending: false };
   } catch {
     // queue for retry
@@ -66,8 +70,8 @@ export async function flushPendingSignatures(): Promise<void> {
   const still: PendingSignature[] = [];
   for (const item of list) {
     try {
-      const { blob, contentType } = await compressSignature(item.base64);
-      await storageApi.upload(STORAGE_BUCKETS.signatures, item.path, blob, contentType);
+      const { body, contentType } = await compressSignature(item.base64);
+      await storageApi.upload(STORAGE_BUCKETS.signatures, item.path, body, contentType);
     } catch {
       still.push(item);
     }

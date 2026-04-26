@@ -36,6 +36,36 @@ export async function blobToDataUrl(blob: Blob): Promise<string> {
   });
 }
 
+/**
+ * Decode a `data:<mime>;base64,<payload>` URL into an ArrayBuffer.
+ * Use this instead of `fetch(dataUrl).blob()` when uploading to storage —
+ * the fetch path silently produces 0-byte blobs in Hermes.
+ */
+export function dataUrlToArrayBuffer(dataUrl: string): ArrayBuffer {
+  const comma = dataUrl.indexOf(',');
+  if (comma < 0) throw new Error('not a data URL');
+  const b64 = dataUrl.slice(comma + 1);
+  return base64ToArrayBuffer(b64);
+}
+
+function base64ToArrayBuffer(b64: string): ArrayBuffer {
+  const g = globalThis as unknown as {
+    atob?: (s: string) => string;
+    Buffer?: { from: (s: string, enc: string) => Uint8Array };
+  };
+  if (typeof g.atob === 'function') {
+    const binary = g.atob(b64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes.buffer;
+  }
+  if (g.Buffer) {
+    const buf = g.Buffer.from(b64, 'base64');
+    return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer;
+  }
+  throw new Error('no base64 decoder available');
+}
+
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
   let binary = '';
