@@ -198,7 +198,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         await supabase.auth.signOut();
       },
       resetPassword: async email => {
-        const { error } = await supabase.auth.resetPasswordForEmail(email);
+        const redirectTo = Linking.createURL('/reset');
+        const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
         if (error) throw error;
       },
       refreshUser: async () => {

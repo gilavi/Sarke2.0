@@ -1,0 +1,106 @@
+import { useCallback } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useBottomSheet } from './BottomSheet';
+import { QuestionAvatar } from './QuestionAvatar';
+import { helpForRow } from '../lib/scaffoldHelp';
+
+const BRAND = '#1D9E75';
+
+export function useScaffoldHelpSheet() {
+  const show = useBottomSheet();
+  return useCallback(
+    (rowLabel: string) => {
+      const entry = helpForRow(rowLabel);
+      show({
+        dismissable: true,
+        content: ({ dismiss }) => (
+          <View style={styles.body}>
+            <Text style={styles.title}>{entry.name}</Text>
+            {entry.key && entry.name ? (
+              <View style={styles.illustration}>
+                <QuestionAvatar illustrationKey={entry.key} size={160} />
+              </View>
+            ) : null}
+            <Text style={styles.copy}>{entry.oneLiner}</Text>
+            <Pressable
+              onPress={dismiss}
+              style={({ pressed }) => [styles.btn, pressed && { opacity: 0.8 }]}
+            >
+              <Text style={styles.btnText}>დახურვა</Text>
+            </Pressable>
+          </View>
+        ),
+      });
+    },
+    [show],
+  );
+}
+
+export function HelpIcon({ onPress }: { onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      hitSlop={12}
+      accessibilityLabel="დახმარება"
+      style={({ pressed }) => [styles.icon, pressed && { opacity: 0.6 }]}
+    >
+      <Text style={styles.iconText}>?</Text>
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  body: {
+    alignItems: 'center',
+    paddingVertical: 8,
+    gap: 16,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: BRAND,
+    textAlign: 'center',
+  },
+  illustration: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  copy: {
+    fontSize: 15,
+    color: '#1F2937',
+    textAlign: 'center',
+    lineHeight: 22,
+    paddingHorizontal: 8,
+  },
+  btn: {
+    marginTop: 8,
+    alignSelf: 'stretch',
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: BRAND,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: BRAND,
+  },
+  icon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: BRAND,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  iconText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: BRAND,
+    lineHeight: 18,
+  },
+});

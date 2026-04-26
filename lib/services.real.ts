@@ -6,6 +6,7 @@ import type {
   Certificate,
   Inspection,
   Project,
+  ProjectFile,
   ProjectItem,
   ProjectSigner,
   Qualification,
@@ -196,6 +197,84 @@ export const projectsApi = {
       else s.drafts += 1;
     }
     return map;
+  },
+};
+
+// -------- Project Files --------
+
+export const projectFilesApi = {
+  list: async (projectId: string): Promise<ProjectFile[]> => {
+    const { data, error } = await supabase
+      .from('project_files')
+      .select('*')
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data ?? []) as ProjectFile[];
+  },
+  upload: async (args: {
+    projectId: string;
+    fileUri: string;
+    name: string;
+    mimeType: string | null;
+    sizeBytes: number | null;
+  }): Promise<ProjectFile> => {
+    const user = (await supabase.auth.getUser()).data.user;
+    if (!user) throw new Error('Not signed in');
+    const fileId = Crypto.randomUUID();
+    const safeName = args.name.replace(/[^\w.\-]+/g, '_').slice(0, 120) || 'file';
+    const storagePath = `${args.projectId}/${fileId}-${safeName}`;
+    const { data: { session } } = await supabase.auth.getSession();
+    const headers: Record<string, string> = {
+      'Content-Type': args.mimeType || 'application/octet-stream',
+      'x-upsert': 'true',
+      apikey: SUPABASE_ANON_KEY,
+    };
+    if (session?.access_token) {
+      headers.Authorization = `Bearer ${session.access_token}`;
+    }
+    const url = `${SUPABASE_URL}/storage/v1/object/${STORAGE_BUCKETS.projectFiles}/${storagePath}`;
+    const result = await FileSystem.uploadAsync(url, args.fileUri, {
+      httpMethod: 'POST',
+      uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+      headers,
+    });
+    if (result.status < 200 || result.status >= 300) {
+      throw new Error(`upload failed (${result.status}): ${result.body}`);
+    }
+    return throwIfError<ProjectFile>(
+      await supabase
+        .from('project_files')
+        .insert({
+          id: fileId,
+          project_id: args.projectId,
+          user_id: user.id,
+          name: args.name,
+          storage_path: storagePath,
+          size_bytes: args.sizeBytes,
+          mime_type: args.mimeType,
+        })
+        .select()
+        .single(),
+    );
+  },
+  remove: async (file: ProjectFile): Promise<void> => {
+    await supabase.storage
+      .from(STORAGE_BUCKETS.projectFiles)
+      .remove([file.storage_path])
+      .catch((e) => logError(e, 'projectFilesApi.remove.storage'));
+    const { error } = await supabase
+      .from('project_files')
+      .delete()
+      .eq('id', file.id);
+    if (error) throw error;
+  },
+  signedUrl: async (file: ProjectFile, expiresIn = 3600): Promise<string> => {
+    const { data, error } = await supabase.storage
+      .from(STORAGE_BUCKETS.projectFiles)
+      .createSignedUrl(file.storage_path, expiresIn);
+    if (error) throw error;
+    return data.signedUrl;
   },
 };
 

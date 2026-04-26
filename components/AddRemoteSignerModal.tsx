@@ -168,13 +168,14 @@ export function AddRemoteSignerModal({
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
   card: {
     backgroundColor: theme.colors.background,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
     padding: 16,
     paddingTop: 10,
+    paddingBottom: 44,
     gap: 12,
   },
   handle: {
@@ -183,9 +184,10 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: theme.colors.hairline,
     alignSelf: 'center',
+    marginBottom: 14,
   },
   header: { flexDirection: 'row', alignItems: 'center' },
-  title: { fontSize: 17, fontWeight: '700', color: theme.colors.ink, flex: 1 },
+  title: { fontSize: 18, fontWeight: '800', color: theme.colors.ink, flex: 1 },
   body: { fontSize: 13, color: theme.colors.inkSoft, lineHeight: 18 },
   roleRow: {
     flexDirection: 'row',

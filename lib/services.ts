@@ -23,6 +23,7 @@ if (useMock) {
 const src: typeof real = useMock ? (mock as unknown as typeof real) : real;
 
 export const projectsApi = src.projectsApi;
+export const projectFilesApi = src.projectFilesApi;
 export const templatesApi = src.templatesApi;
 export const inspectionsApi = src.inspectionsApi;
 /** @deprecated alias kept for older imports. */

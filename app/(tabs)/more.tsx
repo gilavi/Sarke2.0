@@ -244,6 +244,7 @@ function TermsModal({ visible, onClose }: { visible: boolean; onClose: () => voi
         {/* Sheet */}
         <Animated.View style={[termsStyles.sheet, { transform: [{ translateY }] }]}>
           <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1 }}>
+            <View style={termsStyles.handle} />
             {/* Header */}
             <View style={termsStyles.header}>
               <Text style={termsStyles.headerTitle}>{termsKa.heading}</Text>
@@ -296,27 +297,31 @@ const termsStyles = StyleSheet.create({
     bottom: 0,
     top: '8%',
     backgroundColor: theme.colors.background,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 24,
-    elevation: 24,
+  },
+  handle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: theme.colors.hairline,
+    alignSelf: 'center',
+    marginTop: 10,
+    marginBottom: 14,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingBottom: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: theme.colors.hairline,
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '800',
     color: theme.colors.ink,
   },
   closeBtn: {

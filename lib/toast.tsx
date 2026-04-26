@@ -1,14 +1,20 @@
 import { createContext, ReactNode, useCallback, useContext, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, Platform, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from './theme';
 
 type ToastKind = 'success' | 'error' | 'info';
 
+interface ToastAction {
+  label: string;
+  onPress: () => void;
+}
+
 interface Toast {
   id: number;
   kind: ToastKind;
   message: string;
+  action?: ToastAction;
 }
 
 type InfoOpts = {
@@ -40,7 +46,23 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   const show = useCallback((message: string, kind: ToastKind = 'info', opts?: InfoOpts) => {
     const id = ++idRef.current;
-    setToast({ id, kind, message });
+    // Wrap action.onPress so it dismisses the toast and skips onHide. Without
+    // this the action's tap would let onHide still fire on timeout.
+    const wrappedAction: ToastAction | undefined = opts?.action
+      ? {
+          label: opts.action.label,
+          onPress: () => {
+            if (idRef.current !== id) return;
+            opts.action!.onPress();
+            // Dismiss immediately so onHide doesn't also fire after.
+            idRef.current++;
+            Animated.timing(opacity, { toValue: 0, duration: 180, useNativeDriver: true }).start(() => {
+              setToast(cur => (cur?.id === id ? null : cur));
+            });
+          },
+        }
+      : undefined;
+    setToast({ id, kind, message, action: wrappedAction });
     Animated.timing(opacity, { toValue: 1, duration: 180, easing: Easing.out(Easing.ease), useNativeDriver: true }).start();
     const holdMs = opts?.duration ?? 2600;
     const timer = setTimeout(() => {
@@ -75,12 +97,26 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <Ctx.Provider value={api}>
       {children}
       {toast ? (
-        <Animated.View pointerEvents="none" style={[styles.wrap, { opacity }]}>
+        <Animated.View
+          pointerEvents={toast.action ? 'box-none' : 'none'}
+          style={[styles.wrap, { opacity }]}
+        >
           <View style={[styles.toast, stylesFor(toast.kind).container]}>
             <Ionicons name={iconFor(toast.kind)} size={18} color={stylesFor(toast.kind).iconColor} />
             <Text style={[styles.text, { color: stylesFor(toast.kind).text }]} numberOfLines={3}>
               {toast.message}
             </Text>
+            {toast.action ? (
+              <Pressable
+                onPress={toast.action.onPress}
+                hitSlop={8}
+                style={({ pressed }) => [styles.action, pressed && { opacity: 0.7 }]}
+              >
+                <Text style={[styles.actionLabel, { color: stylesFor(toast.kind).text }]}>
+                  {toast.action.label}
+                </Text>
+              </Pressable>
+            ) : null}
           </View>
         </Animated.View>
       ) : null}
@@ -144,4 +180,12 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   text: { fontSize: 14, fontWeight: '600', flexShrink: 1 },
+  action: {
+    marginLeft: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  actionLabel: { fontSize: 13, fontWeight: '700' },
 });

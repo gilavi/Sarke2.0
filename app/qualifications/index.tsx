@@ -3,35 +3,31 @@
 //
 // Previously lived at `app/(tabs)/certificates.tsx`. Moved here in 0006 so
 // the Certificates tab can be repurposed for generated PDF certificates.
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
-  Alert,
-  Animated,
-  Easing,
   FlatList,
-  Modal,
   Pressable,
-  StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Button, Card, Screen } from '../../components/ui';
+import { Card, Screen } from '../../components/ui';
 import { Skeleton } from '../../components/Skeleton';
 import { haptic } from '../../lib/haptics';
 import { isExpiringSoon, qualificationsApi } from '../../lib/services';
 import { theme } from '../../lib/theme';
 import { toErrorMessage } from '../../lib/logError';
+import { useToast } from '../../lib/toast';
+import { scheduleDelete } from '../../lib/pendingDeletes';
 import type { Qualification } from '../../types/models';
 
 export default function QualificationsScreen() {
   const router = useRouter();
+  const toast = useToast();
   const [quals, setQuals] = useState<Qualification[]>([]);
   const [loaded, setLoaded] = useState(false);
-  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<Qualification | null>(null);
 
   const load = useCallback(async () => {
     const q = await qualificationsApi.list().catch(() => []);
@@ -45,24 +41,24 @@ export default function QualificationsScreen() {
     }, [load]),
   );
 
-  const confirmRemove = (q: Qualification) => {
+  const onDelete = (q: Qualification) => {
     haptic.medium();
-    setDeleteTarget(q);
-    setDeleteModalVisible(true);
-  };
-
-  const doRemove = async () => {
-    if (!deleteTarget) return;
-    setDeleteModalVisible(false);
-    try {
-      await qualificationsApi.remove(deleteTarget.id);
-      haptic.success();
-      void load();
-    } catch (e) {
-      haptic.error();
-      Alert.alert('წაშლა ვერ მოხერხდა', toErrorMessage(e, 'ქსელის შეცდომა'));
-    }
-    setDeleteTarget(null);
+    setQuals(prev => prev.filter(x => x.id !== q.id));
+    scheduleDelete({
+      message: `${q.number ?? q.type} — წაიშალა`,
+      toast,
+      onUndo: () => setQuals(prev => [q, ...prev.filter(x => x.id !== q.id)]),
+      onExecute: async () => {
+        try {
+          await qualificationsApi.remove(q.id);
+          haptic.success();
+        } catch (e) {
+          haptic.error();
+          setQuals(prev => [q, ...prev.filter(x => x.id !== q.id)]);
+          toast.error(toErrorMessage(e, 'წაშლა ვერ მოხერხდა'));
+        }
+      },
+    });
   };
 
   const statusOf = (q: Qualification): 'expired' | 'expiring' | 'ok' => {
@@ -137,7 +133,7 @@ export default function QualificationsScreen() {
                   </View>
                   <StatusBadge status={status} />
                   <Pressable
-                    onPress={() => confirmRemove(item)}
+                    onPress={() => onDelete(item)}
                     hitSlop={10}
                     accessibilityLabel="remove"
                     style={{ padding: 6 }}
@@ -150,69 +146,7 @@ export default function QualificationsScreen() {
           }}
         />
       </SafeAreaView>
-
-      {/* Delete confirmation modal */}
-      <DeleteModal
-        visible={deleteModalVisible}
-        onClose={() => { setDeleteModalVisible(false); setDeleteTarget(null); }}
-        onConfirm={doRemove}
-        title={deleteTarget?.number ?? deleteTarget?.type ?? ''}
-      />
     </Screen>
-  );
-}
-
-function DeleteModal({
-  visible,
-  onClose,
-  onConfirm,
-  title,
-}: {
-  visible: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-  title: string;
-}) {
-  const fade = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (visible) {
-      fade.setValue(0);
-      Animated.timing(fade, {
-        toValue: 1,
-        duration: 250,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }).start();
-    }
-  }, [visible, fade]);
-
-  if (!visible) return null;
-
-  return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
-      <View style={StyleSheet.absoluteFillObject}>
-        <Animated.View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.55)', opacity: fade }]}>
-          <Pressable style={StyleSheet.absoluteFillObject} onPress={onClose} />
-        </Animated.View>
-
-        <View style={qStyles.modalWrap}>
-          <View style={qStyles.modalCard}>
-            <View style={{ alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              <View style={qStyles.iconCircle}>
-                <Ionicons name="trash" size={28} color={theme.colors.danger} />
-              </View>
-              <Text style={qStyles.modalTitle}>წაშლა?</Text>
-              <Text style={qStyles.modalBody}>{title}</Text>
-            </View>
-            <View style={{ gap: 10, marginTop: 8 }}>
-              <Button title="გაუქმება" variant="secondary" onPress={onClose} />
-              <Button title="წაშლა" variant="danger" onPress={onConfirm} iconLeft={<Ionicons name="trash-outline" size={18} color={theme.colors.danger} />} />
-            </View>
-          </View>
-        </View>
-      </View>
-    </Modal>
   );
 }
 
@@ -227,43 +161,6 @@ function StatusBadge({ status }: { status: 'expired' | 'expiring' | 'ok' }) {
     </View>
   );
 }
-
-const qStyles = StyleSheet.create({
-  modalWrap: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  modalCard: {
-    backgroundColor: theme.colors.card,
-    borderRadius: 20,
-    padding: 20,
-    width: '100%',
-    maxWidth: 320,
-    gap: 4,
-    ...theme.shadow.card,
-  },
-  iconCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: theme.colors.dangerSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: theme.colors.ink,
-  },
-  modalBody: {
-    fontSize: 14,
-    color: theme.colors.inkSoft,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-});
 
 const styles = {
   badge: (bg: string) => ({

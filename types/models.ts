@@ -87,6 +87,19 @@ export interface Project {
   longitude: number | null;
   /** NULL on legacy rows; treat as []. */
   crew: CrewMember[] | null;
+  /** Optional logo image URL. Column added by collaborator's migration. */
+  logo_url?: string | null;
+  created_at: string;
+}
+
+export interface ProjectFile {
+  id: string;
+  project_id: string;
+  user_id: string;
+  name: string;
+  storage_path: string;
+  size_bytes: number | null;
+  mime_type: string | null;
   created_at: string;
 }
 

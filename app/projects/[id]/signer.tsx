@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { Alert, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,6 +11,7 @@ import { useToast } from '../../../lib/toast';
 import { getStorageImageDisplayUrl } from '../../../lib/imageUrl';
 import { theme } from '../../../lib/theme';
 import { toErrorMessage } from '../../../lib/logError';
+import { scheduleDelete } from '../../../lib/pendingDeletes';
 import type { ProjectSigner, SignerRole } from '../../../types/models';
 import { SIGNER_ROLE_LABEL } from '../../../types/models';
 
@@ -105,22 +106,23 @@ export default function SignerForm() {
 
   const remove = () => {
     if (!existing) return;
-    Alert.alert('წაშლა?', `${existing.full_name}`, [
-      { text: 'გაუქმება', style: 'cancel' },
-      {
-        text: 'წაშლა',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await projectsApi.deleteSigner(existing.id);
-            toast.success('წაიშალა');
-            router.back();
-          } catch (e) {
-            toast.error(toErrorMessage(e, 'ვერ წაიშალა'));
-          }
-        },
+    const target = existing;
+    // Navigate away immediately; the toast lives on the global ToastProvider
+    // so it survives this transition. The previous screen's `signers` list
+    // already optimistically removes the row when deleteSigner is invoked
+    // there, but here we leave restoration to a fresh load if the user undoes.
+    router.back();
+    scheduleDelete({
+      message: `${target.full_name} — წაიშალა`,
+      toast,
+      onExecute: async () => {
+        try {
+          await projectsApi.deleteSigner(target.id);
+        } catch (e) {
+          toast.error(toErrorMessage(e, 'ვერ წაიშალა'));
+        }
       },
-    ]);
+    });
   };
 
   return (

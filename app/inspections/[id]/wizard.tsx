@@ -4,10 +4,12 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Button, Card, Screen } from '../../../components/ui';
 import { QuestionAvatar, illustrationKeyFor } from '../../../components/QuestionAvatar';
+import { ScaffoldTour } from '../../../components/ScaffoldTour';
+import { HelpIcon, useScaffoldHelpSheet } from '../../../components/ScaffoldHelpSheet';
+import { TOUR_SEEN_KEY } from '../../../lib/scaffoldHelp';
 import { Skeleton, SkeletonWizard } from '../../../components/Skeleton';
 import {
   answersApi,
@@ -21,6 +23,8 @@ import { haptic } from '../../../lib/haptics';
 import { useOffline, stripServerFields } from '../../../lib/offline';
 import { logError, toErrorMessage } from '../../../lib/logError';
 import { useToast } from '../../../lib/toast';
+import { scheduleDelete } from '../../../lib/pendingDeletes';
+import { setPhotoPickerCallback } from '../../../lib/photoPickerBus';
 import { theme } from '../../../lib/theme';
 import type {
   Answer,
@@ -33,6 +37,12 @@ import type {
 
 const stepKey = (qid: string) => `wizard:${qid}:step`;
 const harnessCountKey = (qid: string) => `wizard:${qid}:harnessCount`;
+
+// Single keyboard-accessory ID shared by every TextInput in the wizard so the
+// "მზადაა" Done bar appears on every step (numeric keypads otherwise have no
+// dismiss on iOS).
+const KB_ACCESSORY_ID = 'wizardKbAccessory';
+const kbAccessoryProp = Platform.OS === 'ios' ? KB_ACCESSORY_ID : undefined;
 
 // Empty/null is always allowed — the user may not have answered yet.
 function isAnswerShapeValidForType(type: Question['type'], a: Answer): boolean {
@@ -69,11 +79,12 @@ function buildSteps(
   const steps: FlatStep[] = [];
   for (const q of sorted) {
     // Section 3 photo_upload is folded into the conclusion screen as
-    // "საერთო ფოტოები"; section 4 freetext duplicates the conclusion textarea.
-    // Keep the question rows in the DB so answers/photos still attach to a
-    // question_id, just skip the standalone steps.
+    // "საერთო ფოტოები"; the "დასკვნითი ნაწილი" freetext duplicates the
+    // conclusion textarea (section 4 in the scaffold template, section 3 in
+    // the harness template). Keep the rows in the DB so answers/photos still
+    // attach to a question_id, just skip the standalone steps.
     if (q.type === 'photo_upload') continue;
-    if (q.type === 'freetext' && q.section === 4) continue;
+    if (q.type === 'freetext' && q.title.trim() === 'დასკვნითი ნაწილი') continue;
     if (q.type === 'component_grid' && q.grid_rows) {
       const isHarness = q.grid_rows[0] === 'N1';
       const rows = isHarness ? q.grid_rows.slice(0, harnessRowCount) : q.grid_rows;
@@ -151,12 +162,18 @@ export default function QuestionnaireWizard() {
   const [photos, setPhotos] = useState<Record<string, AnswerPhoto[]>>({});
   const [stepIndex, setStepIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [stepHydrated, setStepHydrated] = useState(false);
   const [harnessRowCount, setHarnessRowCount] = useState(5);
   const [conclusion, setConclusion] = useState('');
   const [isSafe, setIsSafe] = useState<boolean | null>(null);
   const [harnessName, setHarnessName] = useState('');
   const [exitModalVisible, setExitModalVisible] = useState(false);
-  const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
+  const [tourVisible, setTourVisible] = useState(false);
+  const showHelp = useScaffoldHelpSheet();
+
+  // ScrollView ref so child steps can request a scroll-to-end when a focused
+  // TextInput would otherwise sit behind the keyboard.
+  const scrollRef = useRef<ScrollView | null>(null);
 
   // Step transition animation
   const stepAnim = useRef(new Animated.Value(1)).current;
@@ -182,6 +199,7 @@ export default function QuestionnaireWizard() {
   const load = useCallback(async () => {
     if (!id) {
       setLoading(false);
+      setStepHydrated(true);
       return;
     }
     // Invalidate any prior in-flight load and start a new token.
@@ -189,6 +207,7 @@ export default function QuestionnaireWizard() {
     const ctrl = { cancelled: false };
     loadCtrlRef.current = ctrl;
     setLoading(true);
+    setStepHydrated(false);
     try {
       const q = await inspectionsApi.getById(id);
       if (ctrl.cancelled) return;
@@ -281,6 +300,7 @@ export default function QuestionnaireWizard() {
           setHarnessRowCount(parsed);
         }
       }
+      setStepHydrated(true);
     } catch (e) {
       if (!ctrl.cancelled) {
         logError(e, 'wizard.load');
@@ -290,6 +310,7 @@ export default function QuestionnaireWizard() {
       // Always clear loading — even if cancelled — so the UI doesn't stay
       // stuck on skeletons when the screen regains focus.
       setLoading(false);
+      setStepHydrated(true);
     }
   }, [id, toast]);
 
@@ -308,6 +329,27 @@ export default function QuestionnaireWizard() {
       logError(e, 'wizard.persistHarnessCount'),
     );
   }, [id, harnessRowCount, loading]);
+
+  // First-launch onboarding tour for the scaffold-inspection wizard.
+  useEffect(() => {
+    if (!template) return;
+    const isScaffold = (template.name ?? '').includes('ხარაჩო');
+    if (!isScaffold) return;
+    let cancelled = false;
+    AsyncStorage.getItem(TOUR_SEEN_KEY)
+      .then(v => {
+        if (!cancelled && v !== '1') setTourVisible(true);
+      })
+      .catch(e => logError(e, 'wizard.tour.read'));
+    return () => {
+      cancelled = true;
+    };
+  }, [template]);
+
+  const dismissTour = useCallback(() => {
+    setTourVisible(false);
+    AsyncStorage.setItem(TOUR_SEEN_KEY, '1').catch(e => logError(e, 'wizard.tour.persist'));
+  }, []);
 
   // Load on mount AND when id changes (useFocusEffect alone misses the
   // initial load if id is still resolving from params when the screen
@@ -390,6 +432,82 @@ export default function QuestionnaireWizard() {
     }
   };
 
+  const uploadPickedPhoto = async (uri: string, question: Question, rowKey?: string) => {
+    if (!questionnaire) return;
+    // Anchor the optimistic photo against an answer id we know now: either the
+    // existing answer's id, or a fresh uuid we'll reuse on upsert. This way the
+    // thumbnail renders against a stable bucket key while the upload is in
+    // flight.
+    const existing = answers[question.id];
+    const optimisticAnswerId = existing?.id ?? crypto.randomUUID();
+    // Tag the optimistic id with `tmp_` so PhotoThumb can render the upload
+    // spinner overlay without needing a separate "is uploading" prop drilled
+    // through every step component.
+    const tempId = `tmp_${crypto.randomUUID()}`;
+    const captionTag = rowKey ? `row:${rowKey}` : null;
+    const optimisticPhoto: AnswerPhoto = {
+      id: tempId,
+      answer_id: optimisticAnswerId,
+      storage_path: uri,
+      caption: captionTag,
+      created_at: new Date().toISOString(),
+    };
+    setPhotos(prev => ({
+      ...prev,
+      [optimisticAnswerId]: [...(prev[optimisticAnswerId] ?? []), optimisticPhoto],
+    }));
+
+    const finishUpload = (replaceWith: AnswerPhoto | null) => {
+      setPhotos(prev => {
+        const list = prev[optimisticAnswerId] ?? [];
+        const filtered = list.filter(p => p.id !== tempId);
+        return {
+          ...prev,
+          [optimisticAnswerId]: replaceWith ? [...filtered, replaceWith] : filtered,
+        };
+      });
+    };
+
+    try {
+      // Drain any pending answer edits for this question so the server copy
+      // of `answers` reflects the latest user input before we reference it.
+      await offline.flush();
+
+      const mime = 'image/jpeg';
+      const ext = 'jpg';
+      const path = `${questionnaire.id}/${question.id}/${Date.now()}.${ext}`;
+      // Native upload — supabase-js's Blob/ArrayBuffer body silently lands
+      // 0-byte objects in Hermes/SDK 54. Streaming the file URI directly to
+      // the REST endpoint via FileSystem.uploadAsync is the only reliable path.
+      await storageApi.uploadFromUri(STORAGE_BUCKETS.answerPhotos, path, uri, mime);
+      // Ensure the answer row exists server-side (RLS on answer_photos joins
+      // through `answers`). Upsert is safe here — no concurrent edits at this
+      // point because we just flushed the queue.
+      const liveExisting = answers[question.id];
+      const answer = await answersApi.upsert({
+        id: liveExisting?.id ?? optimisticAnswerId,
+        inspection_id: questionnaire.id,
+        question_id: question.id,
+        value_bool: liveExisting?.value_bool ?? null,
+        value_num: liveExisting?.value_num ?? null,
+        value_text: liveExisting?.value_text ?? null,
+        grid_values: liveExisting?.grid_values ?? null,
+        comment: liveExisting?.comment ?? null,
+        notes: liveExisting?.notes ?? null,
+      });
+      if (!liveExisting) setAnswers(prev => ({ ...prev, [question.id]: answer }));
+      const caption = rowKey ? `row:${rowKey}` : undefined;
+      const photo = await answersApi.addPhoto(answer.id, path, caption);
+      // Keep showing the local URI so the thumbnail doesn't flash to a
+      // signed-URL fetch; on next focus, server data refreshes naturally.
+      finishUpload({ ...photo, storage_path: uri });
+      toast.success('ფოტო აიტვირთა');
+    } catch (e) {
+      finishUpload(null);
+      toast.error(`ფოტო ვერ აიტვირთა: ${toErrorMessage(e, 'ქსელის შეცდომა')}`);
+    }
+  };
+
   const pickPhoto = async (question: Question, rowKey?: string) => {
     if (!questionnaire) return;
     haptic.medium();
@@ -399,59 +517,11 @@ export default function QuestionnaireWizard() {
       toast.error('ფოტოს ასატვირთად საჭიროა ინტერნეტი');
       return;
     }
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) return;
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.7,
-      base64: false,
+    setPhotoPickerCallback(uri => {
+      if (!uri) return;
+      void uploadPickedPhoto(uri, question, rowKey);
     });
-    if (result.canceled || result.assets.length === 0) return;
-    const asset = result.assets[0];
-    try {
-      // Drain any pending answer edits for this question so the server copy
-      // of `answers` reflects the latest user input before we reference it.
-      await offline.flush();
-
-      const mime = asset.mimeType ?? 'image/jpeg';
-      const ext = mime.split('/')[1] ?? 'jpg';
-      const path = `${questionnaire.id}/${question.id}/${Date.now()}.${ext}`;
-      // Native upload — supabase-js's Blob/ArrayBuffer body silently lands
-      // 0-byte objects in Hermes/SDK 54. Streaming the file URI directly to
-      // the REST endpoint via FileSystem.uploadAsync is the only reliable path.
-      await storageApi.uploadFromUri(STORAGE_BUCKETS.answerPhotos, path, asset.uri, mime);
-      // Ensure the answer row exists server-side (RLS on answer_photos joins
-      // through `answers`). Upsert is safe here — no concurrent edits at this
-      // point because we just flushed the queue.
-      const existing = answers[question.id];
-      const answer = await answersApi.upsert({
-        id: existing?.id ?? crypto.randomUUID(),
-        inspection_id: questionnaire.id,
-        question_id: question.id,
-        value_bool: existing?.value_bool ?? null,
-        value_num: existing?.value_num ?? null,
-        value_text: existing?.value_text ?? null,
-        grid_values: existing?.grid_values ?? null,
-        comment: existing?.comment ?? null,
-        notes: existing?.notes ?? null,
-      });
-      if (!existing) setAnswers(prev => ({ ...prev, [question.id]: answer }));
-      // For component_grid questions a single answer holds all rows, so we
-      // tag each photo with `row:<rowKey>` in `caption` to scope it back to
-      // the row it was uploaded from. Other question types pass no rowKey
-      // and the caption stays null.
-      const caption = rowKey ? `row:${rowKey}` : undefined;
-      const photo = (await answersApi.addPhoto(answer.id, path, caption));
-      const answerId = answer.id;
-      // Use the local URI as storage_path so the thumbnail appears immediately
-      // without waiting for a signed URL round-trip. On screen re-focus, the
-      // server-returned path takes over and PhotoThumb fetches a signed URL.
-      const photoForDisplay: AnswerPhoto = { ...photo, storage_path: asset.uri };
-      setPhotos(prev => ({ ...prev, [answerId]: [...(prev[answerId] ?? []), photoForDisplay] }));
-      toast.success('ფოტო აიტვირთა');
-    } catch (e) {
-      toast.error(`ფოტო ვერ აიტვირთა: ${toErrorMessage(e, 'ქსელის შეცდომა')}`);
-    }
+    router.push('/photo-picker' as any);
   };
 
   const deletePhoto = async (photo: AnswerPhoto) => {
@@ -531,7 +601,7 @@ export default function QuestionnaireWizard() {
   // has arrived. Previously the guard was too permissive (!!template && !!step)
   // which let the conclusion form flash with empty isSafe/conclusion values
   // for ~100-200 ms while answers were still hydrating.
-  const ready = !loading && !!questionnaire && !!template && questions.length > 0;
+  const ready = !loading && stepHydrated && !!questionnaire && !!template && questions.length > 0;
 
   // Early return — absolutely NO form elements render while data is missing.
   if (!ready) {
@@ -542,9 +612,7 @@ export default function QuestionnaireWizard() {
       <Screen style={{ backgroundColor: '#ffffff' }}>
         <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
         <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <ActivityIndicator size="large" color="#059669" />
-          </View>
+          <SkeletonWizard />
         </SafeAreaView>
       </Screen>
     );
@@ -567,7 +635,6 @@ export default function QuestionnaireWizard() {
 
   const stepAnswered = hasAnswer(step, answers, photos, conclusion, isSafe, harnessName, template);
   const isYesNo = step.kind === 'question' && step.question.type === 'yesno';
-  const isLast = stepIndex === steps.length - 1;
   const isScaffoldRow = step.kind === 'gridRow' && (step.question.grid_rows?.[0] ?? '') !== 'N1';
 
   const goNext = () => {
@@ -599,6 +666,7 @@ export default function QuestionnaireWizard() {
           stepIndex={stepIndex}
           total={steps.length}
           onClose={() => setExitModalVisible(true)}
+          onHelp={showHelp}
         />
         <GestureDetector gesture={swipeBack}>
         <KeyboardAvoidingView
@@ -625,9 +693,11 @@ export default function QuestionnaireWizard() {
           ) : (
             <Animated.View style={{ flex: 1, opacity: stepAnim }}>
               <ScrollView
-                contentContainerStyle={{ padding: 20, paddingBottom: 12, gap: 16 }}
+                ref={scrollRef}
+                contentContainerStyle={{ padding: 20, paddingBottom: 120, gap: 16 }}
                 keyboardShouldPersistTaps="handled"
                 keyboardDismissMode="interactive"
+                automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
               >
                 {step.kind === 'question' ? (
                   <QuestionStep
@@ -652,12 +722,31 @@ export default function QuestionnaireWizard() {
                     photos={generalPhotos}
                     onPickPhoto={() => photoQuestion && pickPhoto(photoQuestion)}
                     onDeletePhoto={deletePhoto}
+                    onSubmit={saveConclusionAndGo}
+                    onTextareaFocus={() =>
+                      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 250)
+                    }
                   />
                 )}
               </ScrollView>
             </Animated.View>
           )}
 
+          {Platform.OS === 'ios' ? (
+            <InputAccessoryView nativeID={KB_ACCESSORY_ID}>
+              <View style={styles.kbAccessory}>
+                <Pressable
+                  hitSlop={10}
+                  onPress={() => Keyboard.dismiss()}
+                  style={({ pressed }) => [styles.kbDoneBtn, pressed && { opacity: 0.6 }]}
+                >
+                  <Text style={styles.kbDoneText}>მზადაა</Text>
+                </Pressable>
+              </View>
+            </InputAccessoryView>
+          ) : null}
+
+          {step.kind !== 'conclusion' ? (
           <View style={[styles.footer, { paddingBottom: 16 + insets.bottom }]}>
             {isYesNo ? (
               <View style={{ flexDirection: 'row', gap: 12 }}>
@@ -693,17 +782,7 @@ export default function QuestionnaireWizard() {
                 </Pressable>
               </View>
             ) : null}
-            {isLast ? (
-              <Button
-                title="დასრულება"
-                style={{ paddingVertical: 14 }}
-                iconRight={<Ionicons name="checkmark" size={20} color={theme.colors.white} />}
-                onPress={() => {
-                  haptic.medium();
-                  saveConclusionAndGo();
-                }}
-              />
-            ) : isScaffoldRow && step.kind === 'gridRow' ? (
+            {isScaffoldRow && step.kind === 'gridRow' ? (
               <ScaffoldFooterButtons
                 question={step.question}
                 row={step.row}
@@ -725,6 +804,7 @@ export default function QuestionnaireWizard() {
               />
             )}
           </View>
+          ) : null}
 
         {/* Exit confirmation modal */}
         <Modal visible={exitModalVisible} transparent animationType="fade" onRequestClose={() => setExitModalVisible(false)}>
@@ -759,7 +839,23 @@ export default function QuestionnaireWizard() {
                   variant="danger"
                   onPress={() => {
                     setExitModalVisible(false);
-                    setDeleteConfirmVisible(true);
+                    if (!id) return;
+                    // Optimistic: leave the wizard immediately, then defer the
+                    // server delete so the user can undo from the snackbar.
+                    router.back();
+                    scheduleDelete({
+                      message: 'კითხვარი წაიშალა',
+                      toast,
+                      onExecute: async () => {
+                        try {
+                          await inspectionsApi.remove(id);
+                          haptic.success();
+                        } catch (e) {
+                          haptic.error();
+                          toast.error(toErrorMessage(e, 'ვერ წაიშალა'));
+                        }
+                      },
+                    });
                   }}
                   iconLeft={<Ionicons name="trash-outline" size={18} color={theme.colors.danger} />}
                 />
@@ -768,52 +864,11 @@ export default function QuestionnaireWizard() {
           </View>
         </Modal>
 
-        {/* Delete confirmation modal */}
-        <Modal visible={deleteConfirmVisible} transparent animationType="fade" onRequestClose={() => setDeleteConfirmVisible(false)}>
-          <View style={styles.confirmOverlay}>
-            <Pressable style={styles.confirmBackdrop} onPress={() => setDeleteConfirmVisible(false)} />
-            <View style={styles.confirmCard}>
-              <View style={{ alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: theme.colors.dangerSoft, alignItems: 'center', justifyContent: 'center' }}>
-                  <Ionicons name="warning-outline" size={28} color={theme.colors.danger} />
-                </View>
-                <Text style={{ fontSize: 18, fontWeight: '700', color: theme.colors.ink }}>წაშლა?</Text>
-                <Text style={{ fontSize: 14, color: theme.colors.inkSoft, textAlign: 'center', lineHeight: 20 }}>
-                  კითხვარი სამუდამოდ წაიშლება.
-                </Text>
-              </View>
-              <View style={{ gap: 8, marginTop: 4 }}>
-                <Button
-                  title="გაუქმება"
-                  variant="secondary"
-                  onPress={() => setDeleteConfirmVisible(false)}
-                />
-                <Button
-                  title="წაშლა"
-                  variant="danger"
-                  onPress={async () => {
-                    setDeleteConfirmVisible(false);
-                    if (!id) return;
-                    try {
-                      await inspectionsApi.remove(id);
-                      haptic.success();
-                      toast.success('წაიშალა');
-                      router.back();
-                    } catch (e) {
-                      haptic.error();
-                      toast.error(toErrorMessage(e, 'ვერ წაიშალა'));
-                    }
-                  }}
-                  iconLeft={<Ionicons name="trash" size={18} color={theme.colors.danger} />}
-                />
-              </View>
-            </View>
-          </View>
-        </Modal>
         </KeyboardAvoidingView>
         </GestureDetector>
       </SafeAreaView>
       </Animated.View>
+      <ScaffoldTour visible={tourVisible} onClose={dismissTour} />
     </Screen>
   );
 }
@@ -975,6 +1030,7 @@ function DebouncedFreetext({
       style={styles.textarea}
       placeholder="შეავსე აქ..."
       placeholderTextColor={theme.colors.inkFaint}
+      inputAccessoryViewID={kbAccessoryProp}
     />
   );
 }
@@ -1035,6 +1091,7 @@ function DebouncedNotes({
         placeholder="დამატებითი კომენტარი (არასავალდებულო)"
         placeholderTextColor={theme.colors.inkFaint}
         maxLength={500}
+        inputAccessoryViewID={kbAccessoryProp}
       />
       <Text style={[styles.label, { textAlign: 'right', marginTop: 4, marginBottom: 0 }]}>
         {text.length}/500
@@ -1121,6 +1178,7 @@ function MeasureInput({
           placeholder="0"
           placeholderTextColor={theme.colors.inkFaint}
           style={[styles.input, { flex: 1 }]}
+          inputAccessoryViewID={kbAccessoryProp}
         />
         {question.unit ? (
           <Text style={{ fontWeight: '600', color: theme.colors.inkSoft }}>{question.unit}</Text>
@@ -1247,28 +1305,34 @@ function WizardHeader({
   stepIndex,
   total,
   onClose,
+  onHelp,
 }: {
   step: FlatStep;
   stepIndex: number;
   total: number;
   onClose: () => void;
+  onHelp: (label: string) => void;
 }) {
-  const { title, icon } = stepHeaderInfo(step);
   const progress = Math.max(0, Math.min(1, (stepIndex + 1) / Math.max(1, total)));
+  const helpLabel =
+    step.kind === 'gridRow'
+      ? step.row
+      : step.kind === 'question'
+        ? step.question.title
+        : null;
   return (
     <View style={styles.wizHeader}>
       <View style={styles.wizHeaderRow}>
-        <View style={styles.wizHeaderIcon}>
-          <Ionicons name={icon} size={22} color={theme.colors.accent} />
-        </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.wizHeaderEyebrow}>
             ნაბიჯი {stepIndex + 1} / {total}
           </Text>
-          <Text style={styles.wizHeaderTitle} numberOfLines={1}>
-            {title}
-          </Text>
         </View>
+        {helpLabel ? (
+          <View style={{ marginRight: 8 }}>
+            <HelpIcon onPress={() => onHelp(helpLabel)} />
+          </View>
+        ) : null}
         <Pressable
           hitSlop={12}
           onPress={onClose}
@@ -1362,56 +1426,57 @@ const GridRowStep = memo(function GridRowStep({
           </Text>
         </View>
 
-        {showDetails ? (
-          <>
-            {hasPhotos ? (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ gap: 10, paddingVertical: 4 }}
+        {/* Photos are available on every question — no longer gated behind a
+            status selection. Only the comment field + chip stay behind
+            `showDetails` so the comment UI doesn't appear before the user
+            commits to a status (and never on the "no issue" column). */}
+        {hasPhotos ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 10, paddingVertical: 4 }}
+          >
+            {answerPhotos.map(p => (
+              <Pressable key={p.id} onPress={() => setPreviewPhoto(p)} style={styles.photoTile}>
+                <PhotoThumb photo={p} size={120} />
+              </Pressable>
+            ))}
+            <Pressable onPress={onPickPhoto} style={styles.addPhotoTile}>
+              <Ionicons name="add" size={32} color={theme.colors.inkSoft} />
+            </Pressable>
+          </ScrollView>
+        ) : null}
+
+        {showDetails && hasComment && showCommentField ? (
+          <TextInput
+            value={commentValue}
+            onChangeText={text => setValue('კომენტარი', text || null, false)}
+            placeholder="კომენტარი"
+            placeholderTextColor={theme.colors.inkFaint}
+            style={styles.input}
+            autoFocus
+            inputAccessoryViewID={kbAccessoryProp}
+          />
+        ) : null}
+
+        {!hasPhotos || (showDetails && hasComment && !showCommentField) ? (
+          <View style={styles.chipRow}>
+            {!hasPhotos ? (
+              <Pressable onPress={onPickPhoto} style={styles.assistChip}>
+                <Ionicons name="camera-outline" size={16} color={theme.colors.inkSoft} />
+                <Text style={styles.assistChipText}>ფოტო</Text>
+              </Pressable>
+            ) : null}
+            {showDetails && hasComment && !showCommentField ? (
+              <Pressable
+                onPress={() => setCommentOpen(true)}
+                style={styles.assistChip}
               >
-                {answerPhotos.map(p => (
-                  <Pressable key={p.id} onPress={() => setPreviewPhoto(p)} style={styles.photoTile}>
-                    <PhotoThumb photo={p} size={120} />
-                  </Pressable>
-                ))}
-                <Pressable onPress={onPickPhoto} style={styles.addPhotoTile}>
-                  <Ionicons name="add" size={32} color={theme.colors.inkSoft} />
-                </Pressable>
-              </ScrollView>
+                <Ionicons name="create-outline" size={16} color={theme.colors.inkSoft} />
+                <Text style={styles.assistChipText}>კომენტარი</Text>
+              </Pressable>
             ) : null}
-
-            {hasComment && showCommentField ? (
-              <TextInput
-                value={commentValue}
-                onChangeText={text => setValue('კომენტარი', text || null, false)}
-                placeholder="კომენტარი"
-                placeholderTextColor={theme.colors.inkFaint}
-                style={styles.input}
-                autoFocus
-              />
-            ) : null}
-
-            {!hasPhotos || (hasComment && !showCommentField) ? (
-              <View style={styles.chipRow}>
-                {!hasPhotos ? (
-                  <Pressable onPress={onPickPhoto} style={styles.assistChip}>
-                    <Ionicons name="camera-outline" size={16} color={theme.colors.inkSoft} />
-                    <Text style={styles.assistChipText}>ფოტო</Text>
-                  </Pressable>
-                ) : null}
-                {hasComment && !showCommentField ? (
-                  <Pressable
-                    onPress={() => setCommentOpen(true)}
-                    style={styles.assistChip}
-                  >
-                    <Ionicons name="create-outline" size={16} color={theme.colors.inkSoft} />
-                    <Text style={styles.assistChipText}>კომენტარი</Text>
-                  </Pressable>
-                ) : null}
-              </View>
-            ) : null}
-          </>
+          </View>
         ) : null}
 
         <PhotoPreviewModal
@@ -1552,6 +1617,8 @@ const ConclusionStep = memo(function ConclusionStep({
   photos,
   onPickPhoto,
   onDeletePhoto,
+  onSubmit,
+  onTextareaFocus,
 }: {
   conclusion: string;
   onConclusion: (s: string) => void;
@@ -1565,29 +1632,30 @@ const ConclusionStep = memo(function ConclusionStep({
   photos: AnswerPhoto[];
   onPickPhoto: () => void;
   onDeletePhoto: (photo: AnswerPhoto) => Promise<void>;
+  onSubmit: () => void;
+  onTextareaFocus: () => void;
 }) {
   const needsHarness = template?.category === 'harness';
   const harnessEmpty = needsHarness && !harnessName.trim();
   const conclusionEmpty = !conclusion.trim();
   const [previewPhoto, setPreviewPhoto] = useState<AnswerPhoto | null>(null);
   const hasPhotos = photos.length > 0;
-  const accessoryId = 'wizardConclusionAccessory';
+
+  // Validation surfacing — quiet on first paint, loud once the user has
+  // actually interacted with a field or pressed Submit.
+  const [touched, setTouched] = useState({ harness: false, conclusion: false });
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+  const showHarnessErr = harnessEmpty && (touched.harness || submitAttempted);
+  const showConclusionErr = conclusionEmpty && (touched.conclusion || submitAttempted);
+  const showDecisionErr = isSafe === null && submitAttempted;
+
+  const handleSubmit = () => {
+    setSubmitAttempted(true);
+    onSubmit();
+  };
 
   return (
     <View style={{ gap: 18 }}>
-      {Platform.OS === 'ios' ? (
-        <InputAccessoryView nativeID={accessoryId}>
-          <View style={styles.kbAccessory}>
-            <Pressable
-              hitSlop={10}
-              onPress={() => Keyboard.dismiss()}
-              style={({ pressed }) => [styles.kbDoneBtn, pressed && { opacity: 0.6 }]}
-            >
-              <Text style={styles.kbDoneText}>მზადაა</Text>
-            </Pressable>
-          </View>
-        </InputAccessoryView>
-      ) : null}
       <View style={{ alignItems: 'center', paddingTop: 8 }}>
         <QuestionAvatar illustrationKey="conclusion" />
       </View>
@@ -1599,20 +1667,78 @@ const ConclusionStep = memo(function ConclusionStep({
           <TextInput
             value={harnessName}
             onChangeText={onHarnessName}
-            style={[styles.input, harnessEmpty && styles.inputError]}
+            onBlur={() => setTouched(t => ({ ...t, harness: true }))}
+            style={[styles.input, showHarnessErr && styles.inputError]}
             placeholder="მაგ. Petzl NEWTON"
             placeholderTextColor={theme.colors.inkFaint}
             returnKeyType="done"
             onSubmitEditing={Keyboard.dismiss}
-            inputAccessoryViewID={Platform.OS === 'ios' ? accessoryId : undefined}
+            inputAccessoryViewID={kbAccessoryProp}
           />
-          {harnessEmpty ? (
+          {showHarnessErr ? (
             <Text style={styles.fieldError}>სავალდებულო ველი</Text>
           ) : null}
         </View>
       ) : null}
+      <View>
+        <Text style={styles.label}>
+          დასკვნა <Text style={{ color: theme.colors.danger }}>*</Text>
+        </Text>
+        <TextInput
+          multiline
+          value={conclusion}
+          onChangeText={onConclusion}
+          onFocus={onTextareaFocus}
+          onBlur={() => setTouched(t => ({ ...t, conclusion: true }))}
+          style={[styles.textarea, showConclusionErr && styles.inputError]}
+          placeholder="აღწერე დეტალურად..."
+          placeholderTextColor={theme.colors.inkFaint}
+          inputAccessoryViewID={kbAccessoryProp}
+        />
+        {showConclusionErr ? (
+          <Text style={styles.fieldError}>სავალდებულო ველი</Text>
+        ) : null}
+      </View>
+      {photoQuestion ? (
+        <View style={{ gap: 8 }}>
+          <Text style={styles.label}>საერთო ფოტოები</Text>
+          {hasPhotos ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 10, paddingVertical: 4 }}
+            >
+              {photos.map(p => (
+                <Pressable key={p.id} onPress={() => setPreviewPhoto(p)} style={styles.photoTile}>
+                  <PhotoThumb photo={p} size={120} />
+                </Pressable>
+              ))}
+              <Pressable onPress={onPickPhoto} style={styles.addPhotoTile}>
+                <Ionicons name="add" size={32} color={theme.colors.inkSoft} />
+              </Pressable>
+            </ScrollView>
+          ) : (
+            <View style={styles.chipRow}>
+              <Pressable onPress={onPickPhoto} style={styles.assistChip}>
+                <Ionicons name="camera-outline" size={16} color={theme.colors.inkSoft} />
+                <Text style={styles.assistChipText}>ფოტო</Text>
+              </Pressable>
+            </View>
+          )}
+          <PhotoPreviewModal
+            photo={previewPhoto}
+            visible={!!previewPhoto}
+            onClose={() => setPreviewPhoto(null)}
+            onDelete={async (photo) => {
+              await onDeletePhoto(photo);
+            }}
+          />
+        </View>
+      ) : null}
       <View style={{ gap: 10 }}>
-        <Text style={styles.decisionHeader}>გადაწყვეტილება</Text>
+        <Text style={styles.label}>
+          გადაწყვეტილება <Text style={{ color: theme.colors.danger }}>*</Text>
+        </Text>
         <View style={{ flexDirection: 'row', gap: 12 }}>
           <Pressable
             onPress={() => {
@@ -1667,63 +1793,19 @@ const ConclusionStep = memo(function ConclusionStep({
             </Text>
           </Pressable>
         </View>
-        {isSafe === null ? (
+        {showDecisionErr ? (
           <Text style={styles.fieldError}>აუცილებლად აირჩიე სტატუსი.</Text>
         ) : null}
       </View>
-      {photoQuestion ? (
-        <View style={{ gap: 8 }}>
-          <Text style={styles.label}>საერთო ფოტოები</Text>
-          {hasPhotos ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ gap: 10, paddingVertical: 4 }}
-            >
-              {photos.map(p => (
-                <Pressable key={p.id} onPress={() => setPreviewPhoto(p)} style={styles.photoTile}>
-                  <PhotoThumb photo={p} size={120} />
-                </Pressable>
-              ))}
-              <Pressable onPress={onPickPhoto} style={styles.addPhotoTile}>
-                <Ionicons name="add" size={32} color={theme.colors.inkSoft} />
-              </Pressable>
-            </ScrollView>
-          ) : (
-            <View style={styles.chipRow}>
-              <Pressable onPress={onPickPhoto} style={styles.assistChip}>
-                <Ionicons name="camera-outline" size={16} color={theme.colors.inkSoft} />
-                <Text style={styles.assistChipText}>ფოტო</Text>
-              </Pressable>
-            </View>
-          )}
-          <PhotoPreviewModal
-            photo={previewPhoto}
-            visible={!!previewPhoto}
-            onClose={() => setPreviewPhoto(null)}
-            onDelete={async (photo) => {
-              await onDeletePhoto(photo);
-            }}
-          />
-        </View>
-      ) : null}
-      <View>
-        <Text style={styles.label}>
-          დასკვნა <Text style={{ color: theme.colors.danger }}>*</Text>
-        </Text>
-        <TextInput
-          multiline
-          value={conclusion}
-          onChangeText={onConclusion}
-          style={[styles.textarea, conclusionEmpty && styles.inputError]}
-          placeholder="აღწერე დეტალურად..."
-          placeholderTextColor={theme.colors.inkFaint}
-          inputAccessoryViewID={Platform.OS === 'ios' ? accessoryId : undefined}
-        />
-        {conclusionEmpty ? (
-          <Text style={styles.fieldError}>სავალდებულო ველი</Text>
-        ) : null}
-      </View>
+      <Button
+        title="დასრულება"
+        style={{ paddingVertical: 14, marginTop: 8 }}
+        iconRight={<Ionicons name="checkmark" size={20} color={theme.colors.white} />}
+        onPress={() => {
+          haptic.medium();
+          handleSubmit();
+        }}
+      />
     </View>
   );
 });
@@ -1792,13 +1874,25 @@ const PhotoThumb = memo(function PhotoThumb({ photo, size = 80 }: { photo: Answe
     );
   }
 
+  // Photos created optimistically by pickPhoto carry a `tmp_` id while the
+  // upload is in flight. Render the thumb with a dimming overlay + spinner
+  // so the user knows the photo isn't committed yet.
+  const isUploading = photo.id.startsWith('tmp_');
+
   return (
-    <Animated.Image
-      source={{ uri }}
-      style={containerStyle}
-      resizeMode="cover"
-      onError={() => setError(true)}
-    />
+    <View style={[containerStyle, { overflow: 'hidden' }]}>
+      <Animated.Image
+        source={{ uri }}
+        style={[StyleSheet.absoluteFillObject]}
+        resizeMode="cover"
+        onError={() => setError(true)}
+      />
+      {isUploading ? (
+        <View style={styles.photoUploadOverlay}>
+          <ActivityIndicator color="#fff" />
+        </View>
+      ) : null}
+    </View>
   );
 });
 
@@ -2048,7 +2142,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.hairline,
     padding: 12,
     minHeight: 110,
-    maxHeight: 140,
+    maxHeight: 240,
     textAlignVertical: 'top',
     fontSize: 15,
     color: theme.colors.ink,
@@ -2142,13 +2236,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'transparent',
   },
-  decisionHeader: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1.4,
-    textTransform: 'uppercase',
-    color: theme.colors.inkSoft,
-  },
   decisionButton: {
     flex: 1,
     minHeight: 92,
@@ -2181,6 +2268,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
+  },
+  photoUploadOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   photoTile: {
     width: 120,

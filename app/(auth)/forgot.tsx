@@ -3,7 +3,7 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Linking from 'expo-linking';
 import { supabase } from '../../lib/supabase';
 import { Button, Card, ErrorText, Field, Input } from '../../components/ui';
@@ -12,9 +12,16 @@ import { toErrorMessage } from '../../lib/logError';
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
+  const { err } = useLocalSearchParams<{ err?: string }>();
+  const initialError =
+    err === 'expired'
+      ? 'აღდგენის ბმული ვადაგასული ან გამოყენებულია. გთხოვ, ხელახლა ითხოვე.'
+      : err === 'no_code'
+        ? 'ბმული არასწორია. გთხოვ, ხელახლა ითხოვე.'
+        : null;
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(initialError);
   const [sent, setSent] = useState(false);
 
   const submit = async () => {

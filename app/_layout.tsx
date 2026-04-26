@@ -57,7 +57,15 @@ function AuthGate() {
       const parsed = Linking.parse(url);
       const code = (parsed.queryParams?.code as string | undefined) ?? undefined;
       const isReset = parsed.path === 'reset' || parsed.hostname === 'reset';
-      if (!isReset || !code) return;
+      logError({ url, path: parsed.path, hostname: parsed.hostname, hasCode: !!code }, '_layout.deepLink');
+      if (!isReset) return;
+      if (!code) {
+        // Reset link arrived but with no PKCE code — likely a flow-type or
+        // email-template mismatch (e.g. token_hash instead of code). Surface
+        // this so the user doesn't sit on a blank screen.
+        router.replace({ pathname: '/(auth)/forgot', params: { err: 'no_code' } });
+        return;
+      }
       if (exchangedCodes.has(code)) {
         // Already handled this code in this session — just route.
         router.replace('/(auth)/reset');
@@ -70,7 +78,7 @@ function AuthGate() {
         router.replace('/(auth)/reset');
       } catch (e) {
         logError(e, '_layout.exchangeCodeForSession');
-        router.replace('/(auth)/forgot');
+        router.replace({ pathname: '/(auth)/forgot', params: { err: 'expired' } });
       }
     };
     void Linking.getInitialURL().then(handle);

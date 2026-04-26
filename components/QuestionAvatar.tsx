@@ -13,7 +13,7 @@ import Svg, {
 // 16 small recognition illustrations for the scaffold inspection wizard.
 // Each renders inside a 64x64 circular tile with a soft green tint.
 
-type IllustrationKey =
+export type IllustrationKey =
   | 'passport'
   | 'certificate'
   | 'levelSurface'

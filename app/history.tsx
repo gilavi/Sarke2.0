@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,6 +15,7 @@ import {
 import { useToast } from '../lib/toast';
 import { theme } from '../lib/theme';
 import { toErrorMessage } from '../lib/logError';
+import { scheduleDelete } from '../lib/pendingDeletes';
 import type { Inspection, Project, Template } from '../types/models';
 
 type ListItem =
@@ -75,22 +76,23 @@ export default function HistoryScreen() {
   }
 
   const onDelete = (q: Inspection) => {
-    Alert.alert('წაშლა?', 'ინსპექცია სამუდამოდ წაიშლება.', [
-      { text: 'გაუქმება', style: 'cancel' },
-      {
-        text: 'წაშლა',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await inspectionsApi.remove(q.id);
-            setQs(prev => prev.filter(x => x.id !== q.id));
-            toast.success('წაიშალა');
-          } catch (e) {
-            toast.error(toErrorMessage(e, 'ვერ წაიშალა'));
-          }
-        },
+    // Optimistic remove; scheduleDelete defers the API call so the user can
+    // tap "დაბრუნება" within the hold window to bring the row back.
+    setQs(prev => prev.filter(x => x.id !== q.id));
+    scheduleDelete({
+      message: 'ინსპექცია წაიშალა',
+      toast,
+      onUndo: () => setQs(prev => [q, ...prev.filter(x => x.id !== q.id)]),
+      onExecute: async () => {
+        try {
+          await inspectionsApi.remove(q.id);
+        } catch (e) {
+          // Restore on failure so the list reflects reality.
+          setQs(prev => [q, ...prev.filter(x => x.id !== q.id)]);
+          toast.error(toErrorMessage(e, 'ვერ წაიშალა'));
+        }
       },
-    ]);
+    });
   };
 
   return (

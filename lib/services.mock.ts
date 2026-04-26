@@ -369,6 +369,25 @@ export const projectsApi = {
   },
 };
 
+export const projectFilesApi = {
+  list: async (_projectId: string) => [] as never[],
+  upload: async (_args: {
+    projectId: string;
+    fileUri: string;
+    name: string;
+    mimeType: string | null;
+    sizeBytes: number | null;
+  }) => {
+    throw new Error('projectFilesApi.upload is not supported in mock mode');
+  },
+  remove: async (_file: { id: string; storage_path: string }) => {
+    throw new Error('projectFilesApi.remove is not supported in mock mode');
+  },
+  signedUrl: async (_file: { storage_path: string }) => {
+    throw new Error('projectFilesApi.signedUrl is not supported in mock mode');
+  },
+};
+
 export const templatesApi = {
   list: async (): Promise<Template[]> => {
     const db = await load();
