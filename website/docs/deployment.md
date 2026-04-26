@@ -23,7 +23,7 @@ See commit `85f565d` for the convention.
 
 ## Docs (this site)
 
-This Docusaurus site lives under `website/` and is deployed to **GitHub Pages** at `https://gilavi.github.io/Sarke2.0/` by `.github/workflows/docs.yml`.
+This Docusaurus site lives under `website/` and is deployed to **GitHub Pages** at `https://gilavi.github.io/Sarke2.0/docs/` by `.github/workflows/docs.yml`.
 
 The workflow runs on push to `main` when any of these change:
 
@@ -50,12 +50,17 @@ When this is set up for the first time, in the repo's GitHub UI:
 
 The first run of the workflow creates the `gh-pages` branch automatically; subsequent runs fast-forward it.
 
+The workflow publishes into the `docs/` subdirectory of `gh-pages` (`destination_dir: docs`, `keep_files: true`) so the existing remote-signing web app served from the root of `gh-pages` is left untouched. Docs and signing app coexist on the same branch:
+
+- `https://gilavi.github.io/Sarke2.0/` → remote-signing web app (other repo's deploy target)
+- `https://gilavi.github.io/Sarke2.0/docs/` → this docs site
+
 ## Local preview
 
 ```sh
 cd website
 npm install
-npm run start    # http://localhost:3000/Sarke2.0/
+npm run start    # http://localhost:3000/Sarke2.0/docs/
 npm run build    # produces website/build
 npm run serve    # serves the production build locally
 ```
