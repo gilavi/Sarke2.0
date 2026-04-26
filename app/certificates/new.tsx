@@ -49,7 +49,7 @@ import {
   getStorageImageDataUrl,
   getStorageImageDataUrlStrict,
 } from '../../lib/imageUrl';
-import { dataUrlToArrayBuffer } from '../../lib/blob';
+import { dataUrlToArrayBuffer, assetUriToBlob } from '../../lib/blob';
 import { flushPendingSignatures } from '../../lib/signatures';
 import { buildPdfHtml } from '../../lib/pdf';
 import { useToast } from '../../lib/toast';
@@ -251,11 +251,13 @@ export default function GenerateCertificateScreen() {
     setUploadingFor(certType);
     try {
       const asset = result.assets[0];
-      const res = await fetch(asset.uri);
-      const blob = await res.blob();
-      const ext = asset.mimeType?.split('/')[1] ?? 'jpg';
+      const mime = asset.mimeType ?? 'image/jpeg';
+      const ext = mime.split('/')[1] ?? 'jpg';
       const path = `${user.id}/${Date.now()}.${ext}`;
-      await storageApi.upload(STORAGE_BUCKETS.certificates, path, blob, asset.mimeType ?? 'image/jpeg');
+      // assetUriToBlob guards against Hermes' 0-byte file:// fetch — an
+      // empty upload here means a broken `<img>` in the next PDF.
+      const blob = await assetUriToBlob(asset.uri, mime);
+      await storageApi.upload(STORAGE_BUCKETS.certificates, path, blob, mime);
       const qual = await qualificationsApi.upsert({
         id: crypto.randomUUID(),
         user_id: user.id,

@@ -13,25 +13,92 @@ function logStepFailure(
 }
 
 /**
+ * Fetch a signed URL via XMLHttpRequest, get a Blob back, and turn it into
+ * a `data:` URL using FileReader. This is the **canonical** binary-download
+ * pattern on React Native — `fetch().arrayBuffer()` and the new
+ * `expo-file-system` download API both return 0 bytes for binary responses
+ * in Hermes on SDK 54, but XHR's `responseType = 'blob'` path is the one
+ * Supabase / Firebase / every RN tutorial actually uses, and it works.
+ */
+function xhrSignedUrlToDataUrl(
+  signed: string,
+  fallbackMime: string,
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.responseType = 'blob';
+    xhr.onload = () => {
+      if (xhr.status !== 200) {
+        reject(new Error(`xhr status ${xhr.status}`));
+        return;
+      }
+      const blob: Blob | null = xhr.response;
+      if (!blob || (blob as any).size === 0) {
+        reject(new Error('xhr empty blob'));
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const r = reader.result;
+        if (typeof r !== 'string' || !r.startsWith('data:')) {
+          reject(new Error('xhr FileReader produced no data URL'));
+          return;
+        }
+        const comma = r.indexOf(',');
+        if (comma < 0 || r.length - comma - 1 < 32) {
+          reject(new Error('xhr FileReader produced empty data URL'));
+          return;
+        }
+        // FileReader on RN sometimes emits `data:application/octet-stream;…`
+        // when the blob has no type — patch in the right MIME so the WebView
+        // decodes the image instead of treating it as a binary download.
+        if (r.startsWith('data:application/octet-stream') && fallbackMime) {
+          resolve(`data:${fallbackMime};base64,${r.slice(r.indexOf(',') + 1)}`);
+          return;
+        }
+        resolve(r);
+      };
+      reader.onerror = () => reject(reader.error ?? new Error('FileReader error'));
+      reader.readAsDataURL(blob);
+    };
+    xhr.onerror = () => reject(new Error('xhr network error'));
+    xhr.ontimeout = () => reject(new Error('xhr timeout'));
+    xhr.open('GET', signed);
+    xhr.send();
+  });
+}
+
+/**
  * Fetch a storage object and return it as a base64 `data:` URL.
  *
  * Strategy (in order):
- *  1. Signed URL → native `FileSystem.downloadAsync` → `readAsStringAsync(Base64)`.
- *     Most reliable on React Native — no Blob/FileReader quirks in Hermes.
- *  2. Signed URL → `fetch()` → `arrayBuffer()` → manual base64.
- *     No FileSystem and no Blob — most resilient on Hermes.
- *  3. Signed URL → `fetch()` → `blob()` → `blobToDataUrl`.
- *     Kept as an extra fallback for environments where arrayBuffer isn't on Response.
- *  4. Authenticated Supabase blob download → `blobToDataUrl`.
- *     Fallback when signed-URL generation fails but the session is valid.
- *  5. Raw signed URL / public URL — last resort; the PDF WebView usually
+ *  1. Signed URL → `XMLHttpRequest` (responseType=blob) → `FileReader.readAsDataURL`.
+ *     Canonical RN binary-download pattern; works around the Hermes/SDK 54
+ *     bug where `fetch().arrayBuffer()` and `FileSystem.downloadAsync` both
+ *     return empty bytes for binary responses.
+ *  2. Signed URL → `FileSystem.downloadAsync` → `readAsStringAsync(Base64)`.
+ *  3. Signed URL → `fetch()` → `arrayBuffer()` → manual base64.
+ *  4. Signed URL → `fetch()` → `blob()` → `blobToDataUrl`.
+ *  5. Authenticated Supabase blob download → `blobToDataUrl`.
+ *  6. Raw signed URL / public URL — last resort; the PDF WebView usually
  *     can't load these, but we return *something* rather than blowing up.
  */
 export async function getStorageImageDataUrl(
   bucket: string,
   path: string,
 ): Promise<string> {
-  // 1. Signed URL + native file download → base64
+  // 1. XHR + FileReader — the only path that's reliable for binary responses
+  //    on Hermes/SDK 54.
+  try {
+    const signed = await storageApi.signedUrl(bucket, path, 3600);
+    const ext = normalizedExt(path);
+    const fallbackMime = inferMime(ext) ?? 'image/jpeg';
+    return await xhrSignedUrlToDataUrl(signed, fallbackMime);
+  } catch (err) {
+    logStepFailure(1, bucket, path, err);
+  }
+
+  // 2. Signed URL + native file download → base64
   try {
     const signed = await storageApi.signedUrl(bucket, path, 3600);
     const ext = normalizedExt(path);
@@ -51,10 +118,10 @@ export async function getStorageImageDataUrl(
       FileSystem.deleteAsync(tmp, { idempotent: true }).catch(() => undefined);
     }
   } catch (err) {
-    logStepFailure(1, bucket, path, err);
+    logStepFailure(2, bucket, path, err);
   }
 
-  // 2. Signed URL + fetch → arrayBuffer → manual base64 (no Blob, no FileSystem)
+  // 3. Signed URL + fetch → arrayBuffer → manual base64 (no Blob, no FileSystem)
   try {
     const signed = await storageApi.signedUrl(bucket, path, 3600);
     const response = await fetch(signed);
@@ -69,10 +136,10 @@ export async function getStorageImageDataUrl(
       || 'image/jpeg';
     return `data:${mime};base64,${base64}`;
   } catch (err) {
-    logStepFailure(2, bucket, path, err);
+    logStepFailure(3, bucket, path, err);
   }
 
-  // 3. Signed URL + fetch → blobToDataUrl
+  // 4. Signed URL + fetch → blobToDataUrl
   try {
     const signed = await storageApi.signedUrl(bucket, path, 3600);
     const response = await fetch(signed);
@@ -82,20 +149,20 @@ export async function getStorageImageDataUrl(
     if (!result.startsWith('data:')) throw new Error('blobToDataUrl returned non-data URL');
     return result;
   } catch (err) {
-    logStepFailure(3, bucket, path, err);
+    logStepFailure(4, bucket, path, err);
   }
 
-  // 4. Authenticated download + blobToDataUrl
+  // 5. Authenticated download + blobToDataUrl
   try {
     const blob = await storageApi.download(bucket, path);
     const result = await blobToDataUrl(blob);
     if (!result.startsWith('data:')) throw new Error('blobToDataUrl returned non-data URL');
     return result;
   } catch (err) {
-    logStepFailure(4, bucket, path, err);
+    logStepFailure(5, bucket, path, err);
   }
 
-  // 5. Last-resort remote URL (likely won't render in the PDF WebView, but we
+  // 6. Last-resort remote URL (likely won't render in the PDF WebView, but we
   // always return a valid-looking string so callers don't have to branch).
   try {
     return await storageApi.signedUrl(bucket, path, 3600);
@@ -132,7 +199,16 @@ export async function getStorageImageDataUrlStrict(
   path: string,
 ): Promise<string> {
   const result = await getStorageImageDataUrl(bucket, path);
-  if (!result.startsWith('data:')) {
+  // Reject `data:image/jpeg;base64,` (valid prefix, empty payload) — that's
+  // what the FileReader fallback returns for a 0-byte storage object, and
+  // the prefix check alone happily lets it through into the PDF as a broken
+  // `<img>`. Require at least 32 chars of base64 after the comma.
+  const comma = result.indexOf(',');
+  if (
+    !result.startsWith('data:') ||
+    comma < 0 ||
+    result.length - comma - 1 < 32
+  ) {
     throw new Error(`failed to embed ${bucket}/${path} as data URL`);
   }
   return result;

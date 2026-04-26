@@ -124,6 +124,8 @@ export function buildPdfHtml(args: {
       .photo-cell img { width: 100%; max-width: 48%; min-width: 100%; max-height: 180px; object-fit: cover; border-radius: 4px; border: 1px solid #E8E1D4; }
       .photo-cell.failed img { border: 3px solid #D32F2F; }
       .photo-missing { display: flex; align-items: center; justify-content: center; height: 120px; background: #F6F2EA; border-radius: 4px; border: 1px dashed #C8C0B0; font-size: 11px; color: #888; }
+      .cert-img-wrap { margin-top: 8px; }
+      .cert-img { display: block; max-width: 100%; border: 1px solid #E8E1D4; border-radius: 4px; }
       .photo-caption { font-size: 9pt; color: #666; text-align: center; margin-top: 2px; }
       .caption-failed { color: #D32F2F; }
       .appendix-sub { font-weight: 600; font-size: 12px; color: #1A1A1A; margin: 6px 0 4px; }
@@ -173,7 +175,15 @@ export function buildPdfHtml(args: {
           ${c.expires_at ? `ვადა: ${escapeHtml(c.expires_at)}` : ''}
         </p>
         ${c.file_data_url
-          ? `<img src="${c.file_data_url}" alt="${escapeHtml(c.type)}" style="max-width: 100%; margin-top: 8px; border: 1px solid #E8E1D4; border-radius: 4px;" />`
+          ? `<div class="cert-img-wrap">
+              <img
+                src="${c.file_data_url}"
+                alt="${escapeHtml(c.type)}"
+                class="cert-img"
+                onerror="this.style.display='none';this.parentElement.querySelector('.photo-missing').style.display='flex';"
+              />
+              <div class="photo-missing" style="display:none;">სურათი მიუწვდომელია</div>
+            </div>`
           : ''}
       </div>
     `).join('')}

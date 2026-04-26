@@ -1,3 +1,12 @@
+import * as FileSystem from 'expo-file-system/legacy';
+
+/**
+ * Minimum bytes after the `data:<mime>;base64,` comma for a payload to be
+ * considered a real image. A successful encode of even a 1×1 PNG is well
+ * over 50 chars; anything shorter is the "0-byte upload" failure mode.
+ */
+const MIN_DATA_URL_PAYLOAD = 32;
+
 /**
  * Convert a Blob to a `data:` URL.
  *
@@ -20,20 +29,58 @@ export async function blobToDataUrl(blob: Blob): Promise<string> {
     // fall through
   }
 
-  // 2. Fallback: FileReader
+  // 2. Fallback: FileReader. Reject empty/near-empty payloads so a 0-byte
+  // blob can't smuggle a syntactically-valid `data:image/jpeg;base64,` (no
+  // bytes after the comma) past callers and into a broken `<img>` tag.
   return await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onloadend = () => {
       const result = reader.result;
-      if (typeof result === 'string' && result.startsWith('data:')) {
-        resolve(result);
-      } else {
+      if (typeof result !== 'string' || !result.startsWith('data:')) {
         reject(new Error('FileReader produced no data URL'));
+        return;
       }
+      const comma = result.indexOf(',');
+      if (comma < 0 || result.length - comma - 1 < MIN_DATA_URL_PAYLOAD) {
+        reject(new Error('FileReader produced empty data URL'));
+        return;
+      }
+      resolve(result);
     };
     reader.onerror = () => reject(reader.error ?? new Error('FileReader error'));
     reader.readAsDataURL(blob);
   });
+}
+
+/**
+ * Read a local asset URI (typically `file://…` from ImagePicker / camera) into
+ * a Blob suitable for `supabase.storage.upload`.
+ *
+ * `fetch(file://).blob()` is what every example uses, but Hermes occasionally
+ * returns a 0-byte Blob for it — Supabase happily uploads the empty object,
+ * the DB row points at a real path, and the failure stays invisible until PDF
+ * generation tries to embed it. To avoid that we verify `blob.size > 0` and
+ * fall back to `FileSystem.readAsStringAsync(uri, Base64)` → manual Blob,
+ * which is reliable on RN. Throws if both routes return no bytes so the
+ * caller's existing toast surfaces the real failure to the user instead of
+ * silently corrupting future PDFs.
+ */
+export async function assetUriToBlob(uri: string, mimeType: string): Promise<Blob> {
+  try {
+    const res = await fetch(uri);
+    const blob = await res.blob();
+    if (blob && blob.size > 0) return blob;
+  } catch {
+    // fall through to FileSystem path
+  }
+
+  const base64 = await FileSystem.readAsStringAsync(uri, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+  if (!base64) throw new Error(`asset at ${uri} is empty`);
+  const ab = base64ToArrayBuffer(base64);
+  if (ab.byteLength === 0) throw new Error(`asset at ${uri} decoded to 0 bytes`);
+  return new Blob([ab], { type: mimeType });
 }
 
 /**

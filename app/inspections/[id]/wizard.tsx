@@ -16,6 +16,7 @@ import {
   templatesApi,
 } from '../../../lib/services';
 import { getStorageImageDisplayUrl } from '../../../lib/imageUrl';
+import { assetUriToBlob } from '../../../lib/blob';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import { haptic } from '../../../lib/haptics';
 import { useOffline, stripServerFields } from '../../../lib/offline';
@@ -413,16 +414,14 @@ export default function QuestionnaireWizard() {
       // of `answers` reflects the latest user input before we reference it.
       await offline.flush();
 
-      const res = await fetch(asset.uri);
-      const blob = await res.blob();
-      const ext = asset.mimeType?.split('/')[1] ?? 'jpg';
+      const mime = asset.mimeType ?? 'image/jpeg';
+      const ext = mime.split('/')[1] ?? 'jpg';
       const path = `${questionnaire.id}/${question.id}/${Date.now()}.${ext}`;
-      await storageApi.upload(
-        STORAGE_BUCKETS.answerPhotos,
-        path,
-        blob,
-        asset.mimeType ?? 'image/jpeg',
-      );
+      // assetUriToBlob guards against the Hermes 0-byte-blob bug — letting
+      // an empty upload through silently corrupts the row and breaks PDF
+      // generation later.
+      const blob = await assetUriToBlob(asset.uri, mime);
+      await storageApi.upload(STORAGE_BUCKETS.answerPhotos, path, blob, mime);
       // Ensure the answer row exists server-side (RLS on answer_photos joins
       // through `answers`). Upsert is safe here — no concurrent edits at this
       // point because we just flushed the queue.
