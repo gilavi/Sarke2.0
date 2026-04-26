@@ -1,4 +1,5 @@
-import { supabase, STORAGE_BUCKETS } from './supabase';
+import { supabase, STORAGE_BUCKETS, SUPABASE_URL, SUPABASE_ANON_KEY } from './supabase';
+import * as FileSystem from 'expo-file-system/legacy';
 import type {
   Answer,
   AnswerPhoto,
@@ -786,6 +787,43 @@ export const storageApi = {
       upsert: true,
     });
     if (error) throw error;
+    return path;
+  },
+  /**
+   * Upload a local file (file:// URI) directly to Supabase storage via the
+   * REST endpoint, using `FileSystem.uploadAsync` so the bytes never pass
+   * through the JS Blob/ArrayBuffer layer.
+   *
+   * Why this exists: on Hermes / Expo SDK 54, supabase-js's `.upload(blob)`
+   * and `.upload(arrayBuffer)` both silently ship 0-byte objects to storage
+   * (the Blob serialization for fetch's body is broken). Native upload
+   * streams the file straight from disk and is the only path that
+   * reliably stores the actual bytes.
+   */
+  uploadFromUri: async (
+    bucket: string,
+    path: string,
+    fileUri: string,
+    contentType: string,
+  ): Promise<string> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const headers: Record<string, string> = {
+      'Content-Type': contentType,
+      'x-upsert': 'true',
+      apikey: SUPABASE_ANON_KEY,
+    };
+    if (session?.access_token) {
+      headers.Authorization = `Bearer ${session.access_token}`;
+    }
+    const url = `${SUPABASE_URL}/storage/v1/object/${bucket}/${path}`;
+    const result = await FileSystem.uploadAsync(url, fileUri, {
+      httpMethod: 'POST',
+      uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+      headers,
+    });
+    if (result.status < 200 || result.status >= 300) {
+      throw new Error(`storage upload failed (${result.status}): ${result.body}`);
+    }
     return path;
   },
   download: async (bucket: string, path: string) => {

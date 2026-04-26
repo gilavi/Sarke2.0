@@ -52,36 +52,6 @@ export async function blobToDataUrl(blob: Blob): Promise<string> {
   });
 }
 
-/**
- * Read a local asset URI (typically `file://…` from ImagePicker / camera) into
- * a Blob suitable for `supabase.storage.upload`.
- *
- * `fetch(file://).blob()` is what every example uses, but Hermes occasionally
- * returns a 0-byte Blob for it — Supabase happily uploads the empty object,
- * the DB row points at a real path, and the failure stays invisible until PDF
- * generation tries to embed it. To avoid that we verify `blob.size > 0` and
- * fall back to `FileSystem.readAsStringAsync(uri, Base64)` → manual Blob,
- * which is reliable on RN. Throws if both routes return no bytes so the
- * caller's existing toast surfaces the real failure to the user instead of
- * silently corrupting future PDFs.
- */
-export async function assetUriToBlob(uri: string, mimeType: string): Promise<Blob> {
-  try {
-    const res = await fetch(uri);
-    const blob = await res.blob();
-    if (blob && blob.size > 0) return blob;
-  } catch {
-    // fall through to FileSystem path
-  }
-
-  const base64 = await FileSystem.readAsStringAsync(uri, {
-    encoding: FileSystem.EncodingType.Base64,
-  });
-  if (!base64) throw new Error(`asset at ${uri} is empty`);
-  const ab = base64ToArrayBuffer(base64);
-  if (ab.byteLength === 0) throw new Error(`asset at ${uri} decoded to 0 bytes`);
-  return new Blob([ab], { type: mimeType });
-}
 
 /**
  * Decode a `data:<mime>;base64,<payload>` URL into an ArrayBuffer.
@@ -93,6 +63,30 @@ export function dataUrlToArrayBuffer(dataUrl: string): ArrayBuffer {
   if (comma < 0) throw new Error('not a data URL');
   const b64 = dataUrl.slice(comma + 1);
   return base64ToArrayBuffer(b64);
+}
+
+/**
+ * Write a `data:<mime>;base64,<payload>` URL into a temp cache file and
+ * return the resulting `file://` URI. Use this so a base64 payload can be
+ * fed to `storageApi.uploadFromUri()` — supabase-js's Blob/ArrayBuffer
+ * upload paths silently produce 0-byte storage objects on Hermes/SDK 54;
+ * native streaming via `FileSystem.uploadAsync` is the only reliable path.
+ */
+export async function dataUrlToTempFile(
+  dataUrl: string,
+  ext: string = 'png',
+): Promise<string> {
+  const comma = dataUrl.indexOf(',');
+  if (comma < 0) throw new Error('not a data URL');
+  const base64 = dataUrl.slice(comma + 1);
+  if (!base64) throw new Error('data URL has empty payload');
+  const cacheBase = FileSystem.cacheDirectory ?? FileSystem.documentDirectory;
+  if (!cacheBase) throw new Error('no cache directory available');
+  const fileUri = `${cacheBase}upload-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  await FileSystem.writeAsStringAsync(fileUri, base64, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+  return fileUri;
 }
 
 function base64ToArrayBuffer(b64: string): ArrayBuffer {

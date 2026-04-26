@@ -4,8 +4,8 @@ import { createClient } from '@supabase/supabase-js';
 import Constants from 'expo-constants';
 
 const extra = Constants.expoConfig?.extra ?? {};
-const SUPABASE_URL = extra.supabaseUrl as string;
-const SUPABASE_ANON_KEY = extra.supabaseAnonKey as string;
+export const SUPABASE_URL = extra.supabaseUrl as string;
+export const SUPABASE_ANON_KEY = extra.supabaseAnonKey as string;
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   throw new Error('Supabase credentials missing from app.json "extra".');

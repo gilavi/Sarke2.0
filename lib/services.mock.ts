@@ -777,6 +777,12 @@ export const storageApi = {
     _body: Blob | ArrayBuffer,
     _contentType: string,
   ) => path,
+  uploadFromUri: async (
+    _bucket: string,
+    path: string,
+    _fileUri: string,
+    _contentType: string,
+  ): Promise<string> => path,
   download: async (_bucket: string, _path: string) => {
     // Return an empty Blob-ish object; not consumed in mock flows.
     return new Blob([], { type: 'application/octet-stream' });

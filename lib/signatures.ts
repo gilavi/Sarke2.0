@@ -15,17 +15,18 @@ interface PendingSignature {
 }
 
 /**
- * Normalize a drawn signature PNG: constrain to max 400px wide, PNG encode.
- * `base64` is the raw base64 string (no data: prefix) from SignatureCanvas.
+ * Normalize a drawn signature PNG: constrain to max 400px wide, PNG encode,
+ * and write to a temp file. `base64` is the raw base64 string (no data:
+ * prefix) from SignatureCanvas.
  *
- * Returns `{ base64, body, contentType }` ready to upload. We hand back an
- * `ArrayBuffer` (decoded from base64 ourselves) rather than going through
- * `fetch(dataUrl).blob()` — that path is unreliable on Hermes and silently
- * produces 0-byte uploads, which breaks every signature thumbnail and PDF.
+ * Returns `{ base64, fileUri, contentType }`. Callers upload via
+ * `storageApi.uploadFromUri(fileUri)` so the bytes stream natively — every
+ * other upload path (`Blob` body, `ArrayBuffer` body) silently produces
+ * 0-byte storage objects on Hermes/SDK 54.
  */
 export async function compressSignature(base64: string): Promise<{
   base64: string;
-  body: Blob;
+  fileUri: string;
   contentType: string;
 }> {
   const dataUrl = `data:image/png;base64,${base64}`;
@@ -34,9 +35,6 @@ export async function compressSignature(base64: string): Promise<{
     [{ resize: { width: 400 } }],
     { compress: 1, format: SaveFormat.PNG, base64: true },
   );
-  // Read the resulting bytes from the manipulator's file URI — `fetch(file://)`
-  // and `readAsStringAsync` are reliable in RN/Hermes, unlike `fetch(data:url)`
-  // which silently produces 0-byte blobs and corrupts every signature upload.
   const finalBase64 = out.base64
     ?? (out.uri
       ? await FileSystem.readAsStringAsync(out.uri, { encoding: FileSystem.EncodingType.Base64 })
@@ -45,19 +43,19 @@ export async function compressSignature(base64: string): Promise<{
   // Sanity: confirm decoded byte length is non-zero before handing off to Supabase.
   const ab = dataUrlToArrayBuffer(`data:image/png;base64,${finalBase64}`);
   if (ab.byteLength === 0) throw new Error('signature body empty after base64 decode');
-  // Read the file URI as a Blob — supabase-js's RN path handles Blob most
-  // reliably, especially via the file:// fetch which preserves byte length.
-  let body: Blob;
-  if (out.uri) {
-    body = await (await fetch(out.uri)).blob();
-    if (!body || (body as any).size === 0) {
-      // Fall back to ArrayBuffer-derived Blob if the file fetch was empty.
-      body = new Blob([ab], { type: 'image/png' });
-    }
-  } else {
-    body = new Blob([ab], { type: 'image/png' });
+
+  // Prefer the manipulator's own file URI; otherwise write the bytes to a
+  // fresh temp file so the native uploader has something to stream.
+  let fileUri = out.uri;
+  if (!fileUri) {
+    const cacheBase = FileSystem.cacheDirectory ?? FileSystem.documentDirectory;
+    if (!cacheBase) throw new Error('no cache directory available');
+    fileUri = `${cacheBase}sig-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.png`;
+    await FileSystem.writeAsStringAsync(fileUri, finalBase64, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
   }
-  return { base64: finalBase64, body, contentType: 'image/png' };
+  return { base64: finalBase64, fileUri, contentType: 'image/png' };
 }
 
 /**
@@ -70,8 +68,8 @@ export async function uploadSignature(
   base64: string,
 ): Promise<{ path: string; pending: boolean }> {
   try {
-    const { body, contentType } = await compressSignature(base64);
-    await storageApi.upload(STORAGE_BUCKETS.signatures, path, body, contentType);
+    const { fileUri, contentType } = await compressSignature(base64);
+    await storageApi.uploadFromUri(STORAGE_BUCKETS.signatures, path, fileUri, contentType);
     return { path, pending: false };
   } catch (e) {
     // Log the real failure so we can debug in Metro/Sentry instead of
@@ -94,8 +92,8 @@ export async function flushPendingSignatures(): Promise<void> {
   const still: PendingSignature[] = [];
   for (const item of list) {
     try {
-      const { body, contentType } = await compressSignature(item.base64);
-      await storageApi.upload(STORAGE_BUCKETS.signatures, item.path, body, contentType);
+      const { fileUri, contentType } = await compressSignature(item.base64);
+      await storageApi.uploadFromUri(STORAGE_BUCKETS.signatures, item.path, fileUri, contentType);
     } catch {
       still.push(item);
     }

@@ -49,7 +49,7 @@ import {
   getStorageImageDataUrl,
   getStorageImageDataUrlStrict,
 } from '../../lib/imageUrl';
-import { dataUrlToArrayBuffer, assetUriToBlob } from '../../lib/blob';
+import { dataUrlToTempFile } from '../../lib/blob';
 import { flushPendingSignatures } from '../../lib/signatures';
 import { buildPdfHtml } from '../../lib/pdf';
 import { useToast } from '../../lib/toast';
@@ -254,10 +254,9 @@ export default function GenerateCertificateScreen() {
       const mime = asset.mimeType ?? 'image/jpeg';
       const ext = mime.split('/')[1] ?? 'jpg';
       const path = `${user.id}/${Date.now()}.${ext}`;
-      // assetUriToBlob guards against Hermes' 0-byte file:// fetch — an
-      // empty upload here means a broken `<img>` in the next PDF.
-      const blob = await assetUriToBlob(asset.uri, mime);
-      await storageApi.upload(STORAGE_BUCKETS.certificates, path, blob, mime);
+      // Native upload — supabase-js's Blob/ArrayBuffer body silently lands
+      // 0-byte objects on Hermes/SDK 54.
+      await storageApi.uploadFromUri(STORAGE_BUCKETS.certificates, path, asset.uri, mime);
       const qual = await qualificationsApi.upsert({
         id: crypto.randomUUID(),
         user_id: user.id,
@@ -417,9 +416,9 @@ export default function GenerateCertificateScreen() {
 
     // Ad-hoc signers: only persist when both a name AND a signature are present.
     for (const s of additionalSigners.filter(x => x.name?.trim() && x.dataUrl)) {
-      const body = dataUrlToArrayBuffer(s.dataUrl!);
+      const fileUri = await dataUrlToTempFile(s.dataUrl!, 'png');
       const path = `${inspection!.id}/${s.id}-${Date.now()}.png`;
-      await storageApi.upload(STORAGE_BUCKETS.signatures, path, body, 'image/png');
+      await storageApi.uploadFromUri(STORAGE_BUCKETS.signatures, path, fileUri, 'image/png');
       const rowId = idForRole(s.role);
       recs.push({
         id: rowId,
@@ -472,9 +471,9 @@ export default function GenerateCertificateScreen() {
       let storagePath = signer.signature_png_url;
       // Newly captured (no stored path yet) — upload + persist back to roster.
       if (!storagePath) {
-        const body = dataUrlToArrayBuffer(dataUrl);
+        const fileUri = await dataUrlToTempFile(dataUrl, 'png');
         const path = `${inspection!.project_id}/roster-${signer.id}-${Date.now()}.png`;
-        await storageApi.upload(STORAGE_BUCKETS.signatures, path, body, 'image/png');
+        await storageApi.uploadFromUri(STORAGE_BUCKETS.signatures, path, fileUri, 'image/png');
         storagePath = path;
         await projectsApi.saveRosterSignature({
           project_id: inspection!.project_id,
