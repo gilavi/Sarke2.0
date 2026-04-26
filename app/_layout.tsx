@@ -31,15 +31,16 @@ function AuthGate() {
   const router = useRouter();
   const navRef = useNavigationContainerRef();
 
-  // If a stale GO_BACK (or any other action) bubbles up to the root with no
-  // handler — e.g. an empty back stack on a leftover modal — silently route
-  // home instead of letting React Navigation surface its dev toast and strand
-  // the user on whatever orphan screen they're on.
+  // If a stale GO_BACK bubbles to the root with no handler — e.g. empty back
+  // stack on a leftover modal — silently route home instead of stranding the
+  // user. Only intercept GO_BACK; PUSH/REPLACE/NAVIGATE actions must be left
+  // alone so legitimate navigations (e.g. into the wizard) aren't hijacked.
   useEffect(() => {
     if (!navRef) return;
     const sub = navRef.addListener('__unsafe_action__' as never, ((e: any) => {
       const action = e?.data?.action;
       if (!action || action.handled) return;
+      if (action.type !== 'GO_BACK') return;
       router.replace('/(tabs)/home');
     }) as never);
     return () => {

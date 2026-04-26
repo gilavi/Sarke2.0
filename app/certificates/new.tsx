@@ -45,7 +45,11 @@ import {
 } from '../../lib/services';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { useSession } from '../../lib/session';
-import { getStorageImageDataUrl, getStorageImageDisplayUrl } from '../../lib/imageUrl';
+import {
+  getStorageImageDataUrl,
+  getStorageImageDataUrlStrict,
+} from '../../lib/imageUrl';
+import { flushPendingSignatures } from '../../lib/signatures';
 import { buildPdfHtml } from '../../lib/pdf';
 import { useToast } from '../../lib/toast';
 import { logError, toErrorMessage } from '../../lib/logError';
@@ -54,6 +58,7 @@ import type {
   AnswerPhoto,
   Inspection,
   Project,
+  ProjectSigner,
   Qualification,
   Question,
   SignatureRecord,
@@ -113,6 +118,10 @@ export default function GenerateCertificateScreen() {
   const [selectedQuals, setSelectedQuals] = useState<Record<string, string>>({});
   const [extraQualIds, setExtraQualIds] = useState<string[]>([]);
   const [additionalSigners, setAdditionalSigners] = useState<AdditionalSigner[]>([]);
+  const [projectSigners, setProjectSigners] = useState<ProjectSigner[]>([]);
+  const [selectedRosterIds, setSelectedRosterIds] = useState<Set<string>>(new Set());
+  const [rosterDataUrls, setRosterDataUrls] = useState<Record<string, string>>({});
+  const [captureRosterId, setCaptureRosterId] = useState<string | null>(null);
   const [expertSigDisplayUrl, setExpertSigDisplayUrl] = useState<string | null>(null);
   const [captureSignerId, setCaptureSignerId] = useState<string | null>(null);
   const [uploadingFor, setUploadingFor] = useState<string | null>(null);
@@ -152,6 +161,11 @@ export default function GenerateCertificateScreen() {
       setAnswers(ans);
       setQuals(qualsList);
 
+      const roster = await projectsApi
+        .signers(insp.project_id)
+        .catch((e) => { logError(e, 'certNew.projectSigners'); return [] as ProjectSigner[]; });
+      setProjectSigners(roster);
+
       const initial: Record<string, string> = {};
       for (const t of tpl?.required_qualifications ?? []) {
         const first = qualsList.find(q => q.type === t);
@@ -177,7 +191,7 @@ export default function GenerateCertificateScreen() {
   useEffect(() => {
     let cancelled = false;
     if (!user?.saved_signature_url) { setExpertSigDisplayUrl(null); return; }
-    getStorageImageDisplayUrl(STORAGE_BUCKETS.signatures, user.saved_signature_url)
+    getStorageImageDataUrl(STORAGE_BUCKETS.signatures, user.saved_signature_url)
       .then(url => { if (!cancelled) setExpertSigDisplayUrl(url); })
       .catch((e) => logError(e, 'certNew.expertSigUrl'));
     return () => { cancelled = true; };
@@ -314,24 +328,62 @@ export default function GenerateCertificateScreen() {
   };
 
   const onSignatureCaptured = (base64: string) => {
+    const dataUrl = `data:image/png;base64,${base64}`;
+    if (captureRosterId) {
+      setRosterDataUrls(prev => ({ ...prev, [captureRosterId]: dataUrl }));
+      setSelectedRosterIds(prev => new Set(prev).add(captureRosterId));
+      setCaptureRosterId(null);
+      return;
+    }
     if (!captureSignerId) return;
     setAdditionalSigners(prev =>
       prev.map(s =>
         s.id === captureSignerId
-          ? { ...s, dataUrl: `data:image/png;base64,${base64}` }
+          ? { ...s, dataUrl }
           : s,
       ),
     );
     setCaptureSignerId(null);
   };
 
+  const toggleRosterSigner = async (signer: ProjectSigner) => {
+    const isSelected = selectedRosterIds.has(signer.id);
+    if (isSelected) {
+      setSelectedRosterIds(prev => {
+        const next = new Set(prev);
+        next.delete(signer.id);
+        return next;
+      });
+      return;
+    }
+    if (signer.signature_png_url) {
+      if (!rosterDataUrls[signer.id]) {
+        try {
+          const url = await getStorageImageDataUrl(STORAGE_BUCKETS.signatures, signer.signature_png_url);
+          setRosterDataUrls(prev => ({ ...prev, [signer.id]: url }));
+        } catch (e) {
+          logError(e, 'certNew.rosterSigLoad');
+          toast.error('ხელმოწერის ჩატვირთვა ვერ მოხერხდა');
+          return;
+        }
+      }
+      setSelectedRosterIds(prev => new Set(prev).add(signer.id));
+      return;
+    }
+    setCaptureRosterId(signer.id);
+  };
+
   // ── Generate ─────────────────────────────────────────────────────────────────
 
   const buildExpertRecord = async (): Promise<{ rec: SignatureRecord; expertName: string }> => {
     const expertName = user ? `${user.first_name} ${user.last_name}`.trim() : 'ექსპერტი';
-    const expertDataUrl = user?.saved_signature_url
-      ? await getStorageImageDataUrl(STORAGE_BUCKETS.signatures, user.saved_signature_url)
-      : null;
+    if (!user?.saved_signature_url) {
+      throw new Error('ექსპერტის ხელმოწერა საჭიროა — დაამატე "ჩემი ხელმოწერა" ეკრანიდან');
+    }
+    const expertDataUrl = await getStorageImageDataUrlStrict(
+      STORAGE_BUCKETS.signatures,
+      user.saved_signature_url,
+    );
     const rec: SignatureRecord = {
       id: 'expert-auto',
       inspection_id: inspection!.id,
@@ -349,38 +401,89 @@ export default function GenerateCertificateScreen() {
 
   const persistAdditionalSigners = async (): Promise<SignatureRecord[]> => {
     const recs: SignatureRecord[] = [];
-    for (const s of additionalSigners.filter(x => x.name?.trim())) {
-      let storagePath: string | null = null;
-      if (s.dataUrl) {
-        const blob = await (await fetch(s.dataUrl)).blob();
-        const path = `${inspection!.id}/${s.id}-${Date.now()}.png`;
-        await storageApi.upload(STORAGE_BUCKETS.signatures, path, blob, 'image/png');
-        storagePath = path;
-      }
+
+    // Ad-hoc signers: only persist when both a name AND a signature are present.
+    for (const s of additionalSigners.filter(x => x.name?.trim() && x.dataUrl)) {
+      const blob = await (await fetch(s.dataUrl!)).blob();
+      const path = `${inspection!.id}/${s.id}-${Date.now()}.png`;
+      await storageApi.upload(STORAGE_BUCKETS.signatures, path, blob, 'image/png');
       recs.push({
         id: s.id,
         inspection_id: inspection!.id,
         signer_role: s.role,
-        full_name: s.name?.trim() ?? '',
+        full_name: s.name.trim(),
         phone: null,
         position: null,
         signature_png_url: s.dataUrl,
         signed_at: new Date().toISOString(),
-        status: s.dataUrl ? 'signed' : 'not_present',
-        person_name: s.name?.trim() ?? '',
+        status: 'signed',
+        person_name: s.name.trim(),
       });
       await signaturesApi.upsert({
         id: s.id,
         inspection_id: inspection!.id,
         signer_role: s.role,
-        full_name: s.name?.trim() ?? '',
+        full_name: s.name.trim(),
         phone: null,
         position: null,
+        signature_png_url: path,
+        status: 'signed',
+        person_name: s.name.trim(),
+      });
+      // Save into the project roster so it's reusable next time.
+      await projectsApi.saveRosterSignature({
+        project_id: inspection!.project_id,
+        role: s.role,
+        full_name: s.name.trim(),
+        signature_png_url: path,
+      }).catch((e) => logError(e, 'certNew.rosterUpsertAdhoc'));
+    }
+
+    // Roster signers: include each selected signer with a loaded data URL.
+    for (const signer of projectSigners.filter(p => selectedRosterIds.has(p.id))) {
+      const dataUrl = rosterDataUrls[signer.id];
+      if (!dataUrl) continue;
+      let storagePath = signer.signature_png_url;
+      // Newly captured (no stored path yet) — upload + persist back to roster.
+      if (!storagePath) {
+        const blob = await (await fetch(dataUrl)).blob();
+        const path = `${inspection!.project_id}/roster-${signer.id}-${Date.now()}.png`;
+        await storageApi.upload(STORAGE_BUCKETS.signatures, path, blob, 'image/png');
+        storagePath = path;
+        await projectsApi.saveRosterSignature({
+          project_id: inspection!.project_id,
+          role: signer.role,
+          full_name: signer.full_name,
+          phone: signer.phone,
+          position: signer.position,
+          signature_png_url: path,
+        }).catch((e) => logError(e, 'certNew.rosterUpsertRoster'));
+      }
+      recs.push({
+        id: signer.id,
+        inspection_id: inspection!.id,
+        signer_role: signer.role,
+        full_name: signer.full_name,
+        phone: signer.phone,
+        position: signer.position,
+        signature_png_url: dataUrl,
+        signed_at: new Date().toISOString(),
+        status: 'signed',
+        person_name: signer.full_name,
+      });
+      await signaturesApi.upsert({
+        id: signer.id,
+        inspection_id: inspection!.id,
+        signer_role: signer.role,
+        full_name: signer.full_name,
+        phone: signer.phone,
+        position: signer.position,
         signature_png_url: storagePath,
-        status: s.dataUrl ? 'signed' : 'not_present',
-        person_name: s.name?.trim() ?? '',
+        status: 'signed',
+        person_name: signer.full_name,
       });
     }
+
     return recs;
   };
 
@@ -436,9 +539,23 @@ export default function GenerateCertificateScreen() {
       Alert.alert('აკლია კვალიფიკაცია', `მიუთითე: ${missingQualTypes.join(', ')}`);
       return;
     }
+    if (!user?.saved_signature_url) {
+      Alert.alert(
+        'ხელმოწერა საჭიროა',
+        'PDF-ის დასაგენერირებლად საჭიროა ექსპერტის ხელმოწერა.',
+        [
+          { text: 'გაუქმება', style: 'cancel' },
+          { text: 'დახაზვა', onPress: () => router.push('/signature' as any) },
+        ],
+      );
+      return;
+    }
     setBusy(true);
     let uploadedPdfPath: string | null = null;
     try {
+      // Retry any signature uploads that were queued offline before we try
+      // to embed them into the PDF.
+      await flushPendingSignatures();
       const { rec: expertRec, expertName } = await buildExpertRecord();
       const otherRecs = await persistAdditionalSigners();
       await persistExpertSignature(expertName);
@@ -542,6 +659,9 @@ export default function GenerateCertificateScreen() {
   }
 
   const captureSigner = additionalSigners.find(s => s.id === captureSignerId);
+  const captureRosterSigner = projectSigners.find(p => p.id === captureRosterId);
+  const capturePersonName = captureRosterSigner?.full_name ?? captureSigner?.name ?? '';
+  const captureVisible = captureSignerId !== null || captureRosterId !== null;
   const expertName = user ? `${user.first_name} ${user.last_name}`.trim() : 'ექსპერტი';
   const expertInitials = expertName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
@@ -611,8 +731,43 @@ export default function GenerateCertificateScreen() {
           {/* Other Signers */}
           <Animated.View entering={FadeInUp.duration(300).delay(2 * STAGGER_MS)} style={s.section}>
             <Text style={s.sectionLabel}>სხვა ხელმომწერები</Text>
+
+            {projectSigners.length > 0 && (
+              <View style={{ gap: 8, marginBottom: additionalSigners.length > 0 ? 12 : 0 }}>
+                {projectSigners.map(signer => {
+                  const checked = selectedRosterIds.has(signer.id);
+                  const hasStoredSig = !!signer.signature_png_url;
+                  return (
+                    <Pressable
+                      key={signer.id}
+                      onPress={() => void toggleRosterSigner(signer)}
+                      style={s.rosterRow}
+                    >
+                      <View style={[s.checkbox, checked && s.checkboxChecked]}>
+                        {checked && <Ionicons name="checkmark" size={14} color={COLORS.white} />}
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={s.rosterTitle}>
+                          {signer.full_name}-ის ხელმოწერა
+                        </Text>
+                        <Text style={s.rosterSub}>
+                          {SIGNER_ROLE_LABEL[signer.role]}
+                          {hasStoredSig ? '' : ' · ხელმოწერა საჭიროა'}
+                        </Text>
+                      </View>
+                      {hasStoredSig && checked ? (
+                        <Ionicons name="checkmark-circle" size={18} color={COLORS.primary} />
+                      ) : null}
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
+
             {additionalSigners.length === 0 ? (
-              <Text style={s.emptyHint}>სურვილისამებრ — დაამატე სხვა ხელმომწერი</Text>
+              projectSigners.length === 0 ? (
+                <Text style={s.emptyHint}>სურვილისამებრ — დაამატე სხვა ხელმომწერი</Text>
+              ) : null
             ) : (
               <View style={{ gap: 10 }}>
                 {additionalSigners.map(signer => (
@@ -661,7 +816,7 @@ export default function GenerateCertificateScreen() {
               </View>
             )}
             <Pressable onPress={addSigner} style={s.ghostBtn}>
-              <Text style={s.ghostBtnText}>+ დამატება</Text>
+              <Text style={s.ghostBtnText}>+ ახალი ხელმომწერი</Text>
             </Pressable>
           </Animated.View>
 
@@ -757,9 +912,9 @@ export default function GenerateCertificateScreen() {
 
         {/* Signature capture modal */}
         <SignatureCanvas
-          visible={captureSignerId !== null}
-          personName={captureSigner?.name ?? ''}
-          onCancel={() => setCaptureSignerId(null)}
+          visible={captureVisible}
+          personName={capturePersonName}
+          onCancel={() => { setCaptureSignerId(null); setCaptureRosterId(null); }}
           onConfirm={onSignatureCaptured}
         />
       </SafeAreaView>
@@ -848,6 +1003,42 @@ const s = StyleSheet.create({
     fontSize: 13,
     color: COLORS.textSecondary,
     marginBottom: 10,
+  },
+
+  // Roster checkbox row
+  rosterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.hairline,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: COLORS.hairline,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  rosterTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  rosterSub: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginTop: 2,
   },
 
   // Expert row

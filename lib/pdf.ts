@@ -307,45 +307,16 @@ function renderSignatureBlocks(
   return orderedRoles
     .map(role => {
       const sig = signatures.find(s => s.signer_role === role);
+      if (!sig || sig.status !== 'signed' || !sig.signature_png_url) return '';
+      if (!sig.signature_png_url.startsWith('data:')) return '';
       const label = role === 'expert' ? 'ექსპერტი' : SIGNER_ROLE_LABEL[role] ?? role;
-
-      if (sig?.status === 'signed' && sig.signature_png_url) {
-        // The print WebView can only inline `data:` URLs — Supabase signed
-        // URLs / storage paths won't load. If the caller hands us a non-data
-        // URL we still render the block (name + line) but drop the broken
-        // image rather than emitting a 404 placeholder.
-        const isDataUrl = sig.signature_png_url.startsWith('data:');
-        const imgTag = isDataUrl
-          ? `<img class="sig-img" src="${sig.signature_png_url}" alt="ხელმოწერა" />`
-          : `<div class="line"></div>`;
-        return `
+      return `
       <div class="sig-block">
         <h3>${escapeHtml(label)}</h3>
         <p class="name">${escapeHtml(sig.full_name || '—')}</p>
         ${sig.position ? `<p class="sub">${escapeHtml(sig.position)}</p>` : ''}
-        ${imgTag}
+        <img class="sig-img" src="${sig.signature_png_url}" alt="ხელმოწერა" />
         ${sig.signed_at ? `<p class="sub">${escapeHtml(new Date(sig.signed_at).toLocaleDateString('ka'))}</p>` : ''}
-      </div>`;
-      }
-
-      if (sig?.status === 'not_present') {
-        const name = sig.full_name || sig.person_name || label;
-        return `
-      <div class="sig-block not-present">
-        <h3>${escapeHtml(label)}</h3>
-        <p class="name">${escapeHtml(name)}</p>
-        <div class="line"></div>
-        <p class="placeholder">(არ იყო დამსწრე)</p>
-      </div>`;
-      }
-
-      // No record at all — empty line
-      return `
-      <div class="sig-block">
-        <h3>${escapeHtml(label)}</h3>
-        <p class="name">${escapeHtml(label)}</p>
-        <div class="line"></div>
-        <p class="sub">&nbsp;</p>
       </div>`;
     })
     .join('');

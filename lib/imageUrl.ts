@@ -74,6 +74,23 @@ export async function getStorageImageDataUrl(
 }
 
 /**
+ * Strict variant of `getStorageImageDataUrl` for PDF embedding: returns a
+ * `data:` URL or throws. Use when a remote-URL fallback would silently
+ * break the PDF (the print WebView can't fetch Supabase signed URLs
+ * during rendering).
+ */
+export async function getStorageImageDataUrlStrict(
+  bucket: string,
+  path: string,
+): Promise<string> {
+  const result = await getStorageImageDataUrl(bucket, path);
+  if (!result.startsWith('data:')) {
+    throw new Error(`failed to embed ${bucket}/${path} as data URL`);
+  }
+  return result;
+}
+
+/**
  * URL intended for direct display in a React Native `<Image>` — prefers a
  * signed URL so the network layer handles the fetch instead of FileReader.
  * `getStorageImageDataUrl` is still used for PDF rendering, where the
