@@ -9,6 +9,25 @@ import type { AppUser } from '../types/models';
 
 WebBrowser.maybeCompleteAuthSession();
 
+// Supabase rejects getSession() with this when AsyncStorage holds a
+// refresh token the auth server no longer accepts (re-installed app,
+// rotated key, expired session). It is an expected transient state on
+// boot, not a programmer error — surface it as signed-out, not as a
+// red LogBox banner.
+function isStaleRefreshToken(err: unknown): boolean {
+  const msg =
+    typeof err === 'string'
+      ? err
+      : err instanceof Error
+        ? err.message
+        : '';
+  const lower = msg.toLowerCase();
+  return (
+    lower.includes('refresh token') &&
+    (lower.includes('not found') || lower.includes('invalid') || lower.includes('expired'))
+  );
+}
+
 type SessionState =
   | { status: 'loading' }
   | { status: 'signedOut' }
@@ -85,7 +104,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       }
     }).catch((e) => {
       if (cancelled) return;
-      logError(e, 'session.getSession');
+      // Stale/invalid refresh token from a previous install or expired
+      // session — clear it so the next boot starts clean, and treat as
+      // a normal signed-out boot. Don't log: this isn't an error worth
+      // surfacing to the dev LogBox or the on-device error ring.
+      if (isStaleRefreshToken(e)) {
+        void supabase.auth.signOut().catch(() => {});
+      } else {
+        logError(e, 'session.getSession');
+      }
       setState({ status: 'signedOut' });
     });
 
