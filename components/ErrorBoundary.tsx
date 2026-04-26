@@ -1,10 +1,38 @@
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { theme } from '../lib/theme';
 import { logError } from '../lib/logError';
 
 type Props = { children: React.ReactNode };
 type State = { error: Error | null };
+
+function ErrorRedirect({ onDone }: { onDone: () => void }) {
+  const router = useRouter();
+  React.useEffect(() => {
+    router.replace('/(tabs)/home');
+    onDone();
+  }, [router, onDone]);
+  return (
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: theme.colors.background,
+        padding: 24,
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 12,
+      }}
+    >
+      <Text style={{ fontSize: 22, fontWeight: '800', color: theme.colors.ink }}>
+        რაღაც არ გამოვიდა
+      </Text>
+      <Text style={{ color: theme.colors.inkSoft, textAlign: 'center', lineHeight: 22 }}>
+        გადამისამართება მთავარ გვერდზე...
+      </Text>
+    </View>
+  );
+}
 
 export class ErrorBoundary extends React.Component<Props, State> {
   state: State = { error: null };
@@ -21,40 +49,6 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
   render() {
     if (!this.state.error) return this.props.children;
-    return (
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: theme.colors.background,
-          padding: 24,
-          justifyContent: 'center',
-          alignItems: 'center',
-          gap: 16,
-        }}
-      >
-        <Text style={{ fontSize: 22, fontWeight: '800', color: theme.colors.ink }}>
-          რაღაც არ გამოვიდა
-        </Text>
-        <Text style={{ color: theme.colors.inkSoft, textAlign: 'center', lineHeight: 22 }}>
-          აპლიკაციაში მოხდა მოულოდნელი შეცდომა. სცადეთ თავიდან.
-        </Text>
-        {__DEV__ ? (
-          <Text style={{ color: theme.colors.danger, fontSize: 12, textAlign: 'center' }}>
-            {this.state.error.message}
-          </Text>
-        ) : null}
-        <Pressable
-          onPress={this.reset}
-          style={{
-            backgroundColor: theme.colors.accent,
-            paddingHorizontal: 28,
-            paddingVertical: 12,
-            borderRadius: 12,
-          }}
-        >
-          <Text style={{ color: theme.colors.white, fontWeight: '700' }}>კვლავ ცდა</Text>
-        </Pressable>
-      </View>
-    );
+    return <ErrorRedirect onDone={this.reset} />;
   }
 }

@@ -1,7 +1,7 @@
 import '../lib/polyfills';
 import { useEffect } from 'react';
 import * as Linking from 'expo-linking';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { Stack, useNavigationContainerRef, useRouter, useSegments } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -29,6 +29,24 @@ function AuthGate() {
   const { state } = useSession();
   const segments = useSegments();
   const router = useRouter();
+  const navRef = useNavigationContainerRef();
+
+  // If a stale GO_BACK (or any other action) bubbles up to the root with no
+  // handler — e.g. an empty back stack on a leftover modal — silently route
+  // home instead of letting React Navigation surface its dev toast and strand
+  // the user on whatever orphan screen they're on.
+  useEffect(() => {
+    if (!navRef) return;
+    const sub = navRef.addListener('__unsafe_action__' as never, ((e: any) => {
+      const action = e?.data?.action;
+      if (!action || action.handled) return;
+      router.replace('/(tabs)/home');
+    }) as never);
+    return () => {
+      // @ts-expect-error - returned subscription type varies across RN versions
+      sub?.remove?.();
+    };
+  }, [navRef, router]);
 
   // Handle Supabase password-recovery deep links (sarke://reset?code=...).
   // Exchange the PKCE code for a session, then route to the reset form.
@@ -120,12 +138,7 @@ function AuthGate() {
         headerStyle: { backgroundColor: theme.colors.background },
         headerShadowVisible: false,
       }}
-    >
-      <Stack.Screen
-        name="new-inspection"
-        options={{ presentation: 'modal', headerShown: false }}
-      />
-    </Stack>
+    />
   );
 }
 
