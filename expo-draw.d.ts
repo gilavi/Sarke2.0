@@ -5,13 +5,13 @@ declare module 'expo-draw' {
   interface DrawProps {
     strokes?: any[];
     enabled?: boolean;
-    style?: ViewStyle;
+    containerStyle?: ViewStyle;
+    color?: string;
+    strokeWidth?: number;
+    onChangeStrokes?: (strokes: any[]) => void;
     rewind?: (fn: () => void) => void;
     clear?: (fn: () => void) => void;
   }
 
-  export default class Draw extends React.Component<DrawProps> {
-    rewind(): void;
-    clear(): void;
-  }
+  export default class Draw extends React.Component<DrawProps> {}
 }

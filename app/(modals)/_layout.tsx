@@ -9,7 +9,7 @@ export default function ModalsLayout() {
         animation: 'slide_from_bottom',
       }}
     >
-      <Stack.Screen name="signature" />
+      <Stack.Screen name="capture-signature" />
     </Stack>
   );
 }

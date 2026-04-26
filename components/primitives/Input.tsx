@@ -14,7 +14,6 @@ export function Input({ error, label, className = '', ...rest }: InputProps) {
         className={`
           h-12 px-4 rounded-xl border bg-white text-ink text-base
           ${error ? 'border-red-500' : 'border-hairline'}
-          focus:border-accent focus:ring-2 focus:ring-accent/20
           ${className}
         `}
         placeholderTextColor="#8E8E93"
