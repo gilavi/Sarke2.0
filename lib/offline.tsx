@@ -10,6 +10,15 @@ import React, {
 } from 'react';
 import { supabase } from './supabase';
 import { logError } from './logError';
+import {
+  addToQueue,
+  getPendingCount,
+  getPendingItems,
+  markCompleted,
+  markFailed,
+  processQueue,
+  type QueueItem,
+} from './sync-queue';
 import type { Answer, Inspection } from '../types/models';
 
 type AnswerUpsertPayload = Partial<Answer> & {
@@ -21,10 +30,6 @@ type AnswerUpsertPayload = Partial<Answer> & {
 // Name kept for cache-key stability across the 0006 rename; payload now
 // targets the `inspections` table. See enqueueQuestionnaireUpdate JSDoc.
 type QuestionnaireUpdatePayload = Partial<Inspection> & { id: string };
-
-type QueueOp =
-  | { kind: 'answer_upsert'; payload: AnswerUpsertPayload; attempts?: number }
-  | { kind: 'questionnaire_update'; payload: QuestionnaireUpdatePayload; attempts?: number };
 
 const QUEUE_KEY = '@offline:queue';
 const answersKey = (qid: string) => `@offline:answers:${qid}`;
@@ -72,19 +77,36 @@ export function useOffline(): OfflineContextValue {
   return v;
 }
 
-async function readQueue(): Promise<QueueOp[]> {
-  const raw = await AsyncStorage.getItem(QUEUE_KEY);
-  if (!raw) return [];
+/** One-time migration: move old AsyncStorage queue into SQLite, then delete. */
+async function migrateLegacyQueue(): Promise<void> {
   try {
-    return JSON.parse(raw) as QueueOp[];
+    const raw = await AsyncStorage.getItem(QUEUE_KEY);
+    if (!raw) return;
+    const ops = JSON.parse(raw) as Array<
+      | { kind: 'answer_upsert'; payload: AnswerUpsertPayload }
+      | { kind: 'questionnaire_update'; payload: QuestionnaireUpdatePayload }
+    >;
+    for (const op of ops) {
+      if (op.kind === 'answer_upsert') {
+        await addToQueue(
+          'answer_upsert',
+          'answers',
+          `${op.payload.inspection_id}:${op.payload.question_id}`,
+          op.payload,
+        );
+      } else {
+        await addToQueue(
+          'questionnaire_update',
+          'inspections',
+          op.payload.id,
+          op.payload,
+        );
+      }
+    }
+    await AsyncStorage.removeItem(QUEUE_KEY);
   } catch (e) {
-    logError(e, 'offline.readQueue.parse');
-    return [];
+    logError(e, 'offline.migrateLegacyQueue');
   }
-}
-
-async function writeQueueRaw(ops: QueueOp[]): Promise<void> {
-  await AsyncStorage.setItem(QUEUE_KEY, JSON.stringify(ops));
 }
 
 export function OfflineProvider({ children }: { children: React.ReactNode }) {
@@ -92,77 +114,46 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
   const [netReady, setNetReady] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const onlineRef = useRef(true);
+  const migratedRef = useRef(false);
 
-  // Serialize ALL queue mutations (enqueue + flush) through a single promise
-  // chain. Without this, concurrent readQueue → setQueue cycles race and
-  // silently drop ops. Every mutator appends to this chain via
-  // `runExclusive(fn)`; the returned promise resolves with the fn's result.
-  const queueLock = useRef<Promise<unknown>>(Promise.resolve());
-  const runExclusive = useCallback(<T,>(fn: () => Promise<T>): Promise<T> => {
-    const next = queueLock.current.then(fn, fn);
-    // Keep the chain alive even if fn throws, so the next caller still runs.
-    queueLock.current = next.catch(() => undefined);
-    return next;
-  }, []);
-
-  const setQueue = useCallback(async (ops: QueueOp[]) => {
-    await writeQueueRaw(ops);
-    setPendingCount(ops.length);
+  const refreshCount = useCallback(async () => {
+    const count = await getPendingCount();
+    setPendingCount(count);
   }, []);
 
   const flush = useCallback(async (): Promise<void> => {
     if (!onlineRef.current) return;
-    await runExclusive(async () => {
-      let ops = await readQueue();
-      // Cap iterations to the starting count so a single bad payload
-      // can't stall the queue — failing ops rotate to the back.
-      let processed = 0;
-      const startCount = ops.length;
-      while (ops.length > 0 && onlineRef.current && processed < startCount) {
-        const op = ops[0];
-        try {
-          if (op.kind === 'answer_upsert') {
-            const { error } = await supabase
-              .from('answers')
-              .upsert(op.payload, { onConflict: 'inspection_id,question_id' });
-            if (error) throw error;
-          } else {
-            const { id, ...rest } = op.payload;
-            const { error } = await supabase
-              .from('inspections')
-              .update(rest)
-              .eq('id', id);
-            if (error) throw error;
-          }
-          ops = ops.slice(1);
-          await setQueue(ops);
-        } catch (err) {
-          const attempts = (op.attempts ?? 0) + 1;
-          if (attempts >= MAX_OP_RETRIES) {
-            logError(err, `offline.flush.drop.${op.kind}`);
-            ops = ops.slice(1);
-          } else {
-            // Rotate to the back so subsequent ops still get a chance.
-            ops = [...ops.slice(1), { ...op, attempts }];
-          }
-          await setQueue(ops);
-        }
-        processed++;
+    await processQueue(async (item: QueueItem) => {
+      const payload = JSON.parse(item.payload_json);
+      if (item.operation_type === 'answer_upsert') {
+        const { error } = await supabase
+          .from('answers')
+          .upsert(payload, { onConflict: 'inspection_id,question_id' });
+        if (error) throw error;
+      } else if (item.operation_type === 'questionnaire_update') {
+        const { id, ...rest } = payload;
+        const { error } = await supabase.from('inspections').update(rest).eq('id', id);
+        if (error) throw error;
       }
+      await markCompleted(item.id);
     });
-  }, [setQueue, runExclusive]);
+    await refreshCount();
+  }, [refreshCount]);
 
   useEffect(() => {
-    void readQueue().then((q) => setPendingCount(q.length));
-    // Seed current state once before subscribing, so the first render
-    // after `netReady` reflects reality instead of the `true` default.
-    void NetInfo.fetch().then((s) => {
+    void (async () => {
+      if (!migratedRef.current) {
+        await migrateLegacyQueue();
+        migratedRef.current = true;
+      }
+      await refreshCount();
+      const s = await NetInfo.fetch();
       const online = !!s.isConnected && s.isInternetReachable !== false;
       onlineRef.current = online;
       setIsOnline(online);
       setNetReady(true);
       if (online) void flush();
-    });
+    })();
     const unsub = NetInfo.addEventListener((s) => {
       const online = !!s.isConnected && s.isInternetReachable !== false;
       onlineRef.current = online;
@@ -171,27 +162,29 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
       if (online) void flush();
     });
     return () => unsub();
-  }, [flush]);
+  }, [flush, refreshCount]);
 
   const enqueueAnswerUpsert = useCallback<OfflineContextValue['enqueueAnswerUpsert']>(
     async (payload) => {
-      await runExclusive(async () => {
-        const ops = await readQueue();
-        // Coalesce: drop any prior pending upsert for the same (inspection, question).
-        const filtered = ops.filter(
-          (o) =>
-            !(
-              o.kind === 'answer_upsert' &&
-              o.payload.inspection_id === payload.inspection_id &&
-              o.payload.question_id === payload.question_id
-            ),
-        );
-        filtered.push({ kind: 'answer_upsert', payload });
-        await setQueue(filtered);
-      });
+      // Coalesce: drop any prior pending upsert for the same (inspection, question).
+      const items = await getPendingItems(1000);
+      for (const item of items) {
+        if (item.operation_type !== 'answer_upsert') continue;
+        const p = JSON.parse(item.payload_json) as AnswerUpsertPayload;
+        if (p.inspection_id === payload.inspection_id && p.question_id === payload.question_id) {
+          await markCompleted(item.id);
+        }
+      }
+      await addToQueue(
+        'answer_upsert',
+        'answers',
+        `${payload.inspection_id}:${payload.question_id}`,
+        payload,
+      );
+      await refreshCount();
       if (onlineRef.current) void flush();
     },
-    [flush, setQueue, runExclusive],
+    [flush, refreshCount],
   );
 
   /**
@@ -204,35 +197,35 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
     OfflineContextValue['enqueueQuestionnaireUpdate']
   >(
     async (payload) => {
-      await runExclusive(async () => {
-        const ops = await readQueue();
-        // If the patch marks the inspection completed and no completed_at
-        // was supplied, stamp one now. Otherwise a flush that lands hours later
-        // would mark the row completed with a null timestamp and break audit.
-        const stamped: typeof payload =
-          payload.status === 'completed' && !payload.completed_at
-            ? { ...payload, completed_at: new Date().toISOString() }
-            : payload;
-        let merged = { ...stamped };
-        const filtered: QueueOp[] = [];
-        for (const op of ops) {
-          if (op.kind === 'questionnaire_update' && op.payload.id === payload.id) {
-            // Merge older patch into the new one so nothing is lost.
-            merged = { ...op.payload, ...merged };
-          } else {
-            filtered.push(op);
-          }
+      // If the patch marks the inspection completed and no completed_at
+      // was supplied, stamp one now. Otherwise a flush that lands hours later
+      // would mark the row completed with a null timestamp and break audit.
+      const stamped: typeof payload =
+        payload.status === 'completed' && !payload.completed_at
+          ? { ...payload, completed_at: new Date().toISOString() }
+          : payload;
+
+      // Merge with any existing pending update for this inspection.
+      const items = await getPendingItems(1000);
+      let merged = { ...stamped };
+      for (const item of items) {
+        if (item.operation_type === 'questionnaire_update' && item.target_id === payload.id) {
+          const oldPayload = JSON.parse(item.payload_json) as QuestionnaireUpdatePayload;
+          merged = { ...oldPayload, ...merged };
+          await markCompleted(item.id);
         }
-        filtered.push({ kind: 'questionnaire_update', payload: merged });
-        // Cache patch must NOT include server-canonical fields: re-applying
-        // them on reload triggered the wizard↔detail redirect loop.
-        const cachePatch = stripServerFields(merged);
-        await AsyncStorage.setItem(questionnaireKey(payload.id), JSON.stringify(cachePatch));
-        await setQueue(filtered);
-      });
+      }
+
+      await addToQueue('questionnaire_update', 'inspections', payload.id, merged);
+
+      // Cache patch must NOT include server-canonical fields: re-applying
+      // them on reload triggered the wizard↔detail redirect loop.
+      const cachePatch = stripServerFields(merged);
+      await AsyncStorage.setItem(questionnaireKey(payload.id), JSON.stringify(cachePatch));
+      await refreshCount();
       if (onlineRef.current) void flush();
     },
-    [flush, setQueue, runExclusive],
+    [flush, refreshCount],
   );
 
   const hydrateAnswers = useCallback<OfflineContextValue['hydrateAnswers']>(async (qid) => {
@@ -269,11 +262,14 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
   const pendingAnswerQuestionIds = useCallback<
     OfflineContextValue['pendingAnswerQuestionIds']
   >(async (inspectionId) => {
-    const ops = await readQueue();
+    const items = await getPendingItems(1000);
     const ids = new Set<string>();
-    for (const op of ops) {
-      if (op.kind === 'answer_upsert' && op.payload.inspection_id === inspectionId) {
-        ids.add(op.payload.question_id);
+    for (const item of items) {
+      if (item.operation_type === 'answer_upsert') {
+        const p = JSON.parse(item.payload_json) as AnswerUpsertPayload;
+        if (p.inspection_id === inspectionId) {
+          ids.add(p.question_id);
+        }
       }
     }
     return ids;

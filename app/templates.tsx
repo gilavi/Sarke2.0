@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
-import { FlatList, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect } from 'expo-router';
 import { Card, Screen } from '../components/ui';
@@ -26,10 +27,11 @@ export default function TemplatesScreen() {
     <Screen>
       <Stack.Screen options={{ headerShown: true, title: 'შაბლონები' }} />
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
-        <FlatList
+        <FlashList<Template> estimatedItemSize={120}
           data={templates}
           keyExtractor={t => t.id}
-          contentContainerStyle={{ padding: 16, gap: 12 }}
+          contentContainerStyle={{ padding: 16 }}
+          ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
           ListEmptyComponent={
             !loaded ? (
               <View style={{ gap: 12 }}>
@@ -45,7 +47,7 @@ export default function TemplatesScreen() {
               </View>
             ) : null
           }
-          renderItem={({ item }) => (
+          renderItem={({ item }: { item: typeof templates[0] }) => (
             <Card padding={14}>
               <Text style={{ fontWeight: '700', color: theme.colors.ink }}>{item.name}</Text>
               <Text style={{ color: theme.colors.inkSoft, fontSize: 11, marginTop: 4 }}>

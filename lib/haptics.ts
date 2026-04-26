@@ -11,4 +11,6 @@ export const haptic = {
   error: () => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {}),
   /** Warning notification — caution, pending */
   warn: () => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {}),
+  /** Heavy impact — safety violations, final submit, delete confirmation */
+  heavy: () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {}),
 };

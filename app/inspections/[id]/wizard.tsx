@@ -1,5 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Animated, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
@@ -570,9 +571,14 @@ export default function QuestionnaireWizard() {
       <Animated.View style={{ flex: 1, opacity: enterAnim }}>
       <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.card }} edges={['top']}>
         <View style={styles.topBar}>
-          <Text style={styles.stepperText}>
-            {stepIndex + 1} / {steps.length}
-          </Text>
+          <View style={{ flex: 1, gap: 8 }}>
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressFill, { width: `${((stepIndex + 1) / steps.length) * 100}%` }]} />
+            </View>
+            <Text style={styles.stepperText}>
+              ნაბიჯი {stepIndex + 1} / {steps.length}
+            </Text>
+          </View>
           <Pressable
             hitSlop={12}
             onPress={() => setExitModalVisible(true)}
@@ -1831,6 +1837,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: theme.colors.inkSoft,
+  },
+  progressTrack: {
+    height: 4,
+    backgroundColor: theme.colors.hairline,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: theme.colors.accent,
+    borderRadius: 2,
   },
   closeBtn: {
     position: 'absolute',

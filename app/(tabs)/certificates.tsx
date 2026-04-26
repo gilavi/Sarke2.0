@@ -5,12 +5,13 @@
 // but leaves the underlying inspection intact.
 import { useCallback, useMemo, useState } from 'react';
 import {
-  FlatList,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -150,10 +151,11 @@ export default function CertificatesScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>PDF რეპორტები</Text>
       </View>
-      <FlatList
+      <FlashList estimatedItemSize={120}
         data={certs}
         keyExtractor={c => c.id}
-        contentContainerStyle={{ padding: 16, paddingBottom: 100, gap: 10 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+        ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
         ListEmptyComponent={
           !loaded ? (
             <View style={{ gap: 10 }}>
@@ -187,7 +189,7 @@ export default function CertificatesScreen() {
             </View>
           )
         }
-        renderItem={({ item }) => {
+        renderItem={({ item }: { item: typeof certs[0] }) => {
           const insp = inspectionById.get(item.inspection_id) ?? null;
           const tpl = templateById.get(item.template_id) ?? null;
           const proj = insp ? (projectById.get(insp.project_id) ?? null) : null;

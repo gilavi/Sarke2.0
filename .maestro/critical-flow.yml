@@ -1,0 +1,22 @@
+appId: ge.sarke.app
+---
+- launchApp
+- tapOn: "ახალი პროექტი"
+- tapOn:
+    id: "project-name-input"
+- inputText: "ტესტ პროექტი"
+- tapOn: "შექმნა"
+- tapOn: "ახალი ინსპექცია"
+- tapOn: "ფასადის ხარაჩოს შემოწმების აქტი"
+- repeat:
+    times: 5
+    commands:
+      - tapOn: "კი"
+      - tapOn: "შემდეგი"
+- tapOn: "ფოტო"
+- tapOn: "კამერა"
+- tapOn: "დადასტურება"
+- tapOn: "ხელმოწერა"
+- tapOn: "დადასტურება"
+- tapOn: "დასრულება"
+- assertVisible: "ინსპექცია დასრულებულია"

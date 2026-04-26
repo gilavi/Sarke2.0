@@ -1,10 +1,13 @@
 import '../lib/polyfills';
+import './global.css';
+import * as Sentry from '@sentry/react-native';
 import { useEffect } from 'react';
 import * as Linking from 'expo-linking';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { supabase } from '../lib/supabase';
-import { View } from 'react-native';
+import { View, useColorScheme } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { useFonts } from 'expo-font';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { BottomSheetProvider } from '../components/BottomSheet';
@@ -23,6 +26,12 @@ import { theme } from '../lib/theme';
 // `getInitialURL()` (cold start) and the `url` listener (warm app) fire for the
 // same recovery link — the second exchange would fail and replace the user's
 // session with an error.
+Sentry.init({
+  dsn: 'https://placeholder@o000000.ingest.sentry.io/0000000',
+  debug: __DEV__,
+  tracesSampleRate: 1.0,
+});
+
 const exchangedCodes = new Set<string>();
 
 function AuthGate() {
@@ -130,6 +139,18 @@ function AuthGate() {
 }
 
 export default function RootLayout() {
+  const colorScheme = useColorScheme();
+  const [fontsLoaded] = useFonts({
+    'NotoSansGeorgian-Regular': require('../assets/fonts/NotoSansGeorgian-Regular.ttf'),
+    'NotoSansGeorgian-Bold': require('../assets/fonts/NotoSansGeorgian-Bold.ttf'),
+  });
+
+  if (!fontsLoaded) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#F6F2EA' }} />
+    );
+  }
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
@@ -138,7 +159,7 @@ export default function RootLayout() {
             <ToastProvider>
               <OfflineProvider>
                 <SessionProvider>
-                  <StatusBar style="dark" />
+                  <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
                   <OfflineBanner />
                   <AuthGate />
                 </SessionProvider>

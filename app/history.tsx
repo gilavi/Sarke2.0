@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -97,11 +98,12 @@ export default function HistoryScreen() {
     <Screen>
       <Stack.Screen options={{ headerShown: true, title: 'ისტორია' }} />
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
-        <FlatList
+        <FlashList estimatedItemSize={120}
           data={items}
           keyExtractor={(item, i) => (item.kind === 'header' ? `h-${i}` : item.q.id)}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 20, gap: 8 }}
-          renderItem={({ item }) => {
+          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 20 }}
+          ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
+          renderItem={({ item }: { item: typeof items[0] }) => {
             if (item.kind === 'header') {
               return (
                 <Text style={styles.sectionTitle}>{item.label}</Text>

@@ -8,13 +8,13 @@
 // Draft inspections still route through `/inspections/[id]/wizard`.
 import { useCallback, useState } from 'react';
 import {
-  FlatList,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -337,13 +337,13 @@ export default function InspectionDetailScreen() {
                 </Text>
               </Card>
             ) : (
-              <FlatList
+              <FlashList estimatedItemSize={120}
                 // Nested-scroll-free: wrapped in the parent ScrollView already.
                 scrollEnabled={false}
                 data={certs}
                 keyExtractor={c => c.id}
                 ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
-                renderItem={({ item, index }) => {
+                renderItem={({ item, index }: { item: typeof certs[0]; index: number }) => {
                   const isSafe = item.is_safe_for_use;
                   const params = item.params as {
                     expertName?: string | null;

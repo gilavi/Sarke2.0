@@ -8,13 +8,13 @@ import {
   Alert,
   Animated,
   Easing,
-  FlatList,
   Modal,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -87,10 +87,11 @@ export default function QualificationsScreen() {
         }}
       />
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
-        <FlatList
+        <FlashList estimatedItemSize={120}
           data={quals}
           keyExtractor={c => c.id}
-          contentContainerStyle={{ padding: 16, gap: 12 }}
+          contentContainerStyle={{ padding: 16 }}
+          ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
           ListEmptyComponent={
             !loaded ? (
               <View style={{ gap: 12 }}>
@@ -119,7 +120,7 @@ export default function QualificationsScreen() {
               </View>
             )
           }
-          renderItem={({ item }) => {
+          renderItem={({ item }: { item: typeof quals[0] }) => {
             const status = statusOf(item);
             return (
               <Card padding={14}>

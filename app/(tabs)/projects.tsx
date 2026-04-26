@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
-  FlatList,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -13,6 +12,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -121,11 +121,12 @@ export default function ProjectsScreen() {
         </View>
       ) : null}
 
-      <FlatList
+      <FlashList estimatedItemSize={120}
         data={filtered}
         keyExtractor={p => p.id}
-        contentContainerStyle={{ padding: 16, paddingBottom: 100, gap: 10 }}
-        renderItem={({ item }) => (
+        contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+        ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+        renderItem={({ item }: { item: typeof filtered[0] }) => (
           <ProjectRow
             project={item}
             stats={stats[item.id]}
