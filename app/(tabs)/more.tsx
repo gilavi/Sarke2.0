@@ -28,6 +28,7 @@ import { useToast } from '../../lib/toast';
 import { theme } from '../../lib/theme';
 import { termsKa } from '../../lib/terms';
 import { toErrorMessage } from '../../lib/logError';
+import { a11y } from '../../lib/accessibility';
 import type { Project, Qualification, Template } from '../../types/models';
 
 export default function MoreScreen() {
@@ -149,7 +150,7 @@ export default function MoreScreen() {
             tint={theme.colors.certTint}
             bg={theme.colors.certSoft}
             primary={loaded ? `${certs.length}` : null}
-            secondary={loaded ? (certs.length === 0 ? 'ცარიელია' : expiring > 0 ? `${expiring} იწურება` : 'ყველა აქტიური') : null}
+            secondary={loaded ? (expiring > 0 ? `${expiring} იწურება` : certs.length === 0 ? 'დააჭირე ატვირთვისთვის' : 'ყველა აქტიური') : null}
             badge={loaded && expiring > 0 ? `${expiring} იწურება` : undefined}
             onPress={() => router.push('/qualifications' as any)}
           />
@@ -238,17 +239,16 @@ function TermsModal({ visible, onClose }: { visible: boolean; onClose: () => voi
             { backgroundColor: 'rgba(0,0,0,0.55)', opacity: fade },
           ]}
         >
-          <Pressable style={StyleSheet.absoluteFillObject} onPress={handleClose} />
+          <Pressable style={StyleSheet.absoluteFillObject} onPress={handleClose} {...a11y('დახურვა', 'დააჭირე მოდალის დასახურად', 'button')} />
         </Animated.View>
 
         {/* Sheet */}
         <Animated.View style={[termsStyles.sheet, { transform: [{ translateY }] }]}>
           <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1 }}>
-            <View style={termsStyles.handle} />
             {/* Header */}
             <View style={termsStyles.header}>
               <Text style={termsStyles.headerTitle}>{termsKa.heading}</Text>
-              <Pressable onPress={handleClose} hitSlop={10} style={termsStyles.closeBtn}>
+              <Pressable onPress={handleClose} hitSlop={10} style={termsStyles.closeBtn} {...a11y('დახურვა', undefined, 'button')}>{' '}
                 <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
               </Pressable>
             </View>
@@ -297,31 +297,27 @@ const termsStyles = StyleSheet.create({
     bottom: 0,
     top: '8%',
     backgroundColor: theme.colors.background,
-    borderTopLeftRadius: 26,
-    borderTopRightRadius: 26,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     overflow: 'hidden',
-  },
-  handle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: theme.colors.hairline,
-    alignSelf: 'center',
-    marginTop: 10,
-    marginBottom: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 24,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingBottom: 14,
+    paddingVertical: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: theme.colors.hairline,
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: '700',
     color: theme.colors.ink,
   },
   closeBtn: {
@@ -377,7 +373,7 @@ function HubTile({
   onPress: () => void;
 }) {
   return (
-    <Pressable onPress={onPress} style={styles.hubTileWrap}>
+    <Pressable onPress={onPress} style={styles.hubTileWrap} {...a11y(title, 'გადასვლა', 'button')}>{' '}
       <Card style={{ gap: 8 }}>
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
           <View style={[styles.tileIcon, { backgroundColor: bg }]}>
@@ -413,7 +409,7 @@ function HubTile({
 function SettingsRow({ icon, label, onPress, danger }: { icon: any; label: string; onPress: () => void; danger?: boolean }) {
   const color = danger ? theme.colors.danger : theme.colors.ink;
   return (
-    <Pressable onPress={onPress} style={styles.settingsRow}>
+    <Pressable onPress={onPress} style={styles.settingsRow} {...a11y(label, undefined, 'button')}>{' '}
       <Ionicons name={icon} size={18} color={danger ? theme.colors.danger : theme.colors.inkSoft} />
       <Text style={{ flex: 1, fontSize: 15, fontWeight: '500', color }}>{label}</Text>
       <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />

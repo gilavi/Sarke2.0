@@ -19,6 +19,7 @@ import { useToast } from '../../../lib/toast';
 import { theme } from '../../../lib/theme';
 import { toErrorMessage } from '../../../lib/logError';
 import type { Project, Questionnaire, Template } from '../../../types/models';
+import { a11y } from '../../../lib/accessibility';
 
 export default function StartTemplateScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -89,7 +90,7 @@ export default function StartTemplateScreen() {
             <Text style={styles.eyebrow}>აირჩიე პროექტი</Text>
           </View>
 
-          <Pressable onPress={() => setShowingCreate(true)} style={styles.newTile}>
+          <Pressable onPress={() => setShowingCreate(true)} style={styles.newTile} {...a11y('ახალი პროექტი', 'ახალი პროექტის შექმნა', 'button')}>
             <View style={styles.newIcon}>
               <Ionicons name="add" size={22} color={theme.colors.accent} />
             </View>
@@ -125,6 +126,7 @@ export default function StartTemplateScreen() {
                     key={p.id}
                     onPress={() => setSelected(p.id)}
                     style={[styles.projectRow, isSelected && styles.projectRowSelected]}
+                    {...a11y(p.name, 'პროექტის არჩევა', 'radio')}
                   >
                     <View style={[styles.radio, isSelected && styles.radioOn]}>
                       {isSelected ? (
@@ -228,7 +230,7 @@ function CreateProjectSheet({
               <Text style={{ fontSize: 18, fontWeight: '800', color: theme.colors.ink, flex: 1 }}>
                 ახალი პროექტი
               </Text>
-              <Pressable onPress={onClose} hitSlop={10}>
+              <Pressable onPress={onClose} hitSlop={10} {...a11y('დახურვა', 'პროექტის შექმნის ფანჯრის დახურვა', 'button')}>
                 <Ionicons name="close" size={24} color={theme.colors.inkSoft} />
               </Pressable>
             </View>

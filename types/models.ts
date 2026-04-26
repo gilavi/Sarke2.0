@@ -87,8 +87,6 @@ export interface Project {
   longitude: number | null;
   /** NULL on legacy rows; treat as []. */
   crew: CrewMember[] | null;
-  /** Optional logo image URL. Column added by collaborator's migration. */
-  logo_url?: string | null;
   created_at: string;
 }
 
@@ -235,6 +233,13 @@ export interface SignatureRecord {
   status: SignatureStatus;
   /** Ad-hoc name for signers not tied to a project_signers row. */
   person_name: string | null;
+  /** Audit trail — SHA256 hash of device identifier. */
+  device_id_hash?: string | null;
+  /** Audit trail — geolocation at time of signing. */
+  latitude?: number | null;
+  longitude?: number | null;
+  /** Audit trail — IP address at time of signing. */
+  ip_address?: string | null;
 }
 
 /**

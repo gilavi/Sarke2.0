@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { Card } from '../../components/ui';
 import { Skeleton } from '../../components/Skeleton';
+import EmptyState from '../../components/EmptyState';
 import {
   certificatesApi,
   inspectionsApi,
@@ -26,6 +27,7 @@ import {
 import { useToast } from '../../lib/toast';
 import { theme } from '../../lib/theme';
 import { toErrorMessage } from '../../lib/logError';
+import { a11y } from '../../lib/accessibility';
 import type {
   Certificate,
   Inspection,
@@ -176,15 +178,16 @@ export default function CertificatesScreen() {
               ))}
             </View>
           ) : (
-            <View style={styles.empty}>
-              <Ionicons name="document-text" size={46} color={theme.colors.accent} style={{ opacity: 0.6 }} />
-              <Text style={{ fontSize: 18, fontWeight: '700', color: theme.colors.ink }}>
-                ცარიელია
-              </Text>
-              <Text style={{ color: theme.colors.inkSoft, textAlign: 'center' }}>
-                დაასრულე ინსპექცია და დააგენერირე პირველი PDF რეპორტი.
-              </Text>
-            </View>
+            <EmptyState
+              type="certificates"
+              title="PDF რეპორტები"
+              subtitle="დაასრულე ინსპექცია და დააგენერირე პირველი PDF რეპორტი"
+              action={{
+                label: 'ახალი შემოწმება',
+                icon: 'add-circle-outline',
+                onPress: () => router.push('/(tabs)/home'),
+              }}
+            />
           )
         }
         renderItem={({ item }) => {
@@ -200,7 +203,7 @@ export default function CertificatesScreen() {
           return (
             <Swipeable
               renderRightActions={() => (
-                <Pressable onPress={() => deleteCert(item)} style={styles.swipeDelete}>
+                <Pressable onPress={() => deleteCert(item)} style={styles.swipeDelete} {...a11y('წაშლა', 'PDF რეპორტის წაშლა', 'button')}>
                   <Ionicons name="trash" size={18} color={theme.colors.white} />
                   <Text style={{ color: theme.colors.white, fontWeight: '700', fontSize: 11 }}>
                     წაშლა
@@ -209,7 +212,7 @@ export default function CertificatesScreen() {
               )}
               overshootRight={false}
             >
-              <Pressable onPress={() => openPreview(item)}>
+              <Pressable onPress={() => openPreview(item)} {...a11y('PDF რეპორტი', 'დეტალების ნახვა', 'button')}>
                 <Card padding={12}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                     {/* PDF thumbnail */}
@@ -268,11 +271,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   title: { fontSize: 22, fontWeight: '700', color: theme.colors.ink },
-  empty: {
-    alignItems: 'center',
-    paddingVertical: 60,
-    gap: 10,
-  },
+  // empty styles removed — now handled by <EmptyState />
   rowTitle: { fontSize: 14, fontWeight: '700', color: theme.colors.ink },
   rowMeta: { fontSize: 12, color: theme.colors.inkSoft },
   rowDate: { fontSize: 11, color: theme.colors.inkFaint },

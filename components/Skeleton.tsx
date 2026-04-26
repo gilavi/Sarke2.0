@@ -13,6 +13,9 @@ import { ReactNode, useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, View, ViewStyle } from 'react-native';
 import { theme } from '../lib/theme';
 
+// Re-export the new shimmer skeleton for gradual migration
+export { ShimmerSkeleton } from './animations/ShimmerSkeleton';
+
 interface SkeletonProps {
   width?: number | `${number}%`;
   height?: number | `${number}%`;
@@ -162,10 +165,10 @@ export function SkeletonWizard() {
 
 const skStyles = StyleSheet.create({
   card: {
-    backgroundColor: theme.colors.card,
+    backgroundColor: theme.colors.surface,
     borderRadius: theme.radius.lg,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: theme.colors.hairline,
+    borderColor: theme.colors.border,
     padding: 16,
   },
   row: {

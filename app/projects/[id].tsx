@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import {
+  Alert,
   Image,
   KeyboardAvoidingView,
   Modal,
@@ -14,15 +15,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
-import * as DocumentPicker from 'expo-document-picker';
-import * as Linking from 'expo-linking';
 import { useBottomSheet } from '../../components/BottomSheet';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { Button, Card, Field, Input, Screen } from '../../components/ui';
 import { Skeleton, SkeletonCard, SkeletonListCard } from '../../components/Skeleton';
 import { MapPicker, type LatLng } from '../../components/MapPicker';
 import {
-  projectFilesApi,
   projectsApi,
   questionnairesApi,
   templatesApi,
@@ -30,17 +28,14 @@ import {
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { useToast } from '../../lib/toast';
 import { getStorageImageDisplayUrl } from '../../lib/imageUrl';
+import { projectAvatar } from '../../lib/projectAvatar';
+import { theme } from '../../lib/theme';
 import { toErrorMessage } from '../../lib/logError';
-import { scheduleDelete } from '../../lib/pendingDeletes';
-import type { CrewMember, Project, ProjectFile, ProjectSigner, Questionnaire, Template } from '../../types/models';
+import type { CrewMember, Project, ProjectSigner, Questionnaire, Template } from '../../types/models';
 import { SIGNER_ROLE_LABEL } from '../../types/models';
 import { CrewList } from '../../components/CrewSection';
-import { ProjectLogo } from '../../components/ProjectLogo';
-import { UploadedFilesSection } from '../../components/UploadedFilesSection';
-import { formatShortDateTime } from '../../lib/formatDate';
 import { useSession } from '../../lib/session';
-
-const BRAND_GREEN = '#1D9E75';
+import { a11y } from '../../lib/accessibility';
 
 export default function ProjectDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -54,8 +49,7 @@ export default function ProjectDetail() {
   const [signerPreviews, setSignerPreviews] = useState<Record<string, string>>({});
   const [questionnaires, setQuestionnaires] = useState<Questionnaire[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
-  const [files, setFiles] = useState<ProjectFile[]>([]);
-  const [uploadingFile, setUploadingFile] = useState(false);
+  const [otherProjects, setOtherProjects] = useState<Project[]>([]);
   const [editing, setEditing] = useState(false);
   // Flips true after the first fetch finishes. Drives the skeleton → content
   // swap; refocus doesn't re-show skeletons once we have data.
@@ -63,18 +57,18 @@ export default function ProjectDetail() {
 
   const load = useCallback(async () => {
     if (!id) return;
-    const [p, s, q, t, f] = await Promise.all([
+    const [p, s, q, t, all] = await Promise.all([
       projectsApi.getById(id).catch(() => null),
       projectsApi.signers(id).catch(() => []),
       questionnairesApi.listByProject(id).catch(() => []),
       templatesApi.list().catch(() => []),
-      projectFilesApi.list(id).catch(() => [] as ProjectFile[]),
+      projectsApi.list().catch(() => []),
     ]);
     setProject(p);
     setSigners(s);
     setQuestionnaires(q);
     setTemplates(t);
-    setFiles(f);
+    setOtherProjects(all.filter(x => x.id !== id));
 
     // Lazy-load sig thumbnails
     const previews: Record<string, string> = {};
@@ -128,64 +122,6 @@ export default function ProjectDetail() {
     [project, toast],
   );
 
-  const pickAndUploadFile = useCallback(async () => {
-    if (!id) return;
-    try {
-      const res = await DocumentPicker.getDocumentAsync({
-        copyToCacheDirectory: true,
-        multiple: false,
-      });
-      if (res.canceled || !res.assets?.[0]) return;
-      const asset = res.assets[0];
-      setUploadingFile(true);
-      const created = await projectFilesApi.upload({
-        projectId: id,
-        fileUri: asset.uri,
-        name: asset.name ?? 'file',
-        mimeType: asset.mimeType ?? null,
-        sizeBytes: asset.size ?? null,
-      });
-      setFiles(prev => [created, ...prev]);
-      toast.success('ფაილი ატვირთულია');
-    } catch (e) {
-      toast.error(toErrorMessage(e, 'ატვირთვა ვერ მოხერხდა'));
-    } finally {
-      setUploadingFile(false);
-    }
-  }, [id, toast]);
-
-  const openFile = useCallback(
-    async (f: ProjectFile) => {
-      try {
-        const url = await projectFilesApi.signedUrl(f);
-        await Linking.openURL(url);
-      } catch (e) {
-        toast.error(toErrorMessage(e, 'ფაილის გახსნა ვერ მოხერხდა'));
-      }
-    },
-    [toast],
-  );
-
-  const deleteFile = useCallback(
-    (f: ProjectFile) => {
-      setFiles(prev => prev.filter(x => x.id !== f.id));
-      scheduleDelete({
-        message: `${f.name} — წაიშალა`,
-        toast,
-        onUndo: () => setFiles(prev => [f, ...prev.filter(x => x.id !== f.id)]),
-        onExecute: async () => {
-          try {
-            await projectFilesApi.remove(f);
-          } catch (e) {
-            setFiles(prev => [f, ...prev.filter(x => x.id !== f.id)]);
-            toast.error(toErrorMessage(e, 'წაშლა ვერ მოხერხდა'));
-          }
-        },
-      });
-    },
-    [toast],
-  );
-
   const drafts = useMemo(
     () => questionnaires.filter(q => q.status === 'draft'),
     [questionnaires],
@@ -221,37 +157,41 @@ export default function ProjectDetail() {
   };
 
   const deleteQuestionnaire = (q: Questionnaire) => {
-    setQuestionnaires(prev => prev.filter(x => x.id !== q.id));
-    scheduleDelete({
-      message: 'კითხვარი წაიშალა',
-      toast,
-      onUndo: () => setQuestionnaires(prev => [q, ...prev.filter(x => x.id !== q.id)]),
-      onExecute: async () => {
-        try {
-          await questionnairesApi.remove(q.id);
-        } catch (e) {
-          setQuestionnaires(prev => [q, ...prev.filter(x => x.id !== q.id)]);
-          toast.error(toErrorMessage(e, 'ვერ წაიშალა'));
-        }
+    Alert.alert('წაშლა?', 'კითხვარი სამუდამოდ წაიშლება.', [
+      { text: 'გაუქმება', style: 'cancel' },
+      {
+        text: 'წაშლა',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await questionnairesApi.remove(q.id);
+            setQuestionnaires(prev => prev.filter(x => x.id !== q.id));
+            toast.success('წაიშალა');
+          } catch (e) {
+            toast.error(toErrorMessage(e, 'ვერ წაიშალა'));
+          }
+        },
       },
-    });
+    ]);
   };
 
   const deleteSigner = (s: ProjectSigner) => {
-    setSigners(prev => prev.filter(x => x.id !== s.id));
-    scheduleDelete({
-      message: `${s.full_name} — წაიშალა`,
-      toast,
-      onUndo: () => setSigners(prev => [s, ...prev.filter(x => x.id !== s.id)]),
-      onExecute: async () => {
-        try {
-          await projectsApi.deleteSigner(s.id);
-        } catch (e) {
-          setSigners(prev => [s, ...prev.filter(x => x.id !== s.id)]);
-          toast.error(toErrorMessage(e, 'ვერ წაიშალა'));
-        }
+    Alert.alert('წაშლა?', s.full_name, [
+      { text: 'გაუქმება', style: 'cancel' },
+      {
+        text: 'წაშლა',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await projectsApi.deleteSigner(s.id);
+            setSigners(prev => prev.filter(x => x.id !== s.id));
+            toast.success('წაიშალა');
+          } catch (e) {
+            toast.error(toErrorMessage(e, 'ვერ წაიშალა'));
+          }
+        },
       },
-    });
+    ]);
   };
 
   if (!loaded && !project) {
@@ -277,8 +217,12 @@ export default function ProjectDetail() {
     );
   }
 
-  const participantsCount =
-    signers.length + (project?.crew?.length ?? 0) + (inspector ? 1 : 0);
+  const stats = [
+    { label: 'მონაწილეები', count: (project?.crew?.length ?? 0) + (inspector ? 1 : 0), icon: 'people' as const },
+    { label: 'კითხვარები', count: questionnaires.length, icon: 'clipboard' as const },
+    { label: 'დრაფტები', count: drafts.length, icon: 'pencil' as const },
+    { label: 'ხელმოწერები', count: signers.length, icon: 'create' as const },
+  ];
 
   return (
     <Screen>
@@ -290,38 +234,35 @@ export default function ProjectDetail() {
           headerShadowVisible: false,
           headerStyle: { backgroundColor: '#F5F5F0' },
           headerTintColor: '#1F2937',
+          headerRight: () => (
+            <Pressable
+              onPress={() => setEditing(true)}
+              hitSlop={10}
+              style={{ padding: 4 }}
+              {...a11y('რედაქტირება', 'პროექტის დეტალების შეცვლა', 'button')}
+            >
+              <Ionicons name="create-outline" size={22} color="#059669" />
+            </Pressable>
+          ),
         }}
       />
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
-        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 120, gap: 16 }}>
-          {/* ── Project Card ── */}
+        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32, gap: 16 }}>
+          {/* ── Hero Card ── */}
           <View style={styles.heroCard}>
-            <View style={styles.heroRow}>
-              <ProjectLogo uri={project?.logo_url} name={project?.name} size={48} />
-              <View style={{ flex: 1, gap: 6 }}>
-                <Text style={styles.heroName}>{project?.name ?? '—'}</Text>
-                {project?.company_name ? (
-                  <View style={styles.heroMetaRow}>
-                    <Ionicons name="business-outline" size={14} color="#6B7280" />
-                    <Text style={styles.heroMetaText}>{project.company_name}</Text>
-                  </View>
-                ) : null}
-                {project?.address ? (
-                  <View style={styles.heroMetaRow}>
-                    <Ionicons name="location-outline" size={14} color="#6B7280" />
-                    <Text style={styles.heroMetaText}>{project.address}</Text>
-                  </View>
-                ) : null}
+            <Text style={styles.heroName}>{project?.name ?? '—'}</Text>
+            {project?.company_name ? (
+              <View style={styles.heroMetaRow}>
+                <Ionicons name="business-outline" size={14} color="#6B7280" />
+                <Text style={styles.heroMetaText}>{project.company_name}</Text>
               </View>
-              <Pressable
-                onPress={() => setEditing(true)}
-                hitSlop={10}
-                style={styles.heroEditBtn}
-                accessibilityLabel="რედაქტირება"
-              >
-                <Ionicons name="create-outline" size={20} color={BRAND_GREEN} />
-              </Pressable>
-            </View>
+            ) : null}
+            {project?.address ? (
+              <View style={styles.heroMetaRow}>
+                <Ionicons name="location-outline" size={14} color="#6B7280" />
+                <Text style={styles.heroMetaText}>{project.address}</Text>
+              </View>
+            ) : null}
             {project?.latitude != null && project?.longitude != null ? (
               <View style={styles.mapWrap}>
                 <MapView
@@ -337,40 +278,43 @@ export default function ProjectDetail() {
                 >
                   <Marker
                     coordinate={{ latitude: project.latitude, longitude: project.longitude }}
-                    pinColor={BRAND_GREEN}
+                    pinColor="#059669"
                   />
                 </MapView>
               </View>
             ) : null}
-            <View style={{ marginTop: 14 }}>
-              <UploadedFilesSection
-                files={files}
-                busy={uploadingFile}
-                onUpload={pickAndUploadFile}
-                onOpen={openFile}
-                onDelete={deleteFile}
-              />
-            </View>
           </View>
 
-          {/* ── Participants (signers + crew merged) ── */}
+          {/* ── Stats Row ── */}
+          <View style={styles.statsRow}>
+            {stats.map(s => (
+              <View key={s.label} style={styles.statCard}>
+                <Ionicons name={s.icon} size={18} color="#059669" />
+                <Text style={styles.statCount}>{s.count}</Text>
+                <Text style={styles.statLabel}>{s.label}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* ── Signatures ── */}
           <View style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>მონაწილეები</Text>
-              {participantsCount > 0 ? (
+              <Text style={styles.sectionTitle}>ხელმოწერები</Text>
+              {signers.length > 0 ? (
                 <View style={styles.badgeGreen}>
-                  <Text style={styles.badgeGreenText}>{participantsCount}</Text>
+                  <Text style={styles.badgeGreenText}>{signers.length}</Text>
                 </View>
               ) : null}
             </View>
-
-            {signers.length > 0 ? (
+            {signers.length === 0 ? (
+              <EmptyState text="ჯერ არ არის ხელმომწერები" />
+            ) : (
               <View style={{ gap: 10, marginTop: 10 }}>
                 {signers.map(s => (
                   <Swipeable
                     key={s.id}
                     renderRightActions={() => (
-                      <Pressable onPress={() => deleteSigner(s)} style={styles.swipeDelete}>
+                      <Pressable onPress={() => deleteSigner(s)} style={styles.swipeDelete} {...a11y('ხელმომწერის წაშლა', 'ამ ხელმომწერის წაშლა სიიდან', 'button')}>
                         <Ionicons name="trash" size={18} color="#FFFFFF" />
                       </Pressable>
                     )}
@@ -379,6 +323,7 @@ export default function ProjectDetail() {
                     <Pressable
                       onPress={() => router.push(`/projects/${id}/signer?signerId=${s.id}` as any)}
                       style={styles.listRow}
+                      {...a11y(s.full_name, 'ხელმომწერის დეტალების ნახვა', 'button')}
                     >
                       <View style={styles.sigThumb}>
                         {signerPreviews[s.id] ? (
@@ -401,17 +346,28 @@ export default function ProjectDetail() {
                   </Swipeable>
                 ))}
               </View>
-            ) : null}
-
+            )}
             <Pressable
               onPress={() => router.push(`/projects/${id}/signer` as any)}
               style={styles.addBtn}
+              {...a11y('ხელმომწერის დამატება', 'ახალი ხელმომწერის დამატება პროექტზე', 'button')}
             >
-              <Ionicons name="person-add" size={18} color={BRAND_GREEN} />
+              <Ionicons name="person-add" size={18} color="#059669" />
               <Text style={styles.addBtnText}>+ ხელმომწერის დამატება</Text>
             </Pressable>
+          </View>
 
-            <View style={{ marginTop: 14 }}>
+          {/* ── Participants ── */}
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>მონაწილეები</Text>
+              <View style={styles.badgeGreen}>
+                <Text style={styles.badgeGreenText}>
+                  {(project?.crew?.length ?? 0) + (inspector ? 1 : 0)}
+                </Text>
+              </View>
+            </View>
+            <View style={{ marginTop: 10 }}>
               <CrewList
                 inspector={inspector}
                 crew={project?.crew ?? []}
@@ -429,15 +385,23 @@ export default function ProjectDetail() {
               </View>
             </View>
 
-            {drafts.length > 0 ? (
-              <View style={{ marginTop: 14 }}>
-                <View style={styles.subSectionHeader}>
-                  <View style={[styles.subDot, { backgroundColor: '#FEF3C7' }]}>
-                    <Ionicons name="pencil" size={11} color="#92400E" />
-                  </View>
-                  <Text style={styles.subSectionLabel}>დრაფტები</Text>
-                  <Text style={styles.subSectionCount}>{drafts.length}</Text>
+            <Pressable onPress={startNewQuestionnaire} style={styles.addBtn} {...a11y('ახალი კითხვარი', 'ახალი კითხვარის დაწყება', 'button')}>
+              <Ionicons name="add-circle" size={18} color="#059669" />
+              <Text style={styles.addBtnText}>+ ახალი კითხვარი</Text>
+            </Pressable>
+
+            {/* Drafts */}
+            <View style={{ marginTop: 14 }}>
+              <View style={styles.subSectionHeader}>
+                <View style={[styles.subDot, { backgroundColor: '#FEF3C7' }]}>
+                  <Ionicons name="pencil" size={11} color="#92400E" />
                 </View>
+                <Text style={styles.subSectionLabel}>დრაფტები</Text>
+                <Text style={styles.subSectionCount}>{drafts.length}</Text>
+              </View>
+              {drafts.length === 0 ? (
+                <EmptyState text="ჯერ არ არის დრაფტები" />
+              ) : (
                 <View style={{ gap: 8, marginTop: 8 }}>
                   {drafts.map(q => {
                     const tpl = templates.find(t => t.id === q.template_id);
@@ -445,7 +409,7 @@ export default function ProjectDetail() {
                       <Swipeable
                         key={q.id}
                         renderRightActions={() => (
-                          <Pressable onPress={() => deleteQuestionnaire(q)} style={styles.swipeDelete}>
+                          <Pressable onPress={() => deleteQuestionnaire(q)} style={styles.swipeDelete} {...a11y('კითხვარის წაშლა', 'დრაფტის წაშლა', 'button')}>
                             <Ionicons name="trash" size={18} color="#FFFFFF" />
                           </Pressable>
                         )}
@@ -454,6 +418,7 @@ export default function ProjectDetail() {
                         <Pressable
                           onPress={() => router.push(`/inspections/${q.id}/wizard` as any)}
                           style={styles.listRow}
+                          {...a11y(tpl?.name ?? 'კითხვარი', 'დრაფტის გასაგრძელებლად დააჭირეთ', 'button')}
                         >
                           <View style={[styles.statusIcon, { backgroundColor: '#FEF3C7' }]}>
                             <Ionicons name="pencil" size={14} color="#92400E" />
@@ -461,7 +426,7 @@ export default function ProjectDetail() {
                           <View style={{ flex: 1 }}>
                             <Text style={styles.listRowTitle}>{tpl?.name ?? 'კითხვარი'}</Text>
                             <Text style={styles.listRowSubtitle}>
-                              {formatShortDateTime(q.created_at)}
+                              {new Date(q.created_at).toLocaleString('ka')}
                             </Text>
                           </View>
                           <Ionicons name="chevron-forward" size={18} color="#D1D5DB" />
@@ -470,9 +435,10 @@ export default function ProjectDetail() {
                     );
                   })}
                 </View>
-                <View style={styles.sectionDivider} />
-              </View>
-            ) : null}
+              )}
+            </View>
+
+            <View style={styles.sectionDivider} />
 
             {/* Completed */}
             <View style={{ marginTop: 14 }}>
@@ -493,7 +459,7 @@ export default function ProjectDetail() {
                       <Swipeable
                         key={q.id}
                         renderRightActions={() => (
-                          <Pressable onPress={() => deleteQuestionnaire(q)} style={styles.swipeDelete}>
+                          <Pressable onPress={() => deleteQuestionnaire(q)} style={styles.swipeDelete} {...a11y('კითხვარის წაშლა', 'დასრულებული კითხვარის წაშლა', 'button')}>
                             <Ionicons name="trash" size={18} color="#FFFFFF" />
                           </Pressable>
                         )}
@@ -502,6 +468,7 @@ export default function ProjectDetail() {
                         <Pressable
                           onPress={() => router.push(`/inspections/${q.id}` as any)}
                           style={styles.listRow}
+                          {...a11y(tpl?.name ?? 'კითხვარი', 'დასრულებული კითხვარის ნახვა', 'button')}
                         >
                           <View style={[styles.statusIcon, { backgroundColor: '#D1FAE5' }]}>
                             <Ionicons name="checkmark-circle" size={14} color="#065F46" />
@@ -509,7 +476,7 @@ export default function ProjectDetail() {
                           <View style={{ flex: 1 }}>
                             <Text style={styles.listRowTitle}>{tpl?.name ?? 'კითხვარი'}</Text>
                             <Text style={styles.listRowSubtitle}>
-                              {formatShortDateTime(q.created_at)}
+                              {new Date(q.created_at).toLocaleString('ka')}
                             </Text>
                           </View>
                           <Ionicons name="chevron-forward" size={18} color="#D1D5DB" />
@@ -521,16 +488,38 @@ export default function ProjectDetail() {
               )}
             </View>
           </View>
-        </ScrollView>
 
-        {/* ── FAB ── */}
-        <Pressable
-          onPress={startNewQuestionnaire}
-          style={({ pressed }) => [styles.fab, pressed && { opacity: 0.85 }]}
-          accessibilityLabel="ახალი კითხვარი"
-        >
-          <Ionicons name="add" size={28} color="#FFFFFF" />
-        </Pressable>
+          {/* ── Other Projects ── */}
+          {otherProjects.length > 0 ? (
+            <View style={{ marginTop: 8, gap: 8 }}>
+              <Text style={styles.otherHeader}>სხვა პროექტები</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ gap: 8, paddingRight: 8 }}
+              >
+                {otherProjects.slice(0, 10).map(op => {
+                  const av = projectAvatar(op.id);
+                  return (
+                    <Pressable
+                      key={op.id}
+                      onPress={() => router.push(`/projects/${op.id}` as any)}
+                      style={styles.otherChip}
+                      {...a11y(op.name, 'სხვა პროექტზე გადასვლა', 'button')}
+                    >
+                      <View style={[styles.otherChipIcon, { backgroundColor: av.color + '22' }]}>
+                        <Text style={{ fontSize: 14 }}>{av.emoji}</Text>
+                      </View>
+                      <Text style={styles.otherChipText} numberOfLines={1}>
+                        {op.name}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          ) : null}
+        </ScrollView>
       </SafeAreaView>
 
       <EditProjectSheet
@@ -632,7 +621,7 @@ function EditProjectSheet({
               <Text style={{ fontSize: 18, fontWeight: '800', color: '#1F2937', flex: 1 }}>
                 რედაქტირება
               </Text>
-              <Pressable onPress={onClose} hitSlop={10}>
+              <Pressable onPress={onClose} hitSlop={10} {...a11y('დახურვა', 'რედაქტირების ფანჯრის დახურვა', 'button')}>
                 <Ionicons name="close" size={22} color="#6B7280" />
               </Pressable>
             </View>
@@ -683,13 +672,8 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 3,
   },
-  heroRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 14,
-  },
   heroName: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '800',
     color: '#1F2937',
   },
@@ -697,27 +681,51 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    marginTop: 8,
   },
   heroMetaText: {
     fontSize: 14,
     color: '#6B7280',
     flexShrink: 1,
   },
-  heroEditBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#ECFDF5',
-  },
   mapWrap: {
-    marginTop: 14,
-    height: 100,
+    marginTop: 12,
+    height: 160,
     borderRadius: 12,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: '#E5E7EB',
+  },
+
+  // ── Stats ──
+  statsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 12,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  statCount: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginTop: 4,
+  },
+  statLabel: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    textTransform: 'uppercase',
+    fontWeight: '600',
+    marginTop: 2,
   },
 
   // ── Section Cards ──
@@ -845,29 +853,13 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: BRAND_GREEN,
+    borderColor: '#059669',
     marginTop: 12,
   },
   addBtnText: {
-    color: BRAND_GREEN,
+    color: '#059669',
     fontWeight: '600',
     fontSize: 14,
-  },
-  fab: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: BRAND_GREEN,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 6,
   },
 
   // ── Empty State ──
@@ -919,4 +911,41 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
+  // ── Other Projects ──
+  otherHeader: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#9CA3AF',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  otherChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    maxWidth: 180,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  otherChipIcon: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  otherChipText: {
+    fontSize: 12,
+    color: '#6B7280',
+    flexShrink: 1,
+  },
 });

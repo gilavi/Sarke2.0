@@ -6,7 +6,6 @@
 // generate a PDF report now or view the inspection detail later.
 import { useCallback, useEffect, useState } from 'react';
 import {
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -23,6 +22,7 @@ import {
   templatesApi,
 } from '../../../lib/services';
 import { theme } from '../../../lib/theme';
+import { haptic } from '../../../lib/haptics';
 import type { Inspection, Project, Template } from '../../../types/models';
 
 export default function InspectionDoneScreen() {
@@ -51,12 +51,22 @@ export default function InspectionDoneScreen() {
     }
   }, [id]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+    // Celebration haptic on first mount
+    const t = setTimeout(() => haptic.inspectionComplete(), 400);
+    return () => clearTimeout(t);
+  }, [load]);
 
   const generatePdf = () => {
     if (!id) return;
     // replace so the user can't back into this screen from the PDF generator
     router.replace(`/certificates/new?inspectionId=${id}` as any);
+  };
+
+  const previewPdf = () => {
+    if (!id) return;
+    router.push(`/certificates/preview?inspectionId=${id}` as any);
   };
 
   const viewInspection = () => {
@@ -129,25 +139,27 @@ export default function InspectionDoneScreen() {
             </Card>
           ) : null}
 
-          {/* Actions — primary tasks as tappable cards */}
-          <View style={{ gap: 10, marginTop: 4 }}>
-            <ActionCard
-              icon="document-text"
-              title="PDF რეპორტის გენერაცია"
-              subtitle="შექმენი და გააზიარე ოფიციალური დოკუმენტი"
-              tone="primary"
-              onPress={generatePdf}
-            />
-            <ActionCard
-              icon="eye"
-              title="ინსპექციის ნახვა"
-              subtitle="დეტალები, პასუხები და მონაცემები"
-              tone="neutral"
-              onPress={viewInspection}
-            />
-          </View>
-
-          {/* Low-priority secondary action */}
+          {/* Actions */}
+          <Button
+            title="PDF რეპორტის გენერაცია"
+            onPress={generatePdf}
+            iconRight={<Ionicons name="document-text" size={18} color={theme.colors.white} />}
+            style={{ paddingVertical: 14 }}
+          />
+          <Button
+            title="პრევიუს ნახვა"
+            variant="secondary"
+            onPress={previewPdf}
+            iconRight={<Ionicons name="eye-outline" size={18} color={theme.colors.ink} />}
+            style={{ paddingVertical: 14 }}
+          />
+          <Button
+            title="ინსპექციის ნახვა"
+            variant="secondary"
+            onPress={viewInspection}
+            iconRight={<Ionicons name="list" size={18} color={theme.colors.ink} />}
+            style={{ paddingVertical: 14 }}
+          />
           <Button
             title="მთავარ გვერდზე"
             variant="ghost"
@@ -158,68 +170,6 @@ export default function InspectionDoneScreen() {
         </ScrollView>
       </SafeAreaView>
     </Screen>
-  );
-}
-
-function ActionCard({
-  icon,
-  title,
-  subtitle,
-  tone,
-  onPress,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  title: string;
-  subtitle: string;
-  tone: 'primary' | 'neutral';
-  onPress: () => void;
-}) {
-  const isPrimary = tone === 'primary';
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.actionCard,
-        isPrimary ? styles.actionCardPrimary : styles.actionCardNeutral,
-        pressed && { opacity: 0.85 },
-      ]}
-    >
-      <View
-        style={[
-          styles.actionIcon,
-          isPrimary ? styles.actionIconPrimary : styles.actionIconNeutral,
-        ]}
-      >
-        <Ionicons
-          name={icon}
-          size={22}
-          color={isPrimary ? theme.colors.white : theme.colors.accent}
-        />
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text
-          style={[
-            styles.actionTitle,
-            isPrimary && { color: theme.colors.white },
-          ]}
-        >
-          {title}
-        </Text>
-        <Text
-          style={[
-            styles.actionSubtitle,
-            isPrimary && { color: 'rgba(255,255,255,0.85)' },
-          ]}
-        >
-          {subtitle}
-        </Text>
-      </View>
-      <Ionicons
-        name="chevron-forward"
-        size={20}
-        color={isPrimary ? 'rgba(255,255,255,0.85)' : theme.colors.inkFaint}
-      />
-    </Pressable>
   );
 }
 
@@ -270,50 +220,5 @@ const styles = StyleSheet.create({
     color: theme.colors.ink,
     fontSize: 14,
     lineHeight: 20,
-  },
-  actionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 3,
-  },
-  actionCardPrimary: {
-    backgroundColor: theme.colors.accent,
-  },
-  actionCardNeutral: {
-    backgroundColor: theme.colors.card,
-    borderWidth: 1,
-    borderColor: theme.colors.hairline,
-  },
-  actionIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actionIconPrimary: {
-    backgroundColor: 'rgba(255,255,255,0.18)',
-  },
-  actionIconNeutral: {
-    backgroundColor: theme.colors.accentSoft,
-  },
-  actionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: theme.colors.ink,
-  },
-  actionSubtitle: {
-    fontSize: 12,
-    color: theme.colors.inkSoft,
-    marginTop: 2,
-    lineHeight: 16,
   },
 });

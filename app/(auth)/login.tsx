@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSession } from '../../lib/session';
 import { useToast } from '../../lib/toast';
 import { theme } from '../../lib/theme';
+import { a11y } from '../../lib/accessibility';
 import { isEmail } from '../../lib/validators';
 import { friendlyError, isCancelledError, isEmailTakenError } from '../../lib/errorMap';
 import { Button, Card, Field, Input } from '../../components/ui';
@@ -190,6 +191,7 @@ function LoginForm({ onForgotPassword }: { onForgotPassword: () => void }) {
           keyboardType="email-address"
           autoCapitalize="none"
           autoCorrect={false}
+          {...a11y('ელფოსტის ველი', 'შეიყვანეთ თქვენი ელფოსტის მისამართი', 'text')}
         />
       </Field>
       <Field label="პაროლი">
@@ -199,8 +201,14 @@ function LoginForm({ onForgotPassword }: { onForgotPassword: () => void }) {
             onChangeText={setPassword}
             placeholder="••••••••"
             secureTextEntry={!showPw}
+            {...a11y('პაროლის ველი', 'შეიყვანეთ თქვენი პაროლი', 'text')}
           />
-          <Pressable onPress={() => setShowPw(v => !v)} style={styles.eyeBtn} hitSlop={10}>
+          <Pressable
+            onPress={() => setShowPw(v => !v)}
+            style={styles.eyeBtn}
+            hitSlop={10}
+            {...a11y(showPw ? 'პაროლის დაფარვა' : 'პაროლის ჩვენება', 'შეეხეთ პაროლის ხილვადობის შესაცვლელად', 'button')}
+          >
             <Ionicons
               name={showPw ? 'eye-off-outline' : 'eye-outline'}
               size={20}
@@ -209,7 +217,11 @@ function LoginForm({ onForgotPassword }: { onForgotPassword: () => void }) {
           </Pressable>
         </View>
       </Field>
-      <Pressable onPress={onForgotPassword} style={{ alignSelf: 'flex-end', marginTop: -4 }}>
+      <Pressable
+        onPress={onForgotPassword}
+        style={{ alignSelf: 'flex-end', marginTop: -4 }}
+        {...a11y('პაროლის აღდგენა', 'შეეხეთ პაროლის აღსადგენად იმეილის გაგზავნისთვის', 'button')}
+      >
         <Text style={styles.linkText}>პაროლი დაგავიწყდა?</Text>
       </Pressable>
       {error ? <InlineError>{error}</InlineError> : null}
@@ -218,9 +230,10 @@ function LoginForm({ onForgotPassword }: { onForgotPassword: () => void }) {
         onPress={handleSignIn}
         loading={busy}
         disabled={!isEmail(email.trim()) || password.length < MIN_PASSWORD_LEN}
+        {...a11y('შესვლის ღილაკი', 'შეეხეთ ანგარიშში შესასვლელად', 'button')}
       />
       <Divider />
-      <GoogleButton onPress={handleGoogle} loading={googleBusy} />
+      <GoogleButton onPress={handleGoogle} loading={googleBusy} {...a11y('Google-ით შესვლა', 'შეეხეთ Google ანგარიშით შესასვლელად', 'button')} />
     </View>
   );
 }
@@ -298,12 +311,12 @@ function RegisterForm({
       <View style={{ flexDirection: 'row', gap: 10 }}>
         <View style={{ flex: 1 }}>
           <Field label="სახელი">
-            <Input value={firstName} onChangeText={setFirstName} placeholder="გიორგი" />
+            <Input value={firstName} onChangeText={setFirstName} placeholder="გიორგი" {...a11y('სახელის ველი', 'შეიყვანეთ თქვენი სახელი', 'text')} />
           </Field>
         </View>
         <View style={{ flex: 1 }}>
           <Field label="გვარი">
-            <Input value={lastName} onChangeText={setLastName} placeholder="ხელაძე" />
+            <Input value={lastName} onChangeText={setLastName} placeholder="ხელაძე" {...a11y('გვარის ველი', 'შეიყვანეთ თქვენი გვარი', 'text')} />
           </Field>
         </View>
       </View>
@@ -315,6 +328,7 @@ function RegisterForm({
           keyboardType="email-address"
           autoCapitalize="none"
           autoCorrect={false}
+          {...a11y('ელფოსტის ველი რეგისტრაციისთვის', 'შეიყვანეთ ელფოსტა ახალი ანგარიშისთვის', 'text')}
         />
       </Field>
       <Field label="პაროლი (მინ. 6 სიმბოლო)">
@@ -324,8 +338,14 @@ function RegisterForm({
             onChangeText={setPassword}
             secureTextEntry={!showPw}
             placeholder="••••••••"
+            {...a11y('პაროლის ველი რეგისტრაციისთვის', 'შეიყვანეთ პაროლი მინიმუმ 6 სიმბოლო', 'text')}
           />
-          <Pressable onPress={() => setShowPw(v => !v)} style={styles.eyeBtn} hitSlop={10}>
+          <Pressable
+            onPress={() => setShowPw(v => !v)}
+            style={styles.eyeBtn}
+            hitSlop={10}
+            {...a11y(showPw ? 'პაროლის დაფარვა' : 'პაროლის ჩვენება', 'შეეხეთ პაროლის ხილვადობის შესაცვლელად', 'button')}
+          >
             <Ionicons
               name={showPw ? 'eye-off-outline' : 'eye-outline'}
               size={20}
@@ -335,9 +355,9 @@ function RegisterForm({
         </View>
       </Field>
       {error ? <InlineError>{error}</InlineError> : null}
-      <Button title="რეგისტრაცია" onPress={handleRegister} loading={busy} disabled={!canSubmit} />
+      <Button title="რეგისტრაცია" onPress={handleRegister} loading={busy} disabled={!canSubmit} {...a11y('რეგისტრაციის ღილაკი', 'შეეხეთ ახალი ანგარიშის შესაქმნელად', 'button')} />
       <Divider />
-      <GoogleButton onPress={handleGoogle} loading={googleBusy} />
+      <GoogleButton onPress={handleGoogle} loading={googleBusy} {...a11y('Google-ით რეგისტრაცია', 'შეეხეთ Google ანგარიშით რეგისტრაციისთვის', 'button')} />
     </View>
   );
 }
@@ -348,7 +368,7 @@ function ModalHeader({ title, onClose }: { title: string; onClose: () => void })
   return (
     <View style={styles.modalHeader}>
       <Text style={{ fontSize: 17, fontWeight: '700', color: theme.colors.ink }}>{title}</Text>
-      <Pressable onPress={onClose} hitSlop={12}>
+      <Pressable onPress={onClose} hitSlop={12} {...a11y('დახურვა', 'შეეხეთ მოდალის დასახურად', 'button')}>
         <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
       </Pressable>
     </View>
@@ -376,7 +396,7 @@ function Divider() {
   );
 }
 
-function GoogleButton({ onPress, loading }: { onPress: () => void; loading?: boolean }) {
+function GoogleButton({ onPress, loading, ...rest }: { onPress: () => void; loading?: boolean } & Record<string, any>) {
   return (
     <Pressable
       onPress={onPress}
@@ -386,6 +406,7 @@ function GoogleButton({ onPress, loading }: { onPress: () => void; loading?: boo
         pressed && { opacity: 0.82 },
         loading && { opacity: 0.6 },
       ]}
+      {...rest}
     >
       {loading ? (
         <ActivityIndicator color={theme.colors.inkSoft} />

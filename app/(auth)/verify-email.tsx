@@ -17,6 +17,7 @@ import { useSession } from '../../lib/session';
 import { useToast } from '../../lib/toast';
 import { theme } from '../../lib/theme';
 import { toErrorMessage } from '../../lib/logError';
+import { a11y } from '../../lib/accessibility';
 import { Button, Card } from '../../components/ui';
 
 const CODE_LENGTH = 6;
@@ -118,7 +119,7 @@ export default function VerifyEmailScreen() {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={10}>
+            <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={10} {...a11y('უკან დაბრუნება', 'გადავა წინა ეკრანზე', 'button')}>
               <Ionicons name="chevron-back" size={22} color={theme.colors.inkSoft} />
               <Text style={{ color: theme.colors.inkSoft, fontWeight: '600' }}>უკან</Text>
             </Pressable>
@@ -136,7 +137,7 @@ export default function VerifyEmailScreen() {
             </View>
 
             <Card padding={22} style={{ marginTop: 28 }}>
-              <Pressable onPress={() => inputRef.current?.focus()} style={styles.cellsRow}>
+              <Pressable onPress={() => inputRef.current?.focus()} style={styles.cellsRow} {...a11y('დადასტურების კოდის ველი', 'დააჭირეთ კოდის შესაყვანად', 'button')}>
                 {cells.map((ch, i) => (
                   <View
                     key={i}
@@ -182,6 +183,7 @@ export default function VerifyEmailScreen() {
                 loading={busy}
                 disabled={code.length !== CODE_LENGTH}
                 style={{ marginTop: 18 }}
+                {...a11y('დადასტურება', 'ელ-ფოსტის დადასტურება კოდით', 'button')}
               />
 
               <View style={styles.resendRow}>
@@ -192,6 +194,7 @@ export default function VerifyEmailScreen() {
                   onPress={handleResend}
                   disabled={cooldown > 0 || resendBusy}
                   hitSlop={8}
+                  {...a11y('კოდის ხელახლა გაგზავნა', 'ახალი დადასტურების კოდის მოთხოვნა', 'button')}
                 >
                   <Text
                     style={[

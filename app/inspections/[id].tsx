@@ -47,6 +47,7 @@ import type {
   Template,
 } from '../../types/models';
 import { SIGNER_ROLE_LABEL } from '../../types/models';
+import { a11y } from '../../lib/accessibility';
 
 export default function InspectionDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -355,7 +356,7 @@ export default function InspectionDetailScreen() {
                   const safeBg = isSafe === false ? theme.colors.dangerSoft : theme.colors.accentSoft;
                   const barColor = isSafe === false ? theme.colors.danger : theme.colors.accent;
                   return (
-                    <Pressable onPress={() => openCertPreview(item)}>
+                    <Pressable onPress={() => openCertPreview(item)} {...a11y(`PDF რეპორტი #${index + 1}`, 'რეპორტის დეტალების ნახვა', 'button')}>
                       <Card padding={12}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                           {/* Thumbnail */}
@@ -417,7 +418,7 @@ export default function InspectionDetailScreen() {
                               hitSlop={10}
                               onPress={() => deleteCert(item)}
                               style={{ padding: 6 }}
-                              accessibilityLabel="delete"
+                              {...a11y('წაშლა', 'PDF რეპორტის წაშლა', 'button')}
                             >
                               <Ionicons name="trash-outline" size={18} color={theme.colors.danger} />
                             </Pressable>
@@ -524,7 +525,7 @@ function RemoteRequestRow({
   const isOpen = request.status === 'pending' || request.status === 'sent';
   return (
     <Card padding={12}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }} {...a11y(request.signer_name, 'გარე ხელმოწერის სტატუსი', 'button')}>
         <View style={remoteStyles.iconBox}>
           <Ionicons name="paper-plane-outline" size={18} color={theme.colors.accent} />
         </View>

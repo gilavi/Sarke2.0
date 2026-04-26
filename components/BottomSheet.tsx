@@ -32,9 +32,10 @@ import {
   GestureDetector,
   NativeGesture,
 } from 'react-native-gesture-handler';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { haptic } from '../lib/haptics';
-import { theme } from '../lib/theme';
+import { a11y } from '../lib/accessibility';
 
 export interface BottomSheetOptions {
   title?: string;
@@ -76,6 +77,7 @@ interface SheetState {
 export function BottomSheetProvider({ children }: { children: ReactNode }) {
   const [sheet, setSheet] = useState<SheetState | null>(null);
   const callbackRef = useRef<((idx: number | undefined) => void) | null>(null);
+  const insets = useSafeAreaInsets();
 
   const backdropProgress = useRef(new Animated.Value(0)).current;
   const sheetProgress = useRef(new Animated.Value(0)).current;
@@ -250,6 +252,11 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
                   isSelected && styles.optionCardSelected,
                   pressed && styles.optionCardPressed,
                 ]}
+                {...a11y(
+                  opt,
+                  isDestructive ? 'ყურადღება, ეს ქმედება წაშლით დასრულდება' : undefined,
+                  'button',
+                )}
               >
                 <View style={{ flex: 1 }}>
                   <Text
@@ -279,6 +286,7 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
               styles.cancelBtn,
               pressed && { opacity: 0.7 },
             ]}
+            {...a11y('გაუქმება', 'მოქმედების გაუქმება', 'button')}
           >
             <Text style={styles.cancelBtnText}>გაუქმება</Text>
           </Pressable>
@@ -309,6 +317,7 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
               <Pressable
                 style={StyleSheet.absoluteFillObject}
                 onPress={() => dismissable && dismiss(cancelIndex)}
+                {...a11y('დახურვა', 'ფონის დაჭერით დახურვა', 'button')}
               />
             </Animated.View>
 
@@ -316,6 +325,7 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
               style={[
                 styles.sheetWrapper,
                 {
+                  paddingBottom: insets.bottom + 16,
                   transform: [{ translateY }, { scale: sheetScale }],
                 },
               ]}
@@ -370,40 +380,48 @@ export function BottomSheetScrollView({
 
 const styles = StyleSheet.create({
   backdrop: {
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: 'rgba(0,0,0,0.45)',
   },
   sheetWrapper: {
     position: 'absolute',
-    left: 0,
-    right: 0,
+    left: 12,
+    right: 12,
     bottom: 0,
   },
   sheetCard: {
-    backgroundColor: theme.colors.background,
-    borderTopLeftRadius: 26,
-    borderTopRightRadius: 26,
+    backgroundColor: '#F5F5F0',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 10,
     overflow: 'hidden',
-    paddingTop: 10,
-    paddingBottom: 44,
+    paddingBottom: 8,
   },
   handleBar: {
     alignItems: 'center',
-    paddingVertical: 0,
+    paddingVertical: 12,
   },
   handle: {
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: theme.colors.hairline,
-    marginBottom: 14,
+    backgroundColor: '#D1D5DB',
   },
   title: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: theme.colors.ink,
-    textAlign: 'left',
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#64748b',
+    textAlign: 'center',
+    paddingVertical: 8,
     paddingHorizontal: 16,
-    marginBottom: 14,
+    backgroundColor: '#F5F5F0',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   optionsContainer: {
     paddingHorizontal: 12,
@@ -457,7 +475,7 @@ const styles = StyleSheet.create({
     color: '#059669',
   },
   contentBody: {
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#F5F5F0',
     paddingHorizontal: 16,
     paddingTop: 4,
     paddingBottom: 16,

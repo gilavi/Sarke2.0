@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,9 +11,9 @@ import { useToast } from '../../../lib/toast';
 import { getStorageImageDisplayUrl } from '../../../lib/imageUrl';
 import { theme } from '../../../lib/theme';
 import { toErrorMessage } from '../../../lib/logError';
-import { scheduleDelete } from '../../../lib/pendingDeletes';
 import type { ProjectSigner, SignerRole } from '../../../types/models';
 import { SIGNER_ROLE_LABEL } from '../../../types/models';
+import { a11y } from '../../../lib/accessibility';
 
 // Roster roles only — "expert" is always the logged-in user per inspection, not rostered.
 const ROSTER_ROLES: SignerRole[] = ['xaracho_supervisor', 'xaracho_assembler'];
@@ -106,23 +106,22 @@ export default function SignerForm() {
 
   const remove = () => {
     if (!existing) return;
-    const target = existing;
-    // Navigate away immediately; the toast lives on the global ToastProvider
-    // so it survives this transition. The previous screen's `signers` list
-    // already optimistically removes the row when deleteSigner is invoked
-    // there, but here we leave restoration to a fresh load if the user undoes.
-    router.back();
-    scheduleDelete({
-      message: `${target.full_name} — წაიშალა`,
-      toast,
-      onExecute: async () => {
-        try {
-          await projectsApi.deleteSigner(target.id);
-        } catch (e) {
-          toast.error(toErrorMessage(e, 'ვერ წაიშალა'));
-        }
+    Alert.alert('წაშლა?', `${existing.full_name}`, [
+      { text: 'გაუქმება', style: 'cancel' },
+      {
+        text: 'წაშლა',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await projectsApi.deleteSigner(existing.id);
+            toast.success('წაიშალა');
+            router.back();
+          } catch (e) {
+            toast.error(toErrorMessage(e, 'ვერ წაიშალა'));
+          }
+        },
       },
-    });
+    ]);
   };
 
   return (
@@ -133,7 +132,7 @@ export default function SignerForm() {
           title: editing ? 'ხელმომწერის რედაქტირება' : 'ახალი ხელმომწერი',
           headerRight: () =>
             editing ? (
-              <Pressable onPress={remove} hitSlop={10}>
+              <Pressable onPress={remove} hitSlop={10} {...a11y('ხელმომწერის წაშლა', 'ამ ხელმომწერის წაშლა', 'button')}>
                 <Ionicons name="trash-outline" size={22} color={theme.colors.danger} />
               </Pressable>
             ) : null,
@@ -153,6 +152,7 @@ export default function SignerForm() {
                   key={r}
                   onPress={() => setRole(r)}
                   style={[styles.roleRow, role === r && styles.roleRowSelected]}
+                  {...a11y(SIGNER_ROLE_LABEL[r], 'აირჩიეთ როლი', 'radio')}
                 >
                   <View style={[styles.radio, role === r && styles.radioOn]}>
                     {role === r ? (
@@ -251,7 +251,7 @@ function SignatureCaptureModal({
             <Text style={{ fontSize: 16, fontWeight: '700', color: theme.colors.ink, flex: 1 }}>
               {title}
             </Text>
-            <Pressable onPress={onCancel} hitSlop={10}>
+            <Pressable onPress={onCancel} hitSlop={10} {...a11y('დახურვა', 'ხელმოწერის ფანჯრის დახურვა', 'button')}>
               <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
             </Pressable>
           </View>

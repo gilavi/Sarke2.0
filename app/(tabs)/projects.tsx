@@ -19,6 +19,9 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { projectAvatar } from '../../lib/projectAvatar';
 import { Button, Card, Field, Input } from '../../components/ui';
+import { PressableScale } from '../../components/animations/PressableScale';
+import { a11y } from '../../lib/accessibility';
+import EmptyState from '../../components/EmptyState';
 import { Skeleton } from '../../components/Skeleton';
 import { MapPicker, type LatLng } from '../../components/MapPicker';
 import { projectsApi } from '../../lib/services';
@@ -114,7 +117,7 @@ export default function ProjectsScreen() {
             style={styles.searchInput}
           />
           {query ? (
-            <Pressable onPress={() => setQuery('')} hitSlop={8}>
+            <Pressable onPress={() => setQuery('')} hitSlop={8} {...a11y('ძებნის გასუფთავება', 'შეეხეთ ძებნის ველის გასასუფთავებლად', 'button')}>
               <Ionicons name="close-circle" size={18} color={theme.colors.inkFaint} />
             </Pressable>
           ) : null}
@@ -151,27 +154,24 @@ export default function ProjectsScreen() {
                 <ProjectRowSkeleton key={i} />
               ))}
             </View>
+          ) : query ? (
+            <EmptyState
+              type="projects"
+              title="ვერაფერი მოიძებნა"
+              subtitle="სცადე სხვა საძიებო სიტყვა."
+              compact
+            />
           ) : (
-            <View style={styles.empty}>
-              <View style={styles.emptyIllustration}>
-                <Ionicons name="folder-open" size={56} color={theme.colors.accent} />
-              </View>
-              <Text style={styles.emptyTitle}>
-                {query ? 'ვერაფერი მოიძებნა' : 'ჯერ პროექტი არ არის'}
-              </Text>
-              <Text style={styles.emptyBody}>
-                {query
-                  ? 'სცადე სხვა საძიებო სიტყვა.'
-                  : 'შექმენი პირველი პროექტი და დაიწყე შემოწმებები.'}
-              </Text>
-              {!query ? (
-                <Button
-                  title="+ ახალი პროექტი"
-                  onPress={() => setCreating(true)}
-                  style={{ marginTop: 14, width: 240 }}
-                />
-              ) : null}
-            </View>
+            <EmptyState
+              type="projects"
+              title="ჯერ პროექტი არ არის"
+              subtitle="შექმენი პირველი პროექტი და დაიწყე შემოწმებები"
+              action={{
+                label: '+ ახალი პროექტი',
+                onPress: () => setCreating(true),
+              }}
+              backgroundPattern
+            />
           )
         }
       />
@@ -179,6 +179,7 @@ export default function ProjectsScreen() {
       <Pressable
         onPress={() => setCreating(true)}
         style={[styles.fab, theme.shadow.button]}
+        {...a11y('ახალი პროექტი', 'შეეხეთ ახალი პროექტის შესაქმნელად', 'button')}
       >
         <Ionicons name="add" size={28} color={theme.colors.white} />
       </Pressable>
@@ -248,7 +249,7 @@ function CreateProjectSheet({
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <Pressable style={sheetStyles.backdrop} onPress={onClose}>
+      <Pressable style={sheetStyles.backdrop} onPress={onClose} {...a11y('დახურვა', 'შეეხეთ ფონის დასახურად', 'button')}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={{ width: '100%' }}
@@ -258,7 +259,7 @@ function CreateProjectSheet({
             <View style={sheetStyles.handle} />
             <View style={sheetStyles.sheetHeader}>
               <Text style={[sheetStyles.sheetTitle, { flex: 1 }]}>ახალი პროექტი</Text>
-              <Pressable onPress={onClose} hitSlop={10}>
+              <Pressable onPress={onClose} hitSlop={10} {...a11y('დახურვა', 'შეეხეთ ფანჯრის დასახურად', 'button')}>
                 <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
               </Pressable>
             </View>
@@ -328,7 +329,7 @@ function ProjectRow({
   onDelete: () => void;
 }) {
   const renderRightActions = () => (
-    <Pressable onPress={onDelete} style={styles.swipeDelete}>
+    <Pressable onPress={onDelete} style={styles.swipeDelete} {...a11y('წაშლა', 'შეეხეთ პროექტის წასაშლელად', 'button')}>
       <Ionicons name="trash" size={20} color={theme.colors.white} />
       <Text style={{ color: theme.colors.white, fontWeight: '600', fontSize: 12 }}>წაშლა</Text>
     </Pressable>
@@ -336,7 +337,16 @@ function ProjectRow({
 
   return (
     <Swipeable renderRightActions={renderRightActions} overshootRight={false}>
-      <Pressable onPress={onOpen}>
+      <PressableScale
+        onPress={onOpen}
+        hapticOnPress="navigate"
+        scaleTo={0.98}
+        {...a11y(
+          `პროექტი: ${project.name}${project.address ? ', მისამართი: ' + project.address : ''}. ${stats ? `${stats.completed} დასრულებული, ${stats.drafts} დრაფტი` : ''}`,
+          'შეეხეთ პროექტის დეტალების სანახავად',
+          'button'
+        )}
+      >
         <Card padding={14}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             <View style={[styles.iconBox, { backgroundColor: projectAvatar(project.id).color + '22' }]}>
@@ -380,7 +390,7 @@ function ProjectRow({
             <Ionicons name="chevron-forward" size={18} color={theme.colors.inkFaint} />
           </View>
         </Card>
-      </Pressable>
+      </PressableScale>
     </Swipeable>
   );
 }
@@ -435,27 +445,6 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     borderRadius: theme.radius.lg,
   },
-  empty: {
-    alignItems: 'center',
-    padding: 40,
-    paddingTop: 80,
-  },
-  emptyIllustration: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: theme.colors.accentSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  emptyTitle: { fontSize: 20, fontWeight: '800', color: theme.colors.ink, marginBottom: 6 },
-  emptyBody: {
-    fontSize: 14,
-    color: theme.colors.inkSoft,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
   fab: {
     position: 'absolute',
     right: 20,
@@ -472,7 +461,7 @@ const styles = StyleSheet.create({
 const sheetStyles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'flex-end',
   },
   card: {

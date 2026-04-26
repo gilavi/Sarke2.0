@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { theme } from '../lib/theme';
 import { logError } from '../lib/logError';
+import { a11y } from '../lib/accessibility';
 
 export type LatLng = { latitude: number; longitude: number };
 
@@ -196,7 +197,7 @@ export function MapPicker({ value, onChange, address, onAddressChange, height = 
             </View>
           </View>
         ) : (
-          <Pressable onPress={() => onChange(null)} style={styles.clearBtn}>
+          <Pressable onPress={() => onChange(null)} style={styles.clearBtn} {...a11y('მდებარეობის გასუფთავება', 'შეეხეთ მონიშნული მდებარეობის წასაშლელად', 'button')}>
             <Ionicons name="close" size={14} color={theme.colors.white} />
             <Text style={styles.clearTxt}>პინის მოხსნა</Text>
           </Pressable>

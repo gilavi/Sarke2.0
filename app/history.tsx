@@ -1,11 +1,12 @@
 import { useCallback, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { Card, Screen } from '../components/ui';
 import { Skeleton } from '../components/Skeleton';
+import EmptyState from '../components/EmptyState';
 import {
   certificatesApi,
   inspectionsApi,
@@ -15,7 +16,7 @@ import {
 import { useToast } from '../lib/toast';
 import { theme } from '../lib/theme';
 import { toErrorMessage } from '../lib/logError';
-import { scheduleDelete } from '../lib/pendingDeletes';
+import { a11y } from '../lib/accessibility';
 import type { Inspection, Project, Template } from '../types/models';
 
 type ListItem =
@@ -76,23 +77,22 @@ export default function HistoryScreen() {
   }
 
   const onDelete = (q: Inspection) => {
-    // Optimistic remove; scheduleDelete defers the API call so the user can
-    // tap "დაბრუნება" within the hold window to bring the row back.
-    setQs(prev => prev.filter(x => x.id !== q.id));
-    scheduleDelete({
-      message: 'ინსპექცია წაიშალა',
-      toast,
-      onUndo: () => setQs(prev => [q, ...prev.filter(x => x.id !== q.id)]),
-      onExecute: async () => {
-        try {
-          await inspectionsApi.remove(q.id);
-        } catch (e) {
-          // Restore on failure so the list reflects reality.
-          setQs(prev => [q, ...prev.filter(x => x.id !== q.id)]);
-          toast.error(toErrorMessage(e, 'ვერ წაიშალა'));
-        }
+    Alert.alert('წაშლა?', 'ინსპექცია სამუდამოდ წაიშლება.', [
+      { text: 'გაუქმება', style: 'cancel' },
+      {
+        text: 'წაშლა',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await inspectionsApi.remove(q.id);
+            setQs(prev => prev.filter(x => x.id !== q.id));
+            toast.success('წაიშალა');
+          } catch (e) {
+            toast.error(toErrorMessage(e, 'ვერ წაიშალა'));
+          }
+        },
       },
-    });
+    ]);
   };
 
   return (
@@ -115,7 +115,7 @@ export default function HistoryScreen() {
             return (
               <Swipeable
                 renderRightActions={() => (
-                  <Pressable onPress={() => onDelete(q)} style={styles.swipeDelete}>
+                  <Pressable onPress={() => onDelete(q)} style={styles.swipeDelete} {...a11y('წაშლა', 'ინსპექციის წაშლა', 'button')}>{' '}
                     <Ionicons name="trash" size={18} color={theme.colors.white} />
                     <Text style={{ color: theme.colors.white, fontSize: 11, fontWeight: '700' }}>
                       წაშლა
@@ -131,7 +131,12 @@ export default function HistoryScreen() {
                       ? router.push(`/inspections/${q.id}` as any)
                       : router.push(`/inspections/${q.id}/wizard` as any)
                   }
-                >
+                  {...a11y(
+                    `${t?.name ?? 'ინსპექცია'} — ${p?.name ?? ''}`.trim(),
+                    q.status === 'completed' ? 'დასრულებული ინსპექციის ნახვა' : 'დრაფტის გაგრძელება',
+                    'button'
+                  )}
+                >{' '}
                   <Card padding={12}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                       <View
@@ -194,15 +199,16 @@ export default function HistoryScreen() {
                 ))}
               </View>
             ) : (
-              <View style={styles.empty}>
-                <View style={styles.emptyCircle}>
-                  <Ionicons name="file-tray" size={44} color={theme.colors.accent} />
-                </View>
-                <Text style={styles.emptyTitle}>ისტორია ცარიელია</Text>
-                <Text style={styles.emptyBody}>
-                  დაასრულე ან შეაჩერე ინსპექცია — ის აქ გამოჩნდება.
-                </Text>
-              </View>
+              <EmptyState
+                type="history"
+                title="ისტორია ცარიელია"
+                subtitle="დასრულებული ინსპექციები გამოჩნდება აქ"
+                action={{
+                  label: 'შემოწმების დაწყება',
+                  icon: 'play-circle-outline',
+                  onPress: () => router.push('/(tabs)/home'),
+                }}
+              />
             )
           }
         />
@@ -251,30 +257,5 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: theme.colors.accent,
   },
-  empty: {
-    alignItems: 'center',
-    paddingVertical: 60,
-    gap: 12,
-  },
-  emptyCircle: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: theme.colors.accentSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 4,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: theme.colors.ink,
-  },
-  emptyBody: {
-    fontSize: 14,
-    color: theme.colors.inkSoft,
-    textAlign: 'center',
-    lineHeight: 20,
-    paddingHorizontal: 24,
-  },
+  // empty styles removed — now handled by <EmptyState />
 });

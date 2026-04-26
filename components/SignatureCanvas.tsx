@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import SignatureScreen, { type SignatureViewRef } from 'react-native-signature-canvas';
 import { Button } from './ui';
 import { theme } from '../lib/theme';
+import { a11y } from '../lib/accessibility';
 
 interface Props {
   visible: boolean;
@@ -77,11 +78,11 @@ export function SignatureCanvas({ visible, personName, onCancel, onConfirm }: Pr
             </Text>
           </View>
           {hasStroke && (
-            <Pressable onPress={handleClear} hitSlop={12} style={[styles.headerBtn, { marginRight: 8 }]}>
+            <Pressable onPress={handleClear} hitSlop={12} style={[styles.headerBtn, { marginRight: 8 }]} {...a11y('გასუფთავება', 'ხელმოწერის გასუფთავება', 'button')}>
               <Ionicons name="refresh" size={18} color={theme.colors.inkSoft} />
             </Pressable>
           )}
-          <Pressable onPress={onCancel} hitSlop={12} style={styles.headerBtn}>
+          <Pressable onPress={onCancel} hitSlop={12} style={styles.headerBtn} {...a11y('დახურვა', undefined, 'button')}>
             <Ionicons name="close" size={22} color={theme.colors.ink} />
           </Pressable>
         </View>
@@ -121,12 +122,14 @@ export function SignatureCanvas({ visible, personName, onCancel, onConfirm }: Pr
             variant="secondary"
             onPress={onCancel}
             style={{ flex: 1 }}
+            {...a11y('გაუქმება', undefined, 'button')}
           />
           <Button
             title="შენახვა"
             onPress={handleConfirm}
             disabled={!hasStroke}
             style={{ flex: 1.6 }}
+            {...a11y('შენახვა', 'ხელმოწერის შენახვა', 'button')}
           />
         </View>
       </SafeAreaView>

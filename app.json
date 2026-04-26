@@ -57,7 +57,8 @@
           "icon": "./assets/icon.png",
           "color": "#147A4F"
         }
-      ]
+      ],
+      "@sentry/react-native"
     ],
     "extra": {
       "supabaseUrl": "https://seskuthiopywrgntsgfw.supabase.co",
