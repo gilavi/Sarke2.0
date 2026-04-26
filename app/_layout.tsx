@@ -147,7 +147,9 @@ function AuthGate() {
         headerStyle: { backgroundColor: theme.colors.background },
         headerShadowVisible: false,
       }}
-    />
+    >
+      <Stack.Screen name="photo-picker" options={{ presentation: 'modal', headerShown: false }} />
+    </Stack>
   );
 }
 

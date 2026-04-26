@@ -16,7 +16,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as MediaLibrary from 'expo-media-library';
@@ -73,27 +73,39 @@ export default function PhotoPickerScreen() {
     })();
   }, [libPerm?.granted]);
 
+  // Use router.dismiss() (modal-aware close) instead of router.back(). back()
+  // emits a GO_BACK action that the AuthGate __unsafe_action__ listener
+  // (app/_layout.tsx) intercepts and redirects to /home — sending the user to
+  // the dashboard after every capture.
+  const close = useCallback(() => {
+    try {
+      router.dismiss();
+    } catch {
+      if (router.canGoBack()) router.back();
+    }
+  }, [router]);
+
   const finish = useCallback(
     (uri: string) => {
       resolvePhotoPicker(uri);
-      router.back();
+      close();
     },
-    [router],
+    [close],
   );
 
   const cancel = useCallback(() => {
     cancelPhotoPicker();
-    router.back();
-  }, [router]);
+    close();
+  }, [close]);
 
   const capture = useCallback(async () => {
     if (capturing) return;
     setCapturing(true);
     try {
-      const photo = await cameraRef.current?.takePictureAsync({ quality: 0.7, skipProcessing: true });
+      const photo = await cameraRef.current?.takePictureAsync({ quality: 0.7 });
       if (photo?.uri) finish(photo.uri);
-    } catch {
-      // Swallow; capturing flag below clears so user can retry.
+    } catch (e) {
+      console.warn('[photo-picker] capture failed', e);
     } finally {
       setCapturing(false);
     }
@@ -140,8 +152,6 @@ export default function PhotoPickerScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#000' }}>
-      <Stack.Screen options={{ headerShown: false, presentation: 'modal' }} />
-
       {/* Camera viewfinder */}
       <View style={styles.cameraWrap}>
         {camReady ? (

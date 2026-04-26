@@ -26,6 +26,7 @@ import { useToast } from '../../../lib/toast';
 import { scheduleDelete } from '../../../lib/pendingDeletes';
 import { setPhotoPickerCallback } from '../../../lib/photoPickerBus';
 import { theme } from '../../../lib/theme';
+import { HarnessListFlow } from '../../../components/HarnessListFlow';
 import type {
   Answer,
   AnswerPhoto,
@@ -169,6 +170,8 @@ export default function QuestionnaireWizard() {
   const [harnessName, setHarnessName] = useState('');
   const [exitModalVisible, setExitModalVisible] = useState(false);
   const [tourVisible, setTourVisible] = useState(false);
+  // Phase for the harness list flow. Ignored for non-harness templates.
+  const [harnessPhase, setHarnessPhase] = useState<'list' | 'conclusion'>('list');
   const showHelp = useScaffoldHelpSheet();
 
   // ScrollView ref so child steps can request a scroll-to-end when a focused
@@ -633,6 +636,59 @@ export default function QuestionnaireWizard() {
     }).start();
   }
 
+  const isHarness = template?.category === 'harness';
+
+  if (isHarness && harnessPhase === 'list') {
+    return (
+      <Screen style={{ backgroundColor: theme.colors.card }}>
+        <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
+        <HarnessListFlow
+          template={template!}
+          questions={questions}
+          answers={answers}
+          photos={photos}
+          harnessRowCount={harnessRowCount}
+          setHarnessRowCount={setHarnessRowCount}
+          onPatchAnswer={patchAnswer}
+          onPickItemPhoto={(q, row, col) => pickPhoto(q, `${row}:col:${col}`)}
+          onDeletePhoto={deletePhoto}
+          onClose={() => setExitModalVisible(true)}
+          onConclude={() => {
+            setStepIndex(Math.max(0, steps.length - 1));
+            setHarnessPhase('conclusion');
+          }}
+        />
+        <Modal visible={exitModalVisible} transparent animationType="fade" onRequestClose={() => setExitModalVisible(false)}>
+          <View style={styles.confirmOverlay}>
+            <Pressable style={styles.confirmBackdrop} onPress={() => setExitModalVisible(false)} />
+            <View style={styles.confirmCard}>
+              <View style={{ alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: theme.colors.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name="exit-outline" size={28} color={theme.colors.accent} />
+                </View>
+                <Text style={{ fontSize: 18, fontWeight: '700', color: theme.colors.ink }}>გასვლა</Text>
+                <Text style={{ fontSize: 14, color: theme.colors.inkSoft, textAlign: 'center', lineHeight: 20 }}>
+                  შეინახო დრაფტად და გააგრძელო მოგვიანებით?
+                </Text>
+              </View>
+              <View style={{ gap: 8, marginTop: 4 }}>
+                <Button title="გაგრძელება" variant="secondary" onPress={() => setExitModalVisible(false)} />
+                <Button
+                  title="დრაფტად შენახვა"
+                  onPress={() => {
+                    setExitModalVisible(false);
+                    router.back();
+                  }}
+                  iconLeft={<Ionicons name="archive-outline" size={18} color={theme.colors.white} />}
+                />
+              </View>
+            </View>
+          </View>
+        </Modal>
+      </Screen>
+    );
+  }
+
   const stepAnswered = hasAnswer(step, answers, photos, conclusion, isSafe, harnessName, template);
   const isYesNo = step.kind === 'question' && step.question.type === 'yesno';
   const isScaffoldRow = step.kind === 'gridRow' && (step.question.grid_rows?.[0] ?? '') !== 'N1';
@@ -955,7 +1011,7 @@ const QuestionStep = memo(function QuestionStep({
         <View style={styles.chipRow}>
           {!hasPhotos ? (
             <Pressable onPress={onPickPhoto} style={styles.assistChip}>
-              <Ionicons name="camera-outline" size={16} color={theme.colors.inkSoft} />
+              <Ionicons name="camera-outline" size={20} color={theme.colors.ink} />
               <Text style={styles.assistChipText}>ფოტო</Text>
             </Pressable>
           ) : null}
@@ -1463,7 +1519,7 @@ const GridRowStep = memo(function GridRowStep({
           <View style={styles.chipRow}>
             {!hasPhotos ? (
               <Pressable onPress={onPickPhoto} style={styles.assistChip}>
-                <Ionicons name="camera-outline" size={16} color={theme.colors.inkSoft} />
+                <Ionicons name="camera-outline" size={20} color={theme.colors.ink} />
                 <Text style={styles.assistChipText}>ფოტო</Text>
               </Pressable>
             ) : null}
@@ -1586,7 +1642,7 @@ const GridRowStep = memo(function GridRowStep({
       ) : (
         <View style={styles.chipRow}>
           <Pressable onPress={onPickPhoto} style={styles.assistChip}>
-            <Ionicons name="camera-outline" size={16} color={theme.colors.inkSoft} />
+            <Ionicons name="camera-outline" size={20} color={theme.colors.ink} />
             <Text style={styles.assistChipText}>ფოტო</Text>
           </Pressable>
         </View>
@@ -1720,7 +1776,7 @@ const ConclusionStep = memo(function ConclusionStep({
           ) : (
             <View style={styles.chipRow}>
               <Pressable onPress={onPickPhoto} style={styles.assistChip}>
-                <Ionicons name="camera-outline" size={16} color={theme.colors.inkSoft} />
+                <Ionicons name="camera-outline" size={20} color={theme.colors.ink} />
                 <Text style={styles.assistChipText}>ფოტო</Text>
               </Pressable>
             </View>
@@ -2111,18 +2167,18 @@ const styles = StyleSheet.create({
   assistChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
     borderRadius: theme.radius.pill,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: theme.colors.hairline,
     backgroundColor: theme.colors.card,
   },
   assistChipText: {
-    fontSize: 13,
-    color: theme.colors.inkSoft,
-    fontWeight: '500',
+    fontSize: 15,
+    color: theme.colors.ink,
+    fontWeight: '600',
   },
   choice: {
     flex: 1,
