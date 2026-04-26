@@ -486,6 +486,30 @@ export default function QuestionnaireWizard() {
     }
   };
 
+  const goBack = () => {
+    haptic.light();
+    setStepIndex(i => Math.max(0, i - 1));
+  };
+
+  // Swipe-right anywhere on the wizard body goes to the previous step. We
+  // disable the native iOS swipe-back (gestureEnabled=false on Stack.Screen)
+  // so this can't accidentally exit the flow mid-inspection.
+  const swipeBack = useMemo(
+    () =>
+      Gesture.Pan()
+        .activeOffsetX([20, 999])
+        .failOffsetY([-20, 20])
+        .runOnJS(true)
+        .onEnd(e => {
+          if (e.translationX > 60 && stepIndex > 0) {
+            goBack();
+          }
+        }),
+    // goBack is stable (only calls setStepIndex); stepIndex is the real dep.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [stepIndex],
+  );
+
   // Hold the skeleton until everything we need to paint a real step has
   // arrived: data done loading, template resolved, AND a valid step at the
   // current index. Without the extra guards, react-18's between-await paints
@@ -541,29 +565,6 @@ export default function QuestionnaireWizard() {
     }
     setStepIndex(i => Math.min(steps.length - 1, i + 1));
   };
-
-  const goBack = () => {
-    haptic.light();
-    setStepIndex(i => Math.max(0, i - 1));
-  };
-
-  // Swipe-right anywhere on the wizard body goes to the previous step. We
-  // disable the native iOS swipe-back (gestureEnabled=false on Stack.Screen)
-  // so this can't accidentally exit the flow mid-inspection.
-  const swipeBack = useMemo(
-    () =>
-      Gesture.Pan()
-        .activeOffsetX([20, 999])
-        .failOffsetY([-20, 20])
-        .runOnJS(true)
-        .onEnd(e => {
-          if (e.translationX > 60 && stepIndex > 0) {
-            goBack();
-          }
-        }),
-    [stepIndex],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  );
 
   return (
     <Screen style={{ backgroundColor: theme.colors.card }}>
@@ -1260,6 +1261,9 @@ const GridRowStep = memo(function GridRowStep({
   const answerPhotos = answer ? photosByAnswer[answer.id] ?? [] : [];
   const hasPhotos = answerPhotos.length > 0;
   const [previewPhoto, setPreviewPhoto] = useState<AnswerPhoto | null>(null);
+  // Must be unconditional — used only in the scaffold (non-harness) branch
+  // but hooks cannot be called inside an `if` block.
+  const [commentOpen, setCommentOpen] = useState(false);
 
   const setValue = (col: string, value: string | null, exclusive: boolean) => {
     onAnswer(question, a => {
@@ -1283,7 +1287,6 @@ const GridRowStep = memo(function GridRowStep({
     const selectedStatus = statusCols.find(c => values[c] !== undefined) ?? null;
 
     const commentValue = values['კომენტარი'] ?? '';
-    const [commentOpen, setCommentOpen] = useState(false);
     const showCommentField = !!commentValue || commentOpen;
     const noneCol = statusCols.find(c => c.includes('გააჩნია')) ?? null;
     const showDetails = selectedStatus !== null && selectedStatus !== noneCol;
