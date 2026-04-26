@@ -56,6 +56,27 @@ export interface Qualification {
   created_at: string;
 }
 
+/**
+ * Project crew (მონაწილეები) — a flat list of people involved on the
+ * project. Editable from both the project screen and the inspection signing
+ * flow; both surfaces write back to `projects.crew`.
+ *
+ * The "inspector" (logged-in expert) is NOT stored here — it's derived from
+ * auth and rendered as the first row in the UI. Only `manual` entries live
+ * in this array.
+ *
+ * `signature` is a storage path (same convention as ProjectSigner) and stays
+ * null until the member signs in the inspection flow.
+ */
+export interface CrewMember {
+  /** Stable client-generated id (uuid). Used for React keys + removal. */
+  id: string;
+  name: string;
+  /** Freeform — UI offers presets but accepts any string. */
+  role: string;
+  signature: string | null;
+}
+
 export interface Project {
   id: string;
   user_id: string;
@@ -64,6 +85,8 @@ export interface Project {
   address: string | null;
   latitude: number | null;
   longitude: number | null;
+  /** NULL on legacy rows; treat as []. */
+  crew: CrewMember[] | null;
   created_at: string;
 }
 

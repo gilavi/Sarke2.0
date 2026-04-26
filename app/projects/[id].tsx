@@ -31,14 +31,17 @@ import { getStorageImageDisplayUrl } from '../../lib/imageUrl';
 import { projectAvatar } from '../../lib/projectAvatar';
 import { theme } from '../../lib/theme';
 import { toErrorMessage } from '../../lib/logError';
-import type { Project, ProjectSigner, Questionnaire, Template } from '../../types/models';
+import type { CrewMember, Project, ProjectSigner, Questionnaire, Template } from '../../types/models';
 import { SIGNER_ROLE_LABEL } from '../../types/models';
+import { CrewList } from '../../components/CrewSection';
+import { useSession } from '../../lib/session';
 
 export default function ProjectDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const showActionSheetWithOptions = useBottomSheet();
   const toast = useToast();
+  const session = useSession();
 
   const [project, setProject] = useState<Project | null>(null);
   const [signers, setSigners] = useState<ProjectSigner[]>([]);
@@ -86,6 +89,36 @@ export default function ProjectDetail() {
     useCallback(() => {
       void load();
     }, [load]),
+  );
+
+  // Inspector row (logged-in expert) — derived from auth, never persisted
+  // into projects.crew. The crew list itself is just the manual entries.
+  const inspector = useMemo(() => {
+    if (session.state.status !== 'signedIn') return null;
+    const u = session.state.user;
+    const fallback = session.state.session.user.email ?? 'ინსპექტორი';
+    const name = u
+      ? `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim() || fallback
+      : fallback;
+    return { name, role: 'ინსპექტორი' };
+  }, [session.state]);
+
+  const persistCrew = useCallback(
+    async (next: CrewMember[]) => {
+      if (!project) return;
+      // Optimistic — patch local state, then persist. Roll back on failure
+      // so the user sees what's actually stored.
+      const prev = project;
+      setProject({ ...project, crew: next });
+      try {
+        const saved = await projectsApi.update(project.id, { crew: next });
+        setProject(saved);
+      } catch (e) {
+        setProject(prev);
+        toast.error(toErrorMessage(e, 'მონაწილე ვერ შეინახა'));
+      }
+    },
+    [project, toast],
   );
 
   const drafts = useMemo(
@@ -305,6 +338,25 @@ export default function ProjectDetail() {
                   + ხელმომწერის დამატება
                 </Text>
               </Pressable>
+            </View>
+          </Card>
+
+          {/* Crew (მონაწილეები) — inspector row (auto from auth) + manual
+              entries. Same data is also editable from the inspection
+              signing flow; both write back to projects.crew. */}
+          <Card>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Text style={styles.eyebrow}>მონაწილეები</Text>
+              <Text style={{ color: theme.colors.inkSoft, fontSize: 12 }}>
+                {(project?.crew?.length ?? 0) + (inspector ? 1 : 0)}
+              </Text>
+            </View>
+            <View style={{ marginTop: 10 }}>
+              <CrewList
+                inspector={inspector}
+                crew={project?.crew ?? []}
+                onChange={persistCrew}
+              />
             </View>
           </Card>
 

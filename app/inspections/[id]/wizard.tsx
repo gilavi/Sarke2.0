@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Animated, Image, InputAccessoryView, Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
@@ -84,6 +84,26 @@ function buildSteps(
   }
   steps.push({ kind: 'conclusion' });
   return steps;
+}
+
+// Header label/icon for the stepper at the top of the wizard. Grouped by
+// step kind + question type rather than per-question, so the header stays
+// stable across the many sub-steps that share a conceptual phase.
+function stepHeaderInfo(step: FlatStep): { title: string; icon: keyof typeof Ionicons.glyphMap } {
+  if (step.kind === 'conclusion') return { title: 'დასკვნა', icon: 'clipboard-outline' };
+  if (step.kind === 'gridRow') return { title: `კომპონენტი • ${step.row}`, icon: 'grid-outline' };
+  switch (step.question.type) {
+    case 'yesno':
+      return { title: 'შემოწმება', icon: 'checkmark-done-outline' };
+    case 'measure':
+      return { title: 'გაზომვა', icon: 'resize-outline' };
+    case 'freetext':
+      return { title: 'შენიშვნა', icon: 'create-outline' };
+    case 'photo_upload':
+      return { title: 'ფოტო', icon: 'camera-outline' };
+    default:
+      return { title: 'კითხვა', icon: 'help-circle-outline' };
+  }
 }
 
 // Simple in-memory cache for photo display URLs to avoid redundant fetches
@@ -485,6 +505,26 @@ export default function QuestionnaireWizard() {
     }
   };
 
+  // Swipe-right anywhere on the wizard body goes to the previous step. We
+  // disable the native iOS swipe-back (gestureEnabled=false on Stack.Screen)
+  // so this can't accidentally exit the flow mid-inspection.
+  // Declared before any early return so hook order stays stable across the
+  // skeleton → ready transition.
+  const swipeBack = useMemo(
+    () =>
+      Gesture.Pan()
+        .activeOffsetX([20, 999])
+        .failOffsetY([-20, 20])
+        .runOnJS(true)
+        .onEnd(e => {
+          if (e.translationX > 60 && stepIndex > 0) {
+            haptic.light();
+            setStepIndex(i => Math.max(0, i - 1));
+          }
+        }),
+    [stepIndex],
+  );
+
   // Hold the skeleton until everything we need to paint a real step has
   // arrived: data done loading, template resolved, AND a valid step at the
   // current index. Without the extra guards, react-18's between-await paints
@@ -546,41 +586,17 @@ export default function QuestionnaireWizard() {
     setStepIndex(i => Math.max(0, i - 1));
   };
 
-  // Swipe-right anywhere on the wizard body goes to the previous step. We
-  // disable the native iOS swipe-back (gestureEnabled=false on Stack.Screen)
-  // so this can't accidentally exit the flow mid-inspection.
-  const swipeBack = useMemo(
-    () =>
-      Gesture.Pan()
-        .activeOffsetX([20, 999])
-        .failOffsetY([-20, 20])
-        .runOnJS(true)
-        .onEnd(e => {
-          if (e.translationX > 60 && stepIndex > 0) {
-            goBack();
-          }
-        }),
-    [stepIndex],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  );
-
   return (
     <Screen style={{ backgroundColor: theme.colors.card }}>
       <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
       <Animated.View style={{ flex: 1, opacity: enterAnim }}>
       <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.card }} edges={['top']}>
-        <View style={styles.topBar}>
-          <Text style={styles.stepperText}>
-            {stepIndex + 1} / {steps.length}
-          </Text>
-          <Pressable
-            hitSlop={12}
-            onPress={() => setExitModalVisible(true)}
-            style={({ pressed }) => [styles.closeBtn, pressed && { opacity: 0.6 }]}
-          >
-            <Ionicons name="close" size={28} color={theme.colors.ink} />
-          </Pressable>
-        </View>
+        <WizardHeader
+          step={step}
+          stepIndex={stepIndex}
+          total={steps.length}
+          onClose={() => setExitModalVisible(true)}
+        />
         <GestureDetector gesture={swipeBack}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -1223,6 +1239,49 @@ function scaffoldColStyle(col: string): { tint: string; bg: string; icon: string
   return { tint: theme.colors.inkSoft, bg: theme.colors.subtleSurface, icon: 'remove-circle' };
 }
 
+function WizardHeader({
+  step,
+  stepIndex,
+  total,
+  onClose,
+}: {
+  step: FlatStep;
+  stepIndex: number;
+  total: number;
+  onClose: () => void;
+}) {
+  const { title, icon } = stepHeaderInfo(step);
+  const progress = Math.max(0, Math.min(1, (stepIndex + 1) / Math.max(1, total)));
+  return (
+    <View style={styles.wizHeader}>
+      <View style={styles.wizHeaderRow}>
+        <View style={styles.wizHeaderIcon}>
+          <Ionicons name={icon} size={22} color={theme.colors.accent} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.wizHeaderEyebrow}>
+            ნაბიჯი {stepIndex + 1} / {total}
+          </Text>
+          <Text style={styles.wizHeaderTitle} numberOfLines={1}>
+            {title}
+          </Text>
+        </View>
+        <Pressable
+          hitSlop={12}
+          onPress={onClose}
+          style={({ pressed }) => [styles.wizHeaderClose, pressed && { opacity: 0.6 }]}
+          accessibilityLabel="დახურვა"
+        >
+          <Ionicons name="close" size={22} color={theme.colors.ink} />
+        </Pressable>
+      </View>
+      <View style={styles.wizHeaderProgressTrack}>
+        <View style={[styles.wizHeaderProgressFill, { width: `${progress * 100}%` }]} />
+      </View>
+    </View>
+  );
+}
+
 const GridRowStep = memo(function GridRowStep({
   question,
   row,
@@ -1504,9 +1563,23 @@ const ConclusionStep = memo(function ConclusionStep({
   const conclusionEmpty = !conclusion.trim();
   const [previewPhoto, setPreviewPhoto] = useState<AnswerPhoto | null>(null);
   const hasPhotos = photos.length > 0;
+  const accessoryId = 'wizardConclusionAccessory';
 
   return (
     <View style={{ gap: 18 }}>
+      {Platform.OS === 'ios' ? (
+        <InputAccessoryView nativeID={accessoryId}>
+          <View style={styles.kbAccessory}>
+            <Pressable
+              hitSlop={10}
+              onPress={() => Keyboard.dismiss()}
+              style={({ pressed }) => [styles.kbDoneBtn, pressed && { opacity: 0.6 }]}
+            >
+              <Text style={styles.kbDoneText}>მზადაა</Text>
+            </Pressable>
+          </View>
+        </InputAccessoryView>
+      ) : null}
       <View style={{ alignItems: 'center', paddingTop: 8 }}>
         <QuestionAvatar illustrationKey="conclusion" />
       </View>
@@ -1521,6 +1594,9 @@ const ConclusionStep = memo(function ConclusionStep({
             style={[styles.input, harnessEmpty && styles.inputError]}
             placeholder="მაგ. Petzl NEWTON"
             placeholderTextColor={theme.colors.inkFaint}
+            returnKeyType="done"
+            onSubmitEditing={Keyboard.dismiss}
+            inputAccessoryViewID={Platform.OS === 'ios' ? accessoryId : undefined}
           />
           {harnessEmpty ? (
             <Text style={styles.fieldError}>სავალდებულო ველი</Text>
@@ -1538,6 +1614,7 @@ const ConclusionStep = memo(function ConclusionStep({
           style={[styles.textarea, conclusionEmpty && styles.inputError]}
           placeholder="აღწერე დეტალურად..."
           placeholderTextColor={theme.colors.inkFaint}
+          inputAccessoryViewID={Platform.OS === 'ios' ? accessoryId : undefined}
         />
         {conclusionEmpty ? (
           <Text style={styles.fieldError}>სავალდებულო ველი</Text>
@@ -1820,6 +1897,25 @@ function CompletedRedirect({ id }: { id: string }) {
 }
 
 const styles = StyleSheet.create({
+  kbAccessory: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: theme.colors.card,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: theme.colors.hairline,
+  },
+  kbDoneBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+  },
+  kbDoneText: {
+    color: theme.colors.accent,
+    fontSize: 16,
+    fontWeight: '600',
+  },
   topBar: {
     height: 48,
     paddingHorizontal: 16,
@@ -1839,6 +1935,60 @@ const styles = StyleSheet.create({
     bottom: 0,
     paddingHorizontal: 4,
     justifyContent: 'center',
+  },
+  wizHeader: {
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 12,
+    backgroundColor: theme.colors.card,
+  },
+  wizHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  wizHeaderIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.accentSoft,
+    borderWidth: 2,
+    borderColor: theme.colors.accent,
+  },
+  wizHeaderEyebrow: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    color: theme.colors.accent,
+  },
+  wizHeaderTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: theme.colors.ink,
+    marginTop: 2,
+  },
+  wizHeaderClose: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.subtleSurface,
+  },
+  wizHeaderProgressTrack: {
+    marginTop: 12,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: theme.colors.subtleSurface,
+    overflow: 'hidden',
+  },
+  wizHeaderProgressFill: {
+    height: '100%',
+    backgroundColor: theme.colors.accent,
+    borderRadius: 2,
   },
   questionTitle: {
     fontSize: 26,

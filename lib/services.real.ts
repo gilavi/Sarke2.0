@@ -106,7 +106,7 @@ export const projectsApi = {
   },
   update: async (
     id: string,
-    patch: Partial<Pick<Project, 'name' | 'company_name' | 'address' | 'latitude' | 'longitude'>>,
+    patch: Partial<Pick<Project, 'name' | 'company_name' | 'address' | 'latitude' | 'longitude' | 'crew'>>,
   ): Promise<Project> => {
     return throwIfError<Project>(
       await supabase.from('projects').update(patch).eq('id', id).select().single(),
