@@ -17,7 +17,7 @@ interface Props {
 /**
  * Full-screen signature capture.
  * - Black ink on white canvas, portrait.
- * - "დადასტურება" disabled until the user draws (onBegin flips hasStroke).
+ * - "შენახვა" disabled until the user draws (onBegin flips hasStroke).
  * - "გასუფთავება" resets canvas + confirm state.
  */
 export function SignatureCanvas({ visible, personName, onCancel, onConfirm }: Props) {
@@ -54,16 +54,19 @@ export function SignatureCanvas({ visible, personName, onCancel, onConfirm }: Pr
 
   // The WebView's onBegin fires on the first touch — we use it as our
   // "user has drawn" signal so Confirm can enable/disable correctly.
+  // The fixed/100% sizing is required: without it the inner <canvas>
+  // keeps its initial width/height and the bottom half stops registering
+  // touches as the WebView grows.
   const webStyle = `
-    .m-signature-pad { box-shadow: none; border: none; background: #fff; margin: 0; }
-    .m-signature-pad--body { border: none; }
-    .m-signature-pad--body canvas { background: #fff; }
+    html, body { width: 100%; height: 100%; margin: 0; padding: 0; background: #fff; overflow: hidden; }
+    .m-signature-pad { position: fixed; top: 0; left: 0; right: 0; bottom: 0; box-shadow: none; border: none; background: #fff; margin: 0; }
+    .m-signature-pad--body { border: none; height: 100%; }
+    .m-signature-pad--body canvas { width: 100% !important; height: 100% !important; background: #fff; }
     .m-signature-pad--footer { display: none; }
-    body, html { background: #fff; margin: 0; }
   `;
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onCancel}>
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onCancel}>
       <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
         {/* Header */}
         <View style={styles.header}>
@@ -98,6 +101,8 @@ export function SignatureCanvas({ visible, personName, onCancel, onConfirm }: Pr
             penColor="#000000"
             minWidth={1.2}
             maxWidth={3}
+            style={{ flex: 1 }}
+            webviewContainerStyle={{ flex: 1 }}
           />
           {/* Dashed sign-here line */}
           <View pointerEvents="none" style={styles.baseline} />
@@ -118,7 +123,7 @@ export function SignatureCanvas({ visible, personName, onCancel, onConfirm }: Pr
             style={{ flex: 1 }}
           />
           <Button
-            title="დადასტურება"
+            title="შენახვა"
             onPress={handleConfirm}
             disabled={!hasStroke}
             style={{ flex: 1.6 }}

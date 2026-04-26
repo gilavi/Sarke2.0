@@ -78,13 +78,20 @@ export async function flushPendingSignatures(): Promise<void> {
 /**
  * Write `users.saved_signature_url` for the current user after uploading
  * their expert signature. Returns the storage path.
+ *
+ * If the upload had to be queued (offline / network error), we throw rather
+ * than persist a DB pointer to a storage object that doesn't exist yet —
+ * otherwise thumbnails 404 and PDFs render an empty signature block.
  */
 export async function saveExpertSignature(base64: string): Promise<string> {
   const { data: userData } = await supabase.auth.getUser();
   const userId = userData.user?.id;
   if (!userId) throw new Error('არ ხართ შესული');
   const path = `expert/${userId}.png`;
-  await uploadSignature(path, base64);
+  const { pending } = await uploadSignature(path, base64);
+  if (pending) {
+    throw new Error('ხელმოწერის ატვირთვა ვერ მოხერხდა — შეამოწმე ინტერნეტი და სცადე თავიდან');
+  }
   const { error } = await supabase
     .from('users')
     .update({ saved_signature_url: path })
