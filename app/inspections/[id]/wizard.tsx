@@ -10,6 +10,14 @@ import { Button, Card, Screen } from '../../../components/ui';
 import { QuestionAvatar, illustrationKeyFor } from '../../../components/QuestionAvatar';
 import { Skeleton, SkeletonWizard } from '../../../components/Skeleton';
 import {
+  WizardProgress,
+  QuestionCard,
+  AnswerButtons,
+  WizardNav,
+  ExitConfirmationModal,
+  WizardPhotoThumbs,
+} from '../../../components/wizard';
+import {
   answersApi,
   inspectionsApi,
   storageApi,
@@ -22,6 +30,7 @@ import { useOffline, stripServerFields } from '../../../lib/offline';
 import { logError, toErrorMessage } from '../../../lib/logError';
 import { useToast } from '../../../lib/toast';
 import { theme } from '../../../lib/theme';
+import { a11y } from '../../../lib/accessibility';
 import type {
   Answer,
   AnswerPhoto,
@@ -638,6 +647,7 @@ export default function QuestionnaireWizard() {
           total={steps.length}
           onClose={() => setExitModalVisible(true)}
         />
+        <WizardProgress current={stepIndex + 1} total={steps.length} />
         <GestureDetector gesture={swipeBack}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -697,39 +707,11 @@ export default function QuestionnaireWizard() {
           )}
 
           <View style={[styles.footer, { paddingBottom: 16 + insets.bottom }]}>
-            {isYesNo ? (
-              <View style={{ flexDirection: 'row', gap: 12 }}>
-                <Pressable
-                  onPress={() => {
-                    haptic.answerYes();
-                    patchAnswer(step.question, a => ({ ...a, value_bool: true }));
-                  }}
-                  style={[
-                    styles.choice,
-                    answers[step.question.id]?.value_bool === true && {
-                      backgroundColor: theme.colors.accentSoft,
-                      borderColor: theme.colors.accent,
-                    },
-                  ]}
-                >
-                  <Text style={styles.choiceText}>კი</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => {
-                    haptic.answerNo();
-                    patchAnswer(step.question, a => ({ ...a, value_bool: false }));
-                  }}
-                  style={[
-                    styles.choice,
-                    answers[step.question.id]?.value_bool === false && {
-                      backgroundColor: theme.colors.dangerSoft,
-                      borderColor: theme.colors.danger,
-                    },
-                  ]}
-                >
-                  <Text style={styles.choiceText}>არა</Text>
-                </Pressable>
-              </View>
+            {isYesNo && step.kind === 'question' ? (
+              <AnswerButtons
+                value={answers[step.question.id]?.value_bool ?? null}
+                onChange={(v) => patchAnswer(step.question, a => ({ ...a, value_bool: v }))}
+              />
             ) : null}
             {isLast ? (
               <Button
@@ -765,51 +747,19 @@ export default function QuestionnaireWizard() {
           </View>
 
         {/* Exit confirmation modal */}
-        <Modal visible={exitModalVisible} transparent animationType="fade" onRequestClose={() => setExitModalVisible(false)}>
-          <View style={styles.confirmOverlay}>
-            <Pressable style={styles.confirmBackdrop} onPress={() => setExitModalVisible(false)} />
-            <View style={styles.confirmCard}>
-              <View style={{ alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: theme.colors.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
-                  <Ionicons name="exit-outline" size={28} color={theme.colors.accent} />
-                </View>
-                <Text style={{ fontSize: 18, fontWeight: '700', color: theme.colors.ink }}>გასვლა</Text>
-                <Text style={{ fontSize: 14, color: theme.colors.inkSoft, textAlign: 'center', lineHeight: 20 }}>
-                  შეინახო დრაფტად და გააგრძელო მოგვიანებით, თუ საერთოდ წაშალო?
-                </Text>
-              </View>
-              <View style={{ gap: 8, marginTop: 4 }}>
-                <Button
-                  title="გაგრძელება"
-                  variant="secondary"
-                  onPress={() => setExitModalVisible(false)}
-                />
-                <Button
-                  title="დრაფტად შენახვა"
-                  onPress={() => {
-                    setExitModalVisible(false);
-                    router.back();
-                  }}
-                  iconLeft={<Ionicons name="archive-outline" size={18} color={theme.colors.white} />}
-                />
-                <Button
-                  title="წაშლა"
-                  variant="danger"
-                  onPress={() => {
-                    setExitModalVisible(false);
-                    setDeleteConfirmVisible(true);
-                  }}
-                  iconLeft={<Ionicons name="trash-outline" size={18} color={theme.colors.danger} />}
-                />
-              </View>
-            </View>
-          </View>
-        </Modal>
+        <ExitConfirmationModal
+          visible={exitModalVisible}
+          onStay={() => setExitModalVisible(false)}
+          onExit={() => {
+            setExitModalVisible(false);
+            router.back();
+          }}
+        />
 
         {/* Delete confirmation modal */}
         <Modal visible={deleteConfirmVisible} transparent animationType="fade" onRequestClose={() => setDeleteConfirmVisible(false)}>
           <View style={styles.confirmOverlay}>
-            <Pressable style={styles.confirmBackdrop} onPress={() => setDeleteConfirmVisible(false)} />
+            <Pressable style={styles.confirmBackdrop} onPress={() => setDeleteConfirmVisible(false)} {...a11y('გაუქმება', 'შეეხეთ გასაუქმებლად', 'button')} />
             <View style={styles.confirmCard}>
               <View style={{ alignItems: 'center', gap: 6, marginBottom: 8 }}>
                 <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: theme.colors.dangerSoft, alignItems: 'center', justifyContent: 'center' }}>
@@ -916,11 +866,11 @@ const QuestionStep = memo(function QuestionStep({
             contentContainerStyle={{ gap: 10, paddingVertical: 4 }}
           >
             {answerPhotos.map(p => (
-              <Pressable key={p.id} onPress={() => setPreviewPhoto(p)} style={styles.photoTile}>
+              <Pressable key={p.id} onPress={() => setPreviewPhoto(p)} style={styles.photoTile} {...a11y('ფოტოს ნახვა', 'შეეხეთ ფოტოს დიდად სანახავად', 'button')}>
                 <PhotoThumb photo={p} size={120} />
               </Pressable>
             ))}
-            <Pressable onPress={onPickPhoto} style={styles.addPhotoTile}>
+            <Pressable onPress={onPickPhoto} style={styles.addPhotoTile} {...a11y('ფოტოს დამატება', 'შეეხეთ ახალი ფოტოს ასატვირთად', 'button')}>
               <Ionicons name="add" size={32} color={theme.colors.inkSoft} />
             </Pressable>
           </ScrollView>
@@ -937,13 +887,13 @@ const QuestionStep = memo(function QuestionStep({
       {!hasPhotos || !showNoteField ? (
         <View style={styles.chipRow}>
           {!hasPhotos ? (
-            <Pressable onPress={onPickPhoto} style={styles.assistChip}>
+            <Pressable onPress={onPickPhoto} style={styles.assistChip} {...a11y('ფოტოს დამატება', 'შეეხეთ ახალი ფოტოს ასატვირთად', 'button')}>
               <Ionicons name="camera-outline" size={16} color={theme.colors.inkSoft} />
               <Text style={styles.assistChipText}>ფოტო</Text>
             </Pressable>
           ) : null}
           {!showNoteField ? (
-            <Pressable onPress={() => setNoteOpen(true)} style={styles.assistChip}>
+            <Pressable onPress={() => setNoteOpen(true)} style={styles.assistChip} {...a11y('შენიშვნა', 'შეეხეთ შენიშვნის დასამატებლად', 'button')}>
               <Ionicons name="create-outline" size={16} color={theme.colors.inkSoft} />
               <Text style={styles.assistChipText}>შენიშვნა</Text>
             </Pressable>
@@ -1230,6 +1180,7 @@ function ScaffoldFooterButtons({
           styles.statusOption,
           isSelected && { backgroundColor: bg, borderColor: tint },
         ]}
+        {...a11y('სტატუსი: ' + col, 'შეეხეთ ამ სტატუსის ასარჩევად', 'button')}
       >
         <Ionicons
           name={isSelected ? (icon as any) : 'ellipse-outline'}
@@ -1311,7 +1262,7 @@ function WizardHeader({
           hitSlop={12}
           onPress={onClose}
           style={({ pressed }) => [styles.wizHeaderClose, pressed && { opacity: 0.6 }]}
-          accessibilityLabel="დახურვა"
+          {...a11y('დახურვა', 'შეეხეთ დასახურად', 'button')}
         >
           <Ionicons name="close" size={22} color={theme.colors.ink} />
         </Pressable>
@@ -1409,11 +1360,11 @@ const GridRowStep = memo(function GridRowStep({
                 contentContainerStyle={{ gap: 10, paddingVertical: 4 }}
               >
                 {answerPhotos.map(p => (
-                  <Pressable key={p.id} onPress={() => setPreviewPhoto(p)} style={styles.photoTile}>
+                  <Pressable key={p.id} onPress={() => setPreviewPhoto(p)} style={styles.photoTile} {...a11y('ფოტოს ნახვა', 'შეეხეთ ფოტოს დიდად სანახავად', 'button')}>
                     <PhotoThumb photo={p} size={120} />
                   </Pressable>
                 ))}
-                <Pressable onPress={onPickPhoto} style={styles.addPhotoTile}>
+                <Pressable onPress={onPickPhoto} style={styles.addPhotoTile} {...a11y('ფოტოს დამატება', 'შეეხეთ ახალი ფოტოს ასატვირთად', 'button')}>
                   <Ionicons name="add" size={32} color={theme.colors.inkSoft} />
                 </Pressable>
               </ScrollView>
@@ -1433,7 +1384,7 @@ const GridRowStep = memo(function GridRowStep({
             {!hasPhotos || (hasComment && !showCommentField) ? (
               <View style={styles.chipRow}>
                 {!hasPhotos ? (
-                  <Pressable onPress={onPickPhoto} style={styles.assistChip}>
+                  <Pressable onPress={onPickPhoto} style={styles.assistChip} {...a11y('ფოტოს დამატება', 'შეეხეთ ახალი ფოტოს ასატვირთად', 'button')}>
                     <Ionicons name="camera-outline" size={16} color={theme.colors.inkSoft} />
                     <Text style={styles.assistChipText}>ფოტო</Text>
                   </Pressable>
@@ -1442,6 +1393,7 @@ const GridRowStep = memo(function GridRowStep({
                   <Pressable
                     onPress={() => setCommentOpen(true)}
                     style={styles.assistChip}
+                    {...a11y('კომენტარი', 'შეეხეთ კომენტარის დასამატებლად', 'button')}
                   >
                     <Ionicons name="create-outline" size={16} color={theme.colors.inkSoft} />
                     <Text style={styles.assistChipText}>კომენტარი</Text>
@@ -1489,11 +1441,11 @@ const GridRowStep = memo(function GridRowStep({
         >
           <Text style={{ fontWeight: '600' }}>რამდენი ქამარი სულ?</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <Pressable onPress={() => setHarnessRowCount(Math.max(1, harnessRowCount - 1))}>
+            <Pressable onPress={() => setHarnessRowCount(Math.max(1, harnessRowCount - 1))} {...a11y('ქამრების რაოდენობის შემცირება', 'შეეხეთ რაოდენობის შესამცირებლად', 'button')}>
               <Ionicons name="remove-circle" size={28} color={theme.colors.accent} />
             </Pressable>
             <Text style={{ fontSize: 18, fontWeight: '700' }}>{harnessRowCount}</Text>
-            <Pressable onPress={() => setHarnessRowCount(Math.min(15, harnessRowCount + 1))}>
+            <Pressable onPress={() => setHarnessRowCount(Math.min(15, harnessRowCount + 1))} {...a11y('ქამრების რაოდენობის გაზრდა', 'შეეხეთ რაოდენობის გასაზრდელად', 'button')}>
               <Ionicons name="add-circle" size={28} color={theme.colors.accent} />
             </Pressable>
           </View>
@@ -1516,6 +1468,7 @@ const GridRowStep = memo(function GridRowStep({
                       borderColor: theme.colors.accent,
                     },
                   ]}
+                  {...a11y(col + ' - ვარგისია', 'შეეხეთ ვარგისად მოსანიშნად', 'button')}
                 >
                   <Text style={{ color: current === 'ვარგისია' ? theme.colors.accent : theme.colors.inkSoft }}>
                     ✓
@@ -1530,6 +1483,7 @@ const GridRowStep = memo(function GridRowStep({
                       borderColor: theme.colors.danger,
                     },
                   ]}
+                  {...a11y(col + ' - დაზიანებულია', 'შეეხეთ დაზიანებულად მოსანიშნად', 'button')}
                 >
                   <Text style={{ color: current === 'დაზიანებულია' ? theme.colors.danger : theme.colors.inkSoft }}>
                     ✗
@@ -1548,17 +1502,17 @@ const GridRowStep = memo(function GridRowStep({
           contentContainerStyle={{ gap: 10, paddingVertical: 4 }}
         >
           {answerPhotos.map(p => (
-            <Pressable key={p.id} onPress={() => setPreviewPhoto(p)} style={styles.photoTile}>
+            <Pressable key={p.id} onPress={() => setPreviewPhoto(p)} style={styles.photoTile} {...a11y('ფოტოს ნახვა', 'შეეხეთ ფოტოს დიდად სანახავად', 'button')}>
               <PhotoThumb photo={p} size={120} />
             </Pressable>
           ))}
-          <Pressable onPress={onPickPhoto} style={styles.addPhotoTile}>
+          <Pressable onPress={onPickPhoto} style={styles.addPhotoTile} {...a11y('ფოტოს დამატება', 'შეეხეთ ახალი ფოტოს ასატვირთად', 'button')}>
             <Ionicons name="add" size={32} color={theme.colors.inkSoft} />
           </Pressable>
         </ScrollView>
       ) : (
         <View style={styles.chipRow}>
-          <Pressable onPress={onPickPhoto} style={styles.assistChip}>
+          <Pressable onPress={onPickPhoto} style={styles.assistChip} {...a11y('ფოტოს დამატება', 'შეეხეთ ახალი ფოტოს ასატვირთად', 'button')}>
             <Ionicons name="camera-outline" size={16} color={theme.colors.inkSoft} />
             <Text style={styles.assistChipText}>ფოტო</Text>
           </Pressable>
@@ -1620,6 +1574,7 @@ const ConclusionStep = memo(function ConclusionStep({
               hitSlop={10}
               onPress={() => Keyboard.dismiss()}
               style={({ pressed }) => [styles.kbDoneBtn, pressed && { opacity: 0.6 }]}
+              {...a11y('მზადაა', 'შეეხეთ კლავიატურის დასახურად', 'button')}
             >
               <Text style={styles.kbDoneText}>მზადაა</Text>
             </Pressable>
@@ -1663,6 +1618,7 @@ const ConclusionStep = memo(function ConclusionStep({
                 ? { backgroundColor: theme.colors.accent, borderColor: theme.colors.accent }
                 : { backgroundColor: theme.colors.accentSoft, borderColor: theme.colors.accentSoft },
             ]}
+            {...a11y('უსაფრთხოა', 'შეეხეთ თუ ობიექტი უსაფრთხოა', 'button')}
           >
             <Ionicons
               name="shield-checkmark"
@@ -1689,6 +1645,7 @@ const ConclusionStep = memo(function ConclusionStep({
                 ? { backgroundColor: theme.colors.danger, borderColor: theme.colors.danger }
                 : { backgroundColor: theme.colors.dangerSoft, borderColor: theme.colors.dangerSoft },
             ]}
+            {...a11y('არ არის უსაფრთხო', 'შეეხეთ თუ ობიექტი არ არის უსაფრთხო', 'button')}
           >
             <Ionicons
               name="warning"
@@ -1719,17 +1676,17 @@ const ConclusionStep = memo(function ConclusionStep({
               contentContainerStyle={{ gap: 10, paddingVertical: 4 }}
             >
               {photos.map(p => (
-                <Pressable key={p.id} onPress={() => setPreviewPhoto(p)} style={styles.photoTile}>
+                <Pressable key={p.id} onPress={() => setPreviewPhoto(p)} style={styles.photoTile} {...a11y('ფოტოს ნახვა', 'შეეხეთ ფოტოს დიდად სანახავად', 'button')}>
                   <PhotoThumb photo={p} size={120} />
                 </Pressable>
               ))}
-              <Pressable onPress={onPickPhoto} style={styles.addPhotoTile}>
+              <Pressable onPress={onPickPhoto} style={styles.addPhotoTile} {...a11y('ფოტოს დამატება', 'შეეხეთ ახალი ფოტოს ასატვირთად', 'button')}>
                 <Ionicons name="add" size={32} color={theme.colors.inkSoft} />
               </Pressable>
             </ScrollView>
           ) : (
             <View style={styles.chipRow}>
-              <Pressable onPress={onPickPhoto} style={styles.assistChip}>
+              <Pressable onPress={onPickPhoto} style={styles.assistChip} {...a11y('ფოტოს დამატება', 'შეეხეთ ახალი ფოტოს ასატვირთად', 'button')}>
                 <Ionicons name="camera-outline" size={16} color={theme.colors.inkSoft} />
                 <Text style={styles.assistChipText}>ფოტო</Text>
               </Pressable>
@@ -1823,7 +1780,7 @@ const PhotoThumb = memo(function PhotoThumb({ photo, size = 80 }: { photo: Answe
 
   if (error || !uri) {
     return (
-      <Pressable onPress={load} style={containerStyle}>
+      <Pressable onPress={load} style={containerStyle} {...a11y('განახლება', 'შეეხეთ ფოტოს ხელახლა ჩასატვირთად', 'button')}>
         <Ionicons name="refresh" size={22} color={theme.colors.inkFaint} />
         <Text style={{ fontSize: 10, color: theme.colors.inkFaint, marginTop: 4 }}>განახლება</Text>
       </Pressable>
@@ -1884,7 +1841,7 @@ function PhotoPreviewModal({
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.previewOverlay}>
-        <Pressable style={styles.previewBackdrop} onPress={onClose} />
+        <Pressable style={styles.previewBackdrop} onPress={onClose} {...a11y('დახურვა', 'შეეხეთ ფოტოს გადახურვისთვის', 'button')} />
         {loading || !uri ? (
           <View style={[styles.previewImage, { alignItems: 'center', justifyContent: 'center' }]}>
             <Skeleton width={120} height={120} radius={12} />
@@ -1908,11 +1865,12 @@ function PhotoPreviewModal({
             await onDelete(photo);
             onClose();
           }}
+          {...a11y('წაშლა', 'შეეხეთ წასაშლელად', 'button')}
         >
           <Ionicons name="trash-outline" size={22} color="#fff" />
           <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>წაშლა</Text>
         </Pressable>
-        <Pressable style={styles.previewCloseBtn} onPress={onClose}>
+        <Pressable style={styles.previewCloseBtn} onPress={onClose} {...a11y('დახურვა', 'შეეხეთ დასახურად', 'button')}>
           <Ionicons name="close" size={28} color="#fff" />
         </Pressable>
       </View>

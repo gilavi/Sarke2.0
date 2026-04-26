@@ -67,6 +67,7 @@ import type {
   Template,
 } from '../../types/models';
 import { SIGNER_ROLE_LABEL } from '../../types/models';
+import { a11y } from '../../lib/accessibility';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -689,7 +690,7 @@ export default function GenerateCertificateScreen() {
         <Stack.Screen options={{ headerShown: false }} />
         <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
           <View style={s.header}>
-            <Pressable onPress={() => router.back()} style={s.headerBack}>
+            <Pressable onPress={() => router.back()} style={s.headerBack} {...a11y('უკან', 'გადადი უკან', 'button')}>
               <Ionicons name="chevron-back" size={24} color={COLORS.textPrimary} />
             </Pressable>
             <Text style={s.headerTitle}>PDF რეპორტის გენერაცია</Text>
@@ -732,7 +733,7 @@ export default function GenerateCertificateScreen() {
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
         {/* Header */}
         <View style={s.header}>
-          <Pressable onPress={() => router.back()} style={s.headerBack}>
+          <Pressable onPress={() => router.back()} style={s.headerBack} {...a11y('უკან', 'გადადი უკან', 'button')}>
             <Ionicons name="chevron-back" size={24} color={COLORS.textPrimary} />
           </Pressable>
           <Text style={s.headerTitle}>PDF რეპორტის გენერაცია</Text>
@@ -780,7 +781,7 @@ export default function GenerateCertificateScreen() {
                 </Pressable>
               </Animated.View>
             ) : (
-              <Pressable onPress={() => router.push('/signature' as any)} style={s.sigPlaceholder}>
+              <Pressable onPress={() => router.push('/signature' as any)} style={s.sigPlaceholder} {...a11y('ექსპერტის ხელმოწერა', 'ხელმოწერის დამატება', 'button')}>
                 <Ionicons name="create-outline" size={20} color={COLORS.primary} />
                 <Text style={s.sigPlaceholderText}>ხელმოწერა</Text>
               </Pressable>
@@ -803,6 +804,7 @@ export default function GenerateCertificateScreen() {
                       key={signer.id}
                       onPress={() => void toggleRosterSigner(signer)}
                       style={s.rosterRow}
+                      {...a11y(`${signer.full_name} — ${SIGNER_ROLE_LABEL[signer.role]}`, 'ხელმომწერის არჩევა', 'button')}
                     >
                       <View style={[s.checkbox, checked && s.checkboxChecked]}>
                         {checked && <Ionicons name="checkmark" size={14} color={COLORS.white} />}
@@ -842,11 +844,11 @@ export default function GenerateCertificateScreen() {
                           placeholder="სახელი გვარი"
                           placeholderTextColor={COLORS.textSecondary}
                         />
-                        <Pressable hitSlop={8} onPress={() => removeSigner(signer.id)}>
+                        <Pressable hitSlop={8} onPress={() => removeSigner(signer.id)} {...a11y('წაშლა', 'ხელმომწერის წაშლა', 'button')}>
                           <Ionicons name="close-circle" size={20} color={COLORS.textSecondary} />
                         </Pressable>
                       </View>
-                      <Pressable onPress={() => pickSignerRole(signer.id)} style={s.roleChip}>
+                      <Pressable onPress={() => pickSignerRole(signer.id)} style={s.roleChip} {...a11y(`როლი: ${SIGNER_ROLE_LABEL[signer.role]}`, 'როლის შეცვლა', 'button')}>
                         <Ionicons name="person-circle-outline" size={14} color={COLORS.textSecondary} />
                         <Text style={s.roleChipText}>{SIGNER_ROLE_LABEL[signer.role]}</Text>
                         <Ionicons name="chevron-down" size={12} color={COLORS.textSecondary} />
@@ -867,6 +869,7 @@ export default function GenerateCertificateScreen() {
                           setCaptureSignerId(signer.id);
                         }}
                         style={s.sigPlaceholderSmall}
+                        {...a11y('ხელმოწერა', 'ხელმოწერის დამატება', 'button')}
                       >
                         <Ionicons name="create-outline" size={16} color={COLORS.primary} />
                         <Text style={s.sigPlaceholderTextSmall}>ხელმოწერა</Text>
@@ -876,7 +879,7 @@ export default function GenerateCertificateScreen() {
                 ))}
               </View>
             )}
-            <Pressable onPress={addSigner} style={s.ghostBtn}>
+            <Pressable onPress={addSigner} style={s.ghostBtn} {...a11y('ახალი ხელმომწერი', 'ხელმომწერის დამატება', 'button')}>
               <Text style={s.ghostBtnText}>+ ახალი ხელმომწერი</Text>
             </Pressable>
           </Animated.View>
@@ -894,7 +897,7 @@ export default function GenerateCertificateScreen() {
                   const hasAny = quals.some(q => q.type === certType);
                   const isUploading = uploadingFor === certType;
                   return (
-                    <Pressable key={certType} onPress={() => pickQual(certType)} style={s.listRow}>
+                    <Pressable key={certType} onPress={() => pickQual(certType)} style={s.listRow} {...a11y(certType, 'სერტიფიკატის არჩევა', 'button')}>
                       <Ionicons
                         name={selected ? 'checkmark-circle' : 'alert-circle'}
                         size={18}
@@ -934,7 +937,7 @@ export default function GenerateCertificateScreen() {
                   const q = quals.find(x => x.id === id);
                   if (!q) return null;
                   return (
-                    <Pressable key={id} onPress={() => removeExtraQual(id)} style={s.listRow}>
+                    <Pressable key={id} onPress={() => removeExtraQual(id)} style={s.listRow} {...a11y(`${q.type}${q.number ? ` · №${q.number}` : ''}`, 'დამატებითი სერტიფიკატის წაშლა', 'button')}>
                       <Ionicons name="ribbon-outline" size={16} color={COLORS.primary} />
                       <Text style={s.listRowTitle}>{q.type}{q.number ? ` · №${q.number}` : ''}</Text>
                       <Text style={s.textLink}>წაშლა</Text>
@@ -943,7 +946,7 @@ export default function GenerateCertificateScreen() {
                 })}
               </View>
             )}
-            <Pressable onPress={addExtraQual} style={s.ghostBtn}>
+            <Pressable onPress={addExtraQual} style={s.ghostBtn} {...a11y('დამატებითი სერტიფიკატი', 'დამატებითი სერტიფიკატის დამატება', 'button')}>
               <Text style={s.ghostBtnText}>+ დამატება</Text>
             </Pressable>
           </Animated.View>
@@ -958,6 +961,7 @@ export default function GenerateCertificateScreen() {
               onPressOut={onGeneratePressOut}
               disabled={busy}
               style={s.previewBtn}
+              {...a11y('პრევიუ', 'PDF-ის პრევიუ', 'button')}
             >
               <Ionicons name="eye-outline" size={18} color={COLORS.primary} />
               <Text style={s.previewBtnText}>პრევიუ</Text>
@@ -974,6 +978,7 @@ export default function GenerateCertificateScreen() {
                 s.generateBtn,
                 (busy || missingQualTypes.length > 0) && { opacity: 0.6 },
               ]}
+              {...a11y('PDF-ის გენერაცია', 'რეპორტის გენერაცია და გაზიარება', 'button')}
             >
               {busy ? (
                 <ActivityIndicator size="small" color={COLORS.white} />

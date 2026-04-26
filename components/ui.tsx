@@ -8,7 +8,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { theme } from '../lib/theme';
 
 // ── New primitives (backward-compatible re-exports) ──
-export { Button, Card, Input, Badge, Screen } from './primitives';
+export { Button, Card, Input, Badge, Screen, A11yText, A11yButton, StatusBadge } from './primitives';
 
 // ── Legacy helpers ──
 

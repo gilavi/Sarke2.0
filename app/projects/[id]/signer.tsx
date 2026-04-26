@@ -13,6 +13,7 @@ import { theme } from '../../../lib/theme';
 import { toErrorMessage } from '../../../lib/logError';
 import type { ProjectSigner, SignerRole } from '../../../types/models';
 import { SIGNER_ROLE_LABEL } from '../../../types/models';
+import { a11y } from '../../../lib/accessibility';
 
 // Roster roles only — "expert" is always the logged-in user per inspection, not rostered.
 const ROSTER_ROLES: SignerRole[] = ['xaracho_supervisor', 'xaracho_assembler'];
@@ -131,7 +132,7 @@ export default function SignerForm() {
           title: editing ? 'ხელმომწერის რედაქტირება' : 'ახალი ხელმომწერი',
           headerRight: () =>
             editing ? (
-              <Pressable onPress={remove} hitSlop={10}>
+              <Pressable onPress={remove} hitSlop={10} {...a11y('ხელმომწერის წაშლა', 'ამ ხელმომწერის წაშლა', 'button')}>
                 <Ionicons name="trash-outline" size={22} color={theme.colors.danger} />
               </Pressable>
             ) : null,
@@ -151,6 +152,7 @@ export default function SignerForm() {
                   key={r}
                   onPress={() => setRole(r)}
                   style={[styles.roleRow, role === r && styles.roleRowSelected]}
+                  {...a11y(SIGNER_ROLE_LABEL[r], 'აირჩიეთ როლი', 'radio')}
                 >
                   <View style={[styles.radio, role === r && styles.radioOn]}>
                     {role === r ? (
@@ -249,7 +251,7 @@ function SignatureCaptureModal({
             <Text style={{ fontSize: 16, fontWeight: '700', color: theme.colors.ink, flex: 1 }}>
               {title}
             </Text>
-            <Pressable onPress={onCancel} hitSlop={10}>
+            <Pressable onPress={onCancel} hitSlop={10} {...a11y('დახურვა', 'ხელმოწერის ფანჯრის დახურვა', 'button')}>
               <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
             </Pressable>
           </View>

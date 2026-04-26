@@ -25,6 +25,7 @@ import { haptic } from '../../lib/haptics';
 import { isExpiringSoon, qualificationsApi } from '../../lib/services';
 import { theme } from '../../lib/theme';
 import { toErrorMessage } from '../../lib/logError';
+import { a11y } from '../../lib/accessibility';
 import type { Qualification } from '../../types/models';
 
 export default function QualificationsScreen() {
@@ -81,7 +82,7 @@ export default function QualificationsScreen() {
           headerShown: true,
           title: 'კვალიფიკაცია',
           headerRight: () => (
-            <Pressable onPress={() => router.push('/qualifications/new' as any)} hitSlop={10}>
+            <Pressable onPress={() => router.push('/qualifications/new' as any)} hitSlop={10} {...a11y('ახალი სერტიფიკატი', 'სერტიფიკატის დამატება', 'button')}>
               <Ionicons name="add-circle" size={28} color={theme.colors.accent} />
             </Pressable>
           ),
@@ -142,9 +143,9 @@ export default function QualificationsScreen() {
                   <Pressable
                     onPress={() => confirmRemove(item)}
                     hitSlop={10}
-                    accessibilityLabel="remove"
                     style={{ padding: 6 }}
-                  >
+                    {...a11y('წაშლა', 'სერტიფიკატის წაშლა', 'button')}
+                  >{' '}
                     <Ionicons name="trash-outline" size={20} color={theme.colors.danger} />
                   </Pressable>
                 </View>
@@ -196,7 +197,7 @@ function DeleteModal({
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
       <View style={StyleSheet.absoluteFillObject}>
         <Animated.View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.55)', opacity: fade }]}>
-          <Pressable style={StyleSheet.absoluteFillObject} onPress={onClose} />
+          <Pressable style={StyleSheet.absoluteFillObject} onPress={onClose} {...a11y('გაუქმება', 'დიალოგის დახურვა', 'button')} />
         </Animated.View>
 
         <View style={qStyles.modalWrap}>
@@ -209,8 +210,8 @@ function DeleteModal({
               <Text style={qStyles.modalBody}>{title}</Text>
             </View>
             <View style={{ gap: 10, marginTop: 8 }}>
-              <Button title="გაუქმება" variant="secondary" onPress={onClose} />
-              <Button title="წაშლა" variant="danger" onPress={onConfirm} iconLeft={<Ionicons name="trash-outline" size={18} color={theme.colors.danger} />} />
+              <Button title="გაუქმება" variant="secondary" onPress={onClose} {...a11y('გაუქმება', undefined, 'button')} />
+              <Button title="წაშლა" variant="danger" onPress={onConfirm} iconLeft={<Ionicons name="trash-outline" size={18} color={theme.colors.danger} />} {...a11y('წაშლა', 'სერტიფიკატის წაშლა', 'button')} />
             </View>
           </View>
         </View>

@@ -15,6 +15,7 @@ import { qualificationsApi, storageApi } from '../../lib/services';
 import { STORAGE_BUCKETS, supabase } from '../../lib/supabase';
 import { theme } from '../../lib/theme';
 import { toErrorMessage } from '../../lib/logError';
+import { a11y } from '../../lib/accessibility';
 
 const TYPES: { value: string; label: string }[] = [
   { value: 'xaracho_inspector', label: 'ხარაჩოს ინსპექტორი' },
@@ -92,6 +93,7 @@ export default function AddQualification() {
                   key={t.value}
                   onPress={() => setType(t.value)}
                   style={[styles.typeRow, type === t.value && styles.typeRowActive]}
+                  {...a11y(t.label, 'სერტიფიკატის ტიპის არჩევა', 'radio')}
                 >
                   <View style={[styles.radio, type === t.value && styles.radioActive]}>
                     {type === t.value && <Ionicons name="checkmark" size={13} color={theme.colors.white} />}
@@ -107,7 +109,7 @@ export default function AddQualification() {
           </Field>
 
           <Field label="გაცემის თარიღი">
-            <Pressable onPress={() => setPicker('issued')} style={styles.dateBtn}>
+            <Pressable onPress={() => setPicker('issued')} style={styles.dateBtn} {...a11y('გაცემის თარიღი', 'გაცემის თარიღის არჩევა', 'button')}>
               <Ionicons name="calendar-outline" size={18} color={theme.colors.accent} />
               <Text style={styles.dateBtnText}>{formatDate(issued)}</Text>
               <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
@@ -115,14 +117,14 @@ export default function AddQualification() {
           </Field>
 
           <Field label="ვადის გასვლის თარიღი">
-            <Pressable onPress={() => setPicker('expires')} style={styles.dateBtn}>
+            <Pressable onPress={() => setPicker('expires')} style={styles.dateBtn} {...a11y('ვადის გასვლის თარიღი', 'ვადის გასვლის თარიღის არჩევა', 'button')}>
               <Ionicons name="calendar-outline" size={18} color={theme.colors.accent} />
               <Text style={styles.dateBtnText}>{formatDate(expires)}</Text>
               <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
             </Pressable>
             <View style={styles.chips}>
               {[{ label: '+1 წელი', months: 12 }, { label: '+3 წელი', months: 36 }, { label: '+5 წელი', months: 60 }].map(c => (
-                <Pressable key={c.label} style={styles.chip} onPress={() => {
+                <Pressable key={c.label} style={styles.chip} {...a11y(c.label, 'ვადის სწრაფად დამატება', 'button')} onPress={() => {
                   const d = new Date(issued);
                   d.setMonth(d.getMonth() + c.months);
                   setExpires(d);
@@ -144,14 +146,14 @@ export default function AddQualification() {
       </SafeAreaView>
 
       <Modal visible={picker !== null} transparent animationType="slide" onRequestClose={() => setPicker(null)}>
-        <Pressable style={styles.backdrop} onPress={() => setPicker(null)}>
+        <Pressable style={styles.backdrop} onPress={() => setPicker(null)} {...a11y('დახურვა', 'თარიღის არჩევის გაუქმება', 'button')}>
           <Pressable style={styles.sheet} onPress={e => e.stopPropagation()}>
             <View style={styles.sheetHandle} />
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>
                 {picker === 'issued' ? 'გაცემის თარიღი' : 'ვადის გასვლა'}
               </Text>
-              <Pressable onPress={() => setPicker(null)} hitSlop={12}>
+              <Pressable onPress={() => setPicker(null)} hitSlop={12} {...a11y('მზადაა', 'თარიღის არჩევის დადასტურება', 'button')}>
                 <Text style={{ color: theme.colors.accent, fontWeight: '700', fontSize: 15 }}>მზადაა</Text>
               </Pressable>
             </View>

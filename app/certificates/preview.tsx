@@ -20,6 +20,7 @@ import { buildPdfPreviewHtml } from '../../lib/pdf';
 import { useToast } from '../../lib/toast';
 import { logError, toErrorMessage } from '../../lib/logError';
 import { theme } from '../../lib/theme';
+import { a11y } from '../../lib/accessibility';
 import type {
   Answer,
   AnswerPhoto,
@@ -143,11 +144,11 @@ export default function PdfPreviewScreen() {
 
       {/* Top Bar */}
       <View style={styles.topBar}>
-        <Pressable onPress={() => router.back()} hitSlop={10} style={styles.topBtn}>
+        <Pressable onPress={() => router.back()} hitSlop={10} style={styles.topBtn} {...a11y('უკან', 'გადადი უკან', 'button')}>
           <Ionicons name="arrow-back" size={24} color="#1F2937" />
         </Pressable>
         <Text style={styles.topTitle}>PDF პრევიუ</Text>
-        <Pressable onPress={goToGenerate} hitSlop={10} style={styles.generateBtn}>
+        <Pressable onPress={goToGenerate} hitSlop={10} style={styles.generateBtn} {...a11y('გენერაცია', 'PDF-ის გენერაცია', 'button')}>
           <Text style={styles.generateBtnText}>გენერაცია</Text>
         </Pressable>
       </View>

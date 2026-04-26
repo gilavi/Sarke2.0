@@ -35,6 +35,7 @@ import type { CrewMember, Project, ProjectSigner, Questionnaire, Template } from
 import { SIGNER_ROLE_LABEL } from '../../types/models';
 import { CrewList } from '../../components/CrewSection';
 import { useSession } from '../../lib/session';
+import { a11y } from '../../lib/accessibility';
 
 export default function ProjectDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -238,7 +239,7 @@ export default function ProjectDetail() {
               onPress={() => setEditing(true)}
               hitSlop={10}
               style={{ padding: 4 }}
-              accessibilityLabel="რედაქტირება"
+              {...a11y('რედაქტირება', 'პროექტის დეტალების შეცვლა', 'button')}
             >
               <Ionicons name="create-outline" size={22} color="#059669" />
             </Pressable>
@@ -313,7 +314,7 @@ export default function ProjectDetail() {
                   <Swipeable
                     key={s.id}
                     renderRightActions={() => (
-                      <Pressable onPress={() => deleteSigner(s)} style={styles.swipeDelete}>
+                      <Pressable onPress={() => deleteSigner(s)} style={styles.swipeDelete} {...a11y('ხელმომწერის წაშლა', 'ამ ხელმომწერის წაშლა სიიდან', 'button')}>
                         <Ionicons name="trash" size={18} color="#FFFFFF" />
                       </Pressable>
                     )}
@@ -322,6 +323,7 @@ export default function ProjectDetail() {
                     <Pressable
                       onPress={() => router.push(`/projects/${id}/signer?signerId=${s.id}` as any)}
                       style={styles.listRow}
+                      {...a11y(s.full_name, 'ხელმომწერის დეტალების ნახვა', 'button')}
                     >
                       <View style={styles.sigThumb}>
                         {signerPreviews[s.id] ? (
@@ -348,6 +350,7 @@ export default function ProjectDetail() {
             <Pressable
               onPress={() => router.push(`/projects/${id}/signer` as any)}
               style={styles.addBtn}
+              {...a11y('ხელმომწერის დამატება', 'ახალი ხელმომწერის დამატება პროექტზე', 'button')}
             >
               <Ionicons name="person-add" size={18} color="#059669" />
               <Text style={styles.addBtnText}>+ ხელმომწერის დამატება</Text>
@@ -382,7 +385,7 @@ export default function ProjectDetail() {
               </View>
             </View>
 
-            <Pressable onPress={startNewQuestionnaire} style={styles.addBtn}>
+            <Pressable onPress={startNewQuestionnaire} style={styles.addBtn} {...a11y('ახალი კითხვარი', 'ახალი კითხვარის დაწყება', 'button')}>
               <Ionicons name="add-circle" size={18} color="#059669" />
               <Text style={styles.addBtnText}>+ ახალი კითხვარი</Text>
             </Pressable>
@@ -406,7 +409,7 @@ export default function ProjectDetail() {
                       <Swipeable
                         key={q.id}
                         renderRightActions={() => (
-                          <Pressable onPress={() => deleteQuestionnaire(q)} style={styles.swipeDelete}>
+                          <Pressable onPress={() => deleteQuestionnaire(q)} style={styles.swipeDelete} {...a11y('კითხვარის წაშლა', 'დრაფტის წაშლა', 'button')}>
                             <Ionicons name="trash" size={18} color="#FFFFFF" />
                           </Pressable>
                         )}
@@ -415,6 +418,7 @@ export default function ProjectDetail() {
                         <Pressable
                           onPress={() => router.push(`/inspections/${q.id}/wizard` as any)}
                           style={styles.listRow}
+                          {...a11y(tpl?.name ?? 'კითხვარი', 'დრაფტის გასაგრძელებლად დააჭირეთ', 'button')}
                         >
                           <View style={[styles.statusIcon, { backgroundColor: '#FEF3C7' }]}>
                             <Ionicons name="pencil" size={14} color="#92400E" />
@@ -455,7 +459,7 @@ export default function ProjectDetail() {
                       <Swipeable
                         key={q.id}
                         renderRightActions={() => (
-                          <Pressable onPress={() => deleteQuestionnaire(q)} style={styles.swipeDelete}>
+                          <Pressable onPress={() => deleteQuestionnaire(q)} style={styles.swipeDelete} {...a11y('კითხვარის წაშლა', 'დასრულებული კითხვარის წაშლა', 'button')}>
                             <Ionicons name="trash" size={18} color="#FFFFFF" />
                           </Pressable>
                         )}
@@ -464,6 +468,7 @@ export default function ProjectDetail() {
                         <Pressable
                           onPress={() => router.push(`/inspections/${q.id}` as any)}
                           style={styles.listRow}
+                          {...a11y(tpl?.name ?? 'კითხვარი', 'დასრულებული კითხვარის ნახვა', 'button')}
                         >
                           <View style={[styles.statusIcon, { backgroundColor: '#D1FAE5' }]}>
                             <Ionicons name="checkmark-circle" size={14} color="#065F46" />
@@ -500,6 +505,7 @@ export default function ProjectDetail() {
                       key={op.id}
                       onPress={() => router.push(`/projects/${op.id}` as any)}
                       style={styles.otherChip}
+                      {...a11y(op.name, 'სხვა პროექტზე გადასვლა', 'button')}
                     >
                       <View style={[styles.otherChipIcon, { backgroundColor: av.color + '22' }]}>
                         <Text style={{ fontSize: 14 }}>{av.emoji}</Text>
@@ -615,7 +621,7 @@ function EditProjectSheet({
               <Text style={{ fontSize: 18, fontWeight: '800', color: '#1F2937', flex: 1 }}>
                 რედაქტირება
               </Text>
-              <Pressable onPress={onClose} hitSlop={10}>
+              <Pressable onPress={onClose} hitSlop={10} {...a11y('დახურვა', 'რედაქტირების ფანჯრის დახურვა', 'button')}>
                 <Ionicons name="close" size={22} color="#6B7280" />
               </Pressable>
             </View>

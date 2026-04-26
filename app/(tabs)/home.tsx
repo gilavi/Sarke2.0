@@ -27,6 +27,7 @@ import {
 // shareStoredPdf import removed — PDF sharing now lives on the inspection
 // detail screen (which fetches certificates list) post 0006 decoupling.
 import { theme } from '../../lib/theme';
+import { a11y } from '../../lib/accessibility';
 import { logError, toErrorMessage } from '../../lib/logError';
 import { Button, Field, Input } from '../../components/ui';
 import { Skeleton } from '../../components/Skeleton';
@@ -112,7 +113,7 @@ export default function HomeScreen() {
         {/* ───────── CONTINUE / START ───────── */}
         <View style={styles.sectionWrap}>
           {latestDraft ? (
-            <Pressable onPress={() => router.push(`/inspections/${latestDraft.id}/wizard` as any)}>
+            <Pressable onPress={() => router.push(`/inspections/${latestDraft.id}/wizard` as any)} {...a11y('შევსების გაგრძელება', 'შეეხეთ მონახაზის გასაგრძელებლად', 'button')}>
               <View style={styles.resumeCard}>
                 <View style={styles.resumeIcon}>
                   <Ionicons name="pencil" size={16} color={theme.colors.warn} />
@@ -130,7 +131,7 @@ export default function HomeScreen() {
               </View>
             </Pressable>
           ) : (
-            <Pressable onPress={() => setPickerVisible(true)}>
+            <Pressable onPress={() => setPickerVisible(true)} {...a11y('ახალი ინსპექტირება', 'შეეხეთ ახალი ინსპექტირების დასაწყებად', 'button')}>
               <View style={styles.startCard}>
                 <View style={styles.startIcon}>
                   <Ionicons name="add" size={26} color={theme.colors.accent} />
@@ -147,7 +148,7 @@ export default function HomeScreen() {
 
         {/* ───────── CERT BANNER (warn only) ───────── */}
         {showCertBanner ? (
-          <Pressable onPress={() => router.push('/certificates' as any)}>
+          <Pressable onPress={() => router.push('/certificates' as any)} {...a11y('სერთიფიკატები', 'შეეხეთ სერთიფიკატების სანახავად', 'button')}>
             <View style={styles.certBanner}>
               <View style={styles.bannerIcon}>
                 <Ionicons name={certs.length === 0 ? 'cloud-upload-outline' : 'warning'} size={18} color={theme.colors.warn} />
@@ -168,7 +169,7 @@ export default function HomeScreen() {
         {/* ───────── PROJECTS ───────── */}
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionHeader}>პროექტები</Text>
-          <Pressable onPress={() => router.push('/(tabs)/projects' as any)} hitSlop={8}>
+          <Pressable onPress={() => router.push('/(tabs)/projects' as any)} hitSlop={8} {...a11y('ყველა პროექტის ნახვა', 'შეეხეთ ყველა პროექტის სანახავად', 'button')}>
             <Text style={styles.sectionLink}>ყველა</Text>
           </Pressable>
         </View>
@@ -187,6 +188,7 @@ export default function HomeScreen() {
           <Pressable
             onPress={() => setPickerVisible(true)}
             style={{ paddingHorizontal: HPAD, marginTop: 10 }}
+            {...a11y('პროექტის შექმნა', 'შეეხეთ ახალი პროექტის შესაქმნელად', 'button')}
           >
             <View style={styles.emptyProjects}>
               <View style={styles.emptyPlusIcon}>
@@ -214,6 +216,7 @@ export default function HomeScreen() {
             <Pressable
               onPress={() => setPickerVisible(true)}
               style={{ width: Math.round(projectCardWidth * 0.72) }}
+              {...a11y('ახალი პროექტის შექმნა', 'შეეხეთ ახალი პროექტის შესაქმნელად', 'button')}
             >
               <View style={styles.newProjectCard}>
                 <Ionicons name="add-circle-outline" size={28} color={theme.colors.accent} />
@@ -262,7 +265,7 @@ export default function HomeScreen() {
           <>
             <View style={[styles.sectionHeaderRow, { marginTop: 28 }]}>
               <Text style={styles.sectionHeader}>ბოლო აქტივობა</Text>
-              <Pressable onPress={() => router.push('/history' as any)} hitSlop={8}>
+              <Pressable onPress={() => router.push('/history' as any)} hitSlop={8} {...a11y('ყველა აქტივობის ნახვა', 'შეეხეთ ისტორიის სანახავად', 'button')}>
                 <Text style={styles.sectionLink}>ყველა</Text>
               </Pressable>
             </View>
@@ -270,14 +273,17 @@ export default function HomeScreen() {
               {recent.slice(0, 4).map((q, i) => (
                 <Pressable
                   key={q.id}
-                  // Draft → resume wizard; completed → inspection detail (its
-                  // certificates list lives there).
                   onPress={() =>
                     q.status === 'completed'
                       ? router.push(`/inspections/${q.id}` as any)
                       : router.push(`/inspections/${q.id}/wizard` as any)
                   }
                   style={[styles.recentRow, i > 0 && styles.recentRowBorder]}
+                  {...a11y(
+                    `${templateName(q.template_id)}, ${q.status === 'completed' ? 'დასრულებული' : 'მონახაზი'}`,
+                    q.status === 'completed' ? 'შეეხეთ დეტალების სანახავად' : 'შეეხეთ გასაგრძელებლად',
+                    'button'
+                  )}
                 >
                   <View
                     style={[
@@ -345,7 +351,7 @@ export default function HomeScreen() {
 function AnimatedFAB({ open, onPress }: { open: boolean; onPress: () => void }) {
   // Simple icon rotation — no spring physics that can crash on some devices
   return (
-    <Pressable onPress={onPress} style={styles.fabWrap}>
+    <Pressable onPress={onPress} style={styles.fabWrap} {...a11y('ახალი ინსპექტირება', 'შეეხეთ ახალი ინსპექტირების დასაწყებად', 'button')}>
       {({ pressed }) => (
         <View style={[styles.fab, pressed && { opacity: 0.8 }]}>
           <Ionicons
@@ -373,7 +379,7 @@ function AnimatedDarkBackdrop({ visible, onPress }: { visible: boolean; onPress:
       ]}
       pointerEvents={visible ? 'auto' : 'none'}
     >
-      {visible && <Pressable style={StyleSheet.absoluteFillObject} onPress={onPress} />}
+      {visible && <Pressable style={StyleSheet.absoluteFillObject} onPress={onPress} {...a11y('დახურვა', 'შეეხეთ ფონის დასახურად', 'button')} />}
     </View>
   );
 }
@@ -496,7 +502,7 @@ function ProjectPickerSheet({
                 {/* Sheet header */}
                 <View style={pickerStyles.sheetHeader}>
                   <Text style={pickerStyles.sheetTitle}>შემოწმების დაწყება</Text>
-                  <Pressable onPress={onClose} hitSlop={10}>
+                  <Pressable onPress={onClose} hitSlop={10} {...a11y('დახურვა', 'შეეხეთ ფანჯრის დასახურად', 'button')}>
                     <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
                   </Pressable>
                 </View>
@@ -521,6 +527,7 @@ function ProjectPickerSheet({
                           key={p.id}
                           onPress={() => pickTemplate(p.id)}
                           style={pickerStyles.projectRow}
+                          {...a11y(`პროექტი: ${p.name}`, 'შეეხეთ ინსპექტირების დასაწყებად ამ პროექტზე', 'button')}
                         >
                           <View style={[pickerStyles.avatarBubble, { backgroundColor: av.color + '22' }]}>
                             <Text style={{ fontSize: 22 }}>{av.emoji}</Text>
@@ -539,7 +546,7 @@ function ProjectPickerSheet({
                 )}
 
                 {/* Add new project row */}
-                <Pressable onPress={() => setView('new')} style={pickerStyles.addNewRow}>
+                <Pressable onPress={() => setView('new')} style={pickerStyles.addNewRow} {...a11y('პროექტის შექმნა', 'შეეხეთ ახალი პროექტის შესაქმნელად', 'button')}>
                   <View style={pickerStyles.addNewIcon}>
                     <Ionicons name="add" size={18} color={theme.colors.accent} />
                   </View>
@@ -551,11 +558,11 @@ function ProjectPickerSheet({
               <>
                 {/* Template picker header with back button */}
                 <View style={pickerStyles.sheetHeader}>
-                  <Pressable onPress={() => setView('list')} hitSlop={10} style={{ marginRight: 10 }}>
+                  <Pressable onPress={() => setView('list')} hitSlop={10} style={{ marginRight: 10 }} {...a11y('უკან', 'შეეხეთ პროექტების სიაზე დასაბრუნებლად', 'button')}>
                     <Ionicons name="arrow-back" size={22} color={theme.colors.accent} />
                   </Pressable>
                   <Text style={[pickerStyles.sheetTitle, { flex: 1 }]}>აირჩიე შაბლონი</Text>
-                  <Pressable onPress={onClose} hitSlop={10}>
+                  <Pressable onPress={onClose} hitSlop={10} {...a11y('დახურვა', 'შეეხეთ ფანჯრის დასახურად', 'button')}>
                     <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
                   </Pressable>
                 </View>
@@ -569,6 +576,7 @@ function ProjectPickerSheet({
                       key={t.id}
                       onPress={() => pickedProjectId && void startInspection(pickedProjectId, t.id)}
                       style={pickerStyles.projectRow}
+                      {...a11y(`შაბლონი: ${t.name}`, 'შეეხეთ ამ შაბლონით ინსპექტირების დასაწყებად', 'button')}
                     >
                       <View style={[pickerStyles.avatarBubble, { backgroundColor: theme.colors.accentSoft }]}>
                         <Ionicons name="document-text" size={22} color={theme.colors.accent} />
@@ -585,11 +593,11 @@ function ProjectPickerSheet({
               <>
                 {/* New project form header with back button */}
                 <View style={pickerStyles.sheetHeader}>
-                  <Pressable onPress={() => setView('list')} hitSlop={10} style={{ marginRight: 10 }}>
+                  <Pressable onPress={() => setView('list')} hitSlop={10} style={{ marginRight: 10 }} {...a11y('უკან', 'შეეხეთ პროექტების სიაზე დასაბრუნებლად', 'button')}>
                     <Ionicons name="arrow-back" size={22} color={theme.colors.accent} />
                   </Pressable>
                   <Text style={[pickerStyles.sheetTitle, { flex: 1 }]}>ახალი პროექტი</Text>
-                  <Pressable onPress={onClose} hitSlop={10}>
+                  <Pressable onPress={onClose} hitSlop={10} {...a11y('დახურვა', 'შეეხეთ ფანჯრის დასახურად', 'button')}>
                     <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
                   </Pressable>
                 </View>
@@ -607,13 +615,14 @@ function ProjectPickerSheet({
                       onChangeText={setName}
                       placeholder="მაგ. ვაკე-საბურთალოს ობიექტი"
                       autoFocus
+                      {...a11y('პროექტის სახელი', 'შეიყვანეთ პროექტის სახელი', 'text')}
                     />
                   </Field>
                   <Field label="კომპანია">
-                    <Input value={company} onChangeText={setCompany} placeholder="შემკვეთი" />
+                    <Input value={company} onChangeText={setCompany} placeholder="შემკვეთი" {...a11y('კომპანიის დასახელება', 'შეიყვანეთ კომპანიის სახელი', 'text')} />
                   </Field>
                   <Field label="მისამართი">
-                    <Input value={address} onChangeText={setAddress} placeholder="ობიექტის მისამართი" />
+                    <Input value={address} onChangeText={setAddress} placeholder="ობიექტის მისამართი" {...a11y('მისამართი', 'შეიყვანეთ პროექტის მისამართი', 'text')} />
                   </Field>
                   <Field label="მდებარეობა რუკაზე">
                     <MapPicker value={pin} onChange={setPin} address={address} onAddressChange={setAddress} />
@@ -626,6 +635,7 @@ function ProjectPickerSheet({
                   loading={busy}
                   disabled={!name.trim()}
                   style={{ marginTop: 16 }}
+                  {...a11y('პროექტის შექმნა', 'შეეხეთ ახალი პროექტის შესაქმნელად', 'button')}
                 />
               </>
             )}
@@ -649,7 +659,16 @@ function ProjectCard({
 }) {
   const av = projectAvatar(project.id);
   return (
-    <PressableScale onPress={onPress} hapticOnPress="navigate" scaleTo={0.97}>
+    <PressableScale
+      onPress={onPress}
+      hapticOnPress="navigate"
+      scaleTo={0.97}
+      {...a11y(
+        `პროექტი: ${project.name}${project.company_name ? ', ' + project.company_name : ''}`,
+        'შეეხეთ პროექტის დეტალების სანახავად',
+        'button'
+      )}
+    >
       <View style={[styles.projectCard, { width }]}>
         <View style={[styles.projectEmoji, { backgroundColor: av.color + '22' }]}>
           <Text style={{ fontSize: 26 }}>{av.emoji}</Text>

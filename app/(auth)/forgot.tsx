@@ -9,6 +9,7 @@ import { supabase } from '../../lib/supabase';
 import { Button, Card, ErrorText, Field, Input } from '../../components/ui';
 import { theme } from '../../lib/theme';
 import { toErrorMessage } from '../../lib/logError';
+import { a11y } from '../../lib/accessibility';
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
@@ -49,7 +50,7 @@ export default function ForgotPasswordScreen() {
             contentContainerStyle={{ paddingHorizontal: 22, paddingTop: 40, paddingBottom: 40 }}
             keyboardShouldPersistTaps="handled"
           >
-            <Pressable onPress={() => router.back()} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 18 }}>
+            <Pressable onPress={() => router.back()} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 18 }} {...a11y('უკან დაბრუნება', 'გადავა წინა ეკრანზე', 'button')}>
               <Ionicons name="chevron-back" size={20} color={theme.colors.inkSoft} />
               <Text style={{ color: theme.colors.inkSoft, fontWeight: '600' }}>უკან</Text>
             </Pressable>
@@ -73,7 +74,7 @@ export default function ForgotPasswordScreen() {
                       შეამოწმე {email.trim()} — შიგ არსებულ ბმულზე დაკლიკვით აპლიკაციაში დაბრუნდები ახალი პაროლის შესაყვანად.
                     </Text>
                   </View>
-                  <Button title="შესვლა" onPress={() => router.replace('/(auth)/login')} />
+                  <Button title="შესვლა" onPress={() => router.replace('/(auth)/login')} {...a11y('შესვლა', 'გადავა შესვლის ეკრანზე', 'button')} />
                 </View>
               ) : (
                 <View style={{ gap: 14 }}>
@@ -88,7 +89,7 @@ export default function ForgotPasswordScreen() {
                     />
                   </Field>
                   {error ? <ErrorText>{error}</ErrorText> : null}
-                  <Button title="ბმულის გაგზავნა" onPress={submit} loading={busy} disabled={!email.trim()} />
+                  <Button title="ბმულის გაგზავნა" onPress={submit} loading={busy} disabled={!email.trim()} {...a11y('ბმულის გაგზავნა', 'პაროლის აღსადგენი ბმულის გაგზავნა იმეილზე', 'button')} />
                 </View>
               )}
             </Card>

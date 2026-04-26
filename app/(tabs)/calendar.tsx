@@ -24,6 +24,7 @@ import { rescheduleAllFromDb } from '../../lib/notifications';
 import { useToast } from '../../lib/toast';
 import { theme } from '../../lib/theme';
 import { toErrorMessage } from '../../lib/logError';
+import { a11y } from '../../lib/accessibility';
 import type { ScheduleWithItem, Template } from '../../types/models';
 
 const WEEKDAY_LABELS = ['ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ', 'კვი'];
@@ -217,7 +218,7 @@ export default function CalendarScreen() {
         {/* Header */}
         <View style={styles.headerRow}>
           <Text style={styles.title}>კალენდარი</Text>
-          <Pressable onPress={syncGoogle} hitSlop={8} style={styles.syncBtn}>
+          <Pressable onPress={syncGoogle} hitSlop={8} style={styles.syncBtn} {...a11y('სინქრონიზაცია', 'Google კალენდართან სინქრონიზაცია', 'button')}>
             <Ionicons
               name={syncing ? 'sync' : 'cloud-upload-outline'}
               size={14}
@@ -251,7 +252,7 @@ export default function CalendarScreen() {
 
         {/* Month navigation */}
         <View style={styles.monthNav}>
-          <Pressable onPress={prevMonth} hitSlop={10} style={styles.chevBtn}>
+          <Pressable onPress={prevMonth} hitSlop={10} style={styles.chevBtn} {...a11y('წინა თვე', 'წინა თვეზე გადასვლა', 'button')}>
             <Ionicons name="chevron-back" size={20} color={theme.colors.ink} />
           </Pressable>
           <View style={{ flex: 1, alignItems: 'center' }}>
@@ -259,10 +260,10 @@ export default function CalendarScreen() {
               {MONTH_LABELS[month.getMonth()]} {month.getFullYear()}
             </Text>
           </View>
-          <Pressable onPress={jumpToday} hitSlop={8} style={styles.todayBtn}>
+          <Pressable onPress={jumpToday} hitSlop={8} style={styles.todayBtn} {...a11y('დღეს', 'დღევანდელ თარიღზე გადასვლა', 'button')}>
             <Text style={styles.todayBtnText}>დღეს</Text>
           </Pressable>
-          <Pressable onPress={nextMonth} hitSlop={10} style={styles.chevBtn}>
+          <Pressable onPress={nextMonth} hitSlop={10} style={styles.chevBtn} {...a11y('შემდეგი თვე', 'შემდეგ თვეზე გადასვლა', 'button')}>
             <Ionicons name="chevron-forward" size={20} color={theme.colors.ink} />
           </Pressable>
         </View>
@@ -297,6 +298,11 @@ export default function CalendarScreen() {
                 key={key + (inMonth ? '' : '-o')}
                 onPress={() => setSelected(startOfDay(d))}
                 style={tileStyle}
+                {...a11y(
+                  `${d.getDate()} ${MONTH_LABELS[d.getMonth()]}`,
+                  items.length > 0 ? `${items.length} შემოწმება` : undefined,
+                  'button',
+                )}
               >
                 <Text
                   style={[
@@ -404,7 +410,7 @@ export default function CalendarScreen() {
                         {projectName}
                       </Text>
                     </View>
-                    <Pressable onPress={() => startInspection(s)} style={styles.startBtn}>
+                    <Pressable onPress={() => startInspection(s)} style={styles.startBtn} {...a11y('დაწყება', 'შემოწმების დაწყება', 'button')}>
                       <Text style={styles.startBtnText}>დაწყება</Text>
                     </Pressable>
                   </View>

@@ -35,6 +35,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { haptic } from '../lib/haptics';
+import { a11y } from '../lib/accessibility';
 
 export interface BottomSheetOptions {
   title?: string;
@@ -251,6 +252,11 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
                   isSelected && styles.optionCardSelected,
                   pressed && styles.optionCardPressed,
                 ]}
+                {...a11y(
+                  opt,
+                  isDestructive ? 'ყურადღება, ეს ქმედება წაშლით დასრულდება' : undefined,
+                  'button',
+                )}
               >
                 <View style={{ flex: 1 }}>
                   <Text
@@ -280,6 +286,7 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
               styles.cancelBtn,
               pressed && { opacity: 0.7 },
             ]}
+            {...a11y('გაუქმება', 'მოქმედების გაუქმება', 'button')}
           >
             <Text style={styles.cancelBtnText}>გაუქმება</Text>
           </Pressable>
@@ -310,6 +317,7 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
               <Pressable
                 style={StyleSheet.absoluteFillObject}
                 onPress={() => dismissable && dismiss(cancelIndex)}
+                {...a11y('დახურვა', 'ფონის დაჭერით დახურვა', 'button')}
               />
             </Animated.View>
 

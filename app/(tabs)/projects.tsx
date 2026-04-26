@@ -20,6 +20,7 @@ import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { projectAvatar } from '../../lib/projectAvatar';
 import { Button, Card, Field, Input } from '../../components/ui';
 import { PressableScale } from '../../components/animations/PressableScale';
+import { a11y } from '../../lib/accessibility';
 import EmptyState from '../../components/EmptyState';
 import { Skeleton } from '../../components/Skeleton';
 import { MapPicker, type LatLng } from '../../components/MapPicker';
@@ -116,7 +117,7 @@ export default function ProjectsScreen() {
             style={styles.searchInput}
           />
           {query ? (
-            <Pressable onPress={() => setQuery('')} hitSlop={8}>
+            <Pressable onPress={() => setQuery('')} hitSlop={8} {...a11y('ძებნის გასუფთავება', 'შეეხეთ ძებნის ველის გასასუფთავებლად', 'button')}>
               <Ionicons name="close-circle" size={18} color={theme.colors.inkFaint} />
             </Pressable>
           ) : null}
@@ -178,6 +179,7 @@ export default function ProjectsScreen() {
       <Pressable
         onPress={() => setCreating(true)}
         style={[styles.fab, theme.shadow.button]}
+        {...a11y('ახალი პროექტი', 'შეეხეთ ახალი პროექტის შესაქმნელად', 'button')}
       >
         <Ionicons name="add" size={28} color={theme.colors.white} />
       </Pressable>
@@ -247,7 +249,7 @@ function CreateProjectSheet({
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <Pressable style={sheetStyles.backdrop} onPress={onClose}>
+      <Pressable style={sheetStyles.backdrop} onPress={onClose} {...a11y('დახურვა', 'შეეხეთ ფონის დასახურად', 'button')}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={{ width: '100%' }}
@@ -257,7 +259,7 @@ function CreateProjectSheet({
             <View style={sheetStyles.handle} />
             <View style={sheetStyles.sheetHeader}>
               <Text style={[sheetStyles.sheetTitle, { flex: 1 }]}>ახალი პროექტი</Text>
-              <Pressable onPress={onClose} hitSlop={10}>
+              <Pressable onPress={onClose} hitSlop={10} {...a11y('დახურვა', 'შეეხეთ ფანჯრის დასახურად', 'button')}>
                 <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
               </Pressable>
             </View>
@@ -327,7 +329,7 @@ function ProjectRow({
   onDelete: () => void;
 }) {
   const renderRightActions = () => (
-    <Pressable onPress={onDelete} style={styles.swipeDelete}>
+    <Pressable onPress={onDelete} style={styles.swipeDelete} {...a11y('წაშლა', 'შეეხეთ პროექტის წასაშლელად', 'button')}>
       <Ionicons name="trash" size={20} color={theme.colors.white} />
       <Text style={{ color: theme.colors.white, fontWeight: '600', fontSize: 12 }}>წაშლა</Text>
     </Pressable>
@@ -335,7 +337,16 @@ function ProjectRow({
 
   return (
     <Swipeable renderRightActions={renderRightActions} overshootRight={false}>
-      <PressableScale onPress={onOpen} hapticOnPress="navigate" scaleTo={0.98}>
+      <PressableScale
+        onPress={onOpen}
+        hapticOnPress="navigate"
+        scaleTo={0.98}
+        {...a11y(
+          `პროექტი: ${project.name}${project.address ? ', მისამართი: ' + project.address : ''}. ${stats ? `${stats.completed} დასრულებული, ${stats.drafts} დრაფტი` : ''}`,
+          'შეეხეთ პროექტის დეტალების სანახავად',
+          'button'
+        )}
+      >
         <Card padding={14}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             <View style={[styles.iconBox, { backgroundColor: projectAvatar(project.id).color + '22' }]}>

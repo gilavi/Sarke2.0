@@ -34,6 +34,7 @@ import { shareStoredPdf } from '../../lib/sharePdf';
 import { useToast } from '../../lib/toast';
 import { theme } from '../../lib/theme';
 import { logError, toErrorMessage } from '../../lib/logError';
+import { a11y } from '../../lib/accessibility';
 import type { Certificate, Project, Template } from '../../types/models';
 
 type CertParams = {
@@ -182,7 +183,8 @@ export default function CertificateDetailScreen() {
               disabled={sharing}
               style={{ paddingHorizontal: 4 }}
               hitSlop={10}
-            >
+              {...a11y('გაზიარება', 'PDF რეპორტის გაზიარება', 'button')}
+            >{' '}
               {sharing
                 ? <ActivityIndicator size="small" color={theme.colors.accent} />
                 : <Ionicons name="share-outline" size={22} color={theme.colors.accent} />

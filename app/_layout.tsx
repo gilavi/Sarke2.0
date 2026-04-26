@@ -19,6 +19,9 @@ import { OfflineBanner } from '../components/OfflineBanner';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { logError } from '../lib/logError';
 import { theme } from '../lib/theme';
+import { initCrashReporting } from '../lib/crashReporting';
+
+initCrashReporting();
 
 // Codes we've already tried to exchange. Prevents a double-exchange when both
 // `getInitialURL()` (cold start) and the `url` listener (warm app) fire for the
@@ -182,7 +185,9 @@ export default function RootLayout() {
                 <SessionProvider>
                   <StatusBar style="dark" />
                   <OfflineBanner />
-                  <AuthGate />
+                  <ErrorBoundary>
+                    <AuthGate />
+                  </ErrorBoundary>
                 </SessionProvider>
               </OfflineProvider>
             </ToastProvider>

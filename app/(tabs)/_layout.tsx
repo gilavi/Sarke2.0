@@ -2,6 +2,7 @@ import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '../../lib/theme';
+import { a11y } from '../../lib/accessibility';
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
@@ -26,6 +27,7 @@ export default function TabsLayout() {
         name="home"
         options={{
           title: 'მთავარი',
+          tabBarAccessibilityLabel: 'მთავარი გვერდი',
           tabBarIcon: ({ color, size }) => <Ionicons name="home" color={color} size={size} />,
         }}
       />
@@ -33,6 +35,7 @@ export default function TabsLayout() {
         name="projects"
         options={{
           title: 'პროექტები',
+          tabBarAccessibilityLabel: 'პროექტების სია',
           tabBarIcon: ({ color, size }) => <Ionicons name="folder" color={color} size={size} />,
         }}
       />
@@ -40,6 +43,7 @@ export default function TabsLayout() {
         name="more"
         options={{
           title: 'მეტი',
+          tabBarAccessibilityLabel: 'დამატებითი მენიუ',
           tabBarIcon: ({ color, size }) => <Ionicons name="ellipsis-horizontal-circle" color={color} size={size} />,
         }}
       />

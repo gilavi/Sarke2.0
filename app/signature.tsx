@@ -12,6 +12,7 @@ import { getStorageImageDataUrl } from '../lib/imageUrl';
 import { STORAGE_BUCKETS } from '../lib/supabase';
 import { theme } from '../lib/theme';
 import { toErrorMessage } from '../lib/logError';
+import { a11y } from '../lib/accessibility';
 
 // Screen supports two modes:
 //  - `/signature` — view current + "ხელმოწერის შეცვლა" (from More tab)
@@ -116,6 +117,7 @@ export default function SignatureSettingsScreen() {
             title={preview ? 'ხელმოწერის შეცვლა' : 'ხელმოწერის დახატვა'}
             onPress={() => setCapturing(true)}
             loading={busy}
+            {...a11y(preview ? 'ხელმოწერის შეცვლა' : 'ხელმოწერის დახატვა', undefined, 'button')}
           />
         </ScrollView>
       </SafeAreaView>

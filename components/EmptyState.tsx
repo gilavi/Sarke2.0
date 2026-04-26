@@ -17,6 +17,7 @@ import Animated, {
 import Svg, { Line, Rect, Circle, Path, Polygon, G } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { haptic } from '../lib/haptics';
+import { a11y } from '../lib/accessibility';
 import { theme } from '../lib/theme';
 
 export type EmptyStateType =
@@ -345,6 +346,7 @@ export default function EmptyState({
               onPressIn={onPressIn}
               onPressOut={onPressOut}
               style={styles.btn}
+              {...a11y(action.label, undefined, 'button')}
             >
               {action.icon ? (
                 <Ionicons

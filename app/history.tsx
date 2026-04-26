@@ -16,6 +16,7 @@ import {
 import { useToast } from '../lib/toast';
 import { theme } from '../lib/theme';
 import { toErrorMessage } from '../lib/logError';
+import { a11y } from '../lib/accessibility';
 import type { Inspection, Project, Template } from '../types/models';
 
 type ListItem =
@@ -114,7 +115,7 @@ export default function HistoryScreen() {
             return (
               <Swipeable
                 renderRightActions={() => (
-                  <Pressable onPress={() => onDelete(q)} style={styles.swipeDelete}>
+                  <Pressable onPress={() => onDelete(q)} style={styles.swipeDelete} {...a11y('წაშლა', 'ინსპექციის წაშლა', 'button')}>{' '}
                     <Ionicons name="trash" size={18} color={theme.colors.white} />
                     <Text style={{ color: theme.colors.white, fontSize: 11, fontWeight: '700' }}>
                       წაშლა
@@ -130,7 +131,12 @@ export default function HistoryScreen() {
                       ? router.push(`/inspections/${q.id}` as any)
                       : router.push(`/inspections/${q.id}/wizard` as any)
                   }
-                >
+                  {...a11y(
+                    `${t?.name ?? 'ინსპექცია'} — ${p?.name ?? ''}`.trim(),
+                    q.status === 'completed' ? 'დასრულებული ინსპექციის ნახვა' : 'დრაფტის გაგრძელება',
+                    'button'
+                  )}
+                >{' '}
                   <Card padding={12}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                       <View

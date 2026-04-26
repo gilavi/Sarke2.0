@@ -27,6 +27,7 @@ import {
 import { useToast } from '../../lib/toast';
 import { theme } from '../../lib/theme';
 import { toErrorMessage } from '../../lib/logError';
+import { a11y } from '../../lib/accessibility';
 import type {
   Certificate,
   Inspection,
@@ -202,7 +203,7 @@ export default function CertificatesScreen() {
           return (
             <Swipeable
               renderRightActions={() => (
-                <Pressable onPress={() => deleteCert(item)} style={styles.swipeDelete}>
+                <Pressable onPress={() => deleteCert(item)} style={styles.swipeDelete} {...a11y('წაშლა', 'PDF რეპორტის წაშლა', 'button')}>
                   <Ionicons name="trash" size={18} color={theme.colors.white} />
                   <Text style={{ color: theme.colors.white, fontWeight: '700', fontSize: 11 }}>
                     წაშლა
@@ -211,7 +212,7 @@ export default function CertificatesScreen() {
               )}
               overshootRight={false}
             >
-              <Pressable onPress={() => openPreview(item)}>
+              <Pressable onPress={() => openPreview(item)} {...a11y('PDF რეპორტი', 'დეტალების ნახვა', 'button')}>
                 <Card padding={12}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                     {/* PDF thumbnail */}

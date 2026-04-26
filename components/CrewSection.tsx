@@ -13,6 +13,7 @@ import { Button, Field, Input } from './ui';
 import { BottomSheetScrollView, useBottomSheet } from './BottomSheet';
 import { theme } from '../lib/theme';
 import { haptic } from '../lib/haptics';
+import { a11y } from '../lib/accessibility';
 import type { CrewMember } from '../types/models';
 
 // Suggested role chips offered in the add sheet. The user can still type
@@ -88,7 +89,7 @@ export function CrewList({
         <Swipeable
           key={m.id}
           renderRightActions={() => (
-            <Pressable onPress={() => removeMember(m.id)} style={styles.swipeDelete}>
+            <Pressable onPress={() => removeMember(m.id)} style={styles.swipeDelete} {...a11y('წაშლა', 'მონაწილის წაშლა', 'button')}>
               <Ionicons name="trash" size={18} color={theme.colors.white} />
             </Pressable>
           )}
@@ -105,7 +106,7 @@ export function CrewList({
             <Pressable
               hitSlop={10}
               onPress={() => removeMember(m.id)}
-              accessibilityLabel="წაშლა"
+              {...a11y('წაშლა', 'მონაწილის წაშლა', 'button')}
             >
               <Ionicons name="close" size={18} color={theme.colors.inkFaint} />
             </Pressable>
@@ -113,7 +114,7 @@ export function CrewList({
         </Swipeable>
       ))}
 
-      <Pressable onPress={openAddSheet} style={styles.addBtn}>
+      <Pressable onPress={openAddSheet} style={styles.addBtn} {...a11y('დამატება', 'ახალი მონაწილის დამატება', 'button')}>
         <Ionicons name="person-add" size={18} color={theme.colors.accent} />
         <Text style={{ color: theme.colors.accent, fontWeight: '600' }}>+ დამატება</Text>
       </Pressable>
@@ -160,7 +161,7 @@ export function CrewMemberForm({
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={sheetStyles.header}>
         <Text style={sheetStyles.title}>მონაწილის დამატება</Text>
-        <Pressable onPress={onCancel} hitSlop={10}>
+        <Pressable onPress={onCancel} hitSlop={10} {...a11y('დახურვა', 'ფორმის დახურვა', 'button')}>
           <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
         </Pressable>
       </View>
@@ -189,6 +190,7 @@ export function CrewMemberForm({
                     setRole(preset);
                   }}
                   style={[sheetStyles.chip, active && sheetStyles.chipActive]}
+                  {...a11y(preset, 'როლის არჩევა', 'button')}
                 >
                   <Text style={[sheetStyles.chipText, active && sheetStyles.chipTextActive]}>
                     {preset}

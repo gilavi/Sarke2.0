@@ -3,6 +3,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Line, Path, Rect, G } from 'react-native-svg';
 import { Card } from '../../components/ui';
 import { theme } from '../../lib/theme';
+import { a11y } from '../../lib/accessibility';
 
 const items = [
   {
@@ -82,6 +83,7 @@ export default function RegulationsScreen() {
                     <Text
                       onPress={() => Linking.openURL(item.url!)}
                       style={styles.cardLink}
+                      {...a11y(`${item.title} — ბმული`, 'გახსნა ბრაუზერში', 'link')}
                     >
                       ბმული →
                     </Text>

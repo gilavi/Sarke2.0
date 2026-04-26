@@ -8,6 +8,7 @@ import { useToast } from '../lib/toast';
 import { termsEn, termsKa, TERMS_PUBLIC_URL, TERMS_VERSION, type TermsBody } from '../lib/terms';
 import { theme } from '../lib/theme';
 import { toErrorMessage } from '../lib/logError';
+import { a11y } from '../lib/accessibility';
 
 export default function TermsScreen() {
   const { acceptTerms, signOut } = useSession();
@@ -59,6 +60,7 @@ export default function TermsScreen() {
             <Pressable
               style={[styles.langBtn, lang === 'ka' && styles.langBtnActive]}
               onPress={() => setLang('ka')}
+              {...a11y('ქართული', 'ენის შეცვლა ქართულზე', 'button')}
             >
               <Text style={{ color: lang === 'ka' ? theme.colors.white : theme.colors.inkSoft, fontWeight: '700' }}>
                 ქართული
@@ -67,6 +69,7 @@ export default function TermsScreen() {
             <Pressable
               style={[styles.langBtn, lang === 'en' && styles.langBtnActive]}
               onPress={() => setLang('en')}
+              {...a11y('English', 'ენის შეცვლა ინგლისურზე', 'button')}
             >
               <Text style={{ color: lang === 'en' ? theme.colors.white : theme.colors.inkSoft, fontWeight: '700' }}>
                 English
@@ -86,7 +89,7 @@ export default function TermsScreen() {
             </Card>
           ))}
 
-          <Pressable onPress={() => Linking.openURL(TERMS_PUBLIC_URL)}>
+          <Pressable onPress={() => Linking.openURL(TERMS_PUBLIC_URL)} {...a11y('ვერსიის ნახვა ბრაუზერში', 'გახსნის ვებ-ბრაუზერში მიმდინარე პირობებს', 'link')}>
             <Text style={{ color: theme.colors.accent, textAlign: 'center', marginTop: 6, fontWeight: '600' }}>
               {body.linkLabel} →
             </Text>
@@ -94,8 +97,8 @@ export default function TermsScreen() {
 
           {!viewOnly ? (
             <View style={{ gap: 10, marginTop: 12 }}>
-              <Button title={body.agreeLabel} onPress={accept} loading={busy} />
-              <Button title={body.declineLabel} variant="secondary" onPress={decline} disabled={busy} />
+              <Button title={body.agreeLabel} onPress={accept} loading={busy} {...a11y('ვეთანხმები', 'ვეთანხმები წესებსა და პირობებს', 'button')} />
+              <Button title={body.declineLabel} variant="secondary" onPress={decline} disabled={busy} {...a11y('არ ვეთანხმები', 'არ ვეთანხმები წესებსა და პირობებს', 'button')} />
             </View>
           ) : null}
         </ScrollView>
