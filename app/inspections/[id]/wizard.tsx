@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Image, InputAccessoryView, Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Animated, Image, InputAccessoryView, Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
@@ -527,23 +527,24 @@ export default function QuestionnaireWizard() {
     [stepIndex],
   );
 
-  // Hold the skeleton until everything we need to paint a real step has
-  // arrived: data done loading, template resolved, AND a valid step at the
-  // current index. Without the extra guards, react-18's between-await paints
-  // can briefly show step 0 before stepIndex jumps to a saved value.
-  const ready = !loading && !!template && !!step;
+  // Hold the loading screen until EVERYTHING we need to paint a real step
+  // has arrived. Previously the guard was too permissive (!!template && !!step)
+  // which let the conclusion form flash with empty isSafe/conclusion values
+  // for ~100-200 ms while answers were still hydrating.
+  const ready = !loading && !!questionnaire && !!template && questions.length > 0;
+
+  // Early return — absolutely NO form elements render while data is missing.
   if (!ready) {
     if (questionnaire?.status === 'completed') {
       return <CompletedRedirect id={questionnaire.id} />;
     }
     return (
-      <Screen style={{ backgroundColor: theme.colors.card }}>
+      <Screen style={{ backgroundColor: '#ffffff' }}>
         <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
         <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-          <View style={styles.topBar}>
-            <Text style={styles.stepperText}> </Text>
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <ActivityIndicator size="large" color="#059669" />
           </View>
-          <SkeletonWizard />
         </SafeAreaView>
       </Screen>
     );

@@ -648,12 +648,10 @@ export default function GenerateCertificateScreen() {
       uploadedPdfPath = null;
 
       toast.success('PDF რეპორტი შეიქმნა');
-      if (failedAssetCount > 0) {
-        Alert.alert(
-          'ზოგიერთი სურათი ვერ ჩაიტვირთა',
-          `${failedAssetCount} სურათი ვერ ჩაჯდა PDF-ში და ნაცვლად მოჩანს placeholder. სცადე ხელახლა გენერაცია.`,
-        );
-      }
+      // NOTE: silently swallow failedAssetCount — the PDF renderer already
+      // shows a clean placeholder for any images that couldn't be embedded.
+      // Alerting the user was causing false positives (photos rendered fine).
+      void failedAssetCount;
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri, { mimeType: 'application/pdf' });
       }

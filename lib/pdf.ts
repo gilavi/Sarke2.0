@@ -23,6 +23,14 @@ export interface PdfCertificate extends Qualification {
   file_data_url?: string;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// CERTIFIED INDUSTRIAL PDF TEMPLATE — v3 redesign
+// Before: card-based SaaS aesthetic with light gray page background
+// After: authoritative, official safety inspection document. Deep slate navy,
+//        warm amber accents, crisp white cards, industrial typography.
+//        Designed for Georgian construction safety inspectors.
+// ─────────────────────────────────────────────────────────────────────────────
+
 // photosByAnswer: answer.id -> array of AnswerPhoto with pre-fetched data URLs in storage_path
 export function buildPdfHtml(args: {
   /** Parameter name kept for backward-compat; type is now `Inspection`. */
@@ -47,13 +55,24 @@ export function buildPdfHtml(args: {
   } = args;
   const answerFor = (q: Question) => answers.find(a => a.question_id === q.id);
   const date = new Date(questionnaire.created_at).toLocaleDateString('ka');
+  const nowStr =
+    new Date().toLocaleDateString('ka') +
+    ' ' +
+    new Date().toLocaleTimeString('ka', { hour: '2-digit', minute: '2-digit' });
 
   // Collect overflow photos (7th+ per question) for appendix
-  const appendixPhotos: Array<{ questionTitle: string; photos: AnswerPhoto[]; isFailed: boolean }> = [];
+  const appendixPhotos: Array<{
+    questionTitle: string;
+    photos: AnswerPhoto[];
+    isFailed: boolean;
+  }> = [];
 
-  const sections = Array.from(new Set(questions.map(q => q.section))).sort();
+  const sections = Array.from(new Set(questions.map(q => q.section))).sort(
+    (a, b) => a - b,
+  );
+
   const body = sections
-    .map(section => {
+    .map((section, sectionIndex) => {
       const items = questions
         .filter(q => q.section === section)
         .sort((a, b) => a.order - b.order)
@@ -62,200 +81,724 @@ export function buildPdfHtml(args: {
           const photos = ans ? (photosByAnswer[ans.id] ?? []) : [];
           const isFailed = ans?.value_bool === false;
           if (photos.length > 6) {
-            appendixPhotos.push({ questionTitle: q.title, photos: photos.slice(6), isFailed });
+            appendixPhotos.push({
+              questionTitle: q.title,
+              photos: photos.slice(6),
+              isFailed,
+            });
           }
           return renderQuestion(q, ans, photos.slice(0, 6), isFailed);
         })
         .join('');
-      return `<section>${items}</section>`;
+
+      return `
+      <div class="section-wrap">
+        <div class="section-heading">
+          <div class="section-number">${sectionIndex + 1}</div>
+          <h2 class="section-title">${escapeHtml(String(section))}</h2>
+        </div>
+        <div class="section-rule"></div>
+        ${items}
+      </div>`;
     })
     .join('');
 
-  const appendixHtml = appendixPhotos.length > 0
-    ? `<div class="page-break"></div>
-       <h2>დანართი — დამატებითი ფოტოები</h2>
-       ${appendixPhotos.map(({ questionTitle, photos, isFailed }) => `
-         <div class="qa appendix-group">
-           <p class="appendix-sub">${escapeHtml(questionTitle)}</p>
-           <div class="photo-grid">${photos.map(p => renderPhoto(p, isFailed, questionTitle)).join('')}</div>
-         </div>`).join('')}`
-    : '';
+  const appendixHtml =
+    appendixPhotos.length > 0
+      ? `<div class="page-break"></div>
+         <div class="section-wrap">
+           <div class="section-heading">
+             <div class="section-number">${sections.length + 1}</div>
+             <h2 class="section-title">დანართი — დამატებითი ფოტოები</h2>
+           </div>
+           <div class="section-rule"></div>
+           ${appendixPhotos
+             .map(
+               ({ questionTitle, photos, isFailed }) => `
+             <div class="qa-card">
+               <p class="appendix-sub">${escapeHtml(questionTitle)}</p>
+               <div class="photo-grid">${photos.map(p => renderPhoto(p, isFailed, questionTitle)).join('')}</div>
+             </div>`,
+             )
+             .join('')}
+         </div>`
+      : '';
+
+  const safeStatus =
+    questionnaire.is_safe_for_use === false
+      ? conclusionBadge('unsafe', 'არ არის უსაფრთხო ექსპლუატაციისთვის')
+      : questionnaire.is_safe_for_use === true
+        ? conclusionBadge('safe', 'უსაფრთხოა ექსპლუატაციისთვის')
+        : conclusionBadge('pending', 'შეფასება დაუსრულებელია');
+
+  const reportId = questionnaire.id.slice(0, 8).toUpperCase();
 
   return `<!doctype html>
 <html>
   <head>
     <meta charset="utf-8" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-      body { font-family: "Noto Sans Georgian", -apple-system, BlinkMacSystemFont, "Helvetica", sans-serif; padding: 28px; color: #1A1A1A; font-size: 12px; }
-      h1 { font-size: 20px; margin: 0 0 6px; }
-      h2 { font-size: 14px; margin: 14px 0 6px; }
-      h3 { font-size: 13px; margin: 8px 0 4px; }
-      .meta { border: 1px solid #E8E1D4; border-collapse: collapse; width: 100%; margin: 12px 0; }
-      .meta td { border: 1px solid #E8E1D4; padding: 6px 10px; }
-      .meta td.key { background: #F6F2EA; font-weight: 600; width: 28%; }
-      .qa { margin: 8px 0; page-break-inside: avoid; }
-      .grid { border: 1px solid #E8E1D4; border-collapse: collapse; width: 100%; margin: 8px 0; }
-      .grid th, .grid td { border: 1px solid #E8E1D4; padding: 5px 8px; font-size: 11px; }
-      .grid th { background: #F6F2EA; }
-      .muted { color: #4A4A4A; }
-      .ok { color: #147A4F; font-weight: 600; }
-      .bad { color: #C0433C; font-weight: 600; }
-      .sig-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 10px; }
-      .sig-block {
-        page-break-inside: avoid;
-        background: #FFFFFF;
-        border: 1px solid #E8E1D4;
-        border-radius: 6px;
-        padding: 10px 12px;
+      /* ── Page Setup ── */
+      @page {
+        margin: 24px;
       }
-      .sig-block h3 { margin: 0 0 2px; font-size: 12px; letter-spacing: 0.3px; text-transform: uppercase; color: #4A4A4A; font-weight: 600; }
-      .sig-block .name { margin: 0; font-size: 14px; font-weight: 700; color: #1A1A1A; }
-      .sig-block .sub { margin: 2px 0 0; font-size: 10px; color: #4A4A4A; }
-      .sig-block .line { border-bottom: 1px solid #1A1A1A; height: 2px; margin-top: 42px; }
-      .sig-block img.sig-img { display: block; max-width: 180px; max-height: 80px; margin: 8px 0 4px; }
-      .sig-block.not-present { background: #F6F2EA; }
-      .sig-block.not-present .placeholder { color: #4A4A4A; font-size: 11px; font-style: italic; margin-top: 4px; }
-      .conclusion { padding: 10px; background: #F6F2EA; border-radius: 6px; }
-      .photo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; page-break-inside: avoid; }
-      .photo-cell { display: flex; flex-direction: column; gap: 4px; page-break-inside: avoid; }
-      .photo-cell img { width: 100%; max-width: 48%; min-width: 100%; max-height: 180px; object-fit: cover; border-radius: 4px; border: 1px solid #E8E1D4; }
-      .photo-cell.failed img { border: 3px solid #D32F2F; }
-      .photo-missing { display: flex; align-items: center; justify-content: center; height: 120px; background: #F6F2EA; border-radius: 4px; border: 1px dashed #C8C0B0; font-size: 11px; color: #888; }
-      .cert-img-wrap { margin-top: 8px; }
-      .cert-img { display: block; max-width: 100%; border: 1px solid #E8E1D4; border-radius: 4px; }
-      .photo-caption { font-size: 9pt; color: #666; text-align: center; margin-top: 2px; }
-      .caption-failed { color: #D32F2F; }
-      .appendix-sub { font-weight: 600; font-size: 12px; color: #1A1A1A; margin: 6px 0 4px; }
+
+      * { box-sizing: border-box; }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        background: #ffffff;
+        color: #1e293b;
+        font-size: 12px;
+        line-height: 1.55;
+        margin: 0;
+        padding: 24px;
+      }
+
+      /* ── Header ── */
+      .header-bar {
+        background: #0f172a;
+        padding: 20px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin: 0 0 24px 0;
+        border-radius: 6px;
+      }
+      .header-brand {
+        color: #ffffff;
+        font-size: 20px;
+        font-weight: 700;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        border-bottom: 2px solid #d97706;
+        padding-bottom: 4px;
+      }
+      .header-meta {
+        text-align: right;
+        color: #cbd5e1;
+        font-size: 12px;
+        line-height: 1.6;
+      }
+      .header-meta strong {
+        color: #ffffff;
+        font-weight: 600;
+      }
+      .header-gold-line {
+        height: 1px;
+        background: #d97706;
+        margin: 0 0 24px 0;
+      }
+
+      /* ── Project Info Card ── */
+      .info-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 16px;
+        margin-bottom: 24px;
+        border-left: 4px solid #d97706;
+      }
+      .info-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px 24px;
+      }
+      .info-row {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .info-row.full {
+        grid-column: 1 / -1;
+      }
+      .info-label {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #64748b;
+        font-weight: 600;
+      }
+      .info-value {
+        font-size: 14px;
+        font-weight: 700;
+        color: #1e293b;
+      }
+
+      /* ── Section Heading ── */
+      .section-wrap {
+        margin-top: 24px;
+      }
+      .section-heading {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 4px;
+      }
+      .section-number {
+        width: 28px;
+        height: 28px;
+        background: #0f172a;
+        color: #ffffff;
+        font-size: 13px;
+        font-weight: 700;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .section-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: #1e293b;
+        margin: 0;
+      }
+      .section-rule {
+        height: 1px;
+        background: #e2e8f0;
+        margin-bottom: 16px;
+      }
+
+      /* ── Question Card ── */
+      .qa-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 12px;
+        page-break-inside: avoid;
+      }
+      .qa-question {
+        font-size: 14px;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 10px;
+      }
+      .qa-answer {
+        font-size: 12px;
+        color: #64748b;
+        margin-bottom: 8px;
+      }
+      .qa-comment {
+        font-size: 11px;
+        color: #64748b;
+        font-style: italic;
+        margin: 6px 0;
+        padding: 8px 12px;
+        background: #f8fafc;
+        border-radius: 6px;
+        border-left: 3px solid #e2e8f0;
+      }
+      .qa-notes {
+        font-size: 13px;
+        color: #92400e;
+        font-style: italic;
+        margin: 8px 0 0;
+        padding: 12px;
+        background: #fffbeb;
+        border-radius: 6px;
+        border-left: 3px solid #d97706;
+      }
+
+      /* ── Status Badges ── */
+      .badge {
+        display: inline-block;
+        padding: 6px 14px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 600;
+        border: 1px solid;
+      }
+      .badge-pass {
+        background: #ecfdf5;
+        color: #059669;
+        border-color: #a7f3d0;
+      }
+      .badge-fail {
+        background: #fef2f2;
+        color: #dc2626;
+        border-color: #fecaca;
+      }
+      .badge-info {
+        background: #eff6ff;
+        color: #2563eb;
+        border-color: #bfdbfe;
+      }
+
+      /* ── Conclusion Badge (larger) ── */
+      .conclusion-badge {
+        display: inline-block;
+        padding: 8px 20px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 700;
+        border: 1px solid;
+        margin-top: 12px;
+      }
+      .conclusion-safe {
+        background: #ecfdf5;
+        color: #059669;
+        border-color: #059669;
+      }
+      .conclusion-unsafe {
+        background: #fef2f2;
+        color: #dc2626;
+        border-color: #dc2626;
+      }
+      .conclusion-pending {
+        background: #eff6ff;
+        color: #2563eb;
+        border-color: #2563eb;
+      }
+
+      /* ── Tables ── */
+      .table-wrap {
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        overflow: hidden;
+        margin-top: 10px;
+      }
+      .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+      }
+      .data-table thead {
+        background: #0f172a;
+        color: #ffffff;
+      }
+      .data-table th {
+        padding: 12px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 12px;
+      }
+      .data-table td {
+        padding: 12px;
+        border-top: 1px solid #f1f5f9;
+        color: #1e293b;
+      }
+      .data-table tbody tr:nth-child(even) {
+        background: #f8fafc;
+      }
+      .status-dot {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        margin-right: 6px;
+      }
+      .status-dot.pass { background: #059669; }
+      .status-dot.fail { background: #dc2626; }
+      .status-dot.info { background: #2563eb; }
+
+      /* ── Photos ── */
+      .photo-section-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: #1e293b;
+        margin: 24px 0 12px;
+      }
+      .photo-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        page-break-inside: avoid;
+      }
+      .photo-cell {
+        width: calc(50% - 6px);
+        page-break-inside: avoid;
+      }
+      .photo-cell.single {
+        width: 70%;
+        margin: 0 auto;
+      }
+      .photo-cell .img-wrap {
+        width: 100%;
+        height: 180px;
+        overflow: hidden;
+        border-radius: 6px;
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+      }
+      .photo-cell img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+      .photo-cell.failed .img-wrap {
+        border: 2px solid #dc2626;
+      }
+      .photo-caption {
+        font-size: 10px;
+        color: #64748b;
+        text-align: center;
+        margin-top: 6px;
+      }
+      .photo-missing {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 180px;
+        background: #f8fafc;
+        border-radius: 6px;
+        border: 1px dashed #e2e8f0;
+        font-size: 11px;
+        color: #94a3b8;
+        text-align: center;
+      }
+
+      /* ── Conclusion Card ── */
+      .conclusion-card {
+        background: #ffffff;
+        border-left: 4px solid #d97706;
+        padding: 20px;
+        border-radius: 6px;
+        margin: 24px 0;
+        page-break-inside: avoid;
+      }
+      .conclusion-label {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #d97706;
+        font-weight: 600;
+        margin-bottom: 8px;
+      }
+      .conclusion-text {
+        font-size: 15px;
+        color: #1e293b;
+        line-height: 1.6;
+      }
+
+      /* ── Signatures ── */
+      .signatures-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 24px 0 16px;
+      }
+      .signatures-header-text {
+        font-size: 16px;
+        font-weight: 700;
+        color: #1e293b;
+        white-space: nowrap;
+      }
+      .signatures-header-rule {
+        flex: 1;
+        height: 1px;
+        background: #e2e8f0;
+      }
+      .sig-grid {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+      .sig-card {
+        width: calc(50% - 8px);
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 16px;
+        page-break-inside: avoid;
+      }
+      .sig-role {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #64748b;
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
+      .sig-name {
+        font-size: 14px;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 8px;
+      }
+      .sig-box {
+        border: 1px dashed #cbd5e1;
+        border-radius: 4px;
+        padding: 8px;
+        text-align: center;
+        min-height: 60px;
+        background: #f8fafc;
+      }
+      .sig-box img {
+        max-width: 100%;
+        max-height: 70px;
+        display: block;
+        margin: 0 auto;
+      }
+      .sig-date {
+        font-size: 11px;
+        color: #94a3b8;
+        margin-top: 8px;
+      }
+
+      /* ── Certificates ── */
+      .cert-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 12px;
+        page-break-inside: avoid;
+      }
+      .cert-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: #1e293b;
+        margin: 0 0 6px;
+      }
+      .cert-meta {
+        font-size: 11px;
+        color: #64748b;
+        margin-bottom: 8px;
+      }
+      .cert-img-wrap {
+        border-radius: 6px;
+        overflow: hidden;
+        border: 1px solid #e2e8f0;
+      }
+      .cert-img {
+        display: block;
+        width: 100%;
+        max-height: 400px;
+        object-fit: contain;
+      }
+
+      /* ── Appendix ── */
+      .appendix-sub {
+        font-weight: 600;
+        font-size: 12px;
+        color: #1e293b;
+        margin: 0 0 8px;
+      }
+
+      /* ── Utilities ── */
       .page-break { page-break-before: always; }
+      .muted { color: #64748b; }
+
       @media print {
-        .qa { page-break-inside: avoid; }
+        .qa-card { page-break-inside: avoid; }
         .photo-grid { page-break-inside: avoid; }
         .photo-cell { page-break-inside: avoid; }
+        .sig-card { page-break-inside: avoid; }
+        .conclusion-card { page-break-inside: avoid; }
       }
     </style>
   </head>
   <body>
-    <h1>${escapeHtml(template.name)}</h1>
-    <table class="meta">
-      <tr><td class="key">კომპანია</td><td>${escapeHtml(project.company_name ?? '')}</td></tr>
-      <tr><td class="key">ობიექტი</td><td>${escapeHtml(project.address ?? project.name)}</td></tr>
-      ${template.category === 'harness' ? `<tr><td class="key">ღვედის დასახელება</td><td>${escapeHtml(questionnaire.harness_name ?? '')}</td></tr>` : ''}
-      <tr><td class="key">თარიღი</td><td>${date}</td></tr>
-    </table>
+    <!-- Header Bar -->
+    <div class="header-bar">
+      <div class="header-brand">SARKE</div>
+      <div class="header-meta">
+        <div><strong>რეპორტის ID:</strong> ${reportId}</div>
+        <div><strong>თარიღი:</strong> ${date}</div>
+      </div>
+    </div>
+    <div class="header-gold-line"></div>
 
+    <!-- Project Info Card -->
+    <div class="info-card">
+      <div class="info-grid">
+        <div class="info-row">
+          <span class="info-label">კომპანია</span>
+          <span class="info-value">${escapeHtml(project.company_name ?? '—')}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">ობიექტი</span>
+          <span class="info-value">${escapeHtml(project.address ?? project.name)}</span>
+        </div>
+        ${template.category === 'harness' ? `
+        <div class="info-row">
+          <span class="info-label">ღვედის დასახელება</span>
+          <span class="info-value">${escapeHtml(questionnaire.harness_name ?? '—')}</span>
+        </div>` : ''}
+        <div class="info-row">
+          <span class="info-label">შემოწმების ტიპი</span>
+          <span class="info-value">${escapeHtml(template.name)}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Inspection Sections -->
     ${body}
 
     ${appendixHtml}
 
-    <h2>დასკვნითი ნაწილი</h2>
-    <div class="conclusion">${escapeHtml(questionnaire.conclusion_text ?? '—')}</div>
-    <p class="${questionnaire.is_safe_for_use === false ? 'bad' : 'ok'}">
-      ${questionnaire.is_safe_for_use === false
-        ? '✗ არ არის უსაფრთხო ექსპლუატაციისთვის'
-        : '✓ უსაფრთხოა ექსპლუატაციისთვის'}
-    </p>
-
-    <h2>ხელმოწერები</h2>
-    <div class="sig-grid">
-    ${renderSignatureBlocks(signatures, template.required_signer_roles ?? [])}
+    <!-- Conclusion -->
+    <div class="conclusion-card">
+      <div class="conclusion-label">დასკვნა</div>
+      <div class="conclusion-text">${escapeHtml(questionnaire.conclusion_text ?? '—')}</div>
+      ${safeStatus}
     </div>
 
+    <!-- Signatures -->
+    <div class="signatures-header">
+      <span class="signatures-header-text">ხელმოწერები</span>
+      <div class="signatures-header-rule"></div>
+    </div>
+    <div class="sig-grid">
+      ${renderSignatureBlocks(signatures, template.required_signer_roles ?? [])}
+    </div>
+
+    <!-- Certificates -->
     ${certificates.length > 0 ? `
     <div class="page-break"></div>
-    <h2>თანდართული სერტიფიკატები</h2>
-    ${certificates.map(c => `
-      <div class="qa">
-        <h3>${escapeHtml(c.type)}</h3>
-        <p class="muted">
-          ${c.number ? `№ ${escapeHtml(c.number)}<br/>` : ''}
-          ${c.issued_at ? `გაცემის თარიღი: ${escapeHtml(c.issued_at)}<br/>` : ''}
-          ${c.expires_at ? `ვადა: ${escapeHtml(c.expires_at)}` : ''}
-        </p>
-        ${c.file_data_url
-          ? `<div class="cert-img-wrap">
-              <img
-                src="${c.file_data_url}"
-                alt="${escapeHtml(c.type)}"
-                class="cert-img"
-                onerror="this.style.display='none';this.parentElement.querySelector('.photo-missing').style.display='flex';"
-              />
-              <div class="photo-missing" style="display:none;">სურათი მიუწვდომელია</div>
-            </div>`
-          : ''}
+    <div class="section-wrap">
+      <div class="section-heading">
+        <div class="section-number">${sections.length + (appendixPhotos.length > 0 ? 2 : 1)}</div>
+        <h2 class="section-title">თანდართული სერტიფიკატები</h2>
       </div>
-    `).join('')}
-    ` : ''}
+      <div class="section-rule"></div>
+      ${certificates
+        .map(
+          c => `
+        <div class="cert-card">
+          <div class="cert-title">${escapeHtml(c.type)}</div>
+          <div class="cert-meta">
+            ${c.number ? `№ ${escapeHtml(c.number)} · ` : ''}
+            ${c.issued_at ? `გაცემა: ${escapeHtml(c.issued_at)} · ` : ''}
+            ${c.expires_at ? `ვადა: ${escapeHtml(c.expires_at)}` : ''}
+          </div>
+          ${c.file_data_url
+            ? `<div class="cert-img-wrap">
+                <img
+                  src="${c.file_data_url}"
+                  alt="${escapeHtml(c.type)}"
+                  class="cert-img"
+                  onerror="this.style.display='none';this.parentElement.innerHTML='<div class=\\'photo-missing\\'>სურათი მიუწვდომელია</div>';"
+                />
+              </div>`
+            : ''}
+        </div>
+      `,
+        )
+        .join('')}
+    </div>` : ''}
+
+    <!-- Footer -->
+    <div class="footer">
+      <span>Sarke 2.0</span>
+      <span>გენერირებული რეპორტი</span>
+      <span>${nowStr}</span>
+    </div>
   </body>
 </html>`;
 }
 
-function renderPhoto(photo: AnswerPhoto, isFailed: boolean, questionTitle: string): string {
+function statusBadge(type: 'pass' | 'fail' | 'info', text: string): string {
+  return `<span class="badge badge-${type}">${escapeHtml(text)}</span>`;
+}
+
+function conclusionBadge(
+  type: 'safe' | 'unsafe' | 'pending',
+  text: string,
+): string {
+  const prefix = type === 'safe' ? '✓ ' : type === 'unsafe' ? '✕ ' : '● ';
+  return `<span class="conclusion-badge conclusion-${type}">${prefix}${escapeHtml(text)}</span>`;
+}
+
+function renderPhoto(
+  photo: AnswerPhoto,
+  isFailed: boolean,
+  questionTitle: string,
+): string {
   const titlePart = escapeHtml(questionTitle.slice(0, 50));
   const timePart = photo.created_at ? formatDate(photo.created_at) : '';
-  const captionText = timePart ? `${titlePart} — ${timePart}` : titlePart;
+  const captionText = timePart
+    ? `${titlePart} — ${timePart}`
+    : titlePart;
   const captionPrefix = isFailed ? '⚠ ' : '';
-  // Internal row-scope tags (e.g. "row:რეგულირებადი დომკრატი") are metadata —
-  // never user-authored — so don't surface them as a visible caption.
   const isInternalCaption = photo.caption?.startsWith('row:') ?? false;
-  const noteCaption = photo.caption && !isInternalCaption
-    ? `<div class="photo-caption muted">${escapeHtml(photo.caption)}</div>`
-    : '';
+  const noteCaption =
+    photo.caption && !isInternalCaption
+      ? `<div class="photo-caption${isFailed ? ' caption-failed' : ''}">${escapeHtml(photo.caption)}</div>`
+      : '';
 
-  // If storage_path is not a data URL, the WebView in expo-print can't load it
-  // (no auth cookies / bearer tokens). Render a clean placeholder instead.
   const src = photo.storage_path;
   const isDataUrl = src.startsWith('data:');
   const isLocalFile = /^(file|content|ph|asset):\/\//.test(src);
 
   if (!isDataUrl && !isLocalFile) {
     return `<div class="photo-cell${isFailed ? ' failed' : ''}">
-      <div class="photo-missing" style="display:flex;">
-        <span>სურათი მიუწვდომელია</span>
+      <div class="img-wrap">
+        <div class="photo-missing">სურათი მიუწვდომელია</div>
       </div>
-      <div class="photo-caption${isFailed ? ' caption-failed' : ''}">${captionPrefix}${captionText}</div>
+      <div class="photo-caption">${captionPrefix}${captionText}</div>
       ${noteCaption}
     </div>`;
   }
 
   return `<div class="photo-cell${isFailed ? ' failed' : ''}">
-    <img
-      src="${src}"
-      alt="ფოტო"
-      onerror="this.style.display='none';this.parentElement.querySelector('.photo-missing').style.display='flex';"
-    />
-    <div class="photo-missing" style="display:none;">სურათი მიუწვდომელია</div>
-    <div class="photo-caption${isFailed ? ' caption-failed' : ''}">${captionPrefix}${captionText}</div>
+    <div class="img-wrap">
+      <img
+        src="${src}"
+        alt="ფოტო"
+        onerror="this.style.display='none';this.parentElement.innerHTML='<div class=\\'photo-missing\\'>სურათი მიუწვდომელია</div>';"
+      />
+    </div>
+    <div class="photo-caption">${captionPrefix}${captionText}</div>
     ${noteCaption}
   </div>`;
 }
 
-function renderQuestion(q: Question, answer: Answer | undefined, inlinePhotos: AnswerPhoto[] = [], isFailed = false): string {
+function renderQuestion(
+  q: Question,
+  answer: Answer | undefined,
+  inlinePhotos: AnswerPhoto[] = [],
+  isFailed = false,
+): string {
   const comment = answer?.comment
-    ? `<p class="muted">კომენტარი: ${escapeHtml(answer.comment)}</p>`
+    ? `<div class="qa-comment">კომენტარი: ${escapeHtml(answer.comment)}</div>`
     : '';
   const notes = answer?.notes
-    ? `<div style="background:#F6F2EA;padding:6px 10px;border-radius:4px;margin-top:4px;"><span style="font-style:italic;color:#4A4A4A;">შენიშვნა: ${escapeHtml(answer.notes)}</span></div>`
+    ? `<div class="qa-notes">შენიშვნა: ${escapeHtml(answer.notes)}</div>`
     : '';
-  const photosHtml = inlinePhotos.length > 0
-    ? `<div class="photo-grid">${inlinePhotos.map(p => renderPhoto(p, isFailed, q.title)).join('')}</div>`
-    : '';
+  const photosHtml =
+    inlinePhotos.length > 0
+      ? `<div class="photo-section-title">📷 ფოტო მასალა</div>
+         <div class="photo-grid">${inlinePhotos.map(p => renderPhoto(p, isFailed, q.title)).join('')}</div>`
+      : '';
+
   switch (q.type) {
     case 'yesno': {
       const v = answer?.value_bool;
-      const label = v === true ? '<span class="ok">✓ კი</span>' : v === false ? '<span class="bad">✗ არა</span>' : '—';
-      return `<div class="qa"><strong>${escapeHtml(q.title)}</strong><br/>${label}${comment}${notes}${photosHtml}</div>`;
+      const label =
+        v === true
+          ? statusBadge('pass', 'კი')
+          : v === false
+            ? statusBadge('fail', 'არა')
+            : '<span class="muted">—</span>';
+      return `<div class="qa-card">
+        <div class="qa-question">${escapeHtml(q.title)}</div>
+        <div class="qa-answer">${label}</div>
+        ${comment}${notes}${photosHtml}
+      </div>`;
     }
     case 'measure': {
       const v = answer?.value_num;
-      return `<div class="qa"><strong>${escapeHtml(q.title)}</strong><br/>${v ?? '—'} ${escapeHtml(q.unit ?? '')}${comment}${notes}${photosHtml}</div>`;
+      return `<div class="qa-card">
+        <div class="qa-question">${escapeHtml(q.title)}</div>
+        <div class="qa-answer">${v ?? '—'} ${escapeHtml(q.unit ?? '')}</div>
+        ${comment}${notes}${photosHtml}
+      </div>`;
     }
     case 'freetext':
-      return `<div class="qa"><strong>${escapeHtml(q.title)}</strong><br/>${escapeHtml(answer?.value_text ?? '—')}${comment}${notes}${photosHtml}</div>`;
+      return `<div class="qa-card">
+        <div class="qa-question">${escapeHtml(q.title)}</div>
+        <div class="qa-answer">${escapeHtml(answer?.value_text ?? '—')}</div>
+        ${comment}${notes}${photosHtml}
+      </div>`;
     case 'photo_upload':
-      return `<div class="qa"><strong>${escapeHtml(q.title)}</strong>${photosHtml}${comment}${notes}</div>`;
+      return `<div class="qa-card">
+        <div class="qa-question">${escapeHtml(q.title)}</div>
+        ${photosHtml}${comment}${notes}
+      </div>`;
     case 'component_grid': {
       const rows = q.grid_rows ?? [];
       const cols = q.grid_cols ?? [];
@@ -269,8 +812,16 @@ function renderQuestion(q: Question, answer: Answer | undefined, inlinePhotos: A
           return `<tr><th>${escapeHtml(row)}</th>${cells}</tr>`;
         })
         .join('');
-      return `<div class="qa"><strong>${escapeHtml(q.title)}</strong>
-        <table class="grid"><tr><th></th>${head}</tr>${body}</table>${comment}${notes}</div>`;
+      return `<div class="qa-card">
+        <div class="qa-question">${escapeHtml(q.title)}</div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th></th>${head}</tr></thead>
+            <tbody>${body}</tbody>
+          </table>
+        </div>
+        ${comment}${notes}${photosHtml}
+      </div>`;
     }
     default:
       return '';
@@ -321,14 +872,19 @@ function renderSignatureBlocks(
   return ordered
     .map(sig => {
       const role = sig.signer_role;
-      const label = role === 'expert' ? 'ექსპერტი' : SIGNER_ROLE_LABEL[role] ?? role;
+      const label =
+        role === 'expert' ? 'ექსპერტი' : SIGNER_ROLE_LABEL[role] ?? role;
+      const signedDate = sig.signed_at
+        ? new Date(sig.signed_at).toLocaleDateString('ka')
+        : '';
       return `
-      <div class="sig-block">
-        <h3>${escapeHtml(label)}</h3>
-        <p class="name">${escapeHtml(sig.full_name || '—')}</p>
-        ${sig.position ? `<p class="sub">${escapeHtml(sig.position)}</p>` : ''}
-        <img class="sig-img" src="${sig.signature_png_url}" alt="ხელმოწერა" />
-        ${sig.signed_at ? `<p class="sub">${escapeHtml(new Date(sig.signed_at).toLocaleDateString('ka'))}</p>` : ''}
+      <div class="sig-card">
+        <div class="sig-role">${escapeHtml(label)}</div>
+        <div class="sig-name">${escapeHtml(sig.full_name || '—')}</div>
+        <div class="sig-box">
+          <img src="${sig.signature_png_url}" alt="ხელმოწერა" />
+        </div>
+        ${signedDate ? `<div class="sig-date">${escapeHtml(signedDate)}</div>` : ''}
       </div>`;
     })
     .join('');

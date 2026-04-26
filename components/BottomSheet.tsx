@@ -33,8 +33,8 @@ import {
   NativeGesture,
 } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { haptic } from '../lib/haptics';
-import { theme } from '../lib/theme';
 
 export interface BottomSheetOptions {
   title?: string;
@@ -238,6 +238,7 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
           {options?.map((opt, i) => {
             const isCancel = i === cancelButtonIndex;
             const isDestructive = i === destructiveButtonIndex;
+            const isSelected = !isCancel && !isDestructive && i === 0;
             return (
               <Pressable
                 key={i}
@@ -246,25 +247,43 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
                   dismiss(i);
                 }}
                 style={({ pressed }) => [
-                  styles.option,
-                  i === 0 && !title && { borderTopWidth: 0 },
-                  isCancel && styles.cancelOption,
-                  pressed && styles.optionPressed,
+                  styles.optionCard,
+                  isSelected && styles.optionCardSelected,
+                  pressed && styles.optionCardPressed,
                 ]}
               >
-                <Text
-                  style={[
-                    styles.optionText,
-                    isCancel && styles.cancelText,
-                    isDestructive && styles.destructiveText,
-                  ]}
-                >
-                  {opt}
-                </Text>
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={[
+                      styles.optionText,
+                      isCancel && styles.cancelText,
+                      isDestructive && styles.destructiveText,
+                    ]}
+                  >
+                    {opt}
+                  </Text>
+                </View>
+                {isSelected && (
+                  <Ionicons name="checkmark" size={18} color="#059669" />
+                )}
               </Pressable>
             );
           })}
         </View>
+        {cancelButtonIndex != null && options && (
+          <Pressable
+            onPress={() => {
+              haptic.light();
+              dismiss(cancelButtonIndex);
+            }}
+            style={({ pressed }) => [
+              styles.cancelBtn,
+              pressed && { opacity: 0.7 },
+            ]}
+          >
+            <Text style={styles.cancelBtnText}>გაუქმება</Text>
+          </Pressable>
+        )}
       </>
     );
   };
@@ -298,13 +317,13 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
               style={[
                 styles.sheetWrapper,
                 {
-                  paddingBottom: insets.bottom + 12,
+                  paddingBottom: insets.bottom + 16,
                   transform: [{ translateY }, { scale: sheetScale }],
                 },
               ]}
             >
               <GestureDetector gesture={panGesture}>
-                <View collapsable={false}>
+                <View collapsable={false} style={styles.sheetCard}>
                   <View style={styles.handleBar}>
                     <View style={styles.handle} />
                   </View>
@@ -353,87 +372,104 @@ export function BottomSheetScrollView({
 
 const styles = StyleSheet.create({
   backdrop: {
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: 'rgba(0,0,0,0.45)',
   },
   sheetWrapper: {
     position: 'absolute',
-    left: 10,
-    right: 10,
+    left: 12,
+    right: 12,
     bottom: 0,
+  },
+  sheetCard: {
+    backgroundColor: '#F5F5F0',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 10,
+    overflow: 'hidden',
+    paddingBottom: 8,
   },
   handleBar: {
     alignItems: 'center',
-    paddingVertical: 10,
-    backgroundColor: theme.colors.card,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    paddingVertical: 12,
   },
   handle: {
     width: 40,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: theme.colors.inkFaint,
-    opacity: 0.35,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#D1D5DB',
   },
   title: {
     fontSize: 13,
     fontWeight: '700',
-    color: theme.colors.inkSoft,
+    color: '#64748b',
     textAlign: 'center',
     paddingVertical: 8,
     paddingHorizontal: 16,
-    backgroundColor: theme.colors.card,
+    backgroundColor: '#F5F5F0',
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
   optionsContainer: {
-    backgroundColor: theme.colors.card,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    overflow: 'hidden',
+    paddingHorizontal: 12,
+    gap: 8,
     paddingBottom: 8,
   },
-  contentBody: {
-    backgroundColor: theme.colors.card,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    overflow: 'hidden',
-    paddingHorizontal: 16,
-    paddingTop: 4,
-    paddingBottom: 16,
-  },
-  option: {
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: theme.colors.hairline,
+  optionCard: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 8,
-  },
-  cancelOption: {
-    marginTop: 6,
-    marginHorizontal: 8,
-    backgroundColor: theme.colors.subtleSurface,
-    borderRadius: 14,
-    borderTopWidth: 0,
-    paddingVertical: 16,
-  },
-  optionPressed: {
-    opacity: 0.5,
-    backgroundColor: theme.colors.subtleSurface,
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  optionCardSelected: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#059669',
+    paddingLeft: 12,
+  },
+  optionCardPressed: {
+    backgroundColor: '#F9FAFB',
   },
   optionText: {
     fontSize: 16,
-    color: theme.colors.ink,
-    fontWeight: '500',
+    color: '#1F2937',
+    fontWeight: '600',
   },
   cancelText: {
     fontWeight: '700',
-    color: theme.colors.inkSoft,
+    color: '#6B7280',
   },
   destructiveText: {
-    color: theme.colors.danger,
+    color: '#DC2626',
     fontWeight: '700',
+  },
+  cancelBtn: {
+    marginHorizontal: 12,
+    marginTop: 6,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#059669',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelBtnText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#059669',
+  },
+  contentBody: {
+    backgroundColor: '#F5F5F0',
+    paddingHorizontal: 16,
+    paddingTop: 4,
+    paddingBottom: 16,
   },
 });

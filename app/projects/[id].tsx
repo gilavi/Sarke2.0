@@ -216,50 +216,54 @@ export default function ProjectDetail() {
     );
   }
 
+  const stats = [
+    { label: 'მონაწილეები', count: (project?.crew?.length ?? 0) + (inspector ? 1 : 0), icon: 'people' as const },
+    { label: 'კითხვარები', count: questionnaires.length, icon: 'clipboard' as const },
+    { label: 'დრაფტები', count: drafts.length, icon: 'pencil' as const },
+    { label: 'ხელმოწერები', count: signers.length, icon: 'create' as const },
+  ];
+
   return (
     <Screen>
       <Stack.Screen
         options={{
           headerShown: true,
-          // Static title gives context ("you're on a project page"). The
-          // actual project name is the hero inside the first card, which is
-          // more scannable than cramming it into a narrow header.
           title: 'პროექტი',
+          headerTitleStyle: { fontSize: 18, fontWeight: '700', color: '#1F2937' },
+          headerShadowVisible: false,
+          headerStyle: { backgroundColor: '#F5F5F0' },
+          headerTintColor: '#1F2937',
           headerRight: () => (
             <Pressable
               onPress={() => setEditing(true)}
               hitSlop={10}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+              style={{ padding: 4 }}
               accessibilityLabel="რედაქტირება"
             >
-              <Ionicons name="create-outline" size={18} color={theme.colors.accent} />
-              <Text style={{ color: theme.colors.accent, fontWeight: '600', fontSize: 15 }}>
-                რედაქტ.
-              </Text>
+              <Ionicons name="create-outline" size={22} color="#059669" />
             </Pressable>
           ),
         }}
       />
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
-        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24, gap: 14 }}>
-          {/* Hero meta */}
-          <Card>
-            <Text style={styles.eyebrow}>პროექტი</Text>
-            <Text style={styles.projectName}>{project?.name ?? '—'}</Text>
+        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32, gap: 16 }}>
+          {/* ── Hero Card ── */}
+          <View style={styles.heroCard}>
+            <Text style={styles.heroName}>{project?.name ?? '—'}</Text>
             {project?.company_name ? (
-              <View style={styles.metaRow}>
-                <Ionicons name="business" size={14} color={theme.colors.inkSoft} />
-                <Text style={styles.metaText}>{project.company_name}</Text>
+              <View style={styles.heroMetaRow}>
+                <Ionicons name="business-outline" size={14} color="#6B7280" />
+                <Text style={styles.heroMetaText}>{project.company_name}</Text>
               </View>
             ) : null}
             {project?.address ? (
-              <View style={styles.metaRow}>
-                <Ionicons name="location" size={14} color={theme.colors.inkSoft} />
-                <Text style={styles.metaText}>{project.address}</Text>
+              <View style={styles.heroMetaRow}>
+                <Ionicons name="location-outline" size={14} color="#6B7280" />
+                <Text style={styles.heroMetaText}>{project.address}</Text>
               </View>
             ) : null}
             {project?.latitude != null && project?.longitude != null ? (
-              <View style={styles.miniMapWrap}>
+              <View style={styles.mapWrap}>
                 <MapView
                   provider={PROVIDER_DEFAULT}
                   style={StyleSheet.absoluteFill}
@@ -273,83 +277,92 @@ export default function ProjectDetail() {
                 >
                   <Marker
                     coordinate={{ latitude: project.latitude, longitude: project.longitude }}
-                    pinColor={theme.colors.accent}
+                    pinColor="#059669"
                   />
                 </MapView>
               </View>
             ) : null}
-          </Card>
+          </View>
 
-          {/* Signer roster */}
-          <Card>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Text style={styles.eyebrow}>ხელმომწერები</Text>
-              <Text style={{ color: theme.colors.inkSoft, fontSize: 12 }}>{signers.length}</Text>
+          {/* ── Stats Row ── */}
+          <View style={styles.statsRow}>
+            {stats.map(s => (
+              <View key={s.label} style={styles.statCard}>
+                <Ionicons name={s.icon} size={18} color="#059669" />
+                <Text style={styles.statCount}>{s.count}</Text>
+                <Text style={styles.statLabel}>{s.label}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* ── Signatures ── */}
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>ხელმოწერები</Text>
+              {signers.length > 0 ? (
+                <View style={styles.badgeGreen}>
+                  <Text style={styles.badgeGreenText}>{signers.length}</Text>
+                </View>
+              ) : null}
             </View>
-            <View style={{ gap: 8, marginTop: 10 }}>
-              {signers.map(s => (
-                <Swipeable
-                  key={s.id}
-                  renderRightActions={() => (
-                    <Pressable onPress={() => deleteSigner(s)} style={styles.swipeDelete}>
-                      <Ionicons name="trash" size={18} color={theme.colors.white} />
-                    </Pressable>
-                  )}
-                  overshootRight={false}
-                >
-                  <Pressable
-                    onPress={() =>
-                      router.push(`/projects/${id}/signer?signerId=${s.id}` as any)
-                    }
-                    style={styles.signerRow}
+            {signers.length === 0 ? (
+              <EmptyState text="ჯერ არ არის ხელმომწერები" />
+            ) : (
+              <View style={{ gap: 10, marginTop: 10 }}>
+                {signers.map(s => (
+                  <Swipeable
+                    key={s.id}
+                    renderRightActions={() => (
+                      <Pressable onPress={() => deleteSigner(s)} style={styles.swipeDelete}>
+                        <Ionicons name="trash" size={18} color="#FFFFFF" />
+                      </Pressable>
+                    )}
+                    overshootRight={false}
                   >
-                    <View style={styles.sigThumb}>
-                      {signerPreviews[s.id] ? (
-                        <SafeSigImage uri={signerPreviews[s.id]} />
-                      ) : (
-                        <Ionicons name="person" size={20} color={theme.colors.inkFaint} />
-                      )}
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.ink }}>
-                        {s.full_name}
-                      </Text>
-                      <Text style={{ fontSize: 11, color: theme.colors.inkSoft, marginTop: 2 }}>
-                        {SIGNER_ROLE_LABEL[s.role]}
-                      </Text>
-                      {!s.signature_png_url ? (
-                        <View style={styles.missingChip}>
-                          <Text style={{ color: theme.colors.warn, fontSize: 10, fontWeight: '700' }}>
-                            ხელმოწერა არ არის
-                          </Text>
-                        </View>
-                      ) : null}
-                    </View>
-                    <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
-                  </Pressable>
-                </Swipeable>
-              ))}
-              <Pressable
-                onPress={() => router.push(`/projects/${id}/signer` as any)}
-                style={styles.addSignerRow}
-              >
-                <Ionicons name="person-add" size={18} color={theme.colors.accent} />
-                <Text style={{ color: theme.colors.accent, fontWeight: '600' }}>
-                  + ხელმომწერის დამატება
-                </Text>
-              </Pressable>
-            </View>
-          </Card>
+                    <Pressable
+                      onPress={() => router.push(`/projects/${id}/signer?signerId=${s.id}` as any)}
+                      style={styles.listRow}
+                    >
+                      <View style={styles.sigThumb}>
+                        {signerPreviews[s.id] ? (
+                          <SafeSigImage uri={signerPreviews[s.id]} />
+                        ) : (
+                          <Ionicons name="person" size={20} color="#9CA3AF" />
+                        )}
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.listRowTitle}>{s.full_name}</Text>
+                        <Text style={styles.listRowSubtitle}>{SIGNER_ROLE_LABEL[s.role]}</Text>
+                        {!s.signature_png_url ? (
+                          <View style={styles.missingChip}>
+                            <Text style={styles.missingChipText}>ხელმოწერა არ არის</Text>
+                          </View>
+                        ) : null}
+                      </View>
+                      <Ionicons name="chevron-forward" size={18} color="#D1D5DB" />
+                    </Pressable>
+                  </Swipeable>
+                ))}
+              </View>
+            )}
+            <Pressable
+              onPress={() => router.push(`/projects/${id}/signer` as any)}
+              style={styles.addBtn}
+            >
+              <Ionicons name="person-add" size={18} color="#059669" />
+              <Text style={styles.addBtnText}>+ ხელმომწერის დამატება</Text>
+            </Pressable>
+          </View>
 
-          {/* Crew (მონაწილეები) — inspector row (auto from auth) + manual
-              entries. Same data is also editable from the inspection
-              signing flow; both write back to projects.crew. */}
-          <Card>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Text style={styles.eyebrow}>მონაწილეები</Text>
-              <Text style={{ color: theme.colors.inkSoft, fontSize: 12 }}>
-                {(project?.crew?.length ?? 0) + (inspector ? 1 : 0)}
-              </Text>
+          {/* ── Participants ── */}
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>მონაწილეები</Text>
+              <View style={styles.badgeGreen}>
+                <Text style={styles.badgeGreenText}>
+                  {(project?.crew?.length ?? 0) + (inspector ? 1 : 0)}
+                </Text>
+              </View>
             </View>
             <View style={{ marginTop: 10 }}>
               <CrewList
@@ -358,70 +371,61 @@ export default function ProjectDetail() {
                 onChange={persistCrew}
               />
             </View>
-          </Card>
+          </View>
 
-          {/* Questionnaires — two always-visible sections, no tabs */}
-          <Card>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Text style={styles.eyebrow}>კითხვარები</Text>
-              <Text style={{ color: theme.colors.inkSoft, fontSize: 12 }}>{questionnaires.length}</Text>
+          {/* ── Questionnaires ── */}
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>კითხვარები</Text>
+              <View style={styles.badgeGreen}>
+                <Text style={styles.badgeGreenText}>{questionnaires.length}</Text>
+              </View>
             </View>
 
-            {/* New-questionnaire pill, mirrors the "+ ხელმომწერის დამატება"
-                button in the signers card so the two action affordances feel
-                consistent. Placed at the top so it's reachable without
-                scrolling past the lists. */}
-            <Pressable
-              onPress={startNewQuestionnaire}
-              style={[styles.addSignerRow, { marginTop: 10 }]}
-            >
-              <Ionicons name="add-circle" size={18} color={theme.colors.accent} />
-              <Text style={{ color: theme.colors.accent, fontWeight: '600' }}>
-                + ახალი კითხვარი
-              </Text>
+            <Pressable onPress={startNewQuestionnaire} style={styles.addBtn}>
+              <Ionicons name="add-circle" size={18} color="#059669" />
+              <Text style={styles.addBtnText}>+ ახალი კითხვარი</Text>
             </Pressable>
 
-            {/* ── Drafts section ── */}
-            <View style={styles.qSection}>
-              <View style={styles.qSectionHeader}>
-                <View style={[styles.qSectionDot, { backgroundColor: theme.colors.warnSoft }]}>
-                  <Ionicons name="pencil" size={11} color={theme.colors.warn} />
+            {/* Drafts */}
+            <View style={{ marginTop: 14 }}>
+              <View style={styles.subSectionHeader}>
+                <View style={[styles.subDot, { backgroundColor: '#FEF3C7' }]}>
+                  <Ionicons name="pencil" size={11} color="#92400E" />
                 </View>
-                <Text style={styles.qSectionLabel}>დრაფტები</Text>
-                <Text style={styles.qSectionCount}>{drafts.length}</Text>
+                <Text style={styles.subSectionLabel}>დრაფტები</Text>
+                <Text style={styles.subSectionCount}>{drafts.length}</Text>
               </View>
               {drafts.length === 0 ? (
-                <Text style={styles.qEmpty}>ცარიელია</Text>
+                <EmptyState text="ჯერ არ არის დრაფტები" />
               ) : (
                 <View style={{ gap: 8, marginTop: 8 }}>
                   {drafts.map(q => {
-                    const template = templates.find(t => t.id === q.template_id);
+                    const tpl = templates.find(t => t.id === q.template_id);
                     return (
                       <Swipeable
                         key={q.id}
                         renderRightActions={() => (
                           <Pressable onPress={() => deleteQuestionnaire(q)} style={styles.swipeDelete}>
-                            <Ionicons name="trash" size={18} color={theme.colors.white} />
+                            <Ionicons name="trash" size={18} color="#FFFFFF" />
                           </Pressable>
                         )}
                         overshootRight={false}
                       >
                         <Pressable
                           onPress={() => router.push(`/inspections/${q.id}/wizard` as any)}
-                          style={styles.qRow}
+                          style={styles.listRow}
                         >
-                          <View style={[styles.qStatusDot, { backgroundColor: theme.colors.warnSoft }]}>
-                            <Ionicons name="pencil" size={14} color={theme.colors.warn} />
+                          <View style={[styles.statusIcon, { backgroundColor: '#FEF3C7' }]}>
+                            <Ionicons name="pencil" size={14} color="#92400E" />
                           </View>
                           <View style={{ flex: 1 }}>
-                            <Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.ink }}>
-                              {template?.name ?? 'კითხვარი'}
-                            </Text>
-                            <Text style={{ fontSize: 11, color: theme.colors.inkSoft, marginTop: 2 }}>
+                            <Text style={styles.listRowTitle}>{tpl?.name ?? 'კითხვარი'}</Text>
+                            <Text style={styles.listRowSubtitle}>
                               {new Date(q.created_at).toLocaleString('ka')}
                             </Text>
                           </View>
-                          <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
+                          <Ionicons name="chevron-forward" size={18} color="#D1D5DB" />
                         </Pressable>
                       </Swipeable>
                     );
@@ -430,50 +434,47 @@ export default function ProjectDetail() {
               )}
             </View>
 
-            {/* Divider */}
-            <View style={styles.qDivider} />
+            <View style={styles.sectionDivider} />
 
-            {/* ── Completed section ── */}
-            <View style={styles.qSection}>
-              <View style={styles.qSectionHeader}>
-                <View style={[styles.qSectionDot, { backgroundColor: theme.colors.harnessSoft }]}>
-                  <Ionicons name="checkmark" size={11} color={theme.colors.harnessTint} />
+            {/* Completed */}
+            <View style={{ marginTop: 14 }}>
+              <View style={styles.subSectionHeader}>
+                <View style={[styles.subDot, { backgroundColor: '#D1FAE5' }]}>
+                  <Ionicons name="checkmark" size={11} color="#065F46" />
                 </View>
-                <Text style={styles.qSectionLabel}>დასრულებული</Text>
-                <Text style={styles.qSectionCount}>{completed.length}</Text>
+                <Text style={styles.subSectionLabel}>დასრულებული</Text>
+                <Text style={styles.subSectionCount}>{completed.length}</Text>
               </View>
               {completed.length === 0 ? (
-                <Text style={styles.qEmpty}>ცარიელია</Text>
+                <EmptyState text="ჯერ არ არის დასრულებული" />
               ) : (
                 <View style={{ gap: 8, marginTop: 8 }}>
                   {completed.map(q => {
-                    const template = templates.find(t => t.id === q.template_id);
+                    const tpl = templates.find(t => t.id === q.template_id);
                     return (
                       <Swipeable
                         key={q.id}
                         renderRightActions={() => (
                           <Pressable onPress={() => deleteQuestionnaire(q)} style={styles.swipeDelete}>
-                            <Ionicons name="trash" size={18} color={theme.colors.white} />
+                            <Ionicons name="trash" size={18} color="#FFFFFF" />
                           </Pressable>
                         )}
                         overshootRight={false}
                       >
                         <Pressable
                           onPress={() => router.push(`/inspections/${q.id}` as any)}
-                          style={styles.qRow}
+                          style={styles.listRow}
                         >
-                          <View style={[styles.qStatusDot, { backgroundColor: theme.colors.harnessSoft }]}>
-                            <Ionicons name="checkmark-circle" size={14} color={theme.colors.harnessTint} />
+                          <View style={[styles.statusIcon, { backgroundColor: '#D1FAE5' }]}>
+                            <Ionicons name="checkmark-circle" size={14} color="#065F46" />
                           </View>
                           <View style={{ flex: 1 }}>
-                            <Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.ink }}>
-                              {template?.name ?? 'კითხვარი'}
-                            </Text>
-                            <Text style={{ fontSize: 11, color: theme.colors.inkSoft, marginTop: 2 }}>
+                            <Text style={styles.listRowTitle}>{tpl?.name ?? 'კითხვარი'}</Text>
+                            <Text style={styles.listRowSubtitle}>
                               {new Date(q.created_at).toLocaleString('ka')}
                             </Text>
                           </View>
-                          <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
+                          <Ionicons name="chevron-forward" size={18} color="#D1D5DB" />
                         </Pressable>
                       </Swipeable>
                     );
@@ -481,10 +482,11 @@ export default function ProjectDetail() {
                 </View>
               )}
             </View>
-          </Card>
+          </View>
 
+          {/* ── Other Projects ── */}
           {otherProjects.length > 0 ? (
-            <View style={styles.otherSection}>
+            <View style={{ marginTop: 8, gap: 8 }}>
               <Text style={styles.otherHeader}>სხვა პროექტები</Text>
               <ScrollView
                 horizontal
@@ -502,10 +504,7 @@ export default function ProjectDetail() {
                       <View style={[styles.otherChipIcon, { backgroundColor: av.color + '22' }]}>
                         <Text style={{ fontSize: 14 }}>{av.emoji}</Text>
                       </View>
-                      <Text
-                        style={styles.otherChipText}
-                        numberOfLines={1}
-                      >
+                      <Text style={styles.otherChipText} numberOfLines={1}>
                         {op.name}
                       </Text>
                     </Pressable>
@@ -531,9 +530,18 @@ export default function ProjectDetail() {
   );
 }
 
+function EmptyState({ text }: { text: string }) {
+  return (
+    <View style={styles.emptyState}>
+      <Ionicons name="document-text-outline" size={28} color="#D1D5DB" />
+      <Text style={styles.emptyStateText}>{text}</Text>
+    </View>
+  );
+}
+
 function SafeSigImage({ uri }: { uri: string }) {
   const [err, setErr] = useState(false);
-  if (err) return <Ionicons name="person" size={20} color={theme.colors.inkFaint} />;
+  if (err) return <Ionicons name="person" size={20} color="#9CA3AF" />;
   return (
     <Image
       source={{ uri }}
@@ -604,11 +612,11 @@ function EditProjectSheet({
           <View style={styles.modalCard}>
             <View style={styles.modalHandle} />
             <View style={styles.modalHeader}>
-              <Text style={{ fontSize: 18, fontWeight: '800', color: theme.colors.ink, flex: 1 }}>
+              <Text style={{ fontSize: 18, fontWeight: '800', color: '#1F2937', flex: 1 }}>
                 რედაქტირება
               </Text>
               <Pressable onPress={onClose} hitSlop={10}>
-                <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
+                <Ionicons name="close" size={22} color="#6B7280" />
               </Pressable>
             </View>
             <ScrollView
@@ -647,131 +655,237 @@ function EditProjectSheet({
 }
 
 const styles = StyleSheet.create({
-  eyebrow: {
-    fontSize: 11,
-    color: theme.colors.inkSoft,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    fontWeight: '600',
+  // ── Hero ──
+  heroCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 3,
   },
-  projectName: { fontSize: 22, fontWeight: '800', color: theme.colors.ink, marginTop: 4 },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
-  metaText: { fontSize: 13, color: theme.colors.inkSoft, flexShrink: 1 },
+  heroName: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#1F2937',
+  },
+  heroMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+  },
+  heroMetaText: {
+    fontSize: 14,
+    color: '#6B7280',
+    flexShrink: 1,
+  },
+  mapWrap: {
+    marginTop: 12,
+    height: 160,
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
 
-  signerRow: {
+  // ── Stats ──
+  statsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 12,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  statCount: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginTop: 4,
+  },
+  statLabel: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    textTransform: 'uppercase',
+    fontWeight: '600',
+    marginTop: 2,
+  },
+
+  // ── Section Cards ──
+  sectionCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  badgeGreen: {
+    backgroundColor: '#D1FAE5',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 999,
+  },
+  badgeGreenText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#065F46',
+  },
+  sectionDivider: {
+    height: 1,
+    backgroundColor: '#F3F4F6',
+    marginTop: 14,
+  },
+
+  // ── List Rows ──
+  listRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    padding: 10,
-    backgroundColor: theme.colors.subtleSurface,
-    borderRadius: 10,
+    padding: 12,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+  },
+  listRowTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  listRowSubtitle: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
   },
   sigThumb: {
-    width: 48,
-    height: 36,
-    backgroundColor: theme.colors.card,
-    borderRadius: 8,
+    width: 44,
+    height: 44,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: theme.colors.hairline,
+    borderColor: '#E5E7EB',
     overflow: 'hidden',
   },
   missingChip: {
     marginTop: 4,
     alignSelf: 'flex-start',
-    backgroundColor: theme.colors.warnSoft,
+    backgroundColor: '#FEF3C7',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 999,
   },
-  addSignerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: theme.colors.accentSoft,
+  missingChipText: {
+    color: '#92400E',
+    fontSize: 10,
+    fontWeight: '700',
   },
-  // Questionnaire sections (no tabs)
-  qSection: {
-    marginTop: 14,
-  },
-  qSectionHeader: {
+
+  // ── Sub-sections ──
+  subSectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  qSectionDot: {
+  subDot: {
     width: 22,
     height: 22,
     borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  qSectionLabel: {
+  subSectionLabel: {
     flex: 1,
     fontSize: 12,
     fontWeight: '700',
-    color: theme.colors.inkSoft,
+    color: '#6B7280',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-  qSectionCount: {
+  subSectionCount: {
     fontSize: 12,
     fontWeight: '600',
-    color: theme.colors.inkFaint,
+    color: '#9CA3AF',
   },
-  qEmpty: {
-    fontSize: 13,
-    color: theme.colors.inkFaint,
-    paddingVertical: 10,
-    paddingLeft: 30,
-  },
-  qDivider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: theme.colors.hairline,
-    marginTop: 14,
-  },
-  qStatusDot: {
+  statusIcon: {
     width: 28,
     height: 28,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  qRow: {
+
+  // ── Actions ──
+  addBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    padding: 10,
-    backgroundColor: theme.colors.subtleSurface,
-    borderRadius: 10,
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#059669',
+    marginTop: 12,
+  },
+  addBtnText: {
+    color: '#059669',
+    fontWeight: '600',
+    fontSize: 14,
   },
 
+  // ── Empty State ──
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 20,
+    gap: 8,
+  },
+  emptyStateText: {
+    fontSize: 13,
+    color: '#9CA3AF',
+    fontWeight: '500',
+  },
+
+  // ── Swipe ──
   swipeDelete: {
     width: 72,
-    backgroundColor: theme.colors.danger,
+    backgroundColor: '#DC2626',
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 8,
-    borderRadius: 10,
+    borderRadius: 12,
   },
 
-  miniMapWrap: {
-    marginTop: 12,
-    height: 140,
-    borderRadius: 14,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: theme.colors.hairline,
-    backgroundColor: theme.colors.subtleSurface,
+  // ── Modal ──
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
   },
-
-  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   modalCard: {
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#F5F5F0',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 16,
@@ -782,21 +896,20 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: theme.colors.hairline,
+    backgroundColor: '#D1D5DB',
     alignSelf: 'center',
     marginBottom: 10,
   },
-  modalHeader: { flexDirection: 'row', alignItems: 'center' },
-
-  otherSection: {
-    marginTop: 8,
-    gap: 8,
-    opacity: 0.85,
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
+
+  // ── Other Projects ──
   otherHeader: {
     fontSize: 10,
     fontWeight: '600',
-    color: theme.colors.inkFaint,
+    color: '#9CA3AF',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
   },
@@ -807,10 +920,15 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 10,
     borderRadius: 999,
-    backgroundColor: theme.colors.subtleSurface,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: theme.colors.hairline,
+    borderColor: '#E5E7EB',
     maxWidth: 180,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 2,
   },
   otherChipIcon: {
     width: 22,
@@ -821,7 +939,7 @@ const styles = StyleSheet.create({
   },
   otherChipText: {
     fontSize: 12,
-    color: theme.colors.inkSoft,
+    color: '#6B7280',
     flexShrink: 1,
   },
 });
