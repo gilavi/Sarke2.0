@@ -49,6 +49,7 @@ import {
   getStorageImageDataUrl,
   getStorageImageDataUrlStrict,
 } from '../../lib/imageUrl';
+import { dataUrlToArrayBuffer } from '../../lib/blob';
 import { flushPendingSignatures } from '../../lib/signatures';
 import { buildPdfHtml } from '../../lib/pdf';
 import { useToast } from '../../lib/toast';
@@ -404,9 +405,9 @@ export default function GenerateCertificateScreen() {
 
     // Ad-hoc signers: only persist when both a name AND a signature are present.
     for (const s of additionalSigners.filter(x => x.name?.trim() && x.dataUrl)) {
-      const blob = await (await fetch(s.dataUrl!)).blob();
+      const body = dataUrlToArrayBuffer(s.dataUrl!);
       const path = `${inspection!.id}/${s.id}-${Date.now()}.png`;
-      await storageApi.upload(STORAGE_BUCKETS.signatures, path, blob, 'image/png');
+      await storageApi.upload(STORAGE_BUCKETS.signatures, path, body, 'image/png');
       recs.push({
         id: s.id,
         inspection_id: inspection!.id,
@@ -446,9 +447,9 @@ export default function GenerateCertificateScreen() {
       let storagePath = signer.signature_png_url;
       // Newly captured (no stored path yet) — upload + persist back to roster.
       if (!storagePath) {
-        const blob = await (await fetch(dataUrl)).blob();
+        const body = dataUrlToArrayBuffer(dataUrl);
         const path = `${inspection!.project_id}/roster-${signer.id}-${Date.now()}.png`;
-        await storageApi.upload(STORAGE_BUCKETS.signatures, path, blob, 'image/png');
+        await storageApi.upload(STORAGE_BUCKETS.signatures, path, body, 'image/png');
         storagePath = path;
         await projectsApi.saveRosterSignature({
           project_id: inspection!.project_id,

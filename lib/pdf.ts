@@ -286,29 +286,31 @@ function escapeHtml(s: string): string {
 }
 
 /**
- * Build the signature section: 2-col grid, expert first, then each required
- * role. For signed rows we inline the PNG; for not_present rows we render
- * a line + "(არ იყო დამსწრე)"; for missing (never addressed) rows we show
- * an empty signature line with the role label only.
+ * Build the signature section: 2-col grid, expert first, then every other
+ * signed record in the given order. Only blocks with a non-empty inline
+ * `data:` URL are emitted — empty/broken signatures are skipped entirely
+ * so the PDF never shows a placeholder or a broken-image icon.
  */
 function renderSignatureBlocks(
   signatures: SignatureRecord[],
-  requiredRoles: SignatureRecord['signer_role'][],
+  _requiredRoles: SignatureRecord['signer_role'][],
 ): string {
-  // Expert always first when present
-  const expertSig = signatures.find(s => s.signer_role === 'expert');
-  const hasExpertInRoles = requiredRoles.includes('expert');
-  const orderedRoles: SignatureRecord['signer_role'][] = hasExpertInRoles
-    ? ['expert', ...requiredRoles.filter(r => r !== 'expert')]
-    : expertSig
-      ? ['expert', ...requiredRoles]
-      : requiredRoles;
+  const renderable = signatures.filter(
+    sig =>
+      sig.status === 'signed' &&
+      sig.signature_png_url &&
+      sig.signature_png_url.startsWith('data:image/') &&
+      sig.signature_png_url.length > 'data:image/png;base64,'.length + 32,
+  );
+  // Expert first; rest preserve incoming order.
+  const ordered = [
+    ...renderable.filter(s => s.signer_role === 'expert'),
+    ...renderable.filter(s => s.signer_role !== 'expert'),
+  ];
 
-  return orderedRoles
-    .map(role => {
-      const sig = signatures.find(s => s.signer_role === role);
-      if (!sig || sig.status !== 'signed' || !sig.signature_png_url) return '';
-      if (!sig.signature_png_url.startsWith('data:')) return '';
+  return ordered
+    .map(sig => {
+      const role = sig.signer_role;
       const label = role === 'expert' ? 'ექსპერტი' : SIGNER_ROLE_LABEL[role] ?? role;
       return `
       <div class="sig-block">
