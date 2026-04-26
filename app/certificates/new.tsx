@@ -347,7 +347,7 @@ export default function GenerateCertificateScreen() {
     setCaptureSignerId(null);
   };
 
-  const toggleRosterSigner = async (signer: ProjectSigner) => {
+  const toggleRosterSigner = (signer: ProjectSigner) => {
     const isSelected = selectedRosterIds.has(signer.id);
     if (isSelected) {
       setSelectedRosterIds(prev => {
@@ -357,21 +357,21 @@ export default function GenerateCertificateScreen() {
       });
       return;
     }
-    if (signer.signature_png_url) {
-      if (!rosterDataUrls[signer.id]) {
-        try {
-          const url = await getStorageImageDataUrl(STORAGE_BUCKETS.signatures, signer.signature_png_url);
-          setRosterDataUrls(prev => ({ ...prev, [signer.id]: url }));
-        } catch (e) {
-          logError(e, 'certNew.rosterSigLoad');
-          toast.error('ხელმოწერის ჩატვირთვა ვერ მოხერხდა');
-          return;
-        }
-      }
-      setSelectedRosterIds(prev => new Set(prev).add(signer.id));
+    // No stored signature → open capture modal first; only mark selected
+    // once the user actually draws (handled in onSignatureCaptured).
+    if (!signer.signature_png_url) {
+      setCaptureRosterId(signer.id);
       return;
     }
-    setCaptureRosterId(signer.id);
+    // Has stored signature — flip the checkbox immediately and warm the
+    // data-URL cache in the background. The PDF generator will await this
+    // value when needed, so the UI doesn't have to.
+    setSelectedRosterIds(prev => new Set(prev).add(signer.id));
+    if (!rosterDataUrls[signer.id]) {
+      void getStorageImageDataUrl(STORAGE_BUCKETS.signatures, signer.signature_png_url)
+        .then(url => setRosterDataUrls(prev => ({ ...prev, [signer.id]: url })))
+        .catch(e => logError(e, 'certNew.rosterSigLoad'));
+    }
   };
 
   // ── Generate ─────────────────────────────────────────────────────────────────
@@ -440,9 +440,21 @@ export default function GenerateCertificateScreen() {
       }).catch((e) => logError(e, 'certNew.rosterUpsertAdhoc'));
     }
 
-    // Roster signers: include each selected signer with a loaded data URL.
+    // Roster signers: include each selected signer. The data-URL load is
+    // kicked off lazily on toggle; if it hasn't resolved by the time the
+    // user hits "generate", await it inline here so the PDF still embeds
+    // the signature without forcing a perceived delay on the checkbox tap.
     for (const signer of projectSigners.filter(p => selectedRosterIds.has(p.id))) {
-      const dataUrl = rosterDataUrls[signer.id];
+      let dataUrl = rosterDataUrls[signer.id];
+      if (!dataUrl && signer.signature_png_url) {
+        try {
+          dataUrl = await getStorageImageDataUrl(STORAGE_BUCKETS.signatures, signer.signature_png_url);
+          setRosterDataUrls(prev => ({ ...prev, [signer.id]: dataUrl! }));
+        } catch (e) {
+          logError(e, 'certNew.rosterSigLazyLoad');
+          continue;
+        }
+      }
       if (!dataUrl) continue;
       let storagePath = signer.signature_png_url;
       // Newly captured (no stored path yet) — upload + persist back to roster.
