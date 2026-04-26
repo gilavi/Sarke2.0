@@ -7,7 +7,6 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "scheme": "sarke",
-    "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -29,8 +28,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#F6F2EA"
       },
-      "package": "ge.sarke.app",
-      "edgeToEdgeEnabled": true
+      "package": "ge.sarke.app"
     },
     "web": {
       "favicon": "./assets/favicon.png"
