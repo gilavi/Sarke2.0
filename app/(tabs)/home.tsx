@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSession } from '../../lib/session';
+import { PressableScale } from '../../components/animations/PressableScale';
 import { projectAvatar } from '../../lib/projectAvatar';
 import {
   qualificationsApi,
@@ -648,8 +649,8 @@ function ProjectCard({
 }) {
   const av = projectAvatar(project.id);
   return (
-    <Pressable onPress={onPress} style={{ width }}>
-      <View style={styles.projectCard}>
+    <PressableScale onPress={onPress} hapticOnPress="navigate" scaleTo={0.97}>
+      <View style={[styles.projectCard, { width }]}>
         <View style={[styles.projectEmoji, { backgroundColor: av.color + '22' }]}>
           <Text style={{ fontSize: 26 }}>{av.emoji}</Text>
         </View>
@@ -658,7 +659,7 @@ function ProjectCard({
           <Text style={styles.projectSub} numberOfLines={1}>{project.company_name}</Text>
         ) : null}
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }
 

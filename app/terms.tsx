@@ -80,7 +80,7 @@ export default function TermsScreen() {
           <Text style={{ fontSize: 12, color: theme.colors.inkSoft }}>{body.updated}</Text>
 
           {body.sections.map(s => (
-            <Card key={s.title} padding={14}>
+            <Card key={s.title} padding="md">
               <Text style={{ fontWeight: '700', color: theme.colors.ink, marginBottom: 6 }}>{s.title}</Text>
               <Text style={{ color: theme.colors.ink, lineHeight: 20 }}>{s.body}</Text>
             </Card>

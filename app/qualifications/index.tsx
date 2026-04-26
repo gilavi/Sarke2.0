@@ -20,6 +20,7 @@ import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Button, Card, Screen } from '../../components/ui';
 import { Skeleton } from '../../components/Skeleton';
+import EmptyState from '../../components/EmptyState';
 import { haptic } from '../../lib/haptics';
 import { isExpiringSoon, qualificationsApi } from '../../lib/services';
 import { theme } from '../../lib/theme';
@@ -108,15 +109,17 @@ export default function QualificationsScreen() {
                 ))}
               </View>
             ) : (
-              <View style={{ alignItems: 'center', paddingVertical: 60, gap: 10 }}>
-                <Ionicons name="ribbon" size={46} color={theme.colors.accent} style={{ opacity: 0.6 }} />
-                <Text style={{ fontSize: 18, fontWeight: '700', color: theme.colors.ink }}>
-                  ცარიელია
-                </Text>
-                <Text style={{ color: theme.colors.inkSoft, textAlign: 'center' }}>
-                  დაამატე სერტიფიკატი, რომ PDF-ებს{'\n'}თან ერთოდეს.
-                </Text>
-              </View>
+              <EmptyState
+                type="qualifications"
+                title="სერტიფიკატები არ არის"
+                subtitle="ატვირთე კვალიფიკაციის სერტიფიკატები PDF რეპორტისთვის"
+                action={{
+                  label: 'სერტიფიკატის ატვირთვა',
+                  icon: 'cloud-upload-outline',
+                  onPress: () => router.push('/qualifications/new' as any),
+                }}
+                backgroundPattern
+              />
             )
           }
           renderItem={({ item }) => {

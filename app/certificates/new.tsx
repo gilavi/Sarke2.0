@@ -676,6 +676,11 @@ export default function GenerateCertificateScreen() {
     transform: [{ scale: btnScale.value }],
   }));
 
+  const previewPdf = () => {
+    if (!inspection) return;
+    router.push(`/certificates/preview?inspectionId=${inspection.id}` as any);
+  };
+
   // ── Render ───────────────────────────────────────────────────────────────────
 
   if (loading) {
@@ -946,7 +951,20 @@ export default function GenerateCertificateScreen() {
 
         {/* Bottom Action Bar */}
         <View style={s.bottomBar}>
-          <Animated.View style={[{ width: '100%' }, btnAnimatedStyle]}>
+          <Animated.View style={[{ flex: 1 }, btnAnimatedStyle]}>
+            <Pressable
+              onPress={previewPdf}
+              onPressIn={onGeneratePressIn}
+              onPressOut={onGeneratePressOut}
+              disabled={busy}
+              style={s.previewBtn}
+            >
+              <Ionicons name="eye-outline" size={18} color={COLORS.primary} />
+              <Text style={s.previewBtnText}>პრევიუ</Text>
+            </Pressable>
+          </Animated.View>
+          <View style={{ width: 10 }} />
+          <Animated.View style={[{ flex: 2.2 }, btnAnimatedStyle]}>
             <Pressable
               onPress={generate}
               onPressIn={onGeneratePressIn}
@@ -1270,6 +1288,24 @@ const s = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  previewBtn: {
+    height: 54,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  previewBtnText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.primary,
   },
   generateBtn: {
     height: 54,

@@ -19,6 +19,8 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { projectAvatar } from '../../lib/projectAvatar';
 import { Button, Card, Field, Input } from '../../components/ui';
+import { PressableScale } from '../../components/animations/PressableScale';
+import EmptyState from '../../components/EmptyState';
 import { Skeleton } from '../../components/Skeleton';
 import { MapPicker, type LatLng } from '../../components/MapPicker';
 import { projectsApi } from '../../lib/services';
@@ -151,27 +153,24 @@ export default function ProjectsScreen() {
                 <ProjectRowSkeleton key={i} />
               ))}
             </View>
+          ) : query ? (
+            <EmptyState
+              type="projects"
+              title="ვერაფერი მოიძებნა"
+              subtitle="სცადე სხვა საძიებო სიტყვა."
+              compact
+            />
           ) : (
-            <View style={styles.empty}>
-              <View style={styles.emptyIllustration}>
-                <Ionicons name="folder-open" size={56} color={theme.colors.accent} />
-              </View>
-              <Text style={styles.emptyTitle}>
-                {query ? 'ვერაფერი მოიძებნა' : 'ჯერ პროექტი არ არის'}
-              </Text>
-              <Text style={styles.emptyBody}>
-                {query
-                  ? 'სცადე სხვა საძიებო სიტყვა.'
-                  : 'შექმენი პირველი პროექტი და დაიწყე შემოწმებები.'}
-              </Text>
-              {!query ? (
-                <Button
-                  title="+ ახალი პროექტი"
-                  onPress={() => setCreating(true)}
-                  style={{ marginTop: 14, width: 240 }}
-                />
-              ) : null}
-            </View>
+            <EmptyState
+              type="projects"
+              title="ჯერ პროექტი არ არის"
+              subtitle="შექმენი პირველი პროექტი და დაიწყე შემოწმებები"
+              action={{
+                label: '+ ახალი პროექტი',
+                onPress: () => setCreating(true),
+              }}
+              backgroundPattern
+            />
           )
         }
       />
@@ -336,7 +335,7 @@ function ProjectRow({
 
   return (
     <Swipeable renderRightActions={renderRightActions} overshootRight={false}>
-      <Pressable onPress={onOpen}>
+      <PressableScale onPress={onOpen} hapticOnPress="navigate" scaleTo={0.98}>
         <Card padding={14}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             <View style={[styles.iconBox, { backgroundColor: projectAvatar(project.id).color + '22' }]}>
@@ -380,7 +379,7 @@ function ProjectRow({
             <Ionicons name="chevron-forward" size={18} color={theme.colors.inkFaint} />
           </View>
         </Card>
-      </Pressable>
+      </PressableScale>
     </Swipeable>
   );
 }
@@ -434,27 +433,6 @@ const styles = StyleSheet.create({
     gap: 4,
     marginLeft: 8,
     borderRadius: theme.radius.lg,
-  },
-  empty: {
-    alignItems: 'center',
-    padding: 40,
-    paddingTop: 80,
-  },
-  emptyIllustration: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: theme.colors.accentSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  emptyTitle: { fontSize: 20, fontWeight: '800', color: theme.colors.ink, marginBottom: 6 },
-  emptyBody: {
-    fontSize: 14,
-    color: theme.colors.inkSoft,
-    textAlign: 'center',
-    lineHeight: 20,
   },
   fab: {
     position: 'absolute',

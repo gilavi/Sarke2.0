@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Image, InputAccessoryView, Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Animated, Image, InputAccessoryView, Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
@@ -138,7 +138,8 @@ function hasAnswer(
 }
 
 export default function QuestionnaireWizard() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{ id: string; annotatedPhotoUri?: string }>();
+  const id = params.id;
   const router = useRouter();
   const toast = useToast();
   const offline = useOffline();
@@ -152,6 +153,13 @@ export default function QuestionnaireWizard() {
   const [stepIndex, setStepIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [harnessRowCount, setHarnessRowCount] = useState(5);
+  const pendingPhotoContext = useRef<{
+    questionId: string;
+    rowKey?: string;
+    mime: string;
+    ext: string;
+    path: string;
+  } | null>(null);
   const [conclusion, setConclusion] = useState('');
   const [isSafe, setIsSafe] = useState<boolean | null>(null);
   const [harnessName, setHarnessName] = useState('');
@@ -390,39 +398,21 @@ export default function QuestionnaireWizard() {
     }
   };
 
-  const pickPhoto = async (question: Question, rowKey?: string) => {
+  const doUpload = async (
+    uri: string,
+    question: Question,
+    rowKey?: string,
+    mime?: string,
+    ext?: string,
+    path?: string,
+  ) => {
     if (!questionnaire) return;
-    haptic.medium();
-    // Photo upload needs network (blob → storage + answer_photos insert).
-    // Fail fast with a clear message rather than producing misleading errors.
-    if (!offline.isOnline) {
-      toast.error('ფოტოს ასატვირთად საჭიროა ინტერნეტი');
-      return;
-    }
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) return;
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.7,
-      base64: false,
-    });
-    if (result.canceled || result.assets.length === 0) return;
-    const asset = result.assets[0];
     try {
-      // Drain any pending answer edits for this question so the server copy
-      // of `answers` reflects the latest user input before we reference it.
       await offline.flush();
-
-      const mime = asset.mimeType ?? 'image/jpeg';
-      const ext = mime.split('/')[1] ?? 'jpg';
-      const path = `${questionnaire.id}/${question.id}/${Date.now()}.${ext}`;
-      // Native upload — supabase-js's Blob/ArrayBuffer body silently lands
-      // 0-byte objects in Hermes/SDK 54. Streaming the file URI directly to
-      // the REST endpoint via FileSystem.uploadAsync is the only reliable path.
-      await storageApi.uploadFromUri(STORAGE_BUCKETS.answerPhotos, path, asset.uri, mime);
-      // Ensure the answer row exists server-side (RLS on answer_photos joins
-      // through `answers`). Upsert is safe here — no concurrent edits at this
-      // point because we just flushed the queue.
+      const actualMime = mime ?? 'image/jpeg';
+      const actualExt = ext ?? 'jpg';
+      const actualPath = path ?? `${questionnaire.id}/${question.id}/${Date.now()}.${actualExt}`;
+      await storageApi.uploadFromUri(STORAGE_BUCKETS.answerPhotos, actualPath, uri, actualMime);
       const existing = answers[question.id];
       const answer = await answersApi.upsert({
         id: existing?.id ?? crypto.randomUUID(),
@@ -436,23 +426,71 @@ export default function QuestionnaireWizard() {
         notes: existing?.notes ?? null,
       });
       if (!existing) setAnswers(prev => ({ ...prev, [question.id]: answer }));
-      // For component_grid questions a single answer holds all rows, so we
-      // tag each photo with `row:<rowKey>` in `caption` to scope it back to
-      // the row it was uploaded from. Other question types pass no rowKey
-      // and the caption stays null.
       const caption = rowKey ? `row:${rowKey}` : undefined;
-      const photo = (await answersApi.addPhoto(answer.id, path, caption));
+      const photo = await answersApi.addPhoto(answer.id, actualPath, caption);
       const answerId = answer.id;
-      // Use the local URI as storage_path so the thumbnail appears immediately
-      // without waiting for a signed URL round-trip. On screen re-focus, the
-      // server-returned path takes over and PhotoThumb fetches a signed URL.
-      const photoForDisplay: AnswerPhoto = { ...photo, storage_path: asset.uri };
+      const photoForDisplay: AnswerPhoto = { ...photo, storage_path: uri };
       setPhotos(prev => ({ ...prev, [answerId]: [...(prev[answerId] ?? []), photoForDisplay] }));
       toast.success('ფოტო აიტვირთა');
     } catch (e) {
       toast.error(`ფოტო ვერ აიტვირთა: ${toErrorMessage(e, 'ქსელის შეცდომა')}`);
     }
   };
+
+  const pickPhoto = async (question: Question, rowKey?: string) => {
+    if (!questionnaire) return;
+    haptic.medium();
+    if (!offline.isOnline) {
+      toast.error('ფოტოს ასატვირთად საჭიროა ინტერნეტი');
+      return;
+    }
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.7,
+      base64: false,
+    });
+    if (result.canceled || result.assets.length === 0) return;
+    const asset = result.assets[0];
+
+    const mime = asset.mimeType ?? 'image/jpeg';
+    const ext = mime.split('/')[1] ?? 'jpg';
+    const path = `${questionnaire.id}/${question.id}/${Date.now()}.${ext}`;
+
+    Alert.alert(
+      'ფოტო არჩეულია',
+      'გსურთ ფოტოზე მონიშვნა (წრე, ისარი, ტექსტი) თუ ატვირთვა ისეთივე?',
+      [
+        { text: 'გაუქმება', style: 'cancel' },
+        {
+          text: 'მონიშვნა',
+          onPress: () => {
+            pendingPhotoContext.current = { questionId: question.id, rowKey, mime, ext, path };
+            router.push(`/photo-annotate?uri=${encodeURIComponent(asset.uri)}&returnTo=/inspections/${questionnaire.id}/wizard` as any);
+          },
+        },
+        {
+          text: 'ატვირთვა',
+          onPress: () => doUpload(asset.uri, question, rowKey, mime, ext, path),
+        },
+      ],
+    );
+  };
+
+  // Handle annotated photo return from PhotoAnnotator
+  useEffect(() => {
+    const annotatedUri = params.annotatedPhotoUri;
+    if (annotatedUri && pendingPhotoContext.current) {
+      const ctx = pendingPhotoContext.current;
+      const question = questions.find(q => q.id === ctx.questionId);
+      if (question) {
+        doUpload(decodeURIComponent(annotatedUri), question, ctx.rowKey, ctx.mime, ctx.ext, ctx.path);
+      }
+      pendingPhotoContext.current = null;
+      router.setParams({ annotatedPhotoUri: undefined });
+    }
+  }, [params.annotatedPhotoUri, questions, doUpload, router]);
 
   const deletePhoto = async (photo: AnswerPhoto) => {
     haptic.medium();
@@ -663,7 +701,7 @@ export default function QuestionnaireWizard() {
               <View style={{ flexDirection: 'row', gap: 12 }}>
                 <Pressable
                   onPress={() => {
-                    haptic.light();
+                    haptic.answerYes();
                     patchAnswer(step.question, a => ({ ...a, value_bool: true }));
                   }}
                   style={[
@@ -678,7 +716,7 @@ export default function QuestionnaireWizard() {
                 </Pressable>
                 <Pressable
                   onPress={() => {
-                    haptic.light();
+                    haptic.answerNo();
                     patchAnswer(step.question, a => ({ ...a, value_bool: false }));
                   }}
                   style={[

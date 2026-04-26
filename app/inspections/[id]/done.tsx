@@ -22,6 +22,7 @@ import {
   templatesApi,
 } from '../../../lib/services';
 import { theme } from '../../../lib/theme';
+import { haptic } from '../../../lib/haptics';
 import type { Inspection, Project, Template } from '../../../types/models';
 
 export default function InspectionDoneScreen() {
@@ -50,12 +51,22 @@ export default function InspectionDoneScreen() {
     }
   }, [id]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+    // Celebration haptic on first mount
+    const t = setTimeout(() => haptic.inspectionComplete(), 400);
+    return () => clearTimeout(t);
+  }, [load]);
 
   const generatePdf = () => {
     if (!id) return;
     // replace so the user can't back into this screen from the PDF generator
     router.replace(`/certificates/new?inspectionId=${id}` as any);
+  };
+
+  const previewPdf = () => {
+    if (!id) return;
+    router.push(`/certificates/preview?inspectionId=${id}` as any);
   };
 
   const viewInspection = () => {
@@ -136,10 +147,17 @@ export default function InspectionDoneScreen() {
             style={{ paddingVertical: 14 }}
           />
           <Button
+            title="პრევიუს ნახვა"
+            variant="secondary"
+            onPress={previewPdf}
+            iconRight={<Ionicons name="eye-outline" size={18} color={theme.colors.ink} />}
+            style={{ paddingVertical: 14 }}
+          />
+          <Button
             title="ინსპექციის ნახვა"
             variant="secondary"
             onPress={viewInspection}
-            iconRight={<Ionicons name="eye" size={18} color={theme.colors.ink} />}
+            iconRight={<Ionicons name="list" size={18} color={theme.colors.ink} />}
             style={{ paddingVertical: 14 }}
           />
           <Button

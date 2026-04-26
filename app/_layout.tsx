@@ -7,6 +7,7 @@ import { View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { useFonts } from 'expo-font';
 import { BottomSheetProvider } from '../components/BottomSheet';
 import { Skeleton } from '../components/Skeleton';
 import { SessionProvider, useSession } from '../lib/session';
@@ -144,6 +145,33 @@ function AuthGate() {
 }
 
 export default function RootLayout() {
+  const [fontsLoaded] = useFonts({
+    'SpaceGrotesk-Bold': require('../assets/fonts/SpaceGrotesk.ttf'),
+    'SpaceGrotesk-SemiBold': require('../assets/fonts/SpaceGrotesk.ttf'),
+    'SpaceGrotesk-Medium': require('../assets/fonts/SpaceGrotesk.ttf'),
+    'Inter-Regular': require('../assets/fonts/Inter.ttf'),
+    'Inter-Medium': require('../assets/fonts/Inter.ttf'),
+    'Inter-SemiBold': require('../assets/fonts/Inter.ttf'),
+    'Inter-Bold': require('../assets/fonts/Inter.ttf'),
+    'JetBrainsMono-Regular': require('../assets/fonts/JetBrainsMono-Regular.ttf'),
+  });
+
+  if (!fontsLoaded) {
+    return (
+      <View style={{ flex: 1, backgroundColor: theme.colors.background, paddingHorizontal: 20, paddingTop: 80, gap: 20 }}>
+        <Skeleton width={140} height={13} />
+        <Skeleton width={'75%'} height={30} />
+        <View style={{ height: 12 }} />
+        <Skeleton width={'100%'} height={72} radius={14} />
+        <Skeleton width={100} height={10} style={{ marginTop: 20 }} />
+        <View style={{ flexDirection: 'row', gap: 12 }}>
+          <Skeleton width={'48%'} height={120} radius={16} />
+          <Skeleton width={'48%'} height={120} radius={16} />
+        </View>
+      </View>
+    );
+  }
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>

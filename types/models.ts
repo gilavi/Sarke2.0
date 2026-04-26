@@ -222,6 +222,13 @@ export interface SignatureRecord {
   status: SignatureStatus;
   /** Ad-hoc name for signers not tied to a project_signers row. */
   person_name: string | null;
+  /** Audit trail — SHA256 hash of device identifier. */
+  device_id_hash?: string | null;
+  /** Audit trail — geolocation at time of signing. */
+  latitude?: number | null;
+  longitude?: number | null;
+  /** Audit trail — IP address at time of signing. */
+  ip_address?: string | null;
 }
 
 /**

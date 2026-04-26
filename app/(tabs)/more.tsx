@@ -149,7 +149,7 @@ export default function MoreScreen() {
             tint={theme.colors.certTint}
             bg={theme.colors.certSoft}
             primary={loaded ? `${certs.length}` : null}
-            secondary={loaded ? (certs.length === 0 ? 'ცარიელია' : expiring > 0 ? `${expiring} იწურება` : 'ყველა აქტიური') : null}
+            secondary={loaded ? (expiring > 0 ? `${expiring} იწურება` : certs.length === 0 ? 'დააჭირე ატვირთვისთვის' : 'ყველა აქტიური') : null}
             badge={loaded && expiring > 0 ? `${expiring} იწურება` : undefined}
             onPress={() => router.push('/qualifications' as any)}
           />
