@@ -517,15 +517,28 @@ export default function GenerateCertificateScreen() {
   const buildPdfAssets = async (): Promise<{
     photosForPdf: Record<string, AnswerPhoto[]>;
     attachedQuals: Array<Qualification & { file_data_url?: string }>;
+    failedAssetCount: number;
   }> => {
+    let failedAssetCount = 0;
     const photosForPdf: Record<string, AnswerPhoto[]> = {};
     await Promise.all(
       Object.entries(photosByAnswer).map(async ([answerId, photos]) => {
         photosForPdf[answerId] = await Promise.all(
-          photos.map(async p => ({
-            ...p,
-            storage_path: await getStorageImageDataUrl(STORAGE_BUCKETS.answerPhotos, p.storage_path),
-          })),
+          photos.map(async p => {
+            try {
+              const dataUrl = await getStorageImageDataUrlStrict(
+                STORAGE_BUCKETS.answerPhotos,
+                p.storage_path,
+              );
+              return { ...p, storage_path: dataUrl };
+            } catch (err) {
+              failedAssetCount += 1;
+              logError(err, `certificates.embedPhoto:${p.storage_path}`);
+              // Sentinel: empty string is not a `data:` URL, so renderPhoto()
+              // will draw the existing "image unavailable" placeholder.
+              return { ...p, storage_path: '' };
+            }
+          }),
         );
       }),
     );
@@ -539,11 +552,20 @@ export default function GenerateCertificateScreen() {
       if (!qual) continue;
       let fileDataUrl: string | undefined;
       if (qual.file_url) {
-        fileDataUrl = await getStorageImageDataUrl(STORAGE_BUCKETS.certificates, qual.file_url);
+        try {
+          fileDataUrl = await getStorageImageDataUrlStrict(
+            STORAGE_BUCKETS.certificates,
+            qual.file_url,
+          );
+        } catch (err) {
+          failedAssetCount += 1;
+          logError(err, `certificates.embedQual:${qual.file_url}`);
+          fileDataUrl = undefined;
+        }
       }
       attachedQuals.push({ ...qual, file_data_url: fileDataUrl });
     }
-    return { photosForPdf, attachedQuals };
+    return { photosForPdf, attachedQuals, failedAssetCount };
   };
 
   const generate = async () => {
@@ -574,7 +596,7 @@ export default function GenerateCertificateScreen() {
       await persistExpertSignature(expertName);
       const sigsForPdf = [expertRec, ...otherRecs];
 
-      const { photosForPdf, attachedQuals } = await buildPdfAssets();
+      const { photosForPdf, attachedQuals, failedAssetCount } = await buildPdfAssets();
 
       const html = buildPdfHtml({
         questionnaire: inspection,
@@ -609,6 +631,12 @@ export default function GenerateCertificateScreen() {
       uploadedPdfPath = null;
 
       toast.success('PDF რეპორტი შეიქმნა');
+      if (failedAssetCount > 0) {
+        Alert.alert(
+          'ზოგიერთი სურათი ვერ ჩაიტვირთა',
+          `${failedAssetCount} სურათი ვერ ჩაჯდა PDF-ში და ნაცვლად მოჩანს placeholder. სცადე ხელახლა გენერაცია.`,
+        );
+      }
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri, { mimeType: 'application/pdf' });
       }
