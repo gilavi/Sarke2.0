@@ -44,6 +44,10 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: website/build
           publish_branch: gh-pages
+          # Publish docs into the /docs subdirectory of gh-pages so the
+          # existing signer web app at the gh-pages root stays untouched.
+          destination_dir: docs
+          keep_files: true
           user_name: 'github-actions[bot]'
           user_email: 'github-actions[bot]@users.noreply.github.com'
           commit_message: 'docs: deploy ${{ github.sha }}'

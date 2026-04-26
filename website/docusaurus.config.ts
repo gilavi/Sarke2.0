@@ -12,7 +12,7 @@ const config: Config = {
   },
 
   url: 'https://gilavi.github.io',
-  baseUrl: '/Sarke2.0/',
+  baseUrl: '/Sarke2.0/docs/',
 
   organizationName: 'gilavi',
   projectName: 'Sarke2.0',
