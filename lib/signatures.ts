@@ -1,8 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system/legacy';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { supabase, STORAGE_BUCKETS } from './supabase';
 import { storageApi } from './services';
 import { dataUrlToArrayBuffer } from './blob';
+import { logError } from './logError';
 
 const PENDING_KEY = 'pending-signatures';
 
@@ -23,7 +25,7 @@ interface PendingSignature {
  */
 export async function compressSignature(base64: string): Promise<{
   base64: string;
-  body: ArrayBuffer;
+  body: Blob;
   contentType: string;
 }> {
   const dataUrl = `data:image/png;base64,${base64}`;
@@ -32,9 +34,29 @@ export async function compressSignature(base64: string): Promise<{
     [{ resize: { width: 400 } }],
     { compress: 1, format: SaveFormat.PNG, base64: true },
   );
-  const finalBase64 = out.base64 ?? base64;
-  const body = dataUrlToArrayBuffer(`data:image/png;base64,${finalBase64}`);
-  if (body.byteLength === 0) throw new Error('signature body empty after base64 decode');
+  // Read the resulting bytes from the manipulator's file URI — `fetch(file://)`
+  // and `readAsStringAsync` are reliable in RN/Hermes, unlike `fetch(data:url)`
+  // which silently produces 0-byte blobs and corrupts every signature upload.
+  const finalBase64 = out.base64
+    ?? (out.uri
+      ? await FileSystem.readAsStringAsync(out.uri, { encoding: FileSystem.EncodingType.Base64 })
+      : base64);
+  if (!finalBase64) throw new Error('manipulator returned no base64');
+  // Sanity: confirm decoded byte length is non-zero before handing off to Supabase.
+  const ab = dataUrlToArrayBuffer(`data:image/png;base64,${finalBase64}`);
+  if (ab.byteLength === 0) throw new Error('signature body empty after base64 decode');
+  // Read the file URI as a Blob — supabase-js's RN path handles Blob most
+  // reliably, especially via the file:// fetch which preserves byte length.
+  let body: Blob;
+  if (out.uri) {
+    body = await (await fetch(out.uri)).blob();
+    if (!body || (body as any).size === 0) {
+      // Fall back to ArrayBuffer-derived Blob if the file fetch was empty.
+      body = new Blob([ab], { type: 'image/png' });
+    }
+  } else {
+    body = new Blob([ab], { type: 'image/png' });
+  }
   return { base64: finalBase64, body, contentType: 'image/png' };
 }
 
@@ -51,8 +73,10 @@ export async function uploadSignature(
     const { body, contentType } = await compressSignature(base64);
     await storageApi.upload(STORAGE_BUCKETS.signatures, path, body, contentType);
     return { path, pending: false };
-  } catch {
-    // queue for retry
+  } catch (e) {
+    // Log the real failure so we can debug in Metro/Sentry instead of
+    // silently queuing forever — this used to mask 0-byte upload bugs.
+    logError(e, 'uploadSignature');
     const list = await readPending();
     list.push({ path, base64, contentType: 'image/png' });
     await writePending(list);
