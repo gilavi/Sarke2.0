@@ -187,7 +187,12 @@ function renderPhoto(photo: AnswerPhoto, isFailed: boolean, questionTitle: strin
   const timePart = photo.created_at ? formatDate(photo.created_at) : '';
   const captionText = timePart ? `${titlePart} — ${timePart}` : titlePart;
   const captionPrefix = isFailed ? '⚠ ' : '';
-  const noteCaption = photo.caption ? `<div class="photo-caption muted">${escapeHtml(photo.caption)}</div>` : '';
+  // Internal row-scope tags (e.g. "row:რეგულირებადი დომკრატი") are metadata —
+  // never user-authored — so don't surface them as a visible caption.
+  const isInternalCaption = photo.caption?.startsWith('row:') ?? false;
+  const noteCaption = photo.caption && !isInternalCaption
+    ? `<div class="photo-caption muted">${escapeHtml(photo.caption)}</div>`
+    : '';
 
   // If storage_path is not a data URL, the WebView in expo-print can't load it
   // (no auth cookies / bearer tokens). Render a clean placeholder instead.
@@ -305,12 +310,20 @@ function renderSignatureBlocks(
       const label = role === 'expert' ? 'ექსპერტი' : SIGNER_ROLE_LABEL[role] ?? role;
 
       if (sig?.status === 'signed' && sig.signature_png_url) {
+        // The print WebView can only inline `data:` URLs — Supabase signed
+        // URLs / storage paths won't load. If the caller hands us a non-data
+        // URL we still render the block (name + line) but drop the broken
+        // image rather than emitting a 404 placeholder.
+        const isDataUrl = sig.signature_png_url.startsWith('data:');
+        const imgTag = isDataUrl
+          ? `<img class="sig-img" src="${sig.signature_png_url}" alt="ხელმოწერა" />`
+          : `<div class="line"></div>`;
         return `
       <div class="sig-block">
         <h3>${escapeHtml(label)}</h3>
         <p class="name">${escapeHtml(sig.full_name || '—')}</p>
         ${sig.position ? `<p class="sub">${escapeHtml(sig.position)}</p>` : ''}
-        <img class="sig-img" src="${sig.signature_png_url}" alt="ხელმოწერა" />
+        ${imgTag}
         ${sig.signed_at ? `<p class="sub">${escapeHtml(new Date(sig.signed_at).toLocaleDateString('ka'))}</p>` : ''}
       </div>`;
       }
