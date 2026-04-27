@@ -17,7 +17,6 @@ import { SCAFFOLD_HELP, ScaffoldHelpEntry } from '../lib/scaffoldHelp';
 
 const BRAND = '#1D9E75';
 const BRAND_DARK = '#0F6E56';
-const TINT = '#E8F5F0';
 const { width: SCREEN_W } = Dimensions.get('window');
 
 export function ScaffoldTour({ visible, onClose }: { visible: boolean; onClose: () => void }) {
@@ -50,17 +49,10 @@ export function ScaffoldTour({ visible, onClose }: { visible: boolean; onClose: 
     >
       <View style={styles.root}>
         <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-          {/* Distinctive tour header — green band, makes it obvious you're in a tour */}
           <View style={styles.header}>
-            <View style={styles.headerLeft}>
-              <View style={styles.badge}>
-                <Ionicons name="sparkles" size={14} color="#FFFFFF" />
-                <Text style={styles.badgeText}>გაცნობითი ტური</Text>
-              </View>
-              <Text style={styles.stepCounter}>
-                {index + 1} / {total}
-              </Text>
-            </View>
+            <Text style={styles.stepCounter}>
+              {index + 1} / {total}
+            </Text>
             <Pressable
               onPress={onClose}
               hitSlop={12}
@@ -72,7 +64,7 @@ export function ScaffoldTour({ visible, onClose }: { visible: boolean; onClose: 
           </View>
 
           <Text style={styles.intro}>
-            გაიცანი ხარაჩოს კომპონენტები შემოწმებამდე
+            გაიცანით ხარაჩოს კომპონენტები ინსპექციამდე
           </Text>
 
           <FlatList
@@ -124,7 +116,7 @@ export function ScaffoldTour({ visible, onClose }: { visible: boolean; onClose: 
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: TINT,
+    backgroundColor: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',
@@ -134,30 +126,10 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 4,
   },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: BRAND,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 999,
-  },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: 0.2,
-  },
   stepCounter: {
     fontSize: 13,
     fontWeight: '700',
-    color: BRAND_DARK,
+    color: BRAND,
   },
   skipBtn: {
     paddingVertical: 4,
@@ -191,11 +163,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
     alignItems: 'center',
     gap: 16,
-    shadowColor: '#0F6E56',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   illustrationWrap: {
     marginTop: 4,
@@ -241,7 +210,7 @@ const styles = StyleSheet.create({
   footer: {
     paddingHorizontal: 20,
     paddingTop: 8,
-    backgroundColor: TINT,
+    backgroundColor: '#FFFFFF',
   },
   btn: {
     flexDirection: 'row',

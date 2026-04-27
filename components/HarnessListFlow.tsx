@@ -1,6 +1,7 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Image,
   KeyboardAvoidingView,
   Modal,
@@ -148,8 +149,9 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
     });
     if (!bad) {
       const tag = captionFor(row, item.col);
-      const allPhotos = Object.values(photos).flat();
-      for (const p of allPhotos) if (p.caption === tag) void onDeletePhoto(p);
+      const a = answers[item.question.id];
+      const cellPhotos = a ? photos[a.id] ?? [] : [];
+      for (const p of cellPhotos) if (p.caption === tag) void onDeletePhoto(p);
     }
   };
 
@@ -164,8 +166,7 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
     }
   };
 
-  const confirmAll = async () => {
-    haptic.success();
+  const applyAutoOk = async () => {
     for (const row of rowLabels) {
       for (const item of items) {
         const cell = answers[item.question.id]?.grid_values?.[row]?.[item.col];
@@ -180,6 +181,29 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
       }
     }
     onConclude();
+  };
+
+  const confirmAll = () => {
+    let untouched = 0;
+    for (const row of rowLabels) {
+      for (const item of items) {
+        const cell = answers[item.question.id]?.grid_values?.[row]?.[item.col];
+        if (cell === undefined) untouched += 1;
+      }
+    }
+    haptic.success();
+    if (untouched === 0) {
+      void applyAutoOk();
+      return;
+    }
+    Alert.alert(
+      'დადასტურება',
+      `${untouched} უჯრა არ არის შემოწმებული — ჩაითვლება გამართულად. გავაგრძელო?`,
+      [
+        { text: 'გაუქმება', style: 'cancel' },
+        { text: 'დიახ, გავაგრძელო', onPress: () => void applyAutoOk() },
+      ],
+    );
   };
 
   const labelColWidth = 132;
@@ -215,7 +239,7 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
           </View>
         </View>
         <Text style={s.helpHint}>
-          ყველა ერთეული გამართულია. დააჭირე იმას რაც გაუმართავია.
+          ყველა ერთეული გამართულია. დააჭირეთ იმას, რაც გაუმართავია.
         </Text>
       </View>
 

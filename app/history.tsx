@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
@@ -16,6 +16,7 @@ import {
 import { useToast } from '../lib/toast';
 import { theme } from '../lib/theme';
 import { toErrorMessage } from '../lib/logError';
+import { friendlyError } from '../lib/errorMap';
 import { a11y } from '../lib/accessibility';
 import type { Inspection, Project, Template } from '../types/models';
 
@@ -63,18 +64,20 @@ export default function HistoryScreen() {
     }, [load]),
   );
 
-  const drafts = qs.filter(q => q.status === 'draft');
-  const completed = qs.filter(q => q.status === 'completed');
-
-  const items: ListItem[] = [];
-  if (drafts.length > 0) {
-    items.push({ kind: 'header', label: 'დრაფტები' });
-    drafts.forEach(q => items.push({ kind: 'row', q }));
-  }
-  if (completed.length > 0) {
-    items.push({ kind: 'header', label: 'დასრულებული' });
-    completed.forEach(q => items.push({ kind: 'row', q }));
-  }
+  const items = useMemo<ListItem[]>(() => {
+    const drafts = qs.filter(q => q.status === 'draft');
+    const completed = qs.filter(q => q.status === 'completed');
+    const out: ListItem[] = [];
+    if (drafts.length > 0) {
+      out.push({ kind: 'header', label: 'დრაფტები' });
+      drafts.forEach(q => out.push({ kind: 'row', q }));
+    }
+    if (completed.length > 0) {
+      out.push({ kind: 'header', label: 'დასრულებული' });
+      completed.forEach(q => out.push({ kind: 'row', q }));
+    }
+    return out;
+  }, [qs]);
 
   const onDelete = (q: Inspection) => {
     Alert.alert('წაშლა?', 'ინსპექცია სამუდამოდ წაიშლება.', [
@@ -88,7 +91,7 @@ export default function HistoryScreen() {
             setQs(prev => prev.filter(x => x.id !== q.id));
             toast.success('წაიშალა');
           } catch (e) {
-            toast.error(toErrorMessage(e, 'ვერ წაიშალა'));
+            toast.error(friendlyError(e, 'ვერ წაიშალა'));
           }
         },
       },
@@ -96,8 +99,8 @@ export default function HistoryScreen() {
   };
 
   return (
-    <Screen>
-      <Stack.Screen options={{ headerShown: true, title: 'ისტორია' }} />
+    <Screen edgeToEdge>
+      <Stack.Screen options={{ headerShown: true, title: 'ისტორია', headerBackTitle: 'მეტი' }} />
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
         <FlatList
           data={items}
@@ -115,7 +118,7 @@ export default function HistoryScreen() {
             return (
               <Swipeable
                 renderRightActions={() => (
-                  <Pressable onPress={() => onDelete(q)} style={styles.swipeDelete} {...a11y('წაშლა', 'ინსპექციის წაშლა', 'button')}>{' '}
+                  <Pressable onPress={() => onDelete(q)} style={styles.swipeDelete} {...a11y('წაშლა', 'ინსპექციის წაშლა', 'button')}>
                     <Ionicons name="trash" size={18} color={theme.colors.white} />
                     <Text style={{ color: theme.colors.white, fontSize: 11, fontWeight: '700' }}>
                       წაშლა
@@ -136,7 +139,7 @@ export default function HistoryScreen() {
                     q.status === 'completed' ? 'დასრულებული ინსპექციის ნახვა' : 'დრაფტის გაგრძელება',
                     'button'
                   )}
-                >{' '}
+                >
                   <Card padding={12}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                       <View
@@ -186,7 +189,7 @@ export default function HistoryScreen() {
             !loaded ? (
               <View style={{ gap: 10 }}>
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <Card key={i} padding={12}>
+                  <Card key={`skeleton-${i}`} padding={12}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                       <Skeleton width={40} height={40} radius={10} />
                       <View style={{ flex: 1, gap: 8 }}>
@@ -204,7 +207,7 @@ export default function HistoryScreen() {
                 title="ისტორია ცარიელია"
                 subtitle="დასრულებული ინსპექციები გამოჩნდება აქ"
                 action={{
-                  label: 'შემოწმების დაწყება',
+                  label: 'ინსპექციის დაწყება',
                   icon: 'play-circle-outline',
                   onPress: () => router.push('/(tabs)/home'),
                 }}

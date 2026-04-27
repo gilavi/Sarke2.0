@@ -538,6 +538,17 @@ export const answersApi = {
     const db = await load();
     return db.answer_photos.filter(p => p.answer_id === answerId);
   },
+  photosByAnswerIds: async (
+    answerIds: string[],
+  ): Promise<Record<string, AnswerPhoto[]>> => {
+    const db = await load();
+    const ids = new Set(answerIds);
+    const out: Record<string, AnswerPhoto[]> = {};
+    for (const p of db.answer_photos) {
+      if (ids.has(p.answer_id)) (out[p.answer_id] ??= []).push(p);
+    }
+    return out;
+  },
   addPhoto: async (
     answerId: string,
     storagePath: string,

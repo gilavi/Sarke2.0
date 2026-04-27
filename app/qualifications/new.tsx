@@ -55,7 +55,7 @@ export default function AddQualification() {
     setBusy(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('არ ხარ შესული');
+      if (!user) throw new Error('არ ხართ შესული');
       let filePath: string | null = null;
       if (photoUri) {
         const res = await fetch(photoUri);
@@ -83,7 +83,7 @@ export default function AddQualification() {
 
   return (
     <Screen>
-      <Stack.Screen options={{ headerShown: true, title: 'ახალი სერტიფიკატი' }} />
+      <Stack.Screen options={{ headerShown: true, title: 'ახალი სერტიფიკატი', headerBackTitle: 'კვალიფიკაცია' }} />
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
         <ScrollView contentContainerStyle={{ padding: 20, gap: 14 }}>
           <Field label="ტიპი">

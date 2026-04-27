@@ -24,6 +24,7 @@ import { rescheduleAllFromDb } from '../../lib/notifications';
 import { useToast } from '../../lib/toast';
 import { theme } from '../../lib/theme';
 import { toErrorMessage } from '../../lib/logError';
+import { friendlyError } from '../../lib/errorMap';
 import { a11y } from '../../lib/accessibility';
 import type { ScheduleWithItem, Template } from '../../types/models';
 
@@ -176,7 +177,7 @@ export default function CalendarScreen() {
     }
     const options = [...system.map(t => t.name), 'გაუქმება'];
     showActionSheetWithOptions(
-      { title: 'აირჩიე შაბლონი', options, cancelButtonIndex: options.length - 1 },
+      { title: 'აირჩიეთ შაბლონი', options, cancelButtonIndex: options.length - 1 },
       async idx => {
         if (idx == null || idx === options.length - 1) return;
         const tpl = system[idx];
@@ -188,7 +189,7 @@ export default function CalendarScreen() {
           });
           router.push(`/inspections/${q.id}/wizard` as any);
         } catch (e) {
-          toast.error(toErrorMessage(e, 'შექმნა ვერ მოხერხდა'));
+          toast.error(friendlyError(e, 'შექმნა ვერ მოხერხდა'));
         }
       },
     );
@@ -197,7 +198,7 @@ export default function CalendarScreen() {
   const syncGoogle = async () => {
     const connected = await googleCalendar.isConnected();
     if (!connected) {
-      toast.info('ჯერ შეაერთე Google კალენდარი');
+      toast.info('ჯერ მიაერთეთ Google კალენდარი');
       router.push('/(tabs)/more' as any);
       return;
     }
@@ -206,7 +207,7 @@ export default function CalendarScreen() {
       const count = await googleCalendar.pushAll(schedules);
       toast.success(`დაემატა: ${count}`);
     } catch (e) {
-      toast.error(toErrorMessage(e, 'სინქრონიზაცია ვერ მოხერხდა'));
+      toast.error(friendlyError(e, 'სინქრონიზაცია ვერ მოხერხდა'));
     } finally {
       setSyncing(false);
     }
@@ -358,7 +359,7 @@ export default function CalendarScreen() {
           {!loaded && daySchedules.length === 0 ? (
             <>
               {Array.from({ length: 2 }).map((_, i) => (
-                <Card key={i} padding={12}>
+                <Card key={`skeleton-${i}`} padding={12}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                     <Skeleton width={36} height={36} radius={18} />
                     <View style={{ flex: 1, gap: 8 }}>
@@ -410,7 +411,7 @@ export default function CalendarScreen() {
                         {projectName}
                       </Text>
                     </View>
-                    <Pressable onPress={() => startInspection(s)} style={styles.startBtn} {...a11y('დაწყება', 'შემოწმების დაწყება', 'button')}>
+                    <Pressable onPress={() => startInspection(s)} style={styles.startBtn} {...a11y('დაწყება', 'ინსპექციის დაწყება', 'button')}>
                       <Text style={styles.startBtnText}>დაწყება</Text>
                     </Pressable>
                   </View>

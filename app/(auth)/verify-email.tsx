@@ -13,15 +13,35 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSession } from '../../lib/session';
 import { useToast } from '../../lib/toast';
 import { theme } from '../../lib/theme';
 import { toErrorMessage } from '../../lib/logError';
 import { a11y } from '../../lib/accessibility';
 import { Button, Card } from '../../components/ui';
+import { BackButton } from '../../components/BackButton';
 
 const CODE_LENGTH = 6;
 const RESEND_COOLDOWN_SEC = 30;
+const COOLDOWN_KEY_PREFIX = 'verify-otp-cooldown:';
+
+const cooldownKey = (email: string) => `${COOLDOWN_KEY_PREFIX}${email.toLowerCase()}`;
+
+async function readPersistedCooldown(email: string): Promise<number> {
+  if (!email) return 0;
+  const raw = await AsyncStorage.getItem(cooldownKey(email)).catch(() => null);
+  if (!raw) return 0;
+  const expiresAt = Number(raw);
+  if (!Number.isFinite(expiresAt)) return 0;
+  const remaining = Math.ceil((expiresAt - Date.now()) / 1000);
+  return remaining > 0 ? remaining : 0;
+}
+
+async function writePersistedCooldown(email: string, seconds: number): Promise<void> {
+  if (!email) return;
+  await AsyncStorage.setItem(cooldownKey(email), String(Date.now() + seconds * 1000)).catch(() => {});
+}
 
 function friendlyError(msg: string): string {
   const lower = (msg ?? '').toLowerCase();
@@ -52,6 +72,14 @@ export default function VerifyEmailScreen() {
     const t = setTimeout(() => inputRef.current?.focus(), 250);
     return () => clearTimeout(t);
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void readPersistedCooldown(email).then(remaining => {
+      if (!cancelled && remaining > 0) setCooldown(remaining);
+    });
+    return () => { cancelled = true; };
+  }, [email]);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -92,6 +120,7 @@ export default function VerifyEmailScreen() {
       await resendSignupOtp(email);
       toast.success('კოდი გამოგზავნილია');
       setCooldown(RESEND_COOLDOWN_SEC);
+      void writePersistedCooldown(email, RESEND_COOLDOWN_SEC);
     } catch (e) {
       toast.error(friendlyError(toErrorMessage(e)));
     } finally {
@@ -119,10 +148,7 @@ export default function VerifyEmailScreen() {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={10} {...a11y('უკან დაბრუნება', 'გადავა წინა ეკრანზე', 'button')}>
-              <Ionicons name="chevron-back" size={22} color={theme.colors.inkSoft} />
-              <Text style={{ color: theme.colors.inkSoft, fontWeight: '600' }}>უკან</Text>
-            </Pressable>
+            <BackButton label="შესვლა" style={styles.backBtn} />
 
             <View style={{ alignItems: 'center', gap: 12, marginTop: 24 }}>
               <View style={styles.iconCircle}>

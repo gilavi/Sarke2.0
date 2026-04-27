@@ -27,7 +27,7 @@ export default function ResetPasswordScreen() {
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData.session) {
-        throw new Error('აღდგენის სესია ვადაგასულია. გთხოვ, ხელახლა ითხოვე ბმული.');
+        throw new Error('აღდგენის სესია ვადაგასულია. გთხოვთ, ხელახლა მოითხოვოთ ბმული.');
       }
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
@@ -60,7 +60,7 @@ export default function ResetPasswordScreen() {
               ახალი პაროლი
             </Text>
             <Text style={{ color: theme.colors.inkSoft, marginTop: 6 }}>
-              შეიყვანე ახალი პაროლი (მინ. 6 სიმბოლო).
+              შეიყვანეთ ახალი პაროლი (მინ. 6 სიმბოლო).
             </Text>
 
             <Card padding={22} style={{ marginTop: 22 }}>
@@ -90,7 +90,7 @@ export default function ResetPasswordScreen() {
                       placeholder="••••••••"
                     />
                   </Field>
-                  <Field label="გაიმეორე პაროლი">
+                  <Field label="გაიმეორეთ პაროლი">
                     <Input
                       value={confirm}
                       onChangeText={setConfirm}

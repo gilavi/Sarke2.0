@@ -1,6 +1,6 @@
 import React, { ReactNode } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, Edge } from 'react-native-safe-area-context';
 import { theme } from '../../lib/theme';
 
 interface ScreenProps {
@@ -10,6 +10,12 @@ interface ScreenProps {
   onRefresh?: () => void;
   style?: any;
   contentContainerStyle?: any;
+  /** Opt in to a 20px horizontal gutter. By default Screen is edge-to-edge so consumers control their own padding. */
+  withGutter?: boolean;
+  /** Backwards-compatible alias for the old default — has no effect; kept so existing call sites compile. */
+  edgeToEdge?: boolean;
+  /** Safe-area edges to inset. Defaults to ['top','bottom']. */
+  edges?: readonly Edge[];
 }
 
 export function Screen({
@@ -19,14 +25,15 @@ export function Screen({
   onRefresh,
   style,
   contentContainerStyle,
+  withGutter,
+  edges = ['top', 'bottom'],
 }: ScreenProps) {
+  const contentPadding = withGutter ? styles.content : styles.contentNoGutter;
+
   const content = scrollable ? (
     <ScrollView
       style={[styles.container, style]}
-      contentContainerStyle={[
-        styles.content,
-        contentContainerStyle,
-      ]}
+      contentContainerStyle={[contentPadding, contentContainerStyle]}
       refreshControl={
         onRefresh ? (
           <RefreshControl refreshing={refreshing || false} onRefresh={onRefresh} tintColor={theme.colors.accent} />
@@ -37,11 +44,11 @@ export function Screen({
       {children}
     </ScrollView>
   ) : (
-    <View style={[styles.container, styles.content, style]}>{children}</View>
+    <View style={[styles.container, contentPadding, style]}>{children}</View>
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={edges}>
       {content}
     </SafeAreaView>
   );
@@ -54,6 +61,9 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: theme.space(5),
+    paddingBottom: theme.space(8),
+  },
+  contentNoGutter: {
     paddingBottom: theme.space(8),
   },
 });

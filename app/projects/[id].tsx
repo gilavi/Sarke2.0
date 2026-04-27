@@ -3,6 +3,7 @@ import {
   Alert,
   Image,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
   Pressable,
@@ -14,28 +15,40 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
+import * as ImagePicker from 'expo-image-picker';
+import { MapPreview } from '../../components/MapPreview';
 import { useBottomSheet } from '../../components/BottomSheet';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
-import { Button, Card, Field, Input, Screen } from '../../components/ui';
+import { Button, Field, Input, Screen } from '../../components/ui';
 import { Skeleton, SkeletonCard, SkeletonListCard } from '../../components/Skeleton';
 import { MapPicker, type LatLng } from '../../components/MapPicker';
+import { UploadedFilesSection } from '../../components/UploadedFilesSection';
 import {
   projectsApi,
+  projectFilesApi,
   questionnairesApi,
   templatesApi,
 } from '../../lib/services';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { useToast } from '../../lib/toast';
 import { getStorageImageDisplayUrl } from '../../lib/imageUrl';
-import { projectAvatar } from '../../lib/projectAvatar';
 import { theme } from '../../lib/theme';
 import { toErrorMessage } from '../../lib/logError';
-import type { CrewMember, Project, ProjectSigner, Questionnaire, Template } from '../../types/models';
+import { friendlyError } from '../../lib/errorMap';
+import { formatShortDateTime } from '../../lib/formatDate';
+import type { CrewMember, Project, ProjectFile, ProjectSigner, Questionnaire, Template } from '../../types/models';
 import { SIGNER_ROLE_LABEL } from '../../types/models';
-import { CrewList } from '../../components/CrewSection';
+import { CrewList, CrewMemberForm } from '../../components/CrewSection';
 import { useSession } from '../../lib/session';
 import { a11y } from '../../lib/accessibility';
+
+function projectInitials(name: string | undefined): string {
+  if (!name) return '—';
+  const trimmed = name.trim();
+  if (!trimmed) return '—';
+  // Array.from splits by code point so emoji / surrogate pairs aren't cut in half.
+  return Array.from(trimmed).slice(0, 2).join('').toLocaleUpperCase('ka-GE');
+}
 
 export default function ProjectDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -49,7 +62,8 @@ export default function ProjectDetail() {
   const [signerPreviews, setSignerPreviews] = useState<Record<string, string>>({});
   const [questionnaires, setQuestionnaires] = useState<Questionnaire[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
-  const [otherProjects, setOtherProjects] = useState<Project[]>([]);
+  const [files, setFiles] = useState<ProjectFile[]>([]);
+  const [filesBusy, setFilesBusy] = useState(false);
   const [editing, setEditing] = useState(false);
   // Flips true after the first fetch finishes. Drives the skeleton → content
   // swap; refocus doesn't re-show skeletons once we have data.
@@ -57,18 +71,18 @@ export default function ProjectDetail() {
 
   const load = useCallback(async () => {
     if (!id) return;
-    const [p, s, q, t, all] = await Promise.all([
+    const [p, s, q, t, f] = await Promise.all([
       projectsApi.getById(id).catch(() => null),
       projectsApi.signers(id).catch(() => []),
       questionnairesApi.listByProject(id).catch(() => []),
       templatesApi.list().catch(() => []),
-      projectsApi.list().catch(() => []),
+      projectFilesApi.list(id).catch(() => [] as ProjectFile[]),
     ]);
     setProject(p);
     setSigners(s);
     setQuestionnaires(q);
     setTemplates(t);
-    setOtherProjects(all.filter(x => x.id !== id));
+    setFiles(f);
 
     // Lazy-load sig thumbnails
     const previews: Record<string, string> = {};
@@ -116,7 +130,7 @@ export default function ProjectDetail() {
         setProject(saved);
       } catch (e) {
         setProject(prev);
-        toast.error(toErrorMessage(e, 'მონაწილე ვერ შეინახა'));
+        toast.error(friendlyError(e, 'მონაწილე ვერ შეინახა'));
       }
     },
     [project, toast],
@@ -139,7 +153,7 @@ export default function ProjectDetail() {
     }
     const options = [...system.map(t => t.name), 'გაუქმება'];
     showActionSheetWithOptions(
-      { title: 'აირჩიე შაბლონი', options, cancelButtonIndex: options.length - 1 },
+      { title: 'აირჩიეთ შაბლონი', options, cancelButtonIndex: options.length - 1 },
       async idx => {
         if (idx == null || idx === options.length - 1 || !id) return;
         const t = system[idx];
@@ -150,14 +164,14 @@ export default function ProjectDetail() {
           }));
           router.push(`/inspections/${q.id}/wizard` as any);
         } catch (e) {
-          toast.error(toErrorMessage(e, 'შექმნა ვერ მოხერხდა'));
+          toast.error(friendlyError(e, 'შექმნა ვერ მოხერხდა'));
         }
       },
     );
   };
 
   const deleteQuestionnaire = (q: Questionnaire) => {
-    Alert.alert('წაშლა?', 'კითხვარი სამუდამოდ წაიშლება.', [
+    Alert.alert('წაშლა?', 'ინსპექცია სამუდამოდ წაიშლება.', [
       { text: 'გაუქმება', style: 'cancel' },
       {
         text: 'წაშლა',
@@ -168,7 +182,90 @@ export default function ProjectDetail() {
             setQuestionnaires(prev => prev.filter(x => x.id !== q.id));
             toast.success('წაიშალა');
           } catch (e) {
-            toast.error(toErrorMessage(e, 'ვერ წაიშალა'));
+            toast.error(friendlyError(e, 'ვერ წაიშალა'));
+          }
+        },
+      },
+    ]);
+  };
+
+  const openAddParticipant = () => {
+    if (!project) return;
+    const options = ['მონაწილე', 'ხელმომწერა', 'გაუქმება'];
+    showActionSheetWithOptions(
+      { title: 'დამატება', options, cancelButtonIndex: options.length - 1 },
+      idx => {
+        if (idx == null || idx === options.length - 1) return;
+        if (idx === 1) {
+          router.push(`/projects/${id}/signer` as any);
+          return;
+        }
+        // Add crew member via shared form
+        showActionSheetWithOptions(
+          {
+            content: ({ dismiss }) => (
+              <CrewMemberForm
+                onSave={member => {
+                  void persistCrew([...(project.crew ?? []), member]);
+                  dismiss();
+                }}
+                onCancel={dismiss}
+              />
+            ),
+          },
+        );
+      },
+    );
+  };
+
+  const uploadFile = async () => {
+    if (!id) return;
+    try {
+      const res = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.All,
+        quality: 0.85,
+      });
+      if (res.canceled || !res.assets?.[0]) return;
+      const asset = res.assets[0];
+      setFilesBusy(true);
+      const created = await projectFilesApi.upload({
+        projectId: id,
+        fileUri: asset.uri,
+        name: asset.fileName ?? `file-${Date.now()}`,
+        mimeType: asset.mimeType ?? null,
+        sizeBytes: asset.fileSize ?? null,
+      });
+      setFiles(prev => [created, ...prev]);
+      toast.success('აიტვირთა');
+    } catch (e) {
+      toast.error(friendlyError(e, 'ატვირთვა ვერ მოხერხდა'));
+    } finally {
+      setFilesBusy(false);
+    }
+  };
+
+  const openFile = async (f: ProjectFile) => {
+    try {
+      const url = await projectFilesApi.signedUrl(f);
+      await Linking.openURL(url);
+    } catch {
+      toast.error('ფაილი ვერ გაიხსნა');
+    }
+  };
+
+  const deleteFile = (f: ProjectFile) => {
+    Alert.alert('წაშლა?', f.name, [
+      { text: 'გაუქმება', style: 'cancel' },
+      {
+        text: 'წაშლა',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await projectFilesApi.remove(f);
+            setFiles(prev => prev.filter(x => x.id !== f.id));
+            toast.success('წაიშალა');
+          } catch (e) {
+            toast.error(friendlyError(e, 'ვერ წაიშალა'));
           }
         },
       },
@@ -187,7 +284,7 @@ export default function ProjectDetail() {
             setSigners(prev => prev.filter(x => x.id !== s.id));
             toast.success('წაიშალა');
           } catch (e) {
-            toast.error(toErrorMessage(e, 'ვერ წაიშალა'));
+            toast.error(friendlyError(e, 'ვერ წაიშალა'));
           }
         },
       },
@@ -197,7 +294,7 @@ export default function ProjectDetail() {
   if (!loaded && !project) {
     return (
       <Screen>
-        <Stack.Screen options={{ headerShown: true, title: 'პროექტი' }} />
+        <Stack.Screen options={{ headerShown: true, title: 'პროექტი', headerBackTitle: 'პროექტები' }} />
         <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
           <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }}>
             <SkeletonCard>
@@ -217,105 +314,101 @@ export default function ProjectDetail() {
     );
   }
 
-  const stats = [
-    { label: 'მონაწილეები', count: (project?.crew?.length ?? 0) + (inspector ? 1 : 0), icon: 'people' as const },
-    { label: 'კითხვარები', count: questionnaires.length, icon: 'clipboard' as const },
-    { label: 'დრაფტები', count: drafts.length, icon: 'pencil' as const },
-    { label: 'ხელმოწერები', count: signers.length, icon: 'create' as const },
-  ];
-
   return (
     <Screen>
       <Stack.Screen
         options={{
           headerShown: true,
           title: 'პროექტი',
-          headerTitleStyle: { fontSize: 18, fontWeight: '700', color: '#1F2937' },
+          headerBackTitle: 'პროექტები',
+          headerTitleStyle: { fontSize: 18, fontWeight: '700', color: theme.colors.ink },
           headerShadowVisible: false,
-          headerStyle: { backgroundColor: '#F5F5F0' },
-          headerTintColor: '#1F2937',
-          headerRight: () => (
-            <Pressable
-              onPress={() => setEditing(true)}
-              hitSlop={10}
-              style={{ padding: 4 }}
-              {...a11y('რედაქტირება', 'პროექტის დეტალების შეცვლა', 'button')}
-            >
-              <Ionicons name="create-outline" size={22} color="#059669" />
-            </Pressable>
-          ),
+          headerStyle: { backgroundColor: theme.colors.background },
+          headerTintColor: theme.colors.accent,
         }}
       />
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32, gap: 16 }}>
-          {/* ── Hero Card ── */}
+          {/* ── Hero / Project Details Card ── */}
           <View style={styles.heroCard}>
-            <Text style={styles.heroName}>{project?.name ?? '—'}</Text>
-            {project?.company_name ? (
-              <View style={styles.heroMetaRow}>
-                <Ionicons name="business-outline" size={14} color="#6B7280" />
-                <Text style={styles.heroMetaText}>{project.company_name}</Text>
+            <Pressable
+              onPress={() => setEditing(true)}
+              hitSlop={10}
+              style={styles.heroEditBtn}
+              {...a11y('რედაქტირება', 'პროექტის დეტალების შეცვლა', 'button')}
+            >
+              <Ionicons name="create-outline" size={20} color={theme.colors.accent} />
+            </Pressable>
+
+            {/* Uploaded files — top of project details */}
+            <View style={{ marginBottom: 14 }}>
+              <UploadedFilesSection
+                files={files}
+                busy={filesBusy}
+                onUpload={uploadFile}
+                onOpen={openFile}
+                onDelete={deleteFile}
+              />
+            </View>
+
+            <View style={styles.heroRow}>
+              <View style={styles.logoPlaceholder}>
+                <Text style={styles.logoText}>{projectInitials(project?.name)}</Text>
               </View>
-            ) : null}
-            {project?.address ? (
-              <View style={styles.heroMetaRow}>
-                <Ionicons name="location-outline" size={14} color="#6B7280" />
-                <Text style={styles.heroMetaText}>{project.address}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.heroName}>{project?.name ?? '—'}</Text>
+                {project?.company_name ? (
+                  <View style={styles.heroMetaRow}>
+                    <Ionicons name="business-outline" size={14} color={theme.colors.inkSoft} />
+                    <Text style={styles.heroMetaText}>{project.company_name}</Text>
+                  </View>
+                ) : null}
+                {project?.address ? (
+                  <View style={styles.heroMetaRow}>
+                    <Ionicons name="location-outline" size={14} color={theme.colors.inkSoft} />
+                    <Text style={styles.heroMetaText}>{project.address}</Text>
+                  </View>
+                ) : null}
               </View>
-            ) : null}
+            </View>
+
             {project?.latitude != null && project?.longitude != null ? (
-              <View style={styles.mapWrap}>
-                <MapView
-                  provider={PROVIDER_DEFAULT}
-                  style={StyleSheet.absoluteFill}
-                  pointerEvents="none"
-                  initialRegion={{
-                    latitude: project.latitude,
-                    longitude: project.longitude,
-                    latitudeDelta: 0.01,
-                    longitudeDelta: 0.01,
-                  }}
-                >
-                  <Marker
-                    coordinate={{ latitude: project.latitude, longitude: project.longitude }}
-                    pinColor="#059669"
-                  />
-                </MapView>
-              </View>
+              <MapPreview
+                latitude={project.latitude}
+                longitude={project.longitude}
+                pinColor={theme.colors.accent}
+                style={styles.mapWrap}
+              />
             ) : null}
           </View>
 
-          {/* ── Stats Row ── */}
-          <View style={styles.statsRow}>
-            {stats.map(s => (
-              <View key={s.label} style={styles.statCard}>
-                <Ionicons name={s.icon} size={18} color="#059669" />
-                <Text style={styles.statCount}>{s.count}</Text>
-                <Text style={styles.statLabel}>{s.label}</Text>
-              </View>
-            ))}
-          </View>
-
-          {/* ── Signatures ── */}
+          {/* ── Participants (merged: crew + signers) ── */}
           <View style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>ხელმოწერები</Text>
-              {signers.length > 0 ? (
-                <View style={styles.badgeGreen}>
-                  <Text style={styles.badgeGreenText}>{signers.length}</Text>
-                </View>
-              ) : null}
+              <Text style={styles.sectionTitle}>მონაწილეები</Text>
+              <View style={styles.badgeGreen}>
+                <Text style={styles.badgeGreenText}>
+                  {(project?.crew?.length ?? 0) + (inspector ? 1 : 0) + signers.length}
+                </Text>
+              </View>
             </View>
-            {signers.length === 0 ? (
-              <EmptyState text="ჯერ არ არის ხელმომწერები" />
-            ) : (
-              <View style={{ gap: 10, marginTop: 10 }}>
+            <View style={{ marginTop: 10 }}>
+              <CrewList
+                inspector={inspector}
+                crew={project?.crew ?? []}
+                onChange={persistCrew}
+                hideAdd
+              />
+            </View>
+
+            {signers.length > 0 ? (
+              <View style={{ gap: 10, marginTop: 12 }}>
                 {signers.map(s => (
                   <Swipeable
                     key={s.id}
                     renderRightActions={() => (
                       <Pressable onPress={() => deleteSigner(s)} style={styles.swipeDelete} {...a11y('ხელმომწერის წაშლა', 'ამ ხელმომწერის წაშლა სიიდან', 'button')}>
-                        <Ionicons name="trash" size={18} color="#FFFFFF" />
+                        <Ionicons name="trash" size={18} color={theme.colors.white} />
                       </Pressable>
                     )}
                     overshootRight={false}
@@ -329,7 +422,7 @@ export default function ProjectDetail() {
                         {signerPreviews[s.id] ? (
                           <SafeSigImage uri={signerPreviews[s.id]} />
                         ) : (
-                          <Ionicons name="person" size={20} color="#9CA3AF" />
+                          <Ionicons name="person" size={20} color={theme.colors.inkFaint} />
                         )}
                       </View>
                       <View style={{ flex: 1 }}>
@@ -341,39 +434,21 @@ export default function ProjectDetail() {
                           </View>
                         ) : null}
                       </View>
-                      <Ionicons name="chevron-forward" size={18} color="#D1D5DB" />
+                      <Ionicons name="chevron-forward" size={18} color={theme.colors.borderStrong} />
                     </Pressable>
                   </Swipeable>
                 ))}
               </View>
-            )}
-            <Pressable
-              onPress={() => router.push(`/projects/${id}/signer` as any)}
-              style={styles.addBtn}
-              {...a11y('ხელმომწერის დამატება', 'ახალი ხელმომწერის დამატება პროექტზე', 'button')}
-            >
-              <Ionicons name="person-add" size={18} color="#059669" />
-              <Text style={styles.addBtnText}>+ ხელმომწერის დამატება</Text>
-            </Pressable>
-          </View>
+            ) : null}
 
-          {/* ── Participants ── */}
-          <View style={styles.sectionCard}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>მონაწილეები</Text>
-              <View style={styles.badgeGreen}>
-                <Text style={styles.badgeGreenText}>
-                  {(project?.crew?.length ?? 0) + (inspector ? 1 : 0)}
-                </Text>
-              </View>
-            </View>
-            <View style={{ marginTop: 10 }}>
-              <CrewList
-                inspector={inspector}
-                crew={project?.crew ?? []}
-                onChange={persistCrew}
-              />
-            </View>
+            <Pressable
+              onPress={openAddParticipant}
+              style={styles.addBtn}
+              {...a11y('დამატება', 'მონაწილის ან ხელმომწერის დამატება', 'button')}
+            >
+              <Ionicons name="person-add" size={18} color={theme.colors.accent} />
+              <Text style={styles.addBtnText}>+ დამატება</Text>
+            </Pressable>
           </View>
 
           {/* ── Questionnaires ── */}
@@ -385,66 +460,60 @@ export default function ProjectDetail() {
               </View>
             </View>
 
-            <Pressable onPress={startNewQuestionnaire} style={styles.addBtn} {...a11y('ახალი კითხვარი', 'ახალი კითხვარის დაწყება', 'button')}>
-              <Ionicons name="add-circle" size={18} color="#059669" />
-              <Text style={styles.addBtnText}>+ ახალი კითხვარი</Text>
-            </Pressable>
-
-            {/* Drafts */}
-            <View style={{ marginTop: 14 }}>
-              <View style={styles.subSectionHeader}>
-                <View style={[styles.subDot, { backgroundColor: '#FEF3C7' }]}>
-                  <Ionicons name="pencil" size={11} color="#92400E" />
-                </View>
-                <Text style={styles.subSectionLabel}>დრაფტები</Text>
-                <Text style={styles.subSectionCount}>{drafts.length}</Text>
-              </View>
-              {drafts.length === 0 ? (
-                <EmptyState text="ჯერ არ არის დრაფტები" />
-              ) : (
-                <View style={{ gap: 8, marginTop: 8 }}>
-                  {drafts.map(q => {
-                    const tpl = templates.find(t => t.id === q.template_id);
-                    return (
-                      <Swipeable
-                        key={q.id}
-                        renderRightActions={() => (
-                          <Pressable onPress={() => deleteQuestionnaire(q)} style={styles.swipeDelete} {...a11y('კითხვარის წაშლა', 'დრაფტის წაშლა', 'button')}>
-                            <Ionicons name="trash" size={18} color="#FFFFFF" />
-                          </Pressable>
-                        )}
-                        overshootRight={false}
-                      >
-                        <Pressable
-                          onPress={() => router.push(`/inspections/${q.id}/wizard` as any)}
-                          style={styles.listRow}
-                          {...a11y(tpl?.name ?? 'კითხვარი', 'დრაფტის გასაგრძელებლად დააჭირეთ', 'button')}
+            {drafts.length > 0 ? (
+              <>
+                <View style={{ marginTop: 10 }}>
+                  <View style={styles.subSectionHeader}>
+                    <View style={[styles.subDot, { backgroundColor: theme.colors.semantic.warningSoft }]}>
+                      <Ionicons name="pencil" size={11} color={'#92400E'} />
+                    </View>
+                    <Text style={styles.subSectionLabel}>დრაფტები</Text>
+                    <Text style={styles.subSectionCount}>{drafts.length}</Text>
+                  </View>
+                  <View style={{ gap: 8, marginTop: 8 }}>
+                    {drafts.map(q => {
+                      const tpl = templates.find(t => t.id === q.template_id);
+                      return (
+                        <Swipeable
+                          key={q.id}
+                          renderRightActions={() => (
+                            <Pressable onPress={() => deleteQuestionnaire(q)} style={styles.swipeDelete} {...a11y('ინსპექციას წაშლა', 'დრაფტის წაშლა', 'button')}>
+                              <Ionicons name="trash" size={18} color={theme.colors.white} />
+                            </Pressable>
+                          )}
+                          overshootRight={false}
                         >
-                          <View style={[styles.statusIcon, { backgroundColor: '#FEF3C7' }]}>
-                            <Ionicons name="pencil" size={14} color="#92400E" />
-                          </View>
-                          <View style={{ flex: 1 }}>
-                            <Text style={styles.listRowTitle}>{tpl?.name ?? 'კითხვარი'}</Text>
-                            <Text style={styles.listRowSubtitle}>
-                              {new Date(q.created_at).toLocaleString('ka')}
-                            </Text>
-                          </View>
-                          <Ionicons name="chevron-forward" size={18} color="#D1D5DB" />
-                        </Pressable>
-                      </Swipeable>
-                    );
-                  })}
+                          <Pressable
+                            onPress={() => router.push(`/inspections/${q.id}/wizard` as any)}
+                            style={styles.listRow}
+                            {...a11y(tpl?.name ?? 'ინსპექცია', 'დრაფტის გასაგრძელებლად დააჭირეთ', 'button')}
+                          >
+                            <View style={[styles.statusIcon, { backgroundColor: theme.colors.semantic.warningSoft }]}>
+                              <Ionicons name="pencil" size={14} color={'#92400E'} />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.listRowTitle}>{tpl?.name ?? 'ინსპექცია'}</Text>
+                              <Text style={styles.listRowSubtitle}>
+                                {formatShortDateTime(q.created_at)}
+                              </Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={18} color={theme.colors.borderStrong} />
+                          </Pressable>
+                        </Swipeable>
+                      );
+                    })}
+                  </View>
                 </View>
-              )}
-            </View>
 
-            <View style={styles.sectionDivider} />
+                <View style={styles.sectionDivider} />
+              </>
+            ) : null}
 
             {/* Completed */}
             <View style={{ marginTop: 14 }}>
               <View style={styles.subSectionHeader}>
-                <View style={[styles.subDot, { backgroundColor: '#D1FAE5' }]}>
-                  <Ionicons name="checkmark" size={11} color="#065F46" />
+                <View style={[styles.subDot, { backgroundColor: theme.colors.semantic.successSoft }]}>
+                  <Ionicons name="checkmark" size={11} color={theme.colors.primary[700]} />
                 </View>
                 <Text style={styles.subSectionLabel}>დასრულებული</Text>
                 <Text style={styles.subSectionCount}>{completed.length}</Text>
@@ -459,8 +528,8 @@ export default function ProjectDetail() {
                       <Swipeable
                         key={q.id}
                         renderRightActions={() => (
-                          <Pressable onPress={() => deleteQuestionnaire(q)} style={styles.swipeDelete} {...a11y('კითხვარის წაშლა', 'დასრულებული კითხვარის წაშლა', 'button')}>
-                            <Ionicons name="trash" size={18} color="#FFFFFF" />
+                          <Pressable onPress={() => deleteQuestionnaire(q)} style={styles.swipeDelete} {...a11y('ინსპექციას წაშლა', 'დასრულებული ინსპექციას წაშლა', 'button')}>
+                            <Ionicons name="trash" size={18} color={theme.colors.white} />
                           </Pressable>
                         )}
                         overshootRight={false}
@@ -468,18 +537,18 @@ export default function ProjectDetail() {
                         <Pressable
                           onPress={() => router.push(`/inspections/${q.id}` as any)}
                           style={styles.listRow}
-                          {...a11y(tpl?.name ?? 'კითხვარი', 'დასრულებული კითხვარის ნახვა', 'button')}
+                          {...a11y(tpl?.name ?? 'ინსპექცია', 'დასრულებული ინსპექციას ნახვა', 'button')}
                         >
-                          <View style={[styles.statusIcon, { backgroundColor: '#D1FAE5' }]}>
-                            <Ionicons name="checkmark-circle" size={14} color="#065F46" />
+                          <View style={[styles.statusIcon, { backgroundColor: theme.colors.semantic.successSoft }]}>
+                            <Ionicons name="checkmark-circle" size={14} color={theme.colors.primary[700]} />
                           </View>
                           <View style={{ flex: 1 }}>
-                            <Text style={styles.listRowTitle}>{tpl?.name ?? 'კითხვარი'}</Text>
+                            <Text style={styles.listRowTitle}>{tpl?.name ?? 'ინსპექცია'}</Text>
                             <Text style={styles.listRowSubtitle}>
-                              {new Date(q.created_at).toLocaleString('ka')}
+                              {formatShortDateTime(q.created_at)}
                             </Text>
                           </View>
-                          <Ionicons name="chevron-forward" size={18} color="#D1D5DB" />
+                          <Ionicons name="chevron-forward" size={18} color={theme.colors.borderStrong} />
                         </Pressable>
                       </Swipeable>
                     );
@@ -489,37 +558,16 @@ export default function ProjectDetail() {
             </View>
           </View>
 
-          {/* ── Other Projects ── */}
-          {otherProjects.length > 0 ? (
-            <View style={{ marginTop: 8, gap: 8 }}>
-              <Text style={styles.otherHeader}>სხვა პროექტები</Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ gap: 8, paddingRight: 8 }}
-              >
-                {otherProjects.slice(0, 10).map(op => {
-                  const av = projectAvatar(op.id);
-                  return (
-                    <Pressable
-                      key={op.id}
-                      onPress={() => router.push(`/projects/${op.id}` as any)}
-                      style={styles.otherChip}
-                      {...a11y(op.name, 'სხვა პროექტზე გადასვლა', 'button')}
-                    >
-                      <View style={[styles.otherChipIcon, { backgroundColor: av.color + '22' }]}>
-                        <Text style={{ fontSize: 14 }}>{av.emoji}</Text>
-                      </View>
-                      <Text style={styles.otherChipText} numberOfLines={1}>
-                        {op.name}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
-            </View>
-          ) : null}
         </ScrollView>
+
+        {/* ── FAB: new questionnaire ── */}
+        <Pressable
+          onPress={startNewQuestionnaire}
+          style={({ pressed }) => [styles.fab, pressed && { opacity: 0.85 }]}
+          {...a11y('ახალი ინსპექცია', 'ახალი ინსპექციას დაწყება', 'button')}
+        >
+          <Ionicons name="add" size={30} color={theme.colors.white} />
+        </Pressable>
       </SafeAreaView>
 
       <EditProjectSheet
@@ -539,7 +587,7 @@ export default function ProjectDetail() {
 function EmptyState({ text }: { text: string }) {
   return (
     <View style={styles.emptyState}>
-      <Ionicons name="document-text-outline" size={28} color="#D1D5DB" />
+      <Ionicons name="document-text-outline" size={28} color={theme.colors.borderStrong} />
       <Text style={styles.emptyStateText}>{text}</Text>
     </View>
   );
@@ -547,7 +595,7 @@ function EmptyState({ text }: { text: string }) {
 
 function SafeSigImage({ uri }: { uri: string }) {
   const [err, setErr] = useState(false);
-  if (err) return <Ionicons name="person" size={20} color="#9CA3AF" />;
+  if (err) return <Ionicons name="person" size={20} color={theme.colors.inkFaint} />;
   return (
     <Image
       source={{ uri }}
@@ -605,7 +653,7 @@ function EditProjectSheet({
       }));
       onSaved(saved);
     } catch (e) {
-      toast.error(toErrorMessage(e, 'შენახვა ვერ მოხერხდა'));
+      toast.error(friendlyError(e, 'შენახვა ვერ მოხერხდა'));
     } finally {
       setBusy(false);
     }
@@ -618,11 +666,11 @@ function EditProjectSheet({
           <View style={styles.modalCard}>
             <View style={styles.modalHandle} />
             <View style={styles.modalHeader}>
-              <Text style={{ fontSize: 18, fontWeight: '800', color: '#1F2937', flex: 1 }}>
+              <Text style={{ fontSize: 18, fontWeight: '800', color: theme.colors.ink, flex: 1 }}>
                 რედაქტირება
               </Text>
               <Pressable onPress={onClose} hitSlop={10} {...a11y('დახურვა', 'რედაქტირების ფანჯრის დახურვა', 'button')}>
-                <Ionicons name="close" size={22} color="#6B7280" />
+                <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
               </Pressable>
             </View>
             <ScrollView
@@ -663,77 +711,92 @@ function EditProjectSheet({
 const styles = StyleSheet.create({
   // ── Hero ──
   heroCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.surface,
     borderRadius: 16,
     padding: 20,
-    shadowColor: '#000',
+    shadowColor: theme.colors.ink,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,
     shadowRadius: 10,
     elevation: 3,
   },
+  heroRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  heroEditBtn: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    padding: 6,
+    borderRadius: 999,
+    backgroundColor: theme.colors.accentSoft,
+    zIndex: 5,
+  },
+  mapWrap: {
+    marginTop: 14,
+    height: 160,
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  logoPlaceholder: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: theme.colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoText: {
+    color: theme.colors.white,
+    fontSize: 18,
+    fontWeight: '800',
+  },
   heroName: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#1F2937',
+    color: theme.colors.ink,
   },
   heroMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginTop: 8,
+    marginTop: 6,
   },
   heroMetaText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: theme.colors.inkSoft,
     flexShrink: 1,
   },
-  mapWrap: {
-    marginTop: 12,
-    height: 160,
-    borderRadius: 12,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
 
-  // ── Stats ──
-  statsRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 12,
+  // ── FAB ──
+  fab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 28,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: theme.colors.accent,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  statCount: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1F2937',
-    marginTop: 4,
-  },
-  statLabel: {
-    fontSize: 11,
-    color: '#9CA3AF',
-    textTransform: 'uppercase',
-    fontWeight: '600',
-    marginTop: 2,
+    justifyContent: 'center',
+    zIndex: 40,
+    shadowColor: theme.colors.accent,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 10,
   },
 
   // ── Section Cards ──
   sectionCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.surface,
     borderRadius: 16,
     padding: 16,
-    shadowColor: '#000',
+    shadowColor: theme.colors.ink,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,
     shadowRadius: 10,
@@ -747,10 +810,10 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1F2937',
+    color: theme.colors.ink,
   },
   badgeGreen: {
-    backgroundColor: '#D1FAE5',
+    backgroundColor: theme.colors.semantic.successSoft,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 999,
@@ -758,11 +821,11 @@ const styles = StyleSheet.create({
   badgeGreenText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#065F46',
+    color: theme.colors.primary[700],
   },
   sectionDivider: {
     height: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: theme.colors.surfaceSecondary,
     marginTop: 14,
   },
 
@@ -772,34 +835,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     padding: 12,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: theme.colors.surfaceSecondary,
     borderRadius: 12,
   },
   listRowTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1F2937',
+    color: theme.colors.ink,
   },
   listRowSubtitle: {
     fontSize: 12,
-    color: '#6B7280',
+    color: theme.colors.inkSoft,
     marginTop: 2,
   },
   sigThumb: {
     width: 44,
     height: 44,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.surface,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: theme.colors.border,
     overflow: 'hidden',
   },
   missingChip: {
     marginTop: 4,
     alignSelf: 'flex-start',
-    backgroundColor: '#FEF3C7',
+    backgroundColor: theme.colors.semantic.warningSoft,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 999,
@@ -827,14 +890,14 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 12,
     fontWeight: '700',
-    color: '#6B7280',
+    color: theme.colors.inkSoft,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   subSectionCount: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#9CA3AF',
+    color: theme.colors.inkFaint,
   },
   statusIcon: {
     width: 28,
@@ -853,11 +916,11 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: '#059669',
+    borderColor: theme.colors.accent,
     marginTop: 12,
   },
   addBtnText: {
-    color: '#059669',
+    color: theme.colors.accent,
     fontWeight: '600',
     fontSize: 14,
   },
@@ -870,14 +933,14 @@ const styles = StyleSheet.create({
   },
   emptyStateText: {
     fontSize: 13,
-    color: '#9CA3AF',
+    color: theme.colors.inkFaint,
     fontWeight: '500',
   },
 
   // ── Swipe ──
   swipeDelete: {
     width: 72,
-    backgroundColor: '#DC2626',
+    backgroundColor: theme.colors.danger,
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 8,
@@ -891,7 +954,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalCard: {
-    backgroundColor: '#F5F5F0',
+    backgroundColor: theme.colors.background,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 16,
@@ -902,7 +965,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#D1D5DB',
+    backgroundColor: theme.colors.borderStrong,
     alignSelf: 'center',
     marginBottom: 10,
   },
@@ -911,41 +974,4 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  // ── Other Projects ──
-  otherHeader: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#9CA3AF',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
-  otherChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 999,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    maxWidth: 180,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  otherChipIcon: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  otherChipText: {
-    fontSize: 12,
-    color: '#6B7280',
-    flexShrink: 1,
-  },
 });

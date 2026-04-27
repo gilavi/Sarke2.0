@@ -67,7 +67,7 @@ export function SignatureCanvas({ visible, personName, onCancel, onConfirm }: Pr
   `;
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onCancel}>
+    <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={onCancel}>
       <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
         {/* Header */}
         <View style={styles.header}>

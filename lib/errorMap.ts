@@ -1,6 +1,6 @@
 import { toErrorMessage } from './logError';
 
-export function friendlyError(err: unknown): string {
+export function friendlyError(err: unknown, fallback = 'უცნობი შეცდომა'): string {
   const msg = toErrorMessage(err);
   const lower = msg.toLowerCase();
 
@@ -21,12 +21,12 @@ export function friendlyError(err: unknown): string {
   )
     return 'ქსელის შეცდომა. შეამოწმეთ ინტერნეტ კავშირი';
   if (lower.includes('cancelled') || lower.includes('canceled')) return 'ოპერაცია გაუქმდა';
-  if (lower.includes('not found') || lower.includes('404')) return 'ობიექტი ვერ მოიძებნა';
+  if (lower.includes('not found') || lower.includes('404')) return 'მონაცემი ვერ მოიძებნა';
   if (lower.includes('permission') || lower.includes('forbidden') || lower.includes('403'))
     return 'წვდომა აკრძალულია';
   if (lower.includes('duplicate') || lower.includes('unique constraint'))
     return 'უკვე არსებობს';
-  return msg || 'უცნობი შეცდომა';
+  return msg || fallback;
 }
 
 export function isEmailTakenError(err: unknown): boolean {

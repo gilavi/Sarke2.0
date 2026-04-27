@@ -23,8 +23,8 @@ export default function TemplatesScreen() {
   );
 
   return (
-    <Screen>
-      <Stack.Screen options={{ headerShown: true, title: 'შაბლონები' }} />
+    <Screen edgeToEdge>
+      <Stack.Screen options={{ headerShown: true, title: 'შაბლონები', headerBackTitle: 'მეტი' }} />
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
         <FlatList
           data={templates}
@@ -34,7 +34,7 @@ export default function TemplatesScreen() {
             !loaded ? (
               <View style={{ gap: 12 }}>
                 {Array.from({ length: 3 }).map((_, i) => (
-                  <Card key={i} padding={14}>
+                  <Card key={`skeleton-${i}`} padding={14}>
                     <View style={{ gap: 8 }}>
                       <Skeleton width={'70%'} height={15} />
                       <Skeleton width={'40%'} height={11} />

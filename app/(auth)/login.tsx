@@ -183,7 +183,7 @@ function LoginForm({ onForgotPassword }: { onForgotPassword: () => void }) {
 
   return (
     <View style={{ gap: 14 }}>
-      <Field label="იმეილი">
+      <Field label="ელ-ფოსტა">
         <Input
           value={email}
           onChangeText={setEmail}
@@ -220,7 +220,7 @@ function LoginForm({ onForgotPassword }: { onForgotPassword: () => void }) {
       <Pressable
         onPress={onForgotPassword}
         style={{ alignSelf: 'flex-end', marginTop: -4 }}
-        {...a11y('პაროლის აღდგენა', 'შეეხეთ პაროლის აღსადგენად იმეილის გაგზავნისთვის', 'button')}
+        {...a11y('პაროლის აღდგენა', 'შეეხეთ პაროლის აღსადგენად ელ-ფოსტის გაგზავნისთვის', 'button')}
       >
         <Text style={styles.linkText}>პაროლი დაგავიწყდა?</Text>
       </Pressable>
@@ -320,7 +320,7 @@ function RegisterForm({
           </Field>
         </View>
       </View>
-      <Field label="იმეილი">
+      <Field label="ელ-ფოსტა">
         <Input
           value={email}
           onChangeText={setEmail}
@@ -357,7 +357,7 @@ function RegisterForm({
       {error ? <InlineError>{error}</InlineError> : null}
       <Button title="რეგისტრაცია" onPress={handleRegister} loading={busy} disabled={!canSubmit} {...a11y('რეგისტრაციის ღილაკი', 'შეეხეთ ახალი ანგარიშის შესაქმნელად', 'button')} />
       <Divider />
-      <GoogleButton onPress={handleGoogle} loading={googleBusy} {...a11y('Google-ით რეგისტრაცია', 'შეეხეთ Google ანგარიშით რეგისტრაციისთვის', 'button')} />
+      <GoogleButton onPress={handleGoogle} loading={googleBusy} label="Google-ით რეგისტრაცია" {...a11y('Google-ით რეგისტრაცია', 'შეეხეთ Google ანგარიშით რეგისტრაციისთვის', 'button')} />
     </View>
   );
 }
@@ -396,7 +396,7 @@ function Divider() {
   );
 }
 
-function GoogleButton({ onPress, loading, ...rest }: { onPress: () => void; loading?: boolean } & Record<string, any>) {
+function GoogleButton({ onPress, loading, label, ...rest }: { onPress: () => void; loading?: boolean; label?: string } & Record<string, any>) {
   return (
     <Pressable
       onPress={onPress}
@@ -416,7 +416,7 @@ function GoogleButton({ onPress, loading, ...rest }: { onPress: () => void; load
             <Text style={styles.googleLogoText}>G</Text>
           </View>
           <Text style={{ fontWeight: '600', fontSize: 15, color: theme.colors.ink }}>
-            Google-ით შესვლა
+            {label ?? 'Google-ით შესვლა'}
           </Text>
         </>
       )}

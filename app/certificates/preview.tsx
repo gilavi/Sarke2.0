@@ -19,6 +19,7 @@ import {
 import { buildPdfPreviewHtml } from '../../lib/pdf';
 import { useToast } from '../../lib/toast';
 import { logError, toErrorMessage } from '../../lib/logError';
+import { friendlyError } from '../../lib/errorMap';
 import { theme } from '../../lib/theme';
 import { a11y } from '../../lib/accessibility';
 import type {
@@ -117,7 +118,7 @@ export default function PdfPreviewScreen() {
         setPreviewHtml(html);
       }
     } catch (e) {
-      toast.error(toErrorMessage(e, 'პრევიუს ჩატვირთვა ვერ მოხერხდა'));
+      toast.error(friendlyError(e, 'პრევიუს ჩატვირთვა ვერ მოხერხდა'));
     } finally {
       setLoading(false);
     }
@@ -135,7 +136,7 @@ export default function PdfPreviewScreen() {
   const photoCount = Object.values(photosByAnswer).reduce((sum, arr) => sum + arr.length, 0);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.surface }} edges={['top']}>
       <Stack.Screen
         options={{
           headerShown: false,
@@ -144,8 +145,8 @@ export default function PdfPreviewScreen() {
 
       {/* Top Bar */}
       <View style={styles.topBar}>
-        <Pressable onPress={() => router.back()} hitSlop={10} style={styles.topBtn} {...a11y('უკან', 'გადადი უკან', 'button')}>
-          <Ionicons name="arrow-back" size={24} color="#1F2937" />
+        <Pressable onPress={() => router.back()} hitSlop={10} style={styles.topBtn} {...a11y('ინსპექცია — დაბრუნება', 'გადავა ინსპექციის ეკრანზე', 'button')}>
+          <Ionicons name="arrow-back" size={24} color={theme.colors.accent} />
         </Pressable>
         <Text style={styles.topTitle}>PDF პრევიუ</Text>
         <Pressable onPress={goToGenerate} hitSlop={10} style={styles.generateBtn} {...a11y('გენერაცია', 'PDF-ის გენერაცია', 'button')}>
@@ -156,7 +157,7 @@ export default function PdfPreviewScreen() {
       {/* Content */}
       {loading || !previewHtml ? (
         <View style={styles.loader}>
-          <ActivityIndicator size="large" color="#147A4F" />
+          <ActivityIndicator size="large" color={theme.colors.accent} />
           <Text style={styles.loaderText}>პრევიუ იტვირთება…</Text>
         </View>
       ) : (
@@ -172,26 +173,26 @@ export default function PdfPreviewScreen() {
           {/* Bottom Stats Bar */}
           <View style={styles.bottomBar}>
             <View style={styles.bottomStat}>
-              <Ionicons name="clipboard-outline" size={14} color="#6B7280" />
+              <Ionicons name="clipboard-outline" size={14} color={theme.colors.inkSoft} />
               <Text style={styles.bottomStatText} numberOfLines={1}>
-                {template?.name ?? 'კითხვარი'}
+                {template?.name ?? 'ინსპექცია'}
               </Text>
             </View>
             <View style={styles.bottomDivider} />
             <View style={styles.bottomStat}>
-              <Ionicons name="business-outline" size={14} color="#6B7280" />
+              <Ionicons name="business-outline" size={14} color={theme.colors.inkSoft} />
               <Text style={styles.bottomStatText} numberOfLines={1}>
                 {project?.name ?? '—'}
               </Text>
             </View>
             <View style={styles.bottomDivider} />
             <View style={styles.bottomStat}>
-              <Ionicons name="help-circle-outline" size={14} color="#6B7280" />
+              <Ionicons name="help-circle-outline" size={14} color={theme.colors.inkSoft} />
               <Text style={styles.bottomStatText}>{questions.length} კითხვა</Text>
             </View>
             <View style={styles.bottomDivider} />
             <View style={styles.bottomStat}>
-              <Ionicons name="camera-outline" size={14} color="#6B7280" />
+              <Ionicons name="camera-outline" size={14} color={theme.colors.inkSoft} />
               <Text style={styles.bottomStatText}>{photoCount} ფოტო</Text>
             </View>
           </View>
@@ -209,8 +210,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-    backgroundColor: '#fff',
+    borderBottomColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
   },
   topBtn: {
     padding: 4,
@@ -219,7 +220,7 @@ const styles = StyleSheet.create({
   topTitle: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#1F2937',
+    color: theme.colors.ink,
     textAlign: 'center',
     flex: 1,
   },
@@ -230,7 +231,7 @@ const styles = StyleSheet.create({
   generateBtnText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#147A4F',
+    color: theme.colors.accent,
   },
   loader: {
     flex: 1,
@@ -240,7 +241,7 @@ const styles = StyleSheet.create({
   },
   loaderText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: theme.colors.inkSoft,
   },
   bottomBar: {
     flexDirection: 'row',
@@ -248,8 +249,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-    backgroundColor: '#FAFAF8',
+    borderTopColor: theme.colors.border,
+    backgroundColor: theme.colors.background,
     gap: 8,
   },
   bottomStat: {
@@ -261,12 +262,12 @@ const styles = StyleSheet.create({
   },
   bottomStatText: {
     fontSize: 11,
-    color: '#4B5563',
+    color: theme.colors.inkSoft,
     fontWeight: '500',
   },
   bottomDivider: {
     width: 1,
     height: 16,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: theme.colors.border,
   },
 });

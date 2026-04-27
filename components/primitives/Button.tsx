@@ -132,8 +132,39 @@ export function Button({
   const v = variantStyles[variant];
   const s = sizeStyles[size];
 
+  // Layout properties (margin/alignSelf/flex/width) belong on the outer
+  // Animated.View so the wrapper can actually stretch/position. Visual
+  // properties stay on the inner Pressable. Splitting prevents margins from
+  // applying twice (outer wrapper AND inner Pressable).
+  const flatStyle = StyleSheet.flatten(style) || {};
+  const {
+    alignSelf,
+    flex,
+    width,
+    margin,
+    marginTop,
+    marginBottom,
+    marginLeft,
+    marginRight,
+    marginHorizontal,
+    marginVertical,
+    ...innerStyle
+  } = flatStyle as any;
+  const layoutStyle = {
+    alignSelf,
+    flex,
+    width,
+    margin,
+    marginTop,
+    marginBottom,
+    marginLeft,
+    marginRight,
+    marginHorizontal,
+    marginVertical,
+  };
+
   return (
-    <Animated.View style={[animatedStyle, v.shadow, { borderRadius: s.borderRadius }]}>
+    <Animated.View style={[animatedStyle, v.shadow, { borderRadius: s.borderRadius, alignSelf: 'flex-start' }, layoutStyle]}>
       <Pressable
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
@@ -145,7 +176,7 @@ export function Button({
           { backgroundColor: v.backgroundColor },
           v.borderColor ? { borderColor: v.borderColor, borderWidth: v.borderWidth } : null,
           (disabled || loading) && styles.disabled,
-          style,
+          innerStyle,
         ]}
         {...rest}
       >
@@ -191,7 +222,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    alignSelf: 'flex-start',
   },
   text: {
     fontFamily: theme.typography.fontFamily.bodySemiBold,

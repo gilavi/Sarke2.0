@@ -13,6 +13,8 @@ Two seeded templates, both in ქართული, because Google Translate do
 - **ფასადის ხარაჩოს შემოწმების აქტი** — faÇade scaffolding inspection (yes, the Ç is intentional, we fancy now)
 - **დამცავი ქამრების შემოწმების აქტი** — fall-protection harness inspection. If this fails, you're already dead.
 
+**Contextual help (ხარაჩო tour):** the first time a user starts a scaffold questionnaire they see a 9‑card swipeable tour explaining each component. Dismissal is persisted in `AsyncStorage` under `haraco_tour_seen`. Every Section 2 row also shows a "?" icon that opens a bottom sheet with the component illustration + one‑line guidance.
+
 ---
 
 ## 🧪 Stack (a.k.a. "Why Is My Laptop Fan Crying?")
@@ -77,6 +79,10 @@ app/                  expo-router routes (the magic folder)
 customer_support/     just kidding, we don't have that
 components/ui.tsx     Button, Card, Input, Chip, Screen
                       (glorified `<View>` wrappers)
+components/BackButton.tsx
+                      Shared back button — accepts a `label` prop
+                      with the destination screen name (e.g.
+                      "მთავარი") instead of a generic "უკან".
 lib/
   supabase.ts         Supabase client (our digital frenemy)
   session.tsx         Auth provider (remembers you, judges you)
@@ -109,6 +115,30 @@ supabase/             SQL incantations
 3. The PDF export takes 3-5 business days (on a fast phone).
 4. `npm install` downloads the entire internet. Twice.
 5. This README is 60% jokes, 40% cries for help.
+
+---
+
+## ✍️ Copy Style Guide (Georgian UI)
+
+All in-app strings are inline (no i18n file). Keep the voice consistent:
+
+| Rule | Decision |
+|---|---|
+| You-form | Polite `თქვენ` everywhere: `შეიყვანეთ`, `აირჩიეთ`, `დააჭირეთ`, `დაამატეთ`, `შეამოწმეთ`. Never `შეიყვანე` / `აირჩიე` / `დააჭირე` / `დაამატე` / `შეამოწმე`. |
+| Email | `ელ-ფოსტა` (never `იმეილი`). |
+| Inspection (noun) | `ინსპექცია` (never `შემოწმება` / `ინსპექტირება` as the artifact noun). |
+| To inspect (verb) | `შემოწმება` allowed only as the verbal action, not as the noun for the artifact. |
+| PDF artifact | `PDF რეპორტი` (not `PDF ანგარიში`). |
+| Qualification credential | `კვალიფიკაციის სერტიფიკატი`; short form `სერტიფიკატი` only inside qualifications screens. |
+| Project / Template / Signature / Scaffold / Harness | `პროექტი` / `შაბლონი` / `ხელმოწერა` / `ხარაჩო` / `ქამარი`. |
+| No abbreviations | Don't shorten Georgian words (`გამოტოვ.` → `გამოტოვილი`). Weekday abbreviations may stay. |
+| No English UI words | Inside Georgian copy, use Georgian (`Share` → `გაზიარება`). |
+| `გთხოვთ` | OK for the formal register; don't sprinkle on every line, but don't strip either. |
+
+Grep guard for regressions:
+```
+git grep -nE "იმეილი|გაიცანი |სცადე[^თ]|შეიყვანე[^თ]|აირჩიე[^თ]|დააჭირე[^თ]|დაამატე[^თ]|შეამოწმე[^თ]|არ ხარ\b" -- 'app/**' 'components/**'
+```
 
 ---
 

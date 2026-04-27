@@ -12,7 +12,7 @@ export const SECTION1_HELP: ScaffoldHelpEntry[] = [
   {
     key: 'passport',
     name: 'ხარაჩოს პასპორტი',
-    oneLiner: 'შეამოწმე, რომ პასპორტი გაცემულია და მოქმედია.',
+    oneLiner: 'შეამოწმეთ, რომ პასპორტი გაცემულია და მოქმედია.',
   },
   {
     key: 'certificate',
@@ -27,12 +27,12 @@ export const SECTION1_HELP: ScaffoldHelpEntry[] = [
   {
     key: 'distance25',
     name: '25 მეტრიანი დაშორება',
-    oneLiner: 'შეამოწმე ელ.სადენებიდან მინიმუმ 25 მეტრის დაცილება.',
+    oneLiner: 'შეამოწმეთ ელ.სადენებიდან მინიმუმ 25 მეტრის დაცილება.',
   },
   {
     key: 'improvisedLadder',
     name: 'კუსტარული/თვითნაკეთი კიბე',
-    oneLiner: 'არ გამოიყენო კუსტარული ან თვითნაკეთი კიბე.',
+    oneLiner: 'არ გამოიყენოთ კუსტარული ან თვითნაკეთი კიბე.',
   },
 ];
 
@@ -40,7 +40,7 @@ export const SCAFFOLD_HELP: ScaffoldHelpEntry[] = [
   {
     key: 'jack',
     name: 'რეგულირებადი დომკრატი',
-    oneLiner: 'შეამოწმე ხრახნი არ არის გადახრილი ან დაზიანებული.',
+    oneLiner: 'შეამოწმეთ, რომ ხრახნი არ არის გადახრილი ან დაზიანებული.',
   },
   {
     key: 'basePlate',
@@ -99,7 +99,7 @@ const BY_KEY: Record<string, ScaffoldHelpEntry> = [
 const HARNESS_FALLBACK: ScaffoldHelpEntry = {
   key: 'certificate',
   name: '',
-  oneLiner: 'შეამოწმე კომპონენტის მთლიანობა და მექანიკური დაზიანებები.',
+  oneLiner: 'შეამოწმეთ კომპონენტის მთლიანობა და მექანიკური დაზიანებები.',
 };
 
 export function helpForRow(rowLabel: string | null | undefined): ScaffoldHelpEntry {
