@@ -27,6 +27,7 @@ import {
 import { useToast } from '../../lib/toast';
 import { theme } from '../../lib/theme';
 import { toErrorMessage } from '../../lib/logError';
+import { friendlyError } from '../../lib/errorMap';
 import { a11y } from '../../lib/accessibility';
 import type {
   Certificate,
@@ -63,14 +64,14 @@ const thumbStyles = StyleSheet.create({
   wrapper: {
     width: 58,
     height: 80,
-    borderRadius: 8,
+    borderRadius: theme.radius.sm,
     backgroundColor: theme.colors.white,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: theme.colors.hairline,
     flexDirection: 'row',
     overflow: 'hidden',
     // Subtle shadow
-    shadowColor: '#000',
+    shadowColor: theme.colors.ink,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
     shadowRadius: 3,
@@ -143,7 +144,7 @@ export default function CertificatesScreen() {
       setCerts(prev => prev.filter(c => c.id !== cert.id));
       toast.success('წაიშალა');
     } catch (e) {
-      toast.error(toErrorMessage(e, 'ვერ წაიშალა'));
+      toast.error(friendlyError(e, 'ვერ წაიშალა'));
     }
   };
 
@@ -160,7 +161,7 @@ export default function CertificatesScreen() {
           !loaded ? (
             <View style={{ gap: 10 }}>
               {Array.from({ length: 4 }).map((_, i) => (
-                <Card key={i} padding={12}>
+                <Card key={`skeleton-${i}`} padding={12}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                     <Skeleton width={58} height={80} radius={8} />
                     <View style={{ flex: 1, gap: 6 }}>
@@ -181,9 +182,9 @@ export default function CertificatesScreen() {
             <EmptyState
               type="certificates"
               title="PDF რეპორტები"
-              subtitle="დაასრულე ინსპექცია და დააგენერირე პირველი PDF რეპორტი"
+              subtitle="დაასრულეთ ინსპექცია და დააგენერირეთ პირველი PDF რეპორტი"
               action={{
-                label: 'ახალი შემოწმება',
+                label: 'ახალი ინსპექცია',
                 icon: 'add-circle-outline',
                 onPress: () => router.push('/(tabs)/home'),
               }}

@@ -1,11 +1,44 @@
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
+import Constants from 'expo-constants';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { supabase } from './supabase';
 import { purgeUserScopedStorage } from './storage-purge';
 import { logError } from './logError';
+import { TERMS_VERSION } from './terms';
 import type { AppUser } from '../types/models';
+
+// Dev-only: when expo.extra.useMockData is true, skip Supabase auth and pin a
+// fake signed-in user so the post-auth flows can be exercised without a real
+// backend. Has no effect in production builds (flag is false in main).
+const useMockAuth = Constants.expoConfig?.extra?.useMockData === true;
+const MOCK_USER_ID = '00000000-0000-0000-0000-00000000beef';
+const MOCK_SESSION = {
+  access_token: 'mock-access-token',
+  refresh_token: 'mock-refresh-token',
+  expires_in: 3600,
+  expires_at: Math.floor(Date.now() / 1000) + 3600,
+  token_type: 'bearer',
+  user: {
+    id: MOCK_USER_ID,
+    aud: 'authenticated',
+    email: 'mock@sarke.dev',
+    user_metadata: { first_name: 'Mock', last_name: 'User' },
+    app_metadata: {},
+    created_at: new Date().toISOString(),
+  },
+} as unknown as Session;
+const MOCK_USER: AppUser = {
+  id: MOCK_USER_ID,
+  email: 'mock@sarke.dev',
+  first_name: 'Mock',
+  last_name: 'User',
+  created_at: new Date().toISOString(),
+  tc_accepted_version: TERMS_VERSION,
+  tc_accepted_at: new Date().toISOString(),
+  saved_signature_url: null,
+};
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -54,7 +87,11 @@ interface SessionCtx {
 const Ctx = createContext<SessionCtx | null>(null);
 
 export function SessionProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<SessionState>({ status: 'loading' });
+  const [state, setState] = useState<SessionState>(
+    useMockAuth
+      ? { status: 'signedIn', session: MOCK_SESSION, user: MOCK_USER }
+      : { status: 'loading' },
+  );
 
   const loadUser = async (session: Session) => {
     const { data } = await supabase
@@ -66,6 +103,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    if (useMockAuth) return;
     // Track the last authenticated user id so we can detect account switches
     // on a shared device and purge the previous user's draft/offline data
     // before the new user starts writing.

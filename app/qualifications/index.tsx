@@ -81,6 +81,7 @@ export default function QualificationsScreen() {
         options={{
           headerShown: true,
           title: 'კვალიფიკაცია',
+          headerBackTitle: 'მეტი',
           headerRight: () => (
             <Pressable onPress={() => router.push('/qualifications/new' as any)} hitSlop={10} {...a11y('ახალი სერტიფიკატი', 'სერტიფიკატის დამატება', 'button')}>
               <Ionicons name="add-circle" size={28} color={theme.colors.accent} />
@@ -97,7 +98,7 @@ export default function QualificationsScreen() {
             !loaded ? (
               <View style={{ gap: 12 }}>
                 {Array.from({ length: 4 }).map((_, i) => (
-                  <Card key={i} padding={14}>
+                  <Card key={`skeleton-${i}`} padding={14}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                       <View style={{ flex: 1, gap: 8 }}>
                         <Skeleton width={'55%'} height={14} />
@@ -113,7 +114,7 @@ export default function QualificationsScreen() {
               <EmptyState
                 type="qualifications"
                 title="სერტიფიკატები არ არის"
-                subtitle="ატვირთე კვალიფიკაციის სერტიფიკატები PDF რეპორტისთვის"
+                subtitle="ატვირთეთ კვალიფიკაციის სერტიფიკატები PDF რეპორტისთვის"
                 action={{
                   label: 'სერტიფიკატის ატვირთვა',
                   icon: 'cloud-upload-outline',
@@ -145,7 +146,7 @@ export default function QualificationsScreen() {
                     hitSlop={10}
                     style={{ padding: 6 }}
                     {...a11y('წაშლა', 'სერტიფიკატის წაშლა', 'button')}
-                  >{' '}
+                  >
                     <Ionicons name="trash-outline" size={20} color={theme.colors.danger} />
                   </Pressable>
                 </View>

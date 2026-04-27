@@ -32,6 +32,7 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { Button, Screen } from '../../components/ui';
 import { SkeletonCard, SkeletonListCard } from '../../components/Skeleton';
+import { theme } from '../../lib/theme';
 import { SignatureCanvas } from '../../components/SignatureCanvas';
 import {
   answersApi,
@@ -81,19 +82,6 @@ interface AdditionalSigner {
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
-
-const COLORS = {
-  bg: '#F2F2F7',
-  surface: '#FFFFFF',
-  primary: '#147A4F',
-  textPrimary: '#000000',
-  textSecondary: '#8E8E93',
-  textTertiary: '#3C3C43',
-  hairline: '#E5E5EA',
-  danger: '#FF3B30',
-  warn: '#FF9500',
-  white: '#FFFFFF',
-};
 
 const STAGGER_MS = 50;
 
@@ -175,13 +163,9 @@ export default function GenerateCertificateScreen() {
       }
       setSelectedQuals(initial);
 
-      const photoMap: Record<string, AnswerPhoto[]> = {};
-      await Promise.all(
-        ans.map(async a => {
-          const ps = await answersApi.photos(a.id).catch((e) => { logError(e, 'certNew.photos'); return [] as AnswerPhoto[]; });
-          if (ps.length > 0) photoMap[a.id] = ps;
-        }),
-      );
+      const photoMap = await answersApi
+        .photosByAnswerIds(ans.map(a => a.id))
+        .catch((e) => { logError(e, 'certNew.photos'); return {} as Record<string, AnswerPhoto[]>; });
       setPhotosByAnswer(photoMap);
     } finally {
       setLoading(false);
@@ -221,7 +205,7 @@ export default function GenerateCertificateScreen() {
     if (matches.length === 0) {
       Alert.alert(
         'კვალიფიკაცია არ არის',
-        'ატვირთე სერტიფიკატი ან ახლავე ატვირთე ახალი.',
+        'ატვირთეთ სერტიფიკატი ან ახლავე ატვირთეთ ახალი.',
         [
           { text: 'გაუქმება', style: 'cancel' },
           { text: 'ატვირთვა', onPress: () => void uploadQual(certType) },
@@ -381,7 +365,7 @@ export default function GenerateCertificateScreen() {
   const buildExpertRecord = async (): Promise<{ rec: SignatureRecord; expertName: string }> => {
     const expertName = user ? `${user.first_name} ${user.last_name}`.trim() : 'ექსპერტი';
     if (!user?.saved_signature_url) {
-      throw new Error('ექსპერტის ხელმოწერა საჭიროა — დაამატე "ჩემი ხელმოწერა" ეკრანიდან');
+      throw new Error('ექსპერტის ხელმოწერა საჭიროა — დაამატეთ "ჩემი ხელმოწერა" ეკრანიდან');
     }
     const expertDataUrl = await getStorageImageDataUrlStrict(
       STORAGE_BUCKETS.signatures,
@@ -589,7 +573,7 @@ export default function GenerateCertificateScreen() {
   const generate = async () => {
     if (!inspection || !template || !project) return;
     if (missingQualTypes.length > 0) {
-      Alert.alert('აკლია კვალიფიკაცია', `მიუთითე: ${missingQualTypes.join(', ')}`);
+      Alert.alert('აკლია კვალიფიკაცია', `მიუთითეთ: ${missingQualTypes.join(', ')}`);
       return;
     }
     if (!user?.saved_signature_url) {
@@ -598,7 +582,7 @@ export default function GenerateCertificateScreen() {
         'PDF-ის დასაგენერირებლად საჭიროა ექსპერტის ხელმოწერა.',
         [
           { text: 'გაუქმება', style: 'cancel' },
-          { text: 'დახაზვა', onPress: () => router.push('/signature' as any) },
+          { text: 'დახაზეთ', onPress: () => router.push('/signature' as any) },
         ],
       );
       return;
@@ -690,8 +674,8 @@ export default function GenerateCertificateScreen() {
         <Stack.Screen options={{ headerShown: false }} />
         <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
           <View style={s.header}>
-            <Pressable onPress={() => router.back()} style={s.headerBack} {...a11y('უკან', 'გადადი უკან', 'button')}>
-              <Ionicons name="chevron-back" size={24} color={COLORS.textPrimary} />
+            <Pressable onPress={() => router.back()} style={s.headerBack} {...a11y('ინსპექცია — დაბრუნება', 'გადავა ინსპექციის ეკრანზე', 'button')}>
+              <Ionicons name="chevron-back" size={24} color={theme.colors.accent} />
             </Pressable>
             <Text style={s.headerTitle}>PDF რეპორტის გენერაცია</Text>
             <View style={s.headerBack} />
@@ -712,8 +696,8 @@ export default function GenerateCertificateScreen() {
       <Screen>
         <Stack.Screen options={{ headerShown: false }} />
         <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-          <Text style={{ color: COLORS.textSecondary, textAlign: 'center' }}>
-            ინსპექცია ვერ მოიძებნა. სცადე ხელახლა.
+          <Text style={{ color: theme.colors.inkSoft, textAlign: 'center' }}>
+            ინსპექცია ვერ მოიძებნა. სცადეთ ხელახლა.
           </Text>
         </SafeAreaView>
       </Screen>
@@ -733,8 +717,8 @@ export default function GenerateCertificateScreen() {
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
         {/* Header */}
         <View style={s.header}>
-          <Pressable onPress={() => router.back()} style={s.headerBack} {...a11y('უკან', 'გადადი უკან', 'button')}>
-            <Ionicons name="chevron-back" size={24} color={COLORS.textPrimary} />
+          <Pressable onPress={() => router.back()} style={s.headerBack} {...a11y('ინსპექცია — დაბრუნება', 'გადავა ინსპექციის ეკრანზე', 'button')}>
+            <Ionicons name="chevron-back" size={24} color={theme.colors.ink} />
           </Pressable>
           <Text style={s.headerTitle}>PDF რეპორტის გენერაცია</Text>
           <View style={s.headerBack} />
@@ -765,7 +749,7 @@ export default function GenerateCertificateScreen() {
                 <Text style={s.expertRole}>შრომის უსაფრთხოების სპეციალისტი</Text>
               </View>
               {user?.saved_signature_url ? (
-                <Ionicons name="checkmark-circle" size={22} color={COLORS.primary} />
+                <Ionicons name="checkmark-circle" size={22} color={theme.colors.accent} />
               ) : (
                 <Pressable onPress={() => router.push('/signature' as any)}>
                   <Text style={s.textLink}>დახაზვა</Text>
@@ -782,7 +766,7 @@ export default function GenerateCertificateScreen() {
               </Animated.View>
             ) : (
               <Pressable onPress={() => router.push('/signature' as any)} style={s.sigPlaceholder} {...a11y('ექსპერტის ხელმოწერა', 'ხელმოწერის დამატება', 'button')}>
-                <Ionicons name="create-outline" size={20} color={COLORS.primary} />
+                <Ionicons name="create-outline" size={20} color={theme.colors.accent} />
                 <Text style={s.sigPlaceholderText}>ხელმოწერა</Text>
               </Pressable>
             )}
@@ -807,7 +791,7 @@ export default function GenerateCertificateScreen() {
                       {...a11y(`${signer.full_name} — ${SIGNER_ROLE_LABEL[signer.role]}`, 'ხელმომწერის არჩევა', 'button')}
                     >
                       <View style={[s.checkbox, checked && s.checkboxChecked]}>
-                        {checked && <Ionicons name="checkmark" size={14} color={COLORS.white} />}
+                        {checked && <Ionicons name="checkmark" size={14} color={theme.colors.white} />}
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text style={s.rosterTitle}>
@@ -819,7 +803,7 @@ export default function GenerateCertificateScreen() {
                         </Text>
                       </View>
                       {hasStoredSig && checked ? (
-                        <Ionicons name="checkmark-circle" size={18} color={COLORS.primary} />
+                        <Ionicons name="checkmark-circle" size={18} color={theme.colors.accent} />
                       ) : null}
                     </Pressable>
                   );
@@ -829,7 +813,7 @@ export default function GenerateCertificateScreen() {
 
             {additionalSigners.length === 0 ? (
               projectSigners.length === 0 ? (
-                <Text style={s.emptyHint}>სურვილისამებრ — დაამატე სხვა ხელმომწერი</Text>
+                <Text style={s.emptyHint}>სურვილის შემთხვევაში — დაამატეთ სხვა ხელმომწერი</Text>
               ) : null
             ) : (
               <View style={{ gap: 10 }}>
@@ -842,16 +826,16 @@ export default function GenerateCertificateScreen() {
                           value={signer.name}
                           onChangeText={t => updateSignerName(signer.id, t)}
                           placeholder="სახელი გვარი"
-                          placeholderTextColor={COLORS.textSecondary}
+                          placeholderTextColor={theme.colors.inkSoft}
                         />
                         <Pressable hitSlop={8} onPress={() => removeSigner(signer.id)} {...a11y('წაშლა', 'ხელმომწერის წაშლა', 'button')}>
-                          <Ionicons name="close-circle" size={20} color={COLORS.textSecondary} />
+                          <Ionicons name="close-circle" size={20} color={theme.colors.inkSoft} />
                         </Pressable>
                       </View>
                       <Pressable onPress={() => pickSignerRole(signer.id)} style={s.roleChip} {...a11y(`როლი: ${SIGNER_ROLE_LABEL[signer.role]}`, 'როლის შეცვლა', 'button')}>
-                        <Ionicons name="person-circle-outline" size={14} color={COLORS.textSecondary} />
+                        <Ionicons name="person-circle-outline" size={14} color={theme.colors.inkSoft} />
                         <Text style={s.roleChipText}>{SIGNER_ROLE_LABEL[signer.role]}</Text>
-                        <Ionicons name="chevron-down" size={12} color={COLORS.textSecondary} />
+                        <Ionicons name="chevron-down" size={12} color={theme.colors.inkSoft} />
                       </Pressable>
                     </View>
 
@@ -865,13 +849,13 @@ export default function GenerateCertificateScreen() {
                     ) : (
                       <Pressable
                         onPress={() => {
-                          if (!signer.name?.trim()) { toast.error('ჯერ შეიყვანე სახელი'); return; }
+                          if (!signer.name?.trim()) { toast.error('ჯერ შეიყვანეთ სახელი'); return; }
                           setCaptureSignerId(signer.id);
                         }}
                         style={s.sigPlaceholderSmall}
                         {...a11y('ხელმოწერა', 'ხელმოწერის დამატება', 'button')}
                       >
-                        <Ionicons name="create-outline" size={16} color={COLORS.primary} />
+                        <Ionicons name="create-outline" size={16} color={theme.colors.accent} />
                         <Text style={s.sigPlaceholderTextSmall}>ხელმოწერა</Text>
                       </Pressable>
                     )}
@@ -901,7 +885,7 @@ export default function GenerateCertificateScreen() {
                       <Ionicons
                         name={selected ? 'checkmark-circle' : 'alert-circle'}
                         size={18}
-                        color={selected ? COLORS.primary : COLORS.warn}
+                        color={selected ? theme.colors.accent : theme.colors.warn}
                       />
                       <View style={{ flex: 1 }}>
                         <Text style={s.listRowTitle}>{certType}</Text>
@@ -917,7 +901,7 @@ export default function GenerateCertificateScreen() {
                 })}
               </View>
               {requiredCertTypes.some(t => !selectedQuals[t]) && (
-                <Text style={{ fontSize: 12, color: COLORS.warn, marginTop: 8 }}>
+                <Text style={{ fontSize: 12, color: theme.colors.warn, marginTop: 8 }}>
                   არჩიე ყველა საჭირო სერტიფიკატი
                 </Text>
               )}
@@ -930,7 +914,7 @@ export default function GenerateCertificateScreen() {
           <Animated.View entering={FadeInUp.duration(300).delay(4 * STAGGER_MS)} style={s.section}>
             <Text style={s.sectionLabel}>დამატებითი სერტიფიკატები</Text>
             {extraQualIds.length === 0 ? (
-              <Text style={s.emptyHint}>სურვილისამებრ — დაამატე სხვა კვალიფიკაციის სერტიფიკატი</Text>
+              <Text style={s.emptyHint}>სურვილის შემთხვევაში — დაამატეთ სხვა კვალიფიკაციის სერტიფიკატი</Text>
             ) : (
               <View style={{ gap: 8 }}>
                 {extraQualIds.map(id => {
@@ -938,7 +922,7 @@ export default function GenerateCertificateScreen() {
                   if (!q) return null;
                   return (
                     <Pressable key={id} onPress={() => removeExtraQual(id)} style={s.listRow} {...a11y(`${q.type}${q.number ? ` · №${q.number}` : ''}`, 'დამატებითი სერტიფიკატის წაშლა', 'button')}>
-                      <Ionicons name="ribbon-outline" size={16} color={COLORS.primary} />
+                      <Ionicons name="ribbon-outline" size={16} color={theme.colors.accent} />
                       <Text style={s.listRowTitle}>{q.type}{q.number ? ` · №${q.number}` : ''}</Text>
                       <Text style={s.textLink}>წაშლა</Text>
                     </Pressable>
@@ -963,7 +947,7 @@ export default function GenerateCertificateScreen() {
               style={s.previewBtn}
               {...a11y('პრევიუ', 'PDF-ის პრევიუ', 'button')}
             >
-              <Ionicons name="eye-outline" size={18} color={COLORS.primary} />
+              <Ionicons name="eye-outline" size={18} color={theme.colors.accent} />
               <Text style={s.previewBtnText}>პრევიუ</Text>
             </Pressable>
           </Animated.View>
@@ -981,7 +965,7 @@ export default function GenerateCertificateScreen() {
               {...a11y('PDF-ის გენერაცია', 'რეპორტის გენერაცია და გაზიარება', 'button')}
             >
               {busy ? (
-                <ActivityIndicator size="small" color={COLORS.white} />
+                <ActivityIndicator size="small" color={theme.colors.white} />
               ) : (
                 <Text style={s.generateBtnText}>PDF-ის გენერაცია</Text>
               )}
@@ -1012,8 +996,8 @@ const s = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.hairline,
-    backgroundColor: COLORS.surface,
+    borderBottomColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
   },
   headerBack: {
     width: 36,
@@ -1025,7 +1009,7 @@ const s = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: COLORS.textPrimary,
+    color: theme.colors.ink,
     textAlign: 'center',
   },
 
@@ -1036,7 +1020,7 @@ const s = StyleSheet.create({
   },
   heroLabel: {
     fontSize: 12,
-    color: COLORS.textSecondary,
+    color: theme.colors.inkSoft,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     fontWeight: '700',
@@ -1045,23 +1029,23 @@ const s = StyleSheet.create({
   heroTitle: {
     fontSize: 17,
     fontWeight: '700',
-    color: COLORS.textPrimary,
+    color: theme.colors.ink,
   },
   heroDate: {
     fontSize: 14,
-    color: COLORS.textSecondary,
+    color: theme.colors.inkSoft,
     marginTop: 2,
   },
   heroObject: {
     fontSize: 14,
-    color: COLORS.textTertiary,
+    color: theme.colors.neutral[700],
     marginTop: 2,
   },
 
   // Divider
   divider: {
     height: 1,
-    backgroundColor: COLORS.hairline,
+    backgroundColor: theme.colors.border,
     marginHorizontal: 16,
   },
 
@@ -1072,7 +1056,7 @@ const s = StyleSheet.create({
   },
   sectionLabel: {
     fontSize: 12,
-    color: COLORS.textSecondary,
+    color: theme.colors.inkSoft,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     fontWeight: '700',
@@ -1080,7 +1064,7 @@ const s = StyleSheet.create({
   },
   emptyHint: {
     fontSize: 13,
-    color: COLORS.textSecondary,
+    color: theme.colors.inkSoft,
     marginBottom: 10,
   },
 
@@ -1092,31 +1076,31 @@ const s = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 12,
     borderRadius: 10,
-    backgroundColor: COLORS.surface,
+    backgroundColor: theme.colors.surface,
     borderWidth: 1,
-    borderColor: COLORS.hairline,
+    borderColor: theme.colors.border,
   },
   checkbox: {
     width: 22,
     height: 22,
     borderRadius: 6,
     borderWidth: 1.5,
-    borderColor: COLORS.hairline,
+    borderColor: theme.colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
   checkboxChecked: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
+    backgroundColor: theme.colors.accent,
+    borderColor: theme.colors.accent,
   },
   rosterTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: COLORS.textPrimary,
+    color: theme.colors.ink,
   },
   rosterSub: {
     fontSize: 12,
-    color: COLORS.textSecondary,
+    color: theme.colors.inkSoft,
     marginTop: 2,
   },
 
@@ -1130,23 +1114,23 @@ const s = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
-    color: COLORS.white,
+    color: theme.colors.white,
     fontSize: 14,
     fontWeight: '700',
   },
   expertName: {
     fontSize: 15,
     fontWeight: '600',
-    color: COLORS.textPrimary,
+    color: theme.colors.ink,
   },
   expertRole: {
     fontSize: 12,
-    color: COLORS.textSecondary,
+    color: theme.colors.inkSoft,
     marginTop: 1,
   },
 
@@ -1158,18 +1142,18 @@ const s = StyleSheet.create({
   sigPreview: {
     width: '100%',
     height: 60,
-    backgroundColor: COLORS.surface,
+    backgroundColor: theme.colors.surface,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: COLORS.hairline,
+    borderColor: theme.colors.border,
   },
   sigPreviewSmall: {
     width: 120,
     height: 50,
-    backgroundColor: COLORS.surface,
+    backgroundColor: theme.colors.surface,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: COLORS.hairline,
+    borderColor: theme.colors.border,
   },
   sigPlaceholder: {
     marginTop: 12,
@@ -1180,14 +1164,14 @@ const s = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: COLORS.primary,
+    borderColor: theme.colors.accent,
     borderStyle: 'dashed',
     alignSelf: 'flex-start',
   },
   sigPlaceholderText: {
     fontSize: 14,
     fontWeight: '600',
-    color: COLORS.primary,
+    color: theme.colors.accent,
   },
   sigPlaceholderSmall: {
     marginTop: 8,
@@ -1198,32 +1182,32 @@ const s = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: COLORS.primary,
+    borderColor: theme.colors.accent,
     borderStyle: 'dashed',
     alignSelf: 'flex-start',
   },
   sigPlaceholderTextSmall: {
     fontSize: 13,
     fontWeight: '600',
-    color: COLORS.primary,
+    color: theme.colors.accent,
   },
 
   // Signers
   signerRow: {
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.hairline,
+    borderBottomColor: theme.colors.border,
   },
   signerInput: {
     flex: 1,
-    backgroundColor: COLORS.surface,
+    backgroundColor: theme.colors.surface,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: COLORS.hairline,
+    borderColor: theme.colors.border,
     paddingHorizontal: 10,
     paddingVertical: 8,
     fontSize: 14,
-    color: COLORS.textPrimary,
+    color: theme.colors.ink,
   },
   roleChip: {
     flexDirection: 'row',
@@ -1233,12 +1217,12 @@ const s = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
-    backgroundColor: COLORS.bg,
+    backgroundColor: theme.colors.background,
   },
   roleChipText: {
     fontSize: 12,
     fontWeight: '600',
-    color: COLORS.textSecondary,
+    color: theme.colors.inkSoft,
   },
 
   // List rows
@@ -1248,17 +1232,17 @@ const s = StyleSheet.create({
     gap: 10,
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.hairline,
+    borderBottomColor: theme.colors.border,
   },
   listRowTitle: {
     flex: 1,
     fontSize: 14,
     fontWeight: '600',
-    color: COLORS.textPrimary,
+    color: theme.colors.ink,
   },
   listRowMeta: {
     fontSize: 12,
-    color: COLORS.textSecondary,
+    color: theme.colors.inkSoft,
     marginTop: 1,
   },
 
@@ -1268,14 +1252,14 @@ const s = StyleSheet.create({
     height: 44,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: COLORS.primary,
+    borderColor: theme.colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
   ghostBtnText: {
     fontSize: 14,
     fontWeight: '600',
-    color: COLORS.primary,
+    color: theme.colors.accent,
   },
 
   // Bottom bar
@@ -1287,8 +1271,8 @@ const s = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 24,
-    backgroundColor: COLORS.surface,
-    shadowColor: '#000',
+    backgroundColor: theme.colors.surface,
+    shadowColor: theme.colors.ink,
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
@@ -1300,8 +1284,8 @@ const s = StyleSheet.create({
     height: 54,
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.surface,
+    borderColor: theme.colors.accent,
+    backgroundColor: theme.colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
@@ -1310,25 +1294,25 @@ const s = StyleSheet.create({
   previewBtnText: {
     fontSize: 16,
     fontWeight: '600',
-    color: COLORS.primary,
+    color: theme.colors.accent,
   },
   generateBtn: {
     height: 54,
     borderRadius: 12,
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
   generateBtnText: {
     fontSize: 17,
     fontWeight: '600',
-    color: COLORS.white,
+    color: theme.colors.white,
   },
 
   // Link
   textLink: {
     fontSize: 13,
     fontWeight: '600',
-    color: COLORS.primary,
+    color: theme.colors.accent,
   },
 });

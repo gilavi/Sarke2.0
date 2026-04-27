@@ -116,7 +116,7 @@ export async function saveExpertSignature(base64: string): Promise<string> {
   const path = `expert/${userId}.png`;
   const { pending } = await uploadSignature(path, base64);
   if (pending) {
-    throw new Error('ხელმოწერის ატვირთვა ვერ მოხერხდა — შეამოწმე ინტერნეტი და სცადე თავიდან');
+    throw new Error('ხელმოწერის ატვირთვა ვერ მოხერხდა — შეამოწმეთ ინტერნეტი და სცადეთ თავიდან');
   }
   const { error } = await supabase
     .from('users')

@@ -34,6 +34,7 @@ import { shareStoredPdf } from '../../lib/sharePdf';
 import { useToast } from '../../lib/toast';
 import { theme } from '../../lib/theme';
 import { logError, toErrorMessage } from '../../lib/logError';
+import { friendlyError } from '../../lib/errorMap';
 import { a11y } from '../../lib/accessibility';
 import type { Certificate, Project, Template } from '../../types/models';
 
@@ -130,7 +131,7 @@ export default function CertificateDetailScreen() {
         await shareStoredPdf(cert.pdf_url);
       }
     } catch (e) {
-      toast.error(toErrorMessage(e, 'ვერ გაიზიარა'));
+      toast.error(friendlyError(e, 'ვერ გაიზიარა'));
     } finally {
       setSharing(false);
     }
@@ -139,7 +140,7 @@ export default function CertificateDetailScreen() {
   if (loading || !cert) {
     return (
       <Screen>
-        <Stack.Screen options={{ headerShown: true, title: 'PDF რეპორტი' }} />
+        <Stack.Screen options={{ headerShown: true, title: 'PDF რეპორტი', headerBackTitle: 'სერტიფიკატები' }} />
         <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
           {/* Meta strip skeleton mirrors the real header layout */}
           <View style={styles.metaStrip}>
@@ -177,6 +178,7 @@ export default function CertificateDetailScreen() {
         options={{
           headerShown: true,
           title: 'PDF რეპორტი',
+          headerBackTitle: 'სერტიფიკატები',
           headerRight: () => (
             <Pressable
               onPress={share}
@@ -184,7 +186,7 @@ export default function CertificateDetailScreen() {
               style={{ paddingHorizontal: 4 }}
               hitSlop={10}
               {...a11y('გაზიარება', 'PDF რეპორტის გაზიარება', 'button')}
-            >{' '}
+            >
               {sharing
                 ? <ActivityIndicator size="small" color={theme.colors.accent} />
                 : <Ionicons name="share-outline" size={22} color={theme.colors.accent} />
@@ -266,9 +268,9 @@ export default function CertificateDetailScreen() {
           ) : resolveError ? (
             <View style={styles.noPreview}>
               <Ionicons name="document-text-outline" size={48} color={theme.colors.inkFaint} />
-              <Text style={styles.noPreviewText}>PDF preview unavailable</Text>
+              <Text style={styles.noPreviewText}>PDF პრევიუ არ არის ხელმისაწვდომი</Text>
               <Text style={styles.noPreviewSub}>
-                ამ მოწყობილობაზე ლოკალური ასლი არ არის. გაზიარებისთვის დააჭირე Share.
+                ამ მოწყობილობაზე ლოკალური ასლი არ არის. დააჭირეთ "გაზიარება".
               </Text>
             </View>
           ) : (

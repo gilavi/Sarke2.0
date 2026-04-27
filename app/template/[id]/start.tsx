@@ -18,6 +18,7 @@ import { projectsApi, questionnairesApi, templatesApi } from '../../../lib/servi
 import { useToast } from '../../../lib/toast';
 import { theme } from '../../../lib/theme';
 import { toErrorMessage } from '../../../lib/logError';
+import { friendlyError } from '../../../lib/errorMap';
 import type { Project, Questionnaire, Template } from '../../../types/models';
 import { a11y } from '../../../lib/accessibility';
 
@@ -60,7 +61,7 @@ export default function StartTemplateScreen() {
       }));
       router.replace(`/inspections/${q.id}/wizard` as any);
     } catch (e) {
-      toast.error(toErrorMessage(e, 'კითხვარი ვერ შეიქმნა'));
+      toast.error(friendlyError(e, 'ინსპექცია ვერ შეიქმნა'));
     } finally {
       setBusy(false);
     }
@@ -74,7 +75,7 @@ export default function StartTemplateScreen() {
 
   return (
     <Screen>
-      <Stack.Screen options={{ headerShown: true, title: 'ახალი კითხვარი', presentation: 'modal' }} />
+      <Stack.Screen options={{ headerShown: true, title: 'ახალი ინსპექცია', presentation: 'modal' }} />
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
         <ScrollView contentContainerStyle={styles.scroll}>
           <View style={{ gap: 4 }}>
@@ -87,7 +88,7 @@ export default function StartTemplateScreen() {
           </View>
 
           <View style={{ gap: 4, marginTop: 20 }}>
-            <Text style={styles.eyebrow}>აირჩიე პროექტი</Text>
+            <Text style={styles.eyebrow}>აირჩიეთ პროექტი</Text>
           </View>
 
           <Pressable onPress={() => setShowingCreate(true)} style={styles.newTile} {...a11y('ახალი პროექტი', 'ახალი პროექტის შექმნა', 'button')}>
@@ -167,7 +168,7 @@ export default function StartTemplateScreen() {
 
         <View style={styles.footer}>
           <Button
-            title="დაიწყე კითხვარი"
+            title="დაიწყე ინსპექცია"
             onPress={start}
             loading={busy}
             disabled={!selected}
@@ -214,7 +215,7 @@ function CreateProjectSheet({
       setAddress('');
       onCreated(p);
     } catch (e) {
-      toast.error(toErrorMessage(e, 'ვერ შეიქმნა'));
+      toast.error(friendlyError(e, 'ვერ შეიქმნა'));
     } finally {
       setBusy(false);
     }

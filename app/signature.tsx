@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Button, Card, Screen } from '../components/ui';
+import { Button } from '../components/ui';
 import { SignatureCanvas } from '../components/SignatureCanvas';
 import { useSession } from '../lib/session';
 import { useToast } from '../lib/toast';
@@ -12,6 +12,7 @@ import { getStorageImageDataUrl } from '../lib/imageUrl';
 import { STORAGE_BUCKETS } from '../lib/supabase';
 import { theme } from '../lib/theme';
 import { toErrorMessage } from '../lib/logError';
+import { friendlyError } from '../lib/errorMap';
 import { a11y } from '../lib/accessibility';
 
 // Screen supports two modes:
@@ -26,8 +27,12 @@ export default function SignatureSettingsScreen() {
   const { state, refreshUser } = useSession();
   const user = state.status === 'signedIn' ? state.user : null;
 
+  const hasSignature = !!user?.saved_signature_url;
+
   const [preview, setPreview] = useState<string | null>(null);
-  const [capturing, setCapturing] = useState(isFirstTime);
+  // Auto-open the drawing canvas when there's no signature yet — skip the empty
+  // settings screen entirely. Also opens immediately for the first-time flow.
+  const [capturing, setCapturing] = useState(isFirstTime || !hasSignature);
   const [busy, setBusy] = useState(false);
 
   const loadPreview = useCallback(async () => {
@@ -47,9 +52,10 @@ export default function SignatureSettingsScreen() {
       await refreshUser();
       setPreview(`data:image/png;base64,${base64}`);
       toast.success('ხელმოწერა შენახულია');
-      if (isFirstTime) router.back();
+      // Always close after a successful save — no reason to stay on the sheet.
+      router.back();
     } catch (e) {
-      toast.error(toErrorMessage(e, 'შენახვა ვერ მოხერხდა'));
+      toast.error(friendlyError(e, 'შენახვა ვერ მოხერხდა'));
     } finally {
       setBusy(false);
     }
@@ -57,69 +63,71 @@ export default function SignatureSettingsScreen() {
 
   const onCancelCapture = () => {
     setCapturing(false);
-    if (isFirstTime && !user?.saved_signature_url) {
-      Alert.alert(
-        'ხელმოწერა საჭიროა',
-        'PDF-ის დასაგენერირებლად საჭიროა ექსპერტის ხელმოწერა. გსურს დაბრუნება?',
-        [
-          { text: 'დარჩი აქ', style: 'cancel' },
-          { text: 'უკან დაბრუნება', onPress: () => router.back() },
-        ],
-      );
+    // No signature on file? Cancelling the canvas means the sheet has nothing
+    // to show — bail back to where we came from instead of stranding the user.
+    if (!hasSignature) {
+      if (isFirstTime) {
+        Alert.alert(
+          'ხელმოწერა საჭიროა',
+          'PDF-ის დასაგენერირებლად საჭიროა ექსპერტის ხელმოწერა.',
+          [{ text: 'კარგი', onPress: () => router.back() }],
+        );
+      } else {
+        router.back();
+      }
     }
   };
 
   const displayName = user ? `${user.first_name} ${user.last_name}`.trim() : '';
 
   return (
-    <Screen>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          title: isFirstTime ? 'ექსპერტის ხელმოწერა' : 'ჩემი ხელმოწერა',
-        }}
-      />
-      <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
-        <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }}>
-          {isFirstTime ? (
-            <Card>
-              <Text style={styles.eyebrow}>ერთჯერადი კონფიგურაცია</Text>
-              <Text style={{ fontSize: 17, fontWeight: '700', color: theme.colors.ink, marginTop: 6 }}>
-                დახაზეთ თქვენი ხელმოწერა
-              </Text>
-              <Text style={{ fontSize: 13, color: theme.colors.inkSoft, marginTop: 6, lineHeight: 18 }}>
-                ეს შენახული იქნება და გამოყენებული ყველა ანგარიშში. მოგვიანებით
-                შეცვლა შესაძლებელია "მეტი" ტაბიდან.
-              </Text>
-            </Card>
-          ) : null}
+    <View style={styles.root}>
+      <Stack.Screen options={{ headerShown: false, presentation: 'transparentModal', animation: 'fade' }} />
 
-          <Card>
-            <Text style={styles.eyebrow}>ამჟამინდელი ხელმოწერა</Text>
-            {preview ? (
-              <View style={styles.preview}>
-                <Image source={{ uri: preview }} style={styles.previewImg} resizeMode="contain" />
-              </View>
-            ) : (
-              <View style={styles.previewEmpty}>
-                <Ionicons name="create-outline" size={28} color={theme.colors.inkFaint} />
-                <Text style={{ color: theme.colors.inkSoft, fontSize: 13 }}>
-                  ხელმოწერა ჯერ არ არის შენახული
-                </Text>
-              </View>
-            )}
-            <Text style={{ fontSize: 12, color: theme.colors.inkSoft, marginTop: 10 }}>
-              ექსპერტი: {displayName || '—'}
+      {/* Backdrop — tap to dismiss */}
+      <Pressable
+        style={styles.backdrop}
+        onPress={() => router.back()}
+        {...a11y('დახურვა', 'შეეხეთ დასახურად', 'button')}
+      />
+
+      {/* Bottom action sheet */}
+      <SafeAreaView edges={['bottom']} style={styles.sheetWrap}>
+        <View style={styles.sheet}>
+          <View style={styles.handle} />
+
+          <View style={styles.headerRow}>
+            <Text style={styles.sheetTitle}>
+              {isFirstTime ? 'ექსპერტის ხელმოწერა' : 'ჩემი ხელმოწერა'}
             </Text>
-          </Card>
+            <Pressable onPress={() => router.back()} hitSlop={12} style={styles.closeBtn}>
+              <Ionicons name="close" size={20} color={theme.colors.ink} />
+            </Pressable>
+          </View>
+
+          {preview ? (
+            <View style={styles.preview}>
+              <Image source={{ uri: preview }} style={styles.previewImg} resizeMode="contain" />
+            </View>
+          ) : (
+            <View style={styles.previewEmpty}>
+              <Ionicons name="create-outline" size={28} color={theme.colors.inkFaint} />
+              <Text style={{ color: theme.colors.inkSoft, fontSize: 13 }}>
+                ხელმოწერა ჯერ არ არის შენახული
+              </Text>
+            </View>
+          )}
+          <Text style={styles.expertLabel}>ექსპერტი: {displayName || '—'}</Text>
 
           <Button
             title={preview ? 'ხელმოწერის შეცვლა' : 'ხელმოწერის დახატვა'}
             onPress={() => setCapturing(true)}
             loading={busy}
+            size="lg"
+            style={{ alignSelf: 'stretch', justifyContent: 'center', marginTop: 16 }}
             {...a11y(preview ? 'ხელმოწერის შეცვლა' : 'ხელმოწერის დახატვა', undefined, 'button')}
           />
-        </ScrollView>
+        </View>
       </SafeAreaView>
 
       <SignatureCanvas
@@ -128,20 +136,46 @@ export default function SignatureSettingsScreen() {
         onCancel={onCancelCapture}
         onConfirm={onConfirm}
       />
-    </Screen>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  eyebrow: {
-    fontSize: 11,
-    color: theme.colors.inkSoft,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    fontWeight: '600',
+  root: { flex: 1, backgroundColor: 'transparent' },
+  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.45)' },
+  sheetWrap: { position: 'absolute', left: 0, right: 0, bottom: 0 },
+  sheet: {
+    backgroundColor: theme.colors.card,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 20,
+  },
+  handle: {
+    alignSelf: 'center',
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: theme.colors.hairline,
+    marginBottom: 14,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  sheetTitle: { fontSize: 18, fontWeight: '800', color: theme.colors.ink },
+  closeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.subtleSurface,
   },
   preview: {
-    marginTop: 10,
     height: 140,
     backgroundColor: theme.colors.white,
     borderRadius: 12,
@@ -153,7 +187,6 @@ const styles = StyleSheet.create({
   },
   previewImg: { width: '100%', height: '100%' },
   previewEmpty: {
-    marginTop: 10,
     height: 120,
     backgroundColor: theme.colors.subtleSurface,
     borderRadius: 12,
@@ -161,4 +194,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
   },
+  expertLabel: { fontSize: 12, color: theme.colors.inkSoft, marginTop: 10 },
 });

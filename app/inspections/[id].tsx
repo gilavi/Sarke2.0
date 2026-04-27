@@ -226,12 +226,12 @@ export default function InspectionDetailScreen() {
   if (!loading && (notFound || loadError)) {
     return (
       <Screen>
-        <Stack.Screen options={{ headerShown: true, title: 'ინსპექცია' }} />
+        <Stack.Screen options={{ headerShown: true, title: 'ინსპექცია', headerBackTitle: 'მთავარი' }} />
         <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
           <ErrorState
             title={notFound ? 'ინსპექცია ვერ მოიძებნა' : 'ვერ ჩაიტვირთა'}
             error={loadError ?? undefined}
-            message={notFound ? 'შესაძლოა წაიშალა ან არ გაქვს წვდომა.' : undefined}
+            message={notFound ? 'შესაძლოა წაიშალა, ან თქვენ არ გაქვთ წვდომა.' : undefined}
             icon={notFound ? 'alert-circle-outline' : 'cloud-offline-outline'}
             onRetry={notFound ? undefined : () => void load()}
             retrying={loading}
@@ -247,7 +247,7 @@ export default function InspectionDetailScreen() {
   if (loading || !inspection) {
     return (
       <Screen>
-        <Stack.Screen options={{ headerShown: true, title: 'ინსპექცია' }} />
+        <Stack.Screen options={{ headerShown: true, title: 'ინსპექცია', headerBackTitle: 'მთავარი' }} />
         <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
           <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }}>
             <SkeletonCard>
@@ -275,7 +275,7 @@ export default function InspectionDetailScreen() {
 
   return (
     <Screen>
-      <Stack.Screen options={{ headerShown: true, title: 'ინსპექცია' }} />
+      <Stack.Screen options={{ headerShown: true, title: 'ინსპექცია', headerBackTitle: 'მთავარი' }} />
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
         <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }}>
           {/* Document header — title + meta + status badge */}
@@ -506,7 +506,7 @@ function statusVisuals(status: RemoteSigningStatus): { label: string; tint: stri
     case 'signed':
       return { label: 'ხელმოწერილი', tint: theme.colors.accent, bg: theme.colors.accentSoft };
     case 'declined':
-      return { label: 'უარი', tint: theme.colors.danger, bg: theme.colors.dangerSoft };
+      return { label: 'უარი თქვა', tint: theme.colors.danger, bg: theme.colors.dangerSoft };
     case 'expired':
       return { label: 'ვადაგასული', tint: theme.colors.danger, bg: theme.colors.dangerSoft };
   }
@@ -663,7 +663,7 @@ function InspectionScorecard({
           {skippedCount > 0 ? (
             <View style={scorecardStyles.statChip}>
               <Text style={scorecardStyles.statNum}>{skippedCount}</Text>
-              <Text style={scorecardStyles.statLabel}>გამოტოვ.</Text>
+              <Text style={scorecardStyles.statLabel}>გამოტოვილი</Text>
             </View>
           ) : null}
         </View>

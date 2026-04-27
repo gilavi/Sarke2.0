@@ -33,36 +33,42 @@ import {
 type SupabaseRes = { data: unknown; error: { message: string } | null };
 type GuardOpts<T> = { guard?: (v: unknown) => v is T; context?: string };
 
-function failShape(context: string | undefined, fallback: string): never {
-  const ctx = context ?? fallback;
-  const err = new Error(`shape mismatch at ${ctx}`);
-  logError(err, ctx);
+function failShape(context: string): never {
+  const err = new Error(`shape mismatch at ${context}`);
+  logError(err, context);
   throw err;
 }
 
-function throwIfError<T>(res: SupabaseRes, opts?: GuardOpts<T>): T {
+function unwrap<T>(
+  res: SupabaseRes,
+  mode: 'required' | 'maybe' | 'list',
+  opts?: GuardOpts<T>,
+): T | T[] | null {
   if (res.error) throw new Error(res.error.message);
-  if (res.data == null) throw new Error('No data');
-  if (opts?.guard && !opts.guard(res.data)) failShape(opts.context, 'throwIfError');
+  const ctx = opts?.context ?? `unwrap.${mode}`;
+  if (mode === 'list') {
+    const rows = (res.data ?? []) as unknown[];
+    if (opts?.guard) for (const row of rows) if (!opts.guard(row)) failShape(ctx);
+    return rows as T[];
+  }
+  if (res.data == null) {
+    if (mode === 'maybe') return null;
+    throw new Error('No data');
+  }
+  if (opts?.guard && !opts.guard(res.data)) failShape(ctx);
   return res.data as T;
+}
+
+function throwIfError<T>(res: SupabaseRes, opts?: GuardOpts<T>): T {
+  return unwrap<T>(res, 'required', opts) as T;
 }
 
 function throwIfErrorMaybe<T>(res: SupabaseRes, opts?: GuardOpts<T>): T | null {
-  if (res.error) throw new Error(res.error.message);
-  if (res.data == null) return null;
-  if (opts?.guard && !opts.guard(res.data)) failShape(opts.context, 'throwIfErrorMaybe');
-  return res.data as T;
+  return unwrap<T>(res, 'maybe', opts) as T | null;
 }
 
 function listOrThrow<T>(res: SupabaseRes, opts?: GuardOpts<T>): T[] {
-  if (res.error) throw new Error(res.error.message);
-  const rows = (res.data ?? []) as unknown[];
-  if (opts?.guard) {
-    for (const row of rows) {
-      if (!opts.guard(row)) failShape(opts.context, 'listOrThrow');
-    }
-  }
-  return rows as T[];
+  return unwrap<T>(res, 'list', opts) as T[];
 }
 
 // -------- Projects --------
@@ -222,7 +228,7 @@ export const projectFilesApi = {
     const user = (await supabase.auth.getUser()).data.user;
     if (!user) throw new Error('Not signed in');
     const fileId = Crypto.randomUUID();
-    const safeName = args.name.replace(/[^\w.\-]+/g, '_').slice(0, 120) || 'file';
+    const safeName = args.name.replace(/[^\w.\-]+/g, '_').replace(/\.{2,}/g, '.').slice(0, 120) || 'file';
     const storagePath = `${args.projectId}/${fileId}-${safeName}`;
     const { data: { session } } = await supabase.auth.getSession();
     const headers: Record<string, string> = {
@@ -443,6 +449,21 @@ export const answersApi = {
       .eq('answer_id', answerId);
     if (error) throw error;
     return data ?? [];
+  },
+  photosByAnswerIds: async (
+    answerIds: string[],
+  ): Promise<Record<string, AnswerPhoto[]>> => {
+    if (answerIds.length === 0) return {};
+    const { data, error } = await supabase
+      .from('answer_photos')
+      .select('*')
+      .in('answer_id', answerIds);
+    if (error) throw error;
+    const out: Record<string, AnswerPhoto[]> = {};
+    for (const p of (data ?? []) as AnswerPhoto[]) {
+      (out[p.answer_id] ??= []).push(p);
+    }
+    return out;
   },
   addPhoto: async (answerId: string, storagePath: string, caption?: string): Promise<AnswerPhoto> => {
     return throwIfError<AnswerPhoto>(

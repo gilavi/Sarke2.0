@@ -8,6 +8,7 @@ import { useToast } from '../lib/toast';
 import { termsEn, termsKa, TERMS_PUBLIC_URL, TERMS_VERSION, type TermsBody } from '../lib/terms';
 import { theme } from '../lib/theme';
 import { toErrorMessage } from '../lib/logError';
+import { friendlyError } from '../lib/errorMap';
 import { a11y } from '../lib/accessibility';
 
 export default function TermsScreen() {
@@ -28,7 +29,7 @@ export default function TermsScreen() {
       await acceptTerms(TERMS_VERSION);
       router.replace('/(tabs)/home');
     } catch (e) {
-      toast.error(toErrorMessage(e, 'ქსელის შეცდომა'));
+      toast.error(friendlyError(e, 'ქსელის შეცდომა'));
     } finally {
       setBusy(false);
     }

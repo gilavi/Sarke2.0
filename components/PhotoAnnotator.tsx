@@ -121,10 +121,12 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
   const currentRef = useRef(current);
   const colorRef = useRef(color);
   const widthRef = useRef(width);
-  useEffect(() => { toolRef.current = tool; }, [tool]);
-  useEffect(() => { currentRef.current = current; }, [current]);
-  useEffect(() => { colorRef.current = color; }, [color]);
-  useEffect(() => { widthRef.current = width; }, [width]);
+  useEffect(() => {
+    toolRef.current = tool;
+    currentRef.current = current;
+    colorRef.current = color;
+    widthRef.current = width;
+  }, [tool, current, color, width]);
 
   /* Load photo dimensions */
   useEffect(() => {
@@ -225,7 +227,7 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
   }, []);
 
   const clearAll = useCallback(() => {
-    Alert.alert('ყველა მონიშვნის წაშლა', 'დარწმუნებული ხარ?', [
+    Alert.alert('ყველა მონიშვნის წაშლა', 'დარწმუნებული ხართ?', [
       { text: 'გაუქმება', style: 'cancel' },
       {
         text: 'წაშლა',
@@ -271,7 +273,7 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
       });
       onSave(uri);
     } catch (e) {
-      Alert.alert('შენახვა ვერ მოხერხდა', 'სცადე თავიდან');
+      Alert.alert('შენახვა ვერ მოხერხდა', 'სცადეთ თავიდან');
     } finally {
       setSaving(false);
     }

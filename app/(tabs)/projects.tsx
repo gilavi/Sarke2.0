@@ -28,6 +28,7 @@ import { projectsApi } from '../../lib/services';
 import { useToast } from '../../lib/toast';
 import { theme } from '../../lib/theme';
 import { logError, toErrorMessage } from '../../lib/logError';
+import { friendlyError } from '../../lib/errorMap';
 import type { Project } from '../../types/models';
 
 type Stats = Record<string, { drafts: number; completed: number }>;
@@ -90,7 +91,7 @@ export default function ProjectsScreen() {
               setProjects(prev => prev.filter(p => p.id !== project.id));
               toast.success('წაიშალა');
             } catch (e) {
-              toast.error(toErrorMessage(e, 'ვერ წაიშალა'));
+              toast.error(friendlyError(e, 'ვერ წაიშალა'));
             }
           },
         },
@@ -103,7 +104,7 @@ export default function ProjectsScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>პროექტები</Text>
         <Text style={styles.subtitle}>
-          {projects.length > 0 ? `${projects.length} სულ` : ''}
+          {projects.length > 0 ? `სულ ${projects.length}` : ''}
         </Text>
       </View>
       {projects.length > 0 ? (
@@ -151,21 +152,21 @@ export default function ProjectsScreen() {
           loading ? (
             <View style={{ gap: 10 }}>
               {Array.from({ length: 5 }).map((_, i) => (
-                <ProjectRowSkeleton key={i} />
+                <ProjectRowSkeleton key={`skeleton-${i}`} />
               ))}
             </View>
           ) : query ? (
             <EmptyState
               type="projects"
               title="ვერაფერი მოიძებნა"
-              subtitle="სცადე სხვა საძიებო სიტყვა."
+              subtitle="სცადეთ სხვა საძიებო სიტყვა."
               compact
             />
           ) : (
             <EmptyState
               type="projects"
               title="ჯერ პროექტი არ არის"
-              subtitle="შექმენი პირველი პროექტი და დაიწყე შემოწმებები"
+              subtitle="შექმენით პირველი პროექტი და დაიწყეთ ინსპექციები"
               action={{
                 label: '+ ახალი პროექტი',
                 onPress: () => setCreating(true),
@@ -241,7 +242,7 @@ function CreateProjectSheet({
       });
       onCreated(p);
     } catch (e) {
-      toast.error(toErrorMessage(e, 'ვერ შეიქმნა'));
+      toast.error(friendlyError(e, 'ვერ შეიქმნა'));
     } finally {
       setBusy(false);
     }

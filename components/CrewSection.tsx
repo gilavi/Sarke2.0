@@ -40,10 +40,12 @@ export function CrewList({
   inspector,
   crew,
   onChange,
+  hideAdd = false,
 }: {
   inspector: InspectorRow | null;
   crew: CrewMember[];
   onChange: (next: CrewMember[]) => void | Promise<void>;
+  hideAdd?: boolean;
 }) {
   const showSheet = useBottomSheet();
 
@@ -114,10 +116,12 @@ export function CrewList({
         </Swipeable>
       ))}
 
-      <Pressable onPress={openAddSheet} style={styles.addBtn} {...a11y('დამატება', 'ახალი მონაწილის დამატება', 'button')}>
-        <Ionicons name="person-add" size={18} color={theme.colors.accent} />
-        <Text style={{ color: theme.colors.accent, fontWeight: '600' }}>+ დამატება</Text>
-      </Pressable>
+      {hideAdd ? null : (
+        <Pressable onPress={openAddSheet} style={styles.addBtn} {...a11y('დამატება', 'ახალი მონაწილის დამატება', 'button')}>
+          <Ionicons name="person-add" size={18} color={theme.colors.accent} />
+          <Text style={{ color: theme.colors.accent, fontWeight: '600' }}>+ დამატება</Text>
+        </Pressable>
+      )}
     </View>
   );
 }

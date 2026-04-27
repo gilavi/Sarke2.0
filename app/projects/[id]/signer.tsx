@@ -11,6 +11,7 @@ import { useToast } from '../../../lib/toast';
 import { getStorageImageDisplayUrl } from '../../../lib/imageUrl';
 import { theme } from '../../../lib/theme';
 import { toErrorMessage } from '../../../lib/logError';
+import { friendlyError } from '../../../lib/errorMap';
 import type { ProjectSigner, SignerRole } from '../../../types/models';
 import { SIGNER_ROLE_LABEL } from '../../../types/models';
 import { a11y } from '../../../lib/accessibility';
@@ -52,7 +53,7 @@ export default function SignerForm() {
         );
       }
     } catch (e) {
-      toast.error(toErrorMessage(e, 'ჩატვირთვა ვერ მოხერხდა'));
+      toast.error(friendlyError(e, 'ჩატვირთვა ვერ მოხერხდა'));
     }
   }, [id, signerId, toast]);
 
@@ -98,7 +99,7 @@ export default function SignerForm() {
       toast.success(editing ? 'განახლდა' : 'დაემატა');
       router.back();
     } catch (e) {
-      toast.error(toErrorMessage(e, 'შენახვა ვერ მოხერხდა'));
+      toast.error(friendlyError(e, 'შენახვა ვერ მოხერხდა'));
     } finally {
       setBusy(false);
     }
@@ -117,7 +118,7 @@ export default function SignerForm() {
             toast.success('წაიშალა');
             router.back();
           } catch (e) {
-            toast.error(toErrorMessage(e, 'ვერ წაიშალა'));
+            toast.error(friendlyError(e, 'ვერ წაიშალა'));
           }
         },
       },

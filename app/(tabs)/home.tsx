@@ -29,6 +29,7 @@ import {
 import { theme } from '../../lib/theme';
 import { a11y } from '../../lib/accessibility';
 import { logError, toErrorMessage } from '../../lib/logError';
+import { friendlyError } from '../../lib/errorMap';
 import { Button, Field, Input } from '../../components/ui';
 import { Skeleton } from '../../components/Skeleton';
 import { MapPicker, type LatLng } from '../../components/MapPicker';
@@ -96,7 +97,7 @@ export default function HomeScreen() {
     setRefreshing(false);
   };
 
-  const templateName = (id: string) => templates.find(t => t.id === id)?.name ?? 'კითხვარი';
+  const templateName = (id: string) => templates.find(t => t.id === id)?.name ?? 'ინსპექცია';
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top']}>
@@ -119,7 +120,7 @@ export default function HomeScreen() {
                   <Ionicons name="pencil" size={16} color={theme.colors.warn} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.resumeEyebrow}>გააგრძელე დრაფტი</Text>
+                  <Text style={styles.resumeEyebrow}>გააგრძელეთ დრაფტი</Text>
                   <Text style={styles.resumeTitle} numberOfLines={1}>
                     {templateName(latestDraft.template_id)}
                   </Text>
@@ -131,14 +132,14 @@ export default function HomeScreen() {
               </View>
             </Pressable>
           ) : (
-            <Pressable onPress={() => setPickerVisible(true)} {...a11y('ახალი ინსპექტირება', 'შეეხეთ ახალი ინსპექტირების დასაწყებად', 'button')}>
+            <Pressable onPress={() => setPickerVisible(true)} {...a11y('ახალი ინსპექცია', 'შეეხეთ ახალი ინსპექციის დასაწყებად', 'button')}>
               <View style={styles.startCard}>
                 <View style={styles.startIcon}>
                   <Ionicons name="add" size={26} color={theme.colors.accent} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.startTitle}>ახალი შემოწმება</Text>
-                  <Text style={styles.startSub}>აირჩიე პროექტი და დაიწყე</Text>
+                  <Text style={styles.startTitle}>ახალი ინსპექცია</Text>
+                  <Text style={styles.startSub}>აირჩიეთ პროექტი და დაიწყეთ</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color={theme.colors.accent} />
               </View>
@@ -155,10 +156,10 @@ export default function HomeScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.bannerTitle}>
-                  {certs.length === 0 ? 'ატვირთე სერტიფიკატები' : `${expiringCount} სერტიფიკატი იწურება`}
+                  {certs.length === 0 ? 'ატვირთეთ სერტიფიკატები' : `${expiringCount} სერტიფიკატი იწურება`}
                 </Text>
                 <Text style={styles.bannerSub}>
-                  {certs.length === 0 ? 'PDF ანგარიშს ავტომატურად ერთვის.' : 'შეამოწმე ვადები სანამ არ გააჩერდება.'}
+                  {certs.length === 0 ? 'PDF რეპორტს ავტომატურად ერთვის.' : 'შეამოწმეთ ვადები, სანამ ობიექტი არ გაჩერდება.'}
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={theme.colors.warn} />
@@ -177,7 +178,7 @@ export default function HomeScreen() {
         {!loaded && projects.length === 0 ? (
           <View style={{ flexDirection: 'row', paddingHorizontal: HPAD, paddingTop: 10, gap: GAP }}>
             {Array.from({ length: 2 }).map((_, i) => (
-              <View key={i} style={[styles.projectCard, { width: (screenWidth - HPAD * 2 - GAP) / 2, gap: 10 }]}>
+              <View key={`skeleton-${i}`} style={[styles.projectCard, { width: (screenWidth - HPAD * 2 - GAP) / 2, gap: 10 }]}>
                 <Skeleton width={48} height={48} radius={12} />
                 <Skeleton width={'80%'} height={14} />
                 <Skeleton width={'50%'} height={11} />
@@ -195,7 +196,7 @@ export default function HomeScreen() {
                 <Ionicons name="add" size={24} color={theme.colors.accent} />
               </View>
               <Text style={styles.emptyProjectsCta}>ახალი პროექტი</Text>
-              <Text style={styles.emptyProjectsText}>შექმენი პირველი</Text>
+              <Text style={styles.emptyProjectsText}>შექმენით პირველი</Text>
             </View>
           </Pressable>
         ) : isProjectsCarousel ? (
@@ -246,7 +247,7 @@ export default function HomeScreen() {
             <View style={[styles.recentList, { marginTop: 8 }]}>
               {Array.from({ length: 3 }).map((_, i) => (
                 <View
-                  key={i}
+                  key={`skeleton-${i}`}
                   style={[
                     styles.recentRow,
                     i > 0 && styles.recentRowBorder,
@@ -351,7 +352,7 @@ export default function HomeScreen() {
 function AnimatedFAB({ open, onPress }: { open: boolean; onPress: () => void }) {
   // Simple icon rotation — no spring physics that can crash on some devices
   return (
-    <Pressable onPress={onPress} style={styles.fabWrap} {...a11y('ახალი ინსპექტირება', 'შეეხეთ ახალი ინსპექტირების დასაწყებად', 'button')}>
+    <Pressable onPress={onPress} style={styles.fabWrap} {...a11y('ახალი ინსპექცია', 'შეეხეთ ახალი ინსპექციის დასაწყებად', 'button')}>
       {({ pressed }) => (
         <View style={[styles.fab, pressed && { opacity: 0.8 }]}>
           <Ionicons
@@ -447,7 +448,7 @@ function ProjectPickerSheet({
       onClose();
       router.push(`/inspections/${q.id}/wizard` as any);
     } catch (e) {
-      toast.error(toErrorMessage(e, 'შექმნა ვერ მოხერხდა'));
+      toast.error(friendlyError(e, 'შექმნა ვერ მოხერხდა'));
     }
   };
 
@@ -478,7 +479,7 @@ function ProjectPickerSheet({
         toast.success('პროექტი შეიქმნა');
       }
     } catch (e) {
-      toast.error(toErrorMessage(e, 'შექმნა ვერ მოხერხდა'));
+      toast.error(friendlyError(e, 'შექმნა ვერ მოხერხდა'));
     } finally {
       setBusy(false);
     }
@@ -501,7 +502,7 @@ function ProjectPickerSheet({
               <>
                 {/* Sheet header */}
                 <View style={pickerStyles.sheetHeader}>
-                  <Text style={pickerStyles.sheetTitle}>შემოწმების დაწყება</Text>
+                  <Text style={pickerStyles.sheetTitle}>ინსპექციის დაწყება</Text>
                   <Pressable onPress={onClose} hitSlop={10} {...a11y('დახურვა', 'შეეხეთ ფანჯრის დასახურად', 'button')}>
                     <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
                   </Pressable>
@@ -512,7 +513,7 @@ function ProjectPickerSheet({
                   <View style={pickerStyles.emptyState}>
                     <Ionicons name="folder-open-outline" size={36} color={theme.colors.inkFaint} />
                     <Text style={pickerStyles.emptyText}>პროექტი ჯერ არ გაქვს</Text>
-                    <Text style={pickerStyles.emptySubText}>დაამატე ქვემოთ</Text>
+                    <Text style={pickerStyles.emptySubText}>დაამატეთ ქვემოთ</Text>
                   </View>
                 ) : (
                   <ScrollView
@@ -527,7 +528,7 @@ function ProjectPickerSheet({
                           key={p.id}
                           onPress={() => pickTemplate(p.id)}
                           style={pickerStyles.projectRow}
-                          {...a11y(`პროექტი: ${p.name}`, 'შეეხეთ ინსპექტირების დასაწყებად ამ პროექტზე', 'button')}
+                          {...a11y(`პროექტი: ${p.name}`, 'შეეხეთ ინსპექციის დასაწყებად ამ პროექტზე', 'button')}
                         >
                           <View style={[pickerStyles.avatarBubble, { backgroundColor: av.color + '22' }]}>
                             <Text style={{ fontSize: 22 }}>{av.emoji}</Text>
@@ -558,10 +559,10 @@ function ProjectPickerSheet({
               <>
                 {/* Template picker header with back button */}
                 <View style={pickerStyles.sheetHeader}>
-                  <Pressable onPress={() => setView('list')} hitSlop={10} style={{ marginRight: 10 }} {...a11y('უკან', 'შეეხეთ პროექტების სიაზე დასაბრუნებლად', 'button')}>
+                  <Pressable onPress={() => setView('list')} hitSlop={10} style={{ marginRight: 10 }} {...a11y('პროექტები — დაბრუნება', 'შეეხეთ პროექტების სიაზე დასაბრუნებლად', 'button')}>
                     <Ionicons name="arrow-back" size={22} color={theme.colors.accent} />
                   </Pressable>
-                  <Text style={[pickerStyles.sheetTitle, { flex: 1 }]}>აირჩიე შაბლონი</Text>
+                  <Text style={[pickerStyles.sheetTitle, { flex: 1 }]}>აირჩიეთ შაბლონი</Text>
                   <Pressable onPress={onClose} hitSlop={10} {...a11y('დახურვა', 'შეეხეთ ფანჯრის დასახურად', 'button')}>
                     <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
                   </Pressable>
@@ -593,7 +594,7 @@ function ProjectPickerSheet({
               <>
                 {/* New project form header with back button */}
                 <View style={pickerStyles.sheetHeader}>
-                  <Pressable onPress={() => setView('list')} hitSlop={10} style={{ marginRight: 10 }} {...a11y('უკან', 'შეეხეთ პროექტების სიაზე დასაბრუნებლად', 'button')}>
+                  <Pressable onPress={() => setView('list')} hitSlop={10} style={{ marginRight: 10 }} {...a11y('პროექტები — დაბრუნება', 'შეეხეთ პროექტების სიაზე დასაბრუნებლად', 'button')}>
                     <Ionicons name="arrow-back" size={22} color={theme.colors.accent} />
                   </Pressable>
                   <Text style={[pickerStyles.sheetTitle, { flex: 1 }]}>ახალი პროექტი</Text>
@@ -716,13 +717,13 @@ function relativeTime(iso: string) {
 }
 
 const TIPS = [
-  'ხარაჩოს ინსპექტორობამდე დარწმუნდი, რომ ქამარი და მუზარადი გაქვს.',
-  'ქარი 15 მ/წმ-ზე მაღლა — შეაჩერე სიმაღლის სამუშაოები.',
-  'ქამრის ინსპექცია: შეამოწმე ნაკერები და ბალთები, არა მხოლოდ ზოლი.',
-  'ფოტოს გადაღება ანგარიშში 3x უფრო ღირებულს ხდის — გადაიღე ყოველ ცვლილებას.',
+  'ხარაჩოს ინსპექტირებამდე დარწმუნდით, რომ ქამარი და მუზარადი გაქვთ.',
+  'ქარი 15 მ/წმ-ზე მაღლა — შეაჩერეთ სიმაღლის სამუშაოები.',
+  'ქამრის ინსპექცია: შეამოწმეთ ნაკერები და ბალთები, არა მხოლოდ ზოლი.',
+  'ფოტოს გადაღება რეპორტს 3x უფრო ღირებულს ხდის — გადაიღეთ ყოველი ცვლილება.',
   'ხარაჩოს ფეხის ფუძე უნდა იდოს მტკიცე, თანაბარ ზედაპირზე.',
   'ორი დამოუკიდებელი მიბმის წერტილი ყოველთვის უფრო უსაფრთხოა ერთზე.',
-  'სველი ხარაჩო ორჯერ უფრო საშიშია — შეამოწმე ფიცრის გახრწნა.',
+  'სველი ხარაჩო ორჯერ უფრო საშიშია — შეამოწმეთ ფიცრის გახრწნა.',
 ];
 
 function tipOfTheDay() {
