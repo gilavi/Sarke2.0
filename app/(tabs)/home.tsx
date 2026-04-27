@@ -30,9 +30,11 @@ import { theme } from '../../lib/theme';
 import { a11y } from '../../lib/accessibility';
 import { logError, toErrorMessage } from '../../lib/logError';
 import { Button, Field, Input } from '../../components/ui';
+import { NumberPop } from '../../components/animations';
 import { Skeleton } from '../../components/Skeleton';
 import { MapPicker, type LatLng } from '../../components/MapPicker';
 import { useToast } from '../../lib/toast';
+import { haptic } from '../../lib/haptics';
 import type { Inspection, Project, Qualification, Template } from '../../types/models';
 
 export default function HomeScreen() {
@@ -91,6 +93,7 @@ export default function HomeScreen() {
   const tip = tipOfTheDay();
 
   const onRefresh = async () => {
+    haptic.medium();
     setRefreshing(true);
     await load();
     setRefreshing(false);
@@ -154,9 +157,14 @@ export default function HomeScreen() {
                 <Ionicons name={certs.length === 0 ? 'cloud-upload-outline' : 'warning'} size={18} color={theme.colors.warn} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.bannerTitle}>
-                  {certs.length === 0 ? 'ატვირთე სერტიფიკატები' : `${expiringCount} სერტიფიკატი იწურება`}
-                </Text>
+                {certs.length === 0 ? (
+                  <Text style={styles.bannerTitle}>ატვირთე სერტიფიკატები</Text>
+                ) : (
+                  <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+                    <NumberPop value={expiringCount} style={styles.bannerTitle} />
+                    <Text style={styles.bannerTitle}> სერტიფიკატი იწურება</Text>
+                  </View>
+                )}
                 <Text style={styles.bannerSub}>
                   {certs.length === 0 ? 'PDF ანგარიშს ავტომატურად ერთვის.' : 'შეამოწმე ვადები სანამ არ გააჩერდება.'}
                 </Text>

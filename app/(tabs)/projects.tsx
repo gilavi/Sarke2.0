@@ -28,6 +28,7 @@ import { projectsApi } from '../../lib/services';
 import { useToast } from '../../lib/toast';
 import { theme } from '../../lib/theme';
 import { logError, toErrorMessage } from '../../lib/logError';
+import { haptic } from '../../lib/haptics';
 import type { Project } from '../../types/models';
 
 type Stats = Record<string, { drafts: number; completed: number }>;
@@ -140,6 +141,7 @@ export default function ProjectsScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={async () => {
+              haptic.medium();
               setRefreshing(true);
               await load();
               setRefreshing(false);

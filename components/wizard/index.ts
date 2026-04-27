@@ -5,3 +5,4 @@ export { WizardNav } from './WizardNav';
 export { ExitConfirmationModal } from './ExitModal';
 export { SmartDefaultHint } from './SmartHint';
 export { WizardPhotoThumbs } from './PhotoThumbs';
+export { WizardStepTransition } from './WizardStepTransition';

@@ -16,6 +16,7 @@ import {
   WizardNav,
   ExitConfirmationModal,
   WizardPhotoThumbs,
+  WizardStepTransition,
 } from '../../../components/wizard';
 import {
   answersApi,
@@ -175,15 +176,13 @@ export default function QuestionnaireWizard() {
   const [exitModalVisible, setExitModalVisible] = useState(false);
   const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
 
-  // Step transition animation
-  const stepAnim = useRef(new Animated.Value(1)).current;
+  // Step transition direction. Forward navigation slides the new step in
+  // from the right and the old one out to the left; back nav reverses both.
+  const prevStepIndexRef = useRef(stepIndex);
+  const stepDirection: 'next' | 'prev' =
+    stepIndex >= prevStepIndexRef.current ? 'next' : 'prev';
   useEffect(() => {
-    stepAnim.setValue(0);
-    Animated.timing(stepAnim, {
-      toValue: 1,
-      duration: 220,
-      useNativeDriver: true,
-    }).start();
+    prevStepIndexRef.current = stepIndex;
   }, [stepIndex]);
 
   // First-render fade out of the skeleton — kicks in once data is ready.
@@ -654,8 +653,8 @@ export default function QuestionnaireWizard() {
           style={{ flex: 1 }}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
         >
-          {step.kind === 'gridRow' ? (
-            <Animated.View style={{ flex: 1, opacity: stepAnim }}>
+          <WizardStepTransition stepKey={stepIndex} direction={stepDirection}>
+            {step.kind === 'gridRow' ? (
               <GridRowStep
                 question={step.question}
                 row={step.row}
@@ -669,9 +668,7 @@ export default function QuestionnaireWizard() {
                 onDeletePhoto={deletePhoto}
                 onAdvance={goNext}
               />
-            </Animated.View>
-          ) : (
-            <Animated.View style={{ flex: 1, opacity: stepAnim }}>
+            ) : (
               <ScrollView
                 contentContainerStyle={{ padding: 20, paddingBottom: 12, gap: 16 }}
                 keyboardShouldPersistTaps="handled"
@@ -703,8 +700,8 @@ export default function QuestionnaireWizard() {
                   />
                 )}
               </ScrollView>
-            </Animated.View>
-          )}
+            )}
+          </WizardStepTransition>
 
           <View style={[styles.footer, { paddingBottom: 16 + insets.bottom }]}>
             {isYesNo && step.kind === 'question' ? (

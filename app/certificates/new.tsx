@@ -31,6 +31,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { Button, Screen } from '../../components/ui';
+import { AnimatedCheckboxView } from '../../components/primitives';
 import { SkeletonCard, SkeletonListCard } from '../../components/Skeleton';
 import { SignatureCanvas } from '../../components/SignatureCanvas';
 import {
@@ -806,9 +807,7 @@ export default function GenerateCertificateScreen() {
                       style={s.rosterRow}
                       {...a11y(`${signer.full_name} — ${SIGNER_ROLE_LABEL[signer.role]}`, 'ხელმომწერის არჩევა', 'button')}
                     >
-                      <View style={[s.checkbox, checked && s.checkboxChecked]}>
-                        {checked && <Ionicons name="checkmark" size={14} color={COLORS.white} />}
-                      </View>
+                      <AnimatedCheckboxView checked={checked} size={22} color={COLORS.primary} />
                       <View style={{ flex: 1 }}>
                         <Text style={s.rosterTitle}>
                           {signer.full_name}-ის ხელმოწერა
@@ -1095,19 +1094,6 @@ const s = StyleSheet.create({
     backgroundColor: COLORS.surface,
     borderWidth: 1,
     borderColor: COLORS.hairline,
-  },
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
-    borderWidth: 1.5,
-    borderColor: COLORS.hairline,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkboxChecked: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
   },
   rosterTitle: {
     fontSize: 15,
