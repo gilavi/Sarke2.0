@@ -1,8 +1,9 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useBottomSheet } from './BottomSheet';
 import { QuestionAvatar } from './QuestionAvatar';
 import { helpForRow } from '../lib/scaffoldHelp';
+import { TourGuide, type TourStep } from './TourGuide';
 
 const BRAND = '#1D9E75';
 
@@ -13,26 +14,50 @@ export function useScaffoldHelpSheet() {
       const entry = helpForRow(rowLabel);
       show({
         dismissable: true,
-        content: ({ dismiss }) => (
-          <View style={styles.body}>
-            <Text style={styles.title}>{entry.name}</Text>
-            {entry.key && entry.name ? (
-              <View style={styles.illustration}>
-                <QuestionAvatar illustrationKey={entry.key} size={160} />
-              </View>
-            ) : null}
-            <Text style={styles.copy}>{entry.oneLiner}</Text>
-            <Pressable
-              onPress={dismiss}
-              style={({ pressed }) => [styles.btn, pressed && { opacity: 0.8 }]}
-            >
-              <Text style={styles.btnText}>დახურვა</Text>
-            </Pressable>
-          </View>
-        ),
+        content: ({ dismiss }) => <HelpSheetBody entry={entry} dismiss={dismiss} />,
       });
     },
     [show],
+  );
+}
+
+function HelpSheetBody({
+  entry,
+  dismiss,
+}: {
+  entry: ReturnType<typeof helpForRow>;
+  dismiss: () => void;
+}) {
+  const illustrationRef = useRef<View>(null);
+  const tourSteps: TourStep[] = useMemo(
+    () => [
+      {
+        targetRef: illustrationRef,
+        title: 'კომპონენტის სურათი',
+        body: 'ეს გვიჩვენებს სად ზუსტად არის ეს ნაწილი',
+        position: 'bottom',
+      },
+    ],
+    [],
+  );
+  return (
+    <TourGuide tourId="haraco_help_icon_v1" steps={tourSteps}>
+      <View style={styles.body}>
+        <Text style={styles.title}>{entry.name}</Text>
+        {entry.key && entry.name ? (
+          <View ref={illustrationRef} collapsable={false} style={styles.illustration}>
+            <QuestionAvatar illustrationKey={entry.key} size={160} />
+          </View>
+        ) : null}
+        <Text style={styles.copy}>{entry.oneLiner}</Text>
+        <Pressable
+          onPress={dismiss}
+          style={({ pressed }) => [styles.btn, pressed && { opacity: 0.8 }]}
+        >
+          <Text style={styles.btnText}>დახურვა</Text>
+        </Pressable>
+      </View>
+    </TourGuide>
   );
 }
 

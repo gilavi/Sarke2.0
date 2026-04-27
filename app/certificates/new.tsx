@@ -663,7 +663,7 @@ export default function GenerateCertificateScreen() {
 
   const previewPdf = () => {
     if (!inspection) return;
-    router.push(`/certificates/preview?inspectionId=${inspection.id}` as any);
+    router.push(`/inspections/${inspection.id}?tab=preview` as any);
   };
 
   // ── Render ───────────────────────────────────────────────────────────────────
@@ -724,7 +724,7 @@ export default function GenerateCertificateScreen() {
           <View style={s.headerBack} />
         </View>
 
-        <ScrollView contentContainerStyle={{ paddingBottom: 140 }} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={{ paddingBottom: 140 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           {/* Inspection Hero */}
           <Animated.View entering={FadeInUp.duration(300).delay(0 * STAGGER_MS)} style={s.heroBlock}>
             <Text style={s.heroLabel}>ინსპექცია</Text>

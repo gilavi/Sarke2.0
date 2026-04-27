@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -11,6 +10,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -45,6 +45,7 @@ export default function HomeScreen() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [pickerVisible, setPickerVisible] = useState(false);
+  const [pickerInitialView, setPickerInitialView] = useState<'list' | 'new'>('list');
   // `loaded` flips true after the first fetch finishes (success or not) so
   // we know when to swap skeletons for real content. Pull-to-refresh doesn't
   // re-show skeletons — the RefreshControl spinner already signals that.
@@ -215,7 +216,10 @@ export default function HomeScreen() {
             ))}
             {/* New project card always at the end of the scroll */}
             <Pressable
-              onPress={() => setPickerVisible(true)}
+              onPress={() => {
+                setPickerInitialView('new');
+                setPickerVisible(true);
+              }}
               style={{ width: Math.round(projectCardWidth * 0.72) }}
               {...a11y('ახალი პროექტის შექმნა', 'შეეხეთ ახალი პროექტის შესაქმნელად', 'button')}
             >
@@ -242,7 +246,7 @@ export default function HomeScreen() {
         {!loaded && recent.length === 0 ? (
           <>
             <View style={[styles.sectionHeaderRow, { marginTop: 28 }]}>
-              <Text style={styles.sectionHeader}>ბოლო აქტივობა</Text>
+              <Text style={styles.sectionHeader}>ბოლო აქტები</Text>
             </View>
             <View style={[styles.recentList, { marginTop: 8 }]}>
               {Array.from({ length: 3 }).map((_, i) => (
@@ -265,7 +269,7 @@ export default function HomeScreen() {
         ) : recent.length > 0 ? (
           <>
             <View style={[styles.sectionHeaderRow, { marginTop: 28 }]}>
-              <Text style={styles.sectionHeader}>ბოლო აქტივობა</Text>
+              <Text style={styles.sectionHeader}>ბოლო აქტები</Text>
               <Pressable onPress={() => router.push('/history' as any)} hitSlop={8} {...a11y('ყველა აქტივობის ნახვა', 'შეეხეთ ისტორიის სანახავად', 'button')}>
                 <Text style={styles.sectionLink}>ყველა</Text>
               </Pressable>
@@ -331,15 +335,23 @@ export default function HomeScreen() {
       {/* Animated FAB — rotates + to × when sheet opens, pulses on press */}
       <AnimatedFAB
         open={pickerVisible}
-        onPress={() => setPickerVisible(true)}
+        onPress={() => {
+          setPickerInitialView('list');
+          setPickerVisible(true);
+        }}
       />
 
       <ProjectPickerSheet
         visible={pickerVisible}
+        initialView={pickerInitialView}
         projects={projects}
         templates={templates}
         onClose={() => setPickerVisible(false)}
         onCreated={load}
+        onProjectCreated={(id) => {
+          setPickerVisible(false);
+          router.push(`/projects/${id}` as any);
+        }}
       />
     </SafeAreaView>
   );
@@ -389,16 +401,20 @@ function AnimatedDarkBackdrop({ visible, onPress }: { visible: boolean; onPress:
 
 function ProjectPickerSheet({
   visible,
+  initialView = 'list',
   projects,
   templates,
   onClose,
   onCreated,
+  onProjectCreated,
 }: {
   visible: boolean;
+  initialView?: 'list' | 'new';
   projects: Project[];
   templates: Template[];
   onClose: () => void;
   onCreated: () => Promise<void>;
+  onProjectCreated?: (id: string) => void;
 }) {
   const router = useRouter();
   const toast = useToast();
@@ -416,7 +432,7 @@ function ProjectPickerSheet({
   // Reset form + view every time the sheet opens
   useEffect(() => {
     if (visible) {
-      setView('list');
+      setView(initialView);
       setPickedProjectId(null);
       setName('');
       setCompany('');
@@ -468,12 +484,18 @@ function ProjectPickerSheet({
       await onCreated();
       // Use returned project directly (no stale prop issues)
       if (created?.id) {
-        setPickedProjectId(created.id);
-        setView('template');
         setName('');
         setCompany('');
         setAddress('');
         setPin(null);
+        if (onProjectCreated) {
+          // Caller wants to take over after creation (e.g. navigate to the
+          // project detail screen). Skip the inline template-picker step.
+          onProjectCreated(created.id);
+        } else {
+          setPickedProjectId(created.id);
+          setView('template');
+        }
       } else {
         onClose();
         toast.success('პროექტი შეიქმნა');
@@ -508,19 +530,35 @@ function ProjectPickerSheet({
                   </Pressable>
                 </View>
 
-                {/* Project list */}
+                {/* Project list — "add new" row scrolls together with project items */}
                 {projects.length === 0 ? (
-                  <View style={pickerStyles.emptyState}>
-                    <Ionicons name="folder-open-outline" size={36} color={theme.colors.inkFaint} />
-                    <Text style={pickerStyles.emptyText}>პროექტი ჯერ არ გაქვს</Text>
-                    <Text style={pickerStyles.emptySubText}>დაამატეთ ქვემოთ</Text>
-                  </View>
+                  <>
+                    <Pressable onPress={() => setView('new')} style={pickerStyles.addNewRow} {...a11y('პროექტის შექმნა', 'შეეხეთ ახალი პროექტის შესაქმნელად', 'button')}>
+                      <View style={pickerStyles.addNewIcon}>
+                        <Ionicons name="add" size={18} color={theme.colors.accent} />
+                      </View>
+                      <Text style={pickerStyles.addNewText}>ახალი პროექტის დამატება</Text>
+                      <Ionicons name="chevron-forward" size={16} color={theme.colors.accent} />
+                    </Pressable>
+                    <View style={pickerStyles.emptyState}>
+                      <Ionicons name="folder-open-outline" size={36} color={theme.colors.inkFaint} />
+                      <Text style={pickerStyles.emptyText}>პროექტი ჯერ არ გაქვს</Text>
+                      <Text style={pickerStyles.emptySubText}>აირჩიეთ ზემოთ "ახალი პროექტის დამატება"</Text>
+                    </View>
+                  </>
                 ) : (
                   <ScrollView
-                    style={{ maxHeight: 320 }}
+                    style={{ maxHeight: 380 }}
                     showsVerticalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled"
                   >
+                    <Pressable onPress={() => setView('new')} style={pickerStyles.addNewRow} {...a11y('პროექტის შექმნა', 'შეეხეთ ახალი პროექტის შესაქმნელად', 'button')}>
+                      <View style={pickerStyles.addNewIcon}>
+                        <Ionicons name="add" size={18} color={theme.colors.accent} />
+                      </View>
+                      <Text style={pickerStyles.addNewText}>ახალი პროექტის დამატება</Text>
+                      <Ionicons name="chevron-forward" size={16} color={theme.colors.accent} />
+                    </Pressable>
                     {projects.map(p => {
                       const av = projectAvatar(p.id);
                       return (
@@ -545,15 +583,6 @@ function ProjectPickerSheet({
                     })}
                   </ScrollView>
                 )}
-
-                {/* Add new project row */}
-                <Pressable onPress={() => setView('new')} style={pickerStyles.addNewRow} {...a11y('პროექტის შექმნა', 'შეეხეთ ახალი პროექტის შესაქმნელად', 'button')}>
-                  <View style={pickerStyles.addNewIcon}>
-                    <Ionicons name="add" size={18} color={theme.colors.accent} />
-                  </View>
-                  <Text style={pickerStyles.addNewText}>ახალი პროექტის დამატება</Text>
-                  <Ionicons name="chevron-forward" size={16} color={theme.colors.accent} />
-                </Pressable>
               </>
             ) : view === 'template' ? (
               <>
@@ -607,7 +636,7 @@ function ProjectPickerSheet({
                 <ScrollView
                   keyboardShouldPersistTaps="handled"
                   showsVerticalScrollIndicator={false}
-                  contentContainerStyle={{ gap: 12, paddingTop: 4, paddingBottom: 8 }}
+                  contentContainerStyle={{ paddingTop: 4, paddingBottom: 8 }}
                   style={{ maxHeight: '78%' }}
                 >
                   <Field label="სახელი">
@@ -623,9 +652,6 @@ function ProjectPickerSheet({
                     <Input value={company} onChangeText={setCompany} placeholder="შემკვეთი" {...a11y('კომპანიის დასახელება', 'შეიყვანეთ კომპანიის სახელი', 'text')} />
                   </Field>
                   <Field label="მისამართი">
-                    <Input value={address} onChangeText={setAddress} placeholder="ობიექტის მისამართი" {...a11y('მისამართი', 'შეიყვანეთ პროექტის მისამართი', 'text')} />
-                  </Field>
-                  <Field label="მდებარეობა რუკაზე">
                     <MapPicker value={pin} onChange={setPin} address={address} onAddressChange={setAddress} />
                   </Field>
                 </ScrollView>
@@ -732,6 +758,8 @@ function tipOfTheDay() {
 }
 
 // ──────────── STYLES ────────────
+
+const PROJECT_CARD_HEIGHT = 150;
 
 const styles = StyleSheet.create({
   // HERO
@@ -884,6 +912,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.hairline,
     padding: 12,
     gap: 10,
+    height: PROJECT_CARD_HEIGHT,
   },
   projectEmoji: {
     width: 48,
@@ -912,7 +941,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: theme.colors.accent + '33',
     borderStyle: 'dashed',
-    paddingVertical: 32,
+    height: PROJECT_CARD_HEIGHT,
   },
   emptyPlusIcon: {
     width: 48,
@@ -942,7 +971,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingVertical: 20,
+    height: PROJECT_CARD_HEIGHT,
   },
   newProjectCardText: {
     fontSize: 13,
@@ -1065,6 +1094,7 @@ const pickerStyles = StyleSheet.create({
   sheetHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 14,
   },
   sheetTitle: {
@@ -1102,12 +1132,13 @@ const pickerStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    marginTop: 14,
+    marginBottom: 14,
     paddingVertical: 14,
     paddingHorizontal: 14,
     backgroundColor: theme.colors.accentSoft,
     borderRadius: 14,
-    borderWidth: 1,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
     borderColor: theme.colors.accent + '33',
   },
   addNewIcon: {

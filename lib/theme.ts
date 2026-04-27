@@ -83,6 +83,8 @@ export const lightTheme = {
     warnSoft: semantic.warningSoft,
     danger: semantic.danger,
     dangerSoft: semantic.dangerSoft,
+    dangerTint: '#FFF5F5',
+    dangerBorder: '#F09595',
     card: '#FFFFFF',
     hairline: neutral[200],
     subtleSurface: neutral[100],

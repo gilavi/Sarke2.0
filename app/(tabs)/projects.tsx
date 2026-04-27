@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   FlatList,
-  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -13,6 +12,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -30,6 +30,7 @@ import { theme } from '../../lib/theme';
 import { logError, toErrorMessage } from '../../lib/logError';
 import { friendlyError } from '../../lib/errorMap';
 import type { Project } from '../../types/models';
+import { TourGuide, type TourStep } from '../../components/TourGuide';
 
 type Stats = Record<string, { drafts: number; completed: number }>;
 
@@ -42,6 +43,13 @@ export default function ProjectsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [query, setQuery] = useState('');
   const [creating, setCreating] = useState(false);
+  const openSwipeRefs = useRef(new Map<string, { close: () => void }>());
+
+  // Tour refs
+  const listRef = useRef<View>(null);
+  const firstCardRef = useRef<View>(null);
+  const fabRef = useRef<View>(null);
+  const avatarRef = useRef<View>(null);
 
   const load = useCallback(async () => {
     try {
@@ -99,13 +107,58 @@ export default function ProjectsScreen() {
     );
   };
 
+  const tourSteps: TourStep[] = useMemo(() => {
+    const steps: TourStep[] = [
+      {
+        targetRef: listRef,
+        title: 'შენი პროექტები',
+        body: 'აქ ჩანს ყველა შენი მიმდინარე პროექტი',
+        position: 'bottom',
+      },
+    ];
+    if (projects.length > 0) {
+      steps.push({
+        targetRef: firstCardRef,
+        title: 'პროექტი',
+        body: 'შეეხე პროექტს დეტალების სანახავად',
+        position: 'bottom',
+      });
+    }
+    steps.push(
+      {
+        targetRef: fabRef,
+        title: 'ახალი პროექტი',
+        body: 'დაამატე სამშენებლო ობიექტი შემოწმების დასაწყებად',
+        position: 'top',
+      },
+      {
+        targetRef: avatarRef,
+        title: 'შენი პროფილი',
+        body: 'აქ არის შენი ხელმოწერა და პარამეტრები',
+        position: 'bottom',
+      },
+    );
+    return steps;
+  }, [projects.length]);
+
   return (
+    <TourGuide tourId="homepage_v1" steps={tourSteps}>
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.title}>პროექტები</Text>
-        <Text style={styles.subtitle}>
-          {projects.length > 0 ? `სულ ${projects.length}` : ''}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <Text style={styles.subtitle}>
+            {projects.length > 0 ? `სულ ${projects.length}` : ''}
+          </Text>
+          <Pressable
+            ref={avatarRef}
+            onPress={() => router.push('/(tabs)/more' as any)}
+            style={styles.avatarBtn}
+            {...a11y('პროფილი', 'შეეხეთ პროფილისა და პარამეტრების სანახავად', 'button')}
+          >
+            <Ionicons name="person" size={18} color={theme.colors.accent} />
+          </Pressable>
+        </View>
       </View>
       {projects.length > 0 ? (
         <View style={styles.searchWrap}>
@@ -125,16 +178,27 @@ export default function ProjectsScreen() {
         </View>
       ) : null}
 
+      <View ref={listRef} collapsable={false} style={{ flex: 1 }}>
       <FlatList
         data={filtered}
         keyExtractor={p => p.id}
         contentContainerStyle={{ padding: 16, paddingBottom: 100, gap: 10 }}
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
           <ProjectRow
             project={item}
             stats={stats[item.id]}
+            cardRef={index === 0 ? firstCardRef : undefined}
             onOpen={() => router.push(`/projects/${item.id}` as any)}
             onDelete={() => onDelete(item)}
+            registerSwipeable={(ref) => {
+              if (ref) openSwipeRefs.current.set(item.id, ref);
+              else openSwipeRefs.current.delete(item.id);
+            }}
+            onSwipeOpen={() => {
+              openSwipeRefs.current.forEach((ref, id) => {
+                if (id !== item.id) ref.close();
+              });
+            }}
           />
         )}
         refreshControl={
@@ -176,8 +240,10 @@ export default function ProjectsScreen() {
           )
         }
       />
+      </View>
 
       <Pressable
+        ref={fabRef}
         onPress={() => setCreating(true)}
         style={[styles.fab, theme.shadow.button]}
         {...a11y('ახალი პროექტი', 'შეეხეთ ახალი პროექტის შესაქმნელად', 'button')}
@@ -195,6 +261,7 @@ export default function ProjectsScreen() {
         }}
       />
     </SafeAreaView>
+    </TourGuide>
   );
 }
 
@@ -323,12 +390,19 @@ function ProjectRow({
   stats,
   onOpen,
   onDelete,
+  registerSwipeable,
+  onSwipeOpen,
+  cardRef,
 }: {
   project: Project;
   stats?: { drafts: number; completed: number };
   onOpen: () => void;
   onDelete: () => void;
+  registerSwipeable?: (ref: { close: () => void } | null) => void;
+  onSwipeOpen?: () => void;
+  cardRef?: React.RefObject<View | null>;
 }) {
+  const swipeRef = useRef<any>(null);
   const renderRightActions = () => (
     <Pressable onPress={onDelete} style={styles.swipeDelete} {...a11y('წაშლა', 'შეეხეთ პროექტის წასაშლელად', 'button')}>
       <Ionicons name="trash" size={20} color={theme.colors.white} />
@@ -337,7 +411,14 @@ function ProjectRow({
   );
 
   return (
-    <Swipeable renderRightActions={renderRightActions} overshootRight={false}>
+    <View ref={cardRef} collapsable={false}>
+    <Swipeable
+      ref={swipeRef as any}
+      onSwipeableOpen={() => registerSwipeable?.(swipeRef.current)}
+      renderRightActions={renderRightActions}
+      overshootRight={false}
+      onSwipeableWillOpen={onSwipeOpen}
+    >
       <PressableScale
         onPress={onOpen}
         hapticOnPress="navigate"
@@ -371,7 +452,7 @@ function ProjectRow({
                 <View style={{ flexDirection: 'row', gap: 10, marginTop: 6 }}>
                   {stats.drafts > 0 ? (
                     <View style={[styles.counter, { backgroundColor: theme.colors.warnSoft }]}>
-                      <Ionicons name="pencil" size={11} color={theme.colors.warn} />
+                      <Ionicons name="document-text-outline" size={11} color={theme.colors.warn} />
                       <Text style={{ color: theme.colors.warn, fontSize: 11, fontWeight: '700' }}>
                         {stats.drafts} დრაფტი
                       </Text>
@@ -393,6 +474,7 @@ function ProjectRow({
         </Card>
       </PressableScale>
     </Swipeable>
+    </View>
   );
 }
 
@@ -405,7 +487,15 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   title: { fontSize: 28, fontWeight: '800', color: theme.colors.ink },
-  subtitle: { fontSize: 12, color: theme.colors.inkSoft, paddingBottom: 4 },
+  subtitle: { fontSize: 12, color: theme.colors.inkSoft },
+  avatarBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.accentSoft,
+  },
   searchWrap: {
     flexDirection: 'row',
     alignItems: 'center',

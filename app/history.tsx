@@ -1,9 +1,9 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
+import Swipeable, { type SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { Card, Screen } from '../components/ui';
 import { Skeleton } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
@@ -34,6 +34,9 @@ export default function HistoryScreen() {
   // per-row count badge so users can see "this inspection has 2 PDFs".
   const [certCounts, setCertCounts] = useState<Record<string, number>>({});
   const [loaded, setLoaded] = useState(false);
+  const insets = useSafeAreaInsets();
+  const swipeRefs = useRef<Map<string, SwipeableMethods>>(new Map());
+  const openSwipeId = useRef<string | null>(null);
 
   const load = useCallback(async () => {
     const [allQ, allT, allP] = await Promise.all([
@@ -99,13 +102,12 @@ export default function HistoryScreen() {
   };
 
   return (
-    <Screen edgeToEdge>
+    <Screen edgeToEdge edges={[]}>
       <Stack.Screen options={{ headerShown: true, title: 'ისტორია', headerBackTitle: 'მეტი' }} />
-      <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
-        <FlatList
+      <FlatList
           data={items}
           keyExtractor={(item, i) => (item.kind === 'header' ? `h-${i}` : item.q.id)}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 20, gap: 8 }}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: insets.bottom + 24, gap: 8 }}
           renderItem={({ item }) => {
             if (item.kind === 'header') {
               return (
@@ -117,6 +119,20 @@ export default function HistoryScreen() {
             const p = projects.find(p => p.id === q.project_id);
             return (
               <Swipeable
+                ref={((ref: SwipeableMethods | null) => {
+                  if (ref) swipeRefs.current.set(q.id, ref);
+                  else swipeRefs.current.delete(q.id);
+                }) as any}
+                onSwipeableWillOpen={() => {
+                  const prev = openSwipeId.current;
+                  if (prev && prev !== q.id) {
+                    swipeRefs.current.get(prev)?.close();
+                  }
+                  openSwipeId.current = q.id;
+                }}
+                onSwipeableClose={() => {
+                  if (openSwipeId.current === q.id) openSwipeId.current = null;
+                }}
                 renderRightActions={() => (
                   <Pressable onPress={() => onDelete(q)} style={styles.swipeDelete} {...a11y('წაშლა', 'ინსპექციის წაშლა', 'button')}>
                     <Ionicons name="trash" size={18} color={theme.colors.white} />
@@ -215,7 +231,6 @@ export default function HistoryScreen() {
             )
           }
         />
-      </SafeAreaView>
     </Screen>
   );
 }

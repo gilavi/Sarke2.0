@@ -6,8 +6,9 @@
 // a CTA to generate another certificate from the same inspection.
 //
 // Draft inspections still route through `/inspections/[id]/wizard`.
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   Pressable,
   ScrollView,
@@ -18,6 +19,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import WebView from 'react-native-webview';
 import { Button, Card, Chip, Screen, SectionHeader } from '../../components/ui';
 import { Skeleton, SkeletonCard, SkeletonListCard } from '../../components/Skeleton';
 import { ErrorState } from '../../components/ErrorState';
@@ -28,8 +30,10 @@ import {
   inspectionsApi,
   projectsApi,
   remoteSigningApi,
+  signaturesApi,
   templatesApi,
 } from '../../lib/services';
+import { buildPdfPreviewHtml } from '../../lib/pdf';
 import { useToast } from '../../lib/toast';
 import { friendlyError } from '../../lib/errorMap';
 import { scheduleDelete } from '../../lib/pendingDeletes';
@@ -38,19 +42,21 @@ import { haptic } from '../../lib/haptics';
 import { theme } from '../../lib/theme';
 import type {
   Answer,
+  AnswerPhoto,
   Certificate,
   Inspection,
   Project,
   Question,
   RemoteSigningRequest,
   RemoteSigningStatus,
+  SignatureRecord,
   Template,
 } from '../../types/models';
 import { SIGNER_ROLE_LABEL } from '../../types/models';
 import { a11y } from '../../lib/accessibility';
 
 export default function InspectionDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, tab: tabParam } = useLocalSearchParams<{ id: string; tab?: 'summary' | 'preview' }>();
   const router = useRouter();
   const toast = useToast();
   const [inspection, setInspection] = useState<Inspection | null>(null);
@@ -65,6 +71,20 @@ export default function InspectionDetailScreen() {
   const [remoteRequests, setRemoteRequests] = useState<RemoteSigningRequest[]>([]);
   const [addOpen, setAddOpen] = useState(false);
   const [addBusy, setAddBusy] = useState(false);
+  const [tab, setTab] = useState<'summary' | 'preview'>(tabParam === 'preview' ? 'preview' : 'summary');
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewLoaded, setPreviewLoaded] = useState(false);
+  const [photoCount, setPhotoCount] = useState(0);
+
+  useEffect(() => {
+    if (tabParam === 'preview' && tab !== 'preview') setTab('preview');
+  }, [tabParam, tab]);
+
+  const switchTab = (next: 'summary' | 'preview') => {
+    setTab(next);
+    router.setParams({ tab: next } as any);
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -121,6 +141,48 @@ export default function InspectionDetailScreen() {
       void load();
     }, [load]),
   );
+
+  // Lazy-load PDF preview (signatures + photos) the first time the user
+  // opens the preview tab. Reuses inspection/template/project/questions/answers
+  // already loaded by the main load() above.
+  useEffect(() => {
+    if (tab !== 'preview' || previewLoaded || previewLoading) return;
+    if (!inspection || !template || !project) return;
+    let cancelled = false;
+    setPreviewLoading(true);
+    (async () => {
+      try {
+        const sigs: SignatureRecord[] = await signaturesApi.list(inspection.id).catch(() => []);
+        const photoMap: Record<string, AnswerPhoto[]> = {};
+        await Promise.all(
+          answers.map(async a => {
+            const ps = await answersApi.photos(a.id).catch(() => [] as AnswerPhoto[]);
+            if (ps.length > 0) photoMap[a.id] = ps;
+          }),
+        );
+        if (cancelled) return;
+        const html = buildPdfPreviewHtml({
+          questionnaire: inspection,
+          template,
+          project,
+          questions,
+          answers,
+          signatures: sigs,
+          photosByAnswer: photoMap,
+        });
+        setPreviewHtml(html);
+        setPhotoCount(Object.values(photoMap).reduce((s, arr) => s + arr.length, 0));
+        setPreviewLoaded(true);
+      } catch (e) {
+        if (!cancelled) toast.error(friendlyError(e, 'პრევიუს ჩატვირთვა ვერ მოხერხდა'));
+      } finally {
+        if (!cancelled) setPreviewLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tab, previewLoaded, previewLoading, inspection, template, project, questions, answers, toast]);
 
   const openCertPreview = (cert: Certificate) => {
     router.push(`/certificates/${cert.id}` as any);
@@ -277,44 +339,95 @@ export default function InspectionDetailScreen() {
     <Screen>
       <Stack.Screen options={{ headerShown: true, title: 'ინსპექცია', headerBackTitle: 'მთავარი' }} />
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
-        <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }}>
-          {/* Document header — title + meta + status badge */}
-          <View style={{ gap: 4, paddingBottom: 4 }}>
-            <Text style={styles.templateName}>{template?.name ?? 'ინსპექცია'}</Text>
-            {project ? (
-              <Text style={styles.project}>{project.name}</Text>
-            ) : null}
-            <Text style={styles.date}>
-              {new Date(inspection.completed_at ?? inspection.created_at).toLocaleString('ka')}
-            </Text>
-            {/* Small inline status pill */}
-            <View
+        {/* Document header — title + meta + status badge (shown above tabs) */}
+        <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8, gap: 4 }}>
+          <Text style={styles.templateName}>{template?.name ?? 'ინსპექცია'}</Text>
+          {project ? (
+            <Text style={styles.project}>{project.name}</Text>
+          ) : null}
+          <Text style={styles.date}>
+            {new Date(inspection.completed_at ?? inspection.created_at).toLocaleString('ka')}
+          </Text>
+          <View
+            style={[
+              styles.statusPill,
+              inspection.is_safe_for_use === false
+                ? { backgroundColor: theme.colors.dangerSoft }
+                : { backgroundColor: theme.colors.accentSoft },
+            ]}
+          >
+            <Ionicons
+              name={inspection.is_safe_for_use === false ? 'warning' : 'checkmark-circle'}
+              size={13}
+              color={inspection.is_safe_for_use === false ? theme.colors.danger : theme.colors.accent}
+            />
+            <Text
               style={[
-                styles.statusPill,
-                inspection.is_safe_for_use === false
-                  ? { backgroundColor: theme.colors.dangerSoft }
-                  : { backgroundColor: theme.colors.accentSoft },
+                styles.statusPillText,
+                { color: inspection.is_safe_for_use === false ? theme.colors.danger : theme.colors.accent },
               ]}
+              numberOfLines={1}
             >
-              <Ionicons
-                name={inspection.is_safe_for_use === false ? 'warning' : 'checkmark-circle'}
-                size={13}
-                color={inspection.is_safe_for_use === false ? theme.colors.danger : theme.colors.accent}
-              />
-              <Text
-                style={[
-                  styles.statusPillText,
-                  { color: inspection.is_safe_for_use === false ? theme.colors.danger : theme.colors.accent },
-                ]}
-                numberOfLines={1}
-              >
-                {inspection.is_safe_for_use === false
-                  ? 'არ არის უსაფრთხო'
-                  : 'უსაფრთხოა'}
-              </Text>
-            </View>
+              {inspection.is_safe_for_use === false ? 'არ არის უსაფრთხო' : 'უსაფრთხოა'}
+            </Text>
           </View>
+        </View>
 
+        {/* Tab strip */}
+        <View style={tabStyles.row}>
+          <Pressable
+            style={[tabStyles.tab, tab === 'summary' && tabStyles.tabActive]}
+            onPress={() => switchTab('summary')}
+            {...a11y('შეჯამება', 'ინსპექციის შეჯამება', 'button')}
+          >
+            <Text style={[tabStyles.label, tab === 'summary' && tabStyles.labelActive]}>შეჯამება</Text>
+          </Pressable>
+          <Pressable
+            style={[tabStyles.tab, tab === 'preview' && tabStyles.tabActive]}
+            onPress={() => switchTab('preview')}
+            {...a11y('PDF პრევიუ', 'PDF რეპორტის წინასწარი ნახვა', 'button')}
+          >
+            <Text style={[tabStyles.label, tab === 'preview' && tabStyles.labelActive]}>PDF პრევიუ</Text>
+          </Pressable>
+        </View>
+
+        {tab === 'preview' ? (
+          previewLoading || !previewHtml ? (
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+              <ActivityIndicator size="large" color={theme.colors.accent} />
+              <Text style={{ fontSize: 14, color: theme.colors.inkSoft }}>პრევიუ იტვირთება…</Text>
+            </View>
+          ) : (
+            <>
+              <WebView
+                originWhitelist={['*']}
+                source={{ html: previewHtml }}
+                style={{ flex: 1 }}
+                scalesPageToFit
+                javaScriptEnabled={false}
+                domStorageEnabled={false}
+              />
+              <View style={previewBarStyles.bar}>
+                <View style={previewBarStyles.stat}>
+                  <Ionicons name="help-circle-outline" size={14} color={theme.colors.inkSoft} />
+                  <Text style={previewBarStyles.text}>{questions.length} კითხვა</Text>
+                </View>
+                <View style={previewBarStyles.divider} />
+                <View style={previewBarStyles.stat}>
+                  <Ionicons name="camera-outline" size={14} color={theme.colors.inkSoft} />
+                  <Text style={previewBarStyles.text}>{photoCount} ფოტო</Text>
+                </View>
+              </View>
+              <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8 }}>
+                <Button
+                  title={certs.length === 0 ? 'PDF რეპორტის გენერაცია' : 'ახალი PDF რეპორტის გენერაცია'}
+                  onPress={generateNew}
+                />
+              </View>
+            </>
+          )
+        ) : (
+        <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }}>
           {/* Conclusion */}
           <Card>
             <Text style={styles.eyebrow}>დასკვნა</Text>
@@ -482,6 +595,7 @@ export default function InspectionDetailScreen() {
             </View>
           )}
         </ScrollView>
+        )}
       </SafeAreaView>
       {false && (
         <AddRemoteSignerModal
@@ -765,6 +879,70 @@ const scorecardStyles = StyleSheet.create({
     fontSize: 13,
     color: theme.colors.ink,
     lineHeight: 18,
+  },
+});
+
+const tabStyles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginBottom: 8,
+    backgroundColor: theme.colors.subtleSurface,
+    borderRadius: 10,
+    padding: 4,
+    gap: 4,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  tabActive: {
+    backgroundColor: theme.colors.surface,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: theme.colors.inkSoft,
+  },
+  labelActive: {
+    color: theme.colors.ink,
+  },
+});
+
+const previewBarStyles = StyleSheet.create({
+  bar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: theme.colors.hairline,
+    backgroundColor: theme.colors.surface,
+    gap: 8,
+  },
+  stat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flex: 1,
+    justifyContent: 'center',
+  },
+  text: {
+    fontSize: 11,
+    color: theme.colors.inkSoft,
+    fontWeight: '500',
+  },
+  divider: {
+    width: 1,
+    height: 16,
+    backgroundColor: theme.colors.hairline,
   },
 });
 

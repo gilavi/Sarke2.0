@@ -1,0 +1,23 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="512" cy="512" r="450" fill="#147A4F"/>
+  
+  <!-- Scaffolding structure -->
+  <!-- Left pole -->
+  <rect x="320" y="250" width="60" height="550" fill="white" rx="8"/>
+  
+  <!-- Right pole -->
+  <rect x="644" y="250" width="60" height="550" fill="white" rx="8"/>
+  
+  <!-- Horizontal crossbars -->
+  <rect x="320" y="280" width="384" height="50" fill="white" rx="6"/>
+  <rect x="320" y="420" width="384" height="50" fill="white" rx="6"/>
+  <rect x="320" y="560" width="384" height="50" fill="white" rx="6"/>
+  <rect x="320" y="700" width="384" height="50" fill="white" rx="6"/>
+  
+  <!-- Diagonal support (X pattern) for stability -->
+  <g stroke="white" stroke-width="50" stroke-linecap="round" fill="none">
+    <line x1="350" y1="300" x2="674" y2="700"/>
+    <line x1="674" y1="300" x2="350" y2="700"/>
+  </g>
+</svg>

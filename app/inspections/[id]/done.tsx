@@ -66,7 +66,7 @@ export default function InspectionDoneScreen() {
 
   const previewPdf = () => {
     if (!id) return;
-    router.push(`/certificates/preview?inspectionId=${id}` as any);
+    router.push(`/inspections/${id}?tab=preview` as any);
   };
 
   const viewInspection = () => {

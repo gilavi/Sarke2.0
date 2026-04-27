@@ -922,7 +922,9 @@ export const storageApi = {
       headers,
     });
     if (result.status < 200 || result.status >= 300) {
-      throw new Error(`storage upload failed (${result.status}): ${result.body}`);
+      const err = new Error(`storage upload failed (${result.status}): ${result.body}`);
+      logError(err, `storage.uploadFromUri bucket=${bucket} path=${path} status=${result.status}`);
+      throw err;
     }
     return path;
   },

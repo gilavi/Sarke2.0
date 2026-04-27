@@ -1,5 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Animated, Image, InputAccessoryView, Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Animated, Image, InputAccessoryView, Keyboard, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
@@ -29,6 +30,7 @@ import {
 import { getStorageImageDisplayUrl } from '../../../lib/imageUrl';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import { haptic } from '../../../lib/haptics';
+import { setPhotoPickerCallback } from '../../../lib/photoPickerBus';
 import { useOffline, stripServerFields } from '../../../lib/offline';
 import { logError, toErrorMessage } from '../../../lib/logError';
 import { useToast } from '../../../lib/toast';
@@ -181,6 +183,7 @@ export default function QuestionnaireWizard() {
     ext: string;
     path: string;
   } | null>(null);
+  const [photoUploadCount, setPhotoUploadCount] = useState(0);
   const [conclusion, setConclusion] = useState('');
   const [isSafe, setIsSafe] = useState<boolean | null>(null);
   const [harnessName, setHarnessName] = useState('');
@@ -208,16 +211,22 @@ export default function QuestionnaireWizard() {
     AsyncStorage.setItem(TOUR_SEEN_KEY, '1').catch(() => {});
   }, []);
 
-  // Step transition animation
+  // Step transition animation — horizontal slide-in from the right
   const stepAnim = useRef(new Animated.Value(1)).current;
   useEffect(() => {
     stepAnim.setValue(0);
-    Animated.timing(stepAnim, {
+    Animated.spring(stepAnim, {
       toValue: 1,
-      duration: 220,
+      damping: 18,
+      stiffness: 180,
+      mass: 0.6,
       useNativeDriver: true,
     }).start();
   }, [stepIndex]);
+  const stepTranslateX = stepAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [40, 0],
+  });
 
   // First-render fade out of the skeleton — kicks in once data is ready.
   const enterAnim = useRef(new Animated.Value(0)).current;
@@ -487,8 +496,12 @@ export default function QuestionnaireWizard() {
     path?: string,
   ) => {
     if (!questionnaire) return;
+    if (!offline.isOnline) {
+      toast.error('ფოტოს ასატვირთად საჭიროა ინტერნეტი');
+      return;
+    }
+    setPhotoUploadCount(c => c + 1);
     try {
-      await offline.flush();
       const actualMime = mime ?? 'image/jpeg';
       const actualExt = ext ?? 'jpg';
       const actualPath = path ?? `${questionnaire.id}/${question.id}/${Date.now()}.${actualExt}`;
@@ -509,11 +522,12 @@ export default function QuestionnaireWizard() {
       const caption = rowKey ? `row:${rowKey}` : undefined;
       const photo = await answersApi.addPhoto(answer.id, actualPath, caption);
       const answerId = answer.id;
-      const photoForDisplay: AnswerPhoto = { ...photo, storage_path: uri };
-      setPhotos(prev => ({ ...prev, [answerId]: [...(prev[answerId] ?? []), photoForDisplay] }));
+      setPhotos(prev => ({ ...prev, [answerId]: [...(prev[answerId] ?? []), photo] }));
       toast.success('ფოტო აიტვირთა');
     } catch (e) {
       toast.error(`ფოტო ვერ აიტვირთა: ${toErrorMessage(e, 'ქსელის შეცდომა')}`);
+    } finally {
+      setPhotoUploadCount(c => Math.max(0, c - 1));
     }
   };
 
@@ -549,22 +563,21 @@ export default function QuestionnaireWizard() {
 
   const pickPhoto = (question: Question, rowKey?: string) => {
     if (!questionnaire) return;
-    if (!offline.isOnline) {
-      toast.error('ფოტოს ასატვირთად საჭიროა ინტერნეტი');
-      return;
-    }
     haptic.light();
-    showSheet(
-      {
-        title: 'ფოტოს დამატება',
-        options: ['კამერა', 'გალერეა', 'გაუქმება'],
-        cancelButtonIndex: 2,
-      },
-      (i) => {
-        if (i === 0) void launchPicker('camera', question, rowKey);
-        else if (i === 1) void launchPicker('library', question, rowKey);
-      },
-    );
+    const mime = 'image/jpeg';
+    const ext = 'jpg';
+    const path = `${questionnaire.id}/${question.id}/${Date.now()}.${ext}`;
+    pendingPhotoContext.current = { questionId: question.id, rowKey, mime, ext, path };
+    setPhotoPickerCallback((uri) => {
+      if (!uri) {
+        pendingPhotoContext.current = null;
+        return;
+      }
+      router.push(
+        `/photo-annotate?uri=${encodeURIComponent(uri)}&returnTo=/inspections/${questionnaire.id}/wizard` as any,
+      );
+    });
+    router.push('/photo-picker' as any);
   };
 
   // Handle annotated photo return from PhotoAnnotator
@@ -725,6 +738,16 @@ export default function QuestionnaireWizard() {
     <Screen edgeToEdge edges={['top']} style={{ backgroundColor: theme.colors.card }}>
       <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
       <ScaffoldTour visible={showTour} onClose={dismissTour} />
+      {photoUploadCount > 0 ? (
+        <View pointerEvents="none" style={uploadPillStyles.wrap}>
+          <View style={uploadPillStyles.pill}>
+            <ActivityIndicator size="small" color="#FFFFFF" />
+            <Text style={uploadPillStyles.text}>
+              {photoUploadCount > 1 ? `ფოტოები იტვირთება (${photoUploadCount})…` : 'ფოტო იტვირთება…'}
+            </Text>
+          </View>
+        </View>
+      ) : null}
       <Animated.View style={{ flex: 1, opacity: enterAnim }}>
         <WizardHeader
           step={step}
@@ -747,7 +770,7 @@ export default function QuestionnaireWizard() {
           keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
         >
           {step.kind === 'gridRow' ? (
-            <Animated.View style={{ flex: 1, opacity: stepAnim }}>
+            <Animated.View style={{ flex: 1, opacity: stepAnim, transform: [{ translateX: stepTranslateX }] }}>
               <GridRowStep
                 question={step.question}
                 row={step.row}
@@ -763,7 +786,7 @@ export default function QuestionnaireWizard() {
               />
             </Animated.View>
           ) : (
-            <Animated.View style={{ flex: 1, opacity: stepAnim }}>
+            <Animated.View style={{ flex: 1, opacity: stepAnim, transform: [{ translateX: stepTranslateX }] }}>
               <ScrollView
                 contentContainerStyle={{ padding: 20, paddingBottom: 12, gap: 16 }}
                 keyboardShouldPersistTaps="handled"
@@ -2363,4 +2386,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+});
+
+const uploadPillStyles = StyleSheet.create({
+  wrap: {
+    position: 'absolute',
+    top: 56,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 100,
+  },
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 999,
+    backgroundColor: 'rgba(17,24,39,0.92)',
+  },
+  text: { color: '#FFFFFF', fontSize: 13, fontWeight: '600' },
 });

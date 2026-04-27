@@ -1,8 +1,7 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Image,
-  KeyboardAvoidingView,
   Linking,
   Modal,
   Platform,
@@ -12,7 +11,8 @@ import {
   Text,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAvoidingView } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -41,6 +41,7 @@ import { SIGNER_ROLE_LABEL } from '../../types/models';
 import { CrewList, CrewMemberForm } from '../../components/CrewSection';
 import { useSession } from '../../lib/session';
 import { a11y } from '../../lib/accessibility';
+import { TourGuide, type TourStep } from '../../components/TourGuide';
 
 function projectInitials(name: string | undefined): string {
   if (!name) return '—';
@@ -56,6 +57,7 @@ export default function ProjectDetail() {
   const showActionSheetWithOptions = useBottomSheet();
   const toast = useToast();
   const session = useSession();
+  const insets = useSafeAreaInsets();
 
   const [project, setProject] = useState<Project | null>(null);
   const [signers, setSigners] = useState<ProjectSigner[]>([]);
@@ -68,6 +70,48 @@ export default function ProjectDetail() {
   // Flips true after the first fetch finishes. Drives the skeleton → content
   // swap; refocus doesn't re-show skeletons once we have data.
   const [loaded, setLoaded] = useState(false);
+
+  // Project screen onboarding tour
+  const heroRef = useRef<View>(null);
+  const participantsRef = useRef<View>(null);
+  const filesRef = useRef<View>(null);
+  const questionnairesRef = useRef<View>(null);
+  const fabRef = useRef<View>(null);
+  const tourSteps: TourStep[] = useMemo(
+    () => [
+      {
+        targetRef: heroRef,
+        title: 'პროექტის ინფო',
+        body: 'შეეხე ბარათს რედაქტირებისთვის',
+        position: 'bottom',
+      },
+      {
+        targetRef: participantsRef,
+        title: 'მონაწილეები',
+        body: 'დაამატე გუნდი სანამ შემოწმებას დაიწყებ',
+        position: 'bottom',
+      },
+      {
+        targetRef: filesRef,
+        title: 'ფაილები',
+        body: 'აქ შეგიძლია დაურთო პროექტის დოკუმენტები',
+        position: 'bottom',
+      },
+      {
+        targetRef: questionnairesRef,
+        title: 'კითხვარები',
+        body: 'შენი შემოწმებების ისტორია',
+        position: 'top',
+      },
+      {
+        targetRef: fabRef,
+        title: 'ახალი შემოწმება',
+        body: 'დააჭირე და დაიწყე ახალი შემოწმება',
+        position: 'top',
+      },
+    ],
+    [],
+  );
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -315,6 +359,7 @@ export default function ProjectDetail() {
   }
 
   return (
+    <TourGuide tourId="project_screen_v1" steps={tourSteps}>
     <Screen>
       <Stack.Screen
         options={{
@@ -328,9 +373,9 @@ export default function ProjectDetail() {
         }}
       />
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
-        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32, gap: 16 }}>
+        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 32, gap: 16 }}>
           {/* ── Hero / Project Details Card ── */}
-          <View style={styles.heroCard}>
+          <View ref={heroRef} collapsable={false} style={styles.heroCard}>
             <Pressable
               onPress={() => setEditing(true)}
               hitSlop={10}
@@ -339,17 +384,6 @@ export default function ProjectDetail() {
             >
               <Ionicons name="create-outline" size={20} color={theme.colors.accent} />
             </Pressable>
-
-            {/* Uploaded files — top of project details */}
-            <View style={{ marginBottom: 14 }}>
-              <UploadedFilesSection
-                files={files}
-                busy={filesBusy}
-                onUpload={uploadFile}
-                onOpen={openFile}
-                onDelete={deleteFile}
-              />
-            </View>
 
             <View style={styles.heroRow}>
               <View style={styles.logoPlaceholder}>
@@ -380,10 +414,21 @@ export default function ProjectDetail() {
                 style={styles.mapWrap}
               />
             ) : null}
+
+            {/* Uploaded files — bottom of project details, after map */}
+            <View ref={filesRef} collapsable={false} style={{ marginTop: 14 }}>
+              <UploadedFilesSection
+                files={files}
+                busy={filesBusy}
+                onUpload={uploadFile}
+                onOpen={openFile}
+                onDelete={deleteFile}
+              />
+            </View>
           </View>
 
           {/* ── Participants (merged: crew + signers) ── */}
-          <View style={styles.sectionCard}>
+          <View ref={participantsRef} collapsable={false} style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>მონაწილეები</Text>
               <View style={styles.badgeGreen}>
@@ -452,7 +497,7 @@ export default function ProjectDetail() {
           </View>
 
           {/* ── Questionnaires ── */}
-          <View style={styles.sectionCard}>
+          <View ref={questionnairesRef} collapsable={false} style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>კითხვარები</Text>
               <View style={styles.badgeGreen}>
@@ -562,6 +607,7 @@ export default function ProjectDetail() {
 
         {/* ── FAB: new questionnaire ── */}
         <Pressable
+          ref={fabRef}
           onPress={startNewQuestionnaire}
           style={({ pressed }) => [styles.fab, pressed && { opacity: 0.85 }]}
           {...a11y('ახალი ინსპექცია', 'ახალი ინსპექციას დაწყება', 'button')}
@@ -581,6 +627,7 @@ export default function ProjectDetail() {
         }}
       />
     </Screen>
+    </TourGuide>
   );
 }
 

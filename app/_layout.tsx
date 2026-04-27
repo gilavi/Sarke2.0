@@ -151,6 +151,10 @@ function AuthGate() {
         name="signature"
         options={{ presentation: 'transparentModal', animation: 'fade', headerShown: false }}
       />
+      <Stack.Screen
+        name="photo-picker"
+        options={{ presentation: 'fullScreenModal', headerShown: false, animation: 'slide_from_bottom' }}
+      />
     </Stack>
   );
 }

@@ -1,16 +1,16 @@
-import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Image,
-  KeyboardAvoidingView,
-  Modal,
+  LayoutAnimation,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
+  UIManager,
   View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,9 +18,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../lib/theme';
 import { haptic } from '../lib/haptics';
 import type { Answer, AnswerPhoto, GridValues, Question, Template } from '../types/models';
+import { TourGuide, type TourStep } from './TourGuide';
+import { HelpIcon, useScaffoldHelpSheet } from './ScaffoldHelpSheet';
 
 const BRAND_GREEN = '#1D9E75';
-const BAD_TINT = '#FCEBEB';
+
+if (
+  Platform.OS === 'android' &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 type HarnessItem = {
   question: Question;
@@ -104,13 +112,43 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
     [questions, harnessRowCount],
   );
 
-  const [editing, setEditing] = useState<{ item: HarnessItem; row: string } | null>(null);
+  const [currentRowIdx, setCurrentRowIdx] = useState(0);
+  const showHelp = useScaffoldHelpSheet();
 
-  const badCount = useMemo(() => {
-    let n = 0;
-    for (const r of rowLabels) for (const it of items) if (isBadCell(answers, it, r)) n++;
-    return n;
-  }, [answers, items, rowLabels]);
+  // Tour refs
+  const headerRef = useRef<View>(null);
+  const firstRowRef = useRef<View>(null);
+  const firstRowHelpRef = useRef<View>(null);
+  const confirmRef = useRef<View>(null);
+  const tourSteps: TourStep[] = useMemo(
+    () => [
+      {
+        targetRef: headerRef,
+        title: 'კომპონენტების შემოწმება',
+        body: 'თითოეული მწკრივი ხარაჩოს ერთ ნაწილს წარმოადგენს',
+        position: 'bottom',
+      },
+      {
+        targetRef: firstRowRef,
+        title: 'სტატუსი',
+        body: 'შეეხე მწკრივს თუ პრობლემაა. თუ კარგია — არ შეეხო',
+        position: 'bottom',
+      },
+      {
+        targetRef: firstRowHelpRef,
+        title: 'დახმარება',
+        body: 'არ იცი რა არის? შეეხე და ნახე სურათი',
+        position: 'bottom',
+      },
+      {
+        targetRef: confirmRef,
+        title: 'დადასტურება',
+        body: 'ბოლოს დააჭირე — დაუდასტურებელი ავტომატურად კარგად ჩაითვლება',
+        position: 'top',
+      },
+    ],
+    [],
+  );
 
   if (items.length === 0 || rowLabels.length === 0) {
     return (
@@ -134,287 +172,233 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
     );
   }
 
-  const setBad = async (item: HarnessItem, row: string, bad: boolean) => {
+  const safeRowIdx = Math.min(currentRowIdx, rowLabels.length - 1);
+  const row = rowLabels[safeRowIdx];
+
+  const setBad = async (item: HarnessItem, r: string, bad: boolean) => {
     await onPatchAnswer(item.question, a => {
       const grid: GridValues = { ...(a.grid_values ?? {}) };
-      const cur: Record<string, string> = { ...(grid[row] ?? {}) };
+      const cur: Record<string, string> = { ...(grid[r] ?? {}) };
       if (bad) {
         cur[item.col] = 'bad';
       } else {
-        cur[item.col] = 'ok';
+        delete cur[item.col];
         delete cur[`კომენტარი_${item.col}`];
       }
-      grid[row] = cur;
+      grid[r] = cur;
       return { ...a, grid_values: grid };
     });
     if (!bad) {
-      const tag = captionFor(row, item.col);
+      const tag = captionFor(r, item.col);
       const a = answers[item.question.id];
       const cellPhotos = a ? photos[a.id] ?? [] : [];
       for (const p of cellPhotos) if (p.caption === tag) void onDeletePhoto(p);
     }
   };
 
-  const onCellTap = async (item: HarnessItem, row: string) => {
+  const onRowTap = async (item: HarnessItem) => {
     haptic.light();
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     const bad = isBadCell(answers, item, row);
-    if (bad) {
-      setEditing({ item, row });
+    await setBad(item, row, !bad);
+  };
+
+  const onCommentChange = (item: HarnessItem, text: string) =>
+    onPatchAnswer(item.question, a => {
+      const grid: GridValues = { ...(a.grid_values ?? {}) };
+      const cur: Record<string, string> = { ...(grid[row] ?? {}) };
+      if (text.trim()) cur[`კომენტარი_${item.col}`] = text;
+      else delete cur[`კომენტარი_${item.col}`];
+      grid[row] = cur;
+      return { ...a, grid_values: grid };
+    });
+
+  const applyAutoOkForCurrentRow = async () => {
+    for (const item of items) {
+      const cell = answers[item.question.id]?.grid_values?.[row]?.[item.col];
+      if (cell !== undefined) continue;
+      await onPatchAnswer(item.question, a => {
+        const grid: GridValues = { ...(a.grid_values ?? {}) };
+        const cur: Record<string, string> = { ...(grid[row] ?? {}) };
+        cur[item.col] = 'ok';
+        grid[row] = cur;
+        return { ...a, grid_values: grid };
+      });
+    }
+  };
+
+  const advance = () => {
+    if (safeRowIdx + 1 >= rowLabels.length) {
+      onConclude();
     } else {
-      await setBad(item, row, true);
-      setEditing({ item, row });
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setCurrentRowIdx(safeRowIdx + 1);
     }
   };
 
-  const applyAutoOk = async () => {
-    for (const row of rowLabels) {
-      for (const item of items) {
-        const cell = answers[item.question.id]?.grid_values?.[row]?.[item.col];
-        if (cell !== undefined) continue;
-        await onPatchAnswer(item.question, a => {
-          const grid: GridValues = { ...(a.grid_values ?? {}) };
-          const cur: Record<string, string> = { ...(grid[row] ?? {}) };
-          cur[item.col] = 'ok';
-          grid[row] = cur;
-          return { ...a, grid_values: grid };
-        });
-      }
-    }
-    onConclude();
-  };
-
-  const confirmAll = () => {
-    let untouched = 0;
-    for (const row of rowLabels) {
-      for (const item of items) {
-        const cell = answers[item.question.id]?.grid_values?.[row]?.[item.col];
-        if (cell === undefined) untouched += 1;
-      }
-    }
+  const confirmCurrentRow = () => {
     haptic.success();
-    if (untouched === 0) {
-      void applyAutoOk();
-      return;
-    }
-    Alert.alert(
-      'დადასტურება',
-      `${untouched} უჯრა არ არის შემოწმებული — ჩაითვლება გამართულად. გავაგრძელო?`,
-      [
-        { text: 'გაუქმება', style: 'cancel' },
-        { text: 'დიახ, გავაგრძელო', onPress: () => void applyAutoOk() },
-      ],
-    );
+    void (async () => {
+      await applyAutoOkForCurrentRow();
+      advance();
+    })();
   };
 
-  const labelColWidth = 132;
-  const cellSize = 56;
-  const cellGap = 6;
+  const badCountThisRow = items.reduce(
+    (n, it) => (isBadCell(answers, it, row) ? n + 1 : n),
+    0,
+  );
 
   return (
+    <TourGuide tourId="haraco_glossary_v1" steps={tourSteps}>
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.card }} edges={['top']}>
-      <View style={s.header}>
+      <View ref={headerRef} collapsable={false} style={s.header}>
         <View style={s.headerRow}>
           <View style={{ flex: 1 }}>
             <Text style={s.eyebrow}>ქამრების შემოწმება</Text>
             <Text style={s.title}>
-              {rowLabels.length} ქამარი · {items.length} კომპონენტი
+              ქამარი {safeRowIdx + 1} / {rowLabels.length}
             </Text>
           </View>
           <Pressable hitSlop={12} onPress={onClose} style={s.closeBtn} accessibilityLabel="დახურვა">
             <Ionicons name="close" size={22} color={theme.colors.ink} />
           </Pressable>
         </View>
-        <View style={s.countAdjust}>
-          <Text style={{ fontSize: 12, color: theme.colors.inkSoft }}>რამდენი ქამარი სულ?</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <Pressable onPress={() => setHarnessRowCount(Math.max(1, harnessRowCount - 1))} hitSlop={10}>
-              <Ionicons name="remove-circle" size={28} color={BRAND_GREEN} />
-            </Pressable>
-            <Text style={{ fontSize: 16, fontWeight: '700', minWidth: 18, textAlign: 'center' }}>
-              {harnessRowCount}
-            </Text>
-            <Pressable onPress={() => setHarnessRowCount(Math.min(15, harnessRowCount + 1))} hitSlop={10}>
-              <Ionicons name="add-circle" size={28} color={BRAND_GREEN} />
-            </Pressable>
+        {safeRowIdx === 0 && (
+          <View style={s.countAdjust}>
+            <Text style={{ fontSize: 12, color: theme.colors.inkSoft }}>რამდენი ქამარი სულ?</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <Pressable onPress={() => setHarnessRowCount(Math.max(1, harnessRowCount - 1))} hitSlop={10}>
+                <Ionicons name="remove-circle" size={28} color={BRAND_GREEN} />
+              </Pressable>
+              <Text style={{ fontSize: 16, fontWeight: '700', minWidth: 18, textAlign: 'center' }}>
+                {harnessRowCount}
+              </Text>
+              <Pressable onPress={() => setHarnessRowCount(Math.min(15, harnessRowCount + 1))} hitSlop={10}>
+                <Ionicons name="add-circle" size={28} color={BRAND_GREEN} />
+              </Pressable>
+            </View>
           </View>
-        </View>
+        )}
         <Text style={s.helpHint}>
-          ყველა ერთეული გამართულია. დააჭირეთ იმას, რაც გაუმართავია.
+          დააჭირეთ იმას, რაც გაუმართავია. დანარჩენი ჩაითვლება გამართულად.
         </Text>
       </View>
 
-      <View style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={{ paddingVertical: 12 }}>
-          <View style={{ flexDirection: 'row' }}>
-            <View style={{ width: labelColWidth, paddingLeft: 16 }}>
-              <View style={{ height: cellSize + cellGap }} />
-              {items.map(item => (
-                <View
-                  key={item.itemKey}
-                  style={{ height: cellSize, marginBottom: cellGap, justifyContent: 'center' }}
-                >
-                  <Text numberOfLines={2} style={s.itemLabel}>
-                    {item.label}
-                  </Text>
-                </View>
-              ))}
-            </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 16 }}>
-              <View>
-                <View style={{ flexDirection: 'row', height: cellSize + cellGap, alignItems: 'center' }}>
-                  {rowLabels.map((row, i) => (
-                    <View
-                      key={row}
-                      style={{
-                        width: cellSize,
-                        marginRight: cellGap,
-                        alignItems: 'center',
-                      }}
-                    >
-                      <Text style={s.colHeader}>{i + 1}</Text>
-                    </View>
-                  ))}
-                </View>
-                {items.map(item => (
-                  <View key={item.itemKey} style={{ flexDirection: 'row', marginBottom: cellGap }}>
-                    {rowLabels.map(row => {
-                      const bad = isBadCell(answers, item, row);
-                      return (
-                        <Pressable
-                          key={row}
-                          onPress={() => onCellTap(item, row)}
-                          style={[
-                            s.cell,
-                            { width: cellSize, height: cellSize, marginRight: cellGap },
-                            bad
-                              ? { backgroundColor: theme.colors.danger, borderColor: theme.colors.danger }
-                              : { backgroundColor: theme.colors.accentSoft, borderColor: 'transparent' },
-                          ]}
-                          accessibilityLabel={`${item.label} · ქამარი ${rowLabels.indexOf(row) + 1}`}
-                        >
-                          <Ionicons
-                            name={bad ? 'close' : 'checkmark'}
-                            size={26}
-                            color={bad ? theme.colors.white : BRAND_GREEN}
-                          />
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                ))}
-              </View>
-            </ScrollView>
-          </View>
-        </ScrollView>
-      </View>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
+        keyboardShouldPersistTaps="handled"
+      >
+        {items.map((item, idx) => (
+          <ItemRow
+            key={item.itemKey}
+            item={item}
+            row={row}
+            bad={isBadCell(answers, item, row)}
+            comment={readComment(answers, item, row)}
+            cellPhotos={(() => {
+              const a = answers[item.question.id];
+              const all = a ? photos[a.id] ?? [] : [];
+              return all.filter(p => p.caption === captionFor(row, item.col));
+            })()}
+            onTap={() => onRowTap(item)}
+            onCommentChange={text => onCommentChange(item, text)}
+            onPickPhoto={() => onPickItemPhoto(item.question, row, item.col)}
+            onDeletePhoto={onDeletePhoto}
+            onHelp={() => showHelp(item.label)}
+            cardRef={idx === 0 ? firstRowRef : undefined}
+            helpRef={idx === 0 ? firstRowHelpRef : undefined}
+          />
+        ))}
+      </ScrollView>
 
       <View style={[s.footer, { paddingBottom: 16 + insets.bottom }]}>
         <Pressable
-          onPress={confirmAll}
+          ref={confirmRef}
+          onPress={confirmCurrentRow}
           style={({ pressed }) => [s.bigCta, pressed && { opacity: 0.88 }]}
+          accessibilityLabel={`ქამარი ${safeRowIdx + 1} დადასტურება`}
         >
           <Text style={s.bigCtaText}>
-            {badCount === 0
-              ? 'ყველაფერი წესრიგშია — დადასტურება →'
-              : `დადასტურება · ${badCount} პრობლემა →`}
+            {`ქამარი ${safeRowIdx + 1}${badCountThisRow > 0 ? ` · ${badCountThisRow} პრობლემა` : ''} — დადასტურება →`}
           </Text>
         </Pressable>
       </View>
-
-      <CellEditor
-        editing={editing}
-        answers={answers}
-        photos={photos}
-        onClose={() => setEditing(null)}
-        onCommentChange={(item, row, text) =>
-          onPatchAnswer(item.question, a => {
-            const grid: GridValues = { ...(a.grid_values ?? {}) };
-            const cur: Record<string, string> = { ...(grid[row] ?? {}) };
-            if (text.trim()) cur[`კომენტარი_${item.col}`] = text;
-            else delete cur[`კომენტარი_${item.col}`];
-            grid[row] = cur;
-            return { ...a, grid_values: grid };
-          })
-        }
-        onPickPhoto={(item, row) => onPickItemPhoto(item.question, row, item.col)}
-        onDeletePhoto={onDeletePhoto}
-        onRevert={async (item, row) => {
-          await setBad(item, row, false);
-          setEditing(null);
-        }}
-        rowIndex={editing ? rowLabels.indexOf(editing.row) : -1}
-      />
     </SafeAreaView>
+    </TourGuide>
   );
 }
 
-const CellEditor = memo(function CellEditor({
-  editing,
-  answers,
-  photos,
-  onClose,
+const ItemRow = memo(function ItemRow({
+  item,
+  bad,
+  comment,
+  cellPhotos,
+  onTap,
   onCommentChange,
   onPickPhoto,
   onDeletePhoto,
-  onRevert,
-  rowIndex,
+  onHelp,
+  cardRef,
+  helpRef,
 }: {
-  editing: { item: HarnessItem; row: string } | null;
-  answers: Record<string, Answer>;
-  photos: Record<string, AnswerPhoto[]>;
-  onClose: () => void;
-  onCommentChange: (item: HarnessItem, row: string, text: string) => void;
-  onPickPhoto: (item: HarnessItem, row: string) => void;
+  item: HarnessItem;
+  row: string;
+  bad: boolean;
+  comment: string;
+  cellPhotos: AnswerPhoto[];
+  onTap: () => void;
+  onCommentChange: (text: string) => void;
+  onPickPhoto: () => void;
   onDeletePhoto: (p: AnswerPhoto) => Promise<void>;
-  onRevert: (item: HarnessItem, row: string) => Promise<void>;
-  rowIndex: number;
+  onHelp: () => void;
+  cardRef?: React.RefObject<View | null>;
+  helpRef?: React.RefObject<View | null>;
 }) {
-  const visible = !!editing;
-  const insets = useSafeAreaInsets();
-  const [draft, setDraft] = useState('');
-  const lastEditingKey = useRef<string>('');
-
-  useEffect(() => {
-    if (!editing) return;
-    const key = `${editing.item.itemKey}|${editing.row}`;
-    if (lastEditingKey.current !== key) {
-      lastEditingKey.current = key;
-      setDraft(readComment(answers, editing.item, editing.row));
-    }
-  }, [editing, answers]);
-
-  if (!editing) return null;
-  const { item, row } = editing;
-  const a = answers[item.question.id];
-  const allPhotos = a ? photos[a.id] ?? [] : [];
-  const cellPhotos = allPhotos.filter(p => p.caption === captionFor(row, item.col));
-
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={s.sheetOverlay}>
-        <Pressable style={s.sheetBackdrop} onPress={onClose} />
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={[s.sheet, { paddingBottom: 16 + insets.bottom }]}
+    <View
+      ref={cardRef}
+      collapsable={false}
+      style={[
+        s.rowCard,
+        bad
+          ? { backgroundColor: theme.colors.dangerTint, borderColor: theme.colors.dangerBorder }
+          : { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
+      ]}
+    >
+      <Pressable
+        onPress={onTap}
+        style={s.rowHeader}
+        accessibilityLabel={item.label}
+        accessibilityState={{ selected: bad }}
+      >
+        <Text style={s.itemLabel} numberOfLines={2}>
+          {item.label}
+        </Text>
+        <View ref={helpRef} collapsable={false}>
+          <HelpIcon onPress={onHelp} />
+        </View>
+        <View
+          style={[
+            s.circle,
+            bad
+              ? { backgroundColor: theme.colors.danger, borderColor: theme.colors.danger }
+              : { backgroundColor: 'transparent', borderColor: theme.colors.borderStrong },
+          ]}
         >
-          <View style={s.sheetHandle} />
-          <View style={s.sheetHeader}>
-            <View style={{ flex: 1 }}>
-              <Text style={s.sheetEyebrow}>ქამარი {rowIndex + 1}</Text>
-              <Text style={s.sheetTitle}>{item.label}</Text>
-            </View>
-            <Pressable onPress={onClose} hitSlop={12} style={s.closeBtn}>
-              <Ionicons name="close" size={22} color={theme.colors.ink} />
-            </Pressable>
-          </View>
+          {bad && <Ionicons name="alert" size={18} color={theme.colors.white} />}
+        </View>
+      </Pressable>
+
+      {bad && (
+        <View style={s.accordionBody}>
+          <Text style={s.accordionLabel}>რა პრობლემაა?</Text>
           <TextInput
-            value={draft}
-            onChangeText={text => {
-              setDraft(text);
-              onCommentChange(item, row, text);
-            }}
+            value={comment}
+            onChangeText={onCommentChange}
             multiline
-            placeholder="რა აქვს?"
+            placeholder="აღწერე დაზიანება..."
             placeholderTextColor={theme.colors.inkFaint}
             style={s.commentInput}
           />
@@ -426,26 +410,14 @@ const CellEditor = memo(function CellEditor({
             {cellPhotos.map(p => (
               <CellPhotoThumb key={p.id} photo={p} onDelete={() => onDeletePhoto(p)} />
             ))}
-            <Pressable onPress={() => onPickPhoto(item, row)} style={s.addPhotoSmall}>
-              <Ionicons name="camera-outline" size={26} color={theme.colors.inkSoft} />
-              <Text style={{ fontSize: 11, color: theme.colors.inkSoft, marginTop: 2 }}>ფოტო</Text>
+            <Pressable onPress={onPickPhoto} style={s.addPhotoSmall} accessibilityLabel="ფოტოს დამატება">
+              <Ionicons name="camera-outline" size={20} color={theme.colors.danger} />
+              <Text style={s.addPhotoText}>+ ფოტოს დამატება</Text>
             </Pressable>
           </ScrollView>
-          <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
-            <Pressable
-              onPress={() => onRevert(item, row)}
-              style={[s.sheetBtn, { backgroundColor: theme.colors.subtleSurface, flex: 1 }]}
-            >
-              <Ionicons name="arrow-undo" size={18} color={theme.colors.ink} />
-              <Text style={{ fontWeight: '700', color: theme.colors.ink }}>გამართულია</Text>
-            </Pressable>
-            <Pressable onPress={onClose} style={[s.sheetBtn, { backgroundColor: BRAND_GREEN, flex: 1 }]}>
-              <Text style={{ fontWeight: '800', color: theme.colors.white }}>მზადაა</Text>
-            </Pressable>
-          </View>
-        </KeyboardAvoidingView>
-      </View>
-    </Modal>
+        </View>
+      )}
+    </View>
   );
 });
 
@@ -509,90 +481,73 @@ const s = StyleSheet.create({
     fontSize: 12,
     color: theme.colors.inkSoft,
   },
-  itemLabel: { fontSize: 13, fontWeight: '600', color: theme.colors.ink },
-  colHeader: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: theme.colors.inkSoft,
-  },
-  cell: {
-    borderRadius: 12,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  footer: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    backgroundColor: theme.colors.card,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: theme.colors.hairline,
-  },
-  bigCta: {
-    minHeight: 64,
-    backgroundColor: BRAND_GREEN,
+  rowCard: {
     borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 10,
+    overflow: 'hidden',
+  },
+  rowHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    gap: 12,
+  },
+  itemLabel: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '600',
+    color: theme.colors.ink,
+  },
+  circle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  bigCtaText: { fontSize: 18, fontWeight: '800', color: theme.colors.white },
-  sheetOverlay: { flex: 1, justifyContent: 'flex-end' },
-  sheetBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)' },
-  sheet: {
-    backgroundColor: theme.colors.card,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    padding: 16,
-    paddingTop: 8,
+  accordionBody: {
+    paddingHorizontal: 14,
+    paddingBottom: 14,
+    paddingTop: 4,
     gap: 8,
   },
-  sheetHandle: {
-    alignSelf: 'center',
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: theme.colors.hairline,
-    marginBottom: 6,
-  },
-  sheetHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 },
-  sheetEyebrow: {
-    fontSize: 11,
+  accordionLabel: {
+    fontSize: 12,
     fontWeight: '700',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
     color: theme.colors.danger,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
   },
-  sheetTitle: { fontSize: 18, fontWeight: '800', color: theme.colors.ink, marginTop: 2 },
   commentInput: {
-    backgroundColor: BAD_TINT,
+    backgroundColor: theme.colors.card,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: theme.colors.danger,
+    borderColor: theme.colors.dangerBorder,
     padding: 12,
-    minHeight: 90,
+    minHeight: 80,
     textAlignVertical: 'top',
     fontSize: 15,
     color: theme.colors.ink,
   },
-  sheetBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 16,
-    borderRadius: 14,
-    minHeight: 56,
-  },
   addPhotoSmall: {
-    width: 80,
     height: 80,
+    paddingHorizontal: 14,
     borderRadius: 10,
     borderWidth: 1.5,
-    borderColor: theme.colors.hairline,
+    borderColor: theme.colors.dangerBorder,
     borderStyle: 'dashed',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: theme.colors.subtleSurface,
+    backgroundColor: theme.colors.card,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  addPhotoText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: theme.colors.danger,
   },
   thumbWrap: {
     width: 80,
@@ -615,4 +570,19 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  footer: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    backgroundColor: theme.colors.card,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: theme.colors.hairline,
+  },
+  bigCta: {
+    minHeight: 64,
+    backgroundColor: BRAND_GREEN,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bigCtaText: { fontSize: 18, fontWeight: '800', color: theme.colors.white },
 });
