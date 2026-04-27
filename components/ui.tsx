@@ -10,6 +10,13 @@ import { theme } from '../lib/theme';
 // ── New primitives (backward-compatible re-exports) ──
 export { Button, Card, Input, Badge, Screen, A11yText, A11yButton, StatusBadge } from './primitives';
 
+// ── New shared components ──
+export { SectionHeader as SectionHeaderNew } from './SectionHeader';
+export { FormField } from './FormField';
+export { ButtonGroup } from './ButtonGroup';
+export { ActionSheet } from './ActionSheet';
+export { ActionSheetItem } from './primitives/ActionSheetItem';
+
 // ── Legacy helpers ──
 
 export function Label({ children, style }: { children: ReactNode; style?: any }) {

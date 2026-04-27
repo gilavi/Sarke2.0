@@ -1,8 +1,9 @@
 import { useCallback, useState } from 'react';
-import { FlatList, Text, View } from 'react-native';
+import { FlatList, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect } from 'expo-router';
 import { Card, Screen } from '../components/ui';
+import { A11yText } from '../components/primitives/A11yText';
 import { Skeleton } from '../components/Skeleton';
 import { templatesApi } from '../lib/services';
 import { theme } from '../lib/theme';
@@ -47,13 +48,13 @@ export default function TemplatesScreen() {
           }
           renderItem={({ item }) => (
             <Card padding={14}>
-              <Text style={{ fontWeight: '700', color: theme.colors.ink }}>{item.name}</Text>
-              <Text style={{ color: theme.colors.inkSoft, fontSize: 11, marginTop: 4 }}>
+              <A11yText size="base" weight="bold">{item.name}</A11yText>
+              <A11yText size="xs" color={theme.colors.inkSoft} style={{ marginTop: 4 }}>
                 {item.is_system ? 'სისტემური' : 'ჩემი'} · {item.category ?? '—'}
-              </Text>
-              <Text style={{ color: theme.colors.inkSoft, fontSize: 11, marginTop: 4 }}>
+              </A11yText>
+              <A11yText size="xs" color={theme.colors.inkSoft} style={{ marginTop: 4 }}>
                 საჭირო: {item.required_signer_roles.map(r => SIGNER_ROLE_LABEL[r]).join(', ')}
-              </Text>
+              </A11yText>
             </Card>
           )}
         />

@@ -12,7 +12,7 @@ import {
   View,
 } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -38,7 +38,8 @@ import { friendlyError } from '../../lib/errorMap';
 import { formatShortDateTime } from '../../lib/formatDate';
 import type { CrewMember, Project, ProjectFile, ProjectSigner, Questionnaire, Template } from '../../types/models';
 import { SIGNER_ROLE_LABEL } from '../../types/models';
-import { CrewList, CrewMemberForm } from '../../components/CrewSection';
+import { CrewList } from '../../components/CrewSection';
+import { AddParticipantSheet } from '../../components/AddParticipantSheet';
 import { useSession } from '../../lib/session';
 import { a11y } from '../../lib/accessibility';
 import { TourGuide, type TourStep } from '../../components/TourGuide';
@@ -235,31 +236,15 @@ export default function ProjectDetail() {
 
   const openAddParticipant = () => {
     if (!project) return;
-    const options = ['მონაწილე', 'ხელმომწერა', 'გაუქმება'];
-    showActionSheetWithOptions(
-      { title: 'დამატება', options, cancelButtonIndex: options.length - 1 },
-      idx => {
-        if (idx == null || idx === options.length - 1) return;
-        if (idx === 1) {
-          router.push(`/projects/${id}/signer` as any);
-          return;
-        }
-        // Add crew member via shared form
-        showActionSheetWithOptions(
-          {
-            content: ({ dismiss }) => (
-              <CrewMemberForm
-                onSave={member => {
-                  void persistCrew([...(project.crew ?? []), member]);
-                  dismiss();
-                }}
-                onCancel={dismiss}
-              />
-            ),
-          },
-        );
-      },
-    );
+    showActionSheetWithOptions({
+      content: ({ dismiss }) => (
+        <AddParticipantSheet
+          onAddCrew={member => void persistCrew([...(project.crew ?? []), member])}
+          onAddSigner={() => { dismiss(); router.push(`/projects/${id}/signer` as any); }}
+          onCancel={dismiss}
+        />
+      ),
+    });
   };
 
   const uploadFile = async () => {
@@ -337,9 +322,16 @@ export default function ProjectDetail() {
 
   if (!loaded && !project) {
     return (
-      <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      <SafeAreaView
+        style={{ flex: 1, backgroundColor: theme.colors.background }}
+        edges={['bottom']}
+      >
         <Stack.Screen options={{ headerShown: true, title: 'პროექტი', headerBackTitle: 'პროექტები' }} />
-        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 32, gap: 14 }}>
+        <ScrollView
+          style={{ flex: 1 }}
+          contentInsetAdjustmentBehavior="never"
+          contentContainerStyle={{ padding: 16, paddingBottom: 32, gap: 14 }}
+        >
           <SkeletonCard>
             <Skeleton width={80} height={10} />
             <View style={{ height: 8 }} />
@@ -352,13 +344,16 @@ export default function ProjectDetail() {
           <SkeletonListCard rows={2} />
           <SkeletonListCard rows={3} />
         </ScrollView>
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
     <TourGuide tourId="project_screen_v1" steps={tourSteps}>
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: theme.colors.background }}
+      edges={['bottom']}
+    >
       <Stack.Screen
         options={{
           headerShown: true,
@@ -372,10 +367,11 @@ export default function ProjectDetail() {
       />
       <ScrollView
         style={{ flex: 1 }}
+        contentInsetAdjustmentBehavior="never"
         contentContainerStyle={{
           padding: 16,
-          // Reserve room for the absolutely-positioned FAB (height 56 + bottom 28 + safe area)
-          paddingBottom: insets.bottom + 110,
+          // Reserve room for the absolutely-positioned FAB
+          paddingBottom: 110,
           gap: 16,
         }}
       >
@@ -387,7 +383,7 @@ export default function ProjectDetail() {
               style={styles.heroEditBtn}
               {...a11y('რედაქტირება', 'პროექტის დეტალების შეცვლა', 'button')}
             >
-              <Ionicons name="create-outline" size={20} color={theme.colors.accent} />
+              <Ionicons name="pencil-outline" size={18} color={theme.colors.text} />
             </Pressable>
 
             <View style={styles.heroRow}>
@@ -784,9 +780,12 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 12,
     right: 12,
-    padding: 6,
-    borderRadius: 999,
-    backgroundColor: theme.colors.accentSoft,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: theme.colors.border || '#E5E5E5',
     zIndex: 5,
   },
   mapWrap: {

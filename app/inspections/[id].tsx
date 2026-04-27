@@ -23,7 +23,7 @@ import WebView from 'react-native-webview';
 import { Button, Card, Chip, Screen, SectionHeader } from '../../components/ui';
 import { Skeleton, SkeletonCard, SkeletonListCard } from '../../components/Skeleton';
 import { ErrorState } from '../../components/ErrorState';
-import { AddRemoteSignerModal, type AddRemoteSignerResult } from '../../components/AddRemoteSignerModal';
+import { AddRemoteSignerSheet, type AddRemoteSignerResult } from '../../components/AddRemoteSignerModal';
 import {
   answersApi,
   certificatesApi,
@@ -598,11 +598,10 @@ export default function InspectionDetailScreen() {
         )}
       </SafeAreaView>
       {false && (
-        <AddRemoteSignerModal
-          visible={addOpen}
-          busy={addBusy}
+        <AddRemoteSignerSheet
           onCancel={() => setAddOpen(false)}
           onSubmit={handleAddRemoteSigner}
+          busy={addBusy}
         />
       )}
     </Screen>
