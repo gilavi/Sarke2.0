@@ -13,9 +13,9 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
+import { A11yText as Text } from '../../components/primitives/A11yText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -38,6 +38,7 @@ import { useToast } from '../../lib/toast';
 import { friendlyError } from '../../lib/errorMap';
 import { scheduleDelete } from '../../lib/pendingDeletes';
 import { haptic } from '../../lib/haptics';
+import { formatShortDateTime } from '../../lib/formatDate';
 // openSigningSMS kept in lib/sms.ts as fallback; Twilio edge fn used instead.
 import { theme } from '../../lib/theme';
 import type {
@@ -176,7 +177,9 @@ export default function InspectionDetailScreen() {
       } catch (e) {
         if (!cancelled) toast.error(friendlyError(e, 'პრევიუს ჩატვირთვა ვერ მოხერხდა'));
       } finally {
-        if (!cancelled) setPreviewLoading(false);
+        // Always reset loading flag so a re-run triggered by dep changes
+        // (e.g. questions/answers arriving) can proceed from a clean state.
+        setPreviewLoading(false);
       }
     })();
     return () => {
@@ -346,7 +349,7 @@ export default function InspectionDetailScreen() {
             <Text style={styles.project}>{project.name}</Text>
           ) : null}
           <Text style={styles.date}>
-            {new Date(inspection.completed_at ?? inspection.created_at).toLocaleString('ka')}
+            {formatShortDateTime(inspection.completed_at ?? inspection.created_at)}
           </Text>
           <View
             style={[
@@ -441,17 +444,11 @@ export default function InspectionDetailScreen() {
             <InspectionScorecard questions={questions} answers={answers} />
           ) : null}
 
-          {/* PDF reports list */}
+          {/* PDF reports list — hidden when empty */}
+          {certs.length > 0 ? (
           <View style={{ marginTop: 4 }}>
             <Text style={styles.sectionTitle}>PDF რეპორტები ({certs.length})</Text>
-            {certs.length === 0 ? (
-              <Card>
-                <Text style={{ color: theme.colors.inkSoft, fontSize: 13 }}>
-                  ამ ინსპექციისთვის ჯერ არ არის დაგენერირებული PDF რეპორტი.
-                </Text>
-              </Card>
-            ) : (
-              <FlatList
+            <FlatList
                 // Nested-scroll-free: wrapped in the parent ScrollView already.
                 scrollEnabled={false}
                 data={certs}
@@ -501,7 +498,7 @@ export default function InspectionDetailScreen() {
 
                             {/* Date */}
                             <Text style={styles.certMeta}>
-                              {new Date(item.generated_at).toLocaleString('ka')}
+                              {formatShortDateTime(item.generated_at)}
                             </Text>
 
                             {/* Badges row */}
@@ -543,8 +540,8 @@ export default function InspectionDetailScreen() {
                   );
                 }}
               />
-            )}
           </View>
+          ) : null}
 
           <Button
             title={certs.length === 0 ? 'PDF რეპორტის გენერაცია' : 'ახალი PDF რეპორტის გენერაცია'}
@@ -656,7 +653,7 @@ function RemoteRequestRow({
           ) : null}
           {request.status === 'signed' && request.signed_at ? (
             <Text style={remoteStyles.meta} numberOfLines={1}>
-              {new Date(request.signed_at).toLocaleString('ka')}
+              {formatShortDateTime(request.signed_at)}
             </Text>
           ) : null}
         </View>
@@ -776,7 +773,7 @@ function InspectionScorecard({
           {skippedCount > 0 ? (
             <View style={scorecardStyles.statChip}>
               <Text style={scorecardStyles.statNum}>{skippedCount}</Text>
-              <Text style={scorecardStyles.statLabel}>გამოტოვილი</Text>
+              <Text style={scorecardStyles.statLabel}>გამოტ.</Text>
             </View>
           ) : null}
         </View>

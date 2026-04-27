@@ -8,7 +8,6 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   View,
 } from 'react-native';
@@ -18,7 +17,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { projectAvatar } from '../../lib/projectAvatar';
-import { Button, Card, Field, Input } from '../../components/ui';
+import { Button, Card, Input } from '../../components/ui';
+import { A11yText, A11yText as Text } from '../../components/primitives/A11yText';
+import { FormField } from '../../components/FormField';
 import { PressableScale } from '../../components/animations/PressableScale';
 import { a11y } from '../../lib/accessibility';
 import EmptyState from '../../components/EmptyState';
@@ -326,7 +327,7 @@ function CreateProjectSheet({
           <Pressable style={sheetStyles.card} onPress={() => {}}>
             <View style={sheetStyles.handle} />
             <View style={sheetStyles.sheetHeader}>
-              <Text style={[sheetStyles.sheetTitle, { flex: 1 }]}>ახალი პროექტი</Text>
+              <A11yText size="xl" weight="bold" style={{ flex: 1 }}>ახალი პროექტი</A11yText>
               <Pressable onPress={onClose} hitSlop={10} {...a11y('დახურვა', 'შეეხეთ ფანჯრის დასახურად', 'button')}>
                 <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
               </Pressable>
@@ -334,31 +335,32 @@ function CreateProjectSheet({
             <ScrollView
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ gap: 12, paddingTop: 4, paddingBottom: 8 }}
+              contentContainerStyle={{ gap: 16, paddingTop: 4, paddingBottom: 8 }}
               style={{ maxHeight: '78%' }}
             >
-              <Field label="სახელი">
+              <FormField label="სახელი" required>
                 <Input
                   value={name}
                   onChangeText={setName}
                   placeholder="მაგ. ვაკე-საბურთალოს ობიექტი"
                   autoFocus
                 />
-              </Field>
-              <Field label="კომპანია">
+              </FormField>
+              <FormField label="კომპანია">
                 <Input value={company} onChangeText={setCompany} placeholder="შემკვეთი" />
-              </Field>
-              <Field label="მისამართი">
+              </FormField>
+              <FormField label="მისამართი">
                 <MapPicker
                   value={pin}
                   onChange={setPin}
                   address={address}
                   onAddressChange={setAddress}
                 />
-              </Field>
+              </FormField>
             </ScrollView>
             <Button
               title="შექმნა"
+              size="lg"
               onPress={save}
               loading={busy}
               disabled={!name.trim()}
@@ -406,7 +408,7 @@ function ProjectRow({
   const renderRightActions = () => (
     <Pressable onPress={onDelete} style={styles.swipeDelete} {...a11y('წაშლა', 'შეეხეთ პროექტის წასაშლელად', 'button')}>
       <Ionicons name="trash" size={20} color={theme.colors.white} />
-      <Text style={{ color: theme.colors.white, fontWeight: '600', fontSize: 12 }}>წაშლა</Text>
+      <A11yText size="xs" weight="semibold" color={theme.colors.white}>წაშლა</A11yText>
     </Pressable>
   );
 
@@ -432,38 +434,38 @@ function ProjectRow({
         <Card padding={14}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             <View style={[styles.iconBox, { backgroundColor: projectAvatar(project.id).color + '22' }]}>
-              <Text style={{ fontSize: 22 }}>{projectAvatar(project.id).emoji}</Text>
+              <A11yText size="2xl">{projectAvatar(project.id).emoji}</A11yText>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.rowTitle} numberOfLines={1}>
+              <A11yText size="base" weight="bold" numberOfLines={1}>
                 {project.name}
-              </Text>
+              </A11yText>
               {project.company_name ? (
-                <Text style={styles.rowMeta} numberOfLines={1}>
+                <A11yText size="xs" color={theme.colors.inkSoft} style={{ marginTop: 2 }} numberOfLines={1}>
                   {project.company_name}
                   {project.address ? ` · ${project.address}` : ''}
-                </Text>
+                </A11yText>
               ) : project.address ? (
-                <Text style={styles.rowMeta} numberOfLines={1}>
+                <A11yText size="xs" color={theme.colors.inkSoft} style={{ marginTop: 2 }} numberOfLines={1}>
                   {project.address}
-                </Text>
+                </A11yText>
               ) : null}
               {stats && (stats.drafts > 0 || stats.completed > 0) ? (
                 <View style={{ flexDirection: 'row', gap: 10, marginTop: 6 }}>
                   {stats.drafts > 0 ? (
                     <View style={[styles.counter, { backgroundColor: theme.colors.warnSoft }]}>
                       <Ionicons name="document-text-outline" size={11} color={theme.colors.warn} />
-                      <Text style={{ color: theme.colors.warn, fontSize: 11, fontWeight: '700' }}>
+                      <A11yText size="xs" weight="bold" color={theme.colors.warn}>
                         {stats.drafts} დრაფტი
-                      </Text>
+                      </A11yText>
                     </View>
                   ) : null}
                   {stats.completed > 0 ? (
                     <View style={[styles.counter, { backgroundColor: theme.colors.accentSoft }]}>
                       <Ionicons name="checkmark" size={11} color={theme.colors.accent} />
-                      <Text style={{ color: theme.colors.accent, fontSize: 11, fontWeight: '700' }}>
+                      <A11yText size="xs" weight="bold" color={theme.colors.accent}>
                         {stats.completed} დასრულდა
-                      </Text>
+                      </A11yText>
                     </View>
                   ) : null}
                 </View>

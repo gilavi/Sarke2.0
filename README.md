@@ -80,12 +80,31 @@ app/                  expo-router routes (the magic folder)
   certificates/       list + add + regret
   history.tsx         because you will need therapy
 customer_support/     just kidding, we don't have that
-components/ui.tsx     Button, Card, Input, Chip, Screen
-                      (glorified `<View>` wrappers)
+components/ui.tsx     Button, Card, Input, Chip, Screen, A11yText,
+                      SectionHeader, FormField, ButtonGroup,
+                      ActionSheet, ActionSheetItem
+                      (glorified `<View>` wrappers, but consistent ones)
 components/BackButton.tsx
                       Shared back button — accepts a `label` prop
                       with the destination screen name (e.g.
                       "მთავარი") instead of a generic "უკან".
+components/ActionSheet.tsx
+                      Standard action sheet built on BottomSheet
+                      (the "აირჩიეთ შაბლონი" pattern). Use this for
+                      all option pickers — title at top, list of
+                      ActionSheetItems, "გაუქმება" button at bottom.
+components/FormField.tsx
+                      Wraps any form input with a consistent label
+                      (sm, semibold), required asterisk, and
+                      error/helper text below.
+components/ButtonGroup.tsx
+                      Vertical or horizontal button stack — auto-
+                      picks variants (primary for last, secondary
+                      for the rest), used in modals + form footers.
+components/SectionHeader.tsx
+                      Consistent section title (lg, semibold) with
+                      optional right-aligned action button.
+                      Replaces ad-hoc section titles.
 lib/
   supabase.ts         Supabase client (our digital frenemy)
   session.tsx         Auth provider (remembers you, judges you)
