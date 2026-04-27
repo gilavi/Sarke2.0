@@ -12,14 +12,14 @@ import {
   View,
 } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { MapPreview } from '../../components/MapPreview';
 import { useBottomSheet } from '../../components/BottomSheet';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
-import { Button, Field, Input, Screen } from '../../components/ui';
+import { Button, Field, Input } from '../../components/ui';
 import { Skeleton, SkeletonCard, SkeletonListCard } from '../../components/Skeleton';
 import { MapPicker, type LatLng } from '../../components/MapPicker';
 import { UploadedFilesSection } from '../../components/UploadedFilesSection';
@@ -337,30 +337,28 @@ export default function ProjectDetail() {
 
   if (!loaded && !project) {
     return (
-      <Screen>
+      <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
         <Stack.Screen options={{ headerShown: true, title: 'პროექტი', headerBackTitle: 'პროექტები' }} />
-        <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
-          <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }}>
-            <SkeletonCard>
-              <Skeleton width={80} height={10} />
-              <View style={{ height: 8 }} />
-              <Skeleton width={'70%'} height={22} />
-              <View style={{ height: 10 }} />
-              <Skeleton width={'45%'} height={13} />
-              <View style={{ height: 4 }} />
-              <Skeleton width={'55%'} height={13} />
-            </SkeletonCard>
-            <SkeletonListCard rows={2} />
-            <SkeletonListCard rows={3} />
-          </ScrollView>
-        </SafeAreaView>
-      </Screen>
+        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 32, gap: 14 }}>
+          <SkeletonCard>
+            <Skeleton width={80} height={10} />
+            <View style={{ height: 8 }} />
+            <Skeleton width={'70%'} height={22} />
+            <View style={{ height: 10 }} />
+            <Skeleton width={'45%'} height={13} />
+            <View style={{ height: 4 }} />
+            <Skeleton width={'55%'} height={13} />
+          </SkeletonCard>
+          <SkeletonListCard rows={2} />
+          <SkeletonListCard rows={3} />
+        </ScrollView>
+      </View>
     );
   }
 
   return (
     <TourGuide tourId="project_screen_v1" steps={tourSteps}>
-    <Screen>
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Stack.Screen
         options={{
           headerShown: true,
@@ -372,8 +370,7 @@ export default function ProjectDetail() {
           headerTintColor: theme.colors.accent,
         }}
       />
-      <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
-        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 32, gap: 16 }}>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 32, gap: 16 }}>
           {/* ── Hero / Project Details Card ── */}
           <View ref={heroRef} collapsable={false} style={styles.heroCard}>
             <Pressable
@@ -614,7 +611,6 @@ export default function ProjectDetail() {
         >
           <Ionicons name="add" size={30} color={theme.colors.white} />
         </Pressable>
-      </SafeAreaView>
 
       <EditProjectSheet
         visible={editing}
@@ -626,7 +622,7 @@ export default function ProjectDetail() {
           toast.success('შენახულია');
         }}
       />
-    </Screen>
+    </View>
     </TourGuide>
   );
 }
