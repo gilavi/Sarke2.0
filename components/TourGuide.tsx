@@ -16,6 +16,7 @@ import {
   type LayoutChangeEvent,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export type TourStep = {
   targetRef: RefObject<any>;
@@ -36,7 +37,8 @@ const BRAND = '#1D9E75';
 const PADDING = 8;
 const TOOLTIP_GAP = 12;
 const TOOLTIP_WIDTH = 280;
-const SCREEN = Dimensions.get('window');
+// Reserve space at the bottom for tab bars / home indicator that the modal still overlays.
+const TAB_BAR_RESERVE = 64;
 
 const storageKey = (tourId: string) => `tour_${tourId}`;
 
@@ -46,6 +48,8 @@ export function TourGuide({ tourId, steps, children }: Props) {
   const [rect, setRect] = useState<Rect | null>(null);
   const [tooltipH, setTooltipH] = useState(0);
   const fade = useRef(new Animated.Value(0)).current;
+  const insets = useSafeAreaInsets();
+  const screen = Dimensions.get('window');
 
   // Decide whether to show on mount
   useEffect(() => {
@@ -75,6 +79,7 @@ export function TourGuide({ tourId, steps, children }: Props) {
     if (!step) return;
     fade.setValue(0);
     setRect(null);
+    setTooltipH(0);
     const ref = step.targetRef.current;
     const tryMeasure = (attempt = 0) => {
       if (!ref || typeof ref.measureInWindow !== 'function') {
@@ -173,17 +178,38 @@ export function TourGuide({ tourId, steps, children }: Props) {
     );
   };
 
+  // Bounds the tooltip must stay within (account for safe areas + tab bar reserve)
+  const safeTop = insets.top + 16;
+  const safeBottom = screen.height - Math.max(insets.bottom, 0) - TAB_BAR_RESERVE - 16;
+
+  const tooltipReady = rect !== null && tooltipH > 0;
+
   const tooltipPos = (() => {
-    if (!rect) return { top: SCREEN.height / 2, left: 20 };
+    if (!tooltipReady || !rect) return null;
     const wantTop = step?.position === 'top';
-    const above = rect.y - TOOLTIP_GAP - tooltipH;
-    const below = rect.y + rect.height + TOOLTIP_GAP;
+    const targetTop = rect.y;
+    const targetBottom = rect.y + rect.height;
+    const above = targetTop - TOOLTIP_GAP - tooltipH;
+    const below = targetBottom + TOOLTIP_GAP;
+
+    const fitsAbove = above >= safeTop;
+    const fitsBelow = below + tooltipH <= safeBottom;
+
     let top: number;
-    if (wantTop && above >= 16) top = above;
-    else if (!wantTop && below + tooltipH <= SCREEN.height - 16) top = below;
-    else top = above >= 16 ? above : below;
+    if (wantTop) {
+      if (fitsAbove) top = above;
+      else if (fitsBelow) top = below;
+      else top = Math.max(safeTop, safeBottom - tooltipH);
+    } else {
+      if (fitsBelow) top = below;
+      else if (fitsAbove) top = above;
+      else top = Math.max(safeTop, safeBottom - tooltipH);
+    }
+    // Clamp vertically as a last guard
+    top = Math.max(safeTop, Math.min(top, safeBottom - tooltipH));
+
     let left = rect.x + rect.width / 2 - TOOLTIP_WIDTH / 2;
-    left = Math.max(16, Math.min(left, SCREEN.width - TOOLTIP_WIDTH - 16));
+    left = Math.max(16, Math.min(left, screen.width - TOOLTIP_WIDTH - 16));
     return { top, left };
   })();
 
@@ -209,7 +235,9 @@ export function TourGuide({ tourId, steps, children }: Props) {
               onLayout={onTooltipLayout}
               style={[
                 styles.tooltip,
-                { top: tooltipPos.top, left: tooltipPos.left, opacity: fade },
+                tooltipPos
+                  ? { top: tooltipPos.top, left: tooltipPos.left, opacity: fade }
+                  : { top: -9999, left: -9999, opacity: 0 },
               ]}
             >
               <Text style={styles.title}>{step.title}</Text>
