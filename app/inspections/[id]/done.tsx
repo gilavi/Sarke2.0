@@ -16,6 +16,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Button, Card, Screen } from '../../../components/ui';
 import { Skeleton, SkeletonCard } from '../../../components/Skeleton';
+import { AnimatedSuccessIcon, CelebrationBurst } from '../../../components/animations';
 import {
   inspectionsApi,
   projectsApi,
@@ -78,12 +79,11 @@ export default function InspectionDoneScreen() {
     <Screen edgeToEdge>
       {/* No header — celebratory dead-end screen, forward nav only. */}
       <Stack.Screen options={{ headerShown: false }} />
+      <CelebrationBurst />
       <ScrollView contentContainerStyle={styles.scroll}>
           {/* Success header */}
           <View style={styles.header}>
-            <View style={styles.successIcon}>
-              <Ionicons name="checkmark" size={44} color={theme.colors.white} />
-            </View>
+            <AnimatedSuccessIcon />
             <Text style={styles.title}>ინსპექცია შენახულია!</Text>
             <Text style={styles.subtitle}>
               ყველა მონაცემი შენახულია. PDF რეპორტი შეგიძლიათ
@@ -249,14 +249,6 @@ const styles = StyleSheet.create({
     color: theme.colors.inkSoft,
   },
   header: { alignItems: 'center', gap: 12, marginBottom: 4 },
-  successIcon: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: theme.colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   title: {
     fontSize: 24,
     fontWeight: '800',

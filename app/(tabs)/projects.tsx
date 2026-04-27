@@ -30,6 +30,7 @@ import { useToast } from '../../lib/toast';
 import { theme } from '../../lib/theme';
 import { logError, toErrorMessage } from '../../lib/logError';
 import { friendlyError } from '../../lib/errorMap';
+import { haptic } from '../../lib/haptics';
 import type { Project } from '../../types/models';
 import { TourGuide, type TourStep } from '../../components/TourGuide';
 
@@ -206,6 +207,7 @@ export default function ProjectsScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={async () => {
+              haptic.medium();
               setRefreshing(true);
               await load();
               setRefreshing(false);

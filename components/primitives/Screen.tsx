@@ -2,6 +2,7 @@ import React, { ReactNode } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import { SafeAreaView, Edge } from 'react-native-safe-area-context';
 import { theme } from '../../lib/theme';
+import { haptic } from '../../lib/haptics';
 
 interface ScreenProps {
   children: ReactNode;
@@ -36,7 +37,14 @@ export function Screen({
       contentContainerStyle={[contentPadding, contentContainerStyle]}
       refreshControl={
         onRefresh ? (
-          <RefreshControl refreshing={refreshing || false} onRefresh={onRefresh} tintColor={theme.colors.accent} />
+          <RefreshControl
+            refreshing={refreshing || false}
+            onRefresh={() => {
+              haptic.medium();
+              onRefresh();
+            }}
+            tintColor={theme.colors.accent}
+          />
         ) : undefined
       }
       showsVerticalScrollIndicator={false}

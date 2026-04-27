@@ -1,6 +1,7 @@
-import React from 'react';
-import { Pressable, PressableProps, StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { GestureResponderEvent, LayoutChangeEvent, Pressable, PressableProps, StyleSheet, Text, View } from 'react-native';
 import Animated, {
+  Easing,
   useSharedValue,
   useAnimatedStyle,
   withSpring,
@@ -44,18 +45,53 @@ export function Button({
   ...rest
 }: ButtonProps) {
   const scale = useSharedValue(1);
+  const rippleScale = useSharedValue(0);
+  const rippleOpacity = useSharedValue(0);
+  const [ripplePos, setRipplePos] = useState({ x: 0, y: 0 });
+  const [layout, setLayout] = useState({ width: 0, height: 0 });
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
 
-  const handlePressIn = () => {
+  // Ripple radius covers the button from the press point to the farthest
+  // corner so it always fully expands across the surface.
+  const rippleRadius = (() => {
+    const { x, y } = ripplePos;
+    const w = layout.width;
+    const h = layout.height;
+    const dx = Math.max(x, w - x);
+    const dy = Math.max(y, h - y);
+    return Math.sqrt(dx * dx + dy * dy);
+  })();
+
+  const rippleAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: rippleScale.value }],
+    opacity: rippleOpacity.value,
+  }));
+
+  const handleLayout = (e: LayoutChangeEvent) => {
+    setLayout({
+      width: e.nativeEvent.layout.width,
+      height: e.nativeEvent.layout.height,
+    });
+  };
+
+  const handlePressIn = (e: GestureResponderEvent) => {
     scale.value = withTiming(0.96, { duration: 80 });
+    setRipplePos({ x: e.nativeEvent.locationX, y: e.nativeEvent.locationY });
+    rippleScale.value = 0;
+    rippleOpacity.value = 0.18;
+    rippleScale.value = withTiming(1, {
+      duration: 380,
+      easing: Easing.out(Easing.quad),
+    });
     haptic.light();
   };
 
   const handlePressOut = () => {
     scale.value = withSpring(1, theme.motion.spring.gentle);
+    rippleOpacity.value = withTiming(0, { duration: 240 });
   };
 
   const handlePress = () => {
@@ -169,17 +205,35 @@ export function Button({
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         onPress={handlePress}
+        onLayout={handleLayout}
         disabled={disabled || loading}
         style={[
           styles.base,
           s,
-          { backgroundColor: v.backgroundColor },
+          { backgroundColor: v.backgroundColor, overflow: 'hidden' },
           v.borderColor ? { borderColor: v.borderColor, borderWidth: v.borderWidth } : null,
           (disabled || loading) && styles.disabled,
           innerStyle,
         ]}
         {...rest}
       >
+        {rippleRadius > 0 && (
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              styles.ripple,
+              {
+                width: rippleRadius * 2,
+                height: rippleRadius * 2,
+                borderRadius: rippleRadius,
+                left: ripplePos.x - rippleRadius,
+                top: ripplePos.y - rippleRadius,
+                backgroundColor: variant === 'primary' || variant === 'danger' ? '#FFFFFF' : v.color,
+              },
+              rippleAnimatedStyle,
+            ]}
+          />
+        )}
         {(leftIcon || iconLeft) && (
           <View style={{ marginRight: 8 }}>
             {iconLeft ?? (
@@ -228,5 +282,8 @@ const styles = StyleSheet.create({
   },
   disabled: {
     opacity: 0.5,
+  },
+  ripple: {
+    position: 'absolute',
   },
 });

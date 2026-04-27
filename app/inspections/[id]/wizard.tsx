@@ -21,6 +21,7 @@ import {
   WizardNav,
   ExitConfirmationModal,
   WizardPhotoThumbs,
+  WizardStepTransition,
 } from '../../../components/wizard';
 import {
   KamariCount,
@@ -235,22 +236,15 @@ export default function QuestionnaireWizard() {
     AsyncStorage.setItem(TOUR_SEEN_KEY, '1').catch(() => {});
   }, []);
 
-  // Step transition animation — horizontal slide-in from the right
-  const stepAnim = useRef(new Animated.Value(1)).current;
+  // Step transition direction. Forward navigation slides the new step in
+  // from the right and the old one out to the left; back nav reverses both.
+  // The actual slide+fade is rendered by WizardStepTransition below.
+  const prevStepIndexRef = useRef(stepIndex);
+  const stepDirection: 'next' | 'prev' =
+    stepIndex >= prevStepIndexRef.current ? 'next' : 'prev';
   useEffect(() => {
-    stepAnim.setValue(0);
-    Animated.spring(stepAnim, {
-      toValue: 1,
-      damping: 18,
-      stiffness: 180,
-      mass: 0.6,
-      useNativeDriver: true,
-    }).start();
+    prevStepIndexRef.current = stepIndex;
   }, [stepIndex]);
-  const stepTranslateX = stepAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [40, 0],
-  });
 
   // First-render fade out of the skeleton — kicks in once data is ready.
   const enterAnim = useRef(new Animated.Value(0)).current;
@@ -793,16 +787,14 @@ export default function QuestionnaireWizard() {
           style={{ flex: 1 }}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
         >
-          {step.kind === 'kamariCount' ? (
-            <Animated.View style={{ flex: 1, opacity: stepAnim, transform: [{ translateX: stepTranslateX }] }}>
+          <WizardStepTransition stepKey={stepIndex} direction={stepDirection}>
+            {step.kind === 'kamariCount' ? (
               <KamariCount
                 count={harnessRowCount}
                 onChange={setHarnessRowCount}
                 max={step.question.grid_rows?.length ?? 15}
               />
-            </Animated.View>
-          ) : step.kind === 'kamariOverview' ? (
-            <Animated.View style={{ flex: 1, opacity: stepAnim, transform: [{ translateX: stepTranslateX }] }}>
+            ) : step.kind === 'kamariOverview' ? (
               <KamariOverview
                 question={step.question}
                 answer={answers[step.question.id]}
@@ -818,9 +810,7 @@ export default function QuestionnaireWizard() {
                   setKamariOpenIndex(i);
                 }}
               />
-            </Animated.View>
-          ) : step.kind === 'gridRow' ? (
-            <Animated.View style={{ flex: 1, opacity: stepAnim, transform: [{ translateX: stepTranslateX }] }}>
+            ) : step.kind === 'gridRow' ? (
               <GridRowStep
                 question={step.question}
                 row={step.row}
@@ -834,9 +824,7 @@ export default function QuestionnaireWizard() {
                 onDeletePhoto={deletePhoto}
                 onAdvance={goNext}
               />
-            </Animated.View>
-          ) : (
-            <Animated.View style={{ flex: 1, opacity: stepAnim, transform: [{ translateX: stepTranslateX }] }}>
+            ) : (
               <ScrollView
                 contentContainerStyle={{ padding: 20, paddingBottom: 12, gap: 16 }}
                 keyboardShouldPersistTaps="handled"
@@ -868,8 +856,8 @@ export default function QuestionnaireWizard() {
                   />
                 )}
               </ScrollView>
-            </Animated.View>
-          )}
+            )}
+          </WizardStepTransition>
 
           <View style={[styles.footer, { paddingBottom: 16 + insets.bottom }]}>
             {isYesNo && step.kind === 'question' ? (
