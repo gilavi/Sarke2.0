@@ -12,7 +12,7 @@ import {
   View,
 } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -322,15 +322,19 @@ export default function ProjectDetail() {
 
   if (!loaded && !project) {
     return (
-      <SafeAreaView
-        style={{ flex: 1, backgroundColor: theme.colors.background }}
-        edges={['bottom']}
-      >
+      <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
         <Stack.Screen options={{ headerShown: true, title: 'პროექტი', headerBackTitle: 'პროექტები' }} />
         <ScrollView
           style={{ flex: 1 }}
           contentInsetAdjustmentBehavior="never"
-          contentContainerStyle={{ padding: 16, paddingBottom: 32, gap: 14 }}
+          automaticallyAdjustContentInsets={false}
+          contentInset={{ top: 0, bottom: 0, left: 0, right: 0 }}
+          contentContainerStyle={{
+            paddingHorizontal: 16,
+            paddingTop: 12,
+            paddingBottom: insets.bottom + 24,
+            gap: 14,
+          }}
         >
           <SkeletonCard>
             <Skeleton width={80} height={10} />
@@ -344,16 +348,13 @@ export default function ProjectDetail() {
           <SkeletonListCard rows={2} />
           <SkeletonListCard rows={3} />
         </ScrollView>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
     <TourGuide tourId="project_screen_v1" steps={tourSteps}>
-    <SafeAreaView
-      style={{ flex: 1, backgroundColor: theme.colors.background }}
-      edges={['bottom']}
-    >
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Stack.Screen
         options={{
           headerShown: true,
@@ -368,10 +369,13 @@ export default function ProjectDetail() {
       <ScrollView
         style={{ flex: 1 }}
         contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
+        contentInset={{ top: 0, bottom: 0, left: 0, right: 0 }}
         contentContainerStyle={{
-          padding: 16,
-          // Reserve room for the absolutely-positioned FAB
-          paddingBottom: 110,
+          paddingHorizontal: 16,
+          paddingTop: 12,
+          // FAB sits at insets.bottom + 20 with height 56 — clear the row
+          paddingBottom: insets.bottom + 90,
           gap: 16,
         }}
       >
@@ -610,7 +614,11 @@ export default function ProjectDetail() {
         <Pressable
           ref={fabRef}
           onPress={startNewQuestionnaire}
-          style={({ pressed }) => [styles.fab, pressed && { opacity: 0.85 }]}
+          style={({ pressed }) => [
+            styles.fab,
+            { bottom: insets.bottom + 16 },
+            pressed && { opacity: 0.85 },
+          ]}
           {...a11y('ახალი ინსპექცია', 'ახალი ინსპექციას დაწყება', 'button')}
         >
           <Ionicons name="add" size={30} color={theme.colors.white} />
@@ -626,7 +634,7 @@ export default function ProjectDetail() {
           toast.success('შენახულია');
         }}
       />
-    </SafeAreaView>
+    </View>
     </TourGuide>
   );
 }
