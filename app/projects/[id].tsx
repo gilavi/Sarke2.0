@@ -36,8 +36,7 @@ import { theme } from '../../lib/theme';
 import { toErrorMessage } from '../../lib/logError';
 import { friendlyError } from '../../lib/errorMap';
 import { formatShortDateTime } from '../../lib/formatDate';
-import type { CrewMember, Project, ProjectFile, ProjectSigner, Questionnaire, Template } from '../../types/models';
-import { SIGNER_ROLE_LABEL } from '../../types/models';
+import type { CrewMember, Project, ProjectFile, Questionnaire, Template } from '../../types/models';
 import { CrewList } from '../../components/CrewSection';
 import { AddParticipantSheet } from '../../components/AddParticipantSheet';
 import { useSession } from '../../lib/session';
@@ -61,13 +60,13 @@ export default function ProjectDetail() {
   const insets = useSafeAreaInsets();
 
   const [project, setProject] = useState<Project | null>(null);
-  const [signers, setSigners] = useState<ProjectSigner[]>([]);
-  const [signerPreviews, setSignerPreviews] = useState<Record<string, string>>({});
   const [questionnaires, setQuestionnaires] = useState<Questionnaire[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [files, setFiles] = useState<ProjectFile[]>([]);
   const [filesBusy, setFilesBusy] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [mapModalVisible, setMapModalVisible] = useState(false);
+  const [allProjects, setAllProjects] = useState<Project[]>([]);
   // Flips true after the first fetch finishes. Drives the skeleton → content
   // swap; refocus doesn't re-show skeletons once we have data.
   const [loaded, setLoaded] = useState(false);
