@@ -370,7 +370,15 @@ export default function ProjectDetail() {
           headerTintColor: theme.colors.accent,
         }}
       />
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 32, gap: 16 }}>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          padding: 16,
+          // Reserve room for the absolutely-positioned FAB (height 56 + bottom 28 + safe area)
+          paddingBottom: insets.bottom + 110,
+          gap: 16,
+        }}
+      >
           {/* ── Hero / Project Details Card ── */}
           <View ref={heroRef} collapsable={false} style={styles.heroCard}>
             <Pressable
@@ -606,7 +614,11 @@ export default function ProjectDetail() {
         <Pressable
           ref={fabRef}
           onPress={startNewQuestionnaire}
-          style={({ pressed }) => [styles.fab, pressed && { opacity: 0.85 }]}
+          style={({ pressed }) => [
+            styles.fab,
+            { bottom: insets.bottom + 20 },
+            pressed && { opacity: 0.85 },
+          ]}
           {...a11y('ახალი ინსპექცია', 'ახალი ინსპექციას დაწყება', 'button')}
         >
           <Ionicons name="add" size={30} color={theme.colors.white} />
