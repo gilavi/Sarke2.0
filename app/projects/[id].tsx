@@ -610,11 +610,7 @@ export default function ProjectDetail() {
         <Pressable
           ref={fabRef}
           onPress={startNewQuestionnaire}
-          style={({ pressed }) => [
-            styles.fab,
-            { bottom: insets.bottom + 20 },
-            pressed && { opacity: 0.85 },
-          ]}
+          style={({ pressed }) => [styles.fab, pressed && { opacity: 0.85 }]}
           {...a11y('ახალი ინსპექცია', 'ახალი ინსპექციას დაწყება', 'button')}
         >
           <Ionicons name="add" size={30} color={theme.colors.white} />
@@ -630,7 +626,7 @@ export default function ProjectDetail() {
           toast.success('შენახულია');
         }}
       />
-    </View>
+    </SafeAreaView>
     </TourGuide>
   );
 }
