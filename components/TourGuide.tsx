@@ -182,31 +182,33 @@ export function TourGuide({ tourId, steps, children }: Props) {
   const safeTop = insets.top + 16;
   const safeBottom = screen.height - Math.max(insets.bottom, 0) - TAB_BAR_RESERVE - 16;
 
-  const tooltipReady = rect !== null && tooltipH > 0;
+  // Estimated height before onLayout fires, so the very first render lands close
+  // to the final position instead of jumping (or being shoved offscreen).
+  const measuredOrEstimated = tooltipH > 0 ? tooltipH : 130;
 
   const tooltipPos = (() => {
-    if (!tooltipReady || !rect) return null;
+    if (!rect) return { top: safeTop, left: 16 };
     const wantTop = step?.position === 'top';
     const targetTop = rect.y;
     const targetBottom = rect.y + rect.height;
-    const above = targetTop - TOOLTIP_GAP - tooltipH;
+    const above = targetTop - TOOLTIP_GAP - measuredOrEstimated;
     const below = targetBottom + TOOLTIP_GAP;
 
     const fitsAbove = above >= safeTop;
-    const fitsBelow = below + tooltipH <= safeBottom;
+    const fitsBelow = below + measuredOrEstimated <= safeBottom;
 
     let top: number;
     if (wantTop) {
       if (fitsAbove) top = above;
       else if (fitsBelow) top = below;
-      else top = Math.max(safeTop, safeBottom - tooltipH);
+      else top = Math.max(safeTop, safeBottom - measuredOrEstimated);
     } else {
       if (fitsBelow) top = below;
       else if (fitsAbove) top = above;
-      else top = Math.max(safeTop, safeBottom - tooltipH);
+      else top = Math.max(safeTop, safeBottom - measuredOrEstimated);
     }
     // Clamp vertically as a last guard
-    top = Math.max(safeTop, Math.min(top, safeBottom - tooltipH));
+    top = Math.max(safeTop, Math.min(top, safeBottom - measuredOrEstimated));
 
     let left = rect.x + rect.width / 2 - TOOLTIP_WIDTH / 2;
     left = Math.max(16, Math.min(left, screen.width - TOOLTIP_WIDTH - 16));
@@ -235,9 +237,7 @@ export function TourGuide({ tourId, steps, children }: Props) {
               onLayout={onTooltipLayout}
               style={[
                 styles.tooltip,
-                tooltipPos
-                  ? { top: tooltipPos.top, left: tooltipPos.left, opacity: fade }
-                  : { top: -9999, left: -9999, opacity: 0 },
+                { top: tooltipPos.top, left: tooltipPos.left, opacity: fade },
               ]}
             >
               <Text style={styles.title}>{step.title}</Text>
