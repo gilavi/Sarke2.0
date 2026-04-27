@@ -8,14 +8,15 @@ export function useAccessibilitySettings() {
   const { fontScale } = useWindowDimensions();
 
   useEffect(() => {
-    AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
-    AccessibilityInfo.isScreenReaderEnabled().then(setScreenReaderEnabled);
-    AccessibilityInfo.isBoldTextEnabled().then(setBoldText);
+    AccessibilityInfo.isReduceMotionEnabled?.().then(setReduceMotion).catch(() => {});
+    AccessibilityInfo.isScreenReaderEnabled?.().then(setScreenReaderEnabled).catch(() => {});
+    // isBoldTextEnabled is iOS-only — guard so web/Android don't crash.
+    AccessibilityInfo.isBoldTextEnabled?.().then(setBoldText).catch(() => {});
 
     const subs: any[] = [];
-    subs.push(AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion));
-    subs.push(AccessibilityInfo.addEventListener('screenReaderChanged', setScreenReaderEnabled));
-    subs.push(AccessibilityInfo.addEventListener('boldTextChanged', setBoldText));
+    try { subs.push(AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion)); } catch {}
+    try { subs.push(AccessibilityInfo.addEventListener('screenReaderChanged', setScreenReaderEnabled)); } catch {}
+    try { subs.push(AccessibilityInfo.addEventListener('boldTextChanged', setBoldText)); } catch {}
 
     return () => subs.forEach((s) => s?.remove?.());
   }, []);
