@@ -23,6 +23,11 @@ import {
   WizardPhotoThumbs,
 } from '../../../components/wizard';
 import {
+  KamariCount,
+  KamariOverview,
+  KamariDetailModal,
+} from '../../../components/wizard/kamari/KamariFlow';
+import {
   answersApi,
   inspectionsApi,
   storageApi,
@@ -81,6 +86,8 @@ function isAnswerShapeValidForType(type: Question['type'], a: Answer): boolean {
 type FlatStep =
   | { kind: 'question'; question: Question }
   | { kind: 'gridRow'; question: Question; row: string }
+  | { kind: 'kamariCount'; question: Question }
+  | { kind: 'kamariOverview'; question: Question }
   | { kind: 'conclusion' };
 
 function buildSteps(
@@ -100,8 +107,14 @@ function buildSteps(
     if (q.type === 'freetext' && q.section === 4) continue;
     if (q.type === 'component_grid' && q.grid_rows) {
       const isHarness = q.grid_rows[0] === 'N1';
-      const rows = isHarness ? q.grid_rows.slice(0, harnessRowCount) : q.grid_rows;
-      for (const row of rows) steps.push({ kind: 'gridRow', question: q, row });
+      if (isHarness) {
+        // New kamari flow: count → overview (with detail modal). Replaces the
+        // legacy per-row gridRow walk for harness templates.
+        steps.push({ kind: 'kamariCount', question: q });
+        steps.push({ kind: 'kamariOverview', question: q });
+      } else {
+        for (const row of q.grid_rows) steps.push({ kind: 'gridRow', question: q, row });
+      }
     } else {
       steps.push({ kind: 'question', question: q });
     }
@@ -115,6 +128,8 @@ function buildSteps(
 // stable across the many sub-steps that share a conceptual phase.
 function stepHeaderInfo(step: FlatStep): { title: string; icon: keyof typeof Ionicons.glyphMap } {
   if (step.kind === 'conclusion') return { title: 'დასკვნა', icon: 'clipboard-outline' };
+  if (step.kind === 'kamariCount') return { title: 'ქამარების რაოდენობა', icon: 'apps-outline' };
+  if (step.kind === 'kamariOverview') return { title: 'ქამარების შემოწმება', icon: 'grid-outline' };
   if (step.kind === 'gridRow') return { title: `კომპონენტი • ${step.row}`, icon: 'grid-outline' };
   switch (step.question.type) {
     case 'yesno':
@@ -148,6 +163,9 @@ function hasAnswer(
     const harnessOk = template?.category !== 'harness' || harnessName.trim().length > 0;
     return isSafe !== null && conclusion.trim().length > 0 && harnessOk;
   }
+  // Kamari count is always answered (defaults to 1+); overview is always
+  // valid — "all green" is a meaningful, complete state.
+  if (step.kind === 'kamariCount' || step.kind === 'kamariOverview') return true;
   const a = answers[step.question.id];
   if (step.kind === 'gridRow') {
     const row = (a?.grid_values ?? {})[step.row];
@@ -189,6 +207,11 @@ export default function QuestionnaireWizard() {
   const [isSafe, setIsSafe] = useState<boolean | null>(null);
   const [harnessName, setHarnessName] = useState('');
   const [exitModalVisible, setExitModalVisible] = useState(false);
+  // Kamari overview state: which belt index (1-based) is currently open in the
+  // detail modal, plus a set of visited indices for the amber "in-progress"
+  // tint shown when a belt was opened but no problems were logged.
+  const [kamariOpenIndex, setKamariOpenIndex] = useState<number | null>(null);
+  const [kamariVisited, setKamariVisited] = useState<Set<number>>(new Set());
   const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
   const [showTour, setShowTour] = useState(false);
   const showHelp = useScaffoldHelpSheet();
@@ -770,7 +793,33 @@ export default function QuestionnaireWizard() {
           style={{ flex: 1 }}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
         >
-          {step.kind === 'gridRow' ? (
+          {step.kind === 'kamariCount' ? (
+            <Animated.View style={{ flex: 1, opacity: stepAnim, transform: [{ translateX: stepTranslateX }] }}>
+              <KamariCount
+                count={harnessRowCount}
+                onChange={setHarnessRowCount}
+                max={step.question.grid_rows?.length ?? 15}
+              />
+            </Animated.View>
+          ) : step.kind === 'kamariOverview' ? (
+            <Animated.View style={{ flex: 1, opacity: stepAnim, transform: [{ translateX: stepTranslateX }] }}>
+              <KamariOverview
+                question={step.question}
+                answer={answers[step.question.id]}
+                count={harnessRowCount}
+                visited={kamariVisited}
+                onOpen={(i) => {
+                  setKamariVisited(prev => {
+                    if (prev.has(i)) return prev;
+                    const next = new Set(prev);
+                    next.add(i);
+                    return next;
+                  });
+                  setKamariOpenIndex(i);
+                }}
+              />
+            </Animated.View>
+          ) : step.kind === 'gridRow' ? (
             <Animated.View style={{ flex: 1, opacity: stepAnim, transform: [{ translateX: stepTranslateX }] }}>
               <GridRowStep
                 question={step.question}
@@ -847,6 +896,14 @@ export default function QuestionnaireWizard() {
                 onAnswer={patchAnswer}
                 onAdvance={goNext}
               />
+            ) : step.kind === 'kamariOverview' ? (
+              <Button
+                title="დასრულება"
+                size="lg"
+                style={{ alignSelf: 'stretch', paddingVertical: 16, justifyContent: 'center' }}
+                iconRight={<Ionicons name="checkmark" size={20} color={theme.colors.white} />}
+                onPress={goNext}
+              />
             ) : (
               <Button
                 title={stepAnswered ? 'შემდეგი' : 'გამოტოვება'}
@@ -862,6 +919,27 @@ export default function QuestionnaireWizard() {
               />
             )}
           </View>
+
+        {/* Kamari per-belt detail modal — renders only when overview step opens it */}
+        {kamariOpenIndex !== null && step.kind === 'kamariOverview' ? (
+          <KamariDetailModal
+            visible={true}
+            index={kamariOpenIndex}
+            question={step.question}
+            answer={answers[step.question.id]}
+            photosByAnswer={photos}
+            onClose={() => setKamariOpenIndex(null)}
+            onSave={(nextGrid) => {
+              void patchAnswer(step.question, a => ({ ...a, grid_values: nextGrid }));
+            }}
+            onPickPhoto={(col) => {
+              const i = kamariOpenIndex;
+              if (i == null) return;
+              pickPhoto(step.question, `N${i}:col:${col}`);
+            }}
+            onDeletePhoto={deletePhoto}
+          />
+        ) : null}
 
         {/* Exit confirmation modal */}
         <ExitConfirmationModal

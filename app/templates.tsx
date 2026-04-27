@@ -1,10 +1,11 @@
 import { useCallback, useState } from 'react';
-import { FlatList, View } from 'react-native';
+import { FlatList, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect } from 'expo-router';
 import { Card, Screen } from '../components/ui';
 import { A11yText } from '../components/primitives/A11yText';
 import { Skeleton } from '../components/Skeleton';
+import { ScaffoldTour } from '../components/ScaffoldTour';
 import { templatesApi } from '../lib/services';
 import { theme } from '../lib/theme';
 import type { Template } from '../types/models';
@@ -13,6 +14,7 @@ import { SIGNER_ROLE_LABEL } from '../types/models';
 export default function TemplatesScreen() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [tourVisible, setTourVisible] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -55,9 +57,31 @@ export default function TemplatesScreen() {
               <A11yText size="xs" color={theme.colors.inkSoft} style={{ marginTop: 4 }}>
                 საჭირო: {item.required_signer_roles.map(r => SIGNER_ROLE_LABEL[r]).join(', ')}
               </A11yText>
+              {item.category !== 'harness' ? (
+                <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 8 }}>
+                  <Pressable
+                    onPress={() => setTourVisible(true)}
+                    hitSlop={8}
+                    accessibilityRole="button"
+                    accessibilityLabel="დახმარება"
+                  >
+                    {({ pressed }) => (
+                      <A11yText
+                        size="sm"
+                        weight="semibold"
+                        color={theme.colors.regsTint}
+                        style={{ opacity: pressed ? 0.6 : 1 }}
+                      >
+                        დახმარება
+                      </A11yText>
+                    )}
+                  </Pressable>
+                </View>
+              ) : null}
             </Card>
           )}
         />
+        <ScaffoldTour visible={tourVisible} onClose={() => setTourVisible(false)} />
       </SafeAreaView>
     </Screen>
   );

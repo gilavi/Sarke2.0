@@ -17,6 +17,7 @@ import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-rou
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { MapPreview } from '../../components/MapPreview';
+import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { useBottomSheet } from '../../components/BottomSheet';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { Button, Field, Input } from '../../components/ui';
@@ -115,32 +116,16 @@ export default function ProjectDetail() {
 
   const load = useCallback(async () => {
     if (!id) return;
-    const [p, s, q, t, f] = await Promise.all([
+    const [p, q, t, f] = await Promise.all([
       projectsApi.getById(id).catch(() => null),
-      projectsApi.signers(id).catch(() => []),
       questionnairesApi.listByProject(id).catch(() => []),
       templatesApi.list().catch(() => []),
       projectFilesApi.list(id).catch(() => [] as ProjectFile[]),
     ]);
     setProject(p);
-    setSigners(s);
     setQuestionnaires(q);
     setTemplates(t);
     setFiles(f);
-
-    // Lazy-load sig thumbnails
-    const previews: Record<string, string> = {};
-    await Promise.all(
-      s
-        .filter(x => x.signature_png_url)
-        .map(async x => {
-          previews[x.id] = await getStorageImageDisplayUrl(
-            STORAGE_BUCKETS.signatures,
-            x.signature_png_url!,
-          );
-        }),
-    );
-    setSignerPreviews(previews);
     setLoaded(true);
   }, [id]);
 
@@ -238,8 +223,7 @@ export default function ProjectDetail() {
     showActionSheetWithOptions({
       content: ({ dismiss }) => (
         <AddParticipantSheet
-          onAddCrew={member => void persistCrew([...(project.crew ?? []), member])}
-          onAddSigner={() => { dismiss(); router.push(`/projects/${id}/signer` as any); }}
+          onAddCrew={member => { void persistCrew([...(project.crew ?? []), member]); dismiss(); }}
           onCancel={dismiss}
         />
       ),
@@ -249,6 +233,11 @@ export default function ProjectDetail() {
   const uploadFile = async () => {
     if (!id) return;
     try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (perm.status !== 'granted') {
+        toast.error('გალერეაზე წვდომა აკრძალულია');
+        return;
+      }
       const res = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.All,
         quality: 0.85,
@@ -300,23 +289,12 @@ export default function ProjectDetail() {
     ]);
   };
 
-  const deleteSigner = (s: ProjectSigner) => {
-    Alert.alert('წაშლა?', s.full_name, [
-      { text: 'გაუქმება', style: 'cancel' },
-      {
-        text: 'წაშლა',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await projectsApi.deleteSigner(s.id);
-            setSigners(prev => prev.filter(x => x.id !== s.id));
-            toast.success('წაიშალა');
-          } catch (e) {
-            toast.error(friendlyError(e, 'ვერ წაიშალა'));
-          }
-        },
-      },
-    ]);
+  const openMapModal = async () => {
+    setMapModalVisible(true);
+    if (allProjects.length === 0) {
+      const list = await projectsApi.list().catch(() => []);
+      setAllProjects(list);
+    }
   };
 
   if (!loaded && !project) {
@@ -411,12 +389,14 @@ export default function ProjectDetail() {
             </View>
 
             {project?.latitude != null && project?.longitude != null ? (
-              <MapPreview
-                latitude={project.latitude}
-                longitude={project.longitude}
-                pinColor={theme.colors.accent}
-                style={styles.mapWrap}
-              />
+              <Pressable onPress={openMapModal} {...a11y('რუქა', 'გახსნა სრულ ეკრანზე', 'button')}>
+                <MapPreview
+                  latitude={project.latitude}
+                  longitude={project.longitude}
+                  pinColor={theme.colors.accent}
+                  style={styles.mapWrap}
+                />
+              </Pressable>
             ) : null}
 
             {/* Uploaded files — bottom of project details, after map */}
@@ -437,7 +417,7 @@ export default function ProjectDetail() {
               <Text style={styles.sectionTitle}>მონაწილეები</Text>
               <View style={styles.badgeGreen}>
                 <Text style={styles.badgeGreenText}>
-                  {(project?.crew?.length ?? 0) + (inspector ? 1 : 0) + signers.length}
+                  {(project?.crew?.length ?? 0) + (inspector ? 1 : 0)}
                 </Text>
               </View>
             </View>
@@ -450,50 +430,10 @@ export default function ProjectDetail() {
               />
             </View>
 
-            {signers.length > 0 ? (
-              <View style={{ gap: 10, marginTop: 12 }}>
-                {signers.map(s => (
-                  <Swipeable
-                    key={s.id}
-                    renderRightActions={() => (
-                      <Pressable onPress={() => deleteSigner(s)} style={styles.swipeDelete} {...a11y('ხელმომწერის წაშლა', 'ამ ხელმომწერის წაშლა სიიდან', 'button')}>
-                        <Ionicons name="trash" size={18} color={theme.colors.white} />
-                      </Pressable>
-                    )}
-                    overshootRight={false}
-                  >
-                    <Pressable
-                      onPress={() => router.push(`/projects/${id}/signer?signerId=${s.id}` as any)}
-                      style={styles.listRow}
-                      {...a11y(s.full_name, 'ხელმომწერის დეტალების ნახვა', 'button')}
-                    >
-                      <View style={styles.sigThumb}>
-                        {signerPreviews[s.id] ? (
-                          <SafeSigImage uri={signerPreviews[s.id]} />
-                        ) : (
-                          <Ionicons name="person" size={20} color={theme.colors.inkFaint} />
-                        )}
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.listRowTitle}>{s.full_name}</Text>
-                        <Text style={styles.listRowSubtitle}>{SIGNER_ROLE_LABEL[s.role]}</Text>
-                        {!s.signature_png_url ? (
-                          <View style={styles.missingChip}>
-                            <Text style={styles.missingChipText}>ხელმოწერა არ არის</Text>
-                          </View>
-                        ) : null}
-                      </View>
-                      <Ionicons name="chevron-forward" size={18} color={theme.colors.borderStrong} />
-                    </Pressable>
-                  </Swipeable>
-                ))}
-              </View>
-            ) : null}
-
             <Pressable
               onPress={openAddParticipant}
               style={styles.addBtn}
-              {...a11y('დამატება', 'მონაწილის ან ხელმომწერის დამატება', 'button')}
+              {...a11y('დამატება', 'მონაწილის დამატება', 'button')}
             >
               <Ionicons name="person-add" size={18} color={theme.colors.accent} />
               <Text style={styles.addBtnText}>+ დამატება</Text>

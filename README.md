@@ -105,6 +105,12 @@ components/SectionHeader.tsx
                       Consistent section title (lg, semibold) with
                       optional right-aligned action button.
                       Replaces ad-hoc section titles.
+components/wizard/kamari/
+                      ქამარი (harness) inspection flow — count screen,
+                      overview grid (green/amber/red cards), and
+                      per-belt detail modal with accordion problem
+                      reporting. Persists into the existing
+                      component_grid Answer.grid_values shape.
 lib/
   supabase.ts         Supabase client (our digital frenemy)
   session.tsx         Auth provider (remembers you, judges you)

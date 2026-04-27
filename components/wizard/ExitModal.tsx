@@ -1,7 +1,8 @@
 import React, { useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { A11yText } from '../primitives/A11yText';
-import { ButtonGroup } from '../ButtonGroup';
+import { ActionSheetItem } from '../primitives/ActionSheetItem';
+import { Button } from '../primitives/Button';
 import { useBottomSheet } from '../BottomSheet';
 import { haptic } from '../../lib/haptics';
 import { theme } from '../../lib/theme';
@@ -32,28 +33,33 @@ export function ExitConfirmationModal({ visible, onStay, onExit }: ExitModalProp
       {
         content: () => (
           <View style={styles.content}>
-            <A11yText size="xl" weight="bold" style={styles.title}>
+            <A11yText size="xl" weight="semibold" style={styles.title}>
               გასვლა?
             </A11yText>
-            <A11yText size="base" color={theme.colors.inkSoft} style={styles.subtitle}>
+            <A11yText size="sm" color={theme.colors.inkSoft} style={styles.subtitle}>
               თუ ახლა გახვალთ, მიმდინარე პასუხები შეინახება, მაგრამ ინსპექცია დასრულებულად არ ჩაითვლება.
             </A11yText>
-            <ButtonGroup
-              buttons={[
-                {
-                  label: 'გაგრძელება',
-                  variant: 'secondary',
-                  size: 'lg',
-                  onPress: handleStay,
-                },
-                {
-                  label: 'გასვლა',
-                  variant: 'danger',
-                  size: 'lg',
-                  onPress: handleExit,
-                },
-              ]}
-              layout="vertical"
+            <View style={styles.items}>
+              <ActionSheetItem
+                label="გაგრძელება"
+                icon="arrow-forward"
+                onPress={handleStay}
+                isLast={false}
+              />
+              <ActionSheetItem
+                label="გასვლა"
+                icon="exit-outline"
+                onPress={handleExit}
+                variant="destructive"
+                isLast
+              />
+            </View>
+            <Button
+              title="გაუქმება"
+              variant="secondary"
+              size="lg"
+              onPress={handleStay}
+              style={styles.cancelButton}
             />
           </View>
         ),
@@ -68,16 +74,21 @@ export function ExitConfirmationModal({ visible, onStay, onExit }: ExitModalProp
 
 const styles = StyleSheet.create({
   content: {
-    backgroundColor: theme.colors.background,
-    paddingHorizontal: theme.space(4),
-    paddingVertical: theme.space(4),
+    paddingTop: theme.space(1),
+    paddingBottom: theme.space(2),
     gap: theme.space(4),
   },
   title: {
-    marginBottom: theme.space(2),
+    textAlign: 'center',
   },
   subtitle: {
-    marginBottom: theme.space(4),
+    textAlign: 'center',
     lineHeight: 20,
+  },
+  items: {
+    gap: theme.space(2),
+  },
+  cancelButton: {
+    marginBottom: theme.space(2),
   },
 });
