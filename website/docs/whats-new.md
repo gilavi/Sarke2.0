@@ -5,43 +5,32 @@ sidebar_position: 2
 # 📰 What's New
 
 **Last updated:** April 27, 2026  
-**Status:** Active Development  
+**Status:** Active Development — TestFlight 1.1.0 in flight  
 
 ---
 
-## Latest Release
+## Latest Release — v1.1.0 (April 27, 2026)
 
-### Commit 8ff6932 — April 27, 2026
-**chore: update UI flows, components, and theme configuration**
+Marketing version bumped `1.0.0 → 1.1.0` for TestFlight. Five commits shipped together.
 
-#### Changes
-- 🎨 **UI Flows Modernized**
-  - Auth flows: `forgot.tsx`, `login.tsx`, `reset.tsx`, `verify-email.tsx`
-  - Home, projects, and inspection flows refreshed
-  - Project detail and signer flows improved
+#### ქამარი (harness) inspection subflow — `d8457ba`
+- New `components/wizard/kamari/KamariFlow.tsx`: count screen → traffic-light overview grid → per-belt detail modal with accordion problem reporting.
+- Persists into the existing `component_grid` `Answer.grid_values` shape, so reports/PDFs keep working unchanged.
+- Exit-modal & wizard polish, project + templates screen tweaks.
 
-- ✨ **New Components**
-  - **TourGuide** — Swipeable onboarding tour (9-card guidance on first use)
-  - Persisted in AsyncStorage under `haraco_tour_seen`
+#### Regulations data layer + UI refresh — `018dc40`
+- Content extracted from the screen into `lib/regulations.ts` so it can be reused/tested.
+- Tab UI rebuilt on top of it.
 
-- 🎭 **Component Updates**
-  - AddRemoteSignerModal — modernized styling
-  - CrewSection — UI refinements
-  - HarnessListFlow — flow improvements
-  - ScaffoldHelpSheet — help sheet enhancements
+#### Qualifications: bottom-sheet add flow — `485f51b`
+- Removed `app/qualifications/new.tsx`. Adding a qualification no longer pushes a route — uses `AddQualificationSheet` in place.
+- Required-types catalogue lives in `app/qualifications/requiredTypes.ts`.
 
-- 🎨 **Theme & Configuration**
-  - Color tokens refreshed (`lib/theme.ts`)
-  - Services layer updates (`lib/services.real.ts`)
-  - Metro bundler config added (`metro.config.js`)
-  - App configuration (`app.json`)
+#### Inspection results redesign — `c6fa3ec`
+- Problems-first layout, hero status badge, modal preview before export.
 
-- ❌ **Removed**
-  - Deprecated certificates preview route
-
-#### Impact
-- **28 files changed**, 1209 insertions(+), 727 deletions(-)
-- All changes pushed to `main` branch
+#### A11yText typography pass — `f782037`
+- Consistent text component across all screens for accessibility & sizing.
 
 ---
 
@@ -49,22 +38,24 @@ sidebar_position: 2
 
 | Date | Feature | Status |
 |------|---------|--------|
+| Apr 27 | v1.1.0: ქამარი subflow, regulations refactor, qualifications sheet, results redesign, A11y typography | ✅ Merged |
 | Apr 27 | UI flows & theme updates, TourGuide component | ✅ Merged |
 | Apr 26 | Web map fallbacks + accessibility hooks | ✅ Merged |
 | Apr 25 | UX improvements: cooldown persistence, wizard caching, color tokens | ✅ Merged |
 | Apr 20 | DAXUIA design system integration | ✅ Merged |
-| Apr 15 | Matrix-style inspection flow (ქამარი) | ✅ Merged |
 
 ---
 
 ## Current Development Focus
 
 ### ✅ Completed This Quarter
-1. **Accessibility** — Tour guide implementation, contextual help system
+1. **Accessibility** — Tour guide, contextual help, A11yText typography pass across all screens
 2. **Design System** — DAXUIA integration with color tokens
-3. **Inspection Flows** — Matrix-style questionnaire for harness/scaffold
-4. **Component Library** — Modernized UI with consistent styling
-5. **Network Resilience** — Improved offline handling
+3. **Inspection Flows** — ქამარი (harness) subflow promoted; results screen redesigned (problems-first)
+4. **Qualifications** — Standalone /new page replaced with in-place bottom-sheet add flow
+5. **Regulations** — Data extracted to `lib/regulations.ts`, UI refreshed
+6. **Component Library** — Modernized UI with consistent styling
+7. **Network Resilience** — Improved offline handling
 
 ### 🔨 In Progress
 1. **Web Support** — Map fallbacks, responsive optimizations
