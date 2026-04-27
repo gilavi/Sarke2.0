@@ -4,6 +4,8 @@
 
 Expo (React Native) app for people who climb scaffolding and pretend it's safe. Lets an expert create a project, fill a checklist-style questionnaire on their phone, collect signatures from terrified workers, and generate a PDF report that nobody reads.
 
+**📰 [What's New](docs/WHATS_NEW.md)** — Latest updates, recent commits, and current focus areas. _Read this first to get up to speed._
+
 ---
 
 ## 🏗️ MVP Scope (a.k.a. "What Actually Works")
