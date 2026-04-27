@@ -259,6 +259,31 @@ function buildHtml(
       letter-spacing: 2px;
       margin-bottom: 8px;
     }
+    .brand-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .project-brand-logo {
+      width: 60px;
+      height: 60px;
+      border-radius: 12px;
+      object-fit: cover;
+      display: block;
+    }
+    .project-brand-initials {
+      width: 60px;
+      height: 60px;
+      border-radius: 12px;
+      background: #E8F5F0;
+      color: #1D9E75;
+      font-weight: 600;
+      font-size: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      letter-spacing: 1px;
+    }
     .report-logo-sub {
       font-size: 11px;
       color: #6b7280;
@@ -722,8 +747,13 @@ function buildHtml(
   <!-- Report Header -->
   <div class="report-header">
     <div class="report-header-left">
-      <div class="report-logo">SARKE</div>
-      <div class="report-logo-sub">შრომის უსაფრთხოების ექსპერტული სისტემა</div>
+      <div class="brand-row">
+        ${renderProjectBrand(project)}
+        <div>
+          <div class="report-logo">SARKE</div>
+          <div class="report-logo-sub">შრომის უსაფრთხოების ექსპერტული სისტემა</div>
+        </div>
+      </div>
     </div>
     <div style="display:flex;align-items:center;">
       <div class="report-header-right">
@@ -979,6 +1009,17 @@ function formatDate(iso: string): string {
   const hh = String(d.getHours()).padStart(2, '0');
   const min = String(d.getMinutes()).padStart(2, '0');
   return `${dd}.${mm}.${yyyy} ${hh}:${min}`;
+}
+
+function renderProjectBrand(project: Project): string {
+  if (project.logo) {
+    return `<img class="project-brand-logo" src="${project.logo}" alt="${escapeHtml(project.name)}" />`;
+  }
+  const trimmed = (project.name ?? '').trim();
+  const initials = trimmed
+    ? Array.from(trimmed).slice(0, 2).join('').toLocaleUpperCase('ka-GE')
+    : '—';
+  return `<div class="project-brand-initials">${escapeHtml(initials)}</div>`;
 }
 
 function escapeHtml(s: string): string {

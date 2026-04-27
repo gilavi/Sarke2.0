@@ -30,6 +30,14 @@ export default function SignatureSettingsScreen() {
 
   const hasSignature = !!user?.saved_signature_url;
 
+  // Always land somewhere sane: if there's nothing in the back stack (cold
+  // deep link, navigation reset), router.back() no-ops and the user gets
+  // stranded on the transparent-modal backdrop. Fall back to home.
+  const dismiss = useCallback(() => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/(tabs)/home');
+  }, [router]);
+
   const [preview, setPreview] = useState<string | null>(null);
   // Auto-open the drawing canvas when there's no signature yet — skip the empty
   // settings screen entirely. Also opens immediately for the first-time flow.
@@ -54,7 +62,7 @@ export default function SignatureSettingsScreen() {
       setPreview(`data:image/png;base64,${base64}`);
       toast.success('ხელმოწერა შენახულია');
       // Always close after a successful save — no reason to stay on the sheet.
-      router.back();
+      dismiss();
     } catch (e) {
       toast.error(friendlyError(e, 'შენახვა ვერ მოხერხდა'));
     } finally {
@@ -71,10 +79,10 @@ export default function SignatureSettingsScreen() {
         Alert.alert(
           'ხელმოწერა საჭიროა',
           'PDF-ის დასაგენერირებლად საჭიროა ექსპერტის ხელმოწერა.',
-          [{ text: 'კარგი', onPress: () => router.back() }],
+          [{ text: 'კარგი', onPress: dismiss }],
         );
       } else {
-        router.back();
+        dismiss();
       }
     }
   };
@@ -88,7 +96,7 @@ export default function SignatureSettingsScreen() {
       {/* Backdrop — tap to dismiss */}
       <Pressable
         style={styles.backdrop}
-        onPress={() => router.back()}
+        onPress={dismiss}
         {...a11y('დახურვა', 'შეეხეთ დასახურად', 'button')}
       />
 
@@ -101,7 +109,7 @@ export default function SignatureSettingsScreen() {
             <Text style={styles.sheetTitle}>
               {isFirstTime ? 'ექსპერტის ხელმოწერა' : 'ჩემი ხელმოწერა'}
             </Text>
-            <Pressable onPress={() => router.back()} hitSlop={12} style={styles.closeBtn}>
+            <Pressable onPress={dismiss} hitSlop={12} style={styles.closeBtn}>
               <Ionicons name="close" size={20} color={theme.colors.ink} />
             </Pressable>
           </View>

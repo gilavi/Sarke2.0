@@ -1,14 +1,13 @@
 import { useCallback, useState } from 'react';
 import {
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
-import { KeyboardAvoidingView } from 'react-native';
+import { SheetLayout } from '../../../components/SheetLayout';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -223,44 +222,37 @@ function CreateProjectSheet({
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.modalBackdrop}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalHandle} />
-            <View style={styles.modalHeader}>
-              <Text style={{ fontSize: 18, fontWeight: '800', color: theme.colors.ink, flex: 1 }}>
-                ახალი პროექტი
-              </Text>
-              <Pressable onPress={onClose} hitSlop={10} {...a11y('დახურვა', 'პროექტის შექმნის ფანჯრის დახურვა', 'button')}>
-                <Ionicons name="close" size={24} color={theme.colors.inkSoft} />
-              </Pressable>
-            </View>
-            <View style={{ gap: 12, marginTop: 8 }}>
-              <Field label="სახელი">
-                <Input
-                  value={name}
-                  onChangeText={setName}
-                  placeholder="მაგ. ვაკე-საბურთალოს ობიექტი"
-                  autoFocus
-                />
-              </Field>
-              <Field label="კომპანია">
-                <Input value={company} onChangeText={setCompany} placeholder="შემკვეთი" />
-              </Field>
-              <Field label="მისამართი">
-                <Input value={address} onChangeText={setAddress} placeholder="ობიექტის მისამართი" />
-              </Field>
-            </View>
-            <Button
-              title="შენახვა"
-              onPress={save}
-              loading={busy}
-              disabled={!name.trim()}
-              style={{ marginTop: 14 }}
-            />
-          </View>
-        </KeyboardAvoidingView>
-      </View>
+      <Pressable style={styles.modalBackdrop} onPress={onClose} {...a11y('დახურვა', 'შეეხეთ ფონის დასახურად', 'button')}>
+        <Pressable style={styles.modalCard} onPress={() => {}}>
+          <View style={styles.modalHandle} />
+          <SheetLayout
+            header={{ title: 'ახალი პროექტი', onClose }}
+            footer={
+              <Button
+                title="შენახვა"
+                onPress={save}
+                loading={busy}
+                disabled={!name.trim()}
+              />
+            }
+          >
+            <Field label="სახელი">
+              <Input
+                value={name}
+                onChangeText={setName}
+                placeholder="მაგ. ვაკე-საბურთალოს ობიექტი"
+                autoFocus
+              />
+            </Field>
+            <Field label="კომპანია">
+              <Input value={company} onChangeText={setCompany} placeholder="შემკვეთი" />
+            </Field>
+            <Field label="მისამართი">
+              <Input value={address} onChangeText={setAddress} placeholder="ობიექტის მისამართი" />
+            </Field>
+          </SheetLayout>
+        </Pressable>
+      </Pressable>
     </Modal>
   );
 }
@@ -336,9 +328,8 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    padding: 16,
     paddingTop: 10,
-    paddingBottom: 44,
+    paddingBottom: 24,
   },
   modalHandle: {
     width: 40,

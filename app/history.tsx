@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { A11yText as Text } from '../components/primitives/A11yText';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Swipeable, { type SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
@@ -35,7 +34,6 @@ export default function HistoryScreen() {
   // per-row count badge so users can see "this inspection has 2 PDFs".
   const [certCounts, setCertCounts] = useState<Record<string, number>>({});
   const [loaded, setLoaded] = useState(false);
-  const insets = useSafeAreaInsets();
   const swipeRefs = useRef<Map<string, SwipeableMethods>>(new Map());
   const openSwipeId = useRef<string | null>(null);
 
@@ -108,7 +106,7 @@ export default function HistoryScreen() {
       <FlatList
           data={items}
           keyExtractor={(item, i) => (item.kind === 'header' ? `h-${i}` : item.q.id)}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: insets.bottom + 24, gap: 8 }}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 32, gap: 8 }}
           renderItem={({ item }) => {
             if (item.kind === 'header') {
               return (

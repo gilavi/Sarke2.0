@@ -120,7 +120,7 @@ export default function RegulationsScreen() {
       contentInset={{ top: 0, bottom: 0, left: 0, right: 0 }}
       contentContainerStyle={{
         paddingTop: insets.top + 8,
-        paddingBottom: insets.bottom + 24,
+        paddingBottom: 40,
       }}
     >
       <View style={styles.header}>

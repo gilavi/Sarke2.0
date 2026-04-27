@@ -11,7 +11,6 @@ import {
   ActivityIndicator,
   FlatList,
   Image,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -87,10 +86,10 @@ export default function InspectionDetailScreen() {
   // the effect, the cleanup set cancelled=true, and the in-flight async
   // never reached setPreviewHtml — leaving the spinner stuck forever.
   // Triggering on a button press eliminates the race.
-  const [previewVisible, setPreviewVisible] = useState(false);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const [tab, setTab] = useState<'summary' | 'preview'>('summary');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -196,9 +195,8 @@ export default function InspectionDetailScreen() {
       toast.error('მონაცემები ჯერ იტვირთება');
       return;
     }
-    setPreviewVisible(true);
     setPreviewError(null);
-    if (previewHtml) return; // cached from a prior open
+    if (previewHtml) return; // cached from a prior build
     setPreviewLoading(true);
     try {
       const html = buildPdfPreviewHtml({
@@ -375,59 +373,140 @@ export default function InspectionDetailScreen() {
   // Compute scorecard-style stats once for header + stats row
   const stats = computeStats(questions, answers);
   const hasProblems = stats.issueCount > 0 || inspection.is_safe_for_use === false;
-  const tintBg = hasProblems
-    ? theme.colors.dangerSoft
-    : (inspection.is_safe_for_use === true || answers.length > 0)
-      ? theme.colors.accentSoft
-      : theme.colors.background;
+  const pillBg = hasProblems ? theme.colors.dangerSoft : theme.colors.accentSoft;
+  const pillFg = hasProblems ? theme.colors.danger : theme.colors.accent;
+  const pillLabel = hasProblems ? 'გამოვლენილია პრობლემები' : 'უსაფრთხოა ✓';
+  const switchToPreview = () => {
+    setTab('preview');
+    if (!previewHtml && !previewLoading && !previewError) openPreview();
+  };
 
   return (
     <Screen>
       <Stack.Screen options={{ headerShown: true, title: 'ინსპექცია', headerBackTitle: 'მთავარი' }} />
-      <View style={{ flex: 1, backgroundColor: tintBg }}>
-        <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
-          <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
-            {/* 1. HEADER — inspection name + project + date */}
-            <View style={styles.header}>
-              <Text style={styles.templateName} numberOfLines={2}>
-                {template?.name ?? 'ინსპექცია'}
+      <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32, gap: 16 }}>
+          {/* 1. HEADER — inspection name + project + date */}
+          <View style={styles.header}>
+            <Text style={styles.templateName} numberOfLines={2}>
+              {template?.name ?? 'ინსპექცია'}
+            </Text>
+            {project ? (
+              <Text style={styles.project} numberOfLines={1}>
+                {project.name}
               </Text>
-              {project ? (
-                <Text style={styles.project} numberOfLines={1}>
-                  {project.name}
-                </Text>
-              ) : null}
-              <Text style={styles.date}>
-                {formatShortDateTime(inspection.completed_at ?? inspection.created_at)}
-              </Text>
-            </View>
+            ) : null}
+            <Text style={styles.date}>
+              {formatShortDateTime(inspection.completed_at ?? inspection.created_at)}
+            </Text>
+          </View>
 
-            {/* 2. STATUS HERO — large centered badge */}
-            <View
-              style={[
-                styles.hero,
-                {
-                  backgroundColor: hasProblems
-                    ? theme.colors.danger
-                    : theme.colors.accent,
-                },
-              ]}
+          {/* 2. STATUS PILL — subtle inline */}
+          <View
+            style={[
+              styles.statusPill,
+              { backgroundColor: pillBg, borderColor: pillFg },
+            ]}
+          >
+            <Ionicons
+              name={hasProblems ? 'warning' : 'shield-checkmark'}
+              size={16}
+              color={pillFg}
+            />
+            <Text style={[styles.statusPillText, { color: pillFg }]} numberOfLines={1}>
+              {pillLabel}
+            </Text>
+          </View>
+
+          {/* 3. TABS — შეჯამება / PDF პრევიუ */}
+          <View style={styles.tabTrack}>
+            <Pressable
+              onPress={() => setTab('summary')}
+              style={[styles.tabButton, tab === 'summary' && styles.tabButtonActive]}
+              {...a11y('შეჯამება', 'შეჯამების ჩანართი', 'button')}
             >
-              <Ionicons
-                name={hasProblems ? 'warning' : 'shield-checkmark'}
-                size={36}
-                color={theme.colors.white}
-              />
-              <Text style={styles.heroLabel} numberOfLines={2}>
-                {hasProblems ? 'გამოვლენილია პრობლემები ⚠' : 'უსაფრთხოა ✓'}
+              <Text style={[styles.tabText, tab === 'summary' && styles.tabTextActive]}>
+                შეჯამება
               </Text>
-            </View>
+            </Pressable>
+            <Pressable
+              onPress={switchToPreview}
+              style={[styles.tabButton, tab === 'preview' && styles.tabButtonActive]}
+              {...a11y('PDF პრევიუ', 'PDF პრევიუს ჩანართი', 'button')}
+            >
+              <Text style={[styles.tabText, tab === 'preview' && styles.tabTextActive]}>
+                PDF პრევიუ
+              </Text>
+            </Pressable>
+          </View>
 
-            {/* 3. PROBLEMS — only when problems exist; comes FIRST */}
-            {stats.issueQuestions.length > 0 ? (
-              <View style={{ gap: 8 }}>
-                <Text style={styles.sectionHeading}>გამოვლენილი პრობლემები</Text>
-                {stats.issueQuestions.map(item => {
+          {tab === 'preview' ? (
+            <View style={styles.previewWrap}>
+              {previewLoading ? (
+                <View style={{ padding: 32, alignItems: 'center', gap: 12 }}>
+                  <ActivityIndicator size="large" color={theme.colors.accent} />
+                  <Text style={{ color: theme.colors.inkSoft }}>პრევიუ იტვირთება…</Text>
+                </View>
+              ) : previewError ? (
+                <View style={{ padding: 32, alignItems: 'center', gap: 12 }}>
+                  <Ionicons name="alert-circle" size={36} color={theme.colors.danger} />
+                  <Text style={{ color: theme.colors.danger, textAlign: 'center' }}>{previewError}</Text>
+                </View>
+              ) : previewHtml ? (
+                <WebView
+                  originWhitelist={['*']}
+                  source={{ html: previewHtml }}
+                  style={styles.previewWebView}
+                  scalesPageToFit
+                  javaScriptEnabled={false}
+                  domStorageEnabled={false}
+                />
+              ) : null}
+            </View>
+          ) : (
+            <>
+          {/* 4. დასკვნა */}
+          {inspection.conclusion_text ? (
+            <Card padding={14}>
+              <Text style={styles.eyebrow}>დასკვნა</Text>
+              <Text style={styles.conclusionText}>{inspection.conclusion_text}</Text>
+            </Card>
+          ) : null}
+
+          {/* 5. STATS — single compact row, max 3 items */}
+          <Card padding={12}>
+            <View style={styles.statsRow}>
+              <View style={styles.statCell}>
+                <Text style={styles.statValue}>
+                  {answers.length}/{stats.total}
+                </Text>
+                <Text style={styles.statKey}>შემოწმდა</Text>
+              </View>
+              <View style={styles.statSep} />
+              <View style={styles.statCell}>
+                <Text
+                  style={[
+                    styles.statValue,
+                    { color: stats.issueCount > 0 ? theme.colors.danger : theme.colors.accent },
+                  ]}
+                >
+                  {stats.issueCount}
+                </Text>
+                <Text style={styles.statKey}>პრობლემა</Text>
+              </View>
+              <View style={styles.statSep} />
+              <View style={styles.statCell}>
+                <Text style={styles.statValue}>{stats.skippedCount}</Text>
+                <Text style={styles.statKey}>გამოტოვდა</Text>
+              </View>
+            </View>
+          </Card>
+
+          {/* 6. PROBLEMS — only when problems exist */}
+          {stats.issueQuestions.length > 0 ? (
+            <View style={{ gap: 8 }}>
+              <Text style={styles.sectionHeading}>გამოვლენილი პრობლემები</Text>
+              {stats.issueQuestions.map(item => {
                   const ans = stats.answerMap.get(item.question.id);
                   const photoUrl = ans ? issuePhotoUrls[ans.id] : undefined;
                   const detail = ans?.comment || ans?.notes || ans?.value_text || '';
@@ -461,36 +540,7 @@ export default function InspectionDetailScreen() {
               </View>
             ) : null}
 
-            {/* 4. STATS — single compact row, max 3 items */}
-            <Card padding={12}>
-              <View style={styles.statsRow}>
-                <View style={styles.statCell}>
-                  <Text style={styles.statValue}>
-                    {answers.length}/{stats.total}
-                  </Text>
-                  <Text style={styles.statKey}>შემოწმდა</Text>
-                </View>
-                <View style={styles.statSep} />
-                <View style={styles.statCell}>
-                  <Text
-                    style={[
-                      styles.statValue,
-                      { color: stats.issueCount > 0 ? theme.colors.danger : theme.colors.accent },
-                    ]}
-                  >
-                    {stats.issueCount}
-                  </Text>
-                  <Text style={styles.statKey}>პრობლემა</Text>
-                </View>
-                <View style={styles.statSep} />
-                <View style={styles.statCell}>
-                  <Text style={styles.statValue}>{stats.skippedCount}</Text>
-                  <Text style={styles.statKey}>გამოტოვდა</Text>
-                </View>
-              </View>
-            </Card>
-
-            {/* 5. PARTICIPANTS — who signed */}
+            {/* 7. PARTICIPANTS — who signed */}
             {signatures.length > 0 ? (
               <View style={{ gap: 8 }}>
                 <Text style={styles.sectionHeading}>მონაწილეები</Text>
@@ -550,22 +600,7 @@ export default function InspectionDetailScreen() {
               </View>
             ) : null}
 
-            {/* 6. ACTIONS — two stacked buttons (no tabs) */}
-            <View style={{ gap: 10, marginTop: 4 }}>
-              <Button
-                title="PDF გენერირება და გაგზავნა"
-                size="lg"
-                onPress={generateNew}
-              />
-              <Button
-                title="PDF პრევიუ"
-                variant="outline"
-                size="lg"
-                onPress={openPreview}
-              />
-            </View>
-
-            {/* 7. PDF რეპორტები — only when count > 0 */}
+            {/* 8. PDF რეპორტები — only when count > 0 */}
             {certs.length > 0 ? (
               <View style={{ gap: 8, marginTop: 4 }}>
                 <Text style={styles.sectionHeading}>PDF რეპორტები ({certs.length})</Text>
@@ -653,50 +688,17 @@ export default function InspectionDetailScreen() {
                 />
               </View>
             ) : null}
-          </ScrollView>
-        </SafeAreaView>
-      </View>
-
-      {/* PDF preview modal — opens on demand from the action button */}
-      <Modal
-        visible={previewVisible}
-        animationType="slide"
-        onRequestClose={() => setPreviewVisible(false)}
-        presentationStyle="pageSheet"
-      >
-        <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top', 'bottom']}>
-          <View style={styles.previewHeader}>
-            <Text style={styles.previewTitle}>PDF პრევიუ</Text>
-            <Pressable
-              onPress={() => setPreviewVisible(false)}
-              hitSlop={10}
-              {...a11y('დახურვა', 'პრევიუს დახურვა', 'button')}
-            >
-              <Ionicons name="close" size={24} color={theme.colors.ink} />
-            </Pressable>
-          </View>
-          {previewLoading ? (
-            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-              <ActivityIndicator size="large" color={theme.colors.accent} />
-              <Text style={{ color: theme.colors.inkSoft }}>პრევიუ იტვირთება…</Text>
-            </View>
-          ) : previewError ? (
-            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 12 }}>
-              <Ionicons name="alert-circle" size={36} color={theme.colors.danger} />
-              <Text style={{ color: theme.colors.danger, textAlign: 'center' }}>{previewError}</Text>
-            </View>
-          ) : previewHtml ? (
-            <WebView
-              originWhitelist={['*']}
-              source={{ html: previewHtml }}
-              style={{ flex: 1 }}
-              scalesPageToFit
-              javaScriptEnabled={false}
-              domStorageEnabled={false}
+          {tab === 'summary' ? (
+            <Button
+              title="PDF გენერირება და გაგზავნა"
+              size="lg"
+              onPress={generateNew}
             />
           ) : null}
-        </SafeAreaView>
-      </Modal>
+            </>
+          )}
+        </ScrollView>
+      </View>
 
       {false && (
         <AddRemoteSignerSheet
@@ -873,27 +875,84 @@ const styles = StyleSheet.create({
   project: { fontSize: 14, color: theme.colors.inkSoft, marginTop: 2 },
   date: { fontSize: 12, color: theme.colors.inkFaint, marginTop: 2 },
 
-  // 2. Status hero
-  hero: {
+  // 2. Status pill (subtle)
+  statusPill: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  statusPillText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+
+  // 3. Tabs
+  tabTrack: {
+    flexDirection: 'row',
+    backgroundColor: theme.colors.subtleSurface,
+    borderRadius: 999,
+    padding: 4,
+    gap: 4,
+  },
+  tabButton: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 24,
-    paddingHorizontal: 16,
-    borderRadius: theme.radius.xl,
-    gap: 10,
+    paddingVertical: 10,
+    borderRadius: 999,
+  },
+  tabButtonActive: {
+    backgroundColor: theme.colors.white,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
+    elevation: 1,
   },
-  heroLabel: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: theme.colors.white,
-    textAlign: 'center',
-    letterSpacing: 0.3,
+  tabText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.inkSoft,
   },
+  tabTextActive: {
+    color: theme.colors.ink,
+    fontWeight: '700',
+  },
+
+  // 4. დასკვნა card
+  eyebrow: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: theme.colors.inkFaint,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  conclusionText: {
+    fontSize: 15,
+    color: theme.colors.ink,
+    lineHeight: 21,
+  },
+
+  // Preview tab
+  previewWrap: {
+    minHeight: 480,
+    backgroundColor: theme.colors.white,
+    borderRadius: theme.radius.lg,
+    overflow: 'hidden',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: theme.colors.hairline,
+  },
+  previewWebView: {
+    flex: 1,
+    minHeight: 480,
+  },
+
 
   // 3. Problems
   sectionHeading: {
@@ -999,23 +1058,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  // PDF preview modal
-  previewHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.hairline,
-  },
-  previewTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: theme.colors.ink,
-  },
-
-  // 7. PDF reports list (carried over)
+  // PDF reports list (carried over)
   certThumb: {
     width: 50,
     height: 70,

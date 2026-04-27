@@ -4,6 +4,8 @@ import type {
   Answer,
   AnswerPhoto,
   Certificate,
+  CrewMember,
+  CrewRoleKey,
   Inspection,
   Project,
   ProjectFile,
@@ -18,6 +20,7 @@ import type {
   SignerRole,
   Template,
 } from '../types/models';
+import { CREW_ROLE_KEYS, CREW_ROLE_LABEL } from '../types/models';
 import * as Crypto from 'expo-crypto';
 import { logError } from './logError';
 import {
@@ -73,6 +76,42 @@ function listOrThrow<T>(res: SupabaseRes, opts?: GuardOpts<T>): T[] {
 
 // -------- Projects --------
 
+/**
+ * Coerce stored crew rows into the current shape. Legacy rows (pre role-slot
+ * UX) lack a `roleKey`; we route them into the `other` slot rather than
+ * dropping them, and reuse their stored `role` string as the display label.
+ * After coercion, callers must dedupe by `roleKey` themselves — the slot UI
+ * keeps only the first match per slot.
+ */
+function mapCrew(rows: unknown): CrewMember[] {
+  if (!Array.isArray(rows)) return [];
+  const valid = new Set<CrewRoleKey>(CREW_ROLE_KEYS);
+  return rows
+    .map(r => {
+      const row = (r ?? {}) as Partial<CrewMember> & Record<string, unknown>;
+      const key: CrewRoleKey = valid.has(row.roleKey as CrewRoleKey)
+        ? (row.roleKey as CrewRoleKey)
+        : 'other';
+      const role =
+        typeof row.role === 'string' && row.role.trim().length > 0
+          ? row.role
+          : CREW_ROLE_LABEL[key];
+      return {
+        id: typeof row.id === 'string' ? row.id : `crew_${Math.random().toString(36).slice(2, 10)}`,
+        roleKey: key,
+        name: typeof row.name === 'string' ? row.name : '',
+        role,
+        signature: typeof row.signature === 'string' ? row.signature : null,
+      } satisfies CrewMember;
+    })
+    .filter(m => m.name.length > 0);
+}
+
+function withMappedCrew(p: Project | null): Project | null {
+  if (!p) return p;
+  return { ...p, crew: mapCrew(p.crew) };
+}
+
 export const projectsApi = {
   list: async (): Promise<Project[]> => {
     const { data, error } = await supabase
@@ -80,13 +119,14 @@ export const projectsApi = {
       .select('*')
       .order('created_at', { ascending: false });
     if (error) throw error;
-    return data ?? [];
+    return (data ?? []).map(p => ({ ...(p as Project), crew: mapCrew((p as Project).crew) }));
   },
   getById: async (id: string): Promise<Project | null> => {
-    return throwIfErrorMaybe<Project>(
+    const p = throwIfErrorMaybe<Project>(
       await supabase.from('projects').select('*').eq('id', id).maybeSingle(),
       { guard: isProject, context: 'projectsApi.getById' },
     );
+    return withMappedCrew(p);
   },
   create: async (args: {
     name: string;
@@ -94,6 +134,7 @@ export const projectsApi = {
     address?: string | null;
     latitude?: number | null;
     longitude?: number | null;
+    logo?: string | null;
   }): Promise<Project> => {
     const user = (await supabase.auth.getUser()).data.user;
     if (!user) throw new Error('Not signed in');
@@ -107,6 +148,7 @@ export const projectsApi = {
           address: args.address ?? null,
           latitude: args.latitude ?? null,
           longitude: args.longitude ?? null,
+          logo: args.logo ?? null,
         })
         .select()
         .single(),
@@ -114,11 +156,12 @@ export const projectsApi = {
   },
   update: async (
     id: string,
-    patch: Partial<Pick<Project, 'name' | 'company_name' | 'address' | 'latitude' | 'longitude' | 'crew'>>,
+    patch: Partial<Pick<Project, 'name' | 'company_name' | 'address' | 'latitude' | 'longitude' | 'crew' | 'logo'>>,
   ): Promise<Project> => {
-    return throwIfError<Project>(
+    const updated = throwIfError<Project>(
       await supabase.from('projects').update(patch).eq('id', id).select().single(),
     );
+    return { ...updated, crew: mapCrew(updated.crew) };
   },
   remove: async (id: string) => {
     const { error } = await supabase.from('projects').delete().eq('id', id);
@@ -246,7 +289,9 @@ export const projectFilesApi = {
       headers,
     });
     if (result.status < 200 || result.status >= 300) {
-      throw new Error(`upload failed (${result.status}): ${result.body}`);
+      const err = new Error(`upload failed (${result.status}): ${result.body}`);
+      logError(err, `projectFilesApi.upload status=${result.status} path=${storagePath} hasSession=${!!session?.access_token}`);
+      throw err;
     }
     return throwIfError<ProjectFile>(
       await supabase

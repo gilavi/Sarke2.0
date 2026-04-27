@@ -60,6 +60,7 @@ Spoiler: it will fail. We ignore it. It's a lifestyle choice.
 Schema + seed already applied to the hosted project. Relevant files preserved here for reference, mostly so we can blame the DB when things break:
 
 - `supabase/migrations/0001_init.sql` — tables + RLS
+- `supabase/migrations/0015_project_logo.sql` — optional `projects.logo` (base64 data URL)
 - `supabase/seed/01_system_templates.sql` — system templates
 
 Storage buckets: `certificates`, `answer-photos`, `pdfs`, `signatures`. 
@@ -79,7 +80,16 @@ app/                  expo-router routes (the magic folder)
   template/           quick-start (not that quick)
   certificates/       list + add + regret
   history.tsx         because you will need therapy
+  +not-found.tsx      catch-all 404 for unmatched routes (back-to-home)
 customer_support/     just kidding, we don't have that
+components/ProjectAvatar.tsx
+                      Single source of truth for how a project is shown
+                      visually — logo thumbnail when `project.logo` is
+                      set, otherwise initials block on `#1D9E75`. Used
+                      on the projects list, home cards, project header,
+                      picker sheets, and (via `lib/pdf.ts`) the PDF.
+                      Pass `editable` + `onEdit` to overlay a + or
+                      pencil badge that opens `pickProjectLogo`.
 components/ui.tsx     Button, Card, Input, Chip, Screen, A11yText,
                       SectionHeader, FormField, ButtonGroup,
                       ActionSheet, ActionSheetItem
@@ -93,6 +103,12 @@ components/ActionSheet.tsx
                       (the "აირჩიეთ შაბლონი" pattern). Use this for
                       all option pickers — title at top, list of
                       ActionSheetItems, "გაუქმება" button at bottom.
+components/SheetLayout.tsx
+                      Shared layout for form/action sheets — pinned
+                      header + scrollable body + pinned footer. Use
+                      inside any sheet (Modal-based or BottomSheet
+                      `content`) so the title and primary action stay
+                      visible when the body grows tall enough to scroll.
 components/FormField.tsx
                       Wraps any form input with a consistent label
                       (sm, semibold), required asterisk, and

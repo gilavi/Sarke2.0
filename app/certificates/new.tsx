@@ -54,6 +54,7 @@ import {
 import { dataUrlToTempFile } from '../../lib/blob';
 import { flushPendingSignatures } from '../../lib/signatures';
 import { buildPdfHtml } from '../../lib/pdf';
+import { pickProjectLogo } from '../../lib/projectLogo';
 import { useToast } from '../../lib/toast';
 import { logError, toErrorMessage } from '../../lib/logError';
 import type {
@@ -577,6 +578,38 @@ export default function GenerateCertificateScreen() {
       Alert.alert('აკლია კვალიფიკაცია', `მიუთითეთ: ${missingQualTypes.join(', ')}`);
       return;
     }
+    // Offer the project owner one chance to attach a logo before the PDF
+    // header gets rendered with the initials placeholder. Skipping is fine —
+    // the PDF still generates either way.
+    let projectForPdf = project;
+    if (!project.logo) {
+      const proceed = await new Promise<'add' | 'skip' | 'cancel'>(resolve => {
+        Alert.alert(
+          'ლოგოს დამატება',
+          'პროექტს ჯერ არ აქვს ლოგო. გსურთ მისი დამატება PDF-ის გენერაციამდე?',
+          [
+            { text: 'გაუქმება', style: 'cancel', onPress: () => resolve('cancel') },
+            { text: 'გამოტოვება', onPress: () => resolve('skip') },
+            { text: 'დამატება', onPress: () => resolve('add') },
+          ],
+          { cancelable: true, onDismiss: () => resolve('cancel') },
+        );
+      });
+      if (proceed === 'cancel') return;
+      if (proceed === 'add') {
+        const logo = await pickProjectLogo();
+        if (logo) {
+          try {
+            const saved = await projectsApi.update(project.id, { logo });
+            setProject(saved);
+            projectForPdf = saved;
+          } catch (e) {
+            logError(e, 'certNew.saveLogo');
+            toast.error('ლოგო ვერ შეინახა');
+          }
+        }
+      }
+    }
     if (!user?.saved_signature_url) {
       Alert.alert(
         'ხელმოწერა საჭიროა',
@@ -604,7 +637,7 @@ export default function GenerateCertificateScreen() {
       const html = buildPdfHtml({
         questionnaire: inspection,
         template,
-        project,
+        project: projectForPdf,
         questions,
         answers,
         signatures: sigsForPdf,
