@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState , useMemo} from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -10,7 +10,8 @@ import { A11yText as Text } from './primitives/A11yText';
 import MapView, { Marker, type Region, PROVIDER_DEFAULT } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
-import { theme } from '../lib/theme';
+import { useTheme } from '../lib/theme';
+
 import { logError } from '../lib/logError';
 import { a11y } from '../lib/accessibility';
 
@@ -42,6 +43,9 @@ const FALLBACK_REGION: Region = {
 const PIN_DELTA = { latitudeDelta: 0.01, longitudeDelta: 0.01 };
 
 export function MapPicker({ value, onChange, address, onAddressChange, height = 220 }: Props) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   const mapRef = useRef<MapView | null>(null);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
@@ -207,7 +211,8 @@ export function MapPicker({ value, onChange, address, onAddressChange, height = 
   );
 }
 
-const styles = StyleSheet.create({
+function getstyles(theme: any) {
+  return StyleSheet.create({
   wrap: { gap: 8 },
   searchRow: {
     flexDirection: 'row',
@@ -275,3 +280,4 @@ const styles = StyleSheet.create({
   },
   clearTxt: { color: theme.colors.white, fontSize: 11, fontWeight: '700' },
 });
+}

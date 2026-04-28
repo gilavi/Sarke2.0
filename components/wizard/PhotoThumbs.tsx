@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Image, Pressable, StyleSheet } from 'react-native';
 import Animated, { FadeInUp, Layout } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
-import { theme } from '../../lib/theme';
+import { useTheme } from '../../lib/theme';
+
 import { haptic } from '../../lib/haptics';
 import { a11y } from '../../lib/accessibility';
 import { PressableScale } from '../animations/PressableScale';
@@ -15,6 +16,9 @@ interface PhotoThumbsProps {
 }
 
 export function WizardPhotoThumbs({ photos, onView, onDelete }: PhotoThumbsProps) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   return (
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
       {photos.map((photo, index) => (
@@ -48,7 +52,8 @@ export function WizardPhotoThumbs({ photos, onView, onDelete }: PhotoThumbsProps
   );
 }
 
-const styles = StyleSheet.create({
+function getstyles(theme: any) {
+  return StyleSheet.create({
   thumb: {
     width: 80,
     height: 80,
@@ -72,3 +77,4 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
 });
+}

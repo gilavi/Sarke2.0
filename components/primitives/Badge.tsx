@@ -6,7 +6,8 @@ import Animated, {
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
-import { theme } from '../../lib/theme';
+import { useTheme } from '../../lib/theme';
+
 
 export type BadgeVariant = 'default' | 'primary' | 'success' | 'warning' | 'danger' | 'info';
 
@@ -18,6 +19,7 @@ interface BadgeProps {
 }
 
 export function Badge({ children, variant = 'default', pulse, size = 'sm' }: BadgeProps) {
+  const { theme } = useTheme();
   const scale = useSharedValue(1);
 
   if (pulse) {

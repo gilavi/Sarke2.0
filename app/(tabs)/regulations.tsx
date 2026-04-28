@@ -1,21 +1,23 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import {
   ActivityIndicator,
   AppState,
   AppStateStatus,
   Linking,
+  Pressable,
   ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Circle, Line, Path, Rect, G } from 'react-native-svg';
 import { Card } from '../../components/ui';
 import { Badge } from '../../components/primitives/Badge';
-import { theme } from '../../lib/theme';
+import { useTheme } from '../../lib/theme';
+
 import { a11y } from '../../lib/accessibility';
 import {
   REGULATIONS,
@@ -26,6 +28,9 @@ import {
 } from '../../lib/regulations';
 
 function HeaderIllustration() {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   return (
     <Svg width={200} height={120} viewBox="0 0 200 120">
       <Circle cx={100} cy={60} r={50} fill={theme.colors.regsSoft} opacity={0.5} />
@@ -69,7 +74,10 @@ function formatLastFetch(iso: string | null): string {
 }
 
 export default function RegulationsScreen() {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const [states, setStates] = useState<RegulationState[]>([]);
   const [lastFetch, setLastFetch] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -123,6 +131,13 @@ export default function RegulationsScreen() {
         paddingBottom: insets.bottom + 24,
       }}
     >
+      {/* Back button */}
+      <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4 }}>
+        <Pressable onPress={() => router.push('/(tabs)/more')} style={styles.backBtn} {...a11y('უკან', 'დაბრუნება მეტი გვერდზე', 'button')}>
+          <Ionicons name="chevron-back" size={24} color={theme.colors.ink} />
+        </Pressable>
+      </View>
+
       <View style={styles.header}>
         <HeaderIllustration />
         <Text style={styles.headerTitle}>რეგულაციები</Text>
@@ -177,10 +192,20 @@ export default function RegulationsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function getstyles(theme: any) {
+  return StyleSheet.create({
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: theme.colors.subtleSurface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'flex-start',
+  },
   header: {
     alignItems: 'center',
-    paddingTop: 8,
+    paddingTop: 4,
     paddingBottom: 16,
     paddingHorizontal: 20,
   },
@@ -238,3 +263,4 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
 });
+}

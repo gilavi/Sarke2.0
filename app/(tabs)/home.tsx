@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Modal,
   Platform,
@@ -9,9 +9,12 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Animated from 'react-native-reanimated';
+import { BlurView } from 'expo-blur';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { KeyboardAvoidingView } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSession } from '../../lib/session';
@@ -26,12 +29,12 @@ import {
 } from '../../lib/services';
 // shareStoredPdf import removed — PDF sharing now lives on the inspection
 // detail screen (which fetches certificates list) post 0006 decoupling.
-import { theme } from '../../lib/theme';
+import { useTheme } from '../../lib/theme';
 import { a11y } from '../../lib/accessibility';
 import { logError, toErrorMessage } from '../../lib/logError';
 import { friendlyError } from '../../lib/errorMap';
 import { Button, Field, Input } from '../../components/ui';
-import { NumberPop } from '../../components/animations';
+import { NumberPop, useScrollHeader } from '../../components/animations';
 import { Skeleton } from '../../components/Skeleton';
 import { MapPicker, type LatLng } from '../../components/MapPicker';
 import { useToast } from '../../lib/toast';
@@ -39,6 +42,9 @@ import { haptic } from '../../lib/haptics';
 import type { Inspection, Project, Qualification, Template } from '../../types/models';
 
 export default function HomeScreen() {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+  const pickerStyles = useMemo(() => getpickerStyles(theme), [theme]);
   const { state } = useSession();
   const router = useRouter();
   const [certs, setCerts] = useState<Qualification[]>([]);
@@ -53,6 +59,32 @@ export default function HomeScreen() {
   // re-show skeletons — the RefreshControl spinner already signals that.
   const [loaded, setLoaded] = useState(false);
 
+  const CACHE_KEYS = {
+    certs: 'home_cache_certs',
+    templates: 'home_cache_templates',
+    recent: 'home_cache_recent',
+    projects: 'home_cache_projects',
+  };
+
+  const hydrateFromCache = useCallback(async () => {
+    try {
+      const [cRaw, tRaw, rRaw, pRaw] = await Promise.all([
+        AsyncStorage.getItem(CACHE_KEYS.certs),
+        AsyncStorage.getItem(CACHE_KEYS.templates),
+        AsyncStorage.getItem(CACHE_KEYS.recent),
+        AsyncStorage.getItem(CACHE_KEYS.projects),
+      ]);
+      if (cRaw) setCerts(JSON.parse(cRaw));
+      if (tRaw) setTemplates(JSON.parse(tRaw));
+      if (rRaw) setRecent(JSON.parse(rRaw));
+      if (pRaw) setProjects(JSON.parse(pRaw));
+      // If we have any cached data, mark as loaded so skeletons disappear
+      if (cRaw || tRaw || rRaw || pRaw) setLoaded(true);
+    } catch {
+      // ignore cache read errors
+    }
+  }, []);
+
   const load = useCallback(async () => {
     try {
       const [c, t, r, p] = await Promise.all([
@@ -65,6 +97,11 @@ export default function HomeScreen() {
       setTemplates(t);
       setRecent(r);
       setProjects(p);
+      // Update cache in background
+      void AsyncStorage.setItem(CACHE_KEYS.certs, JSON.stringify(c)).catch(() => {});
+      void AsyncStorage.setItem(CACHE_KEYS.templates, JSON.stringify(t)).catch(() => {});
+      void AsyncStorage.setItem(CACHE_KEYS.recent, JSON.stringify(r)).catch(() => {});
+      void AsyncStorage.setItem(CACHE_KEYS.projects, JSON.stringify(p)).catch(() => {});
     } catch (e) {
       logError(e, 'home.load');
     } finally {
@@ -72,7 +109,12 @@ export default function HomeScreen() {
     }
   }, []);
 
-  useFocusEffect(useCallback(() => { void load(); }, [load]));
+  useFocusEffect(
+    useCallback(() => {
+      void hydrateFromCache();
+      void load();
+    }, [hydrateFromCache, load]),
+  );
 
   const { width: screenWidth } = useWindowDimensions();
   const HPAD = 20;
@@ -94,27 +136,68 @@ export default function HomeScreen() {
   const showCertBanner = certs.length === 0 || expiringCount > 0;
   const tip = tipOfTheDay();
 
-  const onRefresh = async () => {
+  const onRefresh = useCallback(async () => {
     haptic.medium();
     setRefreshing(true);
     await load();
     setRefreshing(false);
-  };
+  }, [load]);
 
   const templateName = (id: string) => templates.find(t => t.id === id)?.name ?? 'ინსპექცია';
 
+  const insets = useSafeAreaInsets();
+  const HEADER_HERO_BODY = 96;   // visible hero content height below status bar
+  const HEADER_COMPACT_BODY = 48; // visible compact bar height below status bar
+  const HEADER_FULL = insets.top + HEADER_HERO_BODY;
+  const HEADER_COMPACT = insets.top + HEADER_COMPACT_BODY;
+  const { scrollHandler, containerStyle, heroStyle, compactStyle, backdropStyle } =
+    useScrollHeader({ fullHeight: HEADER_FULL, compactHeight: HEADER_COMPACT });
+
+  const refreshControl = useMemo(
+    () => (
+      <RefreshControl
+        key={HEADER_FULL}
+        refreshing={refreshing}
+        onRefresh={onRefresh}
+        tintColor={theme.colors.accent}
+        progressViewOffset={HEADER_FULL}
+      />
+    ),
+    [HEADER_FULL, refreshing, onRefresh]
+  );
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top']}>
-      <ScrollView
-        contentContainerStyle={{ paddingTop: 12, paddingBottom: 100 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.accent} />}
-      >
-        {/* ───────── HERO ───────── */}
-        <View style={styles.hero}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      {/* Scroll-driven shrinking header (Airbnb-style) — sits OVER the status bar
+          area; content is offset by insets.top so it never crashes into the clock. */}
+      <Animated.View style={[styles.scrollHeader, containerStyle]} pointerEvents="box-none">
+        <Animated.View style={[StyleSheet.absoluteFillObject, backdropStyle]} pointerEvents="none">
+          <BlurView intensity={32} tint="light" style={StyleSheet.absoluteFillObject} />
+          <View style={styles.scrollHeaderHairline} />
+        </Animated.View>
+        <Animated.View
+          style={[styles.scrollHeaderHero, { paddingTop: insets.top + 14 }, heroStyle]}
+          pointerEvents="none"
+        >
           <Text style={styles.dateLine}>{todayFormatted()}</Text>
           <Text style={styles.greeting}>{greeting}</Text>
-        </View>
+        </Animated.View>
+        <Animated.View
+          style={[styles.scrollHeaderCompact, { paddingTop: insets.top, height: HEADER_COMPACT }, compactStyle]}
+          pointerEvents="none"
+        >
+          <Text style={styles.scrollHeaderCompactTitle}>
+            {greeting}
+          </Text>
+        </Animated.View>
+      </Animated.View>
 
+      <Animated.ScrollView
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
+        contentInsetAdjustmentBehavior="never"
+        contentContainerStyle={{ paddingTop: HEADER_FULL + 8, paddingBottom: 100 }}
+      >
         {/* ───────── CONTINUE / START ───────── */}
         <View style={styles.sectionWrap}>
           {latestDraft ? (
@@ -338,7 +421,7 @@ export default function HomeScreen() {
             </View>
           </View>
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
 
       {/* Animated FAB — rotates + to × when sheet opens, pulses on press */}
       <AnimatedFAB
@@ -361,7 +444,7 @@ export default function HomeScreen() {
           router.push(`/projects/${id}` as any);
         }}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -370,7 +453,8 @@ export default function HomeScreen() {
 // ───────── ANIMATED FAB ─────────
 
 function AnimatedFAB({ open, onPress }: { open: boolean; onPress: () => void }) {
-  // Simple icon rotation — no spring physics that can crash on some devices
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
   return (
     <Pressable onPress={onPress} style={styles.fabWrap} {...a11y('ახალი ინსპექცია', 'შეეხეთ ახალი ინსპექციის დასაწყებად', 'button')}>
       {({ pressed }) => (
@@ -390,7 +474,7 @@ function AnimatedFAB({ open, onPress }: { open: boolean; onPress: () => void }) 
 // ───────── ANIMATED DARK BACKDROP ─────────
 
 function AnimatedDarkBackdrop({ visible, onPress }: { visible: boolean; onPress: () => void }) {
-  // Simple opacity fade — no complex animation that can crash
+  const { theme } = useTheme();
   return (
     <View
       style={[
@@ -424,6 +508,8 @@ function ProjectPickerSheet({
   onCreated: () => Promise<void>;
   onProjectCreated?: (id: string) => void;
 }) {
+  const { theme } = useTheme();
+  const pickerStyles = useMemo(() => getpickerStyles(theme), [theme]);
   const router = useRouter();
   const toast = useToast();
   // Template picker is an inline view, NOT a nested BottomSheet — stacking
@@ -692,6 +778,8 @@ function ProjectCard({
   width: number;
   onPress: () => void;
 }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
   const av = projectAvatar(project.id);
   return (
     <PressableScale
@@ -769,8 +857,47 @@ function tipOfTheDay() {
 
 const PROJECT_CARD_HEIGHT = 150;
 
-const styles = StyleSheet.create({
-  // HERO
+function getstyles(theme: any) {
+  return StyleSheet.create({
+  // SCROLL-DRIVEN HEADER (Airbnb-style shrinking)
+  scrollHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    overflow: 'hidden',
+    justifyContent: 'flex-end',
+  },
+  scrollHeaderHairline: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: theme.colors.border,
+  },
+  scrollHeaderHero: {
+    paddingHorizontal: 20,
+    paddingBottom: 18,
+  },
+  scrollHeaderCompact: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 56,
+    paddingHorizontal: 20,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
+  scrollHeaderCompactTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: theme.colors.ink,
+  },
+
+  // HERO (legacy — kept for non-scroll callers if any reuse)
   hero: {
     paddingHorizontal: 20,
     paddingTop: 8,
@@ -1077,8 +1204,10 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
 });
+}
 
-const pickerStyles = StyleSheet.create({
+function getpickerStyles(theme: any) {
+  return StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'flex-end',
@@ -1179,3 +1308,4 @@ const pickerStyles = StyleSheet.create({
     color: theme.colors.inkSoft,
   },
 });
+}

@@ -7,11 +7,13 @@ import { A11yText } from '../components/primitives/A11yText';
 import { Skeleton } from '../components/Skeleton';
 import { ScaffoldTour } from '../components/ScaffoldTour';
 import { templatesApi } from '../lib/services';
-import { theme } from '../lib/theme';
+import { useTheme } from '../lib/theme';
+
 import type { Template } from '../types/models';
 import { SIGNER_ROLE_LABEL } from '../types/models';
 
 export default function TemplatesScreen() {
+  const { theme } = useTheme();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [tourVisible, setTourVisible] = useState(false);

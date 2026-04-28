@@ -25,7 +25,8 @@ import {
   templatesApi,
 } from '../../lib/services';
 import { useToast } from '../../lib/toast';
-import { theme } from '../../lib/theme';
+import { useTheme } from '../../lib/theme';
+
 import { toErrorMessage } from '../../lib/logError';
 import { friendlyError } from '../../lib/errorMap';
 import { a11y } from '../../lib/accessibility';
@@ -39,6 +40,9 @@ import type {
 // ── Thumbnail ────────────────────────────────────────────────────────────────
 
 function CertThumbnail({ cert }: { cert: Certificate }) {
+  const { theme } = useTheme();
+  const thumbStyles = useMemo(() => getthumbStyles(theme), [theme]);
+
   const isSafe = cert.is_safe_for_use;
   const barColor = isSafe === false ? theme.colors.danger : theme.colors.accent;
   return (
@@ -60,7 +64,8 @@ function CertThumbnail({ cert }: { cert: Certificate }) {
   );
 }
 
-const thumbStyles = StyleSheet.create({
+function getthumbStyles(theme: any) {
+  return StyleSheet.create({
   wrapper: {
     width: 58,
     height: 80,
@@ -91,10 +96,14 @@ const thumbStyles = StyleSheet.create({
     backgroundColor: theme.colors.inkFaint,
   },
 });
+}
 
 // ── Screen ───────────────────────────────────────────────────────────────────
 
 export default function CertificatesScreen() {
+  const { theme } = useTheme();
+  const thumbStyles = useMemo(() => getthumbStyles(theme), [theme]);
+  const styles = useMemo(() => getstyles(theme), [theme]);
   const router = useRouter();
   const toast = useToast();
   const [certs, setCerts] = useState<Certificate[]>([]);
@@ -263,7 +272,8 @@ export default function CertificatesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function getstyles(theme: any) {
+  return StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -296,3 +306,4 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
 });
+}

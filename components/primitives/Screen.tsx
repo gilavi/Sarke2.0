@@ -1,7 +1,8 @@
-import React, { ReactNode } from 'react';
+import React, {ReactNode, useMemo} from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import { SafeAreaView, Edge } from 'react-native-safe-area-context';
-import { theme } from '../../lib/theme';
+import { useTheme } from '../../lib/theme';
+
 import { haptic } from '../../lib/haptics';
 
 interface ScreenProps {
@@ -29,6 +30,9 @@ export function Screen({
   withGutter,
   edges = ['top', 'bottom'],
 }: ScreenProps) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   const contentPadding = withGutter ? styles.content : styles.contentNoGutter;
 
   const content = scrollable ? (
@@ -62,7 +66,8 @@ export function Screen({
   );
 }
 
-const styles = StyleSheet.create({
+function getstyles(theme: any) {
+  return StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
@@ -75,3 +80,4 @@ const styles = StyleSheet.create({
     paddingBottom: theme.space(8),
   },
 });
+}

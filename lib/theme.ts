@@ -302,3 +302,6 @@ export function withOpacity(color: string, opacity: number): string {
   const b = parseInt(hex.substring(4, 6), 16);
   return `rgba(${r},${g},${b},${opacity})`;
 }
+
+// Re-export useTheme so consumers can import from either location
+export { useTheme } from './ThemeContext';

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState , useMemo} from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -17,7 +17,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useSession } from '../../lib/session';
 import { useToast } from '../../lib/toast';
-import { theme } from '../../lib/theme';
+import { useTheme } from '../../lib/theme';
+
 import { a11y } from '../../lib/accessibility';
 import { isEmail } from '../../lib/validators';
 import { friendlyError, isCancelledError, isEmailTakenError } from '../../lib/errorMap';
@@ -30,6 +31,8 @@ type Mode = 'login' | 'register';
 /* ─── Root Screen ─── */
 
 export default function AuthScreen() {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
   const [mode, setMode] = useState<Mode>('login');
   const [forgotOpen, setForgotOpen] = useState(false);
 
@@ -72,6 +75,8 @@ export default function AuthScreen() {
 /* ─── Forgot Password Modal ─── */
 
 function ForgotPasswordModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
   const { resetPassword } = useSession();
   const toast = useToast();
   const [email, setEmail] = useState('');
@@ -140,6 +145,8 @@ function ForgotPasswordModal({ visible, onClose }: { visible: boolean; onClose: 
 /* ─── Login Form ─── */
 
 function LoginForm({ onForgotPassword }: { onForgotPassword: () => void }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
   const { signIn, signInWithGoogle } = useSession();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -247,6 +254,8 @@ function RegisterForm({
   onVerificationSent: (email: string) => void;
   onSwitchToLogin: () => void;
 }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
   const { register, signInWithGoogle } = useSession();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -365,6 +374,8 @@ function RegisterForm({
 /* ─── Shared small components ─── */
 
 function ModalHeader({ title, onClose }: { title: string; onClose: () => void }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
   return (
     <View style={styles.modalHeader}>
       <Text style={{ fontSize: 17, fontWeight: '700', color: theme.colors.ink }}>{title}</Text>
@@ -376,6 +387,9 @@ function ModalHeader({ title, onClose }: { title: string; onClose: () => void })
 }
 
 function InlineError({ children }: { children: React.ReactNode }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   return (
     <View style={styles.errorBox}>
       <Ionicons name="alert-circle-outline" size={15} color={theme.colors.danger} />
@@ -387,6 +401,9 @@ function InlineError({ children }: { children: React.ReactNode }) {
 }
 
 function Divider() {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
       <View style={{ flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: theme.colors.hairline }} />
@@ -397,6 +414,8 @@ function Divider() {
 }
 
 function GoogleButton({ onPress, loading, label, ...rest }: { onPress: () => void; loading?: boolean; label?: string } & Record<string, any>) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
   return (
     <Pressable
       onPress={onPress}
@@ -425,6 +444,9 @@ function GoogleButton({ onPress, loading, label, ...rest }: { onPress: () => voi
 }
 
 function GradientBackdrop() {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   return (
     <LinearGradient
       colors={[theme.colors.accentSoft, theme.colors.background]}
@@ -436,6 +458,9 @@ function GradientBackdrop() {
 }
 
 function Header() {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   return (
     <View style={{ alignItems: 'center', gap: 8 }}>
       <View style={styles.logoBadge}>
@@ -448,6 +473,8 @@ function Header() {
 }
 
 function ModePicker({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => void }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
   return (
     <View style={styles.pickerWrap}>
       <Segment active={mode === 'login'} title="შესვლა" onPress={() => onChange('login')} />
@@ -457,6 +484,8 @@ function ModePicker({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => voi
 }
 
 function Segment({ active, title, onPress }: { active: boolean; title: string; onPress: () => void }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
   return (
     <Pressable onPress={onPress} style={[styles.segment, active && styles.segmentActive]}>
       <Text style={{ color: active ? theme.colors.white : theme.colors.inkSoft, fontWeight: '600' }}>
@@ -468,7 +497,8 @@ function Segment({ active, title, onPress }: { active: boolean; title: string; o
 
 /* ─── Styles ─── */
 
-const styles = StyleSheet.create({
+function getstyles(theme: any) {
+  return StyleSheet.create({
   scroll: { paddingHorizontal: 22, paddingTop: 40, paddingBottom: 40 },
   logoBadge: {
     width: 84,
@@ -556,3 +586,4 @@ const styles = StyleSheet.create({
   },
   modalBody: { color: theme.colors.inkSoft, lineHeight: 22, fontSize: 14 },
 });
+}

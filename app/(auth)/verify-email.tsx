@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState , useMemo} from 'react';
 import {
   Platform,
   Pressable,
@@ -16,7 +16,8 @@ import { router, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSession } from '../../lib/session';
 import { useToast } from '../../lib/toast';
-import { theme } from '../../lib/theme';
+import { useTheme } from '../../lib/theme';
+
 import { toErrorMessage } from '../../lib/logError';
 import { a11y } from '../../lib/accessibility';
 import { Button, Card } from '../../components/ui';
@@ -56,6 +57,8 @@ function friendlyError(msg: string): string {
 }
 
 export default function VerifyEmailScreen() {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
   const { email: emailParam } = useLocalSearchParams<{ email?: string }>();
   const email = (emailParam ?? '').toString();
   const { verifySignupOtp, resendSignupOtp } = useSession();
@@ -240,7 +243,8 @@ export default function VerifyEmailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function getstyles(theme: any) {
+  return StyleSheet.create({
   scroll: { paddingHorizontal: 22, paddingTop: 16, paddingBottom: 40 },
   backBtn: {
     flexDirection: 'row',
@@ -307,3 +311,4 @@ const styles = StyleSheet.create({
   },
   resendLink: { color: theme.colors.accent, fontSize: 13, fontWeight: '700' },
 });
+}

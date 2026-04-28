@@ -22,7 +22,8 @@ import {
 import { googleCalendar } from '../../lib/googleCalendar';
 import { rescheduleAllFromDb } from '../../lib/notifications';
 import { useToast } from '../../lib/toast';
-import { theme } from '../../lib/theme';
+import { useTheme } from '../../lib/theme';
+
 import { toErrorMessage } from '../../lib/logError';
 import { friendlyError } from '../../lib/errorMap';
 import { a11y } from '../../lib/accessibility';
@@ -90,6 +91,8 @@ function buildMonthGrid(year: number, month: number): Date[] {
 }
 
 export default function CalendarScreen() {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
   const router = useRouter();
   const toast = useToast();
   const showActionSheetWithOptions = useBottomSheet();
@@ -436,6 +439,9 @@ function SummaryPill({
   tint: string;
   bg: string;
 }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   return (
     <View style={[styles.pill, { backgroundColor: bg }]}>
       <Text style={[styles.pillValue, { color: tint }]}>{value}</Text>
@@ -446,7 +452,8 @@ function SummaryPill({
 
 const TILE_SIZE = 44;
 
-const styles = StyleSheet.create({
+function getstyles(theme: any) {
+  return StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -623,3 +630,4 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
 });
+}

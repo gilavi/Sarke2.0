@@ -28,7 +28,8 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import { A11yText as Text } from '../../primitives/A11yText';
 import { Button, Card } from '../../ui';
-import { theme } from '../../../lib/theme';
+import { useTheme } from '../../../lib/theme';
+
 import { haptic } from '../../../lib/haptics';
 import { getStorageImageDisplayUrl } from '../../../lib/imageUrl';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
@@ -48,6 +49,9 @@ function rowKey(i: number) {
 }
 
 function captionFor(row: string, col: string) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   return `row:${row}:col:${col}`;
 }
 
@@ -78,6 +82,9 @@ export const KamariCount = memo(function KamariCount({
   onChange: (n: number) => void;
   max: number;
 }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   const dec = () => {
     if (count <= 1) return;
     haptic.light();
@@ -141,6 +148,9 @@ export const KamariOverview = memo(function KamariOverview({
   visited: Set<number>;
   onOpen: (index: number) => void;
 }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   const cols = useMemo(() => componentColsFor(question), [question]);
   const indices = useMemo(() => Array.from({ length: count }, (_, i) => i + 1), [count]);
 
@@ -186,6 +196,9 @@ const KamariCard = memo(function KamariCard({
   problemCount: number;
   onPress: () => void;
 }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   const palette =
     state === 'problems'
       ? {
@@ -271,6 +284,9 @@ export function KamariDetailModal({
   onPickPhoto: (col: string) => void;
   onDeletePhoto: (photo: AnswerPhoto) => void;
 }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   const insets = useSafeAreaInsets();
   const cols = useMemo(() => componentColsFor(question), [question]);
   const row = rowKey(index);
@@ -510,6 +526,9 @@ const KamariPhotoThumb = memo(function KamariPhotoThumb({
   photo: AnswerPhoto;
   onDelete: () => void;
 }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   const [uri, setUri] = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
@@ -536,7 +555,8 @@ const KamariPhotoThumb = memo(function KamariPhotoThumb({
 
 // ─────────────────────────── Styles ─────────────────────────────────────────
 
-const styles = StyleSheet.create({
+function getstyles(theme: any) {
+  return StyleSheet.create({
   countWrap: {
     flex: 1,
     alignItems: 'center',
@@ -712,3 +732,4 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
   },
 });
+}

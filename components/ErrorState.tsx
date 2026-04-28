@@ -1,6 +1,8 @@
+import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme } from '../lib/theme';
+import { useTheme } from '../lib/theme';
+
 import { friendlyError } from '../lib/errorMap';
 
 export interface ErrorStateProps {
@@ -22,6 +24,9 @@ export function ErrorState({
   icon = 'cloud-offline-outline',
   compact,
 }: ErrorStateProps) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   const body = message ?? friendlyError(error);
   return (
     <View
@@ -56,7 +61,8 @@ export function ErrorState({
   );
 }
 
-const styles = StyleSheet.create({
+function getstyles(theme: any) {
+  return StyleSheet.create({
   wrap: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -103,3 +109,4 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 });
+}

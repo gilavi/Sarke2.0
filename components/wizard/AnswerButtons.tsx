@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -9,7 +9,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { haptic } from '../../lib/haptics';
-import { theme } from '../../lib/theme';
+import { useTheme } from '../../lib/theme';
+
 import { useAccessibilitySettings, a11y } from '../../lib/accessibility';
 
 interface AnswerButtonsProps {
@@ -18,6 +19,9 @@ interface AnswerButtonsProps {
 }
 
 export function AnswerButtons({ value, onChange }: AnswerButtonsProps) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   const yesScale = useSharedValue(1);
   const noScale = useSharedValue(1);
   const { reduceMotion } = useAccessibilitySettings();
@@ -117,7 +121,8 @@ export function AnswerButtons({ value, onChange }: AnswerButtonsProps) {
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-const styles = StyleSheet.create({
+function getstyles(theme: any) {
+  return StyleSheet.create({
   answerBtn: {
     flex: 1,
     paddingVertical: 16,
@@ -133,3 +138,4 @@ const styles = StyleSheet.create({
     minHeight: 56,
   },
 });
+}

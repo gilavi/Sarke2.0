@@ -15,6 +15,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
@@ -33,7 +34,8 @@ import * as Sharing from 'expo-sharing';
 import { Button, Screen } from '../../components/ui';
 import { AnimatedCheckboxView } from '../../components/primitives';
 import { SkeletonCard, SkeletonListCard } from '../../components/Skeleton';
-import { theme } from '../../lib/theme';
+import { useTheme } from '../../lib/theme';
+
 import { SignatureCanvas } from '../../components/SignatureCanvas';
 import {
   answersApi,
@@ -89,6 +91,8 @@ const STAGGER_MS = 50;
 // ── Screen ───────────────────────────────────────────────────────────────────
 
 export default function GenerateCertificateScreen() {
+  const { theme } = useTheme();
+  const s = useMemo(() => gets(theme), [theme]);
   const urlParams = useLocalSearchParams<{ inspectionId?: string }>();
   const inspectionId = urlParams.inspectionId ?? null;
   const router = useRouter();
@@ -119,8 +123,21 @@ export default function GenerateCertificateScreen() {
 
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [pdfLanguage, setPdfLanguage] = useState<'ka' | 'en'>('ka');
 
   const btnScale = useSharedValue(1);
+
+  // ── PDF language persistence ────────────────────────────────────────────────
+  useEffect(() => {
+    AsyncStorage.getItem('pdf_language')
+      .then(val => { if (val === 'ka' || val === 'en') setPdfLanguage(val); })
+      .catch(() => {});
+  }, []);
+
+  const setPdfLang = async (lang: 'ka' | 'en') => {
+    setPdfLanguage(lang);
+    try { await AsyncStorage.setItem('pdf_language', lang); } catch {}
+  };
 
   // ── Load ────────────────────────────────────────────────────────────────────
 
@@ -610,6 +627,7 @@ export default function GenerateCertificateScreen() {
         signatures: sigsForPdf,
         photosByAnswer: photosForPdf,
         certificates: attachedQuals,
+        language: pdfLanguage,
       });
       const { uri } = await Print.printToFileAsync({ html });
 
@@ -725,21 +743,48 @@ export default function GenerateCertificateScreen() {
           <View style={s.headerBack} />
         </View>
 
-        <ScrollView contentContainerStyle={{ paddingBottom: 140 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <ScrollView contentContainerStyle={{ paddingBottom: 100, paddingTop: 8 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           {/* Inspection Hero */}
-          <Animated.View entering={FadeInUp.duration(300).delay(0 * STAGGER_MS)} style={s.heroBlock}>
-            <Text style={s.heroLabel}>ინსპექცია</Text>
-            <Text style={s.heroTitle}>{template.name}</Text>
-            <Text style={s.heroDate}>
-              {new Date(inspection.completed_at ?? inspection.created_at).toLocaleString('ka')}
-            </Text>
-            {project ? <Text style={s.heroObject}>{project.name}</Text> : null}
+          <Animated.View entering={FadeInUp.duration(300).delay(0 * STAGGER_MS)} style={[s.heroBlock, s.card]}>
+            <View style={s.heroIconRow}>
+              <View style={s.heroIconCircle}>
+                <Ionicons name="document-text-outline" size={22} color={theme.colors.accent} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.heroLabel}>ინსპექცია</Text>
+                <Text style={s.heroTitle}>{template.name}</Text>
+              </View>
+            </View>
+            <View style={s.heroMetaRow}>
+              <Ionicons name="calendar-outline" size={13} color={theme.colors.inkSoft} />
+              <Text style={s.heroDate}>{new Date(inspection.completed_at ?? inspection.created_at).toLocaleString('ka')}</Text>
+            </View>
+            {project ? (
+              <View style={s.heroMetaRow}>
+                <Ionicons name="location-outline" size={13} color={theme.colors.inkSoft} />
+                <Text style={s.heroObject}>{project.name}</Text>
+              </View>
+            ) : null}
           </Animated.View>
 
-          <View style={s.divider} />
+          {/* PDF Language */}
+          <Animated.View entering={FadeInUp.duration(300).delay(1 * STAGGER_MS)} style={[s.section, s.card, s.langCard]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <Ionicons name="language-outline" size={18} color={theme.colors.inkSoft} />
+              <Text style={s.sectionLabel}>PDF ენა</Text>
+            </View>
+            <View style={s.langSwitch}>
+              <Pressable onPress={() => setPdfLang('ka')} style={[s.langOpt, pdfLanguage === 'ka' && s.langOptActive]}>
+                <Text style={[s.langOptText, pdfLanguage === 'ka' && s.langOptTextActive]}>KA</Text>
+              </Pressable>
+              <Pressable onPress={() => setPdfLang('en')} style={[s.langOpt, pdfLanguage === 'en' && s.langOptActive]}>
+                <Text style={[s.langOptText, pdfLanguage === 'en' && s.langOptTextActive]}>EN</Text>
+              </Pressable>
+            </View>
+          </Animated.View>
 
           {/* Chief Inspector */}
-          <Animated.View entering={FadeInUp.duration(300).delay(1 * STAGGER_MS)} style={s.section}>
+          <Animated.View entering={FadeInUp.duration(300).delay(2 * STAGGER_MS)} style={[s.section, s.card]}>
             <Text style={s.sectionLabel}>ჩივი ხელმძღვანელი</Text>
             <View style={s.expertRow}>
               <View style={s.avatarCircle}>
@@ -773,10 +818,8 @@ export default function GenerateCertificateScreen() {
             )}
           </Animated.View>
 
-          <View style={s.divider} />
-
           {/* Other Signers */}
-          <Animated.View entering={FadeInUp.duration(300).delay(2 * STAGGER_MS)} style={s.section}>
+          <Animated.View entering={FadeInUp.duration(300).delay(3 * STAGGER_MS)} style={[s.section, s.card]}>
             <Text style={s.sectionLabel}>სხვა ხელმომწერები</Text>
 
             {projectSigners.length > 0 && (
@@ -867,11 +910,9 @@ export default function GenerateCertificateScreen() {
             </Pressable>
           </Animated.View>
 
-          <View style={s.divider} />
-
           {/* Required Qualifications */}
           {requiredCertTypes.length > 0 && (
-            <Animated.View entering={FadeInUp.duration(300).delay(3 * STAGGER_MS)} style={s.section}>
+            <Animated.View entering={FadeInUp.duration(300).delay(4 * STAGGER_MS)} style={[s.section, s.card]}>
               <Text style={s.sectionLabel}>კვალიფიკაციის სერტიფიკატები</Text>
               <View style={{ gap: 8 }}>
                 {requiredCertTypes.map(certType => {
@@ -907,10 +948,8 @@ export default function GenerateCertificateScreen() {
             </Animated.View>
           )}
 
-          {requiredCertTypes.length > 0 && <View style={s.divider} />}
-
           {/* Extra Qualifications */}
-          <Animated.View entering={FadeInUp.duration(300).delay(4 * STAGGER_MS)} style={s.section}>
+          <Animated.View entering={FadeInUp.duration(300).delay(5 * STAGGER_MS)} style={[s.section, s.card]}>
             <Text style={s.sectionLabel}>დამატებითი სერტიფიკატები</Text>
             {extraQualIds.length === 0 ? (
               <Text style={s.emptyHint}>სურვილის შემთხვევაში — დაამატეთ სხვა კვალიფიკაციის სერტიფიკატი</Text>
@@ -946,11 +985,10 @@ export default function GenerateCertificateScreen() {
               style={s.previewBtn}
               {...a11y('პრევიუ', 'PDF-ის პრევიუ', 'button')}
             >
-              <Ionicons name="eye-outline" size={18} color={theme.colors.accent} />
+              <Ionicons name="eye-outline" size={18} color={theme.colors.ink} />
               <Text style={s.previewBtnText}>პრევიუ</Text>
             </Pressable>
           </Animated.View>
-          <View style={{ width: 10 }} />
           <Animated.View style={[{ flex: 2.2 }, btnAnimatedStyle]}>
             <Pressable
               onPress={generate}
@@ -959,14 +997,14 @@ export default function GenerateCertificateScreen() {
               disabled={busy || missingQualTypes.length > 0}
               style={[
                 s.generateBtn,
-                (busy || missingQualTypes.length > 0) && { opacity: 0.6 },
+                (busy || missingQualTypes.length > 0) && { opacity: 0.5 },
               ]}
-              {...a11y('PDF-ის გენერაცია', 'რეპორტის გენერაცია და გაზიარება', 'button')}
+              {...a11y('PDF-ის გენერირება', 'რეპორტის გენერაცია და გაზიარება', 'button')}
             >
               {busy ? (
                 <ActivityIndicator size="small" color={theme.colors.white} />
               ) : (
-                <Text style={s.generateBtnText}>PDF-ის გენერაცია</Text>
+                <Text style={s.generateBtnText}>PDF-ის გენერირება</Text>
               )}
             </Pressable>
           </Animated.View>
@@ -986,7 +1024,8 @@ export default function GenerateCertificateScreen() {
 
 // ── Styles ───────────────────────────────────────────────────────────────────
 
-const s = StyleSheet.create({
+function gets(theme: any) {
+  return StyleSheet.create({
   // Header
   header: {
     flexDirection: 'row',
@@ -1013,45 +1052,66 @@ const s = StyleSheet.create({
   },
 
   // Hero
+  // Card base
+  card: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+
   heroBlock: {
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    marginTop: 4,
+  },
+  heroIconRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
+  },
+  heroIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: theme.colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   heroLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: theme.colors.inkSoft,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
     fontWeight: '700',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   heroTitle: {
     fontSize: 17,
     fontWeight: '700',
     color: theme.colors.ink,
+    lineHeight: 22,
+  },
+  heroMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 6,
   },
   heroDate: {
-    fontSize: 14,
+    fontSize: 13,
     color: theme.colors.inkSoft,
-    marginTop: 2,
   },
   heroObject: {
-    fontSize: 14,
+    fontSize: 13,
     color: theme.colors.neutral[700],
-    marginTop: 2,
-  },
-
-  // Divider
-  divider: {
-    height: 1,
-    backgroundColor: theme.colors.border,
-    marginHorizontal: 16,
   },
 
   // Sections
   section: {
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    padding: 16,
   },
   sectionLabel: {
     fontSize: 12,
@@ -1075,7 +1135,7 @@ const s = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 12,
     borderRadius: 10,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: theme.colors.background,
     borderWidth: 1,
     borderColor: theme.colors.border,
   },
@@ -1248,50 +1308,82 @@ const s = StyleSheet.create({
     color: theme.colors.accent,
   },
 
+  // PDF language toggle (inline card)
+  langCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  langSwitch: {
+    flexDirection: 'row',
+    backgroundColor: theme.colors.background,
+    borderRadius: 10,
+    padding: 2,
+    gap: 2,
+  },
+  langOpt: {
+    paddingHorizontal: 18,
+    paddingVertical: 7,
+    borderRadius: 8,
+  },
+  langOptActive: {
+    backgroundColor: theme.colors.accent,
+  },
+  langOptText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: theme.colors.inkSoft,
+  },
+  langOptTextActive: {
+    color: theme.colors.white,
+  },
+
   // Bottom bar
   bottomBar: {
     position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 24,
+    left: 16,
+    right: 16,
+    bottom: 16,
+    padding: 4,
     backgroundColor: theme.colors.surface,
-    shadowColor: theme.colors.ink,
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 4,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 16,
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 4,
+    shadowColor: theme.colors.ink,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3,
   },
   previewBtn: {
-    height: 54,
+    flex: 1,
+    height: 50,
     borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: theme.colors.accent,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: theme.colors.background,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
     gap: 8,
   },
   previewBtnText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: theme.colors.accent,
+    fontSize: 15,
+    fontWeight: '700',
+    color: theme.colors.ink,
   },
   generateBtn: {
-    height: 54,
+    flex: 2.2,
+    height: 50,
     borderRadius: 12,
     backgroundColor: theme.colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
   generateBtnText: {
-    fontSize: 17,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
     color: theme.colors.white,
   },
 
@@ -1302,3 +1394,4 @@ const s = StyleSheet.create({
     color: theme.colors.accent,
   },
 });
+}

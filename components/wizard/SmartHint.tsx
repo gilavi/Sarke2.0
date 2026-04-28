@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme } from '../../lib/theme';
+import { useTheme } from '../../lib/theme';
+
 
 interface SmartHintProps {
   questionId: string;
@@ -9,6 +10,7 @@ interface SmartHintProps {
 }
 
 export function SmartDefaultHint({ questionId, previousAnswers }: SmartHintProps) {
+  const { theme } = useTheme();
   const stats = previousAnswers?.[questionId];
   if (!stats || stats <= 0) return null;
 

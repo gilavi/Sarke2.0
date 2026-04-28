@@ -41,7 +41,8 @@ import { setPhotoPickerCallback } from '../../../lib/photoPickerBus';
 import { useOffline, stripServerFields } from '../../../lib/offline';
 import { logError, toErrorMessage } from '../../../lib/logError';
 import { useToast } from '../../../lib/toast';
-import { theme } from '../../../lib/theme';
+import { useTheme } from '../../../lib/theme';
+
 import { a11y } from '../../../lib/accessibility';
 import type {
   Answer,
@@ -181,6 +182,8 @@ function hasAnswer(
 }
 
 export default function QuestionnaireWizard() {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
   const params = useLocalSearchParams<{ id: string; annotatedPhotoUri?: string }>();
   const id = params.id;
   const router = useRouter();
@@ -1005,6 +1008,9 @@ const QuestionStep = memo(function QuestionStep({
   onPickPhoto: () => void;
   onDeletePhoto: (photo: AnswerPhoto) => Promise<void>;
 }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   const [previewPhoto, setPreviewPhoto] = useState<AnswerPhoto | null>(null);
   const [noteOpen, setNoteOpen] = useState(false);
   const answerPhotos = answer ? photosByAnswer[answer.id] ?? [] : [];
@@ -1102,6 +1108,9 @@ function DebouncedFreetext({
   initial: string;
   onCommit: (value: string) => void;
 }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   const [text, setText] = useState(initial);
   const lastCommitted = useRef(initial);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1156,6 +1165,8 @@ function DebouncedNotes({
   initial: string | null;
   onCommit: (value: string) => void;
 }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
   const [text, setText] = useState(initial ?? '');
   const lastCommitted = useRef(initial ?? '');
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1242,6 +1253,9 @@ function MeasureInput({
   initial: number | null;
   onCommit: (value: number | null) => void;
 }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   const [text, setText] = useState(initial == null ? '' : String(initial));
   const lastCommitted = useRef<number | null>(initial);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1326,6 +1340,9 @@ function ScaffoldFooterButtons({
   onAnswer: (q: Question, m: (a: Answer) => Answer) => Promise<void>;
   onAdvance: () => void;
 }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   const cols = question.grid_cols ?? [];
   const statusCols = cols.filter(c => c !== 'კომენტარი');
   const values: Record<string, string> = (answer?.grid_values ?? {})[row] ?? {};
@@ -1348,7 +1365,7 @@ function ScaffoldFooterButtons({
 
   const renderStatusButton = (col: string) => {
     const isSelected = selectedStatus === col;
-    const { tint, bg, icon } = scaffoldColStyle(col);
+    const { tint, bg, icon } = scaffoldColStyle(col, theme);
     const isNone = col === noneCol;
     return (
       <Pressable
@@ -1407,7 +1424,7 @@ function ScaffoldFooterButtons({
 }
 
 // Returns a tint/bg pair for scaffold status columns
-function scaffoldColStyle(col: string): { tint: string; bg: string; icon: string } {
+function scaffoldColStyle(col: string, theme: any): { tint: string; bg: string; icon: string } {
   if (col.includes('დაზიანება')) return { tint: theme.colors.danger, bg: theme.colors.dangerSoft, icon: 'close-circle' };
   if (col.includes('გამართულია')) return { tint: theme.colors.accent, bg: theme.colors.accentSoft, icon: 'checkmark-circle' };
   return { tint: theme.colors.inkSoft, bg: theme.colors.subtleSurface, icon: 'remove-circle' };
@@ -1428,6 +1445,9 @@ function WizardHeader({
   onHelp?: () => void;
   onBack?: () => void;
 }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   const { title, icon } = stepHeaderInfo(step);
   const progress = Math.max(0, Math.min(1, (stepIndex + 1) / Math.max(1, total)));
   return (
@@ -1506,6 +1526,9 @@ const GridRowStep = memo(function GridRowStep({
   onDeletePhoto: (photo: AnswerPhoto) => Promise<void>;
   onAdvance: () => void;
 }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   const cols = question.grid_cols ?? [];
   const isHarness = (question.grid_rows?.[0] ?? '') === 'N1';
   const values: Record<string, string> = (answer?.grid_values ?? {})[row] ?? {};
@@ -1762,6 +1785,9 @@ const ConclusionStep = memo(function ConclusionStep({
   onPickPhoto: () => void;
   onDeletePhoto: (photo: AnswerPhoto) => Promise<void>;
 }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   const needsHarness = template?.category === 'harness';
   const harnessEmpty = needsHarness && !harnessName.trim();
   const conclusionEmpty = !conclusion.trim();
@@ -1928,6 +1954,9 @@ const ConclusionStep = memo(function ConclusionStep({
 });
 
 const PhotoThumb = memo(function PhotoThumb({ photo, size = 80 }: { photo: AnswerPhoto; size?: number }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   // Local device URIs (fresh upload) can be used directly without a network round-trip.
   const isLocal = /^(file|content|ph|asset):\/\//.test(photo.storage_path);
   const [uri, setUri] = useState<string | null>(isLocal ? photo.storage_path : null);
@@ -2012,6 +2041,9 @@ function PhotoPreviewModal({
   onClose: () => void;
   onDelete: (photo: AnswerPhoto) => Promise<void>;
 }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   const [uri, setUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
@@ -2104,7 +2136,8 @@ function CompletedRedirect({ id }: { id: string }) {
   return null;
 }
 
-const styles = StyleSheet.create({
+function getstyles(theme: any) {
+  return StyleSheet.create({
   kbAccessory: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
@@ -2454,6 +2487,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 });
+}
 
 const uploadPillStyles = StyleSheet.create({
   wrap: {

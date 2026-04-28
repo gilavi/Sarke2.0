@@ -4,7 +4,7 @@
 // `inspectionsApi.finish()` completes. Shows a success state with
 // a quick summary of the completed inspection, plus the option to
 // generate a PDF report now or view the inspection detail later.
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState , useMemo} from 'react';
 import {
   Pressable,
   ScrollView,
@@ -22,11 +22,14 @@ import {
   projectsApi,
   templatesApi,
 } from '../../../lib/services';
-import { theme } from '../../../lib/theme';
+import { useTheme } from '../../../lib/theme';
+
 import { haptic } from '../../../lib/haptics';
 import type { Inspection, Project, Template } from '../../../types/models';
 
 export default function InspectionDoneScreen() {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const [inspection, setInspection] = useState<Inspection | null>(null);
@@ -187,6 +190,9 @@ function ActionCard({
   subtitle?: string;
   onPress: () => void;
 }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   return (
     <Pressable
       onPress={onPress}
@@ -204,7 +210,8 @@ function ActionCard({
   );
 }
 
-const styles = StyleSheet.create({
+function getstyles(theme: any) {
+  return StyleSheet.create({
   scroll: { padding: 20, paddingTop: 40, paddingBottom: 32, gap: 16 },
   actionGroup: { gap: 10, marginTop: 4 },
   actionCard: {
@@ -287,3 +294,4 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 });
+}

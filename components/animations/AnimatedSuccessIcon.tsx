@@ -12,7 +12,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
-import { theme } from '../../lib/theme';
+import { useTheme } from '../../lib/theme';
+
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 
@@ -27,9 +28,11 @@ interface Props {
 
 export function AnimatedSuccessIcon({
   size = 88,
-  color = theme.colors.accent,
+  color: colorProp,
   glowColor,
 }: Props) {
+  const { theme } = useTheme();
+  const color = colorProp ?? theme.colors.accent;
   const ringScale = useSharedValue(0);
   const checkOffset = useSharedValue(CHECK_PATH_LENGTH);
   const glowProgress = useSharedValue(0);

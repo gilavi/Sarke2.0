@@ -1,12 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Animated,
-  Easing,
   Image,
   Modal,
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   View,
 } from 'react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
@@ -23,20 +22,24 @@ import {
   qualificationsApi,
   templatesApi,
 } from '../../lib/services';
-import { googleCalendar } from '../../lib/googleCalendar';
 import { useToast } from '../../lib/toast';
-import { theme } from '../../lib/theme';
-import { termsKa } from '../../lib/terms';
-import { toErrorMessage } from '../../lib/logError';
-import { friendlyError } from '../../lib/errorMap';
+import { useTheme } from '../../lib/theme';
+
 import { a11y } from '../../lib/accessibility';
+import { useTranslation } from 'react-i18next';
+import { saveLanguage } from '../../lib/i18n';
+import i18n from '../../lib/i18n';
 import type { Project, Qualification, Template } from '../../types/models';
 
 export default function MoreScreen() {
+  const { theme, isDark, mode, setMode } = useTheme();
+  const { t } = useTranslation();
+  const styles = useMemo(() => getStyles(theme), [theme]);
+
   const { state, signOut } = useSession();
   const router = useRouter();
   const toast = useToast();
-  const [termsVisible, setTermsVisible] = useState(false);
+  const [langVisible, setLangVisible] = useState(false);
   const [counts, setCounts] = useState<{ total: number; drafts: number; completed: number; latestCreatedAt: string | null }>({
     total: 0,
     drafts: 0,
@@ -46,46 +49,27 @@ export default function MoreScreen() {
   const [certs, setCerts] = useState<Qualification[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [googleConnected, setGoogleConnected] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
       void (async () => {
-        const [cs, c, t, p, gc] = await Promise.all([
+        const [cs, c, t, p] = await Promise.all([
           inspectionsApi
             .counts()
             .catch(() => ({ total: 0, drafts: 0, completed: 0, latestCreatedAt: null })),
           qualificationsApi.list().catch(() => []),
           templatesApi.list().catch(() => []),
           projectsApi.list().catch(() => []),
-          googleCalendar.isConnected().catch(() => false),
         ]);
         setCounts(cs);
         setCerts(c);
         setTemplates(t);
         setProjects(p);
         setLoaded(true);
-        setGoogleConnected(gc);
       })();
     }, []),
   );
-
-  const toggleGoogle = async () => {
-    try {
-      if (googleConnected) {
-        await googleCalendar.disconnect();
-        setGoogleConnected(false);
-        toast.success('Google კალენდარი გაითიშა');
-      } else {
-        await googleCalendar.connect();
-        setGoogleConnected(true);
-        toast.success('Google კალენდარი შეერთდა');
-      }
-    } catch (e) {
-      toast.error(friendlyError(e, 'ვერ მოხერხდა'));
-    }
-  };
 
   const user = state.status === 'signedIn' ? state.user : null;
   const completed = counts.completed;
@@ -95,11 +79,21 @@ export default function MoreScreen() {
   const avatarSeed = encodeURIComponent(user?.id ?? user?.email ?? 'guest');
   const avatarUrl = `https://api.dicebear.com/9.x/adventurer/png?seed=${avatarSeed}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf&size=128`;
 
+  const onToggleDark = (val: boolean) => {
+    setMode(val ? 'dark' : 'light');
+  };
+
+  const onChangeLang = async (lng: 'ka' | 'en') => {
+    await saveLanguage(lng);
+    setLangVisible(false);
+    toast.success(lng === 'ka' ? 'ენა შეიცვალა' : 'Language changed');
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top']}>
       <ScrollView contentContainerStyle={{ paddingVertical: 16, gap: 18 }}>
         <Text style={{ fontSize: 22, fontWeight: '700', paddingHorizontal: 20, color: theme.colors.ink }}>
-          მეტი
+          {t('more.title')}
         </Text>
 
         {/* Profile */}
@@ -119,221 +113,137 @@ export default function MoreScreen() {
         <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 16 }}>
           <StatPill
             value={loaded ? projects.length : null}
-            label="პროექტი"
+            label={t('more.projectsCount')}
             tint={theme.colors.accent}
+            theme={theme}
           />
           <StatPill
             value={loaded ? completed : null}
-            label="დასრულდა"
+            label={t('more.completedCount')}
             tint={theme.colors.harnessTint}
+            theme={theme}
           />
           <StatPill
             value={loaded ? drafts : null}
-            label="დრაფტი"
+            label={t('more.draftCount')}
             tint={theme.colors.warn}
+            theme={theme}
           />
         </View>
 
         {/* Hub tiles */}
         <View style={styles.grid}>
           <HubTile
-            title="ისტორია"
+            title={t('more.history')}
             icon="time"
             tint={theme.colors.accent}
             bg={theme.colors.accentSoft}
             primary={loaded ? `${counts.total}` : null}
-            secondary={loaded ? (counts.latestCreatedAt ? `ბოლო: ${relativeTime(counts.latestCreatedAt)}` : 'ცარიელია') : null}
+            secondary={loaded ? (counts.latestCreatedAt ? `${t('more.lastInspection', { date: relativeTime(counts.latestCreatedAt) })}` : t('more.emptyLast')) : null}
             onPress={() => router.push('/history')}
           />
           <HubTile
-            title="კვალიფიკაცია"
+            title={t('more.qualifications')}
             icon="ribbon"
             tint={theme.colors.certTint}
             bg={theme.colors.certSoft}
             primary={loaded ? `${certs.length}` : null}
-            secondary={loaded ? (expiring > 0 ? `${expiring} იწურება` : certs.length === 0 ? 'დააჭირეთ ასატვირთად' : 'ყველა აქტიური') : null}
-            badge={loaded && expiring > 0 ? `${expiring} იწურება` : undefined}
+            secondary={loaded ? (expiring > 0 ? t('more.expiringCount', { count: expiring }) : certs.length === 0 ? t('more.uploadPrompt') : t('more.allActive')) : null}
+            badge={loaded && expiring > 0 ? t('more.expiringCount', { count: expiring }) : undefined}
             onPress={() => router.push('/qualifications' as any)}
           />
           <HubTile
-            title="შაბლონები"
+            title={t('more.templates')}
             icon="documents"
             tint={theme.colors.harnessTint}
             bg={theme.colors.harnessSoft}
             primary={loaded ? `${templates.length}` : null}
-            secondary={loaded ? (systemTpl === templates.length ? 'სისტემური' : `${systemTpl} სისტემური`) : null}
+            secondary={loaded ? (systemTpl === templates.length ? t('more.system') : `${systemTpl} ${t('more.system')}`) : null}
             onPress={() => router.push('/templates')}
           />
           <HubTile
-            title="რეგულაციები"
+            title={t('more.regulations')}
             icon="book"
             tint={theme.colors.regsTint}
             bg={theme.colors.regsSoft}
             primary="3"
-            secondary="დოკუმენტი"
+            secondary={t('more.document')}
             onPress={() => router.push('/(tabs)/regulations')}
           />
         </View>
 
-        {/* Settings rows */}
+        {/* Settings */}
         <View style={[styles.settingsCard, { marginHorizontal: 16 }]}>
-          <SettingsRow
-            icon="create-outline"
-            label={user?.saved_signature_url ? 'ჩემი ხელმოწერა' : 'ხელმოწერის დახატვა'}
-            onPress={() => router.push('/signature' as any)}
-          />
+          <Text style={styles.settingsHeader}>{t('more.settings')}</Text>
+
+          <View style={styles.settingsRow}>
+            <Ionicons name="moon-outline" size={18} color={theme.colors.inkSoft} />
+            <Text style={{ flex: 1, fontSize: 15, fontWeight: '500', color: theme.colors.ink }}>{t('more.darkMode')}</Text>
+            <Switch
+              value={isDark}
+              onValueChange={onToggleDark}
+              trackColor={{ false: theme.colors.hairline, true: theme.colors.accent }}
+              thumbColor={theme.colors.white}
+            />
+          </View>
           <View style={styles.divider} />
-          <SettingsRow
-            icon="document-text-outline"
-            label="წესები და პირობები"
-            onPress={() => setTermsVisible(true)}
-          />
+
+          <Pressable onPress={() => setLangVisible(true)} style={styles.settingsRow} {...a11y(t('more.language'), undefined, 'button')}>
+            <Ionicons name="language-outline" size={18} color={theme.colors.inkSoft} />
+            <Text style={{ flex: 1, fontSize: 15, fontWeight: '500', color: theme.colors.ink }}>{t('more.language')}</Text>
+            <Text style={{ fontSize: 13, color: theme.colors.inkSoft }}>{i18n.language === 'ka' ? 'ქართული' : 'English'}</Text>
+            <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
+          </Pressable>
           <View style={styles.divider} />
-          <SettingsRow
-            icon="log-out-outline"
-            label="გასვლა"
-            onPress={signOut}
-            danger
-          />
+
+          <Pressable onPress={() => router.push('/signature' as any)} style={styles.settingsRow} {...a11y(user?.saved_signature_url ? t('more.mySignature') : t('more.drawSignature'), undefined, 'button')}>
+            <Ionicons name="create-outline" size={18} color={theme.colors.inkSoft} />
+            <Text style={{ flex: 1, fontSize: 15, fontWeight: '500', color: theme.colors.ink }}>{user?.saved_signature_url ? t('more.mySignature') : t('more.drawSignature')}</Text>
+            <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
+          </Pressable>
+          <View style={styles.divider} />
+          <Pressable onPress={() => router.push('/terms?mode=view')} style={styles.settingsRow} {...a11y(t('more.terms'), undefined, 'button')}>
+            <Ionicons name="document-text-outline" size={18} color={theme.colors.inkSoft} />
+            <Text style={{ flex: 1, fontSize: 15, fontWeight: '500', color: theme.colors.ink }}>{t('more.terms')}</Text>
+            <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
+          </Pressable>
+          <View style={styles.divider} />
+          <Pressable onPress={signOut} style={styles.settingsRow} {...a11y(t('more.signOut'), undefined, 'button')}>
+            <Ionicons name="log-out-outline" size={18} color={theme.colors.danger} />
+            <Text style={{ flex: 1, fontSize: 15, fontWeight: '500', color: theme.colors.danger }}>{t('more.signOut')}</Text>
+          </Pressable>
         </View>
       </ScrollView>
 
-      {/* Terms & Privacy Modal — replaces broken /terms route navigation */}
-      <TermsModal visible={termsVisible} onClose={() => setTermsVisible(false)} />
+      {/* Language picker modal */}
+      <Modal visible={langVisible} transparent animationType="slide" onRequestClose={() => setLangVisible(false)}>
+        <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setLangVisible(false)}>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)' }} />
+        </Pressable>
+        <SafeAreaView edges={['bottom']} style={{ position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: theme.colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20 }}>
+          <Text style={{ fontSize: 18, fontWeight: '700', color: theme.colors.ink, marginBottom: 16 }}>{t('more.language')}</Text>
+          <Pressable onPress={() => onChangeLang('ka')} style={[styles.langRow, i18n.language === 'ka' && { backgroundColor: theme.colors.accentSoft }]}>
+            <Text style={{ fontSize: 16, color: theme.colors.ink }}>ქართული</Text>
+            {i18n.language === 'ka' && <Ionicons name="checkmark" size={20} color={theme.colors.accent} />}
+          </Pressable>
+          <Pressable onPress={() => onChangeLang('en')} style={[styles.langRow, i18n.language === 'en' && { backgroundColor: theme.colors.accentSoft }]}>
+            <Text style={{ fontSize: 16, color: theme.colors.ink }}>English</Text>
+            {i18n.language === 'en' && <Ionicons name="checkmark" size={20} color={theme.colors.accent} />}
+          </Pressable>
+        </SafeAreaView>
+      </Modal>
+
     </SafeAreaView>
   );
 }
 
-// ───────── TERMS & PRIVACY MODAL ─────────
+// ───────── HELPERS ─────────
 
-function TermsModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
-  const fade = useRef(new Animated.Value(0)).current;
-  const slide = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (visible) {
-      fade.setValue(0);
-      slide.setValue(0);
-      Animated.parallel([
-        Animated.timing(fade, { toValue: 1, duration: 280, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-        Animated.spring(slide, { toValue: 1, friction: 9, tension: 80, useNativeDriver: true }),
-      ]).start();
-    }
-  }, [visible, fade, slide]);
-
-  const handleClose = () => {
-    Animated.parallel([
-      Animated.timing(fade, { toValue: 0, duration: 180, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
-      Animated.timing(slide, { toValue: 0, duration: 200, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
-    ]).start(() => onClose());
-  };
-
-  const translateY = slide.interpolate({ inputRange: [0, 1], outputRange: [500, 0] });
+function StatPill({ value, label, tint, theme }: { value: number | null; label: string; tint: string; theme: any }) {
+  const styles = useMemo(() => getStyles(theme), [theme]);
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={handleClose} statusBarTranslucent>
-      <View style={StyleSheet.absoluteFillObject}>
-        {/* Dark overlay backdrop */}
-        <Animated.View
-          style={[
-            StyleSheet.absoluteFillObject,
-            { backgroundColor: 'rgba(0,0,0,0.55)', opacity: fade },
-          ]}
-        >
-          <Pressable style={StyleSheet.absoluteFillObject} onPress={handleClose} {...a11y('დახურვა', 'დააჭირეთ მოდალის დასახურად', 'button')} />
-        </Animated.View>
-
-        {/* Sheet */}
-        <Animated.View style={[termsStyles.sheet, { transform: [{ translateY }] }]}>
-          <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1 }}>
-            {/* Header */}
-            <View style={termsStyles.header}>
-              <Text style={termsStyles.headerTitle}>{termsKa.heading}</Text>
-              <Pressable onPress={handleClose} hitSlop={10} style={termsStyles.closeBtn} {...a11y('დახურვა', undefined, 'button')}>
-                <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
-              </Pressable>
-            </View>
-
-            <ScrollView contentContainerStyle={{ padding: 20, gap: 14, paddingBottom: 40 }}>
-              <Text style={{ fontSize: 12, color: theme.colors.inkSoft }}>{termsKa.updated}</Text>
-
-              {termsKa.sections.map((s, i) => (
-                <Card key={i} style={{ gap: 8 }}>
-                  <Text style={{ fontWeight: '700', color: theme.colors.ink, fontSize: 15 }}>{s.title}</Text>
-                  <Text style={{ color: theme.colors.inkSoft, lineHeight: 20, fontSize: 13 }}>{s.body}</Text>
-                </Card>
-              ))}
-
-              {/* Privacy Policy section */}
-              <Card style={{ gap: 8, backgroundColor: theme.colors.accentSoft }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Ionicons name="shield-checkmark" size={18} color={theme.colors.accent} />
-                  <Text style={{ fontWeight: '700', color: theme.colors.accent, fontSize: 15 }}>კონფიდენციალურობის პოლიტიკა</Text>
-                </View>
-                <Text style={{ color: theme.colors.inkSoft, lineHeight: 20, fontSize: 13 }}>
-                  Sarke 2.0 არ იზიარებს თქვენს პერსონალურ მონაცემებს მესამე მხარესთან.{'\n\n'}
-                  • ფოტოები და ხელმოწერები ინახება მხოლოდ თქვენს პირად ანგარიშში{'\n'}
-                  • PDF ანგარიშები ხელმისაწვდომია მხოლოდ თქვენთვის და თქვენი ორგანიზაციისთვის{'\n'}
-                  • მონაცემთა წაშლა შესაძლებელია აპლიკაციის პარამეტრებიდან{'\n'}
-                  • ყველა მონაცემი დაცულია Supabase-ის უსაფრთხო სერვერებზე
-                </Text>
-              </Card>
-
-              <Text style={{ fontSize: 11, color: theme.colors.inkFaint, textAlign: 'center', marginTop: 8 }}>
-                © 2026 Sarke 2.0 · ყველა უფლება დაცულია
-              </Text>
-            </ScrollView>
-          </SafeAreaView>
-        </Animated.View>
-      </View>
-    </Modal>
-  );
-}
-
-const termsStyles = StyleSheet.create({
-  sheet: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    top: '8%',
-    backgroundColor: theme.colors.background,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 24,
-    elevation: 24,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.hairline,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: theme.colors.ink,
-  },
-  closeBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: theme.colors.subtleSurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
-
-function StatPill({ value, label, tint }: { value: number | null; label: string; tint: string }) {
-  return (
-    <View style={[styles.statPill]}>
+    <View style={[styles.statPill, { backgroundColor: theme.colors.card, borderColor: theme.colors.hairline }]}>
       {value === null ? (
         <Skeleton width={30} height={22} />
       ) : (
@@ -373,6 +283,8 @@ function HubTile({
   badge?: string;
   onPress: () => void;
 }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
   return (
     <Pressable onPress={onPress} style={styles.hubTileWrap} {...a11y(title, 'გადასვლა', 'button')}>
       <Card style={{ gap: 8 }}>
@@ -407,17 +319,6 @@ function HubTile({
   );
 }
 
-function SettingsRow({ icon, label, onPress, danger }: { icon: any; label: string; onPress: () => void; danger?: boolean }) {
-  const color = danger ? theme.colors.danger : theme.colors.ink;
-  return (
-    <Pressable onPress={onPress} style={styles.settingsRow} {...a11y(label, undefined, 'button')}>
-      <Ionicons name={icon} size={18} color={danger ? theme.colors.danger : theme.colors.inkSoft} />
-      <Text style={{ flex: 1, fontSize: 15, fontWeight: '500', color }}>{label}</Text>
-      <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
-    </Pressable>
-  );
-}
-
 function relativeTime(iso: string) {
   const date = new Date(iso);
   const diff = Date.now() - date.getTime();
@@ -430,67 +331,78 @@ function relativeTime(iso: string) {
   return `${d} დღის წინ`;
 }
 
-const styles = StyleSheet.create({
-  avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: theme.colors.subtleSurface,
-  },
-  statPill: {
-    flex: 1,
-    backgroundColor: theme.colors.card,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: theme.colors.hairline,
-    padding: 14,
-    gap: 3,
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 16,
-    gap: 12,
-  },
-  // `flex: 1` with minWidth: '45%' was unreliable — gap math pushed items to
-  // their own row on some screen widths. Hard-setting 48% + wrap guarantees
-  // exactly two columns regardless of device.
-  hubTileWrap: {
-    width: '48%',
-  },
-  tileIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  signOut: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 8,
-    padding: 14,
-    backgroundColor: theme.colors.dangerSoft,
-    borderRadius: 14,
-  },
-  settingsCard: {
-    backgroundColor: theme.colors.card,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: theme.colors.hairline,
-    overflow: 'hidden',
-    marginBottom: 24,
-  },
-  settingsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: theme.colors.hairline,
-    marginLeft: 46,
-  },
-});
+function getStyles(theme: any) {
+  return StyleSheet.create({
+    avatar: {
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      backgroundColor: '#F5F5F0',
+    },
+    statPill: {
+      flex: 1,
+      borderRadius: 14,
+      borderWidth: 1,
+      padding: 14,
+      gap: 3,
+    },
+    grid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      paddingHorizontal: 16,
+      gap: 12,
+    },
+    hubTileWrap: {
+      width: '48%',
+    },
+    tileIcon: {
+      width: 44,
+      height: 44,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    settingsCard: {
+      backgroundColor: theme.colors.card,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: theme.colors.hairline,
+      overflow: 'hidden',
+      marginBottom: 24,
+      paddingVertical: 8,
+    },
+    settingsHeader: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: theme.colors.inkSoft,
+      textTransform: 'uppercase',
+      letterSpacing: 0.8,
+      paddingHorizontal: 16,
+      paddingTop: 8,
+      paddingBottom: 4,
+    },
+    settingsRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+    },
+    divider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: theme.colors.hairline,
+      marginLeft: 46,
+    },
+    langRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 14,
+      paddingHorizontal: 12,
+      borderRadius: 12,
+      marginBottom: 8,
+    },
+  });
+}
+
+

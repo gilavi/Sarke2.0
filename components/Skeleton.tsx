@@ -9,9 +9,10 @@
 // Layout components below mirror the shape of real screens so the content
 // stays anchored when skeletons swap out — no layout shift.
 
-import { ReactNode, useEffect, useRef } from 'react';
+import { ReactNode, useEffect, useRef , useMemo} from 'react';
 import { Animated, Easing, StyleSheet, View, ViewStyle } from 'react-native';
-import { theme } from '../lib/theme';
+import { useTheme } from '../lib/theme';
+
 
 // Re-export the new shimmer skeleton for gradual migration
 export { ShimmerSkeleton } from './animations/ShimmerSkeleton';
@@ -27,6 +28,9 @@ interface SkeletonProps {
 // them in sync at the phase level (all started at mount) but avoids an
 // app-wide shared value that would pin a component on the React tree.
 export function Skeleton({ width, height = 14, radius = 8, style }: SkeletonProps) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getskStyles(theme), [theme]);
+
   const anim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -79,6 +83,8 @@ export function Skeleton({ width, height = 14, radius = 8, style }: SkeletonProp
 // from skeleton → real content doesn't cause the screen to pop.
 
 export function SkeletonCard({ children, style }: { children?: ReactNode; style?: ViewStyle }) {
+  const { theme } = useTheme();
+  const skStyles = useMemo(() => getskStyles(theme), [theme]);
   return (
     <View style={[skStyles.card, style]}>
       {children ?? (
@@ -93,6 +99,8 @@ export function SkeletonCard({ children, style }: { children?: ReactNode; style?
 }
 
 export function SkeletonRow({ style }: { style?: ViewStyle }) {
+  const { theme } = useTheme();
+  const skStyles = useMemo(() => getskStyles(theme), [theme]);
   return (
     <View style={[skStyles.row, style]}>
       <Skeleton width={36} height={36} radius={18} />
@@ -106,6 +114,9 @@ export function SkeletonRow({ style }: { style?: ViewStyle }) {
 
 // Matches the flat list of rows inside a card (like inspection detail).
 export function SkeletonListCard({ rows = 3 }: { rows?: number }) {
+  const { theme } = useTheme();
+  const skStyles = useMemo(() => getskStyles(theme), [theme]);
+
   return (
     <View style={skStyles.card}>
       <Skeleton width={100} height={10} />
@@ -163,7 +174,8 @@ export function SkeletonWizard() {
   );
 }
 
-const skStyles = StyleSheet.create({
+function getskStyles(theme: any) {
+  return StyleSheet.create({
   card: {
     backgroundColor: theme.colors.surface,
     borderRadius: theme.radius.lg,
@@ -178,3 +190,4 @@ const skStyles = StyleSheet.create({
     padding: 10,
   },
 });
+}

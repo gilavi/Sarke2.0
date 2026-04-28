@@ -5,7 +5,7 @@
 // (using the local file:// URI stored in cert.params.localUri at
 // generation time). Falls back to a "preview unavailable" state for seeded
 // mock certs that were never actually printed.
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState , useMemo} from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -32,7 +32,8 @@ import {
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { shareStoredPdf } from '../../lib/sharePdf';
 import { useToast } from '../../lib/toast';
-import { theme } from '../../lib/theme';
+import { useTheme } from '../../lib/theme';
+
 import { logError, toErrorMessage } from '../../lib/logError';
 import { friendlyError } from '../../lib/errorMap';
 import { a11y } from '../../lib/accessibility';
@@ -46,6 +47,8 @@ type CertParams = {
 };
 
 export default function CertificateDetailScreen() {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const toast = useToast();
@@ -282,7 +285,8 @@ export default function CertificateDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function getstyles(theme: any) {
+  return StyleSheet.create({
   metaStrip: {
     paddingHorizontal: 16,
     paddingTop: 12,
@@ -356,3 +360,4 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 });
+}

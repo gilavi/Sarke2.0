@@ -5,7 +5,8 @@
 
 import React, { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { theme } from '../lib/theme';
+import { useTheme } from '../lib/theme';
+
 
 // ── New primitives (backward-compatible re-exports) ──
 export { Button, Card, Input, Badge, Screen, A11yText, A11yButton, StatusBadge } from './primitives';
@@ -20,6 +21,7 @@ export { ActionSheetItem } from './primitives/ActionSheetItem';
 // ── Legacy helpers ──
 
 export function Label({ children, style }: { children: ReactNode; style?: any }) {
+  const { theme } = useTheme();
   return (
     <Text
       style={[
@@ -45,6 +47,7 @@ interface FieldProps {
 }
 
 export function Field({ label, children, required, error }: FieldProps) {
+  const { theme } = useTheme();
   return (
     <View style={{ marginBottom: 16 }}>
       {label && (
@@ -102,6 +105,7 @@ interface SectionHeaderProps {
 }
 
 export function SectionHeader({ title, action }: SectionHeaderProps) {
+  const { theme } = useTheme();
   return (
     <View
       style={{
@@ -135,6 +139,7 @@ export function SectionHeader({ title, action }: SectionHeaderProps) {
 }
 
 export function ErrorText({ children }: { children: ReactNode }) {
+  const { theme } = useTheme();
   if (!children) return null;
   return (
     <Text style={{ fontSize: 13, color: theme.colors.semantic.danger }}>{children}</Text>

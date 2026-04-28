@@ -1,11 +1,12 @@
-import React, { useCallback } from 'react';
+import React, {useCallback, useMemo} from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { A11yText } from './primitives/A11yText';
 import { Button } from './primitives/Button';
 import { ActionSheetItem, type ActionSheetItemVariant } from './primitives/ActionSheetItem';
 import { useBottomSheet } from './BottomSheet';
-import { theme } from '../lib/theme';
+import { useTheme } from '../lib/theme';
+
 
 export interface ActionSheetItemConfig {
   label: string;
@@ -27,6 +28,9 @@ export function ActionSheet({
   closeLabel = 'გაუქმება',
   onClose,
 }: ActionSheetProps) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   const bottomSheet = useBottomSheet();
   const insets = useSafeAreaInsets();
 
@@ -71,7 +75,8 @@ export function ActionSheet({
   return content;
 }
 
-const styles = StyleSheet.create({
+function getstyles(theme: any) {
+  return StyleSheet.create({
   content: {
     backgroundColor: theme.colors.background,
     paddingHorizontal: theme.space(4),
@@ -89,3 +94,4 @@ const styles = StyleSheet.create({
     marginBottom: theme.space(2),
   },
 });
+}

@@ -4,7 +4,7 @@
 // Layout: a fixed "Required" section with one slot per REQUIRED_TYPES entry
 // (empty slots act as upload affordances) and an "Additional" section for
 // any qualifications whose type isn't in the required set.
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState , useMemo} from 'react';
 import {
   Alert,
   Animated,
@@ -25,7 +25,8 @@ import { Skeleton } from '../../components/Skeleton';
 import { haptic } from '../../lib/haptics';
 import { isExpiringSoon, qualificationsApi, storageApi } from '../../lib/services';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
-import { theme } from '../../lib/theme';
+import { useTheme } from '../../lib/theme';
+
 import { toErrorMessage } from '../../lib/logError';
 import { a11y } from '../../lib/accessibility';
 import type { Qualification } from '../../types/models';
@@ -35,6 +36,8 @@ import AddQualificationSheet from '../../components/qualifications/AddQualificat
 type QualWithThumb = Qualification & { thumbUrl?: string | null };
 
 export default function QualificationsScreen() {
+  const { theme } = useTheme();
+  const qStyles = useMemo(() => getqStyles(theme), [theme]);
   const [quals, setQuals] = useState<QualWithThumb[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
@@ -174,6 +177,8 @@ export default function QualificationsScreen() {
 }
 
 function SectionHeader({ title }: { title: string }) {
+  const { theme } = useTheme();
+  const qStyles = useMemo(() => getqStyles(theme), [theme]);
   return (
     <Text style={qStyles.sectionHeader}>{title}</Text>
   );
@@ -196,6 +201,9 @@ function SkeletonRow() {
 }
 
 function QualThumb({ uri }: { uri?: string | null }) {
+  const { theme } = useTheme();
+  const qStyles = useMemo(() => getqStyles(theme), [theme]);
+
   if (!uri) {
     return (
       <View style={qStyles.thumbEmpty}>
@@ -207,6 +215,9 @@ function QualThumb({ uri }: { uri?: string | null }) {
 }
 
 function FilledCard({ qual, onDelete }: { qual: QualWithThumb; onDelete: () => void }) {
+  const { theme } = useTheme();
+  const qStyles = useMemo(() => getqStyles(theme), [theme]);
+
   const status = statusOf(qual);
   return (
     <Card padding={14}>
@@ -240,6 +251,9 @@ function FilledCard({ qual, onDelete }: { qual: QualWithThumb; onDelete: () => v
 }
 
 function EmptySlot({ label, onPress }: { label: string; onPress: () => void }) {
+  const { theme } = useTheme();
+  const qStyles = useMemo(() => getqStyles(theme), [theme]);
+
   return (
     <Pressable
       onPress={onPress}
@@ -269,6 +283,9 @@ function statusOf(q: Qualification): 'expired' | 'expiring' | 'ok' {
 }
 
 function StatusBadge({ status }: { status: 'expired' | 'expiring' | 'ok' }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getqStyles(theme), [theme]);
+
   if (status === 'ok') return null;
   const label = status === 'expired' ? 'ვადა გასულია' : 'იწურება';
   const bg = status === 'expired' ? theme.colors.dangerSoft : theme.colors.warnSoft;
@@ -291,6 +308,9 @@ function DeleteModal({
   onConfirm: () => void;
   title: string;
 }) {
+  const { theme } = useTheme();
+  const qStyles = useMemo(() => getqStyles(theme), [theme]);
+
   const fade = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -334,7 +354,8 @@ function DeleteModal({
   );
 }
 
-const qStyles = StyleSheet.create({
+function getqStyles(theme: any) {
+  return StyleSheet.create({
   sectionHeader: {
     fontSize: 13,
     fontWeight: '700',
@@ -425,6 +446,7 @@ const qStyles = StyleSheet.create({
     justifyContent: 'center',
   },
 });
+}
 
 const badgeStyle = (bg: string) => ({
   backgroundColor: bg,

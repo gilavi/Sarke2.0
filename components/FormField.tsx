@@ -1,7 +1,8 @@
-import React, { ReactNode } from 'react';
+import React, {ReactNode, useMemo} from 'react';
 import { StyleSheet, View } from 'react-native';
 import { A11yText } from './primitives/A11yText';
-import { theme } from '../lib/theme';
+import { useTheme } from '../lib/theme';
+
 
 interface FormFieldProps {
   label: string;
@@ -18,6 +19,9 @@ export function FormField({
   helper,
   children,
 }: FormFieldProps) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   return (
     <View style={styles.container}>
       <View style={styles.labelContainer}>
@@ -65,7 +69,8 @@ export function FormField({
   );
 }
 
-const styles = StyleSheet.create({
+function getstyles(theme: any) {
+  return StyleSheet.create({
   container: {
     gap: theme.space(2),
   },
@@ -83,3 +88,4 @@ const styles = StyleSheet.create({
     marginTop: theme.space(1),
   },
 });
+}

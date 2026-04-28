@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState , useMemo} from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import SignatureScreen, { type SignatureViewRef } from 'react-native-signature-canvas';
 import { Button } from './ui';
-import { theme } from '../lib/theme';
+import { useTheme } from '../lib/theme';
+
 import { a11y } from '../lib/accessibility';
 
 interface Props {
@@ -22,6 +23,9 @@ interface Props {
  * - "გასუფთავება" resets canvas + confirm state.
  */
 export function SignatureCanvas({ visible, personName, onCancel, onConfirm }: Props) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   const ref = useRef<SignatureViewRef>(null);
   const [hasStroke, setHasStroke] = useState(false);
 
@@ -137,7 +141,8 @@ export function SignatureCanvas({ visible, personName, onCancel, onConfirm }: Pr
   );
 }
 
-const styles = StyleSheet.create({
+function getstyles(theme: any) {
+  return StyleSheet.create({
   root: { flex: 1, backgroundColor: theme.colors.background },
   header: {
     flexDirection: 'row',
@@ -208,3 +213,4 @@ const styles = StyleSheet.create({
     paddingTop: 14,
   },
 });
+}

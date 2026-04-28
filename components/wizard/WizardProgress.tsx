@@ -5,10 +5,12 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
 } from 'react-native-reanimated';
-import { theme } from '../../lib/theme';
+import { useTheme } from '../../lib/theme';
+
 import { useAccessibilitySettings } from '../../lib/accessibility';
 
 export function WizardProgress({ current, total }: { current: number; total: number }) {
+  const { theme } = useTheme();
   const progress = current / total;
   const animatedWidth = useSharedValue(0);
   const { reduceMotion } = useAccessibilitySettings();

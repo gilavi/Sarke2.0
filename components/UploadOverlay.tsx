@@ -1,5 +1,7 @@
+import { useMemo } from 'react';
 import { ActivityIndicator, Modal, StyleSheet, Text, View } from 'react-native';
-import { theme } from '../lib/theme';
+import { useTheme } from '../lib/theme';
+
 
 export interface UploadOverlayProps {
   visible: boolean;
@@ -15,6 +17,9 @@ export interface UploadOverlayProps {
  * compute it yourself (e.g. multi-file batches).
  */
 export function UploadOverlay({ visible, label = 'იტვირთება…', progress }: UploadOverlayProps) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   return (
     <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
       <View style={styles.backdrop}>
@@ -37,7 +42,8 @@ export function UploadOverlay({ visible, label = 'იტვირთება…
   );
 }
 
-const styles = StyleSheet.create({
+function getstyles(theme: any) {
+  return StyleSheet.create({
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.35)',
@@ -74,3 +80,4 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
 });
+}

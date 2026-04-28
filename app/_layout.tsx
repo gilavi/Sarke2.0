@@ -1,7 +1,8 @@
 import '../lib/polyfills';
+import '../lib/i18n';
 import { useEffect } from 'react';
 import * as Linking from 'expo-linking';
-import { Stack, useNavigationContainerRef, useRouter, useSegments } from 'expo-router';
+import { Stack, useNavigationContainerRef, useRouter, useSegments, useGlobalSearchParams } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -18,7 +19,9 @@ import { OfflineProvider } from '../lib/offline';
 import { OfflineBanner } from '../components/OfflineBanner';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { logError } from '../lib/logError';
-import { theme } from '../lib/theme';
+import { ThemeProvider, useTheme } from '../lib/ThemeContext';
+import { I18nextProvider } from 'react-i18next';
+import i18n from '../lib/i18n';
 import { initCrashReporting } from '../lib/crashReporting';
 
 initCrashReporting();
@@ -29,11 +32,19 @@ initCrashReporting();
 // session with an error.
 const exchangedCodes = new Set<string>();
 
+function ThemedStatusBar() {
+  const { isDark } = useTheme();
+  return <StatusBar style={isDark ? 'light' : 'dark'} />;
+}
+
 function AuthGate() {
   const { state } = useSession();
   const segments = useSegments();
   const router = useRouter();
   const navRef = useNavigationContainerRef();
+  const params = useGlobalSearchParams();
+  const isTermsViewMode = params.mode === 'view';
+  const { theme } = useTheme();
 
   // If a stale GO_BACK bubbles to the root with no handler — e.g. empty back
   // stack on a leftover modal — silently route home instead of stranding the
@@ -95,13 +106,13 @@ function AuthGate() {
         !state.user?.tc_accepted_version || state.user.tc_accepted_version !== TERMS_VERSION;
       if (needsTerms && !inTerms) {
         router.replace('/terms');
-      } else if (!needsTerms && (inAuth || inTerms)) {
+      } else if (!needsTerms && (inAuth || (inTerms && !isTermsViewMode))) {
         router.replace('/(tabs)/home');
       }
       // Opportunistic retry of any signature uploads that failed earlier.
       void flushPendingSignatures().catch((e) => logError(e, '_layout.flushPendingSignatures'));
     }
-  }, [state, segments]);
+  }, [state, segments, isTermsViewMode]);
 
   if (state.status === 'loading') {
     // Subtle full-screen skeleton instead of a spinner — hides the auth
@@ -128,11 +139,6 @@ function AuthGate() {
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: theme.colors.background },
-        // Consistent header styling for every pushed screen. Individual screens
-        // set `headerShown: true` + their own title; these defaults cover the
-        // rest (back-button label, typography, tint, no shadow) so we never
-        // leak group names like "(tabs)" into the back button and every
-        // header looks the same.
         headerBackTitle: 'უკან',
         headerTintColor: theme.colors.accent,
         headerTitleStyle: {
@@ -173,39 +179,45 @@ export default function RootLayout() {
 
   if (!fontsLoaded) {
     return (
-      <View style={{ flex: 1, backgroundColor: theme.colors.background, paddingHorizontal: 20, paddingTop: 80, gap: 20 }}>
-        <Skeleton width={140} height={13} />
-        <Skeleton width={'75%'} height={30} />
-        <View style={{ height: 12 }} />
-        <Skeleton width={'100%'} height={72} radius={14} />
-        <Skeleton width={100} height={10} style={{ marginTop: 20 }} />
-        <View style={{ flexDirection: 'row', gap: 12 }}>
-          <Skeleton width={'48%'} height={120} radius={16} />
-          <Skeleton width={'48%'} height={120} radius={16} />
+      <ThemeProvider>
+        <View style={{ flex: 1, backgroundColor: '#FAFAF8', paddingHorizontal: 20, paddingTop: 80, gap: 20 }}>
+          <Skeleton width={140} height={13} />
+          <Skeleton width={'75%'} height={30} />
+          <View style={{ height: 12 }} />
+          <Skeleton width={'100%'} height={72} radius={14} />
+          <Skeleton width={100} height={10} style={{ marginTop: 20 }} />
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <Skeleton width={'48%'} height={120} radius={16} />
+            <Skeleton width={'48%'} height={120} radius={16} />
+          </View>
         </View>
-      </View>
+      </ThemeProvider>
     );
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <ErrorBoundary>
-          <BottomSheetProvider>
-            <ToastProvider>
-              <OfflineProvider>
-                <SessionProvider>
-                  <StatusBar style="dark" />
-                  <OfflineBanner />
-                  <ErrorBoundary>
-                    <AuthGate />
-                  </ErrorBoundary>
-                </SessionProvider>
-              </OfflineProvider>
-            </ToastProvider>
-          </BottomSheetProvider>
-        </ErrorBoundary>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    <ThemeProvider>
+      <I18nextProvider i18n={i18n}>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <SafeAreaProvider>
+            <ErrorBoundary>
+              <BottomSheetProvider>
+                <ToastProvider>
+                  <OfflineProvider>
+                    <SessionProvider>
+                      <ThemedStatusBar />
+                      <OfflineBanner />
+                      <ErrorBoundary>
+                        <AuthGate />
+                      </ErrorBoundary>
+                    </SessionProvider>
+                  </OfflineProvider>
+                </ToastProvider>
+              </BottomSheetProvider>
+            </ErrorBoundary>
+          </SafeAreaProvider>
+        </GestureHandlerRootView>
+      </I18nextProvider>
+    </ThemeProvider>
   );
 }

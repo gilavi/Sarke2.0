@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState , useMemo} from 'react';
 import { Alert, Image, Pressable, StyleSheet, View } from 'react-native';
 import { A11yText as Text } from '../components/primitives/A11yText';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,7 +11,8 @@ import { useToast } from '../lib/toast';
 import { saveExpertSignature } from '../lib/signatures';
 import { getStorageImageDataUrl } from '../lib/imageUrl';
 import { STORAGE_BUCKETS } from '../lib/supabase';
-import { theme } from '../lib/theme';
+import { useTheme } from '../lib/theme';
+
 import { toErrorMessage } from '../lib/logError';
 import { friendlyError } from '../lib/errorMap';
 import { a11y } from '../lib/accessibility';
@@ -21,6 +22,8 @@ import { a11y } from '../lib/accessibility';
 //  - `/signature?first=1` — modal-style onboarding shown before the first
 //    PDF. Returns via router.back() after save.
 export default function SignatureSettingsScreen() {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
   const router = useRouter();
   const toast = useToast();
   const { first } = useLocalSearchParams<{ first?: string }>();
@@ -141,7 +144,8 @@ export default function SignatureSettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function getstyles(theme: any) {
+  return StyleSheet.create({
   root: { flex: 1, backgroundColor: 'transparent' },
   backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.45)' },
   sheetWrap: { position: 'absolute', left: 0, right: 0, bottom: 0 },
@@ -197,3 +201,4 @@ const styles = StyleSheet.create({
   },
   expertLabel: { fontSize: 12, color: theme.colors.inkSoft, marginTop: 10 },
 });
+}

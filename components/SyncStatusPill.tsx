@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState , useMemo} from 'react';
 import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useOffline } from '../lib/offline';
-import { theme } from '../lib/theme';
+import { useTheme } from '../lib/theme';
+
 import { haptic } from '../lib/haptics';
 
 /**
@@ -12,6 +13,9 @@ import { haptic } from '../lib/haptics';
  * the queue drains, then hides.
  */
 export function SyncStatusPill() {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   const { pendingCount, isOnline, netReady, flush } = useOffline();
   const insets = useSafeAreaInsets();
   const opacity = useRef(new Animated.Value(0)).current;
@@ -90,7 +94,8 @@ export function SyncStatusPill() {
   );
 }
 
-const styles = StyleSheet.create({
+function getstyles(theme: any) {
+  return StyleSheet.create({
   wrap: {
     position: 'absolute',
     right: 16,
@@ -117,3 +122,4 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 });
+}

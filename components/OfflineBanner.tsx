@@ -1,9 +1,10 @@
 import { Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useOffline } from '../lib/offline';
-import { theme } from '../lib/theme';
+import { useTheme } from '../lib/theme';
 
 export function OfflineBanner() {
+  const { theme } = useTheme();
   const { isOnline, netReady } = useOffline();
   const insets = useSafeAreaInsets();
   // Don't show anything until NetInfo has reported at least once — prevents

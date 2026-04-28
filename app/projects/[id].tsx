@@ -33,7 +33,8 @@ import {
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { useToast } from '../../lib/toast';
 import { getStorageImageDisplayUrl } from '../../lib/imageUrl';
-import { theme } from '../../lib/theme';
+import { useTheme } from '../../lib/theme';
+
 import { toErrorMessage } from '../../lib/logError';
 import { friendlyError } from '../../lib/errorMap';
 import { formatShortDateTime } from '../../lib/formatDate';
@@ -53,6 +54,8 @@ function projectInitials(name: string | undefined): string {
 }
 
 export default function ProjectDetail() {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const showActionSheetWithOptions = useBottomSheet();
@@ -364,7 +367,7 @@ export default function ProjectDetail() {
               style={styles.heroEditBtn}
               {...a11y('რედაქტირება', 'პროექტის დეტალების შეცვლა', 'button')}
             >
-              <Ionicons name="pencil-outline" size={18} color={theme.colors.text} />
+              <Ionicons name="pencil-outline" size={18} color={theme.colors.ink} />
             </Pressable>
 
             <View style={styles.heroRow}>
@@ -579,6 +582,9 @@ export default function ProjectDetail() {
 }
 
 function EmptyState({ text }: { text: string }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   return (
     <View style={styles.emptyState}>
       <Ionicons name="document-text-outline" size={28} color={theme.colors.borderStrong} />
@@ -588,6 +594,9 @@ function EmptyState({ text }: { text: string }) {
 }
 
 function SafeSigImage({ uri }: { uri: string }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   const [err, setErr] = useState(false);
   if (err) return <Ionicons name="person" size={20} color={theme.colors.inkFaint} />;
   return (
@@ -611,6 +620,9 @@ function EditProjectSheet({
   onClose: () => void;
   onSaved: (p: Project) => void;
 }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   const toast = useToast();
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
@@ -702,7 +714,8 @@ function EditProjectSheet({
   );
 }
 
-const styles = StyleSheet.create({
+function getstyles(theme: any) {
+  return StyleSheet.create({
   // ── Hero ──
   heroCard: {
     backgroundColor: theme.colors.surface,
@@ -972,3 +985,4 @@ const styles = StyleSheet.create({
   },
 
 });
+}

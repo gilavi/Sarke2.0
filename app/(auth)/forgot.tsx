@@ -10,11 +10,13 @@ import * as Linking from 'expo-linking';
 import { supabase } from '../../lib/supabase';
 import { Button, Card, ErrorText, Field, Input } from '../../components/ui';
 import { BackButton } from '../../components/BackButton';
-import { theme } from '../../lib/theme';
+import { useTheme } from '../../lib/theme';
+
 import { toErrorMessage } from '../../lib/logError';
 import { a11y } from '../../lib/accessibility';
 
 export default function ForgotPasswordScreen() {
+  const { theme } = useTheme();
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false);

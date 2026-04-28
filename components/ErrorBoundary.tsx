@@ -2,7 +2,8 @@ import React, { Component, ReactNode } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { captureException } from '../lib/crashReporting';
 import { a11y } from '../lib/accessibility';
-import { theme } from '../lib/theme';
+import { useTheme } from '../lib/theme';
+
 
 interface Props {
   children: ReactNode;
@@ -13,6 +14,22 @@ interface Props {
 interface State {
   hasError: boolean;
   error?: Error;
+}
+
+function FallbackUI({ error, onReset }: { error?: Error; onReset: () => void }) {
+  const { theme } = useTheme();
+  const styles = getstyles(theme);
+  return (
+    <View style={styles.container}>
+      <Text style={styles.emoji}>💥</Text>
+      <Text style={styles.title}>რაღაც შეცდომა მოხდა</Text>
+      <Text style={styles.subtitle}>Something went wrong</Text>
+      <Text style={styles.errorText}>{error?.message}</Text>
+      <Pressable style={styles.button} onPress={onReset} {...a11y('თავიდან ცდა', 'შეეხეთ აპლიკაციის თავიდან ჩატვირთვისთვის', 'button')}>
+        <Text style={styles.buttonText}>თავიდან ცდა / Retry</Text>
+      </Pressable>
+    </View>
+  );
 }
 
 export class ErrorBoundary extends Component<Props, State> {
@@ -39,23 +56,14 @@ export class ErrorBoundary extends Component<Props, State> {
       if (this.props.fallback) {
         return this.props.fallback;
       }
-      return (
-        <View style={styles.container}>
-          <Text style={styles.emoji}>💥</Text>
-          <Text style={styles.title}>რაღაც შეცდომა მოხდა</Text>
-          <Text style={styles.subtitle}>Something went wrong</Text>
-          <Text style={styles.errorText}>{this.state.error?.message}</Text>
-          <Pressable style={styles.button} onPress={this.handleReset} {...a11y('თავიდან ცდა', 'შეეხეთ აპლიკაციის თავიდან ჩატვირთვისთვის', 'button')}>
-            <Text style={styles.buttonText}>თავიდან ცდა / Retry</Text>
-          </Pressable>
-        </View>
-      );
+      return <FallbackUI error={this.state.error} onReset={this.handleReset} />;
     }
     return this.props.children;
   }
 }
 
-const styles = StyleSheet.create({
+function getstyles(theme: any) {
+  return StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
@@ -75,3 +83,4 @@ const styles = StyleSheet.create({
   },
   buttonText: { color: '#fff', fontWeight: '600', fontSize: 15 },
 });
+}

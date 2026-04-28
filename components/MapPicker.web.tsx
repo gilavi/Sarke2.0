@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState , useMemo} from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
-import { theme } from '../lib/theme';
+import { useTheme } from '../lib/theme';
+
 import { logError } from '../lib/logError';
 
 export type LatLng = { latitude: number; longitude: number };
@@ -18,6 +19,9 @@ type Props = {
 // Web fallback: no native map. Address text is the source of truth, with a
 // manual "search" that calls expo-location's geocoder if available.
 export function MapPicker({ value, onChange, address, onAddressChange, height = 220 }: Props) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
 
@@ -77,7 +81,8 @@ export function MapPicker({ value, onChange, address, onAddressChange, height = 
   );
 }
 
-const styles = StyleSheet.create({
+function getstyles(theme: any) {
+  return StyleSheet.create({
   wrap: { gap: 8 },
   searchRow: {
     flexDirection: 'row',
@@ -113,3 +118,4 @@ const styles = StyleSheet.create({
   },
   coords: { fontSize: 12, color: theme.colors.ink, fontWeight: '600' },
 });
+}

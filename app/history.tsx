@@ -15,7 +15,8 @@ import {
   templatesApi,
 } from '../lib/services';
 import { useToast } from '../lib/toast';
-import { theme } from '../lib/theme';
+import { useTheme } from '../lib/theme';
+
 import { toErrorMessage } from '../lib/logError';
 import { friendlyError } from '../lib/errorMap';
 import { a11y } from '../lib/accessibility';
@@ -26,6 +27,8 @@ type ListItem =
   | { kind: 'row'; q: Inspection };
 
 export default function HistoryScreen() {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
   const router = useRouter();
   const toast = useToast();
   const [qs, setQs] = useState<Inspection[]>([]);
@@ -236,7 +239,8 @@ export default function HistoryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function getstyles(theme: any) {
+  return StyleSheet.create({
   sectionTitle: {
     fontSize: 11,
     fontWeight: '700',
@@ -278,3 +282,4 @@ const styles = StyleSheet.create({
   },
   // empty styles removed — now handled by <EmptyState />
 });
+}

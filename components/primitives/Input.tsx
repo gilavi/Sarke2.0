@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, {useState, useMemo} from 'react';
 import {
   TextInput,
   TextInputProps,
@@ -15,7 +15,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { haptic } from '../../lib/haptics';
-import { theme } from '../../lib/theme';
+import { useTheme } from '../../lib/theme';
+
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -39,6 +40,9 @@ export function Input({
   required,
   ...rest
 }: InputProps & { required?: boolean }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   const [isFocused, setIsFocused] = useState(false);
   const borderColor = useSharedValue<string>(theme.colors.border);
   const shake = useSharedValue(0);
@@ -130,7 +134,8 @@ export function Input({
   );
 }
 
-const styles = StyleSheet.create({
+function getstyles(theme: any) {
+  return StyleSheet.create({
   wrapper: {
     marginBottom: theme.space(4),
   },
@@ -166,3 +171,4 @@ const styles = StyleSheet.create({
     marginTop: theme.space(2),
   },
 });
+}

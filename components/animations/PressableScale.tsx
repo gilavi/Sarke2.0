@@ -7,7 +7,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { haptic } from '../../lib/haptics';
-import { theme } from '../../lib/theme';
+import { theme, useTheme } from '../../lib/theme';
+
 
 interface PressableScaleProps extends Omit<PressableProps, 'children'> {
   children: ReactNode;
@@ -26,6 +27,7 @@ export function PressableScale({
   onPressOut,
   ...rest
 }: PressableScaleProps) {
+  const { theme } = useTheme();
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({

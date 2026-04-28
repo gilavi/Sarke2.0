@@ -1,11 +1,12 @@
-import React, { useEffect } from 'react';
+import React, {useEffect, useMemo} from 'react';
 import { View, StyleSheet } from 'react-native';
 import { A11yText } from '../primitives/A11yText';
 import { ActionSheetItem } from '../primitives/ActionSheetItem';
 import { Button } from '../primitives/Button';
 import { useBottomSheet } from '../BottomSheet';
 import { haptic } from '../../lib/haptics';
-import { theme } from '../../lib/theme';
+import { useTheme } from '../../lib/theme';
+
 
 interface ExitModalProps {
   visible: boolean;
@@ -14,6 +15,9 @@ interface ExitModalProps {
 }
 
 export function ExitConfirmationModal({ visible, onStay, onExit }: ExitModalProps) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   const showBottomSheet = useBottomSheet();
 
   useEffect(() => {
@@ -72,7 +76,8 @@ export function ExitConfirmationModal({ visible, onStay, onExit }: ExitModalProp
   return null;
 }
 
-const styles = StyleSheet.create({
+function getstyles(theme: any) {
+  return StyleSheet.create({
   content: {
     paddingTop: theme.space(1),
     paddingBottom: theme.space(2),
@@ -92,3 +97,4 @@ const styles = StyleSheet.create({
     marginBottom: theme.space(2),
   },
 });
+}

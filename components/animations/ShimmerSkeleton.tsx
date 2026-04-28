@@ -7,7 +7,8 @@ import Animated, {
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
-import { theme } from '../../lib/theme';
+import { useTheme } from '../../lib/theme';
+
 
 interface ShimmerSkeletonProps {
   width?: number | string;
@@ -22,6 +23,7 @@ export function ShimmerSkeleton({
   radius = 8,
   style,
 }: ShimmerSkeletonProps) {
+  const { theme } = useTheme();
   const translateX = useSharedValue(-200);
 
   useEffect(() => {

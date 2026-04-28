@@ -1,7 +1,8 @@
 import { Pressable, Text, View, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { theme } from '../lib/theme';
+import { useTheme } from '../lib/theme';
+
 import { a11y } from '../lib/accessibility';
 
 type Variant = 'inline' | 'header';
@@ -14,6 +15,7 @@ interface BackButtonProps {
 }
 
 export function BackButton({ label, onPress, variant = 'inline', style }: BackButtonProps) {
+  const { theme } = useTheme();
   const router = useRouter();
   const handle = onPress ?? (() => router.back());
   // Unified style across the app — iOS-style chevron + accent tint. The

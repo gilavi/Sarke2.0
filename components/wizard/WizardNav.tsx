@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, {useEffect, useMemo} from 'react';
 import { Pressable, Text, StyleSheet, View } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -9,7 +9,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { haptic } from '../../lib/haptics';
-import { theme } from '../../lib/theme';
+import { useTheme } from '../../lib/theme';
+
 import { useAccessibilitySettings, a11y } from '../../lib/accessibility';
 
 interface WizardNavProps {
@@ -21,6 +22,9 @@ interface WizardNavProps {
 }
 
 export function WizardNav({ isLast, canGoNext, canGoPrev, onNext, onPrev }: WizardNavProps) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   const scale = useSharedValue(1);
   const { reduceMotion } = useAccessibilitySettings();
 
@@ -97,7 +101,8 @@ export function WizardNav({ isLast, canGoNext, canGoPrev, onNext, onPrev }: Wiza
   );
 }
 
-const styles = StyleSheet.create({
+function getstyles(theme: any) {
+  return StyleSheet.create({
   container: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -141,3 +146,4 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
 });
+}

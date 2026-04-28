@@ -1,7 +1,8 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Button, type ButtonVariant, type ButtonSize } from './primitives/Button';
-import { theme } from '../lib/theme';
+import { useTheme } from '../lib/theme';
+
 
 export interface ButtonGroupItem {
   label: string;
@@ -23,8 +24,10 @@ interface ButtonGroupProps {
 export function ButtonGroup({
   buttons,
   layout = 'vertical',
-  spacing = theme.space(3),
+  spacing: spacingProp,
 }: ButtonGroupProps) {
+  const { theme } = useTheme();
+  const spacing = spacingProp ?? theme.space(3);
   if (layout === 'horizontal') {
     return (
       <View style={[styles.container, styles.horizontal, { gap: spacing }]}>

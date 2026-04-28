@@ -1,15 +1,16 @@
-import { useState } from 'react';
+import { useState , useMemo} from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CrewMemberForm } from './CrewSection';
-import { theme } from '../lib/theme';
+import { useTheme } from '../lib/theme';
+
 import { haptic } from '../lib/haptics';
 import { a11y } from '../lib/accessibility';
 import type { CrewMember } from '../types/models';
 
 interface Props {
   onAddCrew: (member: CrewMember) => void;
-  onAddSigner: () => void;
+  onAddSigner?: () => void;
   onCancel: () => void;
 }
 
@@ -19,6 +20,9 @@ interface Props {
  * transitions inline to the crew form without opening a second sheet.
  */
 export function AddParticipantSheet({ onAddCrew, onAddSigner, onCancel }: Props) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   const [showForm, setShowForm] = useState(false);
 
   if (showForm) {
@@ -50,7 +54,7 @@ export function AddParticipantSheet({ onAddCrew, onAddSigner, onCancel }: Props)
       </Pressable>
 
       <Pressable
-        onPress={() => { haptic.light(); onAddSigner(); }}
+        onPress={() => { haptic.light(); onAddSigner?.(); }}
         style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
         {...a11y('ხელმომწერა', 'ხელმომწერის დამატება', 'button')}
       >
@@ -72,7 +76,8 @@ export function AddParticipantSheet({ onAddCrew, onAddSigner, onCancel }: Props)
   );
 }
 
-const styles = StyleSheet.create({
+function getstyles(theme: any) {
+  return StyleSheet.create({
   container: {
     gap: 8,
   },
@@ -127,3 +132,4 @@ const styles = StyleSheet.create({
     color: theme.colors.accent,
   },
 });
+}

@@ -1,12 +1,14 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { theme } from '../../lib/theme';
-import { a11y } from '../../lib/accessibility';
+import { useTheme } from '../../lib/theme';
+import { useTranslation } from 'react-i18next';
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
   const bottomInset = Math.max(insets.bottom, 8);
+  const { theme } = useTheme();
+  const { t } = useTranslation();
   return (
     <Tabs
       screenOptions={{
@@ -26,24 +28,24 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="home"
         options={{
-          title: 'მთავარი',
-          tabBarAccessibilityLabel: 'მთავარი გვერდი',
+          title: t('tabs.home'),
+          tabBarAccessibilityLabel: t('tabs.homeA11y'),
           tabBarIcon: ({ color, size }) => <Ionicons name="home" color={color} size={size} />,
         }}
       />
       <Tabs.Screen
         name="projects"
         options={{
-          title: 'პროექტები',
-          tabBarAccessibilityLabel: 'პროექტების სია',
+          title: t('tabs.projects'),
+          tabBarAccessibilityLabel: t('tabs.projectsA11y'),
           tabBarIcon: ({ color, size }) => <Ionicons name="folder" color={color} size={size} />,
         }}
       />
       <Tabs.Screen
         name="more"
         options={{
-          title: 'მეტი',
-          tabBarAccessibilityLabel: 'დამატებითი მენიუ',
+          title: t('tabs.more'),
+          tabBarAccessibilityLabel: t('tabs.moreA11y'),
           tabBarIcon: ({ color, size }) => <Ionicons name="ellipsis-horizontal-circle" color={color} size={size} />,
         }}
       />

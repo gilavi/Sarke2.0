@@ -10,9 +10,11 @@ import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/session';
 import { Button, Card, ErrorText, Field, Input } from '../../components/ui';
 import { logError, toErrorMessage } from '../../lib/logError';
-import { theme } from '../../lib/theme';
+import { useTheme } from '../../lib/theme';
+
 
 export default function ResetPasswordScreen() {
+  const { theme } = useTheme();
   const router = useRouter();
   const { signOut } = useSession();
   const [password, setPassword] = useState('');

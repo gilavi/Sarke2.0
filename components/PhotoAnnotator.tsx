@@ -30,7 +30,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { captureRef } from 'react-native-view-shot';
 import { a11y } from '../lib/accessibility';
 import { haptic } from '../lib/haptics';
-import { theme } from '../lib/theme';
+import { useTheme } from '../lib/theme';
+
 
 export interface PhotoAnnotatorProps {
   sourceUri: string;
@@ -99,6 +100,9 @@ function arrowHead(start: Point, end: Point, size = 14): string {
 /* ─────────────────────────── Component ─────────────────────────── */
 
 export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnnotatorProps) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+  const modalStyles = useMemo(() => getmodalStyles(theme), [theme]);
   const insets = useSafeAreaInsets();
 
   const [imgW, setImgW] = useState(0);
@@ -558,7 +562,8 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
 
 /* ─────────────────────────── Styles ─────────────────────────── */
 
-const styles = StyleSheet.create({
+function getstyles(theme: any) {
+  return StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: theme.colors.background,
@@ -684,8 +689,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 });
+}
 
-const modalStyles = StyleSheet.create({
+function getmodalStyles(theme: any) {
+  return StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -746,3 +753,4 @@ const modalStyles = StyleSheet.create({
     fontSize: 15,
   },
 });
+}

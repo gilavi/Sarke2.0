@@ -1,6 +1,8 @@
+import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme } from '../lib/theme';
+import { useTheme } from '../lib/theme';
+
 
 type Props = {
   latitude: number;
@@ -10,6 +12,9 @@ type Props = {
 };
 
 export function MapPreview({ latitude, longitude, style }: Props) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   return (
     <View style={[style, styles.placeholder]}>
       <Ionicons name="location" size={20} color={theme.colors.inkFaint} />
@@ -20,7 +25,8 @@ export function MapPreview({ latitude, longitude, style }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function getstyles(theme: any) {
+  return StyleSheet.create({
   placeholder: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -29,3 +35,4 @@ const styles = StyleSheet.create({
   },
   coords: { fontSize: 12, color: theme.colors.ink, fontWeight: '600' },
 });
+}

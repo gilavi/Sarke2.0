@@ -21,10 +21,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as MediaLibrary from 'expo-media-library';
 import * as ImagePicker from 'expo-image-picker';
-import { theme } from '../lib/theme';
+import { useTheme } from '../lib/theme';
+
 import { resolvePhotoPicker, cancelPhotoPicker } from '../lib/photoPickerBus';
 
 export default function PhotoPickerScreen() {
+  const { theme } = useTheme();
   const router = useRouter();
   const [camPerm, requestCamPerm] = useCameraPermissions();
   const [libPerm, requestLibPerm] = MediaLibrary.usePermissions();

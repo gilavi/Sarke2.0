@@ -6,9 +6,26 @@ import type {
   Qualification,
   Question,
   SignatureRecord,
+  SignerRole,
   Template,
 } from '../types/models';
 import { SIGNER_ROLE_LABEL } from '../types/models';
+import ka from '../locales/ka.json';
+import en from '../locales/en.json';
+
+const pdfLocales = { ka, en };
+
+function tPdf(lang: 'ka' | 'en', key: string, vars?: Record<string, string | number>): string | undefined {
+  const parts = key.split('.');
+  let val: any = pdfLocales[lang];
+  for (const p of parts) {
+    val = val?.[p];
+    if (val === undefined) break;
+  }
+  if (typeof val !== 'string') return undefined;
+  if (!vars) return val;
+  return val.replace(/\{\{(\w+)\}\}/g, (_: string, k: string) => String(vars[k] ?? ''));
+}
 
 /**
  * Qualification row augmented with a base64-encoded image data URL so the
@@ -34,6 +51,7 @@ export interface PdfHtmlArgs {
   signatures: SignatureRecord[];
   photosByAnswer?: Record<string, AnswerPhoto[]>;
   certificates?: PdfCertificate[];
+  language?: 'ka' | 'en';
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -69,16 +87,18 @@ function buildHtml(
     photosByAnswer = {},
     certificates = [],
     mode,
+    language = 'ka',
   } = args;
+
+  const t = (key: string, vars?: Record<string, string | number>) => tPdf(language, key, vars) ?? key;
 
   const isPdf = mode === 'pdf';
   const isDraft = questionnaire.status !== 'completed';
   const answerFor = (q: Question) => answers.find(a => a.question_id === q.id);
-  const dateStr = new Date(questionnaire.created_at).toLocaleDateString('ka-GE', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
+  const dateStr = new Date(questionnaire.created_at).toLocaleDateString(
+    language === 'en' ? 'en-US' : 'ka-GE',
+    { year: 'numeric', month: 'long', day: 'numeric' },
+  );
   const reportId = questionnaire.id.slice(0, 8).toUpperCase();
 
   // ── Sections ──
@@ -91,7 +111,7 @@ function buildHtml(
       const sectionQuestions = questions.filter(q => q.section === section);
       return `<div class="toc-item"><span class="toc-num">${idx + 1}</span><span class="toc-title">${escapeHtml(
         String(section),
-      )}</span><span class="toc-count">${sectionQuestions.length} კითხვა</span></div>`;
+      )}</span><span class="toc-count">${t('pdf.tocQuestionCount', { count: sectionQuestions.length })}</span></div>`;
     })
     .join('');
 
@@ -104,7 +124,7 @@ function buildHtml(
           const ans = answerFor(q);
           const photos = ans ? (photosByAnswer[ans.id] ?? []) : [];
           const isFailed = ans?.value_bool === false;
-          return renderQuestion(q, ans, photos, isFailed);
+          return renderQuestion(q, ans, photos, isFailed, t);
         })
         .join('');
 
@@ -121,7 +141,7 @@ function buildHtml(
     .join('');
 
   // ── Signatures ──
-  const sigHtml = renderSignatures(signatures);
+  const sigHtml = renderSignatures(signatures, language);
 
   // ── Certificates ──
   const certHtml =
@@ -130,7 +150,7 @@ function buildHtml(
         <div class="section" ${isPdf ? 'style="page-break-before: always;"' : ''}>
           <div class="section-header">
             <div class="section-number">${sections.length + 1}</div>
-            <h2 class="section-title">თანდართული სერტიფიკატები</h2>
+            <h2 class="section-title">${t('pdf.attachedCerts')}</h2>
           </div>
           <div class="section-body">
             ${certificates
@@ -140,13 +160,13 @@ function buildHtml(
                 <div class="cert-title">${escapeHtml(c.type)}</div>
                 <div class="cert-meta">
                   ${c.number ? `№ ${escapeHtml(c.number)} · ` : ''}
-                  ${c.issued_at ? `გაცემა: ${escapeHtml(c.issued_at)} · ` : ''}
-                  ${c.expires_at ? `ვადა: ${escapeHtml(c.expires_at)}` : ''}
+                  ${c.issued_at ? `${t('pdf.certIssued', { date: escapeHtml(c.issued_at) })} · ` : ''}
+                  ${c.expires_at ? `${t('pdf.certExpires', { date: escapeHtml(c.expires_at) })}` : ''}
                 </div>
                 ${c.file_data_url
                   ? `<div class="cert-img-wrap">
                       <img src="${c.file_data_url}" alt="${escapeHtml(c.type)}" class="cert-img"
-                        onerror="this.style.display='none';this.parentElement.innerHTML='<div class=\\'photo-missing\\'>სურათი მიუწვდომელია</div>';" />
+                        onerror="this.style.display='none';this.parentElement.innerHTML='<div class=\\'photo-missing\\'>${escapeHtml(t('pdf.imageUnavailable'))}</div>';" />
                     </div>`
                   : ''}
               </div>
@@ -161,27 +181,27 @@ function buildHtml(
   // ── Status badge ──
   const statusBadge =
     questionnaire.is_safe_for_use === false
-      ? `<span class="status-badge status-fail">✗ არ არის უსაფრთხო ექსპლუატაციისთვის</span>`
+      ? `<span class="status-badge status-fail">${t('pdf.statusNotSafe')}</span>`
       : questionnaire.is_safe_for_use === true
-        ? `<span class="status-badge status-pass">✓ უსაფრთხოა ექსპლუატაციისთვის</span>`
-        : `<span class="status-badge status-pending">● შეფასება დაუსრულებელია</span>`;
+        ? `<span class="status-badge status-pass">${t('pdf.statusSafe')}</span>`
+        : `<span class="status-badge status-pending">${t('pdf.statusIncomplete')}</span>`;
 
   // ── Watermark ──
   const watermark = isDraft
-    ? `<div class="watermark">დრაფტი / DRAFT</div>`
+    ? `<div class="watermark">${t('pdf.watermarkDraft')}</div>`
     : '';
 
   // ── Preview banner ──
   const previewBanner = !isPdf
-    ? `<div class="preview-banner">👁 PREVIEW — ეს არის PDF-ის პრევიუ. საბოლოო ვერსია შეიძლება განსხვავდებოდეს.</div>`
+    ? `<div class="preview-banner">${t('pdf.previewBanner')}</div>`
     : '';
 
   return `<!DOCTYPE html>
-<html lang="ka">
+<html lang="${language}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sarke — ${escapeHtml(template.name)}</title>
+  <title>${t('pdf.htmlTitle', { templateName: escapeHtml(template.name) })}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -202,7 +222,7 @@ function buildHtml(
     @page {
       margin: 28px 24px 40px 24px;
       @bottom-center {
-        content: "Sarke 2.0 · შრომის უსაფრთხოების ექსპერტული სისტემა · გვერდი " counter(page) " / " counter(pages);
+        content: "${t('pdf.footerText', { systemName: t('pdf.systemName') })}" counter(page) " / " counter(pages);
         font-size: 9px;
         color: #9ca3af;
         font-family: 'Noto Sans Georgian', sans-serif;
@@ -723,14 +743,14 @@ function buildHtml(
   <div class="report-header">
     <div class="report-header-left">
       <div class="report-logo">SARKE</div>
-      <div class="report-logo-sub">შრომის უსაფრთხოების ექსპერტული სისტემა</div>
+      <div class="report-logo-sub">${t('pdf.systemName')}</div>
     </div>
     <div style="display:flex;align-items:center;">
       <div class="report-header-right">
         <div class="report-meta-row"><strong>${escapeHtml(template.name)}</strong></div>
-        <div class="report-meta-row">თარიღი: ${dateStr}</div>
-        <div class="report-meta-row">ობიექტი: ${escapeHtml(project.name)}</div>
-        <div class="report-id">ID: ${reportId}</div>
+        <div class="report-meta-row">${t('pdf.metaDate', { date: dateStr })}</div>
+        <div class="report-meta-row">${t('pdf.metaObject', { name: escapeHtml(project.name) })}</div>
+        <div class="report-id">${t('pdf.metaId', { id: reportId })}</div>
       </div>
       <div class="qr-placeholder">QR<br/>CODE</div>
     </div>
@@ -739,32 +759,32 @@ function buildHtml(
   <!-- Info Card -->
   <div class="info-card">
     <div class="info-row">
-      <span class="info-label">კომპანია</span>
+      <span class="info-label">${t('pdf.infoCompany')}</span>
       <span class="info-value">${escapeHtml(project.company_name ?? '—')}</span>
     </div>
     <div class="info-row">
-      <span class="info-label">ობიექტი</span>
+      <span class="info-label">${t('pdf.infoObject')}</span>
       <span class="info-value">${escapeHtml(project.address ?? project.name)}</span>
     </div>
     ${template.category === 'harness' ? `
     <div class="info-row">
-      <span class="info-label">ღვედის დასახელება</span>
+      <span class="info-label">${t('pdf.infoHarness')}</span>
       <span class="info-value">${escapeHtml(questionnaire.harness_name ?? '—')}</span>
     </div>` : ''}
     <div class="info-row">
-      <span class="info-label">სტატუსი</span>
+      <span class="info-label">${t('pdf.infoStatus')}</span>
       <span class="info-value">${statusBadge}</span>
     </div>
   </div>
 
   <!-- Table of Contents -->
   <div class="toc-box">
-    <div class="toc-title">შინაარსი</div>
+    <div class="toc-title">${t('pdf.tocTitle')}</div>
     ${tocItems}
     ${certificates.length > 0 ? `
     <div class="toc-item">
       <span class="toc-num">${sections.length + 1}</span>
-      <span class="toc-title">თანდართული სერტიფიკატები</span>
+      <span class="toc-title">${t('pdf.attachedCerts')}</span>
       <span class="toc-count">${certificates.length}</span>
     </div>` : ''}
   </div>
@@ -774,14 +794,14 @@ function buildHtml(
 
   <!-- Conclusion -->
   <div class="conclusion-card">
-    <div class="conclusion-label">დასკვნა</div>
+    <div class="conclusion-label">${t('pdf.conclusionTitle')}</div>
     <div class="conclusion-text">${escapeHtml(questionnaire.conclusion_text ?? '—')}</div>
     ${statusBadge}
   </div>
 
   <!-- Signatures -->
   <div class="signatures-header">
-    <span class="signatures-header-text">ხელმოწერები</span>
+    <span class="signatures-header-text">${t('pdf.signaturesTitle')}</span>
     <div class="signatures-header-rule"></div>
   </div>
   <div class="sig-grid">${sigHtml}</div>
@@ -801,17 +821,18 @@ function renderQuestion(
   answer: Answer | undefined,
   photos: AnswerPhoto[] = [],
   isFailed = false,
+  t: (key: string, vars?: Record<string, string | number>) => string,
 ): string {
   const comment = answer?.comment
-    ? `<div class="question-comment">კომენტარი: ${escapeHtml(answer.comment)}</div>`
+    ? `<div class="question-comment">${t('pdf.commentLabel')}: ${escapeHtml(answer.comment)}</div>`
     : '';
   const notes = answer?.notes
-    ? `<div class="question-notes">შენიშვნა: ${escapeHtml(answer.notes)}</div>`
+    ? `<div class="question-notes">${t('pdf.notesLabel')}: ${escapeHtml(answer.notes)}</div>`
     : '';
   const photosHtml =
     photos.length > 0
-      ? `<div class="photo-section-title">📷 ფოტო მასალა</div>
-         <div class="photo-grid">${photos.map(p => renderPhoto(p, isFailed, q.title)).join('')}</div>`
+      ? `<div class="photo-section-title">${t('pdf.photosTitle')}</div>
+         <div class="photo-grid">${photos.map(p => renderPhoto(p, isFailed, q.title, t)).join('')}</div>`
       : '';
 
   switch (q.type) {
@@ -819,9 +840,9 @@ function renderQuestion(
       const v = answer?.value_bool;
       const label =
         v === true
-          ? `<span class="status-badge status-pass" style="margin:0 0 8px 0;">✓ კი</span>`
+          ? `<span class="status-badge status-pass" style="margin:0 0 8px 0;">✓ ${t('pdf.yes')}</span>`
           : v === false
-            ? `<span class="status-badge status-fail" style="margin:0 0 8px 0;">✗ არა</span>`
+            ? `<span class="status-badge status-fail" style="margin:0 0 8px 0;">✗ ${t('pdf.no')}</span>`
             : '<span style="color:#9ca3af;font-style:italic;">—</span>';
       return `<div class="question-card">
         <div class="question-title">${escapeHtml(q.title)}</div>
@@ -881,6 +902,7 @@ function renderPhoto(
   photo: AnswerPhoto,
   isFailed: boolean,
   questionTitle: string,
+  t: (key: string, vars?: Record<string, string | number>) => string,
 ): string {
   const titlePart = escapeHtml(questionTitle.slice(0, 50));
   const timePart = photo.created_at ? formatDate(photo.created_at) : '';
@@ -898,7 +920,7 @@ function renderPhoto(
   if (!isDataUrl && !isLocalFile) {
     return `<div class="photo-item${isFailed ? ' failed' : ''}">
       <div class="photo-img-wrap">
-        <div class="photo-missing">სურათი მიუწვდომელია</div>
+        <div class="photo-missing">${t('pdf.imageUnavailable')}</div>
       </div>
       <div class="photo-caption">${captionText}</div>
       ${noteCaption}
@@ -907,15 +929,15 @@ function renderPhoto(
 
   return `<div class="photo-item${isFailed ? ' failed' : ''}">
     <div class="photo-img-wrap">
-      <img src="${src}" alt="ფოტო"
-        onerror="this.style.display='none';this.parentElement.innerHTML='<div class=\\'photo-missing\\'>სურათი მიუწვდომელია</div>';" />
+      <img src="${src}" alt="${t('pdf.photoAlt')}"
+        onerror="this.style.display='none';this.parentElement.innerHTML='<div class=\\'photo-missing\\'>${escapeHtml(t('pdf.imageUnavailable'))}</div>';" />
     </div>
     <div class="photo-caption">${captionText}</div>
     ${noteCaption}
   </div>`;
 }
 
-function renderSignatures(signatures: SignatureRecord[]): string {
+function renderSignatures(signatures: SignatureRecord[], lang: 'ka' | 'en'): string {
   const renderable = signatures.filter(
     sig =>
       sig.status === 'signed' &&
@@ -932,22 +954,24 @@ function renderSignatures(signatures: SignatureRecord[]): string {
   return ordered
     .map(sig => {
       const role = sig.signer_role;
-      const label = role === 'expert' ? 'ექსპერტი' : SIGNER_ROLE_LABEL[role] ?? role;
+      const label = role === 'expert'
+        ? tPdf(lang, 'pdf.expertLabel') ?? 'Expert'
+        : (tPdf(lang, `roles.${role.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase())}`) ?? SIGNER_ROLE_LABEL[role as SignerRole] ?? role);
       const signedDate = sig.signed_at
-        ? new Date(sig.signed_at).toLocaleDateString('ka-GE')
+        ? new Date(sig.signed_at).toLocaleDateString(lang === 'en' ? 'en-US' : 'ka-GE')
         : '';
       const signedTime = sig.signed_at
-        ? new Date(sig.signed_at).toLocaleTimeString('ka-GE', { hour: '2-digit', minute: '2-digit' })
+        ? new Date(sig.signed_at).toLocaleTimeString(lang === 'en' ? 'en-US' : 'ka-GE', { hour: '2-digit', minute: '2-digit' })
         : '';
 
       // Audit trail
       const auditParts: string[] = [];
-      if (signedDate) auditParts.push(`<strong>დრო:</strong> ${signedDate} ${signedTime}`);
+      if (signedDate) auditParts.push(`<strong>${tPdf(lang, 'pdf.timeLabel')}:</strong> ${signedDate} ${signedTime}`);
       if (sig.latitude != null && sig.longitude != null) {
-        auditParts.push(`<strong>ლოკაცია:</strong> ${sig.latitude.toFixed(5)}, ${sig.longitude.toFixed(5)}`);
+        auditParts.push(`<strong>${tPdf(lang, 'pdf.locationLabel')}:</strong> ${sig.latitude.toFixed(5)}, ${sig.longitude.toFixed(5)}`);
       }
       if (sig.device_id_hash) {
-        auditParts.push(`<strong>მოწყობილობა:</strong> ${sig.device_id_hash.slice(0, 8)}…`);
+        auditParts.push(`<strong>${tPdf(lang, 'pdf.deviceLabel')}:</strong> ${sig.device_id_hash.slice(0, 8)}…`);
       }
       if (sig.ip_address) {
         auditParts.push(`<strong>IP:</strong> ${sig.ip_address}`);
@@ -962,7 +986,7 @@ function renderSignatures(signatures: SignatureRecord[]): string {
         <div class="sig-name">${escapeHtml(sig.full_name || '—')}</div>
         ${sig.position ? `<div class="sig-position">${escapeHtml(sig.position)}</div>` : ''}
         <div class="sig-img-box">
-          <img src="${sig.signature_png_url}" alt="ხელმოწერა" />
+          <img src="${sig.signature_png_url}" alt="${tPdf(lang, 'pdf.signatureAlt') ?? 'Signature'}" />
         </div>
         ${signedDate ? `<div class="sig-date">${escapeHtml(signedDate)}</div>` : ''}
         ${auditHtml}

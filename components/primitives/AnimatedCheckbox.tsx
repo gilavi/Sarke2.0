@@ -10,7 +10,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
-import { theme } from '../../lib/theme';
+import { useTheme } from '../../lib/theme';
+
 import { haptic } from '../../lib/haptics';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
@@ -30,11 +31,14 @@ interface ViewProps {
 export function AnimatedCheckboxView({
   checked,
   size = 22,
-  color = theme.colors.accent,
-  uncheckedBorderColor = theme.colors.border ?? '#D8D8D8',
+  color: colorProp,
+  uncheckedBorderColor: uncheckedBorderColorProp,
   uncheckedBackgroundColor = 'transparent',
   disabled,
 }: ViewProps) {
+  const { theme } = useTheme();
+  const color = colorProp ?? theme.colors.accent;
+  const uncheckedBorderColor = uncheckedBorderColorProp ?? theme.colors.border ?? '#D8D8D8';
   const progress = useSharedValue(checked ? 1 : 0);
 
   useEffect(() => {

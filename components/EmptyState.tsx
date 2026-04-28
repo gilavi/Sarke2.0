@@ -4,7 +4,7 @@
 // animations, subtle float loop, scaffolding background pattern, and spring-
 // animated CTA button. Designed to feel encouraging, not depressing.
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback , useMemo} from 'react';
 import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import Animated, {
   FadeInUp,
@@ -18,7 +18,8 @@ import Svg, { Line, Rect, Circle, Path, Polygon, G } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { haptic } from '../lib/haptics';
 import { a11y } from '../lib/accessibility';
-import { theme } from '../lib/theme';
+import { useTheme } from '../lib/theme';
+
 
 export type EmptyStateType =
   | 'projects'
@@ -46,6 +47,9 @@ export interface EmptyStateProps {
    ═══════════════════════════════════════════════════════════════════════ */
 
 function IllustrationProjects() {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   return (
     <Svg width={160} height={160} viewBox="0 0 160 160">
       <G opacity={0.12}>
@@ -82,6 +86,9 @@ function IllustrationProjects() {
 }
 
 function IllustrationCertificates() {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   return (
     <Svg width={160} height={160} viewBox="0 0 160 160">
       <G opacity={0.1}>
@@ -114,6 +121,9 @@ function IllustrationCertificates() {
 }
 
 function IllustrationHistory() {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   return (
     <Svg width={160} height={160} viewBox="0 0 160 160">
       <G opacity={0.1}>
@@ -165,6 +175,9 @@ function IllustrationHistory() {
 }
 
 function IllustrationQualifications() {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   return (
     <Svg width={160} height={160} viewBox="0 0 160 160">
       <G opacity={0.1}>
@@ -197,6 +210,9 @@ function IllustrationQualifications() {
 }
 
 function IllustrationTemplates() {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   return (
     <Svg width={160} height={160} viewBox="0 0 160 160">
       <G opacity={0.1}>
@@ -247,6 +263,9 @@ const ILLUSTRATIONS: Record<EmptyStateType, React.FC> = {
    ═══════════════════════════════════════════════════════════════════════ */
 
 function ScaffoldingPattern() {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   const hLines = [20, 50, 80, 110, 140, 170, 200, 230, 260, 290, 320, 350, 380, 410, 440, 470, 500, 530, 560, 590];
   const vLines = [30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 360];
   return (
@@ -274,6 +293,8 @@ export default function EmptyState({
   compact = false,
   style,
 }: EmptyStateProps) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
   const entry = useSharedValue(0);
   const float = useSharedValue(0);
   const btnScale = useSharedValue(1);
@@ -369,7 +390,8 @@ export default function EmptyState({
    Styles
    ═══════════════════════════════════════════════════════════════════════ */
 
-const styles = StyleSheet.create({
+function getstyles(theme: any) {
+  return StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
@@ -435,3 +457,4 @@ const styles = StyleSheet.create({
     color: theme.colors.white,
   },
 });
+}

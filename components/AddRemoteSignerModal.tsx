@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState , useMemo} from 'react';
 import {
   Platform,
   Pressable,
@@ -12,7 +12,8 @@ import { A11yText } from './primitives/A11yText';
 import { FormField } from './FormField';
 import { ButtonGroup } from './ButtonGroup';
 import { Input } from './ui';
-import { theme } from '../lib/theme';
+import { useTheme } from '../lib/theme';
+
 import { isGeorgianPhone, normalizePhone } from '../lib/validators';
 import { SIGNER_ROLE_LABEL, type SignerRole } from '../types/models';
 
@@ -35,6 +36,9 @@ export function AddRemoteSignerSheet({
   onSubmit,
   busy,
 }: AddRemoteSignerSheetProps) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [role, setRole] = useState<SignerRole>('xaracho_supervisor');
@@ -159,7 +163,8 @@ export function AddRemoteSignerSheet({
   );
 }
 
-const styles = StyleSheet.create({
+function getstyles(theme: any) {
+  return StyleSheet.create({
   container: {
     backgroundColor: theme.colors.background,
     paddingHorizontal: theme.space(4),
@@ -209,3 +214,4 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.accent,
   },
 });
+}

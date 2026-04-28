@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { A11yText } from './A11yText';
 import { haptic } from '../../lib/haptics';
-import { theme } from '../../lib/theme';
+import { useTheme } from '../../lib/theme';
+
 import { a11y } from '../../lib/accessibility';
 
 export type ActionSheetItemVariant = 'default' | 'destructive' | 'highlight';
@@ -25,6 +26,9 @@ export function ActionSheetItem({
   isSelected = false,
   isLast = false,
 }: ActionSheetItemProps) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   const handlePress = () => {
     haptic.light();
     onPress();
@@ -78,7 +82,8 @@ export function ActionSheetItem({
   );
 }
 
-const styles = StyleSheet.create({
+function getstyles(theme: any) {
+  return StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -104,3 +109,4 @@ const styles = StyleSheet.create({
     marginVertical: theme.space(2),
   },
 });
+}

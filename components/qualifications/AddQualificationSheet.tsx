@@ -1,6 +1,6 @@
 // Bottom-sheet form for adding a qualification. Replaces the previous
 // /qualifications/new route — opens in-place from the qualifications list.
-import { useEffect, useState } from 'react';
+import { useEffect, useState , useMemo} from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -18,7 +18,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Button, Field, Input } from '../ui';
 import { qualificationsApi, storageApi } from '../../lib/services';
 import { STORAGE_BUCKETS, supabase } from '../../lib/supabase';
-import { theme } from '../../lib/theme';
+import { useTheme } from '../../lib/theme';
+
 import { toErrorMessage } from '../../lib/logError';
 import { a11y } from '../../lib/accessibility';
 import { REQUIRED_TYPES } from '../../app/qualifications/requiredTypes';
@@ -32,6 +33,9 @@ function formatDate(d: Date) {
   return d.toLocaleDateString('ka', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 function toISO(d: Date) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   return d.toISOString().slice(0, 10);
 }
 
@@ -46,6 +50,9 @@ export default function AddQualificationSheet({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   const [type, setType] = useState(initialType ?? 'xaracho_inspector');
   const [number, setNumber] = useState('');
   const [issued, setIssued] = useState(new Date());
@@ -216,7 +223,8 @@ export default function AddQualificationSheet({
   );
 }
 
-const styles = StyleSheet.create({
+function getstyles(theme: any) {
+  return StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   sheetWrap: { width: '100%' },
   sheet: {
@@ -270,3 +278,4 @@ const styles = StyleSheet.create({
   chip: { paddingHorizontal: 12, paddingVertical: 6, backgroundColor: theme.colors.subtleSurface, borderRadius: 999 },
   chipText: { fontSize: 12, fontWeight: '600', color: theme.colors.inkSoft },
 });
+}

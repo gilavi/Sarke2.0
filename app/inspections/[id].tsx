@@ -6,7 +6,7 @@
 // a CTA to generate another certificate from the same inspection.
 //
 // Draft inspections still route through `/inspections/[id]/wizard`.
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState , useMemo} from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -45,7 +45,8 @@ import { scheduleDelete } from '../../lib/pendingDeletes';
 import { haptic } from '../../lib/haptics';
 import { formatShortDateTime } from '../../lib/formatDate';
 // openSigningSMS kept in lib/sms.ts as fallback; Twilio edge fn used instead.
-import { theme } from '../../lib/theme';
+import { useTheme } from '../../lib/theme';
+
 import type {
   Answer,
   AnswerPhoto,
@@ -62,6 +63,9 @@ import { SIGNER_ROLE_LABEL } from '../../types/models';
 import { a11y } from '../../lib/accessibility';
 
 export default function InspectionDetailScreen() {
+  const { theme } = useTheme();
+  const remoteStyles = useMemo(() => getremoteStyles(theme), [theme]);
+  const styles = useMemo(() => getstyles(theme), [theme]);
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const toast = useToast();
@@ -768,7 +772,7 @@ function computeStats(questions: Question[], answers: Answer[]): InspectionStats
 
 // ── Remote signing row ─────────────────────────────────────────────────────
 
-function statusVisuals(status: RemoteSigningStatus): { label: string; tint: string; bg: string } {
+function statusVisuals(status: RemoteSigningStatus, theme: any): { label: string; tint: string; bg: string } {
   switch (status) {
     case 'pending':
       return { label: 'არ გაგზავნილა', tint: theme.colors.inkSoft, bg: theme.colors.subtleSurface };
@@ -792,7 +796,10 @@ function RemoteRequestRow({
   onResend: () => void;
   onCancel: () => void;
 }) {
-  const v = statusVisuals(request.status);
+  const { theme } = useTheme();
+  const remoteStyles = useMemo(() => getremoteStyles(theme), [theme]);
+
+  const v = statusVisuals(request.status, theme);
   const isOpen = request.status === 'pending' || request.status === 'sent';
   return (
     <Card padding={12}>
@@ -837,7 +844,8 @@ function RemoteRequestRow({
   );
 }
 
-const remoteStyles = StyleSheet.create({
+function getremoteStyles(theme: any) {
+  return StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -860,8 +868,10 @@ const remoteStyles = StyleSheet.create({
   name: { fontSize: 15, fontWeight: '700', color: theme.colors.ink },
   meta: { fontSize: 12, color: theme.colors.inkSoft },
 });
+}
 
-const styles = StyleSheet.create({
+function getstyles(theme: any) {
+  return StyleSheet.create({
   // 1. Header
   header: { gap: 4, marginBottom: 4 },
   templateName: {
@@ -1065,3 +1075,4 @@ const styles = StyleSheet.create({
     color: theme.colors.inkSoft,
   },
 });
+}

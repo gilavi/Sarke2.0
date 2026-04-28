@@ -2,7 +2,8 @@ import React from 'react';
 import { Pressable, PressableProps, Text, View } from 'react-native';
 import { a11y } from '../../lib/accessibility';
 import { haptic } from '../../lib/haptics';
-import { theme } from '../../lib/theme';
+import { useTheme } from '../../lib/theme';
+
 
 interface A11yButtonProps extends Omit<PressableProps, 'children'> {
   title: string;
@@ -12,6 +13,7 @@ interface A11yButtonProps extends Omit<PressableProps, 'children'> {
 }
 
 export function A11yButton({ title, hint, state, onPress, ...rest }: A11yButtonProps) {
+  const { theme } = useTheme();
   return (
     <Pressable
       {...a11y(title, hint, 'button', state)}

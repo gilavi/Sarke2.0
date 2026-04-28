@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, {useState, useMemo} from 'react';
 import { GestureResponderEvent, LayoutChangeEvent, Pressable, PressableProps, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   Easing,
@@ -9,7 +9,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { haptic } from '../../lib/haptics';
-import { theme } from '../../lib/theme';
+import { useTheme } from '../../lib/theme';
+
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'outline' | 'danger' | 'link';
 export type ButtonSize = 'sm' | 'md' | 'lg' | 'xl';
@@ -44,6 +45,9 @@ export function Button({
   style,
   ...rest
 }: ButtonProps) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   const scale = useSharedValue(1);
   const rippleScale = useSharedValue(0);
   const rippleOpacity = useSharedValue(0);
@@ -271,7 +275,8 @@ export function Button({
   );
 }
 
-const styles = StyleSheet.create({
+function getstyles(theme: any) {
+  return StyleSheet.create({
   base: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -287,3 +292,4 @@ const styles = StyleSheet.create({
     position: 'absolute',
   },
 });
+}

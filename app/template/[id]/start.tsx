@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState , useMemo} from 'react';
 import {
   Modal,
   Platform,
@@ -16,13 +16,16 @@ import { Button, Field, Input, Screen } from '../../../components/ui';
 import { Skeleton } from '../../../components/Skeleton';
 import { projectsApi, questionnairesApi, templatesApi } from '../../../lib/services';
 import { useToast } from '../../../lib/toast';
-import { theme } from '../../../lib/theme';
+import { useTheme } from '../../../lib/theme';
+
 import { toErrorMessage } from '../../../lib/logError';
 import { friendlyError } from '../../../lib/errorMap';
 import type { Project, Questionnaire, Template } from '../../../types/models';
 import { a11y } from '../../../lib/accessibility';
 
 export default function StartTemplateScreen() {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const toast = useToast();
@@ -194,6 +197,9 @@ function CreateProjectSheet({
   onClose: () => void;
   onCreated: (p: Project) => void;
 }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   const toast = useToast();
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
@@ -265,7 +271,8 @@ function CreateProjectSheet({
   );
 }
 
-const styles = StyleSheet.create({
+function getstyles(theme: any) {
+  return StyleSheet.create({
   scroll: { padding: 16, paddingBottom: 24, gap: 12 },
   eyebrow: {
     fontSize: 11,
@@ -353,3 +360,4 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 });
+}

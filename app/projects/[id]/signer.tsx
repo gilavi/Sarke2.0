@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState , useMemo} from 'react';
 import { Alert, Image, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { KeyboardAvoidingView } from 'react-native';
@@ -11,7 +11,8 @@ import { projectsApi, storageApi } from '../../../lib/services';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import { useToast } from '../../../lib/toast';
 import { getStorageImageDisplayUrl } from '../../../lib/imageUrl';
-import { theme } from '../../../lib/theme';
+import { useTheme } from '../../../lib/theme';
+
 import { toErrorMessage } from '../../../lib/logError';
 import { friendlyError } from '../../../lib/errorMap';
 import type { ProjectSigner, SignerRole } from '../../../types/models';
@@ -22,6 +23,8 @@ import { a11y } from '../../../lib/accessibility';
 const ROSTER_ROLES: SignerRole[] = ['xaracho_supervisor', 'xaracho_assembler'];
 
 export default function SignerForm() {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
   const { id, signerId } = useLocalSearchParams<{ id: string; signerId?: string }>();
   const router = useRouter();
   const toast = useToast();
@@ -233,6 +236,9 @@ function SignatureCaptureModal({
   onCancel: () => void;
   onDone: (base64Png: string) => void;
 }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   const ref = useRef<SignatureViewRef>(null);
 
   const handleSave = () => ref.current?.readSignature();
@@ -283,7 +289,8 @@ function SignatureCaptureModal({
   );
 }
 
-const styles = StyleSheet.create({
+function getstyles(theme: any) {
+  return StyleSheet.create({
   roleRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -344,3 +351,4 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.hairline,
   },
 });
+}

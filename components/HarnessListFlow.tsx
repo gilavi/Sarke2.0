@@ -15,7 +15,8 @@ import {
 import { A11yText as Text } from './primitives/A11yText';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { theme } from '../lib/theme';
+import { useTheme } from '../lib/theme';
+
 import { haptic } from '../lib/haptics';
 import type { Answer, AnswerPhoto, GridValues, Question, Template } from '../types/models';
 import { TourGuide, type TourStep } from './TourGuide';
@@ -92,6 +93,8 @@ export type HarnessListFlowProps = {
 };
 
 export function HarnessListFlow(props: HarnessListFlowProps) {
+  const { theme } = useTheme();
+  const s = useMemo(() => gets(theme), [theme]);
   const {
     questions,
     answers,
@@ -356,6 +359,8 @@ const ItemRow = memo(function ItemRow({
   cardRef?: React.RefObject<View | null>;
   helpRef?: React.RefObject<View | null>;
 }) {
+  const { theme } = useTheme();
+  const s = useMemo(() => gets(theme), [theme]);
   return (
     <View
       ref={cardRef}
@@ -428,6 +433,8 @@ const CellPhotoThumb = memo(function CellPhotoThumb({
   photo: AnswerPhoto;
   onDelete: () => void;
 }) {
+  const { theme } = useTheme();
+  const s = useMemo(() => gets(theme), [theme]);
   const isLocal = /^(file|content|ph|asset):\/\//.test(photo.storage_path);
   const [uri] = useState<string | null>(isLocal ? photo.storage_path : null);
   return (
@@ -444,7 +451,8 @@ const CellPhotoThumb = memo(function CellPhotoThumb({
   );
 });
 
-const s = StyleSheet.create({
+function gets(theme: any) {
+  return StyleSheet.create({
   header: {
     paddingHorizontal: 16,
     paddingTop: 10,
@@ -586,3 +594,4 @@ const s = StyleSheet.create({
   },
   bigCtaText: { fontSize: 18, fontWeight: '800', color: theme.colors.white },
 });
+}

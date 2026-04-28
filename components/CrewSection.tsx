@@ -11,7 +11,8 @@ import { Ionicons } from '@expo/vector-icons';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { Button, Field, Input } from './ui';
 import { BottomSheetScrollView, useBottomSheet } from './BottomSheet';
-import { theme } from '../lib/theme';
+import { useTheme } from '../lib/theme';
+
 import { haptic } from '../lib/haptics';
 import { a11y } from '../lib/accessibility';
 import type { CrewMember } from '../types/models';
@@ -47,6 +48,9 @@ export function CrewList({
   onChange: (next: CrewMember[]) => void | Promise<void>;
   hideAdd?: boolean;
 }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   const showSheet = useBottomSheet();
 
   const removeMember = (id: string) => {
@@ -139,6 +143,9 @@ export function CrewMemberForm({
   onSave: (member: CrewMember) => void;
   onCancel: () => void;
 }) {
+  const { theme } = useTheme();
+  const sheetStyles = useMemo(() => getsheetStyles(theme), [theme]);
+
   const [name, setName] = useState(initial?.name ?? '');
   const [role, setRole] = useState(initial?.role ?? '');
 
@@ -219,7 +226,8 @@ function cryptoUuid(): string {
   return `crew_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
-const styles = StyleSheet.create({
+function getstyles(theme: any) {
+  return StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -269,8 +277,10 @@ const styles = StyleSheet.create({
     marginLeft: 6,
   },
 });
+}
 
-const sheetStyles = StyleSheet.create({
+function getsheetStyles(theme: any) {
+  return StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -298,3 +308,4 @@ const sheetStyles = StyleSheet.create({
   chipText: { color: theme.colors.inkSoft, fontSize: 13, fontWeight: '500' },
   chipTextActive: { color: theme.colors.accent, fontWeight: '700' },
 });
+}

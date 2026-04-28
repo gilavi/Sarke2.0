@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { A11yText } from './primitives/A11yText';
-import { theme } from '../lib/theme';
+import { useTheme } from '../lib/theme';
+
 
 type SectionHeaderVariant = 'default' | 'highlight' | 'muted';
 
@@ -21,6 +22,9 @@ export function SectionHeader({
   action,
   variant = 'default',
 }: SectionHeaderProps) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   const titleColor = {
     default: theme.colors.ink,
     highlight: theme.colors.accent,
@@ -69,7 +73,8 @@ export function SectionHeader({
   );
 }
 
-const styles = StyleSheet.create({
+function getstyles(theme: any) {
+  return StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -87,3 +92,4 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.accentSoft,
   },
 });
+}

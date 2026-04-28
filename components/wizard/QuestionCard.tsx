@@ -1,4 +1,4 @@
-import React, { ReactNode, useEffect, useRef } from 'react';
+import React, {ReactNode, useEffect, useRef, useMemo} from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -6,7 +6,8 @@ import Animated, {
   withSpring,
   FadeInUp,
 } from 'react-native-reanimated';
-import { theme } from '../../lib/theme';
+import { useTheme } from '../../lib/theme';
+
 import { useAccessibilitySettings, announce } from '../../lib/accessibility';
 import type { Question } from '../../types/models';
 
@@ -25,6 +26,9 @@ export function QuestionCard({
   children,
   direction = 'next',
 }: QuestionCardProps) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   const translateX = useSharedValue(0);
   const opacity = useSharedValue(1);
   const { reduceMotion, screenReaderEnabled } = useAccessibilitySettings();
@@ -73,7 +77,8 @@ export function QuestionCard({
   );
 }
 
-const styles = StyleSheet.create({
+function getstyles(theme: any) {
+  return StyleSheet.create({
   card: {
     backgroundColor: theme.colors.surface,
     borderRadius: theme.radius.lg,
@@ -113,3 +118,4 @@ const styles = StyleSheet.create({
     gap: 14,
   },
 });
+}

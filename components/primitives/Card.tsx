@@ -7,7 +7,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { haptic } from '../../lib/haptics';
-import { theme } from '../../lib/theme';
+import { useTheme } from '../../lib/theme';
+
 
 export type CardVariant = 'default' | 'elevated' | 'outlined' | 'ghost' | 'gradient';
 export type CardPadding = 'none' | 'sm' | 'md' | 'lg' | 'xl';
@@ -20,14 +21,6 @@ interface CardProps {
   style?: StyleProp<ViewStyle>;
 }
 
-const paddingMap: Record<CardPadding, number> = {
-  none: 0,
-  sm: theme.space(3),
-  md: theme.space(4),
-  lg: theme.space(5),
-  xl: theme.space(6),
-};
-
 export function Card({
   children,
   variant = 'default',
@@ -35,6 +28,16 @@ export function Card({
   onPress,
   style,
 }: CardProps) {
+  const { theme } = useTheme();
+
+  const paddingMap: Record<CardPadding, number> = {
+    none: 0,
+    sm: theme.space(3),
+    md: theme.space(4),
+    lg: theme.space(5),
+    xl: theme.space(6),
+  };
+
   const scale = useSharedValue(1);
   const shadowOpacity = useSharedValue<number>(
     variant === 'elevated' ? theme.shadows.md.shadowOpacity : theme.shadows.sm.shadowOpacity

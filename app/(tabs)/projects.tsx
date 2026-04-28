@@ -8,7 +8,6 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
-  TextInput,
   View,
 } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native';
@@ -27,7 +26,7 @@ import { Skeleton } from '../../components/Skeleton';
 import { MapPicker, type LatLng } from '../../components/MapPicker';
 import { projectsApi } from '../../lib/services';
 import { useToast } from '../../lib/toast';
-import { theme } from '../../lib/theme';
+import { useTheme } from '../../lib/theme';
 import { logError, toErrorMessage } from '../../lib/logError';
 import { friendlyError } from '../../lib/errorMap';
 import { haptic } from '../../lib/haptics';
@@ -37,13 +36,15 @@ import { TourGuide, type TourStep } from '../../components/TourGuide';
 type Stats = Record<string, { drafts: number; completed: number }>;
 
 export default function ProjectsScreen() {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+  const sheetStyles = useMemo(() => getsheetStyles(theme), [theme]);
   const router = useRouter();
   const toast = useToast();
   const [projects, setProjects] = useState<Project[]>([]);
   const [stats, setStats] = useState<Stats>({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [query, setQuery] = useState('');
   const [creating, setCreating] = useState(false);
   const openSwipeRefs = useRef(new Map<string, { close: () => void }>());
 
@@ -74,17 +75,6 @@ export default function ProjectsScreen() {
       void load();
     }, [load]),
   );
-
-  const filtered = useMemo(() => {
-    if (!query.trim()) return projects;
-    const q = query.toLowerCase();
-    return projects.filter(
-      p =>
-        p.name.toLowerCase().includes(q) ||
-        (p.company_name ?? '').toLowerCase().includes(q) ||
-        (p.address ?? '').toLowerCase().includes(q),
-    );
-  }, [projects, query]);
 
   const onDelete = (project: Project) => {
     Alert.alert(
@@ -162,27 +152,9 @@ export default function ProjectsScreen() {
           </Pressable>
         </View>
       </View>
-      {projects.length > 0 ? (
-        <View style={styles.searchWrap}>
-          <Ionicons name="search" size={18} color={theme.colors.inkSoft} />
-          <TextInput
-            value={query}
-            onChangeText={setQuery}
-            placeholder="ძებნა..."
-            placeholderTextColor={theme.colors.inkFaint}
-            style={styles.searchInput}
-          />
-          {query ? (
-            <Pressable onPress={() => setQuery('')} hitSlop={8} {...a11y('ძებნის გასუფთავება', 'შეეხეთ ძებნის ველის გასასუფთავებლად', 'button')}>
-              <Ionicons name="close-circle" size={18} color={theme.colors.inkFaint} />
-            </Pressable>
-          ) : null}
-        </View>
-      ) : null}
-
       <View ref={listRef} collapsable={false} style={{ flex: 1 }}>
       <FlatList
-        data={filtered}
+        data={projects}
         keyExtractor={p => p.id}
         contentContainerStyle={{ padding: 16, paddingBottom: 100, gap: 10 }}
         renderItem={({ item, index }) => (
@@ -222,13 +194,6 @@ export default function ProjectsScreen() {
                 <ProjectRowSkeleton key={`skeleton-${i}`} />
               ))}
             </View>
-          ) : query ? (
-            <EmptyState
-              type="projects"
-              title="ვერაფერი მოიძებნა"
-              subtitle="სცადეთ სხვა საძიებო სიტყვა."
-              compact
-            />
           ) : (
             <EmptyState
               type="projects"
@@ -282,6 +247,8 @@ function CreateProjectSheet({
   onClose: () => void;
   onCreated: (p: Project) => void;
 }) {
+  const { theme } = useTheme();
+  const sheetStyles = useMemo(() => getsheetStyles(theme), [theme]);
   const toast = useToast();
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
@@ -376,6 +343,9 @@ function CreateProjectSheet({
 }
 
 function ProjectRowSkeleton() {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   return (
     <Card padding={14}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -406,6 +376,8 @@ function ProjectRow({
   onSwipeOpen?: () => void;
   cardRef?: React.RefObject<View | null>;
 }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
   const swipeRef = useRef<any>(null);
   const renderRightActions = () => (
     <Pressable onPress={onDelete} style={styles.swipeDelete} {...a11y('წაშლა', 'შეეხეთ პროექტის წასაშლელად', 'button')}>
@@ -482,7 +454,8 @@ function ProjectRow({
   );
 }
 
-const styles = StyleSheet.create({
+function getstyles(theme: any) {
+  return StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -500,19 +473,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: theme.colors.accentSoft,
   },
-  searchWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: theme.colors.card,
-    marginHorizontal: 16,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: theme.colors.hairline,
-  },
-  searchInput: { flex: 1, color: theme.colors.ink, fontSize: 15, padding: 0 },
   iconBox: {
     width: 44,
     height: 44,
@@ -552,8 +512,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 });
+}
 
-const sheetStyles = StyleSheet.create({
+function getsheetStyles(theme: any) {
+  return StyleSheet.create({
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
@@ -586,3 +548,4 @@ const sheetStyles = StyleSheet.create({
     color: theme.colors.ink,
   },
 });
+}

@@ -1,7 +1,8 @@
 import React from 'react';
 import { Text, TextProps } from 'react-native';
 import { useScaledSize } from '../../lib/accessibility';
-import { theme } from '../../lib/theme';
+import { useTheme } from '../../lib/theme';
+
 
 interface A11yTextProps extends TextProps {
   size?: 'xs' | 'sm' | 'base' | 'lg' | 'xl' | '2xl';
@@ -19,6 +20,7 @@ const sizeMap = {
 };
 
 export function A11yText({ size = 'base', weight = 'normal', color, style, children, ...rest }: A11yTextProps) {
+  const { theme } = useTheme();
   const scaledSize = useScaledSize(sizeMap[size]);
 
   const weightMap = {
