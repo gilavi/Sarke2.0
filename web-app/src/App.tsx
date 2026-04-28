@@ -1,5 +1,4 @@
-import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from '@/lib/auth';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { AppShell } from '@/components/layout/AppShell';
@@ -9,28 +8,14 @@ import Forgot from '@/pages/auth/Forgot';
 import Reset from '@/pages/auth/Reset';
 import Home from '@/pages/Home';
 
-const BASE = '/Sarke2.0/app';
-
-// Pairs with public/404.html — when GitHub Pages 404-redirects a deep link
-// it puts the original path in `?/path`. Restore it to the URL bar.
-function GhPagesRedirectFix() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  useEffect(() => {
-    const match = location.search.match(/^\?\/([^&]*)(.*)/);
-    if (!match) return;
-    const path = match[1].replace(/~and~/g, '&');
-    const search = match[2] ? '?' + match[2].slice(1).replace(/~and~/g, '&') : '';
-    navigate(`/${path}${search}${location.hash}`, { replace: true });
-  }, [location, navigate]);
-  return null;
-}
-
+// HashRouter — GitHub Pages only honors 404.html at the site root, not in
+// subdirectories like /Sarke2.0/app/, so deep BrowserRouter links 404 in
+// production. Hash routing sidesteps this entirely (everything after `#` is
+// client-side). Same pattern as web/sarke-sign.
 export default function App() {
   return (
-    <BrowserRouter basename={BASE}>
+    <HashRouter>
       <AuthProvider>
-        <GhPagesRedirectFix />
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
@@ -49,6 +34,6 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>
-    </BrowserRouter>
+    </HashRouter>
   );
 }

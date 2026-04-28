@@ -17,7 +17,7 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 });
 
 // Web-side equivalent of the password-reset deep link target the mobile app uses.
-// Built from window.location so it works in dev (localhost) and prod (GH Pages) alike.
+// Hash-prefixed because we're on HashRouter (see App.tsx for why).
 export function passwordResetRedirect(): string {
-  return `${window.location.origin}${import.meta.env.BASE_URL}reset`;
+  return `${window.location.origin}${import.meta.env.BASE_URL}#/reset`;
 }
