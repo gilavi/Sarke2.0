@@ -36,6 +36,7 @@ import type {
   Project,
   Template,
 } from '../../types/models';
+import { useTranslation } from 'react-i18next';
 
 // ── Thumbnail ────────────────────────────────────────────────────────────────
 
@@ -107,6 +108,7 @@ const MemoizedCertItem = memo(function CertItem({
   styles,
   onDelete,
   onPress,
+  t,
 }: {
   item: Certificate;
   inspectionById: Map<string, Inspection>;
@@ -116,6 +118,7 @@ const MemoizedCertItem = memo(function CertItem({
   styles: any;
   onDelete: (cert: Certificate) => void;
   onPress: (cert: Certificate) => void;
+  t: (key: string) => string;
 }) {
   const insp = inspectionById.get(item.inspection_id) ?? null;
   const tpl = templateById.get(item.template_id) ?? null;
@@ -129,16 +132,16 @@ const MemoizedCertItem = memo(function CertItem({
   return (
     <Swipeable
       renderRightActions={() => (
-        <Pressable onPress={() => onDelete(item)} style={styles.swipeDelete} {...a11y('წაშლა', 'PDF რეპორტის წაშლა', 'button')}>
+        <Pressable onPress={() => onDelete(item)} style={styles.swipeDelete} {...a11y(t('common.delete'), 'PDF რეპორტის წაშლა', 'button')}>
           <Ionicons name="trash" size={18} color={theme.colors.white} />
           <Text style={{ color: theme.colors.white, fontWeight: '700', fontSize: 11 }}>
-            წაშლა
+            {t('common.delete')}
           </Text>
         </Pressable>
       )}
       overshootRight={false}
     >
-      <Pressable onPress={() => onPress(item)} {...a11y('PDF რეპორტი', 'დეტალების ნახვა', 'button')}>
+      <Pressable onPress={() => onPress(item)} {...a11y(t('certificates.pdfReport'), 'დეტალების ნახვა', 'button')}>
         <Card padding={12}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             {/* PDF thumbnail */}
@@ -147,13 +150,13 @@ const MemoizedCertItem = memo(function CertItem({
             {/* Metadata */}
             <View style={{ flex: 1, gap: 3 }}>
               <Text style={styles.rowTitle} numberOfLines={1}>
-                {tpl?.name ?? 'PDF რეპორტი'}
+                {tpl?.name ?? t('certificates.pdfReport')}
               </Text>
               <Text style={styles.rowMeta} numberOfLines={1}>
                 {proj?.name ?? '—'}
               </Text>
               <Text style={styles.rowDate}>
-                {new Date(item.generated_at).toLocaleString('ka')}
+                {new Date(item.generated_at).toLocaleString(t('common.localeTag'))}
               </Text>
 
               {/* Expert / qual badges */}
@@ -188,6 +191,7 @@ const MemoizedCertItem = memo(function CertItem({
 
 export default function CertificatesScreen() {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const thumbStyles = useMemo(() => getthumbStyles(theme), [theme]);
   const styles = useMemo(() => getstyles(theme), [theme]);
   const router = useRouter();
@@ -237,9 +241,9 @@ export default function CertificatesScreen() {
     try {
       await certificatesApi.remove(cert.id);
       setCerts(prev => prev.filter(c => c.id !== cert.id));
-      toast.success('წაიშალა');
+      toast.success(t('certificates.deleted'));
     } catch (e) {
-      toast.error(friendlyError(e, 'ვერ წაიშალა'));
+      toast.error(friendlyError(e, t('certificates.deleteError')));
     }
   }, [toast]);
 
@@ -253,13 +257,14 @@ export default function CertificatesScreen() {
       styles={styles}
       onDelete={deleteCert}
       onPress={openPreview}
+      t={t}
     />
-  ), [inspectionById, templateById, projectById, theme, styles, deleteCert, openPreview]);
+  ), [inspectionById, templateById, projectById, theme, styles, deleteCert, openPreview, t]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.title}>PDF რეპორტები</Text>
+        <Text style={styles.title}>{t('certificates.title')}</Text>
       </View>
       <FlatList
         data={certs}
@@ -289,10 +294,10 @@ export default function CertificatesScreen() {
           ) : (
             <EmptyState
               type="certificates"
-              title="PDF რეპორტები"
-              subtitle="დაასრულეთ ინსპექცია და დააგენერირეთ პირველი PDF რეპორტი"
+              title={t('certificates.emptyTitle')}
+              subtitle={t('certificates.emptyHint')}
               action={{
-                label: 'ახალი ინსპექცია',
+                label: t('certificates.emptyAction'),
                 icon: 'add-circle-outline',
                 onPress: () => router.push('/(tabs)/home'),
               }}

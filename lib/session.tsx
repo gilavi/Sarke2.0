@@ -1,5 +1,6 @@
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
@@ -8,6 +9,8 @@ import { purgeUserScopedStorage } from './storage-purge';
 import { logError } from './logError';
 import { TERMS_VERSION } from './terms';
 import type { AppUser } from '../types/models';
+
+const EMAIL_STORAGE_KEY = '@auth:email';
 
 // Dev-only: when expo.extra.useMockData is true, skip Supabase auth and pin a
 // fake signed-in user so the post-auth flows can be exercised without a real
@@ -169,6 +172,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       }
       lastUserId = nextUserId;
       if (session) {
+        try {
+          void AsyncStorage.setItem(EMAIL_STORAGE_KEY, session.user.email ?? '').catch(() => {});
+        } catch {
+          // Storage failure shouldn't block auth
+        }
         void safeLoadUser(session);
       } else {
         epoch++;
@@ -234,6 +242,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       },
       signOut: async () => {
         await supabase.auth.signOut();
+        await AsyncStorage.removeItem(EMAIL_STORAGE_KEY).catch(() => {});
       },
       resetPassword: async email => {
         const redirectTo = Linking.createURL('/reset');

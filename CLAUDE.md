@@ -31,6 +31,15 @@ If a change has zero user-facing or developer-facing impact (pure internal renam
 - **Storage buckets:** `certificates`, `answer-photos`, `pdfs`, `signatures`.
 - **Languages:** UI strings are in Georgian (ქართული). Do not auto-translate them to English.
 
+## Web codebases
+
+There are two separate web codebases in this repo. Neither shares code with the Expo mobile app — only Supabase.
+
+- **`web/` (sarke-sign):** tokenized signing page hosted at `https://gilavi.github.io/Sarke2.0/` (root). Linked from SMS in `lib/sms.ts` + `supabase/functions/send-signing-sms/`. Hash routing (`#/sign/<token>`). Don't change its base path — it would break in-flight SMS links.
+- **`web-app/` (dashboard):** new public dashboard at `https://gilavi.github.io/Sarke2.0/app/`. Vite + React + TypeScript + Tailwind. Reimplements features in HTML/CSS — no Expo, no React Native. **Mobile parity is not a goal** — changes here don't need to track the Expo app.
+
+Both deploy via separate GitHub Actions (`deploy-web.yml` and `deploy-web-app.yml`) to the same `gh-pages` branch under different `destination_dir` values; `keep_files: true` preserves the other app's tree.
+
 ## Things to Avoid
 
 - Don't add new top-level folders without updating the Directory Layout in README.md.

@@ -28,12 +28,7 @@ import { toErrorMessage } from '../../lib/logError';
 import { friendlyError } from '../../lib/errorMap';
 import { a11y } from '../../lib/accessibility';
 import type { ScheduleWithItem, Template } from '../../types/models';
-
-const WEEKDAY_LABELS = ['ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ', 'კვი'];
-const MONTH_LABELS = [
-  'იანვარი', 'თებერვალი', 'მარტი', 'აპრილი', 'მაისი', 'ივნისი',
-  'ივლისი', 'აგვისტო', 'სექტემბერი', 'ოქტომბერი', 'ნოემბერი', 'დეკემბერი',
-];
+import { useTranslation } from 'react-i18next';
 
 /** Local "YYYY-MM-DD" key for bucketing schedules by day. */
 function dayKey(d: Date): string {
@@ -92,6 +87,9 @@ function buildMonthGrid(year: number, month: number): Date[] {
 
 export default function CalendarScreen() {
   const { theme } = useTheme();
+  const { t } = useTranslation();
+  const WEEKDAY_LABELS = t('calendar.weekdayLabels', { returnObjects: true }) as string[];
+  const MONTH_LABELS = t('calendar.monthLabels', { returnObjects: true }) as string[];
   const styles = useMemo(() => getstyles(theme), [theme]);
   const router = useRouter();
   const toast = useToast();
@@ -168,19 +166,19 @@ export default function CalendarScreen() {
   };
 
   const startInspection = (schedule: ScheduleWithItem) => {
-    const system = templates.filter(t => t.is_system);
+    const system = templates.filter((tpl) => tpl.is_system);
     if (system.length === 0) {
-      toast.error('შაბლონი არ არის');
+      toast.error(t('errors.notFoundTemplate'));
       return;
     }
     const projectId = schedule.project_items?.project_id;
     if (!projectId) {
-      toast.error('პროექტი ვერ მოიძებნა');
+      toast.error(t('errors.notFoundProject'));
       return;
     }
-    const options = [...system.map(t => t.name), 'გაუქმება'];
+    const options = [...system.map((tpl) => tpl.name), t('common.cancel')];
     showActionSheetWithOptions(
-      { title: 'აირჩიეთ შაბლონი', options, cancelButtonIndex: options.length - 1 },
+      { title: t('home.chooseTemplate'), options, cancelButtonIndex: options.length - 1 },
       async idx => {
         if (idx == null || idx === options.length - 1) return;
         const tpl = system[idx];
@@ -192,7 +190,7 @@ export default function CalendarScreen() {
           });
           router.push(`/inspections/${q.id}/wizard` as any);
         } catch (e) {
-          toast.error(friendlyError(e, 'შექმნა ვერ მოხერხდა'));
+          toast.error(friendlyError(e, t('errors.createFailed')));
         }
       },
     );
@@ -201,16 +199,16 @@ export default function CalendarScreen() {
   const syncGoogle = async () => {
     const connected = await googleCalendar.isConnected();
     if (!connected) {
-      toast.info('ჯერ მიაერთეთ Google კალენდარი');
+      toast.info(t('errors.googleCalendarNotConnected'));
       router.push('/(tabs)/more' as any);
       return;
     }
     setSyncing(true);
     try {
       const count = await googleCalendar.pushAll(schedules);
-      toast.success(`დაემატა: ${count}`);
+      toast.success(t('calendar.addedCount', { count }));
     } catch (e) {
-      toast.error(friendlyError(e, 'სინქრონიზაცია ვერ მოხერხდა'));
+      toast.error(friendlyError(e, t('calendar.syncFailed')));
     } finally {
       setSyncing(false);
     }
@@ -221,33 +219,33 @@ export default function CalendarScreen() {
       <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
         {/* Header */}
         <View style={styles.headerRow}>
-          <Text style={styles.title}>კალენდარი</Text>
-          <Pressable onPress={syncGoogle} hitSlop={8} style={styles.syncBtn} {...a11y('სინქრონიზაცია', 'Google კალენდართან სინქრონიზაცია', 'button')}>
+          <Text style={styles.title}>{t('calendar.title')}</Text>
+          <Pressable onPress={syncGoogle} hitSlop={8} style={styles.syncBtn}>
             <Ionicons
               name={syncing ? 'sync' : 'cloud-upload-outline'}
               size={14}
               color={theme.colors.accent}
             />
-            <Text style={styles.syncBtnText}>სინქრონიზაცია</Text>
+            <Text style={styles.syncBtnText}>{t('calendar.sync')}</Text>
           </Pressable>
         </View>
 
         {/* Summary pills */}
         <View style={styles.summaryRow}>
           <SummaryPill
-            label="ვადაგასული"
+            label={t('calendar.filterExpired')}
             value={overdue}
             tint={theme.colors.danger}
             bg={theme.colors.dangerSoft}
           />
           <SummaryPill
-            label="ამ კვირას"
+            label={t('calendar.filterThisWeek')}
             value={thisWeek}
             tint={theme.colors.accent}
             bg={theme.colors.accentSoft}
           />
           <SummaryPill
-            label="ამ თვეში"
+            label={t('calendar.filterThisMonth')}
             value={thisMonth}
             tint={theme.colors.harnessTint}
             bg={theme.colors.harnessSoft}
@@ -256,7 +254,7 @@ export default function CalendarScreen() {
 
         {/* Month navigation */}
         <View style={styles.monthNav}>
-          <Pressable onPress={prevMonth} hitSlop={10} style={styles.chevBtn} {...a11y('წინა თვე', 'წინა თვეზე გადასვლა', 'button')}>
+          <Pressable onPress={prevMonth} hitSlop={10} style={styles.chevBtn}>
             <Ionicons name="chevron-back" size={20} color={theme.colors.ink} />
           </Pressable>
           <View style={{ flex: 1, alignItems: 'center' }}>
@@ -264,10 +262,10 @@ export default function CalendarScreen() {
               {MONTH_LABELS[month.getMonth()]} {month.getFullYear()}
             </Text>
           </View>
-          <Pressable onPress={jumpToday} hitSlop={8} style={styles.todayBtn} {...a11y('დღეს', 'დღევანდელ თარიღზე გადასვლა', 'button')}>
-            <Text style={styles.todayBtnText}>დღეს</Text>
+          <Pressable onPress={jumpToday} hitSlop={8} style={styles.todayBtn}>
+            <Text style={styles.todayBtnText}>{t('calendar.today')}</Text>
           </Pressable>
-          <Pressable onPress={nextMonth} hitSlop={10} style={styles.chevBtn} {...a11y('შემდეგი თვე', 'შემდეგ თვეზე გადასვლა', 'button')}>
+          <Pressable onPress={nextMonth} hitSlop={10} style={styles.chevBtn}>
             <Ionicons name="chevron-forward" size={20} color={theme.colors.ink} />
           </Pressable>
         </View>
@@ -304,7 +302,7 @@ export default function CalendarScreen() {
                 style={tileStyle}
                 {...a11y(
                   `${d.getDate()} ${MONTH_LABELS[d.getMonth()]}`,
-                  items.length > 0 ? `${items.length} შემოწმება` : undefined,
+                  items.length > 0 ? t('calendar.inspectionCount', { count: items.length }) : undefined,
                   'button',
                 )}
               >
@@ -353,7 +351,7 @@ export default function CalendarScreen() {
         {/* Day list */}
         <View style={{ paddingHorizontal: 16, marginTop: 20, gap: 10 }}>
           <Text style={styles.dayListTitle}>
-            {selected.toLocaleDateString('ka-GE', {
+            {selected.toLocaleDateString(t('common.localeTag', { defaultValue: 'ka-GE' }), {
               weekday: 'long',
               day: 'numeric',
               month: 'long',
@@ -377,7 +375,7 @@ export default function CalendarScreen() {
           ) : daySchedules.length === 0 ? (
             <Card>
               <Text style={{ color: theme.colors.inkSoft, fontSize: 13 }}>
-                შემოწმება არ არის ამ დღეს.
+                {t('calendar.noInspections')}
               </Text>
             </Card>
           ) : (
@@ -414,8 +412,8 @@ export default function CalendarScreen() {
                         {projectName}
                       </Text>
                     </View>
-                    <Pressable onPress={() => startInspection(s)} style={styles.startBtn} {...a11y('დაწყება', 'ინსპექციის დაწყება', 'button')}>
-                      <Text style={styles.startBtnText}>დაწყება</Text>
+                    <Pressable onPress={() => startInspection(s)} style={styles.startBtn}>
+                      <Text style={styles.startBtnText}>{t('calendar.start')}</Text>
                     </Pressable>
                   </View>
                 </Card>

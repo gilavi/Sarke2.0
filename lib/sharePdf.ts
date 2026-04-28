@@ -14,7 +14,9 @@ import { STORAGE_BUCKETS } from './supabase';
 export async function shareStoredPdf(storagePath: string): Promise<void> {
   const url = storageApi.publicUrl(STORAGE_BUCKETS.pdfs, storagePath);
   const name = storagePath.split('/').pop() ?? 'report.pdf';
-  const localUri = (FileSystem.cacheDirectory ?? FileSystem.documentDirectory!) + name;
+  const baseDir = FileSystem.cacheDirectory ?? FileSystem.documentDirectory;
+  if (!baseDir) throw new Error('No filesystem directory available for PDF sharing');
+  const localUri = baseDir + name;
   const { uri } = await FileSystem.downloadAsync(url, localUri);
   if (await Sharing.isAvailableAsync()) {
     await Sharing.shareAsync(uri, { mimeType: 'application/pdf' });

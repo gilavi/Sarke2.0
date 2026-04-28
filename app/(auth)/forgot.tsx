@@ -14,9 +14,11 @@ import { useTheme } from '../../lib/theme';
 
 import { toErrorMessage } from '../../lib/logError';
 import { a11y } from '../../lib/accessibility';
+import { useTranslation } from 'react-i18next';
 
 export default function ForgotPasswordScreen() {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false);
@@ -32,7 +34,7 @@ export default function ForgotPasswordScreen() {
       if (error) throw error;
       setSent(true);
     } catch (e) {
-      setError(toErrorMessage(e, 'უცნობი შეცდომა'));
+      setError(toErrorMessage(e, t('errors.unknown')));
     } finally {
       setBusy(false);
     }
@@ -55,13 +57,13 @@ export default function ForgotPasswordScreen() {
             contentContainerStyle={{ paddingHorizontal: 22, paddingTop: 40, paddingBottom: 40 }}
             keyboardShouldPersistTaps="handled"
           >
-            <BackButton label="შესვლა" style={{ marginBottom: 18 }} />
+            <BackButton label={t('auth.login')} style={{ marginBottom: 18 }} />
 
             <Text style={{ fontSize: 28, fontWeight: '900', color: theme.colors.ink }}>
-              პაროლის აღდგენა
+              {t('auth.resetTitle')}
             </Text>
             <Text style={{ color: theme.colors.inkSoft, marginTop: 6 }}>
-              შეიყვანეთ ელ-ფოსტა და გამოგიგზავნით ბმულს პაროლის შესაცვლელად.
+              {t('auth.resetSubtitle')}
             </Text>
 
             <Card padding={22} style={{ marginTop: 22 }}>
@@ -70,17 +72,17 @@ export default function ForgotPasswordScreen() {
                   <View style={{ alignItems: 'center', gap: 10 }}>
                     <Ionicons name="mail-outline" size={42} color={theme.colors.accent} />
                     <Text style={{ fontSize: 18, fontWeight: '700', color: theme.colors.ink, textAlign: 'center' }}>
-                      ბმული გაიგზავნა
+                      {t('auth.linkSent')}
                     </Text>
                     <Text style={{ color: theme.colors.inkSoft, textAlign: 'center' }}>
-                      შეამოწმეთ {email.trim()}. ბმულზე დაჭერით დაბრუნდებით აპლიკაციაში ახალი პაროლის შესაყვანად.
+                      {t('auth.linkSentBody', { email: email.trim() })}
                     </Text>
                   </View>
-                  <Button title="შესვლა" onPress={() => router.replace('/(auth)/login')} {...a11y('შესვლა', 'გადავა შესვლის ეკრანზე', 'button')} />
+                  <Button title={t('auth.login')} onPress={() => router.replace('/(auth)/login')} />
                 </View>
               ) : (
                 <View style={{ gap: 14 }}>
-                  <Field label="ელ-ფოსტა">
+                  <Field label={t('common.email')}>
                     <Input
                       value={email}
                       onChangeText={setEmail}
@@ -91,7 +93,7 @@ export default function ForgotPasswordScreen() {
                     />
                   </Field>
                   {error ? <ErrorText>{error}</ErrorText> : null}
-                  <Button title="ბმულის გაგზავნა" onPress={submit} loading={busy} disabled={!email.trim()} {...a11y('ბმულის გაგზავნა', 'პაროლის აღსადგენი ბმულის გაგზავნა ელ-ფოსტაზე', 'button')} />
+                  <Button title={t('auth.sendLink')} onPress={submit} loading={busy} disabled={!email.trim()} />
                 </View>
               )}
             </Card>

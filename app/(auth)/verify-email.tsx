@@ -22,6 +22,7 @@ import { toErrorMessage } from '../../lib/logError';
 import { a11y } from '../../lib/accessibility';
 import { Button, Card } from '../../components/ui';
 import { BackButton } from '../../components/BackButton';
+import { useTranslation } from 'react-i18next';
 
 const CODE_LENGTH = 6;
 const RESEND_COOLDOWN_SEC = 30;
@@ -44,20 +45,21 @@ async function writePersistedCooldown(email: string, seconds: number): Promise<v
   await AsyncStorage.setItem(cooldownKey(email), String(Date.now() + seconds * 1000)).catch(() => {});
 }
 
-function friendlyError(msg: string): string {
-  const lower = (msg ?? '').toLowerCase();
-  if (lower.includes('expired')) return 'კოდის ვადა ამოიწურა. მოითხოვეთ ახალი.';
-  if (lower.includes('invalid') || lower.includes('token'))
-    return 'არასწორი კოდი. გთხოვთ, სცადოთ კიდევ ერთხელ.';
-  if (lower.includes('rate limit') || lower.includes('too many'))
-    return 'ძალიან ბევრი მცდელობა. მოიცადეთ და კვლავ სცადეთ.';
-  if (lower.includes('network') || lower.includes('fetch failed'))
-    return 'ქსელის შეცდომა. შეამოწმეთ ინტერნეტ კავშირი.';
-  return msg || 'უცნობი შეცდომა';
+function makeFriendlyError(t: (k: string) => string) {
+  return (msg: string): string => {
+    const lower = (msg ?? '').toLowerCase();
+    if (lower.includes('expired')) return t('auth.codeExpired');
+    if (lower.includes('invalid') || lower.includes('token')) return t('auth.invalidCode');
+    if (lower.includes('rate limit') || lower.includes('too many')) return t('errors.tooManyAttempts');
+    if (lower.includes('network') || lower.includes('fetch failed')) return t('errors.network');
+    return msg || t('errors.unknown');
+  };
 }
 
 export default function VerifyEmailScreen() {
   const { theme } = useTheme();
+  const { t } = useTranslation();
+  const friendlyError = makeFriendlyError(t);
   const styles = useMemo(() => getstyles(theme), [theme]);
   const { email: emailParam } = useLocalSearchParams<{ email?: string }>();
   const email = (emailParam ?? '').toString();
@@ -121,7 +123,7 @@ export default function VerifyEmailScreen() {
     setError(null);
     try {
       await resendSignupOtp(email);
-      toast.success('კოდი გამოგზავნილია');
+      toast.success(t('auth.codeSent'));
       setCooldown(RESEND_COOLDOWN_SEC);
       void writePersistedCooldown(email, RESEND_COOLDOWN_SEC);
     } catch (e) {
@@ -151,22 +153,20 @@ export default function VerifyEmailScreen() {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <BackButton label="შესვლა" style={styles.backBtn} />
+            <BackButton label={t('auth.login')} style={styles.backBtn} />
 
             <View style={{ alignItems: 'center', gap: 12, marginTop: 24 }}>
               <View style={styles.iconCircle}>
                 <Ionicons name="mail-unread-outline" size={40} color={theme.colors.accent} />
               </View>
-              <Text style={styles.title}>შეამოწმეთ ელ-ფოსტა</Text>
+              <Text style={styles.title}>{t('auth.checkEmail')}</Text>
               <Text style={styles.subtitle}>
-                {'დადასტურების კოდი გაიგზავნა\n'}
-                <Text style={{ color: theme.colors.ink, fontWeight: '700' }}>{email}</Text>
-                {'-ზე'}
+                {t('auth.verifyCodeSent', { email })}
               </Text>
             </View>
 
             <Card padding={22} style={{ marginTop: 28 }}>
-              <Pressable onPress={() => inputRef.current?.focus()} style={styles.cellsRow} {...a11y('დადასტურების კოდის ველი', 'დააჭირეთ კოდის შესაყვანად', 'button')}>
+              <Pressable onPress={() => inputRef.current?.focus()} style={styles.cellsRow}>
                 {cells.map((ch, i) => (
                   <View
                     key={i}
@@ -207,23 +207,21 @@ export default function VerifyEmailScreen() {
               ) : null}
 
               <Button
-                title="დადასტურება"
+                title={t('auth.verifyConfirm')}
                 onPress={() => submit()}
                 loading={busy}
                 disabled={code.length !== CODE_LENGTH}
                 style={{ marginTop: 18 }}
-                {...a11y('დადასტურება', 'ელ-ფოსტის დადასტურება კოდით', 'button')}
               />
 
               <View style={styles.resendRow}>
                 <Text style={{ color: theme.colors.inkSoft, fontSize: 13 }}>
-                  კოდი არ მიგიღიათ?
+                  {t('auth.didntReceiveCode')}
                 </Text>
                 <Pressable
                   onPress={handleResend}
                   disabled={cooldown > 0 || resendBusy}
                   hitSlop={8}
-                  {...a11y('კოდის ხელახლა გაგზავნა', 'ახალი დადასტურების კოდის მოთხოვნა', 'button')}
                 >
                   <Text
                     style={[
@@ -231,7 +229,7 @@ export default function VerifyEmailScreen() {
                       (cooldown > 0 || resendBusy) && { color: theme.colors.inkFaint },
                     ]}
                   >
-                    {cooldown > 0 ? `ხელახლა გაგზავნა (${cooldown}წ)` : 'ხელახლა გაგზავნა'}
+                    {cooldown > 0 ? t('auth.resendIn', { n: cooldown }) : t('auth.resend')}
                   </Text>
                 </Pressable>
               </View>

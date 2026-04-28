@@ -1,21 +1,18 @@
 // Generate a PDF report from an existing completed inspection.
 //
-// Reached from the done screen or the inspection detail CTA.
-// Lets the inspector review/pick qualification certs, add extra certs,
-// confirm their own signature, and optionally collect other signers —
-// all before generating the PDF.
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+// Reached from the done screen or the inspection detail CTA. Lets the
+// inspector review/pick qualification certs, manage participants
+// (project crew — same widget as the project screen), and generate the PDF.
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Pressable,
   ScrollView,
   StyleSheet,
-  TextInput,
   View,
 } from 'react-native';
-import { Image } from 'expo-image';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { loadPdfLanguage, savePdfLanguage, type PdfLanguage } from '../../lib/pdfLanguagePref';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
@@ -31,12 +28,12 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-import { Button, Screen } from '../../components/ui';
-import { AnimatedCheckboxView } from '../../components/primitives';
+import { Screen } from '../../components/ui';
 import { SkeletonCard, SkeletonListCard } from '../../components/Skeleton';
+import { RoleSlotList, type InspectorRow } from '../../components/RoleSlotList';
 import { useTheme } from '../../lib/theme';
+import { useTranslation } from 'react-i18next';
 
-import { SignatureCanvas } from '../../components/SignatureCanvas';
 import {
   answersApi,
   certificatesApi,
@@ -53,54 +50,47 @@ import {
   getStorageImageDataUrl,
   getStorageImageDataUrlStrict,
 } from '../../lib/imageUrl';
-import { dataUrlToTempFile } from '../../lib/blob';
 import { flushPendingSignatures } from '../../lib/signatures';
 import { buildPdfHtml } from '../../lib/pdf';
 import { pickProjectLogo } from '../../lib/projectLogo';
 import { useToast } from '../../lib/toast';
-import { logError, toErrorMessage } from '../../lib/logError';
+import { logError } from '../../lib/logError';
+import { friendlyError } from '../../lib/errorMap';
 import type {
   Answer,
   AnswerPhoto,
+  CrewMember,
   Inspection,
   Project,
-  ProjectSigner,
   Qualification,
   Question,
   SignatureRecord,
   SignerRole,
   Template,
 } from '../../types/models';
-import { SIGNER_ROLE_LABEL } from '../../types/models';
 import { a11y } from '../../lib/accessibility';
-
-// ── Types ────────────────────────────────────────────────────────────────────
-
-const OTHER_SIGNER_ROLES: SignerRole[] = ['xaracho_supervisor', 'xaracho_assembler'];
-
-interface AdditionalSigner {
-  id: string;
-  name: string;
-  role: SignerRole;
-  dataUrl: string | null;
-}
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const STAGGER_MS = 50;
 
+// `CrewMember.roleKey` values match `SignerRole` 1:1 since migration 0016
+// added 'other' to the signer_role enum.
+const crewRoleToSigner = (key: CrewMember['roleKey']): SignerRole => key;
+
 // ── Screen ───────────────────────────────────────────────────────────────────
 
 export default function GenerateCertificateScreen() {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const s = useMemo(() => gets(theme), [theme]);
   const urlParams = useLocalSearchParams<{ inspectionId?: string }>();
   const inspectionId = urlParams.inspectionId ?? null;
   const router = useRouter();
   const toast = useToast();
   const showActionSheetWithOptions = useBottomSheet();
-  const { state } = useSession();
-  const user = state.status === 'signedIn' ? state.user : null;
+  const session = useSession();
+  const user = session.state.status === 'signedIn' ? session.state.user : null;
 
   // Core data
   const [inspection, setInspection] = useState<Inspection | null>(null);
@@ -113,38 +103,40 @@ export default function GenerateCertificateScreen() {
 
   const [selectedQuals, setSelectedQuals] = useState<Record<string, string>>({});
   const [extraQualIds, setExtraQualIds] = useState<string[]>([]);
-  const [additionalSigners, setAdditionalSigners] = useState<AdditionalSigner[]>([]);
-  const [projectSigners, setProjectSigners] = useState<ProjectSigner[]>([]);
-  const [selectedRosterIds, setSelectedRosterIds] = useState<Set<string>>(new Set());
-  const [rosterDataUrls, setRosterDataUrls] = useState<Record<string, string>>({});
-  const [captureRosterId, setCaptureRosterId] = useState<string | null>(null);
-  const [expertSigDisplayUrl, setExpertSigDisplayUrl] = useState<string | null>(null);
-  const [captureSignerId, setCaptureSignerId] = useState<string | null>(null);
   const [uploadingFor, setUploadingFor] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [pdfLanguage, setPdfLanguage] = useState<'ka' | 'en'>('ka');
+  const [pdfLanguage, setPdfLanguage] = useState<PdfLanguage>('ka');
 
   const btnScale = useSharedValue(1);
 
   // ── PDF language persistence ────────────────────────────────────────────────
   useEffect(() => {
-    AsyncStorage.getItem('pdf_language')
-      .then(val => { if (val === 'ka' || val === 'en') setPdfLanguage(val); })
-      .catch(() => {});
+    void loadPdfLanguage().then(setPdfLanguage);
   }, []);
 
-  const setPdfLang = async (lang: 'ka' | 'en') => {
+  const setPdfLang = async (lang: PdfLanguage) => {
     setPdfLanguage(lang);
-    try { await AsyncStorage.setItem('pdf_language', lang); } catch {}
+    await savePdfLanguage(lang);
   };
+
+  // ── Inspector row (locked top of RoleSlotList; never persisted to crew) ─────
+  const inspector: InspectorRow | null = useMemo(() => {
+    if (session.state.status !== 'signedIn') return null;
+    const u = session.state.user;
+    const fallback = session.state.session.user.email ?? 'ინსპექტორი';
+    const name = u
+      ? `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim() || fallback
+      : fallback;
+    return { name, role: 'ინსპექტორი' };
+  }, [session.state]);
 
   // ── Load ────────────────────────────────────────────────────────────────────
 
   const load = useCallback(async () => {
     if (!inspectionId) {
-      toast.error('ინსპექცია არ არის მითითებული');
+      toast.error(t('errors.inspectionNotSpecified'));
       setLoading(false);
       return;
     }
@@ -152,7 +144,7 @@ export default function GenerateCertificateScreen() {
     try {
       const insp = await inspectionsApi.getById(inspectionId);
       if (!insp) {
-        toast.error('ინსპექცია ვერ მოიძებნა');
+        toast.error(t('errors.notFoundInspection'));
         setLoading(false);
         return;
       }
@@ -170,15 +162,10 @@ export default function GenerateCertificateScreen() {
       setAnswers(ans);
       setQuals(qualsList);
 
-      const roster = await projectsApi
-        .signers(insp.project_id)
-        .catch((e) => { logError(e, 'certNew.projectSigners'); return [] as ProjectSigner[]; });
-      setProjectSigners(roster);
-
       const initial: Record<string, string> = {};
-      for (const t of tpl?.required_qualifications ?? []) {
-        const first = qualsList.find(q => q.type === t);
-        if (first) initial[t] = first.id;
+      for (const tt of tpl?.required_qualifications ?? []) {
+        const first = qualsList.find(q => q.type === tt);
+        if (first) initial[tt] = first.id;
       }
       setSelectedQuals(initial);
 
@@ -189,25 +176,33 @@ export default function GenerateCertificateScreen() {
     } finally {
       setLoading(false);
     }
-  }, [inspectionId, toast]);
+  }, [inspectionId, toast, t]);
 
   useEffect(() => { void load(); }, [load]);
 
-  useEffect(() => {
-    let cancelled = false;
-    if (!user?.saved_signature_url) { setExpertSigDisplayUrl(null); return; }
-    getStorageImageDataUrl(STORAGE_BUCKETS.signatures, user.saved_signature_url)
-      .then(url => { if (!cancelled) setExpertSigDisplayUrl(url); })
-      .catch((e) => logError(e, 'certNew.expertSigUrl'));
-    return () => { cancelled = true; };
-  }, [user?.saved_signature_url]);
+  // ── Crew persistence (same source of truth as projects/[id].tsx) ────────────
+  const persistCrew = useCallback(
+    async (next: CrewMember[]) => {
+      if (!project) return;
+      const prev = project;
+      setProject({ ...project, crew: next });
+      try {
+        const saved = await projectsApi.update(project.id, { crew: next });
+        setProject(saved);
+      } catch (e) {
+        setProject(prev);
+        toast.error(friendlyError(e, t('projects.memberSaveError')));
+      }
+    },
+    [project, toast, t],
+  );
 
   // ── Derived ─────────────────────────────────────────────────────────────────
 
   const requiredCertTypes = template?.required_qualifications ?? [];
 
   const missingQualTypes = useMemo(
-    () => requiredCertTypes.filter(t => !selectedQuals[t]),
+    () => requiredCertTypes.filter(tt => !selectedQuals[tt]),
     [requiredCertTypes, selectedQuals],
   );
 
@@ -223,17 +218,17 @@ export default function GenerateCertificateScreen() {
     const matches = quals.filter(q => q.type === certType);
     if (matches.length === 0) {
       Alert.alert(
-        'კვალიფიკაცია არ არის',
-        'ატვირთეთ სერტიფიკატი ან ახლავე ატვირთეთ ახალი.',
+        t('certificates.qualificationMissingTitle'),
+        t('certificates.qualificationMissingDesc'),
         [
-          { text: 'გაუქმება', style: 'cancel' },
-          { text: 'ატვირთვა', onPress: () => void uploadQual(certType) },
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('certificates.uploadAction'), onPress: () => void uploadQual(certType) },
         ],
       );
       return;
     }
     const options = matches.map(m => `${m.type}${m.number ? ` · №${m.number}` : ''}`);
-    options.push('გაუქმება');
+    options.push(t('common.cancel'));
     showActionSheetWithOptions(
       { title: certType, options, cancelButtonIndex: options.length - 1 },
       idx => {
@@ -244,9 +239,9 @@ export default function GenerateCertificateScreen() {
   };
 
   const uploadQual = async (certType: string) => {
-    if (!user) { toast.error('ავტორიზაცია საჭიროა'); return; }
+    if (!user) { toast.error(t('errors.authRequired')); return; }
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) { toast.error('ფოტოზე წვდომა არ არის'); return; }
+    if (!perm.granted) { toast.error(t('errors.photoPermission')); return; }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.8,
@@ -258,8 +253,6 @@ export default function GenerateCertificateScreen() {
       const mime = asset.mimeType ?? 'image/jpeg';
       const ext = mime.split('/')[1] ?? 'jpg';
       const path = `${user.id}/${Date.now()}.${ext}`;
-      // Native upload — supabase-js's Blob/ArrayBuffer body silently lands
-      // 0-byte objects on Hermes/SDK 54.
       await storageApi.uploadFromUri(STORAGE_BUCKETS.certificates, path, asset.uri, mime);
       const qual = await qualificationsApi.upsert({
         id: crypto.randomUUID(),
@@ -272,9 +265,9 @@ export default function GenerateCertificateScreen() {
       });
       setQuals(prev => [qual, ...prev.filter(q => q.id !== qual.id)]);
       setSelectedQuals(prev => ({ ...prev, [certType]: qual.id }));
-      toast.success('სერტიფიკატი აიტვირთა');
+      toast.success(t('certificates.uploaded'));
     } catch (e) {
-      toast.error(toErrorMessage(e, 'ატვირთვა ვერ მოხერხდა'));
+      toast.error(friendlyError(e, t('errors.uploadFailed')));
     } finally {
       setUploadingFor(null);
     }
@@ -283,13 +276,13 @@ export default function GenerateCertificateScreen() {
   const addExtraQual = () => {
     const available = quals.filter(q => !usedQualIds.has(q.id));
     if (available.length === 0) {
-      toast.info('სხვა კვალიფიკაცია არ არის');
+      toast.info(t('certificates.noOtherQualifications'));
       return;
     }
     const options = available.map(q => `${q.type}${q.number ? ` · №${q.number}` : ''}`);
-    options.push('გაუქმება');
+    options.push(t('common.cancel'));
     showActionSheetWithOptions(
-      { title: 'დამატებითი სერტიფიკატი', options, cancelButtonIndex: options.length - 1 },
+      { title: t('certificates.additionalCerts'), options, cancelButtonIndex: options.length - 1 },
       idx => {
         if (idx == null || idx === options.length - 1) return;
         setExtraQualIds(prev => [...prev, available[idx].id]);
@@ -299,84 +292,6 @@ export default function GenerateCertificateScreen() {
 
   const removeExtraQual = (id: string) => {
     setExtraQualIds(prev => prev.filter(x => x !== id));
-  };
-
-  // ── Signer actions ──────────────────────────────────────────────────────────
-
-  const addSigner = () => {
-    const newSigner: AdditionalSigner = {
-      id: crypto.randomUUID(),
-      name: '',
-      role: 'xaracho_supervisor',
-      dataUrl: null,
-    };
-    setAdditionalSigners(prev => [...prev, newSigner]);
-  };
-
-  const updateSignerName = (id: string, name: string) => {
-    setAdditionalSigners(prev => prev.map(s => s.id === id ? { ...s, name } : s));
-  };
-
-  const pickSignerRole = (signerId: string) => {
-    const options = [...OTHER_SIGNER_ROLES.map(r => SIGNER_ROLE_LABEL[r]), 'გაუქმება'];
-    showActionSheetWithOptions(
-      { title: 'როლი', options, cancelButtonIndex: options.length - 1 },
-      idx => {
-        if (idx == null || idx === options.length - 1) return;
-        const role = OTHER_SIGNER_ROLES[idx];
-        setAdditionalSigners(prev => prev.map(s => s.id === signerId ? { ...s, role } : s));
-      },
-    );
-  };
-
-  const removeSigner = (id: string) => {
-    setAdditionalSigners(prev => prev.filter(s => s.id !== id));
-  };
-
-  const onSignatureCaptured = (base64: string) => {
-    const dataUrl = `data:image/png;base64,${base64}`;
-    if (captureRosterId) {
-      setRosterDataUrls(prev => ({ ...prev, [captureRosterId]: dataUrl }));
-      setSelectedRosterIds(prev => new Set(prev).add(captureRosterId));
-      setCaptureRosterId(null);
-      return;
-    }
-    if (!captureSignerId) return;
-    setAdditionalSigners(prev =>
-      prev.map(s =>
-        s.id === captureSignerId
-          ? { ...s, dataUrl }
-          : s,
-      ),
-    );
-    setCaptureSignerId(null);
-  };
-
-  const toggleRosterSigner = (signer: ProjectSigner) => {
-    const isSelected = selectedRosterIds.has(signer.id);
-    if (isSelected) {
-      setSelectedRosterIds(prev => {
-        const next = new Set(prev);
-        next.delete(signer.id);
-        return next;
-      });
-      return;
-    }
-    // No stored signature → open capture modal first; only mark selected
-    // once the user actually draws (handled in onSignatureCaptured).
-    if (!signer.signature_png_url) {
-      setCaptureRosterId(signer.id);
-      return;
-    }
-    // Has stored signature — flip the checkbox immediately and warm the
-    // data-URL cache in the background. The PDF generator will await this
-    // value when needed, so the UI doesn't have to.
-    setSelectedRosterIds(prev => new Set(prev).add(signer.id));
-    if (!rosterDataUrls[signer.id]) {
-      void getStorageImageDataUrl(STORAGE_BUCKETS.signatures, signer.signature_png_url)
-        .then(url => setRosterDataUrls(prev => ({ ...prev, [signer.id]: url })))
-        .catch(e => logError(e, 'certNew.rosterSigLoad'));
-    }
   };
 
   // ── Generate ─────────────────────────────────────────────────────────────────
@@ -405,116 +320,58 @@ export default function GenerateCertificateScreen() {
     return { rec, expertName };
   };
 
-  const persistAdditionalSigners = async (): Promise<SignatureRecord[]> => {
+  // Bridge each signed crew member from `project.crew` into the `signatures`
+  // table for this inspection. The in-memory record carries a data URL for
+  // PDF embedding; the DB row stores the storage path. The expert slot is
+  // handled by buildExpertRecord/persistExpertSignature, so skip it here.
+  const persistCrewSignatures = async (): Promise<SignatureRecord[]> => {
     const recs: SignatureRecord[] = [];
+    const crew = project?.crew ?? [];
 
-    // Pre-fetch existing signature rows so we can reuse their primary keys
-    // on conflict — the signatures table has a unique (inspection_id,
-    // signer_role) constraint, and the upsert's onConflict resolution can't
-    // change the row's `id` to a fresh UUID without violating the PK.
     const existingSigs = await signaturesApi.list(inspection!.id).catch(() => [] as SignatureRecord[]);
     const idForRole = (role: SignerRole): string => {
       const hit = existingSigs.find(x => x.signer_role === role);
       return hit?.id ?? crypto.randomUUID();
     };
 
-    // Ad-hoc signers: only persist when both a name AND a signature are present.
-    for (const s of additionalSigners.filter(x => x.name?.trim() && x.dataUrl)) {
-      const fileUri = await dataUrlToTempFile(s.dataUrl!, 'png');
-      const path = `${inspection!.id}/${s.id}-${Date.now()}.png`;
-      await storageApi.uploadFromUri(STORAGE_BUCKETS.signatures, path, fileUri, 'image/png');
-      const rowId = idForRole(s.role);
-      recs.push({
-        id: rowId,
-        inspection_id: inspection!.id,
-        signer_role: s.role,
-        full_name: s.name.trim(),
-        phone: null,
-        position: null,
-        signature_png_url: s.dataUrl,
-        signed_at: new Date().toISOString(),
-        status: 'signed',
-        person_name: s.name.trim(),
-      });
-      await signaturesApi.upsert({
-        id: rowId,
-        inspection_id: inspection!.id,
-        signer_role: s.role,
-        full_name: s.name.trim(),
-        phone: null,
-        position: null,
-        signature_png_url: path,
-        status: 'signed',
-        person_name: s.name.trim(),
-      });
-      // Save into the project roster so it's reusable next time.
-      await projectsApi.saveRosterSignature({
-        project_id: inspection!.project_id,
-        role: s.role,
-        full_name: s.name.trim(),
-        signature_png_url: path,
-      }).catch((e) => logError(e, 'certNew.rosterUpsertAdhoc'));
-    }
+    for (const member of crew) {
+      if (member.roleKey === 'expert') continue;
+      if (!member.signature || !member.name?.trim()) continue;
 
-    // Roster signers: include each selected signer. The data-URL load is
-    // kicked off lazily on toggle; if it hasn't resolved by the time the
-    // user hits "generate", await it inline here so the PDF still embeds
-    // the signature without forcing a perceived delay on the checkbox tap.
-    for (const signer of projectSigners.filter(p => selectedRosterIds.has(p.id))) {
-      let dataUrl = rosterDataUrls[signer.id];
-      if (!dataUrl && signer.signature_png_url) {
-        try {
-          dataUrl = await getStorageImageDataUrl(STORAGE_BUCKETS.signatures, signer.signature_png_url);
-          setRosterDataUrls(prev => ({ ...prev, [signer.id]: dataUrl! }));
-        } catch (e) {
-          logError(e, 'certNew.rosterSigLazyLoad');
-          continue;
-        }
+      let dataUrl: string;
+      try {
+        dataUrl = await getStorageImageDataUrl(STORAGE_BUCKETS.signatures, member.signature);
+      } catch (e) {
+        logError(e, 'certNew.crewSigLoad');
+        continue;
       }
-      if (!dataUrl) continue;
-      let storagePath = signer.signature_png_url;
-      // Newly captured (no stored path yet) — upload + persist back to roster.
-      if (!storagePath) {
-        const fileUri = await dataUrlToTempFile(dataUrl, 'png');
-        const path = `${inspection!.project_id}/roster-${signer.id}-${Date.now()}.png`;
-        await storageApi.uploadFromUri(STORAGE_BUCKETS.signatures, path, fileUri, 'image/png');
-        storagePath = path;
-        await projectsApi.saveRosterSignature({
-          project_id: inspection!.project_id,
-          role: signer.role,
-          full_name: signer.full_name,
-          phone: signer.phone,
-          position: signer.position,
-          signature_png_url: path,
-        }).catch((e) => logError(e, 'certNew.rosterUpsertRoster'));
-      }
-      // Reuse the existing signatures-row id when one is already on file
-      // for this (inspection, role) — otherwise mint a fresh UUID. Using
-      // project_signer.id directly collides with the signatures.id PK
-      // when the same roster signer appears in multiple inspections.
-      const signatureRowId = idForRole(signer.role);
+
+      const role = crewRoleToSigner(member.roleKey);
+      const rowId = idForRole(role);
+      const positionLabel = member.role || null;
+
       recs.push({
-        id: signatureRowId,
+        id: rowId,
         inspection_id: inspection!.id,
-        signer_role: signer.role,
-        full_name: signer.full_name,
-        phone: signer.phone,
-        position: signer.position,
+        signer_role: role,
+        full_name: member.name.trim(),
+        phone: null,
+        position: positionLabel,
         signature_png_url: dataUrl,
         signed_at: new Date().toISOString(),
         status: 'signed',
-        person_name: signer.full_name,
+        person_name: member.name.trim(),
       });
       await signaturesApi.upsert({
-        id: signatureRowId,
+        id: rowId,
         inspection_id: inspection!.id,
-        signer_role: signer.role,
-        full_name: signer.full_name,
-        phone: signer.phone,
-        position: signer.position,
-        signature_png_url: storagePath,
+        signer_role: role,
+        full_name: member.name.trim(),
+        phone: null,
+        position: positionLabel,
+        signature_png_url: member.signature,
         status: 'signed',
-        person_name: signer.full_name,
+        person_name: member.name.trim(),
       });
     }
 
@@ -555,8 +412,6 @@ export default function GenerateCertificateScreen() {
             } catch (err) {
               failedAssetCount += 1;
               logError(err, `certificates.embedPhoto:${p.storage_path}`);
-              // Sentinel: empty string is not a `data:` URL, so renderPhoto()
-              // will draw the existing "image unavailable" placeholder.
               return { ...p, storage_path: '' };
             }
           }),
@@ -564,7 +419,7 @@ export default function GenerateCertificateScreen() {
       }),
     );
     const allQualIds = [
-      ...requiredCertTypes.map(t => selectedQuals[t]).filter(Boolean),
+      ...requiredCertTypes.map(tt => selectedQuals[tt]).filter(Boolean),
       ...extraQualIds,
     ];
     const attachedQuals: Array<Qualification & { file_data_url?: string }> = [];
@@ -589,23 +444,69 @@ export default function GenerateCertificateScreen() {
     return { photosForPdf, attachedQuals, failedAssetCount };
   };
 
-  const runGeneration = async (projectForPdf: Project) => {
-    if (!inspection || !template) return;
+  const generate = async () => {
+    if (!inspection || !template || !project) return;
+    if (missingQualTypes.length > 0) {
+      Alert.alert(
+        t('errors.missingQualification'),
+        t('errors.missingQualificationDesc', { types: missingQualTypes.join(', ') }),
+      );
+      return;
+    }
+    let projectForPdf = project;
+    if (!project.logo) {
+      const proceed = await new Promise<'add' | 'skip' | 'cancel'>(resolve => {
+        Alert.alert(
+          t('certificates.addLogoTitle'),
+          t('certificates.addLogoBody'),
+          [
+            { text: t('common.cancel'), style: 'cancel', onPress: () => resolve('cancel') },
+            { text: t('common.skip'), onPress: () => resolve('skip') },
+            { text: t('certificates.addLogoAdd'), onPress: () => resolve('add') },
+          ],
+          { cancelable: true, onDismiss: () => resolve('cancel') },
+        );
+      });
+      if (proceed === 'cancel') return;
+      if (proceed === 'add') {
+        const logo = await pickProjectLogo();
+        if (logo) {
+          try {
+            const saved = await projectsApi.update(project.id, { logo });
+            setProject(saved);
+            projectForPdf = saved;
+          } catch (e) {
+            logError(e, 'certNew.saveLogo');
+            toast.error(t('certificates.logoSaveFailed'));
+          }
+        }
+      }
+    }
+    if (!user?.saved_signature_url) {
+      Alert.alert(
+        t('errors.signatureRequired'),
+        t('errors.signatureRequiredDesc'),
+        [
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('certificates.drawAction'), onPress: () => router.push('/signature' as any) },
+        ],
+      );
+      return;
+    }
+    setBusy(true);
     let uploadedPdfPath: string | null = null;
     try {
-      // Retry any signature uploads that were queued offline before we try
-      // to embed them into the PDF.
       await flushPendingSignatures();
       const { rec: expertRec, expertName } = await buildExpertRecord();
-      const otherRecs = await persistAdditionalSigners();
+      const otherRecs = await persistCrewSignatures();
       await persistExpertSignature(expertName);
       const sigsForPdf = [expertRec, ...otherRecs];
 
       const { photosForPdf, attachedQuals, failedAssetCount } = await buildPdfAssets();
 
       const html = buildPdfHtml({
-        questionnaire: inspection!,
-        template: template!,
+        questionnaire: inspection,
+        template,
         project: projectForPdf,
         questions,
         answers,
@@ -621,94 +522,46 @@ export default function GenerateCertificateScreen() {
       await storageApi.upload(STORAGE_BUCKETS.pdfs, fileName, blob, 'application/pdf');
       uploadedPdfPath = fileName;
 
-      await certificatesApi.create({
-        inspectionId: inspection.id,
-        templateId: inspection.template_id,
-        pdfUrl: fileName,
-        isSafeForUse: inspection.is_safe_for_use,
-        conclusionText: inspection.conclusion_text,
-        params: {
-          expertName,
-          qualTypes: attachedQuals.map(q => ({ type: q.type, number: q.number ?? null })),
-          signerNames: otherRecs.map(s => s.full_name),
-          localUri: uri,
-        },
-      });
+      try {
+        await certificatesApi.create({
+          inspectionId: inspection.id,
+          templateId: inspection.template_id,
+          pdfUrl: fileName,
+          isSafeForUse: inspection.is_safe_for_use,
+          conclusionText: inspection.conclusion_text,
+          params: {
+            expertName,
+            qualTypes: attachedQuals.map(q => ({ type: q.type, number: q.number ?? null })),
+            signerNames: otherRecs.map(rec => rec.full_name),
+          },
+        });
+      } catch (createErr) {
+        // Roll back the orphaned PDF blob before surfacing the error.
+        await storageApi.remove(STORAGE_BUCKETS.pdfs, fileName).catch(rmErr => {
+          logError(rmErr, 'certNew.rollbackPdf');
+        });
+        throw createErr;
+      }
       uploadedPdfPath = null;
 
-      toast.success('PDF რეპორტი შეიქმნა');
-      // NOTE: silently swallow failedAssetCount — the PDF renderer already
-      // shows a clean placeholder for any images that couldn't be embedded.
-      // Alerting the user was causing false positives (photos rendered fine).
-      void failedAssetCount;
+      toast.success(t('certificates.generateSuccess'));
+      if (failedAssetCount > 0) {
+        toast.error(t('certificates.assetsMissing', { count: failedAssetCount }));
+      }
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri, { mimeType: 'application/pdf' });
       }
       router.replace(`/inspections/${inspection.id}` as any);
     } catch (e) {
       if (uploadedPdfPath) {
-        await storageApi.remove(STORAGE_BUCKETS.pdfs, uploadedPdfPath);
+        await storageApi.remove(STORAGE_BUCKETS.pdfs, uploadedPdfPath).catch(rmErr => {
+          logError(rmErr, 'certNew.rollbackPdf');
+        });
       }
-      toast.error(toErrorMessage(e, 'გენერაცია ვერ მოხერხდა'));
+      toast.error(friendlyError(e, t('errors.generationFailed')));
     } finally {
       setBusy(false);
     }
-  };
-
-  const generate = async () => {
-    if (!inspection || !template || !project) return;
-    if (missingQualTypes.length > 0) {
-      Alert.alert('აკლია კვალიფიკაცია', `მიუთითეთ: ${missingQualTypes.join(', ')}`);
-      return;
-    }
-    // Offer the project owner one chance to attach a logo before the PDF
-    // header gets rendered with the initials placeholder. Skipping is fine —
-    // the PDF still generates either way.
-    let projectForPdf = project;
-    if (!project.logo) {
-      const proceed = await new Promise<'add' | 'skip' | 'cancel'>(resolve => {
-        Alert.alert(
-          'ლოგოს დამატება',
-          'პროექტს ჯერ არ აქვს ლოგო. გსურთ მისი დამატება PDF-ის გენერაციამდე?',
-          [
-            { text: 'გაუქმება', style: 'cancel', onPress: () => resolve('cancel') },
-            { text: 'გამოტოვება', onPress: () => resolve('skip') },
-            { text: 'დამატება', onPress: () => resolve('add') },
-          ],
-          { cancelable: true, onDismiss: () => resolve('cancel') },
-        );
-      });
-      if (proceed === 'cancel') return;
-      if (proceed === 'add') {
-        const logo = await pickProjectLogo();
-        if (logo) {
-          try {
-            const saved = await projectsApi.update(project.id, { logo });
-            setProject(saved);
-            projectForPdf = saved;
-          } catch (e) {
-            logError(e, 'certNew.saveLogo');
-            toast.error('ლოგო ვერ შეინახა');
-          }
-        }
-      }
-    }
-    if (!user?.saved_signature_url) {
-      Alert.alert(
-        'ხელმოწერა საჭიროა',
-        'PDF-ის დასაგენერირებლად საჭიროა ექსპერტის ხელმოწერა.',
-        [
-          { text: 'გაუქმება', style: 'cancel' },
-          { text: 'დახაზეთ', onPress: () => router.push('/signature' as any) },
-        ],
-      );
-      return;
-    }
-    setBusy(true);
-    // Offload the heavy PDF work so the UI thread can paint the spinner first.
-    setTimeout(() => {
-      void runGeneration(projectForPdf);
-    }, 0);
   };
 
   const onGeneratePressIn = () => {
@@ -725,6 +578,26 @@ export default function GenerateCertificateScreen() {
     if (!inspection) return;
     router.push(`/inspections/${inspection.id}?tab=preview` as any);
   };
+
+  // Compact KA/EN segmented chip rendered inside the screen header.
+  const LangChip = (
+    <View style={s.langChip}>
+      <Pressable
+        onPress={() => setPdfLang('ka')}
+        style={[s.langChipOpt, pdfLanguage === 'ka' && s.langChipOptActive]}
+        {...a11y('PDF ენა — ქართული', 'PDF-ის ენის შეცვლა', 'button')}
+      >
+        <Text style={[s.langChipText, pdfLanguage === 'ka' && s.langChipTextActive]}>KA</Text>
+      </Pressable>
+      <Pressable
+        onPress={() => setPdfLang('en')}
+        style={[s.langChipOpt, pdfLanguage === 'en' && s.langChipOptActive]}
+        {...a11y('PDF language — English', 'Change PDF language', 'button')}
+      >
+        <Text style={[s.langChipText, pdfLanguage === 'en' && s.langChipTextActive]}>EN</Text>
+      </Pressable>
+    </View>
+  );
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
@@ -764,13 +637,6 @@ export default function GenerateCertificateScreen() {
     );
   }
 
-  const captureSigner = additionalSigners.find(s => s.id === captureSignerId);
-  const captureRosterSigner = projectSigners.find(p => p.id === captureRosterId);
-  const capturePersonName = captureRosterSigner?.full_name ?? captureSigner?.name ?? '';
-  const captureVisible = captureSignerId !== null || captureRosterId !== null;
-  const expertName = user ? `${user.first_name} ${user.last_name}`.trim() : 'ექსპერტი';
-  const expertInitials = expertName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
-
   return (
     <Screen>
       <Stack.Screen options={{ headerShown: false }} />
@@ -780,8 +646,8 @@ export default function GenerateCertificateScreen() {
           <Pressable onPress={() => router.back()} style={s.headerBack} {...a11y('ინსპექცია — დაბრუნება', 'გადავა ინსპექციის ეკრანზე', 'button')}>
             <Ionicons name="chevron-back" size={24} color={theme.colors.ink} />
           </Pressable>
-          <Text style={s.headerTitle}>PDF რეპორტის გენერაცია</Text>
-          <View style={s.headerBack} />
+          <Text style={s.headerTitle} numberOfLines={1}>PDF რეპორტის გენერაცია</Text>
+          {LangChip}
         </View>
 
         <ScrollView contentContainerStyle={{ paddingBottom: 100, paddingTop: 8 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
@@ -808,159 +674,28 @@ export default function GenerateCertificateScreen() {
             ) : null}
           </Animated.View>
 
-          {/* PDF Language */}
-          <Animated.View entering={FadeInUp.duration(300).delay(1 * STAGGER_MS)} style={[s.section, s.card, s.langCard]}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <Ionicons name="language-outline" size={18} color={theme.colors.inkSoft} />
-              <Text style={s.sectionLabel}>PDF ენა</Text>
-            </View>
-            <View style={s.langSwitch}>
-              <Pressable onPress={() => setPdfLang('ka')} style={[s.langOpt, pdfLanguage === 'ka' && s.langOptActive]}>
-                <Text style={[s.langOptText, pdfLanguage === 'ka' && s.langOptTextActive]}>KA</Text>
-              </Pressable>
-              <Pressable onPress={() => setPdfLang('en')} style={[s.langOpt, pdfLanguage === 'en' && s.langOptActive]}>
-                <Text style={[s.langOptText, pdfLanguage === 'en' && s.langOptTextActive]}>EN</Text>
-              </Pressable>
-            </View>
-          </Animated.View>
-
-          {/* Chief Inspector */}
-          <Animated.View entering={FadeInUp.duration(300).delay(2 * STAGGER_MS)} style={[s.section, s.card]}>
-            <Text style={s.sectionLabel}>ჩივი ხელმძღვანელი</Text>
-            <View style={s.expertRow}>
-              <View style={s.avatarCircle}>
-                <Text style={s.avatarText}>{expertInitials}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={s.expertName}>{expertName}</Text>
-                <Text style={s.expertRole}>შრომის უსაფრთხოების სპეციალისტი</Text>
-              </View>
-              {user?.saved_signature_url ? (
-                <Ionicons name="checkmark-circle" size={22} color={theme.colors.accent} />
-              ) : (
-                <Pressable onPress={() => router.push('/signature' as any)}>
-                  <Text style={s.textLink}>დახაზვა</Text>
-                </Pressable>
-              )}
-            </View>
-
-            {expertSigDisplayUrl ? (
-              <Animated.View entering={FadeInUp.duration(250)} style={s.sigPreviewWrap}>
-                <Image source={{ uri: expertSigDisplayUrl }} style={s.sigPreview} contentFit="contain" />
-                <Pressable onPress={() => router.push('/signature' as any)}>
-                  <Text style={s.textLink}>შეცვლა</Text>
-                </Pressable>
-              </Animated.View>
-            ) : (
-              <Pressable onPress={() => router.push('/signature' as any)} style={s.sigPlaceholder} {...a11y('ექსპერტის ხელმოწერა', 'ხელმოწერის დამატება', 'button')}>
-                <Ionicons name="create-outline" size={20} color={theme.colors.accent} />
-                <Text style={s.sigPlaceholderText}>ხელმოწერა</Text>
-              </Pressable>
-            )}
-          </Animated.View>
-
-          {/* Other Signers */}
-          <Animated.View entering={FadeInUp.duration(300).delay(3 * STAGGER_MS)} style={[s.section, s.card]}>
-            <Text style={s.sectionLabel}>სხვა ხელმომწერები</Text>
-
-            {projectSigners.length > 0 && (
-              <View style={{ gap: 8, marginBottom: additionalSigners.length > 0 ? 12 : 0 }}>
-                {projectSigners.map(signer => {
-                  const checked = selectedRosterIds.has(signer.id);
-                  const hasStoredSig = !!signer.signature_png_url;
-                  return (
-                    <Pressable
-                      key={signer.id}
-                      onPress={() => void toggleRosterSigner(signer)}
-                      style={s.rosterRow}
-                      {...a11y(`${signer.full_name} — ${SIGNER_ROLE_LABEL[signer.role]}`, 'ხელმომწერის არჩევა', 'button')}
-                    >
-                      <AnimatedCheckboxView checked={checked} size={22} color={theme.colors.accent} />
-                      <View style={{ flex: 1 }}>
-                        <Text style={s.rosterTitle}>
-                          {signer.full_name}-ის ხელმოწერა
-                        </Text>
-                        <Text style={s.rosterSub}>
-                          {SIGNER_ROLE_LABEL[signer.role]}
-                          {hasStoredSig ? '' : ' · ხელმოწერა საჭიროა'}
-                        </Text>
-                      </View>
-                      {hasStoredSig && checked ? (
-                        <Ionicons name="checkmark-circle" size={18} color={theme.colors.accent} />
-                      ) : null}
-                    </Pressable>
-                  );
-                })}
-              </View>
-            )}
-
-            {additionalSigners.length === 0 ? (
-              projectSigners.length === 0 ? (
-                <Text style={s.emptyHint}>სურვილის შემთხვევაში — დაამატეთ სხვა ხელმომწერი</Text>
-              ) : null
-            ) : (
-              <View style={{ gap: 10 }}>
-                {additionalSigners.map(signer => (
-                  <View key={signer.id} style={s.signerRow}>
-                    <View style={{ flex: 1, gap: 6 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <TextInput
-                          style={s.signerInput}
-                          value={signer.name}
-                          onChangeText={t => updateSignerName(signer.id, t)}
-                          placeholder="სახელი გვარი"
-                          placeholderTextColor={theme.colors.inkSoft}
-                        />
-                        <Pressable hitSlop={8} onPress={() => removeSigner(signer.id)} {...a11y('წაშლა', 'ხელმომწერის წაშლა', 'button')}>
-                          <Ionicons name="close-circle" size={20} color={theme.colors.inkSoft} />
-                        </Pressable>
-                      </View>
-                      <Pressable onPress={() => pickSignerRole(signer.id)} style={s.roleChip} {...a11y(`როლი: ${SIGNER_ROLE_LABEL[signer.role]}`, 'როლის შეცვლა', 'button')}>
-                        <Ionicons name="person-circle-outline" size={14} color={theme.colors.inkSoft} />
-                        <Text style={s.roleChipText}>{SIGNER_ROLE_LABEL[signer.role]}</Text>
-                        <Ionicons name="chevron-down" size={12} color={theme.colors.inkSoft} />
-                      </Pressable>
-                    </View>
-
-                    {signer.dataUrl ? (
-                      <Animated.View entering={FadeInUp.duration(250)} style={{ marginTop: 8 }}>
-                        <Image source={{ uri: signer.dataUrl }} style={s.sigPreviewSmall} contentFit="contain" />
-                        <Pressable onPress={() => setCaptureSignerId(signer.id)}>
-                          <Text style={s.textLink}>შეცვლა</Text>
-                        </Pressable>
-                      </Animated.View>
-                    ) : (
-                      <Pressable
-                        onPress={() => {
-                          if (!signer.name?.trim()) { toast.error('ჯერ შეიყვანეთ სახელი'); return; }
-                          setCaptureSignerId(signer.id);
-                        }}
-                        style={s.sigPlaceholderSmall}
-                        {...a11y('ხელმოწერა', 'ხელმოწერის დამატება', 'button')}
-                      >
-                        <Ionicons name="create-outline" size={16} color={theme.colors.accent} />
-                        <Text style={s.sigPlaceholderTextSmall}>ხელმოწერა</Text>
-                      </Pressable>
-                    )}
-                  </View>
-                ))}
-              </View>
-            )}
-            <Pressable onPress={addSigner} style={s.ghostBtn} {...a11y('ახალი ხელმომწერი', 'ხელმომწერის დამატება', 'button')}>
-              <Text style={s.ghostBtnText}>+ ახალი ხელმომწერი</Text>
-            </Pressable>
+          {/* Participants — same widget as the project detail page */}
+          <Animated.View entering={FadeInUp.duration(300).delay(1 * STAGGER_MS)} style={[s.section, s.card]}>
+            <Text style={s.sectionLabel}>მონაწილეები</Text>
+            {project ? (
+              <RoleSlotList
+                projectId={project.id}
+                inspector={inspector}
+                crew={project.crew ?? []}
+                onChange={persistCrew}
+              />
+            ) : null}
           </Animated.View>
 
           {/* Required Qualifications */}
           {requiredCertTypes.length > 0 && (
-            <Animated.View entering={FadeInUp.duration(300).delay(4 * STAGGER_MS)} style={[s.section, s.card]}>
+            <Animated.View entering={FadeInUp.duration(300).delay(2 * STAGGER_MS)} style={[s.section, s.card]}>
               <Text style={s.sectionLabel}>კვალიფიკაციის სერტიფიკატები</Text>
               <View style={{ gap: 8 }}>
                 {requiredCertTypes.map(certType => {
                   const selectedId = selectedQuals[certType];
                   const selected = selectedId ? quals.find(q => q.id === selectedId) : null;
                   const hasAny = quals.some(q => q.type === certType);
-                  const isUploading = uploadingFor === certType;
                   return (
                     <Pressable key={certType} onPress={() => pickQual(certType)} style={s.listRow} {...a11y(certType, 'სერტიფიკატის არჩევა', 'button')}>
                       <Ionicons
@@ -981,7 +716,7 @@ export default function GenerateCertificateScreen() {
                   );
                 })}
               </View>
-              {requiredCertTypes.some(t => !selectedQuals[t]) && (
+              {requiredCertTypes.some(tt => !selectedQuals[tt]) && (
                 <Text style={{ fontSize: 12, color: theme.colors.warn, marginTop: 8 }}>
                   არჩიე ყველა საჭირო სერტიფიკატი
                 </Text>
@@ -990,7 +725,7 @@ export default function GenerateCertificateScreen() {
           )}
 
           {/* Extra Qualifications */}
-          <Animated.View entering={FadeInUp.duration(300).delay(5 * STAGGER_MS)} style={[s.section, s.card]}>
+          <Animated.View entering={FadeInUp.duration(300).delay(3 * STAGGER_MS)} style={[s.section, s.card]}>
             <Text style={s.sectionLabel}>დამატებითი სერტიფიკატები</Text>
             {extraQualIds.length === 0 ? (
               <Text style={s.emptyHint}>სურვილის შემთხვევაში — დაამატეთ სხვა კვალიფიკაციის სერტიფიკატი</Text>
@@ -1050,14 +785,6 @@ export default function GenerateCertificateScreen() {
             </Pressable>
           </Animated.View>
         </View>
-
-        {/* Signature capture modal */}
-        <SignatureCanvas
-          visible={captureVisible}
-          personName={capturePersonName}
-          onCancel={() => { setCaptureSignerId(null); setCaptureRosterId(null); }}
-          onConfirm={onSignatureCaptured}
-        />
       </SafeAreaView>
     </Screen>
   );
@@ -1067,7 +794,6 @@ export default function GenerateCertificateScreen() {
 
 function gets(theme: any) {
   return StyleSheet.create({
-  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1077,6 +803,7 @@ function gets(theme: any) {
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
     backgroundColor: theme.colors.surface,
+    gap: 8,
   },
   headerBack: {
     width: 36,
@@ -1086,14 +813,13 @@ function gets(theme: any) {
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 18,
+    flex: 1,
+    fontSize: 17,
     fontWeight: '700',
     color: theme.colors.ink,
     textAlign: 'center',
   },
 
-  // Hero
-  // Card base
   card: {
     marginHorizontal: 16,
     marginBottom: 12,
@@ -1150,7 +876,6 @@ function gets(theme: any) {
     color: theme.colors.neutral[700],
   },
 
-  // Sections
   section: {
     padding: 16,
   },
@@ -1168,151 +893,6 @@ function gets(theme: any) {
     marginBottom: 10,
   },
 
-  // Roster checkbox row
-  rosterRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    backgroundColor: theme.colors.background,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  rosterTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: theme.colors.ink,
-  },
-  rosterSub: {
-    fontSize: 12,
-    color: theme.colors.inkSoft,
-    marginTop: 2,
-  },
-
-  // Expert row
-  expertRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  avatarCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: theme.colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    color: theme.colors.white,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  expertName: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: theme.colors.ink,
-  },
-  expertRole: {
-    fontSize: 12,
-    color: theme.colors.inkSoft,
-    marginTop: 1,
-  },
-
-  // Signature
-  sigPreviewWrap: {
-    marginTop: 12,
-    gap: 6,
-  },
-  sigPreview: {
-    width: '100%',
-    height: 60,
-    backgroundColor: theme.colors.surface,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  sigPreviewSmall: {
-    width: 120,
-    height: 50,
-    backgroundColor: theme.colors.surface,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  sigPlaceholder: {
-    marginTop: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: theme.colors.accent,
-    borderStyle: 'dashed',
-    alignSelf: 'flex-start',
-  },
-  sigPlaceholderText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: theme.colors.accent,
-  },
-  sigPlaceholderSmall: {
-    marginTop: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: theme.colors.accent,
-    borderStyle: 'dashed',
-    alignSelf: 'flex-start',
-  },
-  sigPlaceholderTextSmall: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: theme.colors.accent,
-  },
-
-  // Signers
-  signerRow: {
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-  },
-  signerInput: {
-    flex: 1,
-    backgroundColor: theme.colors.surface,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    fontSize: 14,
-    color: theme.colors.ink,
-  },
-  roleChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    alignSelf: 'flex-start',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: theme.colors.background,
-  },
-  roleChipText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: theme.colors.inkSoft,
-  },
-
-  // List rows
   listRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1333,7 +913,6 @@ function gets(theme: any) {
     marginTop: 1,
   },
 
-  // Ghost button
   ghostBtn: {
     marginTop: 12,
     height: 44,
@@ -1349,37 +928,36 @@ function gets(theme: any) {
     color: theme.colors.accent,
   },
 
-  // PDF language toggle (inline card)
-  langCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  langSwitch: {
+  // Compact PDF language chip (header)
+  langChip: {
     flexDirection: 'row',
     backgroundColor: theme.colors.background,
-    borderRadius: 10,
+    borderRadius: 8,
     padding: 2,
     gap: 2,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
-  langOpt: {
-    paddingHorizontal: 18,
-    paddingVertical: 7,
-    borderRadius: 8,
+  langChipOpt: {
+    minWidth: 28,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    alignItems: 'center',
   },
-  langOptActive: {
+  langChipOptActive: {
     backgroundColor: theme.colors.accent,
   },
-  langOptText: {
-    fontSize: 13,
+  langChipText: {
+    fontSize: 11,
     fontWeight: '700',
     color: theme.colors.inkSoft,
+    letterSpacing: 0.4,
   },
-  langOptTextActive: {
+  langChipTextActive: {
     color: theme.colors.white,
   },
 
-  // Bottom bar
   bottomBar: {
     position: 'absolute',
     left: 16,
@@ -1428,7 +1006,6 @@ function gets(theme: any) {
     color: theme.colors.white,
   },
 
-  // Link
   textLink: {
     fontSize: 13,
     fontWeight: '600',

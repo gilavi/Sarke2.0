@@ -48,9 +48,11 @@ import { pickProjectLogo } from '../../lib/projectLogo';
 import { useSession } from '../../lib/session';
 import { a11y } from '../../lib/accessibility';
 import { TourGuide, type TourStep } from '../../components/TourGuide';
+import { useTranslation } from 'react-i18next';
 
 export default function ProjectDetail() {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => getstyles(theme), [theme]);
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -81,41 +83,41 @@ export default function ProjectDetail() {
     () => [
       {
         targetRef: heroRef,
-        title: 'პროექტის ინფო',
-        body: 'შეეხე ბარათს რედაქტირებისთვის',
+        title: t('projects.tourProjectInfo'),
+        body: t('projects.tourProjectInfoBody'),
         position: 'bottom',
       },
       {
         targetRef: participantsRef,
-        title: 'მონაწილეები',
-        body: 'დაამატე გუნდი სანამ შემოწმებას დაიწყებ',
+        title: t('projects.tourCrew'),
+        body: t('projects.tourCrewBody'),
         position: 'bottom',
       },
       {
         targetRef: filesRef,
-        title: 'ფაილები',
-        body: 'აქ შეგიძლია დაურთო პროექტის დოკუმენტები',
+        title: t('projects.tourFiles'),
+        body: t('projects.tourFilesBody'),
         position: 'bottom',
       },
       {
         targetRef: questionnairesRef,
-        title: 'კითხვარები',
-        body: 'შენი შემოწმებების ისტორია',
+        title: t('projects.tourHistory'),
+        body: t('projects.tourHistoryBody'),
         position: 'top',
       },
       {
         targetRef: fabRef,
-        title: 'ახალი შემოწმება',
-        body: 'დააჭირე და დაიწყე ახალი შემოწმება',
+        title: t('projects.tourNewInspection'),
+        body: t('projects.tourNewInspectionBody'),
         position: 'top',
       },
     ],
-    [],
+    [t],
   );
 
   const load = useCallback(async () => {
     if (!id) return;
-    const [p, q, t, f] = await Promise.all([
+    const [p, q, tpls, f] = await Promise.all([
       projectsApi.getById(id).catch(() => null),
       questionnairesApi.listByProject(id).catch(() => []),
       templatesApi.list().catch(() => []),
@@ -123,7 +125,7 @@ export default function ProjectDetail() {
     ]);
     setProject(p);
     setQuestionnaires(q);
-    setTemplates(t);
+    setTemplates(tpls);
     setFiles(f);
     setLoaded(true);
   }, [id]);
@@ -139,12 +141,16 @@ export default function ProjectDetail() {
   const inspector = useMemo(() => {
     if (session.state.status !== 'signedIn') return null;
     const u = session.state.user;
-    const fallback = session.state.session.user.email ?? 'ინსპექტორი';
+    const fallback = session.state.session.user.email ?? t('projects.inspectorFallback');
     const name = u
       ? `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim() || fallback
       : fallback;
-    return { name, role: 'ინსპექტორი' };
-  }, [session.state]);
+    return {
+      name,
+      role: t('projects.inspectorFallback'),
+      signaturePath: u?.saved_signature_url ?? null,
+    };
+  }, [session.state, t]);
 
   const persistCrew = useCallback(
     async (next: CrewMember[]) => {
@@ -158,7 +164,7 @@ export default function ProjectDetail() {
         setProject(saved);
       } catch (e) {
         setProject(prev);
-        toast.error(friendlyError(e, 'მონაწილე ვერ შეინახა'));
+        toast.error(friendlyError(e, t('projects.memberSaveError')));
       }
     },
     [project, toast],
@@ -174,43 +180,43 @@ export default function ProjectDetail() {
   );
 
   const startNewQuestionnaire = () => {
-    const system = templates.filter(t => t.is_system);
+    const system = templates.filter(tpl => tpl.is_system);
     if (system.length === 0) {
-      toast.error('შაბლონი არ არის');
+      toast.error(t('projects.templateMissing'));
       return;
     }
-    const options = [...system.map(t => t.name), 'გაუქმება'];
+    const options = [...system.map(tpl => tpl.name), t('common.cancel')];
     showActionSheetWithOptions(
-      { title: 'აირჩიეთ შაბლონი', options, cancelButtonIndex: options.length - 1 },
+      { title: t('projects.chooseTemplateTitle'), options, cancelButtonIndex: options.length - 1 },
       async idx => {
         if (idx == null || idx === options.length - 1 || !id) return;
-        const t = system[idx];
+        const tpl = system[idx];
         try {
           const q = (await questionnairesApi.create({
             projectId: id,
-            templateId: t.id,
+            templateId: tpl.id,
           }));
           router.push(`/inspections/${q.id}/wizard` as any);
         } catch (e) {
-          toast.error(friendlyError(e, 'შექმნა ვერ მოხერხდა'));
+          toast.error(friendlyError(e, t('errors.createFailed')));
         }
       },
     );
   };
 
   const deleteQuestionnaire = (q: Questionnaire) => {
-    Alert.alert('წაშლა?', 'ინსპექცია სამუდამოდ წაიშლება.', [
-      { text: 'გაუქმება', style: 'cancel' },
+    Alert.alert(t('inspections.deleteTitle'), t('inspections.deleteBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'წაშლა',
+        text: t('common.delete'),
         style: 'destructive',
         onPress: async () => {
           try {
             await questionnairesApi.remove(q.id);
             setQuestionnaires(prev => prev.filter(x => x.id !== q.id));
-            toast.success('წაიშალა');
+            toast.success(t('notifications.deleted'));
           } catch (e) {
-            toast.error(friendlyError(e, 'ვერ წაიშალა'));
+            toast.error(friendlyError(e, t('errors.deleteFailed')));
           }
         },
       },
@@ -226,10 +232,10 @@ export default function ProjectDetail() {
     try {
       const saved = await projectsApi.update(project.id, { logo: next });
       setProject(saved);
-      toast.success('ლოგო განახლდა');
+      toast.success(t('projects.logoUpdated'));
     } catch (e) {
       setProject(prev);
-      toast.error(friendlyError(e, 'ლოგო ვერ შეინახა'));
+      toast.error(friendlyError(e, t('projects.logoSaveFailed')));
     }
   };
 
@@ -238,7 +244,7 @@ export default function ProjectDetail() {
     try {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (perm.status !== 'granted') {
-        toast.error('გალერეაზე წვდომა აკრძალულია');
+        toast.error(t('projects.galleryAccessDenied'));
         return;
       }
       const res = await ImagePicker.launchImageLibraryAsync({
@@ -256,9 +262,11 @@ export default function ProjectDetail() {
         sizeBytes: asset.fileSize ?? null,
       });
       setFiles(prev => [created, ...prev]);
-      toast.success('აიტვირთა');
+      toast.success(t('projects.uploaded'));
     } catch (e) {
-      toast.error(friendlyError(e, 'ატვირთვა ვერ მოხერხდა'));
+      // Log the raw error for RLS/policy debugging; show a friendly toast.
+      console.warn('[project file upload]', toErrorMessage(e));
+      toast.error(friendlyError(e, t('errors.uploadFailed')));
     } finally {
       setFilesBusy(false);
     }
@@ -269,23 +277,23 @@ export default function ProjectDetail() {
       const url = await projectFilesApi.signedUrl(f);
       await Linking.openURL(url);
     } catch {
-      toast.error('ფაილი ვერ გაიხსნა');
+      toast.error(t('projects.fileOpenFailed'));
     }
   };
 
   const deleteFile = (f: ProjectFile) => {
-    Alert.alert('წაშლა?', f.name, [
-      { text: 'გაუქმება', style: 'cancel' },
+    Alert.alert(t('inspections.deleteTitle'), f.name, [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'წაშლა',
+        text: t('common.delete'),
         style: 'destructive',
         onPress: async () => {
           try {
             await projectFilesApi.remove(f);
             setFiles(prev => prev.filter(x => x.id !== f.id));
-            toast.success('წაიშალა');
+            toast.success(t('notifications.deleted'));
           } catch (e) {
-            toast.error(friendlyError(e, 'ვერ წაიშალა'));
+            toast.error(friendlyError(e, t('errors.deleteFailed')));
           }
         },
       },
@@ -311,7 +319,7 @@ export default function ProjectDetail() {
   if (!loaded && !project) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-        <Stack.Screen options={{ headerShown: true, title: 'პროექტი', headerBackTitle: 'პროექტები' }} />
+        <Stack.Screen options={{ headerShown: true, title: t('common.project'), headerBackTitle: t('projects.title') }} />
         <ScrollView
           style={{ flex: 1 }}
           contentInsetAdjustmentBehavior="never"
@@ -346,8 +354,8 @@ export default function ProjectDetail() {
       <Stack.Screen
         options={{
           headerShown: true,
-          title: 'პროექტი',
-          headerBackTitle: 'პროექტები',
+          title: t('common.project'),
+          headerBackTitle: t('projects.title'),
           headerTitleStyle: { fontSize: 18, fontWeight: '700', color: theme.colors.ink },
           headerShadowVisible: false,
           headerStyle: { backgroundColor: theme.colors.background },
@@ -428,7 +436,7 @@ export default function ProjectDetail() {
           {/* ── Participants (merged: crew + signers) ── */}
           <View ref={participantsRef} collapsable={false} style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>მონაწილეები</Text>
+              <Text style={styles.sectionTitle}>{t('projects.participantsSection')}</Text>
               <View style={styles.badgeGreen}>
                 <Text style={styles.badgeGreenText}>
                   {(project?.crew?.length ?? 0) + (inspector ? 1 : 0)}
@@ -450,7 +458,7 @@ export default function ProjectDetail() {
           {/* ── Questionnaires ── */}
           <View ref={questionnairesRef} collapsable={false} style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>კითხვარები</Text>
+              <Text style={styles.sectionTitle}>{t('projects.questionnairesSection')}</Text>
               <View style={styles.badgeGreen}>
                 <Text style={styles.badgeGreenText}>{questionnaires.length}</Text>
               </View>
@@ -463,7 +471,7 @@ export default function ProjectDetail() {
                     <View style={[styles.subDot, { backgroundColor: theme.colors.semantic.warningSoft }]}>
                       <Ionicons name="pencil" size={11} color={'#92400E'} />
                     </View>
-                    <Text style={styles.subSectionLabel}>დრაფტები</Text>
+                    <Text style={styles.subSectionLabel}>{t('projects.draftsSection')}</Text>
                     <Text style={styles.subSectionCount}>{drafts.length}</Text>
                   </View>
                   <View style={{ gap: 8, marginTop: 8 }}>
@@ -488,7 +496,7 @@ export default function ProjectDetail() {
                               <Ionicons name="pencil" size={14} color={'#92400E'} />
                             </View>
                             <View style={{ flex: 1 }}>
-                              <Text style={styles.listRowTitle}>{tpl?.name ?? 'ინსპექცია'}</Text>
+                              <Text style={styles.listRowTitle}>{tpl?.name ?? t('common.inspection')}</Text>
                               <Text style={styles.listRowSubtitle}>
                                 {formatShortDateTime(q.created_at)}
                               </Text>
@@ -511,11 +519,11 @@ export default function ProjectDetail() {
                 <View style={[styles.subDot, { backgroundColor: theme.colors.semantic.successSoft }]}>
                   <Ionicons name="checkmark" size={11} color={theme.colors.primary[700]} />
                 </View>
-                <Text style={styles.subSectionLabel}>დასრულებული</Text>
+                <Text style={styles.subSectionLabel}>{t('projects.completedSection')}</Text>
                 <Text style={styles.subSectionCount}>{completed.length}</Text>
               </View>
               {completed.length === 0 ? (
-                <EmptyState text="ჯერ არ არის დასრულებული" />
+                <EmptyState text={t('projects.noCompletedInspections')} />
               ) : (
                 <View style={{ gap: 8, marginTop: 8 }}>
                   {completed.map(q => {
@@ -539,7 +547,7 @@ export default function ProjectDetail() {
                             <Ionicons name="checkmark-circle" size={14} color={theme.colors.primary[700]} />
                           </View>
                           <View style={{ flex: 1 }}>
-                            <Text style={styles.listRowTitle}>{tpl?.name ?? 'ინსპექცია'}</Text>
+                            <Text style={styles.listRowTitle}>{tpl?.name ?? t('common.inspection')}</Text>
                             <Text style={styles.listRowSubtitle}>
                               {formatShortDateTime(q.created_at)}
                             </Text>
@@ -577,7 +585,7 @@ export default function ProjectDetail() {
         onSaved={saved => {
           setProject(saved);
           setEditing(false);
-          toast.success('შენახულია');
+          toast.success(t('projects.saved'));
         }}
       />
 
@@ -670,12 +678,14 @@ function EditProjectSheet({
   onSaved: (p: Project) => void;
 }) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const toast = useToast();
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
   const [address, setAddress] = useState('');
   const [pin, setPin] = useState<LatLng | null>(null);
+  const [logo, setLogo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [mapVisible, setMapVisible] = useState(false);
 
@@ -691,9 +701,15 @@ function EditProjectSheet({
             ? { latitude: project.latitude, longitude: project.longitude }
             : null,
         );
+        setLogo(project.logo ?? null);
       }
     }, [visible, project]),
   );
+
+  const onPickLogo = async () => {
+    const next = await pickProjectLogo();
+    if (next) setLogo(next);
+  };
 
   const save = async () => {
     if (!project || !name.trim()) return;
@@ -705,10 +721,11 @@ function EditProjectSheet({
         address: address.trim() || null,
         latitude: pin?.latitude ?? null,
         longitude: pin?.longitude ?? null,
+        logo,
       }));
       onSaved(saved);
     } catch (e) {
-      toast.error(friendlyError(e, 'შენახვა ვერ მოხერხდა'));
+      toast.error(friendlyError(e, t('errors.saveFailed')));
     } finally {
       setBusy(false);
     }
@@ -724,15 +741,15 @@ function EditProjectSheet({
             justifyContent: 'flex-end',
           }}
           onPress={() => mapVisible ? setMapVisible(false) : onClose()}
-          {...a11y('დახურვა', 'შეეხეთ ფონის დასახურად', 'button')}
+          {...a11y(t('common.close'), 'შეეხეთ ფონის დასახურად', 'button')}
         >
           {/* Stop touches inside the card from closing the sheet */}
           <Pressable onPress={() => {}} style={{ width: '100%' }}>
             <SheetLayout
-              header={{ title: 'რედაქტირება', onClose }}
+              header={{ title: t('projects.edit'), onClose }}
               footer={
                 <Button
-                  title="შენახვა"
+                  title={t('common.save')}
                   size="lg"
                   onPress={save}
                   loading={busy}
@@ -740,20 +757,36 @@ function EditProjectSheet({
                 />
               }
             >
-              <FormField label="სახელი" required>
+              <View style={{ alignItems: 'center', gap: 8, paddingVertical: 4 }}>
+                <ProjectAvatar
+                  project={{ name, logo }}
+                  size={88}
+                  editable
+                  onEdit={onPickLogo}
+                />
+                {logo ? (
+                  <Pressable onPress={() => setLogo(null)} hitSlop={6}>
+                    <Text style={{ color: theme.colors.danger, fontSize: 13, fontWeight: '600' }}>
+                      {t('projects.logoRemove')}
+                    </Text>
+                  </Pressable>
+                ) : null}
+              </View>
+
+              <FormField label={t('common.name')} required>
                 <Input
                   value={name}
                   onChangeText={setName}
-                  placeholder="მაგ. ვაკე-საბურთალოს ობიექტი"
+                  placeholder={t('projects.projectNamePlaceholder')}
                   autoFocus
                 />
               </FormField>
 
-              <FormField label="კომპანია">
-                <Input value={company} onChangeText={setCompany} placeholder="შემკვეთი" />
+              <FormField label={t('common.company')}>
+                <Input value={company} onChangeText={setCompany} placeholder={t('projects.clientPlaceholder')} />
               </FormField>
 
-              <FormField label="მისამართი">
+              <FormField label={t('common.address')}>
                 <Input
                   value={address}
                   onChangeText={setAddress}
@@ -777,7 +810,7 @@ function EditProjectSheet({
                 <Text style={{ flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '700', color: theme.colors.ink }}>
                   მდებარეობის არჩევა
                 </Text>
-                <Pressable onPress={() => setMapVisible(false)} hitSlop={10} {...a11y('დახურვა', 'რუკის დახურვა', 'button')}>
+                <Pressable onPress={() => setMapVisible(false)} hitSlop={10} {...a11y(t('common.close'), 'რუკის დახურვა', 'button')}>
                   <Ionicons name="close" size={24} color={theme.colors.ink} />
                 </Pressable>
               </View>

@@ -37,17 +37,12 @@ import { useTheme } from '../../lib/theme';
 import { logError, toErrorMessage } from '../../lib/logError';
 import { friendlyError } from '../../lib/errorMap';
 import { a11y } from '../../lib/accessibility';
-import type { Certificate, Project, Template } from '../../types/models';
-
-type CertParams = {
-  expertName?: string | null;
-  qualTypes?: { type: string; number: string | null }[];
-  signerNames?: string[];
-  localUri?: string;
-};
+import type { Certificate, CertificateParams, Project, Template } from '../../types/models';
+import { useTranslation } from 'react-i18next';
 
 export default function CertificateDetailScreen() {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => getstyles(theme), [theme]);
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -70,7 +65,7 @@ export default function CertificateDetailScreen() {
     try {
       const c = await certificatesApi.getById(id).catch((e) => { logError(e, 'certDetail.cert'); return null; });
       if (!c) {
-        toast.error('PDF ვერ მოიძებნა');
+        toast.error(t('errors.notFound'));
         router.back();
         return;
       }
@@ -98,13 +93,6 @@ export default function CertificateDetailScreen() {
     setResolveError(false);
     setWebviewLoading(true);
     (async () => {
-      const params = cert.params as CertParams;
-      const local = params?.localUri;
-      if (local) {
-        const info = await FileSystem.getInfoAsync(local).catch(() => ({ exists: false }));
-        if (!cancelled && info.exists) { setResolvedUri(local); return; }
-      }
-      // Fall back to the storage copy.
       try {
         if (!cert.pdf_url) throw new Error('no pdf_url');
         const name = cert.pdf_url.split('/').pop() ?? `${cert.id}.pdf`;
@@ -134,7 +122,7 @@ export default function CertificateDetailScreen() {
         await shareStoredPdf(cert.pdf_url);
       }
     } catch (e) {
-      toast.error(friendlyError(e, 'ვერ გაიზიარა'));
+      toast.error(friendlyError(e));
     } finally {
       setSharing(false);
     }
@@ -143,7 +131,7 @@ export default function CertificateDetailScreen() {
   if (loading || !cert) {
     return (
       <Screen>
-        <Stack.Screen options={{ headerShown: true, title: 'PDF რეპორტი', headerBackTitle: 'სერტიფიკატები' }} />
+        <Stack.Screen options={{ headerShown: true, title: t('certificates.pdfReport'), headerBackTitle: t('certificates.title') }} />
         <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
           {/* Meta strip skeleton mirrors the real header layout */}
           <View style={styles.metaStrip}>
@@ -167,7 +155,7 @@ export default function CertificateDetailScreen() {
     );
   }
 
-  const params = cert.params as CertParams;
+  const params: CertificateParams = cert.params ?? {};
   const isSafe = cert.is_safe_for_use;
   const safeColor = isSafe === false ? theme.colors.danger : theme.colors.accent;
   const safeBg = isSafe === false ? theme.colors.dangerSoft : theme.colors.accentSoft;
@@ -180,15 +168,14 @@ export default function CertificateDetailScreen() {
       <Stack.Screen
         options={{
           headerShown: true,
-          title: 'PDF რეპორტი',
-          headerBackTitle: 'სერტიფიკატები',
+          title: t('certificates.pdfReport'),
+          headerBackTitle: t('certificates.title'),
           headerRight: () => (
             <Pressable
               onPress={share}
               disabled={sharing}
               style={{ paddingHorizontal: 4 }}
               hitSlop={10}
-              {...a11y('გაზიარება', 'PDF რეპორტის გაზიარება', 'button')}
             >
               {sharing
                 ? <ActivityIndicator size="small" color={theme.colors.accent} />
@@ -209,18 +196,18 @@ export default function CertificateDetailScreen() {
               color={safeColor}
             />
             <Text style={[styles.safeBadgeText, { color: safeColor }]} numberOfLines={1}>
-              {isSafe === false ? 'არ არის უსაფრთხო' : 'უსაფრთხოა'}
+              {isSafe === false ? t('inspections.notSafe') : t('inspections.safe')}
             </Text>
           </View>
 
           {/* Template + project */}
           <View style={{ flex: 1 }}>
             <Text style={styles.templateName} numberOfLines={1}>
-              {template?.name ?? 'PDF რეპორტი'}
+              {template?.name ?? t('certificates.pdfReport')}
             </Text>
             {project ? <Text style={styles.metaSub}>{project.name}</Text> : null}
             <Text style={styles.metaDate}>
-              {new Date(cert.generated_at).toLocaleString('ka')}
+              {new Date(cert.generated_at).toLocaleString(t('common.localeTag'))}
             </Text>
           </View>
         </View>
@@ -271,9 +258,9 @@ export default function CertificateDetailScreen() {
           ) : resolveError ? (
             <View style={styles.noPreview}>
               <Ionicons name="document-text-outline" size={48} color={theme.colors.inkFaint} />
-              <Text style={styles.noPreviewText}>PDF პრევიუ არ არის ხელმისაწვდომი</Text>
+              <Text style={styles.noPreviewText}>{t('errors.previewFailed')}</Text>
               <Text style={styles.noPreviewSub}>
-                ამ მოწყობილობაზე ლოკალური ასლი არ არის. დააჭირეთ "გაზიარება".
+                {t('certificates.localCopyMissing')}
               </Text>
             </View>
           ) : (
