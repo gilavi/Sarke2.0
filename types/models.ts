@@ -301,6 +301,53 @@ export interface Certificate {
   generated_at: string;
 }
 
+// ── Incidents ─────────────────────────────────────────────────────────────────
+
+export type IncidentType = 'minor' | 'severe' | 'fatal' | 'mass' | 'nearmiss';
+export type IncidentStatus = 'draft' | 'completed';
+
+/** Short badge label used in list rows and severity chips. */
+export const INCIDENT_TYPE_LABEL: Record<IncidentType, string> = {
+  minor: 'მსუბუქი',
+  severe: 'მძიმე',
+  fatal: 'ფატალური',
+  mass: 'მასობრივი',
+  nearmiss: 'საშიში შემთხვევა',
+};
+
+/** Full Georgian name used in the PDF and form cards. */
+export const INCIDENT_TYPE_FULL_LABEL: Record<IncidentType, string> = {
+  minor: 'მსუბუქი უბედური შემთხვევა',
+  severe: 'მძიმე უბედური შემთხვევა',
+  fatal: 'ფატალური უბედური შემთხვევა',
+  mass: 'მასობრივი (3+ დაშავებული)',
+  nearmiss: 'საშიში შემთხვევა (near miss — დაზიანება არ მომხდარა)',
+};
+
+export interface Incident {
+  id: string;
+  project_id: string;
+  user_id: string;
+  type: IncidentType;
+  /** null for near-miss (no injured person). */
+  injured_name: string | null;
+  injured_role: string | null;
+  date_time: string;
+  location: string;
+  description: string;
+  cause: string;
+  actions_taken: string;
+  witnesses: string[];
+  /** Storage paths in the `incident-photos` bucket. */
+  photos: string[];
+  /** Storage path in the `signatures` bucket (inspector's saved signature). */
+  inspector_signature: string | null;
+  status: IncidentStatus;
+  /** Storage path in the `pdfs` bucket. null until generated. */
+  pdf_url: string | null;
+  created_at: string;
+}
+
 // ── Remote signing ────────────────────────────────────────────────────────────
 
 export type RemoteSigningStatus =

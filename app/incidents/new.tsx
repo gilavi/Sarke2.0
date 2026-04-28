@@ -1,0 +1,1339 @@
+import { useCallback, useMemo, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  View,
+} from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import * as Crypto from 'expo-crypto';
+import * as ImagePicker from 'expo-image-picker';
+import * as Print from 'expo-print';
+import { Image } from 'expo-image';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { A11yText as Text } from '../../components/primitives/A11yText';
+import { useTheme } from '../../lib/theme';
+import { useSession } from '../../lib/session';
+import { useToast } from '../../lib/toast';
+import { incidentsApi, projectsApi, storageApi } from '../../lib/services';
+import { STORAGE_BUCKETS } from '../../lib/supabase';
+import { buildIncidentPdfHtml } from '../../lib/incidentPdf';
+import { getStorageImageDataUrl, getStorageImageDisplayUrl } from '../../lib/imageUrl';
+import { friendlyError } from '../../lib/errorMap';
+import { formatShortDateTime } from '../../lib/formatDate';
+import type { IncidentType, Project } from '../../types/models';
+import { INCIDENT_TYPE_FULL_LABEL, INCIDENT_TYPE_LABEL } from '../../types/models';
+
+// ─── types ────────────────────────────────────────────────────────────────────
+
+type Step = 1 | 2 | 3 | 4;
+
+interface FormData {
+  type: IncidentType | null;
+  injuredName: string;
+  injuredRole: string;
+  dateTime: Date;
+  location: string;
+  description: string;
+  cause: string;
+  actionsTaken: string;
+  witnesses: string[];
+  photoUris: string[];
+}
+
+const INITIAL_FORM: FormData = {
+  type: null,
+  injuredName: '',
+  injuredRole: '',
+  dateTime: new Date(),
+  location: '',
+  description: '',
+  cause: '',
+  actionsTaken: '',
+  witnesses: [],
+  photoUris: [],
+};
+
+// severity badge colours
+const TYPE_BADGE: Record<
+  IncidentType,
+  { bg: string; text: string; border: string }
+> = {
+  minor:   { bg: '#FEF3C7', text: '#92400E', border: '#F59E0B' },
+  severe:  { bg: '#FFEDD5', text: '#9A3412', border: '#F97316' },
+  fatal:   { bg: '#FEE2E2', text: '#991B1B', border: '#EF4444' },
+  mass:    { bg: '#FEE2E2', text: '#991B1B', border: '#EF4444' },
+  nearmiss:{ bg: '#EDE9FE', text: '#5B21B6', border: '#8B5CF6' },
+};
+
+// ─── main component ───────────────────────────────────────────────────────────
+
+export default function NewIncident() {
+  const { theme } = useTheme();
+  const s = useMemo(() => makeStyles(theme), [theme]);
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const toast = useToast();
+  const session = useSession();
+  const { projectId } = useLocalSearchParams<{ projectId: string }>();
+
+  const [step, setStep] = useState<Step>(1);
+  const [form, setForm] = useState<FormData>(INITIAL_FORM);
+  const [project, setProject] = useState<Project | null>(null);
+  const [saving, setSaving] = useState(false);
+  // stable incident id — lets us upload photos before the row is created
+  const incidentId = useRef(Crypto.randomUUID()).current;
+
+  // date/time picker state
+  const [pickerMode, setPickerMode] = useState<'date' | 'time'>('date');
+  const [showPicker, setShowPicker] = useState(false);
+
+  // witness text input buffer
+  const [witnessInput, setWitnessInput] = useState('');
+
+  // inspector info from session
+  const inspector = useMemo(() => {
+    if (session.state.status !== 'signedIn') return { name: '', sigPath: null };
+    const u = session.state.user;
+    const name = u
+      ? `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim()
+      : session.state.session.user.email ?? '';
+    return { name, sigPath: u?.saved_signature_url ?? null };
+  }, [session.state]);
+
+  // load project once
+  const loadProject = useCallback(async () => {
+    if (!projectId || project) return;
+    const p = await projectsApi.getById(projectId).catch(() => null);
+    setProject(p);
+  }, [projectId, project]);
+
+  // run on mount
+  useMemo(() => { void loadProject(); }, [loadProject]);
+
+  // ── navigation ──────────────────────────────────────────────────────────────
+
+  const goBack = () => {
+    if (step === 1) {
+      router.back();
+    } else {
+      setStep((prev) => (prev - 1) as Step);
+    }
+  };
+
+  const canAdvance = useMemo((): boolean => {
+    if (step === 1) return form.type !== null;
+    if (step === 2) return form.location.trim().length > 0;
+    return true;
+  }, [step, form]);
+
+  const goNext = () => {
+    if (!canAdvance) return;
+    setStep((prev) => (prev + 1) as Step);
+  };
+
+  // ── photo handling ──────────────────────────────────────────────────────────
+
+  const addPhoto = async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (perm.status !== 'granted') {
+      const camPerm = await ImagePicker.requestCameraPermissionsAsync();
+      if (camPerm.status !== 'granted') {
+        toast.error('ფოტოს დასამატებლად გახსენით წვდომა');
+        return;
+      }
+    }
+    Alert.alert('ფოტოს წყარო', undefined, [
+      {
+        text: 'კამერა',
+        onPress: async () => {
+          const res = await ImagePicker.launchCameraAsync({ quality: 0.8 });
+          if (!res.canceled && res.assets[0]) {
+            setForm(f => ({ ...f, photoUris: [...f.photoUris, res.assets[0].uri] }));
+          }
+        },
+      },
+      {
+        text: 'გალერეა',
+        onPress: async () => {
+          const res = await ImagePicker.launchImageLibraryAsync({
+            allowsMultipleSelection: true,
+            quality: 0.8,
+          });
+          if (!res.canceled) {
+            const uris = res.assets.map(a => a.uri);
+            setForm(f => ({ ...f, photoUris: [...f.photoUris, ...uris] }));
+          }
+        },
+      },
+      { text: 'გაუქმება', style: 'cancel' },
+    ]);
+  };
+
+  const removePhoto = (idx: number) => {
+    setForm(f => ({
+      ...f,
+      photoUris: f.photoUris.filter((_, i) => i !== idx),
+    }));
+  };
+
+  // ── witness handling ────────────────────────────────────────────────────────
+
+  const addWitness = () => {
+    const name = witnessInput.trim();
+    if (!name) return;
+    setForm(f => ({ ...f, witnesses: [...f.witnesses, name] }));
+    setWitnessInput('');
+  };
+
+  const removeWitness = (idx: number) => {
+    setForm(f => ({ ...f, witnesses: f.witnesses.filter((_, i) => i !== idx) }));
+  };
+
+  // ── upload helpers ──────────────────────────────────────────────────────────
+
+  const uploadPhotos = async (): Promise<string[]> => {
+    const paths: string[] = [];
+    for (const uri of form.photoUris) {
+      const photoId = Crypto.randomUUID();
+      const ext = uri.split('.').pop()?.toLowerCase() ?? 'jpg';
+      const path = `${incidentId}/${photoId}.${ext}`;
+      try {
+        await storageApi.uploadFromUri(
+          STORAGE_BUCKETS.incidentPhotos,
+          path,
+          uri,
+          'image/jpeg',
+        );
+        paths.push(path);
+      } catch (e) {
+        console.warn('[incident] photo upload failed', e);
+      }
+    }
+    return paths;
+  };
+
+  // ── save (draft) ────────────────────────────────────────────────────────────
+
+  const saveDraft = async () => {
+    if (!projectId) return;
+    setSaving(true);
+    try {
+      const photoPaths = await uploadPhotos();
+      await incidentsApi.create({
+        id: incidentId,
+        project_id: projectId,
+        type: form.type!,
+        injured_name: form.type !== 'nearmiss' ? form.injuredName || null : null,
+        injured_role: form.type !== 'nearmiss' ? form.injuredRole || null : null,
+        date_time: form.dateTime.toISOString(),
+        location: form.location,
+        description: form.description,
+        cause: form.cause,
+        actions_taken: form.actionsTaken,
+        witnesses: form.witnesses,
+        photos: photoPaths,
+        inspector_signature: inspector.sigPath,
+        status: 'draft',
+        pdf_url: null,
+      });
+      toast.success('ინციდენტი შენახულია');
+      router.back();
+    } catch (e) {
+      toast.error(friendlyError(e, 'შენახვა ვერ მოხერხდა'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ── save + generate PDF ─────────────────────────────────────────────────────
+
+  const saveAndGeneratePdf = async () => {
+    if (!projectId || !project) {
+      toast.error('პროექტი ვერ მოიძებნა');
+      return;
+    }
+    setSaving(true);
+    let savedId = incidentId;
+    try {
+      // 1. upload photos
+      const photoPaths = await uploadPhotos();
+
+      // 2. create incident record
+      const saved = await incidentsApi.create({
+        id: incidentId,
+        project_id: projectId,
+        type: form.type!,
+        injured_name: form.type !== 'nearmiss' ? form.injuredName || null : null,
+        injured_role: form.type !== 'nearmiss' ? form.injuredRole || null : null,
+        date_time: form.dateTime.toISOString(),
+        location: form.location,
+        description: form.description,
+        cause: form.cause,
+        actions_taken: form.actionsTaken,
+        witnesses: form.witnesses,
+        photos: photoPaths,
+        inspector_signature: inspector.sigPath,
+        status: 'completed',
+        pdf_url: null,
+      });
+      savedId = saved.id;
+
+      // 3. load signature data URL
+      let sigDataUrl: string | undefined;
+      if (inspector.sigPath) {
+        sigDataUrl = await getStorageImageDataUrl(
+          STORAGE_BUCKETS.signatures,
+          inspector.sigPath,
+        ).catch(() => undefined);
+      }
+
+      // 4. load photo data URLs
+      const photoDataUrls = await Promise.all(
+        photoPaths.map(p =>
+          getStorageImageDataUrl(STORAGE_BUCKETS.incidentPhotos, p).catch(
+            () => '',
+          ),
+        ),
+      ).then(urls => urls.filter(Boolean));
+
+      // 5. build HTML
+      const html = buildIncidentPdfHtml({
+        incident: saved,
+        project,
+        inspectorName: inspector.name,
+        inspectorSignatureDataUrl: sigDataUrl,
+        photoDataUrls,
+      });
+
+      // 6. print to file
+      const { uri } = await Print.printToFileAsync({ html });
+      const blob = await (await fetch(uri)).blob();
+      const pdfPath = `incidents/${savedId}.pdf`;
+      await storageApi.upload(STORAGE_BUCKETS.pdfs, pdfPath, blob, 'application/pdf');
+
+      // 7. update incident with pdf_url
+      await incidentsApi.update(savedId, { pdf_url: pdfPath });
+
+      toast.success('ოქმი შექმნილია');
+      router.replace(`/incidents/${savedId}` as any);
+    } catch (e) {
+      console.warn('[incident] PDF generation failed', e);
+      toast.error(friendlyError(e, 'PDF-ის შექმნა ვერ მოხერხდა — ინციდენტი შენახულია'));
+      router.replace(`/incidents/${savedId}` as any);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ── render ──────────────────────────────────────────────────────────────────
+
+  return (
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          title: 'ახალი ინციდენტი',
+          headerBackTitle: 'უკან',
+          headerTitleStyle: { fontSize: 17, fontWeight: '700', color: theme.colors.ink },
+          headerShadowVisible: false,
+          headerStyle: { backgroundColor: theme.colors.background },
+          headerTintColor: theme.colors.accent,
+          headerLeft: () => (
+            <Pressable onPress={goBack} hitSlop={8} style={{ paddingHorizontal: 4 }}>
+              <Ionicons name="chevron-back" size={26} color={theme.colors.accent} />
+            </Pressable>
+          ),
+        }}
+      />
+
+      {/* Progress indicator */}
+      <View style={s.progressRow}>
+        {([1, 2, 3, 4] as Step[]).map(n => (
+          <View
+            key={n}
+            style={[
+              s.progressDot,
+              n === step && s.progressDotActive,
+              n < step && s.progressDotDone,
+            ]}
+          >
+            {n < step ? (
+              <Ionicons name="checkmark" size={11} color="#fff" />
+            ) : (
+              <Text style={[s.progressDotText, n === step && { color: '#fff' }]}>
+                {n}
+              </Text>
+            )}
+          </View>
+        ))}
+        <View style={s.progressLine} />
+      </View>
+
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
+        keyboardShouldPersistTaps="handled"
+      >
+        {step === 1 && <Step1 form={form} setForm={setForm} theme={theme} s={s} />}
+        {step === 2 && (
+          <Step2
+            form={form}
+            setForm={setForm}
+            theme={theme}
+            s={s}
+            pickerMode={pickerMode}
+            setPickerMode={setPickerMode}
+            showPicker={showPicker}
+            setShowPicker={setShowPicker}
+          />
+        )}
+        {step === 3 && (
+          <Step3
+            form={form}
+            setForm={setForm}
+            theme={theme}
+            s={s}
+            witnessInput={witnessInput}
+            setWitnessInput={setWitnessInput}
+            onAddWitness={addWitness}
+            onRemoveWitness={removeWitness}
+            onAddPhoto={addPhoto}
+            onRemovePhoto={removePhoto}
+          />
+        )}
+        {step === 4 && (
+          <Step4
+            form={form}
+            inspectorName={inspector.name}
+            sigPath={inspector.sigPath}
+            project={project}
+            theme={theme}
+            s={s}
+          />
+        )}
+      </ScrollView>
+
+      {/* Bottom bar */}
+      <View
+        style={[
+          s.bottomBar,
+          { paddingBottom: insets.bottom + 12 },
+        ]}
+      >
+        {step < 4 ? (
+          <Pressable
+            onPress={goNext}
+            disabled={!canAdvance}
+            style={[s.nextBtn, !canAdvance && { opacity: 0.45 }]}
+          >
+            <Text style={s.nextBtnText}>შემდეგი</Text>
+            <Ionicons name="arrow-forward" size={18} color="#fff" />
+          </Pressable>
+        ) : (
+          <View style={{ gap: 10 }}>
+            <Pressable
+              onPress={saveAndGeneratePdf}
+              disabled={saving}
+              style={[s.pdfBtn, saving && { opacity: 0.6 }]}
+            >
+              {saving ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <>
+                  <Ionicons name="document-text" size={18} color="#fff" />
+                  <Text style={s.pdfBtnText}>PDF გენერირება</Text>
+                </>
+              )}
+            </Pressable>
+            <Pressable
+              onPress={saveDraft}
+              disabled={saving}
+              style={[s.draftBtn, saving && { opacity: 0.6 }]}
+            >
+              <Text style={s.draftBtnText}>შენახვა ხელმოწერის გარეშე</Text>
+            </Pressable>
+          </View>
+        )}
+      </View>
+
+      {/* Date/time picker (iOS modal, Android native dialog) */}
+      {Platform.OS === 'ios' ? (
+        <Modal
+          visible={showPicker}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowPicker(false)}
+        >
+          <Pressable
+            style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}
+            onPress={() => setShowPicker(false)}
+          >
+            <Pressable style={[s.pickerSheet, { paddingBottom: insets.bottom + 8 }]}>
+              <View style={s.pickerHeader}>
+                <Text style={s.pickerTitle}>
+                  {pickerMode === 'date' ? 'თარიღი' : 'დრო'}
+                </Text>
+                <Pressable onPress={() => setShowPicker(false)} hitSlop={8}>
+                  <Text style={{ color: theme.colors.accent, fontSize: 16, fontWeight: '600' }}>
+                    შესრულება
+                  </Text>
+                </Pressable>
+              </View>
+              <DateTimePicker
+                value={form.dateTime}
+                mode={pickerMode}
+                display="spinner"
+                onChange={(_, d) => d && setForm(f => ({ ...f, dateTime: d }))}
+                locale="ka-GE"
+                style={{ backgroundColor: theme.colors.surface }}
+              />
+            </Pressable>
+          </Pressable>
+        </Modal>
+      ) : showPicker ? (
+        <DateTimePicker
+          value={form.dateTime}
+          mode={pickerMode}
+          display="default"
+          onChange={(_, d) => {
+            setShowPicker(false);
+            if (d) setForm(f => ({ ...f, dateTime: d }));
+          }}
+        />
+      ) : null}
+    </View>
+  );
+}
+
+// ─── Step 1 — type selection ──────────────────────────────────────────────────
+
+function Step1({
+  form, setForm, theme, s,
+}: {
+  form: FormData;
+  setForm: React.Dispatch<React.SetStateAction<FormData>>;
+  theme: any;
+  s: ReturnType<typeof makeStyles>;
+}) {
+  const types: IncidentType[] = ['minor', 'severe', 'fatal', 'mass', 'nearmiss'];
+  const needsNotice = form.type === 'severe' || form.type === 'fatal';
+
+  return (
+    <View style={{ gap: 12 }}>
+      <Text style={s.stepTitle}>რა სახის შემთხვევა?</Text>
+
+      {types.map(t => {
+        const badge = TYPE_BADGE[t];
+        const selected = form.type === t;
+        return (
+          <Pressable
+            key={t}
+            onPress={() => setForm(f => ({ ...f, type: t }))}
+            style={[
+              s.typeCard,
+              selected && {
+                borderColor: badge.border,
+                backgroundColor: badge.bg,
+              },
+            ]}
+          >
+            <View
+              style={[
+                s.typeCardBadge,
+                { backgroundColor: badge.bg, borderColor: badge.border },
+              ]}
+            >
+              <Text style={[s.typeCardBadgeText, { color: badge.text }]}>
+                {INCIDENT_TYPE_LABEL[t]}
+              </Text>
+            </View>
+            <Text style={[s.typeCardLabel, selected && { color: badge.text, fontWeight: '700' }]}>
+              {INCIDENT_TYPE_FULL_LABEL[t]}
+            </Text>
+            {selected && (
+              <Ionicons
+                name="checkmark-circle"
+                size={22}
+                color={badge.border}
+                style={{ marginLeft: 'auto' }}
+              />
+            )}
+          </Pressable>
+        );
+      })}
+
+      {needsNotice && (
+        <View style={s.warningBanner}>
+          <Ionicons name="warning" size={18} color="#991B1B" />
+          <Text style={s.warningBannerText}>
+            კანონის მოთხოვნით შრომის ინსპექცია უნდა ეცნობოს 24 საათის
+            განმავლობაში
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+// ─── Step 2 — person + details ────────────────────────────────────────────────
+
+function Step2({
+  form, setForm, theme, s,
+  pickerMode, setPickerMode, showPicker, setShowPicker,
+}: {
+  form: FormData;
+  setForm: React.Dispatch<React.SetStateAction<FormData>>;
+  theme: any;
+  s: ReturnType<typeof makeStyles>;
+  pickerMode: 'date' | 'time';
+  setPickerMode: (m: 'date' | 'time') => void;
+  showPicker: boolean;
+  setShowPicker: (v: boolean) => void;
+}) {
+  const isNearMiss = form.type === 'nearmiss';
+
+  return (
+    <View style={{ gap: 16 }}>
+      <Text style={s.stepTitle}>დაზარალებული და გარემოება</Text>
+
+      {isNearMiss ? (
+        <View style={s.nearMissNote}>
+          <Ionicons name="information-circle" size={18} color={theme.colors.inkSoft} />
+          <Text style={s.nearMissNoteText}>
+            საშიში შემთხვევა — დაზიანება არ მომხდარა
+          </Text>
+        </View>
+      ) : (
+        <>
+          <View style={{ gap: 6 }}>
+            <Text style={s.fieldLabel}>დაზარალებული პირი</Text>
+            <TextInput
+              style={[s.input, { color: theme.colors.ink }]}
+              value={form.injuredName}
+              onChangeText={v => setForm(f => ({ ...f, injuredName: v }))}
+              placeholder="სახელი, გვარი"
+              placeholderTextColor={theme.colors.inkFaint}
+            />
+          </View>
+
+          <View style={{ gap: 6 }}>
+            <Text style={s.fieldLabel}>თანამდებობა</Text>
+            <TextInput
+              style={[s.input, { color: theme.colors.ink }]}
+              value={form.injuredRole}
+              onChangeText={v => setForm(f => ({ ...f, injuredRole: v }))}
+              placeholder="პოზიცია / სპეციალობა"
+              placeholderTextColor={theme.colors.inkFaint}
+            />
+          </View>
+        </>
+      )}
+
+      {/* Date / time row */}
+      <View style={{ gap: 6 }}>
+        <Text style={s.fieldLabel}>თარიღი და დრო</Text>
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <Pressable
+            onPress={() => { setPickerMode('date'); setShowPicker(true); }}
+            style={[s.dateChip, { flex: 1.5 }]}
+          >
+            <Ionicons name="calendar-outline" size={16} color={theme.colors.accent} />
+            <Text style={s.dateChipText}>
+              {form.dateTime.toLocaleDateString('ka-GE', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+              })}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => { setPickerMode('time'); setShowPicker(true); }}
+            style={[s.dateChip, { flex: 1 }]}
+          >
+            <Ionicons name="time-outline" size={16} color={theme.colors.accent} />
+            <Text style={s.dateChipText}>
+              {form.dateTime.toLocaleTimeString('ka-GE', {
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+
+      {/* Location */}
+      <View style={{ gap: 6 }}>
+        <Text style={s.fieldLabel}>ზუსტი ადგილი *</Text>
+        <TextInput
+          style={[s.input, { color: theme.colors.ink }]}
+          value={form.location}
+          onChangeText={v => setForm(f => ({ ...f, location: v }))}
+          placeholder="სად მოხდა შემთხვევა"
+          placeholderTextColor={theme.colors.inkFaint}
+        />
+      </View>
+    </View>
+  );
+}
+
+// ─── Step 3 — description ─────────────────────────────────────────────────────
+
+function Step3({
+  form, setForm, theme, s,
+  witnessInput, setWitnessInput, onAddWitness, onRemoveWitness,
+  onAddPhoto, onRemovePhoto,
+}: {
+  form: FormData;
+  setForm: React.Dispatch<React.SetStateAction<FormData>>;
+  theme: any;
+  s: ReturnType<typeof makeStyles>;
+  witnessInput: string;
+  setWitnessInput: (v: string) => void;
+  onAddWitness: () => void;
+  onRemoveWitness: (i: number) => void;
+  onAddPhoto: () => void;
+  onRemovePhoto: (i: number) => void;
+}) {
+  return (
+    <View style={{ gap: 16 }}>
+      <Text style={s.stepTitle}>აღწერა და მიზეზი</Text>
+
+      <View style={{ gap: 6 }}>
+        <Text style={s.fieldLabel}>რა მოხდა</Text>
+        <TextInput
+          style={[s.textarea, { color: theme.colors.ink }]}
+          value={form.description}
+          onChangeText={v => setForm(f => ({ ...f, description: v }))}
+          placeholder="აღწერეთ შემთხვევა..."
+          placeholderTextColor={theme.colors.inkFaint}
+          multiline
+          numberOfLines={4}
+          textAlignVertical="top"
+        />
+      </View>
+
+      <View style={{ gap: 6 }}>
+        <Text style={s.fieldLabel}>სავარაუდო მიზეზი</Text>
+        <TextInput
+          style={[s.textarea, { color: theme.colors.ink }]}
+          value={form.cause}
+          onChangeText={v => setForm(f => ({ ...f, cause: v }))}
+          placeholder="სავარაუდო მიზეზი..."
+          placeholderTextColor={theme.colors.inkFaint}
+          multiline
+          numberOfLines={3}
+          textAlignVertical="top"
+        />
+      </View>
+
+      <View style={{ gap: 6 }}>
+        <Text style={s.fieldLabel}>მიღებული ზომები</Text>
+        <TextInput
+          style={[s.textarea, { color: theme.colors.ink }]}
+          value={form.actionsTaken}
+          onChangeText={v => setForm(f => ({ ...f, actionsTaken: v }))}
+          placeholder="რა ზომები იქნა მიღებული..."
+          placeholderTextColor={theme.colors.inkFaint}
+          multiline
+          numberOfLines={3}
+          textAlignVertical="top"
+        />
+      </View>
+
+      {/* Witnesses */}
+      <View style={{ gap: 8 }}>
+        <Text style={s.fieldLabel}>მოწმეები</Text>
+        {form.witnesses.map((w, i) => (
+          <View key={`${i}-${w}`} style={s.witnessRow}>
+            <Ionicons name="person-outline" size={15} color={theme.colors.inkSoft} />
+            <Text style={s.witnessName}>{w}</Text>
+            <Pressable onPress={() => onRemoveWitness(i)} hitSlop={8}>
+              <Ionicons name="close-circle" size={18} color={theme.colors.danger} />
+            </Pressable>
+          </View>
+        ))}
+        <View style={s.witnessInputRow}>
+          <TextInput
+            style={[s.witnessInput, { color: theme.colors.ink, flex: 1 }]}
+            value={witnessInput}
+            onChangeText={setWitnessInput}
+            placeholder="სახელი, გვარი"
+            placeholderTextColor={theme.colors.inkFaint}
+            onSubmitEditing={onAddWitness}
+            returnKeyType="done"
+          />
+          <Pressable onPress={onAddWitness} style={s.addWitnessBtn}>
+            <Ionicons name="add" size={20} color={theme.colors.accent} />
+          </Pressable>
+        </View>
+      </View>
+
+      {/* Photos */}
+      <View style={{ gap: 8 }}>
+        <Text style={s.fieldLabel}>ფოტო მასალა</Text>
+        {form.photoUris.length > 0 && (
+          <View style={s.photoGrid}>
+            {form.photoUris.map((uri, i) => (
+              <View key={`${i}-${uri}`} style={s.photoThumb}>
+                <Image
+                  source={{ uri }}
+                  style={{ width: '100%', height: '100%' }}
+                  contentFit="cover"
+                />
+                <Pressable
+                  onPress={() => onRemovePhoto(i)}
+                  style={s.photoRemoveBtn}
+                  hitSlop={4}
+                >
+                  <Ionicons name="close-circle" size={20} color="#fff" />
+                </Pressable>
+              </View>
+            ))}
+          </View>
+        )}
+        <Pressable onPress={onAddPhoto} style={s.addPhotoBtn}>
+          <Ionicons name="camera-outline" size={18} color={theme.colors.accent} />
+          <Text style={s.addPhotoBtnText}>ფოტოს დამატება</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+// ─── Step 4 — summary + sign ──────────────────────────────────────────────────
+
+function Step4({
+  form, inspectorName, sigPath, project, theme, s,
+}: {
+  form: FormData;
+  inspectorName: string;
+  sigPath: string | null;
+  project: Project | null;
+  theme: any;
+  s: ReturnType<typeof makeStyles>;
+}) {
+  const [sigDisplayUrl, setSigDisplayUrl] = useState<string | null>(null);
+
+  useMemo(() => {
+    if (!sigPath) return;
+    getStorageImageDisplayUrl(STORAGE_BUCKETS.signatures, sigPath)
+      .then(setSigDisplayUrl)
+      .catch(() => null);
+  }, [sigPath]);
+
+  const badge = form.type ? TYPE_BADGE[form.type] : null;
+
+  return (
+    <View style={{ gap: 16 }}>
+      <Text style={s.stepTitle}>ხელმოწერა და დასრულება</Text>
+
+      {/* Summary card */}
+      <View style={s.summaryCard}>
+        {form.type && badge && (
+          <View
+            style={[
+              s.summaryBadge,
+              { backgroundColor: badge.bg, borderColor: badge.border },
+            ]}
+          >
+            <Text style={[s.summaryBadgeText, { color: badge.text }]}>
+              {INCIDENT_TYPE_FULL_LABEL[form.type]}
+            </Text>
+          </View>
+        )}
+
+        <SummaryRow
+          label="პროექტი"
+          value={project?.name ?? '—'}
+          theme={theme}
+          s={s}
+        />
+        {form.type !== 'nearmiss' && form.injuredName ? (
+          <SummaryRow
+            label="დაზარალებული"
+            value={`${form.injuredName}${form.injuredRole ? ` — ${form.injuredRole}` : ''}`}
+            theme={theme}
+            s={s}
+          />
+        ) : null}
+        <SummaryRow
+          label="თარიღი"
+          value={formatShortDateTime(form.dateTime.toISOString())}
+          theme={theme}
+          s={s}
+        />
+        <SummaryRow
+          label="ადგილი"
+          value={form.location || '—'}
+          theme={theme}
+          s={s}
+        />
+        {form.witnesses.length > 0 && (
+          <SummaryRow
+            label="მოწმეები"
+            value={form.witnesses.join(', ')}
+            theme={theme}
+            s={s}
+          />
+        )}
+        {form.photoUris.length > 0 && (
+          <SummaryRow
+            label="ფოტოები"
+            value={`${form.photoUris.length} ფოტო`}
+            theme={theme}
+            s={s}
+          />
+        )}
+      </View>
+
+      {/* Inspector signed row */}
+      <View style={s.inspectorRow}>
+        <View style={s.inspectorSigBox}>
+          {sigDisplayUrl ? (
+            <Image
+              source={{ uri: sigDisplayUrl }}
+              style={{ width: '100%', height: '100%' }}
+              contentFit="contain"
+            />
+          ) : (
+            <Ionicons name="create-outline" size={20} color={theme.colors.inkFaint} />
+          )}
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={s.inspectorName}>{inspectorName || 'სპეციალისტი'}</Text>
+          <Text style={s.inspectorRole}>შრომის უსაფრთხოების სპეციალისტი</Text>
+        </View>
+        <View style={s.signedChip}>
+          <Ionicons name="checkmark" size={13} color="#065F46" />
+          <Text style={s.signedChipText}>ხელმოწერილია ✓</Text>
+        </View>
+      </View>
+
+      {(form.type === 'severe' || form.type === 'fatal') && (
+        <View style={s.warningBanner}>
+          <Ionicons name="warning" size={18} color="#991B1B" />
+          <Text style={s.warningBannerText}>
+            კანონის მოთხოვნით შრომის ინსპექცია უნდა ეცნობოს 24 საათის
+            განმავლობაში
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+function SummaryRow({
+  label, value, theme, s,
+}: {
+  label: string;
+  value: string;
+  theme: any;
+  s: ReturnType<typeof makeStyles>;
+}) {
+  return (
+    <View style={s.summaryRow}>
+      <Text style={s.summaryLabel}>{label}</Text>
+      <Text style={s.summaryValue} numberOfLines={2}>{value}</Text>
+    </View>
+  );
+}
+
+// ─── styles ───────────────────────────────────────────────────────────────────
+
+function makeStyles(theme: any) {
+  return StyleSheet.create({
+    // progress bar
+    progressRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      paddingVertical: 12,
+      paddingHorizontal: 24,
+      position: 'relative',
+    },
+    progressLine: {
+      position: 'absolute',
+      top: '50%',
+      left: 40,
+      right: 40,
+      height: 1,
+      backgroundColor: theme.colors.border,
+      zIndex: -1,
+    },
+    progressDot: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: theme.colors.surface,
+      borderWidth: 1.5,
+      borderColor: theme.colors.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1,
+    },
+    progressDotActive: {
+      backgroundColor: theme.colors.accent,
+      borderColor: theme.colors.accent,
+    },
+    progressDotDone: {
+      backgroundColor: theme.colors.primary[700],
+      borderColor: theme.colors.primary[700],
+    },
+    progressDotText: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: theme.colors.inkSoft,
+    },
+
+    // step title
+    stepTitle: {
+      fontSize: 20,
+      fontWeight: '800',
+      color: theme.colors.ink,
+      marginBottom: 4,
+    },
+
+    // type cards
+    typeCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      padding: 14,
+      backgroundColor: theme.colors.surface,
+      borderRadius: 12,
+      borderWidth: 1.5,
+      borderColor: theme.colors.border,
+    },
+    typeCardBadge: {
+      borderRadius: 6,
+      borderWidth: 1,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+    },
+    typeCardBadgeText: {
+      fontSize: 11,
+      fontWeight: '700',
+    },
+    typeCardLabel: {
+      flex: 1,
+      fontSize: 14,
+      color: theme.colors.ink,
+      fontWeight: '500',
+    },
+
+    // warning banner
+    warningBanner: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 10,
+      backgroundColor: '#FEF2F2',
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: '#FCA5A5',
+      padding: 12,
+    },
+    warningBannerText: {
+      flex: 1,
+      fontSize: 13,
+      color: '#991B1B',
+      fontWeight: '600',
+      lineHeight: 20,
+    },
+
+    // near-miss note
+    nearMissNote: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      padding: 12,
+      backgroundColor: theme.colors.surfaceSecondary,
+      borderRadius: 10,
+    },
+    nearMissNoteText: {
+      fontSize: 13,
+      color: theme.colors.inkSoft,
+      fontWeight: '500',
+    },
+
+    // form inputs
+    fieldLabel: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: theme.colors.inkSoft,
+      marginBottom: 2,
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: 10,
+      backgroundColor: theme.colors.surface,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      fontSize: 15,
+    },
+    textarea: {
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: 10,
+      backgroundColor: theme.colors.surface,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      fontSize: 15,
+      minHeight: 120,
+    },
+
+    // date chips
+    dateChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      backgroundColor: theme.colors.surface,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 12,
+    },
+    dateChipText: {
+      fontSize: 14,
+      color: theme.colors.ink,
+      fontWeight: '500',
+    },
+
+    // witnesses
+    witnessRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      backgroundColor: theme.colors.surfaceSecondary,
+      borderRadius: 8,
+      padding: 10,
+    },
+    witnessName: {
+      flex: 1,
+      fontSize: 14,
+      color: theme.colors.ink,
+    },
+    witnessInputRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    witnessInput: {
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: 10,
+      backgroundColor: theme.colors.surface,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      fontSize: 14,
+    },
+    addWitnessBtn: {
+      width: 40,
+      height: 40,
+      borderRadius: 10,
+      borderWidth: 1.5,
+      borderColor: theme.colors.accent,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
+    // photos
+    photoGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    photoThumb: {
+      width: 88,
+      height: 88,
+      borderRadius: 8,
+      overflow: 'hidden',
+      backgroundColor: theme.colors.surfaceSecondary,
+    },
+    photoRemoveBtn: {
+      position: 'absolute',
+      top: 4,
+      right: 4,
+      backgroundColor: 'rgba(0,0,0,0.45)',
+      borderRadius: 10,
+    },
+    addPhotoBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      paddingVertical: 12,
+      borderRadius: 10,
+      borderWidth: 1.5,
+      borderColor: theme.colors.accent,
+      borderStyle: 'dashed',
+    },
+    addPhotoBtnText: {
+      fontSize: 14,
+      color: theme.colors.accent,
+      fontWeight: '600',
+    },
+
+    // summary card
+    summaryCard: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: 14,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      gap: 10,
+    },
+    summaryBadge: {
+      alignSelf: 'flex-start',
+      borderRadius: 8,
+      borderWidth: 1,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      marginBottom: 4,
+    },
+    summaryBadgeText: {
+      fontSize: 12,
+      fontWeight: '700',
+    },
+    summaryRow: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    summaryLabel: {
+      fontSize: 13,
+      color: theme.colors.inkSoft,
+      width: 90,
+      flexShrink: 0,
+    },
+    summaryValue: {
+      flex: 1,
+      fontSize: 13,
+      fontWeight: '600',
+      color: theme.colors.ink,
+    },
+
+    // inspector row
+    inspectorRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      backgroundColor: theme.colors.surface,
+      borderRadius: 14,
+      padding: 14,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    inspectorSigBox: {
+      width: 56,
+      height: 44,
+      borderRadius: 8,
+      backgroundColor: theme.colors.surfaceSecondary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      overflow: 'hidden',
+    },
+    inspectorName: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: theme.colors.ink,
+    },
+    inspectorRole: {
+      fontSize: 12,
+      color: theme.colors.inkSoft,
+      marginTop: 2,
+    },
+    signedChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      backgroundColor: '#D1FAE5',
+      borderRadius: 999,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+    },
+    signedChipText: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: '#065F46',
+    },
+
+    // bottom bar
+    bottomBar: {
+      backgroundColor: theme.colors.surface,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+      paddingHorizontal: 16,
+      paddingTop: 12,
+    },
+    nextBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      backgroundColor: theme.colors.accent,
+      borderRadius: 12,
+      paddingVertical: 14,
+    },
+    nextBtnText: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: '#fff',
+    },
+    pdfBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      backgroundColor: '#059669',
+      borderRadius: 12,
+      paddingVertical: 14,
+    },
+    pdfBtnText: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: '#fff',
+    },
+    draftBtn: {
+      alignItems: 'center',
+      paddingVertical: 12,
+    },
+    draftBtnText: {
+      fontSize: 14,
+      color: theme.colors.inkSoft,
+      fontWeight: '600',
+    },
+
+    // date picker sheet (iOS)
+    pickerSheet: {
+      backgroundColor: theme.colors.surface,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      paddingHorizontal: 16,
+      paddingTop: 8,
+    },
+    pickerHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 12,
+    },
+    pickerTitle: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: theme.colors.ink,
+    },
+  });
+}

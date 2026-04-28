@@ -36,4 +36,5 @@ export const projectItemsApi = src.projectItemsApi;
 export const schedulesApi = src.schedulesApi;
 export const storageApi = src.storageApi;
 export const remoteSigningApi = src.remoteSigningApi;
+export const incidentsApi = src.incidentsApi;
 export const isExpiringSoon = src.isExpiringSoon;
