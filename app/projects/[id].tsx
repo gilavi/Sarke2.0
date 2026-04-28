@@ -32,6 +32,7 @@ import {
   projectFilesApi,
   questionnairesApi,
   templatesApi,
+  incidentsApi,
 } from '../../lib/services';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { useToast } from '../../lib/toast';
@@ -41,7 +42,8 @@ import { useTheme } from '../../lib/theme';
 import { toErrorMessage } from '../../lib/logError';
 import { friendlyError } from '../../lib/errorMap';
 import { formatShortDateTime } from '../../lib/formatDate';
-import type { CrewMember, Project, ProjectFile, Questionnaire, Template } from '../../types/models';
+import type { CrewMember, Incident, IncidentType, Project, ProjectFile, Questionnaire, Template } from '../../types/models';
+import { INCIDENT_TYPE_LABEL } from '../../types/models';
 import { RoleSlotList } from '../../components/RoleSlotList';
 import { ProjectAvatar } from '../../components/ProjectAvatar';
 import { pickProjectLogo } from '../../lib/projectLogo';
@@ -67,6 +69,7 @@ export default function ProjectDetail() {
   const [files, setFiles] = useState<ProjectFile[]>([]);
   const [filesBusy, setFilesBusy] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [incidents, setIncidents] = useState<Incident[]>([]);
   const [mapModalVisible, setMapModalVisible] = useState(false);
   const [allProjects, setAllProjects] = useState<Project[]>([]);
   // Flips true after the first fetch finishes. Drives the skeleton → content
@@ -117,16 +120,18 @@ export default function ProjectDetail() {
 
   const load = useCallback(async () => {
     if (!id) return;
-    const [p, q, tpls, f] = await Promise.all([
+    const [p, q, tpls, f, inc] = await Promise.all([
       projectsApi.getById(id).catch(() => null),
       questionnairesApi.listByProject(id).catch(() => []),
       templatesApi.list().catch(() => []),
       projectFilesApi.list(id).catch(() => [] as ProjectFile[]),
+      incidentsApi.listByProject(id).catch(() => [] as Incident[]),
     ]);
     setProject(p);
     setQuestionnaires(q);
     setTemplates(tpls);
     setFiles(f);
+    setIncidents(inc);
     setLoaded(true);
   }, [id]);
 
@@ -562,6 +567,40 @@ export default function ProjectDetail() {
             </View>
           </View>
 
+          {/* ── Incidents ── */}
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>ინციდენტები</Text>
+              <View style={[styles.badgeGreen, { backgroundColor: '#FEE2E2' }]}>
+                <Text style={[styles.badgeGreenText, { color: '#991B1B' }]}>
+                  {incidents.length}
+                </Text>
+              </View>
+            </View>
+
+            {incidents.length === 0 ? (
+              <EmptyState text="ინციდენტები არ არის" />
+            ) : (
+              <View style={{ gap: 8, marginTop: 10 }}>
+                {incidents.map(inc => (
+                  <IncidentRow
+                    key={inc.id}
+                    incident={inc}
+                    onPress={() => router.push(`/incidents/${inc.id}` as any)}
+                  />
+                ))}
+              </View>
+            )}
+
+            <Pressable
+              onPress={() => router.push(`/incidents/new?projectId=${id}` as any)}
+              style={[styles.addBtn, { marginTop: 12 }]}
+            >
+              <Ionicons name="add" size={18} color={styles.addBtnText.color} />
+              <Text style={styles.addBtnText}>+ ინციდენტის დამატება</Text>
+            </Pressable>
+          </View>
+
         </ScrollView>
 
         {/* ── FAB: new questionnaire ── */}
@@ -959,6 +998,81 @@ function MapPickerInline({
         </Pressable>
       </View>
     </View>
+  );
+}
+
+const INCIDENT_BADGE_COLORS: Record<
+  IncidentType,
+  { bg: string; text: string; border: string }
+> = {
+  minor:    { bg: '#FEF3C7', text: '#92400E', border: '#F59E0B' },
+  severe:   { bg: '#FFEDD5', text: '#9A3412', border: '#F97316' },
+  fatal:    { bg: '#FEE2E2', text: '#991B1B', border: '#EF4444' },
+  mass:     { bg: '#FEE2E2', text: '#991B1B', border: '#EF4444' },
+  nearmiss: { bg: '#EDE9FE', text: '#5B21B6', border: '#8B5CF6' },
+};
+
+function IncidentRow({
+  incident,
+  onPress,
+}: {
+  incident: Incident;
+  onPress: () => void;
+}) {
+  const { theme } = useTheme();
+  const badge = INCIDENT_BADGE_COLORS[incident.type as IncidentType] ?? INCIDENT_BADGE_COLORS.minor;
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
+  return (
+    <Pressable onPress={onPress} style={styles.listRow}>
+      <View
+        style={[
+          styles.statusIcon,
+          { backgroundColor: badge.bg, borderWidth: 1, borderColor: badge.border },
+        ]}
+      >
+        <Ionicons name="warning-outline" size={13} color={badge.text} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <View
+            style={{
+              backgroundColor: badge.bg,
+              borderRadius: 4,
+              borderWidth: 1,
+              borderColor: badge.border,
+              paddingHorizontal: 6,
+              paddingVertical: 2,
+            }}
+          >
+            <Text style={{ fontSize: 10, fontWeight: '700', color: badge.text }}>
+              {INCIDENT_TYPE_LABEL[incident.type as IncidentType] ?? incident.type}
+            </Text>
+          </View>
+          {incident.status === 'draft' && (
+            <View
+              style={{
+                backgroundColor: '#FEF3C7',
+                borderRadius: 4,
+                paddingHorizontal: 5,
+                paddingVertical: 2,
+              }}
+            >
+              <Text style={{ fontSize: 10, fontWeight: '700', color: '#92400E' }}>
+                დრაფტი
+              </Text>
+            </View>
+          )}
+        </View>
+        <Text style={[styles.listRowTitle, { marginTop: 3 }]} numberOfLines={1}>
+          {incident.location || incident.description || '—'}
+        </Text>
+        <Text style={styles.listRowSubtitle}>
+          {formatShortDateTime(incident.date_time)}
+        </Text>
+      </View>
+      <Ionicons name="chevron-forward" size={18} color={theme.colors.borderStrong} />
+    </Pressable>
   );
 }
 
