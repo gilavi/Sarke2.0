@@ -1,10 +1,9 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { formatShortDateTime } from '../lib/formatDate';
+import { useTheme } from '../lib/ThemeContext';
 import type { ProjectFile } from '../types/models';
-
-const BRAND_GREEN = '#1D9E75';
 
 function humanSize(bytes: number | null): string {
   if (!bytes || bytes <= 0) return '';
@@ -32,6 +31,8 @@ export function UploadedFilesSection({
   onDelete?: (f: ProjectFile) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme.colors), [theme.colors]);
   const count = files.length;
   const latest = count > 0 ? files[0].created_at : null;
 
@@ -39,7 +40,7 @@ export function UploadedFilesSection({
     <View style={styles.card}>
       <Pressable style={styles.header} onPress={() => setOpen(o => !o)}>
         <View style={styles.iconWrap}>
-          <Ionicons name="folder-outline" size={18} color="#065F46" />
+          <Ionicons name="folder-outline" size={18} color={theme.colors.semantic.success} />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.title}>ატვირთული ფაილები</Text>
@@ -52,7 +53,7 @@ export function UploadedFilesSection({
         <Ionicons
           name={open ? 'chevron-up' : 'chevron-down'}
           size={18}
-          color="#9CA3AF"
+          color={theme.colors.inkFaint}
         />
       </Pressable>
 
@@ -60,7 +61,7 @@ export function UploadedFilesSection({
         <View style={styles.body}>
           {count === 0 ? (
             <View style={styles.emptyZone}>
-              <Ionicons name="cloud-upload-outline" size={32} color={BRAND_GREEN} />
+              <Ionicons name="cloud-upload-outline" size={32} color={theme.colors.semantic.success} />
               <Text style={styles.emptyTitle}>ფაილები არ არის</Text>
               <Text style={styles.emptyHint}>
                 ატვირთეთ პროექტის დოკუმენტაცია, ფოტოები ან გეგმები.
@@ -74,7 +75,7 @@ export function UploadedFilesSection({
                   onPress={() => onOpen?.(f)}
                   style={styles.fileRow}
                 >
-                  <Ionicons name="document-outline" size={18} color="#6B7280" />
+                  <Ionicons name="document-outline" size={18} color={theme.colors.inkSoft} />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.fileName} numberOfLines={1}>{f.name}</Text>
                     <Text style={styles.fileMeta}>
@@ -90,7 +91,7 @@ export function UploadedFilesSection({
                       style={styles.deleteBtn}
                       accessibilityLabel="წაშლა"
                     >
-                      <Ionicons name="trash-outline" size={16} color="#9CA3AF" />
+                      <Ionicons name="trash-outline" size={16} color={theme.colors.inkFaint} />
                     </Pressable>
                   ) : null}
                 </Pressable>
@@ -108,9 +109,9 @@ export function UploadedFilesSection({
             ]}
           >
             {busy ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
+              <ActivityIndicator size="small" color={theme.colors.surface} />
             ) : (
-              <Ionicons name="add" size={18} color="#FFFFFF" />
+              <Ionicons name="add" size={18} color={theme.colors.surface} />
             )}
             <Text style={styles.uploadBtnText}>
               {busy ? 'იტვირთება…' : 'ფაილის ატვირთვა'}
@@ -122,13 +123,13 @@ export function UploadedFilesSection({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   card: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.surfaceSecondary,
     borderRadius: 12,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: colors.border,
   },
   header: {
     flexDirection: 'row',
@@ -141,23 +142,23 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#D1FAE5',
+    backgroundColor: colors.semantic.successSoft,
   },
   title: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1F2937',
+    color: colors.ink,
   },
   subtitle: {
     fontSize: 12,
-    color: '#6B7280',
+    color: colors.inkSoft,
     marginTop: 2,
   },
   body: {
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    borderTopColor: colors.border,
     gap: 12,
   },
   emptyZone: {
@@ -167,19 +168,19 @@ const styles = StyleSheet.create({
     gap: 6,
     borderWidth: 1,
     borderStyle: 'dashed',
-    borderColor: '#D1FAE5',
+    borderColor: colors.semantic.successSoft,
     borderRadius: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
   emptyTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1F2937',
+    color: colors.ink,
     marginTop: 4,
   },
   emptyHint: {
     fontSize: 12,
-    color: '#6B7280',
+    color: colors.inkSoft,
     textAlign: 'center',
   },
   fileRow: {
@@ -187,19 +188,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     padding: 10,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: colors.border,
   },
   fileName: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#1F2937',
+    color: colors.ink,
   },
   fileMeta: {
     fontSize: 11,
-    color: '#9CA3AF',
+    color: colors.inkFaint,
     marginTop: 2,
   },
   deleteBtn: {
@@ -216,10 +217,10 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 12,
     borderRadius: 10,
-    backgroundColor: BRAND_GREEN,
+    backgroundColor: colors.semantic.success,
   },
   uploadBtnText: {
-    color: '#FFFFFF',
+    color: colors.surface,
     fontWeight: '700',
     fontSize: 14,
   },

@@ -718,10 +718,10 @@ export default function QuestionnaireWizard() {
       return <CompletedRedirect id={questionnaire.id} />;
     }
     return (
-      <Screen edgeToEdge edges={['top']} style={{ backgroundColor: '#ffffff' }}>
+      <Screen edgeToEdge edges={['top']} style={{ backgroundColor: theme.colors.background }}>
         <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color="#059669" />
+          <ActivityIndicator size="large" color={theme.colors.semantic.success} />
         </View>
       </Screen>
     );
@@ -773,7 +773,7 @@ export default function QuestionnaireWizard() {
       {photoUploadCount > 0 ? (
         <View pointerEvents="none" style={uploadPillStyles.wrap}>
           <View style={uploadPillStyles.pill}>
-            <ActivityIndicator size="small" color="#FFFFFF" />
+            <ActivityIndicator size="small" color={theme.colors.surface} />
             <Text style={uploadPillStyles.text}>
               {photoUploadCount > 1 ? `ფოტოები იტვირთება (${photoUploadCount})…` : 'ფოტო იტვირთება…'}
             </Text>

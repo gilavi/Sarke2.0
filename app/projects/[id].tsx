@@ -469,7 +469,7 @@ export default function ProjectDetail() {
                 <View style={{ marginTop: 10 }}>
                   <View style={styles.subSectionHeader}>
                     <View style={[styles.subDot, { backgroundColor: theme.colors.semantic.warningSoft }]}>
-                      <Ionicons name="pencil" size={11} color={'#92400E'} />
+                      <Ionicons name="pencil" size={11} color={theme.colors.semantic.warning} />
                     </View>
                     <Text style={styles.subSectionLabel}>{t('projects.draftsSection')}</Text>
                     <Text style={styles.subSectionCount}>{drafts.length}</Text>
@@ -932,7 +932,7 @@ function MapPickerInline({
       {/* Bottom action bar */}
       <View
         style={{
-          backgroundColor: '#FFFFFF',
+          backgroundColor: theme.colors.surface,
           borderTopLeftRadius: 20,
           borderTopRightRadius: 20,
           paddingHorizontal: 20,
@@ -987,9 +987,9 @@ function getstyles(theme: any) {
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 6,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.surface,
     borderWidth: 1,
-    borderColor: theme.colors.border || '#E5E5E5',
+    borderColor: theme.colors.border,
     zIndex: 5,
   },
   mapWrap: {
@@ -1113,7 +1113,7 @@ function getstyles(theme: any) {
     borderRadius: 999,
   },
   missingChipText: {
-    color: '#92400E',
+    color: theme.colors.semantic.warning,
     fontSize: 10,
     fontWeight: '700',
   },

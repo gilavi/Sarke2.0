@@ -36,6 +36,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { haptic } from '../lib/haptics';
 import { a11y } from '../lib/accessibility';
+import { useTheme } from '../lib/ThemeContext';
 
 export interface BottomSheetOptions {
   title?: string;
@@ -78,6 +79,8 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
   const [sheet, setSheet] = useState<SheetState | null>(null);
   const callbackRef = useRef<((idx: number | undefined) => void) | null>(null);
   const insets = useSafeAreaInsets();
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme.colors), [theme.colors]);
 
   const backdropProgress = useRef(new Animated.Value(0)).current;
   const sheetProgress = useRef(new Animated.Value(0)).current;
@@ -270,7 +273,7 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
                   </Text>
                 </View>
                 {isSelected && (
-                  <Ionicons name="checkmark" size={18} color="#059669" />
+                  <Ionicons name="checkmark" size={18} color={theme.colors.semantic.success} />
                 )}
               </Pressable>
             );
@@ -378,9 +381,9 @@ export function BottomSheetScrollView({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   backdrop: {
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: colors.overlay,
   },
   sheetWrapper: {
     position: 'absolute',
@@ -389,7 +392,7 @@ const styles = StyleSheet.create({
     bottom: 0,
   },
   sheetCard: {
-    backgroundColor: '#F5F5F0',
+    backgroundColor: colors.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     borderBottomLeftRadius: 24,
@@ -410,16 +413,16 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#D1D5DB',
+    backgroundColor: colors.border,
   },
   title: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#64748b',
+    color: colors.inkSoft,
     textAlign: 'center',
     paddingVertical: 8,
     paddingHorizontal: 16,
-    backgroundColor: '#F5F5F0',
+    backgroundColor: colors.surface,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
@@ -431,32 +434,32 @@ const styles = StyleSheet.create({
   optionCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: colors.border,
     paddingVertical: 14,
     paddingHorizontal: 16,
   },
   optionCardSelected: {
     borderLeftWidth: 4,
-    borderLeftColor: '#059669',
+    borderLeftColor: colors.semantic.success,
     paddingLeft: 12,
   },
   optionCardPressed: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: colors.surfaceSecondary,
   },
   optionText: {
     fontSize: 16,
-    color: '#1F2937',
+    color: colors.ink,
     fontWeight: '600',
   },
   cancelText: {
     fontWeight: '700',
-    color: '#6B7280',
+    color: colors.inkSoft,
   },
   destructiveText: {
-    color: '#DC2626',
+    color: colors.semantic.danger,
     fontWeight: '700',
   },
   cancelBtn: {
@@ -465,17 +468,17 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: '#059669',
+    borderColor: colors.semantic.success,
     alignItems: 'center',
     justifyContent: 'center',
   },
   cancelBtnText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#059669',
+    color: colors.semantic.success,
   },
   contentBody: {
-    backgroundColor: '#F5F5F0',
+    backgroundColor: colors.surface,
     paddingHorizontal: 16,
     paddingTop: 4,
     paddingBottom: 16,
