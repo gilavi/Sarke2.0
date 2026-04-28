@@ -42,6 +42,10 @@ function resolveIsDark(mode: ThemeMode): boolean {
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [mode, setModeState] = useState<ThemeMode>('system');
   const [loaded, setLoaded] = useState(false);
+  // Bumped by the OS appearance listener so `isDark` recomputes when the
+  // system flips light/dark while the app is open. Plain `setModeState((m) => m)`
+  // is bailed out by React (same reference), so it wouldn't re-render.
+  const [systemTick, setSystemTick] = useState(0);
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY).then((val) => {
@@ -51,10 +55,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const sub = Appearance.addChangeListener(({ colorScheme }) => {
+    const sub = Appearance.addChangeListener(() => {
       if (mode === 'system') {
-        // force re-render by toggling state — actual value computed in isDark
-        setModeState((m) => (m === 'system' ? 'system' : m));
+        setSystemTick((t) => t + 1);
       }
     });
     return () => sub.remove();
@@ -70,7 +73,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const isDark = useMemo(() => resolveIsDark(mode), [mode]);
+  // systemTick is intentionally part of the deps so a system-theme change
+  // recomputes isDark even though `mode` itself didn't change.
+  const isDark = useMemo(() => resolveIsDark(mode), [mode, systemTick]);
   const theme = useMemo(() => (isDark ? darkTheme : lightTheme), [isDark]);
 
   const value = useMemo(

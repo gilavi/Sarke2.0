@@ -2,6 +2,7 @@ import {
   ReactNode,
   RefObject,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -17,6 +18,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '../lib/theme';
 
 export type TourStep = {
   targetRef: RefObject<any>;
@@ -50,6 +52,8 @@ export function TourGuide({ tourId, steps, children }: Props) {
   const fade = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
   const screen = Dimensions.get('window');
+  const { theme } = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
 
   // Decide whether to show on mount
   useEffect(() => {
@@ -267,59 +271,61 @@ export function TourGuide({ tourId, steps, children }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  dim: {
-    position: 'absolute',
-    backgroundColor: 'rgba(0,0,0,0.65)',
-  },
-  tooltip: {
-    position: 'absolute',
-    width: TOOLTIP_WIDTH,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 14,
-    elevation: 8,
-  },
-  title: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#0F172A',
-    marginBottom: 6,
-  },
-  body: {
-    fontSize: 13,
-    color: '#6B7280',
-    lineHeight: 18,
-    marginBottom: 12,
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  ghost: {
-    paddingVertical: 6,
-    paddingHorizontal: 4,
-  },
-  ghostText: {
-    fontSize: 13,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-  cta: {
-    backgroundColor: BRAND,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-  },
-  ctaText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-});
+function makeStyles(theme: any) {
+  return StyleSheet.create({
+    dim: {
+      position: 'absolute',
+      backgroundColor: 'rgba(0,0,0,0.65)',
+    },
+    tooltip: {
+      position: 'absolute',
+      width: TOOLTIP_WIDTH,
+      backgroundColor: theme.colors.card,
+      borderRadius: 14,
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.2,
+      shadowRadius: 14,
+      elevation: 8,
+    },
+    title: {
+      fontSize: 15,
+      fontWeight: '500',
+      color: theme.colors.ink,
+      marginBottom: 6,
+    },
+    body: {
+      fontSize: 13,
+      color: theme.colors.inkSoft,
+      lineHeight: 18,
+      marginBottom: 12,
+    },
+    row: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    ghost: {
+      paddingVertical: 6,
+      paddingHorizontal: 4,
+    },
+    ghostText: {
+      fontSize: 13,
+      color: theme.colors.inkSoft,
+      fontWeight: '500',
+    },
+    cta: {
+      backgroundColor: BRAND,
+      paddingVertical: 8,
+      paddingHorizontal: 14,
+      borderRadius: 10,
+    },
+    ctaText: {
+      color: '#FFFFFF',
+      fontSize: 13,
+      fontWeight: '600',
+    },
+  });
+}

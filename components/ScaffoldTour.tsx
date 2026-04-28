@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   Dimensions,
   Modal,
@@ -14,6 +14,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import { QuestionAvatar } from './QuestionAvatar';
 import { SCAFFOLD_HELP, ScaffoldHelpEntry } from '../lib/scaffoldHelp';
+import { useTheme } from '../lib/theme';
 
 const BRAND = '#1D9E75';
 const BRAND_DARK = '#0F6E56';
@@ -23,6 +24,8 @@ export function ScaffoldTour({ visible, onClose }: { visible: boolean; onClose: 
   const [index, setIndex] = useState(0);
   const listRef = useRef<FlatList<ScaffoldHelpEntry>>(null);
   const insets = useSafeAreaInsets();
+  const { theme } = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
 
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const i = Math.round(e.nativeEvent.contentOffset.x / SCREEN_W);
@@ -113,121 +116,123 @@ export function ScaffoldTour({ visible, onClose }: { visible: boolean; onClose: 
   );
 }
 
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 4,
-  },
-  stepCounter: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: BRAND,
-  },
-  skipBtn: {
-    paddingVertical: 4,
-    paddingHorizontal: 4,
-  },
-  skipText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6B7280',
-    textDecorationLine: 'underline',
-  },
-  intro: {
-    fontSize: 13,
-    color: BRAND_DARK,
-    textAlign: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 6,
-    paddingBottom: 12,
-    fontWeight: '600',
-  },
-  page: {
-    paddingHorizontal: 20,
-    paddingTop: 4,
-    paddingBottom: 8,
-  },
-  card: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    paddingVertical: 28,
-    paddingHorizontal: 22,
-    alignItems: 'center',
-    gap: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  illustrationWrap: {
-    marginTop: 4,
-  },
-  name: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#0F172A',
-    textAlign: 'center',
-    paddingHorizontal: 4,
-  },
-  divider: {
-    width: 40,
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: BRAND,
-    opacity: 0.4,
-  },
-  copy: {
-    fontSize: 15,
-    color: '#374151',
-    textAlign: 'center',
-    lineHeight: 22,
-    paddingHorizontal: 4,
-  },
-  dots: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 14,
-  },
-  dot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: '#C7E5D9',
-  },
-  dotActive: {
-    width: 22,
-    backgroundColor: BRAND,
-  },
-  footer: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    backgroundColor: '#FFFFFF',
-  },
-  btn: {
-    flexDirection: 'row',
-    backgroundColor: BRAND,
-    paddingVertical: 16,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: BRAND_DARK,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 4,
-  },
-  btnText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-});
+function makeStyles(theme: any) {
+  return StyleSheet.create({
+    root: {
+      flex: 1,
+      backgroundColor: theme.colors.surface,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 20,
+      paddingTop: 8,
+      paddingBottom: 4,
+    },
+    stepCounter: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: BRAND,
+    },
+    skipBtn: {
+      paddingVertical: 4,
+      paddingHorizontal: 4,
+    },
+    skipText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.colors.inkSoft,
+      textDecorationLine: 'underline',
+    },
+    intro: {
+      fontSize: 13,
+      color: BRAND_DARK,
+      textAlign: 'center',
+      paddingHorizontal: 24,
+      paddingTop: 6,
+      paddingBottom: 12,
+      fontWeight: '600',
+    },
+    page: {
+      paddingHorizontal: 20,
+      paddingTop: 4,
+      paddingBottom: 8,
+    },
+    card: {
+      flex: 1,
+      backgroundColor: theme.colors.card,
+      borderRadius: 24,
+      paddingVertical: 28,
+      paddingHorizontal: 22,
+      alignItems: 'center',
+      gap: 16,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    illustrationWrap: {
+      marginTop: 4,
+    },
+    name: {
+      fontSize: 22,
+      fontWeight: '800',
+      color: theme.colors.ink,
+      textAlign: 'center',
+      paddingHorizontal: 4,
+    },
+    divider: {
+      width: 40,
+      height: 3,
+      borderRadius: 2,
+      backgroundColor: BRAND,
+      opacity: 0.4,
+    },
+    copy: {
+      fontSize: 15,
+      color: theme.colors.inkSoft,
+      textAlign: 'center',
+      lineHeight: 22,
+      paddingHorizontal: 4,
+    },
+    dots: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 8,
+      paddingVertical: 14,
+    },
+    dot: {
+      width: 7,
+      height: 7,
+      borderRadius: 4,
+      backgroundColor: theme.colors.accentSoft,
+    },
+    dotActive: {
+      width: 22,
+      backgroundColor: BRAND,
+    },
+    footer: {
+      paddingHorizontal: 20,
+      paddingTop: 8,
+      backgroundColor: theme.colors.surface,
+    },
+    btn: {
+      flexDirection: 'row',
+      backgroundColor: BRAND,
+      paddingVertical: 16,
+      borderRadius: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: BRAND_DARK,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 10,
+      elevation: 4,
+    },
+    btnText: {
+      color: '#FFFFFF',
+      fontSize: 16,
+      fontWeight: '700',
+    },
+  });
+}

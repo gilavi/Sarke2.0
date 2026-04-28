@@ -17,7 +17,7 @@ export function StaggerContainer({
     <View>
       {React.Children.map(children, (child, index) => (
         <Animated.View
-          entering={FadeInUp.delay(initialDelay + index * staggerDelay).duration(400)}
+          entering={FadeInUp.delay(initialDelay + index * staggerDelay).duration(220)}
         >
           {child}
         </Animated.View>

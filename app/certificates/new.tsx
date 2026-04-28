@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -107,6 +108,7 @@ export default function GenerateCertificateScreen() {
 
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [pdfPhase, setPdfPhase] = useState<string | null>(null);
   const [pdfLanguage, setPdfLanguage] = useState<PdfLanguage>('ka');
 
   const btnScale = useSharedValue(1);
@@ -500,6 +502,7 @@ export default function GenerateCertificateScreen() {
       return;
     }
     setBusy(true);
+    setPdfPhase('მზადდება...');
     let uploadedPdfPath: string | null = null;
     try {
       await flushPendingSignatures();
@@ -508,8 +511,10 @@ export default function GenerateCertificateScreen() {
       await persistExpertSignature(expertName);
       const sigsForPdf = [expertRec, ...otherRecs];
 
+      setPdfPhase('ფოტოები ემატება...');
       const { photosForPdf, attachedQuals, failedAssetCount } = await buildPdfAssets();
 
+      setPdfPhase('მზადდება PDF...');
       const html = await buildPdfHtml({
         questionnaire: inspection,
         template,
@@ -521,6 +526,23 @@ export default function GenerateCertificateScreen() {
         certificates: attachedQuals,
         language: pdfLanguage,
       });
+
+      if (Platform.OS === 'web') {
+        // expo-print unavailable on web; open the HTML blob in a new tab
+        // so the user can review / print-to-PDF from the browser.
+        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
+        setPdfPhase('დასრულდა ✓');
+        toast.success(t('certificates.generateSuccess'));
+        if (failedAssetCount > 0) {
+          toast.error(t('certificates.assetsMissing', { count: failedAssetCount }));
+        }
+        router.replace(`/inspections/${inspection.id}` as any);
+        return;
+      }
+
       const { uri } = await Print.printToFileAsync({ html });
 
       const fileName = `${inspection.id}-${Date.now()}.pdf`;
@@ -550,6 +572,7 @@ export default function GenerateCertificateScreen() {
       }
       uploadedPdfPath = null;
 
+      setPdfPhase('დასრულდა ✓');
       toast.success(t('certificates.generateSuccess'));
       if (failedAssetCount > 0) {
         toast.error(t('certificates.assetsMissing', { count: failedAssetCount }));
@@ -567,6 +590,7 @@ export default function GenerateCertificateScreen() {
       toast.error(friendlyError(e, t('errors.generationFailed')));
     } finally {
       setBusy(false);
+      setPdfPhase(null);
     }
   };
 
@@ -783,11 +807,7 @@ export default function GenerateCertificateScreen() {
               ]}
               {...a11y('PDF-ის გენერირება', 'რეპორტის გენერაცია და გაზიარება', 'button')}
             >
-              {busy ? (
-                <ActivityIndicator size="small" color={theme.colors.white} />
-              ) : (
-                <Text style={s.generateBtnText}>PDF-ის გენერირება</Text>
-              )}
+              <Text style={s.generateBtnText}>{busy && pdfPhase ? pdfPhase : 'PDF-ის გენერირება'}</Text>
             </Pressable>
           </Animated.View>
         </View>

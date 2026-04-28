@@ -210,6 +210,8 @@
     "newProject": "ახალი პროექტი",
     "createFirst": "შექმენით პირველი",
     "recentActivity": "ბოლო აქტივობა",
+    "recentActs": "ბოლო აქტები",
+    "fetchError": "მონაცემები ვერ ჩაიტვირთა — შეამოწმეთ კავშირი და ჩამოათრიეთ განახლებისთვის",
     "allActivity": "ყველა",
     "startInspectionSheetTitle": "ინსპექციის დაწყება",
     "addNewProjectSheet": "ახალი პროექტის დამატება",
@@ -548,6 +550,16 @@
     "roleLabel": "როლი",
     "saveButton": "შენახვა"
   },
+  "briefings": {
+    "topics": {
+      "scaffold_safety": "ხარაჩოს უსაფრთხოება",
+      "height_work": "სიმაღლეზე მუშაობა",
+      "ppe": "დამცავი აღჭურვილობა",
+      "evacuation": "საევაკუაციო გეგმა",
+      "fire_safety": "ხანძარსაწინააღმდეგო",
+      "other": "სხვა"
+    }
+  },
   "pdf": {
     "tocTitle": "შინაარსი",
     "tocQuestionCount": "{{count}} კითხვა",
@@ -611,6 +623,7 @@
     "changePassword": "პაროლის შეცვლა",
     "changing": "იცვლება…",
     "currentPasswordRequired": "მიმდინარე პაროლი აუცილებელია",
+    "currentPasswordWrong": "მიმდინარე პაროლი არასწორია",
     "passwordMinLengthError": "ახალი პაროლი უნდა შეიცავდეს მინიმუმ {{min}} სიმბოლოს",
     "passwordMustDiffer": "ახალი პაროლი უნდა იყოს განსხვავებული",
     "passwordsMismatch": "პაროლები არ ემთხვევა",

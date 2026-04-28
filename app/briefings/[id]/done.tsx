@@ -4,9 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import * as Print from 'expo-print';
-import * as Sharing from 'expo-sharing';
 import { Button } from '../../../components/ui';
+import { generateAndSharePdf } from '../../../lib/pdfOpen';
 import { useTheme } from '../../../lib/theme';
 import { briefingsApi } from '../../../lib/briefingsApi';
 import { buildBriefingPdfHtml } from '../../../lib/briefingPdf';
@@ -39,12 +38,7 @@ export default function BriefingDoneScreen() {
     setSharing(true);
     try {
       const html = buildBriefingPdfHtml(briefing, project);
-      const { uri } = await Print.printToFileAsync({ html });
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, { mimeType: 'application/pdf', UTI: 'com.adobe.pdf' });
-      } else {
-        Alert.alert('PDF გენერირდა', 'გაზიარება ამ მოწყობილობაზე მიუწვდომელია');
-      }
+      await generateAndSharePdf(html);
     } catch {
       Alert.alert('შეცდომა', 'PDF გენერირება ვერ მოხერხდა');
     } finally {

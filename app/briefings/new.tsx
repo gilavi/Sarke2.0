@@ -1,16 +1,15 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Alert,
   Keyboard,
-  Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   TextInput,
   View,
 } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import { DatePickerSheet } from '../../components/DatePickerSheet';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
@@ -22,37 +21,32 @@ import { briefingsApi } from '../../lib/briefingsApi';
 import { a11y } from '../../lib/accessibility';
 import type { BriefingParticipant } from '../../types/models';
 
-// ── Predefined topic options ──────────────────────────────────────────────────
+// ── Predefined topic keys ─────────────────────────────────────────────────────
 
-interface TopicOption {
-  key: string;
-  label: string;
-}
-
-const TOPIC_OPTIONS: TopicOption[] = [
-  { key: 'scaffold_safety', label: 'ხარაჩოს უსაფრთხოება' },
-  { key: 'height_work', label: 'სიმაღლეზე მუშაობა' },
-  { key: 'ppe', label: 'დამცავი აღჭურვილობა' },
-  { key: 'evacuation', label: 'საევაკუაციო გეგმა' },
-  { key: 'fire_safety', label: 'ხანძარსაწინააღმდეგო' },
-  { key: 'other', label: 'სხვა' },
-];
+const TOPIC_KEYS = [
+  'scaffold_safety', 'height_work', 'ppe', 'evacuation', 'fire_safety', 'other',
+] as const;
 
 const KA_MONTHS_SHORT = [
   'იან', 'თებ', 'მარ', 'აპრ', 'მაი', 'ივნ',
   'ივლ', 'აგვ', 'სექ', 'ოქტ', 'ნოე', 'დეკ',
 ];
 
-function formatPickedDateTime(d: Date): string {
+function formatDateOnly(d: Date): string {
   const day = String(d.getDate()).padStart(2, '0');
   const month = KA_MONTHS_SHORT[d.getMonth()];
   const year = d.getFullYear();
+  return `${day} ${month} ${year}`;
+}
+
+function formatTimeOnly(d: Date): string {
   const hh = String(d.getHours()).padStart(2, '0');
   const mm = String(d.getMinutes()).padStart(2, '0');
-  return `${day} ${month} ${year}, ${hh}:${mm}`;
+  return `${hh}:${mm}`;
 }
 
 export default function NewBriefingScreen() {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
   const { projectId } = useLocalSearchParams<{ projectId: string }>();
@@ -62,8 +56,7 @@ export default function NewBriefingScreen() {
 
   // ── Date/time state ──
   const [dateTime, setDateTime] = useState(() => new Date());
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [pickerMode, setPickerMode] = useState<'date' | 'time' | null>(null);
 
   // ── Topics ──
   const [selectedTopics, setSelectedTopics] = useState<Set<string>>(new Set());
@@ -135,31 +128,25 @@ export default function NewBriefingScreen() {
       router.replace(`/briefings/${briefing.id}/sign` as any);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error('[briefings/new] create failed:', msg);
       Alert.alert('შეცდომა', `ინსტრუქტაჟის შექმნა ვერ მოხერხდა\n\n${msg}`);
     } finally {
       setBusy(false);
     }
   }, [projectId, dateTime, participants, selectedTopics, customTopic, inspectorName, canStart]);
 
-  const onDateChange = (_: any, selected?: Date) => {
-    if (Platform.OS === 'android') setShowDatePicker(false);
-    if (selected) {
-      const next = new Date(dateTime);
+  const onPickerChange = useCallback((selected: Date) => {
+    const next = new Date(dateTime);
+    if (pickerMode === 'date') {
       next.setFullYear(selected.getFullYear(), selected.getMonth(), selected.getDate());
-      setDateTime(next);
-      if (Platform.OS === 'android') setShowTimePicker(true);
-    }
-  };
-
-  const onTimeChange = (_: any, selected?: Date) => {
-    if (Platform.OS === 'android') setShowTimePicker(false);
-    if (selected) {
-      const next = new Date(dateTime);
+    } else {
       next.setHours(selected.getHours(), selected.getMinutes(), 0, 0);
-      setDateTime(next);
     }
-  };
+    setDateTime(next);
+  }, [dateTime, pickerMode]);
+
+  const onPickerClose = useCallback(() => {
+    setPickerMode(null);
+  }, []);
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
@@ -184,12 +171,21 @@ export default function NewBriefingScreen() {
         <View style={styles.card}>
           <Text style={styles.sectionLabel}>თარიღი და დრო</Text>
           <Pressable
-            onPress={() => { Keyboard.dismiss(); setShowDatePicker(true); }}
+            onPress={() => { Keyboard.dismiss(); setPickerMode('date'); }}
             style={styles.dateRow}
-            {...a11y('თარიღი და დრო', 'დააჭირეთ შესაცვლელად', 'button')}
+            {...a11y('თარიღი', 'დააჭირეთ შესაცვლელად', 'button')}
           >
             <Ionicons name="calendar-outline" size={20} color={theme.colors.accent} />
-            <Text style={styles.dateText}>{formatPickedDateTime(dateTime)}</Text>
+            <Text style={styles.dateText}>{formatDateOnly(dateTime)}</Text>
+            <Ionicons name="chevron-forward" size={16} color={theme.colors.borderStrong} />
+          </Pressable>
+          <Pressable
+            onPress={() => { Keyboard.dismiss(); setPickerMode('time'); }}
+            style={styles.dateRow}
+            {...a11y('დრო', 'დააჭირეთ შესაცვლელად', 'button')}
+          >
+            <Ionicons name="time-outline" size={20} color={theme.colors.accent} />
+            <Text style={styles.dateText}>{formatTimeOnly(dateTime)}</Text>
             <Ionicons name="chevron-forward" size={16} color={theme.colors.borderStrong} />
           </Pressable>
         </View>
@@ -199,20 +195,21 @@ export default function NewBriefingScreen() {
           <Text style={styles.sectionLabel}>ინსტრუქტაჟის თემა</Text>
           <Text style={styles.sectionHint}>შეარჩიეთ ერთი ან მეტი</Text>
           <View style={styles.chipGrid}>
-            {TOPIC_OPTIONS.map(opt => {
-              const selected = selectedTopics.has(opt.key);
+            {TOPIC_KEYS.map(key => {
+              const label = t(`briefings.topics.${key}`);
+              const selected = selectedTopics.has(key);
               return (
                 <Pressable
-                  key={opt.key}
-                  onPress={() => toggleTopic(opt.key)}
+                  key={key}
+                  onPress={() => toggleTopic(key)}
                   style={[styles.chip, selected && styles.chipSelected]}
-                  {...a11y(opt.label, selected ? 'მონიშნულია' : 'არ არის მონიშნული', 'checkbox')}
+                  {...a11y(label, selected ? 'მონიშნულია' : 'არ არის მონიშნული', 'checkbox')}
                 >
                   {selected && (
                     <Ionicons name="checkmark" size={13} color={theme.colors.accent} style={{ marginRight: 4 }} />
                   )}
                   <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
-                    {opt.label}
+                    {label}
                   </Text>
                 </Pressable>
               );
@@ -312,52 +309,13 @@ export default function NewBriefingScreen() {
         />
       </View>
 
-      {/* ── Date/Time pickers ── */}
-      {Platform.OS === 'ios' && (
-        <Modal
-          visible={showDatePicker || showTimePicker}
-          transparent
-          animationType="slide"
-          onRequestClose={() => { setShowDatePicker(false); setShowTimePicker(false); }}
-        >
-          <Pressable
-            style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}
-            onPress={() => { setShowDatePicker(false); setShowTimePicker(false); }}
-          >
-            <Pressable onPress={() => {}} style={{ backgroundColor: theme.colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: insets.bottom + 16 }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 16, paddingTop: 12 }}>
-                <Pressable onPress={() => { setShowDatePicker(false); setShowTimePicker(false); }}>
-                  <Text style={{ color: theme.colors.accent, fontSize: 16, fontWeight: '600' }}>დასრულება</Text>
-                </Pressable>
-              </View>
-              <DateTimePicker
-                value={dateTime}
-                mode={showTimePicker ? 'time' : 'date'}
-                display="spinner"
-                onChange={showTimePicker ? onTimeChange : onDateChange}
-                style={{ height: 200 }}
-              />
-            </Pressable>
-          </Pressable>
-        </Modal>
-      )}
-
-      {Platform.OS === 'android' && showDatePicker && (
-        <DateTimePicker
-          value={dateTime}
-          mode="date"
-          display="default"
-          onChange={onDateChange}
-        />
-      )}
-      {Platform.OS === 'android' && showTimePicker && (
-        <DateTimePicker
-          value={dateTime}
-          mode="time"
-          display="default"
-          onChange={onTimeChange}
-        />
-      )}
+      <DatePickerSheet
+        visible={pickerMode !== null}
+        value={dateTime}
+        mode={pickerMode ?? 'date'}
+        onClose={onPickerClose}
+        onChange={onPickerChange}
+      />
     </View>
   );
 }

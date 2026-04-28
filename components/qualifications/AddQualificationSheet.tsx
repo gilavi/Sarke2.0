@@ -20,7 +20,7 @@ import { useTheme } from '../../lib/theme';
 
 import { toErrorMessage } from '../../lib/logError';
 import { a11y } from '../../lib/accessibility';
-import { REQUIRED_TYPES } from '../../app/qualifications/requiredTypes';
+import { REQUIRED_TYPES } from '../../lib/qualificationTypes';
 
 const TYPES: { value: string; label: string }[] = [
   ...REQUIRED_TYPES,
@@ -31,9 +31,6 @@ function formatDate(d: Date) {
   return d.toLocaleDateString('ka', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 function toISO(d: Date) {
-  const { theme } = useTheme();
-  const styles = useMemo(() => getstyles(theme), [theme]);
-
   return d.toISOString().slice(0, 10);
 }
 

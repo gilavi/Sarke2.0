@@ -68,14 +68,14 @@ export function SheetLayout({
   const headerNode = renderHeader(header, theme);
 
   return (
-    <View style={[styles.container, { maxHeight: screenH * maxHeightRatio }, style]}>
+    <View style={[styles.container, { maxHeight: screenH * maxHeightRatio, backgroundColor: theme.colors.surface }, style]}>
       {showHandle ? (
         <View style={styles.handleBar}>
           <View style={[styles.handle, { backgroundColor: theme.colors.hairline }]} />
         </View>
       ) : null}
 
-      {headerNode ? <View style={styles.headerWrap}>{headerNode}</View> : null}
+      {headerNode ? <View style={[styles.headerWrap, { borderBottomColor: theme.colors.border }]}>{headerNode}</View> : null}
 
       <Body
         keyboardShouldPersistTaps="handled"
@@ -93,7 +93,7 @@ export function SheetLayout({
       </Body>
 
       {footer ? (
-        <View style={[styles.footerWrap, footerSticky && styles.footerSticky]}>
+        <View style={[styles.footerWrap, footerSticky && styles.footerSticky, { borderTopColor: theme.colors.border, backgroundColor: theme.colors.surface }]}>
           {footer}
         </View>
       ) : null}
@@ -128,7 +128,6 @@ function renderHeader(header: SheetLayoutProps['header'], theme: any) {
 const styles = StyleSheet.create({
   container: {
     flexShrink: 1,
-    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     shadowColor: '#000',
@@ -152,7 +151,6 @@ const styles = StyleSheet.create({
     paddingTop: 4,
     paddingBottom: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E5E7EB',
   },
   headerRow: {
     flexDirection: 'row',
@@ -173,8 +171,6 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 16,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
   },
   footerSticky: {
     // Footer stays at bottom; body scrolls above it.

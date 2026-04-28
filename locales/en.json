@@ -210,6 +210,8 @@
     "newProject": "New project",
     "createFirst": "Create your first",
     "recentActivity": "Recent activity",
+    "recentActs": "Recent acts",
+    "fetchError": "Couldn't load data — check your connection and pull down to refresh",
     "allActivity": "All",
     "startInspectionSheetTitle": "Start inspection",
     "addNewProjectSheet": "Add new project",
@@ -548,6 +550,16 @@
     "roleLabel": "Role",
     "saveButton": "Save"
   },
+  "briefings": {
+    "topics": {
+      "scaffold_safety": "Scaffold Safety",
+      "height_work": "Working at Height",
+      "ppe": "Protective Equipment",
+      "evacuation": "Evacuation Plan",
+      "fire_safety": "Fire Safety",
+      "other": "Other"
+    }
+  },
   "pdf": {
     "tocTitle": "Contents",
     "tocQuestionCount": "{{count}} questions",
@@ -611,6 +623,7 @@
     "changePassword": "Change password",
     "changing": "Changing…",
     "currentPasswordRequired": "Current password is required",
+    "currentPasswordWrong": "Current password is incorrect",
     "passwordMinLengthError": "New password must be at least {{min}} characters",
     "passwordMustDiffer": "New password must be different",
     "passwordsMismatch": "Passwords do not match",

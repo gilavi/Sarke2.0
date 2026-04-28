@@ -13,16 +13,14 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
-  LayoutAnimation,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   TextInput,
-  UIManager,
   View,
 } from 'react-native';
+import Animated, { FadeInDown, FadeOut } from 'react-native-reanimated';
 import { Image } from 'expo-image';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -34,13 +32,6 @@ import { haptic } from '../../../lib/haptics';
 import { getStorageImageDisplayUrl } from '../../../lib/imageUrl';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import type { Answer, AnswerPhoto, GridValues, Question } from '../../../types/models';
-
-if (
-  Platform.OS === 'android' &&
-  UIManager.setLayoutAnimationEnabledExperimental
-) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
 
 const COMMENT_PREFIX = 'კომენტარი_';
 
@@ -344,7 +335,6 @@ export function KamariDetailModal({
   };
 
   const toggleItem = (col: string) => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setOpenCol(prev => (prev === col ? null : col));
     setDraft(prev => {
       const cur = prev[col] ?? { active: false, description: '' };
@@ -357,7 +347,6 @@ export function KamariDetailModal({
   };
 
   const closeItem = (col: string) => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setOpenCol(null);
     setDraft(prev => {
       const cur = prev[col];
@@ -462,8 +451,12 @@ export function KamariDetailModal({
                     color={theme.colors.inkSoft}
                   />
                 </Pressable>
-                {isOpen ? (
-                  <View style={styles.accordion}>
+                {isOpen && (
+                  <Animated.View
+                    entering={FadeInDown.duration(150)}
+                    exiting={FadeOut.duration(100)}
+                    style={styles.accordion}
+                  >
                     <Text size="sm" weight="semibold" style={{ marginBottom: 6 }}>
                       რა პრობლემაა?
                     </Text>
@@ -501,8 +494,8 @@ export function KamariDetailModal({
                         დახურვა
                       </Text>
                     </Pressable>
-                  </View>
-                ) : null}
+                  </Animated.View>
+                )}
               </View>
             );
           })}

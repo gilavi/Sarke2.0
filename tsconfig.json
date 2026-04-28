@@ -12,6 +12,8 @@
   ],
   "exclude": [
     "node_modules",
-    "web-app"
+    "web-app",
+    "web",
+    "supabase"
   ]
 }

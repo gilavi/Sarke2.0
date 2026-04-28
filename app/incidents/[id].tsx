@@ -8,7 +8,7 @@ import {
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
-import * as Print from 'expo-print';
+import { generateAndSharePdf } from '../../lib/pdfOpen';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -31,17 +31,25 @@ import {
   INCIDENT_TYPE_LABEL,
 } from '../../types/models';
 
-// severity badge colours (same as form)
-const TYPE_BADGE: Record<
-  string,
-  { bg: string; text: string; border: string }
-> = {
-  minor:   { bg: '#FEF3C7', text: '#92400E', border: '#F59E0B' },
-  severe:  { bg: '#FFEDD5', text: '#9A3412', border: '#F97316' },
-  fatal:   { bg: '#FEE2E2', text: '#991B1B', border: '#EF4444' },
-  mass:    { bg: '#FEE2E2', text: '#991B1B', border: '#EF4444' },
-  nearmiss:{ bg: '#EDE9FE', text: '#5B21B6', border: '#8B5CF6' },
-};
+function getTypeBadge(theme: any): Record<string, { bg: string; text: string; border: string }> {
+  const isDark = theme.colors.semantic.dangerSoft === '#3A1F1F';
+  if (isDark) {
+    return {
+      minor:    { bg: '#3F2E0F', text: '#FCD34D', border: '#F59E0B' },
+      severe:   { bg: '#3D1F08', text: '#FCA673', border: '#F97316' },
+      fatal:    { bg: '#3A1F1F', text: '#FCA5A5', border: '#EF4444' },
+      mass:     { bg: '#3A1F1F', text: '#FCA5A5', border: '#EF4444' },
+      nearmiss: { bg: '#2D1F4F', text: '#C4B5FD', border: '#8B5CF6' },
+    };
+  }
+  return {
+    minor:    { bg: '#FEF3C7', text: '#92400E', border: '#F59E0B' },
+    severe:   { bg: '#FFEDD5', text: '#9A3412', border: '#F97316' },
+    fatal:    { bg: '#FEE2E2', text: '#991B1B', border: '#EF4444' },
+    mass:     { bg: '#FEE2E2', text: '#991B1B', border: '#EF4444' },
+    nearmiss: { bg: '#EDE9FE', text: '#5B21B6', border: '#8B5CF6' },
+  };
+}
 
 export default function IncidentDetail() {
   const { theme } = useTheme();
@@ -57,6 +65,7 @@ export default function IncidentDetail() {
   const [loaded, setLoaded] = useState(false);
   const [photoDisplayUrls, setPhotoDisplayUrls] = useState<string[]>([]);
   const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [pdfPhase, setPdfPhase] = useState<string | null>(null);
 
   const inspector = useMemo(() => {
     if (session.state.status !== 'signedIn') return { name: '', sigPath: null };
@@ -74,8 +83,12 @@ export default function IncidentDetail() {
     if (inc?.project_id) {
       const p = await projectsApi.getById(inc.project_id).catch(() => null);
       setProject(p);
+    } else {
+      setProject(null);
     }
-    // load photo display URLs (signed URLs, not data URLs)
+    // Reset photo URLs first — without this, navigating from an incident
+    // with photos to one without would leak the previous incident's photos
+    // (the early-return below skipped the setter).
     if (inc?.photos?.length) {
       const urls = await Promise.all(
         inc.photos.map(path =>
@@ -83,6 +96,8 @@ export default function IncidentDetail() {
         ),
       );
       setPhotoDisplayUrls(urls.filter(Boolean));
+    } else {
+      setPhotoDisplayUrls([]);
     }
     setLoaded(true);
   }, [id]);
@@ -91,7 +106,7 @@ export default function IncidentDetail() {
     useCallback(() => { void load(); }, [load]),
   );
 
-  const badge = incident ? TYPE_BADGE[incident.type] : null;
+  const badge = incident ? getTypeBadge(theme)[incident.type] : null;
   const isNearMiss = incident?.type === 'nearmiss';
 
   // ── share / generate PDF ─────────────────────────────────────────────────
@@ -108,6 +123,7 @@ export default function IncidentDetail() {
   const generatePdf = async () => {
     if (!incident || !project) return;
     setGeneratingPdf(true);
+    setPdfPhase('მზადდება...');
     try {
       let sigDataUrl: string | undefined;
       if (inspector.sigPath) {
@@ -116,12 +132,14 @@ export default function IncidentDetail() {
           inspector.sigPath,
         ).catch(() => undefined);
       }
+      setPdfPhase('ფოტოები ემატება...');
       const photoDataUrls = await Promise.all(
         (incident.photos ?? []).map(p =>
           getStorageImageDataUrl(STORAGE_BUCKETS.incidentPhotos, p).catch(() => ''),
         ),
       ).then(urls => urls.filter(Boolean));
 
+      setPdfPhase('მზადდება PDF...');
       const html = buildIncidentPdfHtml({
         incident,
         project,
@@ -129,19 +147,23 @@ export default function IncidentDetail() {
         inspectorSignatureDataUrl: sigDataUrl,
         photoDataUrls,
       });
-      const { uri } = await Print.printToFileAsync({ html });
-      const pdfPath = `incidents/${incident.id}.pdf`;
-      await storageApi.uploadFromUri(STORAGE_BUCKETS.pdfs, pdfPath, uri, 'application/pdf');
-      const updated = await incidentsApi.update(incident.id, {
-        pdf_url: pdfPath,
-        status: 'completed',
-      });
-      setIncident(updated);
+      const localUri = await generateAndSharePdf(html);
+      if (localUri) {
+        const pdfPath = `incidents/${incident.id}.pdf`;
+        await storageApi.uploadFromUri(STORAGE_BUCKETS.pdfs, pdfPath, localUri, 'application/pdf');
+        const updated = await incidentsApi.update(incident.id, {
+          pdf_url: pdfPath,
+          status: 'completed',
+        });
+        setIncident(updated);
+      }
+      setPdfPhase('დასრულდა ✓');
       toast.success('PDF შექმნილია');
     } catch (e) {
       toast.error(friendlyError(e, 'PDF-ის შექმნა ვერ მოხერხდა'));
     } finally {
       setGeneratingPdf(false);
+      setPdfPhase(null);
     }
   };
 
@@ -365,7 +387,7 @@ export default function IncidentDetail() {
               style={{ flex: 1 }}
             />
             <Button
-              title="განახლება"
+              title={generatingPdf && pdfPhase ? pdfPhase : "განახლება"}
               variant="secondary"
               loading={generatingPdf}
               onPress={generatePdf}
@@ -375,7 +397,7 @@ export default function IncidentDetail() {
         ) : incident.status === 'draft' ? (
           <View style={{ gap: 10 }}>
             <Button
-              title="PDF გენერირება"
+              title={generatingPdf && pdfPhase ? pdfPhase : "PDF გენერირება"}
               leftIcon="document-text"
               loading={generatingPdf}
               onPress={generatePdf}

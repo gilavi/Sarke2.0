@@ -4,11 +4,11 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSession } from '../lib/session';
@@ -68,6 +68,18 @@ export default function AccountSettingsScreen() {
     try {
       if (state.status !== 'signedIn') {
         throw new Error('Not authenticated');
+      }
+
+      const email = state.session.user.email;
+      if (!email) throw new Error('Email not found');
+
+      const { error: verifyError } = await supabase.auth.signInWithPassword({
+        email,
+        password: currentPassword,
+      });
+      if (verifyError) {
+        setErrors({ currentPassword: t('account.currentPasswordWrong') });
+        return;
       }
 
       const { error } = await supabase.auth.updateUser({

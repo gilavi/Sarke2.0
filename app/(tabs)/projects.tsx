@@ -17,6 +17,7 @@ import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { ProjectAvatar } from '../../components/ProjectAvatar';
 import { pickProjectLogo } from '../../lib/projectLogo';
 import { Button, Card, Input } from '../../components/ui';
+import { FabButton } from '../../components/primitives';
 import { A11yText, A11yText as Text } from '../../components/primitives/A11yText';
 import { FormField } from '../../components/FormField';
 import { SheetLayout } from '../../components/SheetLayout';
@@ -193,13 +194,12 @@ export default function ProjectsScreen() {
       />
       </View>
 
-      <Pressable
+      <FabButton
         ref={fabRef}
         onPress={() => setCreating(true)}
-        style={[styles.fab, theme.shadow.button]}
-      >
-        <Ionicons name="add" size={28} color={theme.colors.white} />
-      </Pressable>
+        a11yLabel="ახალი პროექტი"
+        a11yHint="შეეხეთ ახალი პროექტის შესაქმნელად"
+      />
 
       <CreateProjectSheet
         visible={creating}
@@ -283,7 +283,7 @@ function CreateProjectSheet({
         <Pressable
           style={{
             flex: 1,
-            backgroundColor: 'rgba(0,0,0,0.45)',
+            backgroundColor: theme.colors.overlay,
             justifyContent: 'flex-end',
           }}
           onPress={() => mapVisible ? setMapVisible(false) : onClose()}
@@ -478,9 +478,9 @@ function MapPickerInline({
       {/* Bottom action bar */}
       <View
         style={{
-          backgroundColor: '#FFFFFF',
-          borderTopLeftRadius: 20,
-          borderTopRightRadius: 20,
+          backgroundColor: theme.colors.surface,
+          borderTopLeftRadius: 24,
+          borderTopRightRadius: 24,
           paddingHorizontal: 20,
           paddingTop: 16,
           paddingBottom: insets.bottom + 16,
@@ -586,14 +586,29 @@ const ProjectRow = memo(function ProjectRow({
               ) : null}
               {stats && (stats.drafts > 0 || stats.completed > 0) ? (
                 <View style={{ flexDirection: 'row', gap: 10, marginTop: 6 }}>
-                  {stats.drafts > 0 ? (
-                    <View style={[styles.counter, { backgroundColor: theme.colors.warnSoft }]}>
-                      <Ionicons name="document-text-outline" size={11} color={theme.colors.warn} />
-                      <A11yText size="xs" weight="bold" color={theme.colors.warn}>
-                        {stats.drafts} {t('common.draft')}
-                      </A11yText>
-                    </View>
-                  ) : null}
+                  {stats.drafts > 0 ? (() => {
+                    const urgent = stats.drafts >= 3;
+                    const elevated = stats.drafts === 2;
+                    return (
+                      <View style={[
+                        styles.counter,
+                        urgent
+                          ? { backgroundColor: theme.colors.warn }
+                          : elevated
+                          ? { backgroundColor: theme.colors.warnSoft, borderWidth: 1, borderColor: theme.colors.warn }
+                          : { backgroundColor: theme.colors.warnSoft },
+                      ]}>
+                        <Ionicons
+                          name="document-text-outline"
+                          size={11}
+                          color={urgent ? theme.colors.white : theme.colors.warn}
+                        />
+                        <A11yText size="xs" weight="bold" color={urgent ? theme.colors.white : theme.colors.warn}>
+                          {stats.drafts} {t('common.draft')}
+                        </A11yText>
+                      </View>
+                    );
+                  })() : null}
                   {stats.completed > 0 ? (
                     <View style={[styles.counter, { backgroundColor: theme.colors.accentSoft }]}>
                       <Ionicons name="checkmark" size={11} color={theme.colors.accent} />
@@ -623,8 +638,8 @@ function getstyles(theme: any) {
     paddingHorizontal: 20,
     paddingVertical: 10,
   },
-  title: { fontSize: 28, fontWeight: '800', color: theme.colors.ink },
-  subtitle: { fontSize: 12, color: theme.colors.inkSoft },
+  title: { fontSize: 28, fontWeight: '800', fontFamily: theme.typography.fontFamily.display, color: theme.colors.ink },
+  subtitle: { fontSize: 11, color: theme.colors.inkSoft },
   avatarBtn: {
     width: 36,
     height: 36,
@@ -659,17 +674,6 @@ function getstyles(theme: any) {
     gap: 4,
     marginLeft: 8,
     borderRadius: theme.radius.lg,
-  },
-  fab: {
-    position: 'absolute',
-    right: 20,
-    bottom: 24,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: theme.colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });
 }

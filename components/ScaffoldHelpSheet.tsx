@@ -4,6 +4,7 @@ import { useBottomSheet } from './BottomSheet';
 import { QuestionAvatar } from './QuestionAvatar';
 import { helpForRow } from '../lib/scaffoldHelp';
 import { TourGuide, type TourStep } from './TourGuide';
+import { useTheme } from '../lib/theme';
 
 const BRAND = '#1D9E75';
 
@@ -29,6 +30,8 @@ function HelpSheetBody({
   dismiss: () => void;
 }) {
   const illustrationRef = useRef<View>(null);
+  const { theme } = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const tourSteps: TourStep[] = useMemo(
     () => [
       {
@@ -62,6 +65,8 @@ function HelpSheetBody({
 }
 
 export function HelpIcon({ onPress }: { onPress: () => void }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   return (
     <Pressable
       onPress={onPress}
@@ -74,58 +79,60 @@ export function HelpIcon({ onPress }: { onPress: () => void }) {
   );
 }
 
-const styles = StyleSheet.create({
-  body: {
-    alignItems: 'center',
-    paddingVertical: 8,
-    gap: 16,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: BRAND,
-    textAlign: 'center',
-  },
-  illustration: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  copy: {
-    fontSize: 15,
-    color: '#1F2937',
-    textAlign: 'center',
-    lineHeight: 22,
-    paddingHorizontal: 8,
-  },
-  btn: {
-    marginTop: 8,
-    alignSelf: 'stretch',
-    paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: BRAND,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  btnText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: BRAND,
-  },
-  icon: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: BRAND,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-  },
-  iconText: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: BRAND,
-    lineHeight: 18,
-  },
-});
+function makeStyles(theme: any) {
+  return StyleSheet.create({
+    body: {
+      alignItems: 'center',
+      paddingVertical: 8,
+      gap: 16,
+    },
+    title: {
+      fontSize: 20,
+      fontWeight: '800',
+      color: BRAND,
+      textAlign: 'center',
+    },
+    illustration: {
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    copy: {
+      fontSize: 15,
+      color: theme.colors.ink,
+      textAlign: 'center',
+      lineHeight: 22,
+      paddingHorizontal: 8,
+    },
+    btn: {
+      marginTop: 8,
+      alignSelf: 'stretch',
+      paddingVertical: 14,
+      borderRadius: 12,
+      borderWidth: 1.5,
+      borderColor: BRAND,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    btnText: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: BRAND,
+    },
+    icon: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      borderWidth: 1.5,
+      borderColor: BRAND,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.colors.surface,
+    },
+    iconText: {
+      fontSize: 15,
+      fontWeight: '800',
+      color: BRAND,
+      lineHeight: 18,
+    },
+  });
+}

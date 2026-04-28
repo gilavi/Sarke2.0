@@ -3,15 +3,13 @@ import {
   ActivityIndicator,
   Alert,
   Image,
-  LayoutAnimation,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   TextInput,
-  UIManager,
   View,
 } from 'react-native';
+import Animated, { FadeInDown, FadeOut } from 'react-native-reanimated';
 import { A11yText as Text } from './primitives/A11yText';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,13 +21,6 @@ import { TourGuide, type TourStep } from './TourGuide';
 import { HelpIcon, useScaffoldHelpSheet } from './ScaffoldHelpSheet';
 
 const BRAND_GREEN = '#1D9E75';
-
-if (
-  Platform.OS === 'android' &&
-  UIManager.setLayoutAnimationEnabledExperimental
-) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
 
 type HarnessItem = {
   question: Question;
@@ -201,7 +192,6 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
 
   const onRowTap = async (item: HarnessItem) => {
     haptic.light();
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     const bad = isBadCell(answers, item, row);
     await setBad(item, row, !bad);
   };
@@ -234,7 +224,6 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
     if (safeRowIdx + 1 >= rowLabels.length) {
       onConclude();
     } else {
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setCurrentRowIdx(safeRowIdx + 1);
     }
   };
@@ -374,7 +363,7 @@ const ItemRow = memo(function ItemRow({
     >
       <Pressable
         onPress={onTap}
-        style={s.rowHeader}
+        style={({ pressed }) => [s.rowHeader, pressed && { opacity: 0.7 }]}
         accessibilityLabel={item.label}
         accessibilityState={{ selected: bad }}
       >
@@ -397,7 +386,11 @@ const ItemRow = memo(function ItemRow({
       </Pressable>
 
       {bad && (
-        <View style={s.accordionBody}>
+        <Animated.View
+          entering={FadeInDown.duration(150)}
+          exiting={FadeOut.duration(100)}
+          style={s.accordionBody}
+        >
           <Text style={s.accordionLabel}>რა პრობლემაა?</Text>
           <TextInput
             value={comment}
@@ -420,7 +413,7 @@ const ItemRow = memo(function ItemRow({
               <Text style={s.addPhotoText}>+ ფოტოს დამატება</Text>
             </Pressable>
           </ScrollView>
-        </View>
+        </Animated.View>
       )}
     </View>
   );

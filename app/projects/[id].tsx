@@ -242,6 +242,12 @@ export default function ProjectDetail() {
       toast.error(t('projects.templateMissing'));
       return;
     }
+    if (system.length === 1 && id) {
+      void questionnairesApi.create({ projectId: id, templateId: system[0].id })
+        .then(q => router.push(`/inspections/${q.id}/wizard` as any))
+        .catch(e => toast.error(friendlyError(e, t('errors.createFailed'))));
+      return;
+    }
     const options = [...system.map(tpl => tpl.name), t('common.cancel')];
     showActionSheetWithOptions(
       { title: t('projects.chooseTemplateTitle'), options, cancelButtonIndex: options.length - 1 },

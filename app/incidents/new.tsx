@@ -1,23 +1,23 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Crypto from 'expo-crypto';
 import * as ImagePicker from 'expo-image-picker';
-import * as Print from 'expo-print';
+import { generateAndSharePdf } from '../../lib/pdfOpen';
 import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { A11yText as Text } from '../../components/primitives/A11yText';
+import { StepIndicator } from '../../components/StepIndicator';
+import { DatePickerSheet } from '../../components/DatePickerSheet';
 import { Button, Input } from '../../components/ui';
 import { useTheme } from '../../lib/theme';
 import { useSession } from '../../lib/session';
@@ -61,17 +61,25 @@ const INITIAL_FORM: FormData = {
   photoUris: [],
 };
 
-// severity badge colours
-const TYPE_BADGE: Record<
-  IncidentType,
-  { bg: string; text: string; border: string }
-> = {
-  minor:   { bg: '#FEF3C7', text: '#92400E', border: '#F59E0B' },
-  severe:  { bg: '#FFEDD5', text: '#9A3412', border: '#F97316' },
-  fatal:   { bg: '#FEE2E2', text: '#991B1B', border: '#EF4444' },
-  mass:    { bg: '#FEE2E2', text: '#991B1B', border: '#EF4444' },
-  nearmiss:{ bg: '#EDE9FE', text: '#5B21B6', border: '#8B5CF6' },
-};
+function getTypeBadge(theme: any): Record<IncidentType, { bg: string; text: string; border: string }> {
+  const isDark = theme.colors.semantic.dangerSoft === '#3A1F1F';
+  if (isDark) {
+    return {
+      minor:    { bg: '#3F2E0F', text: '#FCD34D', border: '#F59E0B' },
+      severe:   { bg: '#3D1F08', text: '#FCA673', border: '#F97316' },
+      fatal:    { bg: '#3A1F1F', text: '#FCA5A5', border: '#EF4444' },
+      mass:     { bg: '#3A1F1F', text: '#FCA5A5', border: '#EF4444' },
+      nearmiss: { bg: '#2D1F4F', text: '#C4B5FD', border: '#8B5CF6' },
+    };
+  }
+  return {
+    minor:    { bg: '#FEF3C7', text: '#92400E', border: '#F59E0B' },
+    severe:   { bg: '#FFEDD5', text: '#9A3412', border: '#F97316' },
+    fatal:    { bg: '#FEE2E2', text: '#991B1B', border: '#EF4444' },
+    mass:     { bg: '#FEE2E2', text: '#991B1B', border: '#EF4444' },
+    nearmiss: { bg: '#EDE9FE', text: '#5B21B6', border: '#8B5CF6' },
+  };
+}
 
 // ─── main component ───────────────────────────────────────────────────────────
 
@@ -116,7 +124,7 @@ export default function NewIncident() {
   }, [projectId, project]);
 
   // run on mount
-  useMemo(() => { void loadProject(); }, [loadProject]);
+  useEffect(() => { void loadProject(); }, [loadProject]);
 
   // ── navigation ──────────────────────────────────────────────────────────────
 
@@ -131,6 +139,7 @@ export default function NewIncident() {
   const canAdvance = useMemo((): boolean => {
     if (step === 1) return form.type !== null;
     if (step === 2) return form.location.trim().length > 0;
+    if (step === 3) return form.description.trim().length > 0 && form.cause.trim().length > 0;
     return true;
   }, [step, form]);
 
@@ -313,13 +322,13 @@ export default function NewIncident() {
         photoDataUrls,
       });
 
-      // 6. print to file — use uploadFromUri to avoid Hermes Blob bug (0-byte uploads)
-      const { uri } = await Print.printToFileAsync({ html });
-      const pdfPath = `incidents/${savedId}.pdf`;
-      await storageApi.uploadFromUri(STORAGE_BUCKETS.pdfs, pdfPath, uri, 'application/pdf');
-
-      // 7. update incident with pdf_url
-      await incidentsApi.update(savedId, { pdf_url: pdfPath });
+      // 6. open/share PDF; on web returns null (no local file to upload)
+      const localUri = await generateAndSharePdf(html);
+      if (localUri) {
+        const pdfPath = `incidents/${savedId}.pdf`;
+        await storageApi.uploadFromUri(STORAGE_BUCKETS.pdfs, pdfPath, localUri, 'application/pdf');
+        await incidentsApi.update(savedId, { pdf_url: pdfPath });
+      }
 
       toast.success('ოქმი შექმნილია');
       router.replace(`/incidents/${savedId}` as any);
@@ -353,28 +362,7 @@ export default function NewIncident() {
         }}
       />
 
-      {/* Progress indicator */}
-      <View style={s.progressRow}>
-        {([1, 2, 3, 4] as Step[]).map(n => (
-          <View
-            key={n}
-            style={[
-              s.progressDot,
-              n === step && s.progressDotActive,
-              n < step && s.progressDotDone,
-            ]}
-          >
-            {n < step ? (
-              <Ionicons name="checkmark" size={11} color="#fff" />
-            ) : (
-              <Text style={[s.progressDotText, n === step && { color: '#fff' }]}>
-                {n}
-              </Text>
-            )}
-          </View>
-        ))}
-        <View style={s.progressLine} />
-      </View>
+      <StepIndicator steps={4} current={step} />
 
       <ScrollView
         style={{ flex: 1 }}
@@ -456,49 +444,13 @@ export default function NewIncident() {
       </View>
 
       {/* Date/time picker (iOS modal, Android native dialog) */}
-      {Platform.OS === 'ios' ? (
-        <Modal
-          visible={showPicker}
-          transparent
-          animationType="slide"
-          onRequestClose={() => setShowPicker(false)}
-        >
-          <Pressable
-            style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}
-            onPress={() => setShowPicker(false)}
-          >
-            <Pressable style={[s.pickerSheet, { paddingBottom: insets.bottom + 8 }]}>
-              <View style={s.pickerHeader}>
-                <Text style={s.pickerTitle}>
-                  {pickerMode === 'date' ? 'თარიღი' : 'დრო'}
-                </Text>
-                <Pressable onPress={() => setShowPicker(false)} hitSlop={8}>
-                  <Text style={{ color: theme.colors.accent, fontSize: 16, fontWeight: '600' }}>
-                    შესრულება
-                  </Text>
-                </Pressable>
-              </View>
-              <DateTimePicker
-                value={form.dateTime}
-                mode={pickerMode}
-                display="spinner"
-                onChange={(_, d) => d && setForm(f => ({ ...f, dateTime: d }))}
-                style={{ backgroundColor: theme.colors.surface }}
-              />
-            </Pressable>
-          </Pressable>
-        </Modal>
-      ) : showPicker ? (
-        <DateTimePicker
-          value={form.dateTime}
-          mode={pickerMode}
-          display="default"
-          onChange={(_, d) => {
-            setShowPicker(false);
-            if (d) setForm(f => ({ ...f, dateTime: d }));
-          }}
-        />
-      ) : null}
+      <DatePickerSheet
+        visible={showPicker}
+        value={form.dateTime}
+        mode={pickerMode}
+        onClose={() => setShowPicker(false)}
+        onChange={d => setForm(f => ({ ...f, dateTime: d }))}
+      />
     </View>
   );
 }
@@ -521,7 +473,7 @@ function Step1({
       <Text style={s.stepTitle}>რა სახის შემთხვევა?</Text>
 
       {types.map(t => {
-        const badge = TYPE_BADGE[t];
+        const badge = getTypeBadge(theme)[t];
         const selected = form.type === t;
         return (
           <Pressable
@@ -788,14 +740,14 @@ function Step4({
 }) {
   const [sigDisplayUrl, setSigDisplayUrl] = useState<string | null>(null);
 
-  useMemo(() => {
+  useEffect(() => {
     if (!sigPath) return;
     getStorageImageDisplayUrl(STORAGE_BUCKETS.signatures, sigPath)
       .then(setSigDisplayUrl)
       .catch(() => null);
   }, [sigPath]);
 
-  const badge = form.type ? TYPE_BADGE[form.type] : null;
+  const badge = form.type ? getTypeBadge(theme)[form.type] : null;
 
   return (
     <View style={{ gap: 16 }}>
@@ -916,50 +868,6 @@ function SummaryRow({
 
 function makeStyles(theme: any) {
   return StyleSheet.create({
-    // progress bar
-    progressRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 8,
-      paddingVertical: 12,
-      paddingHorizontal: 24,
-      position: 'relative',
-    },
-    progressLine: {
-      position: 'absolute',
-      top: '50%',
-      left: 40,
-      right: 40,
-      height: 1,
-      backgroundColor: theme.colors.border,
-      zIndex: -1,
-    },
-    progressDot: {
-      width: 28,
-      height: 28,
-      borderRadius: 14,
-      backgroundColor: theme.colors.surface,
-      borderWidth: 1.5,
-      borderColor: theme.colors.border,
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1,
-    },
-    progressDotActive: {
-      backgroundColor: theme.colors.accent,
-      borderColor: theme.colors.accent,
-    },
-    progressDotDone: {
-      backgroundColor: theme.colors.primary[700],
-      borderColor: theme.colors.primary[700],
-    },
-    progressDotText: {
-      fontSize: 11,
-      fontWeight: '700',
-      color: theme.colors.inkSoft,
-    },
-
     // step title
     stepTitle: {
       fontSize: 20,
@@ -1001,16 +909,16 @@ function makeStyles(theme: any) {
       flexDirection: 'row',
       alignItems: 'flex-start',
       gap: 10,
-      backgroundColor: '#FEF2F2',
+      backgroundColor: theme.colors.semantic.dangerSoft,
       borderRadius: 10,
       borderWidth: 1,
-      borderColor: '#FCA5A5',
+      borderColor: theme.colors.dangerBorder,
       padding: 12,
     },
     warningBannerText: {
       flex: 1,
       fontSize: 13,
-      color: '#991B1B',
+      color: theme.colors.danger,
       fontWeight: '600',
       lineHeight: 20,
     },
@@ -1196,7 +1104,7 @@ function makeStyles(theme: any) {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 4,
-      backgroundColor: '#D1FAE5',
+      backgroundColor: theme.colors.semantic.successSoft,
       borderRadius: 16,
       paddingHorizontal: 8,
       paddingVertical: 4,
@@ -1204,7 +1112,7 @@ function makeStyles(theme: any) {
     signedChipText: {
       fontSize: 11,
       fontWeight: '700',
-      color: '#065F46',
+      color: theme.colors.semantic.success,
     },
 
     // bottom bar
@@ -1216,24 +1124,5 @@ function makeStyles(theme: any) {
       paddingTop: 12,
     },
 
-    // date picker sheet (iOS)
-    pickerSheet: {
-      backgroundColor: theme.colors.surface,
-      borderTopLeftRadius: 20,
-      borderTopRightRadius: 20,
-      paddingHorizontal: 16,
-      paddingTop: 8,
-    },
-    pickerHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingVertical: 12,
-    },
-    pickerTitle: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: theme.colors.ink,
-    },
   });
 }

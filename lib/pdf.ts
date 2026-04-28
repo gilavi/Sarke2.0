@@ -144,7 +144,7 @@ async function buildHtml(
           <div class="section-header">
             <h2 class="section-title">
               <span class="section-num">${pad2(sectionIdx + 1)}</span>
-              <span class="section-dash">—</span>
+              <span class="section-pipe">|</span>
               <span class="section-name">${escapeHtml(String(section))}</span>
             </h2>
           </div>
@@ -165,7 +165,7 @@ async function buildHtml(
           <div class="section-header">
             <h2 class="section-title">
               <span class="section-num">${pad2(sections.length + 1)}</span>
-              <span class="section-dash">—</span>
+              <span class="section-pipe">|</span>
               <span class="section-name">${t('pdf.attachedCerts')}</span>
             </h2>
           </div>
@@ -237,16 +237,13 @@ async function buildHtml(
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${t('pdf.htmlTitle', { templateName: escapeHtml(template.name) })}</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {
       --green: #1D9E75;
       --green-dark: #147A4F;
       --green-tint: #E8F5F0;
-      --red: #C0433C;
-      --red-tint: #FBE8E6;
+      --red: #DC2626;
+      --red-tint: #FCEBEB;
       --amber: #B45309;
       --amber-bg: #FEF3C7;
       --ink: #111827;
@@ -254,28 +251,27 @@ async function buildHtml(
       --gray: #9CA3AF;
       --line: #E5E7EB;
       --bg-soft: #FAFAFA;
-      --radius: 10px;
+      --radius: 8px;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: 'Noto Sans Georgian', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-family: Helvetica, Arial, sans-serif;
       color: var(--ink);
       line-height: 1.55;
       background: #ffffff;
-      ${isPdf ? 'padding: 32px;' : 'padding: 16px;'}
-      font-size: 12px;
-      border-top: 3px solid var(--green);
+      ${isPdf ? 'padding: 20px;' : 'padding: 16px;'}
+      font-size: 11px;
     }
 
     ${isPdf ? `
     @page {
-      margin: 28px 24px 40px 24px;
+      margin: 20px 20px 44px 20px;
       @bottom-center {
         content: "${t('pdf.footerText', { systemName: t('pdf.systemName') })}" counter(page) " / " counter(pages);
-        font-size: 9px;
+        font-size: 8px;
         color: var(--gray);
-        font-family: 'Noto Sans Georgian', sans-serif;
+        font-family: Helvetica, Arial, sans-serif;
       }
     }
     ` : ''}
@@ -312,13 +308,27 @@ async function buildHtml(
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
-      gap: 24px;
+      gap: 16px;
       padding-bottom: 16px;
-      margin-bottom: 16px;
+      margin-bottom: 0;
       position: relative;
       z-index: 1;
     }
     .header-left { display: flex; align-items: center; gap: 14px; flex: 1; }
+    .header-center {
+      flex: 2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 0 8px;
+    }
+    .report-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--ink);
+      line-height: 1.3;
+    }
     .project-brand-logo {
       width: 60px; height: 60px;
       border-radius: 50%;
@@ -328,8 +338,8 @@ async function buildHtml(
     .project-brand-initials {
       width: 60px; height: 60px;
       border-radius: 50%;
-      background: var(--green-tint);
-      color: var(--green);
+      background: var(--green);
+      color: #fff;
       font-weight: 700;
       font-size: 22px;
       display: flex;
@@ -375,14 +385,14 @@ async function buildHtml(
       font-size: 10px;
     }
     .report-id {
-      font-family: 'SF Mono', 'Menlo', monospace;
+      font-family: monospace;
       font-size: 10px;
       color: var(--gray);
       letter-spacing: 0.5px;
     }
     .header-rule {
       border: none;
-      border-top: 1px solid var(--line);
+      border-top: 3px solid var(--green);
       margin: 0 0 20px;
     }
 
@@ -478,7 +488,7 @@ async function buildHtml(
     }
     .toc-item:last-child { border-bottom: none; }
     .toc-num {
-      font-family: 'SF Mono', 'Menlo', monospace;
+      font-family: monospace;
       font-size: 12px;
       font-weight: 700;
       color: var(--green);
@@ -493,31 +503,30 @@ async function buildHtml(
       position: relative;
       z-index: 1;
     }
-    .section-header { margin-bottom: 12px; }
+    .section-header { margin-bottom: 4px; margin-top: 8px; }
     .section-title {
-      font-size: 18px;
+      font-size: 14px;
       font-weight: 700;
       color: var(--ink);
       border-left: 3px solid var(--green);
-      padding-left: 12px;
+      padding-left: 10px;
       display: flex;
       align-items: baseline;
-      gap: 8px;
+      gap: 6px;
     }
     .section-num {
-      font-family: 'SF Mono', 'Menlo', monospace;
       color: var(--green);
       font-weight: 800;
     }
-    .section-dash { color: var(--gray); font-weight: 400; }
+    .section-pipe { color: var(--green); font-weight: 700; margin: 0 2px; }
     .section-name { color: var(--ink); }
 
     /* ── Question card ── */
     .question-card {
       background: #fff;
-      border: 1px solid var(--line);
+      border: 1px solid #E8E6E0;
       border-radius: var(--radius);
-      padding: 14px 16px;
+      padding: 12px;
       margin-bottom: 8px;
       ${isPdf ? 'page-break-inside: avoid;' : ''}
     }
@@ -590,20 +599,21 @@ async function buildHtml(
     }
     .photo-img-wrap {
       width: 100%;
-      height: 160px;
+      max-height: 200px;
       overflow: hidden;
       background: var(--bg-soft);
     }
     .photo-item img {
-      width: 100%; height: 100%;
+      width: 100%;
+      max-height: 200px;
       object-fit: cover;
       display: block;
     }
     .photo-caption {
-      font-size: 10px;
+      font-size: 9px;
       color: var(--gray);
       text-align: center;
-      padding: 6px 8px;
+      padding: 5px 8px;
     }
     .photo-missing {
       display: flex;
@@ -627,12 +637,12 @@ async function buildHtml(
       border-collapse: collapse;
       font-size: 11px;
     }
-    .data-table thead { background: var(--green); color: #fff; }
+    .data-table thead th { background: #F5F3EE; color: var(--ink); }
     .data-table th {
       padding: 8px 10px;
       text-align: left;
       font-weight: 700;
-      font-size: 11px;
+      font-size: 10px;
     }
     .data-table tbody th {
       background: var(--bg-soft);
@@ -654,6 +664,7 @@ async function buildHtml(
     .cell-status { font-weight: 700; }
     .cell-status--pass { color: var(--green-dark); }
     .cell-status--fail { color: var(--red); }
+    .cell-status--neutral { color: var(--gray); }
 
     /* ── Conclusion ── */
     .conclusion-card {
@@ -711,6 +722,10 @@ async function buildHtml(
       padding: 14px;
       ${isPdf ? 'page-break-inside: avoid;' : ''}
     }
+    .sig-block.is-expert {
+      background: var(--green-tint);
+      border-color: var(--green);
+    }
     .sig-name {
       font-size: 14px;
       font-weight: 700;
@@ -741,8 +756,8 @@ async function buildHtml(
       justify-content: center;
     }
     .sig-img-box img {
-      max-width: 120px;
-      max-height: 60px;
+      max-width: 160px;
+      max-height: 80px;
       display: block;
     }
     .sig-date {
@@ -817,10 +832,9 @@ async function buildHtml(
   <div class="report-header">
     <div class="header-left">
       ${renderProjectBrand(project)}
-      <div>
-        <div class="brand-name">SARKE</div>
-        <div class="brand-sub">${t('pdf.systemName')}</div>
-      </div>
+    </div>
+    <div class="header-center">
+      <div class="report-title">${escapeHtml(template.name)}</div>
     </div>
     <div class="header-right">
       ${qrBlock}
@@ -964,6 +978,9 @@ function renderQuestion(
               if (status === 'fail') {
                 return `<td><span class="cell-status cell-status--fail">${escapeHtml(raw)}</span></td>`;
               }
+              if (status === 'neutral') {
+                return `<td><span class="cell-status cell-status--neutral">${escapeHtml(raw)}</span></td>`;
+              }
               return `<td>${escapeHtml(raw)}</td>`;
             })
             .join('');
@@ -990,14 +1007,15 @@ function renderQuestion(
 function isProblemValue(raw: string): boolean {
   const v = (raw ?? '').trim().toLocaleLowerCase('ka-GE');
   if (!v) return false;
-  return /(პრობლემ|არა|fail|no|broken|damaged|defect)/i.test(v);
+  return /(პრობლემ|აღენიშნება|არა|fail|no|broken|damaged|defect)/i.test(v);
 }
 
-function classifyCell(raw: string): 'pass' | 'fail' | null {
+function classifyCell(raw: string): 'pass' | 'fail' | 'neutral' | null {
   const v = (raw ?? '').trim().toLocaleLowerCase('ka-GE');
   if (!v) return null;
-  if (/(პრობლემ|არა|fail|no|broken|damaged|defect)/i.test(v)) return 'fail';
-  if (/(კი|ok|pass|yes|good|ok\.|ნორმ)/i.test(v)) return 'pass';
+  if (/(პრობლემ|აღენიშნება|არა|fail|no|broken|damaged|defect)/i.test(v)) return 'fail';
+  if (/(კი|ok|pass|yes|good|ok\.|ნორმ|გამართულია)/i.test(v)) return 'pass';
+  if (/არ გააჩნია/i.test(v)) return 'neutral';
   return null;
 }
 
@@ -1019,8 +1037,9 @@ function renderPhoto(
   const src = photo.storage_path;
   const isDataUrl = src.startsWith('data:');
   const isLocalFile = /^(file|content|ph|asset):\/\//.test(src);
+  const isRemoteUrl = /^https?:\/\//.test(src);
 
-  if (!isDataUrl && !isLocalFile) {
+  if (!isDataUrl && !isLocalFile && !isRemoteUrl) {
     return `<div class="photo-item${isFailed ? ' failed' : ''}">
       <div class="photo-img-wrap">
         <div class="photo-missing">${t('pdf.imageUnavailable')}</div>
@@ -1083,7 +1102,7 @@ function renderSignatures(signatures: SignatureRecord[], lang: 'ka' | 'en'): str
         : '';
 
       return `
-      <div class="sig-block">
+      <div class="sig-block${sig.signer_role === 'expert' ? ' is-expert' : ''}">
         <div class="sig-name">${escapeHtml(sig.full_name || '—')}</div>
         <div class="sig-role">${escapeHtml(label)}</div>
         ${sig.position ? `<div class="sig-position">${escapeHtml(sig.position)}</div>` : ''}

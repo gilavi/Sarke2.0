@@ -1,12 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
+import { createElement, useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Alert, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
-import * as Print from 'expo-print';
-import * as Sharing from 'expo-sharing';
 import { useTheme } from '../../lib/theme';
+import { generateAndSharePdf } from '../../lib/pdfOpen';
 import { briefingsApi } from '../../lib/briefingsApi';
 import { buildBriefingPreviewHtml, buildBriefingPdfHtml } from '../../lib/briefingPdf';
 import { projectsApi } from '../../lib/services';
@@ -57,12 +56,7 @@ export default function BriefingDetailScreen() {
     setSharing(true);
     try {
       const html = buildBriefingPdfHtml(briefing, project);
-      const { uri } = await Print.printToFileAsync({ html });
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, { mimeType: 'application/pdf', UTI: 'com.adobe.pdf' });
-      } else {
-        Alert.alert('PDF გენერირდა', 'გაზიარება ამ მოწყობილობაზე მიუწვდომელია');
-      }
+      await generateAndSharePdf(html);
     } catch {
       Alert.alert('შეცდომა', 'PDF გენერირება ვერ მოხერხდა');
     } finally {
@@ -110,18 +104,24 @@ export default function BriefingDetailScreen() {
       {/* Preview WebView */}
       {previewHtml ? (
         <View style={{ flex: 1 }}>
-          {webviewLoading && (
+          {webviewLoading && Platform.OS !== 'web' && (
             <View style={styles.webviewLoader}>
               <ActivityIndicator color={theme.colors.accent} />
             </View>
           )}
-          <WebView
-            source={{ html: previewHtml }}
-            style={{ flex: 1 }}
-            onLoadEnd={() => setWebviewLoading(false)}
-            scrollEnabled
-            showsVerticalScrollIndicator
-          />
+          {Platform.OS === 'web'
+            ? createElement('iframe', {
+                srcDoc: previewHtml,
+                style: { width: '100%', height: '100%', border: 'none', display: 'block' },
+              })
+            : <WebView
+                source={{ html: previewHtml }}
+                style={{ flex: 1 }}
+                onLoadEnd={() => setWebviewLoading(false)}
+                scrollEnabled
+                showsVerticalScrollIndicator
+              />
+          }
         </View>
       ) : (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 }}>

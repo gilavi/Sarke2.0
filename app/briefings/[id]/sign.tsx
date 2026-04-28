@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
@@ -36,7 +36,10 @@ export default function BriefingSignScreen() {
   useEffect(() => {
     if (!id) return;
     briefingsApi.getById(id).then(b => {
-      if (!b) return;
+      if (!b) {
+        router.back();
+        return;
+      }
       setBriefing(b);
       // Resume from first unsigned participant
       const firstUnsigned = b.participants.findIndex(p => !p.signature);
@@ -88,12 +91,30 @@ export default function BriefingSignScreen() {
           setBriefing(updated);
           setCurrentIdx(prev => prev + 1);
         }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        Alert.alert('შეცდომა', `ხელმოწერის შენახვა ვერ მოხერხდა\n\n${msg}`);
       } finally {
         setSaving(false);
       }
     },
     [briefing, id, currentIdx, isInspectorPhase],
   );
+
+  // Declared before any conditional return so hook order stays stable
+  // across the worker-phase → inspector-phase transition. Moving this
+  // below an early return caused "Rendered fewer hooks than expected"
+  // when the last worker finished signing.
+  const handleCancel = useCallback(() => {
+    Alert.alert(
+      'გაუქმება',
+      'ინსტრუქტაჟი უკვე შეიქმნა. თუ გახვალთ, შეუსრულებელი ხელმოწერები დაიკარგება.',
+      [
+        { text: 'გაგრძელება', style: 'cancel' },
+        { text: 'გასვლა', style: 'destructive', onPress: () => router.back() },
+      ],
+    );
+  }, [router]);
 
   if (!briefing) {
     return (
@@ -177,18 +198,28 @@ export default function BriefingSignScreen() {
 
       {/* Worker header */}
       <View style={styles.header}>
-        {/* Progress indicator */}
-        <View style={styles.progressWrap}>
-          <Text style={styles.progressText}>
-            {currentIdx + 1} / {totalWorkers}
-          </Text>
-          <View style={styles.progressTrack}>
-            <View
-              style={[
-                styles.progressFill,
-                { width: `${((currentIdx + 1) / totalWorkers) * 100}%` as any },
-              ]}
-            />
+        {/* Top row: cancel + progress */}
+        <View style={styles.headerTopRow}>
+          <Pressable
+            onPress={handleCancel}
+            hitSlop={12}
+            style={styles.cancelBtn}
+            {...a11y('გაუქმება', 'ინსტრუქტაჟიდან გასვლა', 'button')}
+          >
+            <Ionicons name="close" size={20} color={theme.colors.inkSoft} />
+          </Pressable>
+          <View style={styles.progressWrap}>
+            <Text style={styles.progressText}>
+              {currentIdx + 1} / {totalWorkers}
+            </Text>
+            <View style={styles.progressTrack}>
+              <View
+                style={[
+                  styles.progressFill,
+                  { width: `${((currentIdx + 1) / totalWorkers) * 100}%` as any },
+                ]}
+              />
+            </View>
           </View>
         </View>
 
@@ -271,7 +302,16 @@ function getstyles(theme: any) {
       textTransform: 'uppercase',
       letterSpacing: 0.8,
     },
+    headerTopRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    cancelBtn: {
+      padding: 4,
+    },
     progressWrap: {
+      flex: 1,
       gap: 6,
     },
     progressText: {

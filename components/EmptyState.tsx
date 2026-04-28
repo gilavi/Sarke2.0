@@ -10,7 +10,7 @@ import Animated, {
   FadeInUp,
   useAnimatedStyle,
   useSharedValue,
-  withRepeat,
+
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
@@ -296,25 +296,15 @@ export default function EmptyState({
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
   const entry = useSharedValue(0);
-  const float = useSharedValue(0);
   const btnScale = useSharedValue(1);
 
   useEffect(() => {
     entry.value = withSpring(1, { damping: 15, stiffness: 150 });
-    float.value = withRepeat(
-      withTiming(1, { duration: 3000 }),
-      -1,
-      true
-    );
-  }, [entry, float]);
+  }, [entry]);
 
   const containerAnim = useAnimatedStyle(() => ({
     opacity: entry.value,
     transform: [{ translateY: (1 - entry.value) * 20 }],
-  }));
-
-  const floatAnim = useAnimatedStyle(() => ({
-    transform: [{ translateY: float.value * -8 }],
   }));
 
   const btnAnim = useAnimatedStyle(() => ({
@@ -338,14 +328,14 @@ export default function EmptyState({
 
   return (
     <Animated.View
-      entering={FadeInUp.duration(400).delay(100)}
+      entering={FadeInUp.duration(250)}
       style={[styles.container, compact && styles.containerCompact, style]}
     >
       {backgroundPattern && <ScaffoldingPattern />}
 
       <Animated.View style={[containerAnim, styles.inner]}>
         {/* Illustration with float */}
-        <Animated.View style={[styles.illustrationWrap, floatAnim]}>
+        <Animated.View style={styles.illustrationWrap}>
           <View style={styles.illustrationCircle}>
             <Illustration />
           </View>

@@ -5,9 +5,10 @@
 // (using the local file:// URI stored in cert.params.localUri at
 // generation time). Falls back to a "preview unavailable" state for seeded
 // mock certs that were never actually printed.
-import { useCallback, useEffect, useState , useMemo} from 'react';
+import { createElement, useCallback, useEffect, useState , useMemo} from 'react';
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   StyleSheet,
   View,
@@ -85,8 +86,9 @@ export default function CertificateDetailScreen() {
 
   useFocusEffect(useCallback(() => { void load(); }, [load]));
 
-  // Resolve PDF source: try local file:// first, then fall back to
-  // downloading cert.pdf_url from storage into the app cache.
+  // Resolve PDF source. On web: use a signed URL directly (rendered in an
+  // iframe by react-native-webview's web shim). On native: download the file
+  // into the app cache so the PDF can be opened offline via a file:// URI.
   useEffect(() => {
     if (!cert) return;
     let cancelled = false;
@@ -95,12 +97,18 @@ export default function CertificateDetailScreen() {
     (async () => {
       try {
         if (!cert.pdf_url) throw new Error('no pdf_url');
+        const signed = await storageApi.signedUrl(STORAGE_BUCKETS.pdfs, cert.pdf_url, 3600)
+          .catch((e) => { logError(e, 'certDetail.signedUrl'); return storageApi.publicUrl(STORAGE_BUCKETS.pdfs, cert.pdf_url); });
+
+        if (Platform.OS === 'web') {
+          if (!cancelled) setResolvedUri(signed);
+          return;
+        }
+
         const name = cert.pdf_url.split('/').pop() ?? `${cert.id}.pdf`;
         const cacheBase = FileSystem.cacheDirectory ?? FileSystem.documentDirectory;
         if (!cacheBase) throw new Error('no cache dir');
         const target = `${cacheBase}cert-preview-${cert.id}-${name}`;
-        const signed = await storageApi.signedUrl(STORAGE_BUCKETS.pdfs, cert.pdf_url, 3600)
-          .catch((e) => { logError(e, 'certDetail.signedUrl'); return storageApi.publicUrl(STORAGE_BUCKETS.pdfs, cert.pdf_url); });
         const res = await FileSystem.downloadAsync(signed, target);
         if (res.status !== 200) throw new Error(`download ${res.status}`);
         if (!cancelled) setResolvedUri(target);
@@ -116,6 +124,12 @@ export default function CertificateDetailScreen() {
     if (!cert) return;
     setSharing(true);
     try {
+      if (Platform.OS === 'web') {
+        const url = await storageApi.signedUrl(STORAGE_BUCKETS.pdfs, cert.pdf_url, 3600)
+          .catch(() => storageApi.publicUrl(STORAGE_BUCKETS.pdfs, cert.pdf_url));
+        window.open(url, '_blank');
+        return;
+      }
       if (resolvedUri && await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(resolvedUri, { mimeType: 'application/pdf' });
       } else {
@@ -240,20 +254,26 @@ export default function CertificateDetailScreen() {
         <View style={{ flex: 1, backgroundColor: theme.colors.subtleSurface }}>
           {resolvedUri ? (
             <>
-              {webviewLoading ? (
+              {webviewLoading && Platform.OS !== 'web' ? (
                 <View style={StyleSheet.absoluteFillObject}>
                   <SkeletonPreview />
                 </View>
               ) : null}
-              <WebView
-                source={{ uri: resolvedUri }}
-                style={[styles.webview, webviewLoading && { opacity: 0 }]}
-                onLoadEnd={() => setWebviewLoading(false)}
-                onError={() => {
-                  setWebviewLoading(false);
-                  setResolveError(true);
-                }}
-              />
+              {Platform.OS === 'web'
+                ? createElement('iframe', {
+                    src: resolvedUri,
+                    style: { width: '100%', height: '100%', border: 'none', display: 'block' },
+                  })
+                : <WebView
+                    source={{ uri: resolvedUri }}
+                    style={[styles.webview, webviewLoading && { opacity: 0 }]}
+                    onLoadEnd={() => setWebviewLoading(false)}
+                    onError={() => {
+                      setWebviewLoading(false);
+                      setResolveError(true);
+                    }}
+                  />
+              }
             </>
           ) : resolveError ? (
             <View style={styles.noPreview}>

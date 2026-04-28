@@ -88,6 +88,7 @@ const MemoizedHistoryItem = memo(function HistoryItem({
             ? router.push(`/inspections/${q.id}` as any)
             : router.push(`/inspections/${q.id}/wizard` as any)
         }
+        style={({ pressed }) => pressed ? { opacity: 0.7 } : undefined}
         {...a11y(
           `${tpl?.name ?? t('common.inspection')} — ${p?.name ?? ''}`.trim(),
           q.status === 'completed' ? 'დასრულებული ინსპექციის ნახვა' : 'დრაფტის გაგრძელება',
@@ -240,7 +241,7 @@ export default function HistoryScreen() {
       <Stack.Screen options={{ headerShown: true, title: t('history.title'), headerBackTitle: t('tabs.backToMore') }} />
       <FlatList
           data={items}
-          keyExtractor={(item, i) => (item.kind === 'header' ? `h-${i}` : item.q.id)}
+          keyExtractor={(item) => (item.kind === 'header' ? `h-${item.label}` : item.q.id)}
           contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 32, gap: 8 }}
           renderItem={renderItem}
           ListEmptyComponent={

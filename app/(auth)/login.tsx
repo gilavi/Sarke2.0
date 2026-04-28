@@ -456,7 +456,7 @@ function Header() {
       <View style={styles.logoBadge}>
         <Ionicons name="shield-checkmark" size={42} color={theme.colors.white} />
       </View>
-      <Text style={{ fontSize: 36, fontWeight: '900', color: theme.colors.ink }}>Sarke</Text>
+      <Text style={{ fontSize: 36, fontWeight: '900', fontFamily: theme.typography.fontFamily.display, color: theme.colors.ink }}>Sarke</Text>
       <Text style={{ color: theme.colors.inkSoft }}>{t('auth.tagline')}</Text>
     </View>
   );
@@ -611,7 +611,7 @@ function getstyles(theme: any) {
   googleLogoText: { color: '#fff', fontSize: 13, fontWeight: '900' },
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.48)',
+    backgroundColor: theme.colors.overlay,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,

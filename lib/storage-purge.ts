@@ -2,10 +2,17 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Prefixes for any AsyncStorage key that holds user-specific draft data we
 // must never leak across accounts on a shared device.
+//
+// `home_cache_*` and `regulation_seen_*` are user-specific reads (projects,
+// inspections, "regulation seen by THIS expert" markers) — leaving them on
+// disk lets a second account see the previous user's content for ~1s before
+// the live fetch overwrites it.
 const USER_SCOPED_PREFIXES = [
   'wizard:',
   '@offline:',
   'pending-signatures',
+  'home_cache_',
+  'regulation_seen_',
 ];
 
 /**

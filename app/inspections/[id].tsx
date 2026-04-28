@@ -6,10 +6,11 @@
 // a CTA to generate another certificate from the same inspection.
 //
 // Draft inspections still route through `/inspections/[id]/wizard`.
-import { memo, useCallback, useEffect, useState , useMemo} from 'react';
+import { createElement, memo, useCallback, useEffect, useState , useMemo} from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -26,7 +27,7 @@ import { Skeleton, SkeletonCard, SkeletonListCard } from '../../components/Skele
 import { ErrorState } from '../../components/ErrorState';
 import { AddRemoteSignerSheet, type AddRemoteSignerResult } from '../../components/AddRemoteSignerModal';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
-import { getStorageImageDisplayUrl } from '../../lib/imageUrl';
+import { getStorageImageDisplayUrl, getStorageImageDataUrl } from '../../lib/imageUrl';
 import {
   answersApi,
   certificatesApi,
@@ -300,7 +301,9 @@ export default function InspectionDetailScreen() {
 
   /**
    * Open the PDF preview modal. Builds HTML on demand from already-loaded data.
-   * Logs and surfaces errors instead of leaving the spinner orphaned.
+   * Photos and signatures are stored as bucket-relative paths in the DB; the
+   * WebView sandbox cannot reach Supabase endpoints, so both must be converted
+   * to base64 data URLs before rendering.
    */
   const openPreview = useCallback(() => {
     if (!inspection || !template || !project) {
@@ -313,14 +316,54 @@ export default function InspectionDetailScreen() {
     // Yield to the UI thread so the spinner paints before heavy HTML building.
     setTimeout(async () => {
       try {
+        // Convert photo storage paths → base64 data URLs for WebView embedding.
+        const photosByAnswerEmbedded: Record<string, typeof photosByAnswer[string]> = {};
+        await Promise.all(
+          Object.entries(photosByAnswer).map(async ([answerId, photos]) => {
+            photosByAnswerEmbedded[answerId] = await Promise.all(
+              photos.map(async p => {
+                if (p.storage_path.startsWith('data:') || p.storage_path.startsWith('file:')) {
+                  return p;
+                }
+                try {
+                  const dataUrl = await getStorageImageDataUrl(
+                    STORAGE_BUCKETS.answerPhotos,
+                    p.storage_path,
+                  );
+                  return { ...p, storage_path: dataUrl };
+                } catch {
+                  return p;
+                }
+              }),
+            );
+          }),
+        );
+
+        // Convert signature storage paths → data URLs (renderSignatures()
+        // requires data URLs and skips anything that doesn't match).
+        const sigsEmbedded = await Promise.all(
+          signatures.map(async sig => {
+            if (!sig.signature_png_url || sig.signature_png_url.startsWith('data:')) return sig;
+            try {
+              const dataUrl = await getStorageImageDataUrl(
+                STORAGE_BUCKETS.signatures,
+                sig.signature_png_url,
+              );
+              return { ...sig, signature_png_url: dataUrl };
+            } catch {
+              return sig;
+            }
+          }),
+        );
+
         const html = await buildPdfPreviewHtml({
           questionnaire: inspection,
           template,
           project,
           questions,
           answers,
-          signatures,
-          photosByAnswer,
+          signatures: sigsEmbedded,
+          photosByAnswer: photosByAnswerEmbedded,
           language: pdfLanguage,
         });
         setPreviewHtml(html);
@@ -580,14 +623,19 @@ export default function InspectionDetailScreen() {
                   <Text style={{ color: theme.colors.danger, textAlign: 'center' }}>{previewError}</Text>
                 </View>
               ) : previewHtml ? (
-                <WebView
-                  originWhitelist={['*']}
-                  source={{ html: previewHtml }}
-                  style={styles.previewWebView}
-                  scalesPageToFit
-                  javaScriptEnabled={false}
-                  domStorageEnabled={false}
-                />
+                Platform.OS === 'web'
+                  ? createElement('iframe', {
+                      srcDoc: previewHtml,
+                      style: { width: '100%', minHeight: 480, border: 'none', display: 'block' },
+                    })
+                  : <WebView
+                      originWhitelist={['*']}
+                      source={{ html: previewHtml }}
+                      style={styles.previewWebView}
+                      scalesPageToFit
+                      javaScriptEnabled={false}
+                      domStorageEnabled={false}
+                    />
               ) : null}
             </View>
           ) : (

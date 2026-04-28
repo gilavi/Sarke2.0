@@ -30,7 +30,7 @@ import { useTheme } from '../../lib/theme';
 import { toErrorMessage } from '../../lib/logError';
 import { a11y } from '../../lib/accessibility';
 import type { Qualification } from '../../types/models';
-import { REQUIRED_TYPES, REQUIRED_TYPE_VALUES, labelForType } from './requiredTypes';
+import { REQUIRED_TYPES, REQUIRED_TYPE_VALUES, labelForType } from '../../lib/qualificationTypes';
 import AddQualificationSheet from '../../components/qualifications/AddQualificationSheet';
 
 type QualWithThumb = Qualification & { thumbUrl?: string | null };

@@ -1,9 +1,8 @@
 import React from 'react';
-import { Pressable, PressableProps, Text, View } from 'react-native';
+import { PressableProps } from 'react-native';
 import { a11y } from '../../lib/accessibility';
 import { haptic } from '../../lib/haptics';
-import { useTheme } from '../../lib/theme';
-
+import { Button } from './Button';
 
 interface A11yButtonProps extends Omit<PressableProps, 'children'> {
   title: string;
@@ -13,19 +12,15 @@ interface A11yButtonProps extends Omit<PressableProps, 'children'> {
 }
 
 export function A11yButton({ title, hint, state, onPress, ...rest }: A11yButtonProps) {
-  const { theme } = useTheme();
   return (
-    <Pressable
-      {...a11y(title, hint, 'button', state)}
+    <Button
+      title={title}
+      variant="primary"
       onPress={() => {
         haptic.light();
         onPress?.();
       }}
-      {...rest}
-    >
-      <View style={{ padding: 12, backgroundColor: theme.colors.accent, borderRadius: 12 }}>
-        <Text style={{ color: '#fff', fontWeight: '600' }}>{title}</Text>
-      </View>
-    </Pressable>
+      {...(a11y(title, hint, 'button', state) as any)}
+    />
   );
 }

@@ -65,12 +65,13 @@ const slideOutRight = () => {
 interface Props {
   stepKey: string | number;
   direction: 'next' | 'prev';
+  animate?: boolean;
   children: ReactNode;
 }
 
-export function WizardStepTransition({ stepKey, direction, children }: Props) {
-  const entering = direction === 'prev' ? slideInLeft : slideInRight;
-  const exiting = direction === 'prev' ? slideOutRight : slideOutLeft;
+export function WizardStepTransition({ stepKey, direction, animate = true, children }: Props) {
+  const entering = animate ? (direction === 'prev' ? slideInLeft : slideInRight) : undefined;
+  const exiting = animate ? (direction === 'prev' ? slideOutRight : slideOutLeft) : undefined;
 
   return (
     <View style={styles.wrap}>

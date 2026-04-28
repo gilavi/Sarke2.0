@@ -32,11 +32,12 @@ import {
 } from '../../lib/services';
 // shareStoredPdf import removed — PDF sharing now lives on the inspection
 // detail screen (which fetches certificates list) post 0006 decoupling.
-import { useTheme } from '../../lib/theme';
+import { useTheme, withOpacity } from '../../lib/theme';
 import { a11y } from '../../lib/accessibility';
 import { logError, toErrorMessage } from '../../lib/logError';
 import { friendlyError } from '../../lib/errorMap';
 import { Button, Field, Input } from '../../components/ui';
+import { FabButton } from '../../components/primitives';
 import { NumberPop, useScrollHeader } from '../../components/animations';
 import { Skeleton } from '../../components/Skeleton';
 import { MapPicker, type LatLng } from '../../components/MapPicker';
@@ -64,6 +65,7 @@ export default function HomeScreen() {
   // we know when to swap skeletons for real content. Pull-to-refresh doesn't
   // re-show skeletons — the RefreshControl spinner already signals that.
   const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   const CACHE_KEYS = {
     certs: 'home_cache_certs',
@@ -93,23 +95,26 @@ export default function HomeScreen() {
 
   const load = useCallback(async () => {
     try {
+      // null = that API failed; [] = succeeded with empty results.
+      // Keeping them distinct prevents failed fetches from wiping cached data.
       const [c, t, r, p] = await Promise.all([
-        qualificationsApi.list().catch((e) => { logError(e, 'home.qualifications'); return []; }),
-        templatesApi.list().catch((e) => { logError(e, 'home.templates'); return []; }),
-        questionnairesApi.recent(10).catch((e) => { logError(e, 'home.recent'); return []; }),
-        projectsApi.list().catch((e) => { logError(e, 'home.projects'); return []; }),
+        qualificationsApi.list().catch((e) => { logError(e, 'home.qualifications'); return null; }),
+        templatesApi.list().catch((e) => { logError(e, 'home.templates'); return null; }),
+        questionnairesApi.recent(10).catch((e) => { logError(e, 'home.recent'); return null; }),
+        projectsApi.list().catch((e) => { logError(e, 'home.projects'); return null; }),
       ]);
-      setCerts(c);
-      setTemplates(t);
-      setRecent(r);
-      setProjects(p);
-      // Update cache in background
-      void AsyncStorage.setItem(CACHE_KEYS.certs, JSON.stringify(c)).catch(() => {});
-      void AsyncStorage.setItem(CACHE_KEYS.templates, JSON.stringify(t)).catch(() => {});
-      void AsyncStorage.setItem(CACHE_KEYS.recent, JSON.stringify(r)).catch(() => {});
-      void AsyncStorage.setItem(CACHE_KEYS.projects, JSON.stringify(p)).catch(() => {});
+
+      const allFailed = c === null && t === null && r === null && p === null;
+      setLoadError(allFailed);
+
+      // Only update state (and cache) when the individual fetch succeeded.
+      if (c !== null) { setCerts(c); void AsyncStorage.setItem(CACHE_KEYS.certs, JSON.stringify(c)).catch(() => {}); }
+      if (t !== null) { setTemplates(t); void AsyncStorage.setItem(CACHE_KEYS.templates, JSON.stringify(t)).catch(() => {}); }
+      if (r !== null) { setRecent(r); void AsyncStorage.setItem(CACHE_KEYS.recent, JSON.stringify(r)).catch(() => {}); }
+      if (p !== null) { setProjects(p); void AsyncStorage.setItem(CACHE_KEYS.projects, JSON.stringify(p)).catch(() => {}); }
     } catch (e) {
       logError(e, 'home.load');
+      setLoadError(true);
     } finally {
       setLoaded(true);
     }
@@ -204,6 +209,14 @@ export default function HomeScreen() {
         contentInsetAdjustmentBehavior="never"
         contentContainerStyle={{ paddingTop: HEADER_FULL + 8, paddingBottom: 100 }}
       >
+        {/* ───────── FETCH ERROR BANNER ───────── */}
+        {loaded && loadError ? (
+          <View style={styles.fetchErrorBanner}>
+            <Ionicons name="cloud-offline-outline" size={16} color={theme.colors.warn} />
+            <Text style={styles.fetchErrorText}>{t('home.fetchError')}</Text>
+          </View>
+        ) : null}
+
         {/* ───────── CONTINUE DRAFT ───────── */}
         {latestDraft ? (
           <View style={styles.sectionWrap}>
@@ -229,7 +242,7 @@ export default function HomeScreen() {
 
         {/* ───────── CERT BANNER (warn only) ───────── */}
         {showCertBanner ? (
-          <Pressable onPress={() => router.push('/certificates' as any)} {...a11y('სერთიფიკატები', 'შეეხეთ სერთიფიკატების სანახავად', 'button')}>
+          <Pressable onPress={() => router.push('/qualifications' as any)} {...a11y('კვალიფიკაციები', 'შეეხეთ კვალიფიკაციების სანახავად', 'button')}>
             <View style={styles.certBanner}>
               <View style={styles.bannerIcon}>
                 <Ionicons name={certs.length === 0 ? 'cloud-upload-outline' : 'warning'} size={18} color={theme.colors.warn} />
@@ -330,7 +343,7 @@ export default function HomeScreen() {
         {!loaded && recent.length === 0 ? (
           <>
             <View style={[styles.sectionHeaderRow, { marginTop: 28 }]}>
-              <Text style={styles.sectionHeader}>ბოლო აქტები</Text>
+              <Text style={styles.sectionHeader}>{t('home.recentActs')}</Text>
             </View>
             <View style={[styles.recentList, { marginTop: 8 }]}>
               {Array.from({ length: 3 }).map((_, i) => (
@@ -353,7 +366,7 @@ export default function HomeScreen() {
         ) : recent.length > 0 ? (
           <>
             <View style={[styles.sectionHeaderRow, { marginTop: 28 }]}>
-              <Text style={styles.sectionHeader}>ბოლო აქტები</Text>
+              <Text style={styles.sectionHeader}>{t('home.recentActs')}</Text>
               <Pressable onPress={() => router.push('/history' as any)} hitSlop={8} {...a11y('ყველა აქტივობის ნახვა', 'შეეხეთ ისტორიის სანახავად', 'button')}>
                 <Text style={styles.sectionLink}>ყველა</Text>
               </Pressable>
@@ -446,21 +459,14 @@ export default function HomeScreen() {
 // ───────── ANIMATED FAB ─────────
 
 function AnimatedFAB({ open, onPress }: { open: boolean; onPress: () => void }) {
-  const { theme } = useTheme();
-  const styles = useMemo(() => getstyles(theme), [theme]);
   return (
-    <Pressable onPress={onPress} style={styles.fabWrap} {...a11y('ახალი ინსპექცია', 'შეეხეთ ახალი ინსპექციის დასაწყებად', 'button')}>
-      {({ pressed }) => (
-        <View style={[styles.fab, pressed && { opacity: 0.8 }]}>
-          <Ionicons
-            name="add"
-            size={28}
-            color={theme.colors.white}
-            style={{ transform: [{ rotate: open ? '45deg' : '0deg' }] }}
-          />
-        </View>
-      )}
-    </Pressable>
+    <FabButton
+      onPress={onPress}
+      iconName="add"
+      iconRotation={open ? 45 : 0}
+      a11yLabel="ახალი ინსპექცია"
+      a11yHint="შეეხეთ ახალი ინსპექციის დასაწყებად"
+    />
   );
 }
 
@@ -472,7 +478,7 @@ function AnimatedDarkBackdrop({ visible, onPress }: { visible: boolean; onPress:
     <View
       style={[
         StyleSheet.absoluteFillObject,
-        { backgroundColor: 'rgba(0,0,0,0.55)' },
+        { backgroundColor: theme.colors.overlay },
         visible ? { opacity: 1 } : { opacity: 0 },
       ]}
       pointerEvents={visible ? 'auto' : 'none'}
@@ -991,9 +997,9 @@ function MapPickerInline({
       {/* Bottom action bar */}
       <View
         style={{
-          backgroundColor: '#FFFFFF',
-          borderTopLeftRadius: 20,
-          borderTopRightRadius: 20,
+          backgroundColor: theme.colors.surface,
+          borderTopLeftRadius: 24,
+          borderTopRightRadius: 24,
           paddingHorizontal: 20,
           paddingTop: 16,
           paddingBottom: insets.bottom + 16,
@@ -1077,8 +1083,30 @@ function getstyles(theme: any) {
   greeting: {
     fontSize: 30,
     fontWeight: '900',
+    fontFamily: theme.typography.fontFamily.display,
     color: theme.colors.ink,
     lineHeight: 36,
+  },
+
+  // FETCH ERROR BANNER
+  fetchErrorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginHorizontal: 20,
+    marginBottom: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: theme.colors.warnSoft,
+    borderRadius: theme.radius.cardInner,
+    borderWidth: 1,
+    borderColor: theme.colors.warn,
+  },
+  fetchErrorText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '500',
+    color: theme.colors.ink,
   },
 
   // SHARED WRAPPERS
@@ -1093,7 +1121,7 @@ function getstyles(theme: any) {
   },
   sectionHeader: {
     flex: 1,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '800',
     color: theme.colors.inkSoft,
     textTransform: 'uppercase',
@@ -1111,7 +1139,7 @@ function getstyles(theme: any) {
     alignItems: 'center',
     gap: 12,
     backgroundColor: theme.colors.card,
-    borderRadius: 14,
+    borderRadius: theme.radius.cardInner,
     padding: 14,
     borderWidth: 1,
     borderColor: theme.colors.hairline,
@@ -1152,7 +1180,7 @@ function getstyles(theme: any) {
     borderRadius: 18,
     padding: 16,
     borderWidth: 1,
-    borderColor: theme.colors.accent + '33',
+    borderColor: withOpacity(theme.colors.accent, 0.2),
   },
   startIcon: {
     width: 44,
@@ -1163,12 +1191,12 @@ function getstyles(theme: any) {
     justifyContent: 'center',
   },
   startTitle: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '700',
     color: theme.colors.ink,
   },
   startSub: {
-    fontSize: 12,
+    fontSize: 11,
     color: theme.colors.inkSoft,
     marginTop: 2,
   },
@@ -1182,7 +1210,7 @@ function getstyles(theme: any) {
     marginTop: 20,
     padding: 14,
     backgroundColor: theme.colors.warnSoft,
-    borderRadius: 14,
+    borderRadius: theme.radius.cardInner,
   },
   bannerIcon: {
     width: 36,
@@ -1195,7 +1223,7 @@ function getstyles(theme: any) {
   bannerTitle: {
     fontWeight: '700',
     color: theme.colors.ink,
-    fontSize: 14,
+    fontSize: 15,
   },
   bannerSub: {
     fontSize: 11,
@@ -1221,10 +1249,10 @@ function getstyles(theme: any) {
     justifyContent: 'center',
   },
   projectName: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
     color: theme.colors.ink,
-    lineHeight: 18,
+    lineHeight: 20,
     minHeight: 36,
   },
   projectSub: {
@@ -1238,7 +1266,7 @@ function getstyles(theme: any) {
     backgroundColor: theme.colors.accentSoft,
     borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: theme.colors.accent + '33',
+    borderColor: withOpacity(theme.colors.accent, 0.2),
     borderStyle: 'dashed',
     height: PROJECT_CARD_HEIGHT,
   },
@@ -1252,7 +1280,7 @@ function getstyles(theme: any) {
     marginBottom: 4,
   },
   emptyProjectsText: {
-    fontSize: 12,
+    fontSize: 11,
     color: theme.colors.inkSoft,
   },
   emptyProjectsCta: {
@@ -1265,7 +1293,7 @@ function getstyles(theme: any) {
     backgroundColor: theme.colors.accentSoft,
     borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: theme.colors.accent + '33',
+    borderColor: withOpacity(theme.colors.accent, 0.2),
     borderStyle: 'dashed',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1347,26 +1375,6 @@ function getstyles(theme: any) {
     lineHeight: 19,
   },
 
-  // FAB
-  fabWrap: {
-    position: 'absolute',
-    right: 20,
-    bottom: 24,
-    zIndex: 50,
-  },
-  fab: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: theme.colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: theme.colors.accent,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.45,
-    shadowRadius: 12,
-    elevation: 10,
-  },
 });
 }
 
@@ -1378,8 +1386,8 @@ function getpickerStyles(theme: any) {
   },
   card: {
     backgroundColor: theme.colors.background,
-    borderTopLeftRadius: 26,
-    borderTopRightRadius: 26,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     padding: 16,
     paddingTop: 10,
     paddingBottom: 44,
@@ -1437,10 +1445,10 @@ function getpickerStyles(theme: any) {
     paddingVertical: 14,
     paddingHorizontal: 14,
     backgroundColor: theme.colors.accentSoft,
-    borderRadius: 14,
+    borderRadius: theme.radius.cardInner,
     borderWidth: 1.5,
     borderStyle: 'dashed',
-    borderColor: theme.colors.accent + '33',
+    borderColor: withOpacity(theme.colors.accent, 0.2),
   },
   addNewIcon: {
     width: 32,

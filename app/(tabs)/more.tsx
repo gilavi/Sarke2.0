@@ -14,7 +14,7 @@ import { A11yText as Text } from '../../components/primitives/A11yText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Card } from '../../components/ui';
+import { Badge, Card } from '../../components/ui';
 import { Skeleton } from '../../components/Skeleton';
 import { useSession } from '../../lib/session';
 import {
@@ -116,7 +116,7 @@ export default function MoreScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top']}>
       <ScrollView contentContainerStyle={{ paddingVertical: 16, gap: 18 }}>
-        <Text style={{ fontSize: 22, fontWeight: '700', paddingHorizontal: 20, color: theme.colors.ink }}>
+        <Text style={{ fontSize: 22, fontWeight: '700', fontFamily: theme.typography.fontFamily.heading, paddingHorizontal: 20, color: theme.colors.ink }}>
           {t('more.title')}
         </Text>
 
@@ -132,28 +132,6 @@ export default function MoreScreen() {
             </View>
           </View>
         </Card>
-
-        {/* Stat strip */}
-        <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 16 }}>
-          <StatPill
-            value={loaded ? projects.length : null}
-            label={t('more.projectsCount')}
-            tint={theme.colors.accent}
-            theme={theme}
-          />
-          <StatPill
-            value={loaded ? completed : null}
-            label={t('more.completedCount')}
-            tint={theme.colors.harnessTint}
-            theme={theme}
-          />
-          <StatPill
-            value={loaded ? drafts : null}
-            label={t('more.draftCount')}
-            tint={theme.colors.warn}
-            theme={theme}
-          />
-        </View>
 
         {/* Hub tiles */}
         <View style={styles.grid}>
@@ -277,7 +255,7 @@ function StatPill({ value, label, tint, theme }: { value: number | null; label: 
       {value === null ? (
         <Skeleton width={30} height={22} />
       ) : (
-        <Text style={{ fontSize: 22, fontWeight: '800', color: tint }}>{value}</Text>
+        <Text style={{ fontSize: 22, fontWeight: '800', fontFamily: theme.typography.fontFamily.display, color: tint }}>{value}</Text>
       )}
       <Text
         style={{
@@ -323,15 +301,13 @@ function HubTile({
             <Ionicons name={icon} size={20} color={tint} />
           </View>
           {badge ? (
-            <View style={{ backgroundColor: theme.colors.warnSoft, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 }}>
-              <Text style={{ fontSize: 11, fontWeight: '600', color: theme.colors.warn }}>{badge}</Text>
-            </View>
+            <Badge variant="warning" size="sm">{badge}</Badge>
           ) : null}
         </View>
         {primary === null ? (
           <Skeleton width={40} height={28} />
         ) : (
-          <Text style={{ fontSize: 28, fontWeight: '900', color: theme.colors.ink }}>{primary}</Text>
+          <Text style={{ fontSize: 28, fontWeight: '900', fontFamily: theme.typography.fontFamily.display, color: theme.colors.ink }}>{primary}</Text>
         )}
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}>
           <View style={{ flex: 1, gap: 4 }}>
@@ -367,11 +343,11 @@ function getStyles(theme: any) {
       width: 56,
       height: 56,
       borderRadius: 28,
-      backgroundColor: '#F5F5F0',
+      backgroundColor: theme.colors.subtleSurface,
     },
     statPill: {
       flex: 1,
-      borderRadius: 14,
+      borderRadius: theme.radius.cardInner,
       borderWidth: 1,
       padding: 14,
       gap: 3,

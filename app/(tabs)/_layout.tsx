@@ -60,13 +60,9 @@ export default function TabsLayout() {
       {/* Hidden routes — accessible via code, not tab bar */}
       <Tabs.Screen name="calendar" options={{ tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
       <Tabs.Screen name="certificates" options={{ tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
-      <Tabs.Screen
-        name="account-settings"
-        options={{
-          href: null,
-          headerShown: false,
-        }}
-      />
+      {/* account-settings lives at app/account-settings.tsx (top-level),
+          not under (tabs). Registering it here triggered an "extraneous
+          route" warning every render. */}
     </Tabs>
   );
 }

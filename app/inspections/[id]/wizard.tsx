@@ -15,6 +15,7 @@ import { Skeleton, SkeletonWizard } from '../../../components/Skeleton';
 import { ScaffoldTour } from '../../../components/ScaffoldTour';
 import { useScaffoldHelpSheet } from '../../../components/ScaffoldHelpSheet';
 import { useBottomSheet } from '../../../components/BottomSheet';
+import { SyncStatusPill } from '../../../components/SyncStatusPill';
 import { TOUR_SEEN_KEY } from '../../../lib/scaffoldHelp';
 import {
   QuestionCard,
@@ -199,6 +200,7 @@ export default function QuestionnaireWizard() {
   const [photos, setPhotos] = useState<Record<string, AnswerPhoto[]>>({});
   const [stepIndex, setStepIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [animateSteps, setAnimateSteps] = useState(false);
   const [harnessRowCount, setHarnessRowCount] = useState(5);
   const pendingPhotoContext = useRef<{
     questionId: string;
@@ -212,6 +214,10 @@ export default function QuestionnaireWizard() {
   const [isSafe, setIsSafe] = useState<boolean | null>(null);
   const [harnessName, setHarnessName] = useState('');
   const [exitModalVisible, setExitModalVisible] = useState(false);
+  // Guards saveConclusionAndGo against double-tap. The "დასრულება" button uses
+  // this for both the visual loading state and to short-circuit re-entry while
+  // the offline queue/flush is in flight.
+  const [finishing, setFinishing] = useState(false);
   // Kamari overview state: which belt index (1-based) is currently open in the
   // detail modal, plus a set of visited indices for the amber "in-progress"
   // tint shown when a belt was opened but no problems were logged.
@@ -249,6 +255,13 @@ export default function QuestionnaireWizard() {
   useEffect(() => {
     prevStepIndexRef.current = stepIndex;
   }, [stepIndex]);
+
+  // Enable step transition animations only after the initial load (which may
+  // restore a non-zero saved step) has settled. This prevents the entrance
+  // animation firing on load for a mid-flow step resumed from AsyncStorage.
+  useEffect(() => {
+    if (!loading) setAnimateSteps(true);
+  }, [loading]);
 
   // First-render fade out of the skeleton — kicks in once data is ready.
   const enterAnim = useRef(new Animated.Value(0)).current;
@@ -589,7 +602,7 @@ export default function QuestionnaireWizard() {
       if (q) doUpload(annotatedUri, q, ctx.rowKey, ctx.mime, ctx.ext, ctx.path);
       pendingPhotoContext.current = null;
     });
-    router.replace(
+    router.push(
       `/photo-annotate?uri=${encodeURIComponent(asset.uri)}` as any,
     );
   };
@@ -617,6 +630,9 @@ export default function QuestionnaireWizard() {
         if (q) doUpload(annotatedUri, q, ctx.rowKey, ctx.mime, ctx.ext, ctx.path);
         pendingPhotoContext.current = null;
       });
+      // Replace the picker with the annotator so the user returns straight
+      // to the wizard on annotate-back, instead of being dropped back onto
+      // the picker (which would force a second close).
       router.replace(
         `/photo-annotate?uri=${encodeURIComponent(uri)}` as any,
       );
@@ -645,6 +661,7 @@ export default function QuestionnaireWizard() {
 
   const saveConclusionAndGo = async () => {
     if (!questionnaire) return;
+    if (finishing) return; // double-tap guard — already in flight
     haptic.medium();
     const missing: string[] = [];
     if (isSafe === null) missing.push('უსაფრთხოების სტატუსი');
@@ -654,6 +671,7 @@ export default function QuestionnaireWizard() {
       toast.error(`შეავსეთ: ${missing.join(', ')}`);
       return;
     }
+    setFinishing(true);
     try {
       // Merge finish into the queued patch so the freeze trigger sees a
       // single atomic update (status=completed + conclusion + safety + name).
@@ -683,7 +701,11 @@ export default function QuestionnaireWizard() {
     } catch (e) {
       haptic.error();
       toast.error(`ინსპექციის დასრულება ვერ მოხერხდა: ${toErrorMessage(e, 'ქსელის შეცდომა')}`);
+      setFinishing(false);
     }
+    // On success we navigate away, so we don't reset finishing — leaving
+    // the button disabled until unmount avoids a flash of the active state
+    // before the route change settles.
   };
 
   // Swipe-right anywhere on the wizard body goes to the previous step. We
@@ -770,6 +792,7 @@ export default function QuestionnaireWizard() {
     <Screen edgeToEdge edges={['top']} style={{ backgroundColor: theme.colors.card }}>
       <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
       <ScaffoldTour visible={showTour} onClose={dismissTour} />
+      <SyncStatusPill />
       {photoUploadCount > 0 ? (
         <View pointerEvents="none" style={uploadPillStyles.wrap}>
           <View style={uploadPillStyles.pill}>
@@ -801,7 +824,7 @@ export default function QuestionnaireWizard() {
           style={{ flex: 1 }}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
         >
-          <WizardStepTransition stepKey={stepIndex} direction={stepDirection}>
+          <WizardStepTransition stepKey={stepIndex} direction={stepDirection} animate={animateSteps}>
             {step.kind === 'kamariCount' ? (
               <KamariCount
                 count={harnessRowCount}
@@ -885,7 +908,10 @@ export default function QuestionnaireWizard() {
                 title="დასრულება"
                 style={{ paddingVertical: 14 }}
                 iconRight={<Ionicons name="checkmark" size={20} color={theme.colors.white} />}
+                loading={finishing}
+                disabled={finishing}
                 onPress={() => {
+                  if (finishing) return;
                   haptic.medium();
                   saveConclusionAndGo();
                 }}
