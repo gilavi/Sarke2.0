@@ -13,16 +13,30 @@
 //   router.back();
 
 let pending: ((uri: string | null) => void) | null = null;
+let pendingToken: number | null = null;
+let resolveToken: number | null = null;
 let pendingAnnotate: ((uri: string | null) => void) | null = null;
+let pendingAnnotateToken: number | null = null;
+let resolveAnnotateToken: number | null = null;
 
-export function setPhotoPickerCallback(cb: (uri: string | null) => void): void {
+export function setPhotoPickerCallback(cb: (uri: string | null) => void): number {
   pending = cb;
+  pendingToken = Math.random();
+  resolveToken = pendingToken;
+  return pendingToken;
+}
+
+function isPhotoPickerStale(): boolean {
+  return resolveToken !== pendingToken;
 }
 
 export function resolvePhotoPicker(uri: string | null): void {
+  if (isPhotoPickerStale() || !pending) return;
   const cb = pending;
   pending = null;
-  cb?.(uri);
+  resolveToken = null;
+  pendingToken = null;
+  cb(uri);
 }
 
 export function cancelPhotoPicker(): void {
@@ -30,14 +44,24 @@ export function cancelPhotoPicker(): void {
 }
 
 /** Callback for annotated photo return from PhotoAnnotator. */
-export function setPhotoAnnotateCallback(cb: (uri: string | null) => void): void {
+export function setPhotoAnnotateCallback(cb: (uri: string | null) => void): number {
   pendingAnnotate = cb;
+  pendingAnnotateToken = Math.random();
+  resolveAnnotateToken = pendingAnnotateToken;
+  return pendingAnnotateToken;
+}
+
+function isPhotoAnnotateStale(): boolean {
+  return resolveAnnotateToken !== pendingAnnotateToken;
 }
 
 export function resolvePhotoAnnotate(uri: string | null): void {
+  if (isPhotoAnnotateStale() || !pendingAnnotate) return;
   const cb = pendingAnnotate;
   pendingAnnotate = null;
-  cb?.(uri);
+  resolveAnnotateToken = null;
+  pendingAnnotateToken = null;
+  cb(uri);
 }
 
 export function cancelPhotoAnnotate(): void {

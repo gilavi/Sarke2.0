@@ -1,12 +1,13 @@
 import * as Sentry from '@sentry/react-native';
 
-const isEnabled = !__DEV__;
+const SENTRY_DSN = process.env.EXPO_PUBLIC_SENTRY_DSN || '';
+const isEnabled = !__DEV__ && !!SENTRY_DSN;
 
 export function initCrashReporting() {
   if (!isEnabled) return;
 
   Sentry.init({
-    dsn: 'YOUR_SENTRY_DSN_HERE',
+    dsn: SENTRY_DSN,
     environment: 'production',
     beforeSend: (event) => {
       if (event.exception?.values) {

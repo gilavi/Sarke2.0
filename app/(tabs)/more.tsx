@@ -42,6 +42,7 @@ export default function MoreScreen() {
   const router = useRouter();
   const toast = useToast();
   const [langVisible, setLangVisible] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const [counts, setCounts] = useState<{ total: number; drafts: number; completed: number; latestCreatedAt: string | null }>({
     total: 0,
     drafts: 0,
@@ -98,11 +99,13 @@ export default function MoreScreen() {
         text: t('more.signOut'),
         style: 'destructive',
         onPress: async () => {
+          setSigningOut(true);
           try {
             await signOut();
             await AsyncStorage.removeItem('@auth:email').catch(() => {});
             toast.success(t('notifications.signedOut'));
           } catch (e) {
+            setSigningOut(false);
             toast.error(t('notifications.signOutFailed'));
           }
         },
@@ -235,9 +238,9 @@ export default function MoreScreen() {
             <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
           </Pressable>
           <View style={styles.divider} />
-          <Pressable onPress={handleLogout} style={styles.settingsRow} {...a11y(t('more.signOut'), undefined, 'button')}>
-            <Ionicons name="log-out-outline" size={18} color={theme.colors.danger} />
-            <Text style={{ flex: 1, fontSize: 15, fontWeight: '500', color: theme.colors.danger }}>{t('more.signOut')}</Text>
+          <Pressable onPress={handleLogout} disabled={signingOut} style={[styles.settingsRow, signingOut && { opacity: 0.5 }]} {...a11y(t('more.signOut'), undefined, 'button')}>
+            <Ionicons name="log-out-outline" size={18} color={signingOut ? theme.colors.inkFaint : theme.colors.danger} />
+            <Text style={{ flex: 1, fontSize: 15, fontWeight: '500', color: signingOut ? theme.colors.inkFaint : theme.colors.danger }}>{t('more.signOut')}</Text>
           </Pressable>
         </View>
       </ScrollView>
