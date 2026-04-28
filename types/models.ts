@@ -374,3 +374,28 @@ export interface RemoteSigningRequest {
   last_sent_at: string | null;
   created_at: string;
 }
+
+// ── Safety Briefing (ინსტრუქტაჟი) ─────────────────────────────────────────────
+
+export interface BriefingParticipant {
+  name: string;
+  /** Base64 PNG without data: prefix. Null until signed. */
+  signature: string | null;
+}
+
+export type BriefingStatus = 'draft' | 'completed';
+
+export interface Briefing {
+  id: string;
+  projectId: string;
+  /** ISO date-time string. */
+  dateTime: string;
+  /** Array of topic strings; custom topics prefixed with 'custom:'. */
+  topics: string[];
+  participants: BriefingParticipant[];
+  /** Base64 PNG without data: prefix. */
+  inspectorSignature: string | null;
+  inspectorName: string;
+  status: BriefingStatus;
+  createdAt: string;
+}
