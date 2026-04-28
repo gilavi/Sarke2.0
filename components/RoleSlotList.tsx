@@ -278,7 +278,7 @@ export function RoleSlotList({ projectId, inspector, crew, onChange }: Props) {
         const label = member.role || CREW_ROLE_LABEL[member.roleKey];
         return (
           <Swipeable
-            key={member.roleKey}
+            key={member.id}
             renderRightActions={() => (
               <Pressable
                 onPress={() => removeWithConfirm(member)}

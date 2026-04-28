@@ -125,8 +125,8 @@ const MemoizedCertReportItem = memo(function CertReportItem({
                     <Text style={styles.infoBadgeText}>{expertName}</Text>
                   </View>
                 ) : null}
-                {qualTypes.map(q => (
-                  <View key={q.type} style={styles.infoBadge}>
+                {qualTypes.map((q, i) => (
+                  <View key={`${q.type}-${q.number ?? ''}-${i}`} style={styles.infoBadge}>
                     <Ionicons name="ribbon-outline" size={10} color={theme.colors.inkSoft} />
                     <Text style={styles.infoBadgeText}>
                       {q.number ? `№${q.number}` : q.type}
@@ -311,9 +311,9 @@ export default function InspectionDetailScreen() {
     if (previewHtml) return; // cached from a prior build
     setPreviewLoading(true);
     // Yield to the UI thread so the spinner paints before heavy HTML building.
-    setTimeout(() => {
+    setTimeout(async () => {
       try {
-        const html = buildPdfPreviewHtml({
+        const html = await buildPdfPreviewHtml({
           questionnaire: inspection,
           template,
           project,
