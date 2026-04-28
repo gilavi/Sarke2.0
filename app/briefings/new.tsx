@@ -133,8 +133,10 @@ export default function NewBriefingScreen() {
         inspectorName,
       });
       router.replace(`/briefings/${briefing.id}/sign` as any);
-    } catch {
-      Alert.alert('შეცდომა', 'ინსტრუქტაჟის შექმნა ვერ მოხერხდა');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('[briefings/new] create failed:', msg);
+      Alert.alert('შეცდომა', `ინსტრუქტაჟის შექმნა ვერ მოხერხდა\n\n${msg}`);
     } finally {
       setBusy(false);
     }
@@ -332,7 +334,6 @@ export default function NewBriefingScreen() {
                 value={dateTime}
                 mode={showTimePicker ? 'time' : 'date'}
                 display="spinner"
-                locale="ka-GE"
                 onChange={showTimePicker ? onTimeChange : onDateChange}
                 style={{ height: 200 }}
               />
@@ -426,23 +427,23 @@ function getstyles(theme: any) {
       flexDirection: 'row',
       alignItems: 'center',
       paddingHorizontal: 12,
-      paddingVertical: 8,
-      borderRadius: 999,
-      borderWidth: 1.5,
+      paddingVertical: 6,
+      borderRadius: 16,
+      borderWidth: 1,
       borderColor: theme.colors.hairline,
       backgroundColor: theme.colors.surfaceSecondary,
     },
     chipSelected: {
-      borderColor: theme.colors.accent,
-      backgroundColor: theme.colors.accentSoft,
+      borderColor: 'transparent',
+      backgroundColor: theme.colors.accent,
     },
     chipText: {
       fontSize: 13,
-      fontWeight: '600',
+      fontWeight: '500',
       color: theme.colors.inkSoft,
     },
     chipTextSelected: {
-      color: theme.colors.accent,
+      color: '#fff',
     },
     customTopicInput: {
       borderWidth: 1,
@@ -492,11 +493,11 @@ function getstyles(theme: any) {
       alignItems: 'center',
       gap: 6,
       paddingHorizontal: 12,
-      paddingVertical: 7,
-      backgroundColor: theme.colors.accentGhost,
-      borderRadius: 999,
+      paddingVertical: 6,
+      backgroundColor: theme.colors.accentSoft,
+      borderRadius: 16,
       borderWidth: 1,
-      borderColor: theme.colors.accentSoft,
+      borderColor: 'transparent',
     },
     participantChipText: {
       fontSize: 13,

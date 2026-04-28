@@ -330,7 +330,7 @@ function getstyles(theme: any) {
     gap: 3,
     paddingHorizontal: 7,
     paddingVertical: 3,
-    borderRadius: 999,
+    borderRadius: 16,
     backgroundColor: theme.colors.subtleSurface,
   },
   badgeText: { fontSize: 10, color: theme.colors.inkSoft },

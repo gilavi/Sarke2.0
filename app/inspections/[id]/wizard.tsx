@@ -2279,7 +2279,7 @@ function getstyles(theme: any) {
     gap: 8,
     paddingVertical: 12,
     paddingHorizontal: 20,
-    borderRadius: theme.radius.pill,
+    borderRadius: 16,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: theme.colors.hairline,
     backgroundColor: theme.colors.card,
@@ -2287,7 +2287,7 @@ function getstyles(theme: any) {
   assistChipText: {
     fontSize: 16,
     color: theme.colors.inkSoft,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   choice: {
     flex: 1,

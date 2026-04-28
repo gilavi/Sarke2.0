@@ -179,14 +179,62 @@ export default function ProjectDetail() {
     [project, toast],
   );
 
-  const drafts = useMemo(
-    () => questionnaires.filter(q => q.status === 'draft'),
+  // ── Section previews (max 3, sorted by date desc) ──
+  const questionnairesSorted = useMemo(
+    () =>
+      [...questionnaires].sort(
+        (a, b) => +new Date(b.created_at) - +new Date(a.created_at),
+      ),
     [questionnaires],
   );
-  const completed = useMemo(
-    () => questionnaires.filter(q => q.status === 'completed'),
-    [questionnaires],
+  const questionnairesPreview = useMemo(
+    () => questionnairesSorted.slice(0, 3),
+    [questionnairesSorted],
   );
+  const incidentsSorted = useMemo(
+    () =>
+      [...incidents].sort(
+        (a, b) => +new Date(b.date_time) - +new Date(a.date_time),
+      ),
+    [incidents],
+  );
+  const incidentsPreview = useMemo(
+    () => incidentsSorted.slice(0, 3),
+    [incidentsSorted],
+  );
+  const briefingsSorted = useMemo(
+    () =>
+      [...briefings].sort(
+        (a, b) => +new Date(b.dateTime) - +new Date(a.dateTime),
+      ),
+    [briefings],
+  );
+  const briefingsPreview = useMemo(
+    () => briefingsSorted.slice(0, 3),
+    [briefingsSorted],
+  );
+  const filesSorted = useMemo(
+    () =>
+      [...files].sort(
+        (a, b) => +new Date(b.created_at) - +new Date(a.created_at),
+      ),
+    [files],
+  );
+  const filesPreview = useMemo(() => filesSorted.slice(0, 3), [filesSorted]);
+
+  const overflowQuestionnaires = useMemo(
+    () => questionnairesSorted.slice(3),
+    [questionnairesSorted],
+  );
+  const overflowIncidents = useMemo(
+    () => incidentsSorted.slice(3),
+    [incidentsSorted],
+  );
+  const overflowBriefings = useMemo(
+    () => briefingsSorted.slice(3),
+    [briefingsSorted],
+  );
+  const overflowFiles = useMemo(() => filesSorted.slice(3), [filesSorted]);
 
   const startNewQuestionnaire = () => {
     const system = templates.filter(tpl => tpl.is_system);
@@ -430,26 +478,14 @@ export default function ProjectDetail() {
               </Pressable>
             ) : null}
 
-            {/* Uploaded files — bottom of project details, after map */}
-            <View ref={filesRef} collapsable={false} style={{ marginTop: 14 }}>
-              <UploadedFilesSection
-                files={files}
-                busy={filesBusy}
-                onUpload={uploadFile}
-                onOpen={openFile}
-                onDelete={deleteFile}
-              />
-            </View>
           </View>
 
           {/* ── Participants (merged: crew + signers) ── */}
           <View ref={participantsRef} collapsable={false} style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>{t('projects.participantsSection')}</Text>
-              <View style={styles.badgeGreen}>
-                <Text style={styles.badgeGreenText}>
-                  {(project?.crew?.length ?? 0) + (inspector ? 1 : 0)}
-                </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={styles.sectionTitle}>{t('projects.participantsSection')}</Text>
+                <Text style={styles.sectionCount}>{(project?.crew?.length ?? 0) + (inspector ? 1 : 0)}</Text>
               </View>
             </View>
             <View style={{ marginTop: 10 }}>
@@ -467,158 +503,129 @@ export default function ProjectDetail() {
           {/* ── Questionnaires ── */}
           <View ref={questionnairesRef} collapsable={false} style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>{t('projects.questionnairesSection')}</Text>
-              <View style={styles.badgeGreen}>
-                <Text style={styles.badgeGreenText}>{questionnaires.length}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={styles.sectionTitle}>{t('projects.questionnairesSection')}</Text>
+                <Text style={styles.sectionCount}>{questionnaires.length}</Text>
               </View>
+              <Pressable onPress={startNewQuestionnaire} hitSlop={8}>
+                <Text style={styles.sectionAddLink}>+ დამატება</Text>
+              </Pressable>
             </View>
 
-            {drafts.length > 0 ? (
-              <>
-                <View style={{ marginTop: 10 }}>
-                  <View style={styles.subSectionHeader}>
-                    <View style={[styles.subDot, { backgroundColor: theme.colors.semantic.warningSoft }]}>
-                      <Ionicons name="pencil" size={11} color={theme.colors.semantic.warning} />
-                    </View>
-                    <Text style={styles.subSectionLabel}>{t('projects.draftsSection')}</Text>
-                    <Text style={styles.subSectionCount}>{drafts.length}</Text>
-                  </View>
-                  <View style={{ gap: 8, marginTop: 8 }}>
-                    {drafts.map(q => {
-                      const tpl = templates.find(t => t.id === q.template_id);
-                      return (
-                        <Swipeable
-                          key={q.id}
-                          renderRightActions={() => (
-                            <Pressable onPress={() => deleteQuestionnaire(q)} style={styles.swipeDelete} {...a11y('ინსპექციას წაშლა', 'დრაფტის წაშლა', 'button')}>
-                              <Ionicons name="trash" size={18} color={theme.colors.white} />
-                            </Pressable>
-                          )}
-                          overshootRight={false}
-                        >
-                          <Pressable
-                            onPress={() => router.push(`/inspections/${q.id}/wizard` as any)}
-                            style={styles.listRow}
-                            {...a11y(tpl?.name ?? 'ინსპექცია', 'დრაფტის გასაგრძელებლად დააჭირეთ', 'button')}
-                          >
-                            <View style={[styles.statusIcon, { backgroundColor: theme.colors.semantic.warningSoft }]}>
-                              <Ionicons name="pencil" size={14} color={'#92400E'} />
-                            </View>
-                            <View style={{ flex: 1 }}>
-                              <Text style={styles.listRowTitle}>{tpl?.name ?? t('common.inspection')}</Text>
-                              <Text style={styles.listRowSubtitle}>
-                                {formatShortDateTime(q.created_at)}
-                              </Text>
-                            </View>
-                            <Ionicons name="chevron-forward" size={18} color={theme.colors.borderStrong} />
-                          </Pressable>
-                        </Swipeable>
-                      );
-                    })}
-                  </View>
-                </View>
-
-                <View style={styles.sectionDivider} />
-              </>
-            ) : null}
-
-            {/* Completed */}
-            <View style={{ marginTop: 14 }}>
-              <View style={styles.subSectionHeader}>
-                <View style={[styles.subDot, { backgroundColor: theme.colors.semantic.successSoft }]}>
-                  <Ionicons name="checkmark" size={11} color={theme.colors.primary[700]} />
-                </View>
-                <Text style={styles.subSectionLabel}>{t('projects.completedSection')}</Text>
-                <Text style={styles.subSectionCount}>{completed.length}</Text>
-              </View>
-              {completed.length === 0 ? (
-                <EmptyState text={t('projects.noCompletedInspections')} />
-              ) : (
-                <View style={{ gap: 8, marginTop: 8 }}>
-                  {completed.map(q => {
-                    const tpl = templates.find(t => t.id === q.template_id);
-                    return (
-                      <Swipeable
-                        key={q.id}
-                        renderRightActions={() => (
-                          <Pressable onPress={() => deleteQuestionnaire(q)} style={styles.swipeDelete} {...a11y('ინსპექციას წაშლა', 'დასრულებული ინსპექციას წაშლა', 'button')}>
-                            <Ionicons name="trash" size={18} color={theme.colors.white} />
-                          </Pressable>
-                        )}
-                        overshootRight={false}
-                      >
-                        <Pressable
-                          onPress={() => router.push(`/inspections/${q.id}` as any)}
-                          style={styles.listRow}
-                          {...a11y(tpl?.name ?? 'ინსპექცია', 'დასრულებული ინსპექციას ნახვა', 'button')}
-                        >
-                          <View style={[styles.statusIcon, { backgroundColor: theme.colors.semantic.successSoft }]}>
-                            <Ionicons name="checkmark-circle" size={14} color={theme.colors.primary[700]} />
-                          </View>
-                          <View style={{ flex: 1 }}>
-                            <Text style={styles.listRowTitle}>{tpl?.name ?? t('common.inspection')}</Text>
-                            <Text style={styles.listRowSubtitle}>
-                              {formatShortDateTime(q.created_at)}
-                            </Text>
-                          </View>
-                          <Ionicons name="chevron-forward" size={18} color={theme.colors.borderStrong} />
+            {questionnaires.length === 0 ? (
+              <EmptyState text={t('projects.noCompletedInspections')} />
+            ) : (
+              <View style={{ gap: 8, marginTop: 10 }}>
+                {questionnairesPreview.map(q => {
+                  const tpl = templates.find(t => t.id === q.template_id);
+                  const isCompleted = q.status === 'completed';
+                  return (
+                    <Swipeable
+                      key={q.id}
+                      renderRightActions={() => (
+                        <Pressable onPress={() => deleteQuestionnaire(q)} style={styles.swipeDelete} {...a11y('ინსპექციას წაშლა', 'ინსპექციას წაშლა', 'button')}>
+                          <Ionicons name="trash" size={18} color={theme.colors.white} />
                         </Pressable>
-                      </Swipeable>
-                    );
-                  })}
-                </View>
-              )}
-            </View>
+                      )}
+                      overshootRight={false}
+                    >
+                      <Pressable
+                        onPress={() =>
+                          router.push(
+                            (isCompleted
+                              ? `/inspections/${q.id}`
+                              : `/inspections/${q.id}/wizard`) as any,
+                          )
+                        }
+                        style={styles.listRow}
+                        {...a11y(tpl?.name ?? 'ინსპექცია', isCompleted ? 'დასრულებული ინსპექციას ნახვა' : 'დრაფტის გასაგრძელებლად დააჭირეთ', 'button')}
+                      >
+                        <View style={[styles.statusIcon, { backgroundColor: isCompleted ? theme.colors.semantic.successSoft : theme.colors.semantic.warningSoft }]}>
+                          <Ionicons
+                            name={isCompleted ? 'checkmark-circle' : 'pencil'}
+                            size={14}
+                            color={isCompleted ? theme.colors.primary[700] : '#92400E'}
+                          />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.listRowTitle}>{tpl?.name ?? t('common.inspection')}</Text>
+                          <Text style={styles.listRowSubtitle}>
+                            {formatShortDateTime(q.created_at)}
+                          </Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={18} color={theme.colors.borderStrong} />
+                      </Pressable>
+                    </Swipeable>
+                  );
+                })}
+                {overflowQuestionnaires.length > 0 ? (
+                  <ViewMoreRow
+                    items={overflowQuestionnaires.map(q => {
+                      const tpl = templates.find(t => t.id === q.template_id);
+                      return tpl?.name ?? 'ინსპ';
+                    })}
+                    total={overflowQuestionnaires.length}
+                    onPress={() => router.push(`/projects/${id}/inspections` as any)}
+                  />
+                ) : null}
+              </View>
+            )}
           </View>
 
           {/* ── ინციდენტები ── */}
           <View style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>ინციდენტები</Text>
-              <View style={[styles.badgeGreen, { backgroundColor: '#FEE2E2' }]}>
-                <Text style={[styles.badgeGreenText, { color: '#991B1B' }]}>
-                  {incidents.length}
-                </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={styles.sectionTitle}>ინციდენტები</Text>
+                <Text style={styles.sectionCount}>{incidents.length}</Text>
               </View>
+              <Pressable onPress={() => router.push(`/incidents/new?projectId=${id}` as any)} hitSlop={8}>
+                <Text style={styles.sectionAddLink}>+ დამატება</Text>
+              </Pressable>
             </View>
 
             {incidents.length === 0 ? (
               <EmptyState text="ინციდენტები არ არის" />
             ) : (
               <View style={{ gap: 8, marginTop: 10 }}>
-                {incidents.map(inc => (
+                {incidentsPreview.map(inc => (
                   <IncidentRow
                     key={inc.id}
                     incident={inc}
                     onPress={() => router.push(`/incidents/${inc.id}` as any)}
                   />
                 ))}
+                {overflowIncidents.length > 0 ? (
+                  <ViewMoreRow
+                    items={overflowIncidents.map(
+                      inc => INCIDENT_TYPE_LABEL[inc.type as IncidentType] ?? inc.type,
+                    )}
+                    total={overflowIncidents.length}
+                    onPress={() => router.push(`/projects/${id}/incidents` as any)}
+                  />
+                ) : null}
               </View>
             )}
 
-            <Pressable
-              onPress={() => router.push(`/incidents/new?projectId=${id}` as any)}
-              style={[styles.addBtn, { marginTop: 12 }]}
-            >
-              <Ionicons name="add" size={18} color={styles.addBtnText.color} />
-              <Text style={styles.addBtnText}>+ ინციდენტის დამატება</Text>
-            </Pressable>
           </View>
 
           {/* ── ინსტრუქტაჟი ── */}
           <View style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>ინსტრუქტაჟი</Text>
-              <View style={styles.badgeGreen}>
-                <Text style={styles.badgeGreenText}>{briefings.length}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={styles.sectionTitle}>ინსტრუქტაჟი</Text>
+                <Text style={styles.sectionCount}>{briefings.length}</Text>
               </View>
+              <Pressable onPress={() => id && router.push(`/briefings/new?projectId=${id}` as any)} hitSlop={8}>
+                <Text style={styles.sectionAddLink}>+ დამატება</Text>
+              </Pressable>
             </View>
 
             {briefings.length === 0 ? (
               <EmptyState text="ინსტრუქტაჟი ჯერ არ ჩატარებულა" />
             ) : (
               <View style={{ gap: 8, marginTop: 10 }}>
-                {briefings.map(b => {
+                {briefingsPreview.map(b => {
                   const isCompleted = b.status === 'completed';
                   return (
                     <Pressable
@@ -646,17 +653,86 @@ export default function ProjectDetail() {
                     </Pressable>
                   );
                 })}
+                {overflowBriefings.length > 0 ? (
+                  <ViewMoreRow
+                    items={overflowBriefings.map(
+                      b => b.topics[0]?.replace(/^custom:/, '') ?? 'ინსტ',
+                    )}
+                    total={overflowBriefings.length}
+                    onPress={() => router.push(`/projects/${id}/briefings` as any)}
+                  />
+                ) : null}
               </View>
             )}
 
-            <Pressable
-              onPress={() => id && router.push(`/briefings/new?projectId=${id}` as any)}
-              style={styles.addBtn}
-              {...a11y('+ ახალი ინსტრუქტაჟი', 'ახალი ინსტრუქტაჟის დაწყება', 'button')}
-            >
-              <Ionicons name="add" size={18} color={theme.colors.accent} />
-              <Text style={styles.addBtnText}>+ ახალი ინსტრუქტაჟი</Text>
-            </Pressable>
+          </View>
+
+          {/* ── დოკუმენტები ── */}
+          <View ref={filesRef} collapsable={false} style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={styles.sectionTitle}>დოკუმენტები</Text>
+                <Text style={styles.sectionCount}>{files.length}</Text>
+              </View>
+              <Pressable onPress={uploadFile} disabled={filesBusy} hitSlop={8}>
+                <Text style={[styles.sectionAddLink, filesBusy && { opacity: 0.5 }]}>
+                  {filesBusy ? 'იტვირთება…' : '+ ატვირთვა'}
+                </Text>
+              </Pressable>
+            </View>
+
+            {files.length === 0 ? (
+              <EmptyState text="ფაილები არ არის" />
+            ) : (
+              <View style={{ gap: 8, marginTop: 10 }}>
+                {filesPreview.map(f => (
+                  <Swipeable
+                    key={f.id}
+                    renderRightActions={() => (
+                      <Pressable onPress={() => deleteFile(f)} style={styles.swipeDelete} {...a11y('ფაილის წაშლა', 'ფაილის წაშლა', 'button')}>
+                        <Ionicons name="trash" size={18} color={theme.colors.white} />
+                      </Pressable>
+                    )}
+                    overshootRight={false}
+                  >
+                    <Pressable
+                      onPress={() => openFile(f)}
+                      style={styles.listRow}
+                      {...a11y(f.name, 'ფაილის გახსნა', 'button')}
+                    >
+                      <View style={[styles.statusIcon, { backgroundColor: theme.colors.surfaceSecondary }]}>
+                        <Ionicons
+                          name={
+                            f.mime_type?.includes('pdf')
+                              ? 'document-text-outline'
+                              : f.mime_type?.startsWith('image/')
+                                ? 'image-outline'
+                                : 'document-outline'
+                          }
+                          size={14}
+                          color={theme.colors.inkSoft}
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.listRowTitle} numberOfLines={1}>{f.name}</Text>
+                        <Text style={styles.listRowSubtitle}>
+                          {formatShortDateTime(f.created_at)}
+                        </Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={18} color={theme.colors.borderStrong} />
+                    </Pressable>
+                  </Swipeable>
+                ))}
+                {overflowFiles.length > 0 ? (
+                  <ViewMoreRow
+                    items={overflowFiles.map(f => f.name)}
+                    total={overflowFiles.length}
+                    onPress={() => router.push(`/projects/${id}/files` as any)}
+                  />
+                ) : null}
+              </View>
+            )}
+
           </View>
 
         </ScrollView>
@@ -744,6 +820,66 @@ function EmptyState({ text }: { text: string }) {
       <Ionicons name="document-text-outline" size={28} color={theme.colors.borderStrong} />
       <Text style={styles.emptyStateText}>{text}</Text>
     </View>
+  );
+}
+
+/**
+ * "View more" row at the bottom of a section preview.
+ * Renders stacked initials for the items beyond the first 3.
+ * Inputs:
+ *   - items: labels for the overflow items (used to derive avatar initials)
+ *   - total: number of overflow items shown in the "+ N მეტი" label
+ *   - onPress: navigate to the full list screen
+ */
+function ViewMoreRow({
+  items,
+  total,
+  onPress,
+}: {
+  items: string[];
+  total: number;
+  onPress: () => void;
+}) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+  const avatarLabels = items.slice(0, 3);
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={styles.listRow}
+      {...a11y(`+ ${total} მეტი`, 'სრული სიის გახსნა', 'button')}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        {avatarLabels.map((label, idx) => {
+          const ch = (label || '?').trim().charAt(0).toUpperCase() || '?';
+          return (
+            <View
+              key={idx}
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: 14,
+                backgroundColor: theme.colors.surfaceSecondary,
+                borderWidth: 2,
+                borderColor: theme.colors.surface,
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginLeft: idx === 0 ? 0 : -8,
+              }}
+            >
+              <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.inkSoft }}>
+                {ch}
+              </Text>
+            </View>
+          );
+        })}
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.listRowTitle}>+ {total} მეტი</Text>
+      </View>
+      <Ionicons name="chevron-forward" size={18} color={theme.colors.borderStrong} />
+    </Pressable>
   );
 }
 
@@ -1229,11 +1365,21 @@ function getstyles(theme: any) {
     fontWeight: '700',
     color: theme.colors.ink,
   },
+  sectionCount: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: theme.colors.inkSoft,
+  },
+  sectionAddLink: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: theme.colors.accent,
+  },
   badgeGreen: {
     backgroundColor: theme.colors.semantic.successSoft,
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 999,
+    borderRadius: 16,
   },
   badgeGreenText: {
     fontSize: 12,
@@ -1282,7 +1428,7 @@ function getstyles(theme: any) {
     backgroundColor: theme.colors.semantic.warningSoft,
     paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: 999,
+    borderRadius: 16,
   },
   missingChipText: {
     color: theme.colors.semantic.warning,

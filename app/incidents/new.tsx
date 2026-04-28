@@ -1,13 +1,11 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   Modal,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
-  TextInput,
   View,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -20,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { A11yText as Text } from '../../components/primitives/A11yText';
+import { Button, Input } from '../../components/ui';
 import { useTheme } from '../../lib/theme';
 import { useSession } from '../../lib/session';
 import { useToast } from '../../lib/toast';
@@ -314,11 +313,10 @@ export default function NewIncident() {
         photoDataUrls,
       });
 
-      // 6. print to file
+      // 6. print to file — use uploadFromUri to avoid Hermes Blob bug (0-byte uploads)
       const { uri } = await Print.printToFileAsync({ html });
-      const blob = await (await fetch(uri)).blob();
       const pdfPath = `incidents/${savedId}.pdf`;
-      await storageApi.upload(STORAGE_BUCKETS.pdfs, pdfPath, blob, 'application/pdf');
+      await storageApi.uploadFromUri(STORAGE_BUCKETS.pdfs, pdfPath, uri, 'application/pdf');
 
       // 7. update incident with pdf_url
       await incidentsApi.update(savedId, { pdf_url: pdfPath });
@@ -430,37 +428,29 @@ export default function NewIncident() {
         ]}
       >
         {step < 4 ? (
-          <Pressable
+          <Button
+            title="შემდეგი"
+            rightIcon="arrow-forward"
             onPress={goNext}
             disabled={!canAdvance}
-            style={[s.nextBtn, !canAdvance && { opacity: 0.45 }]}
-          >
-            <Text style={s.nextBtnText}>შემდეგი</Text>
-            <Ionicons name="arrow-forward" size={18} color="#fff" />
-          </Pressable>
+            style={{ width: '100%' }}
+          />
         ) : (
           <View style={{ gap: 10 }}>
-            <Pressable
+            <Button
+              title="PDF გენერირება"
+              leftIcon="document-text"
+              loading={saving}
               onPress={saveAndGeneratePdf}
+              style={{ width: '100%' }}
+            />
+            <Button
+              title="შენახვა ხელმოწერის გარეშე"
+              variant="link"
               disabled={saving}
-              style={[s.pdfBtn, saving && { opacity: 0.6 }]}
-            >
-              {saving ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <>
-                  <Ionicons name="document-text" size={18} color="#fff" />
-                  <Text style={s.pdfBtnText}>PDF გენერირება</Text>
-                </>
-              )}
-            </Pressable>
-            <Pressable
               onPress={saveDraft}
-              disabled={saving}
-              style={[s.draftBtn, saving && { opacity: 0.6 }]}
-            >
-              <Text style={s.draftBtnText}>შენახვა ხელმოწერის გარეშე</Text>
-            </Pressable>
+              style={{ width: '100%' }}
+            />
           </View>
         )}
       </View>
@@ -493,7 +483,6 @@ export default function NewIncident() {
                 mode={pickerMode}
                 display="spinner"
                 onChange={(_, d) => d && setForm(f => ({ ...f, dateTime: d }))}
-                locale="ka-GE"
                 style={{ backgroundColor: theme.colors.surface }}
               />
             </Pressable>
@@ -614,27 +603,19 @@ function Step2({
         </View>
       ) : (
         <>
-          <View style={{ gap: 6 }}>
-            <Text style={s.fieldLabel}>დაზარალებული პირი</Text>
-            <TextInput
-              style={[s.input, { color: theme.colors.ink }]}
-              value={form.injuredName}
-              onChangeText={v => setForm(f => ({ ...f, injuredName: v }))}
-              placeholder="სახელი, გვარი"
-              placeholderTextColor={theme.colors.inkFaint}
-            />
-          </View>
+          <Input
+            label="დაზარალებული პირი"
+            value={form.injuredName}
+            onChangeText={v => setForm(f => ({ ...f, injuredName: v }))}
+            placeholder="სახელი, გვარი"
+          />
 
-          <View style={{ gap: 6 }}>
-            <Text style={s.fieldLabel}>თანამდებობა</Text>
-            <TextInput
-              style={[s.input, { color: theme.colors.ink }]}
-              value={form.injuredRole}
-              onChangeText={v => setForm(f => ({ ...f, injuredRole: v }))}
-              placeholder="პოზიცია / სპეციალობა"
-              placeholderTextColor={theme.colors.inkFaint}
-            />
-          </View>
+          <Input
+            label="თანამდებობა"
+            value={form.injuredRole}
+            onChangeText={v => setForm(f => ({ ...f, injuredRole: v }))}
+            placeholder="პოზიცია / სპეციალობა"
+          />
         </>
       )}
 
@@ -671,16 +652,12 @@ function Step2({
       </View>
 
       {/* Location */}
-      <View style={{ gap: 6 }}>
-        <Text style={s.fieldLabel}>ზუსტი ადგილი *</Text>
-        <TextInput
-          style={[s.input, { color: theme.colors.ink }]}
-          value={form.location}
-          onChangeText={v => setForm(f => ({ ...f, location: v }))}
-          placeholder="სად მოხდა შემთხვევა"
-          placeholderTextColor={theme.colors.inkFaint}
-        />
-      </View>
+      <Input
+        label="ზუსტი ადგილი *"
+        value={form.location}
+        onChangeText={v => setForm(f => ({ ...f, location: v }))}
+        placeholder="სად მოხდა შემთხვევა"
+      />
     </View>
   );
 }
@@ -707,47 +684,35 @@ function Step3({
     <View style={{ gap: 16 }}>
       <Text style={s.stepTitle}>აღწერა და მიზეზი</Text>
 
-      <View style={{ gap: 6 }}>
-        <Text style={s.fieldLabel}>რა მოხდა</Text>
-        <TextInput
-          style={[s.textarea, { color: theme.colors.ink }]}
-          value={form.description}
-          onChangeText={v => setForm(f => ({ ...f, description: v }))}
-          placeholder="აღწერეთ შემთხვევა..."
-          placeholderTextColor={theme.colors.inkFaint}
-          multiline
-          numberOfLines={4}
-          textAlignVertical="top"
-        />
-      </View>
+      <Input
+        label="რა მოხდა"
+        value={form.description}
+        onChangeText={v => setForm(f => ({ ...f, description: v }))}
+        placeholder="აღწერეთ შემთხვევა..."
+        multiline
+        numberOfLines={4}
+        textAlignVertical="top"
+      />
 
-      <View style={{ gap: 6 }}>
-        <Text style={s.fieldLabel}>სავარაუდო მიზეზი</Text>
-        <TextInput
-          style={[s.textarea, { color: theme.colors.ink }]}
-          value={form.cause}
-          onChangeText={v => setForm(f => ({ ...f, cause: v }))}
-          placeholder="სავარაუდო მიზეზი..."
-          placeholderTextColor={theme.colors.inkFaint}
-          multiline
-          numberOfLines={3}
-          textAlignVertical="top"
-        />
-      </View>
+      <Input
+        label="სავარაუდო მიზეზი"
+        value={form.cause}
+        onChangeText={v => setForm(f => ({ ...f, cause: v }))}
+        placeholder="სავარაუდო მიზეზი..."
+        multiline
+        numberOfLines={3}
+        textAlignVertical="top"
+      />
 
-      <View style={{ gap: 6 }}>
-        <Text style={s.fieldLabel}>მიღებული ზომები</Text>
-        <TextInput
-          style={[s.textarea, { color: theme.colors.ink }]}
-          value={form.actionsTaken}
-          onChangeText={v => setForm(f => ({ ...f, actionsTaken: v }))}
-          placeholder="რა ზომები იქნა მიღებული..."
-          placeholderTextColor={theme.colors.inkFaint}
-          multiline
-          numberOfLines={3}
-          textAlignVertical="top"
-        />
-      </View>
+      <Input
+        label="მიღებული ზომები"
+        value={form.actionsTaken}
+        onChangeText={v => setForm(f => ({ ...f, actionsTaken: v }))}
+        placeholder="რა ზომები იქნა მიღებული..."
+        multiline
+        numberOfLines={3}
+        textAlignVertical="top"
+      />
 
       {/* Witnesses */}
       <View style={{ gap: 8 }}>
@@ -762,15 +727,15 @@ function Step3({
           </View>
         ))}
         <View style={s.witnessInputRow}>
-          <TextInput
-            style={[s.witnessInput, { color: theme.colors.ink, flex: 1 }]}
-            value={witnessInput}
-            onChangeText={setWitnessInput}
-            placeholder="სახელი, გვარი"
-            placeholderTextColor={theme.colors.inkFaint}
-            onSubmitEditing={onAddWitness}
-            returnKeyType="done"
-          />
+          <View style={{ flex: 1 }}>
+            <Input
+              value={witnessInput}
+              onChangeText={setWitnessInput}
+              placeholder="სახელი, გვარი"
+              onSubmitEditing={onAddWitness}
+              returnKeyType="done"
+            />
+          </View>
           <Pressable onPress={onAddWitness} style={s.addWitnessBtn}>
             <Ionicons name="add" size={20} color={theme.colors.accent} />
           </Pressable>
@@ -1065,31 +1030,12 @@ function makeStyles(theme: any) {
       fontWeight: '500',
     },
 
-    // form inputs
+    // section/field label (used where Input label prop isn't applicable)
     fieldLabel: {
       fontSize: 13,
       fontWeight: '600',
       color: theme.colors.inkSoft,
       marginBottom: 2,
-    },
-    input: {
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      borderRadius: 10,
-      backgroundColor: theme.colors.surface,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-      fontSize: 15,
-    },
-    textarea: {
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      borderRadius: 10,
-      backgroundColor: theme.colors.surface,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-      fontSize: 15,
-      minHeight: 120,
     },
 
     // date chips
@@ -1126,17 +1072,8 @@ function makeStyles(theme: any) {
     },
     witnessInputRow: {
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       gap: 8,
-    },
-    witnessInput: {
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      borderRadius: 10,
-      backgroundColor: theme.colors.surface,
-      paddingHorizontal: 14,
-      paddingVertical: 10,
-      fontSize: 14,
     },
     addWitnessBtn: {
       width: 40,
@@ -1260,7 +1197,7 @@ function makeStyles(theme: any) {
       alignItems: 'center',
       gap: 4,
       backgroundColor: '#D1FAE5',
-      borderRadius: 999,
+      borderRadius: 16,
       paddingHorizontal: 8,
       paddingVertical: 4,
     },
@@ -1277,43 +1214,6 @@ function makeStyles(theme: any) {
       borderTopColor: theme.colors.border,
       paddingHorizontal: 16,
       paddingTop: 12,
-    },
-    nextBtn: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 8,
-      backgroundColor: theme.colors.accent,
-      borderRadius: 12,
-      paddingVertical: 14,
-    },
-    nextBtnText: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: '#fff',
-    },
-    pdfBtn: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 8,
-      backgroundColor: '#059669',
-      borderRadius: 12,
-      paddingVertical: 14,
-    },
-    pdfBtnText: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: '#fff',
-    },
-    draftBtn: {
-      alignItems: 'center',
-      paddingVertical: 12,
-    },
-    draftBtnText: {
-      fontSize: 14,
-      color: theme.colors.inkSoft,
-      fontWeight: '600',
     },
 
     // date picker sheet (iOS)

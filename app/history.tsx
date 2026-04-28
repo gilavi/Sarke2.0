@@ -311,7 +311,7 @@ function getstyles(theme: any) {
     backgroundColor: theme.colors.accentSoft,
     paddingHorizontal: 7,
     paddingVertical: 3,
-    borderRadius: 999,
+    borderRadius: 16,
   },
   certBadgeText: {
     fontSize: 11,

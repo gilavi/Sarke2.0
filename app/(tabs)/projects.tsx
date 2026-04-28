@@ -649,7 +649,7 @@ function getstyles(theme: any) {
     gap: 4,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 999,
+    borderRadius: 16,
   },
   swipeDelete: {
     width: 96,

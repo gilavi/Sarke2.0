@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { A11yText as Text } from '../../components/primitives/A11yText';
+import { Button } from '../../components/ui';
 import { useTheme } from '../../lib/theme';
 import { useSession } from '../../lib/session';
 import { useToast } from '../../lib/toast';
@@ -129,9 +130,8 @@ export default function IncidentDetail() {
         photoDataUrls,
       });
       const { uri } = await Print.printToFileAsync({ html });
-      const blob = await (await fetch(uri)).blob();
       const pdfPath = `incidents/${incident.id}.pdf`;
-      await storageApi.upload(STORAGE_BUCKETS.pdfs, pdfPath, blob, 'application/pdf');
+      await storageApi.uploadFromUri(STORAGE_BUCKETS.pdfs, pdfPath, uri, 'application/pdf');
       const updated = await incidentsApi.update(incident.id, {
         pdf_url: pdfPath,
         status: 'completed',
@@ -357,44 +357,36 @@ export default function IncidentDetail() {
       <View style={[s.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
         {incident.pdf_url ? (
           <View style={{ flexDirection: 'row', gap: 10 }}>
-            <Pressable onPress={sharePdf} style={[s.shareBtn, { flex: 1 }]}>
-              <Ionicons name="share-outline" size={18} color={theme.colors.accent} />
-              <Text style={s.shareBtnText}>PDF გაზიარება</Text>
-            </Pressable>
-            <Pressable
+            <Button
+              title="PDF გაზიარება"
+              leftIcon="share-outline"
+              variant="ghost"
+              onPress={sharePdf}
+              style={{ flex: 1 }}
+            />
+            <Button
+              title="განახლება"
+              variant="secondary"
+              loading={generatingPdf}
               onPress={generatePdf}
-              disabled={generatingPdf}
-              style={[s.regenBtn, { flex: 0.6 }, generatingPdf && { opacity: 0.6 }]}
-            >
-              {generatingPdf ? (
-                <ActivityIndicator color={theme.colors.inkSoft} size="small" />
-              ) : (
-                <Text style={s.regenBtnText}>განახლება</Text>
-              )}
-            </Pressable>
+              style={{ flex: 0.6 }}
+            />
           </View>
         ) : incident.status === 'draft' ? (
           <View style={{ gap: 10 }}>
-            <Pressable
+            <Button
+              title="PDF გენერირება"
+              leftIcon="document-text"
+              loading={generatingPdf}
               onPress={generatePdf}
-              disabled={generatingPdf}
-              style={[s.pdfBtn, generatingPdf && { opacity: 0.6 }]}
-            >
-              {generatingPdf ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <>
-                  <Ionicons name="document-text" size={18} color="#fff" />
-                  <Text style={s.pdfBtnText}>PDF გენერირება</Text>
-                </>
-              )}
-            </Pressable>
-            <Pressable
+              style={{ width: '100%' }}
+            />
+            <Button
+              title="განახლება"
+              variant="link"
               onPress={() => router.push(`/incidents/new?projectId=${incident.project_id}` as any)}
-              style={s.editDraftBtn}
-            >
-              <Text style={s.editDraftBtnText}>განახლება</Text>
-            </Pressable>
+              style={{ width: '100%' }}
+            />
           </View>
         ) : null}
       </View>
@@ -461,7 +453,7 @@ function makeStyles(theme: any) {
       alignItems: 'center',
       gap: 4,
       backgroundColor: '#FEF3C7',
-      borderRadius: 999,
+      borderRadius: 16,
       paddingHorizontal: 8,
       paddingVertical: 3,
     },
@@ -560,55 +552,6 @@ function makeStyles(theme: any) {
       borderTopColor: theme.colors.border,
       paddingHorizontal: 16,
       paddingTop: 12,
-    },
-    pdfBtn: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 8,
-      backgroundColor: '#059669',
-      borderRadius: 12,
-      paddingVertical: 14,
-    },
-    pdfBtnText: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: '#fff',
-    },
-    shareBtn: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 8,
-      backgroundColor: theme.colors.accentSoft,
-      borderRadius: 12,
-      paddingVertical: 14,
-    },
-    shareBtnText: {
-      fontSize: 15,
-      fontWeight: '700',
-      color: theme.colors.accent,
-    },
-    regenBtn: {
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: theme.colors.surfaceSecondary,
-      borderRadius: 12,
-      paddingVertical: 14,
-    },
-    regenBtnText: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: theme.colors.inkSoft,
-    },
-    editDraftBtn: {
-      alignItems: 'center',
-      paddingVertical: 10,
-    },
-    editDraftBtnText: {
-      fontSize: 14,
-      color: theme.colors.inkSoft,
-      fontWeight: '600',
     },
   });
 }

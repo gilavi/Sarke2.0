@@ -974,7 +974,7 @@ function getstyles(theme: any) {
     gap: 6,
     paddingVertical: 8,
     paddingHorizontal: 14,
-    borderRadius: 999,
+    borderRadius: 16,
     borderWidth: StyleSheet.hairlineWidth,
   },
   statusPillText: {
@@ -1177,7 +1177,7 @@ function getstyles(theme: any) {
   certBadge: {
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 999,
+    borderRadius: 16,
     flexShrink: 0,
   },
   certBadgeText: {
@@ -1191,7 +1191,7 @@ function getstyles(theme: any) {
     gap: 4,
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 999,
+    borderRadius: 16,
     backgroundColor: theme.colors.subtleSurface,
   },
   infoBadgeText: {

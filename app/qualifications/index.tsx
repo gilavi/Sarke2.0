@@ -452,5 +452,5 @@ const badgeStyle = (bg: string) => ({
   backgroundColor: bg,
   paddingHorizontal: 8,
   paddingVertical: 4,
-  borderRadius: 999,
+  borderRadius: 16,
 });

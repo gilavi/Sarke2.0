@@ -267,7 +267,7 @@ function getstyles(theme: any) {
   },
   dateBtnText: { flex: 1, fontSize: 15, color: theme.colors.ink, fontWeight: '500' },
   chips: { flexDirection: 'row', gap: 8, marginTop: 8 },
-  chip: { paddingHorizontal: 12, paddingVertical: 6, backgroundColor: theme.colors.subtleSurface, borderRadius: 999 },
-  chipText: { fontSize: 12, fontWeight: '600', color: theme.colors.inkSoft },
+  chip: { paddingHorizontal: 12, paddingVertical: 6, backgroundColor: theme.colors.subtleSurface, borderRadius: 16 },
+  chipText: { fontSize: 12, fontWeight: '500', color: theme.colors.inkSoft },
 });
 }
