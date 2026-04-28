@@ -39,19 +39,12 @@ import { toErrorMessage } from '../../lib/logError';
 import { friendlyError } from '../../lib/errorMap';
 import { formatShortDateTime } from '../../lib/formatDate';
 import type { CrewMember, Project, ProjectFile, Questionnaire, Template } from '../../types/models';
-import { CrewList } from '../../components/CrewSection';
-import { AddParticipantSheet } from '../../components/AddParticipantSheet';
+import { RoleSlotList } from '../../components/RoleSlotList';
+import { ProjectAvatar } from '../../components/ProjectAvatar';
+import { pickProjectLogo } from '../../lib/projectLogo';
 import { useSession } from '../../lib/session';
 import { a11y } from '../../lib/accessibility';
 import { TourGuide, type TourStep } from '../../components/TourGuide';
-
-function projectInitials(name: string | undefined): string {
-  if (!name) return '—';
-  const trimmed = name.trim();
-  if (!trimmed) return '—';
-  // Array.from splits by code point so emoji / surrogate pairs aren't cut in half.
-  return Array.from(trimmed).slice(0, 2).join('').toLocaleUpperCase('ka-GE');
-}
 
 export default function ProjectDetail() {
   const { theme } = useTheme();
@@ -221,16 +214,20 @@ export default function ProjectDetail() {
     ]);
   };
 
-  const openAddParticipant = () => {
+  const onEditLogo = async () => {
     if (!project) return;
-    showActionSheetWithOptions({
-      content: ({ dismiss }) => (
-        <AddParticipantSheet
-          onAddCrew={member => { void persistCrew([...(project.crew ?? []), member]); dismiss(); }}
-          onCancel={dismiss}
-        />
-      ),
-    });
+    const next = await pickProjectLogo();
+    if (!next) return;
+    const prev = project;
+    setProject({ ...project, logo: next });
+    try {
+      const saved = await projectsApi.update(project.id, { logo: next });
+      setProject(saved);
+      toast.success('ლოგო განახლდა');
+    } catch (e) {
+      setProject(prev);
+      toast.error(friendlyError(e, 'ლოგო ვერ შეინახა'));
+    }
   };
 
   const uploadFile = async () => {
@@ -312,7 +309,7 @@ export default function ProjectDetail() {
           contentContainerStyle={{
             paddingHorizontal: 16,
             paddingTop: 12,
-            paddingBottom: insets.bottom + 24,
+            paddingBottom: 32,
             gap: 14,
           }}
         >
@@ -354,8 +351,8 @@ export default function ProjectDetail() {
         contentContainerStyle={{
           paddingHorizontal: 16,
           paddingTop: 12,
-          // FAB sits at insets.bottom + 20 with height 56 — clear the row
-          paddingBottom: insets.bottom + 90,
+          // Clear the FAB row.
+          paddingBottom: 110,
           gap: 16,
         }}
       >
@@ -371,9 +368,12 @@ export default function ProjectDetail() {
             </Pressable>
 
             <View style={styles.heroRow}>
-              <View style={styles.logoPlaceholder}>
-                <Text style={styles.logoText}>{projectInitials(project?.name)}</Text>
-              </View>
+              <ProjectAvatar
+                project={project}
+                size={64}
+                editable
+                onEdit={onEditLogo}
+              />
               <View style={{ flex: 1 }}>
                 <Text style={styles.heroName}>{project?.name ?? '—'}</Text>
                 {project?.company_name ? (
@@ -425,22 +425,15 @@ export default function ProjectDetail() {
               </View>
             </View>
             <View style={{ marginTop: 10 }}>
-              <CrewList
-                inspector={inspector}
-                crew={project?.crew ?? []}
-                onChange={persistCrew}
-                hideAdd
-              />
+              {project ? (
+                <RoleSlotList
+                  projectId={project.id}
+                  inspector={inspector}
+                  crew={project.crew ?? []}
+                  onChange={persistCrew}
+                />
+              ) : null}
             </View>
-
-            <Pressable
-              onPress={openAddParticipant}
-              style={styles.addBtn}
-              {...a11y('დამატება', 'მონაწილის დამატება', 'button')}
-            >
-              <Ionicons name="person-add" size={18} color={theme.colors.accent} />
-              <Text style={styles.addBtnText}>+ დამატება</Text>
-            </Pressable>
           </View>
 
           {/* ── Questionnaires ── */}
@@ -751,19 +744,6 @@ function getstyles(theme: any) {
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: theme.colors.border,
-  },
-  logoPlaceholder: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: theme.colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoText: {
-    color: theme.colors.white,
-    fontSize: 18,
-    fontWeight: '800',
   },
   heroName: {
     fontSize: 22,

@@ -3,15 +3,13 @@
 import { useEffect, useState , useMemo} from 'react';
 import {
   Alert,
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
 import { A11yText as Text } from '../primitives/A11yText';
+import { SheetLayout } from '../SheetLayout';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -118,79 +116,73 @@ export default function AddQualificationSheet({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
-      <View style={styles.backdrop}>
-        <Pressable style={StyleSheet.absoluteFillObject} onPress={onClose} {...a11y('დახურვა', 'ფანჯრის დახურვა', 'button')} />
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.sheetWrap}>
-          <View style={styles.sheet}>
-            <View style={styles.handle} />
-            <View style={styles.header}>
-              <Text style={styles.title}>ახალი სერტიფიკატი</Text>
-              <Pressable onPress={onClose} hitSlop={12} {...a11y('დახურვა', undefined, 'button')}>
-                <Ionicons name="close" size={24} color={theme.colors.inkSoft} />
+      <Pressable style={styles.backdrop} onPress={onClose} {...a11y('დახურვა', 'ფანჯრის დახურვა', 'button')}>
+        <Pressable style={styles.sheet} onPress={() => {}}>
+          <View style={styles.handle} />
+          <SheetLayout
+            header={{ title: 'ახალი სერტიფიკატი', onClose }}
+            footer={
+              <View style={{ gap: 10 }}>
+                <Button
+                  title={photoUri ? '✓ ფოტო არჩეულია — შეცვლა' : 'სერტიფიკატის ფოტო'}
+                  variant="secondary"
+                  onPress={pickPhoto}
+                />
+                <Button title="შენახვა" onPress={save} loading={busy} />
+              </View>
+            }
+          >
+            <Field label="ტიპი">
+              <View style={{ gap: 8 }}>
+                {TYPES.map(t => (
+                  <Pressable
+                    key={t.value}
+                    onPress={() => setType(t.value)}
+                    style={[styles.typeRow, type === t.value && styles.typeRowActive]}
+                    {...a11y(t.label, 'სერტიფიკატის ტიპის არჩევა', 'radio')}
+                  >
+                    <View style={[styles.radio, type === t.value && styles.radioActive]}>
+                      {type === t.value && <Ionicons name="checkmark" size={13} color={theme.colors.white} />}
+                    </View>
+                    <Text style={{ fontWeight: '600', color: theme.colors.ink }}>{t.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </Field>
+
+            <Field label="ნომერი">
+              <Input value={number} onChangeText={setNumber} placeholder="№ სერტიფიკატის ნომერი" />
+            </Field>
+
+            <Field label="გაცემის თარიღი">
+              <Pressable onPress={() => setPicker('issued')} style={styles.dateBtn} {...a11y('გაცემის თარიღი', 'გაცემის თარიღის არჩევა', 'button')}>
+                <Ionicons name="calendar-outline" size={18} color={theme.colors.accent} />
+                <Text style={styles.dateBtnText}>{formatDate(issued)}</Text>
+                <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
               </Pressable>
-            </View>
+            </Field>
 
-            <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 8, gap: 14 }} keyboardShouldPersistTaps="handled">
-              <Field label="ტიპი">
-                <View style={{ gap: 8 }}>
-                  {TYPES.map(t => (
-                    <Pressable
-                      key={t.value}
-                      onPress={() => setType(t.value)}
-                      style={[styles.typeRow, type === t.value && styles.typeRowActive]}
-                      {...a11y(t.label, 'სერტიფიკატის ტიპის არჩევა', 'radio')}
-                    >
-                      <View style={[styles.radio, type === t.value && styles.radioActive]}>
-                        {type === t.value && <Ionicons name="checkmark" size={13} color={theme.colors.white} />}
-                      </View>
-                      <Text style={{ fontWeight: '600', color: theme.colors.ink }}>{t.label}</Text>
-                    </Pressable>
-                  ))}
-                </View>
-              </Field>
-
-              <Field label="ნომერი">
-                <Input value={number} onChangeText={setNumber} placeholder="№ სერტიფიკატის ნომერი" />
-              </Field>
-
-              <Field label="გაცემის თარიღი">
-                <Pressable onPress={() => setPicker('issued')} style={styles.dateBtn} {...a11y('გაცემის თარიღი', 'გაცემის თარიღის არჩევა', 'button')}>
-                  <Ionicons name="calendar-outline" size={18} color={theme.colors.accent} />
-                  <Text style={styles.dateBtnText}>{formatDate(issued)}</Text>
-                  <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
-                </Pressable>
-              </Field>
-
-              <Field label="ვადის გასვლის თარიღი">
-                <Pressable onPress={() => setPicker('expires')} style={styles.dateBtn} {...a11y('ვადის გასვლის თარიღი', 'ვადის გასვლის თარიღის არჩევა', 'button')}>
-                  <Ionicons name="calendar-outline" size={18} color={theme.colors.accent} />
-                  <Text style={styles.dateBtnText}>{formatDate(expires)}</Text>
-                  <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
-                </Pressable>
-                <View style={styles.chips}>
-                  {[{ label: '+1 წელი', months: 12 }, { label: '+3 წელი', months: 36 }, { label: '+5 წელი', months: 60 }].map(c => (
-                    <Pressable key={c.label} style={styles.chip} {...a11y(c.label, 'ვადის სწრაფად დამატება', 'button')} onPress={() => {
-                      const d = new Date(issued);
-                      d.setMonth(d.getMonth() + c.months);
-                      setExpires(d);
-                    }}>
-                      <Text style={styles.chipText}>{c.label}</Text>
-                    </Pressable>
-                  ))}
-                </View>
-              </Field>
-
-              <Button
-                title={photoUri ? '✓ ფოტო არჩეულია — შეცვლა' : 'სერტიფიკატის ფოტო'}
-                variant="secondary"
-                onPress={pickPhoto}
-              />
-
-              <Button title="შენახვა" onPress={save} loading={busy} />
-            </ScrollView>
-          </View>
-        </KeyboardAvoidingView>
-      </View>
+            <Field label="ვადის გასვლის თარიღი">
+              <Pressable onPress={() => setPicker('expires')} style={styles.dateBtn} {...a11y('ვადის გასვლის თარიღი', 'ვადის გასვლის თარიღის არჩევა', 'button')}>
+                <Ionicons name="calendar-outline" size={18} color={theme.colors.accent} />
+                <Text style={styles.dateBtnText}>{formatDate(expires)}</Text>
+                <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
+              </Pressable>
+              <View style={styles.chips}>
+                {[{ label: '+1 წელი', months: 12 }, { label: '+3 წელი', months: 36 }, { label: '+5 წელი', months: 60 }].map(c => (
+                  <Pressable key={c.label} style={styles.chip} {...a11y(c.label, 'ვადის სწრაფად დამატება', 'button')} onPress={() => {
+                    const d = new Date(issued);
+                    d.setMonth(d.getMonth() + c.months);
+                    setExpires(d);
+                  }}>
+                    <Text style={styles.chipText}>{c.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </Field>
+          </SheetLayout>
+        </Pressable>
+      </Pressable>
 
       <Modal visible={picker !== null} transparent animationType="slide" onRequestClose={() => setPicker(null)}>
         <Pressable style={styles.backdrop} onPress={() => setPicker(null)} {...a11y('დახურვა', 'თარიღის არჩევის გაუქმება', 'button')}>

@@ -68,12 +68,37 @@ export interface Qualification {
  * `signature` is a storage path (same convention as ProjectSigner) and stays
  * null until the member signs in the inspection flow.
  */
+/**
+ * Identifies which role-slot a crew member fills. The first three mirror
+ * `SignerRole`; `other` is a freeform slot whose `role` string is supplied
+ * by the user. Legacy rows without a `roleKey` are coerced to `other` at
+ * read time (see `mapCrew` in lib/services.real.ts).
+ */
+export type CrewRoleKey = 'expert' | 'xaracho_supervisor' | 'xaracho_assembler' | 'other';
+
+export const CREW_ROLE_KEYS: CrewRoleKey[] = [
+  'expert',
+  'xaracho_supervisor',
+  'xaracho_assembler',
+  'other',
+];
+
+export const CREW_ROLE_LABEL: Record<CrewRoleKey, string> = {
+  expert: 'შრომის უსაფრთხოების სპეციალისტი',
+  xaracho_supervisor: 'ხარაჩოს ზედამხედველი',
+  xaracho_assembler: 'ხარაჩოს ამწყობი',
+  other: 'სხვა',
+};
+
 export interface CrewMember {
   /** Stable client-generated id (uuid). Used for React keys + removal. */
   id: string;
+  /** Slot identity. `other` rows carry a custom `role` label. */
+  roleKey: CrewRoleKey;
   name: string;
-  /** Freeform — UI offers presets but accepts any string. */
+  /** Display label — preset for known keys, custom for `other`. */
   role: string;
+  /** Storage path (signatures bucket). Required after save in the slot UX. */
   signature: string | null;
 }
 
@@ -87,6 +112,12 @@ export interface Project {
   longitude: number | null;
   /** NULL on legacy rows; treat as []. */
   crew: CrewMember[] | null;
+  /**
+   * Optional project logo as a base64 data URL (e.g. `data:image/jpeg;base64,…`).
+   * NULL → render initials avatar instead. Initials are derived from `name`
+   * at render time and never stored. See `components/ProjectAvatar.tsx`.
+   */
+  logo: string | null;
   created_at: string;
 }
 

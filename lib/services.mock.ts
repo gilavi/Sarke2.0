@@ -154,6 +154,7 @@ function seed(): MockDB {
     company_name: 'Demo Construction', address: 'თბილისი',
     latitude: 41.7151, longitude: 44.8271,
     crew: null,
+    logo: null,
     created_at: new Date(Date.now() - 30 * 864e5).toISOString(),
   };
   const proj2: Project = {
@@ -162,6 +163,7 @@ function seed(): MockDB {
     company_name: 'BuildCo', address: 'თბილისი, ისანი',
     latitude: null, longitude: null,
     crew: null,
+    logo: null,
     created_at: new Date(Date.now() - 10 * 864e5).toISOString(),
   };
 
@@ -268,6 +270,7 @@ export const projectsApi = {
     address?: string | null;
     latitude?: number | null;
     longitude?: number | null;
+    logo?: string | null;
   }): Promise<Project> => {
     const db = await load();
     const p: Project = {
@@ -279,6 +282,7 @@ export const projectsApi = {
       latitude: args.latitude ?? null,
       longitude: args.longitude ?? null,
       crew: null,
+      logo: args.logo ?? null,
       created_at: now(),
     };
     db.projects.push(p);
@@ -287,7 +291,7 @@ export const projectsApi = {
   },
   update: async (
     id: string,
-    patch: Partial<Pick<Project, 'name' | 'company_name' | 'address' | 'latitude' | 'longitude' | 'crew'>>,
+    patch: Partial<Pick<Project, 'name' | 'company_name' | 'address' | 'latitude' | 'longitude' | 'crew' | 'logo'>>,
   ): Promise<Project> => {
     const db = await load();
     const p = db.projects.find(x => x.id === id);

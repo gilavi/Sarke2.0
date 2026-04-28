@@ -3,22 +3,21 @@ import {
   Alert,
   FlatList,
   Modal,
-  Platform,
   Pressable,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
-import { KeyboardAvoidingView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
-import { projectAvatar } from '../../lib/projectAvatar';
+import { ProjectAvatar } from '../../components/ProjectAvatar';
+import { pickProjectLogo } from '../../lib/projectLogo';
 import { Button, Card, Input } from '../../components/ui';
 import { A11yText, A11yText as Text } from '../../components/primitives/A11yText';
 import { FormField } from '../../components/FormField';
+import { SheetLayout } from '../../components/SheetLayout';
 import { PressableScale } from '../../components/animations/PressableScale';
 import { a11y } from '../../lib/accessibility';
 import EmptyState from '../../components/EmptyState';
@@ -139,9 +138,6 @@ export default function ProjectsScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>პროექტები</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <Text style={styles.subtitle}>
-            {projects.length > 0 ? `სულ ${projects.length}` : ''}
-          </Text>
           <Pressable
             ref={avatarRef}
             onPress={() => router.push('/(tabs)/more' as any)}
@@ -254,6 +250,7 @@ function CreateProjectSheet({
   const [company, setCompany] = useState('');
   const [address, setAddress] = useState('');
   const [pin, setPin] = useState<LatLng | null>(null);
+  const [logo, setLogo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -262,9 +259,15 @@ function CreateProjectSheet({
       setCompany('');
       setAddress('');
       setPin(null);
+      setLogo(null);
       setBusy(false);
     }
   }, [visible]);
+
+  const onPickLogo = async () => {
+    const next = await pickProjectLogo();
+    if (next) setLogo(next);
+  };
 
   const save = async () => {
     if (!name.trim()) return;
@@ -276,6 +279,7 @@ function CreateProjectSheet({
         address: address.trim() || null,
         latitude: pin?.latitude ?? null,
         longitude: pin?.longitude ?? null,
+        logo,
       });
       onCreated(p);
     } catch (e) {
@@ -288,55 +292,57 @@ function CreateProjectSheet({
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <Pressable style={sheetStyles.backdrop} onPress={onClose} {...a11y('დახურვა', 'შეეხეთ ფონის დასახურად', 'button')}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={{ width: '100%' }}
-        >
-          {/* Stop touches inside the card from closing the sheet */}
-          <Pressable style={sheetStyles.card} onPress={() => {}}>
-            <View style={sheetStyles.handle} />
-            <View style={sheetStyles.sheetHeader}>
-              <A11yText size="xl" weight="bold" style={{ flex: 1 }}>ახალი პროექტი</A11yText>
-              <Pressable onPress={onClose} hitSlop={10} {...a11y('დახურვა', 'შეეხეთ ფანჯრის დასახურად', 'button')}>
-                <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
-              </Pressable>
+        {/* Stop touches inside the card from closing the sheet */}
+        <Pressable style={sheetStyles.card} onPress={() => {}}>
+          <View style={sheetStyles.handle} />
+          <SheetLayout
+            header={{ title: 'ახალი პროექტი', onClose }}
+            footer={
+              <Button
+                title="შექმნა"
+                size="lg"
+                onPress={save}
+                loading={busy}
+                disabled={!name.trim()}
+              />
+            }
+          >
+            <View style={{ alignItems: 'center', gap: 8 }}>
+              <ProjectAvatar
+                project={{ name: name || '—', logo }}
+                size={88}
+                editable
+                onEdit={onPickLogo}
+              />
+              {logo ? (
+                <Pressable onPress={onPickLogo} hitSlop={6} {...a11y('სურათის შეცვლა', 'შეეხეთ ლოგოს ასარჩევად', 'button')}>
+                  <A11yText size="sm" weight="semibold" color={theme.colors.accent}>
+                    სურათის შეცვლა
+                  </A11yText>
+                </Pressable>
+              ) : null}
             </View>
-            <ScrollView
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ gap: 16, paddingTop: 4, paddingBottom: 8 }}
-              style={{ maxHeight: '78%' }}
-            >
-              <FormField label="სახელი" required>
-                <Input
-                  value={name}
-                  onChangeText={setName}
-                  placeholder="მაგ. ვაკე-საბურთალოს ობიექტი"
-                  autoFocus
-                />
-              </FormField>
-              <FormField label="კომპანია">
-                <Input value={company} onChangeText={setCompany} placeholder="შემკვეთი" />
-              </FormField>
-              <FormField label="მისამართი">
-                <MapPicker
-                  value={pin}
-                  onChange={setPin}
-                  address={address}
-                  onAddressChange={setAddress}
-                />
-              </FormField>
-            </ScrollView>
-            <Button
-              title="შექმნა"
-              size="lg"
-              onPress={save}
-              loading={busy}
-              disabled={!name.trim()}
-              style={{ marginTop: 16 }}
-            />
-          </Pressable>
-        </KeyboardAvoidingView>
+            <FormField label="სახელი" required>
+              <Input
+                value={name}
+                onChangeText={setName}
+                placeholder="მაგ. ვაკე-საბურთალოს ობიექტი"
+                autoFocus
+              />
+            </FormField>
+            <FormField label="კომპანია">
+              <Input value={company} onChangeText={setCompany} placeholder="შემკვეთი" />
+            </FormField>
+            <FormField label="მისამართი">
+              <MapPicker
+                value={pin}
+                onChange={setPin}
+                address={address}
+                onAddressChange={setAddress}
+              />
+            </FormField>
+          </SheetLayout>
+        </Pressable>
       </Pressable>
     </Modal>
   );
@@ -407,9 +413,7 @@ function ProjectRow({
       >
         <Card padding={14}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <View style={[styles.iconBox, { backgroundColor: projectAvatar(project.id).color + '22' }]}>
-              <A11yText size="2xl">{projectAvatar(project.id).emoji}</A11yText>
-            </View>
+            <ProjectAvatar project={project} size={44} />
             <View style={{ flex: 1 }}>
               <A11yText size="base" weight="bold" numberOfLines={1}>
                 {project.name}
@@ -525,9 +529,8 @@ function getsheetStyles(theme: any) {
     backgroundColor: theme.colors.background,
     borderTopLeftRadius: 26,
     borderTopRightRadius: 26,
-    padding: 16,
     paddingTop: 10,
-    paddingBottom: 44,
+    paddingBottom: 24,
   },
   handle: {
     width: 40,

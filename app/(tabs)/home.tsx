@@ -19,7 +19,8 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSession } from '../../lib/session';
 import { PressableScale } from '../../components/animations/PressableScale';
-import { projectAvatar } from '../../lib/projectAvatar';
+import { ProjectAvatar } from '../../components/ProjectAvatar';
+import { pickProjectLogo } from '../../lib/projectLogo';
 import {
   qualificationsApi,
   isExpiringSoon,
@@ -521,6 +522,7 @@ function ProjectPickerSheet({
   const [company, setCompany] = useState('');
   const [address, setAddress] = useState('');
   const [pin, setPin] = useState<LatLng | null>(null);
+  const [logo, setLogo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   // Reset form + view every time the sheet opens
@@ -532,9 +534,15 @@ function ProjectPickerSheet({
       setCompany('');
       setAddress('');
       setPin(null);
+      setLogo(null);
       setBusy(false);
     }
   }, [visible]);
+
+  const onPickLogo = async () => {
+    const next = await pickProjectLogo();
+    if (next) setLogo(next);
+  };
 
   const systemTemplates = templates.filter(t => t.is_system);
 
@@ -573,6 +581,7 @@ function ProjectPickerSheet({
         address: address.trim() || null,
         latitude: pin?.latitude ?? null,
         longitude: pin?.longitude ?? null,
+        logo,
       });
       // Refresh dashboard
       await onCreated();
@@ -582,6 +591,7 @@ function ProjectPickerSheet({
         setCompany('');
         setAddress('');
         setPin(null);
+        setLogo(null);
         if (onProjectCreated) {
           // Caller wants to take over after creation (e.g. navigate to the
           // project detail screen). Skip the inline template-picker step.
@@ -653,28 +663,23 @@ function ProjectPickerSheet({
                       <Text style={pickerStyles.addNewText}>ახალი პროექტის დამატება</Text>
                       <Ionicons name="chevron-forward" size={16} color={theme.colors.accent} />
                     </Pressable>
-                    {projects.map(p => {
-                      const av = projectAvatar(p.id);
-                      return (
-                        <Pressable
-                          key={p.id}
-                          onPress={() => pickTemplate(p.id)}
-                          style={pickerStyles.projectRow}
-                          {...a11y(`პროექტი: ${p.name}`, 'შეეხეთ ინსპექციის დასაწყებად ამ პროექტზე', 'button')}
-                        >
-                          <View style={[pickerStyles.avatarBubble, { backgroundColor: av.color + '22' }]}>
-                            <Text style={{ fontSize: 22 }}>{av.emoji}</Text>
-                          </View>
-                          <View style={{ flex: 1 }}>
-                            <Text style={pickerStyles.rowName} numberOfLines={1}>{p.name}</Text>
-                            {p.company_name ? (
-                              <Text style={pickerStyles.rowSub} numberOfLines={1}>{p.company_name}</Text>
-                            ) : null}
-                          </View>
-                          <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
-                        </Pressable>
-                      );
-                    })}
+                    {projects.map(p => (
+                      <Pressable
+                        key={p.id}
+                        onPress={() => pickTemplate(p.id)}
+                        style={pickerStyles.projectRow}
+                        {...a11y(`პროექტი: ${p.name}`, 'შეეხეთ ინსპექციის დასაწყებად ამ პროექტზე', 'button')}
+                      >
+                        <ProjectAvatar project={p} size={44} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={pickerStyles.rowName} numberOfLines={1}>{p.name}</Text>
+                          {p.company_name ? (
+                            <Text style={pickerStyles.rowSub} numberOfLines={1}>{p.company_name}</Text>
+                          ) : null}
+                        </View>
+                        <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
+                      </Pressable>
+                    ))}
                   </ScrollView>
                 )}
               </>
@@ -730,9 +735,24 @@ function ProjectPickerSheet({
                 <ScrollView
                   keyboardShouldPersistTaps="handled"
                   showsVerticalScrollIndicator={false}
-                  contentContainerStyle={{ paddingTop: 4, paddingBottom: 8 }}
+                  contentContainerStyle={{ paddingTop: 4, paddingBottom: 8, gap: 12 }}
                   style={{ maxHeight: '78%' }}
                 >
+                  <View style={{ alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <ProjectAvatar
+                      project={{ name: name || '—', logo }}
+                      size={88}
+                      editable
+                      onEdit={onPickLogo}
+                    />
+                    {logo ? (
+                      <Pressable onPress={onPickLogo} hitSlop={6} {...a11y('სურათის შეცვლა', 'შეეხეთ ლოგოს ასარჩევად', 'button')}>
+                        <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.accent }}>
+                          სურათის შეცვლა
+                        </Text>
+                      </Pressable>
+                    ) : null}
+                  </View>
                   <Field label="სახელი">
                     <Input
                       value={name}
@@ -780,7 +800,7 @@ function ProjectCard({
 }) {
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
-  const av = projectAvatar(project.id);
+
   return (
     <PressableScale
       onPress={onPress}
@@ -793,9 +813,7 @@ function ProjectCard({
       )}
     >
       <View style={[styles.projectCard, { width }]}>
-        <View style={[styles.projectEmoji, { backgroundColor: av.color + '22' }]}>
-          <Text style={{ fontSize: 26 }}>{av.emoji}</Text>
-        </View>
+        <ProjectAvatar project={project} size={48} />
         <Text style={styles.projectName} numberOfLines={2}>{project.name}</Text>
         {project.company_name ? (
           <Text style={styles.projectSub} numberOfLines={1}>{project.company_name}</Text>
