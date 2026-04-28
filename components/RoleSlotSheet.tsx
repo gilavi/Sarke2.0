@@ -73,6 +73,7 @@ export function RoleSlotSheet({
 
   return (
     <SheetLayout
+      showHandle={false}
       ScrollComponent={BottomSheetScrollView}
       header={
         <View style={styles.header}>

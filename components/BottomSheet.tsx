@@ -19,7 +19,10 @@ import {
 import {
   Animated,
   Easing,
+  Keyboard,
+  KeyboardEvent,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   ScrollViewProps,
@@ -86,6 +89,37 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
   const sheetProgress = useRef(new Animated.Value(0)).current;
   // Drag offset in pixels (added on top of the spring-driven slide).
   const dragY = useRef(new Animated.Value(0)).current;
+  // Keyboard height — animates the sheet upward when the keyboard shows so
+  // text fields inside `content` aren't covered. RN's <Modal> does not
+  // auto-resize for the keyboard on iOS, so we lift the sheet manually.
+  const keyboardOffset = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const onShow = (e: KeyboardEvent) => {
+      Animated.timing(keyboardOffset, {
+        toValue: e.endCoordinates.height,
+        duration: e.duration ?? 250,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+    };
+    const onHide = (e: KeyboardEvent) => {
+      Animated.timing(keyboardOffset, {
+        toValue: 0,
+        duration: e.duration ?? 200,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+    };
+    const subShow = Keyboard.addListener(showEvt, onShow);
+    const subHide = Keyboard.addListener(hideEvt, onHide);
+    return () => {
+      subShow.remove();
+      subHide.remove();
+    };
+  }, [keyboardOffset]);
 
   const scrollAtTopRef = useRef(true);
   const nativeGestureRef = useRef<NativeGesture | null>(null);
@@ -162,12 +196,25 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
     outputRange: [360, 0],
   });
   const translateY = Animated.add(
-    baseTranslateY,
-    dragY.interpolate({
-      inputRange: [0, 1000],
-      outputRange: [0, 1000],
-      extrapolateLeft: 'clamp',
-    }),
+    Animated.add(
+      baseTranslateY,
+      dragY.interpolate({
+        inputRange: [0, 1000],
+        outputRange: [0, 1000],
+        extrapolateLeft: 'clamp',
+      }),
+    ),
+    // Negative shift lifts the sheet above the keyboard. The wrapper already
+    // pads by `insets.bottom`, so only lift by the amount the keyboard
+    // exceeds that inset.
+    Animated.multiply(
+      keyboardOffset.interpolate({
+        inputRange: [0, insets.bottom, 10000],
+        outputRange: [0, 0, 10000 - insets.bottom],
+        extrapolate: 'clamp',
+      }),
+      -1,
+    ),
   );
   const sheetScale = sheetProgress.interpolate({
     inputRange: [0, 1],

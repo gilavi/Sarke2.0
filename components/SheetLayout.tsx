@@ -42,6 +42,10 @@ export interface SheetLayoutProps {
   style?: StyleProp<ViewStyle>;
   /** Padding for the scrollable body content. Default 0 horizontal, 12 top/bottom, gap 16. */
   bodyContentStyle?: StyleProp<ViewStyle>;
+  /** Render the grab-handle bar at the top of the card. Default true.
+   * Set false when nesting inside a parent (e.g. BottomSheetProvider) that
+   * already draws a handle, to avoid stacking two handles. */
+  showHandle?: boolean;
 }
 
 export function SheetLayout({
@@ -55,6 +59,7 @@ export function SheetLayout({
   footerSticky = true,
   style,
   bodyContentStyle,
+  showHandle = true,
 }: SheetLayoutProps) {
   const { theme } = useTheme();
   const screenH = Dimensions.get('window').height;
@@ -64,10 +69,11 @@ export function SheetLayout({
 
   return (
     <View style={[styles.container, { maxHeight: screenH * maxHeightRatio }, style]}>
-      {/* Handle bar */}
-      <View style={styles.handleBar}>
-        <View style={[styles.handle, { backgroundColor: theme.colors.hairline }]} />
-      </View>
+      {showHandle ? (
+        <View style={styles.handleBar}>
+          <View style={[styles.handle, { backgroundColor: theme.colors.hairline }]} />
+        </View>
+      ) : null}
 
       {headerNode ? <View style={styles.headerWrap}>{headerNode}</View> : null}
 

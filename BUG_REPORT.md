@@ -51,6 +51,23 @@ The scaffold-radio (`statusOption` style) and the harness chips both render a cl
 
 The "content shifted off the right edge" I noted was the iOS Simulator window itself moving on the macOS desktop between screenshots, not in-app rendering. Inside the device frame the layout is correct.
 
+## P1 — Add-participant sheet covered by keyboard + double handle bar · resolved 2026-04-28
+
+**Repro:** Project detail → "მონაწილეები" section → tap an empty role slot (e.g. "ხარაჩოს ზედამხედველი"). The bottom sheet opens with the name input autofocused.
+
+**Symptoms:**
+1. Two horizontal grab-handle bars stacked at the top of the sheet, looking like an action sheet inside an action sheet.
+2. The iOS keyboard covers the entire sheet — header, input, and "ხელმოწერა →" button all hidden.
+
+**Root cause:**
+1. Both `BottomSheet` (the provider's `sheetCard`) and `SheetLayout` rendered their own `handleBar` view, so `RoleSlotSheet` (which uses `SheetLayout` inside `BottomSheet.content`) showed both.
+2. `BottomSheet`'s wrapper is `position: 'absolute'; bottom: 0` inside an RN `<Modal>`. RN Modals don't auto-resize for the keyboard on iOS, and `RoleSlotSheet` overrides `SheetLayout`'s default `KeyboardAwareScrollView` with `BottomSheetScrollView` (needed for swipe-down dismiss). Result: nothing in the chain pushes the sheet above the keyboard.
+
+**Fix:**
+- `components/SheetLayout.tsx`: added `showHandle` prop (default `true`) to opt out of the duplicate handle.
+- `components/RoleSlotSheet.tsx`: passes `showHandle={false}`.
+- `components/BottomSheet.tsx`: subscribed to `keyboardWillShow`/`keyboardWillHide` and animated a translateY offset on the sheet wrapper equal to `max(0, keyboardHeight - insets.bottom)`, so every form sheet (not just `RoleSlotSheet`) lifts above the keyboard with the matching iOS keyboard duration.
+
 ## P2-1 — Keyboard overlapping inputs across the app · resolved 2026-04-27
 
 **Repro:** Inspection wizard → final `დასკვნა` step → tap the conclusion textarea on a short-viewport device (iPhone SE). The soft keyboard covers the input and the bottom action buttons. Same class of issue reported on auth screens, project modals, certificate signer name, and the harness comment field.
