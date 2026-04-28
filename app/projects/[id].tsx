@@ -41,7 +41,8 @@ import { useTheme } from '../../lib/theme';
 import { toErrorMessage } from '../../lib/logError';
 import { friendlyError } from '../../lib/errorMap';
 import { formatShortDateTime } from '../../lib/formatDate';
-import type { CrewMember, Project, ProjectFile, Questionnaire, Template } from '../../types/models';
+import type { Briefing, CrewMember, Project, ProjectFile, Questionnaire, Template } from '../../types/models';
+import { briefingsApi } from '../../lib/briefingsApi';
 import { RoleSlotList } from '../../components/RoleSlotList';
 import { ProjectAvatar } from '../../components/ProjectAvatar';
 import { pickProjectLogo } from '../../lib/projectLogo';
@@ -72,6 +73,7 @@ export default function ProjectDetail() {
   // Flips true after the first fetch finishes. Drives the skeleton → content
   // swap; refocus doesn't re-show skeletons once we have data.
   const [loaded, setLoaded] = useState(false);
+  const [briefings, setBriefings] = useState<Briefing[]>([]);
 
   // Project screen onboarding tour
   const heroRef = useRef<View>(null);
@@ -117,16 +119,18 @@ export default function ProjectDetail() {
 
   const load = useCallback(async () => {
     if (!id) return;
-    const [p, q, tpls, f] = await Promise.all([
+    const [p, q, tpls, f, brf] = await Promise.all([
       projectsApi.getById(id).catch(() => null),
       questionnairesApi.listByProject(id).catch(() => []),
       templatesApi.list().catch(() => []),
       projectFilesApi.list(id).catch(() => [] as ProjectFile[]),
+      briefingsApi.listByProject(id).catch(() => [] as Briefing[]),
     ]);
     setProject(p);
     setQuestionnaires(q);
     setTemplates(tpls);
     setFiles(f);
+    setBriefings(brf);
     setLoaded(true);
   }, [id]);
 
@@ -560,6 +564,60 @@ export default function ProjectDetail() {
                 </View>
               )}
             </View>
+          </View>
+
+          {/* ── ინსტრუქტაჟი ── */}
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>ინსტრუქტაჟი</Text>
+              <View style={styles.badgeGreen}>
+                <Text style={styles.badgeGreenText}>{briefings.length}</Text>
+              </View>
+            </View>
+
+            {briefings.length === 0 ? (
+              <EmptyState text="ინსტრუქტაჟი ჯერ არ ჩატარებულა" />
+            ) : (
+              <View style={{ gap: 8, marginTop: 10 }}>
+                {briefings.map(b => {
+                  const isCompleted = b.status === 'completed';
+                  return (
+                    <Pressable
+                      key={b.id}
+                      onPress={() => router.push(`/briefings/${b.id}` as any)}
+                      style={styles.listRow}
+                      {...a11y('ინსტრუქტაჟი', 'დეტალების სანახავად დააჭირეთ', 'button')}
+                    >
+                      <View style={[styles.statusIcon, { backgroundColor: isCompleted ? theme.colors.semantic.successSoft : theme.colors.semantic.warningSoft }]}>
+                        <Ionicons
+                          name={isCompleted ? 'shield-checkmark' : 'pencil'}
+                          size={14}
+                          color={isCompleted ? theme.colors.primary[700] : '#92400E'}
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.listRowTitle}>
+                          {formatShortDateTime(b.dateTime)}
+                        </Text>
+                        <Text style={styles.listRowSubtitle}>
+                          {b.participants.length} მონაწილე · {isCompleted ? 'დასრულებული' : 'მიმდინარე'}
+                        </Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={18} color={theme.colors.borderStrong} />
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
+
+            <Pressable
+              onPress={() => id && router.push(`/briefings/new?projectId=${id}` as any)}
+              style={styles.addBtn}
+              {...a11y('+ ახალი ინსტრუქტაჟი', 'ახალი ინსტრუქტაჟის დაწყება', 'button')}
+            >
+              <Ionicons name="add" size={18} color={theme.colors.accent} />
+              <Text style={styles.addBtnText}>+ ახალი ინსტრუქტაჟი</Text>
+            </Pressable>
           </View>
 
         </ScrollView>
