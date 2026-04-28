@@ -3,15 +3,15 @@
 // Each row has a thumbnail (styled mini-document) + metadata badges.
 // Tap → cert preview/detail screen. Swipe delete removes the cert row
 // but leaves the underlying inspection intact.
-import { useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import {
-  FlatList,
   Pressable,
   StyleSheet,
   View,
 } from 'react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { FlatList } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
@@ -98,6 +98,92 @@ function getthumbStyles(theme: any) {
 });
 }
 
+const MemoizedCertItem = memo(function CertItem({
+  item,
+  inspectionById,
+  templateById,
+  projectById,
+  theme,
+  styles,
+  onDelete,
+  onPress,
+}: {
+  item: Certificate;
+  inspectionById: Map<string, Inspection>;
+  templateById: Map<string, Template>;
+  projectById: Map<string, Project>;
+  theme: any;
+  styles: any;
+  onDelete: (cert: Certificate) => void;
+  onPress: (cert: Certificate) => void;
+}) {
+  const insp = inspectionById.get(item.inspection_id) ?? null;
+  const tpl = templateById.get(item.template_id) ?? null;
+  const proj = insp ? (projectById.get(insp.project_id) ?? null) : null;
+  const params = item.params as {
+    expertName?: string | null;
+    qualTypes?: { type: string; number: string | null }[];
+  };
+  const expertName = params?.expertName ?? null;
+  const qualTypes = params?.qualTypes ?? [];
+  return (
+    <Swipeable
+      renderRightActions={() => (
+        <Pressable onPress={() => onDelete(item)} style={styles.swipeDelete} {...a11y('წაშლა', 'PDF რეპორტის წაშლა', 'button')}>
+          <Ionicons name="trash" size={18} color={theme.colors.white} />
+          <Text style={{ color: theme.colors.white, fontWeight: '700', fontSize: 11 }}>
+            წაშლა
+          </Text>
+        </Pressable>
+      )}
+      overshootRight={false}
+    >
+      <Pressable onPress={() => onPress(item)} {...a11y('PDF რეპორტი', 'დეტალების ნახვა', 'button')}>
+        <Card padding={12}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            {/* PDF thumbnail */}
+            <CertThumbnail cert={item} />
+
+            {/* Metadata */}
+            <View style={{ flex: 1, gap: 3 }}>
+              <Text style={styles.rowTitle} numberOfLines={1}>
+                {tpl?.name ?? 'PDF რეპორტი'}
+              </Text>
+              <Text style={styles.rowMeta} numberOfLines={1}>
+                {proj?.name ?? '—'}
+              </Text>
+              <Text style={styles.rowDate}>
+                {new Date(item.generated_at).toLocaleString('ka')}
+              </Text>
+
+              {/* Expert / qual badges */}
+              {(expertName || qualTypes.length > 0) ? (
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+                  {expertName ? (
+                    <View style={styles.badge}>
+                      <Ionicons name="person-outline" size={10} color={theme.colors.inkSoft} />
+                      <Text style={styles.badgeText}>{expertName}</Text>
+                    </View>
+                  ) : null}
+                  {qualTypes.map(q => (
+                    <View key={q.type} style={styles.badge}>
+                      <Ionicons name="ribbon-outline" size={10} color={theme.colors.inkSoft} />
+                      <Text style={styles.badgeText}>{q.number ? `№${q.number}` : q.type}</Text>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+            </View>
+
+            {/* Preview indicator */}
+            <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
+          </View>
+        </Card>
+      </Pressable>
+    </Swipeable>
+  );
+});
+
 // ── Screen ───────────────────────────────────────────────────────────────────
 
 export default function CertificatesScreen() {
@@ -143,11 +229,11 @@ export default function CertificatesScreen() {
     [projects],
   );
 
-  const openPreview = (cert: Certificate) => {
+  const openPreview = useCallback((cert: Certificate) => {
     router.push(`/certificates/${cert.id}` as any);
-  };
+  }, [router]);
 
-  const deleteCert = async (cert: Certificate) => {
+  const deleteCert = useCallback(async (cert: Certificate) => {
     try {
       await certificatesApi.remove(cert.id);
       setCerts(prev => prev.filter(c => c.id !== cert.id));
@@ -155,7 +241,20 @@ export default function CertificatesScreen() {
     } catch (e) {
       toast.error(friendlyError(e, 'ვერ წაიშალა'));
     }
-  };
+  }, [toast]);
+
+  const renderItem = useCallback(({ item }: { item: Certificate }) => (
+    <MemoizedCertItem
+      item={item}
+      inspectionById={inspectionById}
+      templateById={templateById}
+      projectById={projectById}
+      theme={theme}
+      styles={styles}
+      onDelete={deleteCert}
+      onPress={openPreview}
+    />
+  ), [inspectionById, templateById, projectById, theme, styles, deleteCert, openPreview]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top']}>
@@ -200,73 +299,7 @@ export default function CertificatesScreen() {
             />
           )
         }
-        renderItem={({ item }) => {
-          const insp = inspectionById.get(item.inspection_id) ?? null;
-          const tpl = templateById.get(item.template_id) ?? null;
-          const proj = insp ? (projectById.get(insp.project_id) ?? null) : null;
-          const params = item.params as {
-            expertName?: string | null;
-            qualTypes?: { type: string; number: string | null }[];
-          };
-          const expertName = params?.expertName ?? null;
-          const qualTypes = params?.qualTypes ?? [];
-          return (
-            <Swipeable
-              renderRightActions={() => (
-                <Pressable onPress={() => deleteCert(item)} style={styles.swipeDelete} {...a11y('წაშლა', 'PDF რეპორტის წაშლა', 'button')}>
-                  <Ionicons name="trash" size={18} color={theme.colors.white} />
-                  <Text style={{ color: theme.colors.white, fontWeight: '700', fontSize: 11 }}>
-                    წაშლა
-                  </Text>
-                </Pressable>
-              )}
-              overshootRight={false}
-            >
-              <Pressable onPress={() => openPreview(item)} {...a11y('PDF რეპორტი', 'დეტალების ნახვა', 'button')}>
-                <Card padding={12}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                    {/* PDF thumbnail */}
-                    <CertThumbnail cert={item} />
-
-                    {/* Metadata */}
-                    <View style={{ flex: 1, gap: 3 }}>
-                      <Text style={styles.rowTitle} numberOfLines={1}>
-                        {tpl?.name ?? 'PDF რეპორტი'}
-                      </Text>
-                      <Text style={styles.rowMeta} numberOfLines={1}>
-                        {proj?.name ?? '—'}
-                      </Text>
-                      <Text style={styles.rowDate}>
-                        {new Date(item.generated_at).toLocaleString('ka')}
-                      </Text>
-
-                      {/* Expert / qual badges */}
-                      {(expertName || qualTypes.length > 0) ? (
-                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
-                          {expertName ? (
-                            <View style={styles.badge}>
-                              <Ionicons name="person-outline" size={10} color={theme.colors.inkSoft} />
-                              <Text style={styles.badgeText}>{expertName}</Text>
-                            </View>
-                          ) : null}
-                          {qualTypes.map(q => (
-                            <View key={q.type} style={styles.badge}>
-                              <Ionicons name="ribbon-outline" size={10} color={theme.colors.inkSoft} />
-                              <Text style={styles.badgeText}>{q.number ? `№${q.number}` : q.type}</Text>
-                            </View>
-                          ))}
-                        </View>
-                      ) : null}
-                    </View>
-
-                    {/* Preview indicator */}
-                    <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
-                  </View>
-                </Card>
-              </Pressable>
-            </Swipeable>
-          );
-        }}
+        renderItem={renderItem}
       />
     </SafeAreaView>
   );

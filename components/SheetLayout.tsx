@@ -7,8 +7,6 @@
 import { ReactNode } from 'react';
 import {
   Dimensions,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   ScrollViewProps,
@@ -17,9 +15,10 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { Ionicons } from '@expo/vector-icons';
 import { A11yText as Text } from './primitives/A11yText';
-import { theme } from '../lib/theme';
+import { useTheme } from '../lib/theme';
 import { a11y } from '../lib/accessibility';
 
 export interface SheetLayoutProps {
@@ -29,17 +28,19 @@ export interface SheetLayoutProps {
   children: ReactNode;
   /** Pinned-bottom region (typically the primary action button). */
   footer?: ReactNode;
-  /** Custom ScrollView component (e.g. BottomSheetScrollView). Defaults to RN ScrollView. */
+  /** Custom ScrollView component (e.g. BottomSheetScrollView). Defaults to KeyboardAwareScrollView. */
   ScrollComponent?: React.ComponentType<ScrollViewProps>;
   /** Extra props passed to the body ScrollView. */
   bodyScrollProps?: ScrollViewProps;
   /** Cap card height as fraction of screen. Default 0.85. */
   maxHeightRatio?: number;
-  /** Wrap in KeyboardAvoidingView (iOS). Default true. */
-  keyboardAvoid?: boolean;
+  /** Use KeyboardAwareScrollView for the body. Default true. */
+  keyboardAware?: boolean;
+  /** Keep footer pinned at bottom of sheet card. Default true. */
+  footerSticky?: boolean;
   /** Extra container style (rare). */
   style?: StyleProp<ViewStyle>;
-  /** Padding for the scrollable body content. Default 0 horizontal, 8 top/bottom. */
+  /** Padding for the scrollable body content. Default 0 horizontal, 12 top/bottom, gap 16. */
   bodyContentStyle?: StyleProp<ViewStyle>;
 }
 
@@ -50,21 +51,30 @@ export function SheetLayout({
   ScrollComponent,
   bodyScrollProps,
   maxHeightRatio = 0.85,
-  keyboardAvoid = true,
+  keyboardAware = true,
+  footerSticky = true,
   style,
   bodyContentStyle,
 }: SheetLayoutProps) {
+  const { theme } = useTheme();
   const screenH = Dimensions.get('window').height;
-  const Body = ScrollComponent ?? ScrollView;
 
-  const headerNode = renderHeader(header);
+  const Body = ScrollComponent ?? KeyboardAwareScrollView;
+  const headerNode = renderHeader(header, theme);
 
-  const inner = (
+  return (
     <View style={[styles.container, { maxHeight: screenH * maxHeightRatio }, style]}>
+      {/* Handle bar */}
+      <View style={styles.handleBar}>
+        <View style={[styles.handle, { backgroundColor: theme.colors.hairline }]} />
+      </View>
+
       {headerNode ? <View style={styles.headerWrap}>{headerNode}</View> : null}
+
       <Body
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
+        bottomOffset={footerSticky ? 80 : 0}
         {...bodyScrollProps}
         contentContainerStyle={[
           styles.bodyContent,
@@ -75,22 +85,17 @@ export function SheetLayout({
       >
         {children}
       </Body>
-      {footer ? <View style={styles.footerWrap}>{footer}</View> : null}
-    </View>
-  );
 
-  if (!keyboardAvoid) return inner;
-  return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={styles.kavWrap}
-    >
-      {inner}
-    </KeyboardAvoidingView>
+      {footer ? (
+        <View style={[styles.footerWrap, footerSticky && styles.footerSticky]}>
+          {footer}
+        </View>
+      ) : null}
+    </View>
   );
 }
 
-function renderHeader(header: SheetLayoutProps['header']) {
+function renderHeader(header: SheetLayoutProps['header'], theme: any) {
   if (!header) return null;
   if (typeof header === 'object' && header !== null && 'title' in header) {
     const { title, onClose } = header;
@@ -115,16 +120,33 @@ function renderHeader(header: SheetLayoutProps['header']) {
 }
 
 const styles = StyleSheet.create({
-  kavWrap: { flexShrink: 1 },
   container: {
     flexShrink: 1,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 10,
+    overflow: 'hidden',
+  },
+  handleBar: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  handle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
   },
   headerWrap: {
     paddingHorizontal: 16,
     paddingTop: 4,
     paddingBottom: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.hairline,
+    borderBottomColor: '#E5E7EB',
   },
   headerRow: {
     flexDirection: 'row',
@@ -138,13 +160,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 12,
-    gap: 14,
+    gap: 16,
   },
   footerWrap: {
     paddingHorizontal: 16,
     paddingTop: 10,
-    paddingBottom: 4,
+    paddingBottom: 16,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: theme.colors.hairline,
+    borderTopColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+  },
+  footerSticky: {
+    // Footer stays at bottom; body scrolls above it.
   },
 });

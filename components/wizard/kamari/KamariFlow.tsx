@@ -13,7 +13,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
-  Image,
   LayoutAnimation,
   Modal,
   Platform,
@@ -24,6 +23,7 @@ import {
   UIManager,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { A11yText as Text } from '../../primitives/A11yText';
@@ -49,9 +49,6 @@ function rowKey(i: number) {
 }
 
 function captionFor(row: string, col: string) {
-  const { theme } = useTheme();
-  const styles = useMemo(() => getstyles(theme), [theme]);
-
   return `row:${row}:col:${col}`;
 }
 
@@ -544,7 +541,7 @@ const KamariPhotoThumb = memo(function KamariPhotoThumb({
   return (
     <View>
       <View style={styles.thumb}>
-        {uri ? <Image source={{ uri }} style={styles.thumbImg} /> : null}
+        {uri ? <Image source={{ uri }} style={styles.thumbImg} contentFit="cover" /> : null}
       </View>
       <Pressable onPress={onDelete} style={styles.thumbDelete} hitSlop={8}>
         <Ionicons name="close" size={12} color="#fff" />

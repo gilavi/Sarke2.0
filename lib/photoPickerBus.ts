@@ -13,6 +13,7 @@
 //   router.back();
 
 let pending: ((uri: string | null) => void) | null = null;
+let pendingAnnotate: ((uri: string | null) => void) | null = null;
 
 export function setPhotoPickerCallback(cb: (uri: string | null) => void): void {
   pending = cb;
@@ -26,4 +27,19 @@ export function resolvePhotoPicker(uri: string | null): void {
 
 export function cancelPhotoPicker(): void {
   resolvePhotoPicker(null);
+}
+
+/** Callback for annotated photo return from PhotoAnnotator. */
+export function setPhotoAnnotateCallback(cb: (uri: string | null) => void): void {
+  pendingAnnotate = cb;
+}
+
+export function resolvePhotoAnnotate(uri: string | null): void {
+  const cb = pendingAnnotate;
+  pendingAnnotate = null;
+  cb?.(uri);
+}
+
+export function cancelPhotoAnnotate(): void {
+  resolvePhotoAnnotate(null);
 }

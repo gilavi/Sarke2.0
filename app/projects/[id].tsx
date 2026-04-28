@@ -1,7 +1,8 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
-  Image,
+  Dimensions,
+  Keyboard,
   Linking,
   Modal,
   Platform,
@@ -10,8 +11,10 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { A11yText as Text } from '../../components/primitives/A11yText';
-import { KeyboardAvoidingView } from 'react-native';
+import { SheetLayout } from '../../components/SheetLayout';
+import { FormField } from '../../components/FormField';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -297,6 +300,14 @@ export default function ProjectDetail() {
     }
   };
 
+  const mapMarkers = useMemo(() => {
+    const withCoords = allProjects.filter(p => p.latitude != null && p.longitude != null);
+    if (withCoords.length > 20) {
+      console.warn(`[ProjectDetail] Too many projects to show on map (${withCoords.length}), limiting to 20.`);
+    }
+    return withCoords.slice(0, 20);
+  }, [allProjects]);
+
   if (!loaded && !project) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
@@ -569,6 +580,51 @@ export default function ProjectDetail() {
           toast.success('შენახულია');
         }}
       />
+
+      {/* Full-screen map with all projects */}
+      {mapModalVisible && (
+        <View style={StyleSheet.absoluteFillObject} pointerEvents="auto">
+          <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: insets.top + 12, paddingBottom: 12 }}>
+              <View style={{ width: 24 }} />
+              <Text style={{ flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '700', color: theme.colors.ink }}>
+                პროექტები რუკაზე
+              </Text>
+              <Pressable onPress={() => setMapModalVisible(false)} hitSlop={10} {...a11y('დახურვა', 'რუკის დახურვა', 'button')}>
+                <Ionicons name="close" size={24} color={theme.colors.ink} />
+              </Pressable>
+            </View>
+            <MapView
+              provider={PROVIDER_DEFAULT}
+              style={{ flex: 1 }}
+              initialRegion={{
+                latitude: project?.latitude ?? 41.7151,
+                longitude: project?.longitude ?? 44.8271,
+                latitudeDelta: 0.5,
+                longitudeDelta: 0.5,
+              }}
+            >
+              {mapMarkers.map(p => (
+                <Marker
+                  key={p.id}
+                  coordinate={{ latitude: p.latitude!, longitude: p.longitude! }}
+                  pinColor={p.id === id ? theme.colors.accent : undefined}
+                  title={p.name}
+                />
+              ))}
+            </MapView>
+            {allProjects.filter(p => p.latitude != null && p.longitude != null).length > 20 && (
+              <View style={{ position: 'absolute', bottom: insets.bottom + 16, left: 16, right: 16, alignItems: 'center' }}>
+                <View style={{ backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 }}>
+                  <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>
+                    ნაჩვენებია პირველი 20 პროექტი
+                  </Text>
+                </View>
+              </View>
+            )}
+          </View>
+        </View>
+      )}
     </View>
     </TourGuide>
   );
@@ -596,7 +652,7 @@ function SafeSigImage({ uri }: { uri: string }) {
     <Image
       source={{ uri }}
       style={{ width: '100%', height: '100%' }}
-      resizeMode="contain"
+      contentFit="contain"
       onError={() => setErr(true)}
     />
   );
@@ -614,14 +670,14 @@ function EditProjectSheet({
   onSaved: (p: Project) => void;
 }) {
   const { theme } = useTheme();
-  const styles = useMemo(() => getstyles(theme), [theme]);
-
+  const insets = useSafeAreaInsets();
   const toast = useToast();
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
   const [address, setAddress] = useState('');
   const [pin, setPin] = useState<LatLng | null>(null);
   const [busy, setBusy] = useState(false);
+  const [mapVisible, setMapVisible] = useState(false);
 
   // Sync when project changes / modal opens
   useFocusEffect(
@@ -659,51 +715,217 @@ function EditProjectSheet({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.modalBackdrop}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalHandle} />
-            <View style={styles.modalHeader}>
-              <Text style={{ fontSize: 18, fontWeight: '800', color: theme.colors.ink, flex: 1 }}>
-                რედაქტირება
-              </Text>
-              <Pressable onPress={onClose} hitSlop={10} {...a11y('დახურვა', 'რედაქტირების ფანჯრის დახურვა', 'button')}>
-                <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
-              </Pressable>
-            </View>
-            <ScrollView
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ gap: 12, paddingTop: 8, paddingBottom: 8 }}
-              style={{ maxHeight: '78%' }}
-            >
-              <Field label="სახელი">
-                <Input value={name} onChangeText={setName} />
-              </Field>
-              <Field label="კომპანია">
-                <Input value={company} onChangeText={setCompany} />
-              </Field>
-              <Field label="მისამართი">
-                <MapPicker
-                  value={pin}
-                  onChange={setPin}
-                  address={address}
-                  onAddressChange={setAddress}
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={() => mapVisible ? setMapVisible(false) : onClose()}>
+      <View style={{ flex: 1 }}>
+        <Pressable
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.45)',
+            justifyContent: 'flex-end',
+          }}
+          onPress={() => mapVisible ? setMapVisible(false) : onClose()}
+          {...a11y('დახურვა', 'შეეხეთ ფონის დასახურად', 'button')}
+        >
+          {/* Stop touches inside the card from closing the sheet */}
+          <Pressable onPress={() => {}} style={{ width: '100%' }}>
+            <SheetLayout
+              header={{ title: 'რედაქტირება', onClose }}
+              footer={
+                <Button
+                  title="შენახვა"
+                  size="lg"
+                  onPress={save}
+                  loading={busy}
+                  disabled={!name.trim()}
                 />
-              </Field>
-            </ScrollView>
-            <Button
-              title="შენახვა"
-              onPress={save}
-              loading={busy}
-              disabled={!name.trim()}
-              style={{ marginTop: 14 }}
-            />
+              }
+            >
+              <FormField label="სახელი" required>
+                <Input
+                  value={name}
+                  onChangeText={setName}
+                  placeholder="მაგ. ვაკე-საბურთალოს ობიექტი"
+                  autoFocus
+                />
+              </FormField>
+
+              <FormField label="კომპანია">
+                <Input value={company} onChangeText={setCompany} placeholder="შემკვეთი" />
+              </FormField>
+
+              <FormField label="მისამართი">
+                <Input
+                  value={address}
+                  onChangeText={setAddress}
+                  placeholder="ქუჩა, ნომერი, ქალაქი"
+                />
+              </FormField>
+
+              <FormField label="მდებარეობა">
+                <LocationRow pin={pin} address={address} onPress={() => { Keyboard.dismiss(); setMapVisible(true); }} />
+              </FormField>
+            </SheetLayout>
+          </Pressable>
+        </Pressable>
+
+        {/* Full-screen map overlay — no nested Modal */}
+        {mapVisible && (
+          <View style={StyleSheet.absoluteFillObject}>
+            <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: insets.top + 12, paddingVertical: 12 }}>
+                <View style={{ width: 24 }} />
+                <Text style={{ flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '700', color: theme.colors.ink }}>
+                  მდებარეობის არჩევა
+                </Text>
+                <Pressable onPress={() => setMapVisible(false)} hitSlop={10} {...a11y('დახურვა', 'რუკის დახურვა', 'button')}>
+                  <Ionicons name="close" size={24} color={theme.colors.ink} />
+                </Pressable>
+              </View>
+              <MapPickerInline
+                initialPin={pin}
+                initialAddress={address}
+                onConfirm={(newPin, newAddress) => {
+                  setPin(newPin);
+                  setAddress(newAddress);
+                  setMapVisible(false);
+                }}
+                onCancel={() => setMapVisible(false)}
+              />
+            </View>
           </View>
-        </KeyboardAvoidingView>
+        )}
       </View>
     </Modal>
+  );
+}
+
+// ── Compact location row (shows preview or picker prompt) ──
+function LocationRow({
+  pin,
+  address,
+  onPress,
+}: {
+  pin: LatLng | null;
+  address: string;
+  onPress: () => void;
+}) {
+  const { theme } = useTheme();
+
+  if (!pin) {
+    return (
+      <Pressable
+        onPress={onPress}
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 10,
+          paddingVertical: 14,
+          paddingHorizontal: 16,
+          backgroundColor: theme.colors.surfaceSecondary,
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: theme.colors.hairline,
+          borderStyle: 'dashed',
+        }}
+      >
+        <Ionicons name="location-outline" size={20} color={theme.colors.accent} />
+        <Text style={{ fontSize: 14, color: theme.colors.inkSoft, fontWeight: '500' }}>
+          დააჭირეთ მდებარეობის ასარჩევად
+        </Text>
+      </Pressable>
+    );
+  }
+
+  return (
+    <Pressable onPress={onPress}>
+      <View style={{ gap: 8 }}>
+        <MapPreview
+          latitude={pin.latitude}
+          longitude={pin.longitude}
+          pinColor={theme.colors.accent}
+          style={{ height: 120, borderRadius: 12, overflow: 'hidden' }}
+        />
+        {address ? (
+          <Text style={{ fontSize: 13, color: theme.colors.inkSoft }} numberOfLines={2}>
+            {address}
+          </Text>
+        ) : null}
+        <Text style={{ fontSize: 13, color: theme.colors.accent, fontWeight: '600' }}>
+          შეცვლა
+        </Text>
+      </View>
+    </Pressable>
+  );
+}
+
+// ── Inline map picker (no nested Modal) ──
+function MapPickerInline({
+  initialPin,
+  initialAddress,
+  onConfirm,
+  onCancel,
+}: {
+  initialPin: LatLng | null;
+  initialAddress: string;
+  onConfirm: (pin: LatLng | null, address: string) => void;
+  onCancel: () => void;
+}) {
+  const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
+  const [pin, setPin] = useState<LatLng | null>(initialPin);
+  const [address, setAddress] = useState(initialAddress);
+  const screenH = Dimensions.get('window').height;
+  // Reserve space for header (~60) + bottom action bar (~160) + safe areas
+  const mapHeight = Math.max(240, screenH - insets.top - insets.bottom - 220);
+
+  useEffect(() => {
+    setPin(initialPin);
+    setAddress(initialAddress);
+  }, [initialPin, initialAddress]);
+
+  return (
+    <View style={{ flex: 1 }}>
+      {/* Map with modest horizontal inset */}
+      <View style={{ flex: 1, marginHorizontal: 16 }}>
+        <MapPicker
+          value={pin}
+          onChange={setPin}
+          address={address}
+          onAddressChange={setAddress}
+          height={mapHeight}
+        />
+      </View>
+
+      {/* Bottom action bar */}
+      <View
+        style={{
+          backgroundColor: '#FFFFFF',
+          borderTopLeftRadius: 20,
+          borderTopRightRadius: 20,
+          paddingHorizontal: 20,
+          paddingTop: 16,
+          paddingBottom: insets.bottom + 16,
+          gap: 8,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.08,
+          shadowRadius: 12,
+          elevation: 8,
+        }}
+      >
+        <Button
+          title="დადასტურება"
+          size="lg"
+          onPress={() => onConfirm(pin, address)}
+          disabled={!pin}
+        />
+        <Pressable onPress={onCancel} style={{ alignSelf: 'center', paddingVertical: 8 }}>
+          <Text style={{ fontSize: 15, fontWeight: '600', color: theme.colors.inkSoft }}>
+            გაუქმება
+          </Text>
+        </Pressable>
+      </View>
+    </View>
   );
 }
 
@@ -935,33 +1157,6 @@ function getstyles(theme: any) {
     justifyContent: 'center',
     marginLeft: 8,
     borderRadius: 12,
-  },
-
-  // ── Modal ──
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'flex-end',
-  },
-  modalCard: {
-    backgroundColor: theme.colors.background,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 16,
-    paddingTop: 10,
-    paddingBottom: 44,
-  },
-  modalHandle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: theme.colors.borderStrong,
-    alignSelf: 'center',
-    marginBottom: 10,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
   },
 
 });

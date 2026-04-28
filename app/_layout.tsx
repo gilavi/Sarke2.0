@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase';
 import { View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
 import { BottomSheetProvider } from '../components/BottomSheet';
@@ -22,6 +23,8 @@ import { logError } from '../lib/logError';
 import { ThemeProvider, useTheme } from '../lib/ThemeContext';
 import { I18nextProvider } from 'react-i18next';
 import i18n from '../lib/i18n';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from '../lib/queryClient';
 import { initCrashReporting } from '../lib/crashReporting';
 
 initCrashReporting();
@@ -46,23 +49,9 @@ function AuthGate() {
   const isTermsViewMode = params.mode === 'view';
   const { theme } = useTheme();
 
-  // If a stale GO_BACK bubbles to the root with no handler — e.g. empty back
-  // stack on a leftover modal — silently route home instead of stranding the
-  // user. Only intercept GO_BACK; PUSH/REPLACE/NAVIGATE actions must be left
-  // alone so legitimate navigations (e.g. into the wizard) aren't hijacked.
-  useEffect(() => {
-    if (!navRef) return;
-    const sub = navRef.addListener('__unsafe_action__' as never, ((e: any) => {
-      const action = e?.data?.action;
-      if (!action || action.handled) return;
-      if (action.type !== 'GO_BACK') return;
-      router.replace('/(tabs)/home');
-    }) as never);
-    return () => {
-      // @ts-expect-error - returned subscription type varies across RN versions
-      sub?.remove?.();
-    };
-  }, [navRef, router]);
+  // NOTE: removed __unsafe_action__ GO_BACK listener — it was intercepting
+  // legitimate back navigations from modals (photo-picker → wizard) and
+  // redirecting to home, breaking the photo flow.
 
   // Handle Supabase password-recovery deep links (sarke://reset?code=...).
   // Exchange the PKCE code for a session, then route to the reset form.
@@ -197,27 +186,31 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider>
-      <I18nextProvider i18n={i18n}>
-        <GestureHandlerRootView style={{ flex: 1 }}>
-          <SafeAreaProvider>
-            <ErrorBoundary>
-              <BottomSheetProvider>
-                <ToastProvider>
-                  <OfflineProvider>
-                    <SessionProvider>
-                      <ThemedStatusBar />
-                      <OfflineBanner />
-                      <ErrorBoundary>
-                        <AuthGate />
-                      </ErrorBoundary>
-                    </SessionProvider>
-                  </OfflineProvider>
-                </ToastProvider>
-              </BottomSheetProvider>
-            </ErrorBoundary>
-          </SafeAreaProvider>
-        </GestureHandlerRootView>
-      </I18nextProvider>
+      <QueryClientProvider client={queryClient}>
+        <I18nextProvider i18n={i18n}>
+          <GestureHandlerRootView style={{ flex: 1 }}>
+            <KeyboardProvider>
+              <SafeAreaProvider>
+              <ErrorBoundary>
+                <BottomSheetProvider>
+                  <ToastProvider>
+                    <OfflineProvider>
+                      <SessionProvider>
+                        <ThemedStatusBar />
+                        <OfflineBanner />
+                        <ErrorBoundary>
+                          <AuthGate />
+                        </ErrorBoundary>
+                      </SessionProvider>
+                    </OfflineProvider>
+                  </ToastProvider>
+                </BottomSheetProvider>
+              </ErrorBoundary>
+              </SafeAreaProvider>
+            </KeyboardProvider>
+          </GestureHandlerRootView>
+        </I18nextProvider>
+      </QueryClientProvider>
     </ThemeProvider>
   );
 }

@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
-import { View, Image, Pressable, StyleSheet } from 'react-native';
+import { View, Pressable, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 import Animated, { FadeInUp, Layout } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../lib/theme';
@@ -31,7 +32,7 @@ export function WizardPhotoThumbs({ photos, onView, onDelete }: PhotoThumbsProps
             <Image
               source={{ uri: photo.storage_path }}
               style={styles.thumb}
-              resizeMode="cover"
+              contentFit="cover"
             />
           </PressableScale>
           <Pressable

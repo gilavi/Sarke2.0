@@ -1,4 +1,5 @@
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { Image } from 'expo-image';
 
 const BRAND_GREEN = '#1D9E75';
 
@@ -25,7 +26,7 @@ export function ProjectLogo({
       <Image
         source={{ uri }}
         style={[styles.box, { width: size, height: size, borderRadius: radius }]}
-        resizeMode="cover"
+        contentFit="cover"
       />
     );
   }

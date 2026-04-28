@@ -406,10 +406,7 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
         {photoLayout && (
           <View
             ref={photoContainerRef}
-            style={[
-              styles.photoContainer,
-              { width: photoLayout.w, height: photoLayout.h },
-            ]}
+            style={styles.photoContainer}
             onLayout={(e) => {
               const { width: w, height: h } = e.nativeEvent.layout;
               setContainerSize({ w, h });
@@ -591,12 +588,11 @@ function getstyles(theme: any) {
   },
   canvasWrap: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#000',
+    backgroundColor: theme.colors.background,
   },
   photoContainer: {
-    backgroundColor: '#000',
+    flex: 1,
+    backgroundColor: theme.colors.background,
     overflow: 'hidden',
   },
   toolbar: {

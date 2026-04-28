@@ -5,11 +5,10 @@
 // Falls back to the system library picker (`launchImageLibraryAsync`) for
 // users who want the full Photos UI; degrades to library-only when camera
 // permission is denied.
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  Image,
   Linking,
   Pressable,
   StyleSheet,
@@ -21,9 +20,22 @@ import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as MediaLibrary from 'expo-media-library';
 import * as ImagePicker from 'expo-image-picker';
+import { Image } from 'expo-image';
 import { useTheme } from '../lib/theme';
 
 import { resolvePhotoPicker, cancelPhotoPicker } from '../lib/photoPickerBus';
+
+const MemoizedAssetItem = memo(function AssetItem({ item, onPress, disabled }: { item: MediaLibrary.Asset; onPress: (asset: MediaLibrary.Asset) => void; disabled: boolean }) {
+  return (
+    <Pressable
+      onPress={() => void onPress(item)}
+      style={styles.thumb}
+      disabled={disabled}
+    >
+      <Image source={{ uri: item.uri }} style={StyleSheet.absoluteFillObject} />
+    </Pressable>
+  );
+});
 
 export default function PhotoPickerScreen() {
   const { theme } = useTheme();
@@ -90,9 +102,9 @@ export default function PhotoPickerScreen() {
   const finish = useCallback(
     (uri: string) => {
       resolvePhotoPicker(uri);
-      close();
+      // photo-annotate will replace this screen via router.replace()
     },
-    [close],
+    [],
   );
 
   const cancel = useCallback(() => {
@@ -148,6 +160,10 @@ export default function PhotoPickerScreen() {
       setSelecting(false);
     }
   }, [finish, selecting]);
+
+  const renderItem = useCallback(({ item }: { item: MediaLibrary.Asset }) => (
+    <MemoizedAssetItem item={item} onPress={pickAsset} disabled={selecting} />
+  ), [pickAsset, selecting]);
 
   const camReady = camPerm?.granted ?? false;
   const camDeniedFinal = camPerm && !camPerm.granted && !camPerm.canAskAgain;
@@ -227,15 +243,7 @@ export default function PhotoPickerScreen() {
             keyExtractor={a => a.id}
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ paddingHorizontal: 12, gap: 6, paddingVertical: 12 }}
-            renderItem={({ item }) => (
-              <Pressable
-                onPress={() => void pickAsset(item)}
-                style={styles.thumb}
-                disabled={selecting}
-              >
-                <Image source={{ uri: item.uri }} style={StyleSheet.absoluteFillObject} />
-              </Pressable>
-            )}
+            renderItem={renderItem}
           />
         )}
       </View>

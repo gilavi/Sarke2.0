@@ -6,16 +6,16 @@
 // a CTA to generate another certificate from the same inspection.
 //
 // Draft inspections still route through `/inspections/[id]/wizard`.
-import { useCallback, useEffect, useState , useMemo} from 'react';
+import { memo, useCallback, useEffect, useState , useMemo} from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  Image,
   Pressable,
   ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
@@ -60,6 +60,97 @@ import type {
 } from '../../types/models';
 import { SIGNER_ROLE_LABEL } from '../../types/models';
 import { a11y } from '../../lib/accessibility';
+
+const MemoizedCertReportItem = memo(function CertReportItem({
+  item,
+  index,
+  theme,
+  styles,
+  onPress,
+  onDelete,
+}: {
+  item: Certificate;
+  index: number;
+  theme: any;
+  styles: any;
+  onPress: (cert: Certificate) => void;
+  onDelete: (cert: Certificate) => void;
+}) {
+  const isSafe = item.is_safe_for_use;
+  const params = item.params as {
+    expertName?: string | null;
+    qualTypes?: { type: string; number: string | null }[];
+  };
+  const qualTypes = params?.qualTypes ?? [];
+  const expertName = params?.expertName ?? null;
+  const safeColor = isSafe === false ? theme.colors.danger : theme.colors.accent;
+  const safeBg = isSafe === false ? theme.colors.dangerSoft : theme.colors.accentSoft;
+  const barColor = isSafe === false ? theme.colors.danger : theme.colors.accent;
+  return (
+    <Pressable
+      onPress={() => onPress(item)}
+      {...a11y(`PDF რეპორტი #${index + 1}`, 'რეპორტის დეტალების ნახვა', 'button')}
+    >
+      <Card padding={12}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <View style={styles.certThumb}>
+            <View style={[styles.certThumbBar, { backgroundColor: barColor }]} />
+            <View style={styles.certThumbBody}>
+              <Ionicons name="document-text" size={12} color={theme.colors.inkFaint} />
+              <View style={{ gap: 3, marginTop: 5 }}>
+                {(['90%', '65%', '75%', '50%', '70%'] as const).map((w, i) => (
+                  <View key={i} style={[styles.certThumbLine, { width: w, opacity: i > 1 ? 0.5 : 1 }]} />
+                ))}
+              </View>
+            </View>
+          </View>
+          <View style={{ flex: 1, gap: 3 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+              <Text style={styles.certTitle}>PDF #{index + 1}</Text>
+              <View style={[styles.certBadge, { backgroundColor: safeBg }]}>
+                <Text style={[styles.certBadgeText, { color: safeColor }]} numberOfLines={1}>
+                  {isSafe === false ? 'არ არის უსაფრთხო' : 'უსაფრთხოა'}
+                </Text>
+              </View>
+            </View>
+            <Text style={styles.certMeta}>
+              {formatShortDateTime(item.generated_at)}
+            </Text>
+            {(expertName || qualTypes.length > 0) ? (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 2 }}>
+                {expertName ? (
+                  <View style={styles.infoBadge}>
+                    <Ionicons name="person-outline" size={10} color={theme.colors.inkSoft} />
+                    <Text style={styles.infoBadgeText}>{expertName}</Text>
+                  </View>
+                ) : null}
+                {qualTypes.map(q => (
+                  <View key={q.type} style={styles.infoBadge}>
+                    <Ionicons name="ribbon-outline" size={10} color={theme.colors.inkSoft} />
+                    <Text style={styles.infoBadgeText}>
+                      {q.number ? `№${q.number}` : q.type}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+          </View>
+          <View style={{ alignItems: 'center', gap: 2 }}>
+            <Pressable
+              hitSlop={10}
+              onPress={() => onDelete(item)}
+              style={{ padding: 6 }}
+              {...a11y('წაშლა', 'PDF რეპორტის წაშლა', 'button')}
+            >
+              <Ionicons name="trash-outline" size={18} color={theme.colors.danger} />
+            </Pressable>
+            <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} style={{ padding: 6 }} />
+          </View>
+        </View>
+      </Card>
+    </Pressable>
+  );
+});
 
 export default function InspectionDetailScreen() {
   const { theme } = useTheme();
@@ -202,32 +293,35 @@ export default function InspectionDetailScreen() {
     setPreviewError(null);
     if (previewHtml) return; // cached from a prior build
     setPreviewLoading(true);
-    try {
-      const html = buildPdfPreviewHtml({
-        questionnaire: inspection,
-        template,
-        project,
-        questions,
-        answers,
-        signatures,
-        photosByAnswer,
-      });
-      setPreviewHtml(html);
-    } catch (e) {
-      const msg = toErrorMessage(e);
-      console.error('[inspection.preview] buildPdfPreviewHtml failed:', msg, e);
-      setPreviewError(msg || 'პრევიუ ვერ აიწყო');
-      toast.error(friendlyError(e, 'პრევიუს ჩატვირთვა ვერ მოხერხდა'));
-    } finally {
-      setPreviewLoading(false);
-    }
+    // Yield to the UI thread so the spinner paints before heavy HTML building.
+    setTimeout(() => {
+      try {
+        const html = buildPdfPreviewHtml({
+          questionnaire: inspection,
+          template,
+          project,
+          questions,
+          answers,
+          signatures,
+          photosByAnswer,
+        });
+        setPreviewHtml(html);
+      } catch (e) {
+        const msg = toErrorMessage(e);
+        console.error('[inspection.preview] buildPdfPreviewHtml failed:', msg, e);
+        setPreviewError(msg || 'პრევიუ ვერ აიწყო');
+        toast.error(friendlyError(e, 'პრევიუს ჩატვირთვა ვერ მოხერხდა'));
+      } finally {
+        setPreviewLoading(false);
+      }
+    }, 0);
   }, [inspection, template, project, questions, answers, signatures, photosByAnswer, previewHtml, toast]);
 
-  const openCertPreview = (cert: Certificate) => {
+  const openCertPreview = useCallback((cert: Certificate) => {
     router.push(`/certificates/${cert.id}` as any);
-  };
+  }, [router]);
 
-  const deleteCert = (cert: Certificate) => {
+  const deleteCert = useCallback((cert: Certificate) => {
     haptic.warn();
     setCerts(prev => prev.filter(c => c.id !== cert.id));
     scheduleDelete({
@@ -244,7 +338,18 @@ export default function InspectionDetailScreen() {
         }
       },
     });
-  };
+  }, [toast]);
+
+  const renderCertItem = useCallback(({ item, index }: { item: Certificate; index: number }) => (
+    <MemoizedCertReportItem
+      item={item}
+      index={index}
+      theme={theme}
+      styles={styles}
+      onPress={openCertPreview}
+      onDelete={deleteCert}
+    />
+  ), [theme, styles, openCertPreview, deleteCert]);
 
   const generateNew = () => {
     if (!inspection) return;
@@ -534,7 +639,7 @@ export default function InspectionDetailScreen() {
                           <Image
                             source={{ uri: photoUrl }}
                             style={styles.problemThumb}
-                            resizeMode="cover"
+                            contentFit="cover"
                           />
                         ) : null}
                       </View>
@@ -613,82 +718,7 @@ export default function InspectionDetailScreen() {
                   data={certs}
                   keyExtractor={c => c.id}
                   ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
-                  renderItem={({ item, index }) => {
-                    const isSafe = item.is_safe_for_use;
-                    const params = item.params as {
-                      expertName?: string | null;
-                      qualTypes?: { type: string; number: string | null }[];
-                    };
-                    const qualTypes = params?.qualTypes ?? [];
-                    const expertName = params?.expertName ?? null;
-                    const safeColor = isSafe === false ? theme.colors.danger : theme.colors.accent;
-                    const safeBg = isSafe === false ? theme.colors.dangerSoft : theme.colors.accentSoft;
-                    const barColor = isSafe === false ? theme.colors.danger : theme.colors.accent;
-                    return (
-                      <Pressable
-                        onPress={() => openCertPreview(item)}
-                        {...a11y(`PDF რეპორტი #${index + 1}`, 'რეპორტის დეტალების ნახვა', 'button')}
-                      >
-                        <Card padding={12}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                            <View style={styles.certThumb}>
-                              <View style={[styles.certThumbBar, { backgroundColor: barColor }]} />
-                              <View style={styles.certThumbBody}>
-                                <Ionicons name="document-text" size={12} color={theme.colors.inkFaint} />
-                                <View style={{ gap: 3, marginTop: 5 }}>
-                                  {(['90%', '65%', '75%', '50%', '70%'] as const).map((w, i) => (
-                                    <View key={i} style={[styles.certThumbLine, { width: w, opacity: i > 1 ? 0.5 : 1 }]} />
-                                  ))}
-                                </View>
-                              </View>
-                            </View>
-                            <View style={{ flex: 1, gap: 3 }}>
-                              <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
-                                <Text style={styles.certTitle}>PDF #{index + 1}</Text>
-                                <View style={[styles.certBadge, { backgroundColor: safeBg }]}>
-                                  <Text style={[styles.certBadgeText, { color: safeColor }]} numberOfLines={1}>
-                                    {isSafe === false ? 'არ არის უსაფრთხო' : 'უსაფრთხოა'}
-                                  </Text>
-                                </View>
-                              </View>
-                              <Text style={styles.certMeta}>
-                                {formatShortDateTime(item.generated_at)}
-                              </Text>
-                              {(expertName || qualTypes.length > 0) ? (
-                                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 2 }}>
-                                  {expertName ? (
-                                    <View style={styles.infoBadge}>
-                                      <Ionicons name="person-outline" size={10} color={theme.colors.inkSoft} />
-                                      <Text style={styles.infoBadgeText}>{expertName}</Text>
-                                    </View>
-                                  ) : null}
-                                  {qualTypes.map(q => (
-                                    <View key={q.type} style={styles.infoBadge}>
-                                      <Ionicons name="ribbon-outline" size={10} color={theme.colors.inkSoft} />
-                                      <Text style={styles.infoBadgeText}>
-                                        {q.number ? `№${q.number}` : q.type}
-                                      </Text>
-                                    </View>
-                                  ))}
-                                </View>
-                              ) : null}
-                            </View>
-                            <View style={{ alignItems: 'center', gap: 2 }}>
-                              <Pressable
-                                hitSlop={10}
-                                onPress={() => deleteCert(item)}
-                                style={{ padding: 6 }}
-                                {...a11y('წაშლა', 'PDF რეპორტის წაშლა', 'button')}
-                              >
-                                <Ionicons name="trash-outline" size={18} color={theme.colors.danger} />
-                              </Pressable>
-                              <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} style={{ padding: 6 }} />
-                            </View>
-                          </View>
-                        </Card>
-                      </Pressable>
-                    );
-                  }}
+                  renderItem={renderCertItem}
                 />
               </View>
             ) : null}

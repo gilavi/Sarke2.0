@@ -8,13 +8,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Image,
   Pressable,
   ScrollView,
   StyleSheet,
   TextInput,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -589,6 +589,72 @@ export default function GenerateCertificateScreen() {
     return { photosForPdf, attachedQuals, failedAssetCount };
   };
 
+  const runGeneration = async (projectForPdf: Project) => {
+    if (!inspection || !template) return;
+    let uploadedPdfPath: string | null = null;
+    try {
+      // Retry any signature uploads that were queued offline before we try
+      // to embed them into the PDF.
+      await flushPendingSignatures();
+      const { rec: expertRec, expertName } = await buildExpertRecord();
+      const otherRecs = await persistAdditionalSigners();
+      await persistExpertSignature(expertName);
+      const sigsForPdf = [expertRec, ...otherRecs];
+
+      const { photosForPdf, attachedQuals, failedAssetCount } = await buildPdfAssets();
+
+      const html = buildPdfHtml({
+        questionnaire: inspection!,
+        template: template!,
+        project: projectForPdf,
+        questions,
+        answers,
+        signatures: sigsForPdf,
+        photosByAnswer: photosForPdf,
+        certificates: attachedQuals,
+        language: pdfLanguage,
+      });
+      const { uri } = await Print.printToFileAsync({ html });
+
+      const fileName = `${inspection.id}-${Date.now()}.pdf`;
+      const blob = await (await fetch(uri)).blob();
+      await storageApi.upload(STORAGE_BUCKETS.pdfs, fileName, blob, 'application/pdf');
+      uploadedPdfPath = fileName;
+
+      await certificatesApi.create({
+        inspectionId: inspection.id,
+        templateId: inspection.template_id,
+        pdfUrl: fileName,
+        isSafeForUse: inspection.is_safe_for_use,
+        conclusionText: inspection.conclusion_text,
+        params: {
+          expertName,
+          qualTypes: attachedQuals.map(q => ({ type: q.type, number: q.number ?? null })),
+          signerNames: otherRecs.map(s => s.full_name),
+          localUri: uri,
+        },
+      });
+      uploadedPdfPath = null;
+
+      toast.success('PDF რეპორტი შეიქმნა');
+      // NOTE: silently swallow failedAssetCount — the PDF renderer already
+      // shows a clean placeholder for any images that couldn't be embedded.
+      // Alerting the user was causing false positives (photos rendered fine).
+      void failedAssetCount;
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, { mimeType: 'application/pdf' });
+      }
+      router.replace(`/inspections/${inspection.id}` as any);
+    } catch (e) {
+      if (uploadedPdfPath) {
+        await storageApi.remove(STORAGE_BUCKETS.pdfs, uploadedPdfPath);
+      }
+      toast.error(toErrorMessage(e, 'გენერაცია ვერ მოხერხდა'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const generate = async () => {
     if (!inspection || !template || !project) return;
     if (missingQualTypes.length > 0) {
@@ -639,68 +705,10 @@ export default function GenerateCertificateScreen() {
       return;
     }
     setBusy(true);
-    let uploadedPdfPath: string | null = null;
-    try {
-      // Retry any signature uploads that were queued offline before we try
-      // to embed them into the PDF.
-      await flushPendingSignatures();
-      const { rec: expertRec, expertName } = await buildExpertRecord();
-      const otherRecs = await persistAdditionalSigners();
-      await persistExpertSignature(expertName);
-      const sigsForPdf = [expertRec, ...otherRecs];
-
-      const { photosForPdf, attachedQuals, failedAssetCount } = await buildPdfAssets();
-
-      const html = buildPdfHtml({
-        questionnaire: inspection,
-        template,
-        project: projectForPdf,
-        questions,
-        answers,
-        signatures: sigsForPdf,
-        photosByAnswer: photosForPdf,
-        certificates: attachedQuals,
-        language: pdfLanguage,
-      });
-      const { uri } = await Print.printToFileAsync({ html });
-
-      const fileName = `${inspection.id}-${Date.now()}.pdf`;
-      const blob = await (await fetch(uri)).blob();
-      await storageApi.upload(STORAGE_BUCKETS.pdfs, fileName, blob, 'application/pdf');
-      uploadedPdfPath = fileName;
-
-      await certificatesApi.create({
-        inspectionId: inspection.id,
-        templateId: inspection.template_id,
-        pdfUrl: fileName,
-        isSafeForUse: inspection.is_safe_for_use,
-        conclusionText: inspection.conclusion_text,
-        params: {
-          expertName,
-          qualTypes: attachedQuals.map(q => ({ type: q.type, number: q.number ?? null })),
-          signerNames: otherRecs.map(s => s.full_name),
-          localUri: uri,
-        },
-      });
-      uploadedPdfPath = null;
-
-      toast.success('PDF რეპორტი შეიქმნა');
-      // NOTE: silently swallow failedAssetCount — the PDF renderer already
-      // shows a clean placeholder for any images that couldn't be embedded.
-      // Alerting the user was causing false positives (photos rendered fine).
-      void failedAssetCount;
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, { mimeType: 'application/pdf' });
-      }
-      router.replace(`/inspections/${inspection.id}` as any);
-    } catch (e) {
-      if (uploadedPdfPath) {
-        await storageApi.remove(STORAGE_BUCKETS.pdfs, uploadedPdfPath);
-      }
-      toast.error(toErrorMessage(e, 'გენერაცია ვერ მოხერხდა'));
-    } finally {
-      setBusy(false);
-    }
+    // Offload the heavy PDF work so the UI thread can paint the spinner first.
+    setTimeout(() => {
+      void runGeneration(projectForPdf);
+    }, 0);
   };
 
   const onGeneratePressIn = () => {
@@ -838,7 +846,7 @@ export default function GenerateCertificateScreen() {
 
             {expertSigDisplayUrl ? (
               <Animated.View entering={FadeInUp.duration(250)} style={s.sigPreviewWrap}>
-                <Image source={{ uri: expertSigDisplayUrl }} style={s.sigPreview} resizeMode="contain" />
+                <Image source={{ uri: expertSigDisplayUrl }} style={s.sigPreview} contentFit="contain" />
                 <Pressable onPress={() => router.push('/signature' as any)}>
                   <Text style={s.textLink}>შეცვლა</Text>
                 </Pressable>
@@ -916,7 +924,7 @@ export default function GenerateCertificateScreen() {
 
                     {signer.dataUrl ? (
                       <Animated.View entering={FadeInUp.duration(250)} style={{ marginTop: 8 }}>
-                        <Image source={{ uri: signer.dataUrl }} style={s.sigPreviewSmall} resizeMode="contain" />
+                        <Image source={{ uri: signer.dataUrl }} style={s.sigPreviewSmall} contentFit="contain" />
                         <Pressable onPress={() => setCaptureSignerId(signer.id)}>
                           <Text style={s.textLink}>შეცვლა</Text>
                         </Pressable>

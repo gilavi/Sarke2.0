@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState , useMemo} from 'react';
-import { Alert, Image, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Image } from 'expo-image';
 import { A11yText as Text } from '../components/primitives/A11yText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
@@ -119,7 +120,7 @@ export default function SignatureSettingsScreen() {
 
           {preview ? (
             <View style={styles.preview}>
-              <Image source={{ uri: preview }} style={styles.previewImg} resizeMode="contain" />
+              <Image source={{ uri: preview }} style={styles.previewImg} contentFit="contain" />
             </View>
           ) : (
             <View style={styles.previewEmpty}>

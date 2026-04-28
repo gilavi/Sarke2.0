@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState , useMemo} from 'react';
-import { Alert, Image, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Image } from 'expo-image';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { KeyboardAvoidingView } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
@@ -186,7 +187,7 @@ export default function SignerForm() {
           <Field label="ხელმოწერა">
             <View style={styles.sigBox}>
               {sigPreview ? (
-                <Image source={{ uri: sigPreview }} style={styles.sigImage} resizeMode="contain" />
+                <Image source={{ uri: sigPreview }} style={styles.sigImage} contentFit="contain" />
               ) : (
                 <View style={styles.sigEmpty}>
                   <Ionicons name="create-outline" size={22} color={theme.colors.inkFaint} />

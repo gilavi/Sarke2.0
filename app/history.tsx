@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useMemo, useRef, useState } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { A11yText as Text } from '../components/primitives/A11yText';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
@@ -24,6 +24,119 @@ import type { Inspection, Project, Template } from '../types/models';
 type ListItem =
   | { kind: 'header'; label: string }
   | { kind: 'row'; q: Inspection };
+
+const MemoizedHistoryItem = memo(function HistoryItem({
+  item,
+  templates,
+  projects,
+  certCounts,
+  swipeRefs,
+  openSwipeId,
+  onDelete,
+  router,
+  theme,
+  styles,
+}: {
+  item: ListItem;
+  templates: Template[];
+  projects: Project[];
+  certCounts: Record<string, number>;
+  swipeRefs: React.RefObject<Map<string, SwipeableMethods>>;
+  openSwipeId: React.RefObject<string | null>;
+  onDelete: (q: Inspection) => void;
+  router: ReturnType<typeof useRouter>;
+  theme: any;
+  styles: any;
+}) {
+  if (item.kind === 'header') {
+    return <Text style={styles.sectionTitle}>{item.label}</Text>;
+  }
+  const { q } = item;
+  const t = templates.find(t => t.id === q.template_id);
+  const p = projects.find(p => p.id === q.project_id);
+  return (
+    <Swipeable
+      ref={((ref: SwipeableMethods | null) => {
+        if (ref) swipeRefs.current.set(q.id, ref);
+        else swipeRefs.current.delete(q.id);
+      }) as any}
+      onSwipeableWillOpen={() => {
+        const prev = openSwipeId.current;
+        if (prev && prev !== q.id) {
+          swipeRefs.current.get(prev)?.close();
+        }
+        openSwipeId.current = q.id;
+      }}
+      onSwipeableClose={() => {
+        if (openSwipeId.current === q.id) openSwipeId.current = null;
+      }}
+      renderRightActions={() => (
+        <Pressable onPress={() => onDelete(q)} style={styles.swipeDelete} {...a11y('წაშლა', 'ინსპექციის წაშლა', 'button')}>
+          <Ionicons name="trash" size={18} color={theme.colors.white} />
+          <Text style={{ color: theme.colors.white, fontSize: 11, fontWeight: '700' }}>
+            წაშლა
+          </Text>
+        </Pressable>
+      )}
+      overshootRight={false}
+    >
+      <Pressable
+        onPress={() =>
+          q.status === 'completed'
+            ? router.push(`/inspections/${q.id}` as any)
+            : router.push(`/inspections/${q.id}/wizard` as any)
+        }
+        {...a11y(
+          `${t?.name ?? 'ინსპექცია'} — ${p?.name ?? ''}`.trim(),
+          q.status === 'completed' ? 'დასრულებული ინსპექციის ნახვა' : 'დრაფტის გაგრძელება',
+          'button'
+        )}
+      >
+        <Card padding={12}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <View
+              style={[
+                styles.icon,
+                {
+                  backgroundColor:
+                    q.status === 'completed' ? theme.colors.accentSoft : theme.colors.warnSoft,
+                },
+              ]}
+            >
+              <Ionicons
+                name={q.status === 'completed' ? 'checkmark-circle' : 'pencil'}
+                size={20}
+                color={q.status === 'completed' ? theme.colors.accent : theme.colors.warn}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontWeight: '600', color: theme.colors.ink }}>
+                {t?.name ?? 'ინსპექცია'}
+              </Text>
+              {p ? (
+                <Text style={{ fontSize: 11, color: theme.colors.inkSoft }}>{p.name}</Text>
+              ) : null}
+              <Text style={{ fontSize: 10, color: theme.colors.inkFaint }}>
+                {new Date(q.created_at).toLocaleString('ka')}
+              </Text>
+            </View>
+            {certCounts[q.id] ? (
+              <View style={styles.certBadge}>
+                <Ionicons
+                  name="document-text"
+                  size={11}
+                  color={theme.colors.accent}
+                />
+                <Text style={styles.certBadgeText}>{certCounts[q.id]}</Text>
+              </View>
+            ) : null}
+            <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
+          </View>
+        </Card>
+      </Pressable>
+    </Swipeable>
+  );
+});
 
 export default function HistoryScreen() {
   const { theme } = useTheme();
@@ -84,7 +197,7 @@ export default function HistoryScreen() {
     return out;
   }, [qs]);
 
-  const onDelete = (q: Inspection) => {
+  const onDelete = useCallback((q: Inspection) => {
     Alert.alert('წაშლა?', 'ინსპექცია სამუდამოდ წაიშლება.', [
       { text: 'გაუქმება', style: 'cancel' },
       {
@@ -101,7 +214,22 @@ export default function HistoryScreen() {
         },
       },
     ]);
-  };
+  }, [toast]);
+
+  const renderItem = useCallback(({ item }: { item: ListItem }) => (
+    <MemoizedHistoryItem
+      item={item}
+      templates={templates}
+      projects={projects}
+      certCounts={certCounts}
+      swipeRefs={swipeRefs}
+      openSwipeId={openSwipeId}
+      onDelete={onDelete}
+      router={router}
+      theme={theme}
+      styles={styles}
+    />
+  ), [templates, projects, certCounts, onDelete, router, theme, styles]);
 
   return (
     <Screen edgeToEdge edges={[]}>
@@ -110,99 +238,7 @@ export default function HistoryScreen() {
           data={items}
           keyExtractor={(item, i) => (item.kind === 'header' ? `h-${i}` : item.q.id)}
           contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 32, gap: 8 }}
-          renderItem={({ item }) => {
-            if (item.kind === 'header') {
-              return (
-                <Text style={styles.sectionTitle}>{item.label}</Text>
-              );
-            }
-            const { q } = item;
-            const t = templates.find(t => t.id === q.template_id);
-            const p = projects.find(p => p.id === q.project_id);
-            return (
-              <Swipeable
-                ref={((ref: SwipeableMethods | null) => {
-                  if (ref) swipeRefs.current.set(q.id, ref);
-                  else swipeRefs.current.delete(q.id);
-                }) as any}
-                onSwipeableWillOpen={() => {
-                  const prev = openSwipeId.current;
-                  if (prev && prev !== q.id) {
-                    swipeRefs.current.get(prev)?.close();
-                  }
-                  openSwipeId.current = q.id;
-                }}
-                onSwipeableClose={() => {
-                  if (openSwipeId.current === q.id) openSwipeId.current = null;
-                }}
-                renderRightActions={() => (
-                  <Pressable onPress={() => onDelete(q)} style={styles.swipeDelete} {...a11y('წაშლა', 'ინსპექციის წაშლა', 'button')}>
-                    <Ionicons name="trash" size={18} color={theme.colors.white} />
-                    <Text style={{ color: theme.colors.white, fontSize: 11, fontWeight: '700' }}>
-                      წაშლა
-                    </Text>
-                  </Pressable>
-                )}
-                overshootRight={false}
-              >
-                <Pressable
-                  // Draft → resume wizard; completed → inspection detail.
-                  onPress={() =>
-                    q.status === 'completed'
-                      ? router.push(`/inspections/${q.id}` as any)
-                      : router.push(`/inspections/${q.id}/wizard` as any)
-                  }
-                  {...a11y(
-                    `${t?.name ?? 'ინსპექცია'} — ${p?.name ?? ''}`.trim(),
-                    q.status === 'completed' ? 'დასრულებული ინსპექციის ნახვა' : 'დრაფტის გაგრძელება',
-                    'button'
-                  )}
-                >
-                  <Card padding={12}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                      <View
-                        style={[
-                          styles.icon,
-                          {
-                            backgroundColor:
-                              q.status === 'completed' ? theme.colors.accentSoft : theme.colors.warnSoft,
-                          },
-                        ]}
-                      >
-                        <Ionicons
-                          name={q.status === 'completed' ? 'checkmark-circle' : 'pencil'}
-                          size={20}
-                          color={q.status === 'completed' ? theme.colors.accent : theme.colors.warn}
-                        />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ fontWeight: '600', color: theme.colors.ink }}>
-                          {t?.name ?? 'ინსპექცია'}
-                        </Text>
-                        {p ? (
-                          <Text style={{ fontSize: 11, color: theme.colors.inkSoft }}>{p.name}</Text>
-                        ) : null}
-                        <Text style={{ fontSize: 10, color: theme.colors.inkFaint }}>
-                          {new Date(q.created_at).toLocaleString('ka')}
-                        </Text>
-                      </View>
-                      {certCounts[q.id] ? (
-                        <View style={styles.certBadge}>
-                          <Ionicons
-                            name="document-text"
-                            size={11}
-                            color={theme.colors.accent}
-                          />
-                          <Text style={styles.certBadgeText}>{certCounts[q.id]}</Text>
-                        </View>
-                      ) : null}
-                      <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
-                    </View>
-                  </Card>
-                </Pressable>
-              </Swipeable>
-            );
-          }}
+          renderItem={renderItem}
           ListEmptyComponent={
             !loaded ? (
               <View style={{ gap: 10 }}>
@@ -278,6 +314,5 @@ function getstyles(theme: any) {
     fontWeight: '700',
     color: theme.colors.accent,
   },
-  // empty styles removed — now handled by <EmptyState />
 });
 }

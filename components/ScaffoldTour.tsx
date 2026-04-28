@@ -1,7 +1,6 @@
 import { useRef, useState } from 'react';
 import {
   Dimensions,
-  FlatList,
   Modal,
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -10,6 +9,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { FlatList } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { QuestionAvatar } from './QuestionAvatar';

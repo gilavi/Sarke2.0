@@ -1,21 +1,20 @@
 // Photo Annotate route
 //
 // Modal screen that wraps PhotoAnnotator. Receives the photo URI and
-// returns the annotated URI back to the caller via navigation params.
+// returns the annotated URI back to the caller via photoPickerBus.
 
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import PhotoAnnotator from '../components/PhotoAnnotator';
+import { resolvePhotoAnnotate } from '../lib/photoPickerBus';
 
 export default function PhotoAnnotateScreen() {
-  const { uri, returnTo, answerId, rowKey } = useLocalSearchParams<{
+  const { uri } = useLocalSearchParams<{
     uri: string;
-    returnTo?: string;
-    answerId?: string;
-    rowKey?: string;
   }>();
   const router = useRouter();
 
   if (!uri) {
+    resolvePhotoAnnotate(null);
     router.back();
     return null;
   }
@@ -24,18 +23,13 @@ export default function PhotoAnnotateScreen() {
     <PhotoAnnotator
       sourceUri={decodeURIComponent(uri)}
       onSave={(annotatedUri) => {
-        // Pass annotated URI back to caller as a param
-        const target = returnTo || '/';
-        router.navigate({
-          pathname: target as any,
-          params: {
-            annotatedPhotoUri: encodeURIComponent(annotatedUri),
-            answerId: answerId ?? '',
-            rowKey: rowKey ?? '',
-          },
-        });
+        resolvePhotoAnnotate(annotatedUri);
+        router.back();
       }}
-      onCancel={() => router.back()}
+      onCancel={() => {
+        resolvePhotoAnnotate(null);
+        router.back();
+      }}
     />
   );
 }

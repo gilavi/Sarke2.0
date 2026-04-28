@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  Dimensions,
+  Keyboard,
   Modal,
   Platform,
   Pressable,
@@ -13,7 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
 import { A11yText as Text } from '../../components/primitives/A11yText';
-import { KeyboardAvoidingView } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -38,6 +40,7 @@ import { Button, Field, Input } from '../../components/ui';
 import { NumberPop, useScrollHeader } from '../../components/animations';
 import { Skeleton } from '../../components/Skeleton';
 import { MapPicker, type LatLng } from '../../components/MapPicker';
+import { MapPreview } from '../../components/MapPreview';
 import { useToast } from '../../lib/toast';
 import { haptic } from '../../lib/haptics';
 import type { Inspection, Project, Qualification, Template } from '../../types/models';
@@ -323,7 +326,7 @@ export default function HomeScreen() {
           </ScrollView>
         ) : (
           <View style={{ flexDirection: 'row', paddingHorizontal: HPAD, paddingTop: 10, gap: GAP }}>
-            {projects.map(p => (
+            {projects.slice(0, 20).map(p => (
               <ProjectCard
                 key={p.id}
                 project={p}
@@ -510,6 +513,7 @@ function ProjectPickerSheet({
   onProjectCreated?: (id: string) => void;
 }) {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   const pickerStyles = useMemo(() => getpickerStyles(theme), [theme]);
   const router = useRouter();
   const toast = useToast();
@@ -524,6 +528,7 @@ function ProjectPickerSheet({
   const [pin, setPin] = useState<LatLng | null>(null);
   const [logo, setLogo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [mapVisible, setMapVisible] = useState(false);
 
   // Reset form + view every time the sheet opens
   useEffect(() => {
@@ -536,6 +541,7 @@ function ProjectPickerSheet({
       setPin(null);
       setLogo(null);
       setBusy(false);
+      setMapVisible(false);
     }
   }, [visible]);
 
@@ -612,14 +618,10 @@ function ProjectPickerSheet({
   };
 
   return (
-    <Modal visible={visible} animationType="none" transparent onRequestClose={onClose} statusBarTranslucent>
+    <Modal visible={visible} animationType="none" transparent onRequestClose={() => mapVisible ? setMapVisible(false) : onClose()} statusBarTranslucent>
       <View style={pickerStyles.container}>
         {/* Dark overlay backdrop with cross-fade */}
-        <AnimatedDarkBackdrop visible={visible} onPress={onClose} />
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={{ width: '100%' }}
-        >
+        <AnimatedDarkBackdrop visible={visible} onPress={() => mapVisible ? setMapVisible(false) : onClose()} />
           {/* Stop touches inside the card from closing the sheet */}
           <Pressable style={pickerStyles.card} onPress={() => {}}>
             <View style={pickerStyles.handle} />
@@ -663,7 +665,7 @@ function ProjectPickerSheet({
                       <Text style={pickerStyles.addNewText}>ახალი პროექტის დამატება</Text>
                       <Ionicons name="chevron-forward" size={16} color={theme.colors.accent} />
                     </Pressable>
-                    {projects.map(p => (
+                    {projects.slice(0, 20).map(p => (
                       <Pressable
                         key={p.id}
                         onPress={() => pickTemplate(p.id)}
@@ -732,10 +734,10 @@ function ProjectPickerSheet({
                 </View>
 
                 {/* Form fields */}
-                <ScrollView
+                <KeyboardAwareScrollView
                   keyboardShouldPersistTaps="handled"
                   showsVerticalScrollIndicator={false}
-                  contentContainerStyle={{ paddingTop: 4, paddingBottom: 8, gap: 12 }}
+                  contentContainerStyle={{ paddingTop: 4, paddingBottom: 8, gap: 16 }}
                   style={{ maxHeight: '78%' }}
                 >
                   <View style={{ alignItems: 'center', gap: 8, marginBottom: 4 }}>
@@ -753,7 +755,7 @@ function ProjectPickerSheet({
                       </Pressable>
                     ) : null}
                   </View>
-                  <Field label="სახელი">
+                  <Field label="სახელი" required>
                     <Input
                       value={name}
                       onChangeText={setName}
@@ -766,22 +768,55 @@ function ProjectPickerSheet({
                     <Input value={company} onChangeText={setCompany} placeholder="შემკვეთი" {...a11y('კომპანიის დასახელება', 'შეიყვანეთ კომპანიის სახელი', 'text')} />
                   </Field>
                   <Field label="მისამართი">
-                    <MapPicker value={pin} onChange={setPin} address={address} onAddressChange={setAddress} />
+                    <Input
+                      value={address}
+                      onChangeText={setAddress}
+                      placeholder="ქუჩა, ნომერი, ქალაქი"
+                      {...a11y('მისამართი', 'შეიყვანეთ მისამართი', 'text')}
+                    />
                   </Field>
-                </ScrollView>
+                  <Field label="მდებარეობა">
+                    <LocationRow pin={pin} address={address} onPress={() => { Keyboard.dismiss(); setMapVisible(true); }} />
+                  </Field>
+                </KeyboardAwareScrollView>
 
-                <Button
-                  title="შექმნა"
-                  onPress={createProject}
-                  loading={busy}
-                  disabled={!name.trim()}
-                  style={{ marginTop: 16 }}
-                  {...a11y('პროექტის შექმნა', 'შეეხეთ ახალი პროექტის შესაქმნელად', 'button')}
-                />
+                <View style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 16, backgroundColor: theme.colors.background }}>
+                  <Button
+                    title="შექმნა"
+                    onPress={createProject}
+                    loading={busy}
+                    disabled={!name.trim()}
+                    {...a11y('პროექტის შექმნა', 'შეეხეთ ახალი პროექტის შესაქმნელად', 'button')}
+                  />
+                </View>
               </>
             )}
           </Pressable>
-        </KeyboardAvoidingView>
+
+        {/* Full-screen map overlay — no nested Modal */}
+        {mapVisible && (
+          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: theme.colors.background }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: insets.top + 12, paddingVertical: 12 }}>
+              <View style={{ width: 24 }} />
+              <Text style={{ flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '700', color: theme.colors.ink }}>
+                მდებარეობის არჩევა
+              </Text>
+              <Pressable onPress={() => setMapVisible(false)} hitSlop={10} {...a11y('დახურვა', 'რუკის დახურვა', 'button')}>
+                <Ionicons name="close" size={24} color={theme.colors.ink} />
+              </Pressable>
+            </View>
+            <MapPickerInline
+              initialPin={pin}
+              initialAddress={address}
+              onConfirm={(newPin, newAddress) => {
+                setPin(newPin);
+                setAddress(newAddress);
+                setMapVisible(false);
+              }}
+              onCancel={() => setMapVisible(false)}
+            />
+          </View>
+        )}
       </View>
     </Modal>
   );
@@ -874,6 +909,136 @@ function tipOfTheDay() {
 // ──────────── STYLES ────────────
 
 const PROJECT_CARD_HEIGHT = 150;
+
+// ── Compact location row (shows preview or picker prompt) ──
+function LocationRow({
+  pin,
+  address,
+  onPress,
+}: {
+  pin: LatLng | null;
+  address: string;
+  onPress: () => void;
+}) {
+  const { theme } = useTheme();
+
+  if (!pin) {
+    return (
+      <Pressable
+        onPress={onPress}
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 10,
+          paddingVertical: 14,
+          paddingHorizontal: 16,
+          backgroundColor: theme.colors.surfaceSecondary,
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: theme.colors.hairline,
+          borderStyle: 'dashed',
+        }}
+      >
+        <Ionicons name="location-outline" size={20} color={theme.colors.accent} />
+        <Text style={{ fontSize: 14, color: theme.colors.inkSoft, fontWeight: '500' }}>
+          დააჭირეთ მდებარეობის ასარჩევად
+        </Text>
+      </Pressable>
+    );
+  }
+
+  return (
+    <Pressable onPress={onPress}>
+      <View style={{ gap: 8 }}>
+        <MapPreview
+          latitude={pin.latitude}
+          longitude={pin.longitude}
+          pinColor={theme.colors.accent}
+          style={{ height: 120, borderRadius: 12, overflow: 'hidden' }}
+        />
+        {address ? (
+          <Text style={{ fontSize: 13, color: theme.colors.inkSoft }} numberOfLines={2}>
+            {address}
+          </Text>
+        ) : null}
+        <Text style={{ fontSize: 13, color: theme.colors.accent, fontWeight: '600' }}>
+          შეცვლა
+        </Text>
+      </View>
+    </Pressable>
+  );
+}
+
+// ── Full-screen map picker modal ──
+function MapPickerInline({
+  initialPin,
+  initialAddress,
+  onConfirm,
+  onCancel,
+}: {
+  initialPin: LatLng | null;
+  initialAddress: string;
+  onConfirm: (pin: LatLng | null, address: string) => void;
+  onCancel: () => void;
+}) {
+  const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
+  const [pin, setPin] = useState<LatLng | null>(initialPin);
+  const [address, setAddress] = useState(initialAddress);
+  const screenH = Dimensions.get('window').height;
+  // Reserve space for header (~60) + bottom action bar (~160) + safe areas
+  const mapHeight = Math.max(240, screenH - insets.top - insets.bottom - 220);
+
+  useEffect(() => {
+    setPin(initialPin);
+    setAddress(initialAddress);
+  }, [initialPin, initialAddress]);
+
+  return (
+    <View style={{ flex: 1 }}>
+      {/* Map with modest horizontal inset */}
+      <View style={{ flex: 1, marginHorizontal: 16 }}>
+        <MapPicker
+          value={pin}
+          onChange={setPin}
+          address={address}
+          onAddressChange={setAddress}
+          height={mapHeight}
+        />
+      </View>
+
+      {/* Bottom action bar */}
+      <View
+        style={{
+          backgroundColor: '#FFFFFF',
+          borderTopLeftRadius: 20,
+          borderTopRightRadius: 20,
+          paddingHorizontal: 20,
+          paddingTop: 16,
+          paddingBottom: insets.bottom + 16,
+          gap: 8,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.08,
+          shadowRadius: 12,
+          elevation: 8,
+        }}
+      >
+        <Button
+          title="დადასტურება"
+          size="lg"
+          onPress={() => onConfirm(pin, address)}
+          disabled={!pin}
+        />
+        <Pressable onPress={onCancel} style={{ alignSelf: 'center', paddingVertical: 8 }}>
+          <Text style={{ fontSize: 15, fontWeight: '600', color: theme.colors.inkSoft }}>
+            გაუქმება
+          </Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
 
 function getstyles(theme: any) {
   return StyleSheet.create({

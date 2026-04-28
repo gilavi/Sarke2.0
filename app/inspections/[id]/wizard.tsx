@@ -1,5 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Animated, Image, InputAccessoryView, Keyboard, Modal, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Animated, InputAccessoryView, Keyboard, Modal, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Image } from 'expo-image';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { KeyboardAvoidingView } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -37,7 +38,7 @@ import {
 import { getStorageImageDisplayUrl } from '../../../lib/imageUrl';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import { haptic } from '../../../lib/haptics';
-import { setPhotoPickerCallback } from '../../../lib/photoPickerBus';
+import { setPhotoPickerCallback, setPhotoAnnotateCallback } from '../../../lib/photoPickerBus';
 import { useOffline, stripServerFields } from '../../../lib/offline';
 import { logError, toErrorMessage } from '../../../lib/logError';
 import { useToast } from '../../../lib/toast';
@@ -184,7 +185,7 @@ function hasAnswer(
 export default function QuestionnaireWizard() {
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
-  const params = useLocalSearchParams<{ id: string; annotatedPhotoUri?: string }>();
+  const params = useLocalSearchParams<{ id: string }>();
   const id = params.id;
   const router = useRouter();
   const toast = useToast();
@@ -577,8 +578,19 @@ export default function QuestionnaireWizard() {
     const ext = mime.split('/')[1] ?? 'jpg';
     const path = `${questionnaire.id}/${question.id}/${Date.now()}.${ext}`;
     pendingPhotoContext.current = { questionId: question.id, rowKey, mime, ext, path };
-    router.push(
-      `/photo-annotate?uri=${encodeURIComponent(asset.uri)}&returnTo=/inspections/${questionnaire.id}/wizard` as any,
+    setPhotoAnnotateCallback((annotatedUri) => {
+      if (!annotatedUri) {
+        pendingPhotoContext.current = null;
+        return;
+      }
+      const ctx = pendingPhotoContext.current;
+      if (!ctx) return;
+      const q = questions.find(q => q.id === ctx.questionId);
+      if (q) doUpload(annotatedUri, q, ctx.rowKey, ctx.mime, ctx.ext, ctx.path);
+      pendingPhotoContext.current = null;
+    });
+    router.replace(
+      `/photo-annotate?uri=${encodeURIComponent(asset.uri)}` as any,
     );
   };
 
@@ -594,26 +606,25 @@ export default function QuestionnaireWizard() {
         pendingPhotoContext.current = null;
         return;
       }
-      router.push(
-        `/photo-annotate?uri=${encodeURIComponent(uri)}&returnTo=/inspections/${questionnaire.id}/wizard` as any,
+      setPhotoAnnotateCallback((annotatedUri) => {
+        if (!annotatedUri) {
+          pendingPhotoContext.current = null;
+          return;
+        }
+        const ctx = pendingPhotoContext.current;
+        if (!ctx) return;
+        const q = questions.find(q => q.id === ctx.questionId);
+        if (q) doUpload(annotatedUri, q, ctx.rowKey, ctx.mime, ctx.ext, ctx.path);
+        pendingPhotoContext.current = null;
+      });
+      router.replace(
+        `/photo-annotate?uri=${encodeURIComponent(uri)}` as any,
       );
     });
     router.push('/photo-picker' as any);
   };
 
-  // Handle annotated photo return from PhotoAnnotator
-  useEffect(() => {
-    const annotatedUri = params.annotatedPhotoUri;
-    if (annotatedUri && pendingPhotoContext.current) {
-      const ctx = pendingPhotoContext.current;
-      const question = questions.find(q => q.id === ctx.questionId);
-      if (question) {
-        doUpload(decodeURIComponent(annotatedUri), question, ctx.rowKey, ctx.mime, ctx.ext, ctx.path);
-      }
-      pendingPhotoContext.current = null;
-      router.setParams({ annotatedPhotoUri: undefined });
-    }
-  }, [params.annotatedPhotoUri, questions, doUpload, router]);
+  // Annotated photo is now handled via setPhotoAnnotateCallback in pickPhoto/launchPicker.
 
   const deletePhoto = async (photo: AnswerPhoto) => {
     haptic.medium();
@@ -1387,12 +1398,10 @@ function ScaffoldFooterButtons({
           color={isSelected ? tint : theme.colors.inkFaint}
         />
         <Text
-          style={{
-            flex: 1,
-            fontSize: 15,
-            fontWeight: '600',
-            color: isSelected ? tint : theme.colors.ink,
-          }}
+          style={[
+            staticStyles.statusOptionText,
+            { color: isSelected ? tint : theme.colors.ink },
+          ]}
         >
           {col}
         </Text>
@@ -1684,8 +1693,8 @@ const GridRowStep = memo(function GridRowStep({
           const current = values[col];
           return (
             <View key={col} style={styles.harnessRow}>
-              <Text style={{ flex: 1, fontSize: 13 }}>{col}</Text>
-              <View style={{ flexDirection: 'row', gap: 6 }}>
+              <Text style={staticStyles.harnessColLabel}>{col}</Text>
+              <View style={staticStyles.harnessChipRow}>
                 <Pressable
                   onPress={() => setValue(col, 'ვარგისია', false)}
                   style={[
@@ -2091,7 +2100,7 @@ function PhotoPreviewModal({
           <Image
             source={{ uri }}
             style={styles.previewImage}
-            resizeMode="contain"
+            contentFit="contain"
             onError={() => setError(true)}
           />
         )}
@@ -2488,6 +2497,12 @@ function getstyles(theme: any) {
   },
 });
 }
+
+const staticStyles = StyleSheet.create({
+  statusOptionText: { flex: 1, fontSize: 15, fontWeight: '600' },
+  harnessColLabel: { flex: 1, fontSize: 13 },
+  harnessChipRow: { flexDirection: 'row', gap: 6 },
+});
 
 const uploadPillStyles = StyleSheet.create({
   wrap: {

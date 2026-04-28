@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { memo, useCallback, useState } from 'react';
 import { FlatList, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect } from 'expo-router';
@@ -11,6 +11,42 @@ import { useTheme } from '../lib/theme';
 
 import type { Template } from '../types/models';
 import { SIGNER_ROLE_LABEL } from '../types/models';
+
+const MemoizedTemplateItem = memo(function TemplateItem({ item, onHelpPress }: { item: Template; onHelpPress: () => void }) {
+  const { theme } = useTheme();
+  return (
+    <Card padding={14}>
+      <A11yText size="base" weight="bold">{item.name}</A11yText>
+      <A11yText size="xs" color={theme.colors.inkSoft} style={{ marginTop: 4 }}>
+        {item.is_system ? 'სისტემური' : 'ჩემი'} · {item.category ?? '—'}
+      </A11yText>
+      <A11yText size="xs" color={theme.colors.inkSoft} style={{ marginTop: 4 }}>
+        საჭირო: {item.required_signer_roles.map(r => SIGNER_ROLE_LABEL[r]).join(', ')}
+      </A11yText>
+      {item.category !== 'harness' ? (
+        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 8 }}>
+          <Pressable
+            onPress={onHelpPress}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="დახმარება"
+          >
+            {({ pressed }) => (
+              <A11yText
+                size="sm"
+                weight="semibold"
+                color={theme.colors.regsTint}
+                style={{ opacity: pressed ? 0.6 : 1 }}
+              >
+                დახმარება
+              </A11yText>
+            )}
+          </Pressable>
+        </View>
+      ) : null}
+    </Card>
+  );
+});
 
 export default function TemplatesScreen() {
   const { theme } = useTheme();
@@ -26,6 +62,11 @@ export default function TemplatesScreen() {
       })();
     }, []),
   );
+
+  const handleHelpPress = useCallback(() => setTourVisible(true), []);
+  const renderItem = useCallback(({ item }: { item: Template }) => (
+    <MemoizedTemplateItem item={item} onHelpPress={handleHelpPress} />
+  ), [handleHelpPress]);
 
   return (
     <Screen edgeToEdge>
@@ -50,38 +91,7 @@ export default function TemplatesScreen() {
               </View>
             ) : null
           }
-          renderItem={({ item }) => (
-            <Card padding={14}>
-              <A11yText size="base" weight="bold">{item.name}</A11yText>
-              <A11yText size="xs" color={theme.colors.inkSoft} style={{ marginTop: 4 }}>
-                {item.is_system ? 'სისტემური' : 'ჩემი'} · {item.category ?? '—'}
-              </A11yText>
-              <A11yText size="xs" color={theme.colors.inkSoft} style={{ marginTop: 4 }}>
-                საჭირო: {item.required_signer_roles.map(r => SIGNER_ROLE_LABEL[r]).join(', ')}
-              </A11yText>
-              {item.category !== 'harness' ? (
-                <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 8 }}>
-                  <Pressable
-                    onPress={() => setTourVisible(true)}
-                    hitSlop={8}
-                    accessibilityRole="button"
-                    accessibilityLabel="დახმარება"
-                  >
-                    {({ pressed }) => (
-                      <A11yText
-                        size="sm"
-                        weight="semibold"
-                        color={theme.colors.regsTint}
-                        style={{ opacity: pressed ? 0.6 : 1 }}
-                      >
-                        დახმარება
-                      </A11yText>
-                    )}
-                  </Pressable>
-                </View>
-              ) : null}
-            </Card>
-          )}
+          renderItem={renderItem}
         />
         <ScaffoldTour visible={tourVisible} onClose={() => setTourVisible(false)} />
       </SafeAreaView>
