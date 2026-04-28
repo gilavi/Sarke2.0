@@ -199,7 +199,13 @@ export default function GenerateCertificateScreen() {
 
   // ── Derived ─────────────────────────────────────────────────────────────────
 
-  const requiredCertTypes = template?.required_qualifications ?? [];
+  // Dedupe — some templates have the same qualification listed twice in
+  // `required_qualifications`, which would render two list rows sharing the
+  // cert-type as React key and warn "Encountered two children with the same key".
+  const requiredCertTypes = useMemo(
+    () => Array.from(new Set(template?.required_qualifications ?? [])),
+    [template?.required_qualifications],
+  );
 
   const missingQualTypes = useMemo(
     () => requiredCertTypes.filter(tt => !selectedQuals[tt]),
@@ -504,7 +510,7 @@ export default function GenerateCertificateScreen() {
 
       const { photosForPdf, attachedQuals, failedAssetCount } = await buildPdfAssets();
 
-      const html = buildPdfHtml({
+      const html = await buildPdfHtml({
         questionnaire: inspection,
         template,
         project: projectForPdf,
