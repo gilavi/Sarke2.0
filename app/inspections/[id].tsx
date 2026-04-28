@@ -388,7 +388,7 @@ export default function InspectionDetailScreen() {
   return (
     <Screen>
       <Stack.Screen options={{ headerShown: true, title: 'ინსპექცია', headerBackTitle: 'მთავარი' }} />
-      <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['bottom']}>
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32, gap: 16 }}>
           {/* 1. HEADER — inspection name + project + date */}
           <View style={styles.header}>
@@ -604,7 +604,40 @@ export default function InspectionDetailScreen() {
               </View>
             ) : null}
 
-            {/* 8. PDF რეპორტები — only when count > 0 */}
+            {/* 8. REMOTE SIGNERS — SMS-based signing */}
+            {remoteRequests.length > 0 || certs.length > 0 ? (
+              <View style={{ gap: 8 }}>
+                <View style={remoteStyles.headerRow}>
+                  <Text style={styles.sectionHeading}>გარე ხელმოწერები</Text>
+                  {certs.length > 0 ? (
+                    <Pressable
+                      onPress={() => setAddOpen(true)}
+                      {...a11y('დაამატე ხელმოწერი', 'ახალი გარე ხელმოწერის დამატება', 'button')}
+                    >
+                      <Text style={remoteStyles.addLink}>+ დაამატე</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+                {remoteRequests.length > 0 ? (
+                  <View style={{ gap: 8 }}>
+                    {remoteRequests.map(req => (
+                      <RemoteRequestRow
+                        key={req.id}
+                        request={req}
+                        onResend={() => void resendRemote(req)}
+                        onCancel={() => cancelRemote(req)}
+                      />
+                    ))}
+                  </View>
+                ) : certs.length > 0 ? (
+                  <Text style={{ fontSize: 13, color: theme.colors.inkSoft, textAlign: 'center', paddingVertical: 20 }}>
+                    ხელმოწერის დასაზოგადოებლად დაამატე ხელმოწერი
+                  </Text>
+                ) : null}
+              </View>
+            ) : null}
+
+            {/* 9. PDF რეპორტები — only when count > 0 */}
             {certs.length > 0 ? (
               <View style={{ gap: 8, marginTop: 4 }}>
                 <Text style={styles.sectionHeading}>PDF რეპორტები ({certs.length})</Text>
@@ -702,9 +735,9 @@ export default function InspectionDetailScreen() {
             </>
           )}
         </ScrollView>
-      </View>
+      </SafeAreaView>
 
-      {false && (
+      {addOpen && (
         <AddRemoteSignerSheet
           onCancel={() => setAddOpen(false)}
           onSubmit={handleAddRemoteSigner}
