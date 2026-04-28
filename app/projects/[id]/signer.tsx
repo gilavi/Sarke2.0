@@ -18,12 +18,14 @@ import { friendlyError } from '../../../lib/errorMap';
 import type { ProjectSigner, SignerRole } from '../../../types/models';
 import { SIGNER_ROLE_LABEL } from '../../../types/models';
 import { a11y } from '../../../lib/accessibility';
+import { useTranslation } from 'react-i18next';
 
 // Roster roles only — "expert" is always the logged-in user per inspection, not rostered.
 const ROSTER_ROLES: SignerRole[] = ['xaracho_supervisor', 'xaracho_assembler'];
 
 export default function SignerForm() {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => getstyles(theme), [theme]);
   const { id, signerId } = useLocalSearchParams<{ id: string; signerId?: string }>();
   const router = useRouter();
@@ -58,7 +60,7 @@ export default function SignerForm() {
         );
       }
     } catch (e) {
-      toast.error(friendlyError(e, 'ჩატვირთვა ვერ მოხერხდა'));
+      toast.error(friendlyError(e, t('errors.loadFailed')));
     }
   }, [id, signerId, toast]);
 
@@ -101,10 +103,10 @@ export default function SignerForm() {
         position: position.trim() || null,
         signature_png_url: sigPath,
       });
-      toast.success(editing ? 'განახლდა' : 'დაემატა');
+      toast.success(editing ? t('projectSigner.updated') : t('projectSigner.added'));
       router.back();
     } catch (e) {
-      toast.error(friendlyError(e, 'შენახვა ვერ მოხერხდა'));
+      toast.error(friendlyError(e, t('errors.saveFailed')));
     } finally {
       setBusy(false);
     }
@@ -112,18 +114,18 @@ export default function SignerForm() {
 
   const remove = () => {
     if (!existing) return;
-    Alert.alert('წაშლა?', `${existing.full_name}`, [
-      { text: 'გაუქმება', style: 'cancel' },
+    Alert.alert(t('inspections.deleteTitle'), `${existing.full_name}`, [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'წაშლა',
+        text: t('common.delete'),
         style: 'destructive',
         onPress: async () => {
           try {
             await projectsApi.deleteSigner(existing.id);
-            toast.success('წაიშალა');
+            toast.success(t('notifications.deleted'));
             router.back();
           } catch (e) {
-            toast.error(friendlyError(e, 'ვერ წაიშალა'));
+            toast.error(friendlyError(e, t('errors.deleteFailed')));
           }
         },
       },
@@ -135,10 +137,10 @@ export default function SignerForm() {
       <Stack.Screen
         options={{
           headerShown: true,
-          title: editing ? 'ხელმომწერის რედაქტირება' : 'ახალი ხელმომწერი',
+          title: editing ? t('projectSigner.editTitle') : t('projectSigner.newTitle'),
           headerRight: () =>
             editing ? (
-              <Pressable onPress={remove} hitSlop={10} {...a11y('ხელმომწერის წაშლა', 'ამ ხელმომწერის წაშლა', 'button')}>
+              <Pressable onPress={remove} hitSlop={10}>
                 <Ionicons name="trash-outline" size={22} color={theme.colors.danger} />
               </Pressable>
             ) : null,
@@ -151,14 +153,13 @@ export default function SignerForm() {
           keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
         >
           <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24, gap: 14 }}>
-          <Field label="როლი">
+          <Field label={t('common.role')}>
             <View style={{ gap: 8 }}>
               {ROSTER_ROLES.map(r => (
                 <Pressable
                   key={r}
                   onPress={() => setRole(r)}
                   style={[styles.roleRow, role === r && styles.roleRowSelected]}
-                  {...a11y(SIGNER_ROLE_LABEL[r], 'აირჩიეთ როლი', 'radio')}
                 >
                   <View style={[styles.radio, role === r && styles.radioOn]}>
                     {role === r ? (
@@ -173,17 +174,17 @@ export default function SignerForm() {
             </View>
           </Field>
 
-          <Field label="სახელი გვარი">
-            <Input value={fullName} onChangeText={setFullName} placeholder="გიორგი ხელაძე" />
+          <Field label={t('remoteSigner.nameLabel')}>
+            <Input value={fullName} onChangeText={setFullName} placeholder={t('projectSigner.fullNamePlaceholder')} />
           </Field>
-          <Field label="ტელეფონი">
-            <Input value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="+995 5XX XX XX XX" />
+          <Field label={t('common.phone')}>
+            <Input value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder={t('projectSigner.phonePlaceholder')} />
           </Field>
-          <Field label="პოზიცია">
-            <Input value={position} onChangeText={setPosition} placeholder="მაგ. ზედამხედველი" />
+          <Field label={t('common.position')}>
+            <Input value={position} onChangeText={setPosition} placeholder={t('projectSigner.positionPlaceholder')} />
           </Field>
 
-          <Field label="ხელმოწერა">
+          <Field label={t('common.signature')}>
             <View style={styles.sigBox}>
               {sigPreview ? (
                 <Image source={{ uri: sigPreview }} style={styles.sigImage} resizeMode="contain" />
@@ -191,13 +192,13 @@ export default function SignerForm() {
                 <View style={styles.sigEmpty}>
                   <Ionicons name="create-outline" size={22} color={theme.colors.inkFaint} />
                   <Text style={{ color: theme.colors.inkSoft, fontSize: 13 }}>
-                    ხელმოწერა შენახული არ არის
+                    {t('projectSigner.noSignature')}
                   </Text>
                 </View>
               )}
             </View>
             <Button
-              title={sigPreview ? 'ხელახლა დახატვა' : 'ხელის მოწერა'}
+              title={sigPreview ? t('projectSigner.redrawSignature') : t('projectSigner.drawSignature')}
               variant="secondary"
               onPress={() => setCapturing(true)}
               style={{ marginTop: 8 }}
@@ -205,7 +206,7 @@ export default function SignerForm() {
           </Field>
 
           <Button
-            title={editing ? 'შენახვა' : 'დამატება'}
+            title={editing ? t('projectSigner.saveButton') : t('projectSigner.addButton')}
             onPress={save}
             loading={busy}
             disabled={!fullName.trim()}
@@ -237,6 +238,7 @@ function SignatureCaptureModal({
   onDone: (base64Png: string) => void;
 }) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => getstyles(theme), [theme]);
 
   const ref = useRef<SignatureViewRef>(null);
@@ -260,7 +262,7 @@ function SignatureCaptureModal({
             <Text style={{ fontSize: 16, fontWeight: '700', color: theme.colors.ink, flex: 1 }}>
               {title}
             </Text>
-            <Pressable onPress={onCancel} hitSlop={10} {...a11y('დახურვა', 'ხელმოწერის ფანჯრის დახურვა', 'button')}>
+            <Pressable onPress={onCancel} hitSlop={10}>
               <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
             </Pressable>
           </View>
@@ -276,12 +278,12 @@ function SignatureCaptureModal({
           </View>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <Button
-              title="გასუფთავება"
+              title={t('projectSigner.clearButton')}
               variant="secondary"
               style={{ flex: 1 }}
               onPress={handleClear}
             />
-            <Button title="შენახვა" style={{ flex: 1.4 }} onPress={handleSave} />
+            <Button title={t('projectSigner.saveButton')} style={{ flex: 1.4 }} onPress={handleSave} />
           </View>
         </View>
       </View>

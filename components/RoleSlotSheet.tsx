@@ -22,8 +22,17 @@ interface Props {
   initialName?: string;
   /** For `other`: the previously-stored custom role label, if editing. */
   initialRoleLabel?: string;
+  /**
+   * `create` (default) leads into the SignatureCanvas after submit — button
+   * reads "ხელმოწერა →". `editDetails` saves the new name/role on an
+   * existing member without re-signing — button reads "შენახვა" and
+   * `onResign` (if provided) is exposed as a secondary link for the user
+   * to opt into a fresh signature.
+   */
+  mode?: 'create' | 'editDetails';
   onSubmit: (details: RoleSlotDetails) => void;
   onCancel: () => void;
+  onResign?: () => void;
 }
 
 /**
@@ -37,8 +46,10 @@ export function RoleSlotSheet({
   roleKey,
   initialName = '',
   initialRoleLabel,
+  mode = 'create',
   onSubmit,
   onCancel,
+  onResign,
 }: Props) {
   const [name, setName] = useState(initialName);
   const [customRole, setCustomRole] = useState(
@@ -75,11 +86,23 @@ export function RoleSlotSheet({
         </View>
       }
       footer={
-        <Button
-          title="ხელმოწერა →"
-          onPress={submit}
-          disabled={!valid}
-        />
+        <View style={{ gap: 10 }}>
+          <Button
+            title={mode === 'editDetails' ? 'შენახვა' : 'ხელმოწერა →'}
+            onPress={submit}
+            disabled={!valid}
+          />
+          {mode === 'editDetails' && onResign ? (
+            <Pressable
+              onPress={onResign}
+              hitSlop={6}
+              style={styles.resignBtn}
+              {...a11y('ხელმოწერა ხელახლა', 'ახალი ხელმოწერის გაკეთება', 'button')}
+            >
+              <Text style={styles.resignText}>ხელმოწერა ხელახლა</Text>
+            </Pressable>
+          ) : null}
+        </View>
       }
     >
       {isOther ? (
@@ -126,5 +149,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 16,
     backgroundColor: theme.colors.subtleSurface,
+  },
+  resignBtn: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  resignText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: theme.colors.accent,
   },
 });

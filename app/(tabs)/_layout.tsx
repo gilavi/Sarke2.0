@@ -42,6 +42,14 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="regulations"
+        options={{
+          title: t('tabs.regulations'),
+          tabBarAccessibilityLabel: t('tabs.regulationsA11y'),
+          tabBarIcon: ({ color, size }) => <Ionicons name="book" color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
         name="more"
         options={{
           title: t('tabs.more'),
@@ -52,7 +60,13 @@ export default function TabsLayout() {
       {/* Hidden routes — accessible via code, not tab bar */}
       <Tabs.Screen name="calendar" options={{ tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
       <Tabs.Screen name="certificates" options={{ tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
-      <Tabs.Screen name="regulations" options={{ tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
+      <Tabs.Screen
+        name="account-settings"
+        options={{
+          href: null,
+          headerShown: false,
+        }}
+      />
     </Tabs>
   );
 }

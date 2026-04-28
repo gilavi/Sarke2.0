@@ -47,7 +47,9 @@ export function ProjectAvatar({
   editable?: boolean;
   onEdit?: () => void;
 }) {
-  const r = radius ?? Math.max(8, Math.round(size * 0.25));
+  // Default to a full circle. Callers can still pass an explicit `radius`
+  // when a rounded-square shape is needed (e.g. legacy layouts).
+  const r = radius ?? Math.round(size / 2);
   const fs = fontSize ?? Math.round(size * 0.4);
   const logo = project?.logo ?? null;
   const initials = projectInitials(project?.name);

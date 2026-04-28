@@ -16,10 +16,10 @@ import {
 import { useToast } from '../lib/toast';
 import { useTheme } from '../lib/theme';
 
-import { toErrorMessage } from '../lib/logError';
 import { friendlyError } from '../lib/errorMap';
 import { a11y } from '../lib/accessibility';
 import type { Inspection, Project, Template } from '../types/models';
+import { useTranslation } from 'react-i18next';
 
 type ListItem =
   | { kind: 'header'; label: string }
@@ -27,6 +27,7 @@ type ListItem =
 
 export default function HistoryScreen() {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => getstyles(theme), [theme]);
   const router = useRouter();
   const toast = useToast();
@@ -74,29 +75,29 @@ export default function HistoryScreen() {
     const completed = qs.filter(q => q.status === 'completed');
     const out: ListItem[] = [];
     if (drafts.length > 0) {
-      out.push({ kind: 'header', label: 'დრაფტები' });
+      out.push({ kind: 'header', label: t('history.draftsSection') });
       drafts.forEach(q => out.push({ kind: 'row', q }));
     }
     if (completed.length > 0) {
-      out.push({ kind: 'header', label: 'დასრულებული' });
+      out.push({ kind: 'header', label: t('history.completedSection') });
       completed.forEach(q => out.push({ kind: 'row', q }));
     }
     return out;
   }, [qs]);
 
   const onDelete = (q: Inspection) => {
-    Alert.alert('წაშლა?', 'ინსპექცია სამუდამოდ წაიშლება.', [
-      { text: 'გაუქმება', style: 'cancel' },
+    Alert.alert(t('history.deleteTitle'), t('history.deleteBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'წაშლა',
+        text: t('common.delete'),
         style: 'destructive',
         onPress: async () => {
           try {
             await inspectionsApi.remove(q.id);
             setQs(prev => prev.filter(x => x.id !== q.id));
-            toast.success('წაიშალა');
+            toast.success(t('history.deleted'));
           } catch (e) {
-            toast.error(friendlyError(e, 'ვერ წაიშალა'));
+            toast.error(friendlyError(e, t('history.deleteError')));
           }
         },
       },
@@ -105,7 +106,7 @@ export default function HistoryScreen() {
 
   return (
     <Screen edgeToEdge edges={[]}>
-      <Stack.Screen options={{ headerShown: true, title: 'ისტორია', headerBackTitle: 'მეტი' }} />
+      <Stack.Screen options={{ headerShown: true, title: t('history.title'), headerBackTitle: t('tabs.backToMore') }} />
       <FlatList
           data={items}
           keyExtractor={(item, i) => (item.kind === 'header' ? `h-${i}` : item.q.id)}
@@ -117,7 +118,7 @@ export default function HistoryScreen() {
               );
             }
             const { q } = item;
-            const t = templates.find(t => t.id === q.template_id);
+            const tpl = templates.find(x => x.id === q.template_id);
             const p = projects.find(p => p.id === q.project_id);
             return (
               <Swipeable
@@ -136,10 +137,10 @@ export default function HistoryScreen() {
                   if (openSwipeId.current === q.id) openSwipeId.current = null;
                 }}
                 renderRightActions={() => (
-                  <Pressable onPress={() => onDelete(q)} style={styles.swipeDelete} {...a11y('წაშლა', 'ინსპექციის წაშლა', 'button')}>
+                  <Pressable onPress={() => onDelete(q)} style={styles.swipeDelete}>
                     <Ionicons name="trash" size={18} color={theme.colors.white} />
                     <Text style={{ color: theme.colors.white, fontSize: 11, fontWeight: '700' }}>
-                      წაშლა
+                      {t('common.delete')}
                     </Text>
                   </Pressable>
                 )}
@@ -152,11 +153,6 @@ export default function HistoryScreen() {
                       ? router.push(`/inspections/${q.id}` as any)
                       : router.push(`/inspections/${q.id}/wizard` as any)
                   }
-                  {...a11y(
-                    `${t?.name ?? 'ინსპექცია'} — ${p?.name ?? ''}`.trim(),
-                    q.status === 'completed' ? 'დასრულებული ინსპექციის ნახვა' : 'დრაფტის გაგრძელება',
-                    'button'
-                  )}
                 >
                   <Card padding={12}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
@@ -177,13 +173,13 @@ export default function HistoryScreen() {
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text style={{ fontWeight: '600', color: theme.colors.ink }}>
-                          {t?.name ?? 'ინსპექცია'}
+                          {tpl?.name ?? t('common.inspection')}
                         </Text>
                         {p ? (
                           <Text style={{ fontSize: 11, color: theme.colors.inkSoft }}>{p.name}</Text>
                         ) : null}
                         <Text style={{ fontSize: 10, color: theme.colors.inkFaint }}>
-                          {new Date(q.created_at).toLocaleString('ka')}
+                          {new Date(q.created_at).toLocaleString(t('common.localeTag'))}
                         </Text>
                       </View>
                       {certCounts[q.id] ? (
@@ -222,10 +218,10 @@ export default function HistoryScreen() {
             ) : (
               <EmptyState
                 type="history"
-                title="ისტორია ცარიელია"
-                subtitle="დასრულებული ინსპექციები გამოჩნდება აქ"
+                title={t('history.emptyTitle')}
+                subtitle={t('history.emptyHint')}
                 action={{
-                  label: 'ინსპექციის დაწყება',
+                  label: t('history.startInspection'),
                   icon: 'play-circle-outline',
                   onPress: () => router.push('/(tabs)/home'),
                 }}

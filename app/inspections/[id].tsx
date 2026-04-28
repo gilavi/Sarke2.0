@@ -37,6 +37,7 @@ import {
   templatesApi,
 } from '../../lib/services';
 import { buildPdfPreviewHtml } from '../../lib/pdf';
+import { loadPdfLanguage, type PdfLanguage } from '../../lib/pdfLanguagePref';
 import { useToast } from '../../lib/toast';
 import { friendlyError } from '../../lib/errorMap';
 import { toErrorMessage } from '../../lib/logError';
@@ -94,6 +95,22 @@ export default function InspectionDetailScreen() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [tab, setTab] = useState<'summary' | 'preview'>('summary');
+  const [pdfLanguage, setPdfLanguageState] = useState<PdfLanguage>('ka');
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadPdfLanguage().then(lang => {
+      if (!cancelled) {
+        setPdfLanguageState(prev => {
+          if (prev !== lang) setPreviewHtml(null); // invalidate stale cache
+          return lang;
+        });
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -211,6 +228,7 @@ export default function InspectionDetailScreen() {
         answers,
         signatures,
         photosByAnswer,
+        language: pdfLanguage,
       });
       setPreviewHtml(html);
     } catch (e) {
@@ -221,7 +239,7 @@ export default function InspectionDetailScreen() {
     } finally {
       setPreviewLoading(false);
     }
-  }, [inspection, template, project, questions, answers, signatures, photosByAnswer, previewHtml, toast]);
+  }, [inspection, template, project, questions, answers, signatures, photosByAnswer, previewHtml, pdfLanguage, toast]);
 
   const openCertPreview = (cert: Certificate) => {
     router.push(`/certificates/${cert.id}` as any);

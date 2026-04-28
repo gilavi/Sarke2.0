@@ -1,12 +1,13 @@
 // Domain types mirrored from the Supabase schema.
 // See migrations 0001..0006 for the authoritative source.
 
-export type SignerRole = 'expert' | 'xaracho_supervisor' | 'xaracho_assembler';
+export type SignerRole = 'expert' | 'xaracho_supervisor' | 'xaracho_assembler' | 'other';
 
 export const SIGNER_ROLE_LABEL: Record<SignerRole, string> = {
   expert: 'შრომის უსაფრთხოების სპეციალისტი',
   xaracho_supervisor: 'ხარაჩოს ზედამხედველი',
   xaracho_assembler: 'ხარაჩოს ამწყობი',
+  other: 'სხვა',
 };
 
 export type QuestionType =
@@ -281,6 +282,12 @@ export interface SignatureRecord {
  * time so re-displaying an old certificate doesn't surprise the reader if
  * the underlying inspection row has since been edited.
  */
+export interface CertificateParams {
+  expertName?: string | null;
+  qualTypes?: { type: string; number: string | null }[];
+  signerNames?: string[];
+}
+
 export interface Certificate {
   id: string;
   inspection_id: string;
@@ -289,8 +296,8 @@ export interface Certificate {
   pdf_url: string;
   is_safe_for_use: boolean | null;
   conclusion_text: string | null;
-  /** Arbitrary template parameters captured at generation time. */
-  params: Record<string, unknown>;
+  /** Template parameters snapshotted at generation time. */
+  params: CertificateParams;
   generated_at: string;
 }
 

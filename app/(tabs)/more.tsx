@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
   Image,
   Modal,
   Pressable,
@@ -8,6 +9,7 @@ import {
   Switch,
   View,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -86,7 +88,26 @@ export default function MoreScreen() {
   const onChangeLang = async (lng: 'ka' | 'en') => {
     await saveLanguage(lng);
     setLangVisible(false);
-    toast.success(lng === 'ka' ? 'ენა შეიცვალა' : 'Language changed');
+    toast.success(t('notifications.languageChanged'));
+  };
+
+  const handleLogout = () => {
+    Alert.alert(t('more.signOutConfirmTitle'), t('more.signOutConfirmBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('more.signOut'),
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await signOut();
+            await AsyncStorage.removeItem('@auth:email').catch(() => {});
+            toast.success(t('notifications.signedOut'));
+          } catch (e) {
+            toast.error(t('notifications.signOutFailed'));
+          }
+        },
+      },
+    ]);
   };
 
   return (
@@ -139,7 +160,7 @@ export default function MoreScreen() {
             tint={theme.colors.accent}
             bg={theme.colors.accentSoft}
             primary={loaded ? `${counts.total}` : null}
-            secondary={loaded ? (counts.latestCreatedAt ? `${t('more.lastInspection', { date: relativeTime(counts.latestCreatedAt) })}` : t('more.emptyLast')) : null}
+            secondary={loaded ? (counts.latestCreatedAt ? `${t('more.lastInspection', { date: relativeTime(counts.latestCreatedAt, t) })}` : t('more.emptyLast')) : null}
             onPress={() => router.push('/history')}
           />
           <HubTile
@@ -208,7 +229,13 @@ export default function MoreScreen() {
             <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
           </Pressable>
           <View style={styles.divider} />
-          <Pressable onPress={signOut} style={styles.settingsRow} {...a11y(t('more.signOut'), undefined, 'button')}>
+          <Pressable onPress={() => router.push('/account-settings')} style={styles.settingsRow} {...a11y(t('more.changePassword'), undefined, 'button')}>
+            <Ionicons name="key-outline" size={18} color={theme.colors.inkSoft} />
+            <Text style={{ flex: 1, fontSize: 15, fontWeight: '500', color: theme.colors.ink }}>{t('more.changePassword')}</Text>
+            <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
+          </Pressable>
+          <View style={styles.divider} />
+          <Pressable onPress={handleLogout} style={styles.settingsRow} {...a11y(t('more.signOut'), undefined, 'button')}>
             <Ionicons name="log-out-outline" size={18} color={theme.colors.danger} />
             <Text style={{ flex: 1, fontSize: 15, fontWeight: '500', color: theme.colors.danger }}>{t('more.signOut')}</Text>
           </Pressable>
@@ -319,16 +346,16 @@ function HubTile({
   );
 }
 
-function relativeTime(iso: string) {
+function relativeTime(iso: string, t: (key: string, opts?: any) => string) {
   const date = new Date(iso);
   const diff = Date.now() - date.getTime();
   const m = Math.floor(diff / 60000);
-  if (m < 1) return 'ახლა';
-  if (m < 60) return `${m} წთ. წინ`;
+  if (m < 1) return t('home.relNow');
+  if (m < 60) return t('home.relMinAgo', { n: m });
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h} სთ. წინ`;
+  if (h < 24) return t('home.relHourAgo', { n: h });
   const d = Math.floor(h / 24);
-  return `${d} დღის წინ`;
+  return t('home.relDayAgo', { n: d });
 }
 
 function getStyles(theme: any) {

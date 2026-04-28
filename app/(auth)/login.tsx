@@ -18,6 +18,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSession } from '../../lib/session';
 import { useToast } from '../../lib/toast';
 import { useTheme } from '../../lib/theme';
+import { useTranslation } from 'react-i18next';
+import { saveLanguage } from '../../lib/i18n';
 
 import { a11y } from '../../lib/accessibility';
 import { isEmail } from '../../lib/validators';
@@ -40,6 +42,7 @@ export default function AuthScreen() {
     <View style={{ flex: 1 }}>
       <GradientBackdrop />
       <SafeAreaView style={{ flex: 1 }}>
+        <LanguageSwitcher />
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={{ flex: 1 }}
@@ -78,6 +81,7 @@ function ForgotPasswordModal({ visible, onClose }: { visible: boolean; onClose: 
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
   const { resetPassword } = useSession();
+  const { t } = useTranslation();
   const toast = useToast();
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false);
@@ -105,25 +109,23 @@ function ForgotPasswordModal({ visible, onClose }: { visible: boolean; onClose: 
     <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
       <View style={styles.overlay}>
         <Card padding={24} style={styles.modalCard}>
-          <ModalHeader title="პაროლის აღდგენა" onClose={handleClose} />
+          <ModalHeader title={t('auth.resetPassword')} onClose={handleClose} />
           {sent ? (
             <View style={{ gap: 16, alignItems: 'center', marginTop: 12 }}>
               <View style={styles.iconCircle}>
                 <Ionicons name="mail-open-outline" size={36} color={theme.colors.accent} />
               </View>
               <Text style={[styles.modalBody, { textAlign: 'center' }]}>
-                {'პაროლის განახლების ბმული გაიგზავნა\n'}
-                <Text style={{ color: theme.colors.ink, fontWeight: '700' }}>{email}</Text>
-                {'-ზე.'}
+                {t('auth.resetSent', { email })}
               </Text>
-              <Button title="დახურვა" onPress={handleClose} style={{ alignSelf: 'stretch' }} />
+              <Button title={t('common.close')} onPress={handleClose} style={{ alignSelf: 'stretch' }} />
             </View>
           ) : (
             <View style={{ gap: 14, marginTop: 8 }}>
               <Text style={styles.modalBody}>
-                შეიყვანეთ ელ-ფოსტა და გამოგიგზავნებთ პაროლის განახლების ბმულს.
+                {t('auth.resetInstructions')}
               </Text>
-              <Field label="ელ-ფოსტა">
+              <Field label={t('common.email')}>
                 <Input
                   value={email}
                   onChangeText={setEmail}
@@ -133,7 +135,7 @@ function ForgotPasswordModal({ visible, onClose }: { visible: boolean; onClose: 
                   autoCorrect={false}
                 />
               </Field>
-              <Button title="გაგზავნა" onPress={submit} loading={busy} disabled={!email.trim()} />
+              <Button title={t('auth.sendLink')} onPress={submit} loading={busy} disabled={!email.trim()} />
             </View>
           )}
         </Card>
@@ -148,6 +150,7 @@ function LoginForm({ onForgotPassword }: { onForgotPassword: () => void }) {
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
   const { signIn, signInWithGoogle } = useSession();
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
@@ -158,11 +161,11 @@ function LoginForm({ onForgotPassword }: { onForgotPassword: () => void }) {
   const handleSignIn = async () => {
     const trimmed = email.trim();
     if (!isEmail(trimmed)) {
-      setError('გთხოვთ შეიყვანოთ ვალიდური ელ-ფოსტა');
+      setError(t('auth.enterValidEmail'));
       return;
     }
     if (password.length < MIN_PASSWORD_LEN) {
-      setError(`პაროლი უნდა შეიცავდეს მინიმუმ ${MIN_PASSWORD_LEN} სიმბოლოს`);
+      setError(t('errors.passwordTooShort', { min: MIN_PASSWORD_LEN }));
       return;
     }
     setBusy(true);
@@ -190,7 +193,7 @@ function LoginForm({ onForgotPassword }: { onForgotPassword: () => void }) {
 
   return (
     <View style={{ gap: 14 }}>
-      <Field label="ელ-ფოსტა">
+      <Field label={t('common.email')}>
         <Input
           value={email}
           onChangeText={setEmail}
@@ -198,49 +201,35 @@ function LoginForm({ onForgotPassword }: { onForgotPassword: () => void }) {
           keyboardType="email-address"
           autoCapitalize="none"
           autoCorrect={false}
-          {...a11y('ელფოსტის ველი', 'შეიყვანეთ თქვენი ელფოსტის მისამართი', 'text')}
         />
       </Field>
-      <Field label="პაროლი">
-        <View>
+      <Field label={t('common.password')}>
+        <View style={{ position: 'relative' }}>
           <Input
             value={password}
             onChangeText={setPassword}
             placeholder="••••••••"
             secureTextEntry={!showPw}
-            {...a11y('პაროლის ველი', 'შეიყვანეთ თქვენი პაროლი', 'text')}
+            rightIcon={showPw ? 'eye-off' : 'eye'}
+            onRightIconPress={() => setShowPw(v => !v)}
           />
-          <Pressable
-            onPress={() => setShowPw(v => !v)}
-            style={styles.eyeBtn}
-            hitSlop={10}
-            {...a11y(showPw ? 'პაროლის დაფარვა' : 'პაროლის ჩვენება', 'შეეხეთ პაროლის ხილვადობის შესაცვლელად', 'button')}
-          >
-            <Ionicons
-              name={showPw ? 'eye-off-outline' : 'eye-outline'}
-              size={20}
-              color={theme.colors.inkFaint}
-            />
-          </Pressable>
         </View>
       </Field>
       <Pressable
         onPress={onForgotPassword}
         style={{ alignSelf: 'flex-end', marginTop: -4 }}
-        {...a11y('პაროლის აღდგენა', 'შეეხეთ პაროლის აღსადგენად ელ-ფოსტის გაგზავნისთვის', 'button')}
       >
-        <Text style={styles.linkText}>პაროლი დაგავიწყდა?</Text>
+        <Text style={styles.linkText}>{t('auth.forgotPassword')}</Text>
       </Pressable>
       {error ? <InlineError>{error}</InlineError> : null}
       <Button
-        title="შესვლა"
+        title={t('auth.login')}
         onPress={handleSignIn}
         loading={busy}
         disabled={!isEmail(email.trim()) || password.length < MIN_PASSWORD_LEN}
-        {...a11y('შესვლის ღილაკი', 'შეეხეთ ანგარიშში შესასვლელად', 'button')}
       />
       <Divider />
-      <GoogleButton onPress={handleGoogle} loading={googleBusy} {...a11y('Google-ით შესვლა', 'შეეხეთ Google ანგარიშით შესასვლელად', 'button')} />
+      <GoogleButton onPress={handleGoogle} loading={googleBusy} />
     </View>
   );
 }
@@ -257,6 +246,7 @@ function RegisterForm({
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
   const { register, signInWithGoogle } = useSession();
+  const { t } = useTranslation();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -288,11 +278,11 @@ function RegisterForm({
     } catch (e) {
       if (isEmailTakenError(e)) {
         Alert.alert(
-          'ელ-ფოსტა უკვე გამოიყენება',
-          'ამ ელ-ფოსტით ანგარიში უკვე არსებობს. გსურთ შესვლა?',
+          t('auth.emailAlreadyInUse'),
+          t('auth.emailAlreadyInUseDesc'),
           [
-            { text: 'გაუქმება', style: 'cancel' },
-            { text: 'შესვლა', onPress: onSwitchToLogin },
+            { text: t('common.cancel'), style: 'cancel' },
+            { text: t('auth.login'), onPress: onSwitchToLogin },
           ],
         );
       } else {
@@ -319,17 +309,17 @@ function RegisterForm({
     <View style={{ gap: 14 }}>
       <View style={{ flexDirection: 'row', gap: 10 }}>
         <View style={{ flex: 1 }}>
-          <Field label="სახელი">
-            <Input value={firstName} onChangeText={setFirstName} placeholder="გიორგი" {...a11y('სახელის ველი', 'შეიყვანეთ თქვენი სახელი', 'text')} />
+          <Field label={t('auth.firstName')}>
+            <Input value={firstName} onChangeText={setFirstName} placeholder={t('auth.firstNamePlaceholder')} />
           </Field>
         </View>
         <View style={{ flex: 1 }}>
-          <Field label="გვარი">
-            <Input value={lastName} onChangeText={setLastName} placeholder="ხელაძე" {...a11y('გვარის ველი', 'შეიყვანეთ თქვენი გვარი', 'text')} />
+          <Field label={t('auth.lastName')}>
+            <Input value={lastName} onChangeText={setLastName} placeholder={t('auth.lastNamePlaceholder')} />
           </Field>
         </View>
       </View>
-      <Field label="ელ-ფოსტა">
+      <Field label={t('common.email')}>
         <Input
           value={email}
           onChangeText={setEmail}
@@ -337,23 +327,20 @@ function RegisterForm({
           keyboardType="email-address"
           autoCapitalize="none"
           autoCorrect={false}
-          {...a11y('ელფოსტის ველი რეგისტრაციისთვის', 'შეიყვანეთ ელფოსტა ახალი ანგარიშისთვის', 'text')}
         />
       </Field>
-      <Field label="პაროლი (მინ. 6 სიმბოლო)">
+      <Field label={t('auth.passwordMinLength', { min: MIN_PASSWORD_LEN })}>
         <View>
           <Input
             value={password}
             onChangeText={setPassword}
             secureTextEntry={!showPw}
             placeholder="••••••••"
-            {...a11y('პაროლის ველი რეგისტრაციისთვის', 'შეიყვანეთ პაროლი მინიმუმ 6 სიმბოლო', 'text')}
           />
           <Pressable
             onPress={() => setShowPw(v => !v)}
             style={styles.eyeBtn}
             hitSlop={10}
-            {...a11y(showPw ? 'პაროლის დაფარვა' : 'პაროლის ჩვენება', 'შეეხეთ პაროლის ხილვადობის შესაცვლელად', 'button')}
           >
             <Ionicons
               name={showPw ? 'eye-off-outline' : 'eye-outline'}
@@ -364,9 +351,9 @@ function RegisterForm({
         </View>
       </Field>
       {error ? <InlineError>{error}</InlineError> : null}
-      <Button title="რეგისტრაცია" onPress={handleRegister} loading={busy} disabled={!canSubmit} {...a11y('რეგისტრაციის ღილაკი', 'შეეხეთ ახალი ანგარიშის შესაქმნელად', 'button')} />
+      <Button title={t('auth.register')} onPress={handleRegister} loading={busy} disabled={!canSubmit} />
       <Divider />
-      <GoogleButton onPress={handleGoogle} loading={googleBusy} label="Google-ით რეგისტრაცია" {...a11y('Google-ით რეგისტრაცია', 'შეეხეთ Google ანგარიშით რეგისტრაციისთვის', 'button')} />
+      <GoogleButton onPress={handleGoogle} loading={googleBusy} label={t('auth.registerWithGoogle')} />
     </View>
   );
 }
@@ -379,7 +366,7 @@ function ModalHeader({ title, onClose }: { title: string; onClose: () => void })
   return (
     <View style={styles.modalHeader}>
       <Text style={{ fontSize: 17, fontWeight: '700', color: theme.colors.ink }}>{title}</Text>
-      <Pressable onPress={onClose} hitSlop={12} {...a11y('დახურვა', 'შეეხეთ მოდალის დასახურად', 'button')}>
+      <Pressable onPress={onClose} hitSlop={12}>
         <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
       </Pressable>
     </View>
@@ -403,11 +390,12 @@ function InlineError({ children }: { children: React.ReactNode }) {
 function Divider() {
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
+  const { t } = useTranslation();
 
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
       <View style={{ flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: theme.colors.hairline }} />
-      <Text style={{ color: theme.colors.inkFaint, fontSize: 12, fontWeight: '500' }}>ან</Text>
+      <Text style={{ color: theme.colors.inkFaint, fontSize: 12, fontWeight: '500' }}>{t('auth.or')}</Text>
       <View style={{ flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: theme.colors.hairline }} />
     </View>
   );
@@ -416,6 +404,7 @@ function Divider() {
 function GoogleButton({ onPress, loading, label, ...rest }: { onPress: () => void; loading?: boolean; label?: string } & Record<string, any>) {
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
+  const { t } = useTranslation();
   return (
     <Pressable
       onPress={onPress}
@@ -435,7 +424,7 @@ function GoogleButton({ onPress, loading, label, ...rest }: { onPress: () => voi
             <Text style={styles.googleLogoText}>G</Text>
           </View>
           <Text style={{ fontWeight: '600', fontSize: 15, color: theme.colors.ink }}>
-            {label ?? 'Google-ით შესვლა'}
+            {label ?? t('auth.loginWithGoogle')}
           </Text>
         </>
       )}
@@ -460,6 +449,7 @@ function GradientBackdrop() {
 function Header() {
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
+  const { t } = useTranslation();
 
   return (
     <View style={{ alignItems: 'center', gap: 8 }}>
@@ -467,7 +457,7 @@ function Header() {
         <Ionicons name="shield-checkmark" size={42} color={theme.colors.white} />
       </View>
       <Text style={{ fontSize: 36, fontWeight: '900', color: theme.colors.ink }}>Sarke</Text>
-      <Text style={{ color: theme.colors.inkSoft }}>შრომის უსაფრთხოების ექსპერტი</Text>
+      <Text style={{ color: theme.colors.inkSoft }}>{t('auth.tagline')}</Text>
     </View>
   );
 }
@@ -475,10 +465,11 @@ function Header() {
 function ModePicker({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => void }) {
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
+  const { t } = useTranslation();
   return (
     <View style={styles.pickerWrap}>
-      <Segment active={mode === 'login'} title="შესვლა" onPress={() => onChange('login')} />
-      <Segment active={mode === 'register'} title="რეგისტრაცია" onPress={() => onChange('register')} />
+      <Segment active={mode === 'login'} title={t('auth.login')} onPress={() => onChange('login')} />
+      <Segment active={mode === 'register'} title={t('auth.register')} onPress={() => onChange('register')} />
     </View>
   );
 }
@@ -495,10 +486,66 @@ function Segment({ active, title, onPress }: { active: boolean; title: string; o
   );
 }
 
+function LanguageSwitcher() {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+  const { i18n } = useTranslation();
+  const [busy, setBusy] = useState(false);
+
+  const toggleLanguage = async () => {
+    setBusy(true);
+    try {
+      const newLang = i18n.language === 'ka' ? 'en' : 'ka';
+      await saveLanguage(newLang as 'ka' | 'en');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <View style={styles.languageSwitcherContainer}>
+      <Pressable
+        onPress={toggleLanguage}
+        disabled={busy}
+        style={({ pressed }) => [
+          styles.languageSwitcher,
+          pressed && { opacity: 0.7 },
+          busy && { opacity: 0.6 },
+        ]}
+      >
+        <Ionicons name="globe" size={16} color={theme.colors.accent} />
+        <Text style={styles.languageSwitcherText}>
+          {i18n.language === 'ka' ? 'English' : 'ქართული'}
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
 /* ─── Styles ─── */
 
 function getstyles(theme: any) {
   return StyleSheet.create({
+  languageSwitcherContainer: {
+    paddingHorizontal: 22,
+    paddingTop: 12,
+    paddingBottom: 8,
+    alignItems: 'flex-end',
+  },
+  languageSwitcher: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: theme.colors.subtleSurface,
+  },
+  languageSwitcherText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: theme.colors.accent,
+  },
   scroll: { paddingHorizontal: 22, paddingTop: 40, paddingBottom: 40 },
   logoBadge: {
     width: 84,

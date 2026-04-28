@@ -95,10 +95,12 @@ function buildHtml(
   const isPdf = mode === 'pdf';
   const isDraft = questionnaire.status !== 'completed';
   const answerFor = (q: Question) => answers.find(a => a.question_id === q.id);
-  const dateStr = new Date(questionnaire.created_at).toLocaleDateString(
-    language === 'en' ? 'en-US' : 'ka-GE',
-    { year: 'numeric', month: 'long', day: 'numeric' },
-  );
+  const dateStr = questionnaire.created_at
+    ? new Date(questionnaire.created_at).toLocaleDateString(
+        language === 'en' ? 'en-US' : 'ka-GE',
+        { year: 'numeric', month: 'long', day: 'numeric' },
+      )
+    : '—';
   const reportId = questionnaire.id.slice(0, 8).toUpperCase();
 
   // ── Sections ──
@@ -287,14 +289,14 @@ function buildHtml(
     .project-brand-logo {
       width: 60px;
       height: 60px;
-      border-radius: 12px;
+      border-radius: 50%;
       object-fit: cover;
       display: block;
     }
     .project-brand-initials {
       width: 60px;
       height: 60px;
-      border-radius: 12px;
+      border-radius: 50%;
       background: #E8F5F0;
       color: #1D9E75;
       font-weight: 600;
@@ -968,12 +970,12 @@ function renderPhoto(
 }
 
 function renderSignatures(signatures: SignatureRecord[], lang: 'ka' | 'en'): string {
+  const validSig = /^data:image\/\w+;base64,.{32,}$/;
   const renderable = signatures.filter(
     sig =>
       sig.status === 'signed' &&
-      sig.signature_png_url &&
-      sig.signature_png_url.startsWith('data:image/') &&
-      sig.signature_png_url.length > 'data:image/png;base64,'.length + 32,
+      !!sig.signature_png_url &&
+      validSig.test(sig.signature_png_url),
   );
 
   const ordered = [

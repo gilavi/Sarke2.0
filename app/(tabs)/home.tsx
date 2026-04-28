@@ -40,10 +40,12 @@ import { Skeleton } from '../../components/Skeleton';
 import { MapPicker, type LatLng } from '../../components/MapPicker';
 import { useToast } from '../../lib/toast';
 import { haptic } from '../../lib/haptics';
+import { useTranslation } from 'react-i18next';
 import type { Inspection, Project, Qualification, Template } from '../../types/models';
 
 export default function HomeScreen() {
   const { theme } = useTheme();
+  const { t, i18n } = useTranslation();
   const styles = useMemo(() => getstyles(theme), [theme]);
   const pickerStyles = useMemo(() => getpickerStyles(theme), [theme]);
   const { state } = useSession();
@@ -131,11 +133,11 @@ export default function HomeScreen() {
 
   const user = state.status === 'signedIn' ? state.user : null;
   const firstName = user?.first_name ?? '';
-  const greeting = greetingFor(firstName);
+  const greeting = greetingFor(firstName, t);
   const expiringCount = certs.filter(isExpiringSoon).length;
   const latestDraft = recent.find(q => q.status === 'draft');
   const showCertBanner = certs.length === 0 || expiringCount > 0;
-  const tip = tipOfTheDay();
+  const tip = tipOfTheDay(t);
 
   const onRefresh = useCallback(async () => {
     haptic.medium();
@@ -144,7 +146,7 @@ export default function HomeScreen() {
     setRefreshing(false);
   }, [load]);
 
-  const templateName = (id: string) => templates.find(t => t.id === id)?.name ?? 'ინსპექცია';
+  const templateName = (id: string) => templates.find((tpl) => tpl.id === id)?.name ?? t('common.inspection');
 
   const insets = useSafeAreaInsets();
   const HEADER_HERO_BODY = 96;   // visible hero content height below status bar
@@ -180,7 +182,7 @@ export default function HomeScreen() {
           style={[styles.scrollHeaderHero, { paddingTop: insets.top + 14 }, heroStyle]}
           pointerEvents="none"
         >
-          <Text style={styles.dateLine}>{todayFormatted()}</Text>
+          <Text style={styles.dateLine}>{todayFormatted(i18n.language)}</Text>
           <Text style={styles.greeting}>{greeting}</Text>
         </Animated.View>
         <Animated.View
@@ -199,41 +201,28 @@ export default function HomeScreen() {
         contentInsetAdjustmentBehavior="never"
         contentContainerStyle={{ paddingTop: HEADER_FULL + 8, paddingBottom: 100 }}
       >
-        {/* ───────── CONTINUE / START ───────── */}
-        <View style={styles.sectionWrap}>
-          {latestDraft ? (
+        {/* ───────── CONTINUE DRAFT ───────── */}
+        {latestDraft ? (
+          <View style={styles.sectionWrap}>
             <Pressable onPress={() => router.push(`/inspections/${latestDraft.id}/wizard` as any)} {...a11y('შევსების გაგრძელება', 'შეეხეთ მონახაზის გასაგრძელებლად', 'button')}>
               <View style={styles.resumeCard}>
                 <View style={styles.resumeIcon}>
                   <Ionicons name="pencil" size={16} color={theme.colors.warn} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.resumeEyebrow}>გააგრძელეთ დრაფტი</Text>
+                  <Text style={styles.resumeEyebrow}>{t('home.resumeDraft')}</Text>
                   <Text style={styles.resumeTitle} numberOfLines={1}>
                     {templateName(latestDraft.template_id)}
                   </Text>
                   <Text style={styles.resumeMeta} numberOfLines={1}>
-                    {relativeTime(latestDraft.created_at)}
+                    {relativeTime(latestDraft.created_at, t, i18n.language)}
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color={theme.colors.inkFaint} />
               </View>
             </Pressable>
-          ) : (
-            <Pressable onPress={() => setPickerVisible(true)} {...a11y('ახალი ინსპექცია', 'შეეხეთ ახალი ინსპექციის დასაწყებად', 'button')}>
-              <View style={styles.startCard}>
-                <View style={styles.startIcon}>
-                  <Ionicons name="add" size={26} color={theme.colors.accent} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.startTitle}>ახალი ინსპექცია</Text>
-                  <Text style={styles.startSub}>აირჩიეთ პროექტი და დაიწყეთ</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color={theme.colors.accent} />
-              </View>
-            </Pressable>
-          )}
-        </View>
+          </View>
+        ) : null}
 
         {/* ───────── CERT BANNER (warn only) ───────── */}
         {showCertBanner ? (
@@ -244,15 +233,15 @@ export default function HomeScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 {certs.length === 0 ? (
-                  <Text style={styles.bannerTitle}>ატვირთეთ სერტიფიკატები</Text>
+                  <Text style={styles.bannerTitle}>{t('home.uploadCertificates')}</Text>
                 ) : (
                   <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
                     <NumberPop value={expiringCount} style={styles.bannerTitle} />
-                    <Text style={styles.bannerTitle}> სერტიფიკატი იწურება</Text>
+                    <Text style={styles.bannerTitle}> {t('home.certExpiringSuffix')}</Text>
                   </View>
                 )}
                 <Text style={styles.bannerSub}>
-                  {certs.length === 0 ? 'PDF რეპორტს ავტომატურად ერთვის.' : 'შეამოწმეთ ვადები, სანამ ობიექტი არ გაჩერდება.'}
+                  {certs.length === 0 ? t('home.pdfIncluded') : t('home.checkDeadlines')}
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={theme.colors.warn} />
@@ -262,9 +251,9 @@ export default function HomeScreen() {
 
         {/* ───────── PROJECTS ───────── */}
         <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionHeader}>პროექტები</Text>
-          <Pressable onPress={() => router.push('/(tabs)/projects' as any)} hitSlop={8} {...a11y('ყველა პროექტის ნახვა', 'შეეხეთ ყველა პროექტის სანახავად', 'button')}>
-            <Text style={styles.sectionLink}>ყველა</Text>
+          <Text style={styles.sectionHeader}>{t('home.sectionProjects')}</Text>
+          <Pressable onPress={() => router.push('/(tabs)/projects' as any)} hitSlop={8}>
+            <Text style={styles.sectionLink}>{t('home.allProjects')}</Text>
           </Pressable>
         </View>
 
@@ -288,8 +277,8 @@ export default function HomeScreen() {
               <View style={styles.emptyPlusIcon}>
                 <Ionicons name="add" size={24} color={theme.colors.accent} />
               </View>
-              <Text style={styles.emptyProjectsCta}>ახალი პროექტი</Text>
-              <Text style={styles.emptyProjectsText}>შექმენით პირველი</Text>
+              <Text style={styles.emptyProjectsCta}>{t('home.newProject')}</Text>
+              <Text style={styles.emptyProjectsText}>{t('home.createFirst')}</Text>
             </View>
           </Pressable>
         ) : isProjectsCarousel ? (
@@ -401,7 +390,7 @@ export default function HomeScreen() {
                     <Text style={styles.recentTitle} numberOfLines={1}>
                       {templateName(q.template_id)}
                     </Text>
-                    <Text style={styles.recentMeta}>{relativeTime(q.created_at)}</Text>
+                    <Text style={styles.recentMeta}>{relativeTime(q.created_at, t, i18n.language)}</Text>
                   </View>
                   <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
                 </Pressable>
@@ -510,6 +499,7 @@ function ProjectPickerSheet({
   onProjectCreated?: (id: string) => void;
 }) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const pickerStyles = useMemo(() => getpickerStyles(theme), [theme]);
   const router = useRouter();
   const toast = useToast();
@@ -544,11 +534,11 @@ function ProjectPickerSheet({
     if (next) setLogo(next);
   };
 
-  const systemTemplates = templates.filter(t => t.is_system);
+  const systemTemplates = templates.filter((tpl) => tpl.is_system);
 
   const pickTemplate = (projectId: string) => {
     if (systemTemplates.length === 0) {
-      toast.error('შაბლონი არ არის');
+      toast.error(t('errors.notFoundTemplate'));
       return;
     }
     if (systemTemplates.length === 1) {
@@ -566,7 +556,7 @@ function ProjectPickerSheet({
       onClose();
       router.push(`/inspections/${q.id}/wizard` as any);
     } catch (e) {
-      toast.error(friendlyError(e, 'შექმნა ვერ მოხერხდა'));
+      toast.error(friendlyError(e, t('errors.createFailed')));
     }
   };
 
@@ -602,10 +592,10 @@ function ProjectPickerSheet({
         }
       } else {
         onClose();
-        toast.success('პროექტი შეიქმნა');
+        toast.success(t('notifications.projectCreated'));
       }
     } catch (e) {
-      toast.error(friendlyError(e, 'შექმნა ვერ მოხერხდა'));
+      toast.error(friendlyError(e, t('errors.createFailed')));
     } finally {
       setBusy(false);
     }
@@ -628,8 +618,8 @@ function ProjectPickerSheet({
               <>
                 {/* Sheet header */}
                 <View style={pickerStyles.sheetHeader}>
-                  <Text style={pickerStyles.sheetTitle}>ინსპექციის დაწყება</Text>
-                  <Pressable onPress={onClose} hitSlop={10} {...a11y('დახურვა', 'შეეხეთ ფანჯრის დასახურად', 'button')}>
+                  <Text style={pickerStyles.sheetTitle}>{t('home.startInspectionSheetTitle')}</Text>
+                  <Pressable onPress={onClose} hitSlop={10}>
                     <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
                   </Pressable>
                 </View>
@@ -637,17 +627,17 @@ function ProjectPickerSheet({
                 {/* Project list — "add new" row scrolls together with project items */}
                 {projects.length === 0 ? (
                   <>
-                    <Pressable onPress={() => setView('new')} style={pickerStyles.addNewRow} {...a11y('პროექტის შექმნა', 'შეეხეთ ახალი პროექტის შესაქმნელად', 'button')}>
+                    <Pressable onPress={() => setView('new')} style={pickerStyles.addNewRow}>
                       <View style={pickerStyles.addNewIcon}>
                         <Ionicons name="add" size={18} color={theme.colors.accent} />
                       </View>
-                      <Text style={pickerStyles.addNewText}>ახალი პროექტის დამატება</Text>
+                      <Text style={pickerStyles.addNewText}>{t('home.addNewProjectSheet')}</Text>
                       <Ionicons name="chevron-forward" size={16} color={theme.colors.accent} />
                     </Pressable>
                     <View style={pickerStyles.emptyState}>
                       <Ionicons name="folder-open-outline" size={36} color={theme.colors.inkFaint} />
-                      <Text style={pickerStyles.emptyText}>პროექტი ჯერ არ გაქვს</Text>
-                      <Text style={pickerStyles.emptySubText}>აირჩიეთ ზემოთ "ახალი პროექტის დამატება"</Text>
+                      <Text style={pickerStyles.emptyText}>{t('home.noProjectsYet')}</Text>
+                      <Text style={pickerStyles.emptySubText}>{t('home.noProjectsHint')}</Text>
                     </View>
                   </>
                 ) : (
@@ -656,11 +646,11 @@ function ProjectPickerSheet({
                     showsVerticalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled"
                   >
-                    <Pressable onPress={() => setView('new')} style={pickerStyles.addNewRow} {...a11y('პროექტის შექმნა', 'შეეხეთ ახალი პროექტის შესაქმნელად', 'button')}>
+                    <Pressable onPress={() => setView('new')} style={pickerStyles.addNewRow}>
                       <View style={pickerStyles.addNewIcon}>
                         <Ionicons name="add" size={18} color={theme.colors.accent} />
                       </View>
-                      <Text style={pickerStyles.addNewText}>ახალი პროექტის დამატება</Text>
+                      <Text style={pickerStyles.addNewText}>{t('home.addNewProjectSheet')}</Text>
                       <Ionicons name="chevron-forward" size={16} color={theme.colors.accent} />
                     </Pressable>
                     {projects.map(p => (
@@ -668,7 +658,6 @@ function ProjectPickerSheet({
                         key={p.id}
                         onPress={() => pickTemplate(p.id)}
                         style={pickerStyles.projectRow}
-                        {...a11y(`პროექტი: ${p.name}`, 'შეეხეთ ინსპექციის დასაწყებად ამ პროექტზე', 'button')}
                       >
                         <ProjectAvatar project={p} size={44} />
                         <View style={{ flex: 1 }}>
@@ -687,11 +676,11 @@ function ProjectPickerSheet({
               <>
                 {/* Template picker header with back button */}
                 <View style={pickerStyles.sheetHeader}>
-                  <Pressable onPress={() => setView('list')} hitSlop={10} style={{ marginRight: 10 }} {...a11y('პროექტები — დაბრუნება', 'შეეხეთ პროექტების სიაზე დასაბრუნებლად', 'button')}>
+                  <Pressable onPress={() => setView('list')} hitSlop={10} style={{ marginRight: 10 }}>
                     <Ionicons name="arrow-back" size={22} color={theme.colors.accent} />
                   </Pressable>
-                  <Text style={[pickerStyles.sheetTitle, { flex: 1 }]}>აირჩიეთ შაბლონი</Text>
-                  <Pressable onPress={onClose} hitSlop={10} {...a11y('დახურვა', 'შეეხეთ ფანჯრის დასახურად', 'button')}>
+                  <Text style={[pickerStyles.sheetTitle, { flex: 1 }]}>{t('home.chooseTemplate')}</Text>
+                  <Pressable onPress={onClose} hitSlop={10}>
                     <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
                   </Pressable>
                 </View>
@@ -700,18 +689,17 @@ function ProjectPickerSheet({
                   showsVerticalScrollIndicator={false}
                   keyboardShouldPersistTaps="handled"
                 >
-                  {systemTemplates.map(t => (
+                  {systemTemplates.map((tpl) => (
                     <Pressable
-                      key={t.id}
-                      onPress={() => pickedProjectId && void startInspection(pickedProjectId, t.id)}
+                      key={tpl.id}
+                      onPress={() => pickedProjectId && void startInspection(pickedProjectId, tpl.id)}
                       style={pickerStyles.projectRow}
-                      {...a11y(`შაბლონი: ${t.name}`, 'შეეხეთ ამ შაბლონით ინსპექტირების დასაწყებად', 'button')}
                     >
                       <View style={[pickerStyles.avatarBubble, { backgroundColor: theme.colors.accentSoft }]}>
                         <Ionicons name="document-text" size={22} color={theme.colors.accent} />
                       </View>
                       <View style={{ flex: 1 }}>
-                        <Text style={pickerStyles.rowName} numberOfLines={2}>{t.name}</Text>
+                        <Text style={pickerStyles.rowName} numberOfLines={2}>{tpl.name}</Text>
                       </View>
                       <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
                     </Pressable>
@@ -722,11 +710,11 @@ function ProjectPickerSheet({
               <>
                 {/* New project form header with back button */}
                 <View style={pickerStyles.sheetHeader}>
-                  <Pressable onPress={() => setView('list')} hitSlop={10} style={{ marginRight: 10 }} {...a11y('პროექტები — დაბრუნება', 'შეეხეთ პროექტების სიაზე დასაბრუნებლად', 'button')}>
+                  <Pressable onPress={() => setView('list')} hitSlop={10} style={{ marginRight: 10 }}>
                     <Ionicons name="arrow-back" size={22} color={theme.colors.accent} />
                   </Pressable>
-                  <Text style={[pickerStyles.sheetTitle, { flex: 1 }]}>ახალი პროექტი</Text>
-                  <Pressable onPress={onClose} hitSlop={10} {...a11y('დახურვა', 'შეეხეთ ფანჯრის დასახურად', 'button')}>
+                  <Text style={[pickerStyles.sheetTitle, { flex: 1 }]}>{t('home.newProjectFormTitle')}</Text>
+                  <Pressable onPress={onClose} hitSlop={10}>
                     <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
                   </Pressable>
                 </View>
@@ -746,37 +734,35 @@ function ProjectPickerSheet({
                       onEdit={onPickLogo}
                     />
                     {logo ? (
-                      <Pressable onPress={onPickLogo} hitSlop={6} {...a11y('სურათის შეცვლა', 'შეეხეთ ლოგოს ასარჩევად', 'button')}>
+                      <Pressable onPress={onPickLogo} hitSlop={6}>
                         <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.accent }}>
-                          სურათის შეცვლა
+                          {t('projects.changePhoto')}
                         </Text>
                       </Pressable>
                     ) : null}
                   </View>
-                  <Field label="სახელი">
+                  <Field label={t('common.name')}>
                     <Input
                       value={name}
                       onChangeText={setName}
-                      placeholder="მაგ. ვაკე-საბურთალოს ობიექტი"
+                      placeholder={t('projects.projectNamePlaceholder')}
                       autoFocus
-                      {...a11y('პროექტის სახელი', 'შეიყვანეთ პროექტის სახელი', 'text')}
                     />
                   </Field>
-                  <Field label="კომპანია">
-                    <Input value={company} onChangeText={setCompany} placeholder="შემკვეთი" {...a11y('კომპანიის დასახელება', 'შეიყვანეთ კომპანიის სახელი', 'text')} />
+                  <Field label={t('common.company')}>
+                    <Input value={company} onChangeText={setCompany} placeholder={t('projects.clientPlaceholder')} />
                   </Field>
-                  <Field label="მისამართი">
+                  <Field label={t('common.address')}>
                     <MapPicker value={pin} onChange={setPin} address={address} onAddressChange={setAddress} />
                   </Field>
                 </ScrollView>
 
                 <Button
-                  title="შექმნა"
+                  title={t('projects.createButton')}
                   onPress={createProject}
                   loading={busy}
                   disabled={!name.trim()}
                   style={{ marginTop: 16 }}
-                  {...a11y('პროექტის შექმნა', 'შეეხეთ ახალი პროექტის შესაქმნელად', 'button')}
                 />
               </>
             )}
@@ -825,50 +811,44 @@ function ProjectCard({
 
 // ──────────── HELPERS ────────────
 
-function greetingFor(name: string) {
+function greetingFor(name: string, t: (key: string) => string) {
   const hour = new Date().getHours();
   const base =
-    hour < 5 ? 'კარგი ღამე' :
-    hour < 12 ? 'დილა მშვიდობისა' :
-    hour < 18 ? 'გამარჯობა' :
-    'საღამო მშვიდობისა';
+    hour < 5 ? t('home.greetingNight') :
+    hour < 12 ? t('home.greetingMorning') :
+    hour < 18 ? t('home.greetingAfternoon') :
+    t('home.greetingEvening');
   return name ? `${base}, ${name}` : base;
 }
 
-function todayFormatted() {
+function todayFormatted(lang: string) {
   try {
-    return new Date().toLocaleDateString('ka-GE', { weekday: 'long', day: 'numeric', month: 'long' });
+    const locale = lang.startsWith('en') ? 'en-US' : 'ka-GE';
+    return new Date().toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' });
   } catch {
     return '';
   }
 }
 
-function relativeTime(iso: string) {
+function relativeTime(iso: string, t: (key: string, opts?: any) => string, lang: string) {
   const d = new Date(iso);
   const diff = Date.now() - d.getTime();
   const m = Math.floor(diff / 60000);
-  if (m < 1) return 'ახლა';
-  if (m < 60) return `${m} წთ. წინ`;
+  if (m < 1) return t('home.relNow');
+  if (m < 60) return t('home.relMinAgo', { n: m });
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h} სთ. წინ`;
+  if (h < 24) return t('home.relHourAgo', { n: h });
   const days = Math.floor(h / 24);
-  if (days < 7) return `${days} დღის წინ`;
-  return d.toLocaleDateString('ka-GE', { day: 'numeric', month: 'short' });
+  if (days < 7) return t('home.relDayAgo', { n: days });
+  const locale = lang.startsWith('en') ? 'en-US' : 'ka-GE';
+  return d.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
 }
 
-const TIPS = [
-  'ხარაჩოს ინსპექტირებამდე დარწმუნდით, რომ ქამარი და მუზარადი გაქვთ.',
-  'ქარი 15 მ/წმ-ზე მაღლა — შეაჩერეთ სიმაღლის სამუშაოები.',
-  'ქამრის ინსპექცია: შეამოწმეთ ნაკერები და ბალთები, არა მხოლოდ ზოლი.',
-  'ფოტოს გადაღება რეპორტს 3x უფრო ღირებულს ხდის — გადაიღეთ ყოველი ცვლილება.',
-  'ხარაჩოს ფეხის ფუძე უნდა იდოს მტკიცე, თანაბარ ზედაპირზე.',
-  'ორი დამოუკიდებელი მიბმის წერტილი ყოველთვის უფრო უსაფრთხოა ერთზე.',
-  'სველი ხარაჩო ორჯერ უფრო საშიშია — შეამოწმეთ ფიცრის გახრწნა.',
-];
+const TIP_KEYS = ['home.tip1', 'home.tip2', 'home.tip3', 'home.tip4', 'home.tip5', 'home.tip6', 'home.tip7'] as const;
 
-function tipOfTheDay() {
+function tipOfTheDay(t: (key: string) => string) {
   const day = Math.floor(Date.now() / (1000 * 60 * 60 * 24));
-  return TIPS[day % TIPS.length];
+  return t(TIP_KEYS[day % TIP_KEYS.length]);
 }
 
 // ──────────── STYLES ────────────

@@ -31,6 +31,26 @@ Two seeded templates, both in ქართული, because Google Translate do
 
 The native SwiftUI port lives on the [`ios-legacy`](https://github.com/gilavi/Sarke2.0/tree/ios-legacy) branch, where it rots in peace. RIP.
 
+### 🌐 Web
+
+There are **two** web codebases in this repo, both static sites deployed to GitHub Pages off the `gh-pages` branch:
+
+| Path | Purpose | URL |
+|---|---|---|
+| `web/` (sarke-sign) | Tokenized signing page that recipients open from an SMS link | `https://gilavi.github.io/Sarke2.0/` |
+| `web-app/` (new dashboard) | Public dashboard webapp — same Supabase project as mobile | `https://gilavi.github.io/Sarke2.0/app/` |
+
+Both are Vite + React (no Expo, no React Native). They share Supabase but **no code** with the mobile app — features are reimplemented in real HTML/CSS so desktop UX isn't fighting React Native Web. Mobile parity is not a goal.
+
+Local dev for the dashboard:
+
+```sh
+cd web-app
+npm install
+cp .env.example .env   # already has the public anon credentials
+npm run dev            # http://localhost:5173/Sarke2.0/app/
+```
+
 ---
 
 ## 🚀 Running Locally
@@ -61,6 +81,7 @@ Schema + seed already applied to the hosted project. Relevant files preserved he
 
 - `supabase/migrations/0001_init.sql` — tables + RLS
 - `supabase/migrations/0015_project_logo.sql` — optional `projects.logo` (base64 data URL)
+- `supabase/migrations/0016_signer_role_other.sql` — adds `'other'` to the `signer_role` enum so freeform crew members flow into `signatures`
 - `supabase/seed/01_system_templates.sql` — system templates
 
 Storage buckets: `certificates`, `answer-photos`, `pdfs`, `signatures`. 

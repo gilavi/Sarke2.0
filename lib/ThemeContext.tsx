@@ -20,12 +20,10 @@ interface ThemeContextValue {
   setMode: (mode: ThemeMode) => void;
 }
 
-const ThemeContext = createContext<ThemeContextValue>({
-  theme: lightTheme,
-  isDark: false,
-  mode: 'system',
-  setMode: () => {},
-});
+// Default left undefined to avoid a module-init cycle: lib/theme.ts re-exports
+// useTheme from this file, so eagerly reading lightTheme here would TDZ-fail
+// on web. ThemeProvider always wraps consumers, so the default is never read.
+const ThemeContext = createContext<ThemeContextValue>(undefined as unknown as ThemeContextValue);
 
 const STORAGE_KEY = 'theme_dark';
 

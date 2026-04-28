@@ -1,0 +1,60 @@
+name: Deploy web-app
+
+# Builds the new dashboard webapp under web-app/ and pushes it into the gh-pages
+# branch under /app/. The /Sarke2.0/ root is owned by web/ (sarke-sign signing
+# app), and is preserved by keep_files: true. Two separate workflows write to
+# the same gh-pages branch — peaceiris merges with the existing tree.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'web-app/**'
+      - '.github/workflows/deploy-web-app.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: deploy-web-app
+  cancel-in-progress: true
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web-app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: web-app/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install --no-audit --no-fund
+          fi
+
+      - name: Build
+        env:
+          # Defaults match app.json — anon key is public-safe, but secrets win
+          # if defined on the repo so we can override per-environment later.
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://seskuthiopywrgntsgfw.supabase.co' }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'sb_publishable_OF_L2E27-Uv8MMw87fWfSA_znD7moYY' }}
+        run: npm run build
+
+      - name: Deploy to gh-pages /app/
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./web-app/dist
+          destination_dir: app
+          keep_files: true
