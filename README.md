@@ -26,6 +26,7 @@ Two seeded templates, both in ქართული, because Google Translate do
 - **Supabase** (Postgres + Auth + Storage) — same backend as v1, because why fix what barely works?
 - `expo-image-picker` for photos of broken things
 - `expo-print` + `expo-sharing` for PDFs that sit in Downloads folders forever
+- `qrcode` for the inspection QR embedded in the PDF header (SVG data URL, no Canvas needed)
 - `react-native-signature-canvas` for signatures that look like a seismograph during an earthquake
 - `react-native-keyboard-controller` for keyboard avoidance that actually works — wired in at the root via `<KeyboardProvider>`. Import `KeyboardAvoidingView` (and `KeyboardAwareScrollView` for screens with multiline inputs) from `react-native-keyboard-controller`, not from `react-native`.
 

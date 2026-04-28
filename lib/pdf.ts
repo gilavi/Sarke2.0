@@ -1,3 +1,4 @@
+import QRCode from 'qrcode';
 import type {
   Answer,
   AnswerPhoto,
@@ -36,11 +37,6 @@ export interface PdfCertificate extends Qualification {
   file_data_url?: string;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PROFESSIONAL PDF TEMPLATE ENGINE — Phase 5
-// Award-worthy construction safety inspection report for Georgian market.
-// ─────────────────────────────────────────────────────────────────────────────
-
 /** Shared args for both PDF generation and preview. */
 export interface PdfHtmlArgs {
   questionnaire: Inspection;
@@ -54,29 +50,32 @@ export interface PdfHtmlArgs {
   language?: 'ka' | 'en';
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
-// BUILD PDF HTML (for printing / sharing)
-// ═════════════════════════════════════════════════════════════════════════════
-
-export function buildPdfHtml(args: PdfHtmlArgs): string {
+export async function buildPdfHtml(args: PdfHtmlArgs): Promise<string> {
   return buildHtml({ ...args, mode: 'pdf' });
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
-// BUILD PDF PREVIEW HTML (for WebView — no page breaks, PREVIEW banner)
-// ═════════════════════════════════════════════════════════════════════════════
-
-export function buildPdfPreviewHtml(args: PdfHtmlArgs): string {
+export async function buildPdfPreviewHtml(args: PdfHtmlArgs): Promise<string> {
   return buildHtml({ ...args, mode: 'preview' });
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
-// CORE HTML BUILDER
-// ═════════════════════════════════════════════════════════════════════════════
+async function buildQrDataUrl(payload: string): Promise<string | null> {
+  try {
+    // SVG output is pure JS — works in React Native without Canvas.
+    const svg = await QRCode.toString(payload, {
+      type: 'svg',
+      errorCorrectionLevel: 'M',
+      margin: 1,
+      color: { dark: '#111827', light: '#FFFFFF' },
+    });
+    return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+  } catch {
+    return null;
+  }
+}
 
-function buildHtml(
+async function buildHtml(
   args: PdfHtmlArgs & { mode: 'pdf' | 'preview' },
-): string {
+): Promise<string> {
   const {
     questionnaire,
     template,
@@ -103,6 +102,16 @@ function buildHtml(
     : '—';
   const reportId = questionnaire.id.slice(0, 8).toUpperCase();
 
+  // ── QR code ──
+  const expertName =
+    signatures.find(s => s.signer_role === 'expert')?.full_name ?? '';
+  const qrPayload = JSON.stringify({
+    id: questionnaire.id,
+    date: questionnaire.created_at ?? null,
+    inspector: expertName,
+  });
+  const qrDataUrl = await buildQrDataUrl(qrPayload);
+
   // ── Sections ──
   const sections = Array.from(new Set(questions.map(q => q.section))).sort(
     (a, b) => a - b,
@@ -111,7 +120,7 @@ function buildHtml(
   const tocItems = sections
     .map((section, idx) => {
       const sectionQuestions = questions.filter(q => q.section === section);
-      return `<div class="toc-item"><span class="toc-num">${idx + 1}</span><span class="toc-title">${escapeHtml(
+      return `<div class="toc-item"><span class="toc-num">${pad2(idx + 1)}</span><span class="toc-name">${escapeHtml(
         String(section),
       )}</span><span class="toc-count">${t('pdf.tocQuestionCount', { count: sectionQuestions.length })}</span></div>`;
     })
@@ -131,10 +140,13 @@ function buildHtml(
         .join('');
 
       return `
-        <div class="section" ${isPdf ? 'style="page-break-inside: avoid;"' : ''}>
+        <div class="section">
           <div class="section-header">
-            <div class="section-number">${sectionIdx + 1}</div>
-            <h2 class="section-title">${escapeHtml(String(section))}</h2>
+            <h2 class="section-title">
+              <span class="section-num">${pad2(sectionIdx + 1)}</span>
+              <span class="section-dash">—</span>
+              <span class="section-name">${escapeHtml(String(section))}</span>
+            </h2>
           </div>
           <div class="section-body">${items}</div>
         </div>
@@ -151,20 +163,21 @@ function buildHtml(
       ? `
         <div class="section" ${isPdf ? 'style="page-break-before: always;"' : ''}>
           <div class="section-header">
-            <div class="section-number">${sections.length + 1}</div>
-            <h2 class="section-title">${t('pdf.attachedCerts')}</h2>
+            <h2 class="section-title">
+              <span class="section-num">${pad2(sections.length + 1)}</span>
+              <span class="section-dash">—</span>
+              <span class="section-name">${t('pdf.attachedCerts')}</span>
+            </h2>
           </div>
-          <div class="section-body">
+          <div class="cert-grid">
             ${certificates
               .map(
                 c => `
               <div class="cert-card">
                 <div class="cert-title">${escapeHtml(c.type)}</div>
-                <div class="cert-meta">
-                  ${c.number ? `№ ${escapeHtml(c.number)} · ` : ''}
-                  ${c.issued_at ? `${t('pdf.certIssued', { date: escapeHtml(c.issued_at) })} · ` : ''}
-                  ${c.expires_at ? `${t('pdf.certExpires', { date: escapeHtml(c.expires_at) })}` : ''}
-                </div>
+                ${c.number ? `<div class="cert-meta-row"><span class="cert-meta-label">№</span> ${escapeHtml(c.number)}</div>` : ''}
+                ${c.issued_at ? `<div class="cert-meta-row">${t('pdf.certIssued', { date: escapeHtml(c.issued_at) })}</div>` : ''}
+                ${c.expires_at ? `<div class="cert-meta-row">${t('pdf.certExpires', { date: escapeHtml(c.expires_at) })}</div>` : ''}
                 ${c.file_data_url
                   ? `<div class="cert-img-wrap">
                       <img src="${c.file_data_url}" alt="${escapeHtml(c.type)}" class="cert-img"
@@ -180,13 +193,29 @@ function buildHtml(
       `
       : '';
 
-  // ── Status badge ──
-  const statusBadge =
-    questionnaire.is_safe_for_use === false
-      ? `<span class="status-badge status-fail">${t('pdf.statusNotSafe')}</span>`
-      : questionnaire.is_safe_for_use === true
-        ? `<span class="status-badge status-pass">${t('pdf.statusSafe')}</span>`
-        : `<span class="status-badge status-pending">${t('pdf.statusIncomplete')}</span>`;
+  // ── Status hero (full-width banner) ──
+  const isSafe = questionnaire.is_safe_for_use === true;
+  const isUnsafe = questionnaire.is_safe_for_use === false;
+  const heroClass = isSafe ? 'hero-pass' : isUnsafe ? 'hero-fail' : 'hero-pending';
+  const heroIcon = isSafe ? '✓' : isUnsafe ? '⚠' : '…';
+  const heroLabel = isSafe
+    ? t('pdf.statusSafe')
+    : isUnsafe
+      ? t('pdf.statusNotSafe')
+      : t('pdf.statusIncomplete');
+  const statusHero = `
+    <div class="status-hero ${heroClass}">
+      <span class="status-hero-icon">${heroIcon}</span>
+      <span class="status-hero-text">${heroLabel}</span>
+    </div>
+  `;
+
+  // Small badge reused inside conclusion card.
+  const statusBadge = isUnsafe
+    ? `<span class="status-badge status-fail">${t('pdf.statusNotSafe')}</span>`
+    : isSafe
+      ? `<span class="status-badge status-pass">${t('pdf.statusSafe')}</span>`
+      : `<span class="status-badge status-pending">${t('pdf.statusIncomplete')}</span>`;
 
   // ── Watermark ──
   const watermark = isDraft
@@ -198,6 +227,10 @@ function buildHtml(
     ? `<div class="preview-banner">${t('pdf.previewBanner')}</div>`
     : '';
 
+  const qrBlock = qrDataUrl
+    ? `<img class="qr-img" src="${qrDataUrl}" alt="QR" />`
+    : `<div class="qr-placeholder">QR</div>`;
+
   return `<!DOCTYPE html>
 <html lang="${language}">
 <head>
@@ -206,427 +239,447 @@ function buildHtml(
   <title>${t('pdf.htmlTitle', { templateName: escapeHtml(template.name) })}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    /* ── Reset & Base ── */
+    :root {
+      --green: #1D9E75;
+      --green-dark: #147A4F;
+      --green-tint: #E8F5F0;
+      --red: #C0433C;
+      --red-tint: #FBE8E6;
+      --amber: #B45309;
+      --amber-bg: #FEF3C7;
+      --ink: #111827;
+      --ink-soft: #4B5563;
+      --gray: #9CA3AF;
+      --line: #E5E7EB;
+      --bg-soft: #FAFAFA;
+      --radius: 10px;
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: 'Noto Sans Georgian', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      color: #1a1a1a;
-      line-height: 1.65;
+      color: var(--ink);
+      line-height: 1.55;
       background: #ffffff;
       ${isPdf ? 'padding: 32px;' : 'padding: 16px;'}
-      font-size: 13px;
+      font-size: 12px;
+      border-top: 3px solid var(--green);
     }
 
-    /* ── Page Setup (PDF only) ── */
     ${isPdf ? `
     @page {
       margin: 28px 24px 40px 24px;
       @bottom-center {
         content: "${t('pdf.footerText', { systemName: t('pdf.systemName') })}" counter(page) " / " counter(pages);
         font-size: 9px;
-        color: #9ca3af;
+        color: var(--gray);
         font-family: 'Noto Sans Georgian', sans-serif;
       }
     }
     ` : ''}
 
-    /* ── Preview Banner ── */
+    /* Preview banner */
     .preview-banner {
-      background: #FEF3C7;
-      border: 2px dashed #F59E0B;
-      color: #92400E;
-      padding: 14px 20px;
-      border-radius: 12px;
-      font-size: 14px;
+      background: var(--amber-bg);
+      border: 1px solid #F59E0B;
+      color: var(--amber);
+      padding: 12px 16px;
+      border-radius: var(--radius);
+      font-size: 12px;
       font-weight: 600;
       text-align: center;
-      margin-bottom: 24px;
+      margin-bottom: 16px;
     }
 
-    /* ── Watermark ── */
+    /* Watermark */
     .watermark {
       position: fixed;
-      top: 50%;
-      left: 50%;
+      top: 50%; left: 50%;
       transform: translate(-50%, -50%) rotate(-35deg);
       font-size: 96px;
       color: rgba(180, 180, 180, 0.12);
-      font-weight: 700;
+      font-weight: 800;
       pointer-events: none;
       z-index: 0;
       letter-spacing: 8px;
       white-space: nowrap;
     }
 
-    /* ── Report Header ── */
+    /* ── Header ── */
     .report-header {
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
-      border-bottom: 3px solid #147A4F;
-      padding-bottom: 24px;
-      margin-bottom: 28px;
+      gap: 24px;
+      padding-bottom: 16px;
+      margin-bottom: 16px;
       position: relative;
       z-index: 1;
     }
-    .report-header-left {
-      flex: 1;
-    }
-    .report-logo {
-      font-size: 28px;
-      font-weight: 700;
-      color: #147A4F;
-      letter-spacing: 2px;
-      margin-bottom: 8px;
-    }
-    .brand-row {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-    }
+    .header-left { display: flex; align-items: center; gap: 14px; flex: 1; }
     .project-brand-logo {
-      width: 60px;
-      height: 60px;
+      width: 60px; height: 60px;
       border-radius: 50%;
       object-fit: cover;
       display: block;
     }
     .project-brand-initials {
-      width: 60px;
-      height: 60px;
+      width: 60px; height: 60px;
       border-radius: 50%;
-      background: #E8F5F0;
-      color: #1D9E75;
-      font-weight: 600;
-      font-size: 24px;
+      background: var(--green-tint);
+      color: var(--green);
+      font-weight: 700;
+      font-size: 22px;
       display: flex;
       align-items: center;
       justify-content: center;
+    }
+    .brand-name {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--green);
       letter-spacing: 1px;
+      line-height: 1.1;
     }
-    .report-logo-sub {
-      font-size: 11px;
-      color: #6b7280;
+    .brand-sub {
+      font-size: 9px;
+      color: var(--gray);
       text-transform: uppercase;
-      letter-spacing: 1.5px;
+      letter-spacing: 1px;
       font-weight: 600;
+      margin-top: 4px;
     }
-    .report-header-right {
-      text-align: right;
+    .header-right {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
     }
-    .report-meta-row {
-      font-size: 12px;
-      color: #4b5563;
-      margin-bottom: 4px;
-    }
-    .report-meta-row strong {
-      color: #1f2937;
-      font-weight: 600;
-    }
-    .report-id {
-      font-family: 'SF Mono', monospace;
-      font-size: 11px;
-      color: #9ca3af;
-      letter-spacing: 0.5px;
-      margin-top: 6px;
+    .qr-img {
+      width: 72px; height: 72px;
+      display: block;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 2px;
     }
     .qr-placeholder {
-      width: 72px;
-      height: 72px;
-      border: 2px dashed #d1d5db;
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 9px;
-      color: #9ca3af;
-      text-align: center;
-      margin-left: 16px;
+      width: 72px; height: 72px;
+      display: flex; align-items: center; justify-content: center;
+      border: 1px dashed var(--line);
+      border-radius: 6px;
+      color: var(--gray);
+      font-size: 10px;
+    }
+    .report-id {
+      font-family: 'SF Mono', 'Menlo', monospace;
+      font-size: 10px;
+      color: var(--gray);
+      letter-spacing: 0.5px;
+    }
+    .header-rule {
+      border: none;
+      border-top: 1px solid var(--line);
+      margin: 0 0 20px;
     }
 
-    /* ── Info Card ── */
+    /* ── Info block ── */
     .info-card {
-      background: #F9FAF8;
-      border: 1px solid #E8E1D4;
-      border-radius: 12px;
-      padding: 18px 20px;
-      margin-bottom: 28px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 16px;
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 10px 24px;
+      gap: 12px 24px;
       position: relative;
       z-index: 1;
     }
-    .info-row {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-    .info-row.full { grid-column: 1 / -1; }
+    .info-row { display: flex; flex-direction: column; gap: 2px; }
     .info-label {
-      font-size: 10px;
+      font-size: 9px;
       text-transform: uppercase;
       letter-spacing: 0.8px;
-      color: #9ca3af;
+      color: var(--gray);
       font-weight: 600;
     }
     .info-value {
-      font-size: 14px;
-      color: #1f2937;
+      font-size: 13px;
+      color: var(--ink);
       font-weight: 600;
     }
 
-    /* ── Status Badge ── */
-    .status-badge {
-      display: inline-block;
-      padding: 8px 18px;
-      border-radius: 24px;
+    /* ── Status Hero ── */
+    .status-hero {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      width: 100%;
+      padding: 16px 20px;
+      border-radius: var(--radius);
+      color: #fff;
+      margin-bottom: 16px;
+      ${isPdf ? 'page-break-inside: avoid;' : ''}
+    }
+    .hero-pass { background: var(--green); }
+    .hero-fail { background: var(--red); }
+    .hero-pending { background: var(--amber); }
+    .status-hero-icon {
+      font-size: 30px;
       font-weight: 700;
-      font-size: 14px;
-      letter-spacing: 0.3px;
-      margin: 16px 0 4px;
+      line-height: 1;
     }
-    .status-pass {
-      background: #E8F5F0;
-      color: #147A4F;
-      border: 1px solid #A7F3D0;
-    }
-    .status-fail {
-      background: #FBE8E6;
-      color: #C0433C;
-      border: 1px solid #FECACA;
-    }
-    .status-pending {
-      background: #FEF3C7;
-      color: #92400E;
-      border: 1px solid #FDE68A;
+    .status-hero-text {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
     }
 
-    /* ── Table of Contents ── */
+    /* Inline status badge (used inside conclusion card) */
+    .status-badge {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-weight: 700;
+      font-size: 12px;
+      letter-spacing: 0.3px;
+    }
+    .status-pass { background: var(--green-tint); color: var(--green-dark); }
+    .status-fail { background: var(--red-tint); color: var(--red); }
+    .status-pending { background: var(--amber-bg); color: var(--amber); }
+
+    /* ── TOC ── */
     .toc-box {
-      background: #FAFAF8;
-      border: 1px solid #E8E1D4;
-      border-radius: 12px;
-      padding: 18px 20px;
-      margin-bottom: 28px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 16px;
       position: relative;
       z-index: 1;
     }
-    .toc-title {
-      font-size: 14px;
+    .toc-heading {
+      font-size: 10px;
       font-weight: 700;
-      color: #147A4F;
-      margin-bottom: 12px;
+      color: var(--gray);
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 1px;
+      margin-bottom: 10px;
     }
     .toc-item {
       display: flex;
       align-items: center;
       gap: 10px;
       padding: 6px 0;
-      border-bottom: 1px solid #f3f4f6;
+      border-bottom: 1px solid #F3F4F6;
     }
     .toc-item:last-child { border-bottom: none; }
     .toc-num {
-      width: 24px;
-      height: 24px;
-      background: #147A4F;
-      color: #fff;
-      font-size: 11px;
+      font-family: 'SF Mono', 'Menlo', monospace;
+      font-size: 12px;
       font-weight: 700;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
+      color: var(--green);
+      min-width: 24px;
     }
-    .toc-title { flex: 1; font-size: 13px; color: #1f2937; font-weight: 500; }
-    .toc-count { font-size: 11px; color: #9ca3af; font-weight: 600; }
+    .toc-name { flex: 1; font-size: 12px; color: var(--ink); font-weight: 500; }
+    .toc-count { font-size: 10px; color: var(--gray); font-weight: 600; }
 
     /* ── Section ── */
     .section {
-      margin-bottom: 28px;
+      margin-bottom: 24px;
       position: relative;
       z-index: 1;
     }
-    .section-header {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 16px;
-    }
-    .section-number {
-      width: 32px;
-      height: 32px;
-      background: #147A4F;
-      color: #fff;
-      font-size: 14px;
-      font-weight: 700;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
+    .section-header { margin-bottom: 12px; }
     .section-title {
       font-size: 18px;
       font-weight: 700;
-      color: #147A4F;
-      border-left: 4px solid #147A4F;
+      color: var(--ink);
+      border-left: 3px solid var(--green);
       padding-left: 12px;
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
     }
+    .section-num {
+      font-family: 'SF Mono', 'Menlo', monospace;
+      color: var(--green);
+      font-weight: 800;
+    }
+    .section-dash { color: var(--gray); font-weight: 400; }
+    .section-name { color: var(--ink); }
 
-    /* ── Question Card ── */
+    /* ── Question card ── */
     .question-card {
-      background: #FAFAF8;
-      border: 1px solid #E8E1D4;
-      border-radius: 12px;
-      padding: 16px;
-      margin-bottom: 12px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      margin-bottom: 8px;
       ${isPdf ? 'page-break-inside: avoid;' : ''}
     }
+    .question-card.is-failed {
+      border-left: 3px solid var(--red);
+    }
     .question-title {
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 700;
-      color: #1f2937;
+      color: var(--ink);
       margin-bottom: 8px;
     }
-    .question-answer {
-      font-size: 13px;
-      color: #4b5563;
-      margin-bottom: 6px;
+    .question-answer { font-size: 12px; color: var(--ink-soft); margin-bottom: 4px; }
+    .answer-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 12px;
+      border-radius: 16px;
+      font-weight: 700;
+      font-size: 11px;
+      letter-spacing: 0.3px;
     }
+    .pill-yes { background: var(--green-tint); color: var(--green-dark); }
+    .pill-no  { background: var(--red-tint); color: var(--red); }
+    .pill-empty { color: var(--gray); font-style: italic; font-size: 12px; }
+
     .question-comment {
-      font-size: 12px;
-      color: #6b7280;
+      font-size: 11px;
+      color: var(--ink-soft);
       font-style: italic;
-      margin: 6px 0;
-      padding: 8px 12px;
-      background: #f3f4f6;
-      border-radius: 8px;
-      border-left: 3px solid #d1d5db;
+      margin: 8px 0 0;
+      padding: 8px 10px;
+      background: var(--bg-soft);
+      border-radius: 6px;
+      border-left: 3px solid var(--line);
     }
     .question-notes {
-      font-size: 12px;
-      color: #92400e;
+      font-size: 11px;
+      color: var(--amber);
       font-style: italic;
-      margin: 6px 0 0;
-      padding: 10px 12px;
-      background: #fffbeb;
-      border-radius: 8px;
-      border-left: 3px solid #f59e0b;
+      margin: 8px 0 0;
+      padding: 8px 10px;
+      background: #FFFBEB;
+      border-radius: 6px;
+      border-left: 3px solid #F59E0B;
     }
 
-    /* ── Photo Grid ── */
+    /* ── Photo grid ── */
     .photo-section-title {
-      font-size: 12px;
+      font-size: 10px;
       font-weight: 600;
-      color: #6b7280;
+      color: var(--gray);
       text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin: 14px 0 8px;
+      letter-spacing: 0.8px;
+      margin: 12px 0 8px;
     }
     .photo-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 12px;
+      gap: 10px;
       margin-top: 8px;
     }
+    .photo-grid.single { grid-template-columns: 1fr; }
     .photo-item {
-      background: #fff;
-      border-radius: 10px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
       overflow: hidden;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-      border: 1px solid #e5e7eb;
+      background: #fff;
     }
     .photo-img-wrap {
       width: 100%;
       height: 160px;
       overflow: hidden;
-      background: #f9fafb;
+      background: var(--bg-soft);
     }
     .photo-item img {
-      width: 100%;
-      height: 100%;
+      width: 100%; height: 100%;
       object-fit: cover;
       display: block;
     }
     .photo-caption {
       font-size: 10px;
-      color: #6b7280;
+      color: var(--gray);
       text-align: center;
-      padding: 8px 10px;
-      background: #f9fafb;
-      min-height: 30px;
+      padding: 6px 8px;
     }
     .photo-missing {
       display: flex;
       align-items: center;
       justify-content: center;
       height: 160px;
-      background: #f9fafb;
-      font-size: 11px;
-      color: #9ca3af;
+      background: var(--bg-soft);
+      font-size: 10px;
+      color: var(--gray);
     }
 
-    /* ── Table ── */
+    /* ── Component table ── */
     .table-wrap {
-      border: 1px solid #e5e7eb;
-      border-radius: 10px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
       overflow: hidden;
-      margin-top: 10px;
+      margin-top: 8px;
     }
     .data-table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 12px;
-    }
-    .data-table thead {
-      background: #147A4F;
-      color: #fff;
-    }
-    .data-table th {
-      padding: 10px 12px;
-      text-align: left;
-      font-weight: 600;
       font-size: 11px;
     }
+    .data-table thead { background: var(--green); color: #fff; }
+    .data-table th {
+      padding: 8px 10px;
+      text-align: left;
+      font-weight: 700;
+      font-size: 11px;
+    }
+    .data-table tbody th {
+      background: var(--bg-soft);
+      color: var(--ink);
+      font-weight: 600;
+    }
     .data-table td {
-      padding: 10px 12px;
-      border-top: 1px solid #f3f4f6;
-      color: #1f2937;
+      padding: 8px 10px;
+      border-top: 1px solid #F3F4F6;
+      color: var(--ink);
     }
-    .data-table tbody tr:nth-child(even) {
-      background: #f9fafb;
+    .data-table tbody tr:nth-child(even) td,
+    .data-table tbody tr:nth-child(even) th { background: #FAFAFA; }
+    .data-table tbody tr.is-problem td,
+    .data-table tbody tr.is-problem th {
+      background: var(--red-tint);
+      border-left: 3px solid var(--red);
     }
+    .cell-status { font-weight: 700; }
+    .cell-status--pass { color: var(--green-dark); }
+    .cell-status--fail { color: var(--red); }
 
     /* ── Conclusion ── */
     .conclusion-card {
       background: #fff;
-      border-left: 4px solid #147A4F;
-      border-radius: 12px;
-      padding: 20px;
-      margin: 24px 0;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--green);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      margin: 16px 0;
       ${isPdf ? 'page-break-inside: avoid;' : ''}
       position: relative;
       z-index: 1;
     }
     .conclusion-label {
-      font-size: 11px;
+      font-size: 10px;
       text-transform: uppercase;
       letter-spacing: 1px;
-      color: #147A4F;
+      color: var(--green);
       font-weight: 700;
       margin-bottom: 8px;
     }
     .conclusion-text {
-      font-size: 15px;
-      color: #1f2937;
+      font-size: 14px;
+      color: var(--ink);
       line-height: 1.7;
+      margin-bottom: 12px;
     }
 
     /* ── Signatures ── */
@@ -634,131 +687,126 @@ function buildHtml(
       display: flex;
       align-items: center;
       gap: 12px;
-      margin: 28px 0 16px;
+      margin: 24px 0 12px;
       position: relative;
       z-index: 1;
     }
     .signatures-header-text {
-      font-size: 16px;
+      font-size: 14px;
       font-weight: 700;
-      color: #1f2937;
-      white-space: nowrap;
+      color: var(--ink);
     }
-    .signatures-header-rule {
-      flex: 1;
-      height: 1px;
-      background: #e5e7eb;
-    }
+    .signatures-header-rule { flex: 1; height: 1px; background: var(--line); }
     .sig-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 16px;
+      gap: 12px;
       position: relative;
       z-index: 1;
     }
     .sig-block {
       background: #fff;
-      border: 2px solid #E8E1D4;
-      border-radius: 12px;
-      padding: 16px;
-      text-align: center;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 14px;
       ${isPdf ? 'page-break-inside: avoid;' : ''}
+    }
+    .sig-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--ink);
+      margin-bottom: 2px;
     }
     .sig-role {
       font-size: 10px;
       text-transform: uppercase;
-      letter-spacing: 1px;
-      color: #9ca3af;
+      letter-spacing: 0.8px;
+      color: var(--gray);
       font-weight: 600;
-      margin-bottom: 4px;
-    }
-    .sig-name {
-      font-size: 15px;
-      font-weight: 700;
-      color: #1f2937;
       margin-bottom: 2px;
     }
     .sig-position {
-      font-size: 12px;
-      color: #6b7280;
+      font-size: 11px;
+      color: var(--ink-soft);
       margin-bottom: 10px;
     }
     .sig-img-box {
-      border: 1px dashed #d1d5db;
-      border-radius: 8px;
-      padding: 10px;
-      background: #fafafa;
-      min-height: 70px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 8px;
+      background: #fff;
+      height: 70px;
       display: flex;
       align-items: center;
       justify-content: center;
     }
     .sig-img-box img {
-      max-width: 100%;
-      max-height: 70px;
+      max-width: 120px;
+      max-height: 60px;
       display: block;
     }
     .sig-date {
-      font-size: 11px;
-      color: #9ca3af;
+      font-size: 10px;
+      color: var(--gray);
       margin-top: 8px;
     }
 
-    /* ── Audit Trail ── */
     .audit-trail {
       font-size: 9px;
-      color: #9ca3af;
+      color: var(--gray);
       margin-top: 8px;
-      border-top: 1px dashed #e5e7eb;
+      border-top: 1px solid var(--line);
       padding-top: 6px;
       text-align: left;
       line-height: 1.5;
     }
-    .audit-trail strong {
-      color: #6b7280;
-      font-weight: 600;
-    }
+    .audit-trail strong { color: var(--ink-soft); font-weight: 600; }
 
     /* ── Certificates ── */
+    .cert-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
     .cert-card {
       background: #fff;
-      border: 1px solid #e5e7eb;
-      border-radius: 10px;
-      padding: 14px 16px;
-      margin-bottom: 10px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 14px;
       ${isPdf ? 'page-break-inside: avoid;' : ''}
     }
     .cert-title {
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 700;
-      color: #1f2937;
-      margin: 0 0 4px;
+      color: var(--ink);
+      margin: 0 0 6px;
     }
-    .cert-meta {
+    .cert-meta-row {
       font-size: 11px;
-      color: #6b7280;
-      margin-bottom: 6px;
+      color: var(--ink-soft);
+      margin-bottom: 2px;
     }
+    .cert-meta-label { color: var(--gray); font-weight: 600; }
     .cert-img-wrap {
+      margin-top: 10px;
       border-radius: 8px;
       overflow: hidden;
-      border: 1px solid #e5e7eb;
+      border: 1px solid var(--line);
+      aspect-ratio: 16 / 9;
+      background: var(--bg-soft);
     }
     .cert-img {
       display: block;
       width: 100%;
-      max-height: 360px;
-      object-fit: contain;
+      height: 100%;
+      object-fit: cover;
     }
 
-    /* ── Print helpers ── */
     @media print {
-      .question-card { page-break-inside: avoid; }
-      .photo-item { page-break-inside: avoid; }
-      .sig-block { page-break-inside: avoid; }
-      .section { page-break-inside: avoid; }
-      .conclusion-card { page-break-inside: avoid; }
-      .cert-card { page-break-inside: avoid; }
+      .question-card, .photo-item, .sig-block, .section,
+      .conclusion-card, .cert-card, .status-hero {
+        page-break-inside: avoid;
+      }
     }
   </style>
 </head>
@@ -766,29 +814,21 @@ function buildHtml(
   ${previewBanner}
   ${watermark}
 
-  <!-- Report Header -->
   <div class="report-header">
-    <div class="report-header-left">
-      <div class="brand-row">
-        ${renderProjectBrand(project)}
-        <div>
-          <div class="report-logo">SARKE</div>
-          <div class="report-logo-sub">${t('pdf.systemName')}</div>
-        </div>
+    <div class="header-left">
+      ${renderProjectBrand(project)}
+      <div>
+        <div class="brand-name">SARKE</div>
+        <div class="brand-sub">${t('pdf.systemName')}</div>
       </div>
     </div>
-    <div style="display:flex;align-items:center;">
-      <div class="report-header-right">
-        <div class="report-meta-row"><strong>${escapeHtml(template.name)}</strong></div>
-        <div class="report-meta-row">${t('pdf.metaDate', { date: dateStr })}</div>
-        <div class="report-meta-row">${t('pdf.metaObject', { name: escapeHtml(project.name) })}</div>
-        <div class="report-id">${t('pdf.metaId', { id: reportId })}</div>
-      </div>
-      <div class="qr-placeholder">QR<br/>CODE</div>
+    <div class="header-right">
+      ${qrBlock}
+      <div class="report-id">${reportId}</div>
     </div>
   </div>
+  <hr class="header-rule" />
 
-  <!-- Info Card -->
   <div class="info-card">
     <div class="info-row">
       <span class="info-label">${t('pdf.infoCompany')}</span>
@@ -798,55 +838,56 @@ function buildHtml(
       <span class="info-label">${t('pdf.infoObject')}</span>
       <span class="info-value">${escapeHtml(project.address ?? project.name)}</span>
     </div>
-    ${template.category === 'harness' ? `
     <div class="info-row">
+      <span class="info-label">${t('pdf.metaDate', { date: '' }).replace(/[:：].*/, '').trim() || 'თარიღი'}</span>
+      <span class="info-value">${dateStr}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">ID</span>
+      <span class="info-value" style="font-family:'SF Mono','Menlo',monospace;font-size:12px;">${reportId}</span>
+    </div>
+    ${template.category === 'harness' ? `
+    <div class="info-row" style="grid-column:1 / -1;">
       <span class="info-label">${t('pdf.infoHarness')}</span>
       <span class="info-value">${escapeHtml(questionnaire.harness_name ?? '—')}</span>
     </div>` : ''}
-    <div class="info-row">
-      <span class="info-label">${t('pdf.infoStatus')}</span>
-      <span class="info-value">${statusBadge}</span>
-    </div>
   </div>
 
-  <!-- Table of Contents -->
+  ${statusHero}
+
   <div class="toc-box">
-    <div class="toc-title">${t('pdf.tocTitle')}</div>
+    <div class="toc-heading">${t('pdf.tocTitle')}</div>
     ${tocItems}
     ${certificates.length > 0 ? `
     <div class="toc-item">
-      <span class="toc-num">${sections.length + 1}</span>
-      <span class="toc-title">${t('pdf.attachedCerts')}</span>
+      <span class="toc-num">${pad2(sections.length + 1)}</span>
+      <span class="toc-name">${t('pdf.attachedCerts')}</span>
       <span class="toc-count">${certificates.length}</span>
     </div>` : ''}
   </div>
 
-  <!-- Inspection Sections -->
   ${body}
 
-  <!-- Conclusion -->
   <div class="conclusion-card">
     <div class="conclusion-label">${t('pdf.conclusionTitle')}</div>
     <div class="conclusion-text">${escapeHtml(questionnaire.conclusion_text ?? '—')}</div>
     ${statusBadge}
   </div>
 
-  <!-- Signatures -->
   <div class="signatures-header">
     <span class="signatures-header-text">${t('pdf.signaturesTitle')}</span>
     <div class="signatures-header-rule"></div>
   </div>
   <div class="sig-grid">${sigHtml}</div>
 
-  <!-- Certificates -->
   ${certHtml}
 </body>
 </html>`;
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
+// ─────────────────────────────────────────────────────────────────────────────
 // RENDER HELPERS
-// ═════════════════════════════════════════════════════════════════════════════
+// ─────────────────────────────────────────────────────────────────────────────
 
 function renderQuestion(
   q: Question,
@@ -861,22 +902,25 @@ function renderQuestion(
   const notes = answer?.notes
     ? `<div class="question-notes">${t('pdf.notesLabel')}: ${escapeHtml(answer.notes)}</div>`
     : '';
+  const gridClass = photos.length === 1 ? 'photo-grid single' : 'photo-grid';
   const photosHtml =
     photos.length > 0
       ? `<div class="photo-section-title">${t('pdf.photosTitle')}</div>
-         <div class="photo-grid">${photos.map(p => renderPhoto(p, isFailed, q.title, t)).join('')}</div>`
+         <div class="${gridClass}">${photos.map(p => renderPhoto(p, isFailed, q.title, t)).join('')}</div>`
       : '';
+
+  const cardClass = `question-card${isFailed ? ' is-failed' : ''}`;
 
   switch (q.type) {
     case 'yesno': {
       const v = answer?.value_bool;
       const label =
         v === true
-          ? `<span class="status-badge status-pass" style="margin:0 0 8px 0;">✓ ${t('pdf.yes')}</span>`
+          ? `<span class="answer-pill pill-yes">✓ ${t('pdf.yes')}</span>`
           : v === false
-            ? `<span class="status-badge status-fail" style="margin:0 0 8px 0;">✗ ${t('pdf.no')}</span>`
-            : '<span style="color:#9ca3af;font-style:italic;">—</span>';
-      return `<div class="question-card">
+            ? `<span class="answer-pill pill-no">✗ ${t('pdf.no')}</span>`
+            : '<span class="pill-empty">—</span>';
+      return `<div class="${cardClass}">
         <div class="question-title">${escapeHtml(q.title)}</div>
         <div class="question-answer">${label}</div>
         ${comment}${notes}${photosHtml}
@@ -884,20 +928,20 @@ function renderQuestion(
     }
     case 'measure': {
       const v = answer?.value_num;
-      return `<div class="question-card">
+      return `<div class="${cardClass}">
         <div class="question-title">${escapeHtml(q.title)}</div>
         <div class="question-answer">${v ?? '—'} ${escapeHtml(q.unit ?? '')}</div>
         ${comment}${notes}${photosHtml}
       </div>`;
     }
     case 'freetext':
-      return `<div class="question-card">
+      return `<div class="${cardClass}">
         <div class="question-title">${escapeHtml(q.title)}</div>
         <div class="question-answer">${escapeHtml(answer?.value_text ?? '—')}</div>
         ${comment}${notes}${photosHtml}
       </div>`;
     case 'photo_upload':
-      return `<div class="question-card">
+      return `<div class="${cardClass}">
         <div class="question-title">${escapeHtml(q.title)}</div>
         ${photosHtml}${comment}${notes}
       </div>`;
@@ -908,13 +952,26 @@ function renderQuestion(
       const head = cols.map(c => `<th>${escapeHtml(c)}</th>`).join('');
       const body = rows
         .map(row => {
+          const rowVals = cols.map(col => grid[row]?.[col] ?? '');
+          const isProblem = rowVals.some(v => isProblemValue(v));
           const cells = cols
-            .map(col => `<td>${escapeHtml(grid[row]?.[col] ?? '')}</td>`)
+            .map((col, i) => {
+              const raw = rowVals[i];
+              const status = classifyCell(raw);
+              if (status === 'pass') {
+                return `<td><span class="cell-status cell-status--pass">${escapeHtml(raw)}</span></td>`;
+              }
+              if (status === 'fail') {
+                return `<td><span class="cell-status cell-status--fail">${escapeHtml(raw)}</span></td>`;
+              }
+              return `<td>${escapeHtml(raw)}</td>`;
+            })
             .join('');
-          return `<tr><th>${escapeHtml(row)}</th>${cells}</tr>`;
+          const trClass = isProblem ? ' class="is-problem"' : '';
+          return `<tr${trClass}><th>${escapeHtml(row)}</th>${cells}</tr>`;
         })
         .join('');
-      return `<div class="question-card">
+      return `<div class="${cardClass}">
         <div class="question-title">${escapeHtml(q.title)}</div>
         <div class="table-wrap">
           <table class="data-table">
@@ -928,6 +985,20 @@ function renderQuestion(
     default:
       return '';
   }
+}
+
+function isProblemValue(raw: string): boolean {
+  const v = (raw ?? '').trim().toLocaleLowerCase('ka-GE');
+  if (!v) return false;
+  return /(პრობლემ|არა|fail|no|broken|damaged|defect)/i.test(v);
+}
+
+function classifyCell(raw: string): 'pass' | 'fail' | null {
+  const v = (raw ?? '').trim().toLocaleLowerCase('ka-GE');
+  if (!v) return null;
+  if (/(პრობლემ|არა|fail|no|broken|damaged|defect)/i.test(v)) return 'fail';
+  if (/(კი|ok|pass|yes|good|ok\.|ნორმ)/i.test(v)) return 'pass';
+  return null;
 }
 
 function renderPhoto(
@@ -996,7 +1067,6 @@ function renderSignatures(signatures: SignatureRecord[], lang: 'ka' | 'en'): str
         ? new Date(sig.signed_at).toLocaleTimeString(lang === 'en' ? 'en-US' : 'ka-GE', { hour: '2-digit', minute: '2-digit' })
         : '';
 
-      // Audit trail
       const auditParts: string[] = [];
       if (signedDate) auditParts.push(`<strong>${tPdf(lang, 'pdf.timeLabel')}:</strong> ${signedDate} ${signedTime}`);
       if (sig.latitude != null && sig.longitude != null) {
@@ -1014,8 +1084,8 @@ function renderSignatures(signatures: SignatureRecord[], lang: 'ka' | 'en'): str
 
       return `
       <div class="sig-block">
-        <div class="sig-role">${escapeHtml(label)}</div>
         <div class="sig-name">${escapeHtml(sig.full_name || '—')}</div>
+        <div class="sig-role">${escapeHtml(label)}</div>
         ${sig.position ? `<div class="sig-position">${escapeHtml(sig.position)}</div>` : ''}
         <div class="sig-img-box">
           <img src="${sig.signature_png_url}" alt="${tPdf(lang, 'pdf.signatureAlt') ?? 'Signature'}" />
@@ -1035,6 +1105,10 @@ function formatDate(iso: string): string {
   const hh = String(d.getHours()).padStart(2, '0');
   const min = String(d.getMinutes()).padStart(2, '0');
   return `${dd}.${mm}.${yyyy} ${hh}:${min}`;
+}
+
+function pad2(n: number): string {
+  return String(n).padStart(2, '0');
 }
 
 function renderProjectBrand(project: Project): string {
