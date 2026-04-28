@@ -175,7 +175,7 @@ supabase/             SQL incantations
 
 ## ⚠️ Known Issues
 
-1. The app crashes. Sometimes. We don't know why. You don't know why. Nobody knows why.
+1. **Crash reporting**: Crashes are reported to Sentry (via `lib/crashReporting.ts`). To enable: set `EXPO_PUBLIC_SENTRY_DSN` in your `.env` or build config. In dev mode and without a DSN, crashes log to console instead. See [Sentry docs](https://docs.sentry.io/platforms/react-native/) to create a project and get a DSN.
 2. If you rotate your phone during signature capture, the canvas rotates but your sanity doesn't.
 3. The PDF export takes 3-5 business days (on a fast phone).
 4. `npm install` downloads the entire internet. Twice.
