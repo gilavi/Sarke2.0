@@ -11,12 +11,13 @@ import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-rou
 import { Ionicons } from '@expo/vector-icons';
 import * as Crypto from 'expo-crypto';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
-import { FlowHeader } from '../../../components/FlowHeader';
+import { HeaderBackPill } from '../../../components/HeaderBackPill';
 import { useBottomSheet } from '../../../components/BottomSheet';
-import { Button } from '../../../components/ui';
 import { useTheme } from '../../../lib/theme';
 import { useToast } from '../../../lib/toast';
+import { a11y } from '../../../lib/accessibility';
 import { friendlyError } from '../../../lib/errorMap';
 import { projectsApi, reportsApi } from '../../../lib/services';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
@@ -142,40 +143,41 @@ export default function ReportSlidesEditor() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <Stack.Screen options={{ headerShown: false }} />
-
-      <FlowHeader
-        flowTitle={report.title || 'რეპორტი'}
-        project={project}
-        step={2}
-        totalSteps={2}
-        trailing="none"
-        onBack={() => router.back()}
-        confirmExit={false}
-        trailingElement={
-          <Pressable
-            onPress={onComplete}
-            disabled={generating || slides.length === 0}
-            hitSlop={8}
-            style={({ pressed }) => [
-              styles.pdfBtn,
-              {
-                backgroundColor: slides.length === 0 ? theme.colors.subtleSurface : theme.colors.accent,
-              },
-              pressed && { opacity: 0.7 },
-            ]}
-          >
-            <Text
-              style={{
-                color: slides.length === 0 ? theme.colors.inkFaint : theme.colors.white,
-                fontSize: 13,
-                fontWeight: '700',
-              }}
+      <Stack.Screen
+        options={{
+          title: report.title || 'რეპორტი',
+          headerBackVisible: false,
+          headerLeft: () => <HeaderBackPill onPress={() => router.back()} />,
+          headerShadowVisible: false,
+          headerStyle: { backgroundColor: theme.colors.background },
+          headerTintColor: theme.colors.accent,
+          headerTitleStyle: { color: theme.colors.ink, fontWeight: '700', fontSize: 17 },
+          headerRight: () => (
+            <Pressable
+              onPress={onComplete}
+              disabled={generating || slides.length === 0}
+              hitSlop={8}
+              style={({ pressed }) => [
+                styles.pdfBtn,
+                {
+                  backgroundColor: slides.length === 0 ? theme.colors.subtleSurface : theme.colors.accent,
+                },
+                pressed && { opacity: 0.7 },
+              ]}
+              {...a11y('PDF', 'PDF-ის გენერაცია', 'button')}
             >
-              PDF →
-            </Text>
-          </Pressable>
-        }
+              <Text
+                style={{
+                  color: slides.length === 0 ? theme.colors.inkFaint : theme.colors.white,
+                  fontSize: 13,
+                  fontWeight: '700',
+                }}
+              >
+                PDF →
+              </Text>
+            </Pressable>
+          ),
+        }}
       />
 
       <ScrollView
@@ -260,67 +262,76 @@ function SlideCard({
   }, [imagePath]);
 
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}>
-      <View style={styles.cardRow}>
-        <View style={styles.numberBadge}>
-          <Text style={styles.numberBadgeText}>{index + 1}</Text>
-        </View>
-
-        <View style={styles.thumb}>
-          {thumbUri ? (
-            <Image source={{ uri: thumbUri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-          ) : (
-            <Ionicons name="image-outline" size={20} color={theme.colors.inkFaint} />
-          )}
-        </View>
-
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text style={styles.cardTitle} numberOfLines={1}>
-            {slide.title || `სლაიდი ${index + 1}`}
-          </Text>
-          {slide.description ? (
-            <Text style={styles.cardDescription} numberOfLines={2}>
-              {slide.description}
-            </Text>
-          ) : (
-            <Text style={[styles.cardDescription, { fontStyle: 'italic', color: theme.colors.inkFaint }]}>
-              აღწერა არ არის
-            </Text>
-          )}
-        </View>
-
-        <View style={{ flexDirection: 'column', gap: 2 }}>
-          <Pressable
-            onPress={onUp}
-            disabled={index === 0}
-            hitSlop={6}
-            style={({ pressed }) => [
-              styles.reorderBtn,
-              index === 0 && { opacity: 0.3 },
-              pressed && { opacity: 0.6 },
-            ]}
-          >
-            <Ionicons name="chevron-up" size={16} color={theme.colors.inkSoft} />
-          </Pressable>
-          <Pressable
-            onPress={onDown}
-            disabled={index === total - 1}
-            hitSlop={6}
-            style={({ pressed }) => [
-              styles.reorderBtn,
-              index === total - 1 && { opacity: 0.3 },
-              pressed && { opacity: 0.6 },
-            ]}
-          >
-            <Ionicons name="chevron-down" size={16} color={theme.colors.inkSoft} />
-          </Pressable>
-        </View>
-
-        <Pressable onPress={onDelete} hitSlop={6} style={styles.deleteBtn}>
-          <Ionicons name="trash-outline" size={16} color={theme.colors.danger} />
+    <Swipeable
+      renderRightActions={() => (
+        <Pressable
+          onPress={onDelete}
+          style={styles.swipeDelete}
+          {...a11y('წაშლა', 'სლაიდის წაშლა', 'button')}
+        >
+          <Ionicons name="trash" size={18} color={theme.colors.white} />
         </Pressable>
-      </View>
-    </Pressable>
+      )}
+      overshootRight={false}
+    >
+      <Pressable onPress={onPress} style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}>
+        <View style={styles.cardRow}>
+          <View style={styles.numberBadge}>
+            <Text style={styles.numberBadgeText}>{index + 1}</Text>
+          </View>
+
+          <View style={styles.thumb}>
+            {thumbUri ? (
+              <Image source={{ uri: thumbUri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+            ) : (
+              <Ionicons name="image-outline" size={20} color={theme.colors.inkFaint} />
+            )}
+          </View>
+
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={styles.cardTitle} numberOfLines={1}>
+              {slide.title || `სლაიდი ${index + 1}`}
+            </Text>
+            {slide.description ? (
+              <Text style={styles.cardDescription} numberOfLines={2}>
+                {slide.description}
+              </Text>
+            ) : (
+              <Text style={[styles.cardDescription, { fontStyle: 'italic', color: theme.colors.inkFaint }]}>
+                აღწერა არ არის
+              </Text>
+            )}
+          </View>
+
+          <View style={styles.reorderStack}>
+            <Pressable
+              onPress={onUp}
+              disabled={index === 0}
+              hitSlop={6}
+              style={({ pressed }) => [
+                styles.reorderBtn,
+                index === 0 && { opacity: 0.3 },
+                pressed && { opacity: 0.6 },
+              ]}
+            >
+              <Ionicons name="chevron-up" size={16} color={theme.colors.inkSoft} />
+            </Pressable>
+            <Pressable
+              onPress={onDown}
+              disabled={index === total - 1}
+              hitSlop={6}
+              style={({ pressed }) => [
+                styles.reorderBtn,
+                index === total - 1 && { opacity: 0.3 },
+                pressed && { opacity: 0.6 },
+              ]}
+            >
+              <Ionicons name="chevron-down" size={16} color={theme.colors.inkSoft} />
+            </Pressable>
+          </View>
+        </View>
+      </Pressable>
+    </Swipeable>
   );
 }
 
@@ -374,16 +385,27 @@ function makeStyles(theme: any) {
     },
     cardTitle: { fontSize: 14, fontWeight: '600', color: theme.colors.ink },
     cardDescription: { fontSize: 12, color: theme.colors.inkSoft, lineHeight: 16 },
+    reorderStack: {
+      flexDirection: 'column',
+      gap: 4,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
     reorderBtn: {
-      width: 22,
-      height: 22,
+      width: 24,
+      height: 24,
       borderRadius: 6,
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: theme.colors.subtleSurface,
     },
-    deleteBtn: {
-      padding: 4,
+    swipeDelete: {
+      width: 64,
+      backgroundColor: theme.colors.danger,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginLeft: 8,
     },
     addBtn: {
       flexDirection: 'row',

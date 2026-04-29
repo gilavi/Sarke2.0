@@ -7,17 +7,15 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  TextInput,
   View,
 } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
 import * as Crypto from 'expo-crypto';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { A11yText as Text } from '../../../../components/primitives/A11yText';
 import { useBottomSheet } from '../../../../components/BottomSheet';
-import { Button } from '../../../../components/ui';
+import { Button, Input } from '../../../../components/ui';
 import { HeaderBackPill } from '../../../../components/HeaderBackPill';
 import { useTheme } from '../../../../lib/theme';
 import { useToast } from '../../../../lib/toast';
@@ -25,7 +23,7 @@ import { friendlyError } from '../../../../lib/errorMap';
 import { reportsApi, storageApi } from '../../../../lib/services';
 import { STORAGE_BUCKETS } from '../../../../lib/supabase';
 import { getStorageImageDisplayUrl } from '../../../../lib/imageUrl';
-import { setPhotoAnnotateCallback } from '../../../../lib/photoPickerBus';
+import { setPhotoAnnotateCallback, setPhotoPickerCallback } from '../../../../lib/photoPickerBus';
 import type { Report, ReportSlide } from '../../../../types/models';
 
 export default function ReportSlideEditor() {
@@ -100,45 +98,37 @@ export default function ReportSlideEditor() {
     }
   };
 
-  const pickFromCamera = async () => {
-    const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (perm.status !== 'granted') {
-      toast.error('კამერაზე წვდომა აკრძალულია');
-      return;
-    }
-    const res = await ImagePicker.launchCameraAsync({ quality: 0.85 });
-    if (res.canceled || !res.assets?.[0]) return;
-    setImageUploading(true);
-    const newPath = await uploadLocalUri(res.assets[0].uri, 'raw');
-    if (newPath) {
-      setImagePath(newPath);
-      setAnnotatedPath(null);
-    }
-    setImageUploading(false);
-  };
-
-  const pickFromLibrary = async () => {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (perm.status !== 'granted') {
-      toast.error('გალერეაზე წვდომა აკრძალულია');
-      return;
-    }
-    const res = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      quality: 0.85,
+  // Mirror the questionnaire flow: push /photo-picker (live camera + library
+  // strip), and when the user picks a URI, replace with /photo-annotate so
+  // returning from annotate lands back on this screen. Then upload + persist.
+  const pickPhoto = () => {
+    setPhotoPickerCallback(localUri => {
+      if (!localUri) return;
+      setPhotoAnnotateCallback(async annotatedLocalUri => {
+        // User cancelled annotation → fall back to raw photo upload.
+        const sourceUri = annotatedLocalUri ?? localUri;
+        const kind: 'raw' | 'annotated' = annotatedLocalUri ? 'annotated' : 'raw';
+        setImageUploading(true);
+        const newPath = await uploadLocalUri(sourceUri, kind);
+        if (newPath) {
+          if (kind === 'raw') {
+            setImagePath(newPath);
+            setAnnotatedPath(null);
+          } else {
+            // We don't keep the raw if user only sees annotated; safe simplification.
+            setImagePath(newPath);
+            setAnnotatedPath(null);
+          }
+        }
+        setImageUploading(false);
+      });
+      router.replace(`/photo-annotate?uri=${encodeURIComponent(localUri)}` as any);
     });
-    if (res.canceled || !res.assets?.[0]) return;
-    setImageUploading(true);
-    const newPath = await uploadLocalUri(res.assets[0].uri, 'raw');
-    if (newPath) {
-      setImagePath(newPath);
-      setAnnotatedPath(null);
-    }
-    setImageUploading(false);
+    router.push('/photo-picker' as any);
   };
 
-  const openAnnotator = async () => {
-    const path = imagePath;
+  const reAnnotateExisting = async () => {
+    const path = imagePath ?? annotatedPath;
     if (!path) return;
     setImageUploading(true);
     try {
@@ -146,7 +136,7 @@ export default function ReportSlideEditor() {
       setPhotoAnnotateCallback(async annotatedLocalUri => {
         if (annotatedLocalUri) {
           const newPath = await uploadLocalUri(annotatedLocalUri, 'annotated');
-          if (newPath) setAnnotatedPath(newPath);
+          if (newPath) setImagePath(newPath);
         }
         setImageUploading(false);
       });
@@ -174,32 +164,21 @@ export default function ReportSlideEditor() {
   };
 
   const onImageTap = () => {
-    if (!imagePath) {
-      showSheet(
-        {
-          title: 'ფოტოს წყარო',
-          options: ['გადაღება', 'გალერეა', 'გაუქმება'],
-          cancelButtonIndex: 2,
-        },
-        idx => {
-          if (idx === 0) void pickFromCamera();
-          else if (idx === 1) void pickFromLibrary();
-        },
-      );
+    if (!imagePath && !annotatedPath) {
+      pickPhoto();
       return;
     }
     showSheet(
       {
         title: 'სურათის ცვლილება',
-        options: ['გადაღება', 'გალერეა', 'ხატვა / რედაქტირება', 'წაშლა', 'გაუქმება'],
-        cancelButtonIndex: 4,
-        destructiveButtonIndex: 3,
+        options: ['შეცვლა', 'ხატვა / რედაქტირება', 'წაშლა', 'გაუქმება'],
+        cancelButtonIndex: 3,
+        destructiveButtonIndex: 2,
       },
       idx => {
-        if (idx === 0) void pickFromCamera();
-        else if (idx === 1) void pickFromLibrary();
-        else if (idx === 2) void openAnnotator();
-        else if (idx === 3) removeImage();
+        if (idx === 0) pickPhoto();
+        else if (idx === 1) void reAnnotateExisting();
+        else if (idx === 2) removeImage();
       },
     );
   };
@@ -279,32 +258,26 @@ export default function ReportSlideEditor() {
           </Pressable>
 
           {/* Title */}
-          <View style={styles.field}>
-            <Text style={styles.label}>სლაიდის სათაური *</Text>
-            <TextInput
-              value={title}
-              onChangeText={setTitle}
-              placeholder="მაგ: ხარაჩოს ძირი"
-              placeholderTextColor={theme.colors.inkFaint}
-              style={styles.input}
-              returnKeyType="next"
-            />
-          </View>
+          <Input
+            label="სლაიდის სათაური"
+            required
+            value={title}
+            onChangeText={setTitle}
+            placeholder="მაგ: ხარაჩოს ძირი"
+            returnKeyType="next"
+          />
 
           {/* Description */}
-          <View style={styles.field}>
-            <Text style={styles.label}>აღწერა</Text>
-            <TextInput
-              value={description}
-              onChangeText={setDescription}
-              placeholder="დაამატეთ დეტალები (სურვილისამებრ)"
-              placeholderTextColor={theme.colors.inkFaint}
-              multiline
-              numberOfLines={4}
-              style={[styles.input, styles.multiline]}
-              textAlignVertical="top"
-            />
-          </View>
+          <Input
+            label="აღწერა"
+            value={description}
+            onChangeText={setDescription}
+            placeholder="დაამატეთ დეტალები (სურვილისამებრ)"
+            multiline
+            numberOfLines={4}
+            textAlignVertical="top"
+            style={{ minHeight: 100, paddingTop: 10 }}
+          />
         </ScrollView>
 
         <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
@@ -342,22 +315,6 @@ function makeStyles(theme: any) {
       backgroundColor: 'rgba(0,0,0,0.4)',
       alignItems: 'center',
       justifyContent: 'center',
-    },
-    field: { gap: 6 },
-    label: { fontSize: 13, fontWeight: '600', color: theme.colors.inkSoft },
-    input: {
-      fontSize: 15,
-      color: theme.colors.ink,
-      paddingVertical: 10,
-      paddingHorizontal: 12,
-      borderRadius: 10,
-      borderWidth: 1,
-      borderColor: theme.colors.hairline,
-      backgroundColor: theme.colors.surface,
-    },
-    multiline: {
-      minHeight: 90,
-      paddingTop: 10,
     },
     footer: {
       paddingHorizontal: 16,

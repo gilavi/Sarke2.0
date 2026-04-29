@@ -4,13 +4,11 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
-  TextInput,
   View,
 } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { A11yText as Text } from '../../components/primitives/A11yText';
-import { Button } from '../../components/ui';
+import { Button, Input } from '../../components/ui';
 import { FlowHeader } from '../../components/FlowHeader';
 import { useTheme } from '../../lib/theme';
 import { useToast } from '../../lib/toast';
@@ -69,22 +67,19 @@ export default function NewReportTitleScreen() {
       >
         <ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={{ padding: 16, paddingBottom: 120, gap: 16 }}
+          contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={styles.card}>
-            <Text style={styles.label}>რეპორტის სახელი</Text>
-            <TextInput
-              value={title}
-              onChangeText={setTitle}
-              placeholder="მაგ: ივნისის შემოწმების შედეგები"
-              placeholderTextColor={theme.colors.inkFaint}
-              style={styles.input}
-              autoFocus
-              returnKeyType="done"
-              onSubmitEditing={onNext}
-            />
-          </View>
+          <Input
+            label="რეპორტის სახელი"
+            required
+            value={title}
+            onChangeText={setTitle}
+            placeholder="მაგ: ივნისის შემოწმების შედეგები"
+            autoFocus
+            returnKeyType="done"
+            onSubmitEditing={onNext}
+          />
         </ScrollView>
 
         <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
@@ -102,21 +97,6 @@ export default function NewReportTitleScreen() {
 
 function makeStyles(theme: any) {
   return StyleSheet.create({
-    card: {
-      backgroundColor: theme.colors.surface,
-      borderRadius: 12,
-      padding: 16,
-      gap: 8,
-    },
-    label: { fontSize: 13, fontWeight: '600', color: theme.colors.inkSoft },
-    input: {
-      fontSize: 16,
-      color: theme.colors.ink,
-      paddingVertical: 10,
-      paddingHorizontal: 0,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.colors.hairline,
-    },
     footer: {
       paddingHorizontal: 16,
       paddingTop: 12,

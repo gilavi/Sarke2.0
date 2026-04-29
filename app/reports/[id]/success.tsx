@@ -111,21 +111,12 @@ export default function ReportSuccessScreen() {
           loading={sharing}
         />
         <Pressable
-          onPress={() => router.replace(`/reports/${report.id}/edit` as any)}
+          onPress={() => router.replace(`/reports/${report.id}` as any)}
           hitSlop={8}
           style={({ pressed }) => [styles.secondaryBtn, pressed && { opacity: 0.7 }]}
         >
           <Text style={[styles.secondaryBtnText, { color: theme.colors.accent }]}>
             რეპორტში დაბრუნება
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={() => router.replace(`/projects/${report.project_id}` as any)}
-          hitSlop={8}
-          style={({ pressed }) => [styles.secondaryBtn, pressed && { opacity: 0.7 }]}
-        >
-          <Text style={[styles.secondaryBtnText, { color: theme.colors.inkSoft }]}>
-            პროექტში დაბრუნება
           </Text>
         </Pressable>
       </View>
