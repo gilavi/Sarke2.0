@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert,
   Dimensions,
   Keyboard,
   Linking,
@@ -32,7 +31,6 @@ import {
   projectFilesApi,
   questionnairesApi,
   templatesApi,
-  incidentsApi,
 } from '../../lib/services';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { useToast } from '../../lib/toast';
@@ -42,20 +40,16 @@ import { useTheme } from '../../lib/theme';
 import { toErrorMessage } from '../../lib/logError';
 import { friendlyError } from '../../lib/errorMap';
 import { formatShortDateTime } from '../../lib/formatDate';
-import type { Briefing, CrewMember, Incident, IncidentType, Project, ProjectFile, Questionnaire, Template } from '../../types/models';
-import { INCIDENT_TYPE_LABEL } from '../../types/models';
-import { briefingsApi } from '../../lib/briefingsApi';
+import type { CrewMember, Project, ProjectFile, Questionnaire, Template } from '../../types/models';
 import { RoleSlotList } from '../../components/RoleSlotList';
 import { ProjectAvatar } from '../../components/ProjectAvatar';
 import { pickProjectLogo } from '../../lib/projectLogo';
 import { useSession } from '../../lib/session';
 import { a11y } from '../../lib/accessibility';
 import { TourGuide, type TourStep } from '../../components/TourGuide';
-import { useTranslation } from 'react-i18next';
 
 export default function ProjectDetail() {
   const { theme } = useTheme();
-  const { t } = useTranslation();
   const styles = useMemo(() => getstyles(theme), [theme]);
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -70,13 +64,11 @@ export default function ProjectDetail() {
   const [files, setFiles] = useState<ProjectFile[]>([]);
   const [filesBusy, setFilesBusy] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [incidents, setIncidents] = useState<Incident[]>([]);
   const [mapModalVisible, setMapModalVisible] = useState(false);
   const [allProjects, setAllProjects] = useState<Project[]>([]);
   // Flips true after the first fetch finishes. Drives the skeleton → content
   // swap; refocus doesn't re-show skeletons once we have data.
   const [loaded, setLoaded] = useState(false);
-  const [briefings, setBriefings] = useState<Briefing[]>([]);
 
   // Project screen onboarding tour
   const heroRef = useRef<View>(null);
@@ -88,54 +80,50 @@ export default function ProjectDetail() {
     () => [
       {
         targetRef: heroRef,
-        title: t('projects.tourProjectInfo'),
-        body: t('projects.tourProjectInfoBody'),
+        title: 'პროექტის ინფო',
+        body: 'შეეხე ბარათს რედაქტირებისთვის',
         position: 'bottom',
       },
       {
         targetRef: participantsRef,
-        title: t('projects.tourCrew'),
-        body: t('projects.tourCrewBody'),
+        title: 'მონაწილეები',
+        body: 'დაამატე გუნდი სანამ შემოწმებას დაიწყებ',
         position: 'bottom',
       },
       {
         targetRef: filesRef,
-        title: t('projects.tourFiles'),
-        body: t('projects.tourFilesBody'),
+        title: 'ფაილები',
+        body: 'აქ შეგიძლია დაურთო პროექტის დოკუმენტები',
         position: 'bottom',
       },
       {
         targetRef: questionnairesRef,
-        title: t('projects.tourHistory'),
-        body: t('projects.tourHistoryBody'),
+        title: 'კითხვარები',
+        body: 'შენი შემოწმებების ისტორია',
         position: 'top',
       },
       {
         targetRef: fabRef,
-        title: t('projects.tourNewInspection'),
-        body: t('projects.tourNewInspectionBody'),
+        title: 'ახალი შემოწმება',
+        body: 'დააჭირე და დაიწყე ახალი შემოწმება',
         position: 'top',
       },
     ],
-    [t],
+    [],
   );
 
   const load = useCallback(async () => {
     if (!id) return;
-    const [p, q, tpls, f, inc, brf] = await Promise.all([
+    const [p, q, t, f] = await Promise.all([
       projectsApi.getById(id).catch(() => null),
       questionnairesApi.listByProject(id).catch(() => []),
       templatesApi.list().catch(() => []),
       projectFilesApi.list(id).catch(() => [] as ProjectFile[]),
-      incidentsApi.listByProject(id).catch(() => [] as Incident[]),
-      briefingsApi.listByProject(id).catch(() => [] as Briefing[]),
     ]);
     setProject(p);
     setQuestionnaires(q);
-    setTemplates(tpls);
+    setTemplates(t);
     setFiles(f);
-    setIncidents(inc);
-    setBriefings(brf);
     setLoaded(true);
   }, [id]);
 
@@ -150,16 +138,12 @@ export default function ProjectDetail() {
   const inspector = useMemo(() => {
     if (session.state.status !== 'signedIn') return null;
     const u = session.state.user;
-    const fallback = session.state.session.user.email ?? t('projects.inspectorFallback');
+    const fallback = session.state.session.user.email ?? 'ინსპექტორი';
     const name = u
       ? `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim() || fallback
       : fallback;
-    return {
-      name,
-      role: t('projects.inspectorFallback'),
-      signaturePath: u?.saved_signature_url ?? null,
-    };
-  }, [session.state, t]);
+    return { name, role: 'ინსპექტორი' };
+  }, [session.state]);
 
   const persistCrew = useCallback(
     async (next: CrewMember[]) => {
@@ -173,117 +157,65 @@ export default function ProjectDetail() {
         setProject(saved);
       } catch (e) {
         setProject(prev);
-        toast.error(friendlyError(e, t('projects.memberSaveError')));
+        toast.error(friendlyError(e, 'მონაწილე ვერ შეინახა'));
       }
     },
     [project, toast],
   );
 
-  // ── Section previews (max 3, sorted by date desc) ──
-  const questionnairesSorted = useMemo(
-    () =>
-      [...questionnaires].sort(
-        (a, b) => +new Date(b.created_at) - +new Date(a.created_at),
-      ),
+  const drafts = useMemo(
+    () => questionnaires.filter(q => q.status === 'draft'),
     [questionnaires],
   );
-  const questionnairesPreview = useMemo(
-    () => questionnairesSorted.slice(0, 3),
-    [questionnairesSorted],
+  const completed = useMemo(
+    () => questionnaires.filter(q => q.status === 'completed'),
+    [questionnaires],
   );
-  const incidentsSorted = useMemo(
-    () =>
-      [...incidents].sort(
-        (a, b) => +new Date(b.date_time) - +new Date(a.date_time),
-      ),
-    [incidents],
-  );
-  const incidentsPreview = useMemo(
-    () => incidentsSorted.slice(0, 3),
-    [incidentsSorted],
-  );
-  const briefingsSorted = useMemo(
-    () =>
-      [...briefings].sort(
-        (a, b) => +new Date(b.dateTime) - +new Date(a.dateTime),
-      ),
-    [briefings],
-  );
-  const briefingsPreview = useMemo(
-    () => briefingsSorted.slice(0, 3),
-    [briefingsSorted],
-  );
-  const filesSorted = useMemo(
-    () =>
-      [...files].sort(
-        (a, b) => +new Date(b.created_at) - +new Date(a.created_at),
-      ),
-    [files],
-  );
-  const filesPreview = useMemo(() => filesSorted.slice(0, 3), [filesSorted]);
-
-  const overflowQuestionnaires = useMemo(
-    () => questionnairesSorted.slice(3),
-    [questionnairesSorted],
-  );
-  const overflowIncidents = useMemo(
-    () => incidentsSorted.slice(3),
-    [incidentsSorted],
-  );
-  const overflowBriefings = useMemo(
-    () => briefingsSorted.slice(3),
-    [briefingsSorted],
-  );
-  const overflowFiles = useMemo(() => filesSorted.slice(3), [filesSorted]);
 
   const startNewQuestionnaire = () => {
-    const system = templates.filter(tpl => tpl.is_system);
+    const system = templates.filter(t => t.is_system);
     if (system.length === 0) {
-      toast.error(t('projects.templateMissing'));
+      toast.error('შაბლონი არ არის');
       return;
     }
-    if (system.length === 1 && id) {
-      void questionnairesApi.create({ projectId: id, templateId: system[0].id })
-        .then(q => router.push(`/inspections/${q.id}/wizard` as any))
-        .catch(e => toast.error(friendlyError(e, t('errors.createFailed'))));
-      return;
-    }
-    const options = [...system.map(tpl => tpl.name), t('common.cancel')];
+    const options = [...system.map(t => t.name), 'გაუქმება'];
     showActionSheetWithOptions(
-      { title: t('projects.chooseTemplateTitle'), options, cancelButtonIndex: options.length - 1 },
+      { title: 'აირჩიეთ შაბლონი', options, cancelButtonIndex: options.length - 1 },
       async idx => {
         if (idx == null || idx === options.length - 1 || !id) return;
-        const tpl = system[idx];
+        const t = system[idx];
         try {
           const q = (await questionnairesApi.create({
             projectId: id,
-            templateId: tpl.id,
+            templateId: t.id,
           }));
           router.push(`/inspections/${q.id}/wizard` as any);
         } catch (e) {
-          toast.error(friendlyError(e, t('errors.createFailed')));
+          toast.error(friendlyError(e, 'შექმნა ვერ მოხერხდა'));
         }
       },
     );
   };
 
   const deleteQuestionnaire = (q: Questionnaire) => {
-    Alert.alert(t('inspections.deleteTitle'), t('inspections.deleteBody'), [
-      { text: t('common.cancel'), style: 'cancel' },
+    showActionSheetWithOptions(
       {
-        text: t('common.delete'),
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await questionnairesApi.remove(q.id);
-            setQuestionnaires(prev => prev.filter(x => x.id !== q.id));
-            toast.success(t('notifications.deleted'));
-          } catch (e) {
-            toast.error(friendlyError(e, t('errors.deleteFailed')));
-          }
-        },
+        title: 'დარწმუნებული ხართ?',
+        options: ['დიახ, წაშლა', 'გაუქმება'],
+        cancelButtonIndex: 1,
+        destructiveButtonIndex: 0,
       },
-    ]);
+      async idx => {
+        if (idx !== 0) return;
+        try {
+          await questionnairesApi.remove(q.id);
+          setQuestionnaires(prev => prev.filter(x => x.id !== q.id));
+          toast.success('წაიშალა');
+        } catch (e) {
+          toast.error(friendlyError(e, 'ვერ წაიშალა'));
+        }
+      },
+    );
   };
 
   const onEditLogo = async () => {
@@ -295,10 +227,10 @@ export default function ProjectDetail() {
     try {
       const saved = await projectsApi.update(project.id, { logo: next });
       setProject(saved);
-      toast.success(t('projects.logoUpdated'));
+      toast.success('ლოგო განახლდა');
     } catch (e) {
       setProject(prev);
-      toast.error(friendlyError(e, t('projects.logoSaveFailed')));
+      toast.error(friendlyError(e, 'ლოგო ვერ შეინახა'));
     }
   };
 
@@ -307,7 +239,7 @@ export default function ProjectDetail() {
     try {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (perm.status !== 'granted') {
-        toast.error(t('projects.galleryAccessDenied'));
+        toast.error('გალერეაზე წვდომა აკრძალულია');
         return;
       }
       const res = await ImagePicker.launchImageLibraryAsync({
@@ -325,11 +257,9 @@ export default function ProjectDetail() {
         sizeBytes: asset.fileSize ?? null,
       });
       setFiles(prev => [created, ...prev]);
-      toast.success(t('projects.uploaded'));
+      toast.success('აიტვირთა');
     } catch (e) {
-      // Log the raw error for RLS/policy debugging; show a friendly toast.
-      console.warn('[project file upload]', toErrorMessage(e));
-      toast.error(friendlyError(e, t('errors.uploadFailed')));
+      toast.error(friendlyError(e, 'ატვირთვა ვერ მოხერხდა'));
     } finally {
       setFilesBusy(false);
     }
@@ -340,27 +270,29 @@ export default function ProjectDetail() {
       const url = await projectFilesApi.signedUrl(f);
       await Linking.openURL(url);
     } catch {
-      toast.error(t('projects.fileOpenFailed'));
+      toast.error('ფაილი ვერ გაიხსნა');
     }
   };
 
   const deleteFile = (f: ProjectFile) => {
-    Alert.alert(t('inspections.deleteTitle'), f.name, [
-      { text: t('common.cancel'), style: 'cancel' },
+    showActionSheetWithOptions(
       {
-        text: t('common.delete'),
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await projectFilesApi.remove(f);
-            setFiles(prev => prev.filter(x => x.id !== f.id));
-            toast.success(t('notifications.deleted'));
-          } catch (e) {
-            toast.error(friendlyError(e, t('errors.deleteFailed')));
-          }
-        },
+        title: 'დარწმუნებული ხართ?',
+        options: ['დიახ, წაშლა', 'გაუქმება'],
+        cancelButtonIndex: 1,
+        destructiveButtonIndex: 0,
       },
-    ]);
+      async idx => {
+        if (idx !== 0) return;
+        try {
+          await projectFilesApi.remove(f);
+          setFiles(prev => prev.filter(x => x.id !== f.id));
+          toast.success('წაიშალა');
+        } catch (e) {
+          toast.error(friendlyError(e, 'ვერ წაიშალა'));
+        }
+      },
+    );
   };
 
   const openMapModal = async () => {
@@ -382,7 +314,7 @@ export default function ProjectDetail() {
   if (!loaded && !project) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-        <Stack.Screen options={{ headerShown: true, title: t('common.project'), headerBackTitle: t('projects.title') }} />
+        <Stack.Screen options={{ headerShown: true, title: 'პროექტი', headerBackTitle: 'პროექტები' }} />
         <ScrollView
           style={{ flex: 1 }}
           contentInsetAdjustmentBehavior="never"
@@ -417,8 +349,8 @@ export default function ProjectDetail() {
       <Stack.Screen
         options={{
           headerShown: true,
-          title: t('common.project'),
-          headerBackTitle: t('projects.title'),
+          title: 'პროექტი',
+          headerBackTitle: 'პროექტები',
           headerTitleStyle: { fontSize: 18, fontWeight: '700', color: theme.colors.ink },
           headerShadowVisible: false,
           headerStyle: { backgroundColor: theme.colors.background },
@@ -484,14 +416,26 @@ export default function ProjectDetail() {
               </Pressable>
             ) : null}
 
+            {/* Uploaded files — bottom of project details, after map */}
+            <View ref={filesRef} collapsable={false} style={{ marginTop: 14 }}>
+              <UploadedFilesSection
+                files={files}
+                busy={filesBusy}
+                onUpload={uploadFile}
+                onOpen={openFile}
+                onDelete={deleteFile}
+              />
+            </View>
           </View>
 
           {/* ── Participants (merged: crew + signers) ── */}
           <View ref={participantsRef} collapsable={false} style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={styles.sectionTitle}>{t('projects.participantsSection')}</Text>
-                <Text style={styles.sectionCount}>{(project?.crew?.length ?? 0) + (inspector ? 1 : 0)}</Text>
+              <Text style={styles.sectionTitle}>მონაწილეები</Text>
+              <View style={styles.badgeGreen}>
+                <Text style={styles.badgeGreenText}>
+                  {(project?.crew?.length ?? 0) + (inspector ? 1 : 0)}
+                </Text>
               </View>
             </View>
             <View style={{ marginTop: 10 }}>
@@ -509,236 +453,108 @@ export default function ProjectDetail() {
           {/* ── Questionnaires ── */}
           <View ref={questionnairesRef} collapsable={false} style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={styles.sectionTitle}>{t('projects.questionnairesSection')}</Text>
-                <Text style={styles.sectionCount}>{questionnaires.length}</Text>
+              <Text style={styles.sectionTitle}>კითხვარები</Text>
+              <View style={styles.badgeGreen}>
+                <Text style={styles.badgeGreenText}>{questionnaires.length}</Text>
               </View>
-              <Pressable onPress={startNewQuestionnaire} hitSlop={8}>
-                <Text style={styles.sectionAddLink}>+ დამატება</Text>
-              </Pressable>
             </View>
 
-            {questionnaires.length === 0 ? (
-              <EmptyState text={t('projects.noCompletedInspections')} />
-            ) : (
-              <View style={{ gap: 8, marginTop: 10 }}>
-                {questionnairesPreview.map(q => {
-                  const tpl = templates.find(t => t.id === q.template_id);
-                  const isCompleted = q.status === 'completed';
-                  return (
-                    <Swipeable
-                      key={q.id}
-                      renderRightActions={() => (
-                        <Pressable onPress={() => deleteQuestionnaire(q)} style={styles.swipeDelete} {...a11y('ინსპექციას წაშლა', 'ინსპექციას წაშლა', 'button')}>
-                          <Ionicons name="trash" size={18} color={theme.colors.white} />
-                        </Pressable>
-                      )}
-                      overshootRight={false}
-                    >
-                      <Pressable
-                        onPress={() =>
-                          router.push(
-                            (isCompleted
-                              ? `/inspections/${q.id}`
-                              : `/inspections/${q.id}/wizard`) as any,
-                          )
-                        }
-                        style={styles.listRow}
-                        {...a11y(tpl?.name ?? 'ინსპექცია', isCompleted ? 'დასრულებული ინსპექციას ნახვა' : 'დრაფტის გასაგრძელებლად დააჭირეთ', 'button')}
-                      >
-                        <View style={[styles.statusIcon, { backgroundColor: isCompleted ? theme.colors.semantic.successSoft : theme.colors.semantic.warningSoft }]}>
-                          <Ionicons
-                            name={isCompleted ? 'checkmark-circle' : 'pencil'}
-                            size={14}
-                            color={isCompleted ? theme.colors.primary[700] : '#92400E'}
-                          />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.listRowTitle}>{tpl?.name ?? t('common.inspection')}</Text>
-                          <Text style={styles.listRowSubtitle}>
-                            {formatShortDateTime(q.created_at)}
-                          </Text>
-                        </View>
-                        <Ionicons name="chevron-forward" size={18} color={theme.colors.borderStrong} />
-                      </Pressable>
-                    </Swipeable>
-                  );
-                })}
-                {overflowQuestionnaires.length > 0 ? (
-                  <ViewMoreRow
-                    items={overflowQuestionnaires.map(q => {
+            {drafts.length > 0 ? (
+              <>
+                <View style={{ marginTop: 10 }}>
+                  <View style={styles.subSectionHeader}>
+                    <View style={[styles.subDot, { backgroundColor: theme.colors.semantic.warningSoft }]}>
+                      <Ionicons name="pencil" size={11} color={'#92400E'} />
+                    </View>
+                    <Text style={styles.subSectionLabel}>დრაფტები</Text>
+                    <Text style={styles.subSectionCount}>{drafts.length}</Text>
+                  </View>
+                  <View style={{ gap: 8, marginTop: 8 }}>
+                    {drafts.map(q => {
                       const tpl = templates.find(t => t.id === q.template_id);
-                      return tpl?.name ?? 'ინსპ';
+                      return (
+                        <Swipeable
+                          key={q.id}
+                          renderRightActions={() => (
+                            <Pressable onPress={() => deleteQuestionnaire(q)} style={styles.swipeDelete} {...a11y('ინსპექციას წაშლა', 'დრაფტის წაშლა', 'button')}>
+                              <Ionicons name="trash" size={18} color={theme.colors.white} />
+                            </Pressable>
+                          )}
+                          overshootRight={false}
+                        >
+                          <Pressable
+                            onPress={() => router.push(`/inspections/${q.id}/wizard` as any)}
+                            style={styles.listRow}
+                            {...a11y(tpl?.name ?? 'ინსპექცია', 'დრაფტის გასაგრძელებლად დააჭირეთ', 'button')}
+                          >
+                            <View style={[styles.statusIcon, { backgroundColor: theme.colors.semantic.warningSoft }]}>
+                              <Ionicons name="pencil" size={14} color={'#92400E'} />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.listRowTitle}>{tpl?.name ?? 'ინსპექცია'}</Text>
+                              <Text style={styles.listRowSubtitle}>
+                                {formatShortDateTime(q.created_at)}
+                              </Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={18} color={theme.colors.borderStrong} />
+                          </Pressable>
+                        </Swipeable>
+                      );
                     })}
-                    total={overflowQuestionnaires.length}
-                    onPress={() => router.push(`/projects/${id}/inspections` as any)}
-                  />
-                ) : null}
-              </View>
-            )}
-          </View>
+                  </View>
+                </View>
 
-          {/* ── ინციდენტები ── */}
-          <View style={styles.sectionCard}>
-            <View style={styles.sectionHeader}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={styles.sectionTitle}>ინციდენტები</Text>
-                <Text style={styles.sectionCount}>{incidents.length}</Text>
+                <View style={styles.sectionDivider} />
+              </>
+            ) : null}
+
+            {/* Completed */}
+            <View style={{ marginTop: 14 }}>
+              <View style={styles.subSectionHeader}>
+                <View style={[styles.subDot, { backgroundColor: theme.colors.semantic.successSoft }]}>
+                  <Ionicons name="checkmark" size={11} color={theme.colors.primary[700]} />
+                </View>
+                <Text style={styles.subSectionLabel}>დასრულებული</Text>
+                <Text style={styles.subSectionCount}>{completed.length}</Text>
               </View>
-              <Pressable onPress={() => router.push(`/incidents/new?projectId=${id}` as any)} hitSlop={8}>
-                <Text style={styles.sectionAddLink}>+ დამატება</Text>
-              </Pressable>
+              {completed.length === 0 ? (
+                <EmptyState text="ჯერ არ არის დასრულებული" />
+              ) : (
+                <View style={{ gap: 8, marginTop: 8 }}>
+                  {completed.map(q => {
+                    const tpl = templates.find(t => t.id === q.template_id);
+                    return (
+                      <Swipeable
+                        key={q.id}
+                        renderRightActions={() => (
+                          <Pressable onPress={() => deleteQuestionnaire(q)} style={styles.swipeDelete} {...a11y('ინსპექციას წაშლა', 'დასრულებული ინსპექციას წაშლა', 'button')}>
+                            <Ionicons name="trash" size={18} color={theme.colors.white} />
+                          </Pressable>
+                        )}
+                        overshootRight={false}
+                      >
+                        <Pressable
+                          onPress={() => router.push(`/inspections/${q.id}` as any)}
+                          style={styles.listRow}
+                          {...a11y(tpl?.name ?? 'ინსპექცია', 'დასრულებული ინსპექციას ნახვა', 'button')}
+                        >
+                          <View style={[styles.statusIcon, { backgroundColor: theme.colors.semantic.successSoft }]}>
+                            <Ionicons name="checkmark-circle" size={14} color={theme.colors.primary[700]} />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.listRowTitle}>{tpl?.name ?? 'ინსპექცია'}</Text>
+                            <Text style={styles.listRowSubtitle}>
+                              {formatShortDateTime(q.created_at)}
+                            </Text>
+                          </View>
+                          <Ionicons name="chevron-forward" size={18} color={theme.colors.borderStrong} />
+                        </Pressable>
+                      </Swipeable>
+                    );
+                  })}
+                </View>
+              )}
             </View>
-
-            {incidents.length === 0 ? (
-              <EmptyState text="ინციდენტები არ არის" />
-            ) : (
-              <View style={{ gap: 8, marginTop: 10 }}>
-                {incidentsPreview.map(inc => (
-                  <IncidentRow
-                    key={inc.id}
-                    incident={inc}
-                    onPress={() => router.push(`/incidents/${inc.id}` as any)}
-                  />
-                ))}
-                {overflowIncidents.length > 0 ? (
-                  <ViewMoreRow
-                    items={overflowIncidents.map(
-                      inc => INCIDENT_TYPE_LABEL[inc.type as IncidentType] ?? inc.type,
-                    )}
-                    total={overflowIncidents.length}
-                    onPress={() => router.push(`/projects/${id}/incidents` as any)}
-                  />
-                ) : null}
-              </View>
-            )}
-
-          </View>
-
-          {/* ── ინსტრუქტაჟი ── */}
-          <View style={styles.sectionCard}>
-            <View style={styles.sectionHeader}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={styles.sectionTitle}>ინსტრუქტაჟი</Text>
-                <Text style={styles.sectionCount}>{briefings.length}</Text>
-              </View>
-              <Pressable onPress={() => id && router.push(`/briefings/new?projectId=${id}` as any)} hitSlop={8}>
-                <Text style={styles.sectionAddLink}>+ დამატება</Text>
-              </Pressable>
-            </View>
-
-            {briefings.length === 0 ? (
-              <EmptyState text="ინსტრუქტაჟი ჯერ არ ჩატარებულა" />
-            ) : (
-              <View style={{ gap: 8, marginTop: 10 }}>
-                {briefingsPreview.map(b => {
-                  const isCompleted = b.status === 'completed';
-                  return (
-                    <Pressable
-                      key={b.id}
-                      onPress={() => router.push(`/briefings/${b.id}` as any)}
-                      style={styles.listRow}
-                      {...a11y('ინსტრუქტაჟი', 'დეტალების სანახავად დააჭირეთ', 'button')}
-                    >
-                      <View style={[styles.statusIcon, { backgroundColor: isCompleted ? theme.colors.semantic.successSoft : theme.colors.semantic.warningSoft }]}>
-                        <Ionicons
-                          name={isCompleted ? 'shield-checkmark' : 'pencil'}
-                          size={14}
-                          color={isCompleted ? theme.colors.primary[700] : '#92400E'}
-                        />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.listRowTitle}>
-                          {formatShortDateTime(b.dateTime)}
-                        </Text>
-                        <Text style={styles.listRowSubtitle}>
-                          {b.participants.length} მონაწილე · {isCompleted ? 'დასრულებული' : 'მიმდინარე'}
-                        </Text>
-                      </View>
-                      <Ionicons name="chevron-forward" size={18} color={theme.colors.borderStrong} />
-                    </Pressable>
-                  );
-                })}
-                {overflowBriefings.length > 0 ? (
-                  <ViewMoreRow
-                    items={overflowBriefings.map(
-                      b => b.topics[0]?.replace(/^custom:/, '') ?? 'ინსტ',
-                    )}
-                    total={overflowBriefings.length}
-                    onPress={() => router.push(`/projects/${id}/briefings` as any)}
-                  />
-                ) : null}
-              </View>
-            )}
-
-          </View>
-
-          {/* ── დოკუმენტები ── */}
-          <View ref={filesRef} collapsable={false} style={styles.sectionCard}>
-            <View style={styles.sectionHeader}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={styles.sectionTitle}>დოკუმენტები</Text>
-                <Text style={styles.sectionCount}>{files.length}</Text>
-              </View>
-              <Pressable onPress={uploadFile} disabled={filesBusy} hitSlop={8}>
-                <Text style={[styles.sectionAddLink, filesBusy && { opacity: 0.5 }]}>
-                  {filesBusy ? 'იტვირთება…' : '+ ატვირთვა'}
-                </Text>
-              </Pressable>
-            </View>
-
-            {files.length === 0 ? (
-              <EmptyState text="ფაილები არ არის" />
-            ) : (
-              <View style={{ gap: 8, marginTop: 10 }}>
-                {filesPreview.map(f => (
-                  <Swipeable
-                    key={f.id}
-                    renderRightActions={() => (
-                      <Pressable onPress={() => deleteFile(f)} style={styles.swipeDelete} {...a11y('ფაილის წაშლა', 'ფაილის წაშლა', 'button')}>
-                        <Ionicons name="trash" size={18} color={theme.colors.white} />
-                      </Pressable>
-                    )}
-                    overshootRight={false}
-                  >
-                    <Pressable
-                      onPress={() => openFile(f)}
-                      style={styles.listRow}
-                      {...a11y(f.name, 'ფაილის გახსნა', 'button')}
-                    >
-                      <View style={[styles.statusIcon, { backgroundColor: theme.colors.surfaceSecondary }]}>
-                        <Ionicons
-                          name={
-                            f.mime_type?.includes('pdf')
-                              ? 'document-text-outline'
-                              : f.mime_type?.startsWith('image/')
-                                ? 'image-outline'
-                                : 'document-outline'
-                          }
-                          size={14}
-                          color={theme.colors.inkSoft}
-                        />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.listRowTitle} numberOfLines={1}>{f.name}</Text>
-                        <Text style={styles.listRowSubtitle}>
-                          {formatShortDateTime(f.created_at)}
-                        </Text>
-                      </View>
-                      <Ionicons name="chevron-forward" size={18} color={theme.colors.borderStrong} />
-                    </Pressable>
-                  </Swipeable>
-                ))}
-                {overflowFiles.length > 0 ? (
-                  <ViewMoreRow
-                    items={overflowFiles.map(f => f.name)}
-                    total={overflowFiles.length}
-                    onPress={() => router.push(`/projects/${id}/files` as any)}
-                  />
-                ) : null}
-              </View>
-            )}
-
           </View>
 
         </ScrollView>
@@ -764,7 +580,7 @@ export default function ProjectDetail() {
         onSaved={saved => {
           setProject(saved);
           setEditing(false);
-          toast.success(t('projects.saved'));
+          toast.success('შენახულია');
         }}
       />
 
@@ -829,66 +645,6 @@ function EmptyState({ text }: { text: string }) {
   );
 }
 
-/**
- * "View more" row at the bottom of a section preview.
- * Renders stacked initials for the items beyond the first 3.
- * Inputs:
- *   - items: labels for the overflow items (used to derive avatar initials)
- *   - total: number of overflow items shown in the "+ N მეტი" label
- *   - onPress: navigate to the full list screen
- */
-function ViewMoreRow({
-  items,
-  total,
-  onPress,
-}: {
-  items: string[];
-  total: number;
-  onPress: () => void;
-}) {
-  const { theme } = useTheme();
-  const styles = useMemo(() => getstyles(theme), [theme]);
-  const avatarLabels = items.slice(0, 3);
-
-  return (
-    <Pressable
-      onPress={onPress}
-      style={styles.listRow}
-      {...a11y(`+ ${total} მეტი`, 'სრული სიის გახსნა', 'button')}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        {avatarLabels.map((label, idx) => {
-          const ch = (label || '?').trim().charAt(0).toUpperCase() || '?';
-          return (
-            <View
-              key={idx}
-              style={{
-                width: 28,
-                height: 28,
-                borderRadius: 14,
-                backgroundColor: theme.colors.surfaceSecondary,
-                borderWidth: 2,
-                borderColor: theme.colors.surface,
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginLeft: idx === 0 ? 0 : -8,
-              }}
-            >
-              <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.inkSoft }}>
-                {ch}
-              </Text>
-            </View>
-          );
-        })}
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.listRowTitle}>+ {total} მეტი</Text>
-      </View>
-      <Ionicons name="chevron-forward" size={18} color={theme.colors.borderStrong} />
-    </Pressable>
-  );
-}
-
 function SafeSigImage({ uri }: { uri: string }) {
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
@@ -917,14 +673,12 @@ function EditProjectSheet({
   onSaved: (p: Project) => void;
 }) {
   const { theme } = useTheme();
-  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const toast = useToast();
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
   const [address, setAddress] = useState('');
   const [pin, setPin] = useState<LatLng | null>(null);
-  const [logo, setLogo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [mapVisible, setMapVisible] = useState(false);
 
@@ -940,15 +694,9 @@ function EditProjectSheet({
             ? { latitude: project.latitude, longitude: project.longitude }
             : null,
         );
-        setLogo(project.logo ?? null);
       }
     }, [visible, project]),
   );
-
-  const onPickLogo = async () => {
-    const next = await pickProjectLogo();
-    if (next) setLogo(next);
-  };
 
   const save = async () => {
     if (!project || !name.trim()) return;
@@ -960,11 +708,10 @@ function EditProjectSheet({
         address: address.trim() || null,
         latitude: pin?.latitude ?? null,
         longitude: pin?.longitude ?? null,
-        logo,
       }));
       onSaved(saved);
     } catch (e) {
-      toast.error(friendlyError(e, t('errors.saveFailed')));
+      toast.error(friendlyError(e, 'შენახვა ვერ მოხერხდა'));
     } finally {
       setBusy(false);
     }
@@ -980,15 +727,15 @@ function EditProjectSheet({
             justifyContent: 'flex-end',
           }}
           onPress={() => mapVisible ? setMapVisible(false) : onClose()}
-          {...a11y(t('common.close'), 'შეეხეთ ფონის დასახურად', 'button')}
+          {...a11y('დახურვა', 'შეეხეთ ფონის დასახურად', 'button')}
         >
           {/* Stop touches inside the card from closing the sheet */}
           <Pressable onPress={() => {}} style={{ width: '100%' }}>
             <SheetLayout
-              header={{ title: t('projects.edit'), onClose }}
+              header={{ title: 'რედაქტირება', onClose }}
               footer={
                 <Button
-                  title={t('common.save')}
+                  title="შენახვა"
                   size="lg"
                   onPress={save}
                   loading={busy}
@@ -996,36 +743,20 @@ function EditProjectSheet({
                 />
               }
             >
-              <View style={{ alignItems: 'center', gap: 8, paddingVertical: 4 }}>
-                <ProjectAvatar
-                  project={{ name, logo }}
-                  size={88}
-                  editable
-                  onEdit={onPickLogo}
-                />
-                {logo ? (
-                  <Pressable onPress={() => setLogo(null)} hitSlop={6}>
-                    <Text style={{ color: theme.colors.danger, fontSize: 13, fontWeight: '600' }}>
-                      {t('projects.logoRemove')}
-                    </Text>
-                  </Pressable>
-                ) : null}
-              </View>
-
-              <FormField label={t('common.name')} required>
+              <FormField label="სახელი" required>
                 <Input
                   value={name}
                   onChangeText={setName}
-                  placeholder={t('projects.projectNamePlaceholder')}
+                  placeholder="მაგ. ვაკე-საბურთალოს ობიექტი"
                   autoFocus
                 />
               </FormField>
 
-              <FormField label={t('common.company')}>
-                <Input value={company} onChangeText={setCompany} placeholder={t('projects.clientPlaceholder')} />
+              <FormField label="კომპანია">
+                <Input value={company} onChangeText={setCompany} placeholder="შემკვეთი" />
               </FormField>
 
-              <FormField label={t('common.address')}>
+              <FormField label="მისამართი">
                 <Input
                   value={address}
                   onChangeText={setAddress}
@@ -1049,7 +780,7 @@ function EditProjectSheet({
                 <Text style={{ flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '700', color: theme.colors.ink }}>
                   მდებარეობის არჩევა
                 </Text>
-                <Pressable onPress={() => setMapVisible(false)} hitSlop={10} {...a11y(t('common.close'), 'რუკის დახურვა', 'button')}>
+                <Pressable onPress={() => setMapVisible(false)} hitSlop={10} {...a11y('დახურვა', 'რუკის დახურვა', 'button')}>
                   <Ionicons name="close" size={24} color={theme.colors.ink} />
                 </Pressable>
               </View>
@@ -1171,7 +902,7 @@ function MapPickerInline({
       {/* Bottom action bar */}
       <View
         style={{
-          backgroundColor: theme.colors.surface,
+          backgroundColor: '#FFFFFF',
           borderTopLeftRadius: 20,
           borderTopRightRadius: 20,
           paddingHorizontal: 20,
@@ -1201,81 +932,6 @@ function MapPickerInline({
   );
 }
 
-const INCIDENT_BADGE_COLORS: Record<
-  IncidentType,
-  { bg: string; text: string; border: string }
-> = {
-  minor:    { bg: '#FEF3C7', text: '#92400E', border: '#F59E0B' },
-  severe:   { bg: '#FFEDD5', text: '#9A3412', border: '#F97316' },
-  fatal:    { bg: '#FEE2E2', text: '#991B1B', border: '#EF4444' },
-  mass:     { bg: '#FEE2E2', text: '#991B1B', border: '#EF4444' },
-  nearmiss: { bg: '#EDE9FE', text: '#5B21B6', border: '#8B5CF6' },
-};
-
-function IncidentRow({
-  incident,
-  onPress,
-}: {
-  incident: Incident;
-  onPress: () => void;
-}) {
-  const { theme } = useTheme();
-  const badge = INCIDENT_BADGE_COLORS[incident.type as IncidentType] ?? INCIDENT_BADGE_COLORS.minor;
-  const styles = useMemo(() => getstyles(theme), [theme]);
-
-  return (
-    <Pressable onPress={onPress} style={styles.listRow}>
-      <View
-        style={[
-          styles.statusIcon,
-          { backgroundColor: badge.bg, borderWidth: 1, borderColor: badge.border },
-        ]}
-      >
-        <Ionicons name="warning-outline" size={13} color={badge.text} />
-      </View>
-      <View style={{ flex: 1 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <View
-            style={{
-              backgroundColor: badge.bg,
-              borderRadius: 4,
-              borderWidth: 1,
-              borderColor: badge.border,
-              paddingHorizontal: 6,
-              paddingVertical: 2,
-            }}
-          >
-            <Text style={{ fontSize: 10, fontWeight: '700', color: badge.text }}>
-              {INCIDENT_TYPE_LABEL[incident.type as IncidentType] ?? incident.type}
-            </Text>
-          </View>
-          {incident.status === 'draft' && (
-            <View
-              style={{
-                backgroundColor: '#FEF3C7',
-                borderRadius: 4,
-                paddingHorizontal: 5,
-                paddingVertical: 2,
-              }}
-            >
-              <Text style={{ fontSize: 10, fontWeight: '700', color: '#92400E' }}>
-                დრაფტი
-              </Text>
-            </View>
-          )}
-        </View>
-        <Text style={[styles.listRowTitle, { marginTop: 3 }]} numberOfLines={1}>
-          {incident.location || incident.description || '—'}
-        </Text>
-        <Text style={styles.listRowSubtitle}>
-          {formatShortDateTime(incident.date_time)}
-        </Text>
-      </View>
-      <Ionicons name="chevron-forward" size={18} color={theme.colors.borderStrong} />
-    </Pressable>
-  );
-}
-
 function getstyles(theme: any) {
   return StyleSheet.create({
   // ── Hero ──
@@ -1301,9 +957,9 @@ function getstyles(theme: any) {
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 6,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: theme.colors.border || '#E5E5E5',
     zIndex: 5,
   },
   mapWrap: {
@@ -1371,21 +1027,11 @@ function getstyles(theme: any) {
     fontWeight: '700',
     color: theme.colors.ink,
   },
-  sectionCount: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: theme.colors.inkSoft,
-  },
-  sectionAddLink: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: theme.colors.accent,
-  },
   badgeGreen: {
     backgroundColor: theme.colors.semantic.successSoft,
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 16,
+    borderRadius: 999,
   },
   badgeGreenText: {
     fontSize: 12,
@@ -1434,10 +1080,10 @@ function getstyles(theme: any) {
     backgroundColor: theme.colors.semantic.warningSoft,
     paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: 16,
+    borderRadius: 999,
   },
   missingChipText: {
-    color: theme.colors.semantic.warning,
+    color: '#92400E',
     fontSize: 10,
     fontWeight: '700',
   },

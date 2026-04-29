@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Alert,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -9,12 +7,11 @@ import {
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Badge, Card } from '../../components/ui';
+import { Card } from '../../components/ui';
 import { Skeleton } from '../../components/Skeleton';
 import { useSession } from '../../lib/session';
 import {
@@ -26,6 +23,7 @@ import {
 } from '../../lib/services';
 import { useToast } from '../../lib/toast';
 import { useTheme } from '../../lib/theme';
+import { useBottomSheet } from '../../components/BottomSheet';
 
 import { a11y } from '../../lib/accessibility';
 import { useTranslation } from 'react-i18next';
@@ -41,8 +39,7 @@ export default function MoreScreen() {
   const { state, signOut } = useSession();
   const router = useRouter();
   const toast = useToast();
-  const [langVisible, setLangVisible] = useState(false);
-  const [signingOut, setSigningOut] = useState(false);
+  const showActionSheet = useBottomSheet();
   const [counts, setCounts] = useState<{ total: number; drafts: number; completed: number; latestCreatedAt: string | null }>({
     total: 0,
     drafts: 0,
@@ -88,35 +85,26 @@ export default function MoreScreen() {
 
   const onChangeLang = async (lng: 'ka' | 'en') => {
     await saveLanguage(lng);
-    setLangVisible(false);
-    toast.success(t('notifications.languageChanged'));
+    toast.success(lng === 'ka' ? 'ენა შეიცვალა' : 'Language changed');
   };
 
-  const handleLogout = () => {
-    Alert.alert(t('more.signOutConfirmTitle'), t('more.signOutConfirmBody'), [
-      { text: t('common.cancel'), style: 'cancel' },
-      {
-        text: t('more.signOut'),
-        style: 'destructive',
-        onPress: async () => {
-          setSigningOut(true);
-          try {
-            await signOut();
-            await AsyncStorage.removeItem('@auth:email').catch(() => {});
-            toast.success(t('notifications.signedOut'));
-          } catch (e) {
-            setSigningOut(false);
-            toast.error(t('notifications.signOutFailed'));
-          }
-        },
+  const openLanguagePicker = () => {
+    const currentLang = i18n.language;
+    const options = ['ქართული', 'English', 'გაუქმება'];
+    const selectedOptionIndex = currentLang === 'en' ? 1 : 0;
+    showActionSheet(
+      { title: 'ენა / LANGUAGE', options, cancelButtonIndex: 2, selectedOptionIndex },
+      idx => {
+        if (idx === 0) onChangeLang('ka');
+        if (idx === 1) onChangeLang('en');
       },
-    ]);
+    );
   };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top']}>
       <ScrollView contentContainerStyle={{ paddingVertical: 16, gap: 18 }}>
-        <Text style={{ fontSize: 22, fontWeight: '700', fontFamily: theme.typography.fontFamily.heading, paddingHorizontal: 20, color: theme.colors.ink }}>
+        <Text style={{ fontSize: 22, fontWeight: '700', paddingHorizontal: 20, color: theme.colors.ink }}>
           {t('more.title')}
         </Text>
 
@@ -133,6 +121,28 @@ export default function MoreScreen() {
           </View>
         </Card>
 
+        {/* Stat strip */}
+        <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 16 }}>
+          <StatPill
+            value={loaded ? projects.length : null}
+            label={t('more.projectsCount')}
+            tint={theme.colors.accent}
+            theme={theme}
+          />
+          <StatPill
+            value={loaded ? completed : null}
+            label={t('more.completedCount')}
+            tint={theme.colors.harnessTint}
+            theme={theme}
+          />
+          <StatPill
+            value={loaded ? drafts : null}
+            label={t('more.draftCount')}
+            tint={theme.colors.warn}
+            theme={theme}
+          />
+        </View>
+
         {/* Hub tiles */}
         <View style={styles.grid}>
           <HubTile
@@ -141,7 +151,7 @@ export default function MoreScreen() {
             tint={theme.colors.accent}
             bg={theme.colors.accentSoft}
             primary={loaded ? `${counts.total}` : null}
-            secondary={loaded ? (counts.latestCreatedAt ? `${t('more.lastInspection', { date: relativeTime(counts.latestCreatedAt, t) })}` : t('more.emptyLast')) : null}
+            secondary={loaded ? (counts.latestCreatedAt ? `${t('more.lastInspection', { date: relativeTime(counts.latestCreatedAt) })}` : t('more.emptyLast')) : null}
             onPress={() => router.push('/history')}
           />
           <HubTile
@@ -190,7 +200,7 @@ export default function MoreScreen() {
           </View>
           <View style={styles.divider} />
 
-          <Pressable onPress={() => setLangVisible(true)} style={styles.settingsRow} {...a11y(t('more.language'), undefined, 'button')}>
+          <Pressable onPress={openLanguagePicker} style={styles.settingsRow} {...a11y(t('more.language'), undefined, 'button')}>
             <Ionicons name="language-outline" size={18} color={theme.colors.inkSoft} />
             <Text style={{ flex: 1, fontSize: 15, fontWeight: '500', color: theme.colors.ink }}>{t('more.language')}</Text>
             <Text style={{ fontSize: 13, color: theme.colors.inkSoft }}>{i18n.language === 'ka' ? 'ქართული' : 'English'}</Text>
@@ -210,37 +220,12 @@ export default function MoreScreen() {
             <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
           </Pressable>
           <View style={styles.divider} />
-          <Pressable onPress={() => router.push('/account-settings')} style={styles.settingsRow} {...a11y(t('more.changePassword'), undefined, 'button')}>
-            <Ionicons name="key-outline" size={18} color={theme.colors.inkSoft} />
-            <Text style={{ flex: 1, fontSize: 15, fontWeight: '500', color: theme.colors.ink }}>{t('more.changePassword')}</Text>
-            <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
-          </Pressable>
-          <View style={styles.divider} />
-          <Pressable onPress={handleLogout} disabled={signingOut} style={[styles.settingsRow, signingOut && { opacity: 0.5 }]} {...a11y(t('more.signOut'), undefined, 'button')}>
-            <Ionicons name="log-out-outline" size={18} color={signingOut ? theme.colors.inkFaint : theme.colors.danger} />
-            <Text style={{ flex: 1, fontSize: 15, fontWeight: '500', color: signingOut ? theme.colors.inkFaint : theme.colors.danger }}>{t('more.signOut')}</Text>
+          <Pressable onPress={signOut} style={styles.settingsRow} {...a11y(t('more.signOut'), undefined, 'button')}>
+            <Ionicons name="log-out-outline" size={18} color={theme.colors.danger} />
+            <Text style={{ flex: 1, fontSize: 15, fontWeight: '500', color: theme.colors.danger }}>{t('more.signOut')}</Text>
           </Pressable>
         </View>
       </ScrollView>
-
-      {/* Language picker modal */}
-      <Modal visible={langVisible} transparent animationType="slide" onRequestClose={() => setLangVisible(false)}>
-        <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setLangVisible(false)}>
-          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)' }} />
-        </Pressable>
-        <SafeAreaView edges={['bottom']} style={{ position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: theme.colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20 }}>
-          <Text style={{ fontSize: 18, fontWeight: '700', color: theme.colors.ink, marginBottom: 16 }}>{t('more.language')}</Text>
-          <Pressable onPress={() => onChangeLang('ka')} style={[styles.langRow, i18n.language === 'ka' && { backgroundColor: theme.colors.accentSoft }]}>
-            <Text style={{ fontSize: 16, color: theme.colors.ink }}>ქართული</Text>
-            {i18n.language === 'ka' && <Ionicons name="checkmark" size={20} color={theme.colors.accent} />}
-          </Pressable>
-          <Pressable onPress={() => onChangeLang('en')} style={[styles.langRow, i18n.language === 'en' && { backgroundColor: theme.colors.accentSoft }]}>
-            <Text style={{ fontSize: 16, color: theme.colors.ink }}>English</Text>
-            {i18n.language === 'en' && <Ionicons name="checkmark" size={20} color={theme.colors.accent} />}
-          </Pressable>
-        </SafeAreaView>
-      </Modal>
-
     </SafeAreaView>
   );
 }
@@ -255,7 +240,7 @@ function StatPill({ value, label, tint, theme }: { value: number | null; label: 
       {value === null ? (
         <Skeleton width={30} height={22} />
       ) : (
-        <Text style={{ fontSize: 22, fontWeight: '800', fontFamily: theme.typography.fontFamily.display, color: tint }}>{value}</Text>
+        <Text style={{ fontSize: 22, fontWeight: '800', color: tint }}>{value}</Text>
       )}
       <Text
         style={{
@@ -301,13 +286,15 @@ function HubTile({
             <Ionicons name={icon} size={20} color={tint} />
           </View>
           {badge ? (
-            <Badge variant="warning" size="sm">{badge}</Badge>
+            <View style={{ backgroundColor: theme.colors.warnSoft, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 }}>
+              <Text style={{ fontSize: 11, fontWeight: '600', color: theme.colors.warn }}>{badge}</Text>
+            </View>
           ) : null}
         </View>
         {primary === null ? (
           <Skeleton width={40} height={28} />
         ) : (
-          <Text style={{ fontSize: 28, fontWeight: '900', fontFamily: theme.typography.fontFamily.display, color: theme.colors.ink }}>{primary}</Text>
+          <Text style={{ fontSize: 28, fontWeight: '900', color: theme.colors.ink }}>{primary}</Text>
         )}
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}>
           <View style={{ flex: 1, gap: 4 }}>
@@ -325,16 +312,16 @@ function HubTile({
   );
 }
 
-function relativeTime(iso: string, t: (key: string, opts?: any) => string) {
+function relativeTime(iso: string) {
   const date = new Date(iso);
   const diff = Date.now() - date.getTime();
   const m = Math.floor(diff / 60000);
-  if (m < 1) return t('home.relNow');
-  if (m < 60) return t('home.relMinAgo', { n: m });
+  if (m < 1) return 'ახლა';
+  if (m < 60) return `${m} წთ. წინ`;
   const h = Math.floor(m / 60);
-  if (h < 24) return t('home.relHourAgo', { n: h });
+  if (h < 24) return `${h} სთ. წინ`;
   const d = Math.floor(h / 24);
-  return t('home.relDayAgo', { n: d });
+  return `${d} დღის წინ`;
 }
 
 function getStyles(theme: any) {
@@ -343,11 +330,11 @@ function getStyles(theme: any) {
       width: 56,
       height: 56,
       borderRadius: 28,
-      backgroundColor: theme.colors.subtleSurface,
+      backgroundColor: '#F5F5F0',
     },
     statPill: {
       flex: 1,
-      borderRadius: theme.radius.cardInner,
+      borderRadius: 14,
       borderWidth: 1,
       padding: 14,
       gap: 3,
@@ -399,16 +386,5 @@ function getStyles(theme: any) {
       backgroundColor: theme.colors.hairline,
       marginLeft: 46,
     },
-    langRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingVertical: 14,
-      paddingHorizontal: 12,
-      borderRadius: 12,
-      marginBottom: 8,
-    },
   });
 }
-
-
