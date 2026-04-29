@@ -155,7 +155,7 @@ export default function SignatureSettingsScreen() {
 
 function getstyles(theme: any) {
   return StyleSheet.create({
-  root: { flex: 1, backgroundColor: 'transparent' },
+  root: { ...StyleSheet.absoluteFillObject, backgroundColor: 'transparent' },
   backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.45)' },
   sheetWrap: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   sheet: {
