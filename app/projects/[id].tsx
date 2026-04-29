@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import { MapPreview } from '../../components/MapPreview';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { useBottomSheet } from '../../components/BottomSheet';
@@ -303,37 +304,86 @@ export default function ProjectDetail() {
     }
   };
 
-  const uploadFile = async () => {
-    if (!id) return;
-    try {
-      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (perm.status !== 'granted') {
-        toast.error(t('projects.galleryAccessDenied'));
-        return;
+  const uploadAssets = async (
+    assets: { uri: string; name: string; mimeType: string | null; sizeBytes: number | null }[],
+  ) => {
+    if (!id || assets.length === 0) return;
+    setFilesBusy(true);
+    let success = 0;
+    let failed = 0;
+    for (const a of assets) {
+      try {
+        const created = await projectFilesApi.upload({
+          projectId: id,
+          fileUri: a.uri,
+          name: a.name,
+          mimeType: a.mimeType,
+          sizeBytes: a.sizeBytes,
+        });
+        setFiles(prev => [created, ...prev]);
+        success += 1;
+      } catch (e) {
+        console.warn('[project file upload]', toErrorMessage(e));
+        failed += 1;
       }
-      const res = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.All,
-        quality: 0.85,
-      });
-      if (res.canceled || !res.assets?.[0]) return;
-      const asset = res.assets[0];
-      setFilesBusy(true);
-      const created = await projectFilesApi.upload({
-        projectId: id,
-        fileUri: asset.uri,
-        name: asset.fileName ?? `file-${Date.now()}`,
-        mimeType: asset.mimeType ?? null,
-        sizeBytes: asset.fileSize ?? null,
-      });
-      setFiles(prev => [created, ...prev]);
-      toast.success(t('projects.uploaded'));
-    } catch (e) {
-      // Log the raw error for RLS/policy debugging; show a friendly toast.
-      console.warn('[project file upload]', toErrorMessage(e));
-      toast.error(friendlyError(e, t('errors.uploadFailed')));
-    } finally {
-      setFilesBusy(false);
     }
+    setFilesBusy(false);
+    if (success > 0 && failed === 0) toast.success(`${success} ფაილი აიტვირთა`);
+    else if (success > 0 && failed > 0) toast.error(`${success} აიტვირთა, ${failed} ვერ აიტვირთა`);
+    else toast.error(t('errors.uploadFailed'));
+  };
+
+  const pickPhotos = async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (perm.status !== 'granted') {
+      toast.error(t('projects.galleryAccessDenied'));
+      return;
+    }
+    const res = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsMultipleSelection: true,
+      quality: 0.85,
+    });
+    if (res.canceled || !res.assets?.length) return;
+    await uploadAssets(
+      res.assets.map(a => ({
+        uri: a.uri,
+        name: a.fileName ?? `photo-${Date.now()}.jpg`,
+        mimeType: a.mimeType ?? 'image/jpeg',
+        sizeBytes: a.fileSize ?? null,
+      })),
+    );
+  };
+
+  const pickDocuments = async () => {
+    const res = await DocumentPicker.getDocumentAsync({
+      multiple: true,
+      copyToCacheDirectory: true,
+    });
+    if (res.canceled || !res.assets?.length) return;
+    await uploadAssets(
+      res.assets.map(a => ({
+        uri: a.uri,
+        name: a.name ?? `file-${Date.now()}`,
+        mimeType: a.mimeType ?? null,
+        sizeBytes: a.size ?? null,
+      })),
+    );
+  };
+
+  const uploadFile = () => {
+    if (!id) return;
+    showActionSheetWithOptions(
+      {
+        title: 'რა გსურთ ატვირთოთ?',
+        options: ['ფოტო', 'ფაილი', 'გაუქმება'],
+        cancelButtonIndex: 2,
+      },
+      idx => {
+        if (idx === 0) void pickPhotos();
+        else if (idx === 1) void pickDocuments();
+      },
+    );
   };
 
   const openFile = async (f: ProjectFile) => {
@@ -385,7 +435,12 @@ export default function ProjectDetail() {
   if (!loaded && !project) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-        <Stack.Screen options={{ headerShown: true, title: t('common.project'), headerBackTitle: t('projects.title') }} />
+        <Stack.Screen
+          options={{
+            headerShown: true,
+            title: t('common.project'),
+          }}
+        />
         <ScrollView
           style={{ flex: 1 }}
           contentInsetAdjustmentBehavior="never"
@@ -420,12 +475,10 @@ export default function ProjectDetail() {
       <Stack.Screen
         options={{
           headerShown: true,
-          title: t('common.project'),
-          headerBackTitle: t('projects.title'),
+          title: project?.name
+            ? (project.name.length > 16 ? `${project.name.slice(0, 16)}…` : project.name)
+            : t('common.project'),
           headerTitleStyle: { fontSize: 18, fontWeight: '700', color: theme.colors.ink },
-          headerShadowVisible: false,
-          headerStyle: { backgroundColor: theme.colors.background },
-          headerTintColor: theme.colors.accent,
         }}
       />
       <ScrollView
@@ -709,19 +762,7 @@ export default function ProjectDetail() {
                       style={styles.listRow}
                       {...a11y(f.name, 'ფაილის გახსნა', 'button')}
                     >
-                      <View style={[styles.statusIcon, { backgroundColor: theme.colors.surfaceSecondary }]}>
-                        <Ionicons
-                          name={
-                            f.mime_type?.includes('pdf')
-                              ? 'document-text-outline'
-                              : f.mime_type?.startsWith('image/')
-                                ? 'image-outline'
-                                : 'document-outline'
-                          }
-                          size={14}
-                          color={theme.colors.inkSoft}
-                        />
-                      </View>
+                      <FileThumbnail file={f} />
                       <View style={{ flex: 1 }}>
                         <Text style={styles.listRowTitle} numberOfLines={1}>{f.name}</Text>
                         <Text style={styles.listRowSubtitle}>
@@ -828,6 +869,58 @@ function EmptyState({ text }: { text: string }) {
     <View style={styles.emptyState}>
       <Ionicons name="document-text-outline" size={28} color={theme.colors.borderStrong} />
       <Text style={styles.emptyStateText}>{text}</Text>
+    </View>
+  );
+}
+
+function FileThumbnail({ file }: { file: ProjectFile }) {
+  const { theme } = useTheme();
+  const isImage = !!file.mime_type?.startsWith('image/');
+  const [uri, setUri] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isImage) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const u = await getStorageImageDisplayUrl(STORAGE_BUCKETS.projectFiles, file.storage_path);
+        if (!cancelled) setUri(u);
+      } catch {
+        // fall through to icon fallback
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isImage, file.storage_path]);
+
+  const tile = {
+    width: 72,
+    aspectRatio: 16 / 9,
+    borderRadius: 8,
+    backgroundColor: theme.colors.surfaceSecondary,
+    overflow: 'hidden' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  };
+
+  if (isImage && uri) {
+    return (
+      <View style={tile}>
+        <Image source={{ uri }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+      </View>
+    );
+  }
+
+  const iconName = file.mime_type?.includes('pdf')
+    ? 'document-text-outline'
+    : isImage
+      ? 'image-outline'
+      : 'document-outline';
+
+  return (
+    <View style={tile}>
+      <Ionicons name={iconName} size={20} color={theme.colors.inkSoft} />
     </View>
   );
 }

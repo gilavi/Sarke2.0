@@ -238,7 +238,7 @@ export default function HistoryScreen() {
 
   return (
     <Screen edgeToEdge edges={[]}>
-      <Stack.Screen options={{ headerShown: true, title: t('history.title'), headerBackTitle: t('tabs.backToMore') }} />
+      <Stack.Screen options={{ headerShown: true, title: t('history.title') }} />
       <FlatList
           data={items}
           keyExtractor={(item) => (item.kind === 'header' ? `h-${item.label}` : item.q.id)}

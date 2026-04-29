@@ -15,6 +15,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Circle, Line, Path, Rect, G } from 'react-native-svg';
 import { Card } from '../../components/ui';
+import { HeaderBackPill } from '../../components/HeaderBackPill';
 import { Badge } from '../../components/primitives/Badge';
 import { useTheme } from '../../lib/theme';
 
@@ -132,10 +133,8 @@ export default function RegulationsScreen() {
       }}
     >
       {/* Back button */}
-      <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4 }}>
-        <Pressable onPress={() => router.push('/(tabs)/more')} style={styles.backBtn} {...a11y('უკან', 'დაბრუნება მეტი გვერდზე', 'button')}>
-          <Ionicons name="chevron-back" size={24} color={theme.colors.ink} />
-        </Pressable>
+      <View style={{ paddingHorizontal: 12, paddingTop: 8, paddingBottom: 4 }}>
+        <HeaderBackPill onPress={() => router.push('/(tabs)/more')} />
       </View>
 
       <View style={styles.header}>
@@ -194,15 +193,6 @@ export default function RegulationsScreen() {
 
 function getstyles(theme: any) {
   return StyleSheet.create({
-  backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: theme.colors.subtleSurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    alignSelf: 'flex-start',
-  },
   header: {
     alignItems: 'center',
     paddingTop: 4,

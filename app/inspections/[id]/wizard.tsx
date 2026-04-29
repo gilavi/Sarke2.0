@@ -798,18 +798,10 @@ export default function QuestionnaireWizard() {
           stepIndex={stepIndex}
           total={steps.length}
           project={project}
+          template={template}
           hasProgress={hasAnyProgress}
-          onBack={() => {
-            if (stepIndex > 0) goBack();
-            else router.back();
-          }}
-          onHelp={
-            step.kind === 'gridRow'
-              ? () => showHelp(step.row)
-              : step.kind === 'question'
-                ? () => showHelp(step.question.title)
-                : undefined
-          }
+          onBack={goBack}
+          onClose={() => router.back()}
         />
         <GestureDetector gesture={swipeBack}>
         <KeyboardAvoidingView
@@ -1453,30 +1445,35 @@ function WizardHeader({
   stepIndex,
   total,
   project,
+  template,
   hasProgress,
-  onHelp,
   onBack,
+  onClose,
 }: {
   step: FlatStep;
   stepIndex: number;
   total: number;
   project: Project | null;
+  template: Template | null;
   hasProgress: boolean;
-  onHelp?: () => void;
   onBack: () => void;
+  onClose: () => void;
 }) {
   // step is unused now that the header always shows the flow title — kept in
   // the signature so the call site doesn't have to change shape.
   void step;
   return (
     <FlowHeader
-      flowTitle="შემოწმება"
+      flowTitle={template?.name ?? 'კითხვარი'}
       project={project}
       step={stepIndex + 1}
       totalSteps={total}
+      leading="back"
+      trailing="close"
       onBack={onBack}
-      confirmExit={stepIndex === 0 && hasProgress}
-      onHelp={onHelp}
+      onClose={onClose}
+      backDisabled={stepIndex === 0}
+      confirmExit={hasProgress}
     />
   );
 }

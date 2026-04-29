@@ -496,7 +496,7 @@ export default function InspectionDetailScreen() {
   if (!loading && (notFound || loadError)) {
     return (
       <Screen>
-        <Stack.Screen options={{ headerShown: true, title: 'ინსპექცია', headerBackTitle: 'მთავარი' }} />
+        <Stack.Screen options={{ headerShown: true, title: 'ინსპექცია' }} />
         <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
           <ErrorState
             title={notFound ? 'ინსპექცია ვერ მოიძებნა' : 'ვერ ჩაიტვირთა'}
@@ -517,7 +517,7 @@ export default function InspectionDetailScreen() {
   if (loading || !inspection) {
     return (
       <Screen>
-        <Stack.Screen options={{ headerShown: true, title: 'ინსპექცია', headerBackTitle: 'მთავარი' }} />
+        <Stack.Screen options={{ headerShown: true, title: 'ინსპექცია' }} />
         <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
           <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }}>
             <SkeletonCard>

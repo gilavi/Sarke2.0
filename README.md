@@ -21,10 +21,11 @@ Two seeded templates, both in ქართული, because Google Translate do
 
 ## 🧪 Stack (a.k.a. "Why Is My Laptop Fan Crying?")
 
-- **Expo SDK 55** + expo-router (file-based routing, because config files are for cowards)
+- **Expo SDK 54** + expo-router (file-based routing, because config files are for cowards)
 - **React Native 0.81**, React 19 — the bleeding edge where we all bleed
 - **Supabase** (Postgres + Auth + Storage) — same backend as v1, because why fix what barely works?
-- `expo-image-picker` for photos of broken things
+- `expo-image-picker` for photos of broken things — multi-select enabled in the project documents flow
+- `expo-document-picker` for non-image uploads (PDF, docs) in the project documents flow
 - `expo-print` + `expo-sharing` for PDFs that sit in Downloads folders forever
 - `qrcode` for the inspection QR embedded in the PDF header (SVG data URL, no Canvas needed)
 - `react-native-signature-canvas` for signatures that look like a seismograph during an earthquake

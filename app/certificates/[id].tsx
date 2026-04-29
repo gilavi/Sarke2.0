@@ -145,7 +145,7 @@ export default function CertificateDetailScreen() {
   if (loading || !cert) {
     return (
       <Screen>
-        <Stack.Screen options={{ headerShown: true, title: t('certificates.pdfReport'), headerBackTitle: t('certificates.title') }} />
+        <Stack.Screen options={{ headerShown: true, title: t('certificates.pdfReport') }} />
         <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
           {/* Meta strip skeleton mirrors the real header layout */}
           <View style={styles.metaStrip}>
@@ -183,7 +183,6 @@ export default function CertificateDetailScreen() {
         options={{
           headerShown: true,
           title: t('certificates.pdfReport'),
-          headerBackTitle: t('certificates.title'),
           headerRight: () => (
             <Pressable
               onPress={share}

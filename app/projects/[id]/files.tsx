@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Linking,
@@ -9,11 +9,14 @@ import {
 } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { useTheme } from '../../../lib/theme';
 import { useToast } from '../../../lib/toast';
 import { formatShortDateTime } from '../../../lib/formatDate';
 import { projectFilesApi, projectsApi } from '../../../lib/services';
+import { STORAGE_BUCKETS } from '../../../lib/supabase';
+import { getStorageImageDisplayUrl } from '../../../lib/imageUrl';
 import type { Project, ProjectFile } from '../../../types/models';
 
 function formatGeorgianDate(isoDate: string): string {
@@ -84,16 +87,7 @@ export default function ProjectFilesList() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <Stack.Screen
-        options={{
-          title: 'დოკუმენტები',
-          headerBackTitle: 'უკან',
-          headerShadowVisible: false,
-          headerStyle: { backgroundColor: theme.colors.background },
-          headerTintColor: theme.colors.accent,
-          headerTitleStyle: { color: theme.colors.ink, fontWeight: '700', fontSize: 17 },
-        }}
-      />
+      <Stack.Screen options={{ title: 'დოკუმენტები' }} />
 
       <ScrollView
         style={{ flex: 1 }}
@@ -126,14 +120,7 @@ export default function ProjectFilesList() {
                     onPress={() => openFile(f)}
                     style={styles.listRow}
                   >
-                    <View
-                      style={[
-                        styles.fileIcon,
-                        { backgroundColor: theme.colors.surfaceSecondary },
-                      ]}
-                    >
-                      <Ionicons name={fileIcon(f.mime_type)} size={14} color={theme.colors.inkSoft} />
-                    </View>
+                    <FileThumbnail file={f} />
                     <View style={{ flex: 1 }}>
                       <Text style={styles.listRowTitle} numberOfLines={1}>
                         {f.name}
@@ -152,6 +139,49 @@ export default function ProjectFilesList() {
           ))
         )}
       </ScrollView>
+    </View>
+  );
+}
+
+function FileThumbnail({ file }: { file: ProjectFile }) {
+  const { theme } = useTheme();
+  const isImage = !!file.mime_type?.startsWith('image/');
+  const [uri, setUri] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isImage) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const u = await getStorageImageDisplayUrl(STORAGE_BUCKETS.projectFiles, file.storage_path);
+        if (!cancelled) setUri(u);
+      } catch {}
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isImage, file.storage_path]);
+
+  const tile = {
+    width: 80,
+    aspectRatio: 16 / 9,
+    borderRadius: 8,
+    backgroundColor: theme.colors.surfaceSecondary,
+    overflow: 'hidden' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  };
+
+  if (isImage && uri) {
+    return (
+      <View style={tile}>
+        <Image source={{ uri }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+      </View>
+    );
+  }
+  return (
+    <View style={tile}>
+      <Ionicons name={fileIcon(file.mime_type)} size={20} color={theme.colors.inkSoft} />
     </View>
   );
 }

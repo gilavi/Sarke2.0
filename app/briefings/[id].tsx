@@ -67,7 +67,7 @@ export default function BriefingDetailScreen() {
   if (loading) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.colors.background, alignItems: 'center', justifyContent: 'center' }}>
-        <Stack.Screen options={{ headerShown: true, title: 'ინსტრუქტაჟი', headerBackTitle: 'პროექტი', headerTintColor: theme.colors.accent, headerShadowVisible: false, headerStyle: { backgroundColor: theme.colors.background } }} />
+        <Stack.Screen options={{ headerShown: true, title: 'ინსტრუქტაჟი' }} />
         <ActivityIndicator color={theme.colors.accent} />
       </View>
     );
@@ -79,11 +79,6 @@ export default function BriefingDetailScreen() {
         options={{
           headerShown: true,
           title: 'ინსტრუქტაჟის ოქმი',
-          headerBackTitle: 'პროექტი',
-          headerTitleStyle: { fontSize: 17, fontWeight: '700', color: theme.colors.ink },
-          headerShadowVisible: false,
-          headerStyle: { backgroundColor: theme.colors.background },
-          headerTintColor: theme.colors.accent,
           headerRight: () => (
             <Pressable
               onPress={sharePdf}

@@ -53,7 +53,8 @@ export default function QualificationsScreen() {
         try {
           const url = await storageApi.signedUrl(STORAGE_BUCKETS.certificates, q.file_url, 3600);
           return { ...q, thumbUrl: url };
-        } catch {
+        } catch (err) {
+          console.warn('[qualifications] thumb signedUrl failed', { path: q.file_url, err });
           return { ...q, thumbUrl: null };
         }
       }),
@@ -98,13 +99,7 @@ export default function QualificationsScreen() {
 
   return (
     <Screen>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          title: 'კვალიფიკაცია',
-          headerBackTitle: 'მეტი',
-        }}
-      />
+      <Stack.Screen options={{ headerShown: true, title: 'კვალიფიკაცია' }} />
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
         <ScrollView
           contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 100, gap: 20 }}
@@ -203,15 +198,27 @@ function SkeletonRow() {
 function QualThumb({ uri }: { uri?: string | null }) {
   const { theme } = useTheme();
   const qStyles = useMemo(() => getqStyles(theme), [theme]);
+  const [errored, setErrored] = useState(false);
 
-  if (!uri) {
+  if (!uri || errored) {
     return (
       <View style={qStyles.thumbEmpty}>
         <Ionicons name="image-outline" size={22} color={theme.colors.inkFaint} />
       </View>
     );
   }
-  return <Image source={{ uri }} style={qStyles.thumb} />;
+  return (
+    <Image
+      source={{ uri }}
+      style={qStyles.thumb}
+      contentFit="cover"
+      transition={150}
+      onError={(e) => {
+        console.warn('[qualifications] thumb image render failed', { uri, err: e });
+        setErrored(true);
+      }}
+    />
+  );
 }
 
 function FilledCard({ qual, onDelete }: { qual: QualWithThumb; onDelete: () => void }) {

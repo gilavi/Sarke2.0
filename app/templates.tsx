@@ -70,7 +70,7 @@ export default function TemplatesScreen() {
 
   return (
     <Screen edgeToEdge>
-      <Stack.Screen options={{ headerShown: true, title: 'შაბლონები', headerBackTitle: 'მეტი' }} />
+      <Stack.Screen options={{ headerShown: true, title: 'შაბლონები' }} />
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
         <FlatList
           data={templates}

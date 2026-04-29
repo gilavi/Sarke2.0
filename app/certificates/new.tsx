@@ -30,6 +30,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { Screen } from '../../components/ui';
+import { HeaderBackPill } from '../../components/HeaderBackPill';
 import { SkeletonCard, SkeletonListCard } from '../../components/Skeleton';
 import { RoleSlotList, type InspectorRow } from '../../components/RoleSlotList';
 import { useTheme } from '../../lib/theme';
@@ -637,11 +638,9 @@ export default function GenerateCertificateScreen() {
         <Stack.Screen options={{ headerShown: false }} />
         <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
           <View style={s.header}>
-            <Pressable onPress={() => router.back()} style={s.headerBack} {...a11y('ინსპექცია — დაბრუნება', 'გადავა ინსპექციის ეკრანზე', 'button')}>
-              <Ionicons name="chevron-back" size={24} color={theme.colors.accent} />
-            </Pressable>
+            <HeaderBackPill />
             <Text style={s.headerTitle}>PDF რეპორტის გენერაცია</Text>
-            <View style={s.headerBack} />
+            <View style={s.headerSpacer} />
           </View>
           <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }}>
             <SkeletonCard />
@@ -673,9 +672,7 @@ export default function GenerateCertificateScreen() {
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
         {/* Header */}
         <View style={s.header}>
-          <Pressable onPress={() => router.back()} style={s.headerBack} {...a11y('ინსპექცია — დაბრუნება', 'გადავა ინსპექციის ეკრანზე', 'button')}>
-            <Ionicons name="chevron-back" size={24} color={theme.colors.ink} />
-          </Pressable>
+          <HeaderBackPill />
           <Text style={s.headerTitle} numberOfLines={1}>PDF რეპორტის გენერაცია</Text>
           {LangChip}
         </View>
@@ -831,12 +828,8 @@ function gets(theme: any) {
     backgroundColor: theme.colors.surface,
     gap: 8,
   },
-  headerBack: {
+  headerSpacer: {
     width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   headerTitle: {
     flex: 1,

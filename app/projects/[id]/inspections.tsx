@@ -59,16 +59,7 @@ export default function ProjectInspectionsList() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <Stack.Screen
-        options={{
-          title: 'ინსპექციები',
-          headerBackTitle: 'უკან',
-          headerShadowVisible: false,
-          headerStyle: { backgroundColor: theme.colors.background },
-          headerTintColor: theme.colors.accent,
-          headerTitleStyle: { color: theme.colors.ink, fontWeight: '700', fontSize: 17 },
-        }}
-      />
+      <Stack.Screen options={{ title: 'ინსპექციები' }} />
 
       <ScrollView
         style={{ flex: 1 }}
