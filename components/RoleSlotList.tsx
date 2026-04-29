@@ -218,12 +218,13 @@ export function RoleSlotList({ projectId, inspector, crew, onChange }: Props) {
         );
       })}
 
-      <SignatureCanvas
-        visible={!!pending && !busy}
-        personName={pending?.name ?? ''}
-        onCancel={onSignatureCancel}
-        onConfirm={onSignatureConfirm}
-      />
+      {!!pending && !busy && (
+        <SignatureCanvas
+          personName={pending?.name ?? ''}
+          onCancel={onSignatureCancel}
+          onConfirm={onSignatureConfirm}
+        />
+      )}
     </View>
   );
 }

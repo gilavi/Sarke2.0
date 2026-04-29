@@ -40,7 +40,7 @@ export interface SheetLayoutProps {
   footerSticky?: boolean;
   /** Extra container style (rare). */
   style?: StyleProp<ViewStyle>;
-  /** Padding for the scrollable body content. Default 0 horizontal, 12 top/bottom, gap 16. */
+  /** Padding for the scrollable body content. Default 20 horizontal, 16 vertical, gap 16. */
   bodyContentStyle?: StyleProp<ViewStyle>;
 }
 
@@ -66,7 +66,7 @@ export function SheetLayout({
     <View style={[styles.container, { maxHeight: screenH * maxHeightRatio }, style]}>
       {/* Handle bar */}
       <View style={styles.handleBar}>
-        <View style={[styles.handle, { backgroundColor: theme.colors.hairline }]} />
+        <View style={[styles.handle, { backgroundColor: '#D1D5DB' }]} />
       </View>
 
       {headerNode ? <View style={styles.headerWrap}>{headerNode}</View> : null}
@@ -134,7 +134,8 @@ const styles = StyleSheet.create({
   },
   handleBar: {
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingTop: 12,
+    marginBottom: 14,
   },
   handle: {
     width: 40,
@@ -142,7 +143,7 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   headerWrap: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingTop: 4,
     paddingBottom: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -157,17 +158,17 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   bodyContent: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 12,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 16,
     gap: 16,
   },
   footerWrap: {
-    paddingHorizontal: 16,
-    paddingTop: 10,
+    paddingHorizontal: 20,
+    paddingTop: 12,
     paddingBottom: 16,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#E5E7EB',
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
     backgroundColor: '#FFFFFF',
   },
   footerSticky: {

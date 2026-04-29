@@ -73,10 +73,138 @@ import type {
 } from '../../types/models';
 import { SIGNER_ROLE_LABEL } from '../../types/models';
 import { a11y } from '../../lib/accessibility';
+import { haptic } from '../../lib/haptics';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
 const OTHER_SIGNER_ROLES: SignerRole[] = ['xaracho_supervisor', 'xaracho_assembler'];
+
+/** Logo prompt sheet — custom content for the BottomSheet provider.
+ *  Matches the design of the template-picker sheet (icon rows + chevrons).
+ */
+function LogoPromptSheet({
+  theme,
+  onAdd,
+  onSkip,
+  onCancel,
+}: {
+  theme: ReturnType<typeof useTheme>['theme'];
+  onAdd: () => void;
+  onSkip: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <View style={{ paddingHorizontal: 20, paddingBottom: 28, gap: 4 }}>
+      {/* Header */}
+      <View style={logoStyles.headerRow}>
+        <Text size="xl" weight="bold" color={theme.colors.ink}>
+          ლოგოს დამატება
+        </Text>
+        <Pressable onPress={onCancel} hitSlop={12} style={logoStyles.closeBtn}>
+          <Ionicons name="close" size={20} color={theme.colors.ink} />
+        </Pressable>
+      </View>
+
+      {/* Subtitle */}
+      <Text size="sm" color={theme.colors.inkSoft} style={{ marginBottom: 12 }}>
+        პროექტის ლოგო PDF-ის თავში გამოჩნდება
+      </Text>
+
+      {/* Add option */}
+      <Pressable
+        onPress={() => { haptic.light(); onAdd(); }}
+        style={({ pressed }) => [logoStyles.optionRow, pressed && logoStyles.rowPressed]}
+        {...a11y('დამატება', 'ლოგოს დამატება გალერეიდან', 'button')}
+      >
+        <View style={[logoStyles.iconBg, { backgroundColor: theme.colors.accentSoft }]}>
+          <Ionicons name="add" size={22} color={theme.colors.accent} />
+        </View>
+        <Text size="base" weight="semibold" color={theme.colors.ink} style={{ flex: 1 }}>
+          დამატება
+        </Text>
+        <Ionicons name="chevron-forward" size={18} color={theme.colors.inkFaint} />
+      </Pressable>
+
+      {/* Divider */}
+      <View style={[logoStyles.divider, { backgroundColor: theme.colors.border }]} />
+
+      {/* Skip option */}
+      <Pressable
+        onPress={() => { haptic.light(); onSkip(); }}
+        style={({ pressed }) => [logoStyles.optionRow, pressed && logoStyles.rowPressed]}
+        {...a11y('გამოტოვება', 'ლოგოს გამოტოვება', 'button')}
+      >
+        <View style={[logoStyles.iconBg, { backgroundColor: theme.colors.warnSoft }]}>
+          <Ionicons name="arrow-forward" size={22} color={theme.colors.warn} />
+        </View>
+        <Text size="base" weight="semibold" color={theme.colors.ink} style={{ flex: 1 }}>
+          გამოტოვება
+        </Text>
+        <Ionicons name="chevron-forward" size={18} color={theme.colors.inkFaint} />
+      </Pressable>
+
+      {/* Cancel button */}
+      <Pressable
+        onPress={() => { haptic.light(); onCancel(); }}
+        style={({ pressed }) => [logoStyles.cancelBtn, pressed && logoStyles.rowPressed]}
+        {...a11y('გაუქმება', 'მოქმედების გაუქმება', 'button')}
+      >
+        <Text size="base" weight="semibold" color={theme.colors.inkSoft}>
+          გაუქმება
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
+const logoStyles = StyleSheet.create({
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+    paddingTop: 4,
+  },
+  closeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F3F4F6',
+  },
+  optionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    height: 56,
+    paddingHorizontal: 4,
+  },
+  rowPressed: {
+    opacity: 0.65,
+  },
+  iconBg: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  divider: {
+    height: 1,
+    marginLeft: 58,
+  },
+  cancelBtn: {
+    marginTop: 10,
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});
 
 interface AdditionalSigner {
   id: string;
@@ -667,19 +795,24 @@ export default function GenerateCertificateScreen() {
     let projectForPdf = project;
     if (!project.logo) {
       const proceed = await new Promise<'add' | 'skip' | 'cancel'>(resolve => {
-        Alert.alert(
-          'ლოგოს დამატება',
-          'პროექტს ჯერ არ აქვს ლოგო. გსურთ მისი დამატება PDF-ის გენერაციამდე?',
-          [
-            { text: 'გაუქმება', style: 'cancel', onPress: () => resolve('cancel') },
-            { text: 'გამოტოვება', onPress: () => resolve('skip') },
-            { text: 'დამატება', onPress: () => resolve('add') },
-          ],
-          { cancelable: true, onDismiss: () => resolve('cancel') },
-        );
+        showActionSheetWithOptions({
+          content: ({ dismiss }) => (
+            <LogoPromptSheet
+              theme={theme}
+              onAdd={() => { dismiss(); resolve('add'); }}
+              onSkip={() => { dismiss(); resolve('skip'); }}
+              onCancel={() => { dismiss(); resolve('cancel'); }}
+            />
+          ),
+          dismissable: true,
+        });
       });
       if (proceed === 'cancel') return;
       if (proceed === 'add') {
+        // iOS crash fix: wait for the bottom sheet Modal to finish dismissing
+        // before launching the native image picker. Opening a native modal while
+        // another Modal is animating out causes a native crash on iOS.
+        await new Promise(r => setTimeout(r, 350));
         const logo = await pickProjectLogo();
         if (logo) {
           try {
@@ -1051,13 +1184,16 @@ export default function GenerateCertificateScreen() {
           </Animated.View>
         </View>
 
-        {/* Signature capture modal */}
-        <SignatureCanvas
-          visible={captureVisible}
-          personName={capturePersonName}
-          onCancel={() => { setCaptureSignerId(null); setCaptureRosterId(null); }}
-          onConfirm={onSignatureCaptured}
-        />
+        {/* Signature capture overlay */}
+        {captureVisible && (
+          <View style={StyleSheet.absoluteFillObject}>
+            <SignatureCanvas
+              personName={capturePersonName}
+              onCancel={() => { setCaptureSignerId(null); setCaptureRosterId(null); }}
+              onConfirm={onSignatureCaptured}
+            />
+          </View>
+        )}
       </SafeAreaView>
     </Screen>
   );

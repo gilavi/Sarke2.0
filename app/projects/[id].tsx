@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert,
   Dimensions,
   Keyboard,
   Linking,
@@ -199,22 +198,24 @@ export default function ProjectDetail() {
   };
 
   const deleteQuestionnaire = (q: Questionnaire) => {
-    Alert.alert('წაშლა?', 'ინსპექცია სამუდამოდ წაიშლება.', [
-      { text: 'გაუქმება', style: 'cancel' },
+    showActionSheetWithOptions(
       {
-        text: 'წაშლა',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await questionnairesApi.remove(q.id);
-            setQuestionnaires(prev => prev.filter(x => x.id !== q.id));
-            toast.success('წაიშალა');
-          } catch (e) {
-            toast.error(friendlyError(e, 'ვერ წაიშალა'));
-          }
-        },
+        title: 'დარწმუნებული ხართ?',
+        options: ['დიახ, წაშლა', 'გაუქმება'],
+        cancelButtonIndex: 1,
+        destructiveButtonIndex: 0,
       },
-    ]);
+      async idx => {
+        if (idx !== 0) return;
+        try {
+          await questionnairesApi.remove(q.id);
+          setQuestionnaires(prev => prev.filter(x => x.id !== q.id));
+          toast.success('წაიშალა');
+        } catch (e) {
+          toast.error(friendlyError(e, 'ვერ წაიშალა'));
+        }
+      },
+    );
   };
 
   const onEditLogo = async () => {
@@ -274,22 +275,24 @@ export default function ProjectDetail() {
   };
 
   const deleteFile = (f: ProjectFile) => {
-    Alert.alert('წაშლა?', f.name, [
-      { text: 'გაუქმება', style: 'cancel' },
+    showActionSheetWithOptions(
       {
-        text: 'წაშლა',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await projectFilesApi.remove(f);
-            setFiles(prev => prev.filter(x => x.id !== f.id));
-            toast.success('წაიშალა');
-          } catch (e) {
-            toast.error(friendlyError(e, 'ვერ წაიშალა'));
-          }
-        },
+        title: 'დარწმუნებული ხართ?',
+        options: ['დიახ, წაშლა', 'გაუქმება'],
+        cancelButtonIndex: 1,
+        destructiveButtonIndex: 0,
       },
-    ]);
+      async idx => {
+        if (idx !== 0) return;
+        try {
+          await projectFilesApi.remove(f);
+          setFiles(prev => prev.filter(x => x.id !== f.id));
+          toast.success('წაიშალა');
+        } catch (e) {
+          toast.error(friendlyError(e, 'ვერ წაიშალა'));
+        }
+      },
+    );
   };
 
   const openMapModal = async () => {

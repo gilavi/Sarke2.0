@@ -1,15 +1,13 @@
-import { useCallback, useEffect, useRef, useState , useMemo} from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import SignatureScreen, { type SignatureViewRef } from 'react-native-signature-canvas';
-import { Button } from './ui';
 import { useTheme } from '../lib/theme';
-
+import { haptic } from '../lib/haptics';
 import { a11y } from '../lib/accessibility';
 
 interface Props {
-  visible: boolean;
   personName: string;
   onCancel: () => void;
   /** Called with a base64-encoded PNG (no data: prefix). */
@@ -17,27 +15,22 @@ interface Props {
 }
 
 /**
- * Full-screen signature capture.
- * - Black ink on white canvas, portrait.
- * - "შენახვა" disabled until the user draws (onBegin flips hasStroke).
- * - "გასუფთავება" resets canvas + confirm state.
+ * Inline signature capture — embedded inside a BottomSheet, NOT a modal.
+ * Uses explicit bottom inset padding instead of SafeAreaView because
+ * SafeAreaView fails to compute insets when deeply nested under
+ * position:absolute + justifyContent:flex-end parents.
  */
-export function SignatureCanvas({ visible, personName, onCancel, onConfirm }: Props) {
+export function SignatureCanvas({ personName, onCancel, onConfirm }: Props) {
   const { theme } = useTheme();
-  const styles = useMemo(() => getstyles(theme), [theme]);
-
+  const insets = useSafeAreaInsets();
   const ref = useRef<SignatureViewRef>(null);
   const [hasStroke, setHasStroke] = useState(false);
 
-  // Reset state when modal opens for a new signer
   useEffect(() => {
-    if (visible) {
-      setHasStroke(false);
-      // Small timeout so the canvas is mounted before we clear
-      const id = setTimeout(() => ref.current?.clearSignature(), 120);
-      return () => clearTimeout(id);
-    }
-  }, [visible]);
+    setHasStroke(false);
+    const id = setTimeout(() => ref.current?.clearSignature(), 120);
+    return () => clearTimeout(id);
+  }, []);
 
   const handleConfirm = useCallback(() => {
     if (!hasStroke) return;
@@ -47,6 +40,7 @@ export function SignatureCanvas({ visible, personName, onCancel, onConfirm }: Pr
   const handleClear = useCallback(() => {
     ref.current?.clearSignature();
     setHasStroke(false);
+    haptic.light();
   }, []);
 
   const handleOK = useCallback(
@@ -57,11 +51,6 @@ export function SignatureCanvas({ visible, personName, onCancel, onConfirm }: Pr
     [onConfirm],
   );
 
-  // The WebView's onBegin fires on the first touch — we use it as our
-  // "user has drawn" signal so Confirm can enable/disable correctly.
-  // The fixed/100% sizing is required: without it the inner <canvas>
-  // keeps its initial width/height and the bottom half stops registering
-  // touches as the WebView grows.
   const webStyle = `
     html, body { width: 100%; height: 100%; margin: 0; padding: 0; background: #fff; overflow: hidden; }
     .m-signature-pad { position: fixed; top: 0; left: 0; right: 0; bottom: 0; box-shadow: none; border: none; background: #fff; margin: 0; }
@@ -71,79 +60,82 @@ export function SignatureCanvas({ visible, personName, onCancel, onConfirm }: Pr
   `;
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={onCancel}>
-      <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.eyebrow}>ხელმოწერა</Text>
-            <Text style={styles.title} numberOfLines={1}>
-              {personName || 'ხელმომწერი'}
-            </Text>
+    <View style={[styles.root, { paddingBottom: insets.bottom + 12 }]}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.eyebrow}>ხელმოწერა</Text>
+          <Text style={styles.title} numberOfLines={1}>
+            {personName || 'ხელმომწერი'}
+          </Text>
+        </View>
+        <Pressable onPress={onCancel} hitSlop={12} style={styles.headerBtn} {...a11y('დახურვა', undefined, 'button')}>
+          <Ionicons name="close" size={22} color={theme.colors.ink} />
+        </Pressable>
+      </View>
+
+      {/* Canvas */}
+      <View style={styles.canvasWrap}>
+        <SignatureScreen
+          ref={ref}
+          onOK={handleOK}
+          onBegin={() => setHasStroke(true)}
+          onEnd={() => setHasStroke(true)}
+          webStyle={webStyle}
+          descriptionText=""
+          autoClear={false}
+          imageType="image/png"
+          backgroundColor="rgba(255,255,255,1)"
+          penColor="#000000"
+          minWidth={1.2}
+          maxWidth={3}
+          style={{ flex: 1 }}
+          webviewContainerStyle={{ flex: 1 }}
+        />
+        {/* Dashed sign-here line */}
+        <View pointerEvents="none" style={styles.baseline} />
+        {/* Hint — only shown before first stroke */}
+        {!hasStroke && (
+          <View pointerEvents="none" style={styles.hintWrap}>
+            <Text style={styles.hintText}>ამ სივრცეში ხელი მოაწერეთ</Text>
           </View>
-          {hasStroke && (
-            <Pressable onPress={handleClear} hitSlop={12} style={[styles.headerBtn, { marginRight: 8 }]} {...a11y('გასუფთავება', 'ხელმოწერის გასუფთავება', 'button')}>
-              <Ionicons name="refresh" size={18} color={theme.colors.inkSoft} />
-            </Pressable>
-          )}
-          <Pressable onPress={onCancel} hitSlop={12} style={styles.headerBtn} {...a11y('დახურვა', undefined, 'button')}>
-            <Ionicons name="close" size={22} color={theme.colors.ink} />
-          </Pressable>
-        </View>
+        )}
+      </View>
 
-        {/* Canvas — fixed height so buttons always sit close below */}
-        <View style={styles.canvasWrap}>
-          <SignatureScreen
-            ref={ref}
-            onOK={handleOK}
-            onBegin={() => setHasStroke(true)}
-            onEnd={() => setHasStroke(true)}
-            webStyle={webStyle}
-            descriptionText=""
-            autoClear={false}
-            imageType="image/png"
-            backgroundColor="rgba(255,255,255,1)"
-            penColor="#000000"
-            minWidth={1.2}
-            maxWidth={3}
-            style={{ flex: 1 }}
-            webviewContainerStyle={{ flex: 1 }}
-          />
-          {/* Dashed sign-here line */}
-          <View pointerEvents="none" style={styles.baseline} />
-          {/* Hint — only shown before first stroke */}
-          {!hasStroke && (
-            <View pointerEvents="none" style={styles.hintWrap}>
-              <Text style={styles.hintText}>ამ სივრცეში ხელი მოაწერეთ</Text>
-            </View>
-          )}
-        </View>
-
-        {/* Buttons */}
-        <View style={styles.footer}>
-          <Button
-            title="გაუქმება"
-            variant="secondary"
-            onPress={onCancel}
-            style={{ flex: 1 }}
-            {...a11y('გაუქმება', undefined, 'button')}
-          />
-          <Button
-            title="შენახვა"
-            onPress={handleConfirm}
-            disabled={!hasStroke}
-            style={{ flex: 1.6 }}
-            {...a11y('შენახვა', 'ხელმოწერის შენახვა', 'button')}
-          />
-        </View>
-      </SafeAreaView>
-    </Modal>
+      {/* Buttons */}
+      <View style={styles.footer}>
+        <Pressable onPress={onCancel} style={styles.cancelTextBtn}>
+          <Text style={styles.cancelText}>გაუქმება</Text>
+        </Pressable>
+        <Pressable
+          onPress={handleClear}
+          style={({ pressed }) => [styles.clearBtn, pressed && styles.btnPressed]}
+          {...a11y('გასუფთავება', 'ხელმოწერის გასუფთავება', 'button')}
+        >
+          <Text style={styles.clearBtnText}>გასუფთავება</Text>
+        </Pressable>
+        <Pressable
+          onPress={handleConfirm}
+          disabled={!hasStroke}
+          style={({ pressed }) => [
+            styles.confirmBtn,
+            !hasStroke && styles.confirmBtnDisabled,
+            pressed && hasStroke && styles.btnPressed,
+          ]}
+          {...a11y('დადასტურება', 'ხელმოწერის დადასტურება', 'button')}
+        >
+          <Text style={styles.confirmBtnText}>დადასტურება</Text>
+        </Pressable>
+      </View>
+    </View>
   );
 }
 
-function getstyles(theme: any) {
-  return StyleSheet.create({
-  root: { flex: 1, backgroundColor: theme.colors.background },
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -154,19 +146,16 @@ function getstyles(theme: any) {
   },
   eyebrow: {
     fontSize: 11,
-    color: theme.colors.inkSoft,
+    color: '#6B7280',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     fontWeight: '600',
   },
-  title: { fontSize: 20, fontWeight: '800', color: theme.colors.ink, marginTop: 2 },
-  closeBtn: {
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 18,
-    backgroundColor: theme.colors.subtleSurface,
+  title: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#1F2937',
+    marginTop: 2,
   },
   headerBtn: {
     width: 36,
@@ -174,16 +163,18 @@ function getstyles(theme: any) {
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 18,
-    backgroundColor: theme.colors.subtleSurface,
+    backgroundColor: '#F3F4F6',
   },
   canvasWrap: {
     flex: 1,
-    marginHorizontal: 12,
-    backgroundColor: theme.colors.white,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: theme.colors.hairline,
+    borderColor: '#E5E7EB',
     overflow: 'hidden',
+    minHeight: 160,
   },
   baseline: {
     position: 'absolute',
@@ -193,7 +184,7 @@ function getstyles(theme: any) {
     height: 1,
     borderBottomWidth: 1,
     borderStyle: 'dashed',
-    borderColor: theme.colors.hairline,
+    borderColor: '#D1D5DB',
   },
   hintWrap: {
     position: 'absolute',
@@ -204,13 +195,58 @@ function getstyles(theme: any) {
   },
   hintText: {
     fontSize: 12,
-    color: theme.colors.inkFaint,
+    color: '#9CA3AF',
   },
   footer: {
     flexDirection: 'row',
-    gap: 10,
-    padding: 16,
-    paddingTop: 14,
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 16,
+  },
+  cancelTextBtn: {
+    paddingHorizontal: 8,
+    height: 52,
+    justifyContent: 'center',
+  },
+  cancelText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  clearBtn: {
+    flex: 1,
+    height: 52,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  clearBtnText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  confirmBtn: {
+    flex: 1.5,
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: '#059669',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmBtnDisabled: {
+    backgroundColor: '#D1D5DB',
+  },
+  confirmBtnText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  btnPressed: {
+    opacity: 0.75,
   },
 });
-}
