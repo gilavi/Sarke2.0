@@ -40,7 +40,7 @@ export interface SheetLayoutProps {
   footerSticky?: boolean;
   /** Extra container style (rare). */
   style?: StyleProp<ViewStyle>;
-  /** Padding for the scrollable body content. Default 0 horizontal, 12 top/bottom, gap 16. */
+  /** Padding for the scrollable body content. Default 20 horizontal, 16 vertical, gap 16. */
   bodyContentStyle?: StyleProp<ViewStyle>;
   /** Render the grab-handle bar at the top of the card. Default true.
    * Set false when nesting inside a parent (e.g. BottomSheetProvider) that
@@ -139,7 +139,8 @@ const styles = StyleSheet.create({
   },
   handleBar: {
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingTop: 12,
+    marginBottom: 14,
   },
   handle: {
     width: 40,
@@ -147,7 +148,7 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   headerWrap: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingTop: 4,
     paddingBottom: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -161,14 +162,14 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   bodyContent: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 12,
-    gap: 16,
+    gap: 10,
   },
   footerWrap: {
-    paddingHorizontal: 16,
-    paddingTop: 10,
+    paddingHorizontal: 20,
+    paddingTop: 12,
     paddingBottom: 16,
     borderTopWidth: StyleSheet.hairlineWidth,
   },

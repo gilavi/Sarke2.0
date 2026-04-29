@@ -1,6 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert,
   Dimensions,
   Keyboard,
   Modal,
@@ -30,6 +29,7 @@ import { MapPreview } from '../../components/MapPreview';
 import { projectsApi } from '../../lib/services';
 import { useToast } from '../../lib/toast';
 import { useTheme } from '../../lib/theme';
+import { useBottomSheet } from '../../components/BottomSheet';
 import { logError, toErrorMessage } from '../../lib/logError';
 import { friendlyError } from '../../lib/errorMap';
 import { haptic } from '../../lib/haptics';
@@ -45,6 +45,7 @@ export default function ProjectsScreen() {
   const styles = useMemo(() => getstyles(theme), [theme]);
   const router = useRouter();
   const toast = useToast();
+  const showActionSheet = useBottomSheet();
   const [projects, setProjects] = useState<Project[]>([]);
   const [stats, setStats] = useState<Stats>({});
   const [loading, setLoading] = useState(true);
@@ -80,27 +81,25 @@ export default function ProjectsScreen() {
   );
 
   const onDelete = useCallback((project: Project) => {
-    Alert.alert(
-      t('inspections.deleteTitle'),
-      t('projects.deleteConfirm', { name: `"${project.name}"` }),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('common.delete'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await projectsApi.remove(project.id);
-              setProjects(prev => prev.filter(p => p.id !== project.id));
-              toast.success(t('notifications.deleted'));
-            } catch (e) {
-              toast.error(friendlyError(e, t('errors.deleteFailed')));
-            }
-          },
-        },
-      ],
+    showActionSheet(
+      {
+        title: 'დარწმუნებული ხართ?',
+        options: ['დიახ, წაშლა', 'გაუქმება'],
+        cancelButtonIndex: 1,
+        destructiveButtonIndex: 0,
+      },
+      async idx => {
+        if (idx !== 0) return;
+        try {
+          await projectsApi.remove(project.id);
+          setProjects(prev => prev.filter(p => p.id !== project.id));
+          toast.success(t('notifications.deleted'));
+        } catch (e) {
+          toast.error(friendlyError(e, t('errors.deleteFailed')));
+        }
+      },
     );
-  }, [toast]);
+  }, [toast, showActionSheet, t]);
 
   const tourSteps: TourStep[] = useMemo(() => {
     const steps: TourStep[] = [

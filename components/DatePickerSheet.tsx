@@ -67,8 +67,9 @@ export function DatePickerSheet({ visible, value, mode, onClose, onChange }: Pro
             mode={mode}
             display="inline"
             accentColor={theme.colors.accent}
+            textColor={theme.colors.ink}
             onChange={(_, d) => { if (d) onChange(d); }}
-            style={{ backgroundColor: theme.colors.surface }}
+            style={{ width: '100%', height: mode === 'date' ? 340 : 200 }}
           />
         </Pressable>
       </Pressable>

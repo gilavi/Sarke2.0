@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert,
   Dimensions,
   Keyboard,
   Linking,
@@ -268,22 +267,24 @@ export default function ProjectDetail() {
   };
 
   const deleteQuestionnaire = (q: Questionnaire) => {
-    Alert.alert(t('inspections.deleteTitle'), t('inspections.deleteBody'), [
-      { text: t('common.cancel'), style: 'cancel' },
+    showActionSheetWithOptions(
       {
-        text: t('common.delete'),
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await questionnairesApi.remove(q.id);
-            setQuestionnaires(prev => prev.filter(x => x.id !== q.id));
-            toast.success(t('notifications.deleted'));
-          } catch (e) {
-            toast.error(friendlyError(e, t('errors.deleteFailed')));
-          }
-        },
+        title: 'დარწმუნებული ხართ?',
+        options: ['დიახ, წაშლა', 'გაუქმება'],
+        cancelButtonIndex: 1,
+        destructiveButtonIndex: 0,
       },
-    ]);
+      async idx => {
+        if (idx !== 0) return;
+        try {
+          await questionnairesApi.remove(q.id);
+          setQuestionnaires(prev => prev.filter(x => x.id !== q.id));
+          toast.success(t('notifications.deleted'));
+        } catch (e) {
+          toast.error(friendlyError(e, t('errors.deleteFailed')));
+        }
+      },
+    );
   };
 
   const onEditLogo = async () => {
@@ -345,22 +346,24 @@ export default function ProjectDetail() {
   };
 
   const deleteFile = (f: ProjectFile) => {
-    Alert.alert(t('inspections.deleteTitle'), f.name, [
-      { text: t('common.cancel'), style: 'cancel' },
+    showActionSheetWithOptions(
       {
-        text: t('common.delete'),
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await projectFilesApi.remove(f);
-            setFiles(prev => prev.filter(x => x.id !== f.id));
-            toast.success(t('notifications.deleted'));
-          } catch (e) {
-            toast.error(friendlyError(e, t('errors.deleteFailed')));
-          }
-        },
+        title: 'დარწმუნებული ხართ?',
+        options: ['დიახ, წაშლა', 'გაუქმება'],
+        cancelButtonIndex: 1,
+        destructiveButtonIndex: 0,
       },
-    ]);
+      async idx => {
+        if (idx !== 0) return;
+        try {
+          await projectFilesApi.remove(f);
+          setFiles(prev => prev.filter(x => x.id !== f.id));
+          toast.success(t('notifications.deleted'));
+        } catch (e) {
+          toast.error(friendlyError(e, t('errors.deleteFailed')));
+        }
+      },
+    );
   };
 
   const openMapModal = async () => {

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -26,6 +25,7 @@ import {
 } from '../../lib/services';
 import { useToast } from '../../lib/toast';
 import { useTheme } from '../../lib/theme';
+import { useBottomSheet } from '../../components/BottomSheet';
 
 import { a11y } from '../../lib/accessibility';
 import { useTranslation } from 'react-i18next';
@@ -41,7 +41,7 @@ export default function MoreScreen() {
   const { state, signOut } = useSession();
   const router = useRouter();
   const toast = useToast();
-  const [langVisible, setLangVisible] = useState(false);
+  const showActionSheet = useBottomSheet();
   const [signingOut, setSigningOut] = useState(false);
   const [counts, setCounts] = useState<{ total: number; drafts: number; completed: number; latestCreatedAt: string | null }>({
     total: 0,
@@ -88,7 +88,6 @@ export default function MoreScreen() {
 
   const onChangeLang = async (lng: 'ka' | 'en') => {
     await saveLanguage(lng);
-    setLangVisible(false);
     toast.success(t('notifications.languageChanged'));
   };
 
@@ -111,6 +110,19 @@ export default function MoreScreen() {
         },
       },
     ]);
+  };
+
+  const openLanguagePicker = () => {
+    const currentLang = i18n.language;
+    const options = ['ქართული', 'English', 'გაუქმება'];
+    const selectedOptionIndex = currentLang === 'en' ? 1 : 0;
+    showActionSheet(
+      { title: 'ენა / LANGUAGE', options, cancelButtonIndex: 2, selectedOptionIndex },
+      idx => {
+        if (idx === 0) onChangeLang('ka');
+        if (idx === 1) onChangeLang('en');
+      },
+    );
   };
 
   return (
@@ -190,7 +202,7 @@ export default function MoreScreen() {
           </View>
           <View style={styles.divider} />
 
-          <Pressable onPress={() => setLangVisible(true)} style={styles.settingsRow} {...a11y(t('more.language'), undefined, 'button')}>
+          <Pressable onPress={openLanguagePicker} style={styles.settingsRow} {...a11y(t('more.language'), undefined, 'button')}>
             <Ionicons name="language-outline" size={18} color={theme.colors.inkSoft} />
             <Text style={{ flex: 1, fontSize: 15, fontWeight: '500', color: theme.colors.ink }}>{t('more.language')}</Text>
             <Text style={{ fontSize: 13, color: theme.colors.inkSoft }}>{i18n.language === 'ka' ? 'ქართული' : 'English'}</Text>
@@ -222,25 +234,6 @@ export default function MoreScreen() {
           </Pressable>
         </View>
       </ScrollView>
-
-      {/* Language picker modal */}
-      <Modal visible={langVisible} transparent animationType="slide" onRequestClose={() => setLangVisible(false)}>
-        <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setLangVisible(false)}>
-          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)' }} />
-        </Pressable>
-        <SafeAreaView edges={['bottom']} style={{ position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: theme.colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20 }}>
-          <Text style={{ fontSize: 18, fontWeight: '700', color: theme.colors.ink, marginBottom: 16 }}>{t('more.language')}</Text>
-          <Pressable onPress={() => onChangeLang('ka')} style={[styles.langRow, i18n.language === 'ka' && { backgroundColor: theme.colors.accentSoft }]}>
-            <Text style={{ fontSize: 16, color: theme.colors.ink }}>ქართული</Text>
-            {i18n.language === 'ka' && <Ionicons name="checkmark" size={20} color={theme.colors.accent} />}
-          </Pressable>
-          <Pressable onPress={() => onChangeLang('en')} style={[styles.langRow, i18n.language === 'en' && { backgroundColor: theme.colors.accentSoft }]}>
-            <Text style={{ fontSize: 16, color: theme.colors.ink }}>English</Text>
-            {i18n.language === 'en' && <Ionicons name="checkmark" size={20} color={theme.colors.accent} />}
-          </Pressable>
-        </SafeAreaView>
-      </Modal>
-
     </SafeAreaView>
   );
 }
@@ -399,16 +392,5 @@ function getStyles(theme: any) {
       backgroundColor: theme.colors.hairline,
       marginLeft: 46,
     },
-    langRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingVertical: 14,
-      paddingHorizontal: 12,
-      borderRadius: 12,
-      marginBottom: 8,
-    },
   });
 }
-
-
