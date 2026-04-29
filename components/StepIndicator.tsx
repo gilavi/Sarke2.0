@@ -1,5 +1,4 @@
 import { StyleSheet, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { A11yText as Text } from './primitives/A11yText';
 import { useTheme } from '../lib/theme';
 
@@ -8,72 +7,47 @@ interface Props {
   current: number; // 1-based
 }
 
+/** Progress bar stepper — matches the inspection wizard header style. */
 export function StepIndicator({ steps, current }: Props) {
   const { theme } = useTheme();
-  const nums = Array.from({ length: steps }, (_, i) => i + 1);
+  const progress = Math.max(0, Math.min(1, current / Math.max(1, steps)));
 
   return (
-    <View style={styles.row}>
-      <View style={[styles.line, { backgroundColor: theme.colors.borderStrong }]} />
-      {nums.map(n => {
-        const done = n < current;
-        const active = n === current;
-        return (
-          <View
-            key={n}
-            style={[
-              styles.dot,
-              {
-                backgroundColor: theme.colors.surfaceSecondary,
-                borderColor: theme.colors.borderStrong,
-              },
-              active && { backgroundColor: theme.colors.accent, borderColor: theme.colors.accent },
-              done && { backgroundColor: theme.colors.primary[700], borderColor: theme.colors.primary[700] },
-            ]}
-          >
-            {done ? (
-              <Ionicons name="checkmark" size={11} color="#fff" />
-            ) : (
-              <Text style={[styles.dotText, { color: theme.colors.ink }, active && { color: '#fff' }]}>
-                {n}
-              </Text>
-            )}
-          </View>
-        );
-      })}
+    <View style={styles.wrap}>
+      <Text style={[styles.label, { color: theme.colors.inkSoft }]}>
+        ნაბიჯი {current} / {steps}
+      </Text>
+      <View style={[styles.track, { backgroundColor: theme.colors.subtleSurface }]}>
+        <View
+          style={[
+            styles.fill,
+            { backgroundColor: theme.colors.accent, width: `${progress * 100}%` },
+          ]}
+        />
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    position: 'relative',
+  wrap: {
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    gap: 6,
   },
-  line: {
-    position: 'absolute',
-    top: '50%',
-    left: 40,
-    right: 40,
-    height: 1,
-    zIndex: 0,
+  label: {
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+    letterSpacing: 0.3,
   },
-  dot: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1,
+  track: {
+    height: 4,
+    borderRadius: 2,
+    overflow: 'hidden',
   },
-  dotText: {
-    fontSize: 11,
-    fontWeight: '700',
+  fill: {
+    height: '100%',
+    borderRadius: 2,
   },
 });
