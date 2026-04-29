@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { View } from 'react-native';
 import Svg, {
   Circle,
@@ -372,7 +373,7 @@ export function illustrationKeyFor(text: string | null | undefined): Illustratio
   return null;
 }
 
-export function QuestionAvatar({
+export const QuestionAvatar = memo(function QuestionAvatar({
   illustrationKey,
   size = 112,
 }: {
@@ -398,4 +399,4 @@ export function QuestionAvatar({
       </View>
     </View>
   );
-}
+});

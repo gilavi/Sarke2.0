@@ -114,6 +114,15 @@ function withMappedCrew(p: Project | null): Project | null {
   return { ...p, crew: mapCrew(p.crew) };
 }
 
+const MAX_LOGO_BYTES = 1_000_000; // ~1 MB base64; over this slows down every projects-list query.
+
+function assertLogoSize(logo: string | null | undefined): void {
+  if (typeof logo !== 'string') return;
+  if (logo.length > MAX_LOGO_BYTES) {
+    throw new Error('ლოგო ძალიან დიდია — გთხოვთ აირჩიოთ უფრო მცირე სურათი');
+  }
+}
+
 export const projectsApi = {
   list: async (): Promise<Project[]> => {
     const { data, error } = await supabase
@@ -140,6 +149,7 @@ export const projectsApi = {
   }): Promise<Project> => {
     const user = (await supabase.auth.getUser()).data.user;
     if (!user) throw new Error('Not signed in');
+    assertLogoSize(args.logo);
     return throwIfError<Project>(
       await supabase
         .from('projects')
@@ -160,6 +170,7 @@ export const projectsApi = {
     id: string,
     patch: Partial<Pick<Project, 'name' | 'company_name' | 'address' | 'latitude' | 'longitude' | 'crew' | 'logo'>>,
   ): Promise<Project> => {
+    if ('logo' in patch) assertLogoSize(patch.logo);
     const updated = throwIfError<Project>(
       await supabase.from('projects').update(patch).eq('id', id).select().single(),
     );

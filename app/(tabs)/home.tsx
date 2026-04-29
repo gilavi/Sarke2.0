@@ -142,8 +142,8 @@ export default function HomeScreen() {
   const user = state.status === 'signedIn' ? state.user : null;
   const firstName = user?.first_name ?? '';
   const greeting = greetingFor(firstName, t);
-  const expiringCount = certs.filter(isExpiringSoon).length;
-  const latestDraft = recent.find(q => q.status === 'draft');
+  const expiringCount = useMemo(() => certs.filter(isExpiringSoon).length, [certs]);
+  const latestDraft = useMemo(() => recent.find(q => q.status === 'draft'), [recent]);
   const showCertBanner = certs.length === 0 || expiringCount > 0;
   const tip = tipOfTheDay(t);
 

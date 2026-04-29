@@ -19,9 +19,15 @@ let pendingAnnotate: ((uri: string | null) => void) | null = null;
 let pendingAnnotateToken: number | null = null;
 let resolveAnnotateToken: number | null = null;
 
+let tokenCounter = 0;
+function nextToken(): number {
+  tokenCounter = (tokenCounter + 1) | 0;
+  return tokenCounter;
+}
+
 export function setPhotoPickerCallback(cb: (uri: string | null) => void): number {
   pending = cb;
-  pendingToken = Math.random();
+  pendingToken = nextToken();
   resolveToken = pendingToken;
   return pendingToken;
 }
@@ -46,7 +52,7 @@ export function cancelPhotoPicker(): void {
 /** Callback for annotated photo return from PhotoAnnotator. */
 export function setPhotoAnnotateCallback(cb: (uri: string | null) => void): number {
   pendingAnnotate = cb;
-  pendingAnnotateToken = Math.random();
+  pendingAnnotateToken = nextToken();
   resolveAnnotateToken = pendingAnnotateToken;
   return pendingAnnotateToken;
 }

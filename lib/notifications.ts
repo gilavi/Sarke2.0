@@ -96,8 +96,12 @@ export async function rescheduleAllFromDb(schedules: ScheduleWithItem[]): Promis
     ),
   );
   await writeMap({});
-  // Rebuild
+  // Rebuild — never let one bad schedule abort the rest of the rebuild.
   for (const s of schedules) {
-    await scheduleReminder(s);
+    try {
+      await scheduleReminder(s);
+    } catch (e) {
+      console.warn('[notifications.rescheduleAllFromDb] skipped schedule', s.id, e);
+    }
   }
 }

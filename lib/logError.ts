@@ -49,16 +49,23 @@ export function logError(err: unknown, context: string): void {
   void appendToRing({ ts: new Date().toISOString(), context, message, stack });
 }
 
+let ringChain: Promise<void> = Promise.resolve();
+
 async function appendToRing(entry: LoggedError): Promise<void> {
-  try {
-    const raw = await AsyncStorage.getItem(BUFFER_KEY);
-    const list: LoggedError[] = raw ? JSON.parse(raw) : [];
-    list.push(entry);
-    while (list.length > MAX_ENTRIES) list.shift();
-    await AsyncStorage.setItem(BUFFER_KEY, JSON.stringify(list));
-  } catch {
-    // Storage failure is itself non-fatal — don't recurse.
-  }
+  // Serialize via a chained promise so concurrent logs can't read the same
+  // list, both append, and clobber each other on write.
+  ringChain = ringChain.then(async () => {
+    try {
+      const raw = await AsyncStorage.getItem(BUFFER_KEY);
+      const list: LoggedError[] = raw ? JSON.parse(raw) : [];
+      list.push(entry);
+      while (list.length > MAX_ENTRIES) list.shift();
+      await AsyncStorage.setItem(BUFFER_KEY, JSON.stringify(list));
+    } catch {
+      // Storage failure is itself non-fatal — don't recurse.
+    }
+  });
+  return ringChain;
 }
 
 export async function readErrorLog(): Promise<LoggedError[]> {

@@ -21,8 +21,9 @@ export function friendlyError(err: unknown, fallback = 'უცნობი შ�
   )
     return 'ქსელის შეცდომა. შეამოწმეთ ინტერნეტ კავშირი';
   if (lower.includes('cancelled') || lower.includes('canceled')) return 'ოპერაცია გაუქმდა';
-  if (lower.includes('not found') || lower.includes('404')) return 'მონაცემი ვერ მოიძებნა';
-  if (lower.includes('permission') || lower.includes('forbidden') || lower.includes('403'))
+  // Word-boundary the numeric codes so "4040" / "5040" don't false-positive.
+  if (lower.includes('not found') || /\b404\b/.test(lower)) return 'მონაცემი ვერ მოიძებნა';
+  if (lower.includes('permission') || lower.includes('forbidden') || /\b403\b/.test(lower))
     return 'წვდომა აკრძალულია';
   if (lower.includes('duplicate') || lower.includes('unique constraint'))
     return 'უკვე არსებობს';

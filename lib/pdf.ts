@@ -1142,9 +1142,13 @@ function renderProjectBrand(project: Project): string {
 }
 
 function escapeHtml(s: string): string {
+  // Apostrophes matter here because some interpolated values land inside
+  // single-quoted JS strings in onerror handlers (e.g. names like O'Brien
+  // would break the handler and prevent the fallback UI from rendering).
   return s
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
