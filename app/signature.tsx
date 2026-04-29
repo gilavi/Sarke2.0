@@ -95,7 +95,7 @@ export default function SignatureSettingsScreen() {
 
   return (
     <View style={styles.root}>
-      <Stack.Screen options={{ headerShown: false, presentation: 'transparentModal', animation: 'fade' }} />
+      <Stack.Screen options={{ headerShown: false, presentation: 'modal', animation: 'fade' }} />
 
       {/* Backdrop — tap to dismiss */}
       <Pressable
@@ -156,7 +156,7 @@ export default function SignatureSettingsScreen() {
 function getstyles(theme: any) {
   return StyleSheet.create({
   root: { ...StyleSheet.absoluteFillObject, backgroundColor: 'transparent' },
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.45)' },
+  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.3)' },
   sheetWrap: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   sheet: {
     backgroundColor: theme.colors.card,
