@@ -19,7 +19,10 @@ import {
 import {
   Animated,
   Easing,
+  Keyboard,
+  KeyboardEvent,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   ScrollViewProps,
@@ -32,11 +35,11 @@ import {
   GestureDetector,
   NativeGesture,
 } from 'react-native-gesture-handler';
-import { runOnJS } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { haptic } from '../lib/haptics';
 import { a11y } from '../lib/accessibility';
+import { useTheme } from '../lib/ThemeContext';
 
 export interface BottomSheetOptions {
   title?: string;
@@ -44,8 +47,6 @@ export interface BottomSheetOptions {
   options?: string[];
   cancelButtonIndex?: number;
   destructiveButtonIndex?: number;
-  /** Index of the pre-selected option (shows selection circle + checkmark). */
-  selectedOptionIndex?: number;
   /** Custom body content (form sheets). When set, replaces the options list. */
   content?: ReactNode | ((api: { dismiss: () => void }) => ReactNode);
   /** Disable backdrop / swipe / scroll dismiss. Default true. */
@@ -81,11 +82,44 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
   const [sheet, setSheet] = useState<SheetState | null>(null);
   const callbackRef = useRef<((idx: number | undefined) => void) | null>(null);
   const insets = useSafeAreaInsets();
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme.colors), [theme.colors]);
 
   const backdropProgress = useRef(new Animated.Value(0)).current;
   const sheetProgress = useRef(new Animated.Value(0)).current;
   // Drag offset in pixels (added on top of the spring-driven slide).
   const dragY = useRef(new Animated.Value(0)).current;
+  // Keyboard height — animates the sheet upward when the keyboard shows so
+  // text fields inside `content` aren't covered. RN's <Modal> does not
+  // auto-resize for the keyboard on iOS, so we lift the sheet manually.
+  const keyboardOffset = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const onShow = (e: KeyboardEvent) => {
+      Animated.timing(keyboardOffset, {
+        toValue: e.endCoordinates.height,
+        duration: e.duration ?? 250,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+    };
+    const onHide = (e: KeyboardEvent) => {
+      Animated.timing(keyboardOffset, {
+        toValue: 0,
+        duration: e.duration ?? 200,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+    };
+    const subShow = Keyboard.addListener(showEvt, onShow);
+    const subHide = Keyboard.addListener(hideEvt, onHide);
+    return () => {
+      subShow.remove();
+      subHide.remove();
+    };
+  }, [keyboardOffset]);
 
   const scrollAtTopRef = useRef(true);
   const nativeGestureRef = useRef<NativeGesture | null>(null);
@@ -162,12 +196,25 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
     outputRange: [360, 0],
   });
   const translateY = Animated.add(
-    baseTranslateY,
-    dragY.interpolate({
-      inputRange: [0, 1000],
-      outputRange: [0, 1000],
-      extrapolateLeft: 'clamp',
-    }),
+    Animated.add(
+      baseTranslateY,
+      dragY.interpolate({
+        inputRange: [0, 1000],
+        outputRange: [0, 1000],
+        extrapolateLeft: 'clamp',
+      }),
+    ),
+    // Negative shift lifts the sheet above the keyboard. The wrapper already
+    // pads by `insets.bottom`, so only lift by the amount the keyboard
+    // exceeds that inset.
+    Animated.multiply(
+      keyboardOffset.interpolate({
+        inputRange: [0, insets.bottom, 10000],
+        outputRange: [0, 0, 10000 - insets.bottom],
+        extrapolate: 'clamp',
+      }),
+      -1,
+    ),
   );
   const sheetScale = sheetProgress.interpolate({
     inputRange: [0, 1],
@@ -178,36 +225,29 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
     outputRange: [0, 1],
   });
 
-  const setDragY = useCallback((value: number) => dragY.setValue(value), [dragY]);
-  const springDragYBack = useCallback(() => {
-    Animated.spring(dragY, {
-      toValue: 0,
-      damping: 18,
-      stiffness: 260,
-      mass: 0.7,
-      useNativeDriver: true,
-    }).start();
-  }, [dragY]);
-
   const panGesture = useMemo(() => {
     const pan = Gesture.Pan()
       .enabled(dismissable)
       .activeOffsetY(10)
       .failOffsetY(-12)
       .onUpdate(e => {
-        'worklet';
         // Only allow downward drag from the top of any inner scroll view.
         if (!scrollAtTopRef.current) return;
         const ty = Math.max(0, e.translationY);
-        runOnJS(setDragY)(ty);
+        dragY.setValue(ty);
       })
       .onEnd(e => {
-        'worklet';
         const shouldDismiss = e.translationY > 80 || e.velocityY > 600;
         if (shouldDismiss) {
-          runOnJS(dismiss)(cancelIndex);
+          dismiss(cancelIndex);
         } else {
-          runOnJS(springDragYBack)();
+          Animated.spring(dragY, {
+            toValue: 0,
+            damping: 18,
+            stiffness: 260,
+            mass: 0.7,
+            useNativeDriver: true,
+          }).start();
         }
       });
     if (nativeGestureRef.current) {
@@ -215,7 +255,7 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
     }
     return pan;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dismissable, cancelIndex, dismiss, nativeGestureVersion, setDragY, springDragYBack]);
+  }, [dismissable, cancelIndex, dismiss, nativeGestureVersion]);
 
   const scrollCtx = useMemo<ScrollCtx>(
     () => ({
@@ -232,7 +272,7 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
 
   const renderBody = () => {
     if (!sheet) return null;
-    const { content, options, title, cancelButtonIndex, destructiveButtonIndex, selectedOptionIndex } = sheet.options;
+    const { content, options, title, cancelButtonIndex, destructiveButtonIndex } = sheet.options;
     if (content) {
       return (
         <View style={styles.contentBody}>
@@ -242,64 +282,47 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
         </View>
       );
     }
-
-    const hasSelection = selectedOptionIndex != null;
-    const visibleOptions =
-      options
-        ?.map((label, i) => ({ label, originalIndex: i }))
-        .filter(item => item.originalIndex !== cancelButtonIndex) ?? [];
-
     return (
       <>
         {title ? <Text style={styles.title}>{title}</Text> : null}
         <View style={styles.optionsContainer}>
-          {visibleOptions.map((item, idx) => {
-            const isDestructive = item.originalIndex === destructiveButtonIndex;
-            const isSelected = hasSelection && item.originalIndex === selectedOptionIndex;
-            const isLast = idx === visibleOptions.length - 1;
-
+          {options?.map((opt, i) => {
+            const isCancel = i === cancelButtonIndex;
+            const isDestructive = i === destructiveButtonIndex;
+            const isSelected = !isCancel && !isDestructive && i === 0;
             return (
-              <View key={item.originalIndex}>
-                <Pressable
-                  onPress={() => {
-                    haptic.light();
-                    dismiss(item.originalIndex);
-                  }}
-                  style={({ pressed }) => [
-                    styles.optionRow,
-                    isSelected && styles.optionRowSelected,
-                    pressed && styles.optionRowPressed,
-                  ]}
-                  {...a11y(
-                    item.label,
-                    isDestructive ? 'ყურადღება, ეს ქმედება წაშლით დასრულდება' : undefined,
-                    'button',
-                  )}
-                >
-                  {/* Selection indicator */}
-                  {hasSelection && (
-                    <View style={[styles.selectionCircle, isSelected && styles.selectionCircleActive]}>
-                      {isSelected && <View style={styles.selectionCircleInner} />}
-                    </View>
-                  )}
-
-                  {/* Label */}
+              <Pressable
+                key={i}
+                onPress={() => {
+                  haptic.light();
+                  dismiss(i);
+                }}
+                style={({ pressed }) => [
+                  styles.optionCard,
+                  isSelected && styles.optionCardSelected,
+                  pressed && styles.optionCardPressed,
+                ]}
+                {...a11y(
+                  opt,
+                  isDestructive ? 'ყურადღება, ეს ქმედება წაშლით დასრულდება' : undefined,
+                  'button',
+                )}
+              >
+                <View style={{ flex: 1 }}>
                   <Text
                     style={[
                       styles.optionText,
+                      isCancel && styles.cancelText,
                       isDestructive && styles.destructiveText,
                     ]}
                   >
-                    {item.label}
+                    {opt}
                   </Text>
-
-                  {/* Checkmark */}
-                  {isSelected && (
-                    <Ionicons name="checkmark" size={20} color="#059669" />
-                  )}
-                </Pressable>
-                {!isLast && <View style={styles.divider} />}
-              </View>
+                </View>
+                {isSelected && (
+                  <Ionicons name="checkmark" size={18} color={theme.colors.semantic.success} />
+                )}
+              </Pressable>
             );
           })}
         </View>
@@ -352,6 +375,7 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
               style={[
                 styles.sheetWrapper,
                 {
+                  paddingBottom: insets.bottom + 16,
                   transform: [{ translateY }, { scale: sheetScale }],
                 },
               ]}
@@ -362,7 +386,6 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
                     <View style={styles.handle} />
                   </View>
                   {renderBody()}
-                  <View style={{ height: insets.bottom + 8, backgroundColor: '#FFFFFF' }} />
                 </View>
               </GestureDetector>
             </Animated.View>
@@ -405,20 +428,22 @@ export function BottomSheetScrollView({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   backdrop: {
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: colors.overlay,
   },
   sheetWrapper: {
     position: 'absolute',
-    left: 0,
-    right: 0,
+    left: 12,
+    right: 12,
     bottom: 0,
   },
   sheetCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.1,
@@ -429,103 +454,79 @@ const styles = StyleSheet.create({
   },
   handleBar: {
     alignItems: 'center',
-    paddingTop: 12,
-    marginBottom: 14,
+    paddingVertical: 12,
   },
   handle: {
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#D1D5DB',
+    backgroundColor: colors.border,
   },
   title: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#64748b',
+    color: colors.inkSoft,
     textAlign: 'center',
     paddingVertical: 8,
     paddingHorizontal: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
   optionsContainer: {
-    paddingHorizontal: 0,
+    paddingHorizontal: 12,
+    gap: 8,
     paddingBottom: 8,
   },
-  optionRow: {
+  optionCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 56,
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: 14,
     paddingHorizontal: 16,
-    gap: 12,
   },
-  optionRowSelected: {
-    backgroundColor: '#ECFDF5',
-    borderLeftWidth: 3,
-    borderLeftColor: '#059669',
+  optionCardSelected: {
+    borderLeftWidth: 4,
+    borderLeftColor: colors.semantic.success,
+    paddingLeft: 12,
   },
-  optionRowPressed: {
-    backgroundColor: '#F9FAFB',
-  },
-  selectionCircle: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  selectionCircleActive: {
-    borderColor: '#059669',
-    backgroundColor: '#ECFDF5',
-  },
-  selectionCircleInner: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#059669',
+  optionCardPressed: {
+    backgroundColor: colors.surfaceSecondary,
   },
   optionText: {
     fontSize: 16,
-    color: '#1F2937',
+    color: colors.ink,
     fontWeight: '600',
-    flex: 1,
   },
   cancelText: {
-    fontWeight: '600',
-    color: '#6B7280',
+    fontWeight: '700',
+    color: colors.inkSoft,
   },
   destructiveText: {
-    color: '#DC2626',
-    fontWeight: '600',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#F3F4F6',
-    marginLeft: 16,
+    color: colors.semantic.danger,
+    fontWeight: '700',
   },
   cancelBtn: {
-    marginHorizontal: 16,
+    marginHorizontal: 12,
     marginTop: 6,
-    height: 52,
-    borderRadius: 14,
-    backgroundColor: '#FFFFFF',
+    paddingVertical: 14,
+    borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: '#E5E7EB',
+    borderColor: colors.semantic.success,
     alignItems: 'center',
     justifyContent: 'center',
   },
   cancelBtnText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#6B7280',
+    color: colors.semantic.success,
   },
   contentBody: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
+    backgroundColor: colors.surface,
+    paddingHorizontal: 16,
     paddingTop: 4,
     paddingBottom: 16,
   },

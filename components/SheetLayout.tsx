@@ -40,8 +40,12 @@ export interface SheetLayoutProps {
   footerSticky?: boolean;
   /** Extra container style (rare). */
   style?: StyleProp<ViewStyle>;
-  /** Padding for the scrollable body content. Default 20 horizontal, 16 vertical, gap 16. */
+  /** Padding for the scrollable body content. Default 0 horizontal, 12 top/bottom, gap 16. */
   bodyContentStyle?: StyleProp<ViewStyle>;
+  /** Render the grab-handle bar at the top of the card. Default true.
+   * Set false when nesting inside a parent (e.g. BottomSheetProvider) that
+   * already draws a handle, to avoid stacking two handles. */
+  showHandle?: boolean;
 }
 
 export function SheetLayout({
@@ -55,6 +59,7 @@ export function SheetLayout({
   footerSticky = true,
   style,
   bodyContentStyle,
+  showHandle = true,
 }: SheetLayoutProps) {
   const { theme } = useTheme();
   const screenH = Dimensions.get('window').height;
@@ -63,13 +68,14 @@ export function SheetLayout({
   const headerNode = renderHeader(header, theme);
 
   return (
-    <View style={[styles.container, { maxHeight: screenH * maxHeightRatio }, style]}>
-      {/* Handle bar */}
-      <View style={styles.handleBar}>
-        <View style={[styles.handle, { backgroundColor: '#D1D5DB' }]} />
-      </View>
+    <View style={[styles.container, { maxHeight: screenH * maxHeightRatio, backgroundColor: theme.colors.surface }, style]}>
+      {showHandle ? (
+        <View style={styles.handleBar}>
+          <View style={[styles.handle, { backgroundColor: theme.colors.hairline }]} />
+        </View>
+      ) : null}
 
-      {headerNode ? <View style={styles.headerWrap}>{headerNode}</View> : null}
+      {headerNode ? <View style={[styles.headerWrap, { borderBottomColor: theme.colors.border }]}>{headerNode}</View> : null}
 
       <Body
         keyboardShouldPersistTaps="handled"
@@ -87,7 +93,7 @@ export function SheetLayout({
       </Body>
 
       {footer ? (
-        <View style={[styles.footerWrap, footerSticky && styles.footerSticky]}>
+        <View style={[styles.footerWrap, footerSticky && styles.footerSticky, { borderTopColor: theme.colors.border, backgroundColor: theme.colors.surface }]}>
           {footer}
         </View>
       ) : null}
@@ -122,7 +128,6 @@ function renderHeader(header: SheetLayoutProps['header'], theme: any) {
 const styles = StyleSheet.create({
   container: {
     flexShrink: 1,
-    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     shadowColor: '#000',
@@ -134,8 +139,7 @@ const styles = StyleSheet.create({
   },
   handleBar: {
     alignItems: 'center',
-    paddingTop: 12,
-    marginBottom: 14,
+    paddingVertical: 12,
   },
   handle: {
     width: 40,
@@ -143,11 +147,10 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   headerWrap: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingTop: 4,
     paddingBottom: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E5E7EB',
   },
   headerRow: {
     flexDirection: 'row',
@@ -158,18 +161,16 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   bodyContent: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 16,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 12,
     gap: 16,
   },
   footerWrap: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
+    paddingHorizontal: 16,
+    paddingTop: 10,
     paddingBottom: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-    backgroundColor: '#FFFFFF',
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
   footerSticky: {
     // Footer stays at bottom; body scrolls above it.

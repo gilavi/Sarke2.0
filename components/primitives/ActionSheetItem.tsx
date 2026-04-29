@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { A11yText } from './A11yText';
 import { haptic } from '../../lib/haptics';
+import { useTheme } from '../../lib/theme';
 
 import { a11y } from '../../lib/accessibility';
 
@@ -25,21 +26,24 @@ export function ActionSheetItem({
   isSelected = false,
   isLast = false,
 }: ActionSheetItemProps) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
   const handlePress = () => {
     haptic.light();
     onPress();
   };
 
-  const textColor = {
-    default: '#1F2937',
-    destructive: '#DC2626',
-    highlight: '#059669',
+  const iconColor = {
+    default: theme.colors.ink,
+    destructive: theme.colors.danger,
+    highlight: theme.colors.accent,
   }[variant];
 
-  const iconColor = {
-    default: '#6B7280',
-    destructive: '#DC2626',
-    highlight: '#059669',
+  const textColor = {
+    default: theme.colors.ink,
+    destructive: theme.colors.danger,
+    highlight: theme.colors.accent,
   }[variant];
 
   return (
@@ -53,29 +57,24 @@ export function ActionSheetItem({
         ]}
         {...a11y(label, undefined, 'button')}
       >
-        {/* Selection indicator */}
-        <View style={[styles.selectionCircle, isSelected && styles.selectionCircleActive]}>
-          {isSelected && <View style={styles.selectionCircleInner} />}
-        </View>
-
         {icon && (
           <Ionicons
             name={icon}
-            size={20}
+            size={24}
             color={iconColor}
             style={styles.icon}
           />
         )}
         <A11yText
           size="base"
-          weight="semibold"
+          weight="medium"
           color={textColor}
           style={{ flex: 1 }}
         >
           {label}
         </A11yText>
         {isSelected && (
-          <Ionicons name="checkmark" size={20} color="#059669" />
+          <Ionicons name="checkmark" size={18} color={theme.colors.accent} />
         )}
       </Pressable>
       {!isLast && <View style={styles.separator} />}
@@ -83,49 +82,31 @@ export function ActionSheetItem({
   );
 }
 
-const styles = StyleSheet.create({
+function getstyles(theme: any) {
+  return StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 56,
-    paddingHorizontal: 16,
-    gap: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.md,
+    paddingVertical: theme.space(3),
+    paddingHorizontal: theme.space(4),
   },
   selected: {
-    backgroundColor: '#ECFDF5',
-    borderLeftWidth: 3,
-    borderLeftColor: '#059669',
+    borderLeftWidth: 4,
+    borderLeftColor: theme.colors.accent,
+    paddingLeft: theme.space(4) - 4,
   },
   pressed: {
-    backgroundColor: '#F9FAFB',
-  },
-  selectionCircle: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  selectionCircleActive: {
-    borderColor: '#059669',
-    backgroundColor: '#ECFDF5',
-  },
-  selectionCircleInner: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#059669',
+    backgroundColor: theme.colors.surfaceSecondary,
   },
   icon: {
-    marginLeft: -4,
+    marginRight: theme.space(3),
   },
   separator: {
     height: 1,
-    backgroundColor: '#F3F4F6',
-    marginLeft: 16,
+    backgroundColor: theme.colors.border,
+    marginVertical: theme.space(2),
   },
 });
+}
