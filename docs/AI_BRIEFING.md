@@ -147,6 +147,15 @@ Sarke 2.0/
 4. 🔄 **Web Support** — Map fallbacks, responsive design
 5. 📋 **Component Stability** — Ongoing refactoring
 
+### Briefing Signing Flow
+
+The in-person "phone-passing" flow lives at [app/briefings/[id]/sign.tsx](../app/briefings/[id]/sign.tsx). One device is handed to each worker in turn, then the inspector.
+
+- **Roster pill** in the header shows live counts (✓ signed · ◯ pending · ⊘ skipped) and opens a bottom-sheet roster — tap any participant to jump to them.
+- **Back / Skip / Confirm** in the footer let the supervisor revisit a previous signer or mark an absent worker. Skip is persisted via `BriefingParticipant.skipped` (jsonb, no migration).
+- **Resume**: on reopen, the screen jumps to the first participant who is neither signed nor skipped.
+- **Skip review interstitial**: if any workers are skipped after all pending are handled, an interstitial offers "შეხედე სიას" (open roster) or "გააგრძელე →" (proceed to inspector). The briefing can complete with skipped workers left unsigned — the data preserves who was absent.
+
 ### Known Issues (Unresolved)
 - App crashes (reason unknown)
 - Phone rotation breaks signature canvas

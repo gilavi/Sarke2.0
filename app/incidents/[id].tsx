@@ -21,7 +21,10 @@ import { useToast } from '../../lib/toast';
 import { incidentsApi, projectsApi, storageApi } from '../../lib/services';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { buildIncidentPdfHtml } from '../../lib/incidentPdf';
-import { getStorageImageDataUrl, getStorageImageDisplayUrl } from '../../lib/imageUrl';
+import {
+  getStorageImageDataUrlStrict,
+  getStorageImageDisplayUrl,
+} from '../../lib/imageUrl';
 import { shareStoredPdf } from '../../lib/sharePdf';
 import { friendlyError } from '../../lib/errorMap';
 import { formatShortDateTime } from '../../lib/formatDate';
@@ -127,7 +130,7 @@ export default function IncidentDetail() {
     try {
       let sigDataUrl: string | undefined;
       if (inspector.sigPath) {
-        sigDataUrl = await getStorageImageDataUrl(
+        sigDataUrl = await getStorageImageDataUrlStrict(
           STORAGE_BUCKETS.signatures,
           inspector.sigPath,
         ).catch(() => undefined);
@@ -135,7 +138,7 @@ export default function IncidentDetail() {
       setPdfPhase('ფოტოები ემატება...');
       const photoDataUrls = await Promise.all(
         (incident.photos ?? []).map(p =>
-          getStorageImageDataUrl(STORAGE_BUCKETS.incidentPhotos, p).catch(() => ''),
+          getStorageImageDataUrlStrict(STORAGE_BUCKETS.incidentPhotos, p).catch(() => ''),
         ),
       ).then(urls => urls.filter(Boolean));
 

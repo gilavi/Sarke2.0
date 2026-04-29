@@ -9,13 +9,10 @@ import {
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
-import { useBottomSheet } from '../../../components/BottomSheet';
 import { useTheme } from '../../../lib/theme';
 import { formatShortDateTime } from '../../../lib/formatDate';
 import { questionnairesApi, templatesApi, projectsApi } from '../../../lib/services';
 import type { Project, Questionnaire, Template } from '../../../types/models';
-
-type StatusFilter = 'completed' | 'draft' | null;
 
 function formatGeorgianDate(isoDate: string): string {
   return new Date(isoDate).toLocaleDateString('ka-GE', {
@@ -32,14 +29,11 @@ export default function ProjectInspectionsList() {
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const showBottomSheet = useBottomSheet();
 
   const [loading, setLoading] = useState(true);
   const [project, setProject] = useState<Project | null>(null);
   const [items, setItems] = useState<Questionnaire[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>(null);
-  const [templateFilter, setTemplateFilter] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -61,63 +55,7 @@ export default function ProjectInspectionsList() {
     }, [load]),
   );
 
-  // Available template names (limited to those that appear in this list)
-  const templatesInList = useMemo(() => {
-    const names = new Set<string>();
-    for (const q of items) {
-      const tpl = templates.find(t => t.id === q.template_id);
-      if (tpl?.name) names.add(tpl.name);
-    }
-    return Array.from(names);
-  }, [items, templates]);
-
-  const filtered = useMemo(() => {
-    return items.filter(q => {
-      if (statusFilter && q.status !== statusFilter) return false;
-      if (templateFilter) {
-        const tpl = templates.find(t => t.id === q.template_id);
-        if ((tpl?.name ?? '') !== templateFilter) return false;
-      }
-      return true;
-    });
-  }, [items, statusFilter, templateFilter, templates]);
-
-  const grouped = useMemo(() => groupByDateDesc(filtered, q => q.created_at), [filtered]);
-
-  const clearFilters = () => {
-    setStatusFilter(null);
-    setTemplateFilter(null);
-  };
-
-  const openStatusSheet = () => {
-    const labels = ['დასრულებული', 'დრაფტი'];
-    const values: StatusFilter[] = ['completed', 'draft'];
-    const options = ['ყველა', ...labels, 'გაუქმება'];
-    showBottomSheet(
-      { title: 'ფილტრი', options, cancelButtonIndex: options.length - 1 },
-      idx => {
-        if (idx == null || idx === options.length - 1) return;
-        setStatusFilter(idx === 0 ? null : values[idx - 1]);
-      },
-    );
-  };
-
-  const openTemplateSheet = () => {
-    const choices = templatesInList;
-    const options = ['ყველა', ...choices, 'გაუქმება'];
-    showBottomSheet(
-      { title: 'ფილტრი', options, cancelButtonIndex: options.length - 1 },
-      idx => {
-        if (idx == null || idx === options.length - 1) return;
-        setTemplateFilter(idx === 0 ? null : choices[idx - 1]);
-      },
-    );
-  };
-
-  const statusChipLabel = statusFilter == null
-    ? 'სტატუსი ▾'
-    : `● ${statusFilter === 'completed' ? 'დასრულებული' : 'დრაფტი'}`;
-  const templateChipLabel = templateFilter == null ? 'შაბლონი ▾' : `● ${templateFilter}`;
+  const grouped = useMemo(() => groupByDateDesc(items, q => q.created_at), [items]);
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
@@ -134,28 +72,14 @@ export default function ProjectInspectionsList() {
 
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 32 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 40 }}
       >
-        {project?.name ? (
-          <Text style={styles.projectSubtitle}>{project.name}</Text>
-        ) : null}
-
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chipsRow}
-        >
-          <FilterChip
-            active={statusFilter != null}
-            label={statusChipLabel}
-            onPress={openStatusSheet}
-          />
-          <FilterChip
-            active={templateFilter != null}
-            label={templateChipLabel}
-            onPress={openTemplateSheet}
-          />
-        </ScrollView>
+        <View style={styles.pageHeader}>
+          <Text style={styles.pageTitle}>ინსპექციები</Text>
+          {project?.name ? (
+            <Text style={styles.pageSubtitle}>{project.name}</Text>
+          ) : null}
+        </View>
 
         {loading ? (
           <View style={styles.centered}>
@@ -166,21 +90,11 @@ export default function ProjectInspectionsList() {
             <Ionicons name="document-text-outline" size={40} color={theme.colors.borderStrong} />
             <Text style={styles.emptyStateText}>ჩანაწერები არ არის</Text>
           </View>
-        ) : filtered.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Ionicons name="filter-outline" size={40} color={theme.colors.inkFaint} />
-            <Text style={styles.emptyStateText}>ფილტრი არ ემთხვევა</Text>
-            <Pressable onPress={clearFilters}>
-              <Text style={{ color: theme.colors.accent, fontSize: 14, fontWeight: '600' }}>
-                გასუფთავება
-              </Text>
-            </Pressable>
-          </View>
         ) : (
           grouped.map(group => (
             <View key={group.key}>
               <Text style={styles.dateSep}>{formatGeorgianDate(group.key)}</Text>
-              <View style={{ gap: 8 }}>
+              <View style={{ gap: 10 }}>
                 {group.items.map(q => {
                   const tpl = templates.find(t => t.id === q.template_id);
                   const isCompleted = q.status === 'completed';
@@ -231,8 +145,6 @@ export default function ProjectInspectionsList() {
   );
 }
 
-// ── Helpers shared across list screens ──
-
 function groupByDateDesc<T>(
   items: T[],
   getDate: (it: T) => string,
@@ -253,53 +165,20 @@ function groupByDateDesc<T>(
   return groups;
 }
 
-function FilterChip({
-  label,
-  active,
-  onPress,
-}: {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-}) {
-  const { theme } = useTheme();
-  return (
-    <Pressable
-      onPress={onPress}
-      style={{
-        borderRadius: 999,
-        paddingHorizontal: 14,
-        paddingVertical: 7,
-        borderWidth: 1,
-        marginRight: 8,
-        backgroundColor: active ? theme.colors.semantic.successSoft : theme.colors.surface,
-        borderColor: active ? theme.colors.primary[700] : theme.colors.border,
-      }}
-    >
-      <Text
-        style={{
-          fontSize: 13,
-          fontWeight: '600',
-          color: active ? theme.colors.primary[700] : theme.colors.inkSoft,
-        }}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
 function makeStyles(theme: any) {
   return StyleSheet.create({
-    projectSubtitle: {
+    pageHeader: {
+      marginBottom: 24,
+    },
+    pageTitle: {
+      fontSize: 26,
+      fontWeight: '700',
+      color: theme.colors.ink,
+    },
+    pageSubtitle: {
       fontSize: 13,
       color: theme.colors.inkFaint,
-      textAlign: 'center',
-      marginBottom: 8,
-    },
-    chipsRow: {
-      paddingVertical: 4,
-      paddingRight: 8,
+      marginTop: 3,
     },
     centered: {
       paddingVertical: 60,
@@ -320,10 +199,10 @@ function makeStyles(theme: any) {
     listRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 10,
+      gap: 12,
       backgroundColor: theme.colors.surface,
       borderRadius: 12,
-      padding: 12,
+      padding: 14,
       shadowColor: theme.colors.ink,
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.04,
@@ -333,17 +212,18 @@ function makeStyles(theme: any) {
     listRowTitle: { fontSize: 14, fontWeight: '600', color: theme.colors.ink },
     listRowSubtitle: { fontSize: 12, color: theme.colors.inkSoft, marginTop: 2 },
     statusIcon: {
-      width: 30,
-      height: 30,
-      borderRadius: 8,
+      width: 32,
+      height: 32,
+      borderRadius: 9,
       alignItems: 'center',
       justifyContent: 'center',
     },
     dateSep: {
       fontSize: 12,
+      fontWeight: '600',
       color: theme.colors.inkFaint,
-      marginBottom: 4,
-      marginTop: 12,
+      marginBottom: 8,
+      marginTop: 22,
     },
   });
 }

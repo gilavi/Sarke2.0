@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -16,8 +15,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { A11yText as Text } from '../../components/primitives/A11yText';
-import { StepIndicator } from '../../components/StepIndicator';
-import { DatePickerSheet } from '../../components/DatePickerSheet';
+import { FlowHeader } from '../../components/FlowHeader';
+import { DateTimeField } from '../../components/DateTimeField';
 import { Button, Input } from '../../components/ui';
 import { useTheme } from '../../lib/theme';
 import { useSession } from '../../lib/session';
@@ -25,7 +24,10 @@ import { useToast } from '../../lib/toast';
 import { incidentsApi, projectsApi, storageApi } from '../../lib/services';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { buildIncidentPdfHtml } from '../../lib/incidentPdf';
-import { getStorageImageDataUrl, getStorageImageDisplayUrl } from '../../lib/imageUrl';
+import {
+  getStorageImageDataUrlStrict,
+  getStorageImageDisplayUrl,
+} from '../../lib/imageUrl';
 import { friendlyError } from '../../lib/errorMap';
 import { formatShortDateTime } from '../../lib/formatDate';
 import type { IncidentType, Project } from '../../types/models';
@@ -99,10 +101,6 @@ export default function NewIncident() {
   // stable incident id — lets us upload photos before the row is created
   const incidentId = useRef(Crypto.randomUUID()).current;
 
-  // date/time picker state
-  const [pickerMode, setPickerMode] = useState<'date' | 'time'>('date');
-  const [showPicker, setShowPicker] = useState(false);
-
   // witness text input buffer
   const [witnessInput, setWitnessInput] = useState('');
 
@@ -127,6 +125,18 @@ export default function NewIncident() {
   useEffect(() => { void loadProject(); }, [loadProject]);
 
   // ── navigation ──────────────────────────────────────────────────────────────
+
+  const isFormDirty = useMemo(() => (
+    form.type !== null ||
+    form.injuredName.trim().length > 0 ||
+    form.injuredRole.trim().length > 0 ||
+    form.location.trim().length > 0 ||
+    form.description.trim().length > 0 ||
+    form.cause.trim().length > 0 ||
+    form.actionsTaken.trim().length > 0 ||
+    form.witnesses.length > 0 ||
+    form.photoUris.length > 0
+  ), [form]);
 
   const goBack = () => {
     if (step === 1) {
@@ -295,19 +305,21 @@ export default function NewIncident() {
       });
       savedId = saved.id;
 
-      // 3. load signature data URL
+      // 3. load signature data URL — strict so we never embed a signed URL
+      // the print WebView can't fetch.
       let sigDataUrl: string | undefined;
       if (inspector.sigPath) {
-        sigDataUrl = await getStorageImageDataUrl(
+        sigDataUrl = await getStorageImageDataUrlStrict(
           STORAGE_BUCKETS.signatures,
           inspector.sigPath,
         ).catch(() => undefined);
       }
 
-      // 4. load photo data URLs
+      // 4. load photo data URLs (strict — drop ones that fail rather than
+      // embedding an unreachable signed URL fallback).
       const photoDataUrls = await Promise.all(
         photoPaths.map(p =>
-          getStorageImageDataUrl(STORAGE_BUCKETS.incidentPhotos, p).catch(
+          getStorageImageDataUrlStrict(STORAGE_BUCKETS.incidentPhotos, p).catch(
             () => '',
           ),
         ),
@@ -345,24 +357,16 @@ export default function NewIncident() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          title: 'ახალი ინციდენტი',
-          headerBackTitle: 'უკან',
-          headerTitleStyle: { fontSize: 17, fontWeight: '700', color: theme.colors.ink },
-          headerShadowVisible: false,
-          headerStyle: { backgroundColor: theme.colors.background },
-          headerTintColor: theme.colors.accent,
-          headerLeft: () => (
-            <Pressable onPress={goBack} hitSlop={8} style={{ paddingHorizontal: 4 }}>
-              <Ionicons name="chevron-back" size={26} color={theme.colors.accent} />
-            </Pressable>
-          ),
-        }}
-      />
+      <Stack.Screen options={{ headerShown: false }} />
 
-      <StepIndicator steps={4} current={step} />
+      <FlowHeader
+        flowTitle="ინციდენტი"
+        project={project}
+        step={step}
+        totalSteps={4}
+        onBack={goBack}
+        confirmExit={step === 1 && isFormDirty}
+      />
 
       <ScrollView
         style={{ flex: 1 }}
@@ -376,10 +380,6 @@ export default function NewIncident() {
             setForm={setForm}
             theme={theme}
             s={s}
-            pickerMode={pickerMode}
-            setPickerMode={setPickerMode}
-            showPicker={showPicker}
-            setShowPicker={setShowPicker}
           />
         )}
         {step === 3 && (
@@ -443,14 +443,6 @@ export default function NewIncident() {
         )}
       </View>
 
-      {/* Date/time picker (iOS modal, Android native dialog) */}
-      <DatePickerSheet
-        visible={showPicker}
-        value={form.dateTime}
-        mode={pickerMode}
-        onClose={() => setShowPicker(false)}
-        onChange={d => setForm(f => ({ ...f, dateTime: d }))}
-      />
     </View>
   );
 }
@@ -529,16 +521,11 @@ function Step1({
 
 function Step2({
   form, setForm, theme, s,
-  pickerMode, setPickerMode, showPicker, setShowPicker,
 }: {
   form: FormData;
   setForm: React.Dispatch<React.SetStateAction<FormData>>;
   theme: any;
   s: ReturnType<typeof makeStyles>;
-  pickerMode: 'date' | 'time';
-  setPickerMode: (m: 'date' | 'time') => void;
-  showPicker: boolean;
-  setShowPicker: (v: boolean) => void;
 }) {
   const isNearMiss = form.type === 'nearmiss';
 
@@ -571,37 +558,13 @@ function Step2({
         </>
       )}
 
-      {/* Date / time row */}
-      <View style={{ gap: 6 }}>
-        <Text style={s.fieldLabel}>თარიღი და დრო</Text>
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          <Pressable
-            onPress={() => { setPickerMode('date'); setShowPicker(true); }}
-            style={[s.dateChip, { flex: 1.5 }]}
-          >
-            <Ionicons name="calendar-outline" size={16} color={theme.colors.accent} />
-            <Text style={s.dateChipText}>
-              {form.dateTime.toLocaleDateString('ka-GE', {
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric',
-              })}
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => { setPickerMode('time'); setShowPicker(true); }}
-            style={[s.dateChip, { flex: 1 }]}
-          >
-            <Ionicons name="time-outline" size={16} color={theme.colors.accent} />
-            <Text style={s.dateChipText}>
-              {form.dateTime.toLocaleTimeString('ka-GE', {
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
-            </Text>
-          </Pressable>
-        </View>
-      </View>
+      <DateTimeField
+        label="თარიღი და დრო"
+        value={form.dateTime}
+        onChange={d => setForm(f => ({ ...f, dateTime: d }))}
+        mode="datetime"
+        maxDate={new Date()}
+      />
 
       {/* Location */}
       <Input
@@ -944,24 +907,6 @@ function makeStyles(theme: any) {
       fontWeight: '600',
       color: theme.colors.inkSoft,
       marginBottom: 2,
-    },
-
-    // date chips
-    dateChip: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      backgroundColor: theme.colors.surface,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      borderRadius: 10,
-      paddingHorizontal: 12,
-      paddingVertical: 12,
-    },
-    dateChipText: {
-      fontSize: 14,
-      color: theme.colors.ink,
-      fontWeight: '500',
     },
 
     // witnesses

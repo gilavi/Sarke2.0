@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Button, Card, Screen } from '../../../components/ui';
+import { FlowHeader } from '../../../components/FlowHeader';
 import { QuestionAvatar, illustrationKeyFor } from '../../../components/QuestionAvatar';
 import { Skeleton, SkeletonWizard } from '../../../components/Skeleton';
 import { ScaffoldTour } from '../../../components/ScaffoldTour';
@@ -21,7 +22,6 @@ import {
   QuestionCard,
   AnswerButtons,
   WizardNav,
-  ExitConfirmationModal,
   WizardPhotoThumbs,
   WizardStepTransition,
 } from '../../../components/wizard';
@@ -33,6 +33,7 @@ import {
 import {
   answersApi,
   inspectionsApi,
+  projectsApi,
   storageApi,
   templatesApi,
 } from '../../../lib/services';
@@ -51,6 +52,7 @@ import type {
   AnswerPhoto,
   GridValues,
   Inspection,
+  Project,
   Question,
   Template,
 } from '../../../types/models';
@@ -127,28 +129,6 @@ function buildSteps(
   return steps;
 }
 
-// Header label/icon for the stepper at the top of the wizard. Grouped by
-// step kind + question type rather than per-question, so the header stays
-// stable across the many sub-steps that share a conceptual phase.
-function stepHeaderInfo(step: FlatStep): { title: string; icon: keyof typeof Ionicons.glyphMap } {
-  if (step.kind === 'conclusion') return { title: 'დასკვნა', icon: 'clipboard-outline' };
-  if (step.kind === 'kamariCount') return { title: 'ქამარების რაოდენობა', icon: 'apps-outline' };
-  if (step.kind === 'kamariOverview') return { title: 'ქამარების შემოწმება', icon: 'grid-outline' };
-  if (step.kind === 'gridRow') return { title: `კომპონენტი • ${step.row}`, icon: 'grid-outline' };
-  switch (step.question.type) {
-    case 'yesno':
-      return { title: 'შემოწმება', icon: 'checkmark-done-outline' };
-    case 'measure':
-      return { title: 'გაზომვა', icon: 'resize-outline' };
-    case 'freetext':
-      return { title: 'შენიშვნა', icon: 'create-outline' };
-    case 'photo_upload':
-      return { title: 'ფოტო', icon: 'camera-outline' };
-    default:
-      return { title: 'კითხვა', icon: 'help-circle-outline' };
-  }
-}
-
 // Simple in-memory cache for photo display URLs to avoid redundant fetches
 const photoUrlCache = new Map<string, string>();
 
@@ -194,6 +174,7 @@ export default function QuestionnaireWizard() {
   const insets = useSafeAreaInsets();
 
   const [questionnaire, setQuestionnaire] = useState<Inspection | null>(null);
+  const [project, setProject] = useState<Project | null>(null);
   const [template, setTemplate] = useState<Template | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [answers, setAnswers] = useState<Record<string, Answer>>({});
@@ -213,7 +194,6 @@ export default function QuestionnaireWizard() {
   const [conclusion, setConclusion] = useState('');
   const [isSafe, setIsSafe] = useState<boolean | null>(null);
   const [harnessName, setHarnessName] = useState('');
-  const [exitModalVisible, setExitModalVisible] = useState(false);
   // Guards saveConclusionAndGo against double-tap. The "დასრულება" button uses
   // this for both the visual loading state and to short-circuit re-entry while
   // the offline queue/flush is in flight.
@@ -295,6 +275,9 @@ export default function QuestionnaireWizard() {
       const safePatch = localPatch ? stripServerFields(localPatch) : null;
       const qMerged: Inspection = { ...q, ...(safePatch ?? {}) };
       setQuestionnaire(qMerged);
+      projectsApi.getById(qMerged.project_id).then((p) => {
+        if (!ctrl.cancelled) setProject(p);
+      }).catch(() => null);
       const t = await templatesApi.getById(qMerged.template_id);
       if (ctrl.cancelled) return;
       setTemplate(t);
@@ -765,6 +748,12 @@ export default function QuestionnaireWizard() {
   }
 
   const stepAnswered = hasAnswer(step, answers, photos, conclusion, isSafe, harnessName, template);
+  const hasAnyProgress =
+    stepIndex > 0 ||
+    Object.keys(answers).length > 0 ||
+    conclusion.trim().length > 0 ||
+    isSafe !== null ||
+    harnessName.trim().length > 0;
   const isYesNo = step.kind === 'question' && step.question.type === 'yesno';
   const isLast = stepIndex === steps.length - 1;
   const isScaffoldRow = step.kind === 'gridRow' && (step.question.grid_rows?.[0] ?? '') !== 'N1';
@@ -808,8 +797,12 @@ export default function QuestionnaireWizard() {
           step={step}
           stepIndex={stepIndex}
           total={steps.length}
-          onClose={() => setExitModalVisible(true)}
-          onBack={goBack}
+          project={project}
+          hasProgress={hasAnyProgress}
+          onBack={() => {
+            if (stepIndex > 0) goBack();
+            else router.back();
+          }}
           onHelp={
             step.kind === 'gridRow'
               ? () => showHelp(step.row)
@@ -968,16 +961,6 @@ export default function QuestionnaireWizard() {
             onDeletePhoto={deletePhoto}
           />
         ) : null}
-
-        {/* Exit confirmation modal */}
-        <ExitConfirmationModal
-          visible={exitModalVisible}
-          onStay={() => setExitModalVisible(false)}
-          onExit={() => {
-            setExitModalVisible(false);
-            router.back();
-          }}
-        />
 
         {/* Delete confirmation modal */}
         <Modal visible={deleteConfirmVisible} transparent animationType="fade" onRequestClose={() => setDeleteConfirmVisible(false)}>
@@ -1469,70 +1452,32 @@ function WizardHeader({
   step,
   stepIndex,
   total,
-  onClose,
+  project,
+  hasProgress,
   onHelp,
   onBack,
 }: {
   step: FlatStep;
   stepIndex: number;
   total: number;
-  onClose: () => void;
+  project: Project | null;
+  hasProgress: boolean;
   onHelp?: () => void;
-  onBack?: () => void;
+  onBack: () => void;
 }) {
-  const { theme } = useTheme();
-  const styles = useMemo(() => getstyles(theme), [theme]);
-
-  const { title, icon } = stepHeaderInfo(step);
-  const progress = Math.max(0, Math.min(1, (stepIndex + 1) / Math.max(1, total)));
+  // step is unused now that the header always shows the flow title — kept in
+  // the signature so the call site doesn't have to change shape.
+  void step;
   return (
-    <View style={styles.wizHeader}>
-      <View style={styles.wizHeaderRow}>
-        {stepIndex > 0 && onBack ? (
-          <Pressable
-            hitSlop={12}
-            onPress={onBack}
-            style={({ pressed }) => [styles.wizHeaderIcon, pressed && { opacity: 0.6 }]}
-            {...a11y('წინა ნაბიჯი', 'წინა ნაბიჯზე გადასვლა', 'button')}
-          >
-            <Ionicons name="chevron-back" size={22} color={theme.colors.accent} />
-          </Pressable>
-        ) : (
-          <View style={styles.wizHeaderIcon}>
-            <Ionicons name={icon} size={22} color={theme.colors.accent} />
-          </View>
-        )}
-        <View style={{ flex: 1 }}>
-          <Text style={styles.wizHeaderEyebrow}>
-            ნაბიჯი {stepIndex + 1} / {total}
-          </Text>
-          <Text style={styles.wizHeaderTitle} numberOfLines={1}>
-            {title}
-          </Text>
-        </View>
-        {onHelp ? (
-          <Pressable
-            hitSlop={12}
-            onPress={onHelp}
-            style={({ pressed }) => [styles.wizHeaderHelp, pressed && { opacity: 0.6 }]}
-            {...a11y('დახმარება', 'ნაბიჯის ახსნა', 'button')}
-          >
-            <Text style={styles.wizHeaderHelpText}>?</Text>
-          </Pressable>
-        ) : null}
-        <Pressable
-          hitSlop={12}
-          onPress={onClose}
-          style={({ pressed }) => [styles.wizHeaderClose, pressed && { opacity: 0.6 }]}
-          {...a11y('დახურვა', 'შეეხეთ დასახურად', 'button')}
-        >
-          <Ionicons name="close" size={22} color={theme.colors.ink} />
-        </Pressable>
-      </View>
-      <View style={styles.wizHeaderProgressTrack}>
-        <View style={[styles.wizHeaderProgressFill, { width: `${progress * 100}%` }]} />
-      </View>
-    </View>
+    <FlowHeader
+      flowTitle="შემოწმება"
+      project={project}
+      step={stepIndex + 1}
+      totalSteps={total}
+      onBack={onBack}
+      confirmExit={stepIndex === 0 && hasProgress}
+      onHelp={onHelp}
+    />
   );
 }
 
@@ -2211,77 +2156,6 @@ function getstyles(theme: any) {
     bottom: 0,
     paddingHorizontal: 4,
     justifyContent: 'center',
-  },
-  wizHeader: {
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 12,
-    backgroundColor: theme.colors.card,
-  },
-  wizHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  wizHeaderIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: theme.colors.accentSoft,
-    borderWidth: 2,
-    borderColor: theme.colors.accent,
-  },
-  wizHeaderEyebrow: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-    color: theme.colors.accent,
-  },
-  wizHeaderTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: theme.colors.ink,
-    marginTop: 2,
-  },
-  wizHeaderClose: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: theme.colors.subtleSurface,
-  },
-  wizHeaderHelp: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: theme.colors.accent,
-    backgroundColor: theme.colors.card,
-    marginRight: 8,
-  },
-  wizHeaderHelpText: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: theme.colors.accent,
-    lineHeight: 18,
-  },
-  wizHeaderProgressTrack: {
-    marginTop: 12,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: theme.colors.subtleSurface,
-    overflow: 'hidden',
-  },
-  wizHeaderProgressFill: {
-    height: '100%',
-    backgroundColor: theme.colors.accent,
-    borderRadius: 2,
   },
   questionTitle: {
     fontSize: 26,

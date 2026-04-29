@@ -381,6 +381,8 @@ export interface BriefingParticipant {
   name: string;
   /** Base64 PNG without data: prefix. Null until signed. */
   signature: string | null;
+  /** Marked absent during signing; can be revisited from the roster. */
+  skipped?: boolean;
 }
 
 export type BriefingStatus = 'draft' | 'completed';

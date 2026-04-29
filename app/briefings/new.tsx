@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Alert,
@@ -9,17 +9,19 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { DatePickerSheet } from '../../components/DatePickerSheet';
+import { DateTimeField } from '../../components/DateTimeField';
 import { A11yText as Text } from '../../components/primitives/A11yText';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from '../../components/ui';
+import { FlowHeader } from '../../components/FlowHeader';
 import { useTheme } from '../../lib/theme';
 import { useSession } from '../../lib/session';
 import { briefingsApi } from '../../lib/briefingsApi';
+import { projectsApi } from '../../lib/services';
 import { a11y } from '../../lib/accessibility';
-import type { BriefingParticipant } from '../../types/models';
+import type { BriefingParticipant, Project } from '../../types/models';
 
 // ── Predefined topic keys ─────────────────────────────────────────────────────
 
@@ -27,23 +29,14 @@ const TOPIC_KEYS = [
   'scaffold_safety', 'height_work', 'ppe', 'evacuation', 'fire_safety', 'other',
 ] as const;
 
-const KA_MONTHS_SHORT = [
-  'იან', 'თებ', 'მარ', 'აპრ', 'მაი', 'ივნ',
-  'ივლ', 'აგვ', 'სექ', 'ოქტ', 'ნოე', 'დეკ',
-];
-
-function formatDateOnly(d: Date): string {
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = KA_MONTHS_SHORT[d.getMonth()];
-  const year = d.getFullYear();
-  return `${day} ${month} ${year}`;
-}
-
-function formatTimeOnly(d: Date): string {
-  const hh = String(d.getHours()).padStart(2, '0');
-  const mm = String(d.getMinutes()).padStart(2, '0');
-  return `${hh}:${mm}`;
-}
+const TOPIC_ICONS: Record<typeof TOPIC_KEYS[number], keyof typeof Ionicons.glyphMap> = {
+  scaffold_safety: 'construct-outline',
+  height_work: 'arrow-up-circle-outline',
+  ppe: 'shield-outline',
+  evacuation: 'exit-outline',
+  fire_safety: 'flame-outline',
+  other: 'pencil-outline',
+};
 
 export default function NewBriefingScreen() {
   const { t } = useTranslation();
@@ -54,9 +47,15 @@ export default function NewBriefingScreen() {
   const insets = useSafeAreaInsets();
   const session = useSession();
 
+  // ── Project (for header context) ──
+  const [project, setProject] = useState<Project | null>(null);
+  useEffect(() => {
+    if (!projectId) return;
+    projectsApi.getById(projectId).then(setProject).catch(() => null);
+  }, [projectId]);
+
   // ── Date/time state ──
   const [dateTime, setDateTime] = useState(() => new Date());
-  const [pickerMode, setPickerMode] = useState<'date' | 'time' | null>(null);
 
   // ── Topics ──
   const [selectedTopics, setSelectedTopics] = useState<Set<string>>(new Set());
@@ -134,32 +133,21 @@ export default function NewBriefingScreen() {
     }
   }, [projectId, dateTime, participants, selectedTopics, customTopic, inspectorName, canStart]);
 
-  const onPickerChange = useCallback((selected: Date) => {
-    const next = new Date(dateTime);
-    if (pickerMode === 'date') {
-      next.setFullYear(selected.getFullYear(), selected.getMonth(), selected.getDate());
-    } else {
-      next.setHours(selected.getHours(), selected.getMinutes(), 0, 0);
-    }
-    setDateTime(next);
-  }, [dateTime, pickerMode]);
-
-  const onPickerClose = useCallback(() => {
-    setPickerMode(null);
-  }, []);
-
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          title: 'ახალი ინსტრუქტაჟი',
-          headerBackTitle: 'პროექტი',
-          headerTitleStyle: { fontSize: 17, fontWeight: '700', color: theme.colors.ink },
-          headerShadowVisible: false,
-          headerStyle: { backgroundColor: theme.colors.background },
-          headerTintColor: theme.colors.accent,
-        }}
+      <Stack.Screen options={{ headerShown: false }} />
+
+      <FlowHeader
+        flowTitle="ინსტრუქტაჟი"
+        project={project}
+        step={1}
+        totalSteps={2}
+        onBack={() => router.back()}
+        confirmExit={
+          participants.length > 0 ||
+          selectedTopics.size > 0 ||
+          customTopic.trim().length > 0
+        }
       />
 
       <ScrollView
@@ -170,31 +158,18 @@ export default function NewBriefingScreen() {
         {/* ── Date & Time ── */}
         <View style={styles.card}>
           <Text style={styles.sectionLabel}>თარიღი და დრო</Text>
-          <Pressable
-            onPress={() => { Keyboard.dismiss(); setPickerMode('date'); }}
-            style={styles.dateRow}
-            {...a11y('თარიღი', 'დააჭირეთ შესაცვლელად', 'button')}
-          >
-            <Ionicons name="calendar-outline" size={20} color={theme.colors.accent} />
-            <Text style={styles.dateText}>{formatDateOnly(dateTime)}</Text>
-            <Ionicons name="chevron-forward" size={16} color={theme.colors.borderStrong} />
-          </Pressable>
-          <Pressable
-            onPress={() => { Keyboard.dismiss(); setPickerMode('time'); }}
-            style={styles.dateRow}
-            {...a11y('დრო', 'დააჭირეთ შესაცვლელად', 'button')}
-          >
-            <Ionicons name="time-outline" size={20} color={theme.colors.accent} />
-            <Text style={styles.dateText}>{formatTimeOnly(dateTime)}</Text>
-            <Ionicons name="chevron-forward" size={16} color={theme.colors.borderStrong} />
-          </Pressable>
+          <DateTimeField
+            value={dateTime}
+            onChange={d => { Keyboard.dismiss(); setDateTime(d); }}
+            mode="datetime"
+          />
         </View>
 
         {/* ── Topics ── */}
         <View style={styles.card}>
           <Text style={styles.sectionLabel}>ინსტრუქტაჟის თემა</Text>
           <Text style={styles.sectionHint}>შეარჩიეთ ერთი ან მეტი</Text>
-          <View style={styles.chipGrid}>
+          <View style={styles.topicList}>
             {TOPIC_KEYS.map(key => {
               const label = t(`briefings.topics.${key}`);
               const selected = selectedTopics.has(key);
@@ -202,15 +177,24 @@ export default function NewBriefingScreen() {
                 <Pressable
                   key={key}
                   onPress={() => toggleTopic(key)}
-                  style={[styles.chip, selected && styles.chipSelected]}
+                  style={[styles.topicRow, selected && styles.topicRowSelected]}
                   {...a11y(label, selected ? 'მონიშნულია' : 'არ არის მონიშნული', 'checkbox')}
                 >
-                  {selected && (
-                    <Ionicons name="checkmark" size={13} color={theme.colors.accent} style={{ marginRight: 4 }} />
-                  )}
-                  <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
+                  <View style={[styles.topicIconBox, selected && styles.topicIconBoxSelected]}>
+                    <Ionicons
+                      name={TOPIC_ICONS[key]}
+                      size={16}
+                      color={selected ? theme.colors.accent : theme.colors.inkSoft}
+                    />
+                  </View>
+                  <Text style={[styles.topicRowLabel, selected && styles.topicRowLabelSelected]}>
                     {label}
                   </Text>
+                  <Ionicons
+                    name={selected ? 'checkbox' : 'square-outline'}
+                    size={20}
+                    color={selected ? theme.colors.accent : theme.colors.borderStrong}
+                  />
                 </Pressable>
               );
             })}
@@ -309,13 +293,6 @@ export default function NewBriefingScreen() {
         />
       </View>
 
-      <DatePickerSheet
-        visible={pickerMode !== null}
-        value={dateTime}
-        mode={pickerMode ?? 'date'}
-        onClose={onPickerClose}
-        onChange={onPickerChange}
-      />
     </View>
   );
 }
@@ -359,49 +336,44 @@ function getstyles(theme: any) {
       fontWeight: '700',
       color: theme.colors.primary[700],
     },
-    dateRow: {
+    topicList: {
+      gap: 8,
+    },
+    topicRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 10,
+      gap: 12,
       paddingVertical: 12,
-      paddingHorizontal: 14,
-      backgroundColor: theme.colors.surfaceSecondary,
+      paddingHorizontal: 12,
       borderRadius: 12,
       borderWidth: 1,
       borderColor: theme.colors.hairline,
-    },
-    dateText: {
-      flex: 1,
-      fontSize: 15,
-      fontWeight: '600',
-      color: theme.colors.ink,
-    },
-    chipGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 8,
-    },
-    chip: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: theme.colors.hairline,
       backgroundColor: theme.colors.surfaceSecondary,
     },
-    chipSelected: {
-      borderColor: 'transparent',
-      backgroundColor: theme.colors.accent,
+    topicRowSelected: {
+      borderColor: theme.colors.accent,
+      backgroundColor: theme.colors.accentSoft,
     },
-    chipText: {
-      fontSize: 13,
+    topicIconBox: {
+      width: 34,
+      height: 34,
+      borderRadius: 9,
+      backgroundColor: theme.colors.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    topicIconBoxSelected: {
+      backgroundColor: theme.colors.semantic.successSoft,
+    },
+    topicRowLabel: {
+      flex: 1,
+      fontSize: 14,
       fontWeight: '500',
       color: theme.colors.inkSoft,
     },
-    chipTextSelected: {
-      color: '#fff',
+    topicRowLabelSelected: {
+      fontWeight: '600',
+      color: theme.colors.ink,
     },
     customTopicInput: {
       borderWidth: 1,

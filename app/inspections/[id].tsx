@@ -27,7 +27,10 @@ import { Skeleton, SkeletonCard, SkeletonListCard } from '../../components/Skele
 import { ErrorState } from '../../components/ErrorState';
 import { AddRemoteSignerSheet, type AddRemoteSignerResult } from '../../components/AddRemoteSignerModal';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
-import { getStorageImageDisplayUrl, getStorageImageDataUrl } from '../../lib/imageUrl';
+import {
+  getStorageImageDisplayUrl,
+  getStorageImageDataUrlStrict,
+} from '../../lib/imageUrl';
 import {
   answersApi,
   certificatesApi,
@@ -326,7 +329,7 @@ export default function InspectionDetailScreen() {
                   return p;
                 }
                 try {
-                  const dataUrl = await getStorageImageDataUrl(
+                  const dataUrl = await getStorageImageDataUrlStrict(
                     STORAGE_BUCKETS.answerPhotos,
                     p.storage_path,
                   );
@@ -345,7 +348,7 @@ export default function InspectionDetailScreen() {
           signatures.map(async sig => {
             if (!sig.signature_png_url || sig.signature_png_url.startsWith('data:')) return sig;
             try {
-              const dataUrl = await getStorageImageDataUrl(
+              const dataUrl = await getStorageImageDataUrlStrict(
                 STORAGE_BUCKETS.signatures,
                 sig.signature_png_url,
               );
