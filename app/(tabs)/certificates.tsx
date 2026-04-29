@@ -305,6 +305,9 @@ export default function CertificatesScreen() {
           )
         }
         renderItem={renderItem}
+        initialNumToRender={8}
+        windowSize={7}
+        removeClippedSubviews
       />
     </SafeAreaView>
   );

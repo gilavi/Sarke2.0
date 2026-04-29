@@ -29,6 +29,10 @@ interface Props {
   inspector: InspectorRow | null;
   crew: CrewMember[];
   onChange: (next: CrewMember[]) => void | Promise<void>;
+  /** Cap visible rows; remaining rows roll up into a "+ N more" tap-target. */
+  maxVisible?: number;
+  /** Called when the overflow row is tapped. Required when `maxVisible` is set. */
+  onViewAll?: () => void;
 }
 
 interface PendingSignature {
@@ -50,7 +54,7 @@ interface PendingSignature {
  *
  * Backing out of signature reopens the sheet with prior input preserved.
  */
-export function RoleSlotList({ projectId, inspector, crew, onChange }: Props) {
+export function RoleSlotList({ projectId, inspector, crew, onChange, maxVisible, onViewAll }: Props) {
   const showSheet = useBottomSheet();
   const toast = useToast();
   const [pending, setPending] = useState<PendingSignature | null>(null);
@@ -246,9 +250,21 @@ export function RoleSlotList({ projectId, inspector, crew, onChange }: Props) {
     }
   };
 
+  const emptyRoles = CREW_ROLE_KEYS.filter(rk => !findInSlot(rk));
+  const inspectorCount = inspector ? 1 : 0;
+  const totalRows = inspectorCount + crew.length + emptyRoles.length;
+  const cap = maxVisible ?? totalRows;
+  const showInspectorRow = !!inspector && cap > 0;
+  const crewBudget = Math.max(0, cap - (showInspectorRow ? 1 : 0));
+  const crewSlice = crew.slice(0, crewBudget);
+  const emptyBudget = Math.max(0, cap - (showInspectorRow ? 1 : 0) - crewSlice.length);
+  const emptySlice = emptyRoles.slice(0, emptyBudget);
+  const hiddenRows = totalRows - (showInspectorRow ? 1 : 0) - crewSlice.length - emptySlice.length;
+  const showOverflow = hiddenRows > 0 && !!onViewAll;
+
   return (
     <View style={{ gap: 8 }}>
-      {inspector ? (
+      {showInspectorRow && inspector ? (
         <View style={styles.row}>
           {inspector.signaturePath && sigThumbs[inspector.signaturePath] ? (
             <View style={[styles.avatar, styles.sigAvatar]}>
@@ -274,7 +290,7 @@ export function RoleSlotList({ projectId, inspector, crew, onChange }: Props) {
       ) : null}
 
       {/* Filled members first, in the order they were added. */}
-      {crew.map(member => {
+      {crewSlice.map(member => {
         const label = member.role || CREW_ROLE_LABEL[member.roleKey];
         return (
           <Swipeable
@@ -330,7 +346,7 @@ export function RoleSlotList({ projectId, inspector, crew, onChange }: Props) {
       })}
 
       {/* Empty role slots — only roles with no member yet, shown after filled rows. */}
-      {CREW_ROLE_KEYS.filter(rk => !findInSlot(rk)).map(roleKey => {
+      {emptySlice.map(roleKey => {
         const label = CREW_ROLE_LABEL[roleKey];
         return (
           <Pressable
@@ -350,6 +366,23 @@ export function RoleSlotList({ projectId, inspector, crew, onChange }: Props) {
           </Pressable>
         );
       })}
+
+      {showOverflow ? (
+        <Pressable
+          onPress={onViewAll}
+          style={({ pressed }) => [styles.emptySlot, pressed && { opacity: 0.7 }]}
+          {...a11y(`+ ${hiddenRows} მეტი`, 'სრული სიის გახსნა', 'button')}
+        >
+          <View style={[styles.avatar, { backgroundColor: theme.colors.subtleSurface }]}>
+            <Ionicons name="people" size={18} color={theme.colors.inkSoft} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.emptyLabel}>+ {hiddenRows} მეტი</Text>
+            <Text style={styles.emptyHint}>სრული სია</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
+        </Pressable>
+      ) : null}
 
       <SignatureCanvas
         visible={!!pending && !busy}

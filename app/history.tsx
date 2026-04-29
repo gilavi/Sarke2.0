@@ -244,6 +244,9 @@ export default function HistoryScreen() {
           keyExtractor={(item) => (item.kind === 'header' ? `h-${item.label}` : item.q.id)}
           contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 32, gap: 8 }}
           renderItem={renderItem}
+          initialNumToRender={10}
+          windowSize={7}
+          removeClippedSubviews
           ListEmptyComponent={
             !loaded ? (
               <View style={{ gap: 10 }}>

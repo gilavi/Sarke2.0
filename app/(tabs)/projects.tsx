@@ -158,6 +158,9 @@ export default function ProjectsScreen() {
         keyExtractor={p => p.id}
         contentContainerStyle={{ padding: 16, paddingBottom: 100, gap: 10 }}
         renderItem={renderItem}
+        initialNumToRender={8}
+        windowSize={7}
+        removeClippedSubviews
         refreshControl={
           <RefreshControl
             refreshing={refreshing}

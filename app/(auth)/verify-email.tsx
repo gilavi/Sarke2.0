@@ -21,7 +21,7 @@ import { useTheme } from '../../lib/theme';
 import { toErrorMessage } from '../../lib/logError';
 import { a11y } from '../../lib/accessibility';
 import { Button, Card } from '../../components/ui';
-import { BackButton } from '../../components/BackButton';
+import { HeaderBackPill } from '../../components/HeaderBackPill';
 import { useTranslation } from 'react-i18next';
 
 const CODE_LENGTH = 6;
@@ -153,7 +153,9 @@ export default function VerifyEmailScreen() {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <BackButton label={t('auth.login')} style={styles.backBtn} />
+            <View style={styles.backBtn}>
+              <HeaderBackPill label={t('auth.login')} />
+            </View>
 
             <View style={{ alignItems: 'center', gap: 12, marginTop: 24 }}>
               <View style={styles.iconCircle}>

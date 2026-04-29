@@ -9,7 +9,7 @@ import { useTheme } from '../lib/theme';
 
 
 // ── New primitives (backward-compatible re-exports) ──
-export { Button, Card, Input, Badge, Screen, A11yText, A11yButton, StatusBadge } from './primitives';
+export { Button, Card, Input, Badge, Screen, A11yText } from './primitives';
 
 // ── New shared components ──
 export { SectionHeader as SectionHeaderNew } from './SectionHeader';

@@ -401,3 +401,30 @@ export interface Briefing {
   status: BriefingStatus;
   createdAt: string;
 }
+
+// ── Report (რეპორტი) ────────────────────────────────────────────────────────
+
+export type ReportStatus = 'draft' | 'completed';
+
+export interface ReportSlide {
+  id: string;
+  /** 0-based, used for ordering. */
+  order: number;
+  title: string;
+  description: string;
+  /** Storage path in `report-photos` bucket; null when no image picked. */
+  image_path: string | null;
+  /** Annotated variant; PDF prefers this when set. */
+  annotated_image_path: string | null;
+}
+
+export interface Report {
+  id: string;
+  project_id: string;
+  user_id: string;
+  title: string;
+  status: ReportStatus;
+  slides: ReportSlide[];
+  pdf_url: string | null;
+  created_at: string;
+}

@@ -14,9 +14,6 @@ import { Animated, Easing, StyleSheet, View, ViewStyle } from 'react-native';
 import { useTheme } from '../lib/theme';
 
 
-// Re-export the new shimmer skeleton for gradual migration
-export { ShimmerSkeleton } from './animations/ShimmerSkeleton';
-
 interface SkeletonProps {
   width?: number | `${number}%`;
   height?: number | `${number}%`;

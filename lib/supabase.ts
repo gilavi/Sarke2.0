@@ -32,4 +32,5 @@ export const STORAGE_BUCKETS = {
   remoteSignatures: 'remote-signatures',
   projectFiles: 'project-files',
   incidentPhotos: 'incident-photos',
+  reportPhotos: 'report-photos',
 } as const;

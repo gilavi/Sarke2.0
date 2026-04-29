@@ -33,6 +33,7 @@ import {
   questionnairesApi,
   templatesApi,
   incidentsApi,
+  reportsApi,
 } from '../../lib/services';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { useToast } from '../../lib/toast';
@@ -42,7 +43,7 @@ import { useTheme } from '../../lib/theme';
 import { toErrorMessage } from '../../lib/logError';
 import { friendlyError } from '../../lib/errorMap';
 import { formatShortDateTime } from '../../lib/formatDate';
-import type { Briefing, CrewMember, Incident, IncidentType, Project, ProjectFile, Questionnaire, Template } from '../../types/models';
+import type { Briefing, CrewMember, Incident, IncidentType, Project, ProjectFile, Questionnaire, Report, Template } from '../../types/models';
 import { INCIDENT_TYPE_LABEL } from '../../types/models';
 import { briefingsApi } from '../../lib/briefingsApi';
 import { RoleSlotList } from '../../components/RoleSlotList';
@@ -77,6 +78,7 @@ export default function ProjectDetail() {
   // swap; refocus doesn't re-show skeletons once we have data.
   const [loaded, setLoaded] = useState(false);
   const [briefings, setBriefings] = useState<Briefing[]>([]);
+  const [reports, setReports] = useState<Report[]>([]);
 
   // Project screen onboarding tour
   const heroRef = useRef<View>(null);
@@ -122,13 +124,14 @@ export default function ProjectDetail() {
 
   const load = useCallback(async () => {
     if (!id) return;
-    const [p, q, tpls, f, inc, brf] = await Promise.all([
+    const [p, q, tpls, f, inc, brf, rpt] = await Promise.all([
       projectsApi.getById(id).catch(() => null),
       questionnairesApi.listByProject(id).catch(() => []),
       templatesApi.list().catch(() => []),
       projectFilesApi.list(id).catch(() => [] as ProjectFile[]),
       incidentsApi.listByProject(id).catch(() => [] as Incident[]),
       briefingsApi.listByProject(id).catch(() => [] as Briefing[]),
+      reportsApi.listByProject(id).catch(() => [] as Report[]),
     ]);
     setProject(p);
     setQuestionnaires(q);
@@ -136,6 +139,7 @@ export default function ProjectDetail() {
     setFiles(f);
     setIncidents(inc);
     setBriefings(brf);
+    setReports(rpt);
     setLoaded(true);
   }, [id]);
 
@@ -221,6 +225,15 @@ export default function ProjectDetail() {
     [files],
   );
   const filesPreview = useMemo(() => filesSorted.slice(0, 3), [filesSorted]);
+  const reportsSorted = useMemo(
+    () =>
+      [...reports].sort(
+        (a, b) => +new Date(b.created_at) - +new Date(a.created_at),
+      ),
+    [reports],
+  );
+  const reportsPreview = useMemo(() => reportsSorted.slice(0, 3), [reportsSorted]);
+  const overflowReports = useMemo(() => reportsSorted.slice(3), [reportsSorted]);
 
   const overflowQuestionnaires = useMemo(
     () => questionnairesSorted.slice(3),
@@ -542,26 +555,6 @@ export default function ProjectDetail() {
 
           </View>
 
-          {/* ── Participants (merged: crew + signers) ── */}
-          <View ref={participantsRef} collapsable={false} style={styles.sectionCard}>
-            <View style={styles.sectionHeader}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={styles.sectionTitle}>{t('projects.participantsSection')}</Text>
-                <Text style={styles.sectionCount}>{(project?.crew?.length ?? 0) + (inspector ? 1 : 0)}</Text>
-              </View>
-            </View>
-            <View style={{ marginTop: 10 }}>
-              {project ? (
-                <RoleSlotList
-                  projectId={project.id}
-                  inspector={inspector}
-                  crew={project.crew ?? []}
-                  onChange={persistCrew}
-                />
-              ) : null}
-            </View>
-          </View>
-
           {/* ── Questionnaires ── */}
           <View ref={questionnairesRef} collapsable={false} style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
@@ -729,6 +722,68 @@ export default function ProjectDetail() {
 
           </View>
 
+          {/* ── რეპორტები ── */}
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={styles.sectionTitle}>რეპორტები</Text>
+                <Text style={styles.sectionCount}>{reports.length}</Text>
+              </View>
+              <Pressable
+                onPress={() => id && router.push(`/reports/new?projectId=${id}` as any)}
+                hitSlop={8}
+              >
+                <Text style={styles.sectionAddLink}>+ ახალი რეპორტი</Text>
+              </Pressable>
+            </View>
+
+            {reports.length === 0 ? (
+              <EmptyState text="რეპორტი ჯერ არ შექმნილა" />
+            ) : (
+              <View style={{ gap: 8, marginTop: 10 }}>
+                {reportsPreview.map(r => {
+                  const isCompleted = r.status === 'completed';
+                  return (
+                    <Pressable
+                      key={r.id}
+                      onPress={() =>
+                        router.push(
+                          (isCompleted
+                            ? `/reports/${r.id}`
+                            : `/reports/${r.id}/edit`) as any,
+                        )
+                      }
+                      style={styles.listRow}
+                      {...a11y('რეპორტი', 'დეტალების სანახავად დააჭირეთ', 'button')}
+                    >
+                      <View style={[styles.statusIcon, { backgroundColor: isCompleted ? theme.colors.semantic.successSoft : theme.colors.semantic.warningSoft }]}>
+                        <Ionicons
+                          name={isCompleted ? 'document-text' : 'pencil'}
+                          size={14}
+                          color={isCompleted ? theme.colors.primary[700] : '#92400E'}
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.listRowTitle} numberOfLines={1}>{r.title}</Text>
+                        <Text style={styles.listRowSubtitle}>
+                          {r.slides.length} სლაიდი · {formatShortDateTime(r.created_at)}
+                        </Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={18} color={theme.colors.borderStrong} />
+                    </Pressable>
+                  );
+                })}
+                {overflowReports.length > 0 ? (
+                  <ViewMoreRow
+                    items={overflowReports.map(r => r.title)}
+                    total={overflowReports.length}
+                    onPress={() => router.push(`/projects/${id}/reports` as any)}
+                  />
+                ) : null}
+              </View>
+            )}
+          </View>
+
           {/* ── დოკუმენტები ── */}
           <View ref={filesRef} collapsable={false} style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
@@ -783,6 +838,28 @@ export default function ProjectDetail() {
               </View>
             )}
 
+          </View>
+
+          {/* ── მონაწილეები (merged: inspector + crew) ── */}
+          <View ref={participantsRef} collapsable={false} style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={styles.sectionTitle}>{t('projects.participantsSection')}</Text>
+                <Text style={styles.sectionCount}>{(project?.crew?.length ?? 0) + (inspector ? 1 : 0)}</Text>
+              </View>
+            </View>
+            <View style={{ marginTop: 10 }}>
+              {project ? (
+                <RoleSlotList
+                  projectId={project.id}
+                  inspector={inspector}
+                  crew={project.crew ?? []}
+                  onChange={persistCrew}
+                  maxVisible={3}
+                  onViewAll={() => router.push(`/projects/${id}/participants` as any)}
+                />
+              ) : null}
+            </View>
           </View>
 
         </ScrollView>

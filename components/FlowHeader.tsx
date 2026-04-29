@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { type ReactNode, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -36,6 +36,8 @@ interface FlowHeaderProps {
   backDisabled?: boolean;
   /** When true, show a confirm alert before invoking onBack/onClose. */
   confirmExit?: boolean;
+  /** Custom trailing element rendered when `trailing` is 'none'. */
+  trailingElement?: ReactNode;
 }
 
 /**
@@ -55,6 +57,7 @@ export function FlowHeader({
   onHelp,
   backDisabled,
   confirmExit,
+  trailingElement,
 }: FlowHeaderProps) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
@@ -163,7 +166,7 @@ export function FlowHeader({
             >
               <Ionicons name="close" size={22} color={theme.colors.ink} />
             </Pressable>
-          ) : null}
+          ) : trailingElement ?? null}
         </View>
       </View>
 

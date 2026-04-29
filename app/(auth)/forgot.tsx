@@ -9,7 +9,7 @@ import { useRouter } from 'expo-router';
 import * as Linking from 'expo-linking';
 import { supabase } from '../../lib/supabase';
 import { Button, Card, ErrorText, Field, Input } from '../../components/ui';
-import { BackButton } from '../../components/BackButton';
+import { HeaderBackPill } from '../../components/HeaderBackPill';
 import { useTheme } from '../../lib/theme';
 
 import { toErrorMessage } from '../../lib/logError';
@@ -57,7 +57,9 @@ export default function ForgotPasswordScreen() {
             contentContainerStyle={{ paddingHorizontal: 22, paddingTop: 40, paddingBottom: 40 }}
             keyboardShouldPersistTaps="handled"
           >
-            <BackButton label={t('auth.login')} style={{ marginBottom: 18 }} />
+            <View style={{ marginBottom: 18 }}>
+              <HeaderBackPill label={t('auth.login')} />
+            </View>
 
             <Text style={{ fontSize: 28, fontWeight: '900', color: theme.colors.ink }}>
               {t('auth.resetTitle')}

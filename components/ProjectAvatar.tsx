@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -33,7 +34,7 @@ export function projectInitials(name: string | null | undefined): string {
  * block. Pass `editable` + `onEdit` to overlay a `+`/pencil badge that
  * opens an image picker.
  */
-export function ProjectAvatar({
+export const ProjectAvatar = memo(function ProjectAvatar({
   project,
   size = 44,
   radius,
@@ -104,7 +105,7 @@ export function ProjectAvatar({
       </View>
     </Pressable>
   );
-}
+});
 
 const styles = StyleSheet.create({
   badge: {

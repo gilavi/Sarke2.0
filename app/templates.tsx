@@ -92,6 +92,9 @@ export default function TemplatesScreen() {
             ) : null
           }
           renderItem={renderItem}
+          initialNumToRender={8}
+          windowSize={7}
+          removeClippedSubviews
         />
         <ScaffoldTour visible={tourVisible} onClose={() => setTourVisible(false)} />
       </SafeAreaView>
