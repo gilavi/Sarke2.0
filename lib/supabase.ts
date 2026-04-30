@@ -5,6 +5,7 @@ import 'react-native-url-polyfill/auto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
 import Constants from 'expo-constants';
+import { AppState, type AppStateStatus } from 'react-native';
 
 const extra = Constants.expoConfig?.extra ?? {};
 export const SUPABASE_URL = extra.supabaseUrl as string;
@@ -22,6 +23,18 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     detectSessionInUrl: false,
     flowType: 'pkce',
   },
+});
+
+// Per Supabase RN docs: the auto-refresh interval keeps running while the app
+// is backgrounded, then fires a burst of network calls on resume. Bind it to
+// AppState so it pauses on background and resumes on active — cleaner foreground
+// handover, no "mushy" stall right after the app comes back.
+AppState.addEventListener('change', (next: AppStateStatus) => {
+  if (next === 'active') {
+    supabase.auth.startAutoRefresh();
+  } else {
+    supabase.auth.stopAutoRefresh();
+  }
 });
 
 export const STORAGE_BUCKETS = {

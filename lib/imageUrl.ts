@@ -1,6 +1,14 @@
 import * as FileSystem from 'expo-file-system/legacy';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { storageApi } from './services';
 import { blobToDataUrl } from './blob';
+
+// Marker error thrown by step 1 when the signed URL returns 200 + 0 bytes —
+// the storage object exists but has no content. Subsequent URL-based fallback
+// steps (2-4) hit the same backend and would re-confirm the same emptiness;
+// short-circuit to the auth-download step (5) instead of paying 4 more
+// network round-trips per missing file.
+const EMPTY_SOURCE = '__imageUrl.emptySource__';
 
 function logStepFailure(
   step: number,
@@ -34,7 +42,13 @@ function xhrSignedUrlToDataUrl(
       }
       const blob: Blob | null = xhr.response;
       if (!blob || (blob as any).size === 0) {
-        reject(new Error('xhr empty blob'));
+        // Mark as authoritatively empty so callers can skip the redundant
+        // URL-based fallbacks. A 200 + 0 bytes is the storage layer telling
+        // us the object has no content — retrying via fetch/FileSystem won't
+        // change that.
+        const e = new Error('xhr empty blob');
+        (e as any).code = EMPTY_SOURCE;
+        reject(e);
         return;
       }
       const reader = new FileReader();
@@ -87,6 +101,8 @@ export async function getStorageImageDataUrl(
   bucket: string,
   path: string,
 ): Promise<string> {
+  let sourceIsEmpty = false;
+
   // 1. XHR + FileReader — the only path that's reliable for binary responses
   //    on Hermes/SDK 54.
   try {
@@ -96,6 +112,30 @@ export async function getStorageImageDataUrl(
     return await xhrSignedUrlToDataUrl(signed, fallbackMime);
   } catch (err) {
     logStepFailure(1, bucket, path, err);
+    if ((err as { code?: string } | null)?.code === EMPTY_SOURCE) {
+      sourceIsEmpty = true;
+    }
+  }
+
+  // If step 1 confirmed the storage object is empty (200 + 0 bytes), skip
+  // steps 2-4 — they hit the exact same signed URL with different network
+  // libraries and will report the same emptiness. Jump to the auth-download
+  // path which uses a different storage API endpoint as a final sanity check.
+  if (sourceIsEmpty) {
+    try {
+      const blob = await storageApi.download(bucket, path);
+      const result = await blobToDataUrl(blob);
+      if (!result.startsWith('data:')) throw new Error('blobToDataUrl returned non-data URL');
+      return result;
+    } catch (err) {
+      logStepFailure(5, bucket, path, err);
+    }
+    // Last resort — return a remote URL even though the WebView won't render it.
+    try {
+      return await storageApi.signedUrl(bucket, path, 3600);
+    } catch {
+      return storageApi.publicUrl(bucket, path);
+    }
   }
 
   // 2. Signed URL + native file download → base64
@@ -212,6 +252,123 @@ export async function getStorageImageDataUrlStrict(
     throw new Error(`failed to embed ${bucket}/${path} as data URL`);
   }
   return result;
+}
+
+// ── PDF photo cache ──────────────────────────────────────────────────────────
+//
+// PDF generation embeds storage images as base64 data URLs in the rendered
+// HTML. Stock 12MP iPhone photos serialize to ~2 MB of base64 each, and a
+// report with N photos produces an N×2 MB HTML string that WKWebView has to
+// parse + decode on the JS thread — observed at 5.4 MB for 2 photos in the
+// field. The fix is twofold:
+//
+//   1. Resize via `expo-image-manipulator` to max 1200px / JPEG 0.7 before
+//      embedding. ~10x size reduction with no visible quality loss in print.
+//   2. Persist the resized JPEG to `FileSystem.cacheDirectory` keyed by
+//      bucket+path. Re-generating the same report (same source images) skips
+//      the download + resize entirely.
+
+const PDF_PHOTO_MAX_WIDTH = 1200;
+const PDF_PHOTO_QUALITY = 0.7;
+const PDF_CACHE_DIR_NAME = 'pdf-photo-cache';
+
+let pdfCacheDirEnsured: Promise<string | null> | null = null;
+function ensurePdfCacheDir(): Promise<string | null> {
+  if (pdfCacheDirEnsured) return pdfCacheDirEnsured;
+  pdfCacheDirEnsured = (async () => {
+    const base = FileSystem.cacheDirectory ?? FileSystem.documentDirectory;
+    if (!base) return null;
+    const dir = `${base}${PDF_CACHE_DIR_NAME}/`;
+    try {
+      const info = await FileSystem.getInfoAsync(dir);
+      if (!info.exists) {
+        await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
+      }
+      return dir;
+    } catch {
+      return null;
+    }
+  })();
+  return pdfCacheDirEnsured;
+}
+
+// Lightweight non-cryptographic hash. The keyspace is small (a few hundred
+// storage paths per user) so collision risk from a 32-bit hash is negligible
+// for a content-addressed cache; we don't need expo-crypto for this.
+function djb2Hex(s: string): string {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) {
+    h = ((h << 5) + h) ^ s.charCodeAt(i);
+  }
+  return (h >>> 0).toString(16);
+}
+
+/**
+ * Download → resize → base64 a Storage image, suitable for embedding in a
+ * `<img src="data:...">` inside a generated PDF. Cached on disk by bucket+path
+ * so subsequent calls for the same source skip both the network fetch and the
+ * resize. Output is always JPEG so the cache hits regardless of the source
+ * format (HEIC, PNG, etc.).
+ *
+ * Throws if the source is genuinely missing or the manipulator fails.
+ */
+export async function getStorageImageResizedDataUrl(
+  bucket: string,
+  path: string,
+  opts?: { maxWidth?: number; quality?: number },
+): Promise<string> {
+  const maxWidth = opts?.maxWidth ?? PDF_PHOTO_MAX_WIDTH;
+  const quality = opts?.quality ?? PDF_PHOTO_QUALITY;
+  const cacheKey = djb2Hex(`${bucket}/${path}@w${maxWidth}q${quality}`);
+  const cacheDir = await ensurePdfCacheDir();
+
+  // 1. Cache hit — read base64 directly off disk.
+  if (cacheDir) {
+    const cached = `${cacheDir}${cacheKey}.jpg`;
+    try {
+      const info = await FileSystem.getInfoAsync(cached);
+      if (info.exists && (info as { size?: number }).size && (info as { size: number }).size > 32) {
+        const b64 = await FileSystem.readAsStringAsync(cached, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        if (b64 && b64.length > 32) return `data:image/jpeg;base64,${b64}`;
+      }
+    } catch {
+      // fall through to download
+    }
+  }
+
+  // 2. Fetch the source as a data URL using the canonical RN-binary pipeline,
+  //    then hand it to the manipulator (which accepts data URLs as input).
+  const sourceDataUrl = await getStorageImageDataUrlStrict(bucket, path);
+
+  // 3. Resize + re-encode as JPEG. `base64: true` asks the manipulator to
+  //    return the encoded bytes directly so we don't need a second file read.
+  const resized = await manipulateAsync(
+    sourceDataUrl,
+    [{ resize: { width: maxWidth } }],
+    { compress: quality, format: SaveFormat.JPEG, base64: true },
+  );
+  let outBase64 = resized.base64;
+  if (!outBase64 && resized.uri) {
+    outBase64 = await FileSystem.readAsStringAsync(resized.uri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+  }
+  if (!outBase64) throw new Error('manipulator returned no base64');
+
+  // 4. Persist to cache. Best-effort — never block the PDF on a cache write.
+  if (cacheDir) {
+    const cached = `${cacheDir}${cacheKey}.jpg`;
+    FileSystem.writeAsStringAsync(cached, outBase64, {
+      encoding: FileSystem.EncodingType.Base64,
+    }).catch(() => undefined);
+  }
+  // Clean up the manipulator's temp file once we have the bytes.
+  if (resized.uri) {
+    FileSystem.deleteAsync(resized.uri, { idempotent: true }).catch(() => undefined);
+  }
+  return `data:image/jpeg;base64,${outBase64}`;
 }
 
 /**

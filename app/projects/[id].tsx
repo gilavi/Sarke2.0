@@ -143,10 +143,18 @@ export default function ProjectDetail() {
     setLoaded(true);
   }, [id]);
 
+  // 7 parallel Supabase calls fired on every screen focus before — switching
+  // tabs in/out of the project detail re-hammered the API for no fresh data.
+  // Skip the refetch when the last successful load was <30s ago.
+  const lastLoadAtRef = useRef(0);
+  const FRESH_MS = 30_000;
   useFocusEffect(
     useCallback(() => {
+      const now = Date.now();
+      if (now - lastLoadAtRef.current < FRESH_MS && loaded) return;
+      lastLoadAtRef.current = now;
       void load();
-    }, [load]),
+    }, [load, loaded]),
   );
 
   // Inspector row (logged-in expert) — derived from auth, never persisted

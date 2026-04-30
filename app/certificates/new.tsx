@@ -51,6 +51,7 @@ import { useSession } from '../../lib/session';
 import {
   getStorageImageDataUrl,
   getStorageImageDataUrlStrict,
+  getStorageImageResizedDataUrl,
 } from '../../lib/imageUrl';
 import { flushPendingSignatures } from '../../lib/signatures';
 import { buildPdfHtml } from '../../lib/pdf';
@@ -408,12 +409,15 @@ export default function GenerateCertificateScreen() {
   }> => {
     let failedAssetCount = 0;
     const photosForPdf: Record<string, AnswerPhoto[]> = {};
+    // Photos go through the resize+cache pipeline — full-res iPhone JPEGs
+    // base64-inlined produce a ~2 MB-per-photo HTML payload that WKWebView
+    // chokes on. Resized to 1200px / 0.7 they drop to ~150-300 KB each.
     await Promise.all(
       Object.entries(photosByAnswer).map(async ([answerId, photos]) => {
         photosForPdf[answerId] = await Promise.all(
           photos.map(async p => {
             try {
-              const dataUrl = await getStorageImageDataUrlStrict(
+              const dataUrl = await getStorageImageResizedDataUrl(
                 STORAGE_BUCKETS.answerPhotos,
                 p.storage_path,
               );
@@ -431,25 +435,34 @@ export default function GenerateCertificateScreen() {
       ...requiredCertTypes.map(tt => selectedQuals[tt]).filter(Boolean),
       ...extraQualIds,
     ];
-    const attachedQuals: Array<Qualification & { file_data_url?: string }> = [];
-    for (const id of allQualIds) {
-      const qual = quals.find(q => q.id === id);
-      if (!qual) continue;
-      let fileDataUrl: string | undefined;
-      if (qual.file_url) {
-        try {
-          fileDataUrl = await getStorageImageDataUrlStrict(
-            STORAGE_BUCKETS.certificates,
-            qual.file_url,
-          );
-        } catch (err) {
-          failedAssetCount += 1;
-          logError(err, `certificates.embedQual:${qual.file_url}`);
-          fileDataUrl = undefined;
+    // Quals fan out in parallel — the previous sequential `for await` made
+    // every additional cert pay a full storage round-trip. Same resize+cache
+    // path as photos so a 4 MB scan of a paper certificate doesn't bloat the
+    // HTML payload either.
+    type AttachedQual = Qualification & { file_data_url?: string };
+    const qualResults: Array<AttachedQual | null> = await Promise.all(
+      allQualIds.map(async (id): Promise<AttachedQual | null> => {
+        const qual = quals.find(q => q.id === id);
+        if (!qual) return null;
+        let fileDataUrl: string | undefined;
+        if (qual.file_url) {
+          try {
+            fileDataUrl = await getStorageImageResizedDataUrl(
+              STORAGE_BUCKETS.certificates,
+              qual.file_url,
+            );
+          } catch (err) {
+            failedAssetCount += 1;
+            logError(err, `certificates.embedQual:${qual.file_url}`);
+            fileDataUrl = undefined;
+          }
         }
-      }
-      attachedQuals.push({ ...qual, file_data_url: fileDataUrl });
-    }
+        return { ...qual, file_data_url: fileDataUrl };
+      }),
+    );
+    const attachedQuals: AttachedQual[] = qualResults.filter(
+      (q): q is AttachedQual => q !== null,
+    );
     return { photosForPdf, attachedQuals, failedAssetCount };
   };
 
@@ -513,6 +526,11 @@ export default function GenerateCertificateScreen() {
       const sigsForPdf = [expertRec, ...otherRecs];
 
       setPdfPhase('ფოტოები ემატება...');
+      // Yield to the UI thread so the loading-text update flushes BEFORE the
+      // CPU-bound photo embedding starts. Without this hop the press handler
+      // runs straight through to the heavy work and the user sees a frozen
+      // button instead of the progress label.
+      await new Promise(resolve => setTimeout(resolve, 0));
       const { photosForPdf, attachedQuals, failedAssetCount } = await buildPdfAssets();
 
       setPdfPhase('მზადდება PDF...');

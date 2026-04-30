@@ -8,6 +8,8 @@ import { supabase } from './supabase';
 import { purgeUserScopedStorage } from './storage-purge';
 import { logError } from './logError';
 import { TERMS_VERSION } from './terms';
+import { queryClient } from './queryClient';
+import { projectsApi } from './services';
 import type { AppUser } from '../types/models';
 
 const EMAIL_STORAGE_KEY = '@auth:email';
@@ -126,6 +128,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           .maybeSingle();
         if (cancelled || myEpoch !== epoch) return;
         setState({ status: 'signedIn', session, user: (data as AppUser | null) ?? null });
+        // Warm the projects-list cache in the background. The user is most
+        // likely heading for either home or the projects tab next; either way,
+        // this saves them the cold-fetch wait on first arrival. Fire-and-forget
+        // so a network blip here can't delay the post-auth navigation.
+        queryClient.prefetchQuery({
+          queryKey: ['projects', 'list'],
+          queryFn: () => projectsApi.list(),
+        }).catch(() => undefined);
+        queryClient.prefetchQuery({
+          queryKey: ['projects', 'stats'],
+          queryFn: () => projectsApi.stats(),
+        }).catch(() => undefined);
       } catch (e) {
         if (cancelled || myEpoch !== epoch) return;
         logError(e, 'session.loadUser');

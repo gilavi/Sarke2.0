@@ -14,7 +14,7 @@
       "backgroundColor": "#F6F2EA"
     },
     "assetBundlePatterns": [
-      "**/*"
+      "assets/**/*"
     ],
     "ios": {
       "supportsTablet": false,
@@ -58,7 +58,9 @@
           "color": "#147A4F"
         }
       ],
-      "@sentry/react-native"
+      "@sentry/react-native",
+      "expo-font",
+      "expo-web-browser"
     ],
     "extra": {
       "supabaseUrl": "https://seskuthiopywrgntsgfw.supabase.co",

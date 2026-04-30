@@ -5,6 +5,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -279,18 +280,36 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
     return ids;
   }, []);
 
-  const value: OfflineContextValue = {
-    isOnline,
-    netReady,
-    pendingCount,
-    enqueueAnswerUpsert,
-    enqueueQuestionnaireUpdate,
-    hydrateAnswers,
-    cacheAnswers,
-    hydrateQuestionnairePatch,
-    pendingAnswerQuestionIds,
-    flush,
-  };
+  // Memoize so consumers don't re-render on every parent render — only when
+  // an actual field they care about changes. The five callbacks are already
+  // stable via useCallback, so the value identity is driven by the three
+  // observable state fields.
+  const value = useMemo<OfflineContextValue>(
+    () => ({
+      isOnline,
+      netReady,
+      pendingCount,
+      enqueueAnswerUpsert,
+      enqueueQuestionnaireUpdate,
+      hydrateAnswers,
+      cacheAnswers,
+      hydrateQuestionnairePatch,
+      pendingAnswerQuestionIds,
+      flush,
+    }),
+    [
+      isOnline,
+      netReady,
+      pendingCount,
+      enqueueAnswerUpsert,
+      enqueueQuestionnaireUpdate,
+      hydrateAnswers,
+      cacheAnswers,
+      hydrateQuestionnairePatch,
+      pendingAnswerQuestionIds,
+      flush,
+    ],
+  );
 
   return <OfflineCtx.Provider value={value}>{children}</OfflineCtx.Provider>;
 }

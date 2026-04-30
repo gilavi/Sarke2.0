@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Dimensions,
   Keyboard,
@@ -11,7 +12,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { FlatList } from 'react-native';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { ProjectAvatar } from '../../components/ProjectAvatar';
 import { pickProjectLogo } from '../../lib/projectLogo';
@@ -30,7 +31,6 @@ import { projectsApi } from '../../lib/services';
 import { useToast } from '../../lib/toast';
 import { useTheme } from '../../lib/theme';
 import { useBottomSheet } from '../../components/BottomSheet';
-import { logError, toErrorMessage } from '../../lib/logError';
 import { friendlyError } from '../../lib/errorMap';
 import { haptic } from '../../lib/haptics';
 import type { Project } from '../../types/models';
@@ -39,6 +39,11 @@ import { useTranslation } from 'react-i18next';
 
 type Stats = Record<string, { drafts: number; completed: number }>;
 
+// Query keys exposed so the create flow + session prefetch can invalidate
+// or seed the cache without re-defining the keys inline.
+export const PROJECTS_LIST_QK = ['projects', 'list'] as const;
+export const PROJECTS_STATS_QK = ['projects', 'stats'] as const;
+
 export default function ProjectsScreen() {
   const { theme } = useTheme();
   const { t } = useTranslation();
@@ -46,9 +51,7 @@ export default function ProjectsScreen() {
   const router = useRouter();
   const toast = useToast();
   const showActionSheet = useBottomSheet();
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [stats, setStats] = useState<Stats>({});
-  const [loading, setLoading] = useState(true);
+  const qc = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
   const [creating, setCreating] = useState(false);
   const openSwipeRefs = useRef(new Map<string, { close: () => void }>());
@@ -58,27 +61,25 @@ export default function ProjectsScreen() {
   const firstCardRef = useRef<View>(null);
   const fabRef = useRef<View>(null);
 
-  const load = useCallback(async () => {
-    try {
-      const [ps, s] = await Promise.all([
-        projectsApi.list(),
-        projectsApi.stats().catch((e) => { logError(e, 'projects.stats'); return {} as Stats; }),
-      ]);
-      setProjects(ps);
-      setStats(s);
-    } catch (e) {
-      logError(e, 'projects.load');
-      setProjects([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  // Projects + stats now flow through React Query: 5-min staleTime means
+  // tab-switching is instant, and the AsyncStorage persister keeps the cache
+  // warm across app launches so the first tap after cold start doesn't have
+  // to wait for the network either.
+  const projectsQ = useQuery<Project[]>({
+    queryKey: PROJECTS_LIST_QK,
+    queryFn: () => projectsApi.list(),
+  });
 
-  useFocusEffect(
-    useCallback(() => {
-      void load();
-    }, [load]),
-  );
+  const statsQ = useQuery<Stats>({
+    queryKey: PROJECTS_STATS_QK,
+    queryFn: () => projectsApi.stats(),
+  });
+
+  const projects = projectsQ.data ?? [];
+  const stats = statsQ.data ?? {};
+  // Spinner only shows when there's no cached data at all. Cached + revalidating
+  // counts as "ready" so tab-switching back never re-shows the skeletons.
+  const loading = projectsQ.isPending && !projectsQ.data;
 
   const onDelete = useCallback((project: Project) => {
     showActionSheet(
@@ -92,14 +93,20 @@ export default function ProjectsScreen() {
         if (idx !== 0) return;
         try {
           await projectsApi.remove(project.id);
-          setProjects(prev => prev.filter(p => p.id !== project.id));
+          // Optimistically prune the local cache; let stats refresh in the
+          // background so the badge counts reflect the deletion.
+          qc.setQueryData<Project[]>(
+            PROJECTS_LIST_QK,
+            prev => prev?.filter(p => p.id !== project.id) ?? [],
+          );
+          qc.invalidateQueries({ queryKey: PROJECTS_STATS_QK });
           toast.success(t('notifications.deleted'));
         } catch (e) {
           toast.error(friendlyError(e, t('errors.deleteFailed')));
         }
       },
     );
-  }, [toast, showActionSheet, t]);
+  }, [toast, showActionSheet, t, qc]);
 
   const tourSteps: TourStep[] = useMemo(() => {
     const steps: TourStep[] = [
@@ -167,7 +174,7 @@ export default function ProjectsScreen() {
             onRefresh={async () => {
               haptic.medium();
               setRefreshing(true);
-              await load();
+              await Promise.all([projectsQ.refetch(), statsQ.refetch()]);
               setRefreshing(false);
             }}
             tintColor={theme.colors.accent}
@@ -207,7 +214,14 @@ export default function ProjectsScreen() {
         visible={creating}
         onClose={() => setCreating(false)}
         onCreated={p => {
-          setProjects(prev => [p, ...prev.filter(x => x.id !== p.id)]);
+          // Seed the cache directly so the new row appears instantly without
+          // a refetch round-trip. Stats will pick up the new project on its
+          // next natural refresh — a brand new project has no inspections so
+          // its badge would be 0/0 anyway.
+          qc.setQueryData<Project[]>(
+            PROJECTS_LIST_QK,
+            prev => [p, ...((prev ?? []).filter(x => x.id !== p.id))],
+          );
           setCreating(false);
           toast.success(t('notifications.projectCreated'));
         }}

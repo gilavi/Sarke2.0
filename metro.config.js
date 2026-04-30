@@ -13,6 +13,27 @@ config.resolver.platforms = Array.from(
   new Set([...(config.resolver.platforms ?? []), 'web']),
 );
 
+// Skip these directories entirely during native (iOS/Android) Metro
+// resolution. They are sibling projects (web-app/ Vite app, website/ Docusaurus,
+// supabase/ migrations, docs/) that Metro should never crawl for source — every
+// hot reload would otherwise stat thousands of files for nothing.
+// Metro accepts a single RegExp or a RegExp[]; using one combined regex with
+// platform-agnostic separators (matches both / and \) so this works on Windows
+// dev machines as well as iOS/macOS CI.
+config.resolver.blockList = [
+  /[\\/](web-app|website|supabase|docs)[\\/].*/,
+];
+
+// Defer module factory execution until the require call actually fires.
+// Major win for cold start: instead of running every screen's top-level
+// imports at app boot, screens are only initialized on first navigation.
+config.transformer.getTransformOptions = async () => ({
+  transform: {
+    experimentalImportSupport: false,
+    inlineRequires: true,
+  },
+});
+
 // Redirect react-native-maps to a no-op stub on web — the real package
 // imports native-only codegenNativeCommands which Metro can't bundle for web.
 const _resolveRequest = config.resolver.resolveRequest;

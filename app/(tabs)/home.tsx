@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dimensions,
   Keyboard,
@@ -120,9 +120,18 @@ export default function HomeScreen() {
     }
   }, []);
 
+  // Tab switches re-fire useFocusEffect; fanning out 4 Supabase requests every
+  // tap was the dominant feel-laggy source on iOS. Skip the network round if we
+  // refetched within the last 30s — the cache hydrate still runs so any stored
+  // edits are reflected.
+  const lastLoadAtRef = useRef(0);
+  const FRESH_MS = 30_000;
   useFocusEffect(
     useCallback(() => {
       void hydrateFromCache();
+      const now = Date.now();
+      if (now - lastLoadAtRef.current < FRESH_MS) return;
+      lastLoadAtRef.current = now;
       void load();
     }, [hydrateFromCache, load]),
   );
@@ -150,6 +159,7 @@ export default function HomeScreen() {
   const onRefresh = useCallback(async () => {
     haptic.medium();
     setRefreshing(true);
+    lastLoadAtRef.current = Date.now();
     await load();
     setRefreshing(false);
   }, [load]);
@@ -585,8 +595,11 @@ function ProjectPickerSheet({
         longitude: pin?.longitude ?? null,
         logo,
       });
-      // Refresh dashboard
-      await onCreated();
+      // Refresh the dashboard in the background — `onCreated` re-fetches all
+      // 4 home endpoints, which used to gate navigation on a full reload.
+      // Fire-and-forget so the new project screen opens immediately; by the
+      // time the user navigates back, the dashboard data has already updated.
+      void onCreated();
       // Use returned project directly (no stale prop issues)
       if (created?.id) {
         setName('');
