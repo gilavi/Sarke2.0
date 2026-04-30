@@ -24,6 +24,7 @@ import { useToast } from '../../lib/toast';
 import { incidentsApi, projectsApi, storageApi } from '../../lib/services';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { buildIncidentPdfHtml } from '../../lib/incidentPdf';
+import { generatePdfName } from '../../lib/pdfName';
 import {
   getStorageImageDataUrlStrict,
   getStorageImageResizedDataUrl,
@@ -339,7 +340,10 @@ export default function NewIncident() {
       // 6. open/share PDF; on web returns null (no local file to upload)
       const localUri = await generateAndSharePdf(html);
       if (localUri) {
-        const pdfPath = `incidents/${savedId}.pdf`;
+        const incidentTypeLabel = INCIDENT_TYPE_FULL_LABEL[form.type!];
+        const docType = `ინციდენტი_${incidentTypeLabel}`;
+        const pdfName = generatePdfName(project.name, docType, form.dateTime, savedId);
+        const pdfPath = `incidents/${pdfName}`;
         await storageApi.uploadFromUri(STORAGE_BUCKETS.pdfs, pdfPath, localUri, 'application/pdf');
         await incidentsApi.update(savedId, { pdf_url: pdfPath });
       }

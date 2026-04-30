@@ -131,6 +131,23 @@ export default function CertificateDetailScreen() {
         return;
       }
       if (resolvedUri && await Sharing.isAvailableAsync()) {
+        // Copy to a clean filename so the share sheet shows the actual PDF name
+        const cleanName = cert.pdf_url.split('/').pop() ?? `${cert.id}.pdf`;
+        const baseDir = FileSystem.cacheDirectory ?? FileSystem.documentDirectory;
+        const prettyUri = baseDir ? `${baseDir}${cleanName}` : resolvedUri;
+        if (prettyUri !== resolvedUri) {
+          try {
+            await FileSystem.deleteAsync(prettyUri, { idempotent: true });
+          } catch { /* ignore */ }
+          try {
+            await FileSystem.copyAsync({ from: resolvedUri, to: prettyUri });
+            await Sharing.shareAsync(prettyUri, { mimeType: 'application/pdf' });
+            FileSystem.deleteAsync(prettyUri, { idempotent: true }).catch(() => {});
+            return;
+          } catch {
+            // fall back to raw resolvedUri
+          }
+        }
         await Sharing.shareAsync(resolvedUri, { mimeType: 'application/pdf' });
       } else {
         await shareStoredPdf(cert.pdf_url);

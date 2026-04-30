@@ -14,6 +14,7 @@ import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import { getStorageImageResizedDataUrl } from '../../../lib/imageUrl';
 import { generateAndSharePdf } from '../../../lib/pdfOpen';
 import { buildReportPdfHtml } from '../../../lib/reportPdf';
+import { generatePdfName } from '../../../lib/pdfName';
 import type { Project, Report } from '../../../types/models';
 import { useTranslation } from 'react-i18next';
 
@@ -74,7 +75,13 @@ export default function ReportSuccessScreen() {
         dataUrlEntries.filter(([, v]) => !!v),
       ) as Record<string, string>;
       const html = buildReportPdfHtml({ report, project, inspectorName, slideImageDataUrls });
-      await generateAndSharePdf(html);
+      const pdfName = generatePdfName(
+        project?.name ?? '',
+        `რეპორტი_${report.title.slice(0, 10)}`,
+        new Date(report.created_at),
+        report.id,
+      );
+      await generateAndSharePdf(html, pdfName);
     } catch (e) {
       toast.error(friendlyError(e, 'PDF გენერაცია ვერ მოხერხდა'));
     } finally {

@@ -29,6 +29,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system/legacy';
 import { Screen } from '../../components/ui';
 import { HeaderBackPill } from '../../components/HeaderBackPill';
 import { SkeletonCard, SkeletonListCard } from '../../components/Skeleton';
@@ -56,6 +57,7 @@ import {
 import { flushPendingSignatures } from '../../lib/signatures';
 import { buildPdfHtml } from '../../lib/pdf';
 import { pickProjectLogo } from '../../lib/projectLogo';
+import { generatePdfName } from '../../lib/pdfName';
 import { useToast } from '../../lib/toast';
 import { logError } from '../../lib/logError';
 import { friendlyError } from '../../lib/errorMap';
@@ -564,7 +566,9 @@ export default function GenerateCertificateScreen() {
 
       const { uri } = await Print.printToFileAsync({ html });
 
-      const fileName = `${inspection.id}-${Date.now()}.pdf`;
+      const docType = template?.category === 'harness' ? 'ქამარი_შემოწმება' : 'ხარაჩო_შემოწმება';
+      const certDate = inspection.completed_at ? new Date(inspection.completed_at) : new Date(inspection.created_at);
+      const fileName = generatePdfName(project.name, docType, certDate, inspection.id);
       const blob = await (await fetch(uri)).blob();
       await storageApi.upload(STORAGE_BUCKETS.pdfs, fileName, blob, 'application/pdf');
       uploadedPdfPath = fileName;
@@ -597,7 +601,22 @@ export default function GenerateCertificateScreen() {
         toast.error(t('certificates.assetsMissing', { count: failedAssetCount }));
       }
       if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, { mimeType: 'application/pdf' });
+        const baseDir = FileSystem.cacheDirectory ?? FileSystem.documentDirectory;
+        const prettyUri = baseDir ? `${baseDir}${fileName}` : uri;
+        if (prettyUri !== uri) {
+          try {
+            await FileSystem.deleteAsync(prettyUri, { idempotent: true });
+          } catch { /* ignore */ }
+          try {
+            await FileSystem.copyAsync({ from: uri, to: prettyUri });
+            await Sharing.shareAsync(prettyUri, { mimeType: 'application/pdf' });
+            FileSystem.deleteAsync(prettyUri, { idempotent: true }).catch(() => {});
+          } catch {
+            await Sharing.shareAsync(uri, { mimeType: 'application/pdf' });
+          }
+        } else {
+          await Sharing.shareAsync(uri, { mimeType: 'application/pdf' });
+        }
       }
       router.replace(`/inspections/${inspection.id}` as any);
     } catch (e) {

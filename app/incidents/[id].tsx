@@ -21,6 +21,7 @@ import { useToast } from '../../lib/toast';
 import { incidentsApi, projectsApi, storageApi } from '../../lib/services';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { buildIncidentPdfHtml } from '../../lib/incidentPdf';
+import { generatePdfName } from '../../lib/pdfName';
 import {
   getStorageImageDataUrlStrict,
   getStorageImageResizedDataUrl,
@@ -153,7 +154,10 @@ export default function IncidentDetail() {
       });
       const localUri = await generateAndSharePdf(html);
       if (localUri) {
-        const pdfPath = `incidents/${incident.id}.pdf`;
+        const incidentTypeLabel = INCIDENT_TYPE_FULL_LABEL[incident.type];
+        const docType = `ინციდენტი_${incidentTypeLabel}`;
+        const pdfName = generatePdfName(project.name, docType, new Date(incident.date_time), incident.id);
+        const pdfPath = `incidents/${pdfName}`;
         await storageApi.uploadFromUri(STORAGE_BUCKETS.pdfs, pdfPath, localUri, 'application/pdf');
         const updated = await incidentsApi.update(incident.id, {
           pdf_url: pdfPath,

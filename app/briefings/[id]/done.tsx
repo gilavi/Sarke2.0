@@ -9,6 +9,7 @@ import { generateAndSharePdf } from '../../../lib/pdfOpen';
 import { useTheme } from '../../../lib/theme';
 import { briefingsApi } from '../../../lib/briefingsApi';
 import { buildBriefingPdfHtml } from '../../../lib/briefingPdf';
+import { generatePdfName } from '../../../lib/pdfName';
 import { projectsApi } from '../../../lib/services';
 import { a11y } from '../../../lib/accessibility';
 import type { Briefing, Project } from '../../../types/models';
@@ -38,7 +39,8 @@ export default function BriefingDoneScreen() {
     setSharing(true);
     try {
       const html = buildBriefingPdfHtml(briefing, project);
-      await generateAndSharePdf(html);
+      const pdfName = generatePdfName(project.name, 'ინსტრუქტაჟი', new Date(briefing.dateTime), briefing.id);
+      await generateAndSharePdf(html, pdfName);
     } catch {
       Alert.alert('შეცდომა', 'PDF გენერირება ვერ მოხერხდა');
     } finally {
