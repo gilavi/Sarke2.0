@@ -35,6 +35,8 @@ export interface AppUser {
   first_name: string;
   last_name: string;
   created_at: string;
+  /** Backfilled to created_at on the migration that introduced this column. May be absent on rows fetched without it. */
+  updated_at?: string;
   tc_accepted_version: string | null;
   tc_accepted_at: string | null;
   saved_signature_url: string | null;
@@ -55,6 +57,7 @@ export interface Qualification {
   expires_at: string | null;
   file_url: string | null;
   created_at: string;
+  updated_at?: string;
 }
 
 /**
@@ -120,6 +123,7 @@ export interface Project {
    */
   logo: string | null;
   created_at: string;
+  updated_at?: string;
 }
 
 export interface ProjectFile {
@@ -141,6 +145,8 @@ export interface ProjectSigner {
   phone: string | null;
   position: string | null;
   signature_png_url: string | null;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Template {
@@ -187,6 +193,7 @@ export interface Inspection {
   conclusion_text: string | null;
   is_safe_for_use: boolean | null;
   created_at: string;
+  updated_at?: string;
   completed_at: string | null;
 }
 
@@ -346,6 +353,7 @@ export interface Incident {
   /** Storage path in the `pdfs` bucket. null until generated. */
   pdf_url: string | null;
   created_at: string;
+  updated_at?: string;
 }
 
 // ── Remote signing ────────────────────────────────────────────────────────────
@@ -400,6 +408,7 @@ export interface Briefing {
   inspectorName: string;
   status: BriefingStatus;
   createdAt: string;
+  updatedAt?: string;
 }
 
 // ── Report (რეპორტი) ────────────────────────────────────────────────────────
@@ -427,4 +436,5 @@ export interface Report {
   slides: ReportSlide[];
   pdf_url: string | null;
   created_at: string;
+  updated_at?: string;
 }

@@ -14,6 +14,7 @@ type DbRow = {
   inspector_name: string;
   status: string;
   created_at: string;
+  updated_at: string;
 };
 
 function toModel(row: DbRow): Briefing {
@@ -27,6 +28,7 @@ function toModel(row: DbRow): Briefing {
     inspectorName: row.inspector_name ?? '',
     status: row.status as Briefing['status'],
     createdAt: row.created_at,
+    updatedAt: row.updated_at ?? row.created_at,
   };
 }
 

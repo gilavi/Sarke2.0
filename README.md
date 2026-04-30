@@ -84,9 +84,10 @@ Schema + seed already applied to the hosted project. Relevant files preserved he
 - `supabase/migrations/0001_init.sql` — tables + RLS
 - `supabase/migrations/0015_project_logo.sql` — optional `projects.logo` (base64 data URL)
 - `supabase/migrations/0016_signer_role_other.sql` — adds `'other'` to the `signer_role` enum so freeform crew members flow into `signatures`
+- `supabase/migrations/0020_storage_rls_and_timestamps.sql` — tightens `incident-photos` and `report-photos` storage RLS to the row owner; adds `updated_at` + audit trigger to mutable user-data tables; adds composite indexes for project-signer lookup and certificate pagination
 - `supabase/seed/01_system_templates.sql` — system templates
 
-Storage buckets: `certificates`, `answer-photos`, `pdfs`, `signatures`. 
+Storage buckets: `certificates`, `answer-photos`, `pdfs`, `signatures`, `incident-photos`, `report-photos`, `project-files`, `remote-signatures`. 
 
 > Fun fact: 90% of `answer-photos` are blurry pictures of rust taken with a shaking hand at 7 AM.
 
@@ -182,7 +183,9 @@ supabase/             SQL incantations
 3. PDF export of multi-photo reports is now ~10× faster after the resize+cache pipeline landed (2026-04-30) — but a 30-photo inspection still takes a beat.
 4. `npm install` downloads the entire internet. Twice.
 5. Offline photo capture is queued under `documentDirectory/offline-photos/` and flushes on reconnect; if the user uninstalls the app before reconnecting, the queue is gone with it.
-6. This README is 60% jokes, 40% cries for help.
+6. **Web build (`expo start --web`)**: `react-native-worklets@0.5.x` reads `globalThis.__RUNTIME_KIND` at module-init to decide native vs web mode, but seeds that global *later* in a different module — so on web the native path runs and crashes at boot ([reanimated#8285](https://github.com/software-mansion/react-native-reanimated/issues/8285)). We work around it via Metro `resolveRequest` aliases in [metro.config.js](metro.config.js) that redirect `react-native-worklets/.../PlatformChecker` and `react-native-keyboard-controller` to web stubs in [shims/](shims/). Auth on the web bundle is currently unable to log in with the iOS-simulator credentials — investigate before relying on web for QA.
+7. **Storage RLS gap (open):** dashboard-created policies named `sarke_*_authenticated` on the `certificates`, `answer-photos`, `pdfs`, and `signatures` buckets gate only on `bucket_id = ANY(...)`. Any authenticated user can read or delete files in those buckets. They aren't in version control because they were created via the Supabase dashboard. `incident-photos` and `report-photos` were tightened in `0020`; the rest still need owner-scoped policies (see BUG_REPORT.md).
+8. This README is 60% jokes, 40% cries for help.
 
 ---
 

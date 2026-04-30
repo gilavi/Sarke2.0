@@ -44,8 +44,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // Pull profile row when we have a session — best-effort, no error if the
-  // profiles table isn't set up the way we expect; UI just falls back to email.
+  // Pull profile row when we have a session. The mobile app stores user
+  // metadata in the `users` table (mirrors auth.users via trigger); the
+  // dashboard uses the same source. Best-effort — UI falls back to email
+  // if the row isn't there yet.
   useEffect(() => {
     const userId = session?.user.id;
     if (!userId) {
@@ -54,7 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     let cancelled = false;
     supabase
-      .from('profiles')
+      .from('users')
       .select('id, first_name, last_name, email')
       .eq('id', userId)
       .maybeSingle()

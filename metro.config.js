@@ -52,6 +52,23 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
       type: 'sourceFile',
     };
   }
+  // Override react-native-worklets PlatformChecker on web. The library's
+  // index.ts reads `globalThis.__RUNTIME_KIND` at module-init time, but on web
+  // that flag is unset when PlatformChecker first evaluates — so
+  // `SHOULD_BE_USE_WEB` stays false and the native-mode `createSerializable`
+  // crashes at boot. The shim hard-codes the web-mode flags via Platform.OS,
+  // sidestepping the timing dependency. Match imports like `../PlatformChecker`
+  // or `../PlatformChecker/index` coming from inside react-native-worklets.
+  if (
+    platform === 'web' &&
+    /(^|[\\/])PlatformChecker(\/index(\.js)?)?$/.test(moduleName) &&
+    /react-native-worklets[\\/]/.test(context.originModulePath || '')
+  ) {
+    return {
+      filePath: path.resolve(__dirname, 'shims/worklets-platform-checker.web.ts'),
+      type: 'sourceFile',
+    };
+  }
   return _resolveRequest
     ? _resolveRequest(context, moduleName, platform)
     : context.resolveRequest(context, moduleName, platform);

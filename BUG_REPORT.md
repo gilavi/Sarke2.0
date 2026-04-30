@@ -147,3 +147,52 @@ Metro's compatibility warning still stands: `expo-haptics@55.0.14 - expected ver
 - [app/inspections/[id].tsx](app/inspections/[id].tsx), [app/incidents/new.tsx](app/incidents/new.tsx), [app/incidents/[id].tsx](app/incidents/[id].tsx), [app/reports/[id].tsx](app/reports/[id].tsx), [app/reports/[id]/success.tsx](app/reports/[id]/success.tsx) — switched photo embeds to `getStorageImageResizedDataUrl`.
 - [lib/i18n.ts](lib/i18n.ts) — removed duplicate `pdf_language` accessors.
 - [app/signature.tsx](app/signature.tsx) — drop invalid `animationEnabled` Stack option.
+
+## P0 — Web bundle crashed at boot with `WorkletsError` · resolved 2026-04-30
+
+**Repro:** `npx expo start --web` → open in browser → red error overlay before login renders:
+
+> `[Worklets] createSerializableObject should never be called in JSWorklets.`
+
+Stack: `cloneWorklet → cloneObjectProperties → createSerializableNative → createSerializableObject (JSWorklets)` — fired from `node_modules/react-native-worklets/lib/module/threads.js:131` at module-init. Same error reported upstream as [reanimated#8285](https://github.com/software-mansion/react-native-reanimated/issues/8285).
+
+**Root cause:** `react-native-worklets@0.5.1` decides between web-mode and native-mode `createSerializable` once at module-init, by reading `globalThis.__RUNTIME_KIND === RuntimeKind.ReactNative` inside `lib/module/PlatformChecker/index.js`. That global is seeded later (in the same package's `runtimeKind.ts`), so on the web bundle PlatformChecker evaluates first, the check fails, `SHOULD_BE_USE_WEB` stays `false`, and `createSerializable` falls through to the native path. The native path calls into a JSWorklets stub whose only behavior is to throw. Result: every Reanimated-using component (i.e. the entire app) crashes before any screen mounts.
+
+**Fix:** Override the broken module on web only, via Metro's `resolveRequest`.
+
+- New shim [shims/worklets-platform-checker.web.ts](shims/worklets-platform-checker.web.ts) — bypasses the runtime-kind dance and reads `Platform.OS` directly, so `SHOULD_BE_USE_WEB` is `true` whenever we're on web.
+- [metro.config.js](metro.config.js) — when `platform === 'web'` and the importer lives inside `react-native-worklets`, redirect `./PlatformChecker` (and `./PlatformChecker/index`) to the shim. iOS/Android resolution is untouched.
+- Defense-in-depth: [lib/polyfills.ts](lib/polyfills.ts) and [index.js](index.js) also pre-seed `globalThis.__RUNTIME_KIND = 1`. The Metro shim is the load-bearing fix; the global pre-seed protects us if a future worklets release loads `PlatformChecker` from a path the regex doesn't catch.
+- Also added [shims/react-native-keyboard-controller.tsx](shims/react-native-keyboard-controller.tsx) — passthrough on web for `KeyboardProvider` / `KeyboardAwareScrollView` / etc, since the library registers worklet-backed event handlers that are unnecessary in the browser. Wired through the same `WEB_SHIMS` table in metro.config.js.
+
+**Verified:** Cold-rebuild (`expo-clear`) → login screen renders cleanly on web with no console errors. `npm run typecheck` passes.
+
+## P0 — Auth rejects valid credentials on web bundle · open
+
+Logging in on the web bundle with the credentials that work on iOS simulator (`gio@fina2.net` / `Saqartvel0` and `saqartvel0`) returns "არასწორი ელ-ფოსტა ან პაროლი". Could be: (a) different Supabase project pointed at by web env, (b) password actually changed since the user wrote the note, (c) web bundle missing the env vars used by `lib/supabase.ts`. Did not have a working credential to drive past-login web smoke testing this session — flagging for the user. Native iOS path is unaffected (auth has not been touched).
+
+## Files changed (2026-04-30, second pass)
+
+- New [shims/worklets-platform-checker.web.ts](shims/worklets-platform-checker.web.ts), [shims/react-native-keyboard-controller.tsx](shims/react-native-keyboard-controller.tsx).
+- [metro.config.js](metro.config.js) — `WEB_SHIMS` table + worklets-internal `PlatformChecker` redirect.
+- [lib/polyfills.ts](lib/polyfills.ts), [index.js](index.js) — pre-seed `globalThis.__RUNTIME_KIND` so an out-of-order worklets load still lands in web mode.
+
+## P0 — Storage RLS too permissive on `incident-photos` and `report-photos` · FIXED 2026-05-01
+
+**Repro:** Sign in as user A, query `select * from storage.objects where bucket_id = 'incident-photos'` → returns user B's incident photos. Same for `report-photos`. `delete from storage.objects where ...` is also accepted.
+
+**Root cause:** Policies created in [supabase/migrations/0017_incidents.sql](supabase/migrations/0017_incidents.sql) and [0019_reports.sql](supabase/migrations/0019_reports.sql) gated only on `auth.uid() IS NOT NULL` for SELECT/DELETE (and also INSERT for reports). Any authenticated user could read or delete any other user's files. Path convention is `{incident_id}/...` and `{report_id}/...`, so the row owner is reachable via the path's first segment.
+
+**Fix** in [supabase/migrations/0020_storage_rls_and_timestamps.sql](supabase/migrations/0020_storage_rls_and_timestamps.sql): drop and recreate SELECT/DELETE policies with an `EXISTS` join to `incidents.user_id`/`reports.user_id`. INSERT for `incident-photos` is intentionally retained as `auth.uid() IS NOT NULL` because incident photos are uploaded optimistically before the row is created (see [app/incidents/new.tsx:227](app/incidents/new.tsx:227) — `incidentId` is client-generated). For `report-photos`, INSERT is also tightened because the report row always exists before slide images are uploaded.
+
+The same migration adds `updated_at TIMESTAMPTZ` columns and a shared `set_updated_at()` BEFORE-UPDATE trigger to `users`, `projects`, `inspections`, `incidents`, `briefings`, `reports`, `qualifications`, `project_signers`, plus two indexes (`project_signers_lookup_idx`, `certificates_user_generated_idx`) flagged by the audit.
+
+**Verified:** Pre/post snapshots saved in `~/sarke-backups/snapshot_pre_0020_*.json` and `snapshot_post_0020_*.json`. All 6 RLS policies updated, 8 columns + 8 triggers + 2 indexes created, row counts unchanged across 18 tables.
+
+## P0 — Storage RLS still permissive on `certificates`, `answer-photos`, `pdfs`, `signatures` · OPEN
+
+**Repro:** Same exposure pattern as above, on the `certificates`, `answer-photos`, `pdfs`, and `signatures` buckets. The `sarke_{insert,read,update,delete}_authenticated` policy family gates only on `bucket_id = ANY (ARRAY[...])` — no per-row owner check.
+
+**Why not bundled into 0020:** these policies aren't in version control (created via the Supabase dashboard), and proper scoping requires understanding multi-source path conventions per bucket. In particular `signatures` is referenced from at least three tables (`users.saved_signature_url`, `project_signers.signature_png_url`, `signatures.signature_png_url`) so a single owner-scoped policy needs either a unified path scheme or a UNION-style EXISTS.
+
+**Next step:** audit upload paths in [lib/services.real.ts](lib/services.real.ts) for each bucket, then write `0021_storage_rls_remaining.sql` to replace the four `sarke_*_authenticated` policies with owner-scoped ones.
