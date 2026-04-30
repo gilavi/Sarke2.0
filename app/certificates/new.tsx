@@ -263,7 +263,7 @@ export default function GenerateCertificateScreen() {
       const mime = asset.mimeType ?? 'image/jpeg';
       const ext = mime.split('/')[1] ?? 'jpg';
       const path = `${user.id}/${Date.now()}.${ext}`;
-      await storageApi.uploadFromUri(STORAGE_BUCKETS.certificates, path, asset.uri, mime);
+      await storageApi.uploadFromUri(STORAGE_BUCKETS.certificates, path, asset.uri, mime, 'qualification');
       const qual = await qualificationsApi.upsert({
         id: crypto.randomUUID(),
         user_id: user.id,

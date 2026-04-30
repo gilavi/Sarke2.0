@@ -569,7 +569,7 @@ export default function QuestionnaireWizard() {
         toast.success('ფოტო შენახულია — აიტვირთება ქსელის დაბრუნებისას');
         return;
       }
-      await storageApi.uploadFromUri(STORAGE_BUCKETS.answerPhotos, actualPath, uri, actualMime);
+      await storageApi.uploadFromUri(STORAGE_BUCKETS.answerPhotos, actualPath, uri, actualMime, 'inspection');
       const answer = await answersApi.upsert(baseAnswer);
       if (!existing) setAnswers(prev => ({ ...prev, [question.id]: answer }));
       const photo = await answersApi.addPhoto(answer.id, actualPath, captionStr ?? undefined);

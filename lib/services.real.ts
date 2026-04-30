@@ -1,5 +1,7 @@
 import { supabase, STORAGE_BUCKETS, SUPABASE_URL, SUPABASE_ANON_KEY } from './supabase';
 import * as FileSystem from 'expo-file-system/legacy';
+import { compressPhoto } from './photoCompression';
+import type { CompressionProfile, CompressOptions } from './photoCompression';
 import type {
   Answer,
   AnswerPhoto,
@@ -296,11 +298,25 @@ export const projectFilesApi = {
       headers.Authorization = `Bearer ${session.access_token}`;
     }
     const url = `${SUPABASE_URL}/storage/v1/object/${STORAGE_BUCKETS.projectFiles}/${storagePath}`;
-    const result = await FileSystem.uploadAsync(url, args.fileUri, {
+
+    // Compress images before upload
+    let uploadUri = args.fileUri;
+    if (args.mimeType?.startsWith('image/')) {
+      try {
+        const result = await compressPhoto(args.fileUri, { profile: 'document' });
+        uploadUri = result.uri;
+      } catch { /* fall back to original */ }
+    }
+
+    const result = await FileSystem.uploadAsync(url, uploadUri, {
       httpMethod: 'POST',
       uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
       headers,
     });
+    // Clean up compressed temp file if different from original
+    if (uploadUri !== args.fileUri) {
+      FileSystem.deleteAsync(uploadUri, { idempotent: true }).catch(() => {});
+    }
     if (result.status < 200 || result.status >= 300) {
       const err = new Error(`upload failed (${result.status}): ${result.body}`);
       logError(err, `projectFilesApi.upload status=${result.status} path=${storagePath} hasSession=${!!session?.access_token}`);
@@ -963,7 +979,21 @@ export const storageApi = {
     path: string,
     fileUri: string,
     contentType: string,
+    compression?: CompressionProfile | CompressOptions,
   ): Promise<string> => {
+    // If it's an image and compression is requested, compress before upload
+    let uploadUri = fileUri;
+    if (compression && contentType.startsWith('image/')) {
+      try {
+        const opts = typeof compression === 'string' ? { profile: compression } : compression;
+        const result = await compressPhoto(fileUri, opts);
+        uploadUri = result.uri;
+      } catch (e) {
+        console.warn('[storageApi.uploadFromUri] compression failed, using original', e);
+        uploadUri = fileUri;
+      }
+    }
+
     const { data: { session } } = await supabase.auth.getSession();
     const headers: Record<string, string> = {
       'Content-Type': contentType,
@@ -974,11 +1004,15 @@ export const storageApi = {
       headers.Authorization = `Bearer ${session.access_token}`;
     }
     const url = `${SUPABASE_URL}/storage/v1/object/${bucket}/${path}`;
-    const result = await FileSystem.uploadAsync(url, fileUri, {
+    const result = await FileSystem.uploadAsync(url, uploadUri, {
       httpMethod: 'POST',
       uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
       headers,
     });
+    // Clean up compressed temp file if different from original
+    if (uploadUri !== fileUri) {
+      FileSystem.deleteAsync(uploadUri, { idempotent: true }).catch(() => {});
+    }
     if (result.status < 200 || result.status >= 300) {
       const err = new Error(`storage upload failed (${result.status}): ${result.body}`);
       logError(err, `storage.uploadFromUri bucket=${bucket} path=${path} status=${result.status}`);

@@ -90,7 +90,7 @@ export default function ReportSlideEditor() {
     const ext = (localUri.split('.').pop() || 'jpg').split('?')[0];
     const path = `${report.id}/${slideId}/${kind}-${Crypto.randomUUID()}.${ext}`;
     try {
-      await storageApi.uploadFromUri(STORAGE_BUCKETS.reportPhotos, path, localUri, 'image/jpeg');
+      await storageApi.uploadFromUri(STORAGE_BUCKETS.reportPhotos, path, localUri, 'image/jpeg', 'report');
       return path;
     } catch (e) {
       toast.error(friendlyError(e, 'სურათის ატვირთვა ვერ მოხერხდა'));

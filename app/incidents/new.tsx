@@ -231,6 +231,7 @@ export default function NewIncident() {
           path,
           uri,
           'image/jpeg',
+          'incident',
         );
         paths.push(path);
       } catch (e) {

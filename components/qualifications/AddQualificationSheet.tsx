@@ -88,10 +88,8 @@ export default function AddQualificationSheet({
       if (!user) throw new Error('არ ხართ შესული');
       let filePath: string | null = null;
       if (photoUri) {
-        const res = await fetch(photoUri);
-        const blob = await res.blob();
         const path = `${user.id}/${Date.now()}.jpg`;
-        await storageApi.upload(STORAGE_BUCKETS.certificates, path, blob, 'image/jpeg');
+        await storageApi.uploadFromUri(STORAGE_BUCKETS.certificates, path, photoUri, 'image/jpeg', 'qualification');
         filePath = path;
       }
       await qualificationsApi.upsert({

@@ -69,7 +69,7 @@ export async function uploadSignature(
 ): Promise<{ path: string; pending: boolean }> {
   try {
     const { fileUri, contentType } = await compressSignature(base64);
-    await storageApi.uploadFromUri(STORAGE_BUCKETS.signatures, path, fileUri, contentType);
+    await storageApi.uploadFromUri(STORAGE_BUCKETS.signatures, path, fileUri, contentType, 'signature');
     return { path, pending: false };
   } catch (e) {
     // Log the real failure so we can debug in Metro/Sentry instead of
@@ -93,7 +93,7 @@ export async function flushPendingSignatures(): Promise<void> {
   for (const item of list) {
     try {
       const { fileUri, contentType } = await compressSignature(item.base64);
-      await storageApi.uploadFromUri(STORAGE_BUCKETS.signatures, item.path, fileUri, contentType);
+      await storageApi.uploadFromUri(STORAGE_BUCKETS.signatures, item.path, fileUri, contentType, 'signature');
     } catch {
       still.push(item);
     }

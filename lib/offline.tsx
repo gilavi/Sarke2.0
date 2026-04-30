@@ -13,6 +13,7 @@ import React, {
 import { supabase } from './supabase';
 import { storageApi } from './services';
 import { logError } from './logError';
+import { stageCompressedPhotoForOffline } from './photoCompression';
 import type { Answer, AnswerPhoto, Inspection } from '../types/models';
 
 type AnswerUpsertPayload = Partial<Answer> & {
@@ -49,7 +50,6 @@ type QueueOp =
 const QUEUE_KEY = '@offline:queue';
 const answersKey = (qid: string) => `@offline:answers:${qid}`;
 const questionnaireKey = (qid: string) => `@offline:questionnaire:${qid}`;
-const PHOTO_STAGE_DIR_NAME = 'offline-photos';
 
 // Fields the server owns. Persisting them locally and merging back on reload
 // would re-apply a queued completion and trigger the wizard↔detail redirect loop.
@@ -122,46 +122,6 @@ async function writeQueueRaw(ops: QueueOp[]): Promise<void> {
   await AsyncStorage.setItem(QUEUE_KEY, JSON.stringify(ops));
 }
 
-let photoStageDirEnsured: Promise<string | null> | null = null;
-function ensurePhotoStageDir(): Promise<string | null> {
-  if (photoStageDirEnsured) return photoStageDirEnsured;
-  photoStageDirEnsured = (async () => {
-    const base = FileSystem.documentDirectory ?? FileSystem.cacheDirectory;
-    if (!base) return null;
-    const dir = `${base}${PHOTO_STAGE_DIR_NAME}/`;
-    try {
-      const info = await FileSystem.getInfoAsync(dir);
-      if (!info.exists) {
-        await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
-      }
-      return dir;
-    } catch {
-      return null;
-    }
-  })();
-  return photoStageDirEnsured;
-}
-
-async function stagePhoto(sourceUri: string, ext: string): Promise<string> {
-  const dir = await ensurePhotoStageDir();
-  if (!dir) return sourceUri; // best-effort — fall back to original URI
-  const stamped = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-  const dest = `${dir}${stamped}`;
-  try {
-    await FileSystem.copyAsync({ from: sourceUri, to: dest });
-    return dest;
-  } catch {
-    return sourceUri;
-  }
-}
-
-function inferExt(path: string, contentType: string): string {
-  const fromPath = path.split('?')[0]?.split('.').pop() ?? '';
-  if (fromPath && fromPath.length <= 5) return fromPath.toLowerCase();
-  const mime = contentType.split('/')[1] ?? 'jpg';
-  return mime === 'jpeg' ? 'jpg' : mime;
-}
-
 export function OfflineProvider({ children }: { children: React.ReactNode }) {
   const [isOnline, setIsOnline] = useState(true);
   const [netReady, setNetReady] = useState(false);
@@ -228,6 +188,10 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
           if (attempts >= MAX_OP_RETRIES) {
             logError(err, `offline.flush.drop.${op.kind}`);
             ops = ops.slice(1);
+            // Clean up staged photo files on max retries
+            if (op.kind === 'photo_upload') {
+              FileSystem.deleteAsync(op.payload.localUri, { idempotent: true }).catch(() => undefined);
+            }
           } else {
             // Rotate to the back so subsequent ops still get a chance.
             ops = [...ops.slice(1), { ...op, attempts }];
@@ -324,8 +288,7 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
 
   const enqueuePhotoUpload = useCallback<OfflineContextValue['enqueuePhotoUpload']>(
     async ({ sourceUri, bucket, path, contentType, answerId, inspectionId, caption }) => {
-      const ext = inferExt(path, contentType);
-      const localUri = await stagePhoto(sourceUri, ext);
+      const localUri = await stageCompressedPhotoForOffline(sourceUri, 'inspection');
       await runExclusive(async () => {
         const ops = await readQueue();
         ops.push({

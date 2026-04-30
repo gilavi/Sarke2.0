@@ -816,6 +816,7 @@ export const storageApi = {
     path: string,
     _fileUri: string,
     _contentType: string,
+    _compression?: string | object,
   ): Promise<string> => path,
   download: async (_bucket: string, _path: string) => {
     // Return an empty Blob-ish object; not consumed in mock flows.
