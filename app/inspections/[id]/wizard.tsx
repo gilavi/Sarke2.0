@@ -525,33 +525,55 @@ export default function QuestionnaireWizard() {
     path?: string,
   ) => {
     if (!questionnaire) return;
-    if (!offline.isOnline) {
-      toast.error('ფოტოს ასატვირთად საჭიროა ინტერნეტი');
-      return;
-    }
     setPhotoUploadCount(c => c + 1);
+    const actualMime = mime ?? 'image/jpeg';
+    const actualExt = ext ?? 'jpg';
+    const actualPath = path ?? `${questionnaire.id}/${question.id}/${Date.now()}.${actualExt}`;
+    const captionStr = rowKey ? `row:${rowKey}` : null;
+
+    // Ensure an Answer row exists locally so the photo can attach to a stable
+    // answer.id whether we upload now or queue. The upsert is enqueued via
+    // patchAnswer if offline; if online we still go through the live path so
+    // the server returns the canonical row.
+    const existing = answers[question.id];
+    const answerId = existing?.id ?? crypto.randomUUID();
+    const baseAnswer: Answer = {
+      id: answerId,
+      inspection_id: questionnaire.id,
+      question_id: question.id,
+      value_bool: existing?.value_bool ?? null,
+      value_num: existing?.value_num ?? null,
+      value_text: existing?.value_text ?? null,
+      grid_values: existing?.grid_values ?? null,
+      comment: existing?.comment ?? null,
+      notes: existing?.notes ?? null,
+    };
+
     try {
-      const actualMime = mime ?? 'image/jpeg';
-      const actualExt = ext ?? 'jpg';
-      const actualPath = path ?? `${questionnaire.id}/${question.id}/${Date.now()}.${actualExt}`;
+      if (!offline.isOnline) {
+        // Offline path — stage the file, queue upload+row insert, optimistic UI.
+        if (!existing) {
+          setAnswers(prev => ({ ...prev, [question.id]: baseAnswer }));
+          await offline.enqueueAnswerUpsert(baseAnswer);
+        }
+        const optimistic = await offline.enqueuePhotoUpload({
+          sourceUri: uri,
+          bucket: STORAGE_BUCKETS.answerPhotos,
+          path: actualPath,
+          contentType: actualMime,
+          answerId,
+          inspectionId: questionnaire.id,
+          caption: captionStr,
+        });
+        setPhotos(prev => ({ ...prev, [answerId]: [...(prev[answerId] ?? []), optimistic] }));
+        toast.success('ფოტო შენახულია — აიტვირთება ქსელის დაბრუნებისას');
+        return;
+      }
       await storageApi.uploadFromUri(STORAGE_BUCKETS.answerPhotos, actualPath, uri, actualMime);
-      const existing = answers[question.id];
-      const answer = await answersApi.upsert({
-        id: existing?.id ?? crypto.randomUUID(),
-        inspection_id: questionnaire.id,
-        question_id: question.id,
-        value_bool: existing?.value_bool ?? null,
-        value_num: existing?.value_num ?? null,
-        value_text: existing?.value_text ?? null,
-        grid_values: existing?.grid_values ?? null,
-        comment: existing?.comment ?? null,
-        notes: existing?.notes ?? null,
-      });
+      const answer = await answersApi.upsert(baseAnswer);
       if (!existing) setAnswers(prev => ({ ...prev, [question.id]: answer }));
-      const caption = rowKey ? `row:${rowKey}` : undefined;
-      const photo = await answersApi.addPhoto(answer.id, actualPath, caption);
-      const answerId = answer.id;
-      setPhotos(prev => ({ ...prev, [answerId]: [...(prev[answerId] ?? []), photo] }));
+      const photo = await answersApi.addPhoto(answer.id, actualPath, captionStr ?? undefined);
+      setPhotos(prev => ({ ...prev, [answer.id]: [...(prev[answer.id] ?? []), photo] }));
       toast.success('ფოტო აიტვირთა');
     } catch (e) {
       toast.error(`ფოტო ვერ აიტვირთა: ${toErrorMessage(e, 'ქსელის შეცდომა')}`);
@@ -722,6 +744,28 @@ export default function QuestionnaireWizard() {
     [stepIndex],
   );
 
+  // Navigation callbacks. Declared before any early return so hook order
+  // stays stable across the skeleton → ready transition.
+  const goNext = useCallback(() => {
+    haptic.light();
+    const currentStep = steps[stepIndex];
+    if (currentStep?.kind === 'question' && currentStep.question.type === 'measure') {
+      const value = answers[currentStep.question.id]?.value_num ?? null;
+      const err = measureError(currentStep.question, value);
+      if (err) {
+        haptic.error();
+        toast.error(err);
+        return;
+      }
+    }
+    setStepIndex(i => Math.min(steps.length - 1, i + 1));
+  }, [stepIndex, steps, answers, toast]);
+
+  const goBack = useCallback(() => {
+    haptic.light();
+    setStepIndex(i => Math.max(0, i - 1));
+  }, []);
+
   // Hold the loading screen until EVERYTHING we need to paint a real step
   // has arrived. Previously the guard was too permissive (!!template && !!step)
   // which let the conclusion form flash with empty isSafe/conclusion values
@@ -759,25 +803,6 @@ export default function QuestionnaireWizard() {
   const isYesNo = step.kind === 'question' && step.question.type === 'yesno';
   const isLast = stepIndex === steps.length - 1;
   const isScaffoldRow = step.kind === 'gridRow' && (step.question.grid_rows?.[0] ?? '') !== 'N1';
-
-  const goNext = useCallback(() => {
-    haptic.light();
-    if (step?.kind === 'question' && step.question.type === 'measure') {
-      const value = answers[step.question.id]?.value_num ?? null;
-      const err = measureError(step.question, value);
-      if (err) {
-        haptic.error();
-        toast.error(err);
-        return;
-      }
-    }
-    setStepIndex(i => Math.min(steps.length - 1, i + 1));
-  }, [step, answers, steps.length, toast]);
-
-  const goBack = useCallback(() => {
-    haptic.light();
-    setStepIndex(i => Math.max(0, i - 1));
-  }, []);
 
   return (
     <Screen edgeToEdge edges={['top']} style={{ backgroundColor: theme.colors.card }}>
