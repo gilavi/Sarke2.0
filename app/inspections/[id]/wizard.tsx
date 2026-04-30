@@ -2,7 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Animated, InputAccessoryView, Keyboard, Modal, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { Image } from 'expo-image';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
-import { KeyboardAvoidingView } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
@@ -247,6 +247,17 @@ export default function QuestionnaireWizard() {
   const enterAnim = useRef(new Animated.Value(0)).current;
   const enteredRef = useRef(false);
 
+  useEffect(() => {
+    if (!loading && !enteredRef.current) {
+      enteredRef.current = true;
+      Animated.timing(enterAnim, {
+        toValue: 1,
+        duration: 220,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [loading, enterAnim]);
+
   // Cancellation token for in-flight load(). Each load() run gets its own
   // object; when the screen blurs we flip `cancelled = true` on the active
   // token so a late-returning fetch can't overwrite fresh local state
@@ -455,7 +466,7 @@ export default function QuestionnaireWizard() {
   const photoAnswerId = photoQuestion ? answers[photoQuestion.id]?.id ?? null : null;
   const generalPhotos: AnswerPhoto[] = photoAnswerId ? photos[photoAnswerId] ?? [] : [];
 
-  const patchAnswer = async (question: Question, mutate: (a: Answer) => Answer) => {
+  const patchAnswer = useCallback(async (question: Question, mutate: (a: Answer) => Answer) => {
     if (!questionnaire) return;
     const current: Answer =
       answers[question.id] ??
@@ -503,7 +514,7 @@ export default function QuestionnaireWizard() {
       logError(e, 'wizard.patchAnswer.enqueue');
       toast.error(`პასუხი ვერ შეინახა: ${toErrorMessage(e)}`);
     }
-  };
+  }, [questionnaire, answers, offline, toast]);
 
   const doUpload = async (
     uri: string,
@@ -738,15 +749,6 @@ export default function QuestionnaireWizard() {
     return <CompletedRedirect id={questionnaire.id} />;
   }
 
-  if (!enteredRef.current) {
-    enteredRef.current = true;
-    Animated.timing(enterAnim, {
-      toValue: 1,
-      duration: 220,
-      useNativeDriver: true,
-    }).start();
-  }
-
   const stepAnswered = hasAnswer(step, answers, photos, conclusion, isSafe, harnessName, template);
   const hasAnyProgress =
     stepIndex > 0 ||
@@ -758,9 +760,9 @@ export default function QuestionnaireWizard() {
   const isLast = stepIndex === steps.length - 1;
   const isScaffoldRow = step.kind === 'gridRow' && (step.question.grid_rows?.[0] ?? '') !== 'N1';
 
-  const goNext = () => {
+  const goNext = useCallback(() => {
     haptic.light();
-    if (step.kind === 'question' && step.question.type === 'measure') {
+    if (step?.kind === 'question' && step.question.type === 'measure') {
       const value = answers[step.question.id]?.value_num ?? null;
       const err = measureError(step.question, value);
       if (err) {
@@ -770,12 +772,12 @@ export default function QuestionnaireWizard() {
       }
     }
     setStepIndex(i => Math.min(steps.length - 1, i + 1));
-  };
+  }, [step, answers, steps.length, toast]);
 
-  const goBack = () => {
+  const goBack = useCallback(() => {
     haptic.light();
     setStepIndex(i => Math.max(0, i - 1));
-  };
+  }, []);
 
   return (
     <Screen edgeToEdge edges={['top']} style={{ backgroundColor: theme.colors.card }}>
@@ -804,10 +806,10 @@ export default function QuestionnaireWizard() {
           onClose={() => router.back()}
         />
         <GestureDetector gesture={swipeBack}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        <KeyboardAwareScrollView
           style={{ flex: 1 }}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
         >
           <WizardStepTransition stepKey={stepIndex} direction={stepDirection} animate={animateSteps}>
             {step.kind === 'kamariCount' ? (
@@ -848,7 +850,7 @@ export default function QuestionnaireWizard() {
               />
             ) : (
               <ScrollView
-                contentContainerStyle={{ padding: 20, paddingBottom: 12, gap: 16 }}
+                contentContainerStyle={staticStyles.stepScrollContent}
                 keyboardShouldPersistTaps="handled"
                 keyboardDismissMode="interactive"
               >
@@ -996,7 +998,7 @@ export default function QuestionnaireWizard() {
             </View>
           </View>
         </Modal>
-        </KeyboardAvoidingView>
+        </KeyboardAwareScrollView>
         </GestureDetector>
       </Animated.View>
     </Screen>
@@ -1033,8 +1035,8 @@ const QuestionStep = memo(function QuestionStep({
   const illoKey = illustrationKeyFor(question.title);
 
   return (
-    <View style={{ gap: 20, paddingTop: 16 }}>
-      <View style={{ alignItems: 'center', gap: 14 }}>
+    <View style={[staticStyles.gap16, staticStyles.padTop16]}>
+      <View style={staticStyles.centerGap14}>
         {illoKey ? <QuestionAvatar illustrationKey={illoKey} /> : null}
         <Text style={[styles.questionTitle, { textAlign: 'center' }]}>{question.title}</Text>
       </View>
@@ -1059,11 +1061,11 @@ const QuestionStep = memo(function QuestionStep({
       ) : null}
 
       {hasPhotos ? (
-        <View style={{ gap: 8 }}>
+        <View style={staticStyles.gap8}>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 10, paddingVertical: 4 }}
+            contentContainerStyle={[staticStyles.gap10, staticStyles.padV8]}
           >
             {answerPhotos.map(p => (
               <Pressable key={p.id} onPress={() => setPreviewPhoto(p)} style={styles.photoTile} {...a11y('ფოტოს ნახვა', 'შეეხეთ ფოტოს დიდად სანახავად', 'button')}>
@@ -1141,7 +1143,7 @@ function DebouncedFreetext({
     timer.current = setTimeout(() => {
       lastCommitted.current = text;
       onCommit(text);
-    }, 500);
+    }, 1000);
     return () => {
       if (timer.current) clearTimeout(timer.current);
     };
@@ -1163,6 +1165,7 @@ function DebouncedFreetext({
       multiline
       value={text}
       onChangeText={setText}
+      onEndEditing={() => onCommit(text)}
       style={styles.textarea}
       placeholder="შეავსეთ აქ..."
       placeholderTextColor={theme.colors.inkFaint}
@@ -1199,7 +1202,7 @@ function DebouncedNotes({
     timer.current = setTimeout(() => {
       lastCommitted.current = text;
       onCommit(text);
-    }, 500);
+    }, 1000);
     return () => {
       if (timer.current) clearTimeout(timer.current);
     };
@@ -1224,6 +1227,7 @@ function DebouncedNotes({
         multiline
         value={text}
         onChangeText={setText}
+        onEndEditing={() => onCommit(text)}
         style={[styles.textarea, { minHeight: 100 }]}
         placeholder="დამატებითი კომენტარი (არასავალდებულო)"
         placeholderTextColor={theme.colors.inkFaint}
@@ -1286,7 +1290,7 @@ function MeasureInput({
     timer.current = setTimeout(() => {
       lastCommitted.current = parsed;
       onCommit(parsed);
-    }, 500);
+    }, 1000);
     return () => {
       if (timer.current) clearTimeout(timer.current);
     };
@@ -1309,10 +1313,11 @@ function MeasureInput({
 
   return (
     <View style={{ gap: 6 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+      <View style={staticStyles.rowCenterGap10}>
         <TextInput
           value={text}
           onChangeText={setText}
+          onEndEditing={() => onCommit(parseMeasure(text))}
           keyboardType="decimal-pad"
           placeholder="0"
           placeholderTextColor={theme.colors.inkFaint}
@@ -1414,7 +1419,7 @@ function ScaffoldFooterButtons({
   };
 
   return (
-    <View style={{ gap: 8 }}>
+    <View style={staticStyles.gap8}>
       {detailCols.map(renderStatusButton)}
       {showDetails ? (
         <Button
@@ -1546,11 +1551,11 @@ const GridRowStep = memo(function GridRowStep({
 
     return (
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24, gap: 16 }}
+        contentContainerStyle={[staticStyles.padH16, staticStyles.padTop16, staticStyles.padB24, staticStyles.gap16]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
       >
-        <View style={{ alignItems: 'center', paddingVertical: 8, gap: 12 }}>
+        <View style={staticStyles.centerPadV8Gap12}>
           <QuestionAvatar illustrationKey={illustrationKeyFor(row)} />
           <Text style={{ fontSize: 22, fontWeight: '800', color: theme.colors.ink, textAlign: 'center' }}>
             {row}
@@ -1562,7 +1567,7 @@ const GridRowStep = memo(function GridRowStep({
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ gap: 10, paddingVertical: 4 }}
+                contentContainerStyle={[staticStyles.gap10, staticStyles.padV8]}
               >
                 {answerPhotos.map(p => (
                   <Pressable key={p.id} onPress={() => setPreviewPhoto(p)} style={styles.photoTile} {...a11y('ფოტოს ნახვა', 'შეეხეთ ფოტოს დიდად სანახავად', 'button')}>
@@ -1623,7 +1628,7 @@ const GridRowStep = memo(function GridRowStep({
   // Harness: scrollable list of components with ✓/✗ chips
   return (
     <ScrollView
-      contentContainerStyle={{ padding: 20, paddingTop: 16, gap: 16 }}
+      contentContainerStyle={[staticStyles.stepScrollContent, staticStyles.padTop16]}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="interactive"
     >
@@ -1635,16 +1640,9 @@ const GridRowStep = memo(function GridRowStep({
       </View>
 
       {isFirstRow ? (
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingHorizontal: 4,
-          }}
-        >
+        <View style={staticStyles.rowBetweenPadH4}>
           <Text style={{ fontWeight: '600' }}>რამდენი ქამარი სულ?</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <View style={staticStyles.rowCenterGap12}>
             <Pressable onPress={() => setHarnessRowCount(Math.max(1, harnessRowCount - 1))} {...a11y('ქამრების რაოდენობის შემცირება', 'შეეხეთ რაოდენობის შესამცირებლად', 'button')}>
               <Ionicons name="remove-circle" size={28} color={theme.colors.accent} />
             </Pressable>
@@ -1656,7 +1654,7 @@ const GridRowStep = memo(function GridRowStep({
         </View>
       ) : null}
 
-      <View style={{ gap: 8 }}>
+      <View style={staticStyles.gap8}>
         {cols.map(col => {
           const current = values[col];
           return (
@@ -1703,7 +1701,7 @@ const GridRowStep = memo(function GridRowStep({
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: 10, paddingVertical: 4 }}
+          contentContainerStyle={[staticStyles.gap10, staticStyles.padV8]}
         >
           {answerPhotos.map(p => (
             <Pressable key={p.id} onPress={() => setPreviewPhoto(p)} style={styles.photoTile} {...a11y('ფოტოს ნახვა', 'შეეხეთ ფოტოს დიდად სანახავად', 'button')}>
@@ -1773,7 +1771,7 @@ const ConclusionStep = memo(function ConclusionStep({
   const accessoryId = 'wizardConclusionAccessory';
 
   return (
-    <View style={{ gap: 18 }}>
+    <View style={staticStyles.gap18}>
       {Platform.OS === 'ios' ? (
         <InputAccessoryView nativeID={accessoryId}>
           <View style={styles.kbAccessory}>
@@ -1811,7 +1809,7 @@ const ConclusionStep = memo(function ConclusionStep({
           ) : null}
         </View>
       ) : null}
-      <View style={{ gap: 10 }}>
+      <View style={staticStyles.gap10}>
         <Text style={styles.decisionHeader}>გადაწყვეტილება</Text>
         <View style={{ flexDirection: 'row', gap: 12 }}>
           <Pressable
@@ -1874,13 +1872,13 @@ const ConclusionStep = memo(function ConclusionStep({
         ) : null}
       </View>
       {photoQuestion ? (
-        <View style={{ gap: 8 }}>
+        <View style={staticStyles.gap8}>
           <Text style={styles.label}>საერთო ფოტოები</Text>
           {hasPhotos ? (
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ gap: 10, paddingVertical: 4 }}
+              contentContainerStyle={[staticStyles.gap10, staticStyles.padV8]}
             >
               {photos.map(p => (
                 <Pressable key={p.id} onPress={() => setPreviewPhoto(p)} style={styles.photoTile} {...a11y('ფოტოს ნახვა', 'შეეხეთ ფოტოს დიდად სანახავად', 'button')}>
@@ -2399,6 +2397,30 @@ const staticStyles = StyleSheet.create({
   statusOptionText: { flex: 1, fontSize: 15, fontWeight: '600' },
   harnessColLabel: { flex: 1, fontSize: 13 },
   harnessChipRow: { flexDirection: 'row', gap: 6 },
+  gap8: { gap: 8 },
+  gap10: { gap: 10 },
+  gap14: { gap: 14 },
+  gap16: { gap: 16 },
+  gap18: { gap: 18 },
+  padTop16: { paddingTop: 16 },
+  padTop20: { paddingTop: 20 },
+  padV8: { paddingVertical: 8 },
+  padH16: { paddingHorizontal: 16 },
+  padB12: { paddingBottom: 12 },
+  padB16: { paddingBottom: 16 },
+  padB24: { paddingBottom: 24 },
+  flexRow: { flexDirection: 'row' },
+  flexRowCenter: { flexDirection: 'row', alignItems: 'center' },
+  center: { alignItems: 'center' },
+  centerGap14: { alignItems: 'center', gap: 14 },
+  centerPadV8Gap12: { alignItems: 'center', paddingVertical: 8, gap: 12 },
+  rowCenterGap10: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  rowBetweenPadH4: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 4 },
+  rowCenterGap12: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  mt24gap16: { marginTop: 24, gap: 16 },
+  mt12: { marginTop: 12 },
+  padH16gap8: { paddingHorizontal: 16, gap: 8 },
+  stepScrollContent: { padding: 20, paddingBottom: 12, gap: 16 },
 });
 
 const uploadPillStyles = StyleSheet.create({

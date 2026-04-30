@@ -412,7 +412,7 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
                     <View style={styles.handle} />
                   </View>
                   {renderBody()}
-                  <View style={{ height: insets.bottom + 8, backgroundColor: '#FFFFFF' }} />
+                  <View style={[staticStyles.sheetSpacer, { height: insets.bottom + 8 }]} />
                 </View>
               </GestureDetector>
             </Animated.View>
@@ -454,6 +454,10 @@ export function BottomSheetScrollView({
     </GestureDetector>
   );
 }
+
+const staticStyles = StyleSheet.create({
+  sheetSpacer: { backgroundColor: '#FFFFFF' },
+});
 
 const createStyles = (colors: any) => StyleSheet.create({
   backdrop: {

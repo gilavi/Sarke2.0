@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dimensions,
   Keyboard,
@@ -13,14 +13,12 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated from 'react-native-reanimated';
-import { BlurView } from 'expo-blur';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSession } from '../../lib/session';
-import { PressableScale } from '../../components/animations/PressableScale';
 import { ProjectAvatar } from '../../components/ProjectAvatar';
 import { pickProjectLogo } from '../../lib/projectLogo';
 import {
@@ -46,6 +44,24 @@ import { useToast } from '../../lib/toast';
 import { haptic } from '../../lib/haptics';
 import { useTranslation } from 'react-i18next';
 import type { Inspection, Project, Qualification, Template } from '../../types/models';
+
+const staticStyles = StyleSheet.create({
+  scrollContent: { paddingBottom: 100 },
+  projectRowWrap: { flexDirection: 'row', paddingHorizontal: 20, paddingTop: 10, gap: 12 },
+  emptyProjectWrap: { paddingHorizontal: 20, marginTop: 10 },
+  sectionHeaderMargin: { marginTop: 28 },
+  recentListMargin: { marginTop: 8 },
+  flex: { flex: 1 },
+  bannerTitleRow: { flexDirection: 'row', alignItems: 'baseline' },
+  backButtonMargin: { marginRight: 10 },
+  formContent: { paddingTop: 4, paddingBottom: 8, gap: 16 },
+  logoWrap: { alignItems: 'center', gap: 8, marginBottom: 4 },
+  mapPreview: { height: 120, borderRadius: 12, overflow: 'hidden' },
+  gap8: { gap: 8 },
+  mapWrap: { flex: 1, marginHorizontal: 16 },
+  cancelButton: { alignSelf: 'center', paddingVertical: 8 },
+  recentSkeletonMeta: { flex: 1, gap: 6 },
+});
 
 export default function HomeScreen() {
   const { theme } = useTheme();
@@ -164,7 +180,7 @@ export default function HomeScreen() {
     setRefreshing(false);
   }, [load]);
 
-  const templateName = (id: string) => templates.find((tpl) => tpl.id === id)?.name ?? t('common.inspection');
+  const templateName = useCallback((id: string) => templates.find((tpl) => tpl.id === id)?.name ?? t('common.inspection'), [templates, t]);
 
   const insets = useSafeAreaInsets();
   const HEADER_HERO_BODY = 96;   // visible hero content height below status bar
@@ -193,7 +209,7 @@ export default function HomeScreen() {
           area; content is offset by insets.top so it never crashes into the clock. */}
       <Animated.View style={[styles.scrollHeader, containerStyle]} pointerEvents="box-none">
         <Animated.View style={[StyleSheet.absoluteFillObject, backdropStyle]} pointerEvents="none">
-          <BlurView intensity={32} tint="light" style={StyleSheet.absoluteFillObject} />
+          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(255,255,255,0.92)' }]} />
           <View style={styles.scrollHeaderHairline} />
         </Animated.View>
         <Animated.View
@@ -215,9 +231,9 @@ export default function HomeScreen() {
 
       <Animated.ScrollView
         onScroll={scrollHandler}
-        scrollEventThrottle={16}
+        scrollEventThrottle={32}
         contentInsetAdjustmentBehavior="never"
-        contentContainerStyle={{ paddingTop: HEADER_FULL + 8, paddingBottom: 100 }}
+        contentContainerStyle={[staticStyles.scrollContent, { paddingTop: HEADER_FULL + 8 }]}
       >
         {/* ───────── FETCH ERROR BANNER ───────── */}
         {loaded && loadError ? (
@@ -235,7 +251,7 @@ export default function HomeScreen() {
                 <View style={styles.resumeIcon}>
                   <Ionicons name="pencil" size={16} color={theme.colors.warn} />
                 </View>
-                <View style={{ flex: 1 }}>
+                <View style={staticStyles.flex}>
                   <Text style={styles.resumeEyebrow}>{t('home.resumeDraft')}</Text>
                   <Text style={styles.resumeTitle} numberOfLines={1}>
                     {templateName(latestDraft.template_id)}
@@ -257,12 +273,14 @@ export default function HomeScreen() {
               <View style={styles.bannerIcon}>
                 <Ionicons name={certs.length === 0 ? 'cloud-upload-outline' : 'warning'} size={18} color={theme.colors.warn} />
               </View>
-              <View style={{ flex: 1 }}>
+              <View style={staticStyles.flex}>
                 {certs.length === 0 ? (
                   <Text style={styles.bannerTitle}>{t('home.uploadCertificates')}</Text>
                 ) : (
-                  <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+                  <View style={staticStyles.bannerTitleRow}>
+                  {expiringCount > 0 && (
                     <NumberPop value={expiringCount} style={styles.bannerTitle} />
+                  )}
                     <Text style={styles.bannerTitle}> {t('home.certExpiringSuffix')}</Text>
                   </View>
                 )}
@@ -284,7 +302,7 @@ export default function HomeScreen() {
         </View>
 
         {!loaded && projects.length === 0 ? (
-          <View style={{ flexDirection: 'row', paddingHorizontal: HPAD, paddingTop: 10, gap: GAP }}>
+          <View style={staticStyles.projectRowWrap}>
             {Array.from({ length: 2 }).map((_, i) => (
               <View key={`skeleton-${i}`} style={[styles.projectCard, { width: (screenWidth - HPAD * 2 - GAP) / 2, gap: 10 }]}>
                 <Skeleton width={48} height={48} radius={12} />
@@ -296,7 +314,7 @@ export default function HomeScreen() {
         ) : projects.length === 0 ? (
           <Pressable
             onPress={() => setPickerVisible(true)}
-            style={{ paddingHorizontal: HPAD, marginTop: 10 }}
+            style={staticStyles.emptyProjectWrap}
             {...a11y('პროექტის შექმნა', 'შეეხეთ ახალი პროექტის შესაქმნელად', 'button')}
           >
             <View style={styles.emptyProjects}>
@@ -311,6 +329,7 @@ export default function HomeScreen() {
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
+            directionalLockEnabled
             contentContainerStyle={{ paddingHorizontal: HPAD, paddingTop: 10, paddingBottom: 4, gap: GAP }}
           >
             {projects.slice(0, 8).map(p => (
@@ -337,7 +356,7 @@ export default function HomeScreen() {
             </Pressable>
           </ScrollView>
         ) : (
-          <View style={{ flexDirection: 'row', paddingHorizontal: HPAD, paddingTop: 10, gap: GAP }}>
+          <View style={staticStyles.projectRowWrap}>
             {projects.slice(0, 20).map(p => (
               <ProjectCard
                 key={p.id}
@@ -352,10 +371,10 @@ export default function HomeScreen() {
         {/* ───────── RECENT ACTIVITY ───────── */}
         {!loaded && recent.length === 0 ? (
           <>
-            <View style={[styles.sectionHeaderRow, { marginTop: 28 }]}>
+            <View style={[styles.sectionHeaderRow, staticStyles.sectionHeaderMargin]}>
               <Text style={styles.sectionHeader}>{t('home.recentActs')}</Text>
             </View>
-            <View style={[styles.recentList, { marginTop: 8 }]}>
+            <View style={[styles.recentList, staticStyles.recentListMargin]}>
               {Array.from({ length: 3 }).map((_, i) => (
                 <View
                   key={`skeleton-${i}`}
@@ -365,7 +384,7 @@ export default function HomeScreen() {
                   ]}
                 >
                   <Skeleton width={30} height={30} radius={15} />
-                  <View style={{ flex: 1, gap: 6 }}>
+                  <View style={staticStyles.recentSkeletonMeta}>
                     <Skeleton width={'70%'} height={14} />
                     <Skeleton width={'35%'} height={11} />
                   </View>
@@ -375,13 +394,13 @@ export default function HomeScreen() {
           </>
         ) : recent.length > 0 ? (
           <>
-            <View style={[styles.sectionHeaderRow, { marginTop: 28 }]}>
+            <View style={[styles.sectionHeaderRow, staticStyles.sectionHeaderMargin]}>
               <Text style={styles.sectionHeader}>{t('home.recentActs')}</Text>
               <Pressable onPress={() => router.push('/history' as any)} hitSlop={8} {...a11y('ყველა აქტივობის ნახვა', 'შეეხეთ ისტორიის სანახავად', 'button')}>
                 <Text style={styles.sectionLink}>ყველა</Text>
               </Pressable>
             </View>
-            <View style={[styles.recentList, { marginTop: 8 }]}>
+            <View style={[styles.recentList, staticStyles.recentListMargin]}>
               {recent.slice(0, 4).map((q, i) => (
                 <Pressable
                   key={q.id}
@@ -412,7 +431,7 @@ export default function HomeScreen() {
                       color={q.status === 'completed' ? theme.colors.harnessTint : theme.colors.warn}
                     />
                   </View>
-                  <View style={{ flex: 1 }}>
+                  <View style={staticStyles.flex}>
                     <Text style={styles.recentTitle} numberOfLines={1}>
                       {templateName(q.template_id)}
                     </Text>
@@ -426,12 +445,12 @@ export default function HomeScreen() {
         ) : null}
 
         {/* ───────── TIP OF THE DAY ───────── */}
-        <View style={[styles.sectionWrap, { marginTop: 28 }]}>
+        <View style={[styles.sectionWrap, staticStyles.sectionHeaderMargin]}>
           <View style={styles.tipCard}>
             <View style={styles.tipIcon}>
               <Ionicons name="shield-checkmark" size={20} color={theme.colors.accent} />
             </View>
-            <View style={{ flex: 1 }}>
+            <View style={staticStyles.flex}>
               <Text style={styles.tipLabel}>რჩევა დღისთვის</Text>
               <Text style={styles.tipBody}>{tip}</Text>
             </View>
@@ -681,7 +700,7 @@ function ProjectPickerSheet({
                         style={pickerStyles.projectRow}
                       >
                         <ProjectAvatar project={p} size={44} />
-                        <View style={{ flex: 1 }}>
+                        <View style={staticStyles.flex}>
                           <Text style={pickerStyles.rowName} numberOfLines={1}>{p.name}</Text>
                           {p.company_name ? (
                             <Text style={pickerStyles.rowSub} numberOfLines={1}>{p.company_name}</Text>
@@ -697,10 +716,10 @@ function ProjectPickerSheet({
               <>
                 {/* Template picker header with back button */}
                 <View style={pickerStyles.sheetHeader}>
-                  <Pressable onPress={() => setView('list')} hitSlop={10} style={{ marginRight: 10 }}>
+                  <Pressable onPress={() => setView('list')} hitSlop={10} style={staticStyles.backButtonMargin}>
                     <Ionicons name="arrow-back" size={22} color={theme.colors.accent} />
                   </Pressable>
-                  <Text style={[pickerStyles.sheetTitle, { flex: 1 }]}>{t('home.chooseTemplate')}</Text>
+                  <Text style={[pickerStyles.sheetTitle, staticStyles.flex]}>{t('home.chooseTemplate')}</Text>
                   <Pressable onPress={onClose} hitSlop={10}>
                     <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
                   </Pressable>
@@ -719,7 +738,7 @@ function ProjectPickerSheet({
                       <View style={[pickerStyles.avatarBubble, { backgroundColor: theme.colors.accentSoft }]}>
                         <Ionicons name="document-text" size={22} color={theme.colors.accent} />
                       </View>
-                      <View style={{ flex: 1 }}>
+                      <View style={staticStyles.flex}>
                         <Text style={pickerStyles.rowName} numberOfLines={2}>{tpl.name}</Text>
                       </View>
                       <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
@@ -731,10 +750,10 @@ function ProjectPickerSheet({
               <>
                 {/* New project form header with back button */}
                 <View style={pickerStyles.sheetHeader}>
-                  <Pressable onPress={() => setView('list')} hitSlop={10} style={{ marginRight: 10 }}>
+                  <Pressable onPress={() => setView('list')} hitSlop={10} style={staticStyles.backButtonMargin}>
                     <Ionicons name="arrow-back" size={22} color={theme.colors.accent} />
                   </Pressable>
-                  <Text style={[pickerStyles.sheetTitle, { flex: 1 }]}>{t('home.newProjectFormTitle')}</Text>
+                  <Text style={[pickerStyles.sheetTitle, staticStyles.flex]}>{t('home.newProjectFormTitle')}</Text>
                   <Pressable onPress={onClose} hitSlop={10}>
                     <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
                   </Pressable>
@@ -744,10 +763,10 @@ function ProjectPickerSheet({
                 <KeyboardAwareScrollView
                   keyboardShouldPersistTaps="handled"
                   showsVerticalScrollIndicator={false}
-                  contentContainerStyle={{ paddingTop: 4, paddingBottom: 8, gap: 16 }}
+                  contentContainerStyle={staticStyles.formContent}
                   style={{ maxHeight: '78%' }}
                 >
-                  <View style={{ alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                  <View style={staticStyles.logoWrap}>
                     <ProjectAvatar
                       project={{ name: name || '—', logo }}
                       size={88}
@@ -830,7 +849,7 @@ function ProjectPickerSheet({
 
 // ──────────── PROJECT CARD ────────────
 
-function ProjectCard({
+const ProjectCard = memo(function ProjectCard({
   project,
   width,
   onPress,
@@ -843,10 +862,8 @@ function ProjectCard({
   const styles = useMemo(() => getstyles(theme), [theme]);
 
   return (
-    <PressableScale
+    <Pressable
       onPress={onPress}
-      hapticOnPress="navigate"
-      scaleTo={0.97}
       {...a11y(
         `პროექტი: ${project.name}${project.company_name ? ', ' + project.company_name : ''}`,
         'შეეხეთ პროექტის დეტალების სანახავად',
@@ -860,9 +877,9 @@ function ProjectCard({
           <Text style={styles.projectSub} numberOfLines={1}>{project.company_name}</Text>
         ) : null}
       </View>
-    </PressableScale>
+    </Pressable>
   );
-}
+}, (prev, next) => prev.project.id === next.project.id && prev.width === next.width);
 
 // ──────────── HELPERS ────────────
 
@@ -949,12 +966,12 @@ function LocationRow({
 
   return (
     <Pressable onPress={onPress}>
-      <View style={{ gap: 8 }}>
+      <View style={staticStyles.gap8}>
         <MapPreview
           latitude={pin.latitude}
           longitude={pin.longitude}
           pinColor={theme.colors.accent}
-          style={{ height: 120, borderRadius: 12, overflow: 'hidden' }}
+          style={staticStyles.mapPreview}
         />
         {address ? (
           <Text style={{ fontSize: 13, color: theme.colors.inkSoft }} numberOfLines={2}>
@@ -995,9 +1012,9 @@ function MapPickerInline({
   }, [initialPin, initialAddress]);
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={staticStyles.flex}>
       {/* Map with modest horizontal inset */}
-      <View style={{ flex: 1, marginHorizontal: 16 }}>
+      <View style={staticStyles.mapWrap}>
         <MapPicker
           value={pin}
           onChange={setPin}
@@ -1030,7 +1047,7 @@ function MapPickerInline({
           onPress={() => onConfirm(pin, address)}
           disabled={!pin}
         />
-        <Pressable onPress={onCancel} style={{ alignSelf: 'center', paddingVertical: 8 }}>
+        <Pressable onPress={onCancel} style={staticStyles.cancelButton}>
           <Text style={{ fontSize: 15, fontWeight: '600', color: theme.colors.inkSoft }}>
             გაუქმება
           </Text>

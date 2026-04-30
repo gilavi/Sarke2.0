@@ -277,12 +277,12 @@ export const darkTheme = {
     // ── Dark mode semantic colors ──
     semantic: {
       success: semantic.success,
-      successSoft: '#1A3A2A',
       warning: semantic.warning,
-      warningSoft: '#3F2E0F',
       danger: semantic.danger,
-      dangerSoft: '#3A1F1F',
       info: semantic.info,
+      successSoft: '#1A3A2A',
+      warningSoft: '#3F2E0F',
+      dangerSoft: '#3A1F1F',
       infoSoft: '#1A2E3A',
     },
     // Backward compat keys in dark mode

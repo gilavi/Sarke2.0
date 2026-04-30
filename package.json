@@ -1,6 +1,15 @@
 {
   "name": "sarke2",
   "version": "1.0.0",
+  "reanimated": {
+    "staticFeatureFlags": {
+      "DISABLE_COMMIT_PAUSING_MECHANISM": true,
+      "USE_COMMIT_HOOK_ONLY_FOR_REACT_COMMITS": true,
+      "IOS_SYNCHRONOUSLY_UPDATE_UI_PROPS": true,
+      "USE_SYNCHRONOUSLY_UPDATE_UI_PROPS": true,
+      "FORCE_REACT_RENDER_FOR_SETTLED_ANIMATIONS": true
+    }
+  },
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",

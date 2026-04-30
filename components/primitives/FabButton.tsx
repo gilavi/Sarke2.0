@@ -42,7 +42,7 @@ export const FabButton = React.forwardRef<View, FabButtonProps>(function FabButt
       withTiming(0.92, { duration: 80 }),
       withSpring(1, { stiffness: 300, damping: 10 }),
     );
-  }, [scale]);
+  }, []);
 
   return (
     <Pressable

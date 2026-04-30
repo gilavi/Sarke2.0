@@ -22,7 +22,7 @@ const persister = createAsyncStoragePersister({
   // Throttle disk writes — react-query fires updates on every fetch, and
   // serializing the cache to AsyncStorage on every keystroke would be
   // wasteful. 1s coalesces bursts.
-  throttleTime: 1_000,
+  throttleTime: 5_000,
   key: 'sarke.rq.cache.v1',
 });
 

@@ -35,8 +35,13 @@ export function useScrollHeader({
 }: Options = {}) {
   const scrollY = useSharedValue(0);
 
+  let lastUpdate = 0;
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (e) => {
+      'worklet';
+      const now = Date.now();
+      if (now - lastUpdate < 16) return;
+      lastUpdate = now;
       scrollY.value = e.contentOffset.y;
     },
   });

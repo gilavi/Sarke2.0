@@ -35,11 +35,14 @@ export function PressableScale({
   }));
 
   const handlePressIn = (e: any) => {
+    if (rest.disabled) return;
     scale.value = withTiming(scaleTo, { duration: 80 });
+    if (hapticOnPress) haptic[hapticOnPress]();
     onPressIn?.(e);
   };
 
   const handlePressOut = (e: any) => {
+    if (rest.disabled) return;
     scale.value = withSpring(1, theme.motion.spring[springConfig]);
     onPressOut?.(e);
   };

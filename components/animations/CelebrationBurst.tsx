@@ -9,7 +9,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useAccessibilitySettings } from '../../lib/accessibility';
 
-const PARTICLE_COUNT = 50;
+const PARTICLE_COUNT = 20;
 const DURATION_MS = 1800;
 const DURATION_S = DURATION_MS / 1000;
 const GRAVITY = 1400;
