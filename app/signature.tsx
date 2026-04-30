@@ -95,7 +95,7 @@ export default function SignatureSettingsScreen() {
 
   return (
     <View style={styles.root}>
-      <Stack.Screen options={{ headerShown: false, presentation: 'transparentModal', animationEnabled: true }} />
+      <Stack.Screen options={{ headerShown: false, presentation: 'transparentModal' }} />
 
       {/* Backdrop — tap to dismiss */}
       <Pressable

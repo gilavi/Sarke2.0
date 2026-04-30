@@ -30,6 +30,7 @@ import { STORAGE_BUCKETS } from '../../lib/supabase';
 import {
   getStorageImageDisplayUrl,
   getStorageImageDataUrlStrict,
+  getStorageImageResizedDataUrl,
 } from '../../lib/imageUrl';
 import {
   answersApi,
@@ -329,7 +330,9 @@ export default function InspectionDetailScreen() {
                   return p;
                 }
                 try {
-                  const dataUrl = await getStorageImageDataUrlStrict(
+                  // Resize+cache pipeline — full-res iPhone JPEGs base64-inlined
+                  // produce a ~2 MB-per-photo HTML payload that WKWebView chokes on.
+                  const dataUrl = await getStorageImageResizedDataUrl(
                     STORAGE_BUCKETS.answerPhotos,
                     p.storage_path,
                   );

@@ -11,7 +11,7 @@ import { useSession } from '../../../lib/session';
 import { friendlyError } from '../../../lib/errorMap';
 import { projectsApi, reportsApi } from '../../../lib/services';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
-import { getStorageImageDataUrlStrict } from '../../../lib/imageUrl';
+import { getStorageImageResizedDataUrl } from '../../../lib/imageUrl';
 import { generateAndSharePdf } from '../../../lib/pdfOpen';
 import { buildReportPdfHtml } from '../../../lib/reportPdf';
 import type { Project, Report } from '../../../types/models';
@@ -63,7 +63,7 @@ export default function ReportSuccessScreen() {
           const path = s.annotated_image_path ?? s.image_path;
           if (!path) return [path, ''] as const;
           try {
-            const url = await getStorageImageDataUrlStrict(STORAGE_BUCKETS.reportPhotos, path);
+            const url = await getStorageImageResizedDataUrl(STORAGE_BUCKETS.reportPhotos, path);
             return [path, url] as const;
           } catch {
             return [path, ''] as const;

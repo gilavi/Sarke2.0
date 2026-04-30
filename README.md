@@ -179,9 +179,10 @@ supabase/             SQL incantations
 
 1. **Crash reporting**: Crashes are reported to Sentry (via `lib/crashReporting.ts`). To enable: set `EXPO_PUBLIC_SENTRY_DSN` in your `.env` or build config. In dev mode and without a DSN, crashes log to console instead. See [Sentry docs](https://docs.sentry.io/platforms/react-native/) to create a project and get a DSN.
 2. If you rotate your phone during signature capture, the canvas rotates but your sanity doesn't.
-3. The PDF export takes 3-5 business days (on a fast phone).
+3. PDF export of multi-photo reports is now ~10× faster after the resize+cache pipeline landed (2026-04-30) — but a 30-photo inspection still takes a beat.
 4. `npm install` downloads the entire internet. Twice.
-5. This README is 60% jokes, 40% cries for help.
+5. Offline photo capture is queued under `documentDirectory/offline-photos/` and flushes on reconnect; if the user uninstalls the app before reconnecting, the queue is gone with it.
+6. This README is 60% jokes, 40% cries for help.
 
 ---
 

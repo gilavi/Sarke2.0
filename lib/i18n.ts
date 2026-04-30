@@ -41,18 +41,4 @@ export async function saveLanguage(lang: 'ka' | 'en') {
   await i18n.changeLanguage(lang);
 }
 
-export async function loadStoredPdfLanguage(): Promise<'ka' | 'en'> {
-  try {
-    const stored = await AsyncStorage.getItem('pdf_language');
-    if (stored === 'en' || stored === 'ka') return stored;
-  } catch {
-    // ignore
-  }
-  return (i18n.language as 'ka' | 'en') ?? 'ka';
-}
-
-export async function savePdfLanguage(lang: 'ka' | 'en') {
-  await AsyncStorage.setItem('pdf_language', lang);
-}
-
 export default i18n;

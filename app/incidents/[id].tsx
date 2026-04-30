@@ -23,6 +23,7 @@ import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { buildIncidentPdfHtml } from '../../lib/incidentPdf';
 import {
   getStorageImageDataUrlStrict,
+  getStorageImageResizedDataUrl,
   getStorageImageDisplayUrl,
 } from '../../lib/imageUrl';
 import { shareStoredPdf } from '../../lib/sharePdf';
@@ -138,7 +139,7 @@ export default function IncidentDetail() {
       setPdfPhase('ფოტოები ემატება...');
       const photoDataUrls = await Promise.all(
         (incident.photos ?? []).map(p =>
-          getStorageImageDataUrlStrict(STORAGE_BUCKETS.incidentPhotos, p).catch(() => ''),
+          getStorageImageResizedDataUrl(STORAGE_BUCKETS.incidentPhotos, p).catch(() => ''),
         ),
       ).then(urls => urls.filter(Boolean));
 

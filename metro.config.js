@@ -34,13 +34,21 @@ config.transformer.getTransformOptions = async () => ({
   },
 });
 
-// Redirect react-native-maps to a no-op stub on web — the real package
-// imports native-only codegenNativeCommands which Metro can't bundle for web.
+// Redirect native-only modules to web stubs.
+// - react-native-maps: imports native-only codegenNativeCommands.
+// - react-native-keyboard-controller: registers worklet-backed event handlers
+//   via react-native-worklets, which throws on web (the JS worklets runtime
+//   can't serialize objects). The browser handles keyboard natively, so the
+//   stub is a no-op pass-through.
+const WEB_SHIMS = {
+  'react-native-maps': 'shims/react-native-maps.ts',
+  'react-native-keyboard-controller': 'shims/react-native-keyboard-controller.tsx',
+};
 const _resolveRequest = config.resolver.resolveRequest;
 config.resolver.resolveRequest = (context, moduleName, platform) => {
-  if (platform === 'web' && moduleName === 'react-native-maps') {
+  if (platform === 'web' && WEB_SHIMS[moduleName]) {
     return {
-      filePath: path.resolve(__dirname, 'shims/react-native-maps.ts'),
+      filePath: path.resolve(__dirname, WEB_SHIMS[moduleName]),
       type: 'sourceFile',
     };
   }

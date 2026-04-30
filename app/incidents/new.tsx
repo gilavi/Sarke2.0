@@ -26,6 +26,7 @@ import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { buildIncidentPdfHtml } from '../../lib/incidentPdf';
 import {
   getStorageImageDataUrlStrict,
+  getStorageImageResizedDataUrl,
   getStorageImageDisplayUrl,
 } from '../../lib/imageUrl';
 import { friendlyError } from '../../lib/errorMap';
@@ -319,7 +320,7 @@ export default function NewIncident() {
       // embedding an unreachable signed URL fallback).
       const photoDataUrls = await Promise.all(
         photoPaths.map(p =>
-          getStorageImageDataUrlStrict(STORAGE_BUCKETS.incidentPhotos, p).catch(
+          getStorageImageResizedDataUrl(STORAGE_BUCKETS.incidentPhotos, p).catch(
             () => '',
           ),
         ),

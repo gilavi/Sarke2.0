@@ -1,5 +1,6 @@
 import NetInfo from '@react-native-community/netinfo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system/legacy';
 import React, {
   createContext,
   useCallback,
@@ -10,8 +11,9 @@ import React, {
   useState,
 } from 'react';
 import { supabase } from './supabase';
+import { storageApi } from './services';
 import { logError } from './logError';
-import type { Answer, Inspection } from '../types/models';
+import type { Answer, AnswerPhoto, Inspection } from '../types/models';
 
 type AnswerUpsertPayload = Partial<Answer> & {
   id: string;
@@ -23,13 +25,31 @@ type AnswerUpsertPayload = Partial<Answer> & {
 // targets the `inspections` table. See enqueueQuestionnaireUpdate JSDoc.
 type QuestionnaireUpdatePayload = Partial<Inspection> & { id: string };
 
+// Photo upload op. We stage the local file under a queue-owned cache dir so
+// the original picker URI (which the OS may evict) doesn't have to survive
+// app restarts. On flush: upload local file → storage, then insert the
+// answer_photos row, then delete the staged file.
+type PhotoUploadPayload = {
+  /** Stable local file URI inside our queue cache dir. */
+  localUri: string;
+  bucket: string;
+  /** Target path inside the bucket. */
+  path: string;
+  contentType: string;
+  answerId: string;
+  inspectionId: string;
+  caption: string | null;
+};
+
 type QueueOp =
   | { kind: 'answer_upsert'; payload: AnswerUpsertPayload; attempts?: number }
-  | { kind: 'questionnaire_update'; payload: QuestionnaireUpdatePayload; attempts?: number };
+  | { kind: 'questionnaire_update'; payload: QuestionnaireUpdatePayload; attempts?: number }
+  | { kind: 'photo_upload'; payload: PhotoUploadPayload; attempts?: number };
 
 const QUEUE_KEY = '@offline:queue';
 const answersKey = (qid: string) => `@offline:answers:${qid}`;
 const questionnaireKey = (qid: string) => `@offline:questionnaire:${qid}`;
+const PHOTO_STAGE_DIR_NAME = 'offline-photos';
 
 // Fields the server owns. Persisting them locally and merging back on reload
 // would re-apply a queued completion and trigger the wizard↔detail redirect loop.
@@ -57,6 +77,20 @@ type OfflineContextValue = {
   pendingCount: number;
   enqueueAnswerUpsert: (payload: AnswerUpsertPayload) => Promise<void>;
   enqueueQuestionnaireUpdate: (payload: QuestionnaireUpdatePayload) => Promise<void>;
+  /**
+   * Stage `sourceUri` into our cache dir and queue an upload + answer_photos
+   * insert. Returns a pseudo `AnswerPhoto` so the UI can render the photo
+   * immediately from the local file while the queue catches up.
+   */
+  enqueuePhotoUpload: (args: {
+    sourceUri: string;
+    bucket: string;
+    path: string;
+    contentType: string;
+    answerId: string;
+    inspectionId: string;
+    caption?: string | null;
+  }) => Promise<AnswerPhoto>;
   hydrateAnswers: (qid: string) => Promise<Record<string, Answer>>;
   cacheAnswers: (qid: string, answers: Record<string, Answer>) => Promise<void>;
   hydrateQuestionnairePatch: (qid: string) => Promise<Partial<Inspection> | null>;
@@ -86,6 +120,46 @@ async function readQueue(): Promise<QueueOp[]> {
 
 async function writeQueueRaw(ops: QueueOp[]): Promise<void> {
   await AsyncStorage.setItem(QUEUE_KEY, JSON.stringify(ops));
+}
+
+let photoStageDirEnsured: Promise<string | null> | null = null;
+function ensurePhotoStageDir(): Promise<string | null> {
+  if (photoStageDirEnsured) return photoStageDirEnsured;
+  photoStageDirEnsured = (async () => {
+    const base = FileSystem.documentDirectory ?? FileSystem.cacheDirectory;
+    if (!base) return null;
+    const dir = `${base}${PHOTO_STAGE_DIR_NAME}/`;
+    try {
+      const info = await FileSystem.getInfoAsync(dir);
+      if (!info.exists) {
+        await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
+      }
+      return dir;
+    } catch {
+      return null;
+    }
+  })();
+  return photoStageDirEnsured;
+}
+
+async function stagePhoto(sourceUri: string, ext: string): Promise<string> {
+  const dir = await ensurePhotoStageDir();
+  if (!dir) return sourceUri; // best-effort — fall back to original URI
+  const stamped = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const dest = `${dir}${stamped}`;
+  try {
+    await FileSystem.copyAsync({ from: sourceUri, to: dest });
+    return dest;
+  } catch {
+    return sourceUri;
+  }
+}
+
+function inferExt(path: string, contentType: string): string {
+  const fromPath = path.split('?')[0]?.split('.').pop() ?? '';
+  if (fromPath && fromPath.length <= 5) return fromPath.toLowerCase();
+  const mime = contentType.split('/')[1] ?? 'jpg';
+  return mime === 'jpeg' ? 'jpg' : mime;
 }
 
 export function OfflineProvider({ children }: { children: React.ReactNode }) {
@@ -127,13 +201,25 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
               .from('answers')
               .upsert(op.payload, { onConflict: 'inspection_id,question_id' });
             if (error) throw error;
-          } else {
+          } else if (op.kind === 'questionnaire_update') {
             const { id, ...rest } = op.payload;
             const { error } = await supabase
               .from('inspections')
               .update(rest)
               .eq('id', id);
             if (error) throw error;
+          } else {
+            // photo_upload — upload local file, insert answer_photos row, then
+            // delete the staged file. Retry-safe: storageApi.uploadFromUri is
+            // upsert and the row insert is idempotent on (answer_id, storage_path)
+            // for our caller's usage pattern (one path per capture).
+            const { localUri, bucket, path, contentType, answerId, caption } = op.payload;
+            await storageApi.uploadFromUri(bucket, path, localUri, contentType);
+            const { error } = await supabase
+              .from('answer_photos')
+              .insert({ answer_id: answerId, storage_path: path, caption: caption ?? null });
+            if (error) throw error;
+            FileSystem.deleteAsync(localUri, { idempotent: true }).catch(() => undefined);
           }
           ops = ops.slice(1);
           await setQueue(ops);
@@ -236,6 +322,42 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
     [flush, setQueue, runExclusive],
   );
 
+  const enqueuePhotoUpload = useCallback<OfflineContextValue['enqueuePhotoUpload']>(
+    async ({ sourceUri, bucket, path, contentType, answerId, inspectionId, caption }) => {
+      const ext = inferExt(path, contentType);
+      const localUri = await stagePhoto(sourceUri, ext);
+      await runExclusive(async () => {
+        const ops = await readQueue();
+        ops.push({
+          kind: 'photo_upload',
+          payload: {
+            localUri,
+            bucket,
+            path,
+            contentType,
+            answerId,
+            inspectionId,
+            caption: caption ?? null,
+          },
+        });
+        await setQueue(ops);
+      });
+      if (onlineRef.current) void flush();
+      // Optimistic record so the UI can render the photo from the local file
+      // immediately. Once the queue flushes the server-issued row will replace
+      // it on the next reload.
+      const optimistic: AnswerPhoto = {
+        id: `pending:${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        answer_id: answerId,
+        storage_path: localUri,
+        caption: caption ?? null,
+        created_at: new Date().toISOString(),
+      };
+      return optimistic;
+    },
+    [flush, setQueue, runExclusive],
+  );
+
   const hydrateAnswers = useCallback<OfflineContextValue['hydrateAnswers']>(async (qid) => {
     const raw = await AsyncStorage.getItem(answersKey(qid));
     if (!raw) return {};
@@ -291,6 +413,7 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
       pendingCount,
       enqueueAnswerUpsert,
       enqueueQuestionnaireUpdate,
+      enqueuePhotoUpload,
       hydrateAnswers,
       cacheAnswers,
       hydrateQuestionnairePatch,
@@ -303,6 +426,7 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
       pendingCount,
       enqueueAnswerUpsert,
       enqueueQuestionnaireUpdate,
+      enqueuePhotoUpload,
       hydrateAnswers,
       cacheAnswers,
       hydrateQuestionnairePatch,

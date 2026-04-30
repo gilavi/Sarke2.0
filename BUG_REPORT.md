@@ -109,3 +109,41 @@ Metro's compatibility warning still stands: `expo-haptics@55.0.14 - expected ver
 
 - [app/incidents/new.tsx](app/incidents/new.tsx), [app/incidents/[id].tsx](app/incidents/[id].tsx), [app/inspections/[id].tsx](app/inspections/[id].tsx) — switched PDF-bound image fetches to the strict variant.
 - [app/briefings/[id]/sign.tsx](app/briefings/[id]/sign.tsx) — cancel briefing fetch on unmount.
+
+## P0 — Offline photo capture silently dropped · resolved 2026-04-30
+
+**Repro:** Inspection wizard, no/intermittent network, take a photo on any photo-eligible question.
+
+**Symptom:** Toast says "ფოტოს ასატვირთად საჭიროა ინტერნეტი" and the photo is gone. No queue, no local save. PDF rendered later is missing those photos with no recovery path.
+
+**Root cause:** [app/inspections/[id]/wizard.tsx](app/inspections/[id]/wizard.tsx) `doUpload()` early-returned when `!offline.isOnline`. The offline queue handled answer/inspection upserts but had no photo op kind, so photos couldn't be deferred.
+
+**Fix:** Added `photo_upload` queue op in [lib/offline.tsx](lib/offline.tsx). On enqueue we copy the picker's URI into a stable cache dir under `documentDirectory/offline-photos/` so OS eviction can't lose it. The flush worker uploads via `storageApi.uploadFromUri`, inserts the `answer_photos` row, then deletes the staged file. The wizard's `doUpload` now branches: online → live path; offline → enqueue + optimistic local-file thumbnail. Toast text updated to "ფოტო შენახულია — აიტვირთება ქსელის დაბრუნებისას".
+
+## P1 — PDF photos bloated HTML payload (WKWebView freezes) · resolved 2026-04-30
+
+**Repro:** Generate an inspection / incident / report PDF with 4+ photos.
+
+**Symptom:** PDF generation hung 10–30s on the JS thread; on report-heavy projects WKWebView would freeze or OOM mid-render.
+
+**Root cause:** [lib/imageUrl.ts](lib/imageUrl.ts) ships `getStorageImageResizedDataUrl` (1200px / JPEG 0.7 + on-disk cache, ~10× smaller payload), but only `app/certificates/new.tsx` called it. Inspections, incidents, and reports still inlined full-resolution iPhone JPEGs (~2 MB of base64 each).
+
+**Fix:** Switched photo embeds to the resized helper in [app/inspections/[id].tsx](app/inspections/[id].tsx), [app/incidents/new.tsx](app/incidents/new.tsx), [app/incidents/[id].tsx](app/incidents/[id].tsx), [app/reports/[id].tsx](app/reports/[id].tsx), [app/reports/[id]/success.tsx](app/reports/[id]/success.tsx). Signatures stay on `getStorageImageDataUrlStrict` — they're already small PNGs and need byte-exact rendering.
+
+## P3 — Duplicate `pdf_language` AsyncStorage writers · resolved 2026-04-30
+
+**Root cause:** Both [lib/i18n.ts](lib/i18n.ts) and [lib/pdfLanguagePref.ts](lib/pdfLanguagePref.ts) exported `savePdfLanguage` writing the same key. Only the `pdfLanguagePref` variants were imported anywhere; the i18n.ts copies were dead code with divergence risk.
+
+**Fix:** Removed `loadStoredPdfLanguage` and `savePdfLanguage` from [lib/i18n.ts](lib/i18n.ts). `pdfLanguagePref.ts` is now the sole owner of the `pdf_language` key.
+
+## P3 — `app/signature.tsx` invalid Stack option · resolved 2026-04-30
+
+`animationEnabled` is not a valid `Stack.Screen` option in expo-router v6. Removed it; the screen's modal animation is set on the root Stack via `animation: 'fade'`. Closes the only `npm run typecheck` error.
+
+## Files changed (2026-04-30)
+
+- [lib/offline.tsx](lib/offline.tsx) — added `photo_upload` op kind, `enqueuePhotoUpload`, staging dir.
+- [app/inspections/[id]/wizard.tsx](app/inspections/[id]/wizard.tsx) — `doUpload` enqueues offline instead of dropping.
+- [app/inspections/[id].tsx](app/inspections/[id].tsx), [app/incidents/new.tsx](app/incidents/new.tsx), [app/incidents/[id].tsx](app/incidents/[id].tsx), [app/reports/[id].tsx](app/reports/[id].tsx), [app/reports/[id]/success.tsx](app/reports/[id]/success.tsx) — switched photo embeds to `getStorageImageResizedDataUrl`.
+- [lib/i18n.ts](lib/i18n.ts) — removed duplicate `pdf_language` accessors.
+- [app/signature.tsx](app/signature.tsx) — drop invalid `animationEnabled` Stack option.
