@@ -2,7 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Animated, InputAccessoryView, Keyboard, Modal, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { Image } from 'expo-image';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
@@ -831,10 +831,10 @@ export default function QuestionnaireWizard() {
           onClose={() => router.back()}
         />
         <GestureDetector gesture={swipeBack}>
-        <KeyboardAwareScrollView
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={{ flex: 1 }}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="interactive"
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
         >
           <WizardStepTransition stepKey={stepIndex} direction={stepDirection} animate={animateSteps}>
             {step.kind === 'kamariCount' ? (
@@ -1023,7 +1023,7 @@ export default function QuestionnaireWizard() {
             </View>
           </View>
         </Modal>
-        </KeyboardAwareScrollView>
+        </KeyboardAvoidingView>
         </GestureDetector>
       </Animated.View>
     </Screen>
