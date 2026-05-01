@@ -18,7 +18,7 @@ import {
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { Ionicons } from '@expo/vector-icons';
 import { A11yText as Text } from './primitives/A11yText';
-import { useTheme } from '../lib/theme';
+import { useTheme, type Theme } from '../lib/theme';
 import { a11y } from '../lib/accessibility';
 
 export interface SheetLayoutProps {
@@ -74,7 +74,7 @@ export function SheetLayout({
     <View style={[styles.container, { maxHeight: screenH * maxHeightRatio, backgroundColor: theme.colors.surface }, style]}>
       {showHandle ? (
         <View style={styles.handleBar}>
-          <View style={[styles.handle, { backgroundColor: theme.colors.hairline }]} />
+          <View style={[styles.handle, { backgroundColor: theme.colors.border }]} />
         </View>
       ) : null}
 
@@ -104,7 +104,7 @@ export function SheetLayout({
   );
 }
 
-function renderHeader(header: SheetLayoutProps['header'], theme: any) {
+function renderHeader(header: SheetLayoutProps['header'], theme: Theme) {
   if (!header) return null;
   if (typeof header === 'object' && header !== null && 'title' in header) {
     const { title, onClose } = header;

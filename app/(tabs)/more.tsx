@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -24,7 +24,7 @@ import {
   useTemplates,
 } from '../../lib/apiHooks';
 import { useToast } from '../../lib/toast';
-import { useTheme } from '../../lib/theme';
+import { useTheme, type Theme } from '../../lib/theme';
 import { useBottomSheet } from '../../components/BottomSheet';
 
 import { a11y } from '../../lib/accessibility';
@@ -43,6 +43,7 @@ export default function MoreScreen() {
   const toast = useToast();
   const showActionSheet = useBottomSheet();
   const [signingOut, setSigningOut] = useState(false);
+  const signingOutGuard = useRef(false);
   const countsQ = useInspectionCounts();
   const certsQ = useQualifications();
   const templatesQ = useTemplates();
@@ -72,18 +73,22 @@ export default function MoreScreen() {
   };
 
   const handleLogout = () => {
+    if (signingOutGuard.current || signingOut) return;
     Alert.alert(t('more.signOutConfirmTitle'), t('more.signOutConfirmBody'), [
-      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.cancel'), style: 'cancel', onPress: () => { signingOutGuard.current = false; } },
       {
         text: t('more.signOut'),
         style: 'destructive',
         onPress: async () => {
+          if (signingOutGuard.current) return;
+          signingOutGuard.current = true;
           setSigningOut(true);
           try {
             await signOut();
             await AsyncStorage.removeItem('@auth:email').catch(() => {});
             toast.success(t('notifications.signedOut'));
           } catch (e) {
+            signingOutGuard.current = false;
             setSigningOut(false);
             toast.error(t('notifications.signOutFailed'));
           }
@@ -167,12 +172,12 @@ export default function MoreScreen() {
         </View>
 
         {/* Settings */}
-        <View style={[styles.settingsCard, { marginHorizontal: 16 }]}>
+        <Card style={[styles.settingsCard, { marginHorizontal: 16 }]}>
           <Text style={styles.settingsHeader}>{t('more.settings')}</Text>
 
           <View style={styles.settingsRow}>
             <Ionicons name="moon-outline" size={18} color={theme.colors.inkSoft} />
-            <Text style={{ flex: 1, fontSize: 15, fontWeight: '500', color: theme.colors.ink }}>{t('more.darkMode')}</Text>
+            <Text style={styles.settingsLabel}>{t('more.darkMode')}</Text>
             <Switch
               value={isDark}
               onValueChange={onToggleDark}
@@ -184,7 +189,7 @@ export default function MoreScreen() {
 
           <Pressable onPress={openLanguagePicker} style={styles.settingsRow} {...a11y(t('more.language'), undefined, 'button')}>
             <Ionicons name="language-outline" size={18} color={theme.colors.inkSoft} />
-            <Text style={{ flex: 1, fontSize: 15, fontWeight: '500', color: theme.colors.ink }}>{t('more.language')}</Text>
+            <Text style={styles.settingsLabel}>{t('more.language')}</Text>
             <Text style={{ fontSize: 13, color: theme.colors.inkSoft }}>{i18n.language === 'ka' ? 'ქართული' : 'English'}</Text>
             <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
           </Pressable>
@@ -192,19 +197,19 @@ export default function MoreScreen() {
 
           <Pressable onPress={() => router.push('/signature' as any)} style={styles.settingsRow} {...a11y(user?.saved_signature_url ? t('more.mySignature') : t('more.drawSignature'), undefined, 'button')}>
             <Ionicons name="create-outline" size={18} color={theme.colors.inkSoft} />
-            <Text style={{ flex: 1, fontSize: 15, fontWeight: '500', color: theme.colors.ink }}>{user?.saved_signature_url ? t('more.mySignature') : t('more.drawSignature')}</Text>
+            <Text style={styles.settingsLabel}>{user?.saved_signature_url ? t('more.mySignature') : t('more.drawSignature')}</Text>
             <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
           </Pressable>
           <View style={styles.divider} />
           <Pressable onPress={() => router.push('/terms?mode=view')} style={styles.settingsRow} {...a11y(t('more.terms'), undefined, 'button')}>
             <Ionicons name="document-text-outline" size={18} color={theme.colors.inkSoft} />
-            <Text style={{ flex: 1, fontSize: 15, fontWeight: '500', color: theme.colors.ink }}>{t('more.terms')}</Text>
+            <Text style={styles.settingsLabel}>{t('more.terms')}</Text>
             <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
           </Pressable>
           <View style={styles.divider} />
           <Pressable onPress={() => router.push('/account-settings')} style={styles.settingsRow} {...a11y(t('more.changePassword'), undefined, 'button')}>
             <Ionicons name="key-outline" size={18} color={theme.colors.inkSoft} />
-            <Text style={{ flex: 1, fontSize: 15, fontWeight: '500', color: theme.colors.ink }}>{t('more.changePassword')}</Text>
+            <Text style={styles.settingsLabel}>{t('more.changePassword')}</Text>
             <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
           </Pressable>
           <View style={styles.divider} />
@@ -212,7 +217,7 @@ export default function MoreScreen() {
             <Ionicons name="log-out-outline" size={18} color={signingOut ? theme.colors.inkFaint : theme.colors.danger} />
             <Text style={{ flex: 1, fontSize: 15, fontWeight: '500', color: signingOut ? theme.colors.inkFaint : theme.colors.danger }}>{t('more.signOut')}</Text>
           </Pressable>
-        </View>
+        </Card>
       </ScrollView>
     </SafeAreaView>
   );
@@ -220,7 +225,7 @@ export default function MoreScreen() {
 
 // ───────── HELPERS ─────────
 
-function StatPill({ value, label, tint, theme }: { value: number | null; label: string; tint: string; theme: any }) {
+function StatPill({ value, label, tint, theme }: { value: number | null; label: string; tint: string; theme: Theme }) {
   const styles = useMemo(() => getStyles(theme), [theme]);
 
   return (
@@ -310,7 +315,7 @@ function relativeTime(iso: string, t: (key: string, opts?: any) => string) {
   return t('home.relDayAgo', { n: d });
 }
 
-function getStyles(theme: any) {
+function getStyles(theme: Theme) {
   return StyleSheet.create({
     avatar: {
       width: 56,
@@ -366,6 +371,12 @@ function getStyles(theme: any) {
       gap: 12,
       paddingHorizontal: 16,
       paddingVertical: 14,
+    },
+    settingsLabel: {
+      flex: 1,
+      fontSize: 15,
+      fontWeight: '500',
+      color: theme.colors.ink,
     },
     divider: {
       height: StyleSheet.hairlineWidth,

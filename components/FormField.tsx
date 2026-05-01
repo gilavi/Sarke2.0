@@ -1,8 +1,13 @@
-import React, {ReactNode, useMemo} from 'react';
+import React, { ReactNode, useMemo, isValidElement } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { A11yText } from './primitives/A11yText';
-import { useTheme } from '../lib/theme';
+import { useTheme, type Theme } from '../lib/theme';
 
+function isInputElement(child: ReactNode): boolean {
+  if (!isValidElement(child)) return false;
+  const type = child.type as any;
+  return type?.displayName === 'Input' || type?.name === 'InputRefed' || type?.name === 'Input';
+}
 
 interface FormFieldProps {
   label: string;
@@ -21,6 +26,21 @@ export function FormField({
 }: FormFieldProps) {
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
+
+  // If the child is an Input, delegate label/error/helper rendering to it so
+  // there is exactly one source of truth for label styling.
+  if (isInputElement(children)) {
+    return (
+      <View style={styles.container}>
+        {React.cloneElement(children as React.ReactElement<any>, {
+          label,
+          required,
+          error,
+          helper,
+        })}
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -69,7 +89,7 @@ export function FormField({
   );
 }
 
-function getstyles(theme: any) {
+function getstyles(theme: Theme) {
   return StyleSheet.create({
   container: {
     gap: theme.space(2),

@@ -3,10 +3,10 @@ import { View, Pressable, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import Animated, { FadeInUp, Layout } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../../lib/theme';
+import { useTheme, type Theme } from '../../lib/theme';
 
 import { haptic } from '../../lib/haptics';
-import { a11y } from '../../lib/accessibility';
+import { a11y, useAccessibilitySettings } from '../../lib/accessibility';
 import { PressableScale } from '../animations/PressableScale';
 import type { AnswerPhoto } from '../../types/models';
 
@@ -18,6 +18,7 @@ interface PhotoThumbsProps {
 
 export function WizardPhotoThumbs({ photos, onView, onDelete }: PhotoThumbsProps) {
   const { theme } = useTheme();
+  const { reduceMotion } = useAccessibilitySettings();
   const styles = useMemo(() => getstyles(theme), [theme]);
 
   return (
@@ -25,8 +26,8 @@ export function WizardPhotoThumbs({ photos, onView, onDelete }: PhotoThumbsProps
       {photos.map((photo, index) => (
         <Animated.View
           key={photo.id}
-          entering={FadeInUp.delay(index * 80).springify()}
-          layout={Layout.springify()}
+          entering={reduceMotion ? undefined : FadeInUp.delay(index * 80).springify()}
+          layout={reduceMotion ? undefined : Layout.springify()}
         >
           <PressableScale onPress={() => onView(photo)} hapticOnPress="light" scaleTo={0.95}>
             <Image
@@ -53,7 +54,7 @@ export function WizardPhotoThumbs({ photos, onView, onDelete }: PhotoThumbsProps
   );
 }
 
-function getstyles(theme: any) {
+function getstyles(theme: Theme) {
   return StyleSheet.create({
   thumb: {
     width: 80,

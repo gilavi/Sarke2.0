@@ -8,6 +8,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { haptic } from '../../lib/haptics';
 import { useTheme } from '../../lib/theme';
+import { a11y } from '../../lib/accessibility';
 
 
 export type CardVariant = 'default' | 'elevated' | 'outlined' | 'ghost' | 'gradient';
@@ -19,6 +20,7 @@ interface CardProps {
   padding?: CardPadding | number;
   onPress?: () => void;
   style?: StyleProp<ViewStyle>;
+  a11y?: ReturnType<typeof a11y>;
 }
 
 export function Card({
@@ -27,6 +29,7 @@ export function Card({
   padding = 'md',
   onPress,
   style,
+  a11y: a11yProps,
 }: CardProps) {
   const { theme } = useTheme();
 
@@ -124,6 +127,7 @@ export function Card({
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         onPress={onPress}
+        {...(a11yProps ?? {})}
       >
         {content}
       </Pressable>

@@ -31,11 +31,11 @@ import {
 } from '../../lib/apiHooks';
 // shareStoredPdf import removed — PDF sharing now lives on the inspection
 // detail screen (which fetches certificates list) post 0006 decoupling.
-import { useTheme, withOpacity } from '../../lib/theme';
+import { useTheme, withOpacity, type Theme } from '../../lib/theme';
 import { a11y } from '../../lib/accessibility';
 import { toErrorMessage } from '../../lib/logError';
 import { friendlyError } from '../../lib/errorMap';
-import { Button, Field, Input } from '../../components/ui';
+import { Button, Field, Input, Card } from '../../components/ui';
 import { FabButton } from '../../components/primitives';
 import { NumberPop, useScrollHeader } from '../../components/animations';
 import { Skeleton } from '../../components/Skeleton';
@@ -187,8 +187,11 @@ export default function HomeScreen() {
         {/* ───────── CONTINUE DRAFT ───────── */}
         {latestDraft ? (
           <View style={styles.sectionWrap}>
-            <Pressable onPress={() => router.push(`/inspections/${latestDraft.id}/wizard` as any)} {...a11y('შევსების გაგრძელება', 'შეეხეთ მონახაზის გასაგრძელებლად', 'button')}>
-              <View style={styles.resumeCard}>
+            <Card
+              onPress={() => router.push(`/inspections/${latestDraft.id}/wizard` as any)}
+              a11y={a11y('შევსების გაგრძელება', 'შეეხეთ მონახაზის გასაგრძელებლად', 'button')}
+              style={styles.resumeCard}
+            >
                 <View style={styles.resumeIcon}>
                   <Ionicons name="pencil" size={16} color={theme.colors.warn} />
                 </View>
@@ -202,15 +205,17 @@ export default function HomeScreen() {
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color={theme.colors.inkFaint} />
-              </View>
-            </Pressable>
+            </Card>
           </View>
         ) : null}
 
         {/* ───────── CERT BANNER (warn only) ───────── */}
         {showCertBanner ? (
-          <Pressable onPress={() => router.push('/qualifications' as any)} {...a11y('კვალიფიკაციები', 'შეეხეთ კვალიფიკაციების სანახავად', 'button')}>
-            <View style={styles.certBanner}>
+          <Card
+            onPress={() => router.push('/qualifications' as any)}
+            a11y={a11y('კვალიფიკაციები', 'შეეხეთ კვალიფიკაციების სანახავად', 'button')}
+            style={styles.certBanner}
+          >
               <View style={styles.bannerIcon}>
                 <Ionicons name={certs.length === 0 ? 'cloud-upload-outline' : 'warning'} size={18} color={theme.colors.warn} />
               </View>
@@ -230,8 +235,7 @@ export default function HomeScreen() {
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={theme.colors.warn} />
-            </View>
-          </Pressable>
+          </Card>
         ) : null}
 
         {/* ───────── PROJECTS ───────── */}
@@ -387,7 +391,7 @@ export default function HomeScreen() {
 
         {/* ───────── TIP OF THE DAY ───────── */}
         <View style={[styles.sectionWrap, staticStyles.sectionHeaderMargin]}>
-          <View style={styles.tipCard}>
+          <Card style={styles.tipCard}>
             <View style={styles.tipIcon}>
               <Ionicons name="shield-checkmark" size={20} color={theme.colors.accent} />
             </View>
@@ -395,7 +399,7 @@ export default function HomeScreen() {
               <Text style={styles.tipLabel}>რჩევა დღისთვის</Text>
               <Text style={styles.tipBody}>{tip}</Text>
             </View>
-          </View>
+          </Card>
         </View>
       </Animated.ScrollView>
 
@@ -492,6 +496,8 @@ function ProjectPickerSheet({
   // visible while the first is up, so tapping a project felt frozen).
   const [view, setView] = useState<'list' | 'new' | 'template'>('list');
   const [pickedProjectId, setPickedProjectId] = useState<string | null>(null);
+  const pickedProjectIdRef = useRef<string | null>(null);
+  useEffect(() => { pickedProjectIdRef.current = pickedProjectId; }, [pickedProjectId]);
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
   const [address, setAddress] = useState('');
@@ -694,7 +700,10 @@ function ProjectPickerSheet({
                   {systemTemplates.map((tpl) => (
                     <Pressable
                       key={tpl.id}
-                      onPress={() => pickedProjectId && void startInspection(pickedProjectId, tpl.id)}
+                      onPress={() => {
+                        const pid = pickedProjectIdRef.current;
+                        if (pid) void startInspection(pid, tpl.id);
+                      }}
                       style={pickerStyles.projectRow}
                     >
                       <View style={[pickerStyles.avatarBubble, { backgroundColor: theme.colors.accentSoft }]}>
@@ -1020,7 +1029,7 @@ function MapPickerInline({
   );
 }
 
-function getstyles(theme: any) {
+function getstyles(theme: Theme) {
   return StyleSheet.create({
   // SCROLL-DRIVEN HEADER (Airbnb-style shrinking)
   scrollHeader: {
@@ -1371,7 +1380,7 @@ function getstyles(theme: any) {
 });
 }
 
-function getpickerStyles(theme: any) {
+function getpickerStyles(theme: Theme) {
   return StyleSheet.create({
   container: {
     flex: 1,

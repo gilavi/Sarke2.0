@@ -30,9 +30,11 @@ interface Props {
    * to opt into a fresh signature.
    */
   mode?: 'create' | 'editDetails';
-  onSubmit: (details: RoleSlotDetails) => void;
+  onSubmit: (details: RoleSlotDetails) => void | Promise<void>;
   onCancel: () => void;
   onResign?: () => void;
+  loading?: boolean;
+  error?: string | null;
 }
 
 /**
@@ -50,6 +52,8 @@ export function RoleSlotSheet({
   onSubmit,
   onCancel,
   onResign,
+  loading = false,
+  error = null,
 }: Props) {
   const [name, setName] = useState(initialName);
   const [customRole, setCustomRole] = useState(
@@ -65,10 +69,10 @@ export function RoleSlotSheet({
     return true;
   }, [name, customRole, isOther]);
 
-  const submit = () => {
-    if (!valid) return;
+  const submit = async () => {
+    if (!valid || loading) return;
     haptic.light();
-    onSubmit({ name: name.trim(), role: roleLabel });
+    await onSubmit({ name: name.trim(), role: roleLabel });
   };
 
   return (
@@ -91,8 +95,12 @@ export function RoleSlotSheet({
           <Button
             title={mode === 'editDetails' ? 'შენახვა' : 'ხელმოწერა →'}
             onPress={submit}
-            disabled={!valid}
+            disabled={!valid || loading}
+            loading={loading}
           />
+          {error ? (
+            <Text style={styles.errorText}>{error}</Text>
+          ) : null}
           {mode === 'editDetails' && onResign ? (
             <Pressable
               onPress={onResign}
@@ -159,5 +167,10 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: theme.colors.accent,
+  },
+  errorText: {
+    fontSize: 12,
+    color: theme.colors.danger,
+    textAlign: 'center',
   },
 });

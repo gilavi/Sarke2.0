@@ -839,7 +839,7 @@ export default function QuestionnaireWizard() {
           style={{ flex: 1 }}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
         >
-          <WizardStepTransition stepKey={stepIndex} direction={stepDirection} animate={animateSteps}>
+          <WizardStepTransition stepKey={stepIndex} direction={stepDirection} animate={animateSteps && Math.abs(stepIndex - prevStepIndexRef.current) <= 1}>
             {step.kind === 'kamariCount' ? (
               <KamariCount
                 count={harnessRowCount}

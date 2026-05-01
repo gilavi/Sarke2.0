@@ -26,7 +26,8 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import { A11yText as Text } from '../../primitives/A11yText';
 import { Button, Card } from '../../ui';
-import { useTheme } from '../../../lib/theme';
+import { useTheme, type Theme } from '../../../lib/theme';
+import { useAccessibilitySettings } from '../../../lib/accessibility';
 
 import { haptic } from '../../../lib/haptics';
 import { getStorageImageDisplayUrl } from '../../../lib/imageUrl';
@@ -71,6 +72,7 @@ export const KamariCount = memo(function KamariCount({
   max: number;
 }) {
   const { theme } = useTheme();
+  const { reduceMotion } = useAccessibilitySettings();
   const styles = useMemo(() => getstyles(theme), [theme]);
 
   const dec = () => {
@@ -137,6 +139,7 @@ export const KamariOverview = memo(function KamariOverview({
   onOpen: (index: number) => void;
 }) {
   const { theme } = useTheme();
+  const { reduceMotion } = useAccessibilitySettings();
   const styles = useMemo(() => getstyles(theme), [theme]);
 
   const cols = useMemo(() => componentColsFor(question), [question]);
@@ -273,6 +276,7 @@ export function KamariDetailModal({
   onDeletePhoto: (photo: AnswerPhoto) => void;
 }) {
   const { theme } = useTheme();
+  const { reduceMotion } = useAccessibilitySettings();
   const styles = useMemo(() => getstyles(theme), [theme]);
 
   const insets = useSafeAreaInsets();
@@ -453,8 +457,8 @@ export function KamariDetailModal({
                 </Pressable>
                 {isOpen && (
                   <Animated.View
-                    entering={FadeInDown.duration(150)}
-                    exiting={FadeOut.duration(100)}
+                    entering={reduceMotion ? undefined : FadeInDown.duration(150)}
+                    exiting={reduceMotion ? undefined : FadeOut.duration(100)}
                     style={styles.accordion}
                   >
                     <Text size="sm" weight="semibold" style={{ marginBottom: 6 }}>
@@ -545,7 +549,7 @@ const KamariPhotoThumb = memo(function KamariPhotoThumb({
 
 // ─────────────────────────── Styles ─────────────────────────────────────────
 
-function getstyles(theme: any) {
+function getstyles(theme: Theme) {
   return StyleSheet.create({
   countWrap: {
     flex: 1,

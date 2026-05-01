@@ -15,6 +15,7 @@ import { storageApi } from './services';
 import { logError } from './logError';
 import { stageCompressedPhotoForOffline } from './photoCompression';
 import { flushPendingPdfUploads } from './pdfUploadQueue';
+import { useToast } from './toast';
 import type { Answer, AnswerPhoto, Inspection } from '../types/models';
 
 type AnswerUpsertPayload = Partial<Answer> & {
@@ -49,6 +50,7 @@ type QueueOp =
   | { kind: 'photo_upload'; payload: PhotoUploadPayload; attempts?: number };
 
 const QUEUE_KEY = '@offline:queue';
+const FAILED_QUEUE_KEY = '@offline:failed';
 const answersKey = (qid: string) => `@offline:answers:${qid}`;
 const questionnaireKey = (qid: string) => `@offline:questionnaire:${qid}`;
 
@@ -98,6 +100,9 @@ type OfflineContextValue = {
   /** Question IDs with a still-pending answer upsert for the given inspection. */
   pendingAnswerQuestionIds: (inspectionId: string) => Promise<Set<string>>;
   flush: () => Promise<void>;
+  failedCount: number;
+  retryFailed: () => Promise<void>;
+  dismissFailed: () => Promise<void>;
 };
 
 const OfflineCtx = createContext<OfflineContextValue | null>(null);
@@ -123,11 +128,28 @@ async function writeQueueRaw(ops: QueueOp[]): Promise<void> {
   await AsyncStorage.setItem(QUEUE_KEY, JSON.stringify(ops));
 }
 
+async function readFailedQueue(): Promise<QueueOp[]> {
+  const raw = await AsyncStorage.getItem(FAILED_QUEUE_KEY);
+  if (!raw) return [];
+  try {
+    return JSON.parse(raw) as QueueOp[];
+  } catch (e) {
+    logError(e, 'offline.readFailedQueue.parse');
+    return [];
+  }
+}
+
+async function writeFailedQueueRaw(ops: QueueOp[]): Promise<void> {
+  await AsyncStorage.setItem(FAILED_QUEUE_KEY, JSON.stringify(ops));
+}
+
 export function OfflineProvider({ children }: { children: React.ReactNode }) {
   const [isOnline, setIsOnline] = useState(true);
   const [netReady, setNetReady] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
+  const [failedCount, setFailedCount] = useState(0);
   const onlineRef = useRef(true);
+  const toast = useToast();
 
   // Serialize ALL queue mutations (enqueue + flush) through a single promise
   // chain. Without this, concurrent readQueue → setQueue cycles race and
@@ -144,6 +166,11 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
   const setQueue = useCallback(async (ops: QueueOp[]) => {
     await writeQueueRaw(ops);
     setPendingCount(ops.length);
+  }, []);
+
+  const setFailedQueue = useCallback(async (ops: QueueOp[]) => {
+    await writeFailedQueueRaw(ops);
+    setFailedCount(ops.length);
   }, []);
 
   const flush = useCallback(async (): Promise<void> => {
@@ -187,12 +214,12 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
         } catch (err) {
           const attempts = (op.attempts ?? 0) + 1;
           if (attempts >= MAX_OP_RETRIES) {
-            logError(err, `offline.flush.drop.${op.kind}`);
+            logError(err, `offline.flush.fail.${op.kind}`);
             ops = ops.slice(1);
-            // Clean up staged photo files on max retries
-            if (op.kind === 'photo_upload') {
-              FileSystem.deleteAsync(op.payload.localUri, { idempotent: true }).catch(() => undefined);
-            }
+            const failed = await readFailedQueue();
+            failed.push({ ...op, attempts: 0 });
+            await setFailedQueue(failed);
+            toast.error('სინქრონიზაცია ვერ მოხერხდა');
           } else {
             // Rotate to the back so subsequent ops still get a chance.
             ops = [...ops.slice(1), { ...op, attempts }];
@@ -206,6 +233,7 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     void readQueue().then((q) => setPendingCount(q.length));
+    void readFailedQueue().then((q) => setFailedCount(q.length));
     // Seed current state once before subscribing, so the first render
     // after `netReady` reflects reality instead of the `true` default.
     void NetInfo.fetch().then((s) => {
@@ -376,6 +404,33 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
   // an actual field they care about changes. The five callbacks are already
   // stable via useCallback, so the value identity is driven by the three
   // observable state fields.
+  const retryFailed = useCallback(async () => {
+    await runExclusive(async () => {
+      const failed = await readFailedQueue();
+      if (failed.length === 0) return;
+      const queue = await readQueue();
+      queue.push(...failed.map(op => ({ ...op, attempts: 0 })));
+      await writeQueueRaw(queue);
+      await writeFailedQueueRaw([]);
+      setPendingCount(queue.length);
+      setFailedCount(0);
+    });
+    if (onlineRef.current) void flush();
+  }, [runExclusive, flush]);
+
+  const dismissFailed = useCallback(async () => {
+    await runExclusive(async () => {
+      const failed = await readFailedQueue();
+      for (const op of failed) {
+        if (op.kind === 'photo_upload') {
+          FileSystem.deleteAsync(op.payload.localUri, { idempotent: true }).catch(() => undefined);
+        }
+      }
+      await writeFailedQueueRaw([]);
+      setFailedCount(0);
+    });
+  }, [runExclusive]);
+
   const value = useMemo<OfflineContextValue>(
     () => ({
       isOnline,
@@ -389,11 +444,15 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
       hydrateQuestionnairePatch,
       pendingAnswerQuestionIds,
       flush,
+      failedCount,
+      retryFailed,
+      dismissFailed,
     }),
     [
       isOnline,
       netReady,
       pendingCount,
+      failedCount,
       enqueueAnswerUpsert,
       enqueueQuestionnaireUpdate,
       enqueuePhotoUpload,
@@ -402,6 +461,8 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
       hydrateQuestionnairePatch,
       pendingAnswerQuestionIds,
       flush,
+      retryFailed,
+      dismissFailed,
     ],
   );
 

@@ -13,9 +13,10 @@ import Animated, { FadeInDown, FadeOut } from 'react-native-reanimated';
 import { A11yText as Text } from './primitives/A11yText';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../lib/theme';
+import { useTheme, type Theme } from '../lib/theme';
 
 import { haptic } from '../lib/haptics';
+import { useAccessibilitySettings } from '../lib/accessibility';
 import type { Answer, AnswerPhoto, GridValues, Question, Template } from '../types/models';
 import { TourGuide, type TourStep } from './TourGuide';
 import { HelpIcon, useScaffoldHelpSheet } from './ScaffoldHelpSheet';
@@ -85,6 +86,7 @@ export type HarnessListFlowProps = {
 
 export function HarnessListFlow(props: HarnessListFlowProps) {
   const { theme } = useTheme();
+  const { reduceMotion } = useAccessibilitySettings();
   const s = useMemo(() => gets(theme), [theme]);
   const {
     questions,
@@ -349,6 +351,7 @@ const ItemRow = memo(function ItemRow({
   helpRef?: React.RefObject<View | null>;
 }) {
   const { theme } = useTheme();
+  const { reduceMotion } = useAccessibilitySettings();
   const s = useMemo(() => gets(theme), [theme]);
   return (
     <View
@@ -387,8 +390,8 @@ const ItemRow = memo(function ItemRow({
 
       {bad && (
         <Animated.View
-          entering={FadeInDown.duration(150)}
-          exiting={FadeOut.duration(100)}
+          entering={reduceMotion ? undefined : FadeInDown.duration(150)}
+          exiting={reduceMotion ? undefined : FadeOut.duration(100)}
           style={s.accordionBody}
         >
           <Text style={s.accordionLabel}>რა პრობლემაა?</Text>
@@ -444,7 +447,7 @@ const CellPhotoThumb = memo(function CellPhotoThumb({
   );
 });
 
-function gets(theme: any) {
+function gets(theme: Theme) {
   return StyleSheet.create({
   header: {
     paddingHorizontal: 16,

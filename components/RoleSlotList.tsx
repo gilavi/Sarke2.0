@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Image, Pressable, StyleSheet, View } from 'react-native';
 import { A11yText as Text } from './primitives/A11yText';
 import { Ionicons } from '@expo/vector-icons';
@@ -182,38 +182,59 @@ export function RoleSlotList({ projectId, inspector, crew, onChange, maxVisible,
   const openEditSheet = (member: CrewMember) => {
     haptic.light();
     showSheet({
-      content: ({ dismiss }) => (
-        <RoleSlotSheet
-          roleKey={member.roleKey}
-          mode="editDetails"
-          initialName={member.name}
-          initialRoleLabel={member.roleKey === 'other' ? member.role : undefined}
-          onSubmit={details => {
-            dismiss();
-            upsert({ ...member, name: details.name, role: details.role });
-            haptic.light();
-            toast.success('შენახულია');
-          }}
-          onCancel={dismiss}
-          onResign={() => {
-            // Cache the in-flight edits so the create-flow sheet (re-opened
-            // below if the user cancels signature) starts pre-filled.
-            lastDetails.current[member.roleKey] = {
-              name: member.name,
-              role: member.role,
-            };
-            dismiss();
-            setTimeout(() => {
-              setPending({
-                roleKey: member.roleKey,
-                memberId: member.id,
-                name: member.name,
-                roleLabel: member.role,
-              });
-            }, SHEET_DISMISS_MS);
-          }}
-        />
-      ),
+      content: ({ dismiss }) => {
+        const EditSheetWrapper = () => {
+          const [saving, setSaving] = useState(false);
+          const [saveError, setSaveError] = useState<string | null>(null);
+
+          const handleSubmit = useCallback(async (details: RoleSlotDetails) => {
+            setSaving(true);
+            setSaveError(null);
+            try {
+              await onChange(
+                crew.map(m => (m.id === member.id ? { ...m, name: details.name, role: details.role } : m))
+              );
+              dismiss();
+              haptic.light();
+              toast.success('შენახულია');
+            } catch (e) {
+              setSaveError(friendlyError(e, 'შენახვა ვერ მოხერხდა'));
+            } finally {
+              setSaving(false);
+            }
+          }, [member.id, dismiss]);
+
+          return (
+            <RoleSlotSheet
+              roleKey={member.roleKey}
+              mode="editDetails"
+              initialName={member.name}
+              initialRoleLabel={member.roleKey === 'other' ? member.role : undefined}
+              onSubmit={handleSubmit}
+              onCancel={dismiss}
+              loading={saving}
+              error={saveError}
+              onResign={() => {
+                if (saving) return;
+                lastDetails.current[member.roleKey] = {
+                  name: member.name,
+                  role: member.role,
+                };
+                dismiss();
+                setTimeout(() => {
+                  setPending({
+                    roleKey: member.roleKey,
+                    memberId: member.id,
+                    name: member.name,
+                    roleLabel: member.role,
+                  });
+                }, SHEET_DISMISS_MS);
+              }}
+            />
+          );
+        };
+        return <EditSheetWrapper />;
+      },
     });
   };
 

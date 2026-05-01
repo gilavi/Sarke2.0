@@ -15,7 +15,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { haptic } from '../../lib/haptics';
-import { useTheme } from '../../lib/theme';
+import { useTheme, type Theme } from '../../lib/theme';
 
 
 interface InputProps extends TextInputProps {
@@ -27,7 +27,7 @@ interface InputProps extends TextInputProps {
   onRightIconPress?: () => void;
 }
 
-export function Input({
+export const Input = React.forwardRef<TextInput, InputProps & { required?: boolean }>(function InputRefed({
   label,
   error,
   helper,
@@ -39,7 +39,7 @@ export function Input({
   onBlur,
   required,
   ...rest
-}: InputProps & { required?: boolean }) {
+}: InputProps & { required?: boolean }, ref) {
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
 
@@ -111,6 +111,7 @@ export function Input({
           />
         )}
         <TextInput
+          ref={ref}
           style={styles.input}
           placeholderTextColor={theme.colors.inkFaint}
           onFocus={handleFocus}
@@ -132,9 +133,11 @@ export function Input({
       {helper && !error && <Text style={styles.helper}>{helper}</Text>}
     </View>
   );
-}
+});
 
-function getstyles(theme: any) {
+Input.displayName = 'Input';
+
+function getstyles(theme: Theme) {
   return StyleSheet.create({
   wrapper: {
     marginBottom: theme.space(4),

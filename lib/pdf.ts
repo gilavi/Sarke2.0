@@ -983,7 +983,7 @@ function renderPhoto(
 
   return `<div class="photo-item${isFailed ? ' failed' : ''}">
     <div class="photo-img-wrap">
-      <img src="${src}" alt="${t('pdf.photoAlt')}"
+      <img src="${escapeHtml(src)}" alt="${escapeHtml(t('pdf.photoAlt'))}"
         onerror="this.style.display='none';this.parentElement.innerHTML='<div class=\\'photo-missing\\'>${escapeHtml(t('pdf.imageUnavailable'))}</div>';" />
     </div>
     <div class="photo-caption">${captionText}</div>
@@ -1024,10 +1024,10 @@ function renderSignatures(signatures: SignatureRecord[]): string {
         auditParts.push(`<strong>${tPdf('pdf.locationLabel')}:</strong> ${sig.latitude.toFixed(5)}, ${sig.longitude.toFixed(5)}`);
       }
       if (sig.device_id_hash) {
-        auditParts.push(`<strong>${tPdf('pdf.deviceLabel')}:</strong> ${sig.device_id_hash.slice(0, 8)}…`);
+        auditParts.push(`<strong>${tPdf('pdf.deviceLabel')}:</strong> ${escapeHtml(sig.device_id_hash.slice(0, 8))}…`);
       }
       if (sig.ip_address) {
-        auditParts.push(`<strong>IP:</strong> ${sig.ip_address}`);
+        auditParts.push(`<strong>IP:</strong> ${escapeHtml(sig.ip_address)}`);
       }
       const auditHtml = auditParts.length
         ? `<div class="audit-trail">${auditParts.join(' · ')}</div>`
@@ -1039,7 +1039,7 @@ function renderSignatures(signatures: SignatureRecord[]): string {
         <div class="sig-role">${escapeHtml(label)}</div>
         ${sig.position ? `<div class="sig-position">${escapeHtml(sig.position)}</div>` : ''}
         <div class="sig-img-box">
-          <img src="${sig.signature_png_url}" alt="${tPdf('pdf.signatureAlt') ?? 'Signature'}" />
+          <img src="${escapeHtml(sig.signature_png_url ?? '')}" alt="${escapeHtml(tPdf('pdf.signatureAlt') ?? 'Signature')}" />
         </div>
         ${signedDate ? `<div class="sig-date">${escapeHtml(signedDate)}</div>` : ''}
         ${auditHtml}
@@ -1064,7 +1064,7 @@ function pad2(n: number): string {
 
 function renderProjectBrand(project: Project): string {
   if (project.logo) {
-    return `<img class="project-brand-logo" src="${project.logo}" alt="${escapeHtml(project.name)}" />`;
+    return `<img class="project-brand-logo" src="${escapeHtml(project.logo)}" alt="${escapeHtml(project.name)}" />`;
   }
   const trimmed = (project.name ?? '').trim();
   const initials = trimmed

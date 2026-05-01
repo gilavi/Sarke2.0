@@ -5,19 +5,19 @@
 //
 // Usage:
 //   import { setPhotoPickerCallback } from '../lib/photoPickerBus';
-//   setPhotoPickerCallback(uri => { ... });
+//   const token = setPhotoPickerCallback(uri => { ... });
 //   router.push('/photo-picker');
+//   // On unmount: cancelPhotoPicker(token);
 // Inside the picker screen:
 //   import { resolvePhotoPicker } from '../lib/photoPickerBus';
 //   resolvePhotoPicker(uri);
 //   router.back();
 
-let pending: ((uri: string | null) => void) | null = null;
-let pendingToken: number | null = null;
-let resolveToken: number | null = null;
-let pendingAnnotate: ((uri: string | null) => void) | null = null;
-let pendingAnnotateToken: number | null = null;
-let resolveAnnotateToken: number | null = null;
+const callbacks = new Map<number, (uri: string | null) => void>();
+const annotateCallbacks = new Map<number, (uri: string | null) => void>();
+
+let lastToken: number | null = null;
+let lastAnnotateToken: number | null = null;
 
 let tokenCounter = 0;
 function nextToken(): number {
@@ -26,50 +26,67 @@ function nextToken(): number {
 }
 
 export function setPhotoPickerCallback(cb: (uri: string | null) => void): number {
-  pending = cb;
-  pendingToken = nextToken();
-  resolveToken = pendingToken;
-  return pendingToken;
-}
-
-function isPhotoPickerStale(): boolean {
-  return resolveToken !== pendingToken;
+  const token = nextToken();
+  callbacks.set(token, cb);
+  lastToken = token;
+  return token;
 }
 
 export function resolvePhotoPicker(uri: string | null): void {
-  if (isPhotoPickerStale() || !pending) return;
-  const cb = pending;
-  pending = null;
-  resolveToken = null;
-  pendingToken = null;
+  if (lastToken === null) return;
+  const cb = callbacks.get(lastToken);
+  if (!cb) return;
+  callbacks.delete(lastToken);
+  lastToken = null;
   cb(uri);
 }
 
-export function cancelPhotoPicker(): void {
-  resolvePhotoPicker(null);
+export function cancelPhotoPicker(token?: number): void {
+  if (token !== undefined) {
+    callbacks.delete(token);
+    if (lastToken === token) {
+      lastToken = null;
+    }
+  } else {
+    // Legacy no-arg: resolve last with null
+    if (lastToken !== null) {
+      const cb = callbacks.get(lastToken);
+      callbacks.delete(lastToken);
+      if (cb) cb(null);
+      lastToken = null;
+    }
+  }
 }
 
 /** Callback for annotated photo return from PhotoAnnotator. */
 export function setPhotoAnnotateCallback(cb: (uri: string | null) => void): number {
-  pendingAnnotate = cb;
-  pendingAnnotateToken = nextToken();
-  resolveAnnotateToken = pendingAnnotateToken;
-  return pendingAnnotateToken;
-}
-
-function isPhotoAnnotateStale(): boolean {
-  return resolveAnnotateToken !== pendingAnnotateToken;
+  const token = nextToken();
+  annotateCallbacks.set(token, cb);
+  lastAnnotateToken = token;
+  return token;
 }
 
 export function resolvePhotoAnnotate(uri: string | null): void {
-  if (isPhotoAnnotateStale() || !pendingAnnotate) return;
-  const cb = pendingAnnotate;
-  pendingAnnotate = null;
-  resolveAnnotateToken = null;
-  pendingAnnotateToken = null;
+  if (lastAnnotateToken === null) return;
+  const cb = annotateCallbacks.get(lastAnnotateToken);
+  if (!cb) return;
+  annotateCallbacks.delete(lastAnnotateToken);
+  lastAnnotateToken = null;
   cb(uri);
 }
 
-export function cancelPhotoAnnotate(): void {
-  resolvePhotoAnnotate(null);
+export function cancelPhotoAnnotate(token?: number): void {
+  if (token !== undefined) {
+    annotateCallbacks.delete(token);
+    if (lastAnnotateToken === token) {
+      lastAnnotateToken = null;
+    }
+  } else {
+    if (lastAnnotateToken !== null) {
+      const cb = annotateCallbacks.get(lastAnnotateToken);
+      annotateCallbacks.delete(lastAnnotateToken);
+      if (cb) cb(null);
+      lastAnnotateToken = null;
+    }
+  }
 }

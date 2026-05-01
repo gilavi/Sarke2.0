@@ -17,8 +17,8 @@ import Animated, {
 import Svg, { Line, Rect, Circle, Path, Polygon, G } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { haptic } from '../lib/haptics';
-import { a11y } from '../lib/accessibility';
-import { useTheme } from '../lib/theme';
+import { a11y, useAccessibilitySettings } from '../lib/accessibility';
+import { useTheme, type Theme } from '../lib/theme';
 
 
 export type EmptyStateType =
@@ -295,12 +295,17 @@ export default function EmptyState({
 }: EmptyStateProps) {
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
+  const { reduceMotion } = useAccessibilitySettings();
   const entry = useSharedValue(0);
   const btnScale = useSharedValue(1);
 
   useEffect(() => {
-    entry.value = withSpring(1, { damping: 15, stiffness: 150 });
-  }, [entry]);
+    if (reduceMotion) {
+      entry.value = 1;
+    } else {
+      entry.value = withSpring(1, { damping: 15, stiffness: 150 });
+    }
+  }, [entry, reduceMotion]);
 
   const containerAnim = useAnimatedStyle(() => ({
     opacity: entry.value,
@@ -312,12 +317,20 @@ export default function EmptyState({
   }));
 
   const onPressIn = useCallback(() => {
-    btnScale.value = withTiming(0.96, { duration: 80 });
-  }, [btnScale]);
+    if (reduceMotion) {
+      btnScale.value = 0.96;
+    } else {
+      btnScale.value = withTiming(0.96, { duration: 80 });
+    }
+  }, [btnScale, reduceMotion]);
 
   const onPressOut = useCallback(() => {
-    btnScale.value = withSpring(1, { stiffness: 300, damping: 15 });
-  }, [btnScale]);
+    if (reduceMotion) {
+      btnScale.value = 1;
+    } else {
+      btnScale.value = withSpring(1, { stiffness: 300, damping: 15 });
+    }
+  }, [btnScale, reduceMotion]);
 
   const handleAction = useCallback(() => {
     haptic.light();
@@ -328,7 +341,7 @@ export default function EmptyState({
 
   return (
     <Animated.View
-      entering={FadeInUp.duration(250)}
+      entering={reduceMotion ? undefined : FadeInUp.duration(250)}
       style={[styles.container, compact && styles.containerCompact, style]}
     >
       {backgroundPattern && <ScaffoldingPattern />}
@@ -380,7 +393,7 @@ export default function EmptyState({
    Styles
    ═══════════════════════════════════════════════════════════════════════ */
 
-function getstyles(theme: any) {
+function getstyles(theme: Theme) {
   return StyleSheet.create({
   container: {
     flex: 1,
