@@ -1,14 +1,16 @@
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
+  TouchableWithoutFeedback,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSession } from '../lib/session';
@@ -24,6 +26,7 @@ const MIN_PASSWORD_LENGTH = 8;
 export default function AccountSettingsScreen() {
   const { theme } = useTheme();
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const styles = useMemo(() => getstyles(theme), [theme]);
   const router = useRouter();
   const toast = useToast();
@@ -106,25 +109,29 @@ export default function AccountSettingsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={{ flex: 1 }}
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <A11yText size="lg" weight="bold" color={theme.colors.ink}>
-            {t('account.changePassword')}
-          </A11yText>
-          <Pressable onPress={() => router.back()} hitSlop={8}>
-            <Ionicons name="close" size={24} color={theme.colors.ink} />
-          </Pressable>
-        </View>
+      {/* Header */}
+      <View style={styles.header}>
+        <A11yText size="lg" weight="bold" color={theme.colors.ink}>
+          {t('account.changePassword')}
+        </A11yText>
+        <Pressable onPress={() => router.back()} hitSlop={8}>
+          <Ionicons name="close" size={24} color={theme.colors.ink} />
+        </Pressable>
+      </View>
 
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={styles.content}
-          keyboardShouldPersistTaps="handled"
-        >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior="padding"
+        keyboardVerticalOffset={insets.top + 44}
+      >
+      <ScrollView
+        bounces={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        contentContainerStyle={{ flexGrow: 1 }}
+      >
+        <View style={styles.content}>
           {/* Current Password */}
           <Input
             label={t('account.currentPassword')}
@@ -168,10 +175,10 @@ export default function AccountSettingsScreen() {
             rightIcon={showConfirm ? 'eye-off' : 'eye'}
             onRightIconPress={() => setShowConfirm(!showConfirm)}
           />
-        </ScrollView>
+        </View>
 
         {/* Submit Button */}
-        <View style={styles.footer}>
+        <View style={[styles.footer, { marginTop: 'auto' }]}>
           {busy ? (
             <View
               style={[
@@ -196,7 +203,9 @@ export default function AccountSettingsScreen() {
             />
           )}
         </View>
+      </ScrollView>
       </KeyboardAvoidingView>
+      </TouchableWithoutFeedback>
     </SafeAreaView>
   );
 }

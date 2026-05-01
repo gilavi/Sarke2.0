@@ -2,11 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
+  TouchableWithoutFeedback,
   View,
 } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
@@ -45,6 +47,10 @@ export default function ReportSlideEditor() {
   const [imageUploading, setImageUploading] = useState(false);
   const [thumbUri, setThumbUri] = useState<string | null>(null);
 
+  // Prevents useFocusEffect from resetting user-edited fields when the screen
+  // regains focus after returning from the photo picker / annotator.
+  const hasInitialized = useRef(false);
+
   const load = useCallback(async () => {
     if (!id || !slideId) return;
     const r = await reportsApi.getById(id).catch(() => null);
@@ -52,7 +58,8 @@ export default function ReportSlideEditor() {
     setReport(r);
     const s = r.slides.find(x => x.id === slideId) ?? null;
     setSlide(s);
-    if (s) {
+    if (s && !hasInitialized.current) {
+      hasInitialized.current = true;
       setTitle(s.title);
       setDescription(s.description);
       setImagePath(s.image_path);
@@ -231,59 +238,62 @@ export default function ReportSlideEditor() {
         }}
       />
 
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior="padding"
+        keyboardVerticalOffset={insets.top + 44}
       >
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{ padding: 16, paddingBottom: 120, gap: 16 }}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* Image section */}
-          <Pressable onPress={onImageTap} style={styles.imageWrap}>
-            {thumbUri ? (
-              <Image source={{ uri: thumbUri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-            ) : (
-              <View style={styles.imagePlaceholder}>
-                <Ionicons name="camera" size={32} color={theme.colors.inkFaint} />
-                <Text style={styles.imagePlaceholderText}>+ ფოტოს დამატება</Text>
-              </View>
-            )}
-            {imageUploading ? (
-              <View style={styles.imageOverlay}>
-                <ActivityIndicator color={theme.colors.white} />
-              </View>
-            ) : null}
-          </Pressable>
+      <ScrollView
+        bounces={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        contentContainerStyle={{ flexGrow: 1, padding: 16, gap: 16 }}
+      >
+        {/* Image section */}
+        <Pressable onPress={onImageTap} style={styles.imageWrap}>
+          {thumbUri ? (
+            <Image source={{ uri: thumbUri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+          ) : (
+            <View style={styles.imagePlaceholder}>
+              <Ionicons name="camera" size={32} color={theme.colors.inkFaint} />
+              <Text style={styles.imagePlaceholderText}>+ ფოტოს დამატება</Text>
+            </View>
+          )}
+          {imageUploading ? (
+            <View style={styles.imageOverlay}>
+              <ActivityIndicator color={theme.colors.white} />
+            </View>
+          ) : null}
+        </Pressable>
 
-          {/* Title */}
-          <Input
-            label="სლაიდის სათაური"
-            required
-            value={title}
-            onChangeText={setTitle}
-            placeholder="მაგ: ხარაჩოს ძირი"
-            returnKeyType="next"
-          />
+        {/* Title */}
+        <Input
+          label="სლაიდის სათაური"
+          required
+          value={title}
+          onChangeText={setTitle}
+          placeholder="მაგ: ხარაჩოს ძირი"
+          returnKeyType="next"
+        />
 
-          {/* Description */}
-          <Input
-            label="აღწერა"
-            value={description}
-            onChangeText={setDescription}
-            placeholder="დაამატეთ დეტალები (სურვილისამებრ)"
-            multiline
-            numberOfLines={4}
-            textAlignVertical="top"
-            style={{ minHeight: 100, paddingTop: 10 }}
-          />
-        </ScrollView>
+        {/* Description */}
+        <Input
+          label="აღწერა"
+          value={description}
+          onChangeText={setDescription}
+          placeholder="დაამატეთ დეტალები (სურვილისამებრ)"
+          multiline
+          textAlignVertical="top"
+          style={{ minHeight: 100, alignItems: 'flex-start' }}
+        />
 
-        <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
+        <View style={[styles.footer, { marginTop: 'auto', paddingBottom: insets.bottom > 0 ? insets.bottom : 16 }]}>
           <Button title="შენახვა" onPress={onSave} disabled={!canSave} loading={busy} />
         </View>
+      </ScrollView>
       </KeyboardAvoidingView>
+      </TouchableWithoutFeedback>
     </View>
   );
 }

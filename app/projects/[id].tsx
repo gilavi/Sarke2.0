@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Animated,
   Dimensions,
   Keyboard,
   Linking,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -17,7 +17,6 @@ import { FormField } from '../../components/FormField';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { MapPreview } from '../../components/MapPreview';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
@@ -62,6 +61,8 @@ import { useSession } from '../../lib/session';
 import { a11y } from '../../lib/accessibility';
 import { TourGuide, type TourStep } from '../../components/TourGuide';
 import { useTranslation } from 'react-i18next';
+import { setPhotoPickerCallback, setPhotoAnnotateCallback } from '../../lib/photoPickerBus';
+import { QuickActions, type QuickAction } from '../../components/QuickActions';
 
 export default function ProjectDetail() {
   const { theme } = useTheme();
@@ -131,7 +132,6 @@ export default function ProjectDetail() {
   const participantsRef = useRef<View>(null);
   const filesRef = useRef<View>(null);
   const questionnairesRef = useRef<View>(null);
-  const fabRef = useRef<View>(null);
   const tourSteps: TourStep[] = useMemo(
     () => [
       {
@@ -156,12 +156,6 @@ export default function ProjectDetail() {
         targetRef: questionnairesRef,
         title: t('projects.tourHistory'),
         body: t('projects.tourHistoryBody'),
-        position: 'top',
-      },
-      {
-        targetRef: fabRef,
-        title: t('projects.tourNewInspection'),
-        body: t('projects.tourNewInspectionBody'),
         position: 'top',
       },
     ],
@@ -369,26 +363,21 @@ export default function ProjectDetail() {
     else toast.error(t('errors.uploadFailed'));
   };
 
-  const pickPhotos = async () => {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (perm.status !== 'granted') {
-      toast.error(t('projects.galleryAccessDenied'));
-      return;
-    }
-    const res = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsMultipleSelection: true,
-      quality: 0.85,
+  const pickPhotoWithPicker = () => {
+    setPhotoPickerCallback(localUri => {
+      if (!localUri) return;
+      setPhotoAnnotateCallback(async annotatedUri => {
+        const sourceUri = annotatedUri ?? localUri;
+        await uploadAssets([{
+          uri: sourceUri,
+          name: `photo-${Date.now()}.jpg`,
+          mimeType: 'image/jpeg',
+          sizeBytes: null,
+        }]);
+      });
+      router.replace(`/photo-annotate?uri=${encodeURIComponent(localUri)}` as any);
     });
-    if (res.canceled || !res.assets?.length) return;
-    await uploadAssets(
-      res.assets.map(a => ({
-        uri: a.uri,
-        name: a.fileName ?? `photo-${Date.now()}.jpg`,
-        mimeType: a.mimeType ?? 'image/jpeg',
-        sizeBytes: a.fileSize ?? null,
-      })),
-    );
+    router.push('/photo-picker' as any);
   };
 
   const pickDocuments = async () => {
@@ -416,7 +405,7 @@ export default function ProjectDetail() {
         cancelButtonIndex: 2,
       },
       idx => {
-        if (idx === 0) void pickPhotos();
+        if (idx === 0) pickPhotoWithPicker();
         else if (idx === 1) void pickDocuments();
       },
     );
@@ -459,6 +448,18 @@ export default function ProjectDetail() {
       setAllProjects(list);
     }
   };
+
+  const quickActions: QuickAction[] = useMemo(
+    () => [
+      { label: 'შემოწმება',   colorKey: 'inspection',  onPress: startNewQuestionnaire },
+      { label: 'ინციდენტი',   colorKey: 'incident',    onPress: () => id && router.push(`/incidents/new?projectId=${id}` as any) },
+      { label: 'ინსტრუქტაჟი', colorKey: 'briefing',    onPress: () => id && router.push(`/briefings/new?projectId=${id}` as any) },
+      { label: 'რეპორტი',     colorKey: 'report',      onPress: () => id && router.push(`/reports/new?projectId=${id}` as any) },
+      { label: 'მონაწილე',    colorKey: 'participant', onPress: () => id && router.push(`/projects/${id}/participants` as any) },
+      { label: 'ფაილი',       colorKey: 'file',        onPress: uploadFile },
+    ],
+    [id, router, startNewQuestionnaire, uploadFile],
+  );
 
   const mapMarkers = useMemo(() => {
     const withCoords = allProjects.filter(p => p.latitude != null && p.longitude != null);
@@ -525,8 +526,7 @@ export default function ProjectDetail() {
         contentContainerStyle={{
           paddingHorizontal: 16,
           paddingTop: 12,
-          // Clear the FAB row.
-          paddingBottom: 110,
+          paddingBottom: 32,
           gap: 16,
         }}
       >
@@ -577,6 +577,9 @@ export default function ProjectDetail() {
             ) : null}
 
           </View>
+
+          {/* ── Quick actions row (BOG-style) ── */}
+          <QuickActions actions={quickActions} />
 
           {/* ── Questionnaires ── */}
           <View ref={questionnairesRef} collapsable={false} style={styles.sectionCard}>
@@ -887,20 +890,6 @@ export default function ProjectDetail() {
 
         </ScrollView>
 
-        {/* ── FAB: new questionnaire ── */}
-        <Pressable
-          ref={fabRef}
-          onPress={startNewQuestionnaire}
-          style={({ pressed }) => [
-            styles.fab,
-            { bottom: insets.bottom + 16 },
-            pressed && { opacity: 0.85 },
-          ]}
-          {...a11y('ახალი ინსპექცია', 'ახალი ინსპექციას დაწყება', 'button')}
-        >
-          <Ionicons name="add" size={30} color={theme.colors.white} />
-        </Pressable>
-
       <EditProjectSheet
         visible={editing}
         project={project}
@@ -1123,6 +1112,22 @@ function EditProjectSheet({
   const [logo, setLogo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [mapVisible, setMapVisible] = useState(false);
+  const [kbHeight, setKbHeight] = useState(0);
+  const keyboardHeight = useRef(new Animated.Value(0)).current;
+  const screenH = Dimensions.get('window').height;
+  const maxSheetH = screenH - kbHeight - insets.top - 24;
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardWillShow', (e) => {
+      setKbHeight(e.endCoordinates.height);
+      Animated.spring(keyboardHeight, { toValue: e.endCoordinates.height, useNativeDriver: false, tension: 60, friction: 12 }).start();
+    });
+    const hideSub = Keyboard.addListener('keyboardWillHide', () => {
+      setKbHeight(0);
+      Animated.spring(keyboardHeight, { toValue: 0, useNativeDriver: false, tension: 60, friction: 12 }).start();
+    });
+    return () => { showSub.remove(); hideSub.remove(); };
+  }, [keyboardHeight]);
 
   // Sync when project changes / modal opens
   useFocusEffect(
@@ -1169,72 +1174,73 @@ function EditProjectSheet({
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={() => mapVisible ? setMapVisible(false) : onClose()}>
       <View style={{ flex: 1 }}>
-        <Pressable
-          style={{
-            flex: 1,
-            backgroundColor: 'rgba(0,0,0,0.45)',
-            justifyContent: 'flex-end',
-          }}
-          onPress={() => mapVisible ? setMapVisible(false) : onClose()}
-          {...a11y(t('common.close'), 'შეეხეთ ფონის დასახურად', 'button')}
-        >
-          {/* Stop touches inside the card from closing the sheet */}
+        <Animated.View style={{ flex: 1, justifyContent: 'flex-end', paddingBottom: keyboardHeight }}>
+          {/* Backdrop */}
+          <Pressable
+            style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.45)' }]}
+            onPress={() => mapVisible ? setMapVisible(false) : onClose()}
+            {...a11y(t('common.close'), 'შეეხეთ ფონის დასახურად', 'button')}
+          />
+          {/* Card — sits at raised floor, right above keyboard */}
           <Pressable onPress={() => {}} style={{ width: '100%' }}>
-            <SheetLayout
-              header={{ title: t('projects.edit'), onClose }}
-              footer={
-                <Button
-                  title={t('common.save')}
-                  size="lg"
-                  onPress={save}
-                  loading={busy}
-                  disabled={!name.trim()}
-                />
-              }
-            >
-              <View style={{ alignItems: 'center', gap: 8, paddingVertical: 4 }}>
-                <ProjectAvatar
-                  project={{ name, logo }}
-                  size={88}
-                  editable
-                  onEdit={onPickLogo}
-                />
-                {logo ? (
-                  <Pressable onPress={() => setLogo(null)} hitSlop={6}>
-                    <Text style={{ color: theme.colors.danger, fontSize: 13, fontWeight: '600' }}>
-                      {t('projects.logoRemove')}
-                    </Text>
-                  </Pressable>
-                ) : null}
-              </View>
+              <SheetLayout
+                maxHeightRatio={0.92}
+                style={{ maxHeight: maxSheetH }}
+                footerStyle={{ paddingBottom: kbHeight > 0 ? 8 : 16 }}
+                header={{ title: t('projects.edit'), onClose }}
+                footer={
+                  <Button
+                    title={t('common.save')}
+                    size="lg"
+                    onPress={save}
+                    loading={busy}
+                    disabled={!name.trim()}
+                  />
+                }
+              >
+                <View style={{ alignItems: 'center', gap: 8, paddingVertical: 4 }}>
+                  <ProjectAvatar
+                    project={{ name, logo }}
+                    size={88}
+                    editable
+                    onEdit={onPickLogo}
+                  />
+                  {logo ? (
+                    <Pressable onPress={() => setLogo(null)} hitSlop={6}>
+                      <Text style={{ color: theme.colors.danger, fontSize: 13, fontWeight: '600' }}>
+                        {t('projects.logoRemove')}
+                      </Text>
+                    </Pressable>
+                  ) : null}
+                </View>
 
-              <FormField label={t('common.name')} required>
-                <Input
-                  value={name}
-                  onChangeText={setName}
-                  placeholder={t('projects.projectNamePlaceholder')}
-                  autoFocus
-                />
-              </FormField>
+                <FormField label={t('common.name')} required>
+                  <Input
+                    value={name}
+                    onChangeText={setName}
+                    placeholder={t('projects.projectNamePlaceholder')}
+                    autoFocus
+                  />
+                </FormField>
 
-              <FormField label={t('common.company')}>
-                <Input value={company} onChangeText={setCompany} placeholder={t('projects.clientPlaceholder')} />
-              </FormField>
+                <FormField label={t('common.company')}>
+                  <Input value={company} onChangeText={setCompany} placeholder={t('projects.clientPlaceholder')} />
+                </FormField>
 
-              <FormField label={t('common.address')}>
-                <Input
-                  value={address}
-                  onChangeText={setAddress}
-                  placeholder="ქუჩა, ნომერი, ქალაქი"
-                />
-              </FormField>
+                <FormField label={t('common.address')}>
+                  <Input
+                    value={address}
+                    onChangeText={setAddress}
+                    placeholder="ქუჩა, ნომერი, ქალაქი"
+                  />
+                </FormField>
 
-              <FormField label="მდებარეობა">
-                <LocationRow pin={pin} address={address} onPress={() => { Keyboard.dismiss(); setMapVisible(true); }} />
-              </FormField>
-            </SheetLayout>
+                <FormField label="მდებარეობა">
+                  <LocationRow pin={pin} address={address} onPress={() => { Keyboard.dismiss(); setMapVisible(true); }} />
+                </FormField>
+              </SheetLayout>
           </Pressable>
-        </Pressable>
+        </Animated.View>
 
         {/* Full-screen map overlay — no nested Modal */}
         {mapVisible && (

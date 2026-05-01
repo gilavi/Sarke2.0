@@ -85,6 +85,7 @@ Schema + seed already applied to the hosted project. Relevant files preserved he
 - `supabase/migrations/0015_project_logo.sql` — optional `projects.logo` (base64 data URL)
 - `supabase/migrations/0016_signer_role_other.sql` — adds `'other'` to the `signer_role` enum so freeform crew members flow into `signatures`
 - `supabase/migrations/0020_storage_rls_and_timestamps.sql` — tightens `incident-photos` and `report-photos` storage RLS to the row owner; adds `updated_at` + audit trigger to mutable user-data tables; adds composite indexes for project-signer lookup and certificate pagination
+- `supabase/migrations/0021_inspection_attachments.sql` — `inspection_attachments` table for equipment certificates uploaded against an inspection (type chip + №number + 16:9 photo). Distinct from `qualifications` (expert credentials) and `certificates` (generated PDFs). Photos live in the existing `certificates` bucket.
 - `supabase/seed/01_system_templates.sql` — system templates
 
 Storage buckets: `certificates`, `answer-photos`, `pdfs`, `signatures`, `incident-photos`, `report-photos`, `project-files`, `remote-signatures`. 
@@ -102,7 +103,14 @@ app/                  expo-router routes (the magic folder)
   projects/           create + detail + signer
   questionnaire/      wizard + signing (where dreams go to die)
   template/           quick-start (not that quick)
-  certificates/       list + add + regret
+  inspections/[id].tsx
+                      Inspection result screen — full-screen WebView
+                      PDF preview with a 3-button bottom bar
+                      (სერტიფიკატები / ხელმოწერები / გადმოწერა).
+                      Live preview rebuilds when sheets save changes.
+                      Replaces the old tabs + done.tsx + certificates/new
+                      wizard. Signatures and equipment certs are now
+                      captured here, not in the wizard.
   history.tsx         because you will need therapy
   +not-found.tsx      catch-all 404 for unmatched routes (back-to-home)
 customer_support/     just kidding, we don't have that
@@ -145,6 +153,15 @@ components/SectionHeader.tsx
                       Consistent section title (lg, semibold) with
                       optional right-aligned action button.
                       Replaces ad-hoc section titles.
+components/QuickActions.tsx
+components/QuickActionButton.tsx
+                      BOG-style horizontal row of pastel circular
+                      action shortcuts (inspection, incident,
+                      briefing, report, participant, file). Driven
+                      by `theme.colors.actionColors[colorKey]`
+                      semantic tokens — no inline styles.
+                      Mounted on the project detail screen between
+                      hero card and section list (replaces the FAB).
 components/wizard/kamari/
                       ქამარი (harness) inspection flow — count screen,
                       overview grid (green/amber/red cards), and

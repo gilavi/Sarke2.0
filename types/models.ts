@@ -308,6 +308,31 @@ export interface Certificate {
   generated_at: string;
 }
 
+/**
+ * Equipment certificate uploaded against an inspection. The user picks a
+ * type chip (or "სხვა") and optionally attaches a number and a 16:9 photo
+ * of the physical certificate. Embedded into the generated PDF.
+ */
+export const ATTACHMENT_TYPE_PRESETS = [
+  'ხარაჩოს სერტიფიკატი',
+  'ლიფტის სერტიფიკატი',
+  'ამწის სერტიფიკატი',
+  'ავტომობილის სერტიფიკატი',
+  'ხელსაწყოს სერტიფიკატი',
+] as const;
+
+export interface InspectionAttachment {
+  id: string;
+  inspection_id: string;
+  user_id: string;
+  cert_type: string;
+  cert_number: string | null;
+  /** Storage path inside the `certificates` bucket. */
+  photo_path: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 // ── Incidents ─────────────────────────────────────────────────────────────────
 
 export type IncidentType = 'minor' | 'severe' | 'fatal' | 'mass' | 'nearmiss';

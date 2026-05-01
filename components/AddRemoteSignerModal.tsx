@@ -1,12 +1,14 @@
-import { useState , useMemo} from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Platform,
+  Animated,
+  Dimensions,
+  Keyboard,
   Pressable,
   ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
-import { KeyboardAvoidingView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { A11yText } from './primitives/A11yText';
 import { FormField } from './FormField';
@@ -38,12 +40,29 @@ export function AddRemoteSignerSheet({
 }: AddRemoteSignerSheetProps) {
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
+  const insets = useSafeAreaInsets();
+  const screenH = Dimensions.get('window').height;
 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [role, setRole] = useState<SignerRole>('xaracho_supervisor');
   const [nameTouched, setNameTouched] = useState(false);
   const [phoneTouched, setPhoneTouched] = useState(false);
+  const [kbHeight, setKbHeight] = useState(0);
+  const keyboardHeight = useRef(new Animated.Value(0)).current;
+  const maxSheetH = screenH - kbHeight - insets.top - 24;
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardWillShow', (e) => {
+      setKbHeight(e.endCoordinates.height);
+      Animated.spring(keyboardHeight, { toValue: e.endCoordinates.height, useNativeDriver: false, tension: 60, friction: 12 }).start();
+    });
+    const hideSub = Keyboard.addListener('keyboardWillHide', () => {
+      setKbHeight(0);
+      Animated.spring(keyboardHeight, { toValue: 0, useNativeDriver: false, tension: 60, friction: 12 }).start();
+    });
+    return () => { showSub.remove(); hideSub.remove(); };
+  }, [keyboardHeight]);
 
   const nameError = nameTouched && !name.trim() ? 'სავალდებულო ველი' : undefined;
   const phoneError =
@@ -78,7 +97,7 @@ export function AddRemoteSignerSheet({
   };
 
   return (
-    <View style={styles.container}>
+    <Animated.View style={[styles.container, { marginBottom: keyboardHeight, maxHeight: maxSheetH }]}>
       <A11yText size="xl" weight="bold" style={styles.title}>
         გარე ხელისმოწერის მოთხოვნა
       </A11yText>
@@ -87,79 +106,77 @@ export function AddRemoteSignerSheet({
         ხელის მოწერის ლინკი გაიგზავნება SMS-ით. ლინკი 14 დღეში იწურება.
       </A11yText>
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        contentContainerStyle={styles.scrollContent}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-          <FormField label="როლი" required>
-            <View style={styles.roleOptions}>
-              {ROSTER_ROLES.map(r => (
-                <Pressable
-                  key={r}
-                  onPress={() => setRole(r)}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected: role === r }}
-                  accessibilityLabel={SIGNER_ROLE_LABEL[r]}
-                  style={[styles.roleRow, role === r && styles.roleRowSelected]}
-                >
-                  <View style={[styles.radio, role === r && styles.radioOn]}>
-                    {role === r ? (
-                      <Ionicons name="checkmark" size={14} color={theme.colors.white} />
-                    ) : null}
-                  </View>
-                  <A11yText size="base" weight="medium" color={theme.colors.ink}>
-                    {SIGNER_ROLE_LABEL[r]}
-                  </A11yText>
-                </Pressable>
-              ))}
-            </View>
-          </FormField>
+        <FormField label="როლი" required>
+          <View style={styles.roleOptions}>
+            {ROSTER_ROLES.map(r => (
+              <Pressable
+                key={r}
+                onPress={() => setRole(r)}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: role === r }}
+                accessibilityLabel={SIGNER_ROLE_LABEL[r]}
+                style={[styles.roleRow, role === r && styles.roleRowSelected]}
+              >
+                <View style={[styles.radio, role === r && styles.radioOn]}>
+                  {role === r ? (
+                    <Ionicons name="checkmark" size={14} color={theme.colors.white} />
+                  ) : null}
+                </View>
+                <A11yText size="base" weight="medium" color={theme.colors.ink}>
+                  {SIGNER_ROLE_LABEL[r]}
+                </A11yText>
+              </Pressable>
+            ))}
+          </View>
+        </FormField>
 
-          <FormField label="სახელი გვარი" required error={nameError}>
-            <Input
-              value={name}
-              onChangeText={setName}
-              onBlur={() => setNameTouched(true)}
-              placeholder="გიორგი ხელაძე"
-              error={nameError}
-              autoFocus
-            />
-          </FormField>
-
-          <FormField label="ტელეფონი" required error={phoneError}>
-            <Input
-              value={phone}
-              onChangeText={setPhone}
-              onBlur={() => setPhoneTouched(true)}
-              keyboardType="phone-pad"
-              placeholder="+995 5XX XXX XXX"
-              error={phoneError}
-            />
-          </FormField>
-
-          <ButtonGroup
-            buttons={[
-              {
-                label: 'გაუქმება',
-                variant: 'secondary',
-                size: 'lg',
-                onPress: handleCancel,
-                disabled: busy,
-              },
-              {
-                label: 'გაგზავნე SMS',
-                variant: 'primary',
-                size: 'lg',
-                onPress: handleSubmit,
-                loading: busy,
-              },
-            ]}
-            layout="vertical"
+        <FormField label="სახელი გვარი" required error={nameError}>
+          <Input
+            value={name}
+            onChangeText={setName}
+            onBlur={() => setNameTouched(true)}
+            placeholder="გიორგი ხელაძე"
+            error={nameError}
+            autoFocus
           />
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </View>
+        </FormField>
+
+        <FormField label="ტელეფონი" required error={phoneError}>
+          <Input
+            value={phone}
+            onChangeText={setPhone}
+            onBlur={() => setPhoneTouched(true)}
+            keyboardType="phone-pad"
+            placeholder="+995 5XX XXX XXX"
+            error={phoneError}
+          />
+        </FormField>
+      </ScrollView>
+      <ButtonGroup
+        buttons={[
+          {
+            label: 'გაუქმება',
+            variant: 'secondary',
+            size: 'lg',
+            onPress: handleCancel,
+            disabled: busy,
+          },
+          {
+            label: 'გაგზავნე SMS',
+            variant: 'primary',
+            size: 'lg',
+            onPress: handleSubmit,
+            loading: busy,
+          },
+        ]}
+        layout="vertical"
+      />
+    </Animated.View>
   );
 }
 

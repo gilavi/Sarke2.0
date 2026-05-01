@@ -1,10 +1,9 @@
 import { useCallback, useRef, useState , useMemo} from 'react';
-import { Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
-import { KeyboardAvoidingView } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import SignatureScreen, { type SignatureViewRef } from 'react-native-signature-canvas';
 import { Button, Field, Input, Screen } from '../../../components/ui';
@@ -27,6 +26,7 @@ const ROSTER_ROLES: SignerRole[] = ['xaracho_supervisor', 'xaracho_assembler'];
 export default function SignerForm() {
   const { theme } = useTheme();
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const styles = useMemo(() => getstyles(theme), [theme]);
   const { id, signerId } = useLocalSearchParams<{ id: string; signerId?: string }>();
   const router = useRouter();
@@ -149,11 +149,15 @@ export default function SignerForm() {
       />
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={{ flex: 1 }}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+          behavior="padding"
+          keyboardVerticalOffset={insets.top + 60}
         >
-          <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24, gap: 14 }}>
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          contentContainerStyle={{ padding: 16, paddingBottom: 24, gap: 14 }}
+        >
           <Field label={t('common.role')}>
             <View style={{ gap: 8 }}>
               {ROSTER_ROLES.map(r => (
@@ -213,7 +217,7 @@ export default function SignerForm() {
             disabled={!fullName.trim()}
             style={{ marginTop: 8 }}
           />
-          </ScrollView>
+        </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
 

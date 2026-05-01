@@ -1,10 +1,9 @@
-import QRCode from 'qrcode';
 import type {
   Answer,
   AnswerPhoto,
   Inspection,
+  InspectionAttachment,
   Project,
-  Qualification,
   Question,
   SignatureRecord,
   SignerRole,
@@ -12,13 +11,13 @@ import type {
 } from '../types/models';
 import { SIGNER_ROLE_LABEL } from '../types/models';
 import ka from '../locales/ka.json';
-import en from '../locales/en.json';
 
-const pdfLocales = { ka, en };
-
-function tPdf(lang: 'ka' | 'en', key: string, vars?: Record<string, string | number>): string | undefined {
+// PDF output is locked to Georgian. The KA/EN toggle was removed when the
+// inspection result screen was rewritten — the field-team workflow only
+// produces Georgian-language reports, and the toggle had no real users.
+function tPdf(key: string, vars?: Record<string, string | number>): string | undefined {
   const parts = key.split('.');
-  let val: any = pdfLocales[lang];
+  let val: any = ka;
   for (const p of parts) {
     val = val?.[p];
     if (val === undefined) break;
@@ -29,12 +28,13 @@ function tPdf(lang: 'ka' | 'en', key: string, vars?: Record<string, string | num
 }
 
 /**
- * Qualification row augmented with a base64-encoded image data URL so the
- * HTML/WebView rendering pipeline can embed the proof image without making
- * a network call at render time.
+ * InspectionAttachment row augmented with a base64-encoded image data URL so
+ * the HTML/WebView rendering pipeline can embed the certificate photo without
+ * making a network call at render time. When `photo_data_url` is missing the
+ * row renders as a text-only card.
  */
-export interface PdfCertificate extends Qualification {
-  file_data_url?: string;
+export interface PdfAttachment extends InspectionAttachment {
+  photo_data_url?: string;
 }
 
 /** Shared args for both PDF generation and preview. */
@@ -46,8 +46,7 @@ export interface PdfHtmlArgs {
   answers: Answer[];
   signatures: SignatureRecord[];
   photosByAnswer?: Record<string, AnswerPhoto[]>;
-  certificates?: PdfCertificate[];
-  language?: 'ka' | 'en';
+  attachments?: PdfAttachment[];
 }
 
 export async function buildPdfHtml(args: PdfHtmlArgs): Promise<string> {
@@ -56,21 +55,6 @@ export async function buildPdfHtml(args: PdfHtmlArgs): Promise<string> {
 
 export async function buildPdfPreviewHtml(args: PdfHtmlArgs): Promise<string> {
   return buildHtml({ ...args, mode: 'preview' });
-}
-
-async function buildQrDataUrl(payload: string): Promise<string | null> {
-  try {
-    // SVG output is pure JS — works in React Native without Canvas.
-    const svg = await QRCode.toString(payload, {
-      type: 'svg',
-      errorCorrectionLevel: 'M',
-      margin: 1,
-      color: { dark: '#111827', light: '#FFFFFF' },
-    });
-    return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
-  } catch {
-    return null;
-  }
 }
 
 async function buildHtml(
@@ -84,33 +68,23 @@ async function buildHtml(
     answers,
     signatures,
     photosByAnswer = {},
-    certificates = [],
+    attachments = [],
     mode,
-    language = 'ka',
   } = args;
 
-  const t = (key: string, vars?: Record<string, string | number>) => tPdf(language, key, vars) ?? key;
+  const t = (key: string, vars?: Record<string, string | number>) => tPdf(key, vars) ?? key;
 
   const isPdf = mode === 'pdf';
   const isDraft = questionnaire.status !== 'completed';
   const answerFor = (q: Question) => answers.find(a => a.question_id === q.id);
   const dateStr = questionnaire.created_at
-    ? new Date(questionnaire.created_at).toLocaleDateString(
-        language === 'en' ? 'en-US' : 'ka-GE',
-        { year: 'numeric', month: 'long', day: 'numeric' },
-      )
+    ? new Date(questionnaire.created_at).toLocaleDateString('ka-GE', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      })
     : '—';
   const reportId = questionnaire.id.slice(0, 8).toUpperCase();
-
-  // ── QR code ──
-  const expertName =
-    signatures.find(s => s.signer_role === 'expert')?.full_name ?? '';
-  const qrPayload = JSON.stringify({
-    id: questionnaire.id,
-    date: questionnaire.created_at ?? null,
-    inspector: expertName,
-  });
-  const qrDataUrl = await buildQrDataUrl(qrPayload);
 
   // ── Sections ──
   const sections = Array.from(new Set(questions.map(q => q.section))).sort(
@@ -155,11 +129,11 @@ async function buildHtml(
     .join('');
 
   // ── Signatures ──
-  const sigHtml = renderSignatures(signatures, language);
+  const sigHtml = renderSignatures(signatures);
 
-  // ── Certificates ──
-  const certHtml =
-    certificates.length > 0
+  // ── Attachments (equipment certs uploaded against this inspection) ──
+  const attachmentsHtml =
+    attachments.length > 0
       ? `
         <div class="section" ${isPdf ? 'style="page-break-before: always;"' : ''}>
           <div class="section-header">
@@ -170,17 +144,15 @@ async function buildHtml(
             </h2>
           </div>
           <div class="cert-grid">
-            ${certificates
+            ${attachments
               .map(
-                c => `
+                a => `
               <div class="cert-card">
-                <div class="cert-title">${escapeHtml(c.type)}</div>
-                ${c.number ? `<div class="cert-meta-row"><span class="cert-meta-label">№</span> ${escapeHtml(c.number)}</div>` : ''}
-                ${c.issued_at ? `<div class="cert-meta-row">${t('pdf.certIssued', { date: escapeHtml(c.issued_at) })}</div>` : ''}
-                ${c.expires_at ? `<div class="cert-meta-row">${t('pdf.certExpires', { date: escapeHtml(c.expires_at) })}</div>` : ''}
-                ${c.file_data_url
+                <div class="cert-title">${escapeHtml(a.cert_type)}</div>
+                ${a.cert_number ? `<div class="cert-meta-row"><span class="cert-meta-label">№</span> ${escapeHtml(a.cert_number)}</div>` : ''}
+                ${a.photo_data_url
                   ? `<div class="cert-img-wrap">
-                      <img src="${c.file_data_url}" alt="${escapeHtml(c.type)}" class="cert-img"
+                      <img src="${a.photo_data_url}" alt="${escapeHtml(a.cert_type)}" class="cert-img"
                         onerror="this.style.display='none';this.parentElement.innerHTML='<div class=\\'photo-missing\\'>${escapeHtml(t('pdf.imageUnavailable'))}</div>';" />
                     </div>`
                   : ''}
@@ -222,17 +194,8 @@ async function buildHtml(
     ? `<div class="watermark">${t('pdf.watermarkDraft')}</div>`
     : '';
 
-  // ── Preview banner ──
-  const previewBanner = !isPdf
-    ? `<div class="preview-banner">${t('pdf.previewBanner')}</div>`
-    : '';
-
-  const qrBlock = qrDataUrl
-    ? `<img class="qr-img" src="${qrDataUrl}" alt="QR" />`
-    : `<div class="qr-placeholder">QR</div>`;
-
   return `<!DOCTYPE html>
-<html lang="${language}">
+<html lang="ka">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -275,19 +238,6 @@ async function buildHtml(
       }
     }
     ` : ''}
-
-    /* Preview banner */
-    .preview-banner {
-      background: var(--amber-bg);
-      border: 1px solid #F59E0B;
-      color: var(--amber);
-      padding: 12px 16px;
-      border-radius: var(--radius);
-      font-size: 12px;
-      font-weight: 600;
-      text-align: center;
-      margin-bottom: 16px;
-    }
 
     /* Watermark */
     .watermark {
@@ -367,22 +317,6 @@ async function buildHtml(
       flex-direction: column;
       align-items: flex-end;
       gap: 6px;
-    }
-    .qr-img {
-      width: 72px; height: 72px;
-      display: block;
-      background: #fff;
-      border: 1px solid var(--line);
-      border-radius: 6px;
-      padding: 2px;
-    }
-    .qr-placeholder {
-      width: 72px; height: 72px;
-      display: flex; align-items: center; justify-content: center;
-      border: 1px dashed var(--line);
-      border-radius: 6px;
-      color: var(--gray);
-      font-size: 10px;
     }
     .report-id {
       font-family: monospace;
@@ -826,7 +760,6 @@ async function buildHtml(
   </style>
 </head>
 <body>
-  ${previewBanner}
   ${watermark}
 
   <div class="report-header">
@@ -837,7 +770,6 @@ async function buildHtml(
       <div class="report-title">${escapeHtml(template.name)}</div>
     </div>
     <div class="header-right">
-      ${qrBlock}
       <div class="report-id">${reportId}</div>
     </div>
   </div>
@@ -872,11 +804,11 @@ async function buildHtml(
   <div class="toc-box">
     <div class="toc-heading">${t('pdf.tocTitle')}</div>
     ${tocItems}
-    ${certificates.length > 0 ? `
+    ${attachments.length > 0 ? `
     <div class="toc-item">
       <span class="toc-num">${pad2(sections.length + 1)}</span>
       <span class="toc-name">${t('pdf.attachedCerts')}</span>
-      <span class="toc-count">${certificates.length}</span>
+      <span class="toc-count">${attachments.length}</span>
     </div>` : ''}
   </div>
 
@@ -894,7 +826,7 @@ async function buildHtml(
   </div>
   <div class="sig-grid">${sigHtml}</div>
 
-  ${certHtml}
+  ${attachmentsHtml}
 </body>
 </html>`;
 }
@@ -1059,7 +991,7 @@ function renderPhoto(
   </div>`;
 }
 
-function renderSignatures(signatures: SignatureRecord[], lang: 'ka' | 'en'): string {
+function renderSignatures(signatures: SignatureRecord[]): string {
   const validSig = /^data:image\/\w+;base64,.{32,}$/;
   const renderable = signatures.filter(
     sig =>
@@ -1077,22 +1009,22 @@ function renderSignatures(signatures: SignatureRecord[], lang: 'ka' | 'en'): str
     .map(sig => {
       const role = sig.signer_role;
       const label = role === 'expert'
-        ? tPdf(lang, 'pdf.expertLabel') ?? 'Expert'
-        : (tPdf(lang, `roles.${role.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase())}`) ?? SIGNER_ROLE_LABEL[role as SignerRole] ?? role);
+        ? tPdf('pdf.expertLabel') ?? 'Expert'
+        : (tPdf(`roles.${role.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase())}`) ?? SIGNER_ROLE_LABEL[role as SignerRole] ?? role);
       const signedDate = sig.signed_at
-        ? new Date(sig.signed_at).toLocaleDateString(lang === 'en' ? 'en-US' : 'ka-GE')
+        ? new Date(sig.signed_at).toLocaleDateString('ka-GE')
         : '';
       const signedTime = sig.signed_at
-        ? new Date(sig.signed_at).toLocaleTimeString(lang === 'en' ? 'en-US' : 'ka-GE', { hour: '2-digit', minute: '2-digit' })
+        ? new Date(sig.signed_at).toLocaleTimeString('ka-GE', { hour: '2-digit', minute: '2-digit' })
         : '';
 
       const auditParts: string[] = [];
-      if (signedDate) auditParts.push(`<strong>${tPdf(lang, 'pdf.timeLabel')}:</strong> ${signedDate} ${signedTime}`);
+      if (signedDate) auditParts.push(`<strong>${tPdf('pdf.timeLabel')}:</strong> ${signedDate} ${signedTime}`);
       if (sig.latitude != null && sig.longitude != null) {
-        auditParts.push(`<strong>${tPdf(lang, 'pdf.locationLabel')}:</strong> ${sig.latitude.toFixed(5)}, ${sig.longitude.toFixed(5)}`);
+        auditParts.push(`<strong>${tPdf('pdf.locationLabel')}:</strong> ${sig.latitude.toFixed(5)}, ${sig.longitude.toFixed(5)}`);
       }
       if (sig.device_id_hash) {
-        auditParts.push(`<strong>${tPdf(lang, 'pdf.deviceLabel')}:</strong> ${sig.device_id_hash.slice(0, 8)}…`);
+        auditParts.push(`<strong>${tPdf('pdf.deviceLabel')}:</strong> ${sig.device_id_hash.slice(0, 8)}…`);
       }
       if (sig.ip_address) {
         auditParts.push(`<strong>IP:</strong> ${sig.ip_address}`);
@@ -1107,7 +1039,7 @@ function renderSignatures(signatures: SignatureRecord[], lang: 'ka' | 'en'): str
         <div class="sig-role">${escapeHtml(label)}</div>
         ${sig.position ? `<div class="sig-position">${escapeHtml(sig.position)}</div>` : ''}
         <div class="sig-img-box">
-          <img src="${sig.signature_png_url}" alt="${tPdf(lang, 'pdf.signatureAlt') ?? 'Signature'}" />
+          <img src="${sig.signature_png_url}" alt="${tPdf('pdf.signatureAlt') ?? 'Signature'}" />
         </div>
         ${signedDate ? `<div class="sig-date">${escapeHtml(signedDate)}</div>` : ''}
         ${auditHtml}

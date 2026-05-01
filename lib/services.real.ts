@@ -14,6 +14,7 @@ import type {
   ProjectFile,
   ProjectItem,
   ProjectSigner,
+  InspectionAttachment,
   Qualification,
   Question,
   RemoteSigningRequest,
@@ -745,6 +746,106 @@ export const certificatesApi = {
         .remove([path])
         .catch((e) => logError(e, 'certificates.removeBlob'));
     }
+  },
+};
+
+// -------- Inspection attachments (equipment certs uploaded per inspection) --------
+//
+// New concept introduced in 0021. Distinct from `qualifications` (the
+// expert's professional credentials) and `certificates` (generated PDFs).
+// Each row attaches one equipment certificate (type chip + optional number
+// + optional 16:9 photo) to one inspection. Photos live in the existing
+// `certificates` storage bucket.
+
+export const inspectionAttachmentsApi = {
+  listByInspection: async (inspectionId: string): Promise<InspectionAttachment[]> => {
+    const { data, error } = await supabase
+      .from('inspection_attachments')
+      .select('*')
+      .eq('inspection_id', inspectionId)
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    return (data ?? []) as InspectionAttachment[];
+  },
+  create: async (args: {
+    inspectionId: string;
+    certType: string;
+    certNumber?: string | null;
+    photoPath?: string | null;
+  }): Promise<InspectionAttachment> => {
+    const user = (await supabase.auth.getUser()).data.user;
+    if (!user) throw new Error('Not signed in');
+    return throwIfError<InspectionAttachment>(
+      await supabase
+        .from('inspection_attachments')
+        .insert({
+          inspection_id: args.inspectionId,
+          user_id: user.id,
+          cert_type: args.certType,
+          cert_number: args.certNumber ?? null,
+          photo_path: args.photoPath ?? null,
+        })
+        .select()
+        .single(),
+    );
+  },
+  update: async (
+    id: string,
+    patch: { certType?: string; certNumber?: string | null; photoPath?: string | null },
+  ): Promise<InspectionAttachment> => {
+    const row: Record<string, unknown> = {};
+    if (patch.certType !== undefined) row.cert_type = patch.certType;
+    if (patch.certNumber !== undefined) row.cert_number = patch.certNumber;
+    if (patch.photoPath !== undefined) row.photo_path = patch.photoPath;
+    return throwIfError<InspectionAttachment>(
+      await supabase
+        .from('inspection_attachments')
+        .update(row)
+        .eq('id', id)
+        .select()
+        .single(),
+    );
+  },
+  remove: async (id: string) => {
+    // Best-effort: read photo_path first so the blob can be cleaned up too.
+    const { data: existing } = await supabase
+      .from('inspection_attachments')
+      .select('photo_path')
+      .eq('id', id)
+      .maybeSingle();
+    const { error } = await supabase
+      .from('inspection_attachments')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+    const path = (existing as { photo_path?: string | null } | null)?.photo_path;
+    if (path) {
+      await supabase.storage
+        .from(STORAGE_BUCKETS.certificates)
+        .remove([path])
+        .catch((e) => logError(e, 'inspection_attachments.removeBlob'));
+    }
+  },
+  /**
+   * Upload a 16:9 photo of the certificate to the `certificates` bucket.
+   * Caller passes a local file URI (from expo-image-picker); the file is
+   * compressed using the certificate profile before upload to keep PDFs lean.
+   * Returns the bucket-relative storage path that should be saved on the row.
+   */
+  uploadPhoto: async (args: {
+    inspectionId: string;
+    fileUri: string;
+  }): Promise<string> => {
+    const user = (await supabase.auth.getUser()).data.user;
+    if (!user) throw new Error('Not signed in');
+    const path = `${user.id}/${args.inspectionId}/${Crypto.randomUUID()}.jpg`;
+    return storageApi.uploadFromUri(
+      STORAGE_BUCKETS.certificates,
+      path,
+      args.fileUri,
+      'image/jpeg',
+      'certificate',
+    );
   },
 };
 

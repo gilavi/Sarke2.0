@@ -32,6 +32,7 @@ export const answersApi = src.answersApi;
 export const signaturesApi = src.signaturesApi;
 export const qualificationsApi = src.qualificationsApi;
 export const certificatesApi = src.certificatesApi;
+export const inspectionAttachmentsApi = src.inspectionAttachmentsApi;
 export const projectItemsApi = src.projectItemsApi;
 export const schedulesApi = src.schedulesApi;
 export const storageApi = src.storageApi;

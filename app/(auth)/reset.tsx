@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { Keyboard, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableWithoutFeedback, View } from 'react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
-import { KeyboardAvoidingView } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -15,6 +14,7 @@ import { useTheme } from '../../lib/theme';
 
 export default function ResetPasswordScreen() {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { signOut } = useSession();
   const [password, setPassword] = useState('');
@@ -52,13 +52,17 @@ export default function ResetPasswordScreen() {
         style={StyleSheet.absoluteFillObject}
       />
       <SafeAreaView style={{ flex: 1 }}>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={{ flex: 1 }}
+          behavior="padding"
+          keyboardVerticalOffset={insets.top + 44}
         >
           <ScrollView
-            contentContainerStyle={{ paddingHorizontal: 22, paddingTop: 40, paddingBottom: 40 }}
+            bounces={false}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
+            contentContainerStyle={{ paddingHorizontal: 22, paddingTop: 40, paddingBottom: 40 }}
           >
             <Text style={{ fontSize: 28, fontWeight: '900', color: theme.colors.ink }}>
               ახალი პაროლი
@@ -114,6 +118,7 @@ export default function ResetPasswordScreen() {
             </Card>
           </ScrollView>
         </KeyboardAvoidingView>
+        </TouchableWithoutFeedback>
       </SafeAreaView>
     </View>
   );

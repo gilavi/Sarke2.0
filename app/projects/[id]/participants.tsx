@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { RoleSlotList, type InspectorRow } from '../../../components/RoleSlotList';
 import { useTheme } from '../../../lib/theme';
@@ -16,6 +17,7 @@ export default function ProjectParticipantsList() {
   const { theme } = useTheme();
   const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const toast = useToast();
   const session = useSession();
@@ -68,7 +70,7 @@ export default function ProjectParticipantsList() {
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.background, paddingTop: insets.top }}>
       <Stack.Screen
         options={{
           title: 'მონაწილეები',
@@ -82,7 +84,7 @@ export default function ProjectParticipantsList() {
 
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 40 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 }}
       >
         <View style={styles.pageHeader}>
           <Text style={styles.pageTitle}>მონაწილეები</Text>

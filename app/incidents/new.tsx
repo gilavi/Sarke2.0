@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
+  TouchableWithoutFeedback,
   View,
 } from 'react-native';
 import * as Crypto from 'expo-crypto';
@@ -403,10 +407,17 @@ export default function NewIncident() {
         confirmExit={step === 1 && isFormDirty}
       />
 
-      <ScrollView
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <KeyboardAvoidingView
         style={{ flex: 1 }}
-        contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
+        behavior="padding"
+        keyboardVerticalOffset={insets.top + 44}
+      >
+      <ScrollView
+        bounces={false}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        contentContainerStyle={{ flexGrow: 1, padding: 16 }}
       >
         {step === 1 && <Step1 form={form} setForm={setForm} theme={theme} s={s} />}
         {step === 2 && (
@@ -441,42 +452,44 @@ export default function NewIncident() {
             s={s}
           />
         )}
-      </ScrollView>
 
-      {/* Bottom bar */}
-      <View
-        style={[
-          s.bottomBar,
-          { paddingBottom: insets.bottom + 12 },
-        ]}
-      >
-        {step < 4 ? (
-          <Button
-            title="შემდეგი"
-            rightIcon="arrow-forward"
-            onPress={goNext}
-            disabled={!canAdvance}
-            style={{ width: '100%' }}
-          />
-        ) : (
-          <View style={{ gap: 10 }}>
+        {/* Bottom bar */}
+        <View
+          style={[
+            s.bottomBar,
+            { marginTop: 'auto', paddingBottom: insets.bottom > 0 ? insets.bottom : 16 },
+          ]}
+        >
+          {step < 4 ? (
             <Button
-              title="PDF გენერირება"
-              leftIcon="document-text"
-              loading={saving}
-              onPress={saveAndGeneratePdf}
+              title="შემდეგი"
+              rightIcon="arrow-forward"
+              onPress={goNext}
+              disabled={!canAdvance}
               style={{ width: '100%' }}
             />
-            <Button
-              title="შენახვა ხელმოწერის გარეშე"
-              variant="link"
-              disabled={saving}
-              onPress={saveDraft}
-              style={{ width: '100%' }}
-            />
-          </View>
-        )}
-      </View>
+          ) : (
+            <View style={{ gap: 10 }}>
+              <Button
+                title="PDF გენერირება"
+                leftIcon="document-text"
+                loading={saving}
+                onPress={saveAndGeneratePdf}
+                style={{ width: '100%' }}
+              />
+              <Button
+                title="შენახვა ხელმოწერის გარეშე"
+                variant="link"
+                disabled={saving}
+                onPress={saveDraft}
+                style={{ width: '100%' }}
+              />
+            </View>
+          )}
+        </View>
+      </ScrollView>
+      </KeyboardAvoidingView>
+      </TouchableWithoutFeedback>
 
     </View>
   );

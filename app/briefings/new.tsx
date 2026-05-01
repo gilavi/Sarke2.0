@@ -3,10 +3,13 @@ import { useTranslation } from 'react-i18next';
 import {
   Alert,
   Keyboard,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   TextInput,
+  TouchableWithoutFeedback,
   View,
 } from 'react-native';
 import { DateTimeField } from '../../components/DateTimeField';
@@ -150,10 +153,17 @@ export default function NewBriefingScreen() {
         }
       />
 
-      <ScrollView
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <KeyboardAvoidingView
         style={{ flex: 1 }}
-        contentContainerStyle={{ padding: 16, paddingBottom: 120, gap: 20 }}
+        behavior="padding"
+        keyboardVerticalOffset={insets.top + 44}
+      >
+      <ScrollView
+        bounces={false}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        contentContainerStyle={{ flexGrow: 1, padding: 16, gap: 20 }}
       >
         {/* ── Date & Time ── */}
         <View style={styles.card}>
@@ -267,31 +277,32 @@ export default function NewBriefingScreen() {
             </View>
           )}
         </View>
+        {/* ── Start Button ── */}
+        <View
+          style={[
+            styles.footer,
+            { marginTop: 'auto', paddingBottom: insets.bottom > 0 ? insets.bottom : 16 },
+          ]}
+        >
+          {!canStart && (
+            <Text style={styles.footerHint}>
+              {participants.length === 0
+                ? 'დაამატეთ მინიმუმ 1 მონაწილე'
+                : 'აირჩიეთ მინიმუმ 1 თემა'}
+            </Text>
+          )}
+          <Button
+            title="დაწყება →"
+            size="lg"
+            onPress={onStart}
+            disabled={!canStart}
+            loading={busy}
+            style={{ width: '100%' }}
+          />
+        </View>
       </ScrollView>
-
-      {/* ── Start Button ── */}
-      <View
-        style={[
-          styles.footer,
-          { paddingBottom: insets.bottom + 16 },
-        ]}
-      >
-        {!canStart && (
-          <Text style={styles.footerHint}>
-            {participants.length === 0
-              ? 'დაამატეთ მინიმუმ 1 მონაწილე'
-              : 'აირჩიეთ მინიმუმ 1 თემა'}
-          </Text>
-        )}
-        <Button
-          title="დაწყება →"
-          size="lg"
-          onPress={onStart}
-          disabled={!canStart}
-          loading={busy}
-          style={{ width: '100%' }}
-        />
-      </View>
+      </KeyboardAvoidingView>
+      </TouchableWithoutFeedback>
 
     </View>
   );
@@ -436,10 +447,6 @@ function getstyles(theme: any) {
       maxWidth: 180,
     },
     footer: {
-      position: 'absolute',
-      bottom: 0,
-      left: 0,
-      right: 0,
       paddingHorizontal: 16,
       paddingTop: 12,
       backgroundColor: theme.colors.background,
