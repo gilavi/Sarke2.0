@@ -14,6 +14,7 @@ import { BottomSheetProvider } from '../components/BottomSheet';
 import { Skeleton } from '../components/Skeleton';
 import { SessionProvider, useSession } from '../lib/session';
 import { flushPendingSignatures } from '../lib/signatures';
+import { flushPendingPdfUploads } from '../lib/pdfUploadQueue';
 import { TERMS_VERSION } from '../lib/terms';
 import { ToastProvider } from '../lib/toast';
 import { OfflineProvider } from '../lib/offline';
@@ -101,6 +102,8 @@ function AuthGate() {
       }
       // Opportunistic retry of any signature uploads that failed earlier.
       void flushPendingSignatures().catch((e) => logError(e, '_layout.flushPendingSignatures'));
+      // Opportunistic retry of any deferred PDF uploads.
+      void flushPendingPdfUploads().catch((e) => logError(e, '_layout.flushPendingPdfUploads'));
     }
   }, [state, segments, isTermsViewMode]);
 

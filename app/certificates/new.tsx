@@ -58,6 +58,7 @@ import { flushPendingSignatures } from '../../lib/signatures';
 import { buildPdfHtml } from '../../lib/pdf';
 import { pickProjectLogo } from '../../lib/projectLogo';
 import { generatePdfName } from '../../lib/pdfName';
+import { queuePdfUpload, stagePdfForQueue } from '../../lib/pdfUploadQueue';
 import { useToast } from '../../lib/toast';
 import { logError } from '../../lib/logError';
 import { friendlyError } from '../../lib/errorMap';
@@ -519,7 +520,6 @@ export default function GenerateCertificateScreen() {
     }
     setBusy(true);
     setPdfPhase('მზადდება...');
-    let uploadedPdfPath: string | null = null;
     try {
       await flushPendingSignatures();
       const { rec: expertRec, expertName } = await buildExpertRecord();
@@ -569,31 +569,23 @@ export default function GenerateCertificateScreen() {
       const docType = template?.category === 'harness' ? 'ქამარი_შემოწმება' : 'ხარაჩო_შემოწმება';
       const certDate = inspection.completed_at ? new Date(inspection.completed_at) : new Date(inspection.created_at);
       const fileName = generatePdfName(project.name, docType, certDate, inspection.id);
-      const blob = await (await fetch(uri)).blob();
-      await storageApi.upload(STORAGE_BUCKETS.pdfs, fileName, blob, 'application/pdf');
-      uploadedPdfPath = fileName;
 
-      try {
-        await certificatesApi.create({
-          inspectionId: inspection.id,
-          templateId: inspection.template_id,
-          pdfUrl: fileName,
-          isSafeForUse: inspection.is_safe_for_use,
-          conclusionText: inspection.conclusion_text,
-          params: {
-            expertName,
-            qualTypes: attachedQuals.map(q => ({ type: q.type, number: q.number ?? null })),
-            signerNames: otherRecs.map(rec => rec.full_name),
-          },
-        });
-      } catch (createErr) {
-        // Roll back the orphaned PDF blob before surfacing the error.
-        await storageApi.remove(STORAGE_BUCKETS.pdfs, fileName).catch(rmErr => {
-          logError(rmErr, 'certNew.rollbackPdf');
-        });
-        throw createErr;
+      // Copy to a persistent URI with a pretty name so the share sheet shows
+      // the actual filename and the file survives for background upload.
+      const baseDir = FileSystem.documentDirectory ?? FileSystem.cacheDirectory;
+      const prettyUri = baseDir ? `${baseDir}${fileName}` : uri;
+      let shareUri = uri;
+      if (prettyUri !== uri) {
+        try {
+          await FileSystem.deleteAsync(prettyUri, { idempotent: true });
+        } catch { /* ignore */ }
+        try {
+          await FileSystem.copyAsync({ from: uri, to: prettyUri });
+          shareUri = prettyUri;
+        } catch {
+          // fall back to raw temp URI
+        }
       }
-      uploadedPdfPath = null;
 
       setPdfPhase('დასრულდა ✓');
       toast.success(t('certificates.generateSuccess'));
@@ -601,30 +593,60 @@ export default function GenerateCertificateScreen() {
         toast.error(t('certificates.assetsMissing', { count: failedAssetCount }));
       }
       if (await Sharing.isAvailableAsync()) {
-        const baseDir = FileSystem.cacheDirectory ?? FileSystem.documentDirectory;
-        const prettyUri = baseDir ? `${baseDir}${fileName}` : uri;
-        if (prettyUri !== uri) {
-          try {
-            await FileSystem.deleteAsync(prettyUri, { idempotent: true });
-          } catch { /* ignore */ }
-          try {
-            await FileSystem.copyAsync({ from: uri, to: prettyUri });
-            await Sharing.shareAsync(prettyUri, { mimeType: 'application/pdf' });
-            FileSystem.deleteAsync(prettyUri, { idempotent: true }).catch(() => {});
-          } catch {
-            await Sharing.shareAsync(uri, { mimeType: 'application/pdf' });
-          }
-        } else {
-          await Sharing.shareAsync(uri, { mimeType: 'application/pdf' });
-        }
+        await Sharing.shareAsync(shareUri, { mimeType: 'application/pdf' });
       }
       router.replace(`/inspections/${inspection.id}` as any);
+
+      // Background: upload PDF + create certificate row.
+      // If this fails, queue for retry so the user isn't blocked.
+      (async () => {
+        try {
+          await storageApi.uploadFromUri(STORAGE_BUCKETS.pdfs, fileName, shareUri, 'application/pdf');
+          await certificatesApi.create({
+            inspectionId: inspection.id,
+            templateId: inspection.template_id,
+            pdfUrl: fileName,
+            isSafeForUse: inspection.is_safe_for_use,
+            conclusionText: inspection.conclusion_text,
+            params: {
+              expertName,
+              qualTypes: attachedQuals.map(q => ({ type: q.type, number: q.number ?? null })),
+              signerNames: otherRecs.map(rec => rec.full_name),
+            },
+          });
+          // Clean up the persistent copy after successful upload
+          if (shareUri !== uri) {
+            FileSystem.deleteAsync(shareUri, { idempotent: true }).catch(() => {});
+          }
+        } catch (e) {
+          logError(e, 'certNew.backgroundUpload');
+          // Ensure we have a persistent URI for the queue
+          const stagedUri = shareUri === uri ? await stagePdfForQueue(uri, fileName) : shareUri;
+          await queuePdfUpload({
+            localUri: stagedUri,
+            bucket: STORAGE_BUCKETS.pdfs,
+            path: fileName,
+            contentType: 'application/pdf',
+            dbOp: {
+              kind: 'certificate_create',
+              payload: {
+                inspectionId: inspection.id,
+                templateId: inspection.template_id,
+                pdfUrl: fileName,
+                isSafeForUse: inspection.is_safe_for_use,
+                conclusionText: inspection.conclusion_text,
+                params: {
+                  expertName,
+                  qualTypes: attachedQuals.map(q => ({ type: q.type, number: q.number ?? null })),
+                  signerNames: otherRecs.map(rec => rec.full_name),
+                },
+              },
+            },
+          });
+          toast.info('PDF შენახულია ლოკალურად; სინქრონიზაცია მოხდება ქსელზე დაბრუნებისას');
+        }
+      })();
     } catch (e) {
-      if (uploadedPdfPath) {
-        await storageApi.remove(STORAGE_BUCKETS.pdfs, uploadedPdfPath).catch(rmErr => {
-          logError(rmErr, 'certNew.rollbackPdf');
-        });
-      }
       toast.error(friendlyError(e, t('errors.generationFailed')));
     } finally {
       setBusy(false);

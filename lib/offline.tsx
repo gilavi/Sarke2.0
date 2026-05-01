@@ -14,6 +14,7 @@ import { supabase } from './supabase';
 import { storageApi } from './services';
 import { logError } from './logError';
 import { stageCompressedPhotoForOffline } from './photoCompression';
+import { flushPendingPdfUploads } from './pdfUploadQueue';
 import type { Answer, AnswerPhoto, Inspection } from '../types/models';
 
 type AnswerUpsertPayload = Partial<Answer> & {
@@ -212,14 +213,20 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
       onlineRef.current = online;
       setIsOnline(online);
       setNetReady(true);
-      if (online) void flush();
+      if (online) {
+        void flush();
+        void flushPendingPdfUploads();
+      }
     });
     const unsub = NetInfo.addEventListener((s) => {
       const online = !!s.isConnected && s.isInternetReachable !== false;
       onlineRef.current = online;
       setIsOnline(online);
       setNetReady(true);
-      if (online) void flush();
+      if (online) {
+        void flush();
+        void flushPendingPdfUploads();
+      }
     });
     return () => unsub();
   }, [flush]);

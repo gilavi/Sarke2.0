@@ -19,6 +19,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 export async function generateAndSharePdf(
   html: string,
   suggestedName?: string,
+  keepCopy?: boolean,
 ): Promise<string | null> {
   if (Platform.OS === 'web') {
     const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
@@ -30,11 +31,12 @@ export async function generateAndSharePdf(
   const { uri } = await Print.printToFileAsync({ html });
 
   let shareUri = uri;
+  let prettyUri: string | undefined;
   if (suggestedName) {
     const baseDir = FileSystem.cacheDirectory ?? FileSystem.documentDirectory;
     if (baseDir) {
       const safeName = suggestedName.replace(/\.pdf$/i, '') + '.pdf';
-      const prettyUri = `${baseDir}${safeName}`;
+      prettyUri = `${baseDir}${safeName}`;
       try {
         // Delete any previous copy so copyAsync never clashes
         await FileSystem.deleteAsync(prettyUri, { idempotent: true });
@@ -44,6 +46,7 @@ export async function generateAndSharePdf(
         shareUri = prettyUri;
       } catch {
         // fall back to raw temp URI if copy fails
+        prettyUri = undefined;
       }
     }
   }
@@ -52,10 +55,11 @@ export async function generateAndSharePdf(
     await Sharing.shareAsync(shareUri, { mimeType: 'application/pdf', UTI: 'com.adobe.pdf' });
   }
 
-  // Clean up the pretty copy if we made one
-  if (shareUri !== uri) {
-    FileSystem.deleteAsync(shareUri, { idempotent: true }).catch(() => {});
+  // Clean up the pretty copy if we made one (unless caller wants to keep it
+  // for a deferred upload).
+  if (prettyUri && shareUri === prettyUri && !keepCopy) {
+    FileSystem.deleteAsync(prettyUri, { idempotent: true }).catch(() => {});
   }
 
-  return uri;
+  return prettyUri && keepCopy ? prettyUri : uri;
 }

@@ -28,6 +28,9 @@ import {
   getStorageImageDisplayUrl,
 } from '../../lib/imageUrl';
 import { shareStoredPdf } from '../../lib/sharePdf';
+import { queuePdfUpload, stagePdfForQueue } from '../../lib/pdfUploadQueue';
+import * as FileSystem from 'expo-file-system/legacy';
+import { logError } from '../../lib/logError';
 import { friendlyError } from '../../lib/errorMap';
 import { formatShortDateTime } from '../../lib/formatDate';
 import type { Incident, Project } from '../../types/models';
@@ -152,21 +155,49 @@ export default function IncidentDetail() {
         inspectorSignatureDataUrl: sigDataUrl,
         photoDataUrls,
       });
-      const localUri = await generateAndSharePdf(html);
+      // Keep the pretty-named copy for background upload
+      const incidentTypeLabel = INCIDENT_TYPE_FULL_LABEL[incident.type];
+      const docType = `ინციდენტი_${incidentTypeLabel}`;
+      const pdfName = generatePdfName(project.name, docType, new Date(incident.date_time), incident.id);
+      const pdfPath = `incidents/${pdfName}`;
+      const localUri = await generateAndSharePdf(html, pdfName, true);
       if (localUri) {
-        const incidentTypeLabel = INCIDENT_TYPE_FULL_LABEL[incident.type];
-        const docType = `ინციდენტი_${incidentTypeLabel}`;
-        const pdfName = generatePdfName(project.name, docType, new Date(incident.date_time), incident.id);
-        const pdfPath = `incidents/${pdfName}`;
-        await storageApi.uploadFromUri(STORAGE_BUCKETS.pdfs, pdfPath, localUri, 'application/pdf');
-        const updated = await incidentsApi.update(incident.id, {
-          pdf_url: pdfPath,
-          status: 'completed',
-        });
-        setIncident(updated);
+
+        setPdfPhase('დასრულდა ✓');
+        toast.success('PDF შექმნილია');
+
+        // Background: upload PDF + update incident row.
+        // If this fails, queue for retry so the user isn't blocked.
+        (async () => {
+          try {
+            await storageApi.uploadFromUri(STORAGE_BUCKETS.pdfs, pdfPath, localUri, 'application/pdf');
+            const updated = await incidentsApi.update(incident.id, {
+              pdf_url: pdfPath,
+              status: 'completed',
+            });
+            setIncident(updated);
+            // Clean up the temp copy after successful upload
+            FileSystem.deleteAsync(localUri, { idempotent: true }).catch(() => {});
+          } catch (e) {
+            logError(e, 'incidentId.backgroundUpload');
+            const stagedUri = await stagePdfForQueue(localUri, pdfName);
+            await queuePdfUpload({
+              localUri: stagedUri,
+              bucket: STORAGE_BUCKETS.pdfs,
+              path: pdfPath,
+              contentType: 'application/pdf',
+              dbOp: {
+                kind: 'incident_update',
+                payload: { incidentId: incident.id, pdf_url: pdfPath, status: 'completed' },
+              },
+            });
+            toast.info('PDF შენახულია ლოკალურად; სინქრონიზაცია მოხდება ქსელზე დაბრუნებისას');
+          }
+        })();
+      } else {
+        setPdfPhase('დასრულდა ✓');
+        toast.success('PDF შექმნილია');
       }
-      setPdfPhase('დასრულდა ✓');
-      toast.success('PDF შექმნილია');
     } catch (e) {
       toast.error(friendlyError(e, 'PDF-ის შექმნა ვერ მოხერხდა'));
     } finally {

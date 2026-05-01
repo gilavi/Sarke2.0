@@ -37,7 +37,7 @@ import {
   storageApi,
   templatesApi,
 } from '../../../lib/services';
-import { getStorageImageDisplayUrl } from '../../../lib/imageUrl';
+import { getStorageImageDisplayUrl, getStorageImageResizedDataUrl } from '../../../lib/imageUrl';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import { haptic } from '../../../lib/haptics';
 import { setPhotoPickerCallback, setPhotoAnnotateCallback } from '../../../lib/photoPickerBus';
@@ -574,6 +574,9 @@ export default function QuestionnaireWizard() {
       if (!existing) setAnswers(prev => ({ ...prev, [question.id]: answer }));
       const photo = await answersApi.addPhoto(answer.id, actualPath, captionStr ?? undefined);
       setPhotos(prev => ({ ...prev, [answer.id]: [...(prev[answer.id] ?? []), photo] }));
+      // Proactively cache the resized version so PDF generation is fast later
+      // (especially useful when the user goes offline before generating the certificate).
+      getStorageImageResizedDataUrl(STORAGE_BUCKETS.answerPhotos, actualPath).catch(() => undefined);
       toast.success('ფოტო აიტვირთა');
     } catch (e) {
       toast.error(`ფოტო ვერ აიტვირთა: ${toErrorMessage(e, 'ქსელის შეცდომა')}`);
