@@ -73,7 +73,7 @@ export default function NewReportTitleScreen() {
         bounces={false}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
-        contentContainerStyle={{ flexGrow: 1, padding: 16 }}
+        contentContainerStyle={{ padding: 16 }}
       >
         <Input
           label="რეპორტის სახელი"
@@ -85,16 +85,15 @@ export default function NewReportTitleScreen() {
           returnKeyType="done"
           onSubmitEditing={onNext}
         />
-
-        <View style={[styles.footer, { marginTop: 'auto', paddingBottom: insets.bottom > 0 ? insets.bottom : 16 }]}>
-          <Button
-            title="შემდეგი →"
-            onPress={onNext}
-            disabled={!canStart}
-            loading={busy}
-          />
-        </View>
       </ScrollView>
+      <View style={[styles.footer, { paddingBottom: insets.bottom > 0 ? insets.bottom : 16 }]}>
+        <Button
+          title="შემდეგი →"
+          onPress={onNext}
+          disabled={!canStart}
+          loading={busy}
+        />
+      </View>
       </KeyboardAvoidingView>
       </TouchableWithoutFeedback>
     </View>
@@ -104,11 +103,11 @@ export default function NewReportTitleScreen() {
 function makeStyles(theme: any) {
   return StyleSheet.create({
     footer: {
+      backgroundColor: theme.colors.surface,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
       paddingHorizontal: 16,
       paddingTop: 12,
-      borderTopWidth: 1,
-      borderTopColor: theme.colors.hairline,
-      backgroundColor: theme.colors.background,
     },
   });
 }

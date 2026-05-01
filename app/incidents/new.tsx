@@ -417,7 +417,7 @@ export default function NewIncident() {
         bounces={false}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
-        contentContainerStyle={{ flexGrow: 1, padding: 16 }}
+        contentContainerStyle={{ padding: 16 }}
       >
         {step === 1 && <Step1 form={form} setForm={setForm} theme={theme} s={s} />}
         {step === 2 && (
@@ -453,41 +453,40 @@ export default function NewIncident() {
           />
         )}
 
-        {/* Bottom bar */}
-        <View
-          style={[
-            s.bottomBar,
-            { marginTop: 'auto', paddingBottom: insets.bottom > 0 ? insets.bottom : 16 },
-          ]}
-        >
-          {step < 4 ? (
+      </ScrollView>
+      <View
+        style={[
+          s.bottomBar,
+          { paddingBottom: insets.bottom > 0 ? insets.bottom : 16 },
+        ]}
+      >
+        {step < 4 ? (
+          <Button
+            title="შემდეგი"
+            rightIcon="arrow-forward"
+            onPress={goNext}
+            disabled={!canAdvance}
+            style={{ width: '100%' }}
+          />
+        ) : (
+          <View style={{ gap: 10 }}>
             <Button
-              title="შემდეგი"
-              rightIcon="arrow-forward"
-              onPress={goNext}
-              disabled={!canAdvance}
+              title="PDF გენერირება"
+              leftIcon="document-text"
+              loading={saving}
+              onPress={saveAndGeneratePdf}
               style={{ width: '100%' }}
             />
-          ) : (
-            <View style={{ gap: 10 }}>
-              <Button
-                title="PDF გენერირება"
-                leftIcon="document-text"
-                loading={saving}
-                onPress={saveAndGeneratePdf}
-                style={{ width: '100%' }}
-              />
-              <Button
-                title="შენახვა ხელმოწერის გარეშე"
-                variant="link"
-                disabled={saving}
-                onPress={saveDraft}
-                style={{ width: '100%' }}
-              />
-            </View>
-          )}
-        </View>
-      </ScrollView>
+            <Button
+              title="შენახვა ხელმოწერის გარეშე"
+              variant="link"
+              disabled={saving}
+              onPress={saveDraft}
+              style={{ width: '100%' }}
+            />
+          </View>
+        )}
+      </View>
       </KeyboardAvoidingView>
       </TouchableWithoutFeedback>
 

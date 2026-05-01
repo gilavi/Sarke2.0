@@ -446,11 +446,11 @@ function getstyles(theme: any) {
       maxWidth: 180,
     },
     footer: {
+      backgroundColor: theme.colors.surface,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
       paddingHorizontal: 16,
       paddingTop: 12,
-      backgroundColor: theme.colors.background,
-      borderTopWidth: 1,
-      borderTopColor: theme.colors.hairline,
       gap: 8,
     },
     footerHint: {

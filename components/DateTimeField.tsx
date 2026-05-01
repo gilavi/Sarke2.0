@@ -19,6 +19,7 @@ import {
   Platform,
   Pressable,
   StyleSheet,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -68,6 +69,7 @@ export function DateTimeField({
 }: Props) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
   const styles = makeStyles(theme);
 
   const [open, setOpen] = useState(false);
@@ -224,7 +226,7 @@ export function DateTimeField({
                 onChange={(_, d) => {
                   if (d) setDraft(d);
                 }}
-                style={styles.picker}
+                style={{ width: screenWidth - 32 }}
               />
             </View>
           </Pressable>
@@ -360,11 +362,7 @@ function makeStyles(theme: any) {
       marginBottom: 8,
     },
     pickerWrap: {
-      minHeight: 220,
-      justifyContent: 'center',
-    },
-    picker: {
-      width: '100%',
+      alignItems: 'center',
     },
   });
 }
