@@ -100,7 +100,7 @@ export default function NewBriefingScreen() {
     setParticipants(prev => prev.filter((_, i) => i !== idx));
   };
 
-  const buildTopics = (): string[] => {
+  const builtTopics = useMemo(() => {
     const result: string[] = [];
     for (const key of selectedTopics) {
       if (key === 'other') {
@@ -111,19 +111,18 @@ export default function NewBriefingScreen() {
       }
     }
     return result;
-  };
+  }, [selectedTopics, customTopic]);
 
-  const canStart = participants.length >= 1 && selectedTopics.size > 0;
+  const canStart = participants.length >= 1 && builtTopics.length > 0;
 
   const onStart = useCallback(async () => {
     if (!projectId || !canStart) return;
     setBusy(true);
     try {
-      const topics = buildTopics();
       const briefing = await briefingsApi.create({
         projectId,
         dateTime: dateTime.toISOString(),
-        topics,
+        topics: builtTopics,
         participants,
         inspectorName,
       });
@@ -134,7 +133,7 @@ export default function NewBriefingScreen() {
     } finally {
       setBusy(false);
     }
-  }, [projectId, dateTime, participants, selectedTopics, customTopic, inspectorName, canStart]);
+  }, [projectId, dateTime, participants, builtTopics, inspectorName, canStart]);
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>

@@ -135,7 +135,7 @@ export default function ReportSlideEditor() {
   };
 
   const reAnnotateExisting = async () => {
-    const path = imagePath ?? annotatedPath;
+    const path = annotatedPath ?? imagePath;
     if (!path) return;
     setImageUploading(true);
     try {

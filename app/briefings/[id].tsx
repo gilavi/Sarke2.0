@@ -4,6 +4,7 @@ import { A11yText as Text } from '../../components/primitives/A11yText';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../lib/theme';
 import { generateAndSharePdf } from '../../lib/pdfOpen';
 import { useBriefing, useProject } from '../../lib/apiHooks';
@@ -15,6 +16,7 @@ import type { Briefing, Project } from '../../types/models';
 export default function BriefingDetailScreen() {
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
 
@@ -108,7 +110,7 @@ export default function BriefingDetailScreen() {
       )}
 
       {/* Share bar */}
-      <View style={styles.shareBar}>
+      <View style={[styles.shareBar, { paddingBottom: Math.max(insets.bottom, 0) + 16 }]}>
         <Pressable
           onPress={sharePdf}
           disabled={sharing || !briefing || !project}

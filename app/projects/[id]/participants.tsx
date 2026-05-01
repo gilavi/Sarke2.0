@@ -2,7 +2,6 @@ import { useCallback, useMemo } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { RoleSlotList, type InspectorRow } from '../../../components/RoleSlotList';
 import { useTheme } from '../../../lib/theme';
@@ -19,7 +18,6 @@ export default function ProjectParticipantsList() {
   const { theme } = useTheme();
   const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const toast = useToast();
   const session = useSession();
@@ -64,7 +62,7 @@ export default function ProjectParticipantsList() {
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background, paddingTop: insets.top }}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Stack.Screen
         options={{
           title: 'მონაწილეები',

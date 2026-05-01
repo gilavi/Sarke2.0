@@ -374,7 +374,7 @@ export default function InspectionResultScreen() {
       const filename = generatePdfName(
         project.name,
         template.category === 'harness' ? 'aprzhilebis_shemowmeba' : 'kharachos_shemowmeba',
-        new Date(),
+        new Date(inspection.created_at),
         inspection.id,
       );
       await generateAndSharePdf(html, filename, false);
