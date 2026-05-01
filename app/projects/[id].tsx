@@ -35,6 +35,15 @@ import {
   incidentsApi,
   reportsApi,
 } from '../../lib/services';
+import {
+  useProject,
+  useInspectionsByProject,
+  useTemplates,
+  useProjectFiles,
+  useIncidentsByProject,
+  useBriefingsByProject,
+  useReportsByProject,
+} from '../../lib/apiHooks';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { useToast } from '../../lib/toast';
 import { getStorageImageDisplayUrl } from '../../lib/imageUrl';
@@ -74,11 +83,48 @@ export default function ProjectDetail() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [mapModalVisible, setMapModalVisible] = useState(false);
   const [allProjects, setAllProjects] = useState<Project[]>([]);
-  // Flips true after the first fetch finishes. Drives the skeleton → content
-  // swap; refocus doesn't re-show skeletons once we have data.
   const [loaded, setLoaded] = useState(false);
   const [briefings, setBriefings] = useState<Briefing[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
+
+  // React Query hooks provide cached data instantly + background refetch.
+  // We sync their results into local state so existing mutations (crew edit,
+  // file upload, etc.) continue to work via setProject / setFiles.
+  const projectQ = useProject(id);
+  const questionnairesQ = useInspectionsByProject(id);
+  const templatesQ = useTemplates();
+  const filesQ = useProjectFiles(id);
+  const incidentsQ = useIncidentsByProject(id);
+  const briefingsQ = useBriefingsByProject(id);
+  const reportsQ = useReportsByProject(id);
+
+  useEffect(() => {
+    if (projectQ.data !== undefined) setProject(projectQ.data);
+  }, [projectQ.data]);
+  useEffect(() => {
+    if (questionnairesQ.data !== undefined) setQuestionnaires(questionnairesQ.data);
+  }, [questionnairesQ.data]);
+  useEffect(() => {
+    if (templatesQ.data !== undefined) setTemplates(templatesQ.data);
+  }, [templatesQ.data]);
+  useEffect(() => {
+    if (filesQ.data !== undefined) setFiles(filesQ.data);
+  }, [filesQ.data]);
+  useEffect(() => {
+    if (incidentsQ.data !== undefined) setIncidents(incidentsQ.data);
+  }, [incidentsQ.data]);
+  useEffect(() => {
+    if (briefingsQ.data !== undefined) setBriefings(briefingsQ.data);
+  }, [briefingsQ.data]);
+  useEffect(() => {
+    if (reportsQ.data !== undefined) setReports(reportsQ.data);
+  }, [reportsQ.data]);
+  useEffect(() => {
+    const anyLoading = projectQ.isLoading || questionnairesQ.isLoading || templatesQ.isLoading
+      || filesQ.isLoading || incidentsQ.isLoading || briefingsQ.isLoading || reportsQ.isLoading;
+    if (!anyLoading) setLoaded(true);
+  }, [projectQ.isLoading, questionnairesQ.isLoading, templatesQ.isLoading, filesQ.isLoading,
+      incidentsQ.isLoading, briefingsQ.isLoading, reportsQ.isLoading]);
 
   // Project screen onboarding tour
   const heroRef = useRef<View>(null);
@@ -122,40 +168,9 @@ export default function ProjectDetail() {
     [t],
   );
 
-  const load = useCallback(async () => {
-    if (!id) return;
-    const [p, q, tpls, f, inc, brf, rpt] = await Promise.all([
-      projectsApi.getById(id).catch(() => null),
-      questionnairesApi.listByProject(id).catch(() => []),
-      templatesApi.list().catch(() => []),
-      projectFilesApi.list(id).catch(() => [] as ProjectFile[]),
-      incidentsApi.listByProject(id).catch(() => [] as Incident[]),
-      briefingsApi.listByProject(id).catch(() => [] as Briefing[]),
-      reportsApi.listByProject(id).catch(() => [] as Report[]),
-    ]);
-    setProject(p);
-    setQuestionnaires(q);
-    setTemplates(tpls);
-    setFiles(f);
-    setIncidents(inc);
-    setBriefings(brf);
-    setReports(rpt);
-    setLoaded(true);
-  }, [id]);
-
-  // 7 parallel Supabase calls fired on every screen focus before — switching
-  // tabs in/out of the project detail re-hammered the API for no fresh data.
-  // Skip the refetch when the last successful load was <30s ago.
-  const lastLoadAtRef = useRef(0);
-  const FRESH_MS = 30_000;
-  useFocusEffect(
-    useCallback(() => {
-      const now = Date.now();
-      if (now - lastLoadAtRef.current < FRESH_MS && loaded) return;
-      lastLoadAtRef.current = now;
-      void load();
-    }, [load, loaded]),
-  );
+  // Data now flows through React Query — cached, deduplicated, and
+  // background-refreshed. No more useFocusEffect hammering Supabase
+  // on every tab switch.
 
   // Inspector row (logged-in expert) — derived from auth, never persisted
   // into projects.crew. The crew list itself is just the manual entries.

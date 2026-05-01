@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Dimensions,
   Keyboard,
@@ -11,28 +11,28 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated from 'react-native-reanimated';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSession } from '../../lib/session';
 import { ProjectAvatar } from '../../components/ProjectAvatar';
 import { pickProjectLogo } from '../../lib/projectLogo';
+import { isExpiringSoon, questionnairesApi, projectsApi } from '../../lib/services';
+import { useQueryClient } from '@tanstack/react-query';
 import {
-  qualificationsApi,
-  isExpiringSoon,
-  projectsApi,
-  questionnairesApi,
-  templatesApi,
-} from '../../lib/services';
+  useProjects,
+  useRecentInspections,
+  useQualifications,
+  useTemplates,
+} from '../../lib/apiHooks';
 // shareStoredPdf import removed — PDF sharing now lives on the inspection
 // detail screen (which fetches certificates list) post 0006 decoupling.
 import { useTheme, withOpacity } from '../../lib/theme';
 import { a11y } from '../../lib/accessibility';
-import { logError, toErrorMessage } from '../../lib/logError';
+import { toErrorMessage } from '../../lib/logError';
 import { friendlyError } from '../../lib/errorMap';
 import { Button, Field, Input } from '../../components/ui';
 import { FabButton } from '../../components/primitives';
@@ -70,87 +70,23 @@ export default function HomeScreen() {
   const pickerStyles = useMemo(() => getpickerStyles(theme), [theme]);
   const { state } = useSession();
   const router = useRouter();
-  const [certs, setCerts] = useState<Qualification[]>([]);
-  const [templates, setTemplates] = useState<Template[]>([]);
-  const [recent, setRecent] = useState<Inspection[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
+  const qc = useQueryClient();
+  const certsQ = useQualifications();
+  const templatesQ = useTemplates();
+  const recentQ = useRecentInspections(10);
+  const projectsQ = useProjects();
+
+  const certs = certsQ.data ?? [];
+  const templates = templatesQ.data ?? [];
+  const recent = recentQ.data ?? [];
+  const projects = projectsQ.data ?? [];
+
+  const loaded = !certsQ.isLoading && !templatesQ.isLoading && !recentQ.isLoading && !projectsQ.isLoading;
+  const loadError = certsQ.isError && templatesQ.isError && recentQ.isError && projectsQ.isError;
+
   const [refreshing, setRefreshing] = useState(false);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pickerInitialView, setPickerInitialView] = useState<'list' | 'new'>('list');
-  // `loaded` flips true after the first fetch finishes (success or not) so
-  // we know when to swap skeletons for real content. Pull-to-refresh doesn't
-  // re-show skeletons — the RefreshControl spinner already signals that.
-  const [loaded, setLoaded] = useState(false);
-  const [loadError, setLoadError] = useState(false);
-
-  const CACHE_KEYS = {
-    certs: 'home_cache_certs',
-    templates: 'home_cache_templates',
-    recent: 'home_cache_recent',
-    projects: 'home_cache_projects',
-  };
-
-  const hydrateFromCache = useCallback(async () => {
-    try {
-      const [cRaw, tRaw, rRaw, pRaw] = await Promise.all([
-        AsyncStorage.getItem(CACHE_KEYS.certs),
-        AsyncStorage.getItem(CACHE_KEYS.templates),
-        AsyncStorage.getItem(CACHE_KEYS.recent),
-        AsyncStorage.getItem(CACHE_KEYS.projects),
-      ]);
-      if (cRaw) setCerts(JSON.parse(cRaw));
-      if (tRaw) setTemplates(JSON.parse(tRaw));
-      if (rRaw) setRecent(JSON.parse(rRaw));
-      if (pRaw) setProjects(JSON.parse(pRaw));
-      // If we have any cached data, mark as loaded so skeletons disappear
-      if (cRaw || tRaw || rRaw || pRaw) setLoaded(true);
-    } catch {
-      // ignore cache read errors
-    }
-  }, []);
-
-  const load = useCallback(async () => {
-    try {
-      // null = that API failed; [] = succeeded with empty results.
-      // Keeping them distinct prevents failed fetches from wiping cached data.
-      const [c, t, r, p] = await Promise.all([
-        qualificationsApi.list().catch((e) => { logError(e, 'home.qualifications'); return null; }),
-        templatesApi.list().catch((e) => { logError(e, 'home.templates'); return null; }),
-        questionnairesApi.recent(10).catch((e) => { logError(e, 'home.recent'); return null; }),
-        projectsApi.list().catch((e) => { logError(e, 'home.projects'); return null; }),
-      ]);
-
-      const allFailed = c === null && t === null && r === null && p === null;
-      setLoadError(allFailed);
-
-      // Only update state (and cache) when the individual fetch succeeded.
-      if (c !== null) { setCerts(c); void AsyncStorage.setItem(CACHE_KEYS.certs, JSON.stringify(c)).catch(() => {}); }
-      if (t !== null) { setTemplates(t); void AsyncStorage.setItem(CACHE_KEYS.templates, JSON.stringify(t)).catch(() => {}); }
-      if (r !== null) { setRecent(r); void AsyncStorage.setItem(CACHE_KEYS.recent, JSON.stringify(r)).catch(() => {}); }
-      if (p !== null) { setProjects(p); void AsyncStorage.setItem(CACHE_KEYS.projects, JSON.stringify(p)).catch(() => {}); }
-    } catch (e) {
-      logError(e, 'home.load');
-      setLoadError(true);
-    } finally {
-      setLoaded(true);
-    }
-  }, []);
-
-  // Tab switches re-fire useFocusEffect; fanning out 4 Supabase requests every
-  // tap was the dominant feel-laggy source on iOS. Skip the network round if we
-  // refetched within the last 30s — the cache hydrate still runs so any stored
-  // edits are reflected.
-  const lastLoadAtRef = useRef(0);
-  const FRESH_MS = 30_000;
-  useFocusEffect(
-    useCallback(() => {
-      void hydrateFromCache();
-      const now = Date.now();
-      if (now - lastLoadAtRef.current < FRESH_MS) return;
-      lastLoadAtRef.current = now;
-      void load();
-    }, [hydrateFromCache, load]),
-  );
 
   const { width: screenWidth } = useWindowDimensions();
   const HPAD = 20;
@@ -175,10 +111,14 @@ export default function HomeScreen() {
   const onRefresh = useCallback(async () => {
     haptic.medium();
     setRefreshing(true);
-    lastLoadAtRef.current = Date.now();
-    await load();
+    await Promise.all([
+      certsQ.refetch(),
+      templatesQ.refetch(),
+      recentQ.refetch(),
+      projectsQ.refetch(),
+    ]);
     setRefreshing(false);
-  }, [load]);
+  }, [certsQ, templatesQ, recentQ, projectsQ]);
 
   const templateName = useCallback((id: string) => templates.find((tpl) => tpl.id === id)?.name ?? t('common.inspection'), [templates, t]);
 
@@ -473,7 +413,11 @@ export default function HomeScreen() {
         projects={projects}
         templates={templates}
         onClose={() => setPickerVisible(false)}
-        onCreated={load}
+        onCreated={async () => {
+          // Invalidate caches so the new inspection/project appears immediately
+          await qc.invalidateQueries({ queryKey: ['projects', 'list'] });
+          await qc.invalidateQueries({ queryKey: ['inspections', 'recent'] });
+        }}
         onProjectCreated={(id) => {
           setPickerVisible(false);
           router.push(`/projects/${id}` as any);

@@ -1,12 +1,12 @@
 import { memo, useCallback, useState } from 'react';
 import { FlatList, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Stack, useFocusEffect } from 'expo-router';
+import { Stack } from 'expo-router';
 import { Card, Screen } from '../components/ui';
 import { A11yText } from '../components/primitives/A11yText';
 import { Skeleton } from '../components/Skeleton';
 import { ScaffoldTour } from '../components/ScaffoldTour';
-import { templatesApi } from '../lib/services';
+import { useTemplates } from '../lib/apiHooks';
 import { useTheme } from '../lib/theme';
 
 import type { Template } from '../types/models';
@@ -50,18 +50,10 @@ const MemoizedTemplateItem = memo(function TemplateItem({ item, onHelpPress }: {
 
 export default function TemplatesScreen() {
   const { theme } = useTheme();
-  const [templates, setTemplates] = useState<Template[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  const templatesQ = useTemplates();
+  const templates = templatesQ.data ?? [];
+  const loaded = !templatesQ.isLoading;
   const [tourVisible, setTourVisible] = useState(false);
-
-  useFocusEffect(
-    useCallback(() => {
-      void (async () => {
-        setTemplates(await templatesApi.list().catch(() => []));
-        setLoaded(true);
-      })();
-    }, []),
-  );
 
   const handleHelpPress = useCallback(() => setTourVisible(true), []);
   const renderItem = useCallback(({ item }: { item: Template }) => (

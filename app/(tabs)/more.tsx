@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -11,18 +11,18 @@ import { Image } from 'expo-image';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Badge, Card } from '../../components/ui';
 import { Skeleton } from '../../components/Skeleton';
 import { useSession } from '../../lib/session';
+import { isExpiringSoon } from '../../lib/services';
 import {
-  inspectionsApi,
-  isExpiringSoon,
-  projectsApi,
-  qualificationsApi,
-  templatesApi,
-} from '../../lib/services';
+  useInspectionCounts,
+  useProjects,
+  useQualifications,
+  useTemplates,
+} from '../../lib/apiHooks';
 import { useToast } from '../../lib/toast';
 import { useTheme } from '../../lib/theme';
 import { useBottomSheet } from '../../components/BottomSheet';
@@ -43,36 +43,16 @@ export default function MoreScreen() {
   const toast = useToast();
   const showActionSheet = useBottomSheet();
   const [signingOut, setSigningOut] = useState(false);
-  const [counts, setCounts] = useState<{ total: number; drafts: number; completed: number; latestCreatedAt: string | null }>({
-    total: 0,
-    drafts: 0,
-    completed: 0,
-    latestCreatedAt: null,
-  });
-  const [certs, setCerts] = useState<Qualification[]>([]);
-  const [templates, setTemplates] = useState<Template[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  const countsQ = useInspectionCounts();
+  const certsQ = useQualifications();
+  const templatesQ = useTemplates();
+  const projectsQ = useProjects();
 
-  useFocusEffect(
-    useCallback(() => {
-      void (async () => {
-        const [cs, c, t, p] = await Promise.all([
-          inspectionsApi
-            .counts()
-            .catch(() => ({ total: 0, drafts: 0, completed: 0, latestCreatedAt: null })),
-          qualificationsApi.list().catch(() => []),
-          templatesApi.list().catch(() => []),
-          projectsApi.list().catch(() => []),
-        ]);
-        setCounts(cs);
-        setCerts(c);
-        setTemplates(t);
-        setProjects(p);
-        setLoaded(true);
-      })();
-    }, []),
-  );
+  const counts = countsQ.data ?? { total: 0, drafts: 0, completed: 0, latestCreatedAt: null };
+  const certs = certsQ.data ?? [];
+  const templates = templatesQ.data ?? [];
+  const projects = projectsQ.data ?? [];
+  const loaded = !countsQ.isLoading && !certsQ.isLoading && !templatesQ.isLoading && !projectsQ.isLoading;
 
   const user = state.status === 'signedIn' ? state.user : null;
   const completed = counts.completed;

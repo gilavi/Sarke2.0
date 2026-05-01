@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import {
   ActivityIndicator,
-  AppState,
-  AppStateStatus,
   Linking,
   Pressable,
   ScrollView,
@@ -106,12 +104,10 @@ export default function RegulationsScreen() {
     }, [refresh])
   );
 
-  useEffect(() => {
-    const sub = AppState.addEventListener('change', (s: AppStateStatus) => {
-      if (s === 'active') refresh(false);
-    });
-    return () => sub.remove();
-  }, [refresh]);
+  // AppState listener removed — useFocusEffect already refreshes when the
+  // user navigates to this tab, and maybeRefreshRegulations has its own
+  // 24-hour stale check so additional triggers are redundant. This fixes the
+  // double-fetch that caused two parallel regulation scans on every visit.
 
   const stateById = (id: string) => states.find((s) => s.id === id);
 

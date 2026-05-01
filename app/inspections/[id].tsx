@@ -19,7 +19,7 @@ import {
 import { Image } from 'expo-image';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import WebView from 'react-native-webview';
 import { Button, Card, Chip, Screen } from '../../components/ui';
@@ -41,6 +41,16 @@ import {
   signaturesApi,
   templatesApi,
 } from '../../lib/services';
+import {
+  useInspection,
+  useProject,
+  useTemplate,
+  useCertificatesByInspection,
+  useRemoteSigningRequests,
+  useTemplateQuestions,
+  useInspectionAnswers,
+  useSignatures,
+} from '../../lib/apiHooks';
 import { buildPdfPreviewHtml } from '../../lib/pdf';
 import { loadPdfLanguage, type PdfLanguage } from '../../lib/pdfLanguagePref';
 import { useToast } from '../../lib/toast';
@@ -179,6 +189,26 @@ export default function InspectionDetailScreen() {
   const [loadError, setLoadError] = useState<unknown>(null);
   const [notFound, setNotFound] = useState(false);
   const [remoteRequests, setRemoteRequests] = useState<RemoteSigningRequest[]>([]);
+
+  // React Query hooks seed cached data instantly so skeletons disappear faster.
+  // The full load() below still runs on mount for the nested photo / signature data.
+  const inspectionQ = useInspection(id);
+  const projectQ = useProject(inspection?.project_id ?? id ? 'pending' : undefined);
+  const templateQ = useTemplate(inspection?.template_id);
+  const certsQ = useCertificatesByInspection(id);
+  const remoteQ = useRemoteSigningRequests(id);
+  const questionsQ = useTemplateQuestions(inspection?.template_id);
+  const answersQ = useInspectionAnswers(id);
+  const signaturesQ = useSignatures(id);
+
+  useEffect(() => { if (inspectionQ.data !== undefined) setInspection(inspectionQ.data); }, [inspectionQ.data]);
+  useEffect(() => { if (projectQ.data !== undefined) setProject(projectQ.data); }, [projectQ.data]);
+  useEffect(() => { if (templateQ.data !== undefined) setTemplate(templateQ.data); }, [templateQ.data]);
+  useEffect(() => { if (certsQ.data !== undefined) setCerts(certsQ.data); }, [certsQ.data]);
+  useEffect(() => { if (remoteQ.data !== undefined) setRemoteRequests(remoteQ.data); }, [remoteQ.data]);
+  useEffect(() => { if (questionsQ.data !== undefined) setQuestions(questionsQ.data); }, [questionsQ.data]);
+  useEffect(() => { if (answersQ.data !== undefined) setAnswers(answersQ.data); }, [answersQ.data]);
+  useEffect(() => { if (signaturesQ.data !== undefined) setSignatures(signaturesQ.data); }, [signaturesQ.data]);
   const [addOpen, setAddOpen] = useState(false);
   const [addBusy, setAddBusy] = useState(false);
 
@@ -268,11 +298,13 @@ export default function InspectionDetailScreen() {
     }
   }, [id, router]);
 
-  useFocusEffect(
-    useCallback(() => {
-      void load();
-    }, [load]),
-  );
+  // Load on mount only — useFocusEffect was re-hammering Supabase on every
+  // back-navigation. Cached data from the hooks above renders instantly;
+  // load() fills in the nested photo map on first paint.
+  useEffect(() => {
+    void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   // Resolve display URLs for the first photo on each issue answer so the
   // problem cards can show a thumbnail. Runs once per inspection focus.

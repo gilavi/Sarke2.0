@@ -4,7 +4,7 @@
 // Layout: a fixed "Required" section with one slot per REQUIRED_TYPES entry
 // (empty slots act as upload affordances) and an "Additional" section for
 // any qualifications whose type isn't in the required set.
-import { useCallback, useEffect, useRef, useState , useMemo} from 'react';
+import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import {
   Alert,
   Animated,
@@ -18,16 +18,18 @@ import {
 import { Image } from 'expo-image';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Stack, useFocusEffect } from 'expo-router';
+import { Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Button, Card, Screen } from '../../components/ui';
 import { Skeleton } from '../../components/Skeleton';
 import { haptic } from '../../lib/haptics';
 import { isExpiringSoon, qualificationsApi, storageApi } from '../../lib/services';
+import { useQualifications } from '../../lib/apiHooks';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { useTheme } from '../../lib/theme';
 
 import { toErrorMessage } from '../../lib/logError';
+import { useQueryClient } from '@tanstack/react-query';
 import { a11y } from '../../lib/accessibility';
 import type { Qualification } from '../../types/models';
 import { REQUIRED_TYPES, REQUIRED_TYPE_VALUES, labelForType } from '../../lib/qualificationTypes';
@@ -36,38 +38,41 @@ import AddQualificationSheet from '../../components/qualifications/AddQualificat
 type QualWithThumb = Qualification & { thumbUrl?: string | null };
 
 export default function QualificationsScreen() {
+  const qc = useQueryClient();
   const { theme } = useTheme();
   const qStyles = useMemo(() => getqStyles(theme), [theme]);
-  const [quals, setQuals] = useState<QualWithThumb[]>([]);
+  const qualsQ = useQualifications();
   const [loaded, setLoaded] = useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Qualification | null>(null);
   const [addSheetVisible, setAddSheetVisible] = useState(false);
   const [addInitialType, setAddInitialType] = useState<string | undefined>(undefined);
 
-  const load = useCallback(async () => {
-    const list = await qualificationsApi.list().catch(() => []);
-    const withThumbs: QualWithThumb[] = await Promise.all(
-      list.map(async q => {
-        if (!q.file_url) return { ...q, thumbUrl: null };
-        try {
-          const url = await storageApi.signedUrl(STORAGE_BUCKETS.certificates, q.file_url, 3600);
-          return { ...q, thumbUrl: url };
-        } catch (err) {
-          console.warn('[qualifications] thumb signedUrl failed', { path: q.file_url, err });
-          return { ...q, thumbUrl: null };
-        }
-      }),
-    );
-    setQuals(withThumbs);
-    setLoaded(true);
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      void load();
-    }, [load]),
-  );
+  // Derive thumbs from the React Query cached list.
+  const [quals, setQuals] = useState<QualWithThumb[]>([]);
+  useEffect(() => {
+    if (!qualsQ.data) return;
+    let cancelled = false;
+    (async () => {
+      const withThumbs: QualWithThumb[] = await Promise.all(
+        qualsQ.data!.map(async q => {
+          if (!q.file_url) return { ...q, thumbUrl: null };
+          try {
+            const url = await storageApi.signedUrl(STORAGE_BUCKETS.certificates, q.file_url, 3600);
+            return { ...q, thumbUrl: url };
+          } catch (err) {
+            console.warn('[qualifications] thumb signedUrl failed', { path: q.file_url, err });
+            return { ...q, thumbUrl: null };
+          }
+        }),
+      );
+      if (!cancelled) {
+        setQuals(withThumbs);
+        setLoaded(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [qualsQ.data]);
 
   const confirmRemove = (q: Qualification) => {
     haptic.medium();
@@ -81,7 +86,7 @@ export default function QualificationsScreen() {
     try {
       await qualificationsApi.remove(deleteTarget.id);
       haptic.success();
-      void load();
+      qc.invalidateQueries({ queryKey: ['qualifications', 'list'] });
     } catch (e) {
       haptic.error();
       Alert.alert('წაშლა ვერ მოხერხდა', toErrorMessage(e, 'ქსელის შეცდომა'));
@@ -157,7 +162,7 @@ export default function QualificationsScreen() {
         visible={addSheetVisible}
         initialType={addInitialType}
         onClose={() => setAddSheetVisible(false)}
-        onSaved={() => { setAddSheetVisible(false); void load(); }}
+        onSaved={() => { setAddSheetVisible(false); qc.invalidateQueries({ queryKey: ['qualifications', 'list'] }); }}
       />
 
       <Pressable

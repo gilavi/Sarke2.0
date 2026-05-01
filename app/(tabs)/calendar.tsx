@@ -1,6 +1,6 @@
 // Calendar tab — month grid + daily due-inspection list.
 // Drives a 10-day recurring schedule per project_item via schedulesApi.
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -11,14 +11,11 @@ import { A11yText as Text } from '../../components/primitives/A11yText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useBottomSheet } from '../../components/BottomSheet';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Card } from '../../components/ui';
 import { Skeleton } from '../../components/Skeleton';
-import {
-  questionnairesApi,
-  schedulesApi,
-  templatesApi,
-} from '../../lib/services';
+import { useSchedules, useTemplates } from '../../lib/apiHooks';
+import { questionnairesApi } from '../../lib/services';
 import { googleCalendar } from '../../lib/googleCalendar';
 import { rescheduleAllFromDb } from '../../lib/notifications';
 import { useToast } from '../../lib/toast';
@@ -95,29 +92,24 @@ export default function CalendarScreen() {
   const toast = useToast();
   const showActionSheetWithOptions = useBottomSheet();
   const [month, setMonth] = useState(() => startOfMonth(new Date()));
+  const schedulesQ = useSchedules();
+  const templatesQ = useTemplates();
   const [schedules, setSchedules] = useState<ScheduleWithItem[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [selected, setSelected] = useState<Date>(() => startOfDay(new Date()));
   const [syncing, setSyncing] = useState(false);
-  const [loaded, setLoaded] = useState(false);
+  const loaded = !schedulesQ.isLoading && !templatesQ.isLoading;
 
-  const load = useCallback(async () => {
-    const [ss, ts] = await Promise.all([
-      schedulesApi.list().catch(() => [] as ScheduleWithItem[]),
-      templatesApi.list().catch(() => [] as Template[]),
-    ]);
-    setSchedules(ss);
-    setTemplates(ts);
-    // Rebuild local reminders from the fresh list — best-effort.
-    void rescheduleAllFromDb(ss);
-    setLoaded(true);
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      void load();
-    }, [load]),
-  );
+  useEffect(() => {
+    if (schedulesQ.data !== undefined) {
+      setSchedules(schedulesQ.data);
+      // Rebuild local reminders from the fresh list — best-effort.
+      void rescheduleAllFromDb(schedulesQ.data);
+    }
+  }, [schedulesQ.data]);
+  useEffect(() => {
+    if (templatesQ.data !== undefined) setTemplates(templatesQ.data);
+  }, [templatesQ.data]);
 
   const byDay = useMemo(() => {
     const map = new Map<string, ScheduleWithItem[]>();

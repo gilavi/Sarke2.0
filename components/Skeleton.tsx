@@ -9,7 +9,7 @@
 // Layout components below mirror the shape of real screens so the content
 // stays anchored when skeletons swap out — no layout shift.
 
-import { ReactNode, useEffect, useRef , useMemo} from 'react';
+import { ReactNode, memo, useEffect, useRef, useMemo } from 'react';
 import { Animated, Easing, StyleSheet, View, ViewStyle } from 'react-native';
 import { useTheme } from '../lib/theme';
 
@@ -24,7 +24,7 @@ interface SkeletonProps {
 // Single pulsing pill. One animation driver per Skeleton instance keeps
 // them in sync at the phase level (all started at mount) but avoids an
 // app-wide shared value that would pin a component on the React tree.
-export function Skeleton({ width, height = 14, radius = 8, style }: SkeletonProps) {
+export const Skeleton = memo(function Skeleton({ width, height = 14, radius = 8, style }: SkeletonProps) {
   const { theme } = useTheme();
   const styles = useMemo(() => getskStyles(theme), [theme]);
 
@@ -72,14 +72,14 @@ export function Skeleton({ width, height = 14, radius = 8, style }: SkeletonProp
       ]}
     />
   );
-}
+});
 
 // ── Layout helpers ──────────────────────────────────────────────────────────
 //
 // Each one matches a common card/row/screen pattern in the app so swapping
 // from skeleton → real content doesn't cause the screen to pop.
 
-export function SkeletonCard({ children, style }: { children?: ReactNode; style?: ViewStyle }) {
+export const SkeletonCard = memo(function SkeletonCard({ children, style }: { children?: ReactNode; style?: ViewStyle }) {
   const { theme } = useTheme();
   const skStyles = useMemo(() => getskStyles(theme), [theme]);
   return (
@@ -93,9 +93,9 @@ export function SkeletonCard({ children, style }: { children?: ReactNode; style?
       )}
     </View>
   );
-}
+});
 
-export function SkeletonRow({ style }: { style?: ViewStyle }) {
+export const SkeletonRow = memo(function SkeletonRow({ style }: { style?: ViewStyle }) {
   const { theme } = useTheme();
   const skStyles = useMemo(() => getskStyles(theme), [theme]);
   return (
@@ -107,10 +107,10 @@ export function SkeletonRow({ style }: { style?: ViewStyle }) {
       </View>
     </View>
   );
-}
+});
 
 // Matches the flat list of rows inside a card (like inspection detail).
-export function SkeletonListCard({ rows = 3 }: { rows?: number }) {
+export const SkeletonListCard = memo(function SkeletonListCard({ rows = 3 }: { rows?: number }) {
   const { theme } = useTheme();
   const skStyles = useMemo(() => getskStyles(theme), [theme]);
 
@@ -124,10 +124,10 @@ export function SkeletonListCard({ rows = 3 }: { rows?: number }) {
       </View>
     </View>
   );
-}
+});
 
 // Big rectangle for PDF / image previews.
-export function SkeletonPreview() {
+export const SkeletonPreview = memo(function SkeletonPreview() {
   return (
     <View style={{ flex: 1, padding: 16, gap: 12 }}>
       <Skeleton width={'100%'} height={220} radius={12} />
@@ -136,10 +136,10 @@ export function SkeletonPreview() {
       <Skeleton width={'90%'} height={14} />
     </View>
   );
-}
+});
 
 // Step-form wizard skeleton (question → options) — mirrors QuestionStep.
-export function SkeletonWizard() {
+export const SkeletonWizard = memo(function SkeletonWizard() {
   return (
     <View style={{ padding: 16, gap: 24 }}>
       {/* Progress bar placeholder — subtle, just fills the top strip */}
@@ -169,7 +169,7 @@ export function SkeletonWizard() {
       </View>
     </View>
   );
-}
+});
 
 function getskStyles(theme: any) {
   return StyleSheet.create({

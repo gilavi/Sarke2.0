@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { generateAndSharePdf } from '../../lib/pdfOpen';
-import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -19,6 +19,7 @@ import { useTheme } from '../../lib/theme';
 import { useSession } from '../../lib/session';
 import { useToast } from '../../lib/toast';
 import { incidentsApi, projectsApi, storageApi } from '../../lib/services';
+import { useIncident, useProject } from '../../lib/apiHooks';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { buildIncidentPdfHtml } from '../../lib/incidentPdf';
 import { generatePdfName } from '../../lib/pdfName';
@@ -68,12 +69,21 @@ export default function IncidentDetail() {
   const session = useSession();
   const { id } = useLocalSearchParams<{ id: string }>();
 
+  const incidentQ = useIncident(id);
+  const projectQ = useProject(incidentQ.data?.project_id);
+
   const [incident, setIncident] = useState<Incident | null>(null);
   const [project, setProject] = useState<Project | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [photoDisplayUrls, setPhotoDisplayUrls] = useState<string[]>([]);
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [pdfPhase, setPdfPhase] = useState<string | null>(null);
+
+  useEffect(() => { if (incidentQ.data !== undefined) setIncident(incidentQ.data); }, [incidentQ.data]);
+  useEffect(() => { if (projectQ.data !== undefined) setProject(projectQ.data); }, [projectQ.data]);
+  useEffect(() => {
+    if (incidentQ.data && !incidentQ.isLoading) setLoaded(true);
+  }, [incidentQ.data, incidentQ.isLoading]);
 
   const inspector = useMemo(() => {
     if (session.state.status !== 'signedIn') return { name: '', sigPath: null };
@@ -84,35 +94,25 @@ export default function IncidentDetail() {
     return { name, sigPath: u?.saved_signature_url ?? null };
   }, [session.state]);
 
-  const load = useCallback(async () => {
-    if (!id) return;
-    const inc = await incidentsApi.getById(id).catch(() => null);
-    setIncident(inc);
-    if (inc?.project_id) {
-      const p = await projectsApi.getById(inc.project_id).catch(() => null);
-      setProject(p);
-    } else {
-      setProject(null);
-    }
-    // Reset photo URLs first — without this, navigating from an incident
-    // with photos to one without would leak the previous incident's photos
-    // (the early-return below skipped the setter).
-    if (inc?.photos?.length) {
-      const urls = await Promise.all(
-        inc.photos.map(path =>
-          getStorageImageDisplayUrl(STORAGE_BUCKETS.incidentPhotos, path).catch(() => ''),
-        ),
-      );
-      setPhotoDisplayUrls(urls.filter(Boolean));
-    } else {
-      setPhotoDisplayUrls([]);
-    }
-    setLoaded(true);
-  }, [id]);
-
-  useFocusEffect(
-    useCallback(() => { void load(); }, [load]),
-  );
+  // Load photo display URLs on mount only. The incident + project data
+  // already flow from React Query hooks above, so back-navigation is instant.
+  useEffect(() => {
+    if (!incident) return;
+    let cancelled = false;
+    (async () => {
+      if (incident.photos?.length) {
+        const urls = await Promise.all(
+          incident.photos.map(path =>
+            getStorageImageDisplayUrl(STORAGE_BUCKETS.incidentPhotos, path).catch(() => ''),
+          ),
+        );
+        if (!cancelled) setPhotoDisplayUrls(urls.filter(Boolean));
+      } else {
+        setPhotoDisplayUrls([]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [incident?.id]);
 
   const badge = incident ? getTypeBadge(theme)[incident.type] : null;
   const isNearMiss = incident?.type === 'nearmiss';
