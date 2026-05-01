@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -403,7 +404,12 @@ export default function IncidentDetail() {
             <Text style={s.warningText}>
               შრომის ინსპექციის სამსახური უნდა ეცნობოს 24 საათის
               განმავლობაში:{'\n'}
-              <Text style={{ fontWeight: '700' }}>0322 43 00 43</Text>
+              <Text
+                style={{ fontWeight: '700', textDecorationLine: 'underline' }}
+                onPress={() => Linking.openURL('tel:0322430043')}
+              >
+                0322 43 00 43
+              </Text>
             </Text>
           </View>
         )}

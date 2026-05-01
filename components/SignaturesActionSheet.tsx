@@ -9,7 +9,7 @@
 // `+ ხელმოწერის დამატება` opens an edit view with no existing row — the
 // user picks any role not yet taken and signs.
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -20,7 +20,6 @@ import {
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import SignatureScreen, { type SignatureViewRef } from 'react-native-signature-canvas';
-import { useRef } from 'react';
 import { A11yText as Text } from './primitives/A11yText';
 import { Button } from './ui';
 import { SheetLayout } from './SheetLayout';
@@ -32,7 +31,7 @@ import { useTheme } from '../lib/theme';
 import { useToast } from '../lib/toast';
 import { friendlyError } from '../lib/errorMap';
 import { haptic } from '../lib/haptics';
-import { getStorageImageDataUrlStrict } from '../lib/imageUrl';
+import { getStorageImageDataUrlStrict, getStorageImageDisplayUrl } from '../lib/imageUrl';
 import { STORAGE_BUCKETS } from '../lib/supabase';
 
 const ALL_ROLES: SignerRole[] = ['expert', 'xaracho_supervisor', 'xaracho_assembler', 'other'];
@@ -183,11 +182,7 @@ function ParticipantRow({
         <Text style={styles.rowMeta} numberOfLines={1}>{SIGNER_ROLE_LABEL[role]}</Text>
       </View>
       {isSigned && sig?.signature_png_url ? (
-        <View style={styles.sigPreview}>
-          <Image source={{ uri: sig.signature_png_url.startsWith('data:')
-            ? sig.signature_png_url
-            : '' }} style={{ width: 48, height: 24 }} contentFit="contain" />
-        </View>
+        <SigThumbnail path={sig.signature_png_url} styles={styles} />
       ) : (
         <Text style={styles.notSigned}>ხელმოუწერელია</Text>
       )}
@@ -433,6 +428,30 @@ function SignatureEditView({
         </View>
       )}
     </SheetLayout>
+  );
+}
+
+function SigThumbnail({ path, styles }: { path: string; styles: ReturnType<typeof createStyles> }) {
+  const [uri, setUri] = useState(path.startsWith('data:') ? path : '');
+  const cancelled = useRef(false);
+
+  useEffect(() => {
+    cancelled.current = false;
+    if (path.startsWith('data:')) {
+      setUri(path);
+      return;
+    }
+    getStorageImageDisplayUrl(STORAGE_BUCKETS.signatures, path)
+      .then(url => { if (!cancelled.current) setUri(url); })
+      .catch(() => {});
+    return () => { cancelled.current = true; };
+  }, [path]);
+
+  if (!uri) return null;
+  return (
+    <View style={styles.sigPreview}>
+      <Image source={{ uri }} style={{ width: 48, height: 24 }} contentFit="contain" />
+    </View>
   );
 }
 

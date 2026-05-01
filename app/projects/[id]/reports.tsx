@@ -8,7 +8,6 @@ import {
 } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { useTheme } from '../../../lib/theme';
 import { formatShortDateTime } from '../../../lib/formatDate';
@@ -31,7 +30,6 @@ export default function ProjectReportsList() {
   const { theme } = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const { data: project } = useProject(id);
@@ -55,7 +53,7 @@ export default function ProjectReportsList() {
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background, paddingTop: insets.top }}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Stack.Screen options={{ title: 'რეპორტები' }} />
 
       <ScrollView
