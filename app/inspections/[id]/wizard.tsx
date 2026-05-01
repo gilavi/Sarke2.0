@@ -716,7 +716,7 @@ export default function QuestionnaireWizard() {
         AsyncStorage.removeItem(stepKey(questionnaire.id)),
       ]).catch(() => {});
       haptic.success();
-      router.replace(`/inspections/${questionnaire.id}/done` as any);
+      router.replace(`/inspections/${questionnaire.id}` as any);
     } catch (e) {
       haptic.error();
       toast.error(`ინსპექციის დასრულება ვერ მოხერხდა: ${toErrorMessage(e, 'ქსელის შეცდომა')}`);

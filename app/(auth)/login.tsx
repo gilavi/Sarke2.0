@@ -2,18 +2,20 @@ import { useState , useMemo} from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Keyboard,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
+  TouchableWithoutFeedback,
   View,
 } from 'react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
-import { KeyboardAvoidingView } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useSession } from '../../lib/session';
 import { useToast } from '../../lib/toast';
@@ -35,6 +37,7 @@ type Mode = 'login' | 'register';
 export default function AuthScreen() {
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
+  const insets = useSafeAreaInsets();
   const [mode, setMode] = useState<Mode>('login');
   const [forgotOpen, setForgotOpen] = useState(false);
 
@@ -43,14 +46,18 @@ export default function AuthScreen() {
       <GradientBackdrop />
       <SafeAreaView style={{ flex: 1 }}>
         <LanguageSwitcher />
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={{ flex: 1 }}
+          behavior="padding"
+          keyboardVerticalOffset={insets.top + 44}
         >
           <ScrollView
-            contentContainerStyle={styles.scroll}
+            bounces={false}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
             showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scroll}
           >
             <Header />
             <Card padding={22} style={{ marginTop: 28 }}>
@@ -69,6 +76,7 @@ export default function AuthScreen() {
             </Card>
           </ScrollView>
         </KeyboardAvoidingView>
+        </TouchableWithoutFeedback>
       </SafeAreaView>
       <ForgotPasswordModal visible={forgotOpen} onClose={() => setForgotOpen(false)} />
     </View>

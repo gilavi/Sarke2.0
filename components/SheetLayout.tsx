@@ -42,6 +42,8 @@ export interface SheetLayoutProps {
   style?: StyleProp<ViewStyle>;
   /** Padding for the scrollable body content. Default 20 horizontal, 16 vertical, gap 16. */
   bodyContentStyle?: StyleProp<ViewStyle>;
+  /** Extra style for the footer wrapper (e.g. reduce paddingBottom when keyboard is open). */
+  footerStyle?: StyleProp<ViewStyle>;
   /** Render the grab-handle bar at the top of the card. Default true.
    * Set false when nesting inside a parent (e.g. BottomSheetProvider) that
    * already draws a handle, to avoid stacking two handles. */
@@ -52,6 +54,7 @@ export function SheetLayout({
   header,
   children,
   footer,
+  footerStyle,
   ScrollComponent,
   bodyScrollProps,
   maxHeightRatio = 0.85,
@@ -93,7 +96,7 @@ export function SheetLayout({
       </Body>
 
       {footer ? (
-        <View style={[styles.footerWrap, footerSticky && styles.footerSticky, { borderTopColor: theme.colors.border, backgroundColor: theme.colors.surface }]}>
+        <View style={[styles.footerWrap, footerSticky && styles.footerSticky, { borderTopColor: theme.colors.border, backgroundColor: theme.colors.surface }, footerStyle]}>
           {footer}
         </View>
       ) : null}

@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { Keyboard, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableWithoutFeedback, View } from 'react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
-import { KeyboardAvoidingView } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -19,6 +18,7 @@ import { useTranslation } from 'react-i18next';
 export default function ForgotPasswordScreen() {
   const { theme } = useTheme();
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false);
@@ -49,13 +49,17 @@ export default function ForgotPasswordScreen() {
         style={StyleSheet.absoluteFillObject}
       />
       <SafeAreaView style={{ flex: 1 }}>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={{ flex: 1 }}
+          behavior="padding"
+          keyboardVerticalOffset={insets.top + 44}
         >
           <ScrollView
-            contentContainerStyle={{ paddingHorizontal: 22, paddingTop: 40, paddingBottom: 40 }}
+            bounces={false}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
+            contentContainerStyle={{ paddingHorizontal: 22, paddingTop: 40, paddingBottom: 40 }}
           >
             <View style={{ marginBottom: 18 }}>
               <HeaderBackPill label={t('auth.login')} />
@@ -101,6 +105,7 @@ export default function ForgotPasswordScreen() {
             </Card>
           </ScrollView>
         </KeyboardAvoidingView>
+        </TouchableWithoutFeedback>
       </SafeAreaView>
     </View>
   );

@@ -24,6 +24,8 @@
       "infoPlist": {
         "NSCameraUsageDescription": "კამერა გამოიყენება ხარაჩოს და ქამრების ფოტოების ატვირთვისთვის.",
         "NSPhotoLibraryUsageDescription": "ფოტოების არჩევა სისტემის ბიბლიოთეკიდან.",
+        "NSPhotoLibraryAddUsageDescription": "საჭიროა ფოტოების შესანახად",
+        "NSMicrophoneUsageDescription": "საჭიროა ვიდეოს ჩასაწერად",
         "ITSAppUsesNonExemptEncryption": false
       }
     },

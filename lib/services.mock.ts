@@ -24,6 +24,7 @@ import type {
   AnswerPhoto,
   Certificate,
   Inspection,
+  InspectionAttachment,
   Project,
   ProjectItem,
   ProjectSigner,
@@ -52,10 +53,11 @@ type MockDB = {
   signatures: SignatureRecord[];
   qualifications: Qualification[];
   certificates: Certificate[];
+  inspection_attachments: InspectionAttachment[];
 };
 
 const STORE_KEY = '@mock:db:v1';
-const SEED_VERSION = 1;
+const SEED_VERSION = 2;
 const MOCK_USER_ID = '00000000-0000-0000-0000-000000000001';
 
 let cache: MockDB | null = null;
@@ -239,6 +241,7 @@ function seed(): MockDB {
     signatures: [],
     qualifications: [qual1, qual2],
     certificates: [cert1, cert2, cert2b],
+    inspection_attachments: [],
   };
 }
 
@@ -690,6 +693,61 @@ export const certificatesApi = {
     const db = await load();
     db.certificates = db.certificates.filter(c => c.id !== id);
     await save();
+  },
+};
+
+export const inspectionAttachmentsApi = {
+  listByInspection: async (inspectionId: string): Promise<InspectionAttachment[]> => {
+    const db = await load();
+    return db.inspection_attachments
+      .filter(a => a.inspection_id === inspectionId)
+      .sort((a, b) => a.created_at.localeCompare(b.created_at));
+  },
+  create: async (args: {
+    inspectionId: string;
+    certType: string;
+    certNumber?: string | null;
+    photoPath?: string | null;
+  }): Promise<InspectionAttachment> => {
+    const db = await load();
+    const row: InspectionAttachment = {
+      id: uuid(),
+      inspection_id: args.inspectionId,
+      user_id: db.user_id,
+      cert_type: args.certType,
+      cert_number: args.certNumber ?? null,
+      photo_path: args.photoPath ?? null,
+      created_at: now(),
+      updated_at: now(),
+    };
+    db.inspection_attachments.push(row);
+    await save();
+    return row;
+  },
+  update: async (
+    id: string,
+    patch: { certType?: string; certNumber?: string | null; photoPath?: string | null },
+  ): Promise<InspectionAttachment> => {
+    const db = await load();
+    const idx = db.inspection_attachments.findIndex(a => a.id === id);
+    if (idx < 0) throw new Error('attachment not found');
+    const next = { ...db.inspection_attachments[idx] };
+    if (patch.certType !== undefined) next.cert_type = patch.certType;
+    if (patch.certNumber !== undefined) next.cert_number = patch.certNumber;
+    if (patch.photoPath !== undefined) next.photo_path = patch.photoPath;
+    next.updated_at = now();
+    db.inspection_attachments[idx] = next;
+    await save();
+    return next;
+  },
+  remove: async (id: string) => {
+    const db = await load();
+    db.inspection_attachments = db.inspection_attachments.filter(a => a.id !== id);
+    await save();
+  },
+  /** In mock mode the local file URI is returned unchanged. */
+  uploadPhoto: async (args: { inspectionId: string; fileUri: string }): Promise<string> => {
+    return args.fileUri;
   },
 };
 

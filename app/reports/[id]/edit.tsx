@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -58,6 +58,36 @@ export default function ReportSlidesEditor() {
     () => (report?.slides ?? []).slice().sort((a, b) => a.order - b.order),
     [report],
   );
+
+  const autoCreatedRef = useRef(false);
+
+  // On first open of a brand-new report (no slides yet), create one slide
+  // automatically and navigate straight into its editor so the user lands
+  // directly in the slide form rather than seeing an empty list.
+  useEffect(() => {
+    if (!report || slides.length > 0 || autoCreatedRef.current) return;
+    autoCreatedRef.current = true;
+    const newSlide: ReportSlide = {
+      id: Crypto.randomUUID(),
+      order: 0,
+      title: '',
+      description: '',
+      image_path: null,
+      annotated_image_path: null,
+    };
+    setBusy(true);
+    reportsApi
+      .update(report.id, { slides: [newSlide] })
+      .then(saved => {
+        setReport(saved);
+        router.push(`/reports/${report.id}/slide/${newSlide.id}` as any);
+      })
+      .catch(() => {
+        autoCreatedRef.current = false;
+      })
+      .finally(() => setBusy(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [report?.id, slides.length]);
 
   const persistSlides = useCallback(
     async (next: ReportSlide[]) => {
@@ -182,7 +212,7 @@ export default function ReportSlidesEditor() {
 
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 100, gap: 12 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 16, gap: 12 }}
       >
         {slides.length === 0 ? (
           <View style={styles.empty}>
@@ -216,6 +246,36 @@ export default function ReportSlidesEditor() {
           <Text style={[styles.addBtnText, { color: theme.colors.accent }]}>+ სლაიდის დამატება</Text>
         </Pressable>
       </ScrollView>
+
+      {/* Sticky footer — always visible so the user knows how to finish */}
+      <View style={[styles.stickyFooter, { paddingBottom: insets.bottom + 12 }]}>
+        <Pressable
+          onPress={onComplete}
+          disabled={generating || slides.length === 0}
+          style={({ pressed }) => [
+            styles.completeBtn,
+            {
+              backgroundColor:
+                slides.length === 0 ? theme.colors.subtleSurface : theme.colors.accent,
+            },
+            pressed && { opacity: 0.8 },
+            (generating || slides.length === 0) && { opacity: 0.6 },
+          ]}
+        >
+          {generating ? (
+            <ActivityIndicator color={theme.colors.white} size="small" />
+          ) : (
+            <Text
+              style={[
+                styles.completeBtnText,
+                { color: slides.length === 0 ? theme.colors.inkFaint : theme.colors.white },
+              ]}
+            >
+              PDF-ის გენერაცია →
+            </Text>
+          )}
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -420,5 +480,19 @@ function makeStyles(theme: any) {
       backgroundColor: theme.colors.accentSoft,
     },
     addBtnText: { fontSize: 14, fontWeight: '700' },
+    stickyFooter: {
+      paddingHorizontal: 16,
+      paddingTop: 12,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.hairline,
+      backgroundColor: theme.colors.background,
+    },
+    completeBtn: {
+      borderRadius: 12,
+      paddingVertical: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    completeBtnText: { fontSize: 15, fontWeight: '700' },
   });
 }

@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
+  TouchableWithoutFeedback,
   View,
 } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
@@ -61,28 +63,30 @@ export default function NewReportTitleScreen() {
         confirmExit={trimmed.length > 0}
       />
 
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior="padding"
+        keyboardVerticalOffset={insets.top + 44}
       >
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
-          keyboardShouldPersistTaps="handled"
-        >
-          <Input
-            label="რეპორტის სახელი"
-            required
-            value={title}
-            onChangeText={setTitle}
-            placeholder="მაგ: ივნისის შემოწმების შედეგები"
-            autoFocus
-            returnKeyType="done"
-            onSubmitEditing={onNext}
-          />
-        </ScrollView>
+      <ScrollView
+        bounces={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        contentContainerStyle={{ flexGrow: 1, padding: 16 }}
+      >
+        <Input
+          label="რეპორტის სახელი"
+          required
+          value={title}
+          onChangeText={setTitle}
+          placeholder="მაგ: ივნისის შემოწმების შედეგები"
+          autoFocus
+          returnKeyType="done"
+          onSubmitEditing={onNext}
+        />
 
-        <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
+        <View style={[styles.footer, { marginTop: 'auto', paddingBottom: insets.bottom > 0 ? insets.bottom : 16 }]}>
           <Button
             title="შემდეგი →"
             onPress={onNext}
@@ -90,7 +94,9 @@ export default function NewReportTitleScreen() {
             loading={busy}
           />
         </View>
+      </ScrollView>
       </KeyboardAvoidingView>
+      </TouchableWithoutFeedback>
     </View>
   );
 }

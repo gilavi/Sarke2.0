@@ -199,8 +199,8 @@ export default function RootLayout() {
             <KeyboardProvider>
               <SafeAreaProvider>
               <ErrorBoundary>
-                <BottomSheetProvider>
-                  <ToastProvider>
+                <ToastProvider>
+                  <BottomSheetProvider>
                     <OfflineProvider>
                       <SessionProvider>
                         <ThemedStatusBar />
@@ -210,8 +210,8 @@ export default function RootLayout() {
                         </ErrorBoundary>
                       </SessionProvider>
                     </OfflineProvider>
-                  </ToastProvider>
-                </BottomSheetProvider>
+                  </BottomSheetProvider>
+                </ToastProvider>
               </ErrorBoundary>
               </SafeAreaProvider>
             </KeyboardProvider>

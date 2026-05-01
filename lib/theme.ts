@@ -97,6 +97,17 @@ export const lightTheme = {
     certSoft: '#FDEBCF',
     regsTint: '#5D3FD3',
     regsSoft: '#E5DFF9',
+
+    // Quick-action button surfaces (BOG-style row). Each entry maps to an
+    // existing palette family — no new color values introduced.
+    actionColors: {
+      inspection:  { bg: primary[50],            icon: primary[700] },
+      incident:    { bg: semantic.warningSoft,   icon: semantic.warning },
+      briefing:    { bg: semantic.infoSoft,      icon: semantic.info },
+      report:      { bg: semantic.dangerSoft,    icon: semantic.danger },
+      participant: { bg: '#E5DFF9',              icon: '#5D3FD3' }, // = regsSoft / regsTint
+      file:        { bg: '#FDEBCF',              icon: '#B45309' }, // = certSoft / certTint
+    },
   },
 
   typography: {
@@ -304,6 +315,15 @@ export const darkTheme = {
     certSoft: '#3A2510',
     regsTint: '#8B72E8',
     regsSoft: '#221A40',
+
+    actionColors: {
+      inspection:  { bg: 'rgba(20,122,79,0.15)', icon: primary[400] },
+      incident:    { bg: '#3F2E0F',              icon: semantic.warning },
+      briefing:    { bg: '#1A2E3A',              icon: semantic.info },
+      report:      { bg: '#3A1F1F',              icon: semantic.danger },
+      participant: { bg: '#221A40',              icon: '#8B72E8' },
+      file:        { bg: '#3A2510',              icon: '#D4853A' },
+    },
   },
 } as const;
 

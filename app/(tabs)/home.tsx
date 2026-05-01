@@ -1,7 +1,9 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Animated as RNAnimated,
   Dimensions,
   Keyboard,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -14,7 +16,6 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated from 'react-native-reanimated';
 import { A11yText as Text } from '../../components/primitives/A11yText';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -554,6 +555,22 @@ function ProjectPickerSheet({
   const [logo, setLogo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [mapVisible, setMapVisible] = useState(false);
+  const [kbHeight, setKbHeight] = useState(0);
+  const keyboardHeight = useRef(new RNAnimated.Value(0)).current;
+  const { height: screenH } = useWindowDimensions();
+  const maxSheetH = screenH - kbHeight - insets.top - 24;
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardWillShow', (e) => {
+      setKbHeight(e.endCoordinates.height);
+      RNAnimated.spring(keyboardHeight, { toValue: e.endCoordinates.height, useNativeDriver: false, tension: 60, friction: 12 }).start();
+    });
+    const hideSub = Keyboard.addListener('keyboardWillHide', () => {
+      setKbHeight(0);
+      RNAnimated.spring(keyboardHeight, { toValue: 0, useNativeDriver: false, tension: 60, friction: 12 }).start();
+    });
+    return () => { showSub.remove(); hideSub.remove(); };
+  }, [keyboardHeight]);
 
   // Reset form + view every time the sheet opens
   useEffect(() => {
@@ -650,8 +667,9 @@ function ProjectPickerSheet({
       <View style={pickerStyles.container}>
         {/* Dark overlay backdrop with cross-fade */}
         <AnimatedDarkBackdrop visible={visible} onPress={() => mapVisible ? setMapVisible(false) : onClose()} />
-          {/* Stop touches inside the card from closing the sheet */}
-          <Pressable style={pickerStyles.card} onPress={() => {}}>
+          {/* RNAnimated wrapper: paddingBottom lifts card floor to keyboard top */}
+          <RNAnimated.View style={{ width: '100%', paddingBottom: keyboardHeight }}>
+          <Pressable style={[pickerStyles.card, { maxHeight: maxSheetH, paddingBottom: kbHeight > 0 ? 0 : 44 }]} onPress={() => {}}>
             <View style={pickerStyles.handle} />
 
             {view === 'list' ? (
@@ -760,11 +778,12 @@ function ProjectPickerSheet({
                 </View>
 
                 {/* Form fields */}
-                <KeyboardAwareScrollView
+                <ScrollView
                   keyboardShouldPersistTaps="handled"
+                  keyboardDismissMode="interactive"
                   showsVerticalScrollIndicator={false}
+                  style={{ maxHeight: '72%' }}
                   contentContainerStyle={staticStyles.formContent}
-                  style={{ maxHeight: '78%' }}
                 >
                   <View style={staticStyles.logoWrap}>
                     <ProjectAvatar
@@ -803,9 +822,8 @@ function ProjectPickerSheet({
                   <Field label="მდებარეობა">
                     <LocationRow pin={pin} address={address} onPress={() => { Keyboard.dismiss(); setMapVisible(true); }} />
                   </Field>
-                </KeyboardAwareScrollView>
-
-                <View style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 16, backgroundColor: theme.colors.background }}>
+                </ScrollView>
+                <View style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: kbHeight > 0 ? 8 : (insets.bottom || 16) }}>
                   <Button
                     title={t('projects.createButton')}
                     onPress={createProject}
@@ -817,6 +835,7 @@ function ProjectPickerSheet({
               </>
             )}
           </Pressable>
+          </RNAnimated.View>
 
         {/* Full-screen map overlay — no nested Modal */}
         {mapVisible && (
