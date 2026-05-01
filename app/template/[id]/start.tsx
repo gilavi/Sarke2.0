@@ -12,16 +12,18 @@ import {
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { SheetLayout } from '../../../components/SheetLayout';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Button, Field, Input, Screen } from '../../../components/ui';
 import { Skeleton } from '../../../components/Skeleton';
-import { projectsApi, questionnairesApi, templatesApi } from '../../../lib/services';
+import { questionnairesApi, projectsApi } from '../../../lib/services';
 import { useToast } from '../../../lib/toast';
 import { useTheme } from '../../../lib/theme';
 
 import { toErrorMessage } from '../../../lib/logError';
 import { friendlyError } from '../../../lib/errorMap';
+import { useTemplate, useProjects, qk } from '../../../lib/apiHooks';
+import { useQueryClient } from '@tanstack/react-query';
 import type { Project, Questionnaire, Template } from '../../../types/models';
 import { a11y } from '../../../lib/accessibility';
 
@@ -31,30 +33,19 @@ export default function StartTemplateScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const toast = useToast();
-  const [template, setTemplate] = useState<Template | null>(null);
-  const [projects, setProjects] = useState<Project[]>([]);
+  const { data: template, isLoading: templateLoading } = useTemplate(id);
+  const { data: projects = [], isLoading: projectsLoading } = useProjects();
   const [selected, setSelected] = useState<string | null>(null);
   const [showingCreate, setShowingCreate] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [loaded, setLoaded] = useState(false);
+  const loaded = !templateLoading && !projectsLoading;
+  const queryClient = useQueryClient();
 
-  const refresh = useCallback(async () => {
-    if (!id) return;
-    const [t, ps] = await Promise.all([
-      templatesApi.getById(id).catch(() => null),
-      projectsApi.list().catch(() => []),
-    ]);
-    setTemplate(t);
-    setProjects(ps);
-    setSelected(prev => prev ?? ps[0]?.id ?? null);
-    setLoaded(true);
-  }, [id]);
-
-  useFocusEffect(
-    useCallback(() => {
-      void refresh();
-    }, [refresh]),
-  );
+  useEffect(() => {
+    if (projects.length > 0 && !selected) {
+      setSelected(projects[0]?.id ?? null);
+    }
+  }, [projects, selected]);
 
   const start = async () => {
     if (!template || !selected) return;
@@ -73,7 +64,7 @@ export default function StartTemplateScreen() {
   };
 
   const onCreated = (p: Project) => {
-    setProjects(prev => [p, ...prev.filter(x => x.id !== p.id)]);
+    queryClient.invalidateQueries({ queryKey: qk.projects.list });
     setSelected(p.id);
     setShowingCreate(false);
   };

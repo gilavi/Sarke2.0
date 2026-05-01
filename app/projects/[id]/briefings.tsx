@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -6,15 +6,14 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { useTheme } from '../../../lib/theme';
 import { formatShortDateTime } from '../../../lib/formatDate';
-import { briefingsApi } from '../../../lib/briefingsApi';
-import { projectsApi } from '../../../lib/services';
-import type { Briefing, Project } from '../../../types/models';
+import { useProject, useBriefingsByProject } from '../../../lib/apiHooks';
+import type { Briefing } from '../../../types/models';
 
 function formatGeorgianDate(isoDate: string): string {
   return new Date(isoDate).toLocaleDateString('ka-GE', {
@@ -36,27 +35,8 @@ export default function ProjectBriefingsList() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  const [loading, setLoading] = useState(true);
-  const [project, setProject] = useState<Project | null>(null);
-  const [items, setItems] = useState<Briefing[]>([]);
-
-  const load = useCallback(async () => {
-    if (!id) return;
-    setLoading(true);
-    const [p, list] = await Promise.all([
-      projectsApi.getById(id).catch(() => null),
-      briefingsApi.listByProject(id).catch(() => [] as Briefing[]),
-    ]);
-    setProject(p);
-    setItems(list);
-    setLoading(false);
-  }, [id]);
-
-  useFocusEffect(
-    useCallback(() => {
-      void load();
-    }, [load]),
-  );
+  const { data: project } = useProject(id);
+  const { data: items = [], isLoading: loading } = useBriefingsByProject(id);
 
   const grouped = useMemo(() => groupByDateDesc(items, b => b.dateTime), [items]);
 

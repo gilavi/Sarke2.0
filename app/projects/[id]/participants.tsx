@@ -1,6 +1,6 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
-import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
@@ -10,7 +10,9 @@ import { useToast } from '../../../lib/toast';
 import { useSession } from '../../../lib/session';
 import { friendlyError } from '../../../lib/errorMap';
 import { projectsApi } from '../../../lib/services';
-import type { CrewMember, Project } from '../../../types/models';
+import { useProject, qk } from '../../../lib/apiHooks';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import type { CrewMember } from '../../../types/models';
 import { useTranslation } from 'react-i18next';
 
 export default function ProjectParticipantsList() {
@@ -22,22 +24,8 @@ export default function ProjectParticipantsList() {
   const toast = useToast();
   const session = useSession();
 
-  const [loading, setLoading] = useState(true);
-  const [project, setProject] = useState<Project | null>(null);
-
-  const load = useCallback(async () => {
-    if (!id) return;
-    setLoading(true);
-    const p = await projectsApi.getById(id).catch(() => null);
-    setProject(p);
-    setLoading(false);
-  }, [id]);
-
-  useFocusEffect(
-    useCallback(() => {
-      void load();
-    }, [load]),
-  );
+  const { data: project, isLoading: loading } = useProject(id);
+  const queryClient = useQueryClient();
 
   const inspector = useMemo<InspectorRow | null>(() => {
     if (session.state.status !== 'signedIn') return null;
@@ -53,20 +41,26 @@ export default function ProjectParticipantsList() {
     };
   }, [session.state, t]);
 
+  const updateCrewMutation = useMutation({
+    mutationFn: async ({ projectId, crew }: { projectId: string; crew: CrewMember[] }) => {
+      return projectsApi.update(projectId, { crew });
+    },
+    onSuccess: (saved, vars) => {
+      queryClient.setQueryData(qk.projects.byId(vars.projectId), saved);
+      queryClient.invalidateQueries({ queryKey: qk.projects.list });
+    },
+    onError: (err) => {
+      toast.error(friendlyError(err, t('projects.memberSaveError')));
+    },
+  });
+
   const persistCrew = useCallback(
     async (next: CrewMember[]) => {
       if (!project) return;
-      const prev = project;
-      setProject({ ...project, crew: next });
-      try {
-        const saved = await projectsApi.update(project.id, { crew: next });
-        setProject(saved);
-      } catch (e) {
-        setProject(prev);
-        toast.error(friendlyError(e, t('projects.memberSaveError')));
-      }
+      queryClient.setQueryData(qk.projects.byId(project.id), { ...project, crew: next });
+      updateCrewMutation.mutate({ projectId: project.id, crew: next });
     },
-    [project, toast, t],
+    [project, queryClient, updateCrewMutation],
   );
 
   return (

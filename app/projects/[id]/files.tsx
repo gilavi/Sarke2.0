@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Linking,
@@ -7,7 +7,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,10 +15,11 @@ import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { useTheme } from '../../../lib/theme';
 import { useToast } from '../../../lib/toast';
 import { formatShortDateTime } from '../../../lib/formatDate';
-import { projectFilesApi, projectsApi } from '../../../lib/services';
+import { projectFilesApi } from '../../../lib/services';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import { getStorageImageDisplayUrl } from '../../../lib/imageUrl';
-import type { Project, ProjectFile } from '../../../types/models';
+import { useProject, useProjectFiles } from '../../../lib/apiHooks';
+import type { ProjectFile } from '../../../types/models';
 
 function formatGeorgianDate(isoDate: string): string {
   return new Date(isoDate).toLocaleDateString('ka-GE', {
@@ -54,27 +55,8 @@ export default function ProjectFilesList() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const toast = useToast();
 
-  const [loading, setLoading] = useState(true);
-  const [project, setProject] = useState<Project | null>(null);
-  const [items, setItems] = useState<ProjectFile[]>([]);
-
-  const load = useCallback(async () => {
-    if (!id) return;
-    setLoading(true);
-    const [p, list] = await Promise.all([
-      projectsApi.getById(id).catch(() => null),
-      projectFilesApi.list(id).catch(() => [] as ProjectFile[]),
-    ]);
-    setProject(p);
-    setItems(list);
-    setLoading(false);
-  }, [id]);
-
-  useFocusEffect(
-    useCallback(() => {
-      void load();
-    }, [load]),
-  );
+  const { data: project } = useProject(id);
+  const { data: items = [], isLoading: loading } = useProjectFiles(id);
 
   const grouped = useMemo(() => groupByDateDesc(items, f => f.created_at), [items]);
 

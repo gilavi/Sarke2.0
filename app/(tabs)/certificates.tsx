@@ -3,7 +3,7 @@
 // Each row has a thumbnail (styled mini-document) + metadata badges.
 // Tap → cert preview/detail screen. Swipe delete removes the cert row
 // but leaves the underlying inspection intact.
-import { memo, useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useMemo } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -12,24 +12,27 @@ import {
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlatList } from 'react-native';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { Card } from '../../components/ui';
 import { Skeleton } from '../../components/Skeleton';
 import EmptyState from '../../components/EmptyState';
-import {
-  certificatesApi,
-  inspectionsApi,
-  projectsApi,
-  templatesApi,
-} from '../../lib/services';
+import { certificatesApi } from '../../lib/services';
 import { useToast } from '../../lib/toast';
 import { useTheme } from '../../lib/theme';
 
 import { toErrorMessage } from '../../lib/logError';
 import { friendlyError } from '../../lib/errorMap';
 import { a11y } from '../../lib/accessibility';
+import {
+  useCertificates,
+  useRecentInspections,
+  useTemplates,
+  useProjects,
+  qk,
+} from '../../lib/apiHooks';
+import { useQueryClient } from '@tanstack/react-query';
 import type {
   Certificate,
   Inspection,
@@ -196,29 +199,12 @@ export default function CertificatesScreen() {
   const styles = useMemo(() => getstyles(theme), [theme]);
   const router = useRouter();
   const toast = useToast();
-  const [certs, setCerts] = useState<Certificate[]>([]);
-  const [inspections, setInspections] = useState<Inspection[]>([]);
-  const [templates, setTemplates] = useState<Template[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [loaded, setLoaded] = useState(false);
-
-  const load = useCallback(async () => {
-    const [cs, ts, ps, insps] = await Promise.all([
-      certificatesApi.list().catch(() => []),
-      templatesApi.list().catch(() => []),
-      projectsApi.list().catch(() => []),
-      inspectionsApi.recent(500).catch(() => []),
-    ]);
-    setCerts(cs);
-    setTemplates(ts);
-    setProjects(ps);
-    setInspections(insps);
-    setLoaded(true);
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => { void load(); }, [load]),
-  );
+  const { data: certs = [], isLoading: certsLoading } = useCertificates();
+  const { data: inspections = [], isLoading: inspsLoading } = useRecentInspections(500);
+  const { data: templates = [], isLoading: tplsLoading } = useTemplates();
+  const { data: projects = [], isLoading: projectsLoading } = useProjects();
+  const loaded = !certsLoading && !inspsLoading && !tplsLoading && !projectsLoading;
+  const queryClient = useQueryClient();
 
   const inspectionById = useMemo(
     () => new Map(inspections.map(i => [i.id, i])),
@@ -240,12 +226,12 @@ export default function CertificatesScreen() {
   const deleteCert = useCallback(async (cert: Certificate) => {
     try {
       await certificatesApi.remove(cert.id);
-      setCerts(prev => prev.filter(c => c.id !== cert.id));
+      queryClient.invalidateQueries({ queryKey: qk.certificates.list });
       toast.success(t('certificates.deleted'));
     } catch (e) {
       toast.error(friendlyError(e, t('certificates.deleteError')));
     }
-  }, [toast]);
+  }, [toast, queryClient]);
 
   const renderItem = useCallback(({ item }: { item: Certificate }) => (
     <MemoizedCertItem

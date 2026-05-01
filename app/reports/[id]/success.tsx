@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
-import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
@@ -8,14 +8,14 @@ import { Button } from '../../../components/ui';
 import { useTheme } from '../../../lib/theme';
 import { useToast } from '../../../lib/toast';
 import { useSession } from '../../../lib/session';
-import { friendlyError } from '../../../lib/errorMap';
-import { projectsApi, reportsApi } from '../../../lib/services';
-import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import { getStorageImageResizedDataUrl } from '../../../lib/imageUrl';
 import { generateAndSharePdf } from '../../../lib/pdfOpen';
 import { buildReportPdfHtml } from '../../../lib/reportPdf';
 import { generatePdfName } from '../../../lib/pdfName';
-import type { Project, Report } from '../../../types/models';
+import { friendlyError } from '../../../lib/errorMap';
+import { STORAGE_BUCKETS } from '../../../lib/supabase';
+import { useReport, useProject } from '../../../lib/apiHooks';
+import type { Report } from '../../../types/models';
 import { useTranslation } from 'react-i18next';
 
 export default function ReportSuccessScreen() {
@@ -28,25 +28,9 @@ export default function ReportSuccessScreen() {
   const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  const [report, setReport] = useState<Report | null>(null);
-  const [project, setProject] = useState<Project | null>(null);
+  const { data: report } = useReport(id);
+  const { data: project } = useProject(report?.project_id);
   const [sharing, setSharing] = useState(false);
-
-  const load = useCallback(async () => {
-    if (!id) return;
-    const r = await reportsApi.getById(id).catch(() => null);
-    setReport(r);
-    if (r) {
-      const p = await projectsApi.getById(r.project_id).catch(() => null);
-      setProject(p);
-    }
-  }, [id]);
-
-  useFocusEffect(
-    useCallback(() => {
-      void load();
-    }, [load]),
-  );
 
   const inspectorName = useMemo(() => {
     if (session.state.status !== 'signedIn') return '';
@@ -74,7 +58,7 @@ export default function ReportSuccessScreen() {
       const slideImageDataUrls = Object.fromEntries(
         dataUrlEntries.filter(([, v]) => !!v),
       ) as Record<string, string>;
-      const html = buildReportPdfHtml({ report, project, inspectorName, slideImageDataUrls });
+      const html = buildReportPdfHtml({ report, project: project ?? null, inspectorName, slideImageDataUrls });
       const pdfName = generatePdfName(
         project?.name ?? '',
         `რეპორტი_${report.title.slice(0, 10)}`,

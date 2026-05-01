@@ -1,8 +1,8 @@
-import { useCallback, useRef, useState , useMemo} from 'react';
+import { useCallback, useRef, useState , useMemo, useEffect} from 'react';
 import { Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
-import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import SignatureScreen, { type SignatureViewRef } from 'react-native-signature-canvas';
@@ -12,6 +12,8 @@ import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import { useToast } from '../../../lib/toast';
 import { getStorageImageDisplayUrl } from '../../../lib/imageUrl';
 import { useTheme } from '../../../lib/theme';
+import { useProjectSigners, qk } from '../../../lib/apiHooks';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { toErrorMessage } from '../../../lib/logError';
 import { friendlyError } from '../../../lib/errorMap';
@@ -43,33 +45,25 @@ export default function SignerForm() {
   const [pendingSigData, setPendingSigData] = useState<string | null>(null); // base64 png to upload
   const [capturing, setCapturing] = useState(false);
   const [busy, setBusy] = useState(false);
+  const queryClient = useQueryClient();
 
-  const load = useCallback(async () => {
-    if (!id || !signerId) return;
-    try {
-      const signers = await projectsApi.signers(id);
-      const s = signers.find(x => x.id === signerId);
-      if (!s) return;
-      setExisting(s);
-      setRole(s.role);
-      setFullName(s.full_name);
-      setPhone(s.phone ?? '');
-      setPosition(s.position ?? '');
-      if (s.signature_png_url) {
-        setSigPreview(
-          await getStorageImageDisplayUrl(STORAGE_BUCKETS.signatures, s.signature_png_url),
-        );
-      }
-    } catch (e) {
-      toast.error(friendlyError(e, t('errors.loadFailed')));
+  const { data: signers = [] } = useProjectSigners(id);
+
+  useEffect(() => {
+    if (!signerId) return;
+    const s = signers.find(x => x.id === signerId);
+    if (!s) return;
+    setExisting(s);
+    setRole(s.role);
+    setFullName(s.full_name);
+    setPhone(s.phone ?? '');
+    setPosition(s.position ?? '');
+    if (s.signature_png_url) {
+      getStorageImageDisplayUrl(STORAGE_BUCKETS.signatures, s.signature_png_url)
+        .then(url => setSigPreview(url))
+        .catch(() => {});
     }
-  }, [id, signerId, toast]);
-
-  useFocusEffect(
-    useCallback(() => {
-      void load();
-    }, [load]),
-  );
+  }, [signerId, signers]);
 
   const onCaptured = (base64: string) => {
     const cleaned = base64.replace(/^data:image\/png;base64,/, '');
@@ -104,6 +98,7 @@ export default function SignerForm() {
         position: position.trim() || null,
         signature_png_url: sigPath,
       });
+      queryClient.invalidateQueries({ queryKey: qk.projects.signers(id ?? '') });
       toast.success(editing ? t('projectSigner.updated') : t('projectSigner.added'));
       router.back();
     } catch (e) {
@@ -123,6 +118,7 @@ export default function SignerForm() {
         onPress: async () => {
           try {
             await projectsApi.deleteSigner(existing.id);
+            queryClient.invalidateQueries({ queryKey: qk.projects.signers(id ?? '') });
             toast.success(t('notifications.deleted'));
             router.back();
           } catch (e) {

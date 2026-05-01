@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -6,15 +6,15 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { useTheme } from '../../../lib/theme';
 import { formatShortDateTime } from '../../../lib/formatDate';
-import { incidentsApi, projectsApi } from '../../../lib/services';
+import { useProject, useIncidentsByProject } from '../../../lib/apiHooks';
 import { INCIDENT_TYPE_LABEL } from '../../../types/models';
-import type { Incident, IncidentType, Project } from '../../../types/models';
+import type { Incident, IncidentType } from '../../../types/models';
 
 const INCIDENT_BADGE_COLORS: Record<
   IncidentType,
@@ -44,27 +44,8 @@ export default function ProjectIncidentsList() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  const [loading, setLoading] = useState(true);
-  const [project, setProject] = useState<Project | null>(null);
-  const [items, setItems] = useState<Incident[]>([]);
-
-  const load = useCallback(async () => {
-    if (!id) return;
-    setLoading(true);
-    const [p, list] = await Promise.all([
-      projectsApi.getById(id).catch(() => null),
-      incidentsApi.listByProject(id).catch(() => [] as Incident[]),
-    ]);
-    setProject(p);
-    setItems(list);
-    setLoading(false);
-  }, [id]);
-
-  useFocusEffect(
-    useCallback(() => {
-      void load();
-    }, [load]),
-  );
+  const { data: project } = useProject(id);
+  const { data: items = [], isLoading: loading } = useIncidentsByProject(id);
 
   const grouped = useMemo(
     () => groupByDateDesc(items, inc => inc.date_time),

@@ -1,23 +1,26 @@
 import { memo, useCallback, useMemo, useRef, useState } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { A11yText as Text } from '../components/primitives/A11yText';
-import { Stack, useFocusEffect, useRouter } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Swipeable, { type SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { Card, Screen } from '../components/ui';
 import { Skeleton } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
-import {
-  certificatesApi,
-  inspectionsApi,
-  projectsApi,
-  templatesApi,
-} from '../lib/services';
+import { inspectionsApi } from '../lib/services';
 import { useToast } from '../lib/toast';
 import { useTheme } from '../lib/theme';
 
 import { friendlyError } from '../lib/errorMap';
 import { a11y } from '../lib/accessibility';
+import {
+  useRecentInspections,
+  useTemplates,
+  useProjects,
+  useCertificateCounts,
+  qk,
+} from '../lib/apiHooks';
+import { useQueryClient } from '@tanstack/react-query';
 import type { Inspection, Project, Template } from '../types/models';
 import { useTranslation } from 'react-i18next';
 
@@ -147,44 +150,14 @@ export default function HistoryScreen() {
   const styles = useMemo(() => getstyles(theme), [theme]);
   const router = useRouter();
   const toast = useToast();
-  const [qs, setQs] = useState<Inspection[]>([]);
-  const [templates, setTemplates] = useState<Template[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
-  // inspection_id → number of attached certificate PDFs; used for the
-  // per-row count badge so users can see "this inspection has 2 PDFs".
-  const [certCounts, setCertCounts] = useState<Record<string, number>>({});
-  const [loaded, setLoaded] = useState(false);
+  const { data: qs = [], isLoading: qsLoading } = useRecentInspections(200);
+  const { data: templates = [], isLoading: tplsLoading } = useTemplates();
+  const { data: projects = [], isLoading: projectsLoading } = useProjects();
+  const completedIds = useMemo(() => qs.filter(i => i.status === 'completed').map(i => i.id), [qs]);
+  const { data: certCounts = {}, isLoading: countsLoading } = useCertificateCounts(completedIds);
+  const loaded = !qsLoading && !tplsLoading && !projectsLoading && !countsLoading;
   const swipeRefs = useRef<Map<string, SwipeableMethods>>(new Map());
   const openSwipeId = useRef<string | null>(null);
-
-  const load = useCallback(async () => {
-    const [allQ, allT, allP] = await Promise.all([
-      inspectionsApi.recent(200).catch(() => []),
-      templatesApi.list().catch(() => []),
-      projectsApi.list().catch(() => []),
-    ]);
-    setQs(allQ);
-    setTemplates(allT);
-    setProjects(allP);
-    // Only bother fetching cert counts for completed inspections — drafts
-    // can't have certs by definition.
-    const completedIds = allQ.filter(i => i.status === 'completed').map(i => i.id);
-    if (completedIds.length > 0) {
-      const counts = await certificatesApi
-        .countsByInspection(completedIds)
-        .catch(() => ({} as Record<string, number>));
-      setCertCounts(counts);
-    } else {
-      setCertCounts({});
-    }
-    setLoaded(true);
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      void load();
-    }, [load]),
-  );
 
   const items = useMemo<ListItem[]>(() => {
     const drafts = qs.filter(q => q.status === 'draft');
@@ -201,6 +174,8 @@ export default function HistoryScreen() {
     return out;
   }, [qs]);
 
+  const queryClient = useQueryClient();
+
   const onDelete = useCallback((q: Inspection) => {
     Alert.alert(t('history.deleteTitle'), t('history.deleteBody'), [
       { text: t('common.cancel'), style: 'cancel' },
@@ -210,7 +185,7 @@ export default function HistoryScreen() {
         onPress: async () => {
           try {
             await inspectionsApi.remove(q.id);
-            setQs(prev => prev.filter(x => x.id !== q.id));
+            queryClient.invalidateQueries({ queryKey: qk.inspections.recent(200) });
             toast.success(t('history.deleted'));
           } catch (e) {
             toast.error(friendlyError(e, t('history.deleteError')));
@@ -218,7 +193,7 @@ export default function HistoryScreen() {
         },
       },
     ]);
-  }, [toast, t]);
+  }, [toast, t, queryClient]);
 
   const renderItem = useCallback(({ item }: { item: ListItem }) => (
     <MemoizedHistoryItem

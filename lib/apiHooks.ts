@@ -73,6 +73,7 @@ export const qk = {
     list: ['qualifications', 'list'] as const,
   },
   certificates: {
+    list: ['certificates', 'list'] as const,
     byInspection: (id: string) => ['certificates', 'byInspection', id] as const,
     byId: (id: string) => ['certificates', 'detail', id] as const,
   },
@@ -211,6 +212,13 @@ export function useQualifications() {
 
 // ── Certificates ─────────────────────────────────────────────────────────────
 
+export function useCertificates() {
+  return useQuery<Certificate[]>({
+    queryKey: qk.certificates.list,
+    queryFn: () => certificatesApi.list(),
+  });
+}
+
 export function useCertificatesByInspection(inspectionId: string | undefined) {
   return useQuery<Certificate[]>({
     queryKey: inspectionId
@@ -218,6 +226,14 @@ export function useCertificatesByInspection(inspectionId: string | undefined) {
       : ['certificates', 'byInspection', 'none'],
     queryFn: () => (inspectionId ? certificatesApi.listByInspection(inspectionId) : Promise.resolve([])),
     enabled: !!inspectionId,
+  });
+}
+
+export function useCertificateCounts(inspectionIds: string[]) {
+  return useQuery<Record<string, number>>({
+    queryKey: ['certificates', 'counts', ...inspectionIds.sort()] as const,
+    queryFn: () => (inspectionIds.length > 0 ? certificatesApi.countsByInspection(inspectionIds) : Promise.resolve({})),
+    enabled: inspectionIds.length > 0,
   });
 }
 

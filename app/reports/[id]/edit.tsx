@@ -7,7 +7,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Crypto from 'expo-crypto';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,10 +19,12 @@ import { useTheme } from '../../../lib/theme';
 import { useToast } from '../../../lib/toast';
 import { a11y } from '../../../lib/accessibility';
 import { friendlyError } from '../../../lib/errorMap';
-import { projectsApi, reportsApi } from '../../../lib/services';
+import { reportsApi } from '../../../lib/services';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import { getStorageImageDisplayUrl } from '../../../lib/imageUrl';
-import type { Project, Report, ReportSlide } from '../../../types/models';
+import { useReport, useProject, qk } from '../../../lib/apiHooks';
+import { useQueryClient } from '@tanstack/react-query';
+import type { Report, ReportSlide } from '../../../types/models';
 
 export default function ReportSlidesEditor() {
   const { theme } = useTheme();
@@ -33,26 +35,11 @@ export default function ReportSlidesEditor() {
   const showSheet = useBottomSheet();
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  const [report, setReport] = useState<Report | null>(null);
-  const [project, setProject] = useState<Project | null>(null);
+  const { data: report } = useReport(id);
+  const { data: project } = useProject(report?.project_id);
   const [busy, setBusy] = useState(false);
   const [generating, setGenerating] = useState(false);
-
-  const load = useCallback(async () => {
-    if (!id) return;
-    const r = await reportsApi.getById(id).catch(() => null);
-    setReport(r);
-    if (r) {
-      const p = await projectsApi.getById(r.project_id).catch(() => null);
-      setProject(p);
-    }
-  }, [id]);
-
-  useFocusEffect(
-    useCallback(() => {
-      void load();
-    }, [load]),
-  );
+  const queryClient = useQueryClient();
 
   const slides = useMemo(
     () => (report?.slides ?? []).slice().sort((a, b) => a.order - b.order),
@@ -79,8 +66,8 @@ export default function ReportSlidesEditor() {
     reportsApi
       .update(report.id, { slides: [newSlide] })
       .then(saved => {
-        setReport(saved);
-        router.push(`/reports/${report.id}/slide/${newSlide.id}` as any);
+        queryClient.setQueryData(qk.reports.byId(saved.id), saved);
+        router.push(`/reports/${saved.id}/slide/${newSlide.id}` as any);
       })
       .catch(() => {
         autoCreatedRef.current = false;
@@ -93,16 +80,16 @@ export default function ReportSlidesEditor() {
     async (next: ReportSlide[]) => {
       if (!report) return;
       const renumbered = next.map((s, i) => ({ ...s, order: i }));
-      setReport({ ...report, slides: renumbered });
+      queryClient.setQueryData(qk.reports.byId(report.id), { ...report, slides: renumbered });
       try {
         const saved = await reportsApi.update(report.id, { slides: renumbered });
-        setReport(saved);
+        queryClient.setQueryData(qk.reports.byId(saved.id), saved);
       } catch (e) {
         toast.error(friendlyError(e, 'შენახვა ვერ მოხერხდა'));
-        await load();
+        queryClient.invalidateQueries({ queryKey: qk.reports.byId(report.id) });
       }
     },
-    [report, toast, load],
+    [report, toast, queryClient],
   );
 
   const addSlide = async () => {
@@ -154,8 +141,8 @@ export default function ReportSlidesEditor() {
     setGenerating(true);
     try {
       const saved = await reportsApi.update(report.id, { status: 'completed' });
-      setReport(saved);
-      router.replace(`/reports/${report.id}/success` as any);
+      queryClient.setQueryData(qk.reports.byId(saved.id), saved);
+      router.replace(`/reports/${saved.id}/success` as any);
     } catch (e) {
       toast.error(friendlyError(e, 'შენახვა ვერ მოხერხდა'));
     } finally {

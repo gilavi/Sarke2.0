@@ -1,15 +1,14 @@
 import { createElement, useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
-import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
 import { useTheme } from '../../lib/theme';
 import { generateAndSharePdf } from '../../lib/pdfOpen';
-import { briefingsApi } from '../../lib/briefingsApi';
+import { useBriefing, useProject } from '../../lib/apiHooks';
 import { buildBriefingPreviewHtml, buildBriefingPdfHtml } from '../../lib/briefingPdf';
 import { generatePdfName } from '../../lib/pdfName';
-import { projectsApi } from '../../lib/services';
 import { a11y } from '../../lib/accessibility';
 import type { Briefing, Project } from '../../types/models';
 
@@ -19,38 +18,17 @@ export default function BriefingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
 
-  const [briefing, setBriefing] = useState<Briefing | null>(null);
-  const [project, setProject] = useState<Project | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: briefing, isLoading: loading } = useBriefing(id);
+  const { data: project } = useProject(briefing?.projectId);
   const [sharing, setSharing] = useState(false);
   const [webviewLoading, setWebviewLoading] = useState(true);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    if (!id) return;
-    setLoading(true);
-    try {
-      const b = await briefingsApi.getById(id);
-      if (!b) {
-        router.back();
-        return;
-      }
-      setBriefing(b);
-      const p = await projectsApi.getById(b.projectId).catch(() => null);
-      setProject(p);
-      if (p) {
-        setPreviewHtml(buildBriefingPreviewHtml(b, p));
-      }
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    if (briefing && project) {
+      setPreviewHtml(buildBriefingPreviewHtml(briefing, project));
     }
-  }, [id]);
-
-  useFocusEffect(
-    useCallback(() => {
-      void load();
-    }, [load]),
-  );
+  }, [briefing, project]);
 
   const sharePdf = useCallback(async () => {
     if (!briefing || !project) return;

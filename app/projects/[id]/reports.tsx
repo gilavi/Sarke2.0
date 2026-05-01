@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -6,14 +6,14 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { useTheme } from '../../../lib/theme';
 import { formatShortDateTime } from '../../../lib/formatDate';
-import { projectsApi, reportsApi } from '../../../lib/services';
-import type { Project, Report, ReportStatus } from '../../../types/models';
+import { useProject, useReportsByProject } from '../../../lib/apiHooks';
+import type { Report, ReportStatus } from '../../../types/models';
 
 type Filter = 'all' | ReportStatus;
 
@@ -34,28 +34,9 @@ export default function ProjectReportsList() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  const [loading, setLoading] = useState(true);
-  const [project, setProject] = useState<Project | null>(null);
-  const [items, setItems] = useState<Report[]>([]);
+  const { data: project } = useProject(id);
+  const { data: items = [], isLoading: loading } = useReportsByProject(id);
   const [filter, setFilter] = useState<Filter>('all');
-
-  const load = useCallback(async () => {
-    if (!id) return;
-    setLoading(true);
-    const [p, list] = await Promise.all([
-      projectsApi.getById(id).catch(() => null),
-      reportsApi.listByProject(id).catch(() => [] as Report[]),
-    ]);
-    setProject(p);
-    setItems(list);
-    setLoading(false);
-  }, [id]);
-
-  useFocusEffect(
-    useCallback(() => {
-      void load();
-    }, [load]),
-  );
 
   const filtered = useMemo(() => {
     if (filter === 'all') return items;

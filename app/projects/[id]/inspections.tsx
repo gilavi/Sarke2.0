@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -6,14 +6,14 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { useTheme } from '../../../lib/theme';
 import { formatShortDateTime } from '../../../lib/formatDate';
-import { questionnairesApi, templatesApi, projectsApi } from '../../../lib/services';
-import type { Project, Questionnaire, Template } from '../../../types/models';
+import { useProject, useInspectionsByProject, useTemplates } from '../../../lib/apiHooks';
+import type { Questionnaire } from '../../../types/models';
 
 function formatGeorgianDate(isoDate: string): string {
   return new Date(isoDate).toLocaleDateString('ka-GE', {
@@ -32,30 +32,10 @@ export default function ProjectInspectionsList() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  const [loading, setLoading] = useState(true);
-  const [project, setProject] = useState<Project | null>(null);
-  const [items, setItems] = useState<Questionnaire[]>([]);
-  const [templates, setTemplates] = useState<Template[]>([]);
-
-  const load = useCallback(async () => {
-    if (!id) return;
-    setLoading(true);
-    const [p, q, tpls] = await Promise.all([
-      projectsApi.getById(id).catch(() => null),
-      questionnairesApi.listByProject(id).catch(() => [] as Questionnaire[]),
-      templatesApi.list().catch(() => [] as Template[]),
-    ]);
-    setProject(p);
-    setItems(q);
-    setTemplates(tpls);
-    setLoading(false);
-  }, [id]);
-
-  useFocusEffect(
-    useCallback(() => {
-      void load();
-    }, [load]),
-  );
+  const { data: project } = useProject(id);
+  const { data: items = [], isLoading: itemsLoading } = useInspectionsByProject(id);
+  const { data: templates = [], isLoading: tplsLoading } = useTemplates();
+  const loading = itemsLoading || tplsLoading;
 
   const grouped = useMemo(() => groupByDateDesc(items, q => q.created_at), [items]);
 
