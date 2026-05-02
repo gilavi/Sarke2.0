@@ -7,6 +7,9 @@ import {
 } from 'react-native';
 import * as Crypto from 'expo-crypto';
 import * as ImagePicker from 'expo-image-picker';
+import { getCurrentLocation } from '../../utils/location';
+import type { PhotoLocation } from '../../utils/location';
+import { showPhotoLocationAlert } from '../../lib/photoLocationAlert';
 import { generateAndSharePdf } from '../../lib/pdfOpen';
 import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
@@ -16,7 +19,8 @@ import { KeyboardSafeArea } from '../../components/layout/KeyboardSafeArea';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { FlowHeader } from '../../components/FlowHeader';
 import { DateTimeField } from '../../components/DateTimeField';
-import { Button, Input } from '../../components/ui';
+import { Button } from '../../components/ui';
+import { FloatingLabelInput } from '../../components/inputs/FloatingLabelInput';
 import { useTheme } from '../../lib/theme';
 import { useSession } from '../../lib/session';
 import { useToast } from '../../lib/toast';
@@ -41,6 +45,11 @@ import { INCIDENT_TYPE_FULL_LABEL, INCIDENT_TYPE_LABEL } from '../../types/model
 
 type Step = 1 | 2 | 3 | 4;
 
+interface IncidentPhoto {
+  uri: string;
+  location: PhotoLocation | null;
+}
+
 interface FormData {
   type: IncidentType | null;
   injuredName: string;
@@ -51,7 +60,7 @@ interface FormData {
   cause: string;
   actionsTaken: string;
   witnesses: string[];
-  photoUris: string[];
+  photos: IncidentPhoto[];
 }
 
 const INITIAL_FORM: FormData = {
@@ -64,7 +73,7 @@ const INITIAL_FORM: FormData = {
   cause: '',
   actionsTaken: '',
   witnesses: [],
-  photoUris: [],
+  photos: [],
 };
 
 function getTypeBadge(theme: any): Record<IncidentType, { bg: string; text: string; border: string }> {
@@ -138,7 +147,7 @@ export default function NewIncident() {
     form.cause.trim().length > 0 ||
     form.actionsTaken.trim().length > 0 ||
     form.witnesses.length > 0 ||
-    form.photoUris.length > 0
+    form.photos.length > 0
   ), [form]);
 
   const goBack = () => {
@@ -176,9 +185,16 @@ export default function NewIncident() {
       {
         text: 'კამერა',
         onPress: async () => {
-          const res = await ImagePicker.launchCameraAsync({ quality: 0.8 });
+          const [res, location] = await Promise.all([
+            ImagePicker.launchCameraAsync({ quality: 0.8 }),
+            getCurrentLocation(),
+          ]);
           if (!res.canceled && res.assets[0]) {
-            setForm(f => ({ ...f, photoUris: [...f.photoUris, res.assets[0].uri] }));
+            const photo: IncidentPhoto = { uri: res.assets[0].uri, location };
+            setForm(f => ({ ...f, photos: [...f.photos, photo] }));
+            if (project) {
+              showPhotoLocationAlert(project, location, setProject).catch(() => {});
+            }
           }
         },
       },
@@ -189,9 +205,13 @@ export default function NewIncident() {
             allowsMultipleSelection: true,
             quality: 0.8,
           });
-          if (!res.canceled) {
-            const uris = res.assets.map(a => a.uri);
-            setForm(f => ({ ...f, photoUris: [...f.photoUris, ...uris] }));
+          if (!res.canceled && res.assets.length > 0) {
+            const location = await getCurrentLocation();
+            const newPhotos: IncidentPhoto[] = res.assets.map(a => ({ uri: a.uri, location }));
+            setForm(f => ({ ...f, photos: [...f.photos, ...newPhotos] }));
+            if (project) {
+              showPhotoLocationAlert(project, location, setProject).catch(() => {});
+            }
           }
         },
       },
@@ -202,7 +222,7 @@ export default function NewIncident() {
   const removePhoto = (idx: number) => {
     setForm(f => ({
       ...f,
-      photoUris: f.photoUris.filter((_, i) => i !== idx),
+      photos: f.photos.filter((_, i) => i !== idx),
     }));
   };
 
@@ -221,26 +241,26 @@ export default function NewIncident() {
 
   // ── upload helpers ──────────────────────────────────────────────────────────
 
-  const uploadPhotos = async (): Promise<string[]> => {
-    const paths: string[] = [];
-    for (const uri of form.photoUris) {
+  const uploadPhotos = async (): Promise<{ path: string; location: PhotoLocation | null }[]> => {
+    const results: { path: string; location: PhotoLocation | null }[] = [];
+    for (const photo of form.photos) {
       const photoId = Crypto.randomUUID();
-      const ext = uri.split('.').pop()?.toLowerCase() ?? 'jpg';
+      const ext = photo.uri.split('.').pop()?.toLowerCase() ?? 'jpg';
       const path = `${incidentId}/${photoId}.${ext}`;
       try {
         await storageApi.uploadFromUri(
           STORAGE_BUCKETS.incidentPhotos,
           path,
-          uri,
+          photo.uri,
           'image/jpeg',
           'incident',
         );
-        paths.push(path);
+        results.push({ path, location: photo.location });
       } catch (e) {
         console.warn('[incident] photo upload failed', e);
       }
     }
-    return paths;
+    return results;
   };
 
   // ── save (draft) ────────────────────────────────────────────────────────────
@@ -249,7 +269,7 @@ export default function NewIncident() {
     if (!projectId) return;
     setSaving(true);
     try {
-      const photoPaths = await uploadPhotos();
+      const uploaded = await uploadPhotos();
       await incidentsApi.create({
         id: incidentId,
         project_id: projectId,
@@ -262,7 +282,7 @@ export default function NewIncident() {
         cause: form.cause,
         actions_taken: form.actionsTaken,
         witnesses: form.witnesses,
-        photos: photoPaths,
+        photos: uploaded.map(u => u.path),
         inspector_signature: inspector.sigPath,
         status: 'draft',
         pdf_url: null,
@@ -287,7 +307,8 @@ export default function NewIncident() {
     let savedId = incidentId;
     try {
       // 1. upload photos
-      const photoPaths = await uploadPhotos();
+      const uploaded = await uploadPhotos();
+      const photoPaths = uploaded.map(u => u.path);
 
       // 2. create incident record
       const saved = await incidentsApi.create({
@@ -329,6 +350,15 @@ export default function NewIncident() {
         ),
       ).then(urls => urls.filter(Boolean));
 
+      // Resolve addresses for photos that have location data.
+      const { reverseGeocode } = await import('../../utils/location');
+      const photoAddresses = await Promise.all(
+        uploaded.map(async u => {
+          if (!u.location) return null;
+          return reverseGeocode(u.location.latitude, u.location.longitude).catch(() => null);
+        }),
+      );
+
       // 5. build HTML
       const html = buildIncidentPdfHtml({
         incident: saved,
@@ -336,6 +366,7 @@ export default function NewIncident() {
         inspectorName: inspector.name,
         inspectorSignatureDataUrl: sigDataUrl,
         photoDataUrls,
+        photoAddresses,
       });
 
       // 6. open/share PDF instantly; keep the pretty-named copy for background upload
@@ -569,18 +600,16 @@ function Step2({
         </View>
       ) : (
         <>
-          <Input
+          <FloatingLabelInput
             label="დაზარალებული პირი"
             value={form.injuredName}
             onChangeText={v => setForm(f => ({ ...f, injuredName: v }))}
-            placeholder="სახელი, გვარი"
           />
 
-          <Input
+          <FloatingLabelInput
             label="თანამდებობა"
             value={form.injuredRole}
             onChangeText={v => setForm(f => ({ ...f, injuredRole: v }))}
-            placeholder="პოზიცია / სპეციალობა"
           />
         </>
       )}
@@ -594,11 +623,11 @@ function Step2({
       />
 
       {/* Location */}
-      <Input
-        label="ზუსტი ადგილი *"
+      <FloatingLabelInput
+        label="ზუსტი ადგილი"
+        required
         value={form.location}
         onChangeText={v => setForm(f => ({ ...f, location: v }))}
-        placeholder="სად მოხდა შემთხვევა"
       />
     </View>
   );
@@ -626,34 +655,28 @@ function Step3({
     <View style={{ gap: 16 }}>
       <Text style={s.stepTitle}>აღწერა და მიზეზი</Text>
 
-      <Input
+      <FloatingLabelInput
         label="რა მოხდა"
         value={form.description}
         onChangeText={v => setForm(f => ({ ...f, description: v }))}
-        placeholder="აღწერეთ შემთხვევა..."
         multiline
         numberOfLines={4}
-        textAlignVertical="top"
       />
 
-      <Input
+      <FloatingLabelInput
         label="სავარაუდო მიზეზი"
         value={form.cause}
         onChangeText={v => setForm(f => ({ ...f, cause: v }))}
-        placeholder="სავარაუდო მიზეზი..."
         multiline
         numberOfLines={3}
-        textAlignVertical="top"
       />
 
-      <Input
+      <FloatingLabelInput
         label="მიღებული ზომები"
         value={form.actionsTaken}
         onChangeText={v => setForm(f => ({ ...f, actionsTaken: v }))}
-        placeholder="რა ზომები იქნა მიღებული..."
         multiline
         numberOfLines={3}
-        textAlignVertical="top"
       />
 
       {/* Witnesses */}
@@ -670,12 +693,13 @@ function Step3({
         ))}
         <View style={s.witnessInputRow}>
           <View style={{ flex: 1 }}>
-            <Input
+            <FloatingLabelInput
+              label="სახელი, გვარი"
               value={witnessInput}
               onChangeText={setWitnessInput}
-              placeholder="სახელი, გვარი"
               onSubmitEditing={onAddWitness}
               returnKeyType="done"
+              style={{ marginBottom: 0 }}
             />
           </View>
           <Pressable onPress={onAddWitness} style={s.addWitnessBtn}>
@@ -687,12 +711,12 @@ function Step3({
       {/* Photos */}
       <View style={{ gap: 8 }}>
         <Text style={s.fieldLabel}>ფოტო მასალა</Text>
-        {form.photoUris.length > 0 && (
+        {form.photos.length > 0 && (
           <View style={s.photoGrid}>
-            {form.photoUris.map((uri, i) => (
-              <View key={`${i}-${uri}`} style={s.photoThumb}>
+            {form.photos.map((photo, i) => (
+              <View key={`${i}-${photo.uri}`} style={s.photoThumb}>
                 <Image
-                  source={{ uri }}
+                  source={{ uri: photo.uri }}
                   style={{ width: '100%', height: '100%' }}
                   contentFit="cover"
                 />
@@ -792,10 +816,10 @@ function Step4({
             s={s}
           />
         )}
-        {form.photoUris.length > 0 && (
+        {form.photos.length > 0 && (
           <SummaryRow
             label="ფოტოები"
-            value={`${form.photoUris.length} ფოტო`}
+            value={`${form.photos.length} ფოტო`}
             theme={theme}
             s={s}
           />

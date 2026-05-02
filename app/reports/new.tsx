@@ -5,7 +5,8 @@ import {
 } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { KeyboardSafeArea } from '../../components/layout/KeyboardSafeArea';
-import { Button, Input } from '../../components/ui';
+import { Button } from '../../components/ui';
+import { FloatingLabelInput } from '../../components/inputs/FloatingLabelInput';
 import { FlowHeader } from '../../components/FlowHeader';
 import { useTheme } from '../../lib/theme';
 import { useToast } from '../../lib/toast';
@@ -71,12 +72,11 @@ export default function NewReportTitleScreen() {
           </View>
         }
       >
-        <Input
+        <FloatingLabelInput
           label="რეპორტის სახელი"
           required
           value={title}
           onChangeText={setTitle}
-          placeholder="მაგ: ივნისის შემოწმების შედეგები"
           autoFocus
           returnKeyType="done"
           onSubmitEditing={onNext}

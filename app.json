@@ -26,6 +26,8 @@
         "NSPhotoLibraryUsageDescription": "ფოტოების არჩევა სისტემის ბიბლიოთეკიდან.",
         "NSPhotoLibraryAddUsageDescription": "საჭიროა ფოტოების შესანახად",
         "NSMicrophoneUsageDescription": "საჭიროა ვიდეოს ჩასაწერად",
+        "NSLocationWhenInUseUsageDescription": "საჭიროა ფოტოების გეოლოკაციისთვის",
+        "NSLocationAlwaysUsageDescription": "საჭიროა ფოტოების გეოლოკაციისთვის",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -37,8 +39,11 @@
       "package": "ge.sarke.app",
       "versionCode": 1,
       "edgeToEdgeEnabled": true,
-      "softwareKeyboardLayoutMode": "pan",
-      "permissions": []
+      "softwareKeyboardLayoutMode": "resize",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -62,7 +67,8 @@
       ],
       "@sentry/react-native",
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-location"
     ],
     "extra": {
       "supabaseUrl": "https://seskuthiopywrgntsgfw.supabase.co",

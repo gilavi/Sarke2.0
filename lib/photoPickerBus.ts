@@ -12,6 +12,20 @@
 //   import { resolvePhotoPicker } from '../lib/photoPickerBus';
 //   resolvePhotoPicker(uri);
 //   router.back();
+//
+// Location side-channel: photo-picker.tsx stores the location it captured
+// alongside the URI here. Callers read it immediately after the callback fires.
+import type { PhotoLocation } from '../utils/location';
+
+let _lastPhotoLocation: PhotoLocation | null = null;
+
+export function setLastPhotoLocation(loc: PhotoLocation | null): void {
+  _lastPhotoLocation = loc;
+}
+
+export function getLastPhotoLocation(): PhotoLocation | null {
+  return _lastPhotoLocation;
+}
 
 const callbacks = new Map<number, (uri: string | null) => void>();
 const annotateCallbacks = new Map<number, (uri: string | null) => void>();

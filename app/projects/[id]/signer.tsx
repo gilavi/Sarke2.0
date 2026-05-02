@@ -6,7 +6,8 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import SignatureScreen, { type SignatureViewRef } from 'react-native-signature-canvas';
-import { Button, Field, Input, Screen } from '../../../components/ui';
+import { Button, Field, Screen } from '../../../components/ui';
+import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
 import { projectsApi, storageApi } from '../../../lib/services';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import { useToast } from '../../../lib/toast';
@@ -175,15 +176,22 @@ export default function SignerForm() {
             </View>
           </Field>
 
-          <Field label={t('remoteSigner.nameLabel')}>
-            <Input value={fullName} onChangeText={setFullName} placeholder={t('projectSigner.fullNamePlaceholder')} />
-          </Field>
-          <Field label={t('common.phone')}>
-            <Input value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder={t('projectSigner.phonePlaceholder')} />
-          </Field>
-          <Field label={t('common.position')}>
-            <Input value={position} onChangeText={setPosition} placeholder={t('projectSigner.positionPlaceholder')} />
-          </Field>
+          <FloatingLabelInput
+            label={t('remoteSigner.nameLabel')}
+            value={fullName}
+            onChangeText={setFullName}
+          />
+          <FloatingLabelInput
+            label={t('common.phone')}
+            value={phone}
+            onChangeText={setPhone}
+            keyboardType="phone-pad"
+          />
+          <FloatingLabelInput
+            label={t('common.position')}
+            value={position}
+            onChangeText={setPosition}
+          />
 
           <Field label={t('common.signature')}>
             <View style={styles.sigBox}>

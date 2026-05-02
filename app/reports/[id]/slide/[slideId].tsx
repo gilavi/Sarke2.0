@@ -12,7 +12,8 @@ import * as Crypto from 'expo-crypto';
 import { KeyboardSafeArea } from '../../../../components/layout/KeyboardSafeArea';
 import { A11yText as Text } from '../../../../components/primitives/A11yText';
 import { useBottomSheet } from '../../../../components/BottomSheet';
-import { Button, Input } from '../../../../components/ui';
+import { Button } from '../../../../components/ui';
+import { FloatingLabelInput } from '../../../../components/inputs/FloatingLabelInput';
 import { HeaderBackPill } from '../../../../components/HeaderBackPill';
 import { useTheme } from '../../../../lib/theme';
 import { useToast } from '../../../../lib/toast';
@@ -259,24 +260,20 @@ export default function ReportSlideEditor() {
         </Pressable>
 
         {/* Title */}
-        <Input
+        <FloatingLabelInput
           label="სლაიდის სათაური"
           required
           value={title}
           onChangeText={setTitle}
-          placeholder="მაგ: ხარაჩოს ძირი"
           returnKeyType="next"
         />
 
         {/* Description */}
-        <Input
+        <FloatingLabelInput
           label="აღწერა"
           value={description}
           onChangeText={setDescription}
-          placeholder="დაამატეთ დეტალები (სურვილისამებრ)"
           multiline
-          textAlignVertical="top"
-          style={{ minHeight: 100, alignItems: 'flex-start' }}
         />
       </KeyboardSafeArea>
     </View>

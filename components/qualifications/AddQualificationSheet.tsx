@@ -13,7 +13,8 @@ import { SheetLayout } from '../SheetLayout';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
-import { Button, Field, Input } from '../ui';
+import { Button, Field } from '../ui';
+import { FloatingLabelInput } from '../inputs/FloatingLabelInput';
 import { qualificationsApi, storageApi } from '../../lib/services';
 import { STORAGE_BUCKETS, supabase } from '../../lib/supabase';
 import { useTheme } from '../../lib/theme';
@@ -145,9 +146,11 @@ export default function AddQualificationSheet({
               </View>
             </Field>
 
-            <Field label="ნომერი">
-              <Input value={number} onChangeText={setNumber} placeholder="№ სერტიფიკატის ნომერი" />
-            </Field>
+            <FloatingLabelInput
+              label="ნომერი"
+              value={number}
+              onChangeText={setNumber}
+            />
 
             <Field label="გაცემის თარიღი">
               <Pressable onPress={() => setPicker('issued')} style={styles.dateBtn} {...a11y('გაცემის თარიღი', 'გაცემის თარიღის არჩევა', 'button')}>

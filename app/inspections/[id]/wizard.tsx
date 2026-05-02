@@ -35,7 +35,10 @@ import {
 import { getStorageImageDisplayUrl, getStorageImageResizedDataUrl } from '../../../lib/imageUrl';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import { haptic } from '../../../lib/haptics';
-import { setPhotoPickerCallback, setPhotoAnnotateCallback } from '../../../lib/photoPickerBus';
+import { setPhotoPickerCallback, setPhotoAnnotateCallback, getLastPhotoLocation } from '../../../lib/photoPickerBus';
+import { getCurrentLocation, reverseGeocode } from '../../../utils/location';
+import type { PhotoLocation } from '../../../utils/location';
+import { showPhotoLocationAlert } from '../../../lib/photoLocationAlert';
 import { useOffline, stripServerFields } from '../../../lib/offline';
 import { logError, toErrorMessage } from '../../../lib/logError';
 import { useToast } from '../../../lib/toast';
@@ -512,13 +515,24 @@ export default function QuestionnaireWizard() {
     mime?: string,
     ext?: string,
     path?: string,
+    location?: PhotoLocation | null,
   ) => {
     if (!questionnaire) return;
     setPhotoUploadCount(c => c + 1);
     const actualMime = mime ?? 'image/jpeg';
     const actualExt = ext ?? 'jpg';
     const actualPath = path ?? `${questionnaire.id}/${question.id}/${Date.now()}.${actualExt}`;
-    const captionStr = rowKey ? `row:${rowKey}` : null;
+
+    // Build caption: row key for grid photos, address for located photos.
+    // Grid-row photos keep just the row key — location is not added to avoid
+    // clobbering the row association the PDF generator relies on.
+    let captionStr: string | null = rowKey ? `row:${rowKey}` : null;
+    if (!rowKey && location) {
+      const addr = await reverseGeocode(location.latitude, location.longitude).catch(
+        () => `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`,
+      );
+      captionStr = `addr:${addr}`;
+    }
 
     // Ensure an Answer row exists locally so the photo can attach to a stable
     // answer.id whether we upload now or queue. The upsert is enqueued via
@@ -567,6 +581,10 @@ export default function QuestionnaireWizard() {
       // (especially useful when the user goes offline before generating the certificate).
       getStorageImageResizedDataUrl(STORAGE_BUCKETS.answerPhotos, actualPath).catch(() => undefined);
       toast.success('ფოტო აიტვირთა');
+      // Show project-location prompt after a successful upload (fire-and-forget).
+      if (project && location) {
+        showPhotoLocationAlert(project, location, setProject).catch(() => {});
+      }
     } catch (e) {
       toast.error(`ფოტო ვერ აიტვირთა: ${toErrorMessage(e, 'ქსელის შეცდომა')}`);
     } finally {
@@ -589,15 +607,26 @@ export default function QuestionnaireWizard() {
       toast.error(source === 'camera' ? 'კამერაზე წვდომა საჭიროა' : 'გალერეაზე წვდომა საჭიროა');
       return;
     }
-    const result =
-      source === 'camera'
-        ? await ImagePicker.launchCameraAsync(PICKER_OPTS)
-        : await ImagePicker.launchImageLibraryAsync(PICKER_OPTS);
+    let result: Awaited<ReturnType<typeof ImagePicker.launchCameraAsync>>;
+    let location: PhotoLocation | null = null;
+    if (source === 'camera') {
+      // Capture location concurrently with the photo for camera mode.
+      const [res, loc] = await Promise.all([
+        ImagePicker.launchCameraAsync(PICKER_OPTS),
+        getCurrentLocation(),
+      ]);
+      result = res;
+      location = loc;
+    } else {
+      result = await ImagePicker.launchImageLibraryAsync(PICKER_OPTS);
+      location = await getCurrentLocation();
+    }
     if (result.canceled || result.assets.length === 0) return;
     const asset = result.assets[0];
     const mime = asset.mimeType ?? 'image/jpeg';
     const ext = mime.split('/')[1] ?? 'jpg';
     const path = `${questionnaire.id}/${question.id}/${Date.now()}.${ext}`;
+    const capturedLocation = location;
     pendingPhotoContext.current = { questionId: question.id, rowKey, mime, ext, path };
     setPhotoAnnotateCallback((annotatedUri) => {
       if (!annotatedUri) {
@@ -607,7 +636,7 @@ export default function QuestionnaireWizard() {
       const ctx = pendingPhotoContext.current;
       if (!ctx) return;
       const q = questions.find(q => q.id === ctx.questionId);
-      if (q) doUpload(annotatedUri, q, ctx.rowKey, ctx.mime, ctx.ext, ctx.path);
+      if (q) doUpload(annotatedUri, q, ctx.rowKey, ctx.mime, ctx.ext, ctx.path, capturedLocation);
       pendingPhotoContext.current = null;
     });
     router.push(
@@ -627,6 +656,8 @@ export default function QuestionnaireWizard() {
         pendingPhotoContext.current = null;
         return;
       }
+      // Read location captured by photo-picker.tsx (stored in bus side-channel).
+      const location = getLastPhotoLocation();
       setPhotoAnnotateCallback((annotatedUri) => {
         if (!annotatedUri) {
           pendingPhotoContext.current = null;
@@ -635,7 +666,7 @@ export default function QuestionnaireWizard() {
         const ctx = pendingPhotoContext.current;
         if (!ctx) return;
         const q = questions.find(q => q.id === ctx.questionId);
-        if (q) doUpload(annotatedUri, q, ctx.rowKey, ctx.mime, ctx.ext, ctx.path);
+        if (q) doUpload(annotatedUri, q, ctx.rowKey, ctx.mime, ctx.ext, ctx.path, location);
         pendingPhotoContext.current = null;
       });
       // Replace the picker with the annotator so the user returns straight

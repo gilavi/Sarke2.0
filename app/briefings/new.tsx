@@ -5,6 +5,7 @@ import {
   Keyboard,
   Pressable,
   StyleSheet,
+  TextInput,
   View,
 } from 'react-native';
 import { FloatingLabelInput } from '../../components/inputs/FloatingLabelInput';

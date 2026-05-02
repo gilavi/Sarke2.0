@@ -18,6 +18,7 @@ import {
 import { FloatingLabelInput } from './inputs/FloatingLabelInput';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
+import { getCurrentLocation } from '../utils/location';
 import { Ionicons } from '@expo/vector-icons';
 import { A11yText as Text } from './primitives/A11yText';
 import { Button } from './ui';
@@ -229,6 +230,8 @@ function CertEditView({
     });
     if (res.canceled || !res.assets?.[0]) return;
     setPhotoUri(res.assets[0].uri);
+    // Capture location in the background — non-blocking, no alert needed here.
+    getCurrentLocation().catch(() => {});
   }, [toast]);
 
   const save = useCallback(async () => {

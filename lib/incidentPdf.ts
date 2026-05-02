@@ -10,6 +10,8 @@ export interface IncidentPdfArgs {
   inspectorSignatureDataUrl?: string;
   /** Ordered array of base64 data URLs for each photo in incident.photos. */
   photoDataUrls?: string[];
+  /** Reverse-geocoded address for each photo (parallel to photoDataUrls). null = no location. */
+  photoAddresses?: (string | null)[];
 }
 
 function fmt(iso: string): string {
@@ -35,6 +37,7 @@ export function buildIncidentPdfHtml(args: IncidentPdfArgs): string {
     inspectorRole = 'შრომის უსაფრთხოების სპეციალისტი',
     inspectorSignatureDataUrl,
     photoDataUrls = [],
+    photoAddresses = [],
   } = args;
 
   const typeLabel =
@@ -46,10 +49,13 @@ export function buildIncidentPdfHtml(args: IncidentPdfArgs): string {
   const photoGrid =
     photoDataUrls.length > 0
       ? `<div class="photo-grid">${photoDataUrls
-          .map(
-            (u, i) =>
-              `<div class="photo-cell"><img src="${u}" alt="ფოტო ${i + 1}"/></div>`,
-          )
+          .map((u, i) => {
+            const addr = photoAddresses[i] ?? null;
+            const caption = addr
+              ? `<div class="photo-caption">გადაღებულია: ${addr}</div>`
+              : '';
+            return `<div class="photo-cell"><img src="${u}" alt="ფოტო ${i + 1}"/>${caption}</div>`;
+          })
           .join('')}</div>`
       : '';
 
@@ -252,6 +258,17 @@ export function buildIncidentPdfHtml(args: IncidentPdfArgs): string {
     object-fit: cover;
     border-radius: 4px;
     border: 1px solid #ddd;
+    display: block;
+  }
+  .photo-caption {
+    font-size: 8pt;
+    color: #6b7280;
+    font-style: italic;
+    text-align: center;
+    margin-top: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .divider {
     height: 1px;

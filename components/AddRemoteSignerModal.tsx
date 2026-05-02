@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { A11yText } from './primitives/A11yText';
 import { FormField } from './FormField';
 import { ButtonGroup } from './ButtonGroup';
-import { Input } from './ui';
+import { FloatingLabelInput } from './inputs/FloatingLabelInput';
 import { useTheme } from '../lib/theme';
 import { BottomSheetKeyboard } from './layout/BottomSheetKeyboard';
 
@@ -132,27 +132,25 @@ export function AddRemoteSignerSheet({
           </View>
         </FormField>
 
-        <FormField label="სახელი გვარი" required error={nameError}>
-          <Input
-            value={name}
-            onChangeText={setName}
-            onBlur={() => setNameTouched(true)}
-            placeholder="გიორგი ხელაძე"
-            error={nameError}
-            autoFocus
-          />
-        </FormField>
+        <FloatingLabelInput
+          label="სახელი გვარი"
+          required
+          error={nameError}
+          value={name}
+          onChangeText={setName}
+          onBlur={() => setNameTouched(true)}
+          autoFocus
+        />
 
-        <FormField label="ტელეფონი" required error={phoneError}>
-          <Input
-            value={phone}
-            onChangeText={setPhone}
-            onBlur={() => setPhoneTouched(true)}
-            keyboardType="phone-pad"
-            placeholder="+995 5XX XXX XXX"
-            error={phoneError}
-          />
-        </FormField>
+        <FloatingLabelInput
+          label="ტელეფონი"
+          required
+          error={phoneError}
+          value={phone}
+          onChangeText={setPhone}
+          onBlur={() => setPhoneTouched(true)}
+          keyboardType="phone-pad"
+        />
       </BottomSheetKeyboard>
     </View>
   );

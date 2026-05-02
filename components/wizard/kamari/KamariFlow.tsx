@@ -17,7 +17,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  TextInput,
   View,
 } from 'react-native';
 import Animated, { FadeInDown, FadeOut } from 'react-native-reanimated';
@@ -28,6 +27,7 @@ import { A11yText as Text } from '../../primitives/A11yText';
 import { Button, Card } from '../../ui';
 import { useTheme, type Theme } from '../../../lib/theme';
 import { useAccessibilitySettings } from '../../../lib/accessibility';
+import { FloatingLabelInput } from '../../inputs/FloatingLabelInput';
 
 import { haptic } from '../../../lib/haptics';
 import { getStorageImageDisplayUrl } from '../../../lib/imageUrl';
@@ -456,16 +456,12 @@ export function KamariDetailModal({
                     exiting={reduceMotion ? undefined : FadeOut.duration(100)}
                     style={styles.accordion}
                   >
-                    <Text size="sm" weight="semibold" style={{ marginBottom: 6 }}>
-                      რა პრობლემაა?
-                    </Text>
-                    <TextInput
+                    <FloatingLabelInput
+                      label="რა პრობლემაა?"
                       value={item.description}
                       onChangeText={t => setDescription(col, t)}
-                      placeholder="აღწერეთ პრობლემა..."
-                      placeholderTextColor={theme.colors.inkFaint}
                       multiline
-                      style={styles.input}
+                      style={{ marginBottom: 12 }}
                     />
                     <View style={styles.photoRow}>
                       {photosForCol(col).map(p => (
@@ -660,16 +656,6 @@ function getstyles(theme: Theme) {
     borderBottomLeftRadius: 12,
     borderBottomRightRadius: 12,
     marginTop: -1,
-  },
-  input: {
-    minHeight: 80,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: 8,
-    padding: 10,
-    color: theme.colors.ink,
-    fontSize: 15,
-    textAlignVertical: 'top',
   },
   photoRow: {
     flexDirection: 'row',

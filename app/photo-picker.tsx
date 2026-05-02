@@ -23,7 +23,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
 import { useTheme } from '../lib/theme';
 
-import { resolvePhotoPicker, cancelPhotoPicker } from '../lib/photoPickerBus';
+import { resolvePhotoPicker, cancelPhotoPicker, setLastPhotoLocation } from '../lib/photoPickerBus';
+import { getCurrentLocation } from '../utils/location';
 
 const MemoizedAssetItem = memo(function AssetItem({ item, onPress, disabled }: { item: MediaLibrary.Asset; onPress: (asset: MediaLibrary.Asset) => void; disabled: boolean }) {
   return (
@@ -116,7 +117,11 @@ export default function PhotoPickerScreen() {
     if (capturing) return;
     setCapturing(true);
     try {
-      const photo = await cameraRef.current?.takePictureAsync({ quality: 0.7 });
+      const [photo, location] = await Promise.all([
+        cameraRef.current?.takePictureAsync({ quality: 0.7 }),
+        getCurrentLocation(),
+      ]);
+      setLastPhotoLocation(location);
       if (photo?.uri) finish(photo.uri);
     } catch (e) {
       console.warn('[photo-picker] capture failed', e);
@@ -134,6 +139,9 @@ export default function PhotoPickerScreen() {
         // local URI we can hand to fetch/upload.
         const info = await MediaLibrary.getAssetInfoAsync(asset);
         const uri = info.localUri ?? asset.uri;
+        // Get location concurrently — fast tap so GPS has time to resolve.
+        const location = await getCurrentLocation();
+        setLastPhotoLocation(location);
         finish(uri);
       } finally {
         setSelecting(false);
@@ -155,6 +163,9 @@ export default function PhotoPickerScreen() {
         setSelecting(false);
         return;
       }
+      // Get location after the user completes their pick.
+      const location = await getCurrentLocation();
+      setLastPhotoLocation(location);
       finish(r.assets[0].uri);
     } catch {
       setSelecting(false);

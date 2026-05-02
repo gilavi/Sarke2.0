@@ -14,7 +14,8 @@ import { SheetLayout } from '../../../components/SheetLayout';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Button, Field, Input, Screen } from '../../../components/ui';
+import { Button, Screen } from '../../../components/ui';
+import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
 import { Skeleton } from '../../../components/Skeleton';
 import { questionnairesApi, projectsApi } from '../../../lib/services';
 import { useToast } from '../../../lib/toast';
@@ -262,20 +263,22 @@ function CreateProjectSheet({
               />
             }
           >
-            <Field label="სახელი">
-              <Input
-                value={name}
-                onChangeText={setName}
-                placeholder="მაგ. ვაკე-საბურთალოს ობიექტი"
-                autoFocus
-              />
-            </Field>
-            <Field label="კომპანია">
-              <Input value={company} onChangeText={setCompany} placeholder="შემკვეთი" />
-            </Field>
-            <Field label="მისამართი">
-              <Input value={address} onChangeText={setAddress} placeholder="ობიექტის მისამართი" />
-            </Field>
+            <FloatingLabelInput
+              label="სახელი"
+              value={name}
+              onChangeText={setName}
+              autoFocus
+            />
+            <FloatingLabelInput
+              label="კომპანია"
+              value={company}
+              onChangeText={setCompany}
+            />
+            <FloatingLabelInput
+              label="მისამართი"
+              value={address}
+              onChangeText={setAddress}
+            />
           </SheetLayout>
         </Pressable>
       </Animated.View>

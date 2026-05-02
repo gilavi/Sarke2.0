@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { A11yText as Text } from './primitives/A11yText';
 import { Ionicons } from '@expo/vector-icons';
-import { Button, Field, Input } from './ui';
+import { Button } from './ui';
+import { FloatingLabelInput } from './inputs/FloatingLabelInput';
 import { BottomSheetScrollView } from './BottomSheet';
 import { SheetLayout } from './SheetLayout';
 import { theme } from '../lib/theme';
@@ -115,23 +116,19 @@ export function RoleSlotSheet({
       }
     >
       {isOther ? (
-        <Field label="როლი">
-          <Input
-            value={customRole}
-            onChangeText={setCustomRole}
-            placeholder="მაგ. პრარაბი"
-            autoFocus
-          />
-        </Field>
-      ) : null}
-      <Field label="სახელი გვარი">
-        <Input
-          value={name}
-          onChangeText={setName}
-          placeholder="მაგ. გიორგი მელაძე"
-          autoFocus={!isOther}
+        <FloatingLabelInput
+          label="როლი"
+          value={customRole}
+          onChangeText={setCustomRole}
+          autoFocus
         />
-      </Field>
+      ) : null}
+      <FloatingLabelInput
+        label="სახელი გვარი"
+        value={name}
+        onChangeText={setName}
+        autoFocus={!isOther}
+      />
     </SheetLayout>
   );
 }

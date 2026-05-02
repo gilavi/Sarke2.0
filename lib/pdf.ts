@@ -86,6 +86,17 @@ async function buildHtml(
     : '—';
   const reportId = questionnaire.id.slice(0, 8).toUpperCase();
 
+  // ── Inspection location from first photo with addr: caption ──
+  let inspectionLocation: string | null = null;
+  outer: for (const photoList of Object.values(photosByAnswer)) {
+    for (const p of photoList) {
+      if (p.caption?.startsWith('addr:')) {
+        inspectionLocation = p.caption.slice(5);
+        break outer;
+      }
+    }
+  }
+
   // ── Sections ──
   const sections = Array.from(new Set(questions.map(q => q.section))).sort(
     (a, b) => a - b,
@@ -549,6 +560,10 @@ async function buildHtml(
       text-align: center;
       padding: 5px 8px;
     }
+    .photo-location {
+      color: var(--ink-soft);
+      font-style: italic;
+    }
     .photo-missing {
       display: flex;
       align-items: center;
@@ -797,6 +812,11 @@ async function buildHtml(
       <span class="info-label">${t('pdf.infoHarness')}</span>
       <span class="info-value">${escapeHtml(questionnaire.harness_name ?? '—')}</span>
     </div>` : ''}
+    ${inspectionLocation ? `
+    <div class="info-row" style="grid-column:1 / -1;">
+      <span class="info-label">📍 ლოკაცია</span>
+      <span class="info-value">${escapeHtml(inspectionLocation)}</span>
+    </div>` : ''}
   </div>
 
   ${statusHero}
@@ -960,11 +980,17 @@ function renderPhoto(
   const titlePart = escapeHtml(questionTitle.slice(0, 50));
   const timePart = photo.created_at ? formatDate(photo.created_at) : '';
   const captionText = timePart ? `${titlePart} — ${timePart}` : titlePart;
-  const isInternalCaption = photo.caption?.startsWith('row:') ?? false;
-  const noteCaption =
-    photo.caption && !isInternalCaption
-      ? `<div class="photo-caption">${escapeHtml(photo.caption)}</div>`
-      : '';
+
+  const isRowCaption = photo.caption?.startsWith('row:') ?? false;
+  const isLocCaption = photo.caption?.startsWith('addr:') ?? false;
+
+  let noteCaption = '';
+  if (isLocCaption) {
+    const addrText = photo.caption!.slice(5); // strip 'addr:' prefix
+    noteCaption = `<div class="photo-caption photo-location">გადაღებულია: ${escapeHtml(addrText)}</div>`;
+  } else if (!isRowCaption && photo.caption) {
+    noteCaption = `<div class="photo-caption">${escapeHtml(photo.caption)}</div>`;
+  }
 
   const src = photo.storage_path;
   const isDataUrl = src.startsWith('data:');

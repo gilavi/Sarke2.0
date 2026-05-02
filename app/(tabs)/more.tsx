@@ -195,12 +195,6 @@ export default function MoreScreen() {
           </Pressable>
           <View style={styles.divider} />
 
-          <Pressable onPress={() => router.push('/signature' as any)} style={styles.settingsRow} {...a11y(user?.saved_signature_url ? t('more.mySignature') : t('more.drawSignature'), undefined, 'button')}>
-            <Ionicons name="create-outline" size={18} color={theme.colors.inkSoft} />
-            <Text style={styles.settingsLabel}>{user?.saved_signature_url ? t('more.mySignature') : t('more.drawSignature')}</Text>
-            <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
-          </Pressable>
-          <View style={styles.divider} />
           <Pressable onPress={() => router.push('/terms?mode=view')} style={styles.settingsRow} {...a11y(t('more.terms'), undefined, 'button')}>
             <Ionicons name="document-text-outline" size={18} color={theme.colors.inkSoft} />
             <Text style={styles.settingsLabel}>{t('more.terms')}</Text>

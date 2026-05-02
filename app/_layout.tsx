@@ -146,13 +146,6 @@ function AuthGate() {
           canGoBack !== false ? <HeaderBackPill /> : null,
       }}
     >
-      {/* Signature is rendered as a transparent modal so the bottom-sheet UI
-          can show its own backdrop over the previous screen. Presentation
-          must be set on the parent Stack route, not from inside the screen. */}
-      <Stack.Screen
-        name="signature"
-        options={{ presentation: 'transparentModal', animation: 'fade', headerShown: false }}
-      />
       <Stack.Screen
         name="photo-picker"
         options={{ presentation: 'fullScreenModal', headerShown: false, animation: 'slide_from_bottom' }}

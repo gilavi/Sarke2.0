@@ -14,7 +14,6 @@ import {
   Alert,
   Pressable,
   StyleSheet,
-  TextInput,
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -29,6 +28,7 @@ import type { SignatureRecord, SignerRole } from '../types/models';
 import { SIGNER_ROLE_LABEL } from '../types/models';
 import { useTheme } from '../lib/theme';
 import { useToast } from '../lib/toast';
+import { FloatingLabelInput } from './inputs/FloatingLabelInput';
 import { friendlyError } from '../lib/errorMap';
 import { haptic } from '../lib/haptics';
 import { getStorageImageDataUrlStrict, getStorageImageDisplayUrl } from '../lib/imageUrl';
@@ -360,13 +360,10 @@ function SignatureEditView({
       }
       maxHeightRatio={0.95}
     >
-      <Text style={styles.fieldLabel}>სახელი</Text>
-      <TextInput
+      <FloatingLabelInput
+        label="სახელი"
         value={name}
         onChangeText={setName}
-        placeholder="გიორგი მაისურაძე"
-        placeholderTextColor={theme.colors.inkFaint}
-        style={styles.input}
       />
 
       <Text style={[styles.fieldLabel, { marginTop: 14 }]}>როლი</Text>
@@ -505,16 +502,6 @@ function createStyles(theme: any) {
       textTransform: 'uppercase',
       letterSpacing: 0.5,
       marginBottom: 6,
-    },
-    input: {
-      borderWidth: 1,
-      borderColor: theme.colors.hairline,
-      borderRadius: 10,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      fontSize: 15,
-      color: theme.colors.ink,
-      backgroundColor: theme.colors.surface,
     },
     chipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
     chip: {
