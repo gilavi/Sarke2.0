@@ -34,6 +34,9 @@
 	<string>$(SUPABASE_URL)</string>
 	<key>UIAppFonts</key>
 	<array>
+		<string>Inter.ttf</string>
+		<string>SpaceGrotesk.ttf</string>
+		<string>JetBrainsMono-Regular.ttf</string>
 		<string>NotoSansGeorgian-Regular.ttf</string>
 		<string>NotoSansGeorgian-Bold.ttf</string>
 	</array>
