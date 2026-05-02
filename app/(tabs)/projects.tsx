@@ -17,7 +17,8 @@ import { useRouter } from 'expo-router';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { ProjectAvatar } from '../../components/ProjectAvatar';
 import { pickProjectLogo } from '../../lib/projectLogo';
-import { Button, Card, Input } from '../../components/ui';
+import { Button, Card } from '../../components/ui';
+import { FloatingLabelInput } from '../../components/inputs/FloatingLabelInput';
 import { FabButton } from '../../components/primitives';
 import { A11yText, A11yText as Text } from '../../components/primitives/A11yText';
 import { FormField } from '../../components/FormField';
@@ -252,6 +253,7 @@ function CreateProjectSheet({
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
   const [address, setAddress] = useState('');
+  const [phone, setPhone] = useState('');
   const [pin, setPin] = useState<LatLng | null>(null);
   const [logo, setLogo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -262,6 +264,7 @@ function CreateProjectSheet({
       setName('');
       setCompany('');
       setAddress('');
+      setPhone('');
       setPin(null);
       setLogo(null);
       setBusy(false);
@@ -285,6 +288,7 @@ function CreateProjectSheet({
         latitude: pin?.latitude ?? null,
         longitude: pin?.longitude ?? null,
         logo,
+        contactPhone: phone.trim() || null,
       });
       onCreated(p);
     } catch (e) {
@@ -335,30 +339,34 @@ function CreateProjectSheet({
                   ) : null}
                 </View>
 
-                <FormField label={t('common.name')} required>
-                  <Input
-                    value={name}
-                    onChangeText={setName}
-                    placeholder={t('projects.projectNamePlaceholder')}
-                    autoFocus
-                  />
-                </FormField>
+                <FloatingLabelInput
+                  label={t('common.name')}
+                  required
+                  value={name}
+                  onChangeText={setName}
+                  autoFocus
+                />
 
-                <FormField label={t('common.company')}>
-                  <Input value={company} onChangeText={setCompany} placeholder={t('projects.clientPlaceholder')} />
-                </FormField>
+                <FloatingLabelInput
+                  label={t('common.company')}
+                  value={company}
+                  onChangeText={setCompany}
+                />
 
-                <FormField label={t('common.address')}>
-                  <Input
-                    value={address}
-                    onChangeText={setAddress}
-                    placeholder="ქუჩა, ნომერი, ქალაქი"
-                  />
-                </FormField>
+                <FloatingLabelInput
+                  label={t('common.address')}
+                  value={address}
+                  onChangeText={setAddress}
+                />
 
-                <FormField label="მდებარეობა">
-                  <LocationRow pin={pin} address={address} onPress={() => { Keyboard.dismiss(); setMapVisible(true); }} />
-                </FormField>
+                <FloatingLabelInput
+                  label="საკონტაქტო ტელეფონი"
+                  value={phone}
+                  onChangeText={setPhone}
+                  keyboardType="phone-pad"
+                />
+
+                <LocationRow pin={pin} address={address} onPress={() => { Keyboard.dismiss(); setMapVisible(true); }} />
               </SheetLayout>
           </Pressable>
         </KeyboardAvoidingView>

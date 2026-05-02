@@ -122,6 +122,7 @@ export interface Project {
    * at render time and never stored. See `components/ProjectAvatar.tsx`.
    */
   logo: string | null;
+  contact_phone: string | null;
   created_at: string;
   updated_at?: string;
 }

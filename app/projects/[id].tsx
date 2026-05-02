@@ -13,7 +13,6 @@ import {
 import { Image } from 'expo-image';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { SheetLayout } from '../../components/SheetLayout';
-import { FormField } from '../../components/FormField';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,7 +21,8 @@ import { MapPreview } from '../../components/MapPreview';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { useBottomSheet } from '../../components/BottomSheet';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
-import { Button, Field, Input } from '../../components/ui';
+import { Button } from '../../components/ui';
+import { FloatingLabelInput } from '../../components/inputs/FloatingLabelInput';
 import { Skeleton, SkeletonCard, SkeletonListCard } from '../../components/Skeleton';
 import { MapPicker, type LatLng } from '../../components/MapPicker';
 import { UploadedFilesSection } from '../../components/UploadedFilesSection';
@@ -563,6 +563,19 @@ export default function ProjectDetail() {
                     <Ionicons name="location-outline" size={14} color={theme.colors.inkSoft} />
                     <Text style={styles.heroMetaText}>{project.address}</Text>
                   </View>
+                ) : null}
+                {project?.contact_phone ? (
+                  <Pressable
+                    onPress={() => Linking.openURL(`tel:${project.contact_phone}`)}
+                    style={styles.heroMetaRow}
+                    hitSlop={8}
+                    {...a11y('დარეკვა', `${project.contact_phone}-ზე დარეკვა`, 'button')}
+                  >
+                    <Ionicons name="call-outline" size={14} color={theme.colors.accent} />
+                    <Text style={[styles.heroMetaText, { color: theme.colors.accent, fontWeight: '600' }]}>
+                      {project.contact_phone}
+                    </Text>
+                  </Pressable>
                 ) : null}
               </View>
             </View>
@@ -1116,6 +1129,7 @@ function EditProjectSheet({
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
   const [address, setAddress] = useState('');
+  const [phone, setPhone] = useState('');
   const [pin, setPin] = useState<LatLng | null>(null);
   const [logo, setLogo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -1128,6 +1142,7 @@ function EditProjectSheet({
         setName(project.name);
         setCompany(project.company_name ?? '');
         setAddress(project.address ?? '');
+        setPhone(project.contact_phone ?? '');
         setPin(
           project.latitude != null && project.longitude != null
             ? { latitude: project.latitude, longitude: project.longitude }
@@ -1151,6 +1166,7 @@ function EditProjectSheet({
         name: name.trim(),
         company_name: company.trim() || null,
         address: address.trim() || null,
+        contact_phone: phone.trim() || null,
         latitude: pin?.latitude ?? null,
         longitude: pin?.longitude ?? null,
         logo,
@@ -1204,30 +1220,34 @@ function EditProjectSheet({
                   ) : null}
                 </View>
 
-                <FormField label={t('common.name')} required>
-                  <Input
-                    value={name}
-                    onChangeText={setName}
-                    placeholder={t('projects.projectNamePlaceholder')}
-                    autoFocus
-                  />
-                </FormField>
+                <FloatingLabelInput
+                  label={t('common.name')}
+                  required
+                  value={name}
+                  onChangeText={setName}
+                  autoFocus
+                />
 
-                <FormField label={t('common.company')}>
-                  <Input value={company} onChangeText={setCompany} placeholder={t('projects.clientPlaceholder')} />
-                </FormField>
+                <FloatingLabelInput
+                  label={t('common.company')}
+                  value={company}
+                  onChangeText={setCompany}
+                />
 
-                <FormField label={t('common.address')}>
-                  <Input
-                    value={address}
-                    onChangeText={setAddress}
-                    placeholder="ქუჩა, ნომერი, ქალაქი"
-                  />
-                </FormField>
+                <FloatingLabelInput
+                  label={t('common.address')}
+                  value={address}
+                  onChangeText={setAddress}
+                />
 
-                <FormField label="მდებარეობა">
-                  <LocationRow pin={pin} address={address} onPress={() => { Keyboard.dismiss(); setMapVisible(true); }} />
-                </FormField>
+                <FloatingLabelInput
+                  label="საკონტაქტო ტელეფონი"
+                  value={phone}
+                  onChangeText={setPhone}
+                  keyboardType="phone-pad"
+                />
+
+                <LocationRow pin={pin} address={address} onPress={() => { Keyboard.dismiss(); setMapVisible(true); }} />
               </SheetLayout>
           </Pressable>
         </KeyboardAvoidingView>

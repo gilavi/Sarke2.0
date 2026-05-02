@@ -149,6 +149,7 @@ export const projectsApi = {
     latitude?: number | null;
     longitude?: number | null;
     logo?: string | null;
+    contactPhone?: string | null;
   }): Promise<Project> => {
     const user = (await supabase.auth.getUser()).data.user;
     if (!user) throw new Error('Not signed in');
@@ -164,6 +165,7 @@ export const projectsApi = {
           latitude: args.latitude ?? null,
           longitude: args.longitude ?? null,
           logo: args.logo ?? null,
+          contact_phone: args.contactPhone ?? null,
         })
         .select()
         .single(),
@@ -171,7 +173,7 @@ export const projectsApi = {
   },
   update: async (
     id: string,
-    patch: Partial<Pick<Project, 'name' | 'company_name' | 'address' | 'latitude' | 'longitude' | 'crew' | 'logo'>>,
+    patch: Partial<Pick<Project, 'name' | 'company_name' | 'address' | 'latitude' | 'longitude' | 'crew' | 'logo' | 'contact_phone'>>,
   ): Promise<Project> => {
     if ('logo' in patch) assertLogoSize(patch.logo);
     const updated = throwIfError<Project>(
