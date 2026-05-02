@@ -2,7 +2,7 @@ import SwiftUI
 
 struct HomeView: View {
     @Environment(SessionStore.self) private var session
-    @State private var certs: [Certificate] = []
+    @State private var certs: [Qualification] = []
     @State private var templates: [Template] = []
     @State private var recent: [Questionnaire] = []
     @State private var showingCertBanner = false

@@ -2,7 +2,7 @@ import SwiftUI
 import PhotosUI
 
 struct CertificatesView: View {
-    @State private var certs: [Certificate] = []
+    @State private var certs: [Qualification] = []
     @State private var isLoading = true
     @State private var showingAdd = false
     @State private var pendingDelete: IndexSet?
@@ -58,12 +58,12 @@ struct CertificatesView: View {
     @MainActor
     private func load() async {
         isLoading = true; defer { isLoading = false }
-        certs = (try? await CertificateService.list()) ?? []
+        certs = (try? await QualificationService.list()) ?? []
     }
 
     @MainActor
     private func delete(at offsets: IndexSet) async {
-        for i in offsets { try? await CertificateService.delete(certs[i].id) }
+        for i in offsets { try? await QualificationService.delete(certs[i].id) }
         await load()
     }
 }
@@ -158,16 +158,17 @@ struct AddCertificateSheet: View {
                 try await StorageService.upload(data: data, bucket: .certificates, path: path, contentType: mime)
                 filePath = path
             }
-            let cert = Certificate(
+            let cert = Qualification(
                 id: UUID(),
                 userId: user.id,
                 type: type,
                 number: number.isEmpty ? nil : number,
-                issuedAt: Certificate.dateString(issuedAt),
-                expiresAt: Certificate.dateString(expiresAt),
-                fileUrl: filePath
+                issuedAt: Qualification.dateString(issuedAt),
+                expiresAt: Qualification.dateString(expiresAt),
+                fileUrl: filePath,
+                updatedAt: nil
             )
-            _ = try await CertificateService.upsert(cert)
+            _ = try await QualificationService.upsert(cert)
             Haptic.success()
             await onSaved()
             dismiss()

@@ -83,7 +83,8 @@ struct SignerEditSheet: View {
                 fullName: fullName,
                 phone: phone.isEmpty ? nil : phone,
                 position: position.isEmpty ? nil : position,
-                signaturePngUrl: signatureURL
+                signaturePngUrl: signatureURL,
+                updatedAt: nil
             )
             _ = try await ProjectService.upsertSigner(signer)
             await onSaved()

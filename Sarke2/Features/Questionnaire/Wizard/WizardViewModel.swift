@@ -108,7 +108,7 @@ final class WizardViewModel {
             questionnaireId: questionnaire.id,
             questionId: question.id,
             valueBool: nil, valueNum: nil, valueText: nil,
-            gridValues: nil, comment: nil
+            gridValues: nil, comment: nil, notes: nil
         )
         mutate(&answer)
         do {

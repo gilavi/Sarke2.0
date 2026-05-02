@@ -8,7 +8,7 @@ struct SigningView: View {
     @State private var liveCanvasRole: SignerRole?
     @State private var picking: SignerRole?
     @State private var addingSignerRole: SignerRole?
-    @State private var certs: [Certificate] = []
+    @State private var certs: [Qualification] = []
     @State private var showingCertPrompt = false
     @State private var isGenerating = false
     @State private var progressStage: String?
@@ -156,7 +156,9 @@ struct SigningView: View {
             phone: signer.phone,
             position: signer.position,
             signaturePngUrl: sigPath,
-            signedAt: Date()
+            signedAt: Date(),
+            status: .signed,
+            personName: nil
         )
         return try? await SignatureService.upsert(record)
     }
@@ -185,7 +187,15 @@ struct SigningView: View {
             let path = "\(vm.questionnaire.id.uuidString).pdf"
             let data = try Data(contentsOf: url)
             try await StorageService.upload(data: data, bucket: .pdfs, path: path, contentType: "application/pdf")
-            try await QuestionnaireService.complete(id: vm.questionnaire.id, pdfUrl: path)
+            // 0006: completion now flips inspection status AND inserts a
+            // `certificates` row carrying the rendered PDF as a snapshot.
+            _ = try await InspectionService.complete(
+                id: vm.questionnaire.id,
+                pdfUrl: path,
+                isSafeForUse: vm.isSafeForUse,
+                conclusionText: vm.conclusionText.isEmpty ? nil : vm.conclusionText,
+                templateId: vm.template.id
+            )
             vm.clearSavedStep()
             Haptic.success()
             generatedPDF = IdentifiableURL(url: url)
@@ -266,7 +276,9 @@ struct LiveSignSheet: View {
                 phone: phone.isEmpty ? nil : phone,
                 position: position.isEmpty ? nil : position,
                 signaturePngUrl: path,
-                signedAt: Date()
+                signedAt: Date(),
+                status: .signed,
+                personName: nil
             )
             let saved = try await SignatureService.upsert(rec)
             Haptic.success()

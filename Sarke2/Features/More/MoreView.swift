@@ -4,7 +4,7 @@ struct MoreView: View {
     @Environment(SessionStore.self) private var session
 
     @State private var history: [Questionnaire] = []
-    @State private var certs: [Certificate] = []
+    @State private var certs: [Qualification] = []
     @State private var templates: [Template] = []
     @State private var projects: [Project] = []
 

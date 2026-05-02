@@ -13,7 +13,10 @@ struct PDFRenderer {
     let isSafeForUse: Bool
     let harnessName: String
     let harnessRowCount: Int
-    let certificates: [Certificate]
+    // Renamed in 0006: this is the expert's professional credentials (the table
+    // formerly called `certificates`, now `qualifications`). The new
+    // `Certificate` type represents the generated PDF itself, not credentials.
+    let certificates: [Qualification]
     var onProgress: ((String) -> Void)? = nil
 
     private var titleFont: UIFont {
@@ -225,7 +228,10 @@ struct PDFRenderer {
     private func loadSignatureImages() async -> [UUID: UIImage] {
         var result: [UUID: UIImage] = [:]
         for record in signatures {
-            if let data = try? await StorageService.download(bucket: .signatures, path: record.signaturePngUrl),
+            // 0004: status='not_present' rows have a nil png path. Skip them
+            // here; the addSignatures pass renders the placeholder text.
+            guard let path = record.signaturePngUrl else { continue }
+            if let data = try? await StorageService.download(bucket: .signatures, path: path),
                let img = UIImage(data: data) {
                 result[record.id] = img
             }
