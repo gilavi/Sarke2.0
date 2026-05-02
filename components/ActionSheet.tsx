@@ -1,16 +1,14 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { A11yText } from './primitives/A11yText';
 import { ActionSheetItem, type ActionSheetItemVariant } from './primitives/ActionSheetItem';
-import { useBottomSheet } from './BottomSheet';
 
 export interface ActionSheetItemConfig {
   label: string;
   icon?: string;
   onPress: () => void;
   variant?: ActionSheetItemVariant;
-  isSelected?: boolean;
 }
 
 interface ActionSheetProps {
@@ -26,7 +24,6 @@ export function ActionSheet({
   closeLabel = 'გაუქმება',
   onClose,
 }: ActionSheetProps) {
-  const bottomSheet = useBottomSheet();
   const insets = useSafeAreaInsets();
 
   const handleItemPress = useCallback((item: ActionSheetItemConfig) => {
@@ -53,7 +50,6 @@ export function ActionSheet({
             icon={item.icon as any}
             variant={item.variant}
             onPress={() => handleItemPress(item)}
-            isSelected={item.isSelected}
             isLast={index === items.length - 1}
           />
         ))}
