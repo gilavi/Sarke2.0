@@ -1,7 +1,8 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Animated, InputAccessoryView, Keyboard, Modal, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Animated, InputAccessoryView, Keyboard, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
+import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -21,15 +22,9 @@ import { TOUR_SEEN_KEY } from '../../../lib/scaffoldHelp';
 import {
   QuestionCard,
   AnswerButtons,
-  WizardNav,
-  WizardPhotoThumbs,
   WizardStepTransition,
 } from '../../../components/wizard';
-import {
-  KamariCount,
-  KamariOverview,
-  KamariDetailModal,
-} from '../../../components/wizard/kamari/KamariFlow';
+import { HarnessListFlow } from '../../../components/HarnessListFlow';
 import {
   answersApi,
   inspectionsApi,
@@ -92,8 +87,7 @@ function isAnswerShapeValidForType(type: Question['type'], a: Answer): boolean {
 type FlatStep =
   | { kind: 'question'; question: Question }
   | { kind: 'gridRow'; question: Question; row: string }
-  | { kind: 'kamariCount'; question: Question }
-  | { kind: 'kamariOverview'; question: Question }
+  | { kind: 'harnessFlow'; question: Question }
   | { kind: 'conclusion' };
 
 function buildSteps(
@@ -114,10 +108,8 @@ function buildSteps(
     if (q.type === 'component_grid' && q.grid_rows) {
       const isHarness = q.grid_rows[0] === 'N1';
       if (isHarness) {
-        // New kamari flow: count → overview (with detail modal). Replaces the
-        // legacy per-row gridRow walk for harness templates.
-        steps.push({ kind: 'kamariCount', question: q });
-        steps.push({ kind: 'kamariOverview', question: q });
+        // HarnessListFlow: count picker → per-harness chip list (full-screen takeover).
+        steps.push({ kind: 'harnessFlow', question: q });
       } else {
         for (const row of q.grid_rows) steps.push({ kind: 'gridRow', question: q, row });
       }
@@ -147,9 +139,8 @@ function hasAnswer(
     const harnessOk = template?.category !== 'harness' || harnessName.trim().length > 0;
     return isSafe !== null && conclusion.trim().length > 0 && harnessOk;
   }
-  // Kamari count is always answered (defaults to 1+); overview is always
-  // valid — "all green" is a meaningful, complete state.
-  if (step.kind === 'kamariCount' || step.kind === 'kamariOverview') return true;
+  // harnessFlow manages its own completion internally — always considered answered.
+  if (step.kind === 'harnessFlow') return true;
   const a = answers[step.question.id];
   if (step.kind === 'gridRow') {
     const row = (a?.grid_values ?? {})[step.row];
@@ -201,8 +192,6 @@ export default function QuestionnaireWizard() {
   // Kamari overview state: which belt index (1-based) is currently open in the
   // detail modal, plus a set of visited indices for the amber "in-progress"
   // tint shown when a belt was opened but no problems were logged.
-  const [kamariOpenIndex, setKamariOpenIndex] = useState<number | null>(null);
-  const [kamariVisited, setKamariVisited] = useState<Set<number>>(new Set());
   const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
   const [showTour, setShowTour] = useState(false);
   const showHelp = useScaffoldHelpSheet();
@@ -807,6 +796,29 @@ export default function QuestionnaireWizard() {
   const isLast = stepIndex === steps.length - 1;
   const isScaffoldRow = step.kind === 'gridRow' && (step.question.grid_rows?.[0] ?? '') !== 'N1';
 
+
+  // HarnessListFlow: full-screen takeover for harness templates
+  if (step.kind === 'harnessFlow') {
+    return (
+      <Screen edgeToEdge edges={['top', 'bottom']} style={{ backgroundColor: theme.colors.card }}>
+        <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
+        <HarnessListFlow
+          template={template!}
+          questions={questions}
+          answers={answers}
+          photos={photos}
+          harnessRowCount={harnessRowCount}
+          setHarnessRowCount={setHarnessRowCount}
+          onPatchAnswer={patchAnswer}
+          onPickItemPhoto={(q, row, col) => pickPhoto(q, `${row}:col:${col}`)}
+          onDeletePhoto={deletePhoto}
+          onClose={() => router.back()}
+          onConclude={goNext}
+        />
+      </Screen>
+    );
+  }
+
   return (
     <Screen edgeToEdge edges={['top']} style={{ backgroundColor: theme.colors.card }}>
       <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
@@ -840,29 +852,7 @@ export default function QuestionnaireWizard() {
           keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
         >
           <WizardStepTransition stepKey={stepIndex} direction={stepDirection} animate={animateSteps && Math.abs(stepIndex - prevStepIndexRef.current) <= 1}>
-            {step.kind === 'kamariCount' ? (
-              <KamariCount
-                count={harnessRowCount}
-                onChange={setHarnessRowCount}
-                max={step.question.grid_rows?.length ?? 15}
-              />
-            ) : step.kind === 'kamariOverview' ? (
-              <KamariOverview
-                question={step.question}
-                answer={answers[step.question.id]}
-                count={harnessRowCount}
-                visited={kamariVisited}
-                onOpen={(i) => {
-                  setKamariVisited(prev => {
-                    if (prev.has(i)) return prev;
-                    const next = new Set(prev);
-                    next.add(i);
-                    return next;
-                  });
-                  setKamariOpenIndex(i);
-                }}
-              />
-            ) : step.kind === 'gridRow' ? (
+            {step.kind === 'gridRow' ? (
               <GridRowStep
                 question={step.question}
                 row={step.row}
@@ -939,14 +929,6 @@ export default function QuestionnaireWizard() {
                 onAnswer={patchAnswer}
                 onAdvance={goNext}
               />
-            ) : step.kind === 'kamariOverview' ? (
-              <Button
-                title="დასრულება"
-                size="lg"
-                style={{ alignSelf: 'stretch', paddingVertical: 16, justifyContent: 'center' }}
-                iconRight={<Ionicons name="checkmark" size={20} color={theme.colors.white} />}
-                onPress={goNext}
-              />
             ) : (
               <Button
                 title={stepAnswered ? 'შემდეგი' : 'გამოტოვება'}
@@ -962,27 +944,6 @@ export default function QuestionnaireWizard() {
               />
             )}
           </View>
-
-        {/* Kamari per-belt detail modal — renders only when overview step opens it */}
-        {kamariOpenIndex !== null && step.kind === 'kamariOverview' ? (
-          <KamariDetailModal
-            visible={true}
-            index={kamariOpenIndex}
-            question={step.question}
-            answer={answers[step.question.id]}
-            photosByAnswer={photos}
-            onClose={() => setKamariOpenIndex(null)}
-            onSave={(nextGrid) => {
-              void patchAnswer(step.question, a => ({ ...a, grid_values: nextGrid }));
-            }}
-            onPickPhoto={(col) => {
-              const i = kamariOpenIndex;
-              if (i == null) return;
-              pickPhoto(step.question, `N${i}:col:${col}`);
-            }}
-            onDeletePhoto={deletePhoto}
-          />
-        ) : null}
 
         {/* Delete confirmation modal */}
         <Modal visible={deleteConfirmVisible} transparent animationType="fade" onRequestClose={() => setDeleteConfirmVisible(false)}>
@@ -1189,14 +1150,12 @@ function DebouncedFreetext({
   }, []);
 
   return (
-    <TextInput
-      multiline
+    <FloatingLabelInput
+      label="დასკვნა"
       value={text}
       onChangeText={setText}
       onEndEditing={() => onCommit(text)}
-      style={styles.textarea}
-      placeholder="შეავსეთ აქ..."
-      placeholderTextColor={theme.colors.inkFaint}
+      multiline
     />
   );
 }
@@ -1250,18 +1209,16 @@ function DebouncedNotes({
 
   return (
     <View>
-      <Text style={styles.label}>შენიშვნა</Text>
-      <TextInput
-        multiline
+      <FloatingLabelInput
+        label="შენიშვნა"
         value={text}
         onChangeText={setText}
         onEndEditing={() => onCommit(text)}
-        style={[styles.textarea, { minHeight: 100 }]}
-        placeholder="დამატებითი კომენტარი (არასავალდებულო)"
-        placeholderTextColor={theme.colors.inkFaint}
+        multiline
         maxLength={500}
+        style={{ marginBottom: 4 }}
       />
-      <Text style={[styles.label, { textAlign: 'right', marginTop: 4, marginBottom: 0 }]}>
+      <Text style={[styles.label, { textAlign: 'right', marginBottom: 0 }]}>
         {text.length}/500
       </Text>
     </View>
@@ -1342,14 +1299,13 @@ function MeasureInput({
   return (
     <View style={{ gap: 6 }}>
       <View style={staticStyles.rowCenterGap10}>
-        <TextInput
+        <FloatingLabelInput
+          label={`${question.title ?? ''}${question.unit ? ` (${question.unit})` : ''}`}
           value={text}
           onChangeText={setText}
           onEndEditing={() => onCommit(parseMeasure(text))}
           keyboardType="decimal-pad"
-          placeholder="0"
-          placeholderTextColor={theme.colors.inkFaint}
-          style={[styles.input, { flex: 1 }]}
+          style={{ marginBottom: 0, flex: 1 }}
         />
         {question.unit ? (
           <Text style={{ fontWeight: '600', color: theme.colors.inkSoft }}>{question.unit}</Text>
@@ -1609,12 +1565,10 @@ const GridRowStep = memo(function GridRowStep({
             ) : null}
 
             {hasComment && showCommentField ? (
-              <TextInput
+              <FloatingLabelInput
+                label="კომენტარი"
                 value={commentValue}
                 onChangeText={text => setValue('კომენტარი', text || null, false)}
-                placeholder="კომენტარი"
-                placeholderTextColor={theme.colors.inkFaint}
-                style={styles.input}
                 autoFocus
               />
             ) : null}
@@ -1818,24 +1772,16 @@ const ConclusionStep = memo(function ConclusionStep({
         <QuestionAvatar illustrationKey="conclusion" />
       </View>
       {needsHarness ? (
-        <View>
-          <Text style={styles.label}>
-            ღვედის დასახელება <Text style={{ color: theme.colors.danger }}>*</Text>
-          </Text>
-          <TextInput
-            value={harnessName}
-            onChangeText={onHarnessName}
-            style={[styles.input, harnessEmpty && styles.inputError]}
-            placeholder="მაგ. Petzl NEWTON"
-            placeholderTextColor={theme.colors.inkFaint}
-            returnKeyType="done"
-            onSubmitEditing={Keyboard.dismiss}
-            inputAccessoryViewID={Platform.OS === 'ios' ? accessoryId : undefined}
-          />
-          {harnessEmpty ? (
-            <Text style={styles.fieldError}>სავალდებულო ველი</Text>
-          ) : null}
-        </View>
+        <FloatingLabelInput
+          label="ღვედის დასახელება"
+          required
+          value={harnessName}
+          onChangeText={onHarnessName}
+          error={harnessEmpty ? 'სავალდებულო ველი' : undefined}
+          returnKeyType="done"
+          onSubmitEditing={Keyboard.dismiss}
+          inputAccessoryViewID={Platform.OS === 'ios' ? accessoryId : undefined}
+        />
       ) : null}
       <View style={staticStyles.gap10}>
         <Text style={styles.decisionHeader}>გადაწყვეტილება</Text>
@@ -1936,21 +1882,15 @@ const ConclusionStep = memo(function ConclusionStep({
         </View>
       ) : null}
       <View>
-        <Text style={styles.label}>
-          დასკვნა <Text style={{ color: theme.colors.danger }}>*</Text>
-        </Text>
-        <TextInput
-          multiline
+        <FloatingLabelInput
+          label="დასკვნა"
+          required
           value={conclusion}
           onChangeText={onConclusion}
-          style={[styles.textarea, conclusionEmpty && styles.inputError]}
-          placeholder="აღწერეთ დეტალურად..."
-          placeholderTextColor={theme.colors.inkFaint}
+          error={conclusionEmpty ? 'სავალდებულო ველი' : undefined}
+          multiline
           inputAccessoryViewID={Platform.OS === 'ios' ? accessoryId : undefined}
         />
-        {conclusionEmpty ? (
-          <Text style={styles.fieldError}>სავალდებულო ველი</Text>
-        ) : null}
       </View>
     </View>
   );
@@ -2223,27 +2163,6 @@ function getstyles(theme: any) {
     gap: 6,
   },
   choiceText: { fontSize: 18, fontWeight: '700' },
-  textarea: {
-    backgroundColor: theme.colors.card,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: theme.colors.hairline,
-    padding: 12,
-    minHeight: 110,
-    maxHeight: 140,
-    textAlignVertical: 'top',
-    fontSize: 15,
-    color: theme.colors.ink,
-  },
-  input: {
-    backgroundColor: theme.colors.card,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: theme.colors.hairline,
-    padding: 12,
-    fontSize: 15,
-    color: theme.colors.ink,
-  },
   label: {
     fontSize: 11,
     fontWeight: '600',
@@ -2346,9 +2265,6 @@ function getstyles(theme: any) {
     fontSize: 14,
     fontWeight: '700',
     textAlign: 'center',
-  },
-  inputError: {
-    borderColor: theme.colors.danger,
   },
   fieldError: {
     fontSize: 12,

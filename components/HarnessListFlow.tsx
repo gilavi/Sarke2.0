@@ -13,6 +13,8 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme, type Theme } from '../lib/theme';
 import { haptic } from '../lib/haptics';
+import { getStorageImageDisplayUrl } from '../lib/imageUrl';
+import { STORAGE_BUCKETS } from '../lib/supabase';
 import type { Answer, AnswerPhoto, GridValues, Question, Template } from '../types/models';
 import { TourGuide, type TourStep } from './TourGuide';
 import { HelpIcon, useScaffoldHelpSheet } from './ScaffoldHelpSheet';
@@ -484,7 +486,17 @@ const CellPhotoThumb = memo(function CellPhotoThumb({
   const { theme } = useTheme();
   const s = useMemo(() => gets(theme), [theme]);
   const isLocal = /^(file|content|ph|asset):\/\//.test(photo.storage_path);
-  const [uri] = useState<string | null>(isLocal ? photo.storage_path : null);
+  const [uri, setUri] = useState<string | null>(isLocal ? photo.storage_path : null);
+
+  useEffect(() => {
+    if (isLocal) return;
+    let cancelled = false;
+    getStorageImageDisplayUrl(STORAGE_BUCKETS.answerPhotos, photo.storage_path)
+      .then(url => { if (!cancelled) setUri(url); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [photo.storage_path, isLocal]);
+
   return (
     <View style={s.thumbWrap}>
       {uri ? (

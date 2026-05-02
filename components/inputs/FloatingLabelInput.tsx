@@ -147,7 +147,6 @@ export const FloatingLabelInput = React.forwardRef<TextInput, FloatingLabelInput
         height: multiline ? undefined : 56,
         maxHeight: multiline ? 200 : undefined,
       },
-      style,
     ];
 
     const inputStyle = [
@@ -162,7 +161,7 @@ export const FloatingLabelInput = React.forwardRef<TextInput, FloatingLabelInput
     ];
 
     return (
-      <View style={styles.wrapper}>
+      <View style={[styles.wrapper, style]}>
         <View style={containerStyle}>
           <Animated.Text
             style={[

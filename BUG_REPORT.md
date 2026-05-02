@@ -196,3 +196,33 @@ The same migration adds `updated_at TIMESTAMPTZ` columns and a shared `set_updat
 **Why not bundled into 0020:** these policies aren't in version control (created via the Supabase dashboard), and proper scoping requires understanding multi-source path conventions per bucket. In particular `signatures` is referenced from at least three tables (`users.saved_signature_url`, `project_signers.signature_png_url`, `signatures.signature_png_url`) so a single owner-scoped policy needs either a unified path scheme or a UNION-style EXISTS.
 
 **Next step:** audit upload paths in [lib/services.real.ts](lib/services.real.ts) for each bucket, then write `0021_storage_rls_remaining.sql` to replace the four `sarke_*_authenticated` policies with owner-scoped ones.
+
+---
+
+## Session 2026-05-02 — QA code-review pass
+
+Six bugs found and fixed. Full details in [QA_REPORT_2026-05-02.md](QA_REPORT_2026-05-02.md).
+
+### P1 — `home.tsx` called `toast.error()` with `toast` undefined · FIXED 2026-05-02
+
+`const toast = useToast()` was missing from `HomeScreen`. Would throw a hard `TypeError` on any code path that failed to find a template. Fixed: added the missing hook call.
+
+### P1 — `HarnessListFlow` photo thumbs spun forever for server-stored photos · FIXED 2026-05-02
+
+`CellPhotoThumb` initialised `uri` as `null` for bucket-path photos and never fetched the display URL. Fixed: added `useEffect` calling `getStorageImageDisplayUrl` for non-local paths.
+
+### P2 — `FloatingLabelInput` `style` prop applied to inner bordered container · FIXED 2026-05-02
+
+`style` was in `containerStyle` (inner box) instead of the outer wrapper. Callers' spacing/sizing overrides had no effect. Fixed: moved `style` to `[styles.wrapper, style]` on the outer `<View>`.
+
+### P2 — Duplicate "ღვედის დასახელება" label in harness name field · FIXED 2026-05-02
+
+`ConclusionStep` rendered a plain `<Text>` label above the `<FloatingLabelInput>` which already renders its own animated label. Fixed: removed the outer `<Text>` wrapper.
+
+### P2 — Mock `Project` objects missing `contact_phone` field · FIXED 2026-05-02
+
+`lib/services.mock.ts` was not updated when `contact_phone: string | null` was added to `types/models.ts`. Fixed: added `contact_phone: null` to all three mock `Project` objects.
+
+### P3 — Dead imports `WizardNav` + `WizardPhotoThumbs` in wizard · FIXED 2026-05-02
+
+Both components were imported but never used in `app/inspections/[id]/wizard.tsx`. Removed.

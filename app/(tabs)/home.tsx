@@ -33,11 +33,12 @@ import {
 // detail screen (which fetches certificates list) post 0006 decoupling.
 import { useTheme, withOpacity, type Theme } from '../../lib/theme';
 import { a11y } from '../../lib/accessibility';
-import { toErrorMessage } from '../../lib/logError';
 import { friendlyError } from '../../lib/errorMap';
-import { Button, Field, Input, Card } from '../../components/ui';
+import { Button, Card } from '../../components/ui';
+import { FloatingLabelInput } from '../../components/inputs/FloatingLabelInput';
 import { NumberPop, useScrollHeader } from '../../components/animations';
 import { QuickActions, type QuickAction } from '../../components/QuickActions';
+import { useBottomSheet } from '../../components/BottomSheet';
 import { Skeleton } from '../../components/Skeleton';
 import { MapPicker, type LatLng } from '../../components/MapPicker';
 import { MapPreview } from '../../components/MapPreview';
@@ -72,6 +73,7 @@ export default function HomeScreen() {
   const { state } = useSession();
   const router = useRouter();
   const qc = useQueryClient();
+  const toast = useToast();
   const certsQ = useQualifications();
   const templatesQ = useTemplates();
   const recentQ = useRecentInspections(10);
@@ -85,10 +87,13 @@ export default function HomeScreen() {
   const loaded = !certsQ.isLoading && !templatesQ.isLoading && !recentQ.isLoading && !projectsQ.isLoading;
   const loadError = certsQ.isError && templatesQ.isError && recentQ.isError && projectsQ.isError;
 
+  const showActionSheet = useBottomSheet();
+
   const [refreshing, setRefreshing] = useState(false);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pickerInitialView, setPickerInitialView] = useState<'list' | 'new'>('list');
   const [pickerAction, setPickerAction] = useState<'inspection' | 'incident' | 'briefing' | 'report'>('inspection');
+  const [pickerPreselectedTemplateId, setPickerPreselectedTemplateId] = useState<string | null>(null);
 
   const { width: screenWidth } = useWindowDimensions();
   const HPAD = 20;
@@ -268,9 +273,27 @@ export default function HomeScreen() {
                 label: 'შემოწმება',
                 colorKey: 'inspection',
                 onPress: () => {
+                  const sysTpls = templates.filter(tpl => tpl.is_system);
+                  if (sysTpls.length === 0) {
+                    toast.error(t('errors.notFoundTemplate'));
+                    return;
+                  }
                   setPickerAction('inspection');
                   setPickerInitialView('list');
-                  setPickerVisible(true);
+                  if (sysTpls.length === 1) {
+                    setPickerPreselectedTemplateId(sysTpls[0].id);
+                    setPickerVisible(true);
+                  } else {
+                    const options = [...sysTpls.map(tpl => tpl.name), t('common.cancel')];
+                    showActionSheet(
+                      { title: t('home.chooseTemplate'), options, cancelButtonIndex: options.length - 1 },
+                      (idx) => {
+                        if (idx == null || idx === options.length - 1) return;
+                        setPickerPreselectedTemplateId(sysTpls[idx].id);
+                        setPickerVisible(true);
+                      },
+                    );
+                  }
                 },
               },
               {
@@ -478,6 +501,7 @@ export default function HomeScreen() {
         action={pickerAction}
         projects={projects}
         templates={templates}
+        preselectedTemplateId={pickerPreselectedTemplateId}
         onClose={() => setPickerVisible(false)}
         onCreated={async () => {
           // Invalidate caches so the new inspection/project appears immediately
@@ -521,6 +545,7 @@ function ProjectPickerSheet({
   action = 'inspection',
   projects,
   templates,
+  preselectedTemplateId = null,
   onClose,
   onCreated,
   onProjectCreated,
@@ -530,6 +555,7 @@ function ProjectPickerSheet({
   action?: 'inspection' | 'incident' | 'briefing' | 'report';
   projects: Project[];
   templates: Template[];
+  preselectedTemplateId?: string | null;
   onClose: () => void;
   onCreated: () => Promise<void>;
   onProjectCreated?: (id: string) => void;
@@ -540,13 +566,10 @@ function ProjectPickerSheet({
   const pickerStyles = useMemo(() => getpickerStyles(theme), [theme]);
   const router = useRouter();
   const toast = useToast();
-  // Template picker is an inline view, NOT a nested BottomSheet — stacking
-  // Modals inside Modals is unreliable on iOS (the second one never becomes
-  // visible while the first is up, so tapping a project felt frozen).
-  const [view, setView] = useState<'list' | 'new' | 'template'>('list');
-  const [pickedProjectId, setPickedProjectId] = useState<string | null>(null);
-  const pickedProjectIdRef = useRef<string | null>(null);
-  useEffect(() => { pickedProjectIdRef.current = pickedProjectId; }, [pickedProjectId]);
+  const [view, setView] = useState<'list' | 'new'>('list');
+  const [pickedTemplateId, setPickedTemplateId] = useState<string | null>(null);
+  const pickedTemplateIdRef = useRef<string | null>(null);
+  useEffect(() => { pickedTemplateIdRef.current = pickedTemplateId; }, [pickedTemplateId]);
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
   const [address, setAddress] = useState('');
@@ -559,7 +582,7 @@ function ProjectPickerSheet({
   useEffect(() => {
     if (visible) {
       setView(initialView);
-      setPickedProjectId(null);
+      setPickedTemplateId(preselectedTemplateId ?? null);
       setName('');
       setCompany('');
       setAddress('');
@@ -575,8 +598,6 @@ function ProjectPickerSheet({
     if (next) setLogo(next);
   };
 
-  const systemTemplates = templates.filter((tpl) => tpl.is_system);
-
   const onProjectPicked = (projectId: string) => {
     if (action !== 'inspection') {
       const route =
@@ -587,16 +608,12 @@ function ProjectPickerSheet({
       router.push(route as any);
       return;
     }
-    if (systemTemplates.length === 0) {
+    const tplId = pickedTemplateIdRef.current;
+    if (!tplId) {
       toast.error(t('errors.notFoundTemplate'));
       return;
     }
-    if (systemTemplates.length === 1) {
-      void startInspection(projectId, systemTemplates[0].id);
-      return;
-    }
-    setPickedProjectId(projectId);
-    setView('template');
+    void startInspection(projectId, tplId);
   };
 
   const startInspection = async (projectId: string, templateId: string) => {
@@ -634,13 +651,17 @@ function ProjectPickerSheet({
         setAddress('');
         setPin(null);
         setLogo(null);
+        if (action === 'inspection') {
+          const tplId = pickedTemplateIdRef.current;
+          if (tplId) {
+            await startInspection(created.id, tplId);
+            return;
+          }
+        }
         if (onProjectCreated) {
-          // Caller wants to take over after creation (e.g. navigate to the
-          // project detail screen). Skip the inline template-picker step.
           onProjectCreated(created.id);
         } else {
-          setPickedProjectId(created.id);
-          setView('template');
+          onClose();
         }
       } else {
         onClose();
@@ -720,43 +741,6 @@ function ProjectPickerSheet({
                   </ScrollView>
                 )}
               </>
-            ) : view === 'template' ? (
-              <>
-                {/* Template picker header with back button */}
-                <View style={pickerStyles.sheetHeader}>
-                  <Pressable onPress={() => setView('list')} hitSlop={10} style={staticStyles.backButtonMargin}>
-                    <Ionicons name="arrow-back" size={22} color={theme.colors.accent} />
-                  </Pressable>
-                  <Text style={[pickerStyles.sheetTitle, staticStyles.flex]}>{t('home.chooseTemplate')}</Text>
-                  <Pressable onPress={onClose} hitSlop={10}>
-                    <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
-                  </Pressable>
-                </View>
-                <ScrollView
-                  style={{ maxHeight: 360 }}
-                  showsVerticalScrollIndicator={false}
-                  keyboardShouldPersistTaps="handled"
-                >
-                  {systemTemplates.map((tpl) => (
-                    <Pressable
-                      key={tpl.id}
-                      onPress={() => {
-                        const pid = pickedProjectIdRef.current;
-                        if (pid) void startInspection(pid, tpl.id);
-                      }}
-                      style={pickerStyles.projectRow}
-                    >
-                      <View style={[pickerStyles.avatarBubble, { backgroundColor: theme.colors.accentSoft }]}>
-                        <Ionicons name="document-text" size={22} color={theme.colors.accent} />
-                      </View>
-                      <View style={staticStyles.flex}>
-                        <Text style={pickerStyles.rowName} numberOfLines={2}>{tpl.name}</Text>
-                      </View>
-                      <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
-                    </Pressable>
-                  ))}
-                </ScrollView>
-              </>
             ) : (
               <>
                 {/* New project form header with back button */}
@@ -793,28 +777,25 @@ function ProjectPickerSheet({
                       </Pressable>
                     ) : null}
                   </View>
-                  <Field label={t('common.name')} required>
-                    <Input
-                      value={name}
-                      onChangeText={setName}
-                      placeholder={t('projects.projectNamePlaceholder')}
-                      autoFocus
-                    />
-                  </Field>
-                  <Field label={t('common.company')}>
-                    <Input value={company} onChangeText={setCompany} placeholder={t('projects.clientPlaceholder')} />
-                  </Field>
-                  <Field label={t('common.address')}>
-                    <Input
-                      value={address}
-                      onChangeText={setAddress}
-                      placeholder="ქუჩა, ნომერი, ქალაქი"
-                      {...a11y(t('common.address'), 'შეიყვანეთ მისამართი', 'text')}
-                    />
-                  </Field>
-                  <Field label="მდებარეობა">
-                    <LocationRow pin={pin} address={address} onPress={() => { Keyboard.dismiss(); setMapVisible(true); }} />
-                  </Field>
+                  <FloatingLabelInput
+                    label={t('common.name')}
+                    required
+                    value={name}
+                    onChangeText={setName}
+                    autoFocus
+                  />
+                  <FloatingLabelInput
+                    label={t('common.company')}
+                    value={company}
+                    onChangeText={setCompany}
+                  />
+                  <FloatingLabelInput
+                    label={t('common.address')}
+                    value={address}
+                    onChangeText={setAddress}
+                    {...a11y(t('common.address'), 'შეიყვანეთ მისამართი', 'text')}
+                  />
+                  <LocationRow pin={pin} address={address} onPress={() => { Keyboard.dismiss(); setMapVisible(true); }} />
                 </ScrollView>
                 <View style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: insets.bottom || 16 }}>
                   <Button

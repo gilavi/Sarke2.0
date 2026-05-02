@@ -157,6 +157,7 @@ function seed(): MockDB {
     latitude: 41.7151, longitude: 44.8271,
     crew: null,
     logo: null,
+    contact_phone: null,
     created_at: new Date(Date.now() - 30 * 864e5).toISOString(),
   };
   const proj2: Project = {
@@ -166,6 +167,7 @@ function seed(): MockDB {
     latitude: null, longitude: null,
     crew: null,
     logo: null,
+    contact_phone: null,
     created_at: new Date(Date.now() - 10 * 864e5).toISOString(),
   };
 
@@ -286,6 +288,7 @@ export const projectsApi = {
       longitude: args.longitude ?? null,
       crew: null,
       logo: args.logo ?? null,
+      contact_phone: null,
       created_at: now(),
     };
     db.projects.push(p);
