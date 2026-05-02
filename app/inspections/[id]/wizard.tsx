@@ -124,8 +124,20 @@ function buildSteps(
   return steps;
 }
 
-// Simple in-memory cache for photo display URLs to avoid redundant fetches
+// In-memory cache for photo display URLs to avoid redundant fetches.
+// Bounded — Map preserves insertion order, so the oldest entry is evicted
+// once the cap is hit. Without a bound this Map grew for the lifetime of
+// the JS context and leaked memory across multiple inspection sessions.
+const PHOTO_URL_CACHE_MAX = 100;
 const photoUrlCache = new Map<string, string>();
+function setPhotoUrlCache(key: string, url: string) {
+  if (photoUrlCache.has(key)) photoUrlCache.delete(key);
+  photoUrlCache.set(key, url);
+  if (photoUrlCache.size > PHOTO_URL_CACHE_MAX) {
+    const oldest = photoUrlCache.keys().next().value;
+    if (oldest !== undefined) photoUrlCache.delete(oldest);
+  }
+}
 
 // Whether the current step has any user input — flips the bottom button between
 // "გამოტოვება" (skip) and "შემდეგი" (next). Conclusion has its own validation.
@@ -1953,7 +1965,7 @@ const PhotoThumb = memo(function PhotoThumb({ photo, size = 80 }: { photo: Answe
     setError(false);
     try {
       const url = await getStorageImageDisplayUrl(STORAGE_BUCKETS.answerPhotos, photo.storage_path);
-      photoUrlCache.set(cacheKey, url);
+      setPhotoUrlCache(cacheKey, url);
       setUri(url);
       fadeAnim.setValue(0);
       Animated.timing(fadeAnim, {
@@ -1963,7 +1975,7 @@ const PhotoThumb = memo(function PhotoThumb({ photo, size = 80 }: { photo: Answe
       }).start();
     } catch {
       const fallback = storageApi.publicUrl(STORAGE_BUCKETS.answerPhotos, photo.storage_path);
-      photoUrlCache.set(cacheKey, fallback);
+      setPhotoUrlCache(cacheKey, fallback);
       setUri(fallback);
       fadeAnim.setValue(1);
     } finally {

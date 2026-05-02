@@ -48,16 +48,24 @@ export default function BriefingSignScreen() {
   useEffect(() => {
     if (!id) return;
     let cancelled = false;
-    briefingsApi.getById(id).then(b => {
-      if (cancelled) return;
-      if (!b) {
-        router.back();
-        return;
-      }
-      setBriefing(b);
-      const firstPending = b.participants.findIndex(p => !p.signature && !p.skipped);
-      setCurrentIdx(firstPending === -1 ? b.participants.length : firstPending);
-    });
+    briefingsApi.getById(id)
+      .then(b => {
+        if (cancelled) return;
+        if (!b) {
+          router.back();
+          return;
+        }
+        setBriefing(b);
+        const firstPending = b.participants.findIndex(p => !p.signature && !p.skipped);
+        setCurrentIdx(firstPending === -1 ? b.participants.length : firstPending);
+      })
+      .catch(err => {
+        if (cancelled) return;
+        const msg = err instanceof Error ? err.message : String(err);
+        Alert.alert('შეცდომა', `ინსტრუქტაჟის ჩატვირთვა ვერ მოხერხდა\n\n${msg}`, [
+          { text: 'უკან', onPress: () => router.back() },
+        ]);
+      });
     return () => { cancelled = true; };
   }, [id]);
 

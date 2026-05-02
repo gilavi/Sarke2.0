@@ -74,6 +74,17 @@ export function stripServerFields<T extends Partial<Inspection>>(patch: T): T {
 
 const MAX_OP_RETRIES = 3;
 
+// Monotonic counter for optimistic photo ids. Combined with a timestamp +
+// random suffix so two photos captured in the same millisecond cannot
+// produce identical ids (4 chars of base36 random was a real collision
+// risk on fast capture loops).
+let pendingPhotoSeq = 0;
+function nextPendingPhotoId(): string {
+  pendingPhotoSeq += 1;
+  const rand = Math.random().toString(36).slice(2, 10);
+  return `pending:${Date.now()}-${pendingPhotoSeq}-${rand}`;
+}
+
 type OfflineContextValue = {
   isOnline: boolean;
   netReady: boolean;
@@ -345,7 +356,7 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
       // immediately. Once the queue flushes the server-issued row will replace
       // it on the next reload.
       const optimistic: AnswerPhoto = {
-        id: `pending:${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        id: nextPendingPhotoId(),
         answer_id: answerId,
         storage_path: localUri,
         caption: caption ?? null,

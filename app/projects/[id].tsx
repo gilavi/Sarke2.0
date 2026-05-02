@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dimensions,
   Keyboard,
@@ -132,6 +132,7 @@ export default function ProjectDetail() {
   const participantsRef = useRef<View>(null);
   const filesRef = useRef<View>(null);
   const questionnairesRef = useRef<View>(null);
+  const deletingFileIdsRef = useRef<Set<string>>(new Set());
   const tourSteps: TourStep[] = useMemo(
     () => [
       {
@@ -423,6 +424,10 @@ export default function ProjectDetail() {
   };
 
   const deleteFile = (f: ProjectFile) => {
+    // Action sheets dismiss before the API call settles, so a fast user can
+    // re-swipe the same row and trigger a second DELETE while the first is
+    // still in flight. Guard with an in-flight set keyed by file id.
+    if (deletingFileIdsRef.current.has(f.id)) return;
     showActionSheetWithOptions(
       {
         title: 'დარწმუნებული ხართ?',
@@ -432,12 +437,16 @@ export default function ProjectDetail() {
       },
       async idx => {
         if (idx !== 0) return;
+        if (deletingFileIdsRef.current.has(f.id)) return;
+        deletingFileIdsRef.current.add(f.id);
         try {
           await projectFilesApi.remove(f);
           setFiles(prev => prev.filter(x => x.id !== f.id));
           toast.success(t('notifications.deleted'));
         } catch (e) {
           toast.error(friendlyError(e, t('errors.deleteFailed')));
+        } finally {
+          deletingFileIdsRef.current.delete(f.id);
         }
       },
     );
@@ -983,7 +992,7 @@ function EmptyState({ text }: { text: string }) {
   );
 }
 
-function FileThumbnail({ file }: { file: ProjectFile }) {
+const FileThumbnail = memo(function FileThumbnail({ file }: { file: ProjectFile }) {
   const { theme } = useTheme();
   const isImage = !!file.mime_type?.startsWith('image/');
   const [uri, setUri] = useState<string | null>(null);
@@ -1004,15 +1013,18 @@ function FileThumbnail({ file }: { file: ProjectFile }) {
     };
   }, [isImage, file.storage_path]);
 
-  const tile = {
-    width: 72,
-    aspectRatio: 16 / 9,
-    borderRadius: 8,
-    backgroundColor: theme.colors.surfaceSecondary,
-    overflow: 'hidden' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-  };
+  const tile = useMemo(
+    () => ({
+      width: 72,
+      aspectRatio: 16 / 9,
+      borderRadius: 8,
+      backgroundColor: theme.colors.surfaceSecondary,
+      overflow: 'hidden' as const,
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
+    }),
+    [theme.colors.surfaceSecondary],
+  );
 
   if (isImage && uri) {
     return (
@@ -1033,7 +1045,7 @@ function FileThumbnail({ file }: { file: ProjectFile }) {
       <Ionicons name={iconName} size={20} color={theme.colors.inkSoft} />
     </View>
   );
-}
+});
 
 /**
  * "View more" row at the bottom of a section preview.

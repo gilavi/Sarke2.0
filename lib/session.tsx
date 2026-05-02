@@ -183,6 +183,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       }
       if (event === 'SIGNED_OUT' || (lastUserId && nextUserId && nextUserId !== lastUserId)) {
         void purgeUserScopedStorage().catch((e) => logError(e, 'session.purgeUserScopedStorage'));
+        // Drop every cached query — without this, a second account signing in
+        // on the same device briefly sees the previous user's projects/
+        // inspections from React Query's in-memory cache before the warming
+        // prefetch lands.
+        queryClient.clear();
       }
       lastUserId = nextUserId;
       if (session) {
