@@ -15,6 +15,13 @@ final class WizardViewModel {
     var isLoading = false
     var errorMessage: String?
 
+    // True once the inspection's status flipped to .completed. The 0008/0010
+    // server-side trigger blocks any UPDATE on a completed inspections row,
+    // and answers/answer_photos triggers (also 0008) block child writes.
+    // Mutations from this VM must short-circuit when this is true so we don't
+    // surface "Inspection X is completed and cannot be modified" to the user.
+    var isFrozen: Bool { questionnaire.status == .completed }
+
     init(questionnaire: Questionnaire, template: Template) {
         self.questionnaire = questionnaire
         self.template = template
@@ -103,6 +110,8 @@ final class WizardViewModel {
     @MainActor
     @discardableResult
     func saveAnswer(for question: Question, mutate: (inout Answer) -> Void) async -> Answer? {
+        // Read-only when the parent inspection is completed (0008 trigger).
+        if isFrozen { return answersByQuestion[question.id] }
         var answer = answersByQuestion[question.id] ?? Answer(
             id: UUID(),
             questionnaireId: questionnaire.id,
@@ -123,6 +132,7 @@ final class WizardViewModel {
 
     @MainActor
     func addPhoto(for question: Question, image: UIImage) async {
+        if isFrozen { return }
         guard let data = image.jpegData(compressionQuality: 0.7) else { return }
         var answer = answersByQuestion[question.id]
         if answer == nil {
@@ -141,6 +151,7 @@ final class WizardViewModel {
 
     @MainActor
     func saveConclusion() async {
+        if isFrozen { return }
         var q = questionnaire
         q.conclusionText = conclusionText
         q.isSafeForUse = isSafeForUse
