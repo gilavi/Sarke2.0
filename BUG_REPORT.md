@@ -226,3 +226,69 @@ Six bugs found and fixed. Full details in [QA_REPORT_2026-05-02.md](QA_REPORT_20
 ### P3 — Dead imports `WizardNav` + `WizardPhotoThumbs` in wizard · FIXED 2026-05-02
 
 Both components were imported but never used in `app/inspections/[id]/wizard.tsx`. Removed.
+
+---
+
+## Session 2026-05-02 (second pass) — refactor sweep: bugs + perf
+
+Three parallel audits surfaced ~75 candidates; the highest-leverage 10 were fixed in this pass. Wave-2 items (FlatList migrations, wizard split, RLS gap on remaining buckets) are flagged but deferred to dedicated sessions because their blast radius warrants their own review.
+
+### P1 — `photoUrlCache` Map grew unbounded across sessions · FIXED 2026-05-02
+
+`app/inspections/[id]/wizard.tsx` declared a module-level `Map<string, string>` cache for answer-photo signed URLs. Map was never bounded or cleared, so memory grew for the lifetime of the JS context. Across multiple inspection sessions this is a slow leak that the user pays for in Hermes heap pressure. Fixed: capped at 100 entries with FIFO eviction via a `setPhotoUrlCache` helper; relies on `Map`'s insertion-order iteration so the oldest key is dropped on overflow.
+
+### P1 — React Query cache survived sign-out and account switches · FIXED 2026-05-02
+
+`lib/session.tsx` already called `purgeUserScopedStorage()` on `SIGNED_OUT` and on a `lastUserId !== nextUserId` switch, but `queryClient.clear()` was never invoked. A second user signing in on the same device would briefly see the previous user's projects/inspections from the in-memory cache before the warming prefetch landed. Fixed: added `queryClient.clear()` in the same branch so the cache resets together with AsyncStorage.
+
+### P1 — Briefing sign loader had no error path; failed network → forever spinner · FIXED 2026-05-02
+
+`app/briefings/[id]/sign.tsx`'s `useEffect` called `briefingsApi.getById(id).then(...)` with no `.catch`, so a network failure left the user staring at the `<ActivityIndicator>` indefinitely. Fixed: added a `.catch` that surfaces an Alert and routes back. The `cancelled` flag still guards both branches via the early return at the start of `.then`.
+
+### P1 — `deleteFile` could be triggered twice for the same file · FIXED 2026-05-02
+
+`app/projects/[id].tsx`'s `deleteFile` opened an action sheet, awaited a confirmation, and only removed the file from local state after `projectFilesApi.remove` resolved. A user who re-swiped the row before the request settled could fire a second DELETE for the same id. Fixed: added a `deletingFileIdsRef` Set, checked at action-sheet open and before the in-flight call, with a `finally` cleanup.
+
+### P2 — `pending:` photo ids could collide on rapid capture · FIXED 2026-05-02
+
+`lib/offline.tsx`'s optimistic-photo id was `pending:${Date.now()}-${4-char-base36-random}`. Two photos captured in the same millisecond had a non-trivial collision probability (36⁴ ≈ 1.7M). Fixed: added a module-level monotonic `pendingPhotoSeq` counter and widened the random suffix to 8 chars, combined as `pending:${ts}-${seq}-${rand8}`.
+
+### P2 — Slide editor stale `hasInitialized.current` blocked re-sync on slideId change · FIXED 2026-05-02
+
+`app/reports/[id]/slide/[slideId].tsx` used `hasInitialized.current` to preserve user edits across a focus-effect refire. The ref was never reset when the route's `slideId` param changed, so navigating to a different slide kept the previous slide's title/description in the form. Fixed: added a `useEffect(() => { hasInitialized.current = false; }, [slideId])` reset.
+
+### P2 — `FileThumbnail` re-rendered on every parent render · FIXED 2026-05-02
+
+`app/projects/[id].tsx` is a large screen that re-renders frequently. Its `FileThumbnail` child was rendered in a `.map()` over project files but not memoized; each parent render re-executed every thumbnail's render even when its `file` prop was unchanged. Fixed: wrapped in `React.memo` and `useMemo`-stabilised the inline `tile` style.
+
+### P3 — Skeleton placeholder arrays allocated per render · FIXED 2026-05-02
+
+`app/(tabs)/home.tsx` used `Array.from({length: 2})` and `Array.from({length: 3})` in JSX to render skeleton placeholders during initial load. The arrays were created on every render. Fixed: hoisted to module-level `PROJECT_SKELETONS` and `RECENT_SKELETONS` constants.
+
+### P3 — Dead `isSelected` field on `ActionSheetItemConfig` · FIXED 2026-05-02
+
+The exported `ActionSheetItemConfig` interface in `components/ActionSheet.tsx` declared `isSelected?: boolean` but no caller ever set it. The underlying `ActionSheetItem` primitive does use `isSelected` (selection ring + checkmark), so only the public `ActionSheetItemConfig` field and the pass-through were pruned. Also removed an unused `useBottomSheet()` call and import in the same file.
+
+### P3 — Dead `lib/locale.ts` · FIXED 2026-05-02
+
+Zero importers. The exports (`relativeTime`, `formatDate`, `formatDateTime`, etc.) were superseded by i18n-aware inline implementations in `app/(tabs)/home.tsx` and `app/(tabs)/more.tsx`, and by `lib/formatDate.ts`'s `formatShortDateTime`. File deleted.
+
+### Files changed (2026-05-02, second pass)
+
+- [app/inspections/[id]/wizard.tsx](app/inspections/[id]/wizard.tsx) — bounded `photoUrlCache` via `setPhotoUrlCache` helper.
+- [lib/session.tsx](lib/session.tsx) — `queryClient.clear()` on sign-out and account switch.
+- [app/briefings/[id]/sign.tsx](app/briefings/[id]/sign.tsx) — `.catch` with Alert + back-nav on load failure.
+- [app/projects/[id].tsx](app/projects/[id].tsx) — `deletingFileIdsRef` guard; `FileThumbnail` wrapped in `React.memo`.
+- [lib/offline.tsx](lib/offline.tsx) — `pendingPhotoSeq` counter for optimistic photo ids.
+- [app/reports/[id]/slide/[slideId].tsx](app/reports/[id]/slide/[slideId].tsx) — reset `hasInitialized.current` on `slideId` change.
+- [app/(tabs)/home.tsx](app/(tabs)/home.tsx) — hoisted skeleton arrays.
+- [components/ActionSheet.tsx](components/ActionSheet.tsx) — pruned dead `isSelected` field + unused `useBottomSheet`.
+- `lib/locale.ts` — deleted.
+
+### Deferred to dedicated sessions
+
+- **Storage RLS gap on `certificates`, `answer-photos`, `pdfs`, `signatures` buckets** — security migration; needs careful path-convention audit per bucket. Tracked above in the open P0 entry.
+- **`ScrollView + .map()` → `FlatList`/`FlashList` on home, projects-tab, project detail tabs** — high blast radius across many list-rendering screens; deserves its own session with manual smoke testing of scroll/refresh/empty states per list.
+- **Wizard split (`app/inspections/[id]/wizard.tsx` is 2420 lines)** — the recently-fixed wizard↔detail loop lives here; further restructuring should not happen in the same change as fixes elsewhere.
+- **Modal/sheet bodies rendered when closed** — many sheets across the app gate their `Modal` `visible` prop but render the full body unconditionally. A per-sheet audit is needed since some bodies legitimately need to stay mounted (autofocus, animation continuity).
+- **Offline queue dependency tracking** — a queued `photo_upload` may reference an `answer_upsert` that hasn't flushed; needs a `dependsOn` field plus serialization, not a one-line patch.
