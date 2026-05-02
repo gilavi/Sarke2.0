@@ -338,7 +338,7 @@ export default function HomeScreen() {
 
         {!loaded && projects.length === 0 ? (
           <View style={staticStyles.projectRowWrap}>
-            {Array.from({ length: 2 }).map((_, i) => (
+            {PROJECT_SKELETONS.map((i) => (
               <View key={`skeleton-${i}`} style={[styles.projectCard, { width: (screenWidth - HPAD * 2 - GAP) / 2, gap: 10 }]}>
                 <Skeleton width={48} height={48} radius={12} />
                 <Skeleton width={'80%'} height={14} />
@@ -411,7 +411,7 @@ export default function HomeScreen() {
               <Text style={styles.sectionHeader}>{t('home.recentActs')}</Text>
             </View>
             <View style={[styles.recentList, staticStyles.recentListMargin]}>
-              {Array.from({ length: 3 }).map((_, i) => (
+              {RECENT_SKELETONS.map((i) => (
                 <View
                   key={`skeleton-${i}`}
                   style={[
@@ -910,6 +910,11 @@ function relativeTime(iso: string, t: (key: string, opts?: any) => string, lang:
 }
 
 const TIP_KEYS = ['home.tip1', 'home.tip2', 'home.tip3', 'home.tip4', 'home.tip5', 'home.tip6', 'home.tip7'] as const;
+
+// Skeleton placeholder arrays — hoisted so .map() doesn't allocate a fresh
+// array on every render of the loading state.
+const PROJECT_SKELETONS = [0, 1] as const;
+const RECENT_SKELETONS = [0, 1, 2] as const;
 
 function tipOfTheDay(t: (key: string) => string) {
   const day = Math.floor(Date.now() / (1000 * 60 * 60 * 24));
