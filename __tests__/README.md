@@ -19,3 +19,13 @@ Supabase. Modules that mix in those concerns are exercised at their pure core
 When we add Jest + `jest-expo` later, these tests can be re-pointed at it
 without rewriting the assertions — `node:test` and Jest share the same
 `describe`/`it` shape.
+
+## Files
+
+| File | What it covers |
+|---|---|
+| `offlineMerge.test.mjs` | `stripServerFields` — pins the P0 wizard redirect-loop fix |
+| `toErrorMessage.test.mjs` | `toErrorMessage` — error string extraction from unknown throws |
+| `validators.test.mjs` | `isEmail`, `normalizePhone`, `isE164` — auth + SMS validation |
+| `guards.test.mjs` | `isProject/Template/Question/Inspection/Answer`, `assertShape` — Supabase row shape guards |
+| `pdfName.test.mjs` | `generatePdfName` — Georgian transliteration, sanitization, 60-char cap |
