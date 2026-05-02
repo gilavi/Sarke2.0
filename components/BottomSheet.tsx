@@ -139,9 +139,13 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
           useNativeDriver: true,
         }),
       ]).start(({ finished }) => {
-        if (finished) setSheet(null);
+        if (finished) {
+          setSheet(null);
+          // Fire callback after Modal is fully gone — prevents two Modals
+          // being open simultaneously which freezes iOS.
+          cb?.(idx);
+        }
       });
-      cb?.(idx);
     },
     [backdropProgress, sheetProgress],
   );
