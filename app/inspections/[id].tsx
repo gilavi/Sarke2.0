@@ -473,30 +473,33 @@ export default function InspectionResultScreen() {
 
       <SafeAreaView edges={['bottom']} style={styles.bottomBarSafe}>
         <View style={styles.bottomBar}>
-          <Pressable
-            onPress={openCertificatesSheet}
-            style={({ pressed }) => [styles.bottomBtn, styles.bottomBtnGhost, pressed && { opacity: 0.7 }]}
-          >
-            <Ionicons name="document-attach-outline" size={18} color={theme.colors.ink} />
-            <Text style={styles.bottomBtnText} numberOfLines={1}>
-              სერტ. {certBadge}
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={openSignaturesSheet}
-            style={({ pressed }) => [styles.bottomBtn, styles.bottomBtnGhost, pressed && { opacity: 0.7 }]}
-          >
-            <Ionicons name="create-outline" size={18} color={theme.colors.ink} />
-            <Text style={styles.bottomBtnText} numberOfLines={1}>
-              ხელმ. {sigBadge}
-            </Text>
-          </Pressable>
+          <View style={styles.bottomBarRow}>
+            <Pressable
+              onPress={openCertificatesSheet}
+              style={({ pressed }) => [styles.bottomBtn, styles.bottomBtnGhost, pressed && { opacity: 0.7 }]}
+            >
+              <Ionicons name="document-attach-outline" size={18} color={theme.colors.ink} />
+              <Text style={styles.bottomBtnText} numberOfLines={1}>
+                სერტ. {certBadge}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={openSignaturesSheet}
+              style={({ pressed }) => [styles.bottomBtn, styles.bottomBtnGhost, pressed && { opacity: 0.7 }]}
+            >
+              <Ionicons name="create-outline" size={18} color={theme.colors.ink} />
+              <Text style={styles.bottomBtnText} numberOfLines={1}>
+                ხელმ. {sigBadge}
+              </Text>
+            </Pressable>
+          </View>
           <Pressable
             onPress={downloadPdf}
             disabled={downloading}
             style={({ pressed }) => [
               styles.bottomBtn,
               styles.bottomBtnPrimary,
+              styles.bottomBtnFull,
               pressed && { opacity: 0.85 },
               downloading && { opacity: 0.6 },
             ]}
@@ -540,10 +543,15 @@ function createStyles(theme: any) {
       borderTopColor: theme.colors.hairline,
     },
     bottomBar: {
-      flexDirection: 'row',
+      flexDirection: 'column',
       gap: 8,
       paddingHorizontal: 12,
-      paddingVertical: 10,
+      paddingTop: 8,
+      paddingBottom: 8,
+    },
+    bottomBarRow: {
+      flexDirection: 'row',
+      gap: 8,
     },
     bottomBtn: {
       flex: 1,
@@ -561,6 +569,9 @@ function createStyles(theme: any) {
     },
     bottomBtnPrimary: {
       backgroundColor: theme.colors.accent,
+    },
+    bottomBtnFull: {
+      flex: 0,
     },
     bottomBtnText: {
       fontSize: 13,
