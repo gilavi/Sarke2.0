@@ -12,6 +12,7 @@ import { A11yText as Text } from '../primitives/A11yText';
 import { SheetLayout } from '../SheetLayout';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
+import { getCurrentLocation } from '../../utils/location';
 import { Ionicons } from '@expo/vector-icons';
 import { Button, Field } from '../ui';
 import { FloatingLabelInput } from '../inputs/FloatingLabelInput';
@@ -79,7 +80,11 @@ export default function AddQualificationSheet({
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) return;
     const res = await ImagePicker.launchImageLibraryAsync({ quality: 0.7 });
-    if (!res.canceled && res.assets.length) setPhotoUri(res.assets[0].uri);
+    if (!res.canceled && res.assets.length) {
+      setPhotoUri(res.assets[0].uri);
+      // Capture location in the background — non-blocking, no alert needed here.
+      getCurrentLocation().catch(() => {});
+    }
   };
 
   const save = async () => {

@@ -7,7 +7,7 @@ import {
 } from 'react-native';
 import * as Crypto from 'expo-crypto';
 import * as ImagePicker from 'expo-image-picker';
-import { getCurrentLocation } from '../../utils/location';
+import { getCurrentLocation, reverseGeocode } from '../../utils/location';
 import type { PhotoLocation } from '../../utils/location';
 import { showPhotoLocationAlert } from '../../lib/photoLocationAlert';
 import { generateAndSharePdf } from '../../lib/pdfOpen';
@@ -351,7 +351,6 @@ export default function NewIncident() {
       ).then(urls => urls.filter(Boolean));
 
       // Resolve addresses for photos that have location data.
-      const { reverseGeocode } = await import('../../utils/location');
       const photoAddresses = await Promise.all(
         uploaded.map(async u => {
           if (!u.location) return null;

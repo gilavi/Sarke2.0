@@ -138,7 +138,10 @@ export default function ReportSlideEditor() {
       setPhotoAnnotateCallback(async annotatedLocalUri => {
         if (annotatedLocalUri) {
           const newPath = await uploadLocalUri(annotatedLocalUri, 'annotated');
-          if (newPath) setImagePath(newPath);
+          if (newPath) {
+            setImagePath(newPath);
+            setAnnotatedPath(null);
+          }
         }
         setImageUploading(false);
       });

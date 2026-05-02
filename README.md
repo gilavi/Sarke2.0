@@ -175,6 +175,22 @@ lib/
   theme.ts            Design tokens (shades of "why is this blue?")
   pdf.ts              HTML -> PDF template (black magic)
   offline.tsx         "Works offline" they said. They lied.
+  photoLocationAlert.ts
+                      Project-location prompt logic: auto-set when
+                      project has no coords, mismatch alert when photo
+                      is taken >500 m from the project. Shared by
+                      wizard, incidents, and any future flows.
+hooks/
+  usePhotoWithLocation.ts
+                      Hook for direct ImagePicker flows (incidents,
+                      certs, qualifications). Returns { uri, timestamp,
+                      location } — mirrors the camera path without the
+                      photo-picker bus.
+utils/
+  location.ts         GPS helpers: getCurrentLocation() (5 s timeout,
+                      returns null on denial/failure), reverseGeocode(),
+                      getDistanceMeters(). Used by photo flows and the
+                      location alert.
 types/models.ts       DB types (TypeScript's greatest hits)
 supabase/             SQL incantations
 ```
