@@ -46,6 +46,13 @@ export default function ReportSlideEditor() {
   // regains focus after returning from the photo picker / annotator.
   const hasInitialized = useRef(false);
 
+  // Navigating to a different slideId should re-sync the form to the new
+  // slide's content. Without this reset, the ref stays true from the prior
+  // slide and the next load() skips the sync, leaving stale title/desc.
+  useEffect(() => {
+    hasInitialized.current = false;
+  }, [slideId]);
+
   const load = useCallback(async () => {
     if (!id || !slideId) return;
     const r = await reportsApi.getById(id).catch(() => null);
