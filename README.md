@@ -86,6 +86,7 @@ Schema + seed already applied to the hosted project. Relevant files preserved he
 - `supabase/migrations/0016_signer_role_other.sql` — adds `'other'` to the `signer_role` enum so freeform crew members flow into `signatures`
 - `supabase/migrations/0020_storage_rls_and_timestamps.sql` — tightens `incident-photos` and `report-photos` storage RLS to the row owner; adds `updated_at` + audit trigger to mutable user-data tables; adds composite indexes for project-signer lookup and certificate pagination
 - `supabase/migrations/0021_inspection_attachments.sql` — `inspection_attachments` table for equipment certificates uploaded against an inspection (type chip + №number + 16:9 photo). Distinct from `qualifications` (expert credentials) and `certificates` (generated PDFs). Photos live in the existing `certificates` bucket.
+- `supabase/migrations/0023_photo_location.sql` — adds `latitude double precision`, `longitude double precision`, `address text` to `answer_photos`; backfills from legacy `addr:` caption prefix.
 - `supabase/seed/01_system_templates.sql` — system templates
 
 Storage buckets: `certificates`, `answer-photos`, `pdfs`, `signatures`, `incident-photos`, `report-photos`, `project-files`, `remote-signatures`. 

@@ -243,15 +243,7 @@ export default function ReportSlideEditor() {
         }}
       />
 
-      <KeyboardSafeArea
-        headerOffset={44}
-        contentStyle={{ padding: 16, gap: 16 }}
-        footer={
-          <View style={styles.footer}>
-            <Button title="შენახვა" onPress={onSave} disabled={!canSave} loading={busy} />
-          </View>
-        }
-      >
+      <KeyboardSafeArea headerHeight={44} contentStyle={{ padding: 16, gap: 16 }}>
         {/* Image section */}
         <Pressable onPress={onImageTap} style={styles.imageWrap}>
           {thumbUri ? (
@@ -285,6 +277,11 @@ export default function ReportSlideEditor() {
           onChangeText={setDescription}
           multiline
         />
+
+        <View style={{ flex: 1 }} />
+        <View style={styles.footer}>
+          <Button title="შენახვა" onPress={onSave} disabled={!canSave} loading={busy} />
+        </View>
       </KeyboardSafeArea>
     </View>
   );

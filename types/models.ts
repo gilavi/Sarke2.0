@@ -219,7 +219,11 @@ export interface AnswerPhoto {
   id: string;
   answer_id: string;
   storage_path: string;
+  /** `row:<key>` for grid-row photos. Null for all others. */
   caption: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  address: string | null;
   created_at: string;
 }
 

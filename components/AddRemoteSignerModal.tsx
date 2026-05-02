@@ -10,7 +10,8 @@ import { FormField } from './FormField';
 import { ButtonGroup } from './ButtonGroup';
 import { FloatingLabelInput } from './inputs/FloatingLabelInput';
 import { useTheme } from '../lib/theme';
-import { BottomSheetKeyboard } from './layout/BottomSheetKeyboard';
+import { SheetLayout } from './SheetLayout';
+import { BottomSheetScrollView } from './BottomSheet';
 
 import { isGeorgianPhone, normalizePhone } from '../lib/validators';
 import { SIGNER_ROLE_LABEL, type SignerRole } from '../types/models';
@@ -76,30 +77,31 @@ export function AddRemoteSignerSheet({
   };
 
   return (
-    <View style={styles.container}>
-      <BottomSheetKeyboard
-        footer={
-          <ButtonGroup
-            buttons={[
-              {
-                label: 'გაუქმება',
-                variant: 'secondary',
-                size: 'lg',
-                onPress: handleCancel,
-                disabled: busy,
-              },
-              {
-                label: 'გაგზავნე SMS',
-                variant: 'primary',
-                size: 'lg',
-                onPress: handleSubmit,
-                loading: busy,
-              },
-            ]}
-            layout="vertical"
-          />
-        }
-      >
+    <SheetLayout
+      showHandle={false}
+      ScrollComponent={BottomSheetScrollView}
+      footer={
+        <ButtonGroup
+          buttons={[
+            {
+              label: 'გაუქმება',
+              variant: 'secondary',
+              size: 'lg',
+              onPress: handleCancel,
+              disabled: busy,
+            },
+            {
+              label: 'გაგზავნე SMS',
+              variant: 'primary',
+              size: 'lg',
+              onPress: handleSubmit,
+              loading: busy,
+            },
+          ]}
+          layout="vertical"
+        />
+      }
+    >
         <A11yText size="xl" weight="bold" style={styles.title}>
           გარე ხელისმოწერის მოთხოვნა
         </A11yText>
@@ -151,16 +153,12 @@ export function AddRemoteSignerSheet({
           onBlur={() => setPhoneTouched(true)}
           keyboardType="phone-pad"
         />
-      </BottomSheetKeyboard>
-    </View>
+    </SheetLayout>
   );
 }
 
 function getstyles(theme: any) {
   return StyleSheet.create({
-  container: {
-    backgroundColor: theme.colors.background,
-  },
   title: {
     marginBottom: theme.space(1),
   },

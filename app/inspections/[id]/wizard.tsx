@@ -43,6 +43,9 @@ import { useOffline, stripServerFields } from '../../../lib/offline';
 import { logError, toErrorMessage } from '../../../lib/logError';
 import { useToast } from '../../../lib/toast';
 import { useTheme } from '../../../lib/theme';
+import { useQueryClient } from '@tanstack/react-query';
+import { recordCompletion } from '../../../lib/calendarSchedule';
+import { qk } from '../../../lib/apiHooks';
 
 import { a11y } from '../../../lib/accessibility';
 import type {
@@ -179,6 +182,7 @@ export default function QuestionnaireWizard() {
   const offline = useOffline();
   const insets = useSafeAreaInsets();
 
+  const queryClient = useQueryClient();
   const [questionnaire, setQuestionnaire] = useState<Inspection | null>(null);
   const [project, setProject] = useState<Project | null>(null);
   const [template, setTemplate] = useState<Template | null>(null);
@@ -189,6 +193,9 @@ export default function QuestionnaireWizard() {
   const [loading, setLoading] = useState(true);
   const [animateSteps, setAnimateSteps] = useState(false);
   const [harnessRowCount, setHarnessRowCount] = useState(5);
+  // Measured WizardHeader height — used as keyboardVerticalOffset so the
+  // keyboard avoidance lines up exactly with the rendered header above KAV.
+  const [headerH, setHeaderH] = useState(0);
   const pendingPhotoContext = useRef<{
     questionId: string;
     rowKey?: string;
@@ -459,7 +466,9 @@ export default function QuestionnaireWizard() {
     () => buildSteps(questions, harnessRowCount),
     [questions, harnessRowCount],
   );
-  const step = steps[stepIndex];
+  // Clamp so a stale cached stepIndex never produces an undefined step.
+  const safeStepIndex = Math.min(stepIndex, Math.max(0, steps.length - 1));
+  const step = steps[safeStepIndex];
 
   // Section 3 photo_upload no longer has its own step — the answer/photos
   // attach to it but render on the conclusion screen as "საერთო ფოტოები".
@@ -535,15 +544,13 @@ export default function QuestionnaireWizard() {
     const actualExt = ext ?? 'jpg';
     const actualPath = path ?? `${questionnaire.id}/${question.id}/${Date.now()}.${actualExt}`;
 
-    // Build caption: row key for grid photos, address for located photos.
-    // Grid-row photos keep just the row key — location is not added to avoid
-    // clobbering the row association the PDF generator relies on.
-    let captionStr: string | null = rowKey ? `row:${rowKey}` : null;
+    // caption is only used for grid-row association; location is stored in dedicated columns.
+    const captionStr: string | null = rowKey ? `row:${rowKey}` : null;
+    let photoAddress: string | null = null;
     if (!rowKey && location) {
-      const addr = await reverseGeocode(location.latitude, location.longitude).catch(
+      photoAddress = await reverseGeocode(location.latitude, location.longitude).catch(
         () => `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`,
       );
-      captionStr = `addr:${addr}`;
     }
 
     // Ensure an Answer row exists locally so the photo can attach to a stable
@@ -579,6 +586,9 @@ export default function QuestionnaireWizard() {
           answerId,
           inspectionId: questionnaire.id,
           caption: captionStr,
+          latitude: location?.latitude ?? null,
+          longitude: location?.longitude ?? null,
+          address: photoAddress,
         });
         setPhotos(prev => ({ ...prev, [answerId]: [...(prev[answerId] ?? []), optimistic] }));
         toast.success('ფოტო შენახულია — აიტვირთება ქსელის დაბრუნებისას');
@@ -587,7 +597,12 @@ export default function QuestionnaireWizard() {
       await storageApi.uploadFromUri(STORAGE_BUCKETS.answerPhotos, actualPath, uri, actualMime, 'inspection');
       const answer = await answersApi.upsert(baseAnswer);
       if (!existing) setAnswers(prev => ({ ...prev, [question.id]: answer }));
-      const photo = await answersApi.addPhoto(answer.id, actualPath, captionStr ?? undefined);
+      const photo = await answersApi.addPhoto(answer.id, actualPath, {
+        caption: captionStr,
+        latitude: location?.latitude ?? null,
+        longitude: location?.longitude ?? null,
+        address: photoAddress,
+      });
       setPhotos(prev => ({ ...prev, [answer.id]: [...(prev[answer.id] ?? []), photo] }));
       // Proactively cache the resized version so PDF generation is fast later
       // (especially useful when the user goes offline before generating the certificate).
@@ -740,6 +755,12 @@ export default function QuestionnaireWizard() {
       // before navigating away. Offline? The queue survives — done screen
       // still renders from local state.
       await offline.flush();
+      // Record schedule entry — non-fatal, must never block the inspection.
+      const calCompletedAt = new Date().toISOString();
+      const calGroupKey = `${questionnaire.project_id}:${questionnaire.template_id}`;
+      await recordCompletion('inspections', questionnaire.id, calCompletedAt, calGroupKey).catch(() => {});
+      void queryClient.invalidateQueries({ queryKey: qk.calendar.schedules });
+      void queryClient.invalidateQueries({ queryKey: qk.calendar.allInspections });
       // Drop the mid-flow caches once the inspection is committed.
       await Promise.all([
         AsyncStorage.removeItem(conclusionKey(questionnaire.id)),
@@ -806,9 +827,11 @@ export default function QuestionnaireWizard() {
   // which let the conclusion form flash with empty isSafe/conclusion values
   // for ~100-200 ms while answers were still hydrating.
   const ready = !loading && !!questionnaire && !!template && questions.length > 0;
+  console.log('[Wizard] render — loading:', loading, 'ready:', ready, 'stepIndex:', stepIndex, 'steps:', steps.length, 'step:', step?.kind, 'template:', template?.category);
 
   // Early return — absolutely NO form elements render while data is missing.
   if (!ready) {
+    console.log('[Wizard] not ready — loading:', loading, 'questionnaire:', !!questionnaire, 'template:', !!template, 'questions:', questions.length);
     if (questionnaire?.status === 'completed') {
       return <CompletedRedirect id={questionnaire.id} />;
     }
@@ -825,6 +848,7 @@ export default function QuestionnaireWizard() {
   // Completed inspection → bounce to the dedicated detail screen. The
   // redirect fires in an effect so we don't mutate navigation during render.
   if (questionnaire?.status === 'completed') {
+    console.log('[Wizard] completed — redirecting');
     return <CompletedRedirect id={questionnaire.id} />;
   }
 
@@ -840,10 +864,15 @@ export default function QuestionnaireWizard() {
   const isScaffoldRow = step.kind === 'gridRow' && (step.question.grid_rows?.[0] ?? '') !== 'N1';
 
 
-  // HarnessListFlow: full-screen takeover for harness templates
+  console.log('[Wizard] ready-render — step:', step.kind, 'isYesNo:', isYesNo, 'isLast:', isLast, 'isScaffoldRow:', isScaffoldRow);
+
+  // HarnessListFlow: full-screen takeover for harness templates.
+  // Render it directly without Screen wrapper — HarnessListFlow owns its own
+  // SafeAreaView and layout; nesting inside Screen causes double insets.
   if (step.kind === 'harnessFlow') {
+    console.log('[Wizard] → harnessFlow branch');
     return (
-      <Screen edgeToEdge edges={['top', 'bottom']} style={{ backgroundColor: theme.colors.card }}>
+      <View style={{ flex: 1, backgroundColor: theme.colors.card }}>
         <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
         <HarnessListFlow
           template={template!}
@@ -858,7 +887,7 @@ export default function QuestionnaireWizard() {
           onClose={() => router.back()}
           onConclude={goNext}
         />
-      </Screen>
+      </View>
     );
   }
 
@@ -878,21 +907,23 @@ export default function QuestionnaireWizard() {
         </View>
       ) : null}
       <Animated.View style={{ flex: 1, opacity: enterAnim }}>
-        <WizardHeader
-          step={step}
-          stepIndex={stepIndex}
-          total={steps.length}
-          project={project}
-          template={template}
-          hasProgress={hasAnyProgress}
-          onBack={goBack}
-          onClose={() => router.back()}
-        />
+        <View onLayout={e => setHeaderH(e.nativeEvent.layout.height)}>
+          <WizardHeader
+            step={step}
+            stepIndex={stepIndex}
+            total={steps.length}
+            project={project}
+            template={template}
+            hasProgress={hasAnyProgress}
+            onBack={goBack}
+            onClose={() => router.back()}
+          />
+        </View>
         <GestureDetector gesture={swipeBack}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={{ flex: 1 }}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
+          keyboardVerticalOffset={insets.top + headerH}
         >
           <WizardStepTransition stepKey={stepIndex} direction={stepDirection} animate={animateSteps && Math.abs(stepIndex - prevStepIndexRef.current) <= 1}>
             {step.kind === 'gridRow' ? (
@@ -1575,9 +1606,11 @@ const GridRowStep = memo(function GridRowStep({
     const [commentOpen, setCommentOpen] = useState(false);
     const showCommentField = !!commentValue || commentOpen;
     const noneCol = statusCols.find(c => c.includes('გააჩნია')) ?? null;
+    const scrollRef = useRef<ScrollView>(null);
 
     return (
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={[staticStyles.padH16, staticStyles.padTop16, staticStyles.padB24, staticStyles.gap16]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
@@ -1613,6 +1646,10 @@ const GridRowStep = memo(function GridRowStep({
                 value={commentValue}
                 onChangeText={text => setValue('კომენტარი', text || null, false)}
                 autoFocus
+                onFocus={() => {
+                  // Surface the input above the keyboard once layout settles.
+                  requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
+                }}
               />
             ) : null}
 

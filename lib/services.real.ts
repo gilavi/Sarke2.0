@@ -496,6 +496,15 @@ export const inspectionsApi = {
     if (error) throw error;
     return data ?? [];
   },
+  listAll: async (): Promise<Inspection[]> => {
+    const { data, error } = await supabase
+      .from('inspections')
+      .select('*')
+      .eq('status', 'completed')
+      .order('completed_at', { ascending: false });
+    if (error) throw error;
+    return data ?? [];
+  },
 };
 
 /** @deprecated Use `inspectionsApi`. Re-exported so older imports still work. */
@@ -542,11 +551,27 @@ export const answersApi = {
     }
     return out;
   },
-  addPhoto: async (answerId: string, storagePath: string, caption?: string): Promise<AnswerPhoto> => {
+  addPhoto: async (
+    answerId: string,
+    storagePath: string,
+    opts?: {
+      caption?: string | null;
+      latitude?: number | null;
+      longitude?: number | null;
+      address?: string | null;
+    },
+  ): Promise<AnswerPhoto> => {
     return throwIfError<AnswerPhoto>(
       await supabase
         .from('answer_photos')
-        .insert({ answer_id: answerId, storage_path: storagePath, caption: caption ?? null })
+        .insert({
+          answer_id: answerId,
+          storage_path: storagePath,
+          caption: opts?.caption ?? null,
+          latitude: opts?.latitude ?? null,
+          longitude: opts?.longitude ?? null,
+          address: opts?.address ?? null,
+        })
         .select()
         .single(),
     );

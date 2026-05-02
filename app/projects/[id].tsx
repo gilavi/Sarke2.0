@@ -1,8 +1,8 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Animated,
   Dimensions,
   Keyboard,
-  KeyboardAvoidingView,
   Linking,
   Modal,
   Pressable,
@@ -10,6 +10,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
+import { useSheetKeyboardMargin } from '../../lib/useSheetKeyboardMargin';
 import { Image } from 'expo-image';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { SheetLayout } from '../../components/SheetLayout';
@@ -42,6 +43,7 @@ import {
   useIncidentsByProject,
   useBriefingsByProject,
   useReportsByProject,
+  useCalendarEvents,
 } from '../../lib/apiHooks';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { useToast } from '../../lib/toast';
@@ -605,6 +607,9 @@ export default function ProjectDetail() {
           {/* ── Quick actions row (BOG-style) ── */}
           <QuickActions actions={quickActions} />
 
+          {/* ── Upcoming schedule ── */}
+          <UpcomingSection projectId={id} />
+
           {/* ── Questionnaires ── */}
           <View ref={questionnairesRef} collapsable={false} style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
@@ -1146,6 +1151,7 @@ function EditProjectSheet({
   const [logo, setLogo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [mapVisible, setMapVisible] = useState(false);
+  const keyboardMargin = useSheetKeyboardMargin();
 
   // Sync when project changes / modal opens
   useFocusEffect(
@@ -1193,15 +1199,15 @@ function EditProjectSheet({
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={() => mapVisible ? setMapVisible(false) : onClose()}>
-      <View style={{ flex: 1 }}>
-        <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={0} style={{ flex: 1, justifyContent: 'flex-end' }}>
-          {/* Backdrop */}
-          <Pressable
-            style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.45)' }]}
-            onPress={() => mapVisible ? setMapVisible(false) : onClose()}
-            {...a11y(t('common.close'), 'შეეხეთ ფონის დასახურად', 'button')}
-          />
-          {/* Card — sits at raised floor, right above keyboard */}
+      <View style={{ flex: 1, justifyContent: 'flex-end' }}>
+        {/* Backdrop */}
+        <Pressable
+          style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.45)' }]}
+          onPress={() => mapVisible ? setMapVisible(false) : onClose()}
+          {...a11y(t('common.close'), 'შეეხეთ ფონის დასახურად', 'button')}
+        />
+        {/* Card — marginBottom rides the iOS keyboard 1:1 */}
+        <Animated.View style={{ width: '100%', marginBottom: keyboardMargin }}>
           <Pressable onPress={() => {}} style={{ width: '100%' }}>
               <SheetLayout
                 maxHeightRatio={0.92}
@@ -1262,7 +1268,7 @@ function EditProjectSheet({
                 <LocationRow pin={pin} address={address} onPress={() => { Keyboard.dismiss(); setMapVisible(true); }} />
               </SheetLayout>
           </Pressable>
-        </KeyboardAvoidingView>
+        </Animated.View>
 
         {/* Full-screen map overlay — no nested Modal */}
         {mapVisible && (
@@ -1497,6 +1503,112 @@ function IncidentRow({
       </View>
       <Ionicons name="chevron-forward" size={18} color={theme.colors.borderStrong} />
     </Pressable>
+  );
+}
+
+// ── Upcoming section ────────────────────────────────────────────────────────
+
+const STATUS_COLORS: Record<string, string> = {
+  due_today: '#F59E0B',
+  overdue: '#DC2626',
+  upcoming: '#9CA3AF',
+};
+
+function UpcomingSection({ projectId }: { projectId: string | undefined }) {
+  const { theme } = useTheme();
+  const { t } = useTranslation();
+  const router = useRouter();
+  const events = useCalendarEvents();
+
+  const upcoming = useMemo(() => {
+    if (!projectId) return [];
+    return events
+      .filter(e => !e.isPast && e.projectId === projectId)
+      .sort((a, b) => a.date.getTime() - b.date.getTime())
+      .slice(0, 3);
+  }, [events, projectId]);
+
+  if (upcoming.length === 0) return null;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  function relativeLabel(date: Date): string {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    const diff = Math.round((d.getTime() - today.getTime()) / 86400000);
+    if (diff === 0) return t('calendar.dueToday', 'დღეს');
+    if (diff > 0) return t('calendar.inDays', { count: diff, defaultValue: `${diff} დღეში` });
+    return t('calendar.overdueDays', { count: Math.abs(diff), defaultValue: `${Math.abs(diff)} დღე გადაცილდა` });
+  }
+
+  return (
+    <View
+      style={{
+        backgroundColor: theme.colors.surface,
+        borderRadius: 16,
+        marginHorizontal: 16,
+        marginTop: 12,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+      }}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Ionicons name="calendar-outline" size={16} color={theme.colors.inkSoft} />
+          <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.inkSoft }}>
+            {t('calendar.upcomingSection', 'მომავალი')}
+          </Text>
+        </View>
+        <Pressable
+          onPress={() => router.push(`/(tabs)/calendar?projectId=${projectId}` as any)}
+          hitSlop={8}
+        >
+          <Text style={{ fontSize: 13, color: theme.colors.accent }}>
+            {t('common.all', 'ყველა')}
+          </Text>
+        </Pressable>
+      </View>
+      {upcoming.map(event => {
+        const color = STATUS_COLORS[event.status] ?? theme.colors.inkSoft;
+        const iconName = event.type === 'inspection' ? 'shield-checkmark-outline' : 'people-outline';
+        return (
+          <Pressable
+            key={event.id}
+            onPress={() => router.push(`/(tabs)/calendar?projectId=${projectId}` as any)}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingVertical: 8,
+              gap: 10,
+              borderTopWidth: 1,
+              borderTopColor: theme.colors.hairline,
+            }}
+          >
+            <View
+              style={{
+                width: 30,
+                height: 30,
+                borderRadius: 8,
+                backgroundColor: color + '20',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Ionicons name={iconName as any} size={16} color={color} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.ink }} numberOfLines={1}>
+                {event.title}
+              </Text>
+            </View>
+            <Text style={{ fontSize: 12, fontWeight: '600', color }}>
+              {relativeLabel(event.date)}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
   );
 }
 

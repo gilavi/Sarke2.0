@@ -111,4 +111,14 @@ export const briefingsApi = {
     const { error } = await supabase.from('briefings').delete().eq('id', id);
     if (error) throw new Error(error.message);
   },
+
+  listAll: async (): Promise<Briefing[]> => {
+    const { data, error } = await supabase
+      .from('briefings')
+      .select('*')
+      .eq('status', 'completed')
+      .order('date_time', { ascending: false });
+    if (error) throw new Error(error.message);
+    return ((data ?? []) as DbRow[]).map(toModel);
+  },
 };

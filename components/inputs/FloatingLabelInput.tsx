@@ -164,6 +164,7 @@ export const FloatingLabelInput = React.forwardRef<TextInput, FloatingLabelInput
       <View style={[styles.wrapper, style]}>
         <View style={containerStyle}>
           <Animated.Text
+            pointerEvents="none"
             style={[
               styles.label,
               { top: labelTop, fontSize: labelSize, color: labelColor },

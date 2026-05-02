@@ -115,37 +115,7 @@ export default function AccountSettingsScreen() {
         </Pressable>
       </View>
 
-      <KeyboardSafeArea
-        headerOffset={56}
-        contentStyle={styles.content}
-        footer={
-          <View style={styles.footer}>
-            {busy ? (
-              <View
-                style={[
-                  styles.submitButton,
-                  {
-                    backgroundColor: theme.colors.accent,
-                    borderRadius: theme.radius.md,
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                  },
-                ]}
-              >
-                <ActivityIndicator color={theme.colors.surface} />
-              </View>
-            ) : (
-              <Button
-                title={t('account.changePassword')}
-                onPress={handleSubmit}
-                disabled={busy}
-                size="lg"
-                style={styles.submitButton}
-              />
-            )}
-          </View>
-        }
-      >
+      <KeyboardSafeArea headerHeight={56} contentStyle={styles.content}>
         <FloatingLabelInput
           label={t('account.currentPassword')}
           secureTextEntry={!showCurrent}
@@ -181,6 +151,30 @@ export default function AccountSettingsScreen() {
           rightIcon={showConfirm ? 'eye-off' : 'eye'}
           onRightIconPress={() => setShowConfirm(!showConfirm)}
         />
+        <View style={{ flex: 1 }} />
+        {busy ? (
+          <View
+            style={[
+              styles.submitButton,
+              {
+                backgroundColor: theme.colors.accent,
+                borderRadius: theme.radius.md,
+                justifyContent: 'center',
+                alignItems: 'center',
+              },
+            ]}
+          >
+            <ActivityIndicator color={theme.colors.surface} />
+          </View>
+        ) : (
+          <Button
+            title={t('account.changePassword')}
+            onPress={handleSubmit}
+            disabled={busy}
+            size="lg"
+            style={styles.submitButton}
+          />
+        )}
       </KeyboardSafeArea>
     </SafeAreaView>
   );

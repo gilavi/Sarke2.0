@@ -86,6 +86,7 @@ export type HarnessListFlowProps = {
 };
 
 export function HarnessListFlow(props: HarnessListFlowProps) {
+  console.log('[HarnessListFlow] render start');
   const { theme } = useTheme();
   const s = useMemo(() => gets(theme), [theme]);
   const {
@@ -107,11 +108,13 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
     () => rowLabelsFor(questions, harnessRowCount),
     [questions, harnessRowCount],
   );
+  console.log('[HarnessListFlow] items:', items.length, 'rowLabels:', rowLabels.length, 'harnessRowCount:', harnessRowCount);
 
   /** 'count' = number picker; 'list' = per-harness chip list */
   const [step, setStep] = useState<'count' | 'list'>('count');
   const [currentRowIdx, setCurrentRowIdx] = useState(0);
   const showHelp = useScaffoldHelpSheet();
+  console.log('[HarnessListFlow] step:', step, 'currentRowIdx:', currentRowIdx);
 
   // Tour refs
   const headerRef = useRef<View>(null);
@@ -269,10 +272,11 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
 
   const confirmCurrentRow = () => {
     haptic.success();
-    void (async () => {
-      await applyAutoOkForCurrentRow();
-      advance();
-    })();
+    // Advance first so the user moves on immediately.
+    // Auto-ok fires after (using captured `row`/`answers` from this render)
+    // so there's no visible flash of chips changing state.
+    advance();
+    void applyAutoOkForCurrentRow();
   };
 
   const badCountThisRow = items.reduce(
@@ -296,7 +300,7 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
             </Pressable>
           </View>
           <Text style={s.helpHint}>
-            მონიშნეთ ✓ ან ✗ — გამოუმჩინებელი ავტომატურად კარგად ჩაითვლება.
+            ყველა კომპონენტი ✓-ადაა. სადაც პრობლემაა — მონიშნეთ ✗.
           </Text>
         </View>
 
@@ -390,7 +394,8 @@ const ChipRow = memo(function ChipRow({
   }, [key, comment]);
 
   const isBad = state === 'bad';
-  const isOk = state === 'ok';
+  // Default everything to ✓ — only explicitly-marked bad items show ✗.
+  const isOk = !isBad;
 
   return (
     <View ref={rowRef} collapsable={false}>

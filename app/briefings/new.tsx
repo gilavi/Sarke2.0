@@ -148,29 +148,7 @@ export default function NewBriefingScreen() {
         }
       />
 
-      <KeyboardSafeArea
-        headerOffset={44}
-        contentStyle={{ padding: 16, gap: 20 }}
-        footer={
-          <View style={styles.footer}>
-            {!canStart && (
-              <Text style={styles.footerHint}>
-                {participants.length === 0
-                  ? 'დაამატეთ მინიმუმ 1 მონაწილე'
-                  : 'აირჩიეთ მინიმუმ 1 თემა'}
-              </Text>
-            )}
-            <Button
-              title="დაწყება →"
-              size="lg"
-              onPress={onStart}
-              disabled={!canStart}
-              loading={busy}
-              style={{ width: '100%' }}
-            />
-          </View>
-        }
-      >
+      <KeyboardSafeArea headerHeight={44} contentStyle={{ padding: 16, gap: 20 }}>
         {/* ── Date & Time ── */}
         <View style={styles.card}>
           <Text style={styles.sectionLabel}>თარიღი და დრო</Text>
@@ -281,6 +259,25 @@ export default function NewBriefingScreen() {
               ))}
             </View>
           )}
+        </View>
+
+        <View style={{ flex: 1 }} />
+        <View style={styles.footer}>
+          {!canStart && (
+            <Text style={styles.footerHint}>
+              {participants.length === 0
+                ? 'დაამატეთ მინიმუმ 1 მონაწილე'
+                : 'აირჩიეთ მინიმუმ 1 თემა'}
+            </Text>
+          )}
+          <Button
+            title="დაწყება →"
+            size="lg"
+            onPress={onStart}
+            disabled={!canStart}
+            loading={busy}
+            style={{ width: '100%' }}
+          />
         </View>
       </KeyboardSafeArea>
 

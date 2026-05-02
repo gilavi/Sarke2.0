@@ -41,7 +41,11 @@ type PhotoUploadPayload = {
   contentType: string;
   answerId: string;
   inspectionId: string;
+  /** `row:<key>` for grid-row photos; null for everything else. */
   caption: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  address: string | null;
 };
 
 type QueueOp =
@@ -104,6 +108,9 @@ type OfflineContextValue = {
     answerId: string;
     inspectionId: string;
     caption?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+    address?: string | null;
   }) => Promise<AnswerPhoto>;
   hydrateAnswers: (qid: string) => Promise<Record<string, Answer>>;
   cacheAnswers: (qid: string, answers: Record<string, Answer>) => Promise<void>;
@@ -212,11 +219,11 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
             // delete the staged file. Retry-safe: storageApi.uploadFromUri is
             // upsert and the row insert is idempotent on (answer_id, storage_path)
             // for our caller's usage pattern (one path per capture).
-            const { localUri, bucket, path, contentType, answerId, caption } = op.payload;
+            const { localUri, bucket, path, contentType, answerId, caption, latitude, longitude, address } = op.payload;
             await storageApi.uploadFromUri(bucket, path, localUri, contentType);
             const { error } = await supabase
               .from('answer_photos')
-              .insert({ answer_id: answerId, storage_path: path, caption: caption ?? null });
+              .insert({ answer_id: answerId, storage_path: path, caption: caption ?? null, latitude: latitude ?? null, longitude: longitude ?? null, address: address ?? null });
             if (error) throw error;
             FileSystem.deleteAsync(localUri, { idempotent: true }).catch(() => undefined);
           }
@@ -333,7 +340,7 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
   );
 
   const enqueuePhotoUpload = useCallback<OfflineContextValue['enqueuePhotoUpload']>(
-    async ({ sourceUri, bucket, path, contentType, answerId, inspectionId, caption }) => {
+    async ({ sourceUri, bucket, path, contentType, answerId, inspectionId, caption, latitude, longitude, address }) => {
       const localUri = await stageCompressedPhotoForOffline(sourceUri, 'inspection');
       await runExclusive(async () => {
         const ops = await readQueue();
@@ -347,6 +354,9 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
             answerId,
             inspectionId,
             caption: caption ?? null,
+            latitude: latitude ?? null,
+            longitude: longitude ?? null,
+            address: address ?? null,
           },
         });
         await setQueue(ops);
@@ -360,6 +370,9 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
         answer_id: answerId,
         storage_path: localUri,
         caption: caption ?? null,
+        latitude: latitude ?? null,
+        longitude: longitude ?? null,
+        address: address ?? null,
         created_at: new Date().toISOString(),
       };
       return optimistic;

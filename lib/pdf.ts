@@ -86,14 +86,12 @@ async function buildHtml(
     : '—';
   const reportId = questionnaire.id.slice(0, 8).toUpperCase();
 
-  // ── Inspection location from first photo with addr: caption ──
+  // ── Inspection location from first photo that has an address ──
   let inspectionLocation: string | null = null;
   outer: for (const photoList of Object.values(photosByAnswer)) {
     for (const p of photoList) {
-      if (p.caption?.startsWith('addr:')) {
-        inspectionLocation = p.caption.slice(5);
-        break outer;
-      }
+      const addr = p.address ?? (p.caption?.startsWith('addr:') ? p.caption.slice(5) : null);
+      if (addr) { inspectionLocation = addr; break outer; }
     }
   }
 
@@ -982,11 +980,11 @@ function renderPhoto(
   const captionText = timePart ? `${titlePart} — ${timePart}` : titlePart;
 
   const isRowCaption = photo.caption?.startsWith('row:') ?? false;
-  const isLocCaption = photo.caption?.startsWith('addr:') ?? false;
+  // Prefer the dedicated address column; fall back to legacy addr: caption prefix.
+  const addrText = photo.address ?? (photo.caption?.startsWith('addr:') ? photo.caption.slice(5) : null);
 
   let noteCaption = '';
-  if (isLocCaption) {
-    const addrText = photo.caption!.slice(5); // strip 'addr:' prefix
+  if (addrText) {
     noteCaption = `<div class="photo-caption photo-location">გადაღებულია: ${escapeHtml(addrText)}</div>`;
   } else if (!isRowCaption && photo.caption) {
     noteCaption = `<div class="photo-caption">${escapeHtml(photo.caption)}</div>`;

@@ -1,9 +1,11 @@
 import { useCallback, useRef, useState , useMemo, useEffect} from 'react';
-import { Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
+import { useHeaderHeight } from '@react-navigation/elements';
 import { Image } from 'expo-image';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import SignatureScreen, { type SignatureViewRef } from 'react-native-signature-canvas';
 import { Button, Field, Screen } from '../../../components/ui';
@@ -29,7 +31,7 @@ const ROSTER_ROLES: SignerRole[] = ['xaracho_supervisor', 'xaracho_assembler'];
 export default function SignerForm() {
   const { theme } = useTheme();
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
+  const headerHeight = useHeaderHeight();
   const styles = useMemo(() => getstyles(theme), [theme]);
   const { id, signerId } = useLocalSearchParams<{ id: string; signerId?: string }>();
   const router = useRouter();
@@ -148,7 +150,7 @@ export default function SignerForm() {
         <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior="padding"
-          keyboardVerticalOffset={insets.top + 60}
+          keyboardVerticalOffset={headerHeight}
         >
         <ScrollView
           keyboardShouldPersistTaps="handled"

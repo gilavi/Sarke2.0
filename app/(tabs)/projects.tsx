@@ -1,15 +1,16 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  Animated,
   Dimensions,
   Keyboard,
-  KeyboardAvoidingView,
   Modal,
   Pressable,
   RefreshControl,
   StyleSheet,
   View,
 } from 'react-native';
+import { useSheetKeyboardMargin } from '../../lib/useSheetKeyboardMargin';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { FlatList } from 'react-native';
@@ -257,6 +258,7 @@ function CreateProjectSheet({
   const [logo, setLogo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [mapVisible, setMapVisible] = useState(false);
+  const keyboardMargin = useSheetKeyboardMargin();
 
   useEffect(() => {
     if (visible) {
@@ -299,15 +301,15 @@ function CreateProjectSheet({
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={() => mapVisible ? setMapVisible(false) : onClose()}>
-      <View style={{ flex: 1 }}>
-        <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={0} style={{ flex: 1, justifyContent: 'flex-end' }}>
-          {/* Backdrop */}
-          <Pressable
-            style={[StyleSheet.absoluteFillObject, { backgroundColor: theme.colors.overlay }]}
-            onPress={() => mapVisible ? setMapVisible(false) : onClose()}
-            {...a11y(t('common.close'), 'შეეხეთ ფონის დასახურად', 'button')}
-          />
-          {/* Card — sits at raised floor, right above keyboard */}
+      <View style={{ flex: 1, justifyContent: 'flex-end' }}>
+        {/* Backdrop */}
+        <Pressable
+          style={[StyleSheet.absoluteFillObject, { backgroundColor: theme.colors.overlay }]}
+          onPress={() => mapVisible ? setMapVisible(false) : onClose()}
+          {...a11y(t('common.close'), 'შეეხეთ ფონის დასახურად', 'button')}
+        />
+        {/* Card — marginBottom rides the iOS keyboard so the card stops exactly at the keyboard top */}
+        <Animated.View style={{ width: '100%', marginBottom: keyboardMargin }}>
           <Pressable onPress={() => {}} style={{ width: '100%' }}>
               <SheetLayout
                 maxHeightRatio={0.92}
@@ -368,7 +370,7 @@ function CreateProjectSheet({
                 <LocationRow pin={pin} address={address} onPress={() => { Keyboard.dismiss(); setMapVisible(true); }} />
               </SheetLayout>
           </Pressable>
-        </KeyboardAvoidingView>
+        </Animated.View>
 
         {/* Full-screen map overlay — no nested Modal */}
         {mapVisible && (

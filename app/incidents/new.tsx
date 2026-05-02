@@ -431,40 +431,7 @@ export default function NewIncident() {
         confirmExit={step === 1 && isFormDirty}
       />
 
-      <KeyboardSafeArea
-        headerOffset={44}
-        contentStyle={{ padding: 16 }}
-        footer={
-          <View style={s.bottomBar}>
-            {step < 4 ? (
-              <Button
-                title="შემდეგი"
-                rightIcon="arrow-forward"
-                onPress={goNext}
-                disabled={!canAdvance}
-                style={{ width: '100%' }}
-              />
-            ) : (
-              <View style={{ gap: 10 }}>
-                <Button
-                  title="PDF გენერირება"
-                  leftIcon="document-text"
-                  loading={saving}
-                  onPress={saveAndGeneratePdf}
-                  style={{ width: '100%' }}
-                />
-                <Button
-                  title="შენახვა ხელმოწერის გარეშე"
-                  variant="link"
-                  disabled={saving}
-                  onPress={saveDraft}
-                  style={{ width: '100%' }}
-                />
-              </View>
-            )}
-          </View>
-        }
-      >
+      <KeyboardSafeArea headerHeight={44} contentStyle={{ padding: 16 }}>
         {step === 1 && <Step1 form={form} setForm={setForm} theme={theme} s={s} />}
         {step === 2 && (
           <Step2
@@ -498,6 +465,36 @@ export default function NewIncident() {
             s={s}
           />
         )}
+
+        <View style={{ flex: 1 }} />
+        <View style={s.bottomBar}>
+          {step < 4 ? (
+            <Button
+              title="შემდეგი"
+              rightIcon="arrow-forward"
+              onPress={goNext}
+              disabled={!canAdvance}
+              style={{ width: '100%' }}
+            />
+          ) : (
+            <View style={{ gap: 10 }}>
+              <Button
+                title="PDF გენერირება"
+                leftIcon="document-text"
+                loading={saving}
+                onPress={saveAndGeneratePdf}
+                style={{ width: '100%' }}
+              />
+              <Button
+                title="შენახვა ხელმოწერის გარეშე"
+                variant="link"
+                disabled={saving}
+                onPress={saveDraft}
+                style={{ width: '100%' }}
+              />
+            </View>
+          )}
+        </View>
       </KeyboardSafeArea>
 
     </View>

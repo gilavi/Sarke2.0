@@ -143,7 +143,7 @@ export default function VerifyEmailScreen() {
       />
       <SafeAreaView style={{ flex: 1 }}>
         <KeyboardSafeArea
-          headerOffset={0}
+          headerHeight={0}
           contentStyle={styles.scroll}
         >
             <View style={styles.backBtn}>

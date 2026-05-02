@@ -53,7 +53,7 @@ export default function ResetPasswordScreen() {
       />
       <SafeAreaView style={{ flex: 1 }}>
         <KeyboardSafeArea
-          headerOffset={0}
+          headerHeight={0}
           contentStyle={{ paddingHorizontal: 22, paddingTop: 40, paddingBottom: 40 }}
         >
           <Text style={{ fontSize: 28, fontWeight: '900', color: theme.colors.ink }}>

@@ -509,6 +509,12 @@ export const inspectionsApi = {
       .filter(i => set.has(i.template_id))
       .sort((a, b) => b.created_at.localeCompare(a.created_at));
   },
+  listAll: async (): Promise<Inspection[]> => {
+    const db = await load();
+    return db.inspections
+      .filter(i => i.status === 'completed')
+      .sort((a, b) => (b.completed_at ?? '').localeCompare(a.completed_at ?? ''));
+  },
 };
 
 export const questionnairesApi = inspectionsApi;
@@ -562,14 +568,22 @@ export const answersApi = {
   addPhoto: async (
     answerId: string,
     storagePath: string,
-    caption?: string,
+    opts?: {
+      caption?: string | null;
+      latitude?: number | null;
+      longitude?: number | null;
+      address?: string | null;
+    },
   ): Promise<AnswerPhoto> => {
     const db = await load();
     const photo: AnswerPhoto = {
       id: uuid(),
       answer_id: answerId,
       storage_path: storagePath,
-      caption: caption ?? null,
+      caption: opts?.caption ?? null,
+      latitude: opts?.latitude ?? null,
+      longitude: opts?.longitude ?? null,
+      address: opts?.address ?? null,
       created_at: now(),
     };
     db.answer_photos.push(photo);

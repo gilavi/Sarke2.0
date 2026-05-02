@@ -10,6 +10,9 @@ import { useBottomSheet } from '../../../components/BottomSheet';
 import { useTheme } from '../../../lib/theme';
 import { briefingsApi } from '../../../lib/briefingsApi';
 import { a11y } from '../../../lib/accessibility';
+import { useQueryClient } from '@tanstack/react-query';
+import { recordCompletion } from '../../../lib/calendarSchedule';
+import { qk } from '../../../lib/apiHooks';
 import type { Briefing, BriefingParticipant } from '../../../types/models';
 
 // WebView canvas styles — same pattern as SignatureCanvas.tsx
@@ -37,6 +40,7 @@ export default function BriefingSignScreen() {
   const router = useRouter();
   const showSheet = useBottomSheet();
 
+  const queryClient = useQueryClient();
   const [briefing, setBriefing] = useState<Briefing | null>(null);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [hasStroke, setHasStroke] = useState(false);
@@ -133,6 +137,10 @@ export default function BriefingSignScreen() {
             inspectorSignature: b64,
             status: 'completed',
           });
+          // Record schedule entry (non-fatal).
+          await recordCompletion('briefings', id, briefing.dateTime, briefing.projectId).catch(() => {});
+          void queryClient.invalidateQueries({ queryKey: qk.calendar.schedules });
+          void queryClient.invalidateQueries({ queryKey: qk.calendar.allBriefings });
           router.replace(`/briefings/${id}/done` as any);
         } else {
           // Worker signed — save signature, clear any prior skip, advance to next pending.

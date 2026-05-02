@@ -2,9 +2,9 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Swipeable } from 'react-native-gesture-handler';
 import {
   Alert,
+  Animated as RNAnimated,
   Dimensions,
   Keyboard,
-  KeyboardAvoidingView,
   Modal,
   Pressable,
   RefreshControl,
@@ -14,6 +14,7 @@ import {
   View,
 } from 'react-native';
 import Animated from 'react-native-reanimated';
+import { useSheetKeyboardMargin } from '../../lib/useSheetKeyboardMargin';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -577,8 +578,9 @@ function ProjectPickerSheet({
   const [logo, setLogo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [mapVisible, setMapVisible] = useState(false);
+  const keyboardMargin = useSheetKeyboardMargin();
 
-  // Reset form + view every time the sheet opens
+  // Reset form + view every time the sheet opens or props change
   useEffect(() => {
     if (visible) {
       setView(initialView);
@@ -591,7 +593,7 @@ function ProjectPickerSheet({
       setBusy(false);
       setMapVisible(false);
     }
-  }, [visible]);
+  }, [visible, initialView, preselectedTemplateId]);
 
   const onPickLogo = async () => {
     const next = await pickProjectLogo();
@@ -679,7 +681,7 @@ function ProjectPickerSheet({
       <View style={pickerStyles.container}>
         {/* Dark overlay backdrop with cross-fade */}
         <AnimatedDarkBackdrop visible={visible} onPress={() => mapVisible ? setMapVisible(false) : onClose()} />
-          <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={0} style={{ width: '100%' }}>
+          <RNAnimated.View style={{ width: '100%', marginBottom: keyboardMargin }}>
           <Pressable style={[pickerStyles.card, { maxHeight: '90%' }]} onPress={() => {}}>
             <View style={pickerStyles.handle} />
 
@@ -809,7 +811,7 @@ function ProjectPickerSheet({
               </>
             )}
           </Pressable>
-          </KeyboardAvoidingView>
+          </RNAnimated.View>
 
         {/* Full-screen map overlay — no nested Modal */}
         {mapVisible && (

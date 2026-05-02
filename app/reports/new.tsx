@@ -1,8 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import {
-  StyleSheet,
-  View,
-} from 'react-native';
+import { useEffect, useState } from 'react';
+import { View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { KeyboardSafeArea } from '../../components/layout/KeyboardSafeArea';
 import { Button } from '../../components/ui';
@@ -16,7 +13,6 @@ import type { Project } from '../../types/models';
 
 export default function NewReportTitleScreen() {
   const { theme } = useTheme();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
   const router = useRouter();
   const toast = useToast();
   const { projectId } = useLocalSearchParams<{ projectId: string }>();
@@ -58,20 +54,7 @@ export default function NewReportTitleScreen() {
         confirmExit={trimmed.length > 0}
       />
 
-      <KeyboardSafeArea
-        headerOffset={44}
-        contentStyle={{ padding: 16 }}
-        footer={
-          <View style={styles.footer}>
-            <Button
-              title="შემდეგი →"
-              onPress={onNext}
-              disabled={!canStart}
-              loading={busy}
-            />
-          </View>
-        }
-      >
+      <KeyboardSafeArea headerHeight={44} contentStyle={{ padding: 16 }}>
         <FloatingLabelInput
           label="რეპორტის სახელი"
           required
@@ -81,17 +64,14 @@ export default function NewReportTitleScreen() {
           returnKeyType="done"
           onSubmitEditing={onNext}
         />
+        <View style={{ flex: 1 }} />
+        <Button
+          title="შემდეგი →"
+          onPress={onNext}
+          disabled={!canStart}
+          loading={busy}
+        />
       </KeyboardSafeArea>
     </View>
   );
-}
-
-function makeStyles(theme: any) {
-  return StyleSheet.create({
-    footer: {
-      backgroundColor: theme.colors.surface,
-      borderTopWidth: 1,
-      borderTopColor: theme.colors.border,
-    },
-  });
 }

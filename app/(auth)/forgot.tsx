@@ -50,7 +50,7 @@ export default function ForgotPasswordScreen() {
       />
       <SafeAreaView style={{ flex: 1 }}>
         <KeyboardSafeArea
-          headerOffset={0}
+          headerHeight={0}
           contentStyle={{ paddingHorizontal: 22, paddingTop: 40, paddingBottom: 40 }}
         >
           <View style={{ marginBottom: 18 }}>

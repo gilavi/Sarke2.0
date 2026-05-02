@@ -10,6 +10,7 @@
  * after mutations.
  */
 
+import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   projectsApi,
@@ -92,6 +93,11 @@ export const qk = {
   schedules: {
     list: ['schedules', 'list'] as const,
     upcoming: (from: string, to: string) => ['schedules', 'upcoming', from, to] as const,
+  },
+  calendar: {
+    allInspections: ['calendar', 'allInspections'] as const,
+    allBriefings: ['calendar', 'allBriefings'] as const,
+    schedules: ['calendar', 'schedules'] as const,
   },
 };
 
@@ -334,4 +340,67 @@ export function useUpcomingSchedules(fromIso: string, toIso: string) {
     queryFn: () => schedulesApi.upcoming(fromIso, toIso),
     enabled: !!fromIso && !!toIso,
   });
+}
+
+// ── Calendar ──────────────────────────────────────────────────────────────────
+
+import { getStore } from './calendarSchedule';
+import { buildCalendarEvents, getOverdueCount } from './calendarEvents';
+import type { ScheduleStore } from './calendarSchedule';
+import type { CalendarEvent } from './calendarEvents';
+
+export function useAllInspections() {
+  return useQuery<Inspection[]>({
+    queryKey: qk.calendar.allInspections,
+    queryFn: () => inspectionsApi.listAll(),
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
+export function useAllBriefings() {
+  return useQuery<Briefing[]>({
+    queryKey: qk.calendar.allBriefings,
+    queryFn: () => briefingsApi.listAll(),
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
+export function useCalendarSchedules() {
+  return useQuery<ScheduleStore>({
+    queryKey: qk.calendar.schedules,
+    queryFn: () => getStore(),
+    staleTime: 0,
+    gcTime: 5 * 60 * 1000,
+  });
+}
+
+/**
+ * Returns derived CalendarEvent[]. Plain hook (not a useQuery) so it
+ * automatically reacts to any of its five dependencies updating.
+ */
+export function useCalendarEvents(): CalendarEvent[] {
+  const { data: inspections = [] } = useAllInspections();
+  const { data: briefings = [] } = useAllBriefings();
+  const { data: templates = [] } = useTemplates();
+  const { data: projects = [] } = useProjects();
+  const { data: store } = useCalendarSchedules();
+
+  return useMemo(
+    () =>
+      buildCalendarEvents(
+        inspections,
+        briefings,
+        templates,
+        projects,
+        store ?? { inspections: {}, briefings: {} },
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [inspections, briefings, templates, projects, store],
+  );
+}
+
+/** Overdue + due-today count — drives the tab bar badge. */
+export function useOverdueCount(): number {
+  const events = useCalendarEvents();
+  return useMemo(() => getOverdueCount(events), [events]);
 }

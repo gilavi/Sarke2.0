@@ -45,7 +45,7 @@ export default function AuthScreen() {
       <GradientBackdrop />
       <SafeAreaView style={{ flex: 1 }}>
         <LanguageSwitcher />
-        <KeyboardSafeArea headerOffset={0} contentStyle={styles.scroll}>
+        <KeyboardSafeArea headerHeight={0} contentStyle={styles.scroll}>
           <Header />
           <Card padding={22} style={{ marginTop: 28 }}>
             <ModePicker mode={mode} onChange={setMode} />

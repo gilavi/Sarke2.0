@@ -19,10 +19,7 @@ import {
 import {
   Animated,
   Easing,
-  Keyboard,
-  KeyboardEvent,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   ScrollViewProps,
@@ -41,6 +38,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { haptic } from '../lib/haptics';
 import { a11y } from '../lib/accessibility';
 import { useTheme } from '../lib/ThemeContext';
+import { useSheetKeyboardMargin } from '../lib/useSheetKeyboardMargin';
 
 export interface BottomSheetOptions {
   title?: string;
@@ -92,37 +90,10 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
   const sheetProgress = useRef(new Animated.Value(0)).current;
   // Drag offset in pixels (added on top of the spring-driven slide).
   const dragY = useRef(new Animated.Value(0)).current;
-  // Keyboard height — animates the sheet upward when the keyboard shows so
-  // text fields inside `content` aren't covered. RN's <Modal> does not
-  // auto-resize for the keyboard on iOS, so we lift the sheet manually.
-  const keyboardOffset = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-    const onShow = (e: KeyboardEvent) => {
-      Animated.timing(keyboardOffset, {
-        toValue: e.endCoordinates.height,
-        duration: e.duration ?? 250,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }).start();
-    };
-    const onHide = (e: KeyboardEvent) => {
-      Animated.timing(keyboardOffset, {
-        toValue: 0,
-        duration: e.duration ?? 200,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }).start();
-    };
-    const subShow = Keyboard.addListener(showEvt, onShow);
-    const subHide = Keyboard.addListener(hideEvt, onHide);
-    return () => {
-      subShow.remove();
-      subHide.remove();
-    };
-  }, [keyboardOffset]);
+  // Bottom margin animated to the keyboard frame with the iOS curve so the
+  // sheet rides the keyboard 1:1 (no overshoot, no overlap). Layout prop —
+  // separate Animated.View wraps the native-driven slide/drag transform.
+  const keyboardMargin = useSheetKeyboardMargin();
 
   const scrollAtTopRef = useRef(true);
   const nativeGestureRef = useRef<NativeGesture | null>(null);
@@ -199,25 +170,12 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
     outputRange: [360, 0],
   });
   const translateY = Animated.add(
-    Animated.add(
-      baseTranslateY,
-      dragY.interpolate({
-        inputRange: [0, 1000],
-        outputRange: [0, 1000],
-        extrapolateLeft: 'clamp',
-      }),
-    ),
-    // Negative shift lifts the sheet above the keyboard. The wrapper already
-    // pads by `insets.bottom`, so only lift by the amount the keyboard
-    // exceeds that inset.
-    Animated.multiply(
-      keyboardOffset.interpolate({
-        inputRange: [0, insets.bottom, 10000],
-        outputRange: [0, 0, 10000 - insets.bottom],
-        extrapolate: 'clamp',
-      }),
-      -1,
-    ),
+    baseTranslateY,
+    dragY.interpolate({
+      inputRange: [0, 1000],
+      outputRange: [0, 1000],
+      extrapolateLeft: 'clamp',
+    }),
   );
   const sheetScale = sheetProgress.interpolate({
     inputRange: [0, 1],
@@ -399,22 +357,23 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
             </Animated.View>
 
             <Animated.View
-              style={[
-                styles.sheetWrapper,
-                {
-                  transform: [{ translateY }, { scale: sheetScale }],
-                },
-              ]}
+              style={[styles.sheetWrapper, { marginBottom: keyboardMargin }]}
             >
-              <GestureDetector gesture={panGesture}>
-                <View collapsable={false} style={styles.sheetCard}>
-                  <View style={styles.handleBar}>
-                    <View style={styles.handle} />
+              <Animated.View
+                style={{
+                  transform: [{ translateY }, { scale: sheetScale }],
+                }}
+              >
+                <GestureDetector gesture={panGesture}>
+                  <View collapsable={false} style={styles.sheetCard}>
+                    <View style={styles.handleBar}>
+                      <View style={styles.handle} />
+                    </View>
+                    {renderBody()}
+                    <View style={[staticStyles.sheetSpacer, { height: insets.bottom + 8 }]} />
                   </View>
-                  {renderBody()}
-                  <View style={[staticStyles.sheetSpacer, { height: insets.bottom + 8 }]} />
-                </View>
-              </GestureDetector>
+                </GestureDetector>
+              </Animated.View>
             </Animated.View>
           </View>
         </Modal>

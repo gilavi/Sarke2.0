@@ -1,28 +1,44 @@
 import React from 'react';
 import {
   Keyboard,
-  KeyboardAvoidingView,
-  Platform,
   ScrollView,
   StyleProp,
   StyleSheet,
   TouchableWithoutFeedback,
-  View,
   ViewStyle,
 } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface Props {
   children: React.ReactNode;
-  footer?: React.ReactNode;
-  headerOffset?: number;
+  /**
+   * Height in points of any custom header rendered ABOVE this wrapper —
+   * not the safe-area top inset, which is added automatically. Defaults to 0
+   * (no header above). Pass the measured height of your custom header (or
+   * the result of `useHeaderHeight()` if you use a stock stack header).
+   */
+  headerHeight?: number;
   contentStyle?: StyleProp<ViewStyle>;
 }
 
+/**
+ * Screen-level keyboard wrapper for forms.
+ *
+ * Pattern:
+ * - Reanimated `KeyboardAvoidingView` (from react-native-keyboard-controller)
+ *   tracks the iOS keyboard frame natively for perfect-sync animation.
+ * - Inner `ScrollView` with `flexGrow: 1` so a primary action button placed
+ *   as the LAST child of `children` naturally pushes to the bottom on short
+ *   forms and stays reachable on long ones.
+ * - Tapping outside any input dismisses the keyboard.
+ *
+ * Place the primary action button as the last element inside `children` —
+ * there is no separate footer slot.
+ */
 export function KeyboardSafeArea({
   children,
-  footer,
-  headerOffset = 44,
+  headerHeight = 0,
   contentStyle,
 }: Props) {
   const insets = useSafeAreaInsets();
@@ -31,8 +47,8 @@ export function KeyboardSafeArea({
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
       <KeyboardAvoidingView
         style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={insets.top + headerOffset}
+        behavior="padding"
+        keyboardVerticalOffset={insets.top + headerHeight}
       >
         <ScrollView
           style={styles.scroll}
@@ -44,12 +60,6 @@ export function KeyboardSafeArea({
         >
           {children}
         </ScrollView>
-
-        {footer ? (
-          <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-            {footer}
-          </View>
-        ) : null}
       </KeyboardAvoidingView>
     </TouchableWithoutFeedback>
   );
@@ -66,11 +76,6 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 8,
-  },
-  footer: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    backgroundColor: 'transparent',
+    paddingBottom: 16,
   },
 });

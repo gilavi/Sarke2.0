@@ -1,14 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Animated,
-  Dimensions,
-  Keyboard,
   Modal,
   Pressable,
   ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
+import { useSheetKeyboardMargin } from '../../../lib/useSheetKeyboardMargin';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { SheetLayout } from '../../../components/SheetLayout';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -193,29 +192,13 @@ function CreateProjectSheet({
 }) {
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
-  const insets = useSafeAreaInsets();
-  const screenH = Dimensions.get('window').height;
 
   const toast = useToast();
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
-  const [kbHeight, setKbHeight] = useState(0);
-  const keyboardHeight = useRef(new Animated.Value(0)).current;
-  const maxSheetH = screenH - kbHeight - insets.top - 24;
-
-  useEffect(() => {
-    const showSub = Keyboard.addListener('keyboardWillShow', (e) => {
-      setKbHeight(e.endCoordinates.height);
-      Animated.spring(keyboardHeight, { toValue: e.endCoordinates.height, useNativeDriver: false, tension: 60, friction: 12 }).start();
-    });
-    const hideSub = Keyboard.addListener('keyboardWillHide', () => {
-      setKbHeight(0);
-      Animated.spring(keyboardHeight, { toValue: 0, useNativeDriver: false, tension: 60, friction: 12 }).start();
-    });
-    return () => { showSub.remove(); hideSub.remove(); };
-  }, [keyboardHeight]);
   const [address, setAddress] = useState('');
   const [busy, setBusy] = useState(false);
+  const keyboardMargin = useSheetKeyboardMargin();
 
   const save = async () => {
     if (!name.trim()) return;
@@ -240,19 +223,18 @@ function CreateProjectSheet({
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <Animated.View style={{ flex: 1, justifyContent: 'flex-end', paddingBottom: keyboardHeight }}>
+      <View style={{ flex: 1, justifyContent: 'flex-end' }}>
         {/* Backdrop */}
         <Pressable
           style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.4)' }]}
           onPress={onClose}
           {...a11y('დახურვა', 'შეეხეთ ფონის დასახურად', 'button')}
         />
-        {/* Card */}
+        {/* Card — marginBottom rides the iOS keyboard 1:1 */}
+        <Animated.View style={{ width: '100%', marginBottom: keyboardMargin }}>
         <Pressable style={{ width: '100%' }} onPress={() => {}}>
           <SheetLayout
             maxHeightRatio={0.92}
-            style={{ maxHeight: maxSheetH }}
-            footerStyle={{ paddingBottom: kbHeight > 0 ? 8 : 16 }}
             header={{ title: 'ახალი პროექტი', onClose }}
             footer={
               <Button
@@ -281,7 +263,8 @@ function CreateProjectSheet({
             />
           </SheetLayout>
         </Pressable>
-      </Animated.View>
+        </Animated.View>
+      </View>
     </Modal>
   );
 }
