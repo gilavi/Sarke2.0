@@ -19,8 +19,18 @@ If a change has zero user-facing or developer-facing impact (pure internal renam
 
 1. Make the code change.
 2. Update docs per the rules above.
-3. Run `npm run typecheck` (it may fail per known issues — note new failures, don't add to them).
+3. Run `npm run lint` (typecheck + `scripts/check-primitives.mjs`). It may fail per known issues — note new failures, don't add to them.
 4. Stage code + docs together in the same commit.
+
+## Before adding a util or wrapper
+
+Before adding a new file in `lib/`, a new wrapper in `components/`, or a new variant of an existing helper, **read [docs/primitives.md](docs/primitives.md) first**. The single most common bug class in this repo is the same primitive getting reinvented in two or three places with different defaults — keyboard wrappers, image helpers, `pdf_language` writers all bit us this way (see `BUG_REPORT.md`).
+
+Rules:
+- If a canonical owner exists and is wrong for your use case, **fix the owner** instead of adding a sibling. Add an `opts` parameter or a new purpose-named export inside the same file.
+- Name new primitives by **purpose** (`pdfPhotoEmbed`, `imageForDisplay`), not implementation (`getStorageImageDataUrlStrict`). The right default should fall out of picking the right name.
+- After adding a primitive, add a row to `docs/primitives.md`. If misuse is grep-detectable (banned import, wrong-default helper name), add a rule to `scripts/check-primitives.mjs`.
+- Don't bypass `STORAGE_BUCKETS`, the canonical keyboard wrappers, or the canonical image helpers — even for one-off cases. `npm run lint` will block known offenders.
 
 ## Project Quick Reference
 

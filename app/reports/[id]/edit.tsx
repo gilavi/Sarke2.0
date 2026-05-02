@@ -21,7 +21,7 @@ import { a11y } from '../../../lib/accessibility';
 import { friendlyError } from '../../../lib/errorMap';
 import { reportsApi } from '../../../lib/services';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
-import { getStorageImageDisplayUrl } from '../../../lib/imageUrl';
+import { imageForDisplay } from '../../../lib/imageUrl';
 import { useReport, useProject, qk } from '../../../lib/apiHooks';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Report, ReportSlide } from '../../../types/models';
@@ -299,7 +299,7 @@ function SlideCard({
     let cancelled = false;
     (async () => {
       try {
-        const u = await getStorageImageDisplayUrl(STORAGE_BUCKETS.reportPhotos, imagePath);
+        const u = await imageForDisplay(STORAGE_BUCKETS.reportPhotos, imagePath);
         if (!cancelled) setThumbUri(u);
       } catch {}
     })();

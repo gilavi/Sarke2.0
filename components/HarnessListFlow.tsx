@@ -13,7 +13,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme, type Theme } from '../lib/theme';
 import { haptic } from '../lib/haptics';
-import { getStorageImageDisplayUrl } from '../lib/imageUrl';
+import { imageForDisplay } from '../lib/imageUrl';
 import { STORAGE_BUCKETS } from '../lib/supabase';
 import type { Answer, AnswerPhoto, GridValues, Question, Template } from '../types/models';
 import { TourGuide, type TourStep } from './TourGuide';
@@ -496,7 +496,7 @@ const CellPhotoThumb = memo(function CellPhotoThumb({
   useEffect(() => {
     if (isLocal) return;
     let cancelled = false;
-    getStorageImageDisplayUrl(STORAGE_BUCKETS.answerPhotos, photo.storage_path)
+    imageForDisplay(STORAGE_BUCKETS.answerPhotos, photo.storage_path)
       .then(url => { if (!cancelled) setUri(url); })
       .catch(() => {});
     return () => { cancelled = true; };

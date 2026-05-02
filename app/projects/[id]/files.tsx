@@ -16,7 +16,7 @@ import { useToast } from '../../../lib/toast';
 import { formatShortDateTime } from '../../../lib/formatDate';
 import { projectFilesApi } from '../../../lib/services';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
-import { getStorageImageDisplayUrl } from '../../../lib/imageUrl';
+import { imageForDisplay } from '../../../lib/imageUrl';
 import { useProject, useProjectFiles } from '../../../lib/apiHooks';
 import type { ProjectFile } from '../../../types/models';
 
@@ -135,7 +135,7 @@ function FileThumbnail({ file }: { file: ProjectFile }) {
     let cancelled = false;
     (async () => {
       try {
-        const u = await getStorageImageDisplayUrl(STORAGE_BUCKETS.projectFiles, file.storage_path);
+        const u = await imageForDisplay(STORAGE_BUCKETS.projectFiles, file.storage_path);
         if (!cancelled) setUri(u);
       } catch {}
     })();

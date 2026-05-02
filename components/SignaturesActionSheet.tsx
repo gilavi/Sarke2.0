@@ -31,7 +31,7 @@ import { useToast } from '../lib/toast';
 import { FloatingLabelInput } from './inputs/FloatingLabelInput';
 import { friendlyError } from '../lib/errorMap';
 import { haptic } from '../lib/haptics';
-import { getStorageImageDataUrlStrict, getStorageImageDisplayUrl } from '../lib/imageUrl';
+import { signatureAsDataUrl, imageForDisplay } from '../lib/imageUrl';
 import { STORAGE_BUCKETS } from '../lib/supabase';
 
 const ALL_ROLES: SignerRole[] = ['expert', 'xaracho_supervisor', 'xaracho_assembler', 'other'];
@@ -233,7 +233,7 @@ function SignatureEditView({
     }
     (async () => {
       try {
-        const url = await getStorageImageDataUrlStrict(STORAGE_BUCKETS.signatures, path);
+        const url = await signatureAsDataUrl(STORAGE_BUCKETS.signatures, path);
         if (!cancelled) setResolvedSigUrl(url);
       } catch {
         // best-effort
@@ -438,7 +438,7 @@ function SigThumbnail({ path, styles }: { path: string; styles: ReturnType<typeo
       setUri(path);
       return;
     }
-    getStorageImageDisplayUrl(STORAGE_BUCKETS.signatures, path)
+    imageForDisplay(STORAGE_BUCKETS.signatures, path)
       .then(url => { if (!cancelled.current) setUri(url); })
       .catch(() => {});
     return () => { cancelled.current = true; };

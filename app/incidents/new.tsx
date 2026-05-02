@@ -32,9 +32,9 @@ import { queuePdfUpload, stagePdfForQueue } from '../../lib/pdfUploadQueue';
 import * as FileSystem from 'expo-file-system/legacy';
 import { logError } from '../../lib/logError';
 import {
-  getStorageImageDataUrlStrict,
-  getStorageImageResizedDataUrl,
-  getStorageImageDisplayUrl,
+  signatureAsDataUrl,
+  pdfPhotoEmbed,
+  imageForDisplay,
 } from '../../lib/imageUrl';
 import { friendlyError } from '../../lib/errorMap';
 import { formatShortDateTime } from '../../lib/formatDate';
@@ -334,7 +334,7 @@ export default function NewIncident() {
       // the print WebView can't fetch.
       let sigDataUrl: string | undefined;
       if (inspector.sigPath) {
-        sigDataUrl = await getStorageImageDataUrlStrict(
+        sigDataUrl = await signatureAsDataUrl(
           STORAGE_BUCKETS.signatures,
           inspector.sigPath,
         ).catch(() => undefined);
@@ -344,7 +344,7 @@ export default function NewIncident() {
       // embedding an unreachable signed URL fallback).
       const photoDataUrls = await Promise.all(
         photoPaths.map(p =>
-          getStorageImageResizedDataUrl(STORAGE_BUCKETS.incidentPhotos, p).catch(
+          pdfPhotoEmbed(STORAGE_BUCKETS.incidentPhotos, p).catch(
             () => '',
           ),
         ),
@@ -752,7 +752,7 @@ function Step4({
 
   useEffect(() => {
     if (!sigPath) return;
-    getStorageImageDisplayUrl(STORAGE_BUCKETS.signatures, sigPath)
+    imageForDisplay(STORAGE_BUCKETS.signatures, sigPath)
       .then(setSigDisplayUrl)
       .catch(() => null);
   }, [sigPath]);

@@ -77,13 +77,14 @@ Scan the QR in the terminal with **Expo Go** on your phone. If it crashes, resta
 
 The Supabase URL and anon key are baked into `app.json` → `expo.extra`. Security through obscurity, baby.
 
-### Typecheck
+### Typecheck + lint
 
 ```sh
-npm run typecheck
+npm run lint        # tsc --noEmit && scripts/check-primitives.mjs
+npm run typecheck   # just tsc
 ```
 
-Spoiler: it will fail. We ignore it. It's a lifestyle choice.
+`check-primitives.mjs` blocks a small set of grep-detectable misuses (bare `KeyboardAvoidingView` from `react-native`, legacy image helper names, direct `AsyncStorage` access to `pdf_language`). When adding a new cross-cutting helper, see [docs/primitives.md](docs/primitives.md).
 
 ---
 

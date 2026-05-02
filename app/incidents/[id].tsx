@@ -25,9 +25,9 @@ import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { buildIncidentPdfHtml } from '../../lib/incidentPdf';
 import { generatePdfName } from '../../lib/pdfName';
 import {
-  getStorageImageDataUrlStrict,
-  getStorageImageResizedDataUrl,
-  getStorageImageDisplayUrl,
+  signatureAsDataUrl,
+  pdfPhotoEmbed,
+  imageForDisplay,
 } from '../../lib/imageUrl';
 import { shareStoredPdf } from '../../lib/sharePdf';
 import { queuePdfUpload, stagePdfForQueue } from '../../lib/pdfUploadQueue';
@@ -104,7 +104,7 @@ export default function IncidentDetail() {
       if (incident.photos?.length) {
         const urls = await Promise.all(
           incident.photos.map(path =>
-            getStorageImageDisplayUrl(STORAGE_BUCKETS.incidentPhotos, path).catch(() => ''),
+            imageForDisplay(STORAGE_BUCKETS.incidentPhotos, path).catch(() => ''),
           ),
         );
         if (!cancelled) setPhotoDisplayUrls(urls.filter(Boolean));
@@ -136,7 +136,7 @@ export default function IncidentDetail() {
     try {
       let sigDataUrl: string | undefined;
       if (inspector.sigPath) {
-        sigDataUrl = await getStorageImageDataUrlStrict(
+        sigDataUrl = await signatureAsDataUrl(
           STORAGE_BUCKETS.signatures,
           inspector.sigPath,
         ).catch(() => undefined);
@@ -144,7 +144,7 @@ export default function IncidentDetail() {
       setPdfPhase('ფოტოები ემატება...');
       const photoDataUrls = await Promise.all(
         (incident.photos ?? []).map(p =>
-          getStorageImageResizedDataUrl(STORAGE_BUCKETS.incidentPhotos, p).catch(() => ''),
+          pdfPhotoEmbed(STORAGE_BUCKETS.incidentPhotos, p).catch(() => ''),
         ),
       ).then(urls => urls.filter(Boolean));
 

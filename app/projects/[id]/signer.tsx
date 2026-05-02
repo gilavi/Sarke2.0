@@ -13,7 +13,7 @@ import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInpu
 import { projectsApi, storageApi } from '../../../lib/services';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import { useToast } from '../../../lib/toast';
-import { getStorageImageDisplayUrl } from '../../../lib/imageUrl';
+import { imageForDisplay } from '../../../lib/imageUrl';
 import { useTheme } from '../../../lib/theme';
 import { useProjectSigners, qk } from '../../../lib/apiHooks';
 import { useQueryClient } from '@tanstack/react-query';
@@ -62,7 +62,7 @@ export default function SignerForm() {
     setPhone(s.phone ?? '');
     setPosition(s.position ?? '');
     if (s.signature_png_url) {
-      getStorageImageDisplayUrl(STORAGE_BUCKETS.signatures, s.signature_png_url)
+      imageForDisplay(STORAGE_BUCKETS.signatures, s.signature_png_url)
         .then(url => setSigPreview(url))
         .catch(() => {});
     }

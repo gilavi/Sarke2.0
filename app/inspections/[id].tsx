@@ -48,8 +48,8 @@ import { generateAndSharePdf } from '../../lib/pdfOpen';
 import { generatePdfName } from '../../lib/pdfName';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import {
-  getStorageImageDataUrlStrict,
-  getStorageImageResizedDataUrl,
+  signatureAsDataUrl,
+  pdfPhotoEmbed,
 } from '../../lib/imageUrl';
 import { useToast } from '../../lib/toast';
 import { friendlyError } from '../../lib/errorMap';
@@ -184,7 +184,7 @@ export default function InspectionResultScreen() {
               photos.map(async p => {
                 if (p.storage_path.startsWith('data:') || p.storage_path.startsWith('file:')) return p;
                 try {
-                  const dataUrl = await getStorageImageResizedDataUrl(
+                  const dataUrl = await pdfPhotoEmbed(
                     STORAGE_BUCKETS.answerPhotos,
                     p.storage_path,
                   );
@@ -202,7 +202,7 @@ export default function InspectionResultScreen() {
           currentSignatures.map(async sig => {
             if (!sig.signature_png_url || sig.signature_png_url.startsWith('data:')) return sig;
             try {
-              const dataUrl = await getStorageImageDataUrlStrict(
+              const dataUrl = await signatureAsDataUrl(
                 STORAGE_BUCKETS.signatures,
                 sig.signature_png_url,
               );
@@ -221,7 +221,7 @@ export default function InspectionResultScreen() {
               return { ...a, photo_data_url: a.photo_path };
             }
             try {
-              const dataUrl = await getStorageImageResizedDataUrl(
+              const dataUrl = await pdfPhotoEmbed(
                 STORAGE_BUCKETS.certificates,
                 a.photo_path,
               );
@@ -316,7 +316,7 @@ export default function InspectionResultScreen() {
             photos.map(async p => {
               if (p.storage_path.startsWith('data:') || p.storage_path.startsWith('file:')) return p;
               try {
-                const dataUrl = await getStorageImageResizedDataUrl(
+                const dataUrl = await pdfPhotoEmbed(
                   STORAGE_BUCKETS.answerPhotos,
                   p.storage_path,
                 );
@@ -332,7 +332,7 @@ export default function InspectionResultScreen() {
         signatures.map(async sig => {
           if (!sig.signature_png_url || sig.signature_png_url.startsWith('data:')) return sig;
           try {
-            const dataUrl = await getStorageImageDataUrlStrict(
+            const dataUrl = await signatureAsDataUrl(
               STORAGE_BUCKETS.signatures,
               sig.signature_png_url,
             );
@@ -349,7 +349,7 @@ export default function InspectionResultScreen() {
             return { ...a, photo_data_url: a.photo_path };
           }
           try {
-            const dataUrl = await getStorageImageResizedDataUrl(
+            const dataUrl = await pdfPhotoEmbed(
               STORAGE_BUCKETS.certificates,
               a.photo_path,
             );

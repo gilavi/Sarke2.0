@@ -343,3 +343,50 @@ In `GridRowStep`'s scaffold (non-harness) ScrollView, the optional `კომე
 ### Verification status
 
 `npm run typecheck` passes cleanly. **Device verification still required** — symptoms (overshoot, sync, button placement) are perceptual; the user needs to validate on a physical iPhone per their own testing rules. I cannot drive an iOS device or simulator from this session.
+
+---
+
+## Session 2026-05-02 (fourth pass) — image-helper consolidation + primitive guardrails
+
+Root cause for a recurring class of bugs: the same primitive gets reinvented in two or three places with slightly different defaults, and call sites pick the wrong one. Image helpers were the active wound — four overlapping exports (`getStorageImageDataUrl`, `getStorageImageDataUrlStrict`, `getStorageImageResizedDataUrl`, `getStorageImageDisplayUrl`) with the lossy default already responsible for the P1 "PDF silently used unreachable signed URLs" bug above. Same shape as the keyboard mess (resolved in pass 3) and the `pdf_language` duplicate writers (resolved in pass 2).
+
+### Image helpers collapsed to three purpose-named exports · DONE 2026-05-02
+
+[lib/imageUrl.ts](lib/imageUrl.ts) now exports exactly:
+
+| Use case | Function | Returns | On failure |
+|---|---|---|---|
+| RN `<Image>` display | `imageForDisplay(b, p)` | signed URL → data URL → public URL | never throws |
+| Photo embedded in PDF | `pdfPhotoEmbed(b, p, opts?)` | resized JPEG `data:` URL, disk-cached | throws |
+| Signature in PDF or canvas | `signatureAsDataUrl(b, p)` | byte-exact `data:` URL | throws |
+
+The wrong-default `getStorageImageDataUrl` is gone. The taxonomy is by **purpose**, so picking the right name picks the right behavior — no more "I forgot to call the strict variant" bugs.
+
+All 16 call sites migrated:
+- [app/projects/[id]/signer.tsx](app/projects/[id]/signer.tsx), [app/projects/[id].tsx](app/projects/[id].tsx), [app/projects/[id]/files.tsx](app/projects/[id]/files.tsx) — display.
+- [app/inspections/[id].tsx](app/inspections/[id].tsx), [app/incidents/[id].tsx](app/incidents/[id].tsx), [app/incidents/new.tsx](app/incidents/new.tsx), [app/reports/[id].tsx](app/reports/[id].tsx), [app/reports/[id]/success.tsx](app/reports/[id]/success.tsx) — PDF embeds (`pdfPhotoEmbed` for photos, `signatureAsDataUrl` for signatures).
+- [app/inspections/[id]/wizard.tsx](app/inspections/[id]/wizard.tsx), [app/reports/[id]/edit.tsx](app/reports/[id]/edit.tsx), [app/reports/[id]/slide/[slideId].tsx](app/reports/[id]/slide/[slideId].tsx), [components/RoleSlotList.tsx](components/RoleSlotList.tsx), [components/HarnessListFlow.tsx](components/HarnessListFlow.tsx), [components/CertificatesActionSheet.tsx](components/CertificatesActionSheet.tsx), [components/SignaturesActionSheet.tsx](components/SignaturesActionSheet.tsx), [components/wizard/kamari/KamariFlow.tsx](components/wizard/kamari/KamariFlow.tsx) — display + signature canvas pre-fill.
+
+Notable correctness fix: `components/RoleSlotList.tsx` was calling `getStorageImageDataUrl` (lossy data-URL fetch) for what is actually a `<Image>` display path. It now correctly uses `imageForDisplay` — same class of "wrong default chosen by accident" the consolidation exists to prevent.
+
+### Primitive-violation lint script · NEW 2026-05-02
+
+`scripts/check-primitives.mjs` (new) is a tiny grep-based guard that fails `npm run lint` on:
+- `KeyboardAvoidingView` imported from `react-native` instead of `react-native-keyboard-controller`.
+- Any reference to a legacy image helper name.
+- Direct `AsyncStorage.{set,get,remove}Item('pdf_language', …)` (forces use of `lib/pdfLanguagePref.ts`).
+
+Wired into `package.json`: `lint` now runs `tsc --noEmit && node scripts/check-primitives.mjs`. `check:primitives` is also exposed standalone.
+
+### Canonical-owner index · NEW 2026-05-02
+
+`docs/primitives.md` (new) lists every cross-cutting primitive with its canonical owner. `CLAUDE.md` gained a "Before adding a util" section pointing future contributors (and Claude itself) at the index, with rules: fix the owner instead of adding a sibling; name by purpose, not implementation; add a check-primitives rule when misuse is grep-detectable.
+
+### Files changed (2026-05-02, fourth pass)
+
+- [lib/imageUrl.ts](lib/imageUrl.ts) — collapsed 4 exports → 3, purpose-named.
+- 16 call sites — see list above.
+- [scripts/check-primitives.mjs](scripts/check-primitives.mjs) — new.
+- [package.json](package.json) — lint script chained to check-primitives.
+- [docs/primitives.md](docs/primitives.md) — new.
+- [CLAUDE.md](CLAUDE.md) — added "Before adding a util" section; updated workflow step 3 to `npm run lint`.

@@ -30,7 +30,7 @@ import { useAccessibilitySettings } from '../../../lib/accessibility';
 import { FloatingLabelInput } from '../../inputs/FloatingLabelInput';
 
 import { haptic } from '../../../lib/haptics';
-import { getStorageImageDisplayUrl } from '../../../lib/imageUrl';
+import { imageForDisplay } from '../../../lib/imageUrl';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import type { Answer, AnswerPhoto, GridValues, Question } from '../../../types/models';
 
@@ -517,7 +517,7 @@ const KamariPhotoThumb = memo(function KamariPhotoThumb({
   const [uri, setUri] = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
-    getStorageImageDisplayUrl(STORAGE_BUCKETS.answerPhotos, photo.storage_path)
+    imageForDisplay(STORAGE_BUCKETS.answerPhotos, photo.storage_path)
       .then(u => {
         if (!cancelled) setUri(u);
       })

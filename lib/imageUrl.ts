@@ -3,6 +3,87 @@ import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { storageApi } from './services';
 import { blobToDataUrl } from './blob';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Public API — three functions, named by purpose so the right default falls
+// out of picking the right name:
+//
+//   imageForDisplay(bucket, path)
+//     → URL for a React Native <Image>. Prefers a signed URL. Falls back to
+//       a data: URL via auth download, then to the public URL. Cannot fail.
+//
+//   pdfPhotoEmbed(bucket, path, opts?)
+//     → data: URL for embedding photos in PDF HTML. Resized to 1200px /
+//       JPEG 0.7 with on-disk caching (required to keep the print WebView
+//       from freezing on photo-heavy reports). Throws if the strict
+//       data-URL pipeline fails.
+//
+//   signatureAsDataUrl(bucket, path)
+//     → data: URL for a signature, byte-exact (small PNG, anti-aliasing
+//       matters). Used by PDF embeds and the canvas pre-fill in the
+//       signature sheet. Throws if no data-URL strategy yields a non-empty
+//       payload.
+//
+// Do NOT add new public helpers here. If a fourth need arises, push back —
+// almost certainly it's one of these three with a different opt. Adding a
+// fourth name is exactly how this file ended up with four overlapping
+// helpers and silently-wrong defaults to begin with.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * URL for direct display in a React Native `<Image>`. Prefers a signed URL
+ * (the network layer fetches it). Falls back to an authenticated download as
+ * a data: URL, then to the public URL. Always returns a string.
+ */
+export async function imageForDisplay(
+  bucket: string,
+  path: string,
+): Promise<string> {
+  try {
+    return await storageApi.signedUrl(bucket, path, 3600);
+  } catch {
+    // fall through
+  }
+  try {
+    const blob = await storageApi.download(bucket, path);
+    return await blobToDataUrl(blob);
+  } catch {
+    // fall through
+  }
+  return storageApi.publicUrl(bucket, path);
+}
+
+/**
+ * `data:` URL for embedding a photo in PDF HTML. Resized to 1200px / JPEG 0.7
+ * with on-disk cache. Throws if the source is missing or the manipulator fails.
+ */
+export async function pdfPhotoEmbed(
+  bucket: string,
+  path: string,
+  opts?: { maxWidth?: number; quality?: number },
+): Promise<string> {
+  return fetchResizedDataUrl(bucket, path, {
+    maxWidth: opts?.maxWidth ?? PDF_PHOTO_MAX_WIDTH,
+    quality: opts?.quality ?? PDF_PHOTO_QUALITY,
+  });
+}
+
+/**
+ * `data:` URL for a signature image, byte-exact (no resize, no re-encode).
+ * Used by PDF embeds (where the WebView can't fetch Supabase URLs at render
+ * time) and by the signature-sheet canvas pre-fill.
+ */
+export async function signatureAsDataUrl(
+  bucket: string,
+  path: string,
+): Promise<string> {
+  return fetchAsDataUrlStrict(bucket, path);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Internals — not exported. If you find yourself reaching for one of these
+// from outside this file, add an option to the public API instead.
+// ─────────────────────────────────────────────────────────────────────────────
+
 // Marker error thrown by step 1 when the signed URL returns 200 + 0 bytes —
 // the storage object exists but has no content. Subsequent URL-based fallback
 // steps (2-4) hit the same backend and would re-confirm the same emptiness;
@@ -41,13 +122,9 @@ function xhrSignedUrlToDataUrl(
         return;
       }
       const blob: Blob | null = xhr.response;
-      if (!blob || (blob as any).size === 0) {
-        // Mark as authoritatively empty so callers can skip the redundant
-        // URL-based fallbacks. A 200 + 0 bytes is the storage layer telling
-        // us the object has no content — retrying via fetch/FileSystem won't
-        // change that.
+      if (!blob || (blob as { size?: number }).size === 0) {
         const e = new Error('xhr empty blob');
-        (e as any).code = EMPTY_SOURCE;
+        (e as { code?: string }).code = EMPTY_SOURCE;
         reject(e);
         return;
       }
@@ -63,9 +140,6 @@ function xhrSignedUrlToDataUrl(
           reject(new Error('xhr FileReader produced empty data URL'));
           return;
         }
-        // FileReader on RN sometimes emits `data:application/octet-stream;…`
-        // when the blob has no type — patch in the right MIME so the WebView
-        // decodes the image instead of treating it as a binary download.
         if (r.startsWith('data:application/octet-stream') && fallbackMime) {
           resolve(`data:${fallbackMime};base64,${r.slice(r.indexOf(',') + 1)}`);
           return;
@@ -83,28 +157,13 @@ function xhrSignedUrlToDataUrl(
 }
 
 /**
- * Fetch a storage object and return it as a base64 `data:` URL.
- *
- * Strategy (in order):
- *  1. Signed URL → `XMLHttpRequest` (responseType=blob) → `FileReader.readAsDataURL`.
- *     Canonical RN binary-download pattern; works around the Hermes/SDK 54
- *     bug where `fetch().arrayBuffer()` and `FileSystem.downloadAsync` both
- *     return empty bytes for binary responses.
- *  2. Signed URL → `FileSystem.downloadAsync` → `readAsStringAsync(Base64)`.
- *  3. Signed URL → `fetch()` → `arrayBuffer()` → manual base64.
- *  4. Signed URL → `fetch()` → `blob()` → `blobToDataUrl`.
- *  5. Authenticated Supabase blob download → `blobToDataUrl`.
- *  6. Raw signed URL / public URL — last resort; the PDF WebView usually
- *     can't load these, but we return *something* rather than blowing up.
+ * Fetch a storage object as a `data:` URL using the layered fallback ladder
+ * (XHR → FileSystem → fetch → auth download). Throws if no strategy yields a
+ * non-empty data URL.
  */
-export async function getStorageImageDataUrl(
-  bucket: string,
-  path: string,
-): Promise<string> {
+async function fetchAsDataUrl(bucket: string, path: string): Promise<string> {
   let sourceIsEmpty = false;
 
-  // 1. XHR + FileReader — the only path that's reliable for binary responses
-  //    on Hermes/SDK 54.
   try {
     const signed = await storageApi.signedUrl(bucket, path, 3600);
     const ext = normalizedExt(path);
@@ -117,10 +176,6 @@ export async function getStorageImageDataUrl(
     }
   }
 
-  // If step 1 confirmed the storage object is empty (200 + 0 bytes), skip
-  // steps 2-4 — they hit the exact same signed URL with different network
-  // libraries and will report the same emptiness. Jump to the auth-download
-  // path which uses a different storage API endpoint as a final sanity check.
   if (sourceIsEmpty) {
     try {
       const blob = await storageApi.download(bucket, path);
@@ -130,15 +185,9 @@ export async function getStorageImageDataUrl(
     } catch (err) {
       logStepFailure(5, bucket, path, err);
     }
-    // Last resort — return a remote URL even though the WebView won't render it.
-    try {
-      return await storageApi.signedUrl(bucket, path, 3600);
-    } catch {
-      return storageApi.publicUrl(bucket, path);
-    }
+    throw new Error(`storage object ${bucket}/${path} is empty`);
   }
 
-  // 2. Signed URL + native file download → base64
   try {
     const signed = await storageApi.signedUrl(bucket, path, 3600);
     const ext = normalizedExt(path);
@@ -161,7 +210,6 @@ export async function getStorageImageDataUrl(
     logStepFailure(2, bucket, path, err);
   }
 
-  // 3. Signed URL + fetch → arrayBuffer → manual base64 (no Blob, no FileSystem)
   try {
     const signed = await storageApi.signedUrl(bucket, path, 3600);
     const response = await fetch(signed);
@@ -179,7 +227,6 @@ export async function getStorageImageDataUrl(
     logStepFailure(3, bucket, path, err);
   }
 
-  // 4. Signed URL + fetch → blobToDataUrl
   try {
     const signed = await storageApi.signedUrl(bucket, path, 3600);
     const response = await fetch(signed);
@@ -192,7 +239,6 @@ export async function getStorageImageDataUrl(
     logStepFailure(4, bucket, path, err);
   }
 
-  // 5. Authenticated download + blobToDataUrl
   try {
     const blob = await storageApi.download(bucket, path);
     const result = await blobToDataUrl(blob);
@@ -202,13 +248,25 @@ export async function getStorageImageDataUrl(
     logStepFailure(5, bucket, path, err);
   }
 
-  // 6. Last-resort remote URL (likely won't render in the PDF WebView, but we
-  // always return a valid-looking string so callers don't have to branch).
-  try {
-    return await storageApi.signedUrl(bucket, path, 3600);
-  } catch {
-    return storageApi.publicUrl(bucket, path);
+  throw new Error(`failed to fetch ${bucket}/${path} as data URL`);
+}
+
+/**
+ * Strict guard around `fetchAsDataUrl`: rejects empty/short payloads
+ * (`data:image/jpeg;base64,` with nothing after the comma) so they don't
+ * silently render as broken `<img>` tags inside a PDF.
+ */
+async function fetchAsDataUrlStrict(bucket: string, path: string): Promise<string> {
+  const result = await fetchAsDataUrl(bucket, path);
+  const comma = result.indexOf(',');
+  if (
+    !result.startsWith('data:') ||
+    comma < 0 ||
+    result.length - comma - 1 < 32
+  ) {
+    throw new Error(`failed to embed ${bucket}/${path} as data URL`);
   }
+  return result;
 }
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
@@ -226,32 +284,6 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   if (typeof g.btoa === 'function') return g.btoa(binary);
   if (g.Buffer) return g.Buffer.from(binary, 'binary').toString('base64');
   throw new Error('no base64 encoder available');
-}
-
-/**
- * Strict variant of `getStorageImageDataUrl` for PDF embedding: returns a
- * `data:` URL or throws. Use when a remote-URL fallback would silently
- * break the PDF (the print WebView can't fetch Supabase signed URLs
- * during rendering).
- */
-export async function getStorageImageDataUrlStrict(
-  bucket: string,
-  path: string,
-): Promise<string> {
-  const result = await getStorageImageDataUrl(bucket, path);
-  // Reject `data:image/jpeg;base64,` (valid prefix, empty payload) — that's
-  // what the FileReader fallback returns for a 0-byte storage object, and
-  // the prefix check alone happily lets it through into the PDF as a broken
-  // `<img>`. Require at least 32 chars of base64 after the comma.
-  const comma = result.indexOf(',');
-  if (
-    !result.startsWith('data:') ||
-    comma < 0 ||
-    result.length - comma - 1 < 32
-  ) {
-    throw new Error(`failed to embed ${bucket}/${path} as data URL`);
-  }
-  return result;
 }
 
 // ── PDF photo cache ──────────────────────────────────────────────────────────
@@ -292,9 +324,6 @@ function ensurePdfCacheDir(): Promise<string | null> {
   return pdfCacheDirEnsured;
 }
 
-// Lightweight non-cryptographic hash. The keyspace is small (a few hundred
-// storage paths per user) so collision risk from a 32-bit hash is negligible
-// for a content-addressed cache; we don't need expo-crypto for this.
 function djb2Hex(s: string): string {
   let h = 5381;
   for (let i = 0; i < s.length; i++) {
@@ -303,26 +332,15 @@ function djb2Hex(s: string): string {
   return (h >>> 0).toString(16);
 }
 
-/**
- * Download → resize → base64 a Storage image, suitable for embedding in a
- * `<img src="data:...">` inside a generated PDF. Cached on disk by bucket+path
- * so subsequent calls for the same source skip both the network fetch and the
- * resize. Output is always JPEG so the cache hits regardless of the source
- * format (HEIC, PNG, etc.).
- *
- * Throws if the source is genuinely missing or the manipulator fails.
- */
-export async function getStorageImageResizedDataUrl(
+async function fetchResizedDataUrl(
   bucket: string,
   path: string,
-  opts?: { maxWidth?: number; quality?: number },
+  opts: { maxWidth: number; quality: number },
 ): Promise<string> {
-  const maxWidth = opts?.maxWidth ?? PDF_PHOTO_MAX_WIDTH;
-  const quality = opts?.quality ?? PDF_PHOTO_QUALITY;
+  const { maxWidth, quality } = opts;
   const cacheKey = djb2Hex(`${bucket}/${path}@w${maxWidth}q${quality}`);
   const cacheDir = await ensurePdfCacheDir();
 
-  // 1. Cache hit — read base64 directly off disk.
   if (cacheDir) {
     const cached = `${cacheDir}${cacheKey}.jpg`;
     try {
@@ -338,12 +356,8 @@ export async function getStorageImageResizedDataUrl(
     }
   }
 
-  // 2. Fetch the source as a data URL using the canonical RN-binary pipeline,
-  //    then hand it to the manipulator (which accepts data URLs as input).
-  const sourceDataUrl = await getStorageImageDataUrlStrict(bucket, path);
+  const sourceDataUrl = await fetchAsDataUrlStrict(bucket, path);
 
-  // 3. Resize + re-encode as JPEG. `base64: true` asks the manipulator to
-  //    return the encoded bytes directly so we don't need a second file read.
   const resized = await manipulateAsync(
     sourceDataUrl,
     [{ resize: { width: maxWidth } }],
@@ -357,42 +371,16 @@ export async function getStorageImageResizedDataUrl(
   }
   if (!outBase64) throw new Error('manipulator returned no base64');
 
-  // 4. Persist to cache. Best-effort — never block the PDF on a cache write.
   if (cacheDir) {
     const cached = `${cacheDir}${cacheKey}.jpg`;
     FileSystem.writeAsStringAsync(cached, outBase64, {
       encoding: FileSystem.EncodingType.Base64,
     }).catch(() => undefined);
   }
-  // Clean up the manipulator's temp file once we have the bytes.
   if (resized.uri) {
     FileSystem.deleteAsync(resized.uri, { idempotent: true }).catch(() => undefined);
   }
   return `data:image/jpeg;base64,${outBase64}`;
-}
-
-/**
- * URL intended for direct display in a React Native `<Image>` — prefers a
- * signed URL so the network layer handles the fetch instead of FileReader.
- * `getStorageImageDataUrl` is still used for PDF rendering, where the
- * WebView can't reach Supabase endpoints.
- */
-export async function getStorageImageDisplayUrl(
-  bucket: string,
-  path: string,
-): Promise<string> {
-  try {
-    return await storageApi.signedUrl(bucket, path, 3600);
-  } catch {
-    // fall through
-  }
-  try {
-    const blob = await storageApi.download(bucket, path);
-    return await blobToDataUrl(blob);
-  } catch {
-    // fall through
-  }
-  return storageApi.publicUrl(bucket, path);
 }
 
 function normalizedExt(path: string): string {

@@ -17,7 +17,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "lint": "tsc --noEmit",
+    "check:primitives": "node scripts/check-primitives.mjs",
+    "lint": "tsc --noEmit && node scripts/check-primitives.mjs",
     "test": "node --test '__tests__/**/*.test.mjs'"
   },
   "dependencies": {

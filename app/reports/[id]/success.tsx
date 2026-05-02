@@ -8,7 +8,7 @@ import { Button } from '../../../components/ui';
 import { useTheme } from '../../../lib/theme';
 import { useToast } from '../../../lib/toast';
 import { useSession } from '../../../lib/session';
-import { getStorageImageResizedDataUrl } from '../../../lib/imageUrl';
+import { pdfPhotoEmbed } from '../../../lib/imageUrl';
 import { generateAndSharePdf } from '../../../lib/pdfOpen';
 import { buildReportPdfHtml } from '../../../lib/reportPdf';
 import { generatePdfName } from '../../../lib/pdfName';
@@ -48,7 +48,7 @@ export default function ReportSuccessScreen() {
           const path = s.annotated_image_path ?? s.image_path;
           if (!path) return [path, ''] as const;
           try {
-            const url = await getStorageImageResizedDataUrl(STORAGE_BUCKETS.reportPhotos, path);
+            const url = await pdfPhotoEmbed(STORAGE_BUCKETS.reportPhotos, path);
             return [path, url] as const;
           } catch {
             return [path, ''] as const;

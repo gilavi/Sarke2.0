@@ -20,7 +20,7 @@ import { useToast } from '../../../../lib/toast';
 import { friendlyError } from '../../../../lib/errorMap';
 import { reportsApi, storageApi } from '../../../../lib/services';
 import { STORAGE_BUCKETS } from '../../../../lib/supabase';
-import { getStorageImageDisplayUrl } from '../../../../lib/imageUrl';
+import { imageForDisplay } from '../../../../lib/imageUrl';
 import { setPhotoAnnotateCallback, setPhotoPickerCallback } from '../../../../lib/photoPickerBus';
 import type { Report, ReportSlide } from '../../../../types/models';
 
@@ -85,7 +85,7 @@ export default function ReportSlideEditor() {
     let cancelled = false;
     (async () => {
       try {
-        const u = await getStorageImageDisplayUrl(STORAGE_BUCKETS.reportPhotos, path);
+        const u = await imageForDisplay(STORAGE_BUCKETS.reportPhotos, path);
         if (!cancelled) setThumbUri(u);
       } catch {}
     })();
@@ -141,7 +141,7 @@ export default function ReportSlideEditor() {
     if (!path) return;
     setImageUploading(true);
     try {
-      const signed = await getStorageImageDisplayUrl(STORAGE_BUCKETS.reportPhotos, path);
+      const signed = await imageForDisplay(STORAGE_BUCKETS.reportPhotos, path);
       setPhotoAnnotateCallback(async annotatedLocalUri => {
         if (annotatedLocalUri) {
           const newPath = await uploadLocalUri(annotatedLocalUri, 'annotated');

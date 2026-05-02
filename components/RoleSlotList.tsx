@@ -12,7 +12,7 @@ import { a11y } from '../lib/accessibility';
 import { useToast } from '../lib/toast';
 import { friendlyError } from '../lib/errorMap';
 import { uploadSignature } from '../lib/signatures';
-import { getStorageImageDataUrl } from '../lib/imageUrl';
+import { imageForDisplay } from '../lib/imageUrl';
 import { STORAGE_BUCKETS } from '../lib/supabase';
 import { CREW_ROLE_KEYS, CREW_ROLE_LABEL } from '../types/models';
 import type { CrewMember, CrewRoleKey } from '../types/models';
@@ -75,7 +75,7 @@ export function RoleSlotList({ projectId, inspector, crew, onChange, maxVisible,
     void Promise.all(
       missing.map(async path => {
         try {
-          const url = await getStorageImageDataUrl(STORAGE_BUCKETS.signatures, path);
+          const url = await imageForDisplay(STORAGE_BUCKETS.signatures, path);
           return [path, url] as const;
         } catch {
           return [path, ''] as const;

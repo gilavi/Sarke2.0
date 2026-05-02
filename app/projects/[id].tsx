@@ -47,7 +47,7 @@ import {
 } from '../../lib/apiHooks';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { useToast } from '../../lib/toast';
-import { getStorageImageDisplayUrl } from '../../lib/imageUrl';
+import { imageForDisplay } from '../../lib/imageUrl';
 import { useTheme } from '../../lib/theme';
 
 import { toErrorMessage } from '../../lib/logError';
@@ -1007,7 +1007,7 @@ const FileThumbnail = memo(function FileThumbnail({ file }: { file: ProjectFile 
     let cancelled = false;
     (async () => {
       try {
-        const u = await getStorageImageDisplayUrl(STORAGE_BUCKETS.projectFiles, file.storage_path);
+        const u = await imageForDisplay(STORAGE_BUCKETS.projectFiles, file.storage_path);
         if (!cancelled) setUri(u);
       } catch {
         // fall through to icon fallback

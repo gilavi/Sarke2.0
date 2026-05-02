@@ -29,7 +29,7 @@ import { useTheme } from '../lib/theme';
 import { useToast } from '../lib/toast';
 import { friendlyError } from '../lib/errorMap';
 import { haptic } from '../lib/haptics';
-import { getStorageImageDisplayUrl } from '../lib/imageUrl';
+import { imageForDisplay } from '../lib/imageUrl';
 import { STORAGE_BUCKETS } from '../lib/supabase';
 
 interface Props {
@@ -205,7 +205,7 @@ function CertEditView({
     if (!photoPath) return;
     (async () => {
       try {
-        const url = await getStorageImageDisplayUrl(STORAGE_BUCKETS.certificates, photoPath);
+        const url = await imageForDisplay(STORAGE_BUCKETS.certificates, photoPath);
         if (!cancelled) setResolvedPhotoUrl(url);
       } catch {
         // best-effort

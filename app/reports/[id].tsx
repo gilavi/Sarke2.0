@@ -20,7 +20,7 @@ import { useSession } from '../../lib/session';
 import { friendlyError } from '../../lib/errorMap';
 import { reportsApi } from '../../lib/services';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
-import { getStorageImageResizedDataUrl, getStorageImageDisplayUrl } from '../../lib/imageUrl';
+import { pdfPhotoEmbed, imageForDisplay } from '../../lib/imageUrl';
 import { generateAndSharePdf } from '../../lib/pdfOpen';
 import { buildReportPdfHtml } from '../../lib/reportPdf';
 import { generatePdfName } from '../../lib/pdfName';
@@ -63,7 +63,7 @@ export default function ReportDetailScreen() {
           const path = s.annotated_image_path ?? s.image_path;
           if (!path) return [path, ''] as const;
           try {
-            const url = await getStorageImageResizedDataUrl(STORAGE_BUCKETS.reportPhotos, path);
+            const url = await pdfPhotoEmbed(STORAGE_BUCKETS.reportPhotos, path);
             return [path, url] as const;
           } catch {
             return [path, ''] as const;
@@ -190,7 +190,7 @@ function SlideRow({
     let cancelled = false;
     (async () => {
       try {
-        const u = await getStorageImageDisplayUrl(STORAGE_BUCKETS.reportPhotos, path);
+        const u = await imageForDisplay(STORAGE_BUCKETS.reportPhotos, path);
         if (!cancelled) setUri(u);
       } catch {}
     })();

@@ -32,7 +32,7 @@ import {
   storageApi,
   templatesApi,
 } from '../../../lib/services';
-import { getStorageImageDisplayUrl, getStorageImageResizedDataUrl } from '../../../lib/imageUrl';
+import { imageForDisplay, pdfPhotoEmbed } from '../../../lib/imageUrl';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import { haptic } from '../../../lib/haptics';
 import { setPhotoPickerCallback, setPhotoAnnotateCallback, getLastPhotoLocation } from '../../../lib/photoPickerBus';
@@ -606,7 +606,7 @@ export default function QuestionnaireWizard() {
       setPhotos(prev => ({ ...prev, [answer.id]: [...(prev[answer.id] ?? []), photo] }));
       // Proactively cache the resized version so PDF generation is fast later
       // (especially useful when the user goes offline before generating the certificate).
-      getStorageImageResizedDataUrl(STORAGE_BUCKETS.answerPhotos, actualPath).catch(() => undefined);
+      pdfPhotoEmbed(STORAGE_BUCKETS.answerPhotos, actualPath).catch(() => undefined);
       toast.success('ფოტო აიტვირთა');
       // Show project-location prompt after a successful upload (fire-and-forget).
       if (project && location) {
@@ -2001,7 +2001,7 @@ const PhotoThumb = memo(function PhotoThumb({ photo, size = 80 }: { photo: Answe
     setLoading(true);
     setError(false);
     try {
-      const url = await getStorageImageDisplayUrl(STORAGE_BUCKETS.answerPhotos, photo.storage_path);
+      const url = await imageForDisplay(STORAGE_BUCKETS.answerPhotos, photo.storage_path);
       setPhotoUrlCache(cacheKey, url);
       setUri(url);
       fadeAnim.setValue(0);
@@ -2085,7 +2085,7 @@ function PhotoPreviewModal({
     setLoading(true);
     setError(false);
     let cancelled = false;
-    getStorageImageDisplayUrl(STORAGE_BUCKETS.answerPhotos, photo.storage_path)
+    imageForDisplay(STORAGE_BUCKETS.answerPhotos, photo.storage_path)
       .then(url => { if (!cancelled) setUri(url); })
       .catch((e) => {
         logError(e, 'wizard.photoDisplayUrl');
