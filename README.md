@@ -33,6 +33,16 @@ Two seeded templates, both in ქართული, because Google Translate do
 
 The native SwiftUI port lives on the [`ios-legacy`](https://github.com/gilavi/Sarke2.0/tree/ios-legacy) branch, where it rots in peace. RIP.
 
+### ⌨️ Keyboard handling — the three patterns
+
+There is exactly one way to handle the keyboard for each surface type. Don't invent a fourth.
+
+1. **Regular screens** — wrap content in `<KeyboardSafeArea headerHeight={N}>`. The wrapper uses the library's KAV under the hood, sets `contentContainerStyle: { flexGrow: 1 }` on the inner ScrollView, and dismisses the keyboard on tap. Put the primary action button as the **last child** (with a `<View style={{ flex: 1 }} />` spacer above it if you want it pinned to the bottom of the visible area). Pass the height of any custom header rendered above the wrapper (e.g. `<FlowHeader>` is `44`); leave it `0` if there is none. For screens using a stock stack header, `useHeaderHeight()` from `@react-navigation/elements` is the right value (see [signer.tsx](app/projects/%5Bid%5D/signer.tsx)).
+
+2. **Custom bottom sheets** (Modal-based) — apply `marginBottom` from `useSheetKeyboardMargin()` (see [lib/useSheetKeyboardMargin.ts](lib/useSheetKeyboardMargin.ts)) to the sheet card's wrapping `Animated.View`. The hook listens to `keyboardWillShow`/`keyboardWillHide` and animates with the iOS keyboard's own `e.duration` and `Easing.bezier(0.17, 0.59, 0.4, 0.77)` so the card rides the keyboard 1:1. **Do not wrap a Modal-based sheet in `KeyboardAvoidingView`** — that double-lifts on top of `SheetLayout`'s internal `KeyboardAwareScrollView` and overshoots.
+
+3. **Inside `BottomSheetProvider`** — nothing to do. The provider's sheet card already uses the same hook, so `<SheetLayout>` content rides the keyboard automatically.
+
 ### 🌐 Web
 
 There are **two** web codebases in this repo, both static sites deployed to GitHub Pages off the `gh-pages` branch:

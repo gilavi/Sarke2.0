@@ -292,3 +292,54 @@ Zero importers. The exports (`relativeTime`, `formatDate`, `formatDateTime`, etc
 - **Wizard split (`app/inspections/[id]/wizard.tsx` is 2420 lines)** — the recently-fixed wizard↔detail loop lives here; further restructuring should not happen in the same change as fixes elsewhere.
 - **Modal/sheet bodies rendered when closed** — many sheets across the app gate their `Modal` `visible` prop but render the full body unconditionally. A per-sheet audit is needed since some bodies legitimately need to stay mounted (autofocus, animation continuity).
 - **Offline queue dependency tracking** — a queued `photo_upload` may reference an `answer_upsert` that hasn't flushed; needs a `dependsOn` field plus serialization, not a one-line patch.
+
+## Session 2026-05-02 (third pass) — keyboard UX consolidation
+
+Four keyboard mechanisms were competing across the app (`KeyboardSafeArea`, `BottomSheetKeyboard`, `BottomSheet` provider, ad-hoc listeners in `app/template/[id]/start.tsx`). Symptoms reported by the user: bottom sheets overshooting the keyboard, action buttons disappearing or floating in the wrong position, animations out of sync with iOS, and `FloatingLabelInput` interacting unpredictably with the wrappers. All resolved in one pass; one library (`react-native-keyboard-controller`) and three documented patterns now cover every input-bearing surface.
+
+### P1 — Bottom sheets overshot above keyboard · FIXED 2026-05-02
+
+`app/(tabs)/projects.tsx`, `app/(tabs)/home.tsx`, `app/projects/[id].tsx`'s sheet modals each wrapped a `<SheetLayout>` (whose body is `KeyboardAwareScrollView`) in a stock RN `KeyboardAvoidingView`. Both the outer KAV and the inner KAS lifted the same content → double-lift → overshoot above the keyboard top. Fixed: removed the wrapping KAV; the sheet card now applies `marginBottom` from a new `useSheetKeyboardMargin()` hook so it stops exactly at the keyboard top. Hook uses the iOS keyboard's own `e.duration` and `Easing.bezier(0.17, 0.59, 0.4, 0.77)` so the card rides the keyboard 1:1.
+
+### P1 — `BottomSheet` provider used wrong easing curve and `translateY` · FIXED 2026-05-02
+
+`components/BottomSheet.tsx` animated `translateY` with `Easing.out(Easing.cubic)`. The iOS keyboard does not use that curve, so the sheet drifted out of sync on every show/hide. Fixed: keyboard offset moved off `translateY` (which still owns slide-in + drag) onto a non-native `marginBottom` driven by `useSheetKeyboardMargin()`. Slide-in transform stays on the native driver via a nested `Animated.View`.
+
+### P1 — `app/template/[id]/start.tsx` ran a hand-rolled keyboard listener with `Animated.spring` · FIXED 2026-05-02
+
+The `CreateProjectSheet` variant in this file had its own `keyboardWillShow`/`Hide` listeners stamping `paddingBottom` with `Animated.spring`, layered on top of `SheetLayout`'s already-keyboard-aware body. Two animations fighting each other on every keystroke. Fixed: deleted the local listener, dropped the dynamic `maxSheetH`, replaced with the standard `useSheetKeyboardMargin()` pattern.
+
+### P2 — `KeyboardSafeArea` rendered the action button OUTSIDE the ScrollView · FIXED 2026-05-02
+
+The wrapper exposed a `footer` prop that rendered the button as a sibling of the inner `ScrollView`. On tall forms the button hovered above content rather than scrolling with it; on short forms it drifted because two layout systems (KAV padding + footer absolute-ish positioning) disagreed about where the bottom was. Fixed: wrapper rewritten to expose only `children`; callers put the button as the last child with `<View style={{ flex: 1 }} />` above it. `contentContainerStyle: { flexGrow: 1 }` pushes the button to the bottom on short content and lets it scroll into view on tall content. 9 callers updated to match.
+
+### P2 — `wizard.tsx` `keyboardVerticalOffset={12}` · FIXED 2026-05-02
+
+The wizard's KAV used a hard-coded 12-point offset that ignored the rendered `WizardHeader` height. Anything taller than 12pt above the KAV (always) caused the keyboard to under-correct. Fixed: measured the header via `onLayout` into a `headerH` state, used `insets.top + headerH` as the offset.
+
+### P2 — `wizard.tsx` `კითხვარი` comment input could sit under the keyboard · FIXED 2026-05-02
+
+In `GridRowStep`'s scaffold (non-harness) ScrollView, the optional `კომენტარი` `FloatingLabelInput` autoFocused but did not scroll into view, so on a tall row with photos the input was hidden by the keyboard. Fixed: added a `scrollRef` on the ScrollView and call `scrollToEnd({ animated: true })` inside `requestAnimationFrame` on the input's `onFocus`.
+
+### P3 — `BottomSheetKeyboard` and legacy `react-native-keyboard-aware-scroll-view` package were dead · DELETED 2026-05-02
+
+`components/layout/BottomSheetKeyboard.tsx` was used by exactly one component (`AddRemoteSignerModal.tsx`), itself dead code with zero callers. Migrated `AddRemoteSignerModal` to `<SheetLayout>` + `BottomSheetScrollView` for consistency with `RoleSlotSheet`, then deleted `BottomSheetKeyboard.tsx`. Also removed `react-native-keyboard-aware-scroll-view@0.9.5` from `package.json` — only the web shim referenced it, and the shim points to a plain `ScrollView` so no import paths break.
+
+### Files changed (2026-05-02, third pass)
+
+- `lib/useSheetKeyboardMargin.ts` (new) — animated `marginBottom` hook, iOS bezier curve, `e.duration`.
+- [components/layout/KeyboardSafeArea.tsx](components/layout/KeyboardSafeArea.tsx) — rewritten; library KAV; button-inside-ScrollView pattern; `headerHeight` prop replaces `headerOffset`.
+- [components/BottomSheet.tsx](components/BottomSheet.tsx) — keyboard offset moved from `translateY` to `marginBottom` via the new hook.
+- [components/AddRemoteSignerModal.tsx](components/AddRemoteSignerModal.tsx) — migrated off `BottomSheetKeyboard` to `SheetLayout` + `BottomSheetScrollView`.
+- [components/layout/BottomSheetKeyboard.tsx] — deleted.
+- [app/(tabs)/projects.tsx](app/(tabs)/projects.tsx), [app/(tabs)/home.tsx](app/(tabs)/home.tsx), [app/projects/[id].tsx](app/projects/[id].tsx) — outer KAV replaced with `Animated.View` + `marginBottom`.
+- [app/template/[id]/start.tsx](app/template/[id]/start.tsx) — manual keyboard listener + spring removed; standard hook applied.
+- [app/(auth)/login.tsx](app/(auth)/login.tsx), [app/(auth)/forgot.tsx](app/(auth)/forgot.tsx), [app/(auth)/reset.tsx](app/(auth)/reset.tsx), [app/(auth)/verify-email.tsx](app/(auth)/verify-email.tsx), [app/account-settings.tsx](app/account-settings.tsx), [app/briefings/new.tsx](app/briefings/new.tsx), [app/incidents/new.tsx](app/incidents/new.tsx), [app/reports/new.tsx](app/reports/new.tsx), [app/reports/[id]/slide/[slideId].tsx](app/reports/[id]/slide/[slideId].tsx) — `headerOffset` → `headerHeight`; button moved into children.
+- [app/inspections/[id]/wizard.tsx](app/inspections/[id]/wizard.tsx) — `onLayout`-measured header height; scroll-on-focus for `კომენტარი`.
+- [app/projects/[id]/signer.tsx](app/projects/[id]/signer.tsx) — `useHeaderHeight()` + library KAV.
+- [package.json](package.json) — `react-native-keyboard-aware-scroll-view` removed.
+- [README.md](README.md) — added "Keyboard handling — the three patterns" subsection.
+
+### Verification status
+
+`npm run typecheck` passes cleanly. **Device verification still required** — symptoms (overshoot, sync, button placement) are perceptual; the user needs to validate on a physical iPhone per their own testing rules. I cannot drive an iOS device or simulator from this session.
