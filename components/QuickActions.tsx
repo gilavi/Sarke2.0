@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { useTheme } from '../lib/theme';
 import { QuickActionButton, type ActionColorKey } from './QuickActionButton';
 
@@ -11,24 +11,35 @@ export interface QuickAction {
 
 interface QuickActionsProps {
   actions: QuickAction[];
+  scrollable?: boolean;
 }
 
-export function QuickActions({ actions }: QuickActionsProps) {
+export function QuickActions({ actions, scrollable }: QuickActionsProps) {
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
 
-  return (
-    <View style={styles.row}>
-      {actions.map(action => (
-        <QuickActionButton
-          key={action.colorKey}
-          label={action.label}
-          colorKey={action.colorKey}
-          onPress={action.onPress}
-        />
-      ))}
-    </View>
-  );
+  const buttons = actions.map(action => (
+    <QuickActionButton
+      key={action.colorKey}
+      label={action.label}
+      colorKey={action.colorKey}
+      onPress={action.onPress}
+    />
+  ));
+
+  if (scrollable) {
+    return (
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.scrollRow}
+      >
+        {buttons}
+      </ScrollView>
+    );
+  }
+
+  return <View style={styles.row}>{buttons}</View>;
 }
 
 function getstyles(theme: any) {
@@ -36,6 +47,11 @@ function getstyles(theme: any) {
     row: {
       flexDirection: 'row',
       paddingVertical: theme.space(2),
+    },
+    scrollRow: {
+      flexDirection: 'row',
+      paddingVertical: theme.space(2),
+      gap: 8,
     },
   });
 }

@@ -1,15 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
   StyleSheet,
-  TouchableWithoutFeedback,
   View,
 } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { KeyboardSafeArea } from '../../components/layout/KeyboardSafeArea';
 import { Button, Input } from '../../components/ui';
 import { FlowHeader } from '../../components/FlowHeader';
 import { useTheme } from '../../lib/theme';
@@ -23,7 +18,6 @@ export default function NewReportTitleScreen() {
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const router = useRouter();
   const toast = useToast();
-  const insets = useSafeAreaInsets();
   const { projectId } = useLocalSearchParams<{ projectId: string }>();
 
   const [project, setProject] = useState<Project | null>(null);
@@ -63,17 +57,19 @@ export default function NewReportTitleScreen() {
         confirmExit={trimmed.length > 0}
       />
 
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior="padding"
-        keyboardVerticalOffset={insets.top + 44}
-      >
-      <ScrollView
-        bounces={false}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        contentContainerStyle={{ padding: 16 }}
+      <KeyboardSafeArea
+        headerOffset={44}
+        contentStyle={{ padding: 16 }}
+        footer={
+          <View style={styles.footer}>
+            <Button
+              title="შემდეგი →"
+              onPress={onNext}
+              disabled={!canStart}
+              loading={busy}
+            />
+          </View>
+        }
       >
         <Input
           label="რეპორტის სახელი"
@@ -85,17 +81,7 @@ export default function NewReportTitleScreen() {
           returnKeyType="done"
           onSubmitEditing={onNext}
         />
-      </ScrollView>
-      <View style={[styles.footer, { paddingBottom: insets.bottom > 0 ? insets.bottom : 16 }]}>
-        <Button
-          title="შემდეგი →"
-          onPress={onNext}
-          disabled={!canStart}
-          loading={busy}
-        />
-      </View>
-      </KeyboardAvoidingView>
-      </TouchableWithoutFeedback>
+      </KeyboardSafeArea>
     </View>
   );
 }
@@ -106,8 +92,6 @@ function makeStyles(theme: any) {
       backgroundColor: theme.colors.surface,
       borderTopWidth: 1,
       borderTopColor: theme.colors.border,
-      paddingHorizontal: 16,
-      paddingTop: 12,
     },
   });
 }

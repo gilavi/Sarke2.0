@@ -34,6 +34,7 @@ import { getStorageImageDisplayUrl } from '../../../lib/imageUrl';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import type { Answer, AnswerPhoto, GridValues, Question } from '../../../types/models';
 
+const BRAND_GREEN = '#1D9E75';
 const COMMENT_PREFIX = 'კომენტარი_';
 
 function rowKey(i: number) {
@@ -94,13 +95,10 @@ export const KamariCount = memo(function KamariCount({
         <Pressable
           onPress={dec}
           disabled={count <= 1}
-          style={({ pressed }) => [
-            styles.stepperBtn,
-            pressed && { opacity: 0.6 },
-            count <= 1 && { opacity: 0.35 },
-          ]}
+          hitSlop={12}
+          style={({ pressed }) => [pressed && { opacity: 0.6 }, count <= 1 && { opacity: 0.35 }]}
         >
-          <Ionicons name="remove" size={36} color={theme.colors.ink} />
+          <Ionicons name="remove-circle" size={52} color={BRAND_GREEN} />
         </Pressable>
         <View style={styles.countNumberWrap}>
           <Text style={styles.countNumber}>{count}</Text>
@@ -108,13 +106,10 @@ export const KamariCount = memo(function KamariCount({
         <Pressable
           onPress={inc}
           disabled={count >= max}
-          style={({ pressed }) => [
-            styles.stepperBtn,
-            pressed && { opacity: 0.6 },
-            count >= max && { opacity: 0.35 },
-          ]}
+          hitSlop={12}
+          style={({ pressed }) => [pressed && { opacity: 0.6 }, count >= max && { opacity: 0.35 }]}
         >
-          <Ionicons name="add" size={36} color={theme.colors.ink} />
+          <Ionicons name="add-circle" size={52} color={BRAND_GREEN} />
         </Pressable>
       </View>
     </View>

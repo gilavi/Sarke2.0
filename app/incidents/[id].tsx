@@ -254,11 +254,6 @@ export default function IncidentDetail() {
         options={{
           headerShown: true,
           title: 'ინციდენტი',
-          headerRight: () => (
-            <Pressable onPress={deleteIncident} hitSlop={8} style={{ paddingHorizontal: 4 }}>
-              <Ionicons name="trash-outline" size={20} color={theme.colors.danger} />
-            </Pressable>
-          ),
         }}
       />
 

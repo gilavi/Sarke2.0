@@ -1,18 +1,14 @@
 import { useEffect, useRef, useState , useMemo} from 'react';
 import {
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   TextInput,
-  TouchableWithoutFeedback,
   View,
 } from 'react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardSafeArea } from '../../components/layout/KeyboardSafeArea';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -61,7 +57,6 @@ function makeFriendlyError(t: (k: string) => string) {
 export default function VerifyEmailScreen() {
   const { theme } = useTheme();
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
   const friendlyError = makeFriendlyError(t);
   const styles = useMemo(() => getstyles(theme), [theme]);
   const { email: emailParam } = useLocalSearchParams<{ email?: string }>();
@@ -147,19 +142,10 @@ export default function VerifyEmailScreen() {
         style={StyleSheet.absoluteFillObject}
       />
       <SafeAreaView style={{ flex: 1 }}>
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior="padding"
-          keyboardVerticalOffset={insets.top + 44}
+        <KeyboardSafeArea
+          headerOffset={0}
+          contentStyle={styles.scroll}
         >
-          <ScrollView
-            bounces={false}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="interactive"
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.scroll}
-          >
             <View style={styles.backBtn}>
               <HeaderBackPill label={t('auth.login')} />
             </View>
@@ -243,9 +229,7 @@ export default function VerifyEmailScreen() {
                 </Pressable>
               </View>
             </Card>
-          </ScrollView>
-        </KeyboardAvoidingView>
-        </TouchableWithoutFeedback>
+        </KeyboardSafeArea>
       </SafeAreaView>
     </View>
   );

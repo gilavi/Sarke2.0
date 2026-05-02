@@ -3,19 +3,18 @@ import {
   ActivityIndicator,
   Alert,
   Keyboard,
-  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
-  TouchableWithoutFeedback,
   View,
 } from 'react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardSafeArea } from '../../components/layout/KeyboardSafeArea';
 import { Ionicons } from '@expo/vector-icons';
 import { useSession } from '../../lib/session';
 import { useToast } from '../../lib/toast';
@@ -26,7 +25,8 @@ import { saveLanguage } from '../../lib/i18n';
 import { a11y } from '../../lib/accessibility';
 import { isEmail } from '../../lib/validators';
 import { friendlyError, isCancelledError, isEmailTakenError } from '../../lib/errorMap';
-import { Button, Card, Field, Input } from '../../components/ui';
+import { Button, Card } from '../../components/ui';
+import { FloatingLabelInput } from '../../components/inputs/FloatingLabelInput';
 
 const MIN_PASSWORD_LEN = 6;
 
@@ -37,7 +37,6 @@ type Mode = 'login' | 'register';
 export default function AuthScreen() {
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
-  const insets = useSafeAreaInsets();
   const [mode, setMode] = useState<Mode>('login');
   const [forgotOpen, setForgotOpen] = useState(false);
 
@@ -46,37 +45,23 @@ export default function AuthScreen() {
       <GradientBackdrop />
       <SafeAreaView style={{ flex: 1 }}>
         <LanguageSwitcher />
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior="padding"
-          keyboardVerticalOffset={insets.top + 44}
-        >
-          <ScrollView
-            bounces={false}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="interactive"
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.scroll}
-          >
-            <Header />
-            <Card padding={22} style={{ marginTop: 28 }}>
-              <ModePicker mode={mode} onChange={setMode} />
-              <View style={{ height: 18 }} />
-              {mode === 'login' ? (
-                <LoginForm onForgotPassword={() => setForgotOpen(true)} />
-              ) : (
-                <RegisterForm
-                  onVerificationSent={(email) =>
-                    router.push({ pathname: '/(auth)/verify-email', params: { email } })
-                  }
-                  onSwitchToLogin={() => setMode('login')}
-                />
-              )}
-            </Card>
-          </ScrollView>
-        </KeyboardAvoidingView>
-        </TouchableWithoutFeedback>
+        <KeyboardSafeArea headerOffset={0} contentStyle={styles.scroll}>
+          <Header />
+          <Card padding={22} style={{ marginTop: 28 }}>
+            <ModePicker mode={mode} onChange={setMode} />
+            <View style={{ height: 18 }} />
+            {mode === 'login' ? (
+              <LoginForm onForgotPassword={() => setForgotOpen(true)} />
+            ) : (
+              <RegisterForm
+                onVerificationSent={(email) =>
+                  router.push({ pathname: '/(auth)/verify-email', params: { email } })
+                }
+                onSwitchToLogin={() => setMode('login')}
+              />
+            )}
+          </Card>
+        </KeyboardSafeArea>
       </SafeAreaView>
       <ForgotPasswordModal visible={forgotOpen} onClose={() => setForgotOpen(false)} />
     </View>
@@ -133,16 +118,14 @@ function ForgotPasswordModal({ visible, onClose }: { visible: boolean; onClose: 
               <Text style={styles.modalBody}>
                 {t('auth.resetInstructions')}
               </Text>
-              <Field label={t('common.email')}>
-                <Input
-                  value={email}
-                  onChangeText={setEmail}
-                  placeholder="you@example.com"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-              </Field>
+              <FloatingLabelInput
+                label={t('common.email')}
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
               <Button title={t('auth.sendLink')} onPress={submit} loading={busy} disabled={!email.trim()} />
             </View>
           )}
@@ -201,28 +184,22 @@ function LoginForm({ onForgotPassword }: { onForgotPassword: () => void }) {
 
   return (
     <View style={{ gap: 14 }}>
-      <Field label={t('common.email')}>
-        <Input
-          value={email}
-          onChangeText={setEmail}
-          placeholder="you@example.com"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-      </Field>
-      <Field label={t('common.password')}>
-        <View style={{ position: 'relative' }}>
-          <Input
-            value={password}
-            onChangeText={setPassword}
-            placeholder="••••••••"
-            secureTextEntry={!showPw}
-            rightIcon={showPw ? 'eye-off' : 'eye'}
-            onRightIconPress={() => setShowPw(v => !v)}
-          />
-        </View>
-      </Field>
+      <FloatingLabelInput
+        label={t('common.email')}
+        value={email}
+        onChangeText={setEmail}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        autoCorrect={false}
+      />
+      <FloatingLabelInput
+        label={t('common.password')}
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry={!showPw}
+        rightIcon={showPw ? 'eye-off' : 'eye'}
+        onRightIconPress={() => setShowPw(v => !v)}
+      />
       <Pressable
         onPress={onForgotPassword}
         style={{ alignSelf: 'flex-end', marginTop: -4 }}
@@ -317,47 +294,28 @@ function RegisterForm({
     <View style={{ gap: 14 }}>
       <View style={{ flexDirection: 'row', gap: 10 }}>
         <View style={{ flex: 1 }}>
-          <Field label={t('auth.firstName')}>
-            <Input value={firstName} onChangeText={setFirstName} placeholder={t('auth.firstNamePlaceholder')} />
-          </Field>
+          <FloatingLabelInput label={t('auth.firstName')} value={firstName} onChangeText={setFirstName} />
         </View>
         <View style={{ flex: 1 }}>
-          <Field label={t('auth.lastName')}>
-            <Input value={lastName} onChangeText={setLastName} placeholder={t('auth.lastNamePlaceholder')} />
-          </Field>
+          <FloatingLabelInput label={t('auth.lastName')} value={lastName} onChangeText={setLastName} />
         </View>
       </View>
-      <Field label={t('common.email')}>
-        <Input
-          value={email}
-          onChangeText={setEmail}
-          placeholder="you@example.com"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-      </Field>
-      <Field label={t('auth.passwordMinLength', { min: MIN_PASSWORD_LEN })}>
-        <View>
-          <Input
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry={!showPw}
-            placeholder="••••••••"
-          />
-          <Pressable
-            onPress={() => setShowPw(v => !v)}
-            style={styles.eyeBtn}
-            hitSlop={10}
-          >
-            <Ionicons
-              name={showPw ? 'eye-off-outline' : 'eye-outline'}
-              size={20}
-              color={theme.colors.inkFaint}
-            />
-          </Pressable>
-        </View>
-      </Field>
+      <FloatingLabelInput
+        label={t('common.email')}
+        value={email}
+        onChangeText={setEmail}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        autoCorrect={false}
+      />
+      <FloatingLabelInput
+        label={t('auth.passwordMinLength', { min: MIN_PASSWORD_LEN })}
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry={!showPw}
+        rightIcon={showPw ? 'eye-off-outline' : 'eye-outline'}
+        onRightIconPress={() => setShowPw(v => !v)}
+      />
       {error ? <InlineError>{error}</InlineError> : null}
       <Button title={t('auth.register')} onPress={handleRegister} loading={busy} disabled={!canSubmit} />
       <Divider />
@@ -581,13 +539,6 @@ function getstyles(theme: any) {
     justifyContent: 'center',
   },
   segmentActive: { backgroundColor: theme.colors.accent },
-  eyeBtn: {
-    position: 'absolute',
-    right: 14,
-    top: 0,
-    bottom: 0,
-    justifyContent: 'center',
-  },
   linkText: { color: theme.colors.accent, fontSize: 13, fontWeight: '600' },
   errorBox: {
     flexDirection: 'row',

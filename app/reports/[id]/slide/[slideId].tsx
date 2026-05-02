@@ -2,19 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
-  TouchableWithoutFeedback,
   View,
 } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Crypto from 'expo-crypto';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { KeyboardSafeArea } from '../../../../components/layout/KeyboardSafeArea';
 import { A11yText as Text } from '../../../../components/primitives/A11yText';
 import { useBottomSheet } from '../../../../components/BottomSheet';
 import { Button, Input } from '../../../../components/ui';
@@ -32,7 +27,6 @@ export default function ReportSlideEditor() {
   const { theme } = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const toast = useToast();
   const showSheet = useBottomSheet();
   const { id, slideId } = useLocalSearchParams<{ id: string; slideId: string }>();
@@ -238,17 +232,14 @@ export default function ReportSlideEditor() {
         }}
       />
 
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior="padding"
-        keyboardVerticalOffset={insets.top + 44}
-      >
-      <ScrollView
-        bounces={false}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        contentContainerStyle={{ flexGrow: 1, padding: 16, gap: 16 }}
+      <KeyboardSafeArea
+        headerOffset={44}
+        contentStyle={{ padding: 16, gap: 16 }}
+        footer={
+          <View style={styles.footer}>
+            <Button title="შენახვა" onPress={onSave} disabled={!canSave} loading={busy} />
+          </View>
+        }
       >
         {/* Image section */}
         <Pressable onPress={onImageTap} style={styles.imageWrap}>
@@ -287,13 +278,7 @@ export default function ReportSlideEditor() {
           textAlignVertical="top"
           style={{ minHeight: 100, alignItems: 'flex-start' }}
         />
-
-        <View style={[styles.footer, { marginTop: 'auto', paddingBottom: insets.bottom > 0 ? insets.bottom : 16 }]}>
-          <Button title="შენახვა" onPress={onSave} disabled={!canSave} loading={busy} />
-        </View>
-      </ScrollView>
-      </KeyboardAvoidingView>
-      </TouchableWithoutFeedback>
+      </KeyboardSafeArea>
     </View>
   );
 }
@@ -327,8 +312,6 @@ function makeStyles(theme: any) {
       justifyContent: 'center',
     },
     footer: {
-      paddingHorizontal: 16,
-      paddingTop: 12,
       borderTopWidth: 1,
       borderTopColor: theme.colors.hairline,
       backgroundColor: theme.colors.background,

@@ -1,20 +1,16 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
-  Animated,
-  Dimensions,
-  Keyboard,
   Pressable,
-  ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { A11yText } from './primitives/A11yText';
 import { FormField } from './FormField';
 import { ButtonGroup } from './ButtonGroup';
 import { Input } from './ui';
 import { useTheme } from '../lib/theme';
+import { BottomSheetKeyboard } from './layout/BottomSheetKeyboard';
 
 import { isGeorgianPhone, normalizePhone } from '../lib/validators';
 import { SIGNER_ROLE_LABEL, type SignerRole } from '../types/models';
@@ -40,29 +36,12 @@ export function AddRemoteSignerSheet({
 }: AddRemoteSignerSheetProps) {
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
-  const insets = useSafeAreaInsets();
-  const screenH = Dimensions.get('window').height;
 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [role, setRole] = useState<SignerRole>('xaracho_supervisor');
   const [nameTouched, setNameTouched] = useState(false);
   const [phoneTouched, setPhoneTouched] = useState(false);
-  const [kbHeight, setKbHeight] = useState(0);
-  const keyboardHeight = useRef(new Animated.Value(0)).current;
-  const maxSheetH = screenH - kbHeight - insets.top - 24;
-
-  useEffect(() => {
-    const showSub = Keyboard.addListener('keyboardWillShow', (e) => {
-      setKbHeight(e.endCoordinates.height);
-      Animated.spring(keyboardHeight, { toValue: e.endCoordinates.height, useNativeDriver: false, tension: 60, friction: 12 }).start();
-    });
-    const hideSub = Keyboard.addListener('keyboardWillHide', () => {
-      setKbHeight(0);
-      Animated.spring(keyboardHeight, { toValue: 0, useNativeDriver: false, tension: 60, friction: 12 }).start();
-    });
-    return () => { showSub.remove(); hideSub.remove(); };
-  }, [keyboardHeight]);
 
   const nameError = nameTouched && !name.trim() ? 'სავალდებულო ველი' : undefined;
   const phoneError =
@@ -97,20 +76,38 @@ export function AddRemoteSignerSheet({
   };
 
   return (
-    <Animated.View style={[styles.container, { marginBottom: keyboardHeight, maxHeight: maxSheetH }]}>
-      <A11yText size="xl" weight="bold" style={styles.title}>
-        გარე ხელისმოწერის მოთხოვნა
-      </A11yText>
-
-      <A11yText size="sm" color={theme.colors.inkSoft} style={styles.description}>
-        ხელის მოწერის ლინკი გაიგზავნება SMS-ით. ლინკი 14 დღეში იწურება.
-      </A11yText>
-
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        contentContainerStyle={styles.scrollContent}
+    <View style={styles.container}>
+      <BottomSheetKeyboard
+        footer={
+          <ButtonGroup
+            buttons={[
+              {
+                label: 'გაუქმება',
+                variant: 'secondary',
+                size: 'lg',
+                onPress: handleCancel,
+                disabled: busy,
+              },
+              {
+                label: 'გაგზავნე SMS',
+                variant: 'primary',
+                size: 'lg',
+                onPress: handleSubmit,
+                loading: busy,
+              },
+            ]}
+            layout="vertical"
+          />
+        }
       >
+        <A11yText size="xl" weight="bold" style={styles.title}>
+          გარე ხელისმოწერის მოთხოვნა
+        </A11yText>
+
+        <A11yText size="sm" color={theme.colors.inkSoft} style={styles.description}>
+          ხელის მოწერის ლინკი გაიგზავნება SMS-ით. ლინკი 14 დღეში იწურება.
+        </A11yText>
+
         <FormField label="როლი" required>
           <View style={styles.roleOptions}>
             {ROSTER_ROLES.map(r => (
@@ -156,27 +153,8 @@ export function AddRemoteSignerSheet({
             error={phoneError}
           />
         </FormField>
-      </ScrollView>
-      <ButtonGroup
-        buttons={[
-          {
-            label: 'გაუქმება',
-            variant: 'secondary',
-            size: 'lg',
-            onPress: handleCancel,
-            disabled: busy,
-          },
-          {
-            label: 'გაგზავნე SMS',
-            variant: 'primary',
-            size: 'lg',
-            onPress: handleSubmit,
-            loading: busy,
-          },
-        ]}
-        layout="vertical"
-      />
-    </Animated.View>
+      </BottomSheetKeyboard>
+    </View>
   );
 }
 
@@ -184,9 +162,6 @@ function getstyles(theme: any) {
   return StyleSheet.create({
   container: {
     backgroundColor: theme.colors.background,
-    paddingHorizontal: theme.space(4),
-    paddingVertical: theme.space(4),
-    gap: theme.space(4),
   },
   title: {
     marginBottom: theme.space(1),
@@ -194,10 +169,6 @@ function getstyles(theme: any) {
   description: {
     marginBottom: theme.space(2),
     lineHeight: 18,
-  },
-  scrollContent: {
-    gap: theme.space(4),
-    paddingBottom: theme.space(4),
   },
   roleOptions: {
     gap: theme.space(2),

@@ -21,7 +21,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -31,6 +30,7 @@ import { captureRef } from 'react-native-view-shot';
 import { a11y } from '../lib/accessibility';
 import { haptic } from '../lib/haptics';
 import { useTheme } from '../lib/theme';
+import { FloatingLabelInput } from './inputs/FloatingLabelInput';
 
 
 export interface PhotoAnnotatorProps {
@@ -530,15 +530,13 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
       >
         <View style={modalStyles.overlay}>
           <View style={modalStyles.card}>
-            <Text style={modalStyles.label}>ტექსტის დამატება</Text>
-            <TextInput
+            <FloatingLabelInput
+              label="ტექსტის დამატება"
               value={textInput}
               onChangeText={setTextInput}
-              placeholder="მაგ: 15 სმ"
-              placeholderTextColor={theme.colors.inkFaint}
-              style={modalStyles.input}
-              autoFocus
               maxLength={60}
+              autoFocus
+              style={{ marginBottom: 0 }}
             />
             <View style={modalStyles.actions}>
               <Pressable onPress={() => setTextModalVisible(false)} style={modalStyles.cancelBtn} {...a11y('გაუქმება', 'შეეხეთ ტექსტის დამატების გასაუქმებლად', 'button')}>

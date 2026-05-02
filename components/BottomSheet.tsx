@@ -582,5 +582,6 @@ const createStyles = (colors: any) => StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 4,
     paddingBottom: 16,
+    maxHeight: '70%',
   },
 });

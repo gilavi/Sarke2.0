@@ -142,6 +142,7 @@ export const lightTheme = {
     none: 0,
     xs: 6,
     sm: 8,
+    input: 10,
     md: 12,
     cardInner: 14,
     lg: 16,

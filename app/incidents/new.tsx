@@ -1,13 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
-  TouchableWithoutFeedback,
   View,
 } from 'react-native';
 import * as Crypto from 'expo-crypto';
@@ -16,7 +11,7 @@ import { generateAndSharePdf } from '../../lib/pdfOpen';
 import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { KeyboardSafeArea } from '../../components/layout/KeyboardSafeArea';
 
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { FlowHeader } from '../../components/FlowHeader';
@@ -97,7 +92,6 @@ function getTypeBadge(theme: any): Record<IncidentType, { bg: string; text: stri
 export default function NewIncident() {
   const { theme } = useTheme();
   const s = useMemo(() => makeStyles(theme), [theme]);
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const toast = useToast();
   const session = useSession();
@@ -407,17 +401,39 @@ export default function NewIncident() {
         confirmExit={step === 1 && isFormDirty}
       />
 
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior="padding"
-        keyboardVerticalOffset={insets.top + 44}
-      >
-      <ScrollView
-        bounces={false}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        contentContainerStyle={{ padding: 16 }}
+      <KeyboardSafeArea
+        headerOffset={44}
+        contentStyle={{ padding: 16 }}
+        footer={
+          <View style={s.bottomBar}>
+            {step < 4 ? (
+              <Button
+                title="შემდეგი"
+                rightIcon="arrow-forward"
+                onPress={goNext}
+                disabled={!canAdvance}
+                style={{ width: '100%' }}
+              />
+            ) : (
+              <View style={{ gap: 10 }}>
+                <Button
+                  title="PDF გენერირება"
+                  leftIcon="document-text"
+                  loading={saving}
+                  onPress={saveAndGeneratePdf}
+                  style={{ width: '100%' }}
+                />
+                <Button
+                  title="შენახვა ხელმოწერის გარეშე"
+                  variant="link"
+                  disabled={saving}
+                  onPress={saveDraft}
+                  style={{ width: '100%' }}
+                />
+              </View>
+            )}
+          </View>
+        }
       >
         {step === 1 && <Step1 form={form} setForm={setForm} theme={theme} s={s} />}
         {step === 2 && (
@@ -452,43 +468,7 @@ export default function NewIncident() {
             s={s}
           />
         )}
-
-      </ScrollView>
-      <View
-        style={[
-          s.bottomBar,
-          { paddingBottom: insets.bottom > 0 ? insets.bottom : 16 },
-        ]}
-      >
-        {step < 4 ? (
-          <Button
-            title="შემდეგი"
-            rightIcon="arrow-forward"
-            onPress={goNext}
-            disabled={!canAdvance}
-            style={{ width: '100%' }}
-          />
-        ) : (
-          <View style={{ gap: 10 }}>
-            <Button
-              title="PDF გენერირება"
-              leftIcon="document-text"
-              loading={saving}
-              onPress={saveAndGeneratePdf}
-              style={{ width: '100%' }}
-            />
-            <Button
-              title="შენახვა ხელმოწერის გარეშე"
-              variant="link"
-              disabled={saving}
-              onPress={saveDraft}
-              style={{ width: '100%' }}
-            />
-          </View>
-        )}
-      </View>
-      </KeyboardAvoidingView>
-      </TouchableWithoutFeedback>
+      </KeyboardSafeArea>
 
     </View>
   );
@@ -1112,8 +1092,6 @@ function makeStyles(theme: any) {
       backgroundColor: theme.colors.surface,
       borderTopWidth: 1,
       borderTopColor: theme.colors.border,
-      paddingHorizontal: 16,
-      paddingTop: 12,
     },
 
   });

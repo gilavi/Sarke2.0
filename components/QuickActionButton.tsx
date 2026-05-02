@@ -59,9 +59,10 @@ function getstyles(theme: any, colorKey: ActionColorKey) {
   const ac = theme.colors.actionColors[colorKey];
   return StyleSheet.create({
     container: {
-      width: 72,
+      flex: 1,
       alignItems: 'center',
       gap: theme.space(2),
+      paddingHorizontal: 4,
     },
     pressed: {
       opacity: 0.7,

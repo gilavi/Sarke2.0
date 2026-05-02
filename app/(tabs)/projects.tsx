@@ -1,9 +1,9 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Animated,
   Dimensions,
   Keyboard,
+  KeyboardAvoidingView,
   Modal,
   Pressable,
   RefreshControl,
@@ -256,22 +256,6 @@ function CreateProjectSheet({
   const [logo, setLogo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [mapVisible, setMapVisible] = useState(false);
-  const [kbHeight, setKbHeight] = useState(0);
-  const keyboardHeight = useRef(new Animated.Value(0)).current;
-  const screenH = Dimensions.get('window').height;
-  const maxSheetH = screenH - kbHeight - insets.top - 24;
-
-  useEffect(() => {
-    const showSub = Keyboard.addListener('keyboardWillShow', (e) => {
-      setKbHeight(e.endCoordinates.height);
-      Animated.spring(keyboardHeight, { toValue: e.endCoordinates.height, useNativeDriver: false, tension: 60, friction: 12 }).start();
-    });
-    const hideSub = Keyboard.addListener('keyboardWillHide', () => {
-      setKbHeight(0);
-      Animated.spring(keyboardHeight, { toValue: 0, useNativeDriver: false, tension: 60, friction: 12 }).start();
-    });
-    return () => { showSub.remove(); hideSub.remove(); };
-  }, [keyboardHeight]);
 
   useEffect(() => {
     if (visible) {
@@ -313,7 +297,7 @@ function CreateProjectSheet({
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={() => mapVisible ? setMapVisible(false) : onClose()}>
       <View style={{ flex: 1 }}>
-        <Animated.View style={{ flex: 1, justifyContent: 'flex-end', paddingBottom: keyboardHeight }}>
+        <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={0} style={{ flex: 1, justifyContent: 'flex-end' }}>
           {/* Backdrop */}
           <Pressable
             style={[StyleSheet.absoluteFillObject, { backgroundColor: theme.colors.overlay }]}
@@ -324,8 +308,6 @@ function CreateProjectSheet({
           <Pressable onPress={() => {}} style={{ width: '100%' }}>
               <SheetLayout
                 maxHeightRatio={0.92}
-                style={{ maxHeight: maxSheetH }}
-                footerStyle={{ paddingBottom: kbHeight > 0 ? 8 : 16 }}
                 header={{ title: t('home.newProjectFormTitle'), onClose }}
                 footer={
                   <Button
@@ -379,7 +361,7 @@ function CreateProjectSheet({
                 </FormField>
               </SheetLayout>
           </Pressable>
-        </Animated.View>
+        </KeyboardAvoidingView>
 
         {/* Full-screen map overlay — no nested Modal */}
         {mapVisible && (

@@ -1,11 +1,11 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Swipeable } from 'react-native-gesture-handler';
 import {
-  Animated as RNAnimated,
+  Alert,
   Dimensions,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -36,8 +36,8 @@ import { a11y } from '../../lib/accessibility';
 import { toErrorMessage } from '../../lib/logError';
 import { friendlyError } from '../../lib/errorMap';
 import { Button, Field, Input, Card } from '../../components/ui';
-import { FabButton } from '../../components/primitives';
 import { NumberPop, useScrollHeader } from '../../components/animations';
+import { QuickActions, type QuickAction } from '../../components/QuickActions';
 import { Skeleton } from '../../components/Skeleton';
 import { MapPicker, type LatLng } from '../../components/MapPicker';
 import { MapPreview } from '../../components/MapPreview';
@@ -88,6 +88,7 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pickerInitialView, setPickerInitialView] = useState<'list' | 'new'>('list');
+  const [pickerAction, setPickerAction] = useState<'inspection' | 'incident' | 'briefing' | 'report'>('inspection');
 
   const { width: screenWidth } = useWindowDimensions();
   const HPAD = 20;
@@ -187,25 +188,46 @@ export default function HomeScreen() {
         {/* ───────── CONTINUE DRAFT ───────── */}
         {latestDraft ? (
           <View style={styles.sectionWrap}>
-            <Card
-              onPress={() => router.push(`/inspections/${latestDraft.id}/wizard` as any)}
-              a11y={a11y('შევსების გაგრძელება', 'შეეხეთ მონახაზის გასაგრძელებლად', 'button')}
-              style={styles.resumeCard}
+            <Swipeable
+              friction={2}
+              rightThreshold={60}
+              renderRightActions={() => (
+                <Pressable
+                  onPress={async () => {
+                    try {
+                      await questionnairesApi.remove(latestDraft.id);
+                      await qc.invalidateQueries({ queryKey: ['inspections', 'recent'] });
+                    } catch {
+                      Alert.alert('შეცდომა', 'წაშლა ვერ მოხერხდა');
+                    }
+                  }}
+                  style={styles.deleteAction}
+                >
+                  <Ionicons name="trash-outline" size={22} color="#fff" />
+                  <Text style={styles.deleteActionText}>წაშლა</Text>
+                </Pressable>
+              )}
             >
-                <View style={styles.resumeIcon}>
-                  <Ionicons name="pencil" size={16} color={theme.colors.warn} />
-                </View>
-                <View style={staticStyles.flex}>
-                  <Text style={styles.resumeEyebrow}>{t('home.resumeDraft')}</Text>
-                  <Text style={styles.resumeTitle} numberOfLines={1}>
-                    {templateName(latestDraft.template_id)}
-                  </Text>
-                  <Text style={styles.resumeMeta} numberOfLines={1}>
-                    {relativeTime(latestDraft.created_at, t, i18n.language)}
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color={theme.colors.inkFaint} />
-            </Card>
+              <Card
+                onPress={() => router.push(`/inspections/${latestDraft.id}/wizard` as any)}
+                a11y={a11y('შევსების გაგრძელება', 'შეეხეთ მონახაზის გასაგრძელებლად', 'button')}
+                style={styles.resumeCard}
+              >
+                  <View style={styles.resumeIcon}>
+                    <Ionicons name="pencil" size={16} color={theme.colors.warn} />
+                  </View>
+                  <View style={staticStyles.flex}>
+                    <Text style={styles.resumeEyebrow}>{t('home.resumeDraft')}</Text>
+                    <Text style={styles.resumeTitle} numberOfLines={1}>
+                      {templateName(latestDraft.template_id)}
+                    </Text>
+                    <Text style={styles.resumeMeta} numberOfLines={1}>
+                      {relativeTime(latestDraft.created_at, t, i18n.language)}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={theme.colors.inkFaint} />
+              </Card>
+            </Swipeable>
           </View>
         ) : null}
 
@@ -238,8 +260,53 @@ export default function HomeScreen() {
           </Card>
         ) : null}
 
+        {/* ───────── QUICK ACTIONS ───────── */}
+        <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 4 }}>
+          <QuickActions
+            actions={[
+              {
+                label: 'შემოწმება',
+                colorKey: 'inspection',
+                onPress: () => {
+                  setPickerAction('inspection');
+                  setPickerInitialView('list');
+                  setPickerVisible(true);
+                },
+              },
+              {
+                label: 'ინციდენტი',
+                colorKey: 'incident',
+                onPress: () => {
+                  setPickerAction('incident');
+                  setPickerInitialView('list');
+                  setPickerVisible(true);
+                },
+              },
+              {
+                label: 'ინსტრუქტაჟი',
+                colorKey: 'briefing',
+                onPress: () => {
+                  setPickerAction('briefing');
+                  setPickerInitialView('list');
+                  setPickerVisible(true);
+                },
+              },
+              {
+                label: 'რეპორტი',
+                colorKey: 'report',
+                onPress: () => {
+                  setPickerAction('report');
+                  setPickerInitialView('list');
+                  setPickerVisible(true);
+                },
+              },
+            ]}
+          />
+        </View>
+
         {/* ───────── PROJECTS ───────── */}
         <View style={styles.sectionHeaderRow}>
+          <Ionicons name="folder-outline" size={14} color={theme.colors.inkSoft} style={{ marginRight: 5 }} />
           <Text style={styles.sectionHeader}>{t('home.sectionProjects')}</Text>
           <Pressable onPress={() => router.push('/(tabs)/projects' as any)} hitSlop={8}>
             <Text style={styles.sectionLink}>{t('home.allProjects')}</Text>
@@ -317,6 +384,7 @@ export default function HomeScreen() {
         {!loaded && recent.length === 0 ? (
           <>
             <View style={[styles.sectionHeaderRow, staticStyles.sectionHeaderMargin]}>
+              <Ionicons name="time-outline" size={14} color={theme.colors.inkSoft} style={{ marginRight: 5 }} />
               <Text style={styles.sectionHeader}>{t('home.recentActs')}</Text>
             </View>
             <View style={[styles.recentList, staticStyles.recentListMargin]}>
@@ -340,6 +408,7 @@ export default function HomeScreen() {
         ) : recent.length > 0 ? (
           <>
             <View style={[styles.sectionHeaderRow, staticStyles.sectionHeaderMargin]}>
+              <Ionicons name="time-outline" size={14} color={theme.colors.inkSoft} style={{ marginRight: 5 }} />
               <Text style={styles.sectionHeader}>{t('home.recentActs')}</Text>
               <Pressable onPress={() => router.push('/history' as any)} hitSlop={8} {...a11y('ყველა აქტივობის ნახვა', 'შეეხეთ ისტორიის სანახავად', 'button')}>
                 <Text style={styles.sectionLink}>ყველა</Text>
@@ -403,18 +472,10 @@ export default function HomeScreen() {
         </View>
       </Animated.ScrollView>
 
-      {/* Animated FAB — rotates + to × when sheet opens, pulses on press */}
-      <AnimatedFAB
-        open={pickerVisible}
-        onPress={() => {
-          setPickerInitialView('list');
-          setPickerVisible(true);
-        }}
-      />
-
       <ProjectPickerSheet
         visible={pickerVisible}
         initialView={pickerInitialView}
+        action={pickerAction}
         projects={projects}
         templates={templates}
         onClose={() => setPickerVisible(false)}
@@ -433,20 +494,6 @@ export default function HomeScreen() {
 }
 
 // ──────────── PROJECT PICKER SHEET ────────────
-
-// ───────── ANIMATED FAB ─────────
-
-function AnimatedFAB({ open, onPress }: { open: boolean; onPress: () => void }) {
-  return (
-    <FabButton
-      onPress={onPress}
-      iconName="add"
-      iconRotation={open ? 45 : 0}
-      a11yLabel="ახალი ინსპექცია"
-      a11yHint="შეეხეთ ახალი ინსპექციის დასაწყებად"
-    />
-  );
-}
 
 // ───────── ANIMATED DARK BACKDROP ─────────
 
@@ -471,6 +518,7 @@ function AnimatedDarkBackdrop({ visible, onPress }: { visible: boolean; onPress:
 function ProjectPickerSheet({
   visible,
   initialView = 'list',
+  action = 'inspection',
   projects,
   templates,
   onClose,
@@ -479,6 +527,7 @@ function ProjectPickerSheet({
 }: {
   visible: boolean;
   initialView?: 'list' | 'new';
+  action?: 'inspection' | 'incident' | 'briefing' | 'report';
   projects: Project[];
   templates: Template[];
   onClose: () => void;
@@ -505,22 +554,6 @@ function ProjectPickerSheet({
   const [logo, setLogo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [mapVisible, setMapVisible] = useState(false);
-  const [kbHeight, setKbHeight] = useState(0);
-  const keyboardHeight = useRef(new RNAnimated.Value(0)).current;
-  const { height: screenH } = useWindowDimensions();
-  const maxSheetH = screenH - kbHeight - insets.top - 24;
-
-  useEffect(() => {
-    const showSub = Keyboard.addListener('keyboardWillShow', (e) => {
-      setKbHeight(e.endCoordinates.height);
-      RNAnimated.spring(keyboardHeight, { toValue: e.endCoordinates.height, useNativeDriver: false, tension: 60, friction: 12 }).start();
-    });
-    const hideSub = Keyboard.addListener('keyboardWillHide', () => {
-      setKbHeight(0);
-      RNAnimated.spring(keyboardHeight, { toValue: 0, useNativeDriver: false, tension: 60, friction: 12 }).start();
-    });
-    return () => { showSub.remove(); hideSub.remove(); };
-  }, [keyboardHeight]);
 
   // Reset form + view every time the sheet opens
   useEffect(() => {
@@ -544,13 +577,21 @@ function ProjectPickerSheet({
 
   const systemTemplates = templates.filter((tpl) => tpl.is_system);
 
-  const pickTemplate = (projectId: string) => {
+  const onProjectPicked = (projectId: string) => {
+    if (action !== 'inspection') {
+      const route =
+        action === 'incident'  ? `/incidents/new?projectId=${projectId}` :
+        action === 'briefing'  ? `/briefings/new?projectId=${projectId}` :
+                                 `/reports/new?projectId=${projectId}`;
+      onClose();
+      router.push(route as any);
+      return;
+    }
     if (systemTemplates.length === 0) {
       toast.error(t('errors.notFoundTemplate'));
       return;
     }
     if (systemTemplates.length === 1) {
-      // Only one template — skip the picker step entirely.
       void startInspection(projectId, systemTemplates[0].id);
       return;
     }
@@ -617,9 +658,8 @@ function ProjectPickerSheet({
       <View style={pickerStyles.container}>
         {/* Dark overlay backdrop with cross-fade */}
         <AnimatedDarkBackdrop visible={visible} onPress={() => mapVisible ? setMapVisible(false) : onClose()} />
-          {/* RNAnimated wrapper: paddingBottom lifts card floor to keyboard top */}
-          <RNAnimated.View style={{ width: '100%', paddingBottom: keyboardHeight }}>
-          <Pressable style={[pickerStyles.card, { maxHeight: maxSheetH, paddingBottom: kbHeight > 0 ? 0 : 44 }]} onPress={() => {}}>
+          <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={0} style={{ width: '100%' }}>
+          <Pressable style={[pickerStyles.card, { maxHeight: '90%' }]} onPress={() => {}}>
             <View style={pickerStyles.handle} />
 
             {view === 'list' ? (
@@ -664,7 +704,7 @@ function ProjectPickerSheet({
                     {projects.slice(0, 20).map(p => (
                       <Pressable
                         key={p.id}
-                        onPress={() => pickTemplate(p.id)}
+                        onPress={() => onProjectPicked(p.id)}
                         style={pickerStyles.projectRow}
                       >
                         <ProjectAvatar project={p} size={44} />
@@ -776,7 +816,7 @@ function ProjectPickerSheet({
                     <LocationRow pin={pin} address={address} onPress={() => { Keyboard.dismiss(); setMapVisible(true); }} />
                   </Field>
                 </ScrollView>
-                <View style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: kbHeight > 0 ? 8 : (insets.bottom || 16) }}>
+                <View style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: insets.bottom || 16 }}>
                   <Button
                     title={t('projects.createButton')}
                     onPress={createProject}
@@ -788,7 +828,7 @@ function ProjectPickerSheet({
               </>
             )}
           </Pressable>
-          </RNAnimated.View>
+          </KeyboardAvoidingView>
 
         {/* Full-screen map overlay — no nested Modal */}
         {mapVisible && (
@@ -1344,6 +1384,22 @@ function getstyles(theme: Theme) {
     fontSize: 11,
     color: theme.colors.inkSoft,
     marginTop: 2,
+  },
+
+  // DRAFT DELETE ACTION
+  deleteAction: {
+    backgroundColor: '#EF4444',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 80,
+    borderRadius: 16,
+    marginLeft: 8,
+    gap: 4,
+  },
+  deleteActionText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
   },
 
   // TIP

@@ -13,9 +13,9 @@ import {
   Alert,
   Pressable,
   StyleSheet,
-  TextInput,
   View,
 } from 'react-native';
+import { FloatingLabelInput } from './inputs/FloatingLabelInput';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -340,25 +340,21 @@ function CertEditView({
         </Pressable>
       </View>
       {isCustom ? (
-        <TextInput
+        <FloatingLabelInput
+          label="სერტიფიკატის ტიპი"
           value={customType}
           onChangeText={text => {
             setCustomType(text);
             setType(text || 'სხვა');
           }}
-          placeholder="სერტიფიკატის ტიპი"
-          placeholderTextColor={theme.colors.inkFaint}
-          style={styles.input}
         />
       ) : null}
 
-      <Text style={[styles.fieldLabel, { marginTop: 14 }]}>ნომერი</Text>
-      <TextInput
+      <FloatingLabelInput
+        label="ნომერი"
         value={number}
         onChangeText={setNumber}
-        placeholder="№..."
-        placeholderTextColor={theme.colors.inkFaint}
-        style={styles.input}
+        keyboardType="number-pad"
       />
 
       <Text style={[styles.fieldLabel, { marginTop: 14 }]}>ფოტო (16:9)</Text>

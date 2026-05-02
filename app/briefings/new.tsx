@@ -3,18 +3,14 @@ import { useTranslation } from 'react-i18next';
 import {
   Alert,
   Keyboard,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
-  TextInput,
-  TouchableWithoutFeedback,
   View,
 } from 'react-native';
+import { FloatingLabelInput } from '../../components/inputs/FloatingLabelInput';
 import { DateTimeField } from '../../components/DateTimeField';
 import { A11yText as Text } from '../../components/primitives/A11yText';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { KeyboardSafeArea } from '../../components/layout/KeyboardSafeArea';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from '../../components/ui';
@@ -47,7 +43,6 @@ export default function NewBriefingScreen() {
   const styles = useMemo(() => getstyles(theme), [theme]);
   const { projectId } = useLocalSearchParams<{ projectId: string }>();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const session = useSession();
 
   // ── Project (for header context) ──
@@ -152,17 +147,28 @@ export default function NewBriefingScreen() {
         }
       />
 
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior="padding"
-        keyboardVerticalOffset={insets.top + 44}
-      >
-      <ScrollView
-        bounces={false}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        contentContainerStyle={{ flexGrow: 1, padding: 16, gap: 20 }}
+      <KeyboardSafeArea
+        headerOffset={44}
+        contentStyle={{ padding: 16, gap: 20 }}
+        footer={
+          <View style={styles.footer}>
+            {!canStart && (
+              <Text style={styles.footerHint}>
+                {participants.length === 0
+                  ? 'დაამატეთ მინიმუმ 1 მონაწილე'
+                  : 'აირჩიეთ მინიმუმ 1 თემა'}
+              </Text>
+            )}
+            <Button
+              title="დაწყება →"
+              size="lg"
+              onPress={onStart}
+              disabled={!canStart}
+              loading={busy}
+              style={{ width: '100%' }}
+            />
+          </View>
+        }
       >
         {/* ── Date & Time ── */}
         <View style={styles.card}>
@@ -210,12 +216,10 @@ export default function NewBriefingScreen() {
           </View>
 
           {selectedTopics.has('other') && (
-            <TextInput
+            <FloatingLabelInput
+              label="თემის დასახელება"
               value={customTopic}
               onChangeText={setCustomTopic}
-              placeholder="თემის დასახელება..."
-              placeholderTextColor={theme.colors.inkFaint}
-              style={styles.customTopicInput}
               returnKeyType="done"
               onSubmitEditing={Keyboard.dismiss}
             />
@@ -236,16 +240,17 @@ export default function NewBriefingScreen() {
 
           {/* Input row */}
           <View style={styles.addRow}>
-            <TextInput
-              ref={nameInputRef}
-              value={nameInput}
-              onChangeText={setNameInput}
-              placeholder="სახელი გვარი"
-              placeholderTextColor={theme.colors.inkFaint}
-              style={styles.nameInput}
-              returnKeyType="done"
-              onSubmitEditing={addParticipant}
-            />
+            <View style={{ flex: 1 }}>
+              <FloatingLabelInput
+                ref={nameInputRef}
+                label="სახელი გვარი"
+                value={nameInput}
+                onChangeText={setNameInput}
+                returnKeyType="done"
+                onSubmitEditing={addParticipant}
+                style={{ marginBottom: 0 }}
+              />
+            </View>
             <Pressable
               onPress={addParticipant}
               disabled={!nameInput.trim()}
@@ -276,32 +281,7 @@ export default function NewBriefingScreen() {
             </View>
           )}
         </View>
-        {/* ── Start Button ── */}
-        <View
-          style={[
-            styles.footer,
-            { marginTop: 'auto', paddingBottom: insets.bottom > 0 ? insets.bottom : 16 },
-          ]}
-        >
-          {!canStart && (
-            <Text style={styles.footerHint}>
-              {participants.length === 0
-                ? 'დაამატეთ მინიმუმ 1 მონაწილე'
-                : 'აირჩიეთ მინიმუმ 1 თემა'}
-            </Text>
-          )}
-          <Button
-            title="დაწყება →"
-            size="lg"
-            onPress={onStart}
-            disabled={!canStart}
-            loading={busy}
-            style={{ width: '100%' }}
-          />
-        </View>
-      </ScrollView>
-      </KeyboardAvoidingView>
-      </TouchableWithoutFeedback>
+      </KeyboardSafeArea>
 
     </View>
   );
@@ -449,8 +429,6 @@ function getstyles(theme: any) {
       backgroundColor: theme.colors.surface,
       borderTopWidth: 1,
       borderTopColor: theme.colors.border,
-      paddingHorizontal: 16,
-      paddingTop: 12,
       gap: 8,
     },
     footerHint: {

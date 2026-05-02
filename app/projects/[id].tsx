@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Animated,
   Dimensions,
   Keyboard,
+  KeyboardAvoidingView,
   Linking,
   Modal,
   Pressable,
@@ -405,8 +405,10 @@ export default function ProjectDetail() {
         cancelButtonIndex: 2,
       },
       idx => {
-        if (idx === 0) pickPhotoWithPicker();
-        else if (idx === 1) void pickDocuments();
+        setTimeout(() => {
+          if (idx === 0) pickPhotoWithPicker();
+          else if (idx === 1) void pickDocuments();
+        }, 300);
       },
     );
   };
@@ -585,6 +587,7 @@ export default function ProjectDetail() {
           <View ref={questionnairesRef} collapsable={false} style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons name="shield-checkmark-outline" size={16} color={theme.colors.inkSoft} />
                 <Text style={styles.sectionTitle}>{t('projects.questionnairesSection')}</Text>
                 <Text style={styles.sectionCount}>{questionnaires.length}</Text>
               </View>
@@ -657,6 +660,7 @@ export default function ProjectDetail() {
           <View style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons name="warning-outline" size={16} color={theme.colors.inkSoft} />
                 <Text style={styles.sectionTitle}>ინციდენტები</Text>
                 <Text style={styles.sectionCount}>{incidents.length}</Text>
               </View>
@@ -694,6 +698,7 @@ export default function ProjectDetail() {
           <View style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons name="megaphone-outline" size={16} color={theme.colors.inkSoft} />
                 <Text style={styles.sectionTitle}>ინსტრუქტაჟი</Text>
                 <Text style={styles.sectionCount}>{briefings.length}</Text>
               </View>
@@ -752,6 +757,7 @@ export default function ProjectDetail() {
           <View style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons name="document-text-outline" size={16} color={theme.colors.inkSoft} />
                 <Text style={styles.sectionTitle}>რეპორტები</Text>
                 <Text style={styles.sectionCount}>{reports.length}</Text>
               </View>
@@ -814,6 +820,7 @@ export default function ProjectDetail() {
           <View ref={filesRef} collapsable={false} style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons name="cloud-upload-outline" size={16} color={theme.colors.inkSoft} />
                 <Text style={styles.sectionTitle}>დოკუმენტები</Text>
                 <Text style={styles.sectionCount}>{files.length}</Text>
               </View>
@@ -870,6 +877,7 @@ export default function ProjectDetail() {
           <View ref={participantsRef} collapsable={false} style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons name="person-add-outline" size={16} color={theme.colors.inkSoft} />
                 <Text style={styles.sectionTitle}>{t('projects.participantsSection')}</Text>
                 <Text style={styles.sectionCount}>{(project?.crew?.length ?? 0) + (inspector ? 1 : 0)}</Text>
               </View>
@@ -1112,22 +1120,6 @@ function EditProjectSheet({
   const [logo, setLogo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [mapVisible, setMapVisible] = useState(false);
-  const [kbHeight, setKbHeight] = useState(0);
-  const keyboardHeight = useRef(new Animated.Value(0)).current;
-  const screenH = Dimensions.get('window').height;
-  const maxSheetH = screenH - kbHeight - insets.top - 24;
-
-  useEffect(() => {
-    const showSub = Keyboard.addListener('keyboardWillShow', (e) => {
-      setKbHeight(e.endCoordinates.height);
-      Animated.spring(keyboardHeight, { toValue: e.endCoordinates.height, useNativeDriver: false, tension: 60, friction: 12 }).start();
-    });
-    const hideSub = Keyboard.addListener('keyboardWillHide', () => {
-      setKbHeight(0);
-      Animated.spring(keyboardHeight, { toValue: 0, useNativeDriver: false, tension: 60, friction: 12 }).start();
-    });
-    return () => { showSub.remove(); hideSub.remove(); };
-  }, [keyboardHeight]);
 
   // Sync when project changes / modal opens
   useFocusEffect(
@@ -1174,7 +1166,7 @@ function EditProjectSheet({
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={() => mapVisible ? setMapVisible(false) : onClose()}>
       <View style={{ flex: 1 }}>
-        <Animated.View style={{ flex: 1, justifyContent: 'flex-end', paddingBottom: keyboardHeight }}>
+        <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={0} style={{ flex: 1, justifyContent: 'flex-end' }}>
           {/* Backdrop */}
           <Pressable
             style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.45)' }]}
@@ -1185,8 +1177,6 @@ function EditProjectSheet({
           <Pressable onPress={() => {}} style={{ width: '100%' }}>
               <SheetLayout
                 maxHeightRatio={0.92}
-                style={{ maxHeight: maxSheetH }}
-                footerStyle={{ paddingBottom: kbHeight > 0 ? 8 : 16 }}
                 header={{ title: t('projects.edit'), onClose }}
                 footer={
                   <Button
@@ -1240,7 +1230,7 @@ function EditProjectSheet({
                 </FormField>
               </SheetLayout>
           </Pressable>
-        </Animated.View>
+        </KeyboardAvoidingView>
 
         {/* Full-screen map overlay — no nested Modal */}
         {mapVisible && (

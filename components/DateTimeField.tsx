@@ -212,7 +212,7 @@ export function DateTimeField({
               </View>
             )}
 
-            <View style={styles.pickerWrap}>
+            <View style={[styles.pickerWrap, { marginHorizontal: -16 }]}>
               <DateTimePicker
                 value={draft}
                 mode={sheetPickerMode}
@@ -226,7 +226,7 @@ export function DateTimeField({
                 onChange={(_, d) => {
                   if (d) setDraft(d);
                 }}
-                style={{ width: screenWidth - 32 }}
+                style={{ width: screenWidth }}
               />
             </View>
           </Pressable>
@@ -362,7 +362,7 @@ function makeStyles(theme: any) {
       marginBottom: 8,
     },
     pickerWrap: {
-      alignItems: 'center',
+      overflow: 'hidden',
     },
   });
 }

@@ -1,20 +1,20 @@
 import { useState } from 'react';
-import { Keyboard, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableWithoutFeedback, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/session';
-import { Button, Card, ErrorText, Field, Input } from '../../components/ui';
+import { Button, Card, ErrorText } from '../../components/ui';
 import { logError, toErrorMessage } from '../../lib/logError';
 import { useTheme } from '../../lib/theme';
-
+import { KeyboardSafeArea } from '../../components/layout/KeyboardSafeArea';
+import { FloatingLabelInput } from '../../components/inputs/FloatingLabelInput';
 
 export default function ResetPasswordScreen() {
   const { theme } = useTheme();
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { signOut } = useSession();
   const [password, setPassword] = useState('');
@@ -52,73 +52,57 @@ export default function ResetPasswordScreen() {
         style={StyleSheet.absoluteFillObject}
       />
       <SafeAreaView style={{ flex: 1 }}>
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior="padding"
-          keyboardVerticalOffset={insets.top + 44}
+        <KeyboardSafeArea
+          headerOffset={0}
+          contentStyle={{ paddingHorizontal: 22, paddingTop: 40, paddingBottom: 40 }}
         >
-          <ScrollView
-            bounces={false}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="interactive"
-            contentContainerStyle={{ paddingHorizontal: 22, paddingTop: 40, paddingBottom: 40 }}
-          >
-            <Text style={{ fontSize: 28, fontWeight: '900', color: theme.colors.ink }}>
-              ახალი პაროლი
-            </Text>
-            <Text style={{ color: theme.colors.inkSoft, marginTop: 6 }}>
-              შეიყვანეთ ახალი პაროლი (მინ. 6 სიმბოლო).
-            </Text>
+          <Text style={{ fontSize: 28, fontWeight: '900', color: theme.colors.ink }}>
+            ახალი პაროლი
+          </Text>
+          <Text style={{ color: theme.colors.inkSoft, marginTop: 6 }}>
+            შეიყვანეთ ახალი პაროლი (მინ. 6 სიმბოლო).
+          </Text>
 
-            <Card padding={22} style={{ marginTop: 22 }}>
-              {done ? (
-                <View style={{ gap: 12, alignItems: 'center' }}>
-                  <Ionicons name="checkmark-circle" size={48} color={theme.colors.accent} />
-                  <Text style={{ fontSize: 18, fontWeight: '700', color: theme.colors.ink }}>
-                    პაროლი შეცვლილია
-                  </Text>
-                  <Button
-                    title="შესვლა"
-                    onPress={async () => {
-                      // End the temporary recovery session so the user signs
-                      // in fresh with the new password (no stale half-state).
-                      await signOut().catch((e) => logError(e, 'reset.signOut'));
-                      router.replace('/(auth)/login');
-                    }}
-                  />
-                </View>
-              ) : (
-                <View style={{ gap: 14 }}>
-                  <Field label="ახალი პაროლი">
-                    <Input
-                      value={password}
-                      onChangeText={setPassword}
-                      secureTextEntry
-                      placeholder="••••••••"
-                    />
-                  </Field>
-                  <Field label="გაიმეორეთ პაროლი">
-                    <Input
-                      value={confirm}
-                      onChangeText={setConfirm}
-                      secureTextEntry
-                      placeholder="••••••••"
-                    />
-                  </Field>
-                  {error ? <ErrorText>{error}</ErrorText> : null}
-                  <Button
-                    title="შენახვა"
-                    onPress={submit}
-                    loading={busy}
-                    disabled={!canSubmit}
-                  />
-                </View>
-              )}
-            </Card>
-          </ScrollView>
-        </KeyboardAvoidingView>
-        </TouchableWithoutFeedback>
+          <Card padding={22} style={{ marginTop: 22 }}>
+            {done ? (
+              <View style={{ gap: 12, alignItems: 'center' }}>
+                <Ionicons name="checkmark-circle" size={48} color={theme.colors.accent} />
+                <Text style={{ fontSize: 18, fontWeight: '700', color: theme.colors.ink }}>
+                  პაროლი შეცვლილია
+                </Text>
+                <Button
+                  title="შესვლა"
+                  onPress={async () => {
+                    await signOut().catch((e) => logError(e, 'reset.signOut'));
+                    router.replace('/(auth)/login');
+                  }}
+                />
+              </View>
+            ) : (
+              <View style={{ gap: 14 }}>
+                <FloatingLabelInput
+                  label="ახალი პაროლი"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                />
+                <FloatingLabelInput
+                  label="გაიმეორეთ პაროლი"
+                  value={confirm}
+                  onChangeText={setConfirm}
+                  secureTextEntry
+                />
+                {error ? <ErrorText>{error}</ErrorText> : null}
+                <Button
+                  title="შენახვა"
+                  onPress={submit}
+                  loading={busy}
+                  disabled={!canSubmit}
+                />
+              </View>
+            )}
+          </Card>
+        </KeyboardSafeArea>
       </SafeAreaView>
     </View>
   );
