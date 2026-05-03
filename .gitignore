@@ -1,31 +1,25 @@
-## macOS
+node_modules/
+.expo/
+.expo-shared/
+dist/
+*.log
 .DS_Store
-
-## Xcode
-xcuserdata/
-*.xcworkspace/xcuserdata/
-DerivedData/
-build/
-*.xcuserstate
-*.xcscmblueprint
-
-## Swift Package Manager
-.swiftpm/
-Packages/
-Package.resolved
-
-## xcodegen output (regenerated)
-Sarke2.xcodeproj/
-
-## Secrets
-Config/Secrets.xcconfig
 .env
 .env.local
-
-## Supabase CLI
-supabase/.branches
-supabase/.temp
-
-## Node / tooling (if any)
-node_modules/
+.env.*.local
 .claude/
+
+# Native build output from `expo prebuild` / `expo run:ios|android`.
+# This is a managed Expo project — native dirs regenerate on demand
+# and shouldn't be tracked.
+ios/
+android/
+
+# Local Supabase CLI state (project ref, version cache). Generated on
+# `supabase link`; not source.
+supabase/.temp/
+
+# Docusaurus build artefacts (the gh-pages workflow rebuilds on push).
+website/build/
+website/.docusaurus/
+website/.cache-loader/

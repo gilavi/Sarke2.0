@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sarke — ფასადის ხარაჩოს შემოწმების აქტი</title>
+  <style>
+    :root {
+      --green: #1D9E75;
+      --green-dark: #147A4F;
+      --green-tint: #E8F5F0;
+      --red: #DC2626;
+      --red-tint: #FCEBEB;
+      --amber: #B45309;
+      --amber-bg: #FEF3C7;
+      --ink: #111827;
+      --ink-soft: #4B5563;
+      --gray: #9CA3AF;
+      --line: #E5E7EB;
+      --bg-soft: #FAFAFA;
+      --radius: 8px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Helvetica, Arial, sans-serif;
+      color: var(--ink);
+      line-height: 1.55;
+      background: #ffffff;
+      padding: 16px;
+      font-size: 11px;
+    }
+
+    
+
+    /* Preview banner */
+    .preview-banner {
+      background: var(--amber-bg);
+      border: 1px solid #F59E0B;
+      color: var(--amber);
+      padding: 12px 16px;
+      border-radius: var(--radius);
+      font-size: 12px;
+      font-weight: 600;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+
+    /* Watermark */
+    .watermark {
+      position: fixed;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%) rotate(-35deg);
+      font-size: 96px;
+      color: rgba(180, 180, 180, 0.12);
+      font-weight: 800;
+      pointer-events: none;
+      z-index: 0;
+      letter-spacing: 8px;
+      white-space: nowrap;
+    }
+
+    /* ── Header ── */
+    .report-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      padding-bottom: 16px;
+      margin-bottom: 0;
+      position: relative;
+      z-index: 1;
+    }
+    .header-left { display: flex; align-items: center; gap: 14px; flex: 1; }
+    .header-center {
+      flex: 2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 0 8px;
+    }
+    .report-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--ink);
+      line-height: 1.3;
+    }
+    .project-brand-logo {
+      width: 60px; height: 60px;
+      border-radius: 50%;
+      object-fit: cover;
+      display: block;
+    }
+    .project-brand-initials {
+      width: 60px; height: 60px;
+      border-radius: 50%;
+      background: var(--green);
+      color: #fff;
+      font-weight: 700;
+      font-size: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .brand-name {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--green);
+      letter-spacing: 1px;
+      line-height: 1.1;
+    }
+    .brand-sub {
+      font-size: 9px;
+      color: var(--gray);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 600;
+      margin-top: 4px;
+    }
+    .header-right {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+    }
+    .qr-img {
+      width: 72px; height: 72px;
+      display: block;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 2px;
+    }
+    .qr-placeholder {
+      width: 72px; height: 72px;
+      display: flex; align-items: center; justify-content: center;
+      border: 1px dashed var(--line);
+      border-radius: 6px;
+      color: var(--gray);
+      font-size: 10px;
+    }
+    .report-id {
+      font-family: 'SF Mono', 'Menlo', monospace;
+      font-size: 10px;
+      color: var(--gray);
+      letter-spacing: 0.5px;
+    }
+    .header-rule {
+      border: none;
+      border-top: 3px solid var(--green);
+      margin: 0 0 20px;
+    }
+
+    /* ── Info block ── */
+    .info-card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 16px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px 24px;
+      position: relative;
+      z-index: 1;
+    }
+    .info-row { display: flex; flex-direction: column; gap: 2px; }
+    .info-label {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--gray);
+      font-weight: 600;
+    }
+    .info-value {
+      font-size: 13px;
+      color: var(--ink);
+      font-weight: 600;
+    }
+
+    /* ── Status Hero ── */
+    .status-hero {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      width: 100%;
+      padding: 16px 20px;
+      border-radius: var(--radius);
+      color: #fff;
+      margin-bottom: 16px;
+      
+    }
+    .hero-pass { background: var(--green); }
+    .hero-fail { background: var(--red); }
+    .hero-pending { background: var(--amber); }
+    .status-hero-icon {
+      font-size: 30px;
+      font-weight: 700;
+      line-height: 1;
+    }
+    .status-hero-text {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    /* Inline status badge (used inside conclusion card) */
+    .status-badge {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-weight: 700;
+      font-size: 12px;
+      letter-spacing: 0.3px;
+    }
+    .status-pass { background: var(--green-tint); color: var(--green-dark); }
+    .status-fail { background: var(--red-tint); color: var(--red); }
+    .status-pending { background: var(--amber-bg); color: var(--amber); }
+
+    /* ── TOC ── */
+    .toc-box {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 16px;
+      position: relative;
+      z-index: 1;
+    }
+    .toc-heading {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--gray);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+    }
+    .toc-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 0;
+      border-bottom: 1px solid #F3F4F6;
+    }
+    .toc-item:last-child { border-bottom: none; }
+    .toc-num {
+      font-family: 'SF Mono', 'Menlo', monospace;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--green);
+      min-width: 24px;
+    }
+    .toc-name { flex: 1; font-size: 12px; color: var(--ink); font-weight: 500; }
+    .toc-count { font-size: 10px; color: var(--gray); font-weight: 600; }
+
+    /* ── Section ── */
+    .section {
+      margin-bottom: 24px;
+      position: relative;
+      z-index: 1;
+    }
+    .section-header { margin-bottom: 4px; margin-top: 8px; }
+    .section-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--ink);
+      border-left: 3px solid var(--green);
+      padding-left: 10px;
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+    .section-num {
+      color: var(--green);
+      font-weight: 800;
+    }
+    .section-pipe { color: var(--green); font-weight: 700; margin: 0 2px; }
+    .section-name { color: var(--ink); }
+
+    /* ── Question card ── */
+    .question-card {
+      background: #fff;
+      border: 1px solid #E8E6E0;
+      border-radius: var(--radius);
+      padding: 12px;
+      margin-bottom: 8px;
+      
+    }
+    .question-card.is-failed {
+      border-left: 3px solid var(--red);
+    }
+    .question-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ink);
+      margin-bottom: 8px;
+    }
+    .question-answer { font-size: 12px; color: var(--ink-soft); margin-bottom: 4px; }
+    .answer-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 12px;
+      border-radius: 16px;
+      font-weight: 700;
+      font-size: 11px;
+      letter-spacing: 0.3px;
+    }
+    .pill-yes { background: var(--green-tint); color: var(--green-dark); }
+    .pill-no  { background: var(--red-tint); color: var(--red); }
+    .pill-empty { color: var(--gray); font-style: italic; font-size: 12px; }
+
+    .question-comment {
+      font-size: 11px;
+      color: var(--ink-soft);
+      font-style: italic;
+      margin: 8px 0 0;
+      padding: 8px 10px;
+      background: var(--bg-soft);
+      border-radius: 6px;
+      border-left: 3px solid var(--line);
+    }
+    .question-notes {
+      font-size: 11px;
+      color: var(--amber);
+      font-style: italic;
+      margin: 8px 0 0;
+      padding: 8px 10px;
+      background: #FFFBEB;
+      border-radius: 6px;
+      border-left: 3px solid #F59E0B;
+    }
+
+    /* ── Photo grid ── */
+    .photo-section-title {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--gray);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin: 12px 0 8px;
+    }
+    .photo-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 8px;
+    }
+    .photo-grid.single { grid-template-columns: 1fr; }
+    .photo-item {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      overflow: hidden;
+      background: #fff;
+    }
+    .photo-img-wrap {
+      width: 100%;
+      max-height: 200px;
+      overflow: hidden;
+      background: var(--bg-soft);
+    }
+    .photo-item img {
+      width: 100%;
+      max-height: 200px;
+      object-fit: cover;
+      display: block;
+    }
+    .photo-caption {
+      font-size: 9px;
+      color: var(--gray);
+      text-align: center;
+      padding: 5px 8px;
+    }
+    .photo-missing {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 160px;
+      background: var(--bg-soft);
+      font-size: 10px;
+      color: var(--gray);
+    }
+
+    /* ── Component table ── */
+    .table-wrap {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-top: 8px;
+    }
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+    }
+    .data-table thead { background: #F5F3EE; color: var(--ink); }
+    .data-table th {
+      padding: 8px 10px;
+      text-align: left;
+      font-weight: 700;
+      font-size: 10px;
+    }
+    .data-table tbody th {
+      background: var(--bg-soft);
+      color: var(--ink);
+      font-weight: 600;
+    }
+    .data-table td {
+      padding: 8px 10px;
+      border-top: 1px solid #F3F4F6;
+      color: var(--ink);
+    }
+    .data-table tbody tr:nth-child(even) td,
+    .data-table tbody tr:nth-child(even) th { background: #FAFAFA; }
+    .data-table tbody tr.is-problem td,
+    .data-table tbody tr.is-problem th {
+      background: var(--red-tint);
+      border-left: 3px solid var(--red);
+    }
+    .cell-status { font-weight: 700; }
+    .cell-status--pass { color: var(--green-dark); }
+    .cell-status--fail { color: var(--red); }
+    .cell-status--neutral { color: var(--gray); }
+
+    /* ── Conclusion ── */
+    .conclusion-card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--green);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      margin: 16px 0;
+      
+      position: relative;
+      z-index: 1;
+    }
+    .conclusion-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--green);
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .conclusion-text {
+      font-size: 14px;
+      color: var(--ink);
+      line-height: 1.7;
+      margin-bottom: 12px;
+    }
+
+    /* ── Signatures ── */
+    .signatures-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 24px 0 12px;
+      position: relative;
+      z-index: 1;
+    }
+    .signatures-header-text {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+    .signatures-header-rule { flex: 1; height: 1px; background: var(--line); }
+    .sig-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      position: relative;
+      z-index: 1;
+    }
+    .sig-block {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 14px;
+      
+    }
+    .sig-block.is-expert {
+      background: var(--green-tint);
+      border-color: var(--green);
+    }
+    .sig-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--ink);
+      margin-bottom: 2px;
+    }
+    .sig-role {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--gray);
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+    .sig-position {
+      font-size: 11px;
+      color: var(--ink-soft);
+      margin-bottom: 10px;
+    }
+    .sig-img-box {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 8px;
+      background: #fff;
+      height: 70px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .sig-img-box img {
+      max-width: 160px;
+      max-height: 80px;
+      display: block;
+    }
+    .sig-date {
+      font-size: 10px;
+      color: var(--gray);
+      margin-top: 8px;
+    }
+
+    .audit-trail {
+      font-size: 9px;
+      color: var(--gray);
+      margin-top: 8px;
+      border-top: 1px solid var(--line);
+      padding-top: 6px;
+      text-align: left;
+      line-height: 1.5;
+    }
+    .audit-trail strong { color: var(--ink-soft); font-weight: 600; }
+
+    /* ── Certificates ── */
+    .cert-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .cert-card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 14px;
+      
+    }
+    .cert-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ink);
+      margin: 0 0 6px;
+    }
+    .cert-meta-row {
+      font-size: 11px;
+      color: var(--ink-soft);
+      margin-bottom: 2px;
+    }
+    .cert-meta-label { color: var(--gray); font-weight: 600; }
+    .cert-img-wrap {
+      margin-top: 10px;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      aspect-ratio: 16 / 9;
+      background: var(--bg-soft);
+    }
+    .cert-img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    @media print {
+      .question-card, .photo-item, .sig-block, .section,
+      .conclusion-card, .cert-card, .status-hero {
+        page-break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="preview-banner">👁 PREVIEW — ეს არის PDF-ის პრევიუ. საბოლოო ვერსია შეიძლება განსხვავდებოდეს.</div>
+  
+
+  <div class="report-header">
+    <div class="header-left">
+      <div class="project-brand-initials">ᲑᲐ</div>
+    </div>
+    <div class="header-center">
+      <div class="report-title">ფასადის ხარაჩოს შემოწმების აქტი</div>
+    </div>
+    <div class="header-right">
+      <img class="qr-img" src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2047%2047%22%20shape-rendering%3D%22crispEdges%22%3E%3Cpath%20fill%3D%22%23FFFFFF%22%20d%3D%22M0%200h47v47H0z%22%2F%3E%3Cpath%20stroke%3D%22%23111827%22%20d%3D%22M1%201.5h7m1%200h1m4%200h3m1%200h2m1%200h3m2%200h7m1%200h1m2%200h1m1%200h7M1%202.5h1m5%200h1m1%200h4m1%200h1m1%200h1m1%200h2m2%200h1m2%200h1m1%200h4m1%200h2m2%200h1m2%200h1m5%200h1M1%203.5h1m1%200h3m1%200h1m1%200h1m6%200h1m1%200h1m1%200h1m6%200h1m1%200h1m6%200h1m2%200h1m1%200h3m1%200h1M1%204.5h1m1%200h3m1%200h1m3%200h2m1%200h2m1%200h1m1%200h1m4%200h2m1%200h1m1%200h1m3%200h1m2%200h2m1%200h1m1%200h3m1%200h1M1%205.5h1m1%200h3m1%200h1m1%200h1m1%200h2m2%200h1m1%200h3m1%200h5m1%200h1m2%200h2m1%200h5m1%200h1m1%200h3m1%200h1M1%206.5h1m5%200h1m2%200h2m4%200h1m4%200h1m3%200h2m1%200h1m3%200h2m5%200h1m5%200h1M1%207.5h7m1%200h1m1%200h1m1%200h1m1%200h1m1%200h1m1%200h1m1%200h1m1%200h1m1%200h1m1%200h1m1%200h1m1%200h1m1%200h1m1%200h1m1%200h1m1%200h7M12%208.5h1m1%200h2m1%200h1m2%200h2m3%200h3m1%200h2m2%200h2m1%200h1M1%209.5h1m2%200h10m2%200h1m1%200h1m1%200h6m1%200h1m1%200h1m1%200h2m2%200h4m2%200h1m1%200h3M5%2010.5h2m1%200h2m4%200h2m3%200h2m1%200h2m1%200h3m2%200h1m2%200h3m1%200h1m1%200h1m2%200h2M3%2011.5h1m3%200h3m2%200h1m3%200h1m1%200h4m1%200h3m2%200h1m1%200h3m2%200h1m1%200h2m1%200h1m1%200h2m1%200h1M1%2012.5h1m2%200h3m1%200h2m1%200h4m2%200h2m4%200h4m2%200h1m3%200h2m1%200h2m2%200h2m1%200h3M2%2013.5h1m3%200h2m1%200h1m1%200h7m1%200h1m1%200h4m1%200h1m1%200h11m1%200h3m1%200h1M1%2014.5h4m3%200h1m2%200h1m1%200h2m5%200h10m2%200h1m4%200h3m3%200h3M1%2015.5h1m3%200h3m2%200h1m1%200h2m1%200h1m4%200h1m1%200h1m3%200h2m3%200h1m3%200h1m2%200h2m2%200h1m1%200h1M1%2016.5h1m3%200h1m3%200h1m1%200h5m2%200h1m2%200h2m2%200h2m2%200h1m1%200h2m1%200h2m4%200h1m2%200h2M4%2017.5h2m1%200h3m1%200h1m1%200h1m1%200h2m2%200h4m3%200h3m4%200h1m1%200h2m1%200h1m3%200h1m1%200h1M1%2018.5h3m1%200h2m3%200h7m5%200h3m3%200h1m1%200h3m2%200h1m1%200h1m1%200h2M2%2019.5h1m2%200h1m1%200h1m1%200h2m4%200h3m3%200h1m2%200h1m1%200h2m4%200h6m1%200h6M5%2020.5h2m3%200h2m1%200h1m5%200h3m2%200h2m2%200h7m1%200h2m3%200h1m1%200h1M1%2021.5h1m3%200h5m1%200h1m1%200h1m3%200h1m1%200h1m1%200h6m1%200h1m3%200h1m3%200h10M1%2022.5h2m2%200h1m3%200h2m2%200h2m1%200h4m1%200h1m3%200h1m2%200h1m2%200h2m2%200h1m1%200h1m3%200h1m1%200h2M1%2023.5h2m2%200h1m1%200h1m1%200h5m1%200h5m1%200h1m1%200h1m1%200h1m5%200h4m1%200h2m1%200h1m1%200h2m1%200h2M5%2024.5h1m3%200h1m2%200h1m3%200h2m1%200h1m1%200h1m3%200h2m4%200h1m3%200h3m3%200h1m1%200h2M1%2025.5h2m1%200h8m3%200h13m1%200h1m2%200h2m2%200h7m1%200h2M1%2026.5h1m1%200h4m1%200h1m2%200h1m1%200h2m2%200h3m1%200h8m2%200h1m2%200h1m3%200h2m2%200h2M1%2027.5h1m2%200h1m1%200h3m1%200h1m1%200h1m1%200h1m2%200h1m1%200h2m1%200h3m1%200h4m1%200h1m4%200h1m2%200h2m1%200h2M1%2028.5h1m2%200h1m1%200h1m1%200h2m1%200h2m3%200h1m2%200h5m1%200h1m1%200h5m1%200h2m3%200h2m3%200h1m1%200h1M2%2029.5h2m3%200h3m1%200h1m2%200h1m1%200h1m4%200h2m2%200h1m8%200h1m5%200h3m1%200h2M1%2030.5h3m7%200h4m2%200h1m1%200h1m1%200h3m1%200h1m2%200h4m1%200h2m1%200h2m1%200h1m1%200h2m1%200h1M2%2031.5h1m3%200h2m1%200h3m1%200h2m4%200h1m1%200h1m2%200h1m1%200h1m3%200h2m3%200h2m1%200h4M2%2032.5h1m2%200h2m3%200h1m2%200h4m1%200h1m5%200h1m2%200h1m1%200h3m2%200h2m2%200h1m1%200h1m2%200h3M7%2033.5h2m5%200h2m3%200h1m2%200h3m2%200h1m3%200h2m1%200h2m1%200h2m1%200h4m1%200h1M3%2034.5h1m5%200h1m1%200h1m1%200h3m2%200h2m2%200h2m1%200h1m1%200h1m1%200h1m1%200h3m1%200h1m1%200h1m1%200h1m1%200h2m1%200h2M5%2035.5h1m1%200h2m2%200h1m1%200h2m1%200h1m1%200h1m1%200h3m2%200h1m1%200h1m1%200h2m1%200h1m3%200h1m1%200h1m2%200h3M2%2036.5h4m3%200h2m1%200h1m1%200h1m1%200h2m1%200h1m1%200h5m2%200h2m1%200h2m1%200h1m5%200h3m1%200h2M1%2037.5h1m2%200h2m1%200h4m1%200h1m1%200h1m1%200h3m2%200h5m1%200h4m3%200h12M9%2038.5h1m2%200h2m1%200h1m1%200h1m2%200h2m3%200h9m3%200h1m3%200h1m2%200h1M1%2039.5h7m1%200h3m2%200h5m2%200h1m1%200h1m1%200h1m3%200h1m1%200h1m1%200h1m1%200h3m1%200h1m1%200h3M1%2040.5h1m5%200h1m1%200h5m1%200h3m1%200h3m3%200h2m3%200h1m1%200h4m1%200h1m3%200h3m1%200h1M1%2041.5h1m1%200h3m1%200h1m1%200h2m1%200h1m1%200h3m1%200h1m2%200h7m2%200h2m2%200h1m1%200h7m1%200h2M1%2042.5h1m1%200h3m1%200h1m1%200h1m1%200h2m4%200h1m1%200h2m2%200h3m2%200h4m3%200h3m4%200h2m1%200h1M1%2043.5h1m1%200h3m1%200h1m2%200h1m3%200h1m2%200h1m2%200h2m1%200h1m7%200h1m2%200h1m1%200h2m1%200h2m1%200h1m1%200h2M1%2044.5h1m5%200h1m7%200h1m4%200h1m2%200h1m1%200h4m1%200h1m1%200h1m1%200h1m1%200h1m1%200h4m1%200h3M1%2045.5h7m1%200h1m1%200h2m2%200h2m1%200h3m1%200h3m1%200h1m1%200h2m1%200h1m2%200h3m3%200h1m1%200h1%22%2F%3E%3C%2Fsvg%3E%0A" alt="QR" />
+      <div class="report-id">TEST-123</div>
+    </div>
+  </div>
+  <hr class="header-rule" />
+
+  <div class="info-card">
+    <div class="info-row">
+      <span class="info-label">კომპანია</span>
+      <span class="info-value">სარქე შპს</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">ობიექტი</span>
+      <span class="info-value">ბათუმი, ჩოლოქის ქ. 12</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">თარიღი</span>
+      <span class="info-value">29 აპრილი, 2026</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">ID</span>
+      <span class="info-value" style="font-family:'SF Mono','Menlo',monospace;font-size:12px;">TEST-123</span>
+    </div>
+    
+  </div>
+
+  
+    <div class="status-hero hero-pass">
+      <span class="status-hero-icon">✓</span>
+      <span class="status-hero-text">✓ უსაფრთხოა ექსპლუატაციისთვის</span>
+    </div>
+  
+
+  <div class="toc-box">
+    <div class="toc-heading">შინაარსი</div>
+    <div class="toc-item"><span class="toc-num">01</span><span class="toc-name">1</span><span class="toc-count">2 კითხვა</span></div><div class="toc-item"><span class="toc-num">02</span><span class="toc-name">2</span><span class="toc-count">2 კითხვა</span></div><div class="toc-item"><span class="toc-num">03</span><span class="toc-name">3</span><span class="toc-count">1 კითხვა</span></div>
+    
+  </div>
+
+  
+        <div class="section">
+          <div class="section-header">
+            <h2 class="section-title">
+              <span class="section-num">01</span>
+              <span class="section-dash">|</span>
+              <span class="section-name">1</span>
+            </h2>
+          </div>
+          <div class="section-body"><div class="question-card">
+        <div class="question-title">ბჭეები და კიბეები მყარადაა დამაგრებული</div>
+        <div class="question-answer"><span class="answer-pill pill-yes">✓ კი</span></div>
+        
+      </div><div class="question-card is-failed">
+        <div class="question-title">სამაგრი ელემენტები დაზიანებული არ არის</div>
+        <div class="question-answer"><span class="answer-pill pill-no">✗ არა</span></div>
+        <div class="question-comment">კომენტარი: სამი სამაგრი ელემენტი გატეხილია</div><div class="photo-section-title">📷 ფოტო მასალა</div>
+         <div class="photo-grid"><div class="photo-item failed">
+    <div class="photo-img-wrap">
+      <img src="https://placehold.co/400x300/DC2626/white?text=PHOTO" alt="ფოტო"
+        onerror="this.style.display='none';this.parentElement.innerHTML='<div class=\'photo-missing\'>სურათი მიუწვდომელია</div>';" />
+    </div>
+    <div class="photo-caption">სამაგრი ელემენტები დაზიანებული არ არის — 29.04.2026 01:51</div>
+    
+  </div><div class="photo-item failed">
+    <div class="photo-img-wrap">
+      <img src="https://placehold.co/400x300/1D9E75/white?text=PHOTO+2" alt="ფოტო"
+        onerror="this.style.display='none';this.parentElement.innerHTML='<div class=\'photo-missing\'>სურათი მიუწვდომელია</div>';" />
+    </div>
+    <div class="photo-caption">სამაგრი ელემენტები დაზიანებული არ არის — 29.04.2026 01:51</div>
+    <div class="photo-caption">მარჯვენა კუთხე</div>
+  </div></div>
+      </div></div>
+        </div>
+      
+        <div class="section">
+          <div class="section-header">
+            <h2 class="section-title">
+              <span class="section-num">02</span>
+              <span class="section-dash">|</span>
+              <span class="section-name">2</span>
+            </h2>
+          </div>
+          <div class="section-body"><div class="question-card">
+        <div class="question-title">ამწევი სისტემა სამუშაო მდგომარეობაშია</div>
+        <div class="question-answer"><span class="answer-pill pill-yes">✓ კი</span></div>
+        
+      </div><div class="question-card">
+        <div class="question-title">მაქსიმალური დატვირთვა (კგ)</div>
+        <div class="question-answer">450 კგ</div>
+        
+      </div></div>
+        </div>
+      
+        <div class="section">
+          <div class="section-header">
+            <h2 class="section-title">
+              <span class="section-num">03</span>
+              <span class="section-dash">|</span>
+              <span class="section-name">3</span>
+            </h2>
+          </div>
+          <div class="section-body"><div class="question-card">
+        <div class="question-title">კომპონენტების მდგომარეობა</div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th></th><th>მდგომარეობა</th><th>შენიშვნა</th></tr></thead>
+            <tbody><tr><th>სტენდი</th><td>გამართულია</td><td></td></tr><tr class="is-problem"><th>სახსარი</th><td><span class="cell-status cell-status--fail">პრობლემაა</span></td><td>ჟანგი</td></tr><tr><th>ტრალი</th><td>გამართულია</td><td></td></tr></tbody>
+          </table>
+        </div>
+        
+      </div></div>
+        </div>
+      
+
+  <div class="conclusion-card">
+    <div class="conclusion-label">დასკვნა</div>
+    <div class="conclusion-text">ფასადი შემოწმებულია და ექსპლუატაციისთვის გამოსადეგია.</div>
+    <span class="status-badge status-pass">✓ უსაფრთხოა ექსპლუატაციისთვის</span>
+  </div>
+
+  <div class="signatures-header">
+    <span class="signatures-header-text">ხელმოწერები</span>
+    <div class="signatures-header-rule"></div>
+  </div>
+  <div class="sig-grid">
+      <div class="sig-block is-expert">
+        <div class="sig-name">გიორგი მამალაძე</div>
+        <div class="sig-role">ექსპერტი</div>
+        <div class="sig-position">შრომის უსაფრთხოების სპეციალისტი</div>
+        <div class="sig-img-box">
+          <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" alt="ხელმოწერა" />
+        </div>
+        <div class="sig-date">29.4.2026</div>
+        <div class="audit-trail"><strong>დრო:</strong> 29.4.2026 01:51</div>
+      </div>
+      <div class="sig-block">
+        <div class="sig-name">ლევან კვარაცხელია</div>
+        <div class="sig-role">foreman</div>
+        <div class="sig-position">ობიექტის ხელმძღვანელი</div>
+        <div class="sig-img-box">
+          <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" alt="ხელმოწერა" />
+        </div>
+        <div class="sig-date">29.4.2026</div>
+        <div class="audit-trail"><strong>დრო:</strong> 29.4.2026 01:51</div>
+      </div></div>
+
+  
+</body>
+</html>

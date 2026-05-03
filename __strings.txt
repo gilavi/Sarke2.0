@@ -1,0 +1,838 @@
+﻿app\(auth)\forgot.tsx:69: "mail-outline"
+app\(auth)\forgot.tsx:70: ', color: theme.colors.ink, textAlign: '
+app\(auth)\forgot.tsx:85: "you@example.com"
+app\(auth)\forgot.tsx:86: "email-address"
+app\(auth)\login.tsx:107: "mail-open-outline"
+app\(auth)\login.tsx:110: 'áƒžáƒáƒ áƒáƒšáƒ˜áƒ¡ áƒ’áƒáƒœáƒáƒ®áƒšáƒ”áƒ‘áƒ˜áƒ¡ áƒ‘áƒ›áƒ£áƒšáƒ˜ áƒ’áƒáƒ˜áƒ’áƒ–áƒáƒ•áƒœáƒ\n'
+app\(auth)\login.tsx:125: "you@example.com"
+app\(auth)\login.tsx:126: "email-address"
+app\(auth)\login.tsx:190: "you@example.com"
+app\(auth)\login.tsx:191: "email-address"
+app\(auth)\login.tsx:213: 'eye-off-outline'
+app\(auth)\login.tsx:213: 'eye-outline'
+app\(auth)\login.tsx:222: 'flex-end'
+app\(auth)\login.tsx:236: 'áƒ¨áƒ”áƒ”áƒ®áƒ”áƒ— Google áƒáƒœáƒ’áƒáƒ áƒ˜áƒ¨áƒ˜áƒ— áƒ¨áƒ”áƒ¡áƒáƒ¡áƒ•áƒšáƒ”áƒšáƒáƒ“'
+app\(auth)\login.tsx:236: 'Google-áƒ˜áƒ— áƒ¨áƒ”áƒ¡áƒ•áƒšáƒ'
+app\(auth)\login.tsx:285: ', style: '
+app\(auth)\login.tsx:327: "you@example.com"
+app\(auth)\login.tsx:328: "email-address"
+app\(auth)\login.tsx:350: 'eye-off-outline'
+app\(auth)\login.tsx:350: 'eye-outline'
+app\(auth)\login.tsx:360: "Google-áƒ˜áƒ— áƒ áƒ”áƒ’áƒ˜áƒ¡áƒ¢áƒ áƒáƒªáƒ˜áƒ"
+app\(auth)\login.tsx:360: 'áƒ¨áƒ”áƒ”áƒ®áƒ”áƒ— Google áƒáƒœáƒ’áƒáƒ áƒ˜áƒ¨áƒ˜áƒ— áƒ áƒ”áƒ’áƒ˜áƒ¡áƒ¢áƒ áƒáƒªáƒ˜áƒ˜áƒ¡áƒ—áƒ•áƒ˜áƒ¡'
+app\(auth)\login.tsx:360: 'Google-áƒ˜áƒ— áƒ áƒ”áƒ’áƒ˜áƒ¡áƒ¢áƒ áƒáƒªáƒ˜áƒ'
+app\(auth)\login.tsx:381: "alert-circle-outline"
+app\(auth)\login.tsx:419: 'Google-áƒ˜áƒ— áƒ¨áƒ”áƒ¡áƒ•áƒšáƒ'
+app\(auth)\login.tsx:442: "shield-checkmark"
+app\(auth)\login.tsx:509: 'flex-start'
+app\(auth)\login.tsx:545: 'space-between'
+app\(auth)\reset.tsx:71: "checkmark-circle"
+app\(auth)\reset.tsx:80: 'reset.signOut'
+app\(auth)\verify-email.tsx:155: "mail-unread-outline"
+app\(auth)\verify-email.tsx:159: 'áƒ“áƒáƒ“áƒáƒ¡áƒ¢áƒ£áƒ áƒ”áƒ‘áƒ˜áƒ¡ áƒ™áƒáƒ“áƒ˜ áƒ’áƒáƒ˜áƒ’áƒ–áƒáƒ•áƒœáƒ\n'
+app\(auth)\verify-email.tsx:185: "number-pad"
+app\(auth)\verify-email.tsx:188: "sms-otp"
+app\(auth)\verify-email.tsx:197: "alert-circle-outline"
+app\(auth)\verify-email.tsx:249: 'flex-start'
+app\(auth)\verify-email.tsx:264: 'space-between'
+app\(auth)\verify-email.tsx:27: 'verify-otp-cooldown:'
+app\(auth)\verify-email.tsx:294: 'flex-start'
+app\(auth)\verify-email.tsx:51: 'rate limit'
+app\(auth)\verify-email.tsx:51: 'too many'
+app\(auth)\verify-email.tsx:53: 'fetch failed'
+app\(tabs)\_layout.tsx:47: "ellipsis-horizontal-circle"
+app\(tabs)\calendar.tsx:201: 'áƒ¯áƒ”áƒ  áƒ›áƒ˜áƒáƒ”áƒ áƒ—áƒ”áƒ— Google áƒ™áƒáƒšáƒ”áƒœáƒ“áƒáƒ áƒ˜'
+app\(tabs)\calendar.tsx:222: 'Google áƒ™áƒáƒšáƒ”áƒœáƒ“áƒáƒ áƒ—áƒáƒœ áƒ¡áƒ˜áƒœáƒ¥áƒ áƒáƒœáƒ˜áƒ–áƒáƒªáƒ˜áƒ'
+app\(tabs)\calendar.tsx:224: 'cloud-upload-outline'
+app\(tabs)\calendar.tsx:257: "chevron-back"
+app\(tabs)\calendar.tsx:268: "chevron-forward"
+app\(tabs)\calendar.tsx:299: '-o'
+app\(tabs)\calendar.tsx:353: 'ka-GE'
+app\(tabs)\calendar.tsx:37: "YYYY-MM-DD"
+app\(tabs)\calendar.tsx:401: 'alert-circle'
+app\(tabs)\calendar.tsx:452: 'flex-end'
+app\(tabs)\calendar.tsx:453: 'space-between'
+app\(tabs)\certificates.tsx:184: "PDF áƒ áƒ”áƒžáƒáƒ áƒ¢áƒ”áƒ‘áƒ˜"
+app\(tabs)\certificates.tsx:185: "áƒ“áƒáƒáƒ¡áƒ áƒ£áƒšáƒ”áƒ— áƒ˜áƒœáƒ¡áƒžáƒ”áƒ¥áƒªáƒ˜áƒ áƒ“áƒ áƒ“áƒáƒáƒ’áƒ”áƒœáƒ”áƒ áƒ˜áƒ áƒ”áƒ— áƒžáƒ˜áƒ áƒ•áƒ”áƒšáƒ˜ PDF áƒ áƒ”áƒžáƒáƒ áƒ¢áƒ˜"
+app\(tabs)\certificates.tsx:188: 'add-circle-outline'
+app\(tabs)\certificates.tsx:207: 'PDF áƒ áƒ”áƒžáƒáƒ áƒ¢áƒ˜áƒ¡ áƒ¬áƒáƒ¨áƒšáƒ'
+app\(tabs)\certificates.tsx:216: 'PDF áƒ áƒ”áƒžáƒáƒ áƒ¢áƒ˜'
+app\(tabs)\certificates.tsx:225: 'PDF áƒ áƒ”áƒžáƒáƒ áƒ¢áƒ˜'
+app\(tabs)\certificates.tsx:239: "person-outline"
+app\(tabs)\certificates.tsx:245: "ribbon-outline"
+app\(tabs)\certificates.tsx:254: "chevron-forward"
+app\(tabs)\certificates.tsx:270: 'space-between'
+app\(tabs)\certificates.tsx:50: "document-text"
+app\(tabs)\home.tsx:1113: 'flex-start'
+app\(tabs)\home.tsx:1166: 'flex-end'
+app\(tabs)\home.tsx:1187: 'space-between'
+app\(tabs)\home.tsx:133: "box-none"
+app\(tabs)\home.tsx:179: "chevron-forward"
+app\(tabs)\home.tsx:192: "chevron-forward"
+app\(tabs)\home.tsx:203: 'cloud-upload-outline'
+app\(tabs)\home.tsx:215: 'PDF áƒ áƒ”áƒžáƒáƒ áƒ¢áƒ¡ áƒáƒ•áƒ¢áƒáƒ›áƒáƒ¢áƒ£áƒ áƒáƒ“ áƒ”áƒ áƒ—áƒ•áƒ˜áƒ¡.'
+app\(tabs)\home.tsx:218: "chevron-forward"
+app\(tabs)\home.tsx:279: "add-circle-outline"
+app\(tabs)\home.tsx:366: "chevron-forward"
+app\(tabs)\home.tsx:377: "shield-checkmark"
+app\(tabs)\home.tsx:426: '0deg'
+app\(tabs)\home.tsx:426: '45deg'
+app\(tabs)\home.tsx:585: "add new"
+app\(tabs)\home.tsx:593: "chevron-forward"
+app\(tabs)\home.tsx:596: "folder-open-outline"
+app\(tabs)\home.tsx:61: 'home.qualifications'
+app\(tabs)\home.tsx:612: "chevron-forward"
+app\(tabs)\home.tsx:62: 'home.templates'
+app\(tabs)\home.tsx:63: 'home.recent'
+app\(tabs)\home.tsx:632: "chevron-forward"
+app\(tabs)\home.tsx:64: 'home.projects'
+app\(tabs)\home.tsx:644: "arrow-back"
+app\(tabs)\home.tsx:664: "document-text"
+app\(tabs)\home.tsx:669: "chevron-forward"
+app\(tabs)\home.tsx:679: "arrow-back"
+app\(tabs)\home.tsx:71: 'home.load'
+app\(tabs)\home.tsx:746: ' + project.company_name : '
+app\(tabs)\home.tsx:778: 'ka-GE'
+app\(tabs)\home.tsx:794: 'ka-GE'
+app\(tabs)\home.tsx:801: 'áƒ¤áƒáƒ¢áƒáƒ¡ áƒ’áƒáƒ“áƒáƒ¦áƒ”áƒ‘áƒ áƒ áƒ”áƒžáƒáƒ áƒ¢áƒ¡ 3x áƒ£áƒ¤áƒ áƒ áƒ¦áƒ˜áƒ áƒ”áƒ‘áƒ£áƒšáƒ¡ áƒ®áƒ“áƒ˜áƒ¡ â€” áƒ’áƒáƒ“áƒáƒ˜áƒ¦áƒ”áƒ— áƒ§áƒáƒ•áƒ”áƒšáƒ˜ áƒªáƒ•áƒšáƒ˜áƒšáƒ”áƒ‘áƒ.'
+app\(tabs)\home.tsx:825: 'flex-end'
+app\(tabs)\home.tsx:846: 'flex-start'
+app\(tabs)\more.tsx:111: '} ${user?.last_name ?? '
+app\(tabs)\more.tsx:111: '}`.trim() || '
+app\(tabs)\more.tsx:181: "create-outline"
+app\(tabs)\more.tsx:187: "document-text-outline"
+app\(tabs)\more.tsx:193: "log-out-outline"
+app\(tabs)\more.tsx:252: ', undefined, '
+app\(tabs)\more.tsx:270: "shield-checkmark"
+app\(tabs)\more.tsx:274: '\n\n'
+app\(tabs)\more.tsx:275: '\n'
+app\(tabs)\more.tsx:276: '\n'
+app\(tabs)\more.tsx:277: '\n'
+app\(tabs)\more.tsx:313: 'space-between'
+app\(tabs)\more.tsx:379: 'flex-start'
+app\(tabs)\more.tsx:379: 'space-between'
+app\(tabs)\more.tsx:394: 'flex-end'
+app\(tabs)\more.tsx:394: 'space-between'
+app\(tabs)\more.tsx:403: "chevron-forward"
+app\(tabs)\more.tsx:416: "chevron-forward"
+app\(tabs)\more.tsx:79: 'Google áƒ™áƒáƒšáƒ”áƒœáƒ“áƒáƒ áƒ˜ áƒ’áƒáƒ˜áƒ—áƒ˜áƒ¨áƒ'
+app\(tabs)\more.tsx:83: 'Google áƒ™áƒáƒšáƒ”áƒœáƒ“áƒáƒ áƒ˜ áƒ¨áƒ”áƒ”áƒ áƒ—áƒ“áƒ'
+app\(tabs)\projects.tsx:134: "homepage_v1"
+app\(tabs)\projects.tsx:393: ' + project.address : '
+app\(tabs)\projects.tsx:393: '}. ${stats ? `${stats.completed} áƒ“áƒáƒ¡áƒ áƒ£áƒšáƒ”áƒ‘áƒ£áƒšáƒ˜, ${stats.drafts} áƒ“áƒ áƒáƒ¤áƒ¢áƒ˜` : '
+app\(tabs)\projects.tsx:401: "2xl"
+app\(tabs)\projects.tsx:421: "document-text-outline"
+app\(tabs)\projects.tsx:438: "chevron-forward"
+app\(tabs)\projects.tsx:450: 'flex-end'
+app\(tabs)\projects.tsx:451: 'space-between'
+app\(tabs)\projects.tsx:509: 'flex-end'
+app\(tabs)\projects.tsx:58: 'projects.stats'
+app\(tabs)\projects.tsx:63: 'projects.load'
+app\(tabs)\projects.tsx:79: "${project.name}"
+app\(tabs)\projects.tsx:81: ', style: '
+app\(tabs)\regulations.tsx:149: 'flex-start'
+app\(tabs)\regulations.tsx:154: 'flex-start'
+app\(tabs)\regulations.tsx:164: "chevron-forward"
+app\(tabs)\regulations.tsx:168: 'matsne.gov.ge'
+app\(tabs)\regulations.tsx:34: "M70 40 L60 55 L80 55 Z"
+app\(tabs)\regulations.tsx:36: "M130 40 L120 55 L140 55 Z"
+app\(tabs)\regulations.tsx:42: "M66 52l2 2 4-4"
+app\(tabs)\regulations.tsx:45: "M125 48c-3 0-5 2-5 4h10c0-2-2-4-5-4z"
+app\(tabs)\regulations.tsx:48: "M40 35l1 2 2 0-1.5 1.5 0.5 2-2-1-2 1 0.5-2-1.5-1.5 2 0z"
+app\(tabs)\regulations.tsx:49: "M160 45l1 2 2 0-1.5 1.5 0.5 2-2-1-2 1 0.5-2-1.5-1.5 2 0z"
+app\_layout.tsx:102: '_layout.flushPendingSignatures'
+app\_layout.tsx:134: "(tabs)"
+app\_layout.tsx:155: "photo-picker"
+app\_layout.tsx:164: 'SpaceGrotesk-Bold'
+app\_layout.tsx:165: 'SpaceGrotesk-SemiBold'
+app\_layout.tsx:166: 'SpaceGrotesk-Medium'
+app\_layout.tsx:167: 'Inter-Regular'
+app\_layout.tsx:168: 'Inter-Medium'
+app\_layout.tsx:169: 'Inter-SemiBold'
+app\_layout.tsx:170: 'Inter-Bold'
+app\_layout.tsx:171: 'JetBrainsMono-Regular'
+app\_layout.tsx:76: '_layout.exchangeCodeForSession'
+app\_layout.tsx:87: '(auth)'
+app\certificates\new.tsx:1155: 'flex-start'
+app\certificates\new.tsx:1173: 'flex-start'
+app\certificates\new.tsx:1202: 'flex-start'
+app\certificates\new.tsx:142: 'certNew.template'
+app\certificates\new.tsx:145: 'certNew.project'
+app\certificates\new.tsx:146: 'certNew.questions'
+app\certificates\new.tsx:147: 'certNew.answers'
+app\certificates\new.tsx:148: 'certNew.qualifications'
+app\certificates\new.tsx:157: 'certNew.projectSigners'
+app\certificates\new.tsx:169: 'certNew.photos'
+app\certificates\new.tsx:183: 'certNew.expertSigUrl'
+app\certificates\new.tsx:211: ', style: '
+app\certificates\new.tsx:240: 'image/jpeg'
+app\certificates\new.tsx:360: 'certNew.rosterSigLoad'
+app\certificates\new.tsx:376: 'expert-auto'
+app\certificates\new.tsx:395: 's onConflict resolution can'
+app\certificates\new.tsx:407: 'image/png'
+app\certificates\new.tsx:438: 'certNew.rosterUpsertAdhoc'
+app\certificates\new.tsx:452: 'certNew.rosterSigLazyLoad'
+app\certificates\new.tsx:462: 'image/png'
+app\certificates\new.tsx:471: 'certNew.rosterUpsertRoster'
+app\certificates\new.tsx:541: "image unavailable"
+app\certificates\new.tsx:577: ', `áƒ›áƒ˜áƒ£áƒ—áƒ˜áƒ—áƒ”áƒ—: ${missingQualTypes.join('
+app\certificates\new.tsx:583: 'PDF-áƒ˜áƒ¡ áƒ“áƒáƒ¡áƒáƒ’áƒ”áƒœáƒ”áƒ áƒ˜áƒ áƒ”áƒ‘áƒšáƒáƒ“ áƒ¡áƒáƒ­áƒ˜áƒ áƒáƒ áƒ”áƒ¥áƒ¡áƒžáƒ”áƒ áƒ¢áƒ˜áƒ¡ áƒ®áƒ”áƒšáƒ›áƒáƒ¬áƒ”áƒ áƒ.'
+app\certificates\new.tsx:585: ', style: '
+app\certificates\new.tsx:586: ', onPress: () => router.push('
+app\certificates\new.tsx:618: 'application/pdf'
+app\certificates\new.tsx:636: 'PDF áƒ áƒ”áƒžáƒáƒ áƒ¢áƒ˜ áƒ¨áƒ”áƒ˜áƒ¥áƒ›áƒœáƒ'
+app\certificates\new.tsx:642: 'application/pdf'
+app\certificates\new.tsx:679: "chevron-back"
+app\certificates\new.tsx:713: ').map(n => n[0]).join('
+app\certificates\new.tsx:722: "chevron-back"
+app\certificates\new.tsx:753: "checkmark-circle"
+app\certificates\new.tsx:770: "create-outline"
+app\certificates\new.tsx:805: "checkmark-circle"
+app\certificates\new.tsx:831: "close-circle"
+app\certificates\new.tsx:835: "person-circle-outline"
+app\certificates\new.tsx:837: "chevron-down"
+app\certificates\new.tsx:857: "create-outline"
+app\certificates\new.tsx:885: 'alert-circle'
+app\certificates\new.tsx:885: 'checkmark-circle'
+app\certificates\new.tsx:924: "ribbon-outline"
+app\certificates\new.tsx:947: 'PDF-áƒ˜áƒ¡ áƒžáƒ áƒ”áƒ•áƒ˜áƒ£'
+app\certificates\new.tsx:949: "eye-outline"
+app\certificates\new.tsx:964: 'PDF-áƒ˜áƒ¡ áƒ’áƒ”áƒœáƒ”áƒ áƒáƒªáƒ˜áƒ'
+app\certificates\new.tsx:994: 'space-between'
+app\history.tsx:107: ', headerBackTitle: '
+app\history.tsx:155: '} â€” ${p?.name ?? '
+app\history.tsx:172: 'checkmark-circle'
+app\history.tsx:191: "document-text"
+app\history.tsx:198: "chevron-forward"
+app\history.tsx:228: 'play-circle-outline'
+app\history.tsx:35: "this inspection has 2 PDFs"
+app\history.tsx:88: ', style: '
+app\photo-picker.tsx:161: "camera-outline"
+app\photo-picker.tsx:174: "box-none"
+app\photo-picker.tsx:179: "images-outline"
+app\photo-picker.tsx:248: 'flex-end'
+app\photo-picker.tsx:258: 'space-between'
+app\qualifications\index.tsx:202: "image-outline"
+app\qualifications\index.tsx:235: "trash-outline"
+app\qualifications\index.tsx:250: "cloud-upload-outline"
+app\qualifications\index.tsx:258: "add-circle-outline"
+app\qualifications\index.tsx:327: " variant="
+app\qualifications\index.tsx:327: ', undefined, '
+app\qualifications\index.tsx:328: " onPress={onConfirm} iconLeft={<Ionicons name="
+app\qualifications\index.tsx:328: " variant="
+app\qualifications\index.tsx:83: ', toErrorMessage(e, '
+app\qualifications\requiredTypes.ts:6: 'TBD 3'
+app\qualifications\requiredTypes.ts:6: 'tbd_3'
+app\qualifications\requiredTypes.ts:7: 'TBD 4'
+app\qualifications\requiredTypes.ts:7: 'tbd_4'
+app\qualifications\requiredTypes.ts:8: 'TBD 5'
+app\qualifications\requiredTypes.ts:8: 'tbd_5'
+app\signature.tsx:115: "create-outline"
+app\signature.tsx:129: ', undefined, '
+app\signature.tsx:167: 'space-between'
+app\signature.tsx:189: ', height: '
+app\signature.tsx:73: 'PDF-áƒ˜áƒ¡ áƒ“áƒáƒ¡áƒáƒ’áƒ”áƒœáƒ”áƒ áƒ˜áƒ áƒ”áƒ‘áƒšáƒáƒ“ áƒ¡áƒáƒ­áƒ˜áƒ áƒáƒ áƒ”áƒ¥áƒ¡áƒžáƒ”áƒ áƒ¢áƒ˜áƒ¡ áƒ®áƒ”áƒšáƒ›áƒáƒ¬áƒ”áƒ áƒ.'
+app\templates.tsx:30: ', headerBackTitle: '
+app\templates.tsx:55: '} Â· {item.category ?? '
+app\templates.tsx:61: 'flex-end'
+app\terms.tsx:118: 'flex-start'
+app\terms.tsx:44: 'Declining will sign you out.'
+app\terms.tsx:48: 'Sign out'
+components\AddParticipantSheet.tsx:49: "chevron-forward"
+components\AddParticipantSheet.tsx:61: "chevron-forward"
+components\AddRemoteSignerModal.tsx:131: "phone-pad"
+components\AddRemoteSignerModal.tsx:132: "+995 5XX XXX XXX"
+components\AddRemoteSignerModal.tsx:147: 'áƒ’áƒáƒ’áƒ–áƒáƒ•áƒœáƒ” SMS'
+components\AddRemoteSignerModal.tsx:47: 'áƒ¤áƒáƒ áƒ›áƒáƒ¢áƒ˜: +995 5XX XXX XXX áƒáƒœ 32X XXX XXX'
+components\animations\AnimatedSuccessIcon.tsx:19: 'M 26 51 L 44 68 L 74 38'
+components\BackButton.tsx:23: 'chevron-back'
+components\BottomSheet.tsx:61: 'useBottomSheet must be used inside BottomSheetProvider'
+components\CrewSection.tsx:121: "person-add"
+components\CrewSection.tsx:78: "shield-checkmark"
+components\CrewSection.tsx:85: "lock-closed"
+components\EmptyState.tsx:103: "M76 118l3 3 6-6"
+components\EmptyState.tsx:111: "M38 48l-4-6M38 48l4-6"
+components\EmptyState.tsx:149: "M128 56a48 48 0 0 1 0 48"
+components\EmptyState.tsx:179: "M80 62c-6 0-10 4-10 9h6c0-2 2-4 4-4s4 2 4 4c0 3-3 5-5 7-2 2-3 4-3 6v2h6v-1c0-2 1-3 3-5 3-3 5-5 5-9 0-5-4-9-10-9z"
+components\EmptyState.tsx:184: "M62 108h36v6H62z"
+components\EmptyState.tsx:185: "M68 114l-6 10-2-8 8-2z"
+components\EmptyState.tsx:186: "M92 114l6 10 2-8-8-2z"
+components\EmptyState.tsx:221: "rotate(-30, 130, 50)"
+components\EmptyState.tsx:227: "rotate(15, 30, 120)"
+components\EmptyState.tsx:255: " y1={y} x2="
+components\EmptyState.tsx:255: " y2={y} stroke={theme.colors.accent} strokeWidth="
+components\EmptyState.tsx:258: " stroke={theme.colors.accent} strokeWidth="
+components\EmptyState.tsx:258: " x2={x} y2="
+components\EmptyState.tsx:56: "M80 42c-14 0-26 8-28 20h56c-2-12-14-20-28-20z"
+components\EmptyState.tsx:61: "M80 46c-12 0-22 7-24 17h48c-2-10-12-17-24-17z"
+components\EmptyState.tsx:75: "M111 118l5 5 9-10"
+components\EmptyState.tsx:79: "M42 104v4M42 128v4M30 118h4M50 118h4"
+components\EmptyState.tsx:93: "M95 38h20v20l-20-20z"
+components\EmptyState.tsx:94: "M95 38l20 20"
+components\ErrorState.tsx:22: 'cloud-offline-outline'
+components\HarnessListFlow.tsx:253: "haraco_glossary_v1"
+components\HarnessListFlow.tsx:272: "remove-circle"
+components\HarnessListFlow.tsx:274: ', minWidth: 18, textAlign: '
+components\HarnessListFlow.tsx:278: "add-circle"
+components\HarnessListFlow.tsx:414: "camera-outline"
+components\HarnessListFlow.tsx:43: 'N1'
+components\HarnessListFlow.tsx:436: ', height: '
+components\HarnessListFlow.tsx:477: 'space-between'
+components\HarnessListFlow.tsx:61: 'N1'
+components\MapPicker.tsx:119: 'MapPicker.geocode'
+components\MapPicker.tsx:195: "hand-left"
+components\MapPicker.tsx:249: 'flex-end'
+components\MapPicker.tsx:93: 'MapPicker.reverseGeocode'
+components\MapPicker.web.tsx:38: 'MapPicker.web.geocode'
+components\MapPicker.web.tsx:65: "map-outline"
+components\OfflineBanner.tsx:10: "online â†’ offline"
+components\PhotoAnnotator.tsx:231: ', style: '
+components\PhotoAnnotator.tsx:458: 'pencil-outline'
+components\PhotoAnnotator.tsx:459: 'arrow-forward-outline'
+components\PhotoAnnotator.tsx:460: 'ellipse-outline'
+components\PhotoAnnotator.tsx:461: 'square-outline'
+components\PhotoAnnotator.tsx:462: 'text-outline'
+components\PhotoAnnotator.tsx:480: "arrow-undo-outline"
+components\PhotoAnnotator.tsx:486: "trash-outline"
+components\PhotoAnnotator.tsx:569: 'space-between'
+components\primitives\A11yText.tsx:18: '2xl'
+components\primitives\A11yText.tsx:7: '2xl'
+components\primitives\AnimatedCheckbox.tsx:18: 'M 5 12 L 10 17 L 19 7'
+components\primitives\Badge.tsx:57: 'flex-start'
+components\primitives\Button.tsx:203: 'flex-start'
+components\primitives\StatusBadge.tsx:10: 'close-circle'
+components\primitives\StatusBadge.tsx:9: 'checkmark-circle'
+components\qualifications\AddQualificationSheet.tsx:121: ', undefined, '
+components\qualifications\AddQualificationSheet.tsx:151: "calendar-outline"
+components\qualifications\AddQualificationSheet.tsx:153: "chevron-forward"
+components\qualifications\AddQualificationSheet.tsx:159: "calendar-outline"
+components\qualifications\AddQualificationSheet.tsx:161: "chevron-forward"
+components\qualifications\AddQualificationSheet.tsx:164: ', months: 12 }, { label: '
+components\qualifications\AddQualificationSheet.tsx:164: ', months: 36 }, { label: '
+components\qualifications\AddQualificationSheet.tsx:204: "ka-GE"
+components\qualifications\AddQualificationSheet.tsx:220: 'flex-end'
+components\qualifications\AddQualificationSheet.tsx:244: 'space-between'
+components\qualifications\AddQualificationSheet.tsx:92: 'image/jpeg'
+components\QuestionAvatar.tsx:101: " fill="
+components\QuestionAvatar.tsx:108: " height="
+components\QuestionAvatar.tsx:108: " width="
+components\QuestionAvatar.tsx:128: " height="
+components\QuestionAvatar.tsx:128: " width="
+components\QuestionAvatar.tsx:144: " height="
+components\QuestionAvatar.tsx:144: " width="
+components\QuestionAvatar.tsx:161: " height="
+components\QuestionAvatar.tsx:161: " width="
+components\QuestionAvatar.tsx:179: " height="
+components\QuestionAvatar.tsx:179: " width="
+components\QuestionAvatar.tsx:20: 'distance25'
+components\QuestionAvatar.tsx:202: " height="
+components\QuestionAvatar.tsx:202: " width="
+components\QuestionAvatar.tsx:213: "M24 33 L27 30 L30 33"
+components\QuestionAvatar.tsx:214: "M24 41 L27 44 L30 41"
+components\QuestionAvatar.tsx:221: " height="
+components\QuestionAvatar.tsx:221: " width="
+components\QuestionAvatar.tsx:227: " fill="
+components\QuestionAvatar.tsx:228: " fill="
+components\QuestionAvatar.tsx:230: "M4 17 L6 14 L8 17"
+components\QuestionAvatar.tsx:231: "M4 37 L6 40 L8 37"
+components\QuestionAvatar.tsx:238: " height="
+components\QuestionAvatar.tsx:238: " width="
+components\QuestionAvatar.tsx:241: " fill="
+components\QuestionAvatar.tsx:254: " height="
+components\QuestionAvatar.tsx:254: " width="
+components\QuestionAvatar.tsx:262: "M44 8 Q54 8 54 18"
+components\QuestionAvatar.tsx:269: " height="
+components\QuestionAvatar.tsx:269: " width="
+components\QuestionAvatar.tsx:291: " height="
+components\QuestionAvatar.tsx:291: " width="
+components\QuestionAvatar.tsx:307: " height="
+components\QuestionAvatar.tsx:307: " width="
+components\QuestionAvatar.tsx:318: " fill="
+components\QuestionAvatar.tsx:350: ')) return '
+components\QuestionAvatar.tsx:351: ')) return '
+components\QuestionAvatar.tsx:355: ')) return '
+components\QuestionAvatar.tsx:356: ') || t.includes('
+components\QuestionAvatar.tsx:356: ')) return '
+components\QuestionAvatar.tsx:357: ') || t.includes('
+components\QuestionAvatar.tsx:357: ')) return '
+components\QuestionAvatar.tsx:358: ') || t.includes('
+components\QuestionAvatar.tsx:358: ')) return '
+components\QuestionAvatar.tsx:359: ') && t.includes('
+components\QuestionAvatar.tsx:359: ')) || t.includes('
+components\QuestionAvatar.tsx:359: ')) return '
+components\QuestionAvatar.tsx:360: ') || /^áƒ’áƒ•\b/.test(t)) return '
+components\QuestionAvatar.tsx:360: ') || t.includes('
+components\QuestionAvatar.tsx:360: ') || t.startsWith('
+components\QuestionAvatar.tsx:361: ') || t.includes('
+components\QuestionAvatar.tsx:361: ') || t.includes('
+components\QuestionAvatar.tsx:361: ')) return '
+components\QuestionAvatar.tsx:362: ')) return '
+components\QuestionAvatar.tsx:363: ') || t.includes('
+components\QuestionAvatar.tsx:363: ')) return '
+components\QuestionAvatar.tsx:366: ')) return '
+components\QuestionAvatar.tsx:367: ')) return '
+components\QuestionAvatar.tsx:368: ') || t.includes('
+components\QuestionAvatar.tsx:368: ') || t.includes('
+components\QuestionAvatar.tsx:368: ')) return '
+components\QuestionAvatar.tsx:369: ') || t.includes('
+components\QuestionAvatar.tsx:369: ')) return '
+components\QuestionAvatar.tsx:370: ') || t.includes('
+components\QuestionAvatar.tsx:370: ') || t.includes('
+components\QuestionAvatar.tsx:370: ')) return '
+components\QuestionAvatar.tsx:39: " height="
+components\QuestionAvatar.tsx:39: " width="
+components\QuestionAvatar.tsx:43: " fill="
+components\QuestionAvatar.tsx:54: " height="
+components\QuestionAvatar.tsx:54: " width="
+components\QuestionAvatar.tsx:56: "M48 6 L60 18 L48 18 Z"
+components\QuestionAvatar.tsx:57: "M48 6 L48 18 L60 18"
+components\QuestionAvatar.tsx:62: "M30 53 L34 58 L43 46"
+components\QuestionAvatar.tsx:70: " height="
+components\QuestionAvatar.tsx:70: " width="
+components\QuestionAvatar.tsx:81: "M52 52 L56 57 L63 47"
+components\QuestionAvatar.tsx:88: " height="
+components\QuestionAvatar.tsx:88: " width="
+components\QuestionAvatar.tsx:98: "M32 30 L28 33 L32 36"
+components\QuestionAvatar.tsx:99: "M40 30 L44 33 L40 36"
+components\ScaffoldHelpSheet.tsx:44: "haraco_help_icon_v1"
+components\ScaffoldTour.tsx:107: "arrow-forward"
+components\ScaffoldTour.tsx:124: 'space-between'
+components\SectionHeader.tsx:76: 'space-between'
+components\SignatureCanvas.tsx:100: "image/png"
+components\SignatureCanvas.tsx:125: ', undefined, '
+components\SignatureCanvas.tsx:57: "user has drawn"
+components\SignatureCanvas.tsx:85: ', undefined, '
+components\SyncStatusPill.tsx:64: 'checkmark-circle'
+components\SyncStatusPill.tsx:64: 'cloud-offline-outline'
+components\SyncStatusPill.tsx:74: "box-none"
+components\SyncStatusPill.tsx:98: 'flex-end'
+components\TourGuide.tsx:302: 'space-between'
+components\ui.tsx:110: 'space-between'
+components\ui.tsx:86: 'flex-start'
+components\UploadedFilesSection.tsx:42: "folder-outline"
+components\UploadedFilesSection.tsx:53: 'chevron-down'
+components\UploadedFilesSection.tsx:53: 'chevron-up'
+components\UploadedFilesSection.tsx:63: "cloud-upload-outline"
+components\UploadedFilesSection.tsx:77: "document-outline"
+components\UploadedFilesSection.tsx:93: "trash-outline"
+components\UploadOverlay.tsx:14: "something is happening"
+components\wizard\ExitModal.tsx:45: "arrow-forward"
+components\wizard\ExitModal.tsx:51: "exit-outline"
+components\wizard\kamari\KamariFlow.tsx:10: 'áƒ™áƒáƒ›áƒ”áƒœáƒ¢áƒáƒ áƒ˜_{col}'
+components\wizard\kamari\KamariFlow.tsx:10: 'N{i}'
+components\wizard\kamari\KamariFlow.tsx:11: "row:N{i}:col:{col}"
+components\wizard\kamari\KamariFlow.tsx:194: 'alert-circle'
+components\wizard\kamari\KamariFlow.tsx:203: 'time-outline'
+components\wizard\kamari\KamariFlow.tsx:211: 'checkmark-circle'
+components\wizard\kamari\KamariFlow.tsx:323: ', style: '
+components\wizard\kamari\KamariFlow.tsx:404: "arrow-back"
+components\wizard\kamari\KamariFlow.tsx:447: 'chevron-down'
+components\wizard\kamari\KamariFlow.tsx:447: 'chevron-up'
+components\wizard\kamari\KamariFlow.tsx:477: "camera-outline"
+components\wizard\kamari\KamariFlow.tsx:499: " onPress={handleSave} size="
+components\wizard\kamari\KamariFlow.tsx:596: 'space-between'
+components\wizard\kamari\KamariFlow.tsx:703: 'flex-end'
+components\wizard\kamari\KamariFlow.tsx:9: 'N{i}'
+components\wizard\kamari\KamariFlow.tsx:93: "2xl"
+components\wizard\SmartHint.tsx:25: 'flex-start'
+components\wizard\SmartHint.tsx:28: "bulb-outline"
+components\wizard\WizardNav.tsx:103: 'space-between'
+components\wizard\WizardNav.tsx:58: "arrow-back"
+components\wizard\WizardNav.tsx:92: "arrow-forward"
+lib\blob.ts:104: 'base64'
+lib\blob.ts:107: 'no base64 decoder available'
+lib\blob.ts:124: 'base64'
+lib\blob.ts:125: 'No base64 encoder available'
+lib\blob.ts:25: 'image/jpeg'
+lib\blob.ts:39: 'data:'
+lib\blob.ts:40: 'FileReader produced no data URL'
+lib\blob.ts:45: 'FileReader produced empty data URL'
+lib\blob.ts:50: 'FileReader error'
+lib\blob.ts:6: "0-byte upload"
+lib\blob.ts:63: 'not a data URL'
+lib\blob.ts:80: 'not a data URL'
+lib\blob.ts:82: 'data URL has empty payload'
+lib\blob.ts:84: 'no cache directory available'
+lib\errorMap.ts:11: 'password should be at least'
+lib\errorMap.ts:13: 'rate limit'
+lib\errorMap.ts:13: 'too many'
+lib\errorMap.ts:17: 'fetch failed'
+lib\errorMap.ts:18: 'failed to fetch'
+lib\errorMap.ts:24: ')) return '
+lib\errorMap.ts:24: 'not found'
+lib\errorMap.ts:27: 'unique constraint'
+lib\errorMap.ts:34: 'already registered'
+lib\errorMap.ts:34: 'user already exists'
+lib\errorMap.ts:7: 'invalid credentials'
+lib\errorMap.ts:7: 'invalid login credentials'
+lib\errorMap.ts:9: 'email not confirmed'
+lib\googleCalendar.ts:10: 'sarke.google.accessToken'
+lib\googleCalendar.ts:11: 'sarke.google.refreshToken'
+lib\googleCalendar.ts:12: 'sarke.google.expiresAt'
+lib\googleCalendar.ts:133: 'Google Client ID áƒáƒ  áƒáƒ áƒ˜áƒ¡ áƒ™áƒáƒœáƒ¤áƒ˜áƒ’áƒ£áƒ áƒ˜áƒ áƒ”áƒ‘áƒ£áƒšáƒ˜'
+lib\googleCalendar.ts:145: 'Google-áƒ˜áƒ¡ áƒ¨áƒ”áƒ”áƒ áƒ—áƒ”áƒ‘áƒ áƒ’áƒáƒ£áƒ¥áƒ›áƒ“áƒ'
+lib\googleCalendar.ts:28: 'auth/google'
+lib\googleCalendar.ts:56: 'application/x-www-form-urlencoded'
+lib\googleCalendar.ts:56: 'Content-Type'
+lib\googleCalendar.ts:81: 'Google áƒ™áƒáƒšáƒ”áƒœáƒ“áƒáƒ áƒ—áƒáƒœ áƒ™áƒáƒ•áƒ¨áƒ˜áƒ áƒ˜ áƒáƒ  áƒáƒ áƒ˜áƒ¡'
+lib\googleCalendar.ts:88: 'application/json'
+lib\googleCalendar.ts:88: 'Content-Type'
+lib\googleCalendar.ts:94: 'Google áƒ¡áƒ”áƒ¡áƒ˜áƒ áƒáƒ›áƒáƒ˜áƒ¬áƒ£áƒ áƒ â€” áƒ¨áƒ”áƒáƒ”áƒ áƒ—áƒ” áƒ—áƒáƒ•áƒ˜áƒ“áƒáƒœ'
+lib\imageUrl.ts:106: 'no cache directory available'
+lib\imageUrl.ts:114: 'empty base64'
+lib\imageUrl.ts:115: 'image/jpeg'
+lib\imageUrl.ts:130: 'empty arrayBuffer'
+lib\imageUrl.ts:132: 'empty base64'
+lib\imageUrl.ts:134: 'content-type'
+lib\imageUrl.ts:136: 'image/jpeg'
+lib\imageUrl.ts:149: 'blobToDataUrl returned non-data URL'
+lib\imageUrl.ts:149: 'data:'
+lib\imageUrl.ts:159: 'blobToDataUrl returned non-data URL'
+lib\imageUrl.ts:159: 'data:'
+lib\imageUrl.ts:187: 'base64'
+lib\imageUrl.ts:188: 'no base64 encoder available'
+lib\imageUrl.ts:20: 's `responseType = '
+lib\imageUrl.ts:208: 'data:'
+lib\imageUrl.ts:242: ').pop() ?? '
+lib\imageUrl.ts:242: ').split('
+lib\imageUrl.ts:248: 'image/jpeg'
+lib\imageUrl.ts:249: 'image/jpeg'
+lib\imageUrl.ts:250: 'image/png'
+lib\imageUrl.ts:251: 'image/webp'
+lib\imageUrl.ts:252: 'image/gif'
+lib\imageUrl.ts:253: 'image/heic'
+lib\imageUrl.ts:254: 'image/heif'
+lib\imageUrl.ts:255: 'application/pdf'
+lib\imageUrl.ts:264: 'content-type'
+lib\imageUrl.ts:264: 'Content-Type'
+lib\imageUrl.ts:37: 'xhr empty blob'
+lib\imageUrl.ts:43: 'data:'
+lib\imageUrl.ts:44: 'xhr FileReader produced no data URL'
+lib\imageUrl.ts:49: 'xhr FileReader produced empty data URL'
+lib\imageUrl.ts:55: 'data:application/octet-stream'
+lib\imageUrl.ts:61: 'FileReader error'
+lib\imageUrl.ts:64: 'xhr network error'
+lib\imageUrl.ts:65: 'xhr timeout'
+lib\imageUrl.ts:95: 'image/jpeg'
+lib\locale.ts:1: 'ka-GE'
+lib\locale.ts:44: '2-digit'
+lib\locale.ts:45: '2-digit'
+lib\logError.ts:16: "unknown error"
+lib\logError.ts:3: '@errors:ring'
+lib\notifications.ts:8: 'sarke.reminders.map'
+lib\offline.tsx:127: 'inspection_id,question_id'
+lib\offline.tsx:244: 'offline.hydrateAnswers.parse'
+lib\offline.tsx:264: 'offline.hydrateQuestionnairePatch.parse'
+lib\offline.tsx:29: '@offline:queue'
+lib\offline.tsx:71: 'useOffline must be used inside OfflineProvider'
+lib\offline.tsx:81: 'offline.readQueue.parse'
+lib\pdf.ts:112: "page-break-inside: avoid;"
+lib\pdf.ts:112: 'style="page-break-inside: avoid;"'
+lib\pdf.ts:113: "section-header"
+lib\pdf.ts:114: "section-number"
+lib\pdf.ts:115: "section-title"
+lib\pdf.ts:117: "section-body"
+lib\pdf.ts:130: "page-break-before: always;"
+lib\pdf.ts:130: 'style="page-break-before: always;"'
+lib\pdf.ts:131: "section-header"
+lib\pdf.ts:132: "section-number"
+lib\pdf.ts:133: "section-title"
+lib\pdf.ts:135: "section-body"
+lib\pdf.ts:139: "cert-card"
+lib\pdf.ts:140: "cert-title"
+lib\pdf.ts:141: "cert-meta"
+lib\pdf.ts:147: "cert-img-wrap"
+lib\pdf.ts:148: "${c.file_data_url}"
+lib\pdf.ts:148: "${escapeHtml(c.type)}"
+lib\pdf.ts:148: "cert-img"
+lib\pdf.ts:149: "this.style.display='none';this.parentElement.innerHTML='<div class=\\'photo-missing\\'>áƒ¡áƒ£áƒ áƒáƒ—áƒ˜ áƒ›áƒ˜áƒ£áƒ¬áƒ•áƒ“áƒáƒ›áƒ”áƒšáƒ˜áƒ</div>';"
+lib\pdf.ts:149: '<div class=\\'
+lib\pdf.ts:149: '>áƒ¡áƒ£áƒ áƒáƒ—áƒ˜ áƒ›áƒ˜áƒ£áƒ¬áƒ•áƒ“áƒáƒ›áƒ”áƒšáƒ˜áƒ</div>'
+lib\pdf.ts:164: "status-badge status-fail"
+lib\pdf.ts:166: "status-badge status-pass"
+lib\pdf.ts:167: "status-badge status-pending"
+lib\pdf.ts:176: "preview-banner"
+lib\pdf.ts:182: "utf-8"
+lib\pdf.ts:183: "width=device-width, initial-scale=1.0"
+lib\pdf.ts:192: 'Noto Sans Georgian'
+lib\pdf.ts:192: 'Segoe UI'
+lib\pdf.ts:196: 'padding: 16px;'
+lib\pdf.ts:196: 'padding: 32px;'
+lib\pdf.ts:205: "Sarke 2.0 Â· áƒ¨áƒ áƒáƒ›áƒ˜áƒ¡ áƒ£áƒ¡áƒáƒ¤áƒ áƒ—áƒ®áƒáƒ”áƒ‘áƒ˜áƒ¡ áƒ”áƒ¥áƒ¡áƒžáƒ”áƒ áƒ¢áƒ£áƒšáƒ˜ áƒ¡áƒ˜áƒ¡áƒ¢áƒ”áƒ›áƒ Â· áƒ’áƒ•áƒ”áƒ áƒ“áƒ˜ "
+lib\pdf.ts:208: 'Noto Sans Georgian'
+lib\pdf.ts:282: 'SF Mono'
+lib\pdf.ts:442: 'page-break-inside: avoid;'
+lib\pdf.ts:567: 'page-break-inside: avoid;'
+lib\pdf.ts:618: 'page-break-inside: avoid;'
+lib\pdf.ts:682: 'page-break-inside: avoid;'
+lib\pdf.ts:723: "report-header"
+lib\pdf.ts:724: "report-header-left"
+lib\pdf.ts:725: "report-logo"
+lib\pdf.ts:726: "report-logo-sub"
+lib\pdf.ts:728: "display:flex;align-items:center;"
+lib\pdf.ts:729: "report-header-right"
+lib\pdf.ts:730: "report-meta-row"
+lib\pdf.ts:731: "report-meta-row"
+lib\pdf.ts:732: "report-meta-row"
+lib\pdf.ts:733: "report-id"
+lib\pdf.ts:735: "qr-placeholder"
+lib\pdf.ts:740: "info-card"
+lib\pdf.ts:741: "info-row"
+lib\pdf.ts:742: "info-label"
+lib\pdf.ts:743: "info-value"
+lib\pdf.ts:745: "info-row"
+lib\pdf.ts:746: "info-label"
+lib\pdf.ts:747: "info-value"
+lib\pdf.ts:750: "info-row"
+lib\pdf.ts:751: "info-label"
+lib\pdf.ts:752: "info-value"
+lib\pdf.ts:754: "info-row"
+lib\pdf.ts:755: "info-label"
+lib\pdf.ts:756: "info-value"
+lib\pdf.ts:761: "toc-box"
+lib\pdf.ts:762: "toc-title"
+lib\pdf.ts:765: "toc-item"
+lib\pdf.ts:766: "toc-num"
+lib\pdf.ts:767: "toc-title"
+lib\pdf.ts:768: "toc-count"
+lib\pdf.ts:77: 'ka-GE'
+lib\pdf.ts:776: "conclusion-card"
+lib\pdf.ts:777: "conclusion-label"
+lib\pdf.ts:778: "conclusion-text"
+lib\pdf.ts:783: "signatures-header"
+lib\pdf.ts:784: "signatures-header-text"
+lib\pdf.ts:785: "signatures-header-rule"
+lib\pdf.ts:787: "sig-grid"
+lib\pdf.ts:806: "question-comment"
+lib\pdf.ts:809: "question-notes"
+lib\pdf.ts:813: "photo-section-title"
+lib\pdf.ts:814: "photo-grid"
+lib\pdf.ts:822: "margin:0 0 8px 0;"
+lib\pdf.ts:822: "status-badge status-pass"
+lib\pdf.ts:824: "margin:0 0 8px 0;"
+lib\pdf.ts:824: "status-badge status-fail"
+lib\pdf.ts:825: "color:#9ca3af;font-style:italic;"
+lib\pdf.ts:825: '<span style="color:#9ca3af;font-style:italic;">â€”</span>'
+lib\pdf.ts:826: "question-card"
+lib\pdf.ts:827: "question-title"
+lib\pdf.ts:828: "question-answer"
+lib\pdf.ts:834: "question-card"
+lib\pdf.ts:835: "question-title"
+lib\pdf.ts:836: "question-answer"
+lib\pdf.ts:836: '} ${escapeHtml(q.unit ?? '
+lib\pdf.ts:841: "question-card"
+lib\pdf.ts:842: "question-title"
+lib\pdf.ts:843: "question-answer"
+lib\pdf.ts:847: "question-card"
+lib\pdf.ts:848: "question-title"
+lib\pdf.ts:864: "question-card"
+lib\pdf.ts:865: "question-title"
+lib\pdf.ts:866: "table-wrap"
+lib\pdf.ts:867: "data-table"
+lib\pdf.ts:888: 'row:'
+lib\pdf.ts:891: "photo-caption"
+lib\pdf.ts:895: 'data:'
+lib\pdf.ts:899: ' failed'
+lib\pdf.ts:899: "photo-item${isFailed ? ' failed' : ''}"
+lib\pdf.ts:900: "photo-img-wrap"
+lib\pdf.ts:901: "photo-missing"
+lib\pdf.ts:903: "photo-caption"
+lib\pdf.ts:908: ' failed'
+lib\pdf.ts:908: "photo-item${isFailed ? ' failed' : ''}"
+lib\pdf.ts:909: "photo-img-wrap"
+lib\pdf.ts:910: "${src}"
+lib\pdf.ts:911: "this.style.display='none';this.parentElement.innerHTML='<div class=\\'photo-missing\\'>áƒ¡áƒ£áƒ áƒáƒ—áƒ˜ áƒ›áƒ˜áƒ£áƒ¬áƒ•áƒ“áƒáƒ›áƒ”áƒšáƒ˜áƒ</div>';"
+lib\pdf.ts:911: '<div class=\\'
+lib\pdf.ts:911: '>áƒ¡áƒ£áƒ áƒáƒ—áƒ˜ áƒ›áƒ˜áƒ£áƒ¬áƒ•áƒ“áƒáƒ›áƒ”áƒšáƒ˜áƒ</div>'
+lib\pdf.ts:913: "photo-caption"
+lib\pdf.ts:92: "toc-item"
+lib\pdf.ts:92: "toc-num"
+lib\pdf.ts:92: "toc-title"
+lib\pdf.ts:923: 'data:image/'
+lib\pdf.ts:924: 'data:image/png;base64,'
+lib\pdf.ts:937: 'ka-GE'
+lib\pdf.ts:94: "toc-count"
+lib\pdf.ts:940: '2-digit'
+lib\pdf.ts:940: '2-digit'
+lib\pdf.ts:940: 'ka-GE'
+lib\pdf.ts:956: "audit-trail"
+lib\pdf.ts:960: "sig-block"
+lib\pdf.ts:961: "sig-role"
+lib\pdf.ts:962: "sig-name"
+lib\pdf.ts:963: "sig-position"
+lib\pdf.ts:964: "sig-img-box"
+lib\pdf.ts:965: "${sig.signature_png_url}"
+lib\pdf.ts:967: "sig-date"
+lib\pdf.ts:986: '&amp;'
+lib\pdf.ts:987: '&lt;'
+lib\pdf.ts:988: '&gt;'
+lib\pdf.ts:989: '&quot;'
+lib\regulations.ts:36: '4486188-scaffold'
+lib\scaffoldHelp.ts:28: 'distance25'
+lib\services.mock.ts:111: 'tpl-xaracho'
+lib\services.mock.ts:120: 'tpl-harness'
+lib\services.mock.ts:131: 'q-a-1'
+lib\services.mock.ts:136: 'q-a-2'
+lib\services.mock.ts:143: 'q-b-1'
+lib\services.mock.ts:147: 'Chest Strap'
+lib\services.mock.ts:147: 'Leg Straps'
+lib\services.mock.ts:147: 'Locking Carabiner'
+lib\services.mock.ts:147: 'Shoulder Straps'
+lib\services.mock.ts:147: 'Waist Belt'
+lib\services.mock.ts:152: 'proj-1'
+lib\services.mock.ts:154: 'Demo Construction'
+lib\services.mock.ts:160: 'proj-2'
+lib\services.mock.ts:169: 'insp-1'
+lib\services.mock.ts:177: 'insp-2'
+lib\services.mock.ts:179: 'Petzl NEWTON'
+lib\services.mock.ts:185: 'insp-3'
+lib\services.mock.ts:193: 'cert-1'
+lib\services.mock.ts:194: 'mock/insp-1.pdf'
+lib\services.mock.ts:199: 'cert-2'
+lib\services.mock.ts:200: 'mock/insp-2.pdf'
+lib\services.mock.ts:206: 'cert-2b'
+lib\services.mock.ts:207: 'mock/insp-2-v2.pdf'
+lib\services.mock.ts:213: 'qual-1'
+lib\services.mock.ts:214: ', expires_at: '
+lib\services.mock.ts:214: 'XI-12345'
+lib\services.mock.ts:215: 'mock/qual-1.jpg'
+lib\services.mock.ts:219: 'qual-2'
+lib\services.mock.ts:220: ', expires_at: '
+lib\services.mock.ts:220: 'HI-67890'
+lib\services.mock.ts:221: 'mock/qual-2.jpg'
+lib\services.mock.ts:294: 'not found'
+lib\services.mock.ts:381: 'projectFilesApi.upload is not supported in mock mode'
+lib\services.mock.ts:384: 'projectFilesApi.remove is not supported in mock mode'
+lib\services.mock.ts:387: 'projectFilesApi.signedUrl is not supported in mock mode'
+lib\services.mock.ts:456: 'not found'
+lib\services.mock.ts:464: 'not found'
+lib\services.mock.ts:57: '@mock:db:v1'
+lib\services.mock.ts:67: 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'
+lib\services.mock.ts:759: 'not found'
+lib\services.mock.ts:798: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
+lib\services.mock.ts:818: 'application/octet-stream'
+lib\services.mock.ts:859: 'mock-user'
+lib\services.real.ts:197: 'project_id,status'
+lib\services.real.ts:229: 'Not signed in'
+lib\services.real.ts:231: ').replace(/\.{2,}/g, '
+lib\services.real.ts:231: ').slice(0, 120) || '
+lib\services.real.ts:235: 'application/octet-stream'
+lib\services.real.ts:235: 'Content-Type'
+lib\services.real.ts:236: 'x-upsert'
+lib\services.real.ts:271: 'projectFilesApi.remove.storage'
+lib\services.real.ts:301: ').eq('
+lib\services.real.ts:302: 'templatesApi.getById'
+lib\services.real.ts:313: 'templatesApi.questions'
+lib\services.real.ts:336: ').eq('
+lib\services.real.ts:337: 'inspectionsApi.getById'
+lib\services.real.ts:356: 'Not signed in'
+lib\services.real.ts:400: 'status,created_at'
+lib\services.real.ts:432: ').eq('
+lib\services.real.ts:433: 'answersApi.list'
+lib\services.real.ts:440: 'inspection_id,question_id'
+lib\services.real.ts:491: 'answer-photos'
+lib\services.real.ts:493: 'answerPhotos.removeBlob'
+lib\services.real.ts:518: 'inspection_id,signer_role'
+lib\services.real.ts:555: 'Not signed in'
+lib\services.real.ts:56: 'No data'
+lib\services.real.ts:607: "N attached"
+lib\services.real.ts:640: 'Not signed in'
+lib\services.real.ts:672: 'certificates.removeBlob'
+lib\services.real.ts:711: '*, project_items!inner(id, name, project_id, projects!inner(id, name, company_name))'
+lib\services.real.ts:817: 'not authenticated'
+lib\services.real.ts:857: 'send-signing-sms'
+lib\services.real.ts:87: ').eq('
+lib\services.real.ts:88: 'projectsApi.getById'
+lib\services.real.ts:911: 'Content-Type'
+lib\services.real.ts:912: 'x-upsert'
+lib\services.real.ts:99: 'Not signed in'
+lib\session.tsx:128: 'session.loadUser'
+lib\session.tsx:147: 't log: this isn'
+lib\session.tsx:152: 'session.getSession'
+lib\session.tsx:16: '00000000-0000-0000-0000-00000000beef'
+lib\session.tsx:168: 'session.purgeUserScopedStorage'
+lib\session.tsx:18: 'mock-access-token'
+lib\session.tsx:19: 'mock-refresh-token'
+lib\session.tsx:193: 'auth/callback'
+lib\session.tsx:199: 'No OAuth URL returned'
+lib\session.tsx:205: 'Google sign-in failed'
+lib\session.tsx:248: 'Not signed in'
+lib\session.tsx:26: 'mock@sarke.dev'
+lib\session.tsx:267: ').split('
+lib\session.tsx:291: 'useSession must be used inside SessionProvider'
+lib\session.tsx:34: 'mock@sarke.dev'
+lib\session.tsx:59: 'refresh token'
+lib\session.tsx:60: 'not found'
+lib\sharePdf.ts:16: ').pop() ?? '
+lib\sharePdf.ts:20: 'application/pdf'
+lib\signatures.ts:42: 'manipulator returned no base64'
+lib\signatures.ts:45: 'signature body empty after base64 decode'
+lib\signatures.ts:52: 'no cache directory available'
+lib\signatures.ts:58: 'image/png'
+lib\signatures.ts:79: 'image/png'
+lib\signatures.ts:9: 'pending-signatures'
+lib\storage-purge.ts:6: 'wizard:'
+lib\storage-purge.ts:7: '@offline:'
+lib\storage-purge.ts:8: 'pending-signatures'
+lib\supabase.ts:14: 'Supabase credentials missing from app.json "extra".'
+lib\supabase.ts:29: 'answer-photos'
+lib\supabase.ts:32: 'remote-signatures'
+lib\supabase.ts:33: 'project-files'
+lib\terms.ts:100: 'Photos and signatures are collected solely for inclusion in inspection PDF '
+lib\terms.ts:101: 'reports. Data is not shared with third parties without your consent.'
+lib\terms.ts:104: '4. PDF reports'
+lib\terms.ts:106: 'Generated PDFs are stored in your account and accessible from the history '
+lib\terms.ts:107: 'tab. You are responsible for the accuracy of report contents.'
+lib\terms.ts:110: '5. Authentication'
+lib\terms.ts:112: 'Sign-in uses email or Google via Supabase Auth. Your password is never '
+lib\terms.ts:113: 'stored on our servers.'
+lib\terms.ts:116: '6. Legal compliance'
+lib\terms.ts:118: 'The app is aligned with the Georgian Labor Safety Code and Personal Data '
+lib\terms.ts:119: 'Protection Law. Inspection output should be used only by certified specialists.'
+lib\terms.ts:122: '7. Changes'
+lib\terms.ts:124: 'If these terms change, you will be notified and asked to re-accept before '
+lib\terms.ts:125: 'continuing to use the app.'
+lib\terms.ts:128: '8. Contact'
+lib\terms.ts:129: 'Questions: support@sarke.ge'
+lib\terms.ts:26: 'Sarke 2.0 áƒáƒ áƒ˜áƒ¡ áƒ¨áƒ áƒáƒ›áƒ˜áƒ¡ áƒ£áƒ¡áƒáƒ¤áƒ áƒ—áƒ®áƒáƒ”áƒ‘áƒ˜áƒ¡ áƒ”áƒ¥áƒ¡áƒžáƒ”áƒ áƒ¢áƒ˜áƒ¡ áƒáƒžáƒšáƒ˜áƒ™áƒáƒªáƒ˜áƒ áƒ®áƒáƒ áƒáƒ©áƒáƒ”áƒ‘áƒ˜áƒ¡áƒ áƒ“áƒ '
+lib\terms.ts:28: 'áƒ™áƒ˜áƒ—áƒ®áƒ•áƒáƒ áƒ”áƒ‘áƒ¡, áƒ¤áƒáƒ¢áƒ/áƒ®áƒ”áƒšáƒ›áƒáƒ¬áƒ”áƒ áƒ”áƒ‘áƒ˜áƒ¡ áƒ¨áƒ”áƒ’áƒ áƒáƒ•áƒ”áƒ‘áƒáƒ¡ áƒ“áƒ PDF áƒáƒœáƒ’áƒáƒ áƒ˜áƒ¨áƒ”áƒ‘áƒ˜áƒ¡ áƒ’áƒ”áƒœáƒ”áƒ áƒáƒªáƒ˜áƒáƒ¡.'
+lib\terms.ts:34: 'áƒ˜áƒœáƒ¡áƒžáƒ”áƒ¥áƒªáƒ˜áƒ˜áƒ¡ áƒ›áƒáƒœáƒáƒªáƒ”áƒ›áƒ”áƒ‘áƒ˜, áƒ¤áƒáƒ¢áƒáƒ”áƒ‘áƒ˜ áƒ“áƒ áƒ®áƒ”áƒšáƒ›áƒáƒ¬áƒ”áƒ áƒ”áƒ‘áƒ˜ áƒ˜áƒœáƒáƒ®áƒ”áƒ‘áƒ Supabase-áƒ˜áƒ¡ '
+lib\terms.ts:35: 'áƒ£áƒ¡áƒáƒ¤áƒ áƒ—áƒ®áƒ áƒ˜áƒœáƒ¤áƒ áƒáƒ¡áƒ¢áƒ áƒ£áƒ¥áƒ¢áƒ£áƒ áƒáƒ¨áƒ˜. áƒ¬áƒ•áƒ“áƒáƒ›áƒ áƒ¨áƒ”áƒ–áƒ¦áƒ£áƒ“áƒ£áƒšáƒ˜áƒ áƒ—áƒ¥áƒ•áƒ”áƒœáƒ˜ áƒáƒœáƒ’áƒáƒ áƒ˜áƒ¨áƒ˜áƒ¡áƒ—áƒ•áƒ˜áƒ¡ RLS áƒžáƒáƒšáƒ˜áƒ¢áƒ˜áƒ™áƒ”áƒ‘áƒ˜áƒ—.'
+lib\terms.ts:40: 'áƒáƒžáƒ˜ áƒáƒ’áƒ áƒáƒ•áƒ”áƒ‘áƒ¡ áƒ¤áƒáƒ¢áƒáƒ”áƒ‘áƒ¡ áƒ“áƒ áƒ®áƒ”áƒšáƒ›áƒáƒ¬áƒ”áƒ áƒ”áƒ‘áƒ¡ áƒ›áƒ®áƒáƒšáƒáƒ“ áƒ˜áƒœáƒ¡áƒžáƒ”áƒ¥áƒªáƒ˜áƒ˜áƒ¡ PDF áƒáƒœáƒ’áƒáƒ áƒ˜áƒ¨áƒ¨áƒ˜ '
+lib\terms.ts:44: '4. PDF áƒáƒœáƒ’áƒáƒ áƒ˜áƒ¨áƒ”áƒ‘áƒ˜'
+lib\terms.ts:46: 'áƒ’áƒ”áƒœáƒ”áƒ áƒ˜áƒ áƒ”áƒ‘áƒ£áƒšáƒ˜ PDF áƒáƒœáƒ’áƒáƒ áƒ˜áƒ¨áƒ”áƒ‘áƒ˜ áƒ˜áƒœáƒáƒ®áƒ”áƒ‘áƒ áƒ—áƒ¥áƒ•áƒ”áƒœáƒ¡ áƒáƒœáƒ’áƒáƒ áƒ˜áƒ¨áƒ¨áƒ˜ áƒ“áƒ áƒ®áƒ”áƒšáƒ›áƒ˜áƒ¡áƒáƒ¬áƒ•áƒ“áƒáƒ›áƒ˜áƒ '
+lib\terms.ts:52: 'áƒáƒžáƒšáƒ˜áƒ™áƒáƒªáƒ˜áƒ áƒ˜áƒ§áƒ”áƒœáƒ”áƒ‘áƒ¡ áƒ”áƒš-áƒ¤áƒáƒ¡áƒ¢áƒ˜áƒ— áƒáƒœ Google-áƒ˜áƒ— áƒ¨áƒ”áƒ¡áƒ•áƒšáƒ˜áƒ¡ áƒ›áƒ”áƒ—áƒáƒ“áƒ”áƒ‘áƒ¡ Supabase Auth-áƒ˜áƒ¡ '
+lib\terms.ts:71: 'áƒ™áƒ˜áƒ—áƒ®áƒ•áƒ”áƒ‘áƒ˜áƒ¡áƒ—áƒ•áƒ˜áƒ¡: support@sarke.ge'
+lib\terms.ts:77: 'Terms & Conditions'
+lib\terms.ts:79: 'I agree'
+lib\terms.ts:81: 'Full text'
+lib\terms.ts:84: '1. Service description'
+lib\terms.ts:86: 'Sarke 2.0 is an occupational safety inspection app for scaffolding and '
+lib\terms.ts:87: 'personal fall-protection equipment. It provides inspection questionnaires, '
+lib\terms.ts:88: 'photo and signature capture, and PDF report generation.'
+lib\terms.ts:91: '2. Data storage'
+lib\terms.ts:93: 'Your personal information (name, email), inspection records, photos, and '
+lib\terms.ts:94: 'signatures are stored on Supabase infrastructure. Access is restricted to '
+lib\terms.ts:95: 'your account via row-level-security policies.'
+lib\terms.ts:98: '3. Photo and signature collection'
+lib\theme.ts:104: 'SpaceGrotesk-Bold'
+lib\theme.ts:105: 'SpaceGrotesk-SemiBold'
+lib\theme.ts:106: 'SpaceGrotesk-Medium'
+lib\theme.ts:107: 'Inter-Regular'
+lib\theme.ts:108: 'Inter-Medium'
+lib\theme.ts:109: 'Inter-SemiBold'
+lib\theme.ts:110: 'Inter-Bold'
+lib\theme.ts:111: 'JetBrainsMono-Regular'
+lib\theme.ts:114: '2xs'
+lib\theme.ts:120: '2xl'
+lib\theme.ts:121: '3xl'
+lib\theme.ts:122: '4xl'
+lib\theme.ts:123: '5xl'
+lib\theme.ts:137: '2xl'
+lib\toast.tsx:101: 'box-none'
+lib\toast.tsx:129: 'useToast must be inside ToastProvider'
+lib\toast.tsx:134: 'alert-circle'
+lib\toast.tsx:134: 'checkmark-circle'
+lib\toast.tsx:134: 'information-circle'
+lib\validators.ts:21: ' || first === '
+lib\validators.ts:34: ').replace(/\D+/g, '

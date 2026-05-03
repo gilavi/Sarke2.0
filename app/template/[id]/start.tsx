@@ -1,0 +1,360 @@
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  Animated,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native';
+import { useSheetKeyboardMargin } from '../../../lib/useSheetKeyboardMargin';
+import { A11yText as Text } from '../../../components/primitives/A11yText';
+import { SheetLayout } from '../../../components/SheetLayout';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { Button, Screen } from '../../../components/ui';
+import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
+import { Skeleton } from '../../../components/Skeleton';
+import { questionnairesApi, projectsApi } from '../../../lib/services';
+import { useToast } from '../../../lib/toast';
+import { useTheme } from '../../../lib/theme';
+
+import { toErrorMessage } from '../../../lib/logError';
+import { friendlyError } from '../../../lib/errorMap';
+import { useTemplate, useProjects, qk } from '../../../lib/apiHooks';
+import { useQueryClient } from '@tanstack/react-query';
+import type { Project, Questionnaire, Template } from '../../../types/models';
+import { a11y } from '../../../lib/accessibility';
+
+export default function StartTemplateScreen() {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
+  const toast = useToast();
+  const { data: template, isLoading: templateLoading } = useTemplate(id);
+  const { data: projects = [], isLoading: projectsLoading } = useProjects();
+  const [selected, setSelected] = useState<string | null>(null);
+  const [showingCreate, setShowingCreate] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const loaded = !templateLoading && !projectsLoading;
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (projects.length > 0 && !selected) {
+      setSelected(projects[0]?.id ?? null);
+    }
+  }, [projects, selected]);
+
+  const start = async () => {
+    if (!template || !selected) return;
+    setBusy(true);
+    try {
+      const q = (await questionnairesApi.create({
+        projectId: selected,
+        templateId: template.id,
+      }));
+      router.replace(`/inspections/${q.id}/wizard` as any);
+    } catch (e) {
+      toast.error(friendlyError(e, 'ინსპექცია ვერ შეიქმნა'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onCreated = (p: Project) => {
+    queryClient.invalidateQueries({ queryKey: qk.projects.list });
+    setSelected(p.id);
+    setShowingCreate(false);
+  };
+
+  return (
+    <Screen>
+      <Stack.Screen options={{ headerShown: true, title: 'ახალი ინსპექცია', presentation: 'modal' }} />
+      <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
+        <ScrollView contentContainerStyle={styles.scroll}>
+          <View style={{ gap: 4 }}>
+            <Text style={styles.eyebrow}>შაბლონი</Text>
+            {template ? (
+              <Text style={styles.templateName}>{template.name}</Text>
+            ) : (
+              <Skeleton width={'80%'} height={22} />
+            )}
+          </View>
+
+          <View style={{ gap: 4, marginTop: 20 }}>
+            <Text style={styles.eyebrow}>აირჩიეთ პროექტი</Text>
+          </View>
+
+          <Pressable onPress={() => setShowingCreate(true)} style={styles.newTile} {...a11y('ახალი პროექტი', 'ახალი პროექტის შექმნა', 'button')}>
+            <View style={styles.newIcon}>
+              <Ionicons name="add" size={22} color={theme.colors.accent} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: theme.colors.ink }}>
+                ახალი პროექტი
+              </Text>
+              <Text style={{ fontSize: 12, color: theme.colors.inkSoft, marginTop: 2 }}>
+                შექმნი ახლავე
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={theme.colors.inkFaint} />
+          </Pressable>
+
+          {!loaded && projects.length === 0 ? (
+            <View style={{ gap: 10 }}>
+              {Array.from({ length: 3 }).map((_, i) => (
+                <View key={i} style={styles.projectRow}>
+                  <Skeleton width={22} height={22} radius={11} />
+                  <View style={{ flex: 1, gap: 6 }}>
+                    <Skeleton width={'70%'} height={15} />
+                    <Skeleton width={'40%'} height={11} />
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : projects.length > 0 ? (
+            <View style={{ gap: 10 }}>
+              {projects.map(p => {
+                const isSelected = selected === p.id;
+                return (
+                  <Pressable
+                    key={p.id}
+                    onPress={() => setSelected(p.id)}
+                    style={[styles.projectRow, isSelected && styles.projectRowSelected]}
+                    {...a11y(p.name, 'პროექტის არჩევა', 'radio')}
+                  >
+                    <View style={[styles.radio, isSelected && styles.radioOn]}>
+                      {isSelected ? (
+                        <Ionicons name="checkmark" size={16} color={theme.colors.white} />
+                      ) : null}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 15, fontWeight: '600', color: theme.colors.ink }}>
+                        {p.name}
+                      </Text>
+                      {p.company_name ? (
+                        <Text
+                          numberOfLines={1}
+                          style={{ fontSize: 12, color: theme.colors.inkSoft, marginTop: 2 }}
+                        >
+                          {p.company_name}
+                        </Text>
+                      ) : null}
+                      {p.address ? (
+                        <Text
+                          numberOfLines={1}
+                          style={{ fontSize: 11, color: theme.colors.inkFaint, marginTop: 1 }}
+                        >
+                          {p.address}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </View>
+          ) : (
+            <Text style={{ color: theme.colors.inkSoft, fontSize: 13, textAlign: 'center', marginTop: 20 }}>
+              ჯერ არცერთი პროექტი არ გაქვს.{'\n'}დაიწყე ახლის შექმნით.
+            </Text>
+          )}
+        </ScrollView>
+
+        <View style={styles.footer}>
+          <Button
+            title="დაიწყე ინსპექცია"
+            onPress={start}
+            loading={busy}
+            disabled={!selected}
+          />
+        </View>
+      </SafeAreaView>
+
+      <CreateProjectSheet
+        visible={showingCreate}
+        onClose={() => setShowingCreate(false)}
+        onCreated={onCreated}
+      />
+    </Screen>
+  );
+}
+
+function CreateProjectSheet({
+  visible,
+  onClose,
+  onCreated,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onCreated: (p: Project) => void;
+}) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+
+  const toast = useToast();
+  const [name, setName] = useState('');
+  const [company, setCompany] = useState('');
+  const [address, setAddress] = useState('');
+  const [busy, setBusy] = useState(false);
+  const keyboardMargin = useSheetKeyboardMargin();
+
+  const save = async () => {
+    if (!name.trim()) return;
+    setBusy(true);
+    try {
+      const p = (await projectsApi.create({
+        name: name.trim(),
+        companyName: company.trim() || null,
+        address: address.trim() || null,
+      }));
+      toast.success('პროექტი შეიქმნა');
+      setName('');
+      setCompany('');
+      setAddress('');
+      onCreated(p);
+    } catch (e) {
+      toast.error(friendlyError(e, 'ვერ შეიქმნა'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <View style={{ flex: 1, justifyContent: 'flex-end' }}>
+        {/* Backdrop */}
+        <Pressable
+          style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.4)' }]}
+          onPress={onClose}
+          {...a11y('დახურვა', 'შეეხეთ ფონის დასახურად', 'button')}
+        />
+        {/* Card — marginBottom rides the iOS keyboard 1:1 */}
+        <Animated.View style={{ width: '100%', marginBottom: keyboardMargin }}>
+        <Pressable style={{ width: '100%' }} onPress={() => {}}>
+          <SheetLayout
+            maxHeightRatio={0.92}
+            header={{ title: 'ახალი პროექტი', onClose }}
+            footer={
+              <Button
+                title="შენახვა"
+                onPress={save}
+                loading={busy}
+                disabled={!name.trim()}
+              />
+            }
+          >
+            <FloatingLabelInput
+              label="სახელი"
+              value={name}
+              onChangeText={setName}
+              autoFocus
+            />
+            <FloatingLabelInput
+              label="კომპანია"
+              value={company}
+              onChangeText={setCompany}
+            />
+            <FloatingLabelInput
+              label="მისამართი"
+              value={address}
+              onChangeText={setAddress}
+            />
+          </SheetLayout>
+        </Pressable>
+        </Animated.View>
+      </View>
+    </Modal>
+  );
+}
+
+function getstyles(theme: any) {
+  return StyleSheet.create({
+  scroll: { padding: 16, paddingBottom: 24, gap: 12 },
+  eyebrow: {
+    fontSize: 11,
+    color: theme.colors.inkSoft,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    fontWeight: '600',
+  },
+  templateName: { fontSize: 20, fontWeight: '800', color: theme.colors.ink, marginTop: 4 },
+  newTile: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 14,
+    borderRadius: 14,
+    backgroundColor: theme.colors.accentSoft,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  newIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: theme.colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  projectRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 14,
+    borderRadius: 14,
+    backgroundColor: theme.colors.card,
+    borderWidth: 2,
+    borderColor: theme.colors.hairline,
+  },
+  projectRowSelected: {
+    borderColor: theme.colors.accent,
+    backgroundColor: theme.colors.accentSoft,
+  },
+  radio: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: theme.colors.hairline,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.white,
+  },
+  radioOn: {
+    backgroundColor: theme.colors.accent,
+    borderColor: theme.colors.accent,
+  },
+  footer: {
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.hairline,
+    backgroundColor: theme.colors.card,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  modalCard: {
+    backgroundColor: theme.colors.background,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 10,
+    paddingBottom: 24,
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: theme.colors.hairline,
+    alignSelf: 'center',
+    marginBottom: 10,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+});
+}
