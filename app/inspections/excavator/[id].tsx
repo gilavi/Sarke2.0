@@ -15,15 +15,18 @@ import { DateTimeField } from '../../../components/DateTimeField';
 import { Button } from '../../../components/ui';
 import { KeyboardSafeArea } from '../../../components/layout/KeyboardSafeArea';
 import { SignatureCanvas } from '../../../components/SignatureCanvas';
-import { ExcavatorChecklistItem } from '../../../components/excavator/ExcavatorChecklistItem';
 import { ExcavatorMaintenanceItem } from '../../../components/excavator/ExcavatorMaintenanceItem';
 import { WizardNav } from '../../../components/wizard/WizardNav';
+import { WizardStepTransition } from '../../../components/wizard/WizardStepTransition';
 import { StepBar } from '../../../components/wizard/StepBar';
 import { StepSectionLabel } from '../../../components/wizard/StepSectionLabel';
+import { ChecklistItemStep } from '../../../components/wizard/ChecklistItemStep';
+import { ChecklistTour, TOUR_SEEN_KEY } from '../../../components/wizard/ChecklistTour';
 import { FlowHeader } from '../../../components/FlowHeader';
 import { useTheme, type Theme } from '../../../lib/theme';
 import { useSession } from '../../../lib/session';
 import { useToast } from '../../../lib/toast';
+import { useBottomSheet } from '../../../components/BottomSheet';
 import { excavatorApi } from '../../../lib/excavatorService';
 import { projectsApi } from '../../../lib/services';
 import { buildExcavatorPdfHtml } from '../../../lib/excavatorPdf';
@@ -32,6 +35,7 @@ import { generatePdfName } from '../../../lib/pdfName';
 import { recordCompletion } from '../../../lib/calendarSchedule';
 import { friendlyError } from '../../../lib/errorMap';
 import { a11y } from '../../../lib/accessibility';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   ENGINE_ITEMS,
   UNDERCARRIAGE_ITEMS,
@@ -39,18 +43,48 @@ import {
   SAFETY_ITEMS,
   MAINTENANCE_ITEMS,
   EXCAVATOR_VERDICT_LABEL,
+  EXCAVATOR_MACHINE_SPECS,
   computeExcavatorVerdictSuggestion,
   type ExcavatorInspection,
   type ExcavatorVerdict,
   type ExcavatorChecklistItemState,
+  type ExcavatorChecklistEntry,
   type ExcavatorMaintenanceItemState,
+  type Section,
 } from '../../../types/excavator';
 
-type Section = 'engine' | 'undercarriage' | 'cabin' | 'safety';
+// ── Flat catalog for wizard ───────────────────────────────────────────────────
 
-// Steps: 0=info  1=engine  2=undercarriage  3=cabin+safety  4=maintenance+verdict  5=signature  6=done
-const STEP_LABELS = ['ინფო', 'ძრავი', 'სავალი ნ.', 'კაბინა', 'ტ.მომს.', 'ხელმოწ.'];
-const TOTAL_STEPS = 6;
+interface FlatCatalogEntry {
+  section: Section;
+  sectionLabel: string;
+  entry: ExcavatorChecklistEntry;
+}
+
+const FLAT_CATALOG: FlatCatalogEntry[] = [
+  ...ENGINE_ITEMS.map(e => ({ section: 'engine' as Section, sectionLabel: 'ძრავი', entry: e })),
+  ...UNDERCARRIAGE_ITEMS.map(e => ({ section: 'undercarriage' as Section, sectionLabel: 'სავალი ნაწილი', entry: e })),
+  ...CABIN_ITEMS.map(e => ({ section: 'cabin' as Section, sectionLabel: 'კაბინა', entry: e })),
+  ...SAFETY_ITEMS.map(e => ({ section: 'safety' as Section, sectionLabel: 'უსაფრთხოება', entry: e })),
+];
+
+function sectionKey(s: Section): keyof ExcavatorInspection {
+  const map: Record<Section, keyof ExcavatorInspection> = {
+    engine:        'engineItems',
+    undercarriage: 'undercarriageItems',
+    cabin:         'cabinItems',
+    safety:        'safetyItems',
+  };
+  return map[s];
+}
+
+function getFlatState(insp: ExcavatorInspection): ExcavatorChecklistItemState[] {
+  return FLAT_CATALOG.map(({ section, entry }) => {
+    const key = sectionKey(section);
+    const arr = insp[key] as ExcavatorChecklistItemState[];
+    return arr.find(i => i.id === entry.id) ?? { id: entry.id, result: null, comment: null, photo_paths: [] };
+  });
+}
 
 export default function ExcavatorInspectionScreen() {
   const { theme } = useTheme();
@@ -59,6 +93,7 @@ export default function ExcavatorInspectionScreen() {
   const router = useRouter();
   const toast = useToast();
   const session = useSession();
+  const showSheet = useBottomSheet();
 
   const [inspection, setInspection] = useState<ExcavatorInspection | null>(null);
   const [projectName, setProjectName] = useState('');
@@ -67,9 +102,35 @@ export default function ExcavatorInspectionScreen() {
   const [completing, setCompleting] = useState(false);
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [showSig, setShowSig] = useState(false);
-  const [step, setStep] = useState(0);
+  const [showTour, setShowTour] = useState(false);
 
-  // ── Load ────────────────────────────────────────────────────────────────────
+  // Step state
+  const [step, setStep] = useState(0);
+  const prevStepRef = useRef(0);
+  const [animateSteps, setAnimateSteps] = useState(false);
+
+  const CHECKLIST_START = 1;
+  const CHECKLIST_COUNT = FLAT_CATALOG.length;
+  const MAINTENANCE_STEP = CHECKLIST_START + CHECKLIST_COUNT;
+  const SUMMARY_STEP = MAINTENANCE_STEP; // maintenance + verdict together
+  const SIGNATURE_STEP = SUMMARY_STEP + 1;
+  const DONE_STEP = SIGNATURE_STEP + 1;
+  const TOTAL_STEPS = DONE_STEP + 1;
+
+  // Step labels: info, then "1", "2" ... for each checklist item, then maintenance, signature
+  const STEP_LABELS = useMemo(() => [
+    'ინფო',
+    ...FLAT_CATALOG.map((_, i) => `${i + 1}`),
+    'ტ.მომს.',
+    'ხელმოწ.',
+  ], []);
+
+  const persistKey = useMemo(() => `excavator-wizard:${id}:step`, [id]);
+
+  const direction: 'next' | 'prev' = step >= prevStepRef.current ? 'next' : 'prev';
+  useEffect(() => { prevStepRef.current = step; }, [step]);
+
+  // ── Load ───────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     if (!id) return;
@@ -88,7 +149,17 @@ export default function ExcavatorInspectionScreen() {
         }
         setInspection(patched);
 
-        if (insp.status === 'completed') setStep(6);
+        if (insp.status === 'completed') {
+          setStep(DONE_STEP);
+        } else {
+          const saved = await AsyncStorage.getItem(persistKey);
+          if (saved && !cancelled) {
+            const s = parseInt(saved, 10);
+            if (!isNaN(s) && s >= 0 && s <= SIGNATURE_STEP) {
+              setStep(s);
+            }
+          }
+        }
 
         projectsApi.getById(insp.projectId).then(p => {
           if (cancelled || !p) return;
@@ -98,24 +169,37 @@ export default function ExcavatorInspectionScreen() {
             const projectNameFill = !prev.projectName?.trim() ? p.name : null;
             if (!projectNameFill) return prev;
             const next = { ...prev, projectName: projectNameFill };
-            excavatorApi.patch(next.id, { projectName: projectNameFill }).catch(() => {});
+            excavatorApi.patch(next.id, { projectName: next.projectName }).catch(() => {});
             return next;
           });
         }).catch(() => {});
+
+        const tourSeen = await AsyncStorage.getItem(TOUR_SEEN_KEY);
+        if (!tourSeen && !cancelled) setShowTour(true);
       } catch (e) {
         if (!cancelled) {
           toast.error(friendlyError(e, 'ვერ ჩაიტვირთა'));
           router.back();
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+          setTimeout(() => setAnimateSteps(true), 50);
+        }
       }
     })();
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  // ── Auto-save ───────────────────────────────────────────────────────────────
+  // Persist step
+  useEffect(() => {
+    if (step >= CHECKLIST_START && step <= SIGNATURE_STEP) {
+      AsyncStorage.setItem(persistKey, String(step)).catch(() => {});
+    }
+  }, [step, persistKey, CHECKLIST_START, SIGNATURE_STEP]);
+
+  // ── Auto-save (debounced) ──────────────────────────────────────────────────
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -159,20 +243,17 @@ export default function ExcavatorInspectionScreen() {
     });
   }, [scheduleSave]);
 
-  // ── Checklist item update ────────────────────────────────────────────────────
+  // ── Checklist item update (flat → section mapping) ─────────────────────────
 
-  const updateChecklistItem = useCallback((
-    section: Section,
-    itemId: number,
-    patch: Partial<Pick<ExcavatorChecklistItemState, 'result' | 'comment'>>,
-  ) => {
+  const updateFlatItem = useCallback((flatIndex: number, patch: Partial<Pick<ExcavatorChecklistItemState, 'result' | 'comment'>>) => {
     setInspection(prev => {
       if (!prev) return prev;
+      const { section, entry } = FLAT_CATALOG[flatIndex];
       const key = sectionKey(section);
-      const items = (prev[key] as ExcavatorChecklistItemState[]).map(i =>
-        i.id === itemId ? { ...i, ...patch } : i,
-      );
-      const next = { ...prev, [key]: items };
+      const arr = [...(prev[key] as ExcavatorChecklistItemState[])];
+      const idx = arr.findIndex(i => i.id === entry.id);
+      if (idx >= 0) arr[idx] = { ...arr[idx], ...patch };
+      const next = { ...prev, [key]: arr };
       scheduleSave(next);
       return next;
     });
@@ -193,7 +274,7 @@ export default function ExcavatorInspectionScreen() {
     });
   }, [scheduleSave]);
 
-  // ── Photo handling ──────────────────────────────────────────────────────────
+  // ── Photo handling ─────────────────────────────────────────────────────────
 
   const handleAddPhoto = useCallback((section: Section, itemId: number) => {
     Alert.alert('ფოტოს წყარო', undefined, [
@@ -227,10 +308,10 @@ export default function ExcavatorInspectionScreen() {
       setInspection(prev => {
         if (!prev) return prev;
         const key = sectionKey(section);
-        const items = (prev[key] as ExcavatorChecklistItemState[]).map(i =>
-          i.id === itemId ? { ...i, photo_paths: [...(i.photo_paths ?? []), path] } : i,
-        );
-        const next = { ...prev, [key]: items };
+        const arr = [...(prev[key] as ExcavatorChecklistItemState[])];
+        const idx = arr.findIndex(i => i.id === itemId);
+        if (idx >= 0) arr[idx] = { ...arr[idx], photo_paths: [...(arr[idx].photo_paths ?? []), path] };
+        const next = { ...prev, [key]: arr };
         scheduleSave(next);
         return next;
       });
@@ -244,23 +325,23 @@ export default function ExcavatorInspectionScreen() {
     setInspection(prev => {
       if (!prev) return prev;
       const key = sectionKey(section);
-      const items = (prev[key] as ExcavatorChecklistItemState[]).map(i =>
-        i.id === itemId ? { ...i, photo_paths: i.photo_paths.filter(p => p !== path) } : i,
-      );
-      const next = { ...prev, [key]: items };
+      const arr = [...(prev[key] as ExcavatorChecklistItemState[])];
+      const idx = arr.findIndex(i => i.id === itemId);
+      if (idx >= 0) arr[idx] = { ...arr[idx], photo_paths: arr[idx].photo_paths.filter(p => p !== path) };
+      const next = { ...prev, [key]: arr };
       scheduleSave(next);
       return next;
     });
   }, [scheduleSave]);
 
-  // ── Signature ────────────────────────────────────────────────────────────────
+  // ── Signature ──────────────────────────────────────────────────────────────
 
   const handleSignatureConfirm = useCallback((base64Png: string) => {
     setShowSig(false);
     update('inspectorSignature', base64Png);
   }, [update]);
 
-  // ── Verdict auto-suggestion ──────────────────────────────────────────────────
+  // ── Verdict auto-suggestion ────────────────────────────────────────────────
 
   const verdictSuggestion = useMemo(
     () => inspection ? computeExcavatorVerdictSuggestion(inspection) : null,
@@ -270,7 +351,7 @@ export default function ExcavatorInspectionScreen() {
 
   const showVerdictBanner = verdictSuggestion !== null && inspection?.verdict !== verdictSuggestion;
 
-  // ── Complete ─────────────────────────────────────────────────────────────────
+  // ── Complete ───────────────────────────────────────────────────────────────
 
   const handleComplete = useCallback(async () => {
     if (!inspection) return;
@@ -312,16 +393,17 @@ export default function ExcavatorInspectionScreen() {
         `${inspection.projectId}:excavator`,
       ).catch(() => {});
       setInspection(prev => prev ? { ...prev, status: 'completed', completedAt } : prev);
-      setStep(6);
+      await AsyncStorage.removeItem(persistKey);
+      setStep(DONE_STEP);
       toast.success('შემოწმება დასრულდა');
     } catch (e) {
       toast.error(friendlyError(e, 'შეცდომა'));
     } finally {
       setCompleting(false);
     }
-  }, [inspection, toast]);
+  }, [inspection, toast, persistKey, DONE_STEP]);
 
-  // ── PDF ──────────────────────────────────────────────────────────────────────
+  // ── PDF ────────────────────────────────────────────────────────────────────
 
   const handlePdf = useCallback(async () => {
     if (!inspection) return;
@@ -345,27 +427,73 @@ export default function ExcavatorInspectionScreen() {
     }
   }, [inspection, projectName, toast]);
 
-  // ── Step navigation ──────────────────────────────────────────────────────────
+  // ── Help sheet ─────────────────────────────────────────────────────────────
+
+  const showHelp = useCallback((entry: ExcavatorChecklistEntry) => {
+    showSheet({
+      dismissable: true,
+      content: ({ dismiss }) => (
+        <View style={helpStyles(theme).body}>
+          <Text style={helpStyles(theme).title}>{entry.label}</Text>
+          <Text style={helpStyles(theme).desc}>{entry.description}</Text>
+          {entry.helpText ? (
+            <Text style={helpStyles(theme).help}>{entry.helpText}</Text>
+          ) : null}
+          <Pressable
+            onPress={dismiss}
+            style={({ pressed }) => [helpStyles(theme).btn, pressed && { opacity: 0.8 }]}
+          >
+            <Text style={helpStyles(theme).btnText}>დახურვა</Text>
+          </Pressable>
+        </View>
+      ),
+    });
+  }, [showSheet, theme]);
+
+  // ── Step navigation ────────────────────────────────────────────────────────
 
   const canGoNext = useMemo(() => {
-    if (!inspection || step >= 6) return false;
-    if (step === 5) return !!inspection.inspectorSignature && !completing;
+    if (!inspection || step >= DONE_STEP) return false;
+    if (step === SIGNATURE_STEP) return !!inspection.inspectorSignature && !completing;
     return true;
-  }, [step, inspection, completing]);
+  }, [step, inspection, completing, SIGNATURE_STEP, DONE_STEP]);
 
   const handleNext = useCallback(() => {
-    if (step === 5) {
+    if (step === SIGNATURE_STEP) {
       handleComplete();
-    } else {
+    } else if (step < DONE_STEP) {
       setStep(s => s + 1);
     }
-  }, [step, handleComplete]);
+  }, [step, SIGNATURE_STEP, DONE_STEP, handleComplete]);
 
   const handlePrev = useCallback(() => {
     if (step > 0) setStep(s => s - 1);
   }, [step]);
 
-  // ── Render ───────────────────────────────────────────────────────────────────
+  // ── Render helpers ─────────────────────────────────────────────────────────
+
+  const renderChecklistItem = (flatIndex: number) => {
+    if (!inspection) return null;
+    const { sectionLabel, entry } = FLAT_CATALOG[flatIndex];
+    const flatState = getFlatState(inspection);
+    const state = flatState[flatIndex];
+    const { section } = FLAT_CATALOG[flatIndex];
+
+    return (
+      <ChecklistItemStep
+        index={flatIndex}
+        total={CHECKLIST_COUNT}
+        catalog={{ ...entry, category: sectionLabel }}
+        state={state}
+        onChange={patch => updateFlatItem(flatIndex, patch)}
+        onAddPhoto={() => handleAddPhoto(section, entry.id)}
+        onDeletePhoto={path => handleDeletePhoto(section, entry.id, path)}
+        onHelp={() => showHelp(entry)}
+      />
+    );
+  };
+
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   if (loading || !inspection) {
     return (
@@ -405,331 +533,258 @@ export default function ExcavatorInspectionScreen() {
         backDisabled={false}
       />
 
-      {step < 6 && <StepBar step={step} stepLabels={STEP_LABELS} />}
+      {step < DONE_STEP && (
+        <StepBar step={step} stepLabels={STEP_LABELS} />
+      )}
 
       {saving && (
         <Text style={styles.savingHint}>შენახვა…</Text>
       )}
 
       <KeyboardSafeArea>
+        <WizardStepTransition
+          stepKey={step}
+          direction={direction}
+          animate={animateSteps}
+        >
+          {/* ── Step 0: Document Info ───────────────────────────────────── */}
+          {step === 0 && (
+            <View style={styles.stepBody}>
+              <MachineSpecsCard insp={inspection} styles={styles} />
 
-        {/* ── Step 0: Document Info ──────────────────────────────────────────── */}
-        {step === 0 && (
-          <>
-            <MachineSpecsCard insp={inspection} styles={styles} />
-
-            <StepSectionLabel title="II — დოკუმენტის ინფორმაცია" />
-            <FloatingLabelInput
-              label="სერიული ნომერი *"
-              value={inspection.serialNumber ?? ''}
-              onChangeText={v => update('serialNumber', v || null)}
-              required
-            />
-            <FloatingLabelInput
-              label="საინვენტარო ნომერი"
-              value={inspection.inventoryNumber ?? ''}
-              onChangeText={v => update('inventoryNumber', v || null)}
-            />
-            <FloatingLabelInput
-              label="ობიექტი / პროექტი"
-              value={inspection.projectName ?? ''}
-              onChangeText={v => update('projectName', v || null)}
-            />
-            <FloatingLabelInput
-              label="განყოფილება"
-              value={inspection.department ?? ''}
-              onChangeText={v => update('department', v || null)}
-            />
-            <View style={styles.fieldRow}>
-              <Text style={styles.fieldLabel}>შემოწმების თარიღი</Text>
-              <DateTimeField
-                mode="date"
-                value={new Date(inspection.inspectionDate)}
-                onChange={d => update('inspectionDate', d.toISOString().slice(0, 10))}
-                maxDate={new Date()}
+              <StepSectionLabel title="II — დოკუმენტის ინფორმაცია" />
+              <FloatingLabelInput
+                label="სერიული ნომერი *"
+                value={inspection.serialNumber ?? ''}
+                onChangeText={v => update('serialNumber', v || null)}
+                required
               />
-            </View>
-            <FloatingLabelInput
-              label="მოტო საათები"
-              value={inspection.motoHours != null ? String(inspection.motoHours) : ''}
-              onChangeText={v => update('motoHours', v ? Number(v) : null)}
-              keyboardType="numeric"
-            />
-            <FloatingLabelInput
-              label="შემომწმებელი"
-              value={inspection.inspectorName ?? ''}
-              onChangeText={v => update('inspectorName', v || null)}
-            />
-            <View style={styles.fieldRow}>
-              <Text style={styles.fieldLabel}>ბოლო შემოწმების თარიღი</Text>
-              <DateTimeField
-                mode="date"
-                value={inspection.lastInspectionDate ? new Date(inspection.lastInspectionDate) : new Date()}
-                onChange={d => update('lastInspectionDate', d.toISOString().slice(0, 10))}
-                maxDate={new Date()}
+              <FloatingLabelInput
+                label="საინვენტარო ნომერი"
+                value={inspection.inventoryNumber ?? ''}
+                onChangeText={v => update('inventoryNumber', v || null)}
               />
-            </View>
-          </>
-        )}
-
-        {/* ── Step 1: Engine ────────────────────────────────────────────────── */}
-        {step === 1 && (
-          <>
-            <ChecklistLegend styles={styles} />
-            <SectionHeader title="1. ძრავი (Engine)" styles={styles} />
-            {ENGINE_ITEMS.map((entry, idx) => {
-              const state = inspection.engineItems.find(i => i.id === entry.id)
-                ?? { id: entry.id, result: null, comment: null, photo_paths: [] };
-              return (
-                <ExcavatorChecklistItem
-                  key={entry.id}
-                  globalIndex={idx}
-                  entry={entry}
-                  state={state}
-                  onChange={patch => updateChecklistItem('engine', entry.id, patch)}
-                  onAddPhoto={() => handleAddPhoto('engine', entry.id)}
-                  onDeletePhoto={path => handleDeletePhoto('engine', entry.id, path)}
+              <FloatingLabelInput
+                label="ობიექტი / პროექტი"
+                value={inspection.projectName ?? ''}
+                onChangeText={v => update('projectName', v || null)}
+              />
+              <FloatingLabelInput
+                label="განყოფილება"
+                value={inspection.department ?? ''}
+                onChangeText={v => update('department', v || null)}
+              />
+              <View style={styles.fieldRow}>
+                <Text style={styles.fieldLabel}>შემოწმების თარიღი</Text>
+                <DateTimeField
+                  mode="date"
+                  value={new Date(inspection.inspectionDate)}
+                  onChange={d => update('inspectionDate', d.toISOString().slice(0, 10))}
+                  maxDate={new Date()}
                 />
-              );
-            })}
-          </>
-        )}
-
-        {/* ── Step 2: Undercarriage ─────────────────────────────────────────── */}
-        {step === 2 && (
-          <>
-            <ChecklistLegend styles={styles} />
-            <SectionHeader title="2. სავალი ნაწილი (Undercarriage)" styles={styles} />
-            {UNDERCARRIAGE_ITEMS.map((entry, idx) => {
-              const state = inspection.undercarriageItems.find(i => i.id === entry.id)
-                ?? { id: entry.id, result: null, comment: null, photo_paths: [] };
-              return (
-                <ExcavatorChecklistItem
-                  key={entry.id}
-                  globalIndex={idx}
-                  entry={entry}
-                  state={state}
-                  onChange={patch => updateChecklistItem('undercarriage', entry.id, patch)}
-                  onAddPhoto={() => handleAddPhoto('undercarriage', entry.id)}
-                  onDeletePhoto={path => handleDeletePhoto('undercarriage', entry.id, path)}
-                />
-              );
-            })}
-          </>
-        )}
-
-        {/* ── Step 3: Cabin + Safety ────────────────────────────────────────── */}
-        {step === 3 && (
-          <>
-            <ChecklistLegend styles={styles} />
-            <SectionHeader title="4. კაბინა (Cabin)" styles={styles} />
-            {CABIN_ITEMS.map((entry, idx) => {
-              const state = inspection.cabinItems.find(i => i.id === entry.id)
-                ?? { id: entry.id, result: null, comment: null, photo_paths: [] };
-              return (
-                <ExcavatorChecklistItem
-                  key={`cabin-${entry.id}`}
-                  globalIndex={idx}
-                  entry={entry}
-                  state={state}
-                  onChange={patch => updateChecklistItem('cabin', entry.id, patch)}
-                  onAddPhoto={() => handleAddPhoto('cabin', entry.id)}
-                  onDeletePhoto={path => handleDeletePhoto('cabin', entry.id, path)}
-                />
-              );
-            })}
-            <SectionHeader title="5. უსაფრთხოება (Safety)" styles={styles} />
-            {SAFETY_ITEMS.map((entry, idx) => {
-              const state = inspection.safetyItems.find(i => i.id === entry.id)
-                ?? { id: entry.id, result: null, comment: null, photo_paths: [] };
-              return (
-                <ExcavatorChecklistItem
-                  key={`safety-${entry.id}`}
-                  globalIndex={idx}
-                  entry={entry}
-                  state={state}
-                  onChange={patch => updateChecklistItem('safety', entry.id, patch)}
-                  onAddPhoto={() => handleAddPhoto('safety', entry.id)}
-                  onDeletePhoto={path => handleDeletePhoto('safety', entry.id, path)}
-                />
-              );
-            })}
-          </>
-        )}
-
-        {/* ── Step 4: Maintenance + Verdict ─────────────────────────────────── */}
-        {step === 4 && (
-          <>
-            <StepSectionLabel title="VI — ტექნიკური მომსახურება" />
-            {MAINTENANCE_ITEMS.map((entry, idx) => {
-              const state = inspection.maintenanceItems.find(i => i.id === entry.id)
-                ?? { id: entry.id, answer: null, date: null };
-              return (
-                <ExcavatorMaintenanceItem
-                  key={entry.id}
-                  index={idx}
-                  entry={entry}
-                  state={state}
-                  onChange={patch => updateMaintenanceItem(entry.id, patch)}
-                />
-              );
-            })}
-
-            <StepSectionLabel title="IV — დასკვნა *" />
-
-            {showVerdictBanner && verdictSuggestion && (
-              <View style={styles.suggestionBanner}>
-                <Ionicons name="information-circle-outline" size={16} color={theme.colors.warn} />
-                <Text style={styles.suggestionText}>
-                  ავტომატური რეკომენდაცია:{' '}
-                  <Text style={{ fontWeight: '700' }}>
-                    {EXCAVATOR_VERDICT_LABEL[verdictSuggestion].split(' — ')[0]}
-                  </Text>
-                </Text>
               </View>
-            )}
+              <FloatingLabelInput
+                label="მოტო საათები"
+                value={inspection.motoHours != null ? String(inspection.motoHours) : ''}
+                onChangeText={v => update('motoHours', v ? Number(v) : null)}
+                keyboardType="numeric"
+              />
+              <FloatingLabelInput
+                label="შემომწმებელი"
+                value={inspection.inspectorName ?? ''}
+                onChangeText={v => update('inspectorName', v || null)}
+              />
+              <View style={styles.fieldRow}>
+                <Text style={styles.fieldLabel}>ბოლო შემოწმების თარიღი</Text>
+                <DateTimeField
+                  mode="date"
+                  value={inspection.lastInspectionDate ? new Date(inspection.lastInspectionDate) : new Date()}
+                  onChange={d => update('lastInspectionDate', d.toISOString().slice(0, 10))}
+                  maxDate={new Date()}
+                />
+              </View>
+            </View>
+          )}
 
-            <View style={styles.verdictBlock}>
-              {(['approved', 'conditional', 'rejected'] as ExcavatorVerdict[]).map(v => {
-                const active = inspection.verdict === v;
-                const isSuggested = verdictSuggestion === v && !inspection.verdict;
+          {/* ── Steps 1..N: Checklist items ─────────────────────────────── */}
+          {step >= CHECKLIST_START && step < MAINTENANCE_STEP && (
+            renderChecklistItem(step - CHECKLIST_START)
+          )}
+
+          {/* ── Step N+1: Maintenance + Verdict ─────────────────────────── */}
+          {step === MAINTENANCE_STEP && (
+            <View style={styles.stepBody}>
+              <StepSectionLabel title="VI — ტექნიკური მომსახურება" />
+              {MAINTENANCE_ITEMS.map((entry, idx) => {
+                const state = inspection.maintenanceItems.find(i => i.id === entry.id)
+                  ?? { id: entry.id, answer: null, date: null };
                 return (
-                  <Pressable
-                    key={v}
-                    style={[
-                      styles.verdictOption,
-                      active && styles.verdictOptionActive,
-                      isSuggested && styles.verdictOptionSuggested,
-                    ]}
-                    onPress={() => update('verdict', active ? null : v)}
-                    {...a11y(EXCAVATOR_VERDICT_LABEL[v], undefined, 'radio')}
-                  >
-                    <View style={[styles.verdictCheck, active && styles.verdictCheckActive]}>
-                      {active && <Ionicons name="checkmark" size={12} color={theme.colors.white} />}
-                    </View>
-                    <Text style={[styles.verdictLabel, active && styles.verdictLabelActive]}>
-                      {EXCAVATOR_VERDICT_LABEL[v]}
-                    </Text>
-                  </Pressable>
+                  <ExcavatorMaintenanceItem
+                    key={entry.id}
+                    index={idx}
+                    entry={entry}
+                    state={state}
+                    onChange={patch => updateMaintenanceItem(entry.id, patch)}
+                  />
                 );
               })}
-            </View>
 
-            <FloatingLabelInput
-              label="შენიშვნები / ხარვეზები"
-              value={inspection.notes ?? ''}
-              onChangeText={v => update('notes', v || null)}
-              multiline
-              numberOfLines={4}
-            />
-          </>
-        )}
+              <StepSectionLabel title="IV — დასკვნა *" />
 
-        {/* ── Step 5: Signature ─────────────────────────────────────────────── */}
-        {step === 5 && (
-          <>
-            <StepSectionLabel title="V — შემომწმებელი" />
-
-            <FloatingLabelInput
-              label="სახელი / გვარი"
-              value={inspection.inspectorName ?? ''}
-              onChangeText={v => update('inspectorName', v || null)}
-            />
-            <FloatingLabelInput
-              label="თანამდებობა"
-              value={inspection.inspectorPosition ?? ''}
-              onChangeText={v => update('inspectorPosition', v || null)}
-            />
-
-            <Pressable
-              style={[styles.sigArea, inspection.inspectorSignature && styles.sigAreaSigned]}
-              onPress={() => setShowSig(true)}
-              {...a11y('ხელმოწერა', 'ინსპექტორის ხელმოწერის დამატება', 'button')}
-            >
-              {inspection.inspectorSignature ? (
-                <View style={styles.sigContent}>
-                  <Ionicons name="checkmark-circle" size={20} color={theme.colors.semantic.success} />
-                  <Text style={[styles.sigHint, { color: theme.colors.semantic.success }]}>ხელმოწერა დაყენებულია</Text>
-                  <Pressable
-                    onPress={() => update('inspectorSignature', null)}
-                    hitSlop={10}
-                    {...a11y('ხელმოწერის წაშლა', undefined, 'button')}
-                  >
-                    <Text style={styles.sigClear}>გასუფთავება</Text>
-                  </Pressable>
-                </View>
-              ) : (
-                <View style={styles.sigContent}>
-                  <Ionicons name="pencil-outline" size={20} color={theme.colors.accent} />
-                  <Text style={styles.sigHint}>შეეხეთ ხელმოწერისთვის</Text>
-                </View>
-              )}
-            </Pressable>
-
-            {!inspection.inspectorSignature && (
-              <Text style={styles.sigRequiredHint}>
-                ხელმოწერა სავალდებულოა დასასრულებლად
-              </Text>
-            )}
-
-            {completing && (
-              <View style={styles.completingRow}>
-                <ActivityIndicator size="small" color={theme.colors.accent} />
-                <Text style={styles.completingText}>მიმდინარეობს…</Text>
-              </View>
-            )}
-          </>
-        )}
-
-        {/* ── Step 6: Done ──────────────────────────────────────────────────── */}
-        {step === 6 && (
-          <>
-            <View style={styles.doneHero}>
-              <Ionicons name="checkmark-circle" size={72} color={theme.colors.semantic.success} />
-              <Text style={styles.doneTitle}>შემოწმება დასრულდა!</Text>
-              {inspection.completedAt && (
-                <Text style={styles.doneDate}>
-                  {new Date(inspection.completedAt).toLocaleDateString('ka-GE', {
-                    day: 'numeric', month: 'long', year: 'numeric',
-                  })}
-                </Text>
-              )}
-              {inspection.verdict && (
-                <View style={[
-                  styles.doneVerdict,
-                  inspection.verdict === 'approved'    && styles.doneVerdictGreen,
-                  inspection.verdict === 'conditional' && styles.doneVerdictAmber,
-                  inspection.verdict === 'rejected'    && styles.doneVerdictRed,
-                ]}>
-                  <Text style={[
-                    styles.doneVerdictText,
-                    inspection.verdict === 'approved'    && { color: theme.colors.semantic.success },
-                    inspection.verdict === 'conditional' && { color: theme.colors.warn },
-                    inspection.verdict === 'rejected'    && { color: theme.colors.danger },
-                  ]}>
-                    {EXCAVATOR_VERDICT_LABEL[inspection.verdict].split(' — ')[0]}
+              {showVerdictBanner && verdictSuggestion && (
+                <View style={styles.suggestionBanner}>
+                  <Ionicons name="information-circle-outline" size={16} color={theme.colors.warn} />
+                  <Text style={styles.suggestionText}>
+                    ავტომატური რეკომენდაცია:{' '}
+                    <Text style={{ fontWeight: '700' }}>
+                      {EXCAVATOR_VERDICT_LABEL[verdictSuggestion].split(' — ')[0]}
+                    </Text>
                   </Text>
                 </View>
               )}
+
+              <View style={styles.verdictBlock}>
+                {(['approved', 'conditional', 'rejected'] as ExcavatorVerdict[]).map(v => {
+                  const active = inspection.verdict === v;
+                  const isSuggested = verdictSuggestion === v && !inspection.verdict;
+                  return (
+                    <Pressable
+                      key={v}
+                      style={[
+                        styles.verdictOption,
+                        active && styles.verdictOptionActive,
+                        isSuggested && styles.verdictOptionSuggested,
+                      ]}
+                      onPress={() => update('verdict', active ? null : v)}
+                      {...a11y(EXCAVATOR_VERDICT_LABEL[v], undefined, 'radio')}
+                    >
+                      <View style={[styles.verdictCheck, active && styles.verdictCheckActive]}>
+                        {active && <Ionicons name="checkmark" size={12} color={theme.colors.white} />}
+                      </View>
+                      <Text style={[styles.verdictLabel, active && styles.verdictLabelActive]}>
+                        {EXCAVATOR_VERDICT_LABEL[v]}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              <FloatingLabelInput
+                label="შენიშვნები / ხარვეზები"
+                value={inspection.notes ?? ''}
+                onChangeText={v => update('notes', v || null)}
+                multiline
+                numberOfLines={4}
+              />
             </View>
+          )}
 
-            <Button
-              title="PDF გენერირება / გაზიარება"
-              onPress={handlePdf}
-              loading={generatingPdf}
-              style={{ marginBottom: 12 }}
-            />
-            <Button
-              title="პროექტზე დაბრუნება"
-              variant="secondary"
-              onPress={() => router.back()}
-            />
-          </>
-        )}
+          {/* ── Step N+2: Signature ─────────────────────────────────────── */}
+          {step === SIGNATURE_STEP && (
+            <View style={styles.stepBody}>
+              <StepSectionLabel title="V — შემომწმებელი" />
 
-        {step < 6 && (
+              <FloatingLabelInput
+                label="სახელი / გვარი"
+                value={inspection.inspectorName ?? ''}
+                onChangeText={v => update('inspectorName', v || null)}
+              />
+              <FloatingLabelInput
+                label="თანამდებობა"
+                value={inspection.inspectorPosition ?? ''}
+                onChangeText={v => update('inspectorPosition', v || null)}
+              />
+
+              <Pressable
+                style={[styles.sigArea, inspection.inspectorSignature && styles.sigAreaSigned]}
+                onPress={() => setShowSig(true)}
+                {...a11y('ხელმოწერა', 'ინსპექტორის ხელმოწერის დამატება', 'button')}
+              >
+                {inspection.inspectorSignature ? (
+                  <View style={styles.sigContent}>
+                    <Ionicons name="checkmark-circle" size={20} color={theme.colors.semantic.success} />
+                    <Text style={[styles.sigHint, { color: theme.colors.semantic.success }]}>ხელმოწერა დაყენებულია</Text>
+                    <Pressable
+                      onPress={() => update('inspectorSignature', null)}
+                      hitSlop={10}
+                      {...a11y('ხელმოწერის წაშლა', undefined, 'button')}
+                    >
+                      <Text style={styles.sigClear}>გასუფთავება</Text>
+                    </Pressable>
+                  </View>
+                ) : (
+                  <View style={styles.sigContent}>
+                    <Ionicons name="pencil-outline" size={20} color={theme.colors.accent} />
+                    <Text style={styles.sigHint}>შეეხეთ ხელმოწერისთვის</Text>
+                  </View>
+                )}
+              </Pressable>
+
+              {!inspection.inspectorSignature && (
+                <Text style={styles.sigRequiredHint}>
+                  ხელმოწერა სავალდებულოა დასასრულებლად
+                </Text>
+              )}
+
+              {completing && (
+                <View style={styles.completingRow}>
+                  <ActivityIndicator size="small" color={theme.colors.accent} />
+                  <Text style={styles.completingText}>მიმდინარეობს…</Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* ── Step N+3: Done ──────────────────────────────────────────── */}
+          {step === DONE_STEP && (
+            <View style={styles.stepBody}>
+              <View style={styles.doneHero}>
+                <Ionicons name="checkmark-circle" size={72} color={theme.colors.semantic.success} />
+                <Text style={styles.doneTitle}>შემოწმება დასრულდა!</Text>
+                {inspection.completedAt && (
+                  <Text style={styles.doneDate}>
+                    {new Date(inspection.completedAt).toLocaleDateString('ka-GE', {
+                      day: 'numeric', month: 'long', year: 'numeric',
+                    })}
+                  </Text>
+                )}
+                {inspection.verdict && (
+                  <View style={[
+                    styles.doneVerdict,
+                    inspection.verdict === 'approved'    && styles.doneVerdictGreen,
+                    inspection.verdict === 'conditional' && styles.doneVerdictAmber,
+                    inspection.verdict === 'rejected'    && styles.doneVerdictRed,
+                  ]}>
+                    <Text style={[
+                      styles.doneVerdictText,
+                      inspection.verdict === 'approved'    && { color: theme.colors.semantic.success },
+                      inspection.verdict === 'conditional' && { color: theme.colors.warn },
+                      inspection.verdict === 'rejected'    && { color: theme.colors.danger },
+                    ]}>
+                      {EXCAVATOR_VERDICT_LABEL[inspection.verdict].split(' — ')[0]}
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              <Button
+                title="PDF გენერირება / გაზიარება"
+                onPress={handlePdf}
+                loading={generatingPdf}
+                style={{ marginBottom: 12 }}
+              />
+              <Button
+                title="პროექტზე დაბრუნება"
+                variant="secondary"
+                onPress={() => router.back()}
+              />
+            </View>
+          )}
+        </WizardStepTransition>
+
+        {step < DONE_STEP && (
           <WizardNav
-            isLast={step === 5}
+            isLast={step === SIGNATURE_STEP}
             canGoNext={canGoNext}
             canGoPrev={step > 0}
             onNext={handleNext}
@@ -744,26 +799,73 @@ export default function ExcavatorInspectionScreen() {
         onCancel={() => setShowSig(false)}
         onConfirm={handleSignatureConfirm}
       />
+
+      <ChecklistTour
+        visible={showTour}
+        onClose={() => {
+          setShowTour(false);
+          AsyncStorage.setItem(TOUR_SEEN_KEY, '1').catch(() => {});
+        }}
+      />
     </View>
   );
 }
 
-// ── Helpers ─────────────────────────────────────────────────────────────────────
+// ── Help sheet styles ────────────────────────────────────────────────────────
 
-function sectionKey(s: Section): keyof ExcavatorInspection {
-  const map: Record<Section, keyof ExcavatorInspection> = {
-    engine:        'engineItems',
-    undercarriage: 'undercarriageItems',
-    cabin:         'cabinItems',
-    safety:        'safetyItems',
-  };
-  return map[s];
+function helpStyles(theme: Theme) {
+  return StyleSheet.create({
+    body: {
+      alignItems: 'center',
+      paddingVertical: 8,
+      gap: 14,
+    },
+    title: {
+      fontSize: 18,
+      fontWeight: '800',
+      color: theme.colors.ink,
+      textAlign: 'center',
+    },
+    desc: {
+      fontSize: 14,
+      color: theme.colors.inkSoft,
+      textAlign: 'center',
+      lineHeight: 20,
+      paddingHorizontal: 8,
+    },
+    help: {
+      fontSize: 13,
+      color: theme.colors.ink,
+      textAlign: 'center',
+      lineHeight: 20,
+      paddingHorizontal: 12,
+      backgroundColor: theme.colors.subtleSurface,
+      paddingVertical: 10,
+      borderRadius: 10,
+      alignSelf: 'stretch',
+    },
+    btn: {
+      marginTop: 4,
+      alignSelf: 'stretch',
+      paddingVertical: 14,
+      borderRadius: 12,
+      borderWidth: 1.5,
+      borderColor: theme.colors.accent,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    btnText: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: theme.colors.accent,
+    },
+  });
 }
 
-// ── Sub-components ──────────────────────────────────────────────────────────────
+// ── Sub-components ───────────────────────────────────────────────────────────
 
 function MachineSpecsCard({ insp, styles }: { insp: ExcavatorInspection; styles: ReturnType<typeof getstyles> }) {
-  const sp = insp.machineSpecs;
+  const sp = insp.machineSpecs ?? EXCAVATOR_MACHINE_SPECS;
   const { theme } = useTheme();
   return (
     <View style={styles.specsCard}>
@@ -787,42 +889,14 @@ function MachineSpecsCard({ insp, styles }: { insp: ExcavatorInspection; styles:
   );
 }
 
-function ChecklistLegend({ styles }: { styles: ReturnType<typeof getstyles> }) {
-  const { theme } = useTheme();
-  return (
-    <View style={styles.legend}>
-      <View style={styles.legendItem}>
-        <View style={[styles.legendDot, { backgroundColor: theme.colors.semantic.success }]} />
-        <Text style={styles.legendText}>✓ კარგია</Text>
-      </View>
-      <View style={styles.legendItem}>
-        <View style={[styles.legendDot, { backgroundColor: theme.colors.warn }]} />
-        <Text style={styles.legendText}>⚠ ნაკლი</Text>
-      </View>
-      <View style={styles.legendItem}>
-        <View style={[styles.legendDot, { backgroundColor: theme.colors.danger }]} />
-        <Text style={styles.legendText}>✗ გამოუსადეგ.</Text>
-      </View>
-    </View>
-  );
-}
-
-function SectionHeader({ title, styles }: { title: string; styles: ReturnType<typeof getstyles> }) {
-  return (
-    <View style={styles.catHeader}>
-      <Text style={styles.catHeaderText}>{title}</Text>
-    </View>
-  );
-}
-
-
-// ── Styles ──────────────────────────────────────────────────────────────────────
+// ── Styles ───────────────────────────────────────────────────────────────────
 
 function getstyles(theme: Theme) {
   return StyleSheet.create({
     root:    { flex: 1, backgroundColor: theme.colors.background },
     centred: { alignItems: 'center', justifyContent: 'center' },
     savingHint: { fontSize: 11, color: theme.colors.inkFaint, textAlign: 'right', paddingHorizontal: 16, paddingTop: 4 },
+    stepBody: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 16, gap: 12 },
 
     specsCard: {
       borderWidth: 1, borderColor: theme.colors.hairline,
@@ -846,19 +920,8 @@ function getstyles(theme: Theme) {
     specsLabel: { fontSize: 9, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 3 },
     specsValue: { fontSize: 11, fontWeight: '700' },
 
-    fieldRow:   { marginBottom: 12, gap: 6 },
+    fieldRow:   { marginBottom: 4, gap: 6 },
     fieldLabel: { fontSize: 12, fontWeight: '600', color: theme.colors.inkSoft },
-
-    legend:     { flexDirection: 'row', gap: 12, marginBottom: 8, flexWrap: 'wrap' },
-    legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-    legendDot:  { width: 8, height: 8, borderRadius: 4 },
-    legendText: { fontSize: 11, color: theme.colors.inkSoft },
-    catHeader: {
-      paddingHorizontal: 10, paddingVertical: 7,
-      borderRadius: 6, marginTop: 10, marginBottom: 4,
-      backgroundColor: theme.colors.subtleSurface,
-    },
-    catHeaderText: { fontSize: 11, fontWeight: '700', color: theme.colors.inkSoft },
 
     suggestionBanner: {
       flexDirection: 'row', alignItems: 'center', gap: 6,
@@ -911,4 +974,3 @@ function getstyles(theme: Theme) {
     doneVerdictText:  { fontSize: 13, fontWeight: '700' },
   });
 }
-

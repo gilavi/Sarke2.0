@@ -19,8 +19,10 @@ import { KeyboardSafeArea } from '../../../components/layout/KeyboardSafeArea';
 import { SignatureCanvas } from '../../../components/SignatureCanvas';
 import { EquipmentRow } from '../../../components/generalEquipment/EquipmentRow';
 import { WizardNav } from '../../../components/wizard/WizardNav';
+import { WizardStepTransition } from '../../../components/wizard/WizardStepTransition';
 import { StepBar } from '../../../components/wizard/StepBar';
 import { StepSectionLabel } from '../../../components/wizard/StepSectionLabel';
+import { ChecklistTour, TOUR_SEEN_KEY } from '../../../components/wizard/ChecklistTour';
 import { FlowHeader } from '../../../components/FlowHeader';
 import { useTheme, type Theme } from '../../../lib/theme';
 import { useSession } from '../../../lib/session';
@@ -35,6 +37,7 @@ import { friendlyError } from '../../../lib/errorMap';
 import { a11y } from '../../../lib/accessibility';
 import { imageForDisplay } from '../../../lib/imageUrl';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   buildDefaultEquipmentRow,
   INSPECTION_TYPE_LABEL,
@@ -46,7 +49,6 @@ import {
   type GESignerRole,
 } from '../../../types/generalEquipment';
 
-// Steps: 0=ინფო  1=აღჭ.  2=შეჯამება  3=ხელმოწ.  4=done
 const STEP_LABELS = ['ინფო', 'აღჭ.', 'შეჯამება', 'ხელმოწ.'];
 const TOTAL_STEPS = 4;
 
@@ -65,7 +67,16 @@ export default function GeneralEquipmentScreen() {
   const [completing, setCompleting] = useState(false);
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [showSig, setShowSig] = useState(false);
+  const [showTour, setShowTour] = useState(false);
+
   const [step, setStep] = useState(0);
+  const prevStepRef = useRef(0);
+  const [animateSteps, setAnimateSteps] = useState(false);
+
+  const persistKey = useMemo(() => `ge-wizard:${id}:step`, [id]);
+
+  const direction: 'next' | 'prev' = step >= prevStepRef.current ? 'next' : 'prev';
+  useEffect(() => { prevStepRef.current = step; }, [step]);
 
   // ── Load ────────────────────────────────────────────────────────────────────
 
@@ -87,24 +98,45 @@ export default function GeneralEquipmentScreen() {
         }
         setInspection(patched);
 
-        if (insp.status === 'completed') setStep(4);
+        if (insp.status === 'completed') {
+          setStep(4);
+        } else {
+          const saved = await AsyncStorage.getItem(persistKey);
+          if (saved && !cancelled) {
+            const s = parseInt(saved, 10);
+            if (!isNaN(s) && s >= 0 && s <= 3) setStep(s);
+          }
+        }
 
         projectsApi.getById(insp.projectId).then(p => {
           if (cancelled || !p) return;
           setProjectName(p.name);
         }).catch(() => {});
+
+        const tourSeen = await AsyncStorage.getItem(TOUR_SEEN_KEY);
+        if (!tourSeen && !cancelled) setShowTour(true);
       } catch (e) {
         if (!cancelled) {
           toast.error(friendlyError(e, 'ვერ ჩაიტვირთა'));
           router.back();
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+          setTimeout(() => setAnimateSteps(true), 50);
+        }
       }
     })();
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Persist step
+  useEffect(() => {
+    if (step >= 0 && step <= 3) {
+      AsyncStorage.setItem(persistKey, String(step)).catch(() => {});
+    }
+  }, [step, persistKey]);
 
   // ── Auto-save ───────────────────────────────────────────────────────────────
 
@@ -147,7 +179,7 @@ export default function GeneralEquipmentScreen() {
     });
   }, [scheduleSave]);
 
-  // ── Equipment row updates ────────────────────────────────────────────────────
+  // ── Equipment row updates ───────────────────────────────────────────────────
 
   const updateEquipmentRow = useCallback((rowId: string, patch: Partial<EquipmentItem>) => {
     setInspection(prev => {
@@ -340,6 +372,7 @@ export default function GeneralEquipmentScreen() {
         `${inspection.projectId}:general_equipment`,
       ).catch(() => {});
       setInspection(prev => prev ? { ...prev, status: 'completed', completedAt } : prev);
+      await AsyncStorage.removeItem(persistKey);
       setStep(4);
       toast.success('შემოწმება დასრულდა');
     } catch (e) {
@@ -347,7 +380,7 @@ export default function GeneralEquipmentScreen() {
     } finally {
       setCompleting(false);
     }
-  }, [inspection, toast]);
+  }, [inspection, toast, persistKey]);
 
   // ── PDF ──────────────────────────────────────────────────────────────────────
 
@@ -392,6 +425,11 @@ export default function GeneralEquipmentScreen() {
   const handlePrev = useCallback(() => {
     if (step > 0) setStep(s => s - 1);
   }, [step]);
+
+  // ── Render helpers ───────────────────────────────────────────────────────────
+
+  const filledCount = inspection?.equipment.filter(r => r.name.trim()).length ?? 0;
+  const totalCount = inspection?.equipment.length ?? 0;
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
@@ -440,240 +478,261 @@ export default function GeneralEquipmentScreen() {
       )}
 
       <KeyboardSafeArea>
+        <WizardStepTransition
+          stepKey={step}
+          direction={direction}
+          animate={animateSteps}
+        >
+          {/* ── Step 0: General info ────────────────────────────────────── */}
+          {step === 0 && (
+            <View style={styles.stepBody}>
+              <StepSectionLabel title="I — ზოგადი ინფორმაცია" />
 
-        {/* ── Step 0: General info ──────────────────────────────────────────── */}
-        {step === 0 && (
-          <>
-            <StepSectionLabel title="I — ზოგადი ინფორმაცია" />
-
-            <FloatingLabelInput
-              label="ობიექტის დასახელება *"
-              value={inspection.objectName ?? ''}
-              onChangeText={v => update('objectName', v || null)}
-              required
-            />
-            <FloatingLabelInput
-              label="მისამართი"
-              value={inspection.address ?? ''}
-              onChangeText={v => update('address', v || null)}
-            />
-            <FloatingLabelInput
-              label="საქმიანობის სახე"
-              value={inspection.activityType ?? ''}
-              onChangeText={v => update('activityType', v || null)}
-            />
-
-            <View style={styles.fieldRow}>
-              <Text style={styles.fieldLabel}>შემოწმების თარიღი</Text>
-              <DateTimeField
-                mode="date"
-                value={new Date(inspection.inspectionDate)}
-                onChange={d => update('inspectionDate', d.toISOString().slice(0, 10))}
-                maxDate={new Date()}
-              />
-            </View>
-
-            <FloatingLabelInput
-              label="აქტის №"
-              value={inspection.actNumber ?? ''}
-              onChangeText={v => update('actNumber', v || null)}
-            />
-
-            <Text style={styles.fieldLabel}>შემოწმების სახე</Text>
-            <View style={styles.typeChips}>
-              {(['initial', 'repeat', 'scheduled'] as GEInspectionType[]).map(t => {
-                const active = inspection.inspectionType === t;
-                return (
-                  <Pressable
-                    key={t}
-                    style={[styles.typeChip, active && styles.typeChipActive]}
-                    onPress={() => update('inspectionType', active ? null : t)}
-                    {...a11y(INSPECTION_TYPE_LABEL[t], undefined, 'radio')}
-                  >
-                    <Text style={[styles.typeChipText, active && styles.typeChipTextActive]}>
-                      {INSPECTION_TYPE_LABEL[t]}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-
-            <FloatingLabelInput
-              label="შემომწმებელი"
-              value={inspection.inspectorName ?? ''}
-              onChangeText={v => update('inspectorName', v || null)}
-            />
-          </>
-        )}
-
-        {/* ── Step 1: Equipment list ────────────────────────────────────────── */}
-        {step === 1 && (
-          <>
-            <StepSectionLabel title="II — აღჭურვილობის სია" />
-
-            {inspection.equipment.map((item, idx) => (
-              <EquipmentRow
-                key={item.id}
-                index={idx}
-                item={item}
-                canDelete={inspection.equipment.length > 1}
-                onChange={patch => updateEquipmentRow(item.id, patch)}
-                onDelete={() => deleteEquipmentRow(item.id)}
-                onAddPhoto={() => handleAddEquipmentPhoto(item.id)}
-                onDeletePhoto={path => handleDeleteEquipmentPhoto(item.id, path)}
-              />
-            ))}
-
-            <Pressable
-              style={styles.addRowBtn}
-              onPress={addEquipmentRow}
-              {...a11y('აღჭ. დამატება', '+ აღჭურვილობის სტრიქონის დამატება', 'button')}
-            >
-              <Ionicons name="add-circle-outline" size={18} color={theme.colors.accent} />
-              <Text style={styles.addRowText}>+ აღჭურვილობის დამატება</Text>
-            </Pressable>
-          </>
-        )}
-
-        {/* ── Step 2: Summary ───────────────────────────────────────────────── */}
-        {step === 2 && (
-          <>
-            <StepSectionLabel title="III — შეჯამება" />
-
-            <FloatingLabelInput
-              label="დასკვნა *"
-              value={inspection.conclusion ?? ''}
-              onChangeText={v => update('conclusion', v || null)}
-              multiline
-              numberOfLines={4}
-              required
-            />
-
-            <Text style={[styles.fieldLabel, { marginTop: 8 }]}>ფოტოები (სურვ.)</Text>
-
-            <SummaryPhotoStrip
-              paths={inspection.summaryPhotos}
-              onAdd={handleAddSummaryPhoto}
-              onDelete={handleDeleteSummaryPhoto}
-              styles={styles}
-            />
-          </>
-        )}
-
-        {/* ── Step 3: Signature ─────────────────────────────────────────────── */}
-        {step === 3 && (
-          <>
-            <StepSectionLabel title="IV — ხელმოწერა" />
-
-            <FloatingLabelInput
-              label="სახელი / გვარი"
-              value={inspection.signerName ?? ''}
-              onChangeText={v => update('signerName', v || null)}
-            />
-
-            <Text style={styles.fieldLabel}>თანამდებობა</Text>
-            <View style={styles.typeChips}>
-              {(['electrician', 'technician', 'safety_specialist', 'other'] as GESignerRole[]).map(r => {
-                const active = inspection.signerRole === r;
-                return (
-                  <Pressable
-                    key={r}
-                    style={[styles.typeChip, active && styles.typeChipActive]}
-                    onPress={() => update('signerRole', active ? null : r)}
-                    {...a11y(SIGNER_ROLE_LABEL[r], undefined, 'radio')}
-                  >
-                    <Text style={[styles.typeChipText, active && styles.typeChipTextActive]}>
-                      {SIGNER_ROLE_LABEL[r]}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-
-            {inspection.signerRole === 'other' && (
               <FloatingLabelInput
-                label="სხვა თანამდებობა"
-                value={inspection.signerRoleCustom ?? ''}
-                onChangeText={v => update('signerRoleCustom', v || null)}
-                autoFocus
+                label="ობიექტის დასახელება *"
+                value={inspection.objectName ?? ''}
+                onChangeText={v => update('objectName', v || null)}
+                required
               />
-            )}
+              <FloatingLabelInput
+                label="მისამართი"
+                value={inspection.address ?? ''}
+                onChangeText={v => update('address', v || null)}
+              />
+              <FloatingLabelInput
+                label="საქმიანობის სახე"
+                value={inspection.activityType ?? ''}
+                onChangeText={v => update('activityType', v || null)}
+              />
 
-            <Pressable
-              style={[styles.sigArea, inspection.inspectorSignature && styles.sigAreaSigned]}
-              onPress={() => setShowSig(true)}
-              {...a11y('ხელმოწერა', 'შემომწმებლის ხელმოწერის დამატება', 'button')}
-            >
-              {inspection.inspectorSignature ? (
-                <View style={styles.sigContent}>
-                  <Ionicons name="checkmark-circle" size={20} color={theme.colors.semantic.success} />
-                  <Text style={[styles.sigHint, { color: theme.colors.semantic.success }]}>ხელმოწერა დაყენებულია</Text>
-                  <Pressable
-                    onPress={() => update('inspectorSignature', null)}
-                    hitSlop={10}
-                    {...a11y('ხელმოწერის წაშლა', undefined, 'button')}
-                  >
-                    <Text style={styles.sigClear}>გასუფთავება</Text>
-                  </Pressable>
-                </View>
-              ) : (
-                <View style={styles.sigContent}>
-                  <Ionicons name="pencil-outline" size={20} color={theme.colors.accent} />
-                  <Text style={styles.sigHint}>შეეხეთ ხელმოწერისთვის</Text>
-                </View>
-              )}
-            </Pressable>
-
-            {!inspection.inspectorSignature && (
-              <Text style={styles.sigRequiredHint}>
-                ხელმოწერა სავალდებულოა დასასრულებლად
-              </Text>
-            )}
-
-            {completing && (
-              <View style={styles.completingRow}>
-                <ActivityIndicator size="small" color={theme.colors.accent} />
-                <Text style={styles.completingText}>მიმდინარეობს…</Text>
+              <View style={styles.fieldRow}>
+                <Text style={styles.fieldLabel}>შემოწმების თარიღი</Text>
+                <DateTimeField
+                  mode="date"
+                  value={new Date(inspection.inspectionDate)}
+                  onChange={d => update('inspectionDate', d.toISOString().slice(0, 10))}
+                  maxDate={new Date()}
+                />
               </View>
-            )}
-          </>
-        )}
 
-        {/* ── Step 4: Done ──────────────────────────────────────────────────── */}
-        {step === 4 && (
-          <>
-            <View style={styles.doneHero}>
-              <Ionicons name="checkmark-circle" size={72} color={theme.colors.semantic.success} />
-              <Text style={styles.doneTitle}>შემოწმება დასრულდა!</Text>
-              {inspection.completedAt && (
-                <Text style={styles.doneDate}>
-                  {new Date(inspection.completedAt).toLocaleDateString('ka-GE', {
-                    day: 'numeric', month: 'long', year: 'numeric',
-                  })}
-                </Text>
-              )}
-              {inspection.signerRole && (
-                <View style={styles.doneRole}>
-                  <Text style={styles.doneRoleText}>
-                    {resolveSignerPosition(inspection.signerRole, inspection.signerRoleCustom)}
+              <FloatingLabelInput
+                label="აქტის №"
+                value={inspection.actNumber ?? ''}
+                onChangeText={v => update('actNumber', v || null)}
+              />
+
+              <Text style={styles.fieldLabel}>შემოწმების სახე</Text>
+              <View style={styles.typeChips}>
+                {(['initial', 'repeat', 'scheduled'] as GEInspectionType[]).map(t => {
+                  const active = inspection.inspectionType === t;
+                  return (
+                    <Pressable
+                      key={t}
+                      style={[styles.typeChip, active && styles.typeChipActive]}
+                      onPress={() => update('inspectionType', active ? null : t)}
+                      {...a11y(INSPECTION_TYPE_LABEL[t], undefined, 'radio')}
+                    >
+                      <Text style={[styles.typeChipText, active && styles.typeChipTextActive]}>
+                        {INSPECTION_TYPE_LABEL[t]}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              <FloatingLabelInput
+                label="შემომწმებელი"
+                value={inspection.inspectorName ?? ''}
+                onChangeText={v => update('inspectorName', v || null)}
+              />
+            </View>
+          )}
+
+          {/* ── Step 1: Equipment list ──────────────────────────────────── */}
+          {step === 1 && (
+            <View style={styles.stepBody}>
+              <View style={styles.equipHeader}>
+                <StepSectionLabel title="II — აღჭურვილობის სია" />
+                <View style={styles.progressPill}>
+                  <Text style={styles.progressPillText}>
+                    შევსებულია {filledCount} / {totalCount}
+                  </Text>
+                </View>
+              </View>
+
+              {inspection.equipment.map((item, idx) => (
+                <EquipmentRow
+                  key={item.id}
+                  index={idx}
+                  item={item}
+                  canDelete={inspection.equipment.length > 1}
+                  onChange={patch => updateEquipmentRow(item.id, patch)}
+                  onDelete={() => deleteEquipmentRow(item.id)}
+                  onAddPhoto={() => handleAddEquipmentPhoto(item.id)}
+                  onDeletePhoto={path => handleDeleteEquipmentPhoto(item.id, path)}
+                />
+              ))}
+
+              <Pressable
+                style={styles.addRowBtn}
+                onPress={addEquipmentRow}
+                {...a11y('აღჭ. დამატება', '+ აღჭურვილობის სტრიქონის დამატება', 'button')}
+              >
+                <Ionicons name="add-circle-outline" size={18} color={theme.colors.accent} />
+                <Text style={styles.addRowText}>+ აღჭურვილობის დამატება</Text>
+              </Pressable>
+
+              {filledCount === 0 && (
+                <View style={styles.emptyHint}>
+                  <Ionicons name="information-circle-outline" size={18} color={theme.colors.inkFaint} />
+                  <Text style={styles.emptyHintText}>
+                    შეავსეთ მინიმუმ ერთი აღჭურვილობის სტრიქონი
                   </Text>
                 </View>
               )}
             </View>
+          )}
 
-            <Button
-              title="PDF გენერირება / გაზიარება"
-              onPress={handlePdf}
-              loading={generatingPdf}
-              style={{ marginBottom: 12 }}
-            />
-            <Button
-              title="პროექტზე დაბრუნება"
-              variant="secondary"
-              onPress={() => router.back()}
-            />
-          </>
-        )}
+          {/* ── Step 2: Summary ─────────────────────────────────────────── */}
+          {step === 2 && (
+            <View style={styles.stepBody}>
+              <StepSectionLabel title="III — შეჯამება" />
+
+              <FloatingLabelInput
+                label="დასკვნა *"
+                value={inspection.conclusion ?? ''}
+                onChangeText={v => update('conclusion', v || null)}
+                multiline
+                numberOfLines={4}
+                required
+              />
+
+              <Text style={[styles.fieldLabel, { marginTop: 8 }]}>ფოტოები (სურვ.)</Text>
+
+              <SummaryPhotoStrip
+                paths={inspection.summaryPhotos}
+                onAdd={handleAddSummaryPhoto}
+                onDelete={handleDeleteSummaryPhoto}
+                styles={styles}
+              />
+            </View>
+          )}
+
+          {/* ── Step 3: Signature ───────────────────────────────────────── */}
+          {step === 3 && (
+            <View style={styles.stepBody}>
+              <StepSectionLabel title="IV — ხელმოწერა" />
+
+              <FloatingLabelInput
+                label="სახელი / გვარი"
+                value={inspection.signerName ?? ''}
+                onChangeText={v => update('signerName', v || null)}
+              />
+
+              <Text style={styles.fieldLabel}>თანამდებობა</Text>
+              <View style={styles.typeChips}>
+                {(['electrician', 'technician', 'safety_specialist', 'other'] as GESignerRole[]).map(r => {
+                  const active = inspection.signerRole === r;
+                  return (
+                    <Pressable
+                      key={r}
+                      style={[styles.typeChip, active && styles.typeChipActive]}
+                      onPress={() => update('signerRole', active ? null : r)}
+                      {...a11y(SIGNER_ROLE_LABEL[r], undefined, 'radio')}
+                    >
+                      <Text style={[styles.typeChipText, active && styles.typeChipTextActive]}>
+                        {SIGNER_ROLE_LABEL[r]}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              {inspection.signerRole === 'other' && (
+                <FloatingLabelInput
+                  label="სხვა თანამდებობა"
+                  value={inspection.signerRoleCustom ?? ''}
+                  onChangeText={v => update('signerRoleCustom', v || null)}
+                  autoFocus
+                />
+              )}
+
+              <Pressable
+                style={[styles.sigArea, inspection.inspectorSignature && styles.sigAreaSigned]}
+                onPress={() => setShowSig(true)}
+                {...a11y('ხელმოწერა', 'შემომწმებლის ხელმოწერის დამატება', 'button')}
+              >
+                {inspection.inspectorSignature ? (
+                  <View style={styles.sigContent}>
+                    <Ionicons name="checkmark-circle" size={20} color={theme.colors.semantic.success} />
+                    <Text style={[styles.sigHint, { color: theme.colors.semantic.success }]}>ხელმოწერა დაყენებულია</Text>
+                    <Pressable
+                      onPress={() => update('inspectorSignature', null)}
+                      hitSlop={10}
+                      {...a11y('ხელმოწერის წაშლა', undefined, 'button')}
+                    >
+                      <Text style={styles.sigClear}>გასუფთავება</Text>
+                    </Pressable>
+                  </View>
+                ) : (
+                  <View style={styles.sigContent}>
+                    <Ionicons name="pencil-outline" size={20} color={theme.colors.accent} />
+                    <Text style={styles.sigHint}>შეეხეთ ხელმოწერისთვის</Text>
+                  </View>
+                )}
+              </Pressable>
+
+              {!inspection.inspectorSignature && (
+                <Text style={styles.sigRequiredHint}>
+                  ხელმოწერა სავალდებულოა დასასრულებლად
+                </Text>
+              )}
+
+              {completing && (
+                <View style={styles.completingRow}>
+                  <ActivityIndicator size="small" color={theme.colors.accent} />
+                  <Text style={styles.completingText}>მიმდინარეობს…</Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* ── Step 4: Done ────────────────────────────────────────────── */}
+          {step === 4 && (
+            <View style={styles.stepBody}>
+              <View style={styles.doneHero}>
+                <Ionicons name="checkmark-circle" size={72} color={theme.colors.semantic.success} />
+                <Text style={styles.doneTitle}>შემოწმება დასრულდა!</Text>
+                {inspection.completedAt && (
+                  <Text style={styles.doneDate}>
+                    {new Date(inspection.completedAt).toLocaleDateString('ka-GE', {
+                      day: 'numeric', month: 'long', year: 'numeric',
+                    })}
+                  </Text>
+                )}
+                {inspection.signerRole && (
+                  <View style={styles.doneRole}>
+                    <Text style={styles.doneRoleText}>
+                      {resolveSignerPosition(inspection.signerRole, inspection.signerRoleCustom)}
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              <Button
+                title="PDF გენერირება / გაზიარება"
+                onPress={handlePdf}
+                loading={generatingPdf}
+                style={{ marginBottom: 12 }}
+              />
+              <Button
+                title="პროექტზე დაბრუნება"
+                variant="secondary"
+                onPress={() => router.back()}
+              />
+            </View>
+          )}
+        </WizardStepTransition>
 
         {step < 4 && (
           <WizardNav
@@ -692,11 +751,19 @@ export default function GeneralEquipmentScreen() {
         onCancel={() => setShowSig(false)}
         onConfirm={handleSignatureConfirm}
       />
+
+      <ChecklistTour
+        visible={showTour}
+        onClose={() => {
+          setShowTour(false);
+          AsyncStorage.setItem(TOUR_SEEN_KEY, '1').catch(() => {});
+        }}
+      />
     </View>
   );
 }
 
-// ── Sub-components ───────────────────────────────────────────────────────────────
+// ── Sub-components ───────────────────────────────────────────────────────────
 
 function SummaryPhotoStrip({
   paths,
@@ -755,18 +822,19 @@ const SummaryThumb = memo(function SummaryThumb({
   );
 });
 
-// ── Styles ───────────────────────────────────────────────────────────────────────
+// ── Styles ───────────────────────────────────────────────────────────────────
 
 function getstyles(theme: Theme) {
   return StyleSheet.create({
     root:    { flex: 1, backgroundColor: theme.colors.background },
     centred: { alignItems: 'center', justifyContent: 'center' },
     savingHint: { fontSize: 11, color: theme.colors.inkFaint, textAlign: 'right', paddingHorizontal: 16, paddingTop: 4 },
+    stepBody: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 16, gap: 12 },
 
-    fieldRow:   { marginBottom: 12, gap: 6 },
+    fieldRow:   { marginBottom: 4, gap: 6 },
     fieldLabel: { fontSize: 12, fontWeight: '600', color: theme.colors.inkSoft, marginBottom: 6 },
 
-    typeChips:         { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
+    typeChips:         { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
     typeChip: {
       paddingHorizontal: 12, paddingVertical: 8,
       borderRadius: 20, borderWidth: 1.5,
@@ -777,6 +845,25 @@ function getstyles(theme: Theme) {
     typeChipText:       { fontSize: 13, color: theme.colors.inkSoft, fontWeight: '500' },
     typeChipTextActive: { color: theme.colors.accent, fontWeight: '700' },
 
+    equipHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 4,
+    },
+    progressPill: {
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 12,
+      backgroundColor: theme.colors.subtleSurface,
+      borderWidth: 1,
+      borderColor: theme.colors.hairline,
+    },
+    progressPillText: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: theme.colors.inkSoft,
+    },
     addRowBtn: {
       flexDirection: 'row', alignItems: 'center', gap: 8,
       paddingVertical: 14, paddingHorizontal: 12,
@@ -786,6 +873,23 @@ function getstyles(theme: Theme) {
       marginTop: 4,
     },
     addRowText: { fontSize: 14, fontWeight: '600', color: theme.colors.accent },
+
+    emptyHint: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      padding: 12,
+      borderRadius: 10,
+      backgroundColor: theme.colors.warnSoft,
+      borderWidth: 1,
+      borderColor: theme.colors.warn,
+      marginTop: 8,
+    },
+    emptyHintText: {
+      fontSize: 13,
+      color: theme.colors.inkSoft,
+      flex: 1,
+    },
 
     photoStrip: { gap: 8, paddingVertical: 4 },
     addPhoto: {

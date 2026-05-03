@@ -15,14 +15,17 @@ import { DateTimeField } from '../../../components/DateTimeField';
 import { Button } from '../../../components/ui';
 import { KeyboardSafeArea } from '../../../components/layout/KeyboardSafeArea';
 import { SignatureCanvas } from '../../../components/SignatureCanvas';
-import { BobcatChecklistItem } from '../../../components/bobcat/BobcatChecklistItem';
 import { WizardNav } from '../../../components/wizard/WizardNav';
+import { WizardStepTransition } from '../../../components/wizard/WizardStepTransition';
 import { StepBar } from '../../../components/wizard/StepBar';
 import { StepSectionLabel } from '../../../components/wizard/StepSectionLabel';
+import { ChecklistItemStep } from '../../../components/wizard/ChecklistItemStep';
+import { ChecklistTour, TOUR_SEEN_KEY } from '../../../components/wizard/ChecklistTour';
 import { FlowHeader } from '../../../components/FlowHeader';
 import { useTheme, type Theme } from '../../../lib/theme';
 import { useSession } from '../../../lib/session';
 import { useToast } from '../../../lib/toast';
+import { useBottomSheet } from '../../../components/BottomSheet';
 import { bobcatApi } from '../../../lib/bobcatService';
 import { projectsApi } from '../../../lib/services';
 import { buildBobcatPdfHtml } from '../../../lib/bobcatPdf';
@@ -31,6 +34,7 @@ import { generatePdfName } from '../../../lib/pdfName';
 import { recordCompletion } from '../../../lib/calendarSchedule';
 import { friendlyError } from '../../../lib/errorMap';
 import { a11y } from '../../../lib/accessibility';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   BOBCAT_ITEMS,
   BOBCAT_CATEGORY_LABELS,
@@ -41,7 +45,6 @@ import {
   categoryCounts,
   computeVerdictSuggestion,
   type BobcatInspection,
-  type BobcatInspectionType,
   type BobcatVerdict,
   type BobcatItemState,
   type BobcatCategory,
@@ -49,9 +52,7 @@ import {
 } from '../../../types/bobcat';
 
 const CATEGORIES: BobcatCategory[] = ['A', 'B', 'C', 'D'];
-const INSPECTION_TYPES: BobcatInspectionType[] = ['pre_work', 'scheduled', 'other'];
-const STEP_LABELS = ['ინფო', 'ჩეკლისტი', 'შეჯამება', 'ხელმოწერა'];
-const TOTAL_STEPS = 4;
+const INSPECTION_TYPES: ('pre_work' | 'scheduled' | 'other')[] = ['pre_work', 'scheduled', 'other'];
 
 export default function BobcatInspectionScreen() {
   const { theme } = useTheme();
@@ -60,6 +61,7 @@ export default function BobcatInspectionScreen() {
   const router = useRouter();
   const toast = useToast();
   const session = useSession();
+  const showSheet = useBottomSheet();
 
   const [inspection, setInspection] = useState<BobcatInspection | null>(null);
   const [projectName, setProjectName] = useState('');
@@ -68,10 +70,12 @@ export default function BobcatInspectionScreen() {
   const [completing, setCompleting] = useState(false);
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [showSig, setShowSig] = useState(false);
-  // 0=info  1=checklist  2=summary  3=signature  4=done
-  const [step, setStep] = useState(0);
+  const [showTour, setShowTour] = useState(false);
 
-  const pendingPhotoItemId = useRef<number | null>(null);
+  // Step state: 0=info, 1..N=checklist items, N+1=summary, N+2=signature, N+3=done
+  const [step, setStep] = useState(0);
+  const prevStepRef = useRef(0);
+  const [animateSteps, setAnimateSteps] = useState(false);
 
   const catalog: BobcatChecklistEntry[] = useMemo(
     () => inspection?.templateId === LARGE_LOADER_TEMPLATE_ID ? LARGE_LOADER_ITEMS : BOBCAT_ITEMS,
@@ -81,7 +85,22 @@ export default function BobcatInspectionScreen() {
   const isLargeLoader = inspection?.templateId === LARGE_LOADER_TEMPLATE_ID;
   const screenTitle = isLargeLoader ? 'დიდი ციცხვიანი დამტვირთველი' : 'ციცხვიანი დამტვირთველი';
 
-  // ── Load ─────────────────────────────────────────────────────────────────
+  // Step layout
+  const CHECKLIST_START = 1;
+  const CHECKLIST_COUNT = catalog.length;
+  const SUMMARY_STEP = CHECKLIST_START + CHECKLIST_COUNT;
+  const SIGNATURE_STEP = SUMMARY_STEP + 1;
+  const DONE_STEP = SIGNATURE_STEP + 1;
+  const TOTAL_STEPS = DONE_STEP + 1;
+  const STEP_LABELS = ['ინფო', ...catalog.map((_, i) => `${i + 1}`), 'შეჯამება', 'ხელმოწ.'];
+
+  const persistKey = useMemo(() => `bobcat-wizard:${id}:step`, [id]);
+
+  // Direction for animations
+  const direction: 'next' | 'prev' = step >= prevStepRef.current ? 'next' : 'prev';
+  useEffect(() => { prevStepRef.current = step; }, [step]);
+
+  // ── Load ───────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     if (!id) return;
@@ -92,7 +111,6 @@ export default function BobcatInspectionScreen() {
         if (cancelled) return;
         if (!insp) { router.back(); return; }
 
-        // Auto-fill inspector name from signed-in user
         let patched = insp;
         if (!insp.inspectorName && session.state.status === 'signedIn') {
           const u = session.state.user;
@@ -101,10 +119,19 @@ export default function BobcatInspectionScreen() {
         }
         setInspection(patched);
 
-        // Already completed → jump straight to done screen
-        if (insp.status === 'completed') setStep(4);
+        if (insp.status === 'completed') {
+          setStep(DONE_STEP);
+        } else {
+          // Restore saved step
+          const saved = await AsyncStorage.getItem(persistKey);
+          if (saved && !cancelled) {
+            const s = parseInt(saved, 10);
+            if (!isNaN(s) && s >= 0 && s <= SIGNATURE_STEP) {
+              setStep(s);
+            }
+          }
+        }
 
-        // Fetch project for display name + auto-fill company / address if blank
         projectsApi.getById(insp.projectId).then(p => {
           if (cancelled || !p) return;
           setProjectName(p.name);
@@ -125,20 +152,35 @@ export default function BobcatInspectionScreen() {
             return next;
           });
         }).catch(() => {});
+
+        // Show tour on first visit
+        const tourSeen = await AsyncStorage.getItem(TOUR_SEEN_KEY);
+        if (!tourSeen && !cancelled) setShowTour(true);
       } catch (e) {
         if (!cancelled) {
           toast.error(friendlyError(e, 'ვერ ჩაიტვირთა'));
           router.back();
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+          // Enable animations after load to avoid animation on restored step
+          setTimeout(() => setAnimateSteps(true), 50);
+        }
       }
     })();
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  // ── Auto-save (debounced) ─────────────────────────────────────────────────
+  // Persist step when in checklist range
+  useEffect(() => {
+    if (step >= CHECKLIST_START && step <= SIGNATURE_STEP) {
+      AsyncStorage.setItem(persistKey, String(step)).catch(() => {});
+    }
+  }, [step, persistKey, CHECKLIST_START, SIGNATURE_STEP]);
+
+  // ── Auto-save (debounced) ──────────────────────────────────────────────────
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -191,7 +233,9 @@ export default function BobcatInspectionScreen() {
     });
   }, [scheduleSave]);
 
-  // ── Photo handling ────────────────────────────────────────────────────────
+  // ── Photo handling ─────────────────────────────────────────────────────────
+
+  const pendingPhotoItemId = useRef<number | null>(null);
 
   const handleAddPhoto = useCallback((itemId: number) => {
     pendingPhotoItemId.current = itemId;
@@ -249,14 +293,14 @@ export default function BobcatInspectionScreen() {
     });
   }, [scheduleSave]);
 
-  // ── Signature ─────────────────────────────────────────────────────────────
+  // ── Signature ──────────────────────────────────────────────────────────────
 
   const handleSignatureConfirm = useCallback((base64Png: string) => {
     setShowSig(false);
     update('inspectorSignature', base64Png);
   }, [update]);
 
-  // ── Verdict auto-suggestion ───────────────────────────────────────────────
+  // ── Verdict auto-suggestion ────────────────────────────────────────────────
 
   const verdictSuggestion = useMemo(
     () => inspection ? computeVerdictSuggestion(inspection.items, catalog) : null,
@@ -266,7 +310,7 @@ export default function BobcatInspectionScreen() {
 
   const showVerdictBanner = verdictSuggestion !== null && inspection?.verdict !== verdictSuggestion;
 
-  // ── Complete ──────────────────────────────────────────────────────────────
+  // ── Complete ───────────────────────────────────────────────────────────────
 
   const handleComplete = useCallback(async () => {
     if (!inspection) return;
@@ -304,16 +348,17 @@ export default function BobcatInspectionScreen() {
         `${inspection.projectId}:bobcat`,
       ).catch(() => {});
       setInspection(prev => prev ? { ...prev, status: 'completed', completedAt } : prev);
-      setStep(4);
+      await AsyncStorage.removeItem(persistKey);
+      setStep(DONE_STEP);
       toast.success('შემოწმება დასრულდა');
     } catch (e) {
       toast.error(friendlyError(e, 'შეცდომა'));
     } finally {
       setCompleting(false);
     }
-  }, [inspection, toast]);
+  }, [inspection, toast, persistKey, DONE_STEP]);
 
-  // ── PDF ───────────────────────────────────────────────────────────────────
+  // ── PDF ────────────────────────────────────────────────────────────────────
 
   const handlePdf = useCallback(async () => {
     if (!inspection) return;
@@ -338,27 +383,72 @@ export default function BobcatInspectionScreen() {
     }
   }, [inspection, projectName, catalog, isLargeLoader, toast]);
 
-  // ── Step navigation ───────────────────────────────────────────────────────
+  // ── Help sheet ─────────────────────────────────────────────────────────────
+
+  const showHelp = useCallback((entry: BobcatChecklistEntry) => {
+    showSheet({
+      dismissable: true,
+      content: ({ dismiss }) => (
+        <View style={helpStyles(theme).body}>
+          <Text style={helpStyles(theme).title}>{entry.label}</Text>
+          <Text style={helpStyles(theme).desc}>{entry.description}</Text>
+          {entry.helpText ? (
+            <Text style={helpStyles(theme).help}>{entry.helpText}</Text>
+          ) : null}
+          <Pressable
+            onPress={dismiss}
+            style={({ pressed }) => [helpStyles(theme).btn, pressed && { opacity: 0.8 }]}
+          >
+            <Text style={helpStyles(theme).btnText}>დახურვა</Text>
+          </Pressable>
+        </View>
+      ),
+    });
+  }, [showSheet, theme]);
+
+  // ── Step navigation ────────────────────────────────────────────────────────
 
   const canGoNext = useMemo(() => {
-    if (!inspection || step >= 4) return false;
-    if (step === 3) return !!inspection.inspectorSignature && !completing;
+    if (!inspection || step >= DONE_STEP) return false;
+    if (step === SIGNATURE_STEP) return !!inspection.inspectorSignature && !completing;
     return true;
-  }, [step, inspection, completing]);
+  }, [step, inspection, completing, SIGNATURE_STEP, DONE_STEP]);
 
   const handleNext = useCallback(() => {
-    if (step === 3) {
+    if (step === SIGNATURE_STEP) {
       handleComplete();
-    } else {
+    } else if (step < DONE_STEP) {
       setStep(s => s + 1);
     }
-  }, [step, handleComplete]);
+  }, [step, SIGNATURE_STEP, DONE_STEP, handleComplete]);
 
   const handlePrev = useCallback(() => {
     if (step > 0) setStep(s => s - 1);
   }, [step]);
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  // ── Render helpers ─────────────────────────────────────────────────────────
+
+  const renderChecklistItem = (itemIndex: number) => {
+    if (!inspection) return null;
+    const entry = catalog[itemIndex];
+    const state = inspection.items.find(i => i.id === entry.id)
+      ?? { id: entry.id, result: null, comment: null, photo_paths: [] };
+
+    return (
+      <ChecklistItemStep
+        index={itemIndex}
+        total={CHECKLIST_COUNT}
+        catalog={entry}
+        state={state}
+        onChange={patch => updateItem(entry.id, patch)}
+        onAddPhoto={() => handleAddPhoto(entry.id)}
+        onDeletePhoto={path => handleDeletePhoto(entry.id, path)}
+        onHelp={() => showHelp(entry)}
+      />
+    );
+  };
+
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   if (loading || !inspection) {
     return (
@@ -399,293 +489,260 @@ export default function BobcatInspectionScreen() {
       />
 
       {/* Step indicator bar (hidden on done screen) */}
-      {step < 4 && <StepBar step={step} stepLabels={STEP_LABELS} />}
+      {step < DONE_STEP && (
+        <StepBar
+          step={step}
+          stepLabels={STEP_LABELS}
+        />
+      )}
 
       {saving && (
         <Text style={styles.savingHint}>შენახვა…</Text>
       )}
 
       <KeyboardSafeArea>
-
-        {/* ── Step 0: General Info ────────────────────────────────────────── */}
-        {step === 0 && (
-          <>
-            <FloatingLabelInput
-              label="ობიექტი / კომპანია *"
-              value={inspection.company ?? ''}
-              onChangeText={v => update('company', v)}
-              required
-            />
-            <FloatingLabelInput
-              label="მისამართი"
-              value={inspection.address ?? ''}
-              onChangeText={v => update('address', v || null)}
-            />
-            <FloatingLabelInput
-              label="დამტვირთველის მარკა / მოდელი *"
-              value={inspection.equipmentModel ?? ''}
-              onChangeText={v => update('equipmentModel', v)}
-              required
-            />
-            <FloatingLabelInput
-              label="სახელმწიფო / ს.ნ ნომერი *"
-              value={inspection.registrationNumber ?? ''}
-              onChangeText={v => update('registrationNumber', v)}
-              required
-            />
-            <View style={styles.fieldRow}>
-              <Text style={styles.fieldLabel}>შემოწმების თარიღი</Text>
-              <DateTimeField
-                mode="date"
-                value={new Date(inspection.inspectionDate)}
-                onChange={d => update('inspectionDate', d.toISOString().slice(0, 10))}
-                maxDate={new Date()}
+        <WizardStepTransition
+          stepKey={step}
+          direction={direction}
+          animate={animateSteps}
+        >
+          {/* ── Step 0: General Info ────────────────────────────────────── */}
+          {step === 0 && (
+            <View style={styles.stepBody}>
+              <FloatingLabelInput
+                label="ობიექტი / კომპანია *"
+                value={inspection.company ?? ''}
+                onChangeText={v => update('company', v)}
+                required
+              />
+              <FloatingLabelInput
+                label="მისამართი"
+                value={inspection.address ?? ''}
+                onChangeText={v => update('address', v || null)}
+              />
+              <FloatingLabelInput
+                label="დამტვირთველის მარკა / მოდელი *"
+                value={inspection.equipmentModel ?? ''}
+                onChangeText={v => update('equipmentModel', v)}
+                required
+              />
+              <FloatingLabelInput
+                label="სახელმწიფო / ს.ნ ნომერი *"
+                value={inspection.registrationNumber ?? ''}
+                onChangeText={v => update('registrationNumber', v)}
+                required
+              />
+              <View style={styles.fieldRow}>
+                <Text style={styles.fieldLabel}>შემოწმების თარიღი</Text>
+                <DateTimeField
+                  mode="date"
+                  value={new Date(inspection.inspectionDate)}
+                  onChange={d => update('inspectionDate', d.toISOString().slice(0, 10))}
+                  maxDate={new Date()}
+                />
+              </View>
+              <View style={styles.fieldRow}>
+                <Text style={styles.fieldLabel}>შემოწმების სახე</Text>
+                <View style={styles.chipRow}>
+                  {INSPECTION_TYPES.map(type => {
+                    const active = inspection.inspectionType === type;
+                    return (
+                      <Pressable
+                        key={type}
+                        style={[styles.typeChip, active && styles.typeChipActive]}
+                        onPress={() => update('inspectionType', active ? null : type)}
+                        {...a11y(INSPECTION_TYPE_LABEL[type], undefined, 'radio')}
+                      >
+                        <Text style={[styles.typeChipText, active && styles.typeChipTextActive]}>
+                          {INSPECTION_TYPE_LABEL[type]}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+              <FloatingLabelInput
+                label="ინსპექტორი"
+                value={inspection.inspectorName ?? ''}
+                onChangeText={v => update('inspectorName', v || null)}
               />
             </View>
-            <View style={styles.fieldRow}>
-              <Text style={styles.fieldLabel}>შემოწმების სახე</Text>
-              <View style={styles.chipRow}>
-                {INSPECTION_TYPES.map(type => {
-                  const active = inspection.inspectionType === type;
+          )}
+
+          {/* ── Steps 1..N: Checklist items ─────────────────────────────── */}
+          {step >= CHECKLIST_START && step < SUMMARY_STEP && (
+            renderChecklistItem(step - CHECKLIST_START)
+          )}
+
+          {/* ── Step N+1: Summary + Verdict ─────────────────────────────── */}
+          {step === SUMMARY_STEP && (
+            <View style={styles.stepBody}>
+              <View style={styles.sumTable}>
+                <View style={[styles.sumRow, styles.sumHeaderRow]}>
+                  <Text style={[styles.sumCell, styles.sumCatCell, styles.sumHeaderText]}>კატეგორია</Text>
+                  <Text style={[styles.sumCountCell, styles.sumHeaderText]}>✓</Text>
+                  <Text style={[styles.sumCountCell, styles.sumHeaderText]}>⚠</Text>
+                  <Text style={[styles.sumCountCell, styles.sumHeaderText]}>✗</Text>
+                </View>
+                {CATEGORIES.map(cat => {
+                  const c = categoryCounts(inspection.items, cat, catalog);
+                  return (
+                    <View key={cat} style={styles.sumRow}>
+                      <Text style={[styles.sumCell, styles.sumCatCell]} numberOfLines={1}>
+                        {BOBCAT_CATEGORY_LABELS[cat]}
+                      </Text>
+                      <Text style={[styles.sumCountCell, { color: theme.colors.semantic.success, fontWeight: '700' }]}>{c.good}</Text>
+                      <Text style={[styles.sumCountCell, { color: theme.colors.warn, fontWeight: '700' }]}>{c.deficient}</Text>
+                      <Text style={[styles.sumCountCell, { color: theme.colors.danger, fontWeight: '700' }]}>{c.unusable}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+
+              {showVerdictBanner && verdictSuggestion && (
+                <View style={styles.suggestionBanner}>
+                  <Ionicons name="information-circle-outline" size={16} color={theme.colors.warn} />
+                  <Text style={styles.suggestionText}>
+                    ავტომატური რეკომენდაცია:{' '}
+                    <Text style={{ fontWeight: '700' }}>
+                      {VERDICT_LABEL[verdictSuggestion].split(' — ')[0]}
+                    </Text>
+                  </Text>
+                </View>
+              )}
+
+              <StepSectionLabel title="დასკვნა *" />
+              <View style={styles.verdictBlock}>
+                {(['approved', 'limited', 'rejected'] as BobcatVerdict[]).map(v => {
+                  const active = inspection.verdict === v;
+                  const isSuggested = verdictSuggestion === v && !inspection.verdict;
                   return (
                     <Pressable
-                      key={type}
-                      style={[styles.typeChip, active && styles.typeChipActive]}
-                      onPress={() => update('inspectionType', active ? null : type)}
-                      {...a11y(INSPECTION_TYPE_LABEL[type], undefined, 'radio')}
+                      key={v}
+                      style={[
+                        styles.verdictOption,
+                        active && styles.verdictOptionActive,
+                        isSuggested && styles.verdictOptionSuggested,
+                      ]}
+                      onPress={() => update('verdict', active ? null : v)}
+                      {...a11y(VERDICT_LABEL[v], undefined, 'radio')}
                     >
-                      <Text style={[styles.typeChipText, active && styles.typeChipTextActive]}>
-                        {INSPECTION_TYPE_LABEL[type]}
+                      <View style={[styles.verdictCheck, active && styles.verdictCheckActive]}>
+                        {active && <Ionicons name="checkmark" size={12} color={theme.colors.white} />}
+                      </View>
+                      <Text style={[styles.verdictLabel, active && styles.verdictLabelActive]}>
+                        {VERDICT_LABEL[v]}
                       </Text>
                     </Pressable>
                   );
                 })}
               </View>
-            </View>
-            <FloatingLabelInput
-              label="ინსპექტორი"
-              value={inspection.inspectorName ?? ''}
-              onChangeText={v => update('inspectorName', v || null)}
-            />
-          </>
-        )}
 
-        {/* ── Step 1: Checklist ───────────────────────────────────────────── */}
-        {step === 1 && (
-          <>
-            <View style={styles.legend}>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: theme.colors.semantic.success }]} />
-                <Text style={styles.legendText}>✓ კარგია</Text>
-              </View>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: theme.colors.warn }]} />
-                <Text style={styles.legendText}>⚠ ნაკლი</Text>
-              </View>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: theme.colors.danger }]} />
-                <Text style={styles.legendText}>✗ გამოუსადეგ.</Text>
-              </View>
+              <FloatingLabelInput
+                label="შენიშვნები / ხარვეზები"
+                value={inspection.notes ?? ''}
+                onChangeText={v => update('notes', v || null)}
+                multiline
+                numberOfLines={4}
+              />
             </View>
+          )}
 
-            {CATEGORIES.map(cat => {
-              const catItems = catalog.filter(e => e.category === cat);
-              return (
-                <View key={cat}>
-                  <View style={styles.catHeader}>
-                    <Text style={styles.catHeaderText}>{BOBCAT_CATEGORY_LABELS[cat]}</Text>
+          {/* ── Step N+2: Signature ─────────────────────────────────────── */}
+          {step === SIGNATURE_STEP && (
+            <View style={styles.stepBody}>
+              <StepSectionLabel title="ინსპექტორის ხელმოწერა" />
+              <Pressable
+                style={[styles.sigArea, inspection.inspectorSignature && styles.sigAreaSigned]}
+                onPress={() => setShowSig(true)}
+                {...a11y('ხელმოწერა', 'ინსპექტორის ხელმოწერის დამატება', 'button')}
+              >
+                {inspection.inspectorSignature ? (
+                  <View style={styles.sigContent}>
+                    <Ionicons name="checkmark-circle" size={20} color={theme.colors.semantic.success} />
+                    <Text style={[styles.sigHint, { color: theme.colors.semantic.success }]}>ხელმოწერა დაყენებულია</Text>
+                    <Pressable
+                      onPress={() => update('inspectorSignature', null)}
+                      hitSlop={10}
+                      {...a11y('ხელმოწერის წაშლა', undefined, 'button')}
+                    >
+                      <Text style={styles.sigClear}>გასუფთავება</Text>
+                    </Pressable>
                   </View>
-                  <View style={styles.catItems}>
-                    {catItems.map(entry => {
-                      const state = inspection.items.find(i => i.id === entry.id)
-                        ?? { id: entry.id, result: null, comment: null, photo_paths: [] };
-                      return (
-                        <BobcatChecklistItem
-                          key={entry.id}
-                          index={catalog.indexOf(entry)}
-                          entry={entry}
-                          state={state}
-                          onChange={patch => updateItem(entry.id, patch)}
-                          onAddPhoto={() => handleAddPhoto(entry.id)}
-                          onDeletePhoto={path => handleDeletePhoto(entry.id, path)}
-                        />
-                      );
+                ) : (
+                  <View style={styles.sigContent}>
+                    <Ionicons name="pencil-outline" size={20} color={theme.colors.accent} />
+                    <Text style={styles.sigHint}>შეეხეთ ხელმოწერისთვის</Text>
+                  </View>
+                )}
+              </Pressable>
+
+              {!inspection.inspectorSignature && (
+                <Text style={styles.sigRequiredHint}>
+                  ხელმოწერა სავალდებულოა დასასრულებლად
+                </Text>
+              )}
+
+              {completing && (
+                <View style={styles.completingRow}>
+                  <ActivityIndicator size="small" color={theme.colors.accent} />
+                  <Text style={styles.completingText}>მიმდინარეობს…</Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* ── Step N+3: Done ──────────────────────────────────────────── */}
+          {step === DONE_STEP && (
+            <View style={styles.stepBody}>
+              <View style={styles.doneHero}>
+                <Ionicons name="checkmark-circle" size={72} color={theme.colors.semantic.success} />
+                <Text style={styles.doneTitle}>შემოწმება დასრულდა!</Text>
+                {inspection.completedAt && (
+                  <Text style={styles.doneDate}>
+                    {new Date(inspection.completedAt).toLocaleDateString('ka-GE', {
+                      day: 'numeric', month: 'long', year: 'numeric',
                     })}
-                  </View>
-                </View>
-              );
-            })}
-          </>
-        )}
-
-        {/* ── Step 2: Summary + Verdict ───────────────────────────────────── */}
-        {step === 2 && (
-          <>
-            <View style={styles.sumTable}>
-              <View style={[styles.sumRow, styles.sumHeaderRow]}>
-                <Text style={[styles.sumCell, styles.sumCatCell, styles.sumHeaderText]}>კატეგორია</Text>
-                <Text style={[styles.sumCountCell, styles.sumHeaderText]}>✓</Text>
-                <Text style={[styles.sumCountCell, styles.sumHeaderText]}>⚠</Text>
-                <Text style={[styles.sumCountCell, styles.sumHeaderText]}>✗</Text>
-              </View>
-              {CATEGORIES.map(cat => {
-                const c = categoryCounts(inspection.items, cat, catalog);
-                return (
-                  <View key={cat} style={styles.sumRow}>
-                    <Text style={[styles.sumCell, styles.sumCatCell]} numberOfLines={1}>
-                      {BOBCAT_CATEGORY_LABELS[cat]}
-                    </Text>
-                    <Text style={[styles.sumCountCell, { color: theme.colors.semantic.success, fontWeight: '700' }]}>{c.good}</Text>
-                    <Text style={[styles.sumCountCell, { color: theme.colors.warn, fontWeight: '700' }]}>{c.deficient}</Text>
-                    <Text style={[styles.sumCountCell, { color: theme.colors.danger, fontWeight: '700' }]}>{c.unusable}</Text>
-                  </View>
-                );
-              })}
-            </View>
-
-            {showVerdictBanner && verdictSuggestion && (
-              <View style={styles.suggestionBanner}>
-                <Ionicons name="information-circle-outline" size={16} color={theme.colors.warn} />
-                <Text style={styles.suggestionText}>
-                  ავტომატური რეკომენდაცია:{' '}
-                  <Text style={{ fontWeight: '700' }}>
-                    {VERDICT_LABEL[verdictSuggestion].split(' — ')[0]}
                   </Text>
-                </Text>
-              </View>
-            )}
-
-            <StepSectionLabel title="დასკვნა *" />
-            <View style={styles.verdictBlock}>
-              {(['approved', 'limited', 'rejected'] as BobcatVerdict[]).map(v => {
-                const active = inspection.verdict === v;
-                const isSuggested = verdictSuggestion === v && !inspection.verdict;
-                return (
-                  <Pressable
-                    key={v}
-                    style={[
-                      styles.verdictOption,
-                      active && styles.verdictOptionActive,
-                      isSuggested && styles.verdictOptionSuggested,
-                    ]}
-                    onPress={() => update('verdict', active ? null : v)}
-                    {...a11y(VERDICT_LABEL[v], undefined, 'radio')}
-                  >
-                    <View style={[styles.verdictCheck, active && styles.verdictCheckActive]}>
-                      {active && <Ionicons name="checkmark" size={12} color={theme.colors.white} />}
-                    </View>
-                    <Text style={[styles.verdictLabel, active && styles.verdictLabelActive]}>
-                      {VERDICT_LABEL[v]}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-
-            <FloatingLabelInput
-              label="შენიშვნები / ხარვეზები"
-              value={inspection.notes ?? ''}
-              onChangeText={v => update('notes', v || null)}
-              multiline
-              numberOfLines={4}
-            />
-          </>
-        )}
-
-        {/* ── Step 3: Signature ───────────────────────────────────────────── */}
-        {step === 3 && (
-          <>
-            <StepSectionLabel title="ინსპექტორის ხელმოწერა" />
-            <Pressable
-              style={[styles.sigArea, inspection.inspectorSignature && styles.sigAreaSigned]}
-              onPress={() => setShowSig(true)}
-              {...a11y('ხელმოწერა', 'ინსპექტორის ხელმოწერის დამატება', 'button')}
-            >
-              {inspection.inspectorSignature ? (
-                <View style={styles.sigContent}>
-                  <Ionicons name="checkmark-circle" size={20} color={theme.colors.semantic.success} />
-                  <Text style={[styles.sigHint, { color: theme.colors.semantic.success }]}>ხელმოწერა დაყენებულია</Text>
-                  <Pressable
-                    onPress={() => update('inspectorSignature', null)}
-                    hitSlop={10}
-                    {...a11y('ხელმოწერის წაშლა', undefined, 'button')}
-                  >
-                    <Text style={styles.sigClear}>გასუფთავება</Text>
-                  </Pressable>
-                </View>
-              ) : (
-                <View style={styles.sigContent}>
-                  <Ionicons name="pencil-outline" size={20} color={theme.colors.accent} />
-                  <Text style={styles.sigHint}>შეეხეთ ხელმოწერისთვის</Text>
-                </View>
-              )}
-            </Pressable>
-
-            {!inspection.inspectorSignature && (
-              <Text style={styles.sigRequiredHint}>
-                ხელმოწერა სავალდებულოა დასასრულებლად
-              </Text>
-            )}
-
-            {completing && (
-              <View style={styles.completingRow}>
-                <ActivityIndicator size="small" color={theme.colors.accent} />
-                <Text style={styles.completingText}>მიმდინარეობს…</Text>
-              </View>
-            )}
-          </>
-        )}
-
-        {/* ── Step 4: Done ────────────────────────────────────────────────── */}
-        {step === 4 && (
-          <>
-            <View style={styles.doneHero}>
-              <Ionicons name="checkmark-circle" size={72} color={theme.colors.semantic.success} />
-              <Text style={styles.doneTitle}>შემოწმება დასრულდა!</Text>
-              {inspection.completedAt && (
-                <Text style={styles.doneDate}>
-                  {new Date(inspection.completedAt).toLocaleDateString('ka-GE', {
-                    day: 'numeric', month: 'long', year: 'numeric',
-                  })}
-                </Text>
-              )}
-              {inspection.verdict && (
-                <View style={[
-                  styles.doneVerdict,
-                  inspection.verdict === 'approved' && styles.doneVerdictGreen,
-                  inspection.verdict === 'limited'  && styles.doneVerdictAmber,
-                  inspection.verdict === 'rejected' && styles.doneVerdictRed,
-                ]}>
-                  <Text style={[
-                    styles.doneVerdictText,
-                    inspection.verdict === 'approved' && { color: theme.colors.semantic.success },
-                    inspection.verdict === 'limited'  && { color: theme.colors.warn },
-                    inspection.verdict === 'rejected' && { color: theme.colors.danger },
+                )}
+                {inspection.verdict && (
+                  <View style={[
+                    styles.doneVerdict,
+                    inspection.verdict === 'approved' && styles.doneVerdictGreen,
+                    inspection.verdict === 'limited'  && styles.doneVerdictAmber,
+                    inspection.verdict === 'rejected' && styles.doneVerdictRed,
                   ]}>
-                    {VERDICT_LABEL[inspection.verdict].split(' — ')[0]}
-                  </Text>
-                </View>
-              )}
+                    <Text style={[
+                      styles.doneVerdictText,
+                      inspection.verdict === 'approved' && { color: theme.colors.semantic.success },
+                      inspection.verdict === 'limited'  && { color: theme.colors.warn },
+                      inspection.verdict === 'rejected' && { color: theme.colors.danger },
+                    ]}>
+                      {VERDICT_LABEL[inspection.verdict].split(' — ')[0]}
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              <Button
+                title="PDF გენერირება / გაზიარება"
+                onPress={handlePdf}
+                loading={generatingPdf}
+                style={{ marginBottom: 12 }}
+              />
+              <Button
+                title="პროექტზე დაბრუნება"
+                variant="secondary"
+                onPress={() => router.back()}
+              />
             </View>
+          )}
+        </WizardStepTransition>
 
-            <Button
-              title="PDF გენერირება / გაზიარება"
-              onPress={handlePdf}
-              loading={generatingPdf}
-              style={{ marginBottom: 12 }}
-            />
-            <Button
-              title="პროექტზე დაბრუნება"
-              variant="secondary"
-              onPress={() => router.back()}
-            />
-          </>
-        )}
-
-        {/* WizardNav — last child of scroll, not rendered on done screen */}
-        {step < 4 && (
+        {/* WizardNav — not rendered on done screen */}
+        {step < DONE_STEP && (
           <WizardNav
-            isLast={step === 3}
+            isLast={step === SIGNATURE_STEP}
             canGoNext={canGoNext}
             canGoPrev={step > 0}
             onNext={handleNext}
@@ -700,21 +757,79 @@ export default function BobcatInspectionScreen() {
         onCancel={() => setShowSig(false)}
         onConfirm={handleSignatureConfirm}
       />
+
+      <ChecklistTour
+        visible={showTour}
+        onClose={() => {
+          setShowTour(false);
+          AsyncStorage.setItem(TOUR_SEEN_KEY, '1').catch(() => {});
+        }}
+      />
     </View>
   );
 }
 
-// ── Sub-components ─────────────────────────────────────────────────────────────
+// ── Help sheet styles ────────────────────────────────────────────────────────
 
-// ── Styles ─────────────────────────────────────────────────────────────────────
+function helpStyles(theme: Theme) {
+  return StyleSheet.create({
+    body: {
+      alignItems: 'center',
+      paddingVertical: 8,
+      gap: 14,
+    },
+    title: {
+      fontSize: 18,
+      fontWeight: '800',
+      color: theme.colors.ink,
+      textAlign: 'center',
+    },
+    desc: {
+      fontSize: 14,
+      color: theme.colors.inkSoft,
+      textAlign: 'center',
+      lineHeight: 20,
+      paddingHorizontal: 8,
+    },
+    help: {
+      fontSize: 13,
+      color: theme.colors.ink,
+      textAlign: 'center',
+      lineHeight: 20,
+      paddingHorizontal: 12,
+      backgroundColor: theme.colors.subtleSurface,
+      paddingVertical: 10,
+      borderRadius: 10,
+      alignSelf: 'stretch',
+    },
+    btn: {
+      marginTop: 4,
+      alignSelf: 'stretch',
+      paddingVertical: 14,
+      borderRadius: 12,
+      borderWidth: 1.5,
+      borderColor: theme.colors.accent,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    btnText: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: theme.colors.accent,
+    },
+  });
+}
+
+// ── Screen styles ────────────────────────────────────────────────────────────
 
 function getstyles(theme: Theme) {
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: theme.colors.background },
     centred: { alignItems: 'center', justifyContent: 'center' },
     savingHint: { fontSize: 11, color: theme.colors.inkFaint, textAlign: 'right', paddingHorizontal: 16, paddingTop: 4 },
+    stepBody: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 16, gap: 12 },
 
-    fieldRow: { marginBottom: 12, gap: 6 },
+    fieldRow: { marginBottom: 4, gap: 6 },
     fieldLabel: { fontSize: 12, fontWeight: '600', color: theme.colors.inkSoft },
     chipRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
     typeChip: {
@@ -729,18 +844,6 @@ function getstyles(theme: Theme) {
     },
     typeChipText: { fontSize: 13, color: theme.colors.inkSoft },
     typeChipTextActive: { color: theme.colors.accent, fontWeight: '700' },
-
-    legend: { flexDirection: 'row', gap: 12, marginBottom: 8, flexWrap: 'wrap' },
-    legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-    legendDot: { width: 8, height: 8, borderRadius: 4 },
-    legendText: { fontSize: 11, color: theme.colors.inkSoft },
-    catHeader: {
-      paddingHorizontal: 10, paddingVertical: 7,
-      backgroundColor: theme.colors.subtleSurface,
-      borderRadius: 6, marginTop: 10, marginBottom: 4,
-    },
-    catHeaderText: { fontSize: 11, fontWeight: '700', color: theme.colors.inkSoft },
-    catItems: { gap: 4, marginBottom: 4 },
 
     sumTable: {
       borderWidth: 0.5, borderColor: theme.colors.hairline,
@@ -817,4 +920,3 @@ function getstyles(theme: Theme) {
     doneVerdictText:  { fontSize: 13, fontWeight: '700' },
   });
 }
-

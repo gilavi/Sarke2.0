@@ -51,6 +51,8 @@ export interface BobcatChecklistEntry {
   label: string;
   /** Full description after the separator */
   description: string;
+  /** Extra help text shown in the bottom sheet when user taps "?" */
+  helpText?: string;
   /**
    * Custom label for the 3rd (unusable) chip.
    * Defaults to "გამოუსადეგ." when absent.

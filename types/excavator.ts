@@ -4,6 +4,7 @@
 // a mixed checklist (3-state + yes/no/date), extended signature block, and
 // machine specs stored on the template definition rather than the form.
 
+export type Section = 'engine' | 'undercarriage' | 'cabin' | 'safety';
 export type ExcavatorVerdict = 'approved' | 'conditional' | 'rejected';
 export type ExcavatorChecklistResult = 'good' | 'deficient' | 'unusable' | null;
 
@@ -35,6 +36,8 @@ export interface ExcavatorChecklistEntry {
   id: number;
   label: string;
   description: string;
+  /** Extra help text shown in the bottom sheet when user taps "?" */
+  helpText?: string;
 }
 
 export const ENGINE_ITEMS: ExcavatorChecklistEntry[] = [
