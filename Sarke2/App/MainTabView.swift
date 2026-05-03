@@ -3,19 +3,19 @@ import SwiftUI
 struct MainTabView: View {
     @State private var tab: Tab = .home
 
-    enum Tab: Hashable { case home, projects, regulations, more }
+    enum Tab: Hashable { case home, projects, regulations, calendar, more }
 
     init() {
         let appearance = UITabBarAppearance()
         appearance.configureWithOpaqueBackground()
-        appearance.backgroundColor = UIColor(Theme.card)
-        appearance.shadowColor = UIColor(Theme.hairline)
+        appearance.backgroundColor = UIColor(Theme.surface)
+        appearance.shadowColor = UIColor(Theme.border)
 
         let normal = UITabBarItemAppearance()
         normal.normal.iconColor = UIColor(Theme.inkSoft)
-        normal.selected.iconColor = UIColor(Theme.accent)
+        normal.selected.iconColor = UIColor(Theme.accentPrimary)
         normal.normal.titleTextAttributes = [.foregroundColor: UIColor(Theme.inkSoft)]
-        normal.selected.titleTextAttributes = [.foregroundColor: UIColor(Theme.accent)]
+        normal.selected.titleTextAttributes = [.foregroundColor: UIColor(Theme.accentPrimary)]
         appearance.stackedLayoutAppearance = normal
         appearance.inlineLayoutAppearance = normal
         appearance.compactInlineLayoutAppearance = normal
@@ -47,10 +47,14 @@ struct MainTabView: View {
                 .tabItem { Label("რეგულაციები", systemImage: "book.fill") }
                 .tag(Tab.regulations)
 
+            NavigationStack { CalendarView() }
+                .tabItem { Label("კალენდარი", systemImage: "calendar") }
+                .tag(Tab.calendar)
+
             NavigationStack { MoreView() }
                 .tabItem { Label("მეტი", systemImage: "ellipsis.circle.fill") }
                 .tag(Tab.more)
         }
-        .tint(Theme.accent)
+        .tint(Theme.accentPrimary)
     }
 }
