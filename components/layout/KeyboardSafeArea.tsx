@@ -1,35 +1,35 @@
 import React from 'react';
 import {
   Keyboard,
-  ScrollView,
   StyleProp,
   StyleSheet,
   ViewStyle,
 } from 'react-native';
-import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 
 interface Props {
   children: React.ReactNode;
+  contentStyle?: StyleProp<ViewStyle>;
   /**
-   * Height in points of any custom header rendered ABOVE this wrapper —
-   * not the safe-area top inset, which is added automatically. Defaults to 0
-   * (no header above). Pass the measured height of your custom header (or
-   * the result of `useHeaderHeight()` if you use a stock stack header).
+   * Extra bottom padding so focused inputs scroll above the keyboard
+   * instead of hugging the very bottom. Default 80.
+   */
+  bottomOffset?: number;
+  /**
+   * Kept for backward compatibility. Previously used for KeyboardAvoidingView
+   * offset; now KeyboardAwareScrollView handles keyboard avoidance directly.
    */
   headerHeight?: number;
-  contentStyle?: StyleProp<ViewStyle>;
 }
 
 /**
  * Screen-level keyboard wrapper for forms.
  *
  * Pattern:
- * - Reanimated `KeyboardAvoidingView` (from react-native-keyboard-controller)
- *   tracks the iOS keyboard frame natively for perfect-sync animation.
- * - Inner `ScrollView` with `flexGrow: 1` so a primary action button placed
- *   as the LAST child of `children` naturally pushes to the bottom on short
- *   forms and stays reachable on long ones.
+ * - `KeyboardAwareScrollView` (from react-native-keyboard-controller)
+ *   auto-scrolls focused inputs into view above the soft keyboard.
+ * - `flexGrow: 1` on content so a primary action button placed as the LAST
+ *   child naturally pushes to the bottom on short forms.
  * - Tapping outside any input dismisses the keyboard.
  *
  * Place the primary action button as the last element inside `children` —
@@ -37,36 +37,26 @@ interface Props {
  */
 export function KeyboardSafeArea({
   children,
-  headerHeight = 0,
   contentStyle,
+  bottomOffset = 80,
 }: Props) {
-  const insets = useSafeAreaInsets();
-
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior="padding"
-      keyboardVerticalOffset={insets.top + headerHeight}
+    <KeyboardAwareScrollView
+      style={styles.scroll}
+      contentContainerStyle={[styles.content, contentStyle]}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="interactive"
+      onScrollBeginDrag={Keyboard.dismiss}
+      bounces={false}
+      showsVerticalScrollIndicator={false}
+      bottomOffset={bottomOffset}
     >
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={[styles.content, contentStyle]}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        onScrollBeginDrag={Keyboard.dismiss}
-        bounces={false}
-        showsVerticalScrollIndicator={false}
-      >
-        {children}
-      </ScrollView>
-    </KeyboardAvoidingView>
+      {children}
+    </KeyboardAwareScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
   scroll: {
     flex: 1,
   },

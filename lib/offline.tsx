@@ -115,6 +115,7 @@ type OfflineContextValue = {
   hydrateAnswers: (qid: string) => Promise<Record<string, Answer>>;
   cacheAnswers: (qid: string, answers: Record<string, Answer>) => Promise<void>;
   hydrateQuestionnairePatch: (qid: string) => Promise<Partial<Inspection> | null>;
+  clearQuestionnairePatch: (qid: string) => Promise<void>;
   /** Question IDs with a still-pending answer upsert for the given inspection. */
   pendingAnswerQuestionIds: (inspectionId: string) => Promise<Set<string>>;
   flush: () => Promise<void>;
@@ -411,6 +412,12 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const clearQuestionnairePatch = useCallback<
+    OfflineContextValue['clearQuestionnairePatch']
+  >(async (qid) => {
+    await AsyncStorage.removeItem(questionnaireKey(qid));
+  }, []);
+
   const pendingAnswerQuestionIds = useCallback<
     OfflineContextValue['pendingAnswerQuestionIds']
   >(async (inspectionId) => {
@@ -466,6 +473,7 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
       hydrateAnswers,
       cacheAnswers,
       hydrateQuestionnairePatch,
+      clearQuestionnairePatch,
       pendingAnswerQuestionIds,
       flush,
       failedCount,
@@ -483,6 +491,7 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
       hydrateAnswers,
       cacheAnswers,
       hydrateQuestionnairePatch,
+      clearQuestionnairePatch,
       pendingAnswerQuestionIds,
       flush,
       retryFailed,

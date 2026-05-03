@@ -195,6 +195,16 @@ export const excavatorApi = {
     return path;
   },
 
+  listByProject: async (projectId: string): Promise<ExcavatorInspection[]> => {
+    const { data, error } = await supabase
+      .from('excavator_inspections')
+      .select('*')
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: false });
+    if (error) throw new Error(error.message);
+    return ((data ?? []) as DbRow[]).map(toModel);
+  },
+
   deletePhoto: async (path: string): Promise<void> => {
     await storageApi.remove(STORAGE_BUCKETS.answerPhotos, path)
       .catch((e) => logError(e, 'excavator.deletePhoto'));

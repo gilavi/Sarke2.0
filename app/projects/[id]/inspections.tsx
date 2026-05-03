@@ -11,7 +11,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { useTheme } from '../../../lib/theme';
 import { formatShortDateTime } from '../../../lib/formatDate';
-import { useProject, useInspectionsByProject, useTemplates } from '../../../lib/apiHooks';
+import {
+  useProject,
+  useInspectionsByProject,
+  useTemplates,
+  useBobcatInspectionsByProject,
+  useExcavatorInspectionsByProject,
+  useGeneralEquipmentInspectionsByProject,
+} from '../../../lib/apiHooks';
 import { InspectionTypeAvatar } from '../../../components/InspectionTypeAvatar';
 import type { Questionnaire } from '../../../types/models';
 
@@ -32,9 +39,30 @@ export default function ProjectInspectionsList() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const { data: project } = useProject(id);
-  const { data: items = [], isLoading: itemsLoading } = useInspectionsByProject(id);
+  const { data: genericItems = [], isLoading: genericLoading } = useInspectionsByProject(id);
+  const { data: bobcatItems = [], isLoading: bobcatLoading } = useBobcatInspectionsByProject(id);
+  const { data: excavatorItems = [], isLoading: excavatorLoading } = useExcavatorInspectionsByProject(id);
+  const { data: geItems = [], isLoading: geLoading } = useGeneralEquipmentInspectionsByProject(id);
   const { data: templates = [], isLoading: tplsLoading } = useTemplates();
-  const loading = itemsLoading || tplsLoading;
+  const loading = genericLoading || bobcatLoading || excavatorLoading || geLoading || tplsLoading;
+
+  type UnifiedItem = {
+    id: string;
+    template_id: string;
+    status: 'draft' | 'completed';
+    created_at: string;
+    source: 'generic' | 'bobcat' | 'excavator' | 'general_equipment';
+  };
+
+  const items = useMemo<UnifiedItem[]>(() => {
+    const all: UnifiedItem[] = [
+      ...genericItems.map(q => ({ id: q.id, template_id: q.template_id, status: q.status, created_at: q.created_at, source: 'generic' as const })),
+      ...bobcatItems.map(b => ({ id: b.id, template_id: b.templateId ?? '', status: b.status, created_at: b.createdAt, source: 'bobcat' as const })),
+      ...excavatorItems.map(e => ({ id: e.id, template_id: e.templateId ?? '', status: e.status, created_at: e.createdAt, source: 'excavator' as const })),
+      ...geItems.map(g => ({ id: g.id, template_id: g.templateId ?? '', status: g.status, created_at: g.createdAt, source: 'general_equipment' as const })),
+    ];
+    return all.sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at));
+  }, [genericItems, bobcatItems, excavatorItems, geItems]);
 
   const grouped = useMemo(() => groupByDateDesc(items, q => q.created_at), [items]);
 
@@ -67,19 +95,19 @@ export default function ProjectInspectionsList() {
             <View key={group.key}>
               <Text style={styles.dateSep}>{formatGeorgianDate(group.key)}</Text>
               <View style={{ gap: 10 }}>
-                {group.items.map(q => {
-                  const tpl = templates.find(t => t.id === q.template_id);
-                  const isCompleted = q.status === 'completed';
+                {group.items.map(item => {
+                  const tpl = templates.find(t => t.id === item.template_id);
+                  const isCompleted = item.status === 'completed';
+                  const route = (() => {
+                    if (item.source === 'bobcat') return `/inspections/bobcat/${item.id}`;
+                    if (item.source === 'excavator') return `/inspections/excavator/${item.id}`;
+                    if (item.source === 'general_equipment') return `/inspections/general-equipment/${item.id}`;
+                    return isCompleted ? `/inspections/${item.id}` : `/inspections/${item.id}/wizard`;
+                  })();
                   return (
                     <Pressable
-                      key={q.id}
-                      onPress={() =>
-                        router.push(
-                          (isCompleted
-                            ? `/inspections/${q.id}`
-                            : `/inspections/${q.id}/wizard`) as any,
-                        )
-                      }
+                      key={`${item.source}-${item.id}`}
+                      onPress={() => router.push(route as any)}
                       style={styles.listRow}
                     >
                       <InspectionTypeAvatar
@@ -90,7 +118,7 @@ export default function ProjectInspectionsList() {
                       <View style={{ flex: 1 }}>
                         <Text style={styles.listRowTitle}>{tpl?.name ?? 'შემოწმების აქტი'}</Text>
                         <Text style={styles.listRowSubtitle}>
-                          {formatShortDateTime(q.created_at)}
+                          {formatShortDateTime(item.created_at)}
                         </Text>
                       </View>
                       <Ionicons name="chevron-forward" size={18} color={theme.colors.borderStrong} />

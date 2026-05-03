@@ -217,9 +217,11 @@ export async function buildGeneralEquipmentPdfHtml(args: {
 }): Promise<string> {
   const { inspection: insp, projectName } = args;
 
+  const safeEquipment = Array.isArray(insp.equipment) ? insp.equipment : [];
+  const safeSummaryPhotos = Array.isArray(insp.summaryPhotos) ? insp.summaryPhotos : [];
   const photoEmbeds = await embedInspectionPhotos([
-    ...insp.equipment.flatMap(r => r.photo_paths),
-    ...insp.summaryPhotos,
+    ...safeEquipment.flatMap(r => r.photo_paths ?? []),
+    ...safeSummaryPhotos,
   ]);
 
   let sigDataUrl: string | null = null;
@@ -245,7 +247,7 @@ export async function buildGeneralEquipmentPdfHtml(args: {
       <div class="header-right">
         <div class="internal-badge">INTERNAL</div>
         <div class="doc-meta">
-          №&nbsp;${escHtml(insp.actNumber)}<br>
+          №&nbsp;${escHtml(insp.actNumber) || '—'}<br>
           ID:&nbsp;${docId}<br>
           ${docDate}
         </div>
@@ -289,15 +291,15 @@ export async function buildGeneralEquipmentPdfHtml(args: {
 
   // ── Section II — equipment table ─────────────────────────────────────────────
 
-  const filledRows = insp.equipment.filter(r => r.name.trim());
+  const filledRows = safeEquipment.filter(r => r.name.trim());
 
   const equipmentRows = filledRows.map((row, idx) => {
     const rowClass =
       row.condition === 'needs_service' ? 'row-warn' :
       row.condition === 'unusable'      ? 'row-bad'  : '';
 
-    const photosHtml = row.photo_paths.length > 0
-      ? row.photo_paths.map(p =>
+    const photosHtml = (row.photo_paths ?? []).length > 0
+      ? (row.photo_paths ?? []).map(p =>
           photoEmbeds[p]
             ? `<span class="item-photo"><img src="${photoEmbeds[p]}" alt="ფოტო" /></span>`
             : '',
@@ -344,9 +346,9 @@ export async function buildGeneralEquipmentPdfHtml(args: {
 
   // ── Section III — conclusion + photos ───────────────────────────────────────
 
-  const summaryPhotosHtml = insp.summaryPhotos.length > 0
+  const summaryPhotosHtml = safeSummaryPhotos.length > 0
     ? `<div class="summary-photos">
-        ${insp.summaryPhotos.map(p =>
+        ${safeSummaryPhotos.map(p =>
           photoEmbeds[p]
             ? `<img src="${photoEmbeds[p]}" alt="ფოტო" />`
             : '',

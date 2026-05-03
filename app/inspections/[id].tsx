@@ -123,7 +123,16 @@ export default function InspectionResultScreen() {
       }
       setInspection(insp);
       if (insp.status === 'draft') {
-        router.replace(`/inspections/${insp.id}/wizard` as any);
+        const tpl = await templatesApi.getById(insp.template_id).catch(() => null);
+        if (tpl?.category === 'bobcat') {
+          router.replace(`/inspections/bobcat/${insp.id}` as any);
+        } else if (tpl?.category === 'excavator') {
+          router.replace(`/inspections/excavator/${insp.id}` as any);
+        } else if (tpl?.category === 'general_equipment') {
+          router.replace(`/inspections/general-equipment/${insp.id}` as any);
+        } else {
+          router.replace(`/inspections/${insp.id}/wizard` as any);
+        }
         return;
       }
       const [tpl, proj, sigs, atts] = await Promise.all([

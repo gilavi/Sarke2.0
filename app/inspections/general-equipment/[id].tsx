@@ -7,6 +7,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
@@ -72,6 +73,9 @@ export default function GeneralEquipmentScreen() {
   const [step, setStep] = useState(0);
   const prevStepRef = useRef(0);
   const [animateSteps, setAnimateSteps] = useState(false);
+  const inspectionRef = useRef<GeneralEquipmentInspection | null>(null);
+  const animateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => { inspectionRef.current = inspection; }, [inspection]);
 
   const persistKey = useMemo(() => `ge-wizard:${id}:step`, [id]);
 
@@ -81,13 +85,18 @@ export default function GeneralEquipmentScreen() {
   // ── Load ────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    if (!id) return;
+    if (!id) {
+      console.log('[GE] no id, skipping load');
+      return;
+    }
+    console.log('[GE] loading inspection:', id);
     let cancelled = false;
     (async () => {
       try {
         const insp = await generalEquipmentApi.getById(id);
+        console.log('[GE] loaded:', insp ? 'found' : 'null', 'cancelled:', cancelled);
         if (cancelled) return;
-        if (!insp) { router.back(); return; }
+        if (!insp) { console.log('[GE] inspection not found, going back'); router.back(); return; }
 
         let patched = insp;
         if (session.state.status === 'signedIn') {
@@ -116,18 +125,23 @@ export default function GeneralEquipmentScreen() {
         const tourSeen = await AsyncStorage.getItem(TOUR_SEEN_KEY);
         if (!tourSeen && !cancelled) setShowTour(true);
       } catch (e) {
+        console.log('[GE] load error:', e);
         if (!cancelled) {
           toast.error(friendlyError(e, 'ვერ ჩაიტვირთა'));
           router.back();
         }
       } finally {
         if (!cancelled) {
+          console.log('[GE] load complete, setting loading=false');
           setLoading(false);
-          setTimeout(() => setAnimateSteps(true), 50);
+          animateTimeoutRef.current = setTimeout(() => setAnimateSteps(true), 50);
         }
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      if (animateTimeoutRef.current) clearTimeout(animateTimeoutRef.current);
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -137,6 +151,13 @@ export default function GeneralEquipmentScreen() {
       AsyncStorage.setItem(persistKey, String(step)).catch(() => {});
     }
   }, [step, persistKey]);
+
+  // Clear pending auto-save on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    };
+  }, []);
 
   // ── Auto-save ───────────────────────────────────────────────────────────────
 
@@ -242,9 +263,10 @@ export default function GeneralEquipmentScreen() {
   }, []);
 
   const uploadEquipmentPhoto = async (rowId: string, uri: string) => {
-    if (!inspection) return;
+    const insp = inspectionRef.current;
+    if (!insp) return;
     try {
-      const path = await generalEquipmentApi.uploadPhoto(inspection.id, 'equipment', rowId, uri);
+      const path = await generalEquipmentApi.uploadPhoto(insp.id, 'equipment', rowId, uri);
       setInspection(prev => {
         if (!prev) return prev;
         const equipment = prev.equipment.map(r =>
@@ -259,8 +281,13 @@ export default function GeneralEquipmentScreen() {
     }
   };
 
-  const handleDeleteEquipmentPhoto = useCallback((rowId: string, path: string) => {
-    generalEquipmentApi.deletePhoto(path).catch(() => {});
+  const handleDeleteEquipmentPhoto = useCallback(async (rowId: string, path: string) => {
+    try {
+      await generalEquipmentApi.deletePhoto(path);
+    } catch (e) {
+      toast.error(friendlyError(e, 'ფოტოს წაშლა ვერ მოხერხდა'));
+      return;
+    }
     setInspection(prev => {
       if (!prev) return prev;
       const equipment = prev.equipment.map(r =>
@@ -270,7 +297,7 @@ export default function GeneralEquipmentScreen() {
       scheduleSave(next);
       return next;
     });
-  }, [scheduleSave]);
+  }, [scheduleSave, toast]);
 
   // ── Photo handling — summary ─────────────────────────────────────────────────
 
@@ -300,9 +327,10 @@ export default function GeneralEquipmentScreen() {
   }, []);
 
   const uploadSummaryPhoto = async (uri: string) => {
-    if (!inspection) return;
+    const insp = inspectionRef.current;
+    if (!insp) return;
     try {
-      const path = await generalEquipmentApi.uploadPhoto(inspection.id, 'summary', 'summary', uri);
+      const path = await generalEquipmentApi.uploadPhoto(insp.id, 'summary', 'summary', uri);
       setInspection(prev => {
         if (!prev) return prev;
         const next = { ...prev, summaryPhotos: [...prev.summaryPhotos, path] };
@@ -314,15 +342,20 @@ export default function GeneralEquipmentScreen() {
     }
   };
 
-  const handleDeleteSummaryPhoto = useCallback((path: string) => {
-    generalEquipmentApi.deletePhoto(path).catch(() => {});
+  const handleDeleteSummaryPhoto = useCallback(async (path: string) => {
+    try {
+      await generalEquipmentApi.deletePhoto(path);
+    } catch (e) {
+      toast.error(friendlyError(e, 'ფოტოს წაშლა ვერ მოხერხდა'));
+      return;
+    }
     setInspection(prev => {
       if (!prev) return prev;
       const next = { ...prev, summaryPhotos: prev.summaryPhotos.filter(p => p !== path) };
       scheduleSave(next);
       return next;
     });
-  }, [scheduleSave]);
+  }, [scheduleSave, toast]);
 
   // ── Signature ────────────────────────────────────────────────────────────────
 
@@ -334,13 +367,21 @@ export default function GeneralEquipmentScreen() {
   // ── Complete ─────────────────────────────────────────────────────────────────
 
   const handleComplete = useCallback(async () => {
-    if (!inspection) return;
+    if (!inspection || completing) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
     const missing: string[] = [];
     if (!inspection.objectName?.trim())    missing.push('ობიექტის დასახელება');
     if (!inspection.conclusion?.trim())    missing.push('დასკვნა');
     if (!inspection.inspectorSignature)    missing.push('ხელმოწერა');
     const hasFilledRow = inspection.equipment.some(r => r.name.trim());
     if (!hasFilledRow)                     missing.push('მინიმუმ 1 აღჭ. სტრ.');
+    // Validate notes on degraded equipment rows
+    const degradedWithoutNote = inspection.equipment.filter(
+      r => (r.condition === 'needs_service' || r.condition === 'unusable') && !r.note?.trim(),
+    );
+    if (degradedWithoutNote.length > 0) {
+      missing.push(`შენიშვნა საჭიროა ${degradedWithoutNote.length} აღჭურვილობაზე`);
+    }
     if (missing.length > 0) {
       Alert.alert('შეავსეთ სავალდებულო ველები', missing.map(m => `• ${m}`).join('\n'));
       return;
@@ -423,8 +464,12 @@ export default function GeneralEquipmentScreen() {
   }, [step, handleComplete]);
 
   const handlePrev = useCallback(() => {
-    if (step > 0) setStep(s => s - 1);
-  }, [step]);
+    if (step === 4) {
+      router.back();
+    } else if (step > 0) {
+      setStep(s => s - 1);
+    }
+  }, [step, router]);
 
   // ── Render helpers ───────────────────────────────────────────────────────────
 
@@ -485,7 +530,14 @@ export default function GeneralEquipmentScreen() {
         >
           {/* ── Step 0: General info ────────────────────────────────────── */}
           {step === 0 && (
-            <View style={styles.stepBody}>
+            <KeyboardAwareScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24, gap: 12 }}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
+              showsVerticalScrollIndicator={false}
+              bottomOffset={120}
+            >
               <StepSectionLabel title="I — ზოგადი ინფორმაცია" />
 
               <FloatingLabelInput
@@ -510,7 +562,7 @@ export default function GeneralEquipmentScreen() {
                 <DateTimeField
                   mode="date"
                   value={new Date(inspection.inspectionDate)}
-                  onChange={d => update('inspectionDate', d.toISOString().slice(0, 10))}
+                  onChange={d => update('inspectionDate', d.toLocaleDateString('en-CA'))}
                   maxDate={new Date()}
                 />
               </View>
@@ -545,12 +597,19 @@ export default function GeneralEquipmentScreen() {
                 value={inspection.inspectorName ?? ''}
                 onChangeText={v => update('inspectorName', v || null)}
               />
-            </View>
+            </KeyboardAwareScrollView>
           )}
 
           {/* ── Step 1: Equipment list ──────────────────────────────────── */}
           {step === 1 && (
-            <View style={styles.stepBody}>
+            <KeyboardAwareScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24, gap: 12 }}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
+              showsVerticalScrollIndicator={false}
+              bottomOffset={120}
+            >
               <View style={styles.equipHeader}>
                 <StepSectionLabel title="II — აღჭურვილობის სია" />
                 <View style={styles.progressPill}>
@@ -590,12 +649,19 @@ export default function GeneralEquipmentScreen() {
                   </Text>
                 </View>
               )}
-            </View>
+            </KeyboardAwareScrollView>
           )}
 
           {/* ── Step 2: Summary ─────────────────────────────────────────── */}
           {step === 2 && (
-            <View style={styles.stepBody}>
+            <KeyboardAwareScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24, gap: 12 }}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
+              showsVerticalScrollIndicator={false}
+              bottomOffset={120}
+            >
               <StepSectionLabel title="III — შეჯამება" />
 
               <FloatingLabelInput
@@ -615,12 +681,19 @@ export default function GeneralEquipmentScreen() {
                 onDelete={handleDeleteSummaryPhoto}
                 styles={styles}
               />
-            </View>
+            </KeyboardAwareScrollView>
           )}
 
           {/* ── Step 3: Signature ───────────────────────────────────────── */}
           {step === 3 && (
-            <View style={styles.stepBody}>
+            <KeyboardAwareScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24, gap: 12 }}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
+              showsVerticalScrollIndicator={false}
+              bottomOffset={120}
+            >
               <StepSectionLabel title="IV — ხელმოწერა" />
 
               <FloatingLabelInput
@@ -694,12 +767,19 @@ export default function GeneralEquipmentScreen() {
                   <Text style={styles.completingText}>მიმდინარეობს…</Text>
                 </View>
               )}
-            </View>
+            </KeyboardAwareScrollView>
           )}
 
           {/* ── Step 4: Done ────────────────────────────────────────────── */}
           {step === 4 && (
-            <View style={styles.stepBody}>
+            <KeyboardAwareScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24, gap: 12 }}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
+              showsVerticalScrollIndicator={false}
+              bottomOffset={120}
+            >
               <View style={styles.doneHero}>
                 <Ionicons name="checkmark-circle" size={72} color={theme.colors.semantic.success} />
                 <Text style={styles.doneTitle}>შემოწმება დასრულდა!</Text>
@@ -730,7 +810,7 @@ export default function GeneralEquipmentScreen() {
                 variant="secondary"
                 onPress={() => router.back()}
               />
-            </View>
+            </KeyboardAwareScrollView>
           )}
         </WizardStepTransition>
 
@@ -810,7 +890,11 @@ const SummaryThumb = memo(function SummaryThumb({
   const { theme } = useTheme();
   const [uri, setUri] = useState('');
   useEffect(() => {
-    imageForDisplay(STORAGE_BUCKETS.answerPhotos, path).then(setUri).catch(() => {});
+    let cancelled = false;
+    imageForDisplay(STORAGE_BUCKETS.answerPhotos, path)
+      .then(url => { if (!cancelled) setUri(url); })
+      .catch(() => {});
+    return () => { cancelled = true; };
   }, [path]);
   return (
     <View style={styles.thumb}>

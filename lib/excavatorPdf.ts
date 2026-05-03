@@ -285,7 +285,7 @@ export async function buildExcavatorPdfHtml(args: {
 
   // ── Section I — Machine specs ────────────────────────────────────────────────
 
-  const sp = insp.machineSpecs;
+  const sp = insp.machineSpecs ?? { weight: '—', engine: '—', power: '—', depth: '—', travel: '—', maxReach: '—' };
   const sectionIHtml = `
     <div class="section-title">I — მანქანის ტექნიკური მახასიათებლები</div>
     <table class="specs-table">

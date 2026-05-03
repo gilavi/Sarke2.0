@@ -6,6 +6,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import * as ImagePicker from 'expo-image-picker';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -108,6 +109,9 @@ export default function ExcavatorInspectionScreen() {
   const [step, setStep] = useState(0);
   const prevStepRef = useRef(0);
   const [animateSteps, setAnimateSteps] = useState(false);
+  const inspectionRef = useRef<ExcavatorInspection | null>(null);
+  const animateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => { inspectionRef.current = inspection; }, [inspection]);
 
   const CHECKLIST_START = 1;
   const CHECKLIST_COUNT = FLAT_CATALOG.length;
@@ -133,13 +137,18 @@ export default function ExcavatorInspectionScreen() {
   // ── Load ───────────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    if (!id) return;
+    if (!id) {
+      console.log('[Excavator] no id, skipping load');
+      return;
+    }
+    console.log('[Excavator] loading inspection:', id);
     let cancelled = false;
     (async () => {
       try {
         const insp = await excavatorApi.getById(id);
+        console.log('[Excavator] loaded:', insp ? 'found' : 'null', 'cancelled:', cancelled);
         if (cancelled) return;
-        if (!insp) { router.back(); return; }
+        if (!insp) { console.log('[Excavator] inspection not found, going back'); router.back(); return; }
 
         let patched = insp;
         if (!insp.inspectorName && session.state.status === 'signedIn') {
@@ -177,18 +186,23 @@ export default function ExcavatorInspectionScreen() {
         const tourSeen = await AsyncStorage.getItem(TOUR_SEEN_KEY);
         if (!tourSeen && !cancelled) setShowTour(true);
       } catch (e) {
+        console.log('[Excavator] load error:', e);
         if (!cancelled) {
           toast.error(friendlyError(e, 'ვერ ჩაიტვირთა'));
           router.back();
         }
       } finally {
         if (!cancelled) {
+          console.log('[Excavator] load complete, setting loading=false');
           setLoading(false);
-          setTimeout(() => setAnimateSteps(true), 50);
+          animateTimeoutRef.current = setTimeout(() => setAnimateSteps(true), 50);
         }
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      if (animateTimeoutRef.current) clearTimeout(animateTimeoutRef.current);
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -302,9 +316,10 @@ export default function ExcavatorInspectionScreen() {
   }, []);
 
   const uploadPhoto = async (section: Section, itemId: number, uri: string) => {
-    if (!inspection) return;
+    const insp = inspectionRef.current;
+    if (!insp) return;
     try {
-      const path = await excavatorApi.uploadPhoto(inspection.id, section, itemId, uri);
+      const path = await excavatorApi.uploadPhoto(insp.id, section, itemId, uri);
       setInspection(prev => {
         if (!prev) return prev;
         const key = sectionKey(section);
@@ -320,19 +335,24 @@ export default function ExcavatorInspectionScreen() {
     }
   };
 
-  const handleDeletePhoto = useCallback((section: Section, itemId: number, path: string) => {
-    excavatorApi.deletePhoto(path).catch(() => {});
+  const handleDeletePhoto = useCallback(async (section: Section, itemId: number, path: string) => {
+    try {
+      await excavatorApi.deletePhoto(path);
+    } catch (e) {
+      toast.error(friendlyError(e, 'ფოტოს წაშლა ვერ მოხერხდა'));
+      return;
+    }
     setInspection(prev => {
       if (!prev) return prev;
       const key = sectionKey(section);
       const arr = [...(prev[key] as ExcavatorChecklistItemState[])];
       const idx = arr.findIndex(i => i.id === itemId);
-      if (idx >= 0) arr[idx] = { ...arr[idx], photo_paths: arr[idx].photo_paths.filter(p => p !== path) };
+      if (idx >= 0) arr[idx] = { ...arr[idx], photo_paths: (arr[idx].photo_paths ?? []).filter(p => p !== path) };
       const next = { ...prev, [key]: arr };
       scheduleSave(next);
       return next;
     });
-  }, [scheduleSave]);
+  }, [scheduleSave, toast]);
 
   // ── Signature ──────────────────────────────────────────────────────────────
 
@@ -354,7 +374,8 @@ export default function ExcavatorInspectionScreen() {
   // ── Complete ───────────────────────────────────────────────────────────────
 
   const handleComplete = useCallback(async () => {
-    if (!inspection) return;
+    if (!inspection || completing) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
     const missing: string[] = [];
     if (!inspection.serialNumber?.trim()) missing.push('სერიული ნომერი');
     if (!inspection.verdict)              missing.push('დასკვნა');
@@ -454,6 +475,7 @@ export default function ExcavatorInspectionScreen() {
 
   const canGoNext = useMemo(() => {
     if (!inspection || step >= DONE_STEP) return false;
+    if (step === 0) return !!inspection.serialNumber?.trim();
     if (step === SIGNATURE_STEP) return !!inspection.inspectorSignature && !completing;
     return true;
   }, [step, inspection, completing, SIGNATURE_STEP, DONE_STEP]);
@@ -467,15 +489,20 @@ export default function ExcavatorInspectionScreen() {
   }, [step, SIGNATURE_STEP, DONE_STEP, handleComplete]);
 
   const handlePrev = useCallback(() => {
-    if (step > 0) setStep(s => s - 1);
-  }, [step]);
+    if (step === DONE_STEP) {
+      router.back();
+    } else if (step > 0) {
+      setStep(s => s - 1);
+    }
+  }, [step, DONE_STEP, router]);
 
   // ── Render helpers ─────────────────────────────────────────────────────────
+
+  const flatState = useMemo(() => inspection ? getFlatState(inspection) : [], [inspection]);
 
   const renderChecklistItem = (flatIndex: number) => {
     if (!inspection) return null;
     const { sectionLabel, entry } = FLAT_CATALOG[flatIndex];
-    const flatState = getFlatState(inspection);
     const state = flatState[flatIndex];
     const { section } = FLAT_CATALOG[flatIndex];
 
@@ -549,7 +576,14 @@ export default function ExcavatorInspectionScreen() {
         >
           {/* ── Step 0: Document Info ───────────────────────────────────── */}
           {step === 0 && (
-            <View style={styles.stepBody}>
+            <KeyboardAwareScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24, gap: 12 }}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
+              showsVerticalScrollIndicator={false}
+              bottomOffset={120}
+            >
               <MachineSpecsCard insp={inspection} styles={styles} />
 
               <StepSectionLabel title="II — დოკუმენტის ინფორმაცია" />
@@ -579,7 +613,7 @@ export default function ExcavatorInspectionScreen() {
                 <DateTimeField
                   mode="date"
                   value={new Date(inspection.inspectionDate)}
-                  onChange={d => update('inspectionDate', d.toISOString().slice(0, 10))}
+                  onChange={d => update('inspectionDate', d.toLocaleDateString('en-CA'))}
                   maxDate={new Date()}
                 />
               </View>
@@ -599,11 +633,11 @@ export default function ExcavatorInspectionScreen() {
                 <DateTimeField
                   mode="date"
                   value={inspection.lastInspectionDate ? new Date(inspection.lastInspectionDate) : new Date()}
-                  onChange={d => update('lastInspectionDate', d.toISOString().slice(0, 10))}
+                  onChange={d => update('lastInspectionDate', d.toLocaleDateString('en-CA'))}
                   maxDate={new Date()}
                 />
               </View>
-            </View>
+            </KeyboardAwareScrollView>
           )}
 
           {/* ── Steps 1..N: Checklist items ─────────────────────────────── */}
@@ -613,7 +647,14 @@ export default function ExcavatorInspectionScreen() {
 
           {/* ── Step N+1: Maintenance + Verdict ─────────────────────────── */}
           {step === MAINTENANCE_STEP && (
-            <View style={styles.stepBody}>
+            <KeyboardAwareScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24, gap: 12 }}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
+              showsVerticalScrollIndicator={false}
+              bottomOffset={120}
+            >
               <StepSectionLabel title="VI — ტექნიკური მომსახურება" />
               {MAINTENANCE_ITEMS.map((entry, idx) => {
                 const state = inspection.maintenanceItems.find(i => i.id === entry.id)
@@ -676,12 +717,19 @@ export default function ExcavatorInspectionScreen() {
                 multiline
                 numberOfLines={4}
               />
-            </View>
+            </KeyboardAwareScrollView>
           )}
 
           {/* ── Step N+2: Signature ─────────────────────────────────────── */}
           {step === SIGNATURE_STEP && (
-            <View style={styles.stepBody}>
+            <KeyboardAwareScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24, gap: 12 }}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
+              showsVerticalScrollIndicator={false}
+              bottomOffset={120}
+            >
               <StepSectionLabel title="V — შემომწმებელი" />
 
               <FloatingLabelInput
@@ -732,12 +780,19 @@ export default function ExcavatorInspectionScreen() {
                   <Text style={styles.completingText}>მიმდინარეობს…</Text>
                 </View>
               )}
-            </View>
+            </KeyboardAwareScrollView>
           )}
 
           {/* ── Step N+3: Done ──────────────────────────────────────────── */}
           {step === DONE_STEP && (
-            <View style={styles.stepBody}>
+            <KeyboardAwareScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24, gap: 12 }}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
+              showsVerticalScrollIndicator={false}
+              bottomOffset={120}
+            >
               <View style={styles.doneHero}>
                 <Ionicons name="checkmark-circle" size={72} color={theme.colors.semantic.success} />
                 <Text style={styles.doneTitle}>შემოწმება დასრულდა!</Text>
@@ -778,7 +833,7 @@ export default function ExcavatorInspectionScreen() {
                 variant="secondary"
                 onPress={() => router.back()}
               />
-            </View>
+            </KeyboardAwareScrollView>
           )}
         </WizardStepTransition>
 

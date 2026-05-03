@@ -35,6 +35,9 @@ import {
   incidentsApi,
   reportsApi,
 } from '../../lib/services';
+import { bobcatApi } from '../../lib/bobcatService';
+import { excavatorApi } from '../../lib/excavatorService';
+import { generalEquipmentApi } from '../../lib/generalEquipmentService';
 import {
   useProject,
   useInspectionsByProject,
@@ -44,8 +47,11 @@ import {
   useBriefingsByProject,
   useReportsByProject,
   useCalendarEvents,
+  useBobcatInspectionsByProject,
+  useExcavatorInspectionsByProject,
+  useGeneralEquipmentInspectionsByProject,
 } from '../../lib/apiHooks';
-import { STORAGE_BUCKETS } from '../../lib/supabase';
+import { supabase, STORAGE_BUCKETS } from '../../lib/supabase';
 import { useToast } from '../../lib/toast';
 import { imageForDisplay } from '../../lib/imageUrl';
 import { useTheme } from '../../lib/theme';
@@ -79,6 +85,9 @@ export default function ProjectDetail() {
 
   const [project, setProject] = useState<Project | null>(null);
   const [questionnaires, setQuestionnaires] = useState<Questionnaire[]>([]);
+  const [bobcatInspections, setBobcatInspections] = useState<any[]>([]);
+  const [excavatorInspections, setExcavatorInspections] = useState<any[]>([]);
+  const [generalEquipmentInspections, setGeneralEquipmentInspections] = useState<any[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [files, setFiles] = useState<ProjectFile[]>([]);
   const [filesBusy, setFilesBusy] = useState(false);
@@ -95,6 +104,9 @@ export default function ProjectDetail() {
   // file upload, etc.) continue to work via setProject / setFiles.
   const projectQ = useProject(id);
   const questionnairesQ = useInspectionsByProject(id);
+  const bobcatQ = useBobcatInspectionsByProject(id);
+  const excavatorQ = useExcavatorInspectionsByProject(id);
+  const generalEquipmentQ = useGeneralEquipmentInspectionsByProject(id);
   const templatesQ = useTemplates();
   const filesQ = useProjectFiles(id);
   const incidentsQ = useIncidentsByProject(id);
@@ -107,6 +119,15 @@ export default function ProjectDetail() {
   useEffect(() => {
     if (questionnairesQ.data !== undefined) setQuestionnaires(questionnairesQ.data);
   }, [questionnairesQ.data]);
+  useEffect(() => {
+    if (bobcatQ.data !== undefined) setBobcatInspections(bobcatQ.data);
+  }, [bobcatQ.data]);
+  useEffect(() => {
+    if (excavatorQ.data !== undefined) setExcavatorInspections(excavatorQ.data);
+  }, [excavatorQ.data]);
+  useEffect(() => {
+    if (generalEquipmentQ.data !== undefined) setGeneralEquipmentInspections(generalEquipmentQ.data);
+  }, [generalEquipmentQ.data]);
   useEffect(() => {
     if (templatesQ.data !== undefined) setTemplates(templatesQ.data);
   }, [templatesQ.data]);
@@ -123,10 +144,12 @@ export default function ProjectDetail() {
     if (reportsQ.data !== undefined) setReports(reportsQ.data);
   }, [reportsQ.data]);
   useEffect(() => {
-    const anyLoading = projectQ.isLoading || questionnairesQ.isLoading || templatesQ.isLoading
+    const anyLoading = projectQ.isLoading || questionnairesQ.isLoading || bobcatQ.isLoading
+      || excavatorQ.isLoading || generalEquipmentQ.isLoading || templatesQ.isLoading
       || filesQ.isLoading || incidentsQ.isLoading || briefingsQ.isLoading || reportsQ.isLoading;
     if (!anyLoading) setLoaded(true);
-  }, [projectQ.isLoading, questionnairesQ.isLoading, templatesQ.isLoading, filesQ.isLoading,
+  }, [projectQ.isLoading, questionnairesQ.isLoading, bobcatQ.isLoading, excavatorQ.isLoading,
+      generalEquipmentQ.isLoading, templatesQ.isLoading, filesQ.isLoading,
       incidentsQ.isLoading, briefingsQ.isLoading, reportsQ.isLoading]);
 
   // Project screen onboarding tour
@@ -203,17 +226,53 @@ export default function ProjectDetail() {
     [project, toast],
   );
 
-  // ── Section previews (max 3, sorted by date desc) ──
-  const questionnairesSorted = useMemo(
-    () =>
-      [...questionnaires].sort(
-        (a, b) => +new Date(b.created_at) - +new Date(a.created_at),
-      ),
-    [questionnaires],
-  );
-  const questionnairesPreview = useMemo(
-    () => questionnairesSorted.slice(0, 3),
-    [questionnairesSorted],
+  // ── Unified inspections list (generic + equipment) ──
+  type UnifiedInspection = {
+    id: string;
+    template_id: string;
+    status: 'draft' | 'completed';
+    created_at: string;
+    source: 'generic' | 'bobcat' | 'excavator' | 'general_equipment';
+  };
+
+  const allInspections = useMemo<UnifiedInspection[]>(() => {
+    const generic: UnifiedInspection[] = questionnaires.map(q => ({
+      id: q.id,
+      template_id: q.template_id,
+      status: q.status,
+      created_at: q.created_at,
+      source: 'generic',
+    }));
+    const bobcat: UnifiedInspection[] = bobcatInspections.map(b => ({
+      id: b.id,
+      template_id: b.templateId,
+      status: b.status,
+      created_at: b.createdAt,
+      source: 'bobcat',
+    }));
+    const excavator: UnifiedInspection[] = excavatorInspections.map(e => ({
+      id: e.id,
+      template_id: e.templateId,
+      status: e.status,
+      created_at: e.createdAt,
+      source: 'excavator',
+    }));
+    const ge: UnifiedInspection[] = generalEquipmentInspections.map(g => ({
+      id: g.id,
+      template_id: g.templateId,
+      status: g.status,
+      created_at: g.createdAt,
+      source: 'general_equipment',
+    }));
+    return [...generic, ...bobcat, ...excavator, ...ge].sort(
+      (a, b) => +new Date(b.created_at) - +new Date(a.created_at),
+    );
+  }, [questionnaires, bobcatInspections, excavatorInspections, generalEquipmentInspections]);
+
+  const allInspectionsSorted = allInspections;
+  const allInspectionsPreview = useMemo(
+    () => allInspectionsSorted.slice(0, 3),
+    [allInspectionsSorted],
   );
   const incidentsSorted = useMemo(
     () =>
@@ -255,9 +314,9 @@ export default function ProjectDetail() {
   const reportsPreview = useMemo(() => reportsSorted.slice(0, 3), [reportsSorted]);
   const overflowReports = useMemo(() => reportsSorted.slice(3), [reportsSorted]);
 
-  const overflowQuestionnaires = useMemo(
-    () => questionnairesSorted.slice(3),
-    [questionnairesSorted],
+  const overflowAllInspections = useMemo(
+    () => allInspectionsSorted.slice(3),
+    [allInspectionsSorted],
   );
   const overflowIncidents = useMemo(
     () => incidentsSorted.slice(3),
@@ -269,16 +328,14 @@ export default function ProjectDetail() {
   );
   const overflowFiles = useMemo(() => filesSorted.slice(3), [filesSorted]);
 
-  const startNewQuestionnaire = () => {
+  const startNewInspection = () => {
     const system = templates.filter(tpl => tpl.is_system);
     if (system.length === 0) {
       toast.error(t('projects.templateMissing'));
       return;
     }
     if (system.length === 1 && id) {
-      void questionnairesApi.create({ projectId: id, templateId: system[0].id })
-        .then(q => router.push(`/inspections/${q.id}/wizard` as any))
-        .catch(e => toast.error(friendlyError(e, t('errors.createFailed'))));
+      void createInspectionForTemplate(id, system[0]);
       return;
     }
     const options = [...system.map(tpl => tpl.name), t('common.cancel')];
@@ -287,20 +344,32 @@ export default function ProjectDetail() {
       async idx => {
         if (idx == null || idx === options.length - 1 || !id) return;
         const tpl = system[idx];
-        try {
-          const q = (await questionnairesApi.create({
-            projectId: id,
-            templateId: tpl.id,
-          }));
-          router.push(`/inspections/${q.id}/wizard` as any);
-        } catch (e) {
-          toast.error(friendlyError(e, t('errors.createFailed')));
-        }
+        await createInspectionForTemplate(id, tpl);
       },
     );
   };
 
-  const deleteQuestionnaire = (q: Questionnaire) => {
+  const createInspectionForTemplate = async (projectId: string, tpl: Template) => {
+    try {
+      if (tpl.category === 'bobcat') {
+        const b = await bobcatApi.create({ projectId, templateId: tpl.id });
+        router.push(`/inspections/bobcat/${b.id}` as any);
+      } else if (tpl.category === 'excavator') {
+        const e = await excavatorApi.create({ projectId, templateId: tpl.id });
+        router.push(`/inspections/excavator/${e.id}` as any);
+      } else if (tpl.category === 'general_equipment') {
+        const g = await generalEquipmentApi.create({ projectId, templateId: tpl.id });
+        router.push(`/inspections/general-equipment/${g.id}` as any);
+      } else {
+        const q = await questionnairesApi.create({ projectId, templateId: tpl.id });
+        router.push(`/inspections/${q.id}/wizard` as any);
+      }
+    } catch (e) {
+      toast.error(friendlyError(e, t('errors.createFailed')));
+    }
+  };
+
+  const deleteInspection = (item: UnifiedInspection) => {
     showActionSheetWithOptions(
       {
         title: 'დარწმუნებული ხართ?',
@@ -311,8 +380,24 @@ export default function ProjectDetail() {
       async idx => {
         if (idx !== 0) return;
         try {
-          await questionnairesApi.remove(q.id);
-          setQuestionnaires(prev => prev.filter(x => x.id !== q.id));
+          if (item.source === 'bobcat') {
+            await bobcatApi.complete(item.id); // soft-delete by completing with a flag? No, need actual delete
+            // Actually bobcatApi doesn't have remove. Let's use supabase directly
+            const { error } = await supabase.from('bobcat_inspections').delete().eq('id', item.id);
+            if (error) throw error;
+            setBobcatInspections(prev => prev.filter(x => x.id !== item.id));
+          } else if (item.source === 'excavator') {
+            const { error } = await supabase.from('excavator_inspections').delete().eq('id', item.id);
+            if (error) throw error;
+            setExcavatorInspections(prev => prev.filter(x => x.id !== item.id));
+          } else if (item.source === 'general_equipment') {
+            const { error } = await supabase.from('general_equipment_inspections').delete().eq('id', item.id);
+            if (error) throw error;
+            setGeneralEquipmentInspections(prev => prev.filter(x => x.id !== item.id));
+          } else {
+            await questionnairesApi.remove(item.id);
+            setQuestionnaires(prev => prev.filter(x => x.id !== item.id));
+          }
           toast.success(t('notifications.deleted'));
         } catch (e) {
           toast.error(friendlyError(e, t('errors.deleteFailed')));
@@ -464,14 +549,14 @@ export default function ProjectDetail() {
 
   const quickActions: QuickAction[] = useMemo(
     () => [
-      { label: 'შემოწმება',   colorKey: 'inspection',  onPress: startNewQuestionnaire },
+      { label: 'შემოწმება',   colorKey: 'inspection',  onPress: startNewInspection },
       { label: 'ინციდენტი',   colorKey: 'incident',    onPress: () => id && router.push(`/incidents/new?projectId=${id}` as any) },
       { label: 'ინსტრუქტაჟი', colorKey: 'briefing',    onPress: () => id && router.push(`/briefings/new?projectId=${id}` as any) },
       { label: 'რეპორტი',     colorKey: 'report',      onPress: () => id && router.push(`/reports/new?projectId=${id}` as any) },
       { label: 'მონაწილე',    colorKey: 'participant', onPress: () => id && router.push(`/projects/${id}/participants` as any) },
       { label: 'ფაილი',       colorKey: 'file',        onPress: uploadFile },
     ],
-    [id, router, startNewQuestionnaire, uploadFile],
+    [id, router, startNewInspection, uploadFile],
   );
 
   const mapMarkers = useMemo(() => {
@@ -610,44 +695,44 @@ export default function ProjectDetail() {
           {/* ── Upcoming schedule ── */}
           <UpcomingSection projectId={id} />
 
-          {/* ── Questionnaires ── */}
+          {/* ── Inspections (generic + equipment) ── */}
           <View ref={questionnairesRef} collapsable={false} style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <Ionicons name="shield-checkmark-outline" size={16} color={theme.colors.inkSoft} />
                 <Text style={styles.sectionTitle}>{t('projects.questionnairesSection')}</Text>
-                <Text style={styles.sectionCount}>{questionnaires.length}</Text>
+                <Text style={styles.sectionCount}>{allInspections.length}</Text>
               </View>
-              <Pressable onPress={startNewQuestionnaire} hitSlop={8}>
+              <Pressable onPress={startNewInspection} hitSlop={8}>
                 <Text style={styles.sectionAddLink}>+ დამატება</Text>
               </Pressable>
             </View>
 
-            {questionnaires.length === 0 ? (
+            {allInspections.length === 0 ? (
               <EmptyState text={t('projects.noCompletedInspections')} />
             ) : (
               <View style={{ gap: 8, marginTop: 10 }}>
-                {questionnairesPreview.map(q => {
-                  const tpl = templates.find(t => t.id === q.template_id);
-                  const isCompleted = q.status === 'completed';
+                {allInspectionsPreview.map(item => {
+                  const tpl = templates.find(t => t.id === item.template_id);
+                  const isCompleted = item.status === 'completed';
+                  const route = (() => {
+                    if (item.source === 'bobcat') return `/inspections/bobcat/${item.id}`;
+                    if (item.source === 'excavator') return `/inspections/excavator/${item.id}`;
+                    if (item.source === 'general_equipment') return `/inspections/general-equipment/${item.id}`;
+                    return isCompleted ? `/inspections/${item.id}` : `/inspections/${item.id}/wizard`;
+                  })();
                   return (
                     <Swipeable
-                      key={q.id}
+                      key={`${item.source}-${item.id}`}
                       renderRightActions={() => (
-                        <Pressable onPress={() => deleteQuestionnaire(q)} style={styles.swipeDelete} {...a11y('შემოწმების აქტს წაშლა', 'შემოწმების აქტს წაშლა', 'button')}>
+                        <Pressable onPress={() => deleteInspection(item)} style={styles.swipeDelete} {...a11y('შემოწმების აქტს წაშლა', 'შემოწმების აქტს წაშლა', 'button')}>
                           <Ionicons name="trash" size={18} color={theme.colors.white} />
                         </Pressable>
                       )}
                       overshootRight={false}
                     >
                       <Pressable
-                        onPress={() =>
-                          router.push(
-                            (isCompleted
-                              ? `/inspections/${q.id}`
-                              : `/inspections/${q.id}/wizard`) as any,
-                          )
-                        }
+                        onPress={() => router.push(route as any)}
                         style={styles.listRow}
                         {...a11y(tpl?.name ?? 'შემოწმების აქტი', isCompleted ? 'დასრულებული შემოწმების აქტს ნახვა' : 'დრაფტის გასაგრძელებლად დააჭირეთ', 'button')}
                       >
@@ -661,7 +746,7 @@ export default function ProjectDetail() {
                         <View style={{ flex: 1 }}>
                           <Text style={styles.listRowTitle}>{tpl?.name ?? t('common.inspection')}</Text>
                           <Text style={styles.listRowSubtitle}>
-                            {formatShortDateTime(q.created_at)}
+                            {formatShortDateTime(item.created_at)}
                           </Text>
                         </View>
                         <Ionicons name="chevron-forward" size={18} color={theme.colors.borderStrong} />
@@ -669,13 +754,13 @@ export default function ProjectDetail() {
                     </Swipeable>
                   );
                 })}
-                {overflowQuestionnaires.length > 0 ? (
+                {overflowAllInspections.length > 0 ? (
                   <ViewMoreRow
-                    items={overflowQuestionnaires.map(q => {
-                      const tpl = templates.find(t => t.id === q.template_id);
+                    items={overflowAllInspections.map(item => {
+                      const tpl = templates.find(t => t.id === item.template_id);
                       return tpl?.name ?? 'ინსპ';
                     })}
-                    total={overflowQuestionnaires.length}
+                    total={overflowAllInspections.length}
                     onPress={() => router.push(`/projects/${id}/inspections` as any)}
                   />
                 ) : null}

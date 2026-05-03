@@ -186,6 +186,16 @@ export const generalEquipmentApi = {
     return path;
   },
 
+  listByProject: async (projectId: string): Promise<GeneralEquipmentInspection[]> => {
+    const { data, error } = await supabase
+      .from('general_equipment_inspections')
+      .select('*')
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: false });
+    if (error) throw new Error(error.message);
+    return ((data ?? []) as DbRow[]).map(toModel);
+  },
+
   deletePhoto: async (path: string): Promise<void> => {
     await storageApi.remove(STORAGE_BUCKETS.answerPhotos, path)
       .catch((e) => logError(e, 'generalEquipment.deletePhoto'));

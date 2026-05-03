@@ -3,7 +3,7 @@ import { ActivityIndicator, Alert, Animated, InputAccessoryView, Keyboard, Modal
 import { Image } from 'expo-image';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
-import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
+import { KeyboardAvoidingView, KeyboardAwareScrollView, KeyboardController } from 'react-native-keyboard-controller';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
@@ -35,7 +35,7 @@ import {
 import { imageForDisplay, pdfPhotoEmbed } from '../../../lib/imageUrl';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import { haptic } from '../../../lib/haptics';
-import { setPhotoPickerCallback, setPhotoAnnotateCallback, getLastPhotoLocation } from '../../../lib/photoPickerBus';
+import { setPhotoPickerCallback, setPhotoAnnotateCallback, cancelPhotoPicker, cancelPhotoAnnotate, getLastPhotoLocation } from '../../../lib/photoPickerBus';
 import { getCurrentLocation, reverseGeocode } from '../../../utils/location';
 import type { PhotoLocation } from '../../../utils/location';
 import { showPhotoLocationAlert } from '../../../lib/photoLocationAlert';
@@ -203,6 +203,8 @@ export default function QuestionnaireWizard() {
     ext: string;
     path: string;
   } | null>(null);
+  const pickerTokenRef = useRef<number | null>(null);
+  const annotateTokenRef = useRef<number | null>(null);
   const [photoUploadCount, setPhotoUploadCount] = useState(0);
   const [conclusion, setConclusion] = useState('');
   const [isSafe, setIsSafe] = useState<boolean | null>(null);
@@ -235,6 +237,14 @@ export default function QuestionnaireWizard() {
   const dismissTour = useCallback(() => {
     setShowTour(false);
     AsyncStorage.setItem(TOUR_SEEN_KEY, '1').catch(() => {});
+  }, []);
+
+  // Cancel any dangling photo-picker bus tokens on unmount
+  useEffect(() => {
+    return () => {
+      if (pickerTokenRef.current !== null) cancelPhotoPicker(pickerTokenRef.current);
+      if (annotateTokenRef.current !== null) cancelPhotoAnnotate(annotateTokenRef.current);
+    };
   }, []);
 
   // Step transition direction. Forward navigation slides the new step in
@@ -448,7 +458,8 @@ export default function QuestionnaireWizard() {
 
   // Load on mount AND when id changes (useFocusEffect alone misses the
   // initial load if id is still resolving from params when the screen
-  // is already focused).
+  // is already focused). The cancellation token in load() handles any
+  // benign double-fire.
   useEffect(() => {
     if (id) void load();
   }, [id]);
@@ -655,9 +666,13 @@ export default function QuestionnaireWizard() {
     const path = `${questionnaire.id}/${question.id}/${Date.now()}.${ext}`;
     const capturedLocation = location;
     pendingPhotoContext.current = { questionId: question.id, rowKey, mime, ext, path };
-    setPhotoAnnotateCallback((annotatedUri) => {
+    // Cancel any stale annotate token before registering new one
+    if (annotateTokenRef.current !== null) cancelPhotoAnnotate(annotateTokenRef.current);
+
+    annotateTokenRef.current = setPhotoAnnotateCallback((annotatedUri) => {
       if (!annotatedUri) {
         pendingPhotoContext.current = null;
+        annotateTokenRef.current = null;
         return;
       }
       const ctx = pendingPhotoContext.current;
@@ -665,6 +680,7 @@ export default function QuestionnaireWizard() {
       const q = questions.find(q => q.id === ctx.questionId);
       if (q) doUpload(annotatedUri, q, ctx.rowKey, ctx.mime, ctx.ext, ctx.path, capturedLocation);
       pendingPhotoContext.current = null;
+      annotateTokenRef.current = null;
     });
     router.push(
       `/photo-annotate?uri=${encodeURIComponent(asset.uri)}` as any,
@@ -678,16 +694,22 @@ export default function QuestionnaireWizard() {
     const ext = 'jpg';
     const path = `${questionnaire.id}/${question.id}/${Date.now()}.${ext}`;
     pendingPhotoContext.current = { questionId: question.id, rowKey, mime, ext, path };
-    setPhotoPickerCallback((uri) => {
+    // Cancel any stale picker/annotate tokens before registering new ones
+    if (pickerTokenRef.current !== null) cancelPhotoPicker(pickerTokenRef.current);
+    if (annotateTokenRef.current !== null) cancelPhotoAnnotate(annotateTokenRef.current);
+
+    pickerTokenRef.current = setPhotoPickerCallback((uri) => {
       if (!uri) {
         pendingPhotoContext.current = null;
+        pickerTokenRef.current = null;
         return;
       }
       // Read location captured by photo-picker.tsx (stored in bus side-channel).
       const location = getLastPhotoLocation();
-      setPhotoAnnotateCallback((annotatedUri) => {
+      annotateTokenRef.current = setPhotoAnnotateCallback((annotatedUri) => {
         if (!annotatedUri) {
           pendingPhotoContext.current = null;
+          annotateTokenRef.current = null;
           return;
         }
         const ctx = pendingPhotoContext.current;
@@ -695,6 +717,7 @@ export default function QuestionnaireWizard() {
         const q = questions.find(q => q.id === ctx.questionId);
         if (q) doUpload(annotatedUri, q, ctx.rowKey, ctx.mime, ctx.ext, ctx.path, location);
         pendingPhotoContext.current = null;
+        annotateTokenRef.current = null;
       });
       // Replace the picker with the annotator so the user returns straight
       // to the wizard on annotate-back, instead of being dropped back onto
@@ -702,6 +725,7 @@ export default function QuestionnaireWizard() {
       router.replace(
         `/photo-annotate?uri=${encodeURIComponent(uri)}` as any,
       );
+      pickerTokenRef.current = null;
     });
     router.push('/photo-picker' as any);
   };
@@ -755,6 +779,9 @@ export default function QuestionnaireWizard() {
       // before navigating away. Offline? The queue survives — done screen
       // still renders from local state.
       await offline.flush();
+      // Clear the cached questionnaire patch so a later reload doesn't
+      // re-apply stale completed/status fields.
+      await offline.clearQuestionnairePatch(questionnaire.id).catch(() => {});
       // Record schedule entry — non-fatal, must never block the inspection.
       const calCompletedAt = new Date().toISOString();
       const calGroupKey = `${questionnaire.project_id}:${questionnaire.template_id}`;
@@ -788,8 +815,8 @@ export default function QuestionnaireWizard() {
   const swipeBack = useMemo(
     () =>
       Gesture.Pan()
-        .activeOffsetX([20, 999])
-        .failOffsetY([-20, 20])
+        .activeOffsetX([-20, 20])
+        .failOffsetY([-10, 10])
         .runOnJS(true)
         .onEnd(e => {
           if (e.translationX > 60 && stepIndex > 0) {
@@ -826,7 +853,7 @@ export default function QuestionnaireWizard() {
   // has arrived. Previously the guard was too permissive (!!template && !!step)
   // which let the conclusion form flash with empty isSafe/conclusion values
   // for ~100-200 ms while answers were still hydrating.
-  const ready = !loading && !!questionnaire && !!template && questions.length > 0;
+  const ready = !loading && !!questionnaire && !!template;
   console.log('[Wizard] render — loading:', loading, 'ready:', ready, 'stepIndex:', stepIndex, 'steps:', steps.length, 'step:', step?.kind, 'template:', template?.category);
 
   // Early return — absolutely NO form elements render while data is missing.
@@ -896,6 +923,13 @@ export default function QuestionnaireWizard() {
       <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
       <ScaffoldTour visible={showTour} onClose={dismissTour} />
       <SyncStatusPill />
+      {questions.length === 0 ? (
+        <View style={{ padding: 12, backgroundColor: theme.colors.warnSoft }}>
+          <Text style={{ color: theme.colors.warn, fontSize: 13 }}>
+            ⚠️ This template has no questions. You may be using the wrong wizard.
+          </Text>
+        </View>
+      ) : null}
       {photoUploadCount > 0 ? (
         <View pointerEvents="none" style={uploadPillStyles.wrap}>
           <View style={uploadPillStyles.pill}>
@@ -921,7 +955,7 @@ export default function QuestionnaireWizard() {
         </View>
         <GestureDetector gesture={swipeBack}>
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior="padding"
           style={{ flex: 1 }}
           keyboardVerticalOffset={insets.top + headerH}
         >
@@ -941,10 +975,13 @@ export default function QuestionnaireWizard() {
                 onAdvance={goNext}
               />
             ) : (
-              <ScrollView
+              <KeyboardAwareScrollView
+                style={{ flex: 1 }}
                 contentContainerStyle={staticStyles.stepScrollContent}
                 keyboardShouldPersistTaps="handled"
                 keyboardDismissMode="interactive"
+                showsVerticalScrollIndicator={false}
+                bottomOffset={120}
               >
                 {step.kind === 'question' ? (
                   <QuestionStep
@@ -971,7 +1008,7 @@ export default function QuestionnaireWizard() {
                     onDeletePhoto={deletePhoto}
                   />
                 )}
-              </ScrollView>
+              </KeyboardAwareScrollView>
             )}
           </WizardStepTransition>
 
@@ -1191,6 +1228,7 @@ function DebouncedFreetext({
   const [text, setText] = useState(initial);
   const lastCommitted = useRef(initial);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const accessoryId = Platform.OS === 'ios' ? 'wizard-freetext-accessory' : undefined;
 
   useEffect(() => {
     // Sync external updates (e.g., first load)
@@ -1224,13 +1262,28 @@ function DebouncedFreetext({
   }, []);
 
   return (
-    <FloatingLabelInput
-      label="დასკვნა"
-      value={text}
-      onChangeText={setText}
-      onEndEditing={() => onCommit(text)}
-      multiline
-    />
+    <>
+      <FloatingLabelInput
+        label="დასკვნა"
+        value={text}
+        onChangeText={setText}
+        onEndEditing={() => onCommit(text)}
+        multiline
+        inputAccessoryViewID={accessoryId}
+      />
+      {Platform.OS === 'ios' && (
+        <InputAccessoryView nativeID={accessoryId}>
+          <View style={[styles.accessoryBar, { backgroundColor: theme.colors.card, borderTopColor: theme.colors.hairline }]}>
+            <Pressable
+              onPress={() => KeyboardController.dismiss()}
+              style={styles.accessoryBtn}
+            >
+              <Text style={[styles.accessoryBtnText, { color: theme.colors.accent }]}>მზადაა</Text>
+            </Pressable>
+          </View>
+        </InputAccessoryView>
+      )}
+    </>
   );
 }
 
@@ -1246,6 +1299,7 @@ function DebouncedNotes({
   const [text, setText] = useState(initial ?? '');
   const lastCommitted = useRef(initial ?? '');
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const accessoryId = Platform.OS === 'ios' ? 'wizard-notes-accessory' : undefined;
 
   useEffect(() => {
     const nextInitial = initial ?? '';
@@ -1291,10 +1345,23 @@ function DebouncedNotes({
         multiline
         maxLength={500}
         style={{ marginBottom: 4 }}
+        inputAccessoryViewID={accessoryId}
       />
       <Text style={[styles.label, { textAlign: 'right', marginBottom: 0 }]}>
         {text.length}/500
       </Text>
+      {Platform.OS === 'ios' && (
+        <InputAccessoryView nativeID={accessoryId}>
+          <View style={[styles.accessoryBar, { backgroundColor: theme.colors.card, borderTopColor: theme.colors.hairline }]}>
+            <Pressable
+              onPress={() => KeyboardController.dismiss()}
+              style={styles.accessoryBtn}
+            >
+              <Text style={[styles.accessoryBtnText, { color: theme.colors.accent }]}>მზადაა</Text>
+            </Pressable>
+          </View>
+        </InputAccessoryView>
+      )}
     </View>
   );
 }
@@ -1609,11 +1676,14 @@ const GridRowStep = memo(function GridRowStep({
     const scrollRef = useRef<ScrollView>(null);
 
     return (
-      <ScrollView
+      <KeyboardAwareScrollView
         ref={scrollRef}
+        style={{ flex: 1 }}
         contentContainerStyle={[staticStyles.padH16, staticStyles.padTop16, staticStyles.padB24, staticStyles.gap16]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
+        showsVerticalScrollIndicator={false}
+        bottomOffset={120}
       >
         <View style={staticStyles.centerPadV8Gap12}>
           <QuestionAvatar illustrationKey={illustrationKeyFor(row)} />
@@ -1647,8 +1717,7 @@ const GridRowStep = memo(function GridRowStep({
                 onChangeText={text => setValue('კომენტარი', text || null, false)}
                 autoFocus
                 onFocus={() => {
-                  // Surface the input above the keyboard once layout settles.
-                  requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
+                  // KeyboardAwareScrollView handles scroll-to-focus automatically
                 }}
               />
             ) : null}
@@ -1683,16 +1752,19 @@ const GridRowStep = memo(function GridRowStep({
             await onDeletePhoto(photo);
           }}
         />
-      </ScrollView>
+      </KeyboardAwareScrollView>
     );
   }
 
   // Harness: scrollable list of components with ✓/✗ chips
   return (
-    <ScrollView
+    <KeyboardAwareScrollView
+      style={{ flex: 1 }}
       contentContainerStyle={[staticStyles.stepScrollContent, staticStyles.padTop16]}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="interactive"
+      showsVerticalScrollIndicator={false}
+      bottomOffset={120}
     >
       <View style={{ alignItems: 'center', paddingVertical: 8, gap: 4 }}>
         <Text style={{ fontSize: 12, color: theme.colors.inkSoft }}>{question.title}</Text>
@@ -1791,7 +1863,7 @@ const GridRowStep = memo(function GridRowStep({
           await onDeletePhoto(photo);
         }}
       />
-    </ScrollView>
+    </KeyboardAwareScrollView>
   );
 });
 
@@ -2178,6 +2250,21 @@ function getstyles(theme: any) {
   kbDoneText: {
     color: theme.colors.accent,
     fontSize: 16,
+    fontWeight: '600',
+  },
+  accessoryBar: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  accessoryBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  accessoryBtnText: {
+    fontSize: 15,
     fontWeight: '600',
   },
   topBar: {

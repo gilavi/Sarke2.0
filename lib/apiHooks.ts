@@ -28,6 +28,9 @@ import {
   remoteSigningApi,
 } from './services';
 import { briefingsApi } from './briefingsApi';
+import { bobcatApi } from './bobcatService';
+import { excavatorApi } from './excavatorService';
+import { generalEquipmentApi } from './generalEquipmentService';
 import type {
   Project,
   ProjectFile,
@@ -69,6 +72,15 @@ export const qk = {
     byProject: (projectId: string) => ['inspections', 'byProject', projectId] as const,
     answers: (id: string) => ['inspections', 'answers', id] as const,
     photos: (id: string) => ['inspections', 'photos', id] as const,
+  },
+  bobcat: {
+    byProject: (projectId: string) => ['bobcat', 'byProject', projectId] as const,
+  },
+  excavator: {
+    byProject: (projectId: string) => ['excavator', 'byProject', projectId] as const,
+  },
+  generalEquipment: {
+    byProject: (projectId: string) => ['generalEquipment', 'byProject', projectId] as const,
   },
   qualifications: {
     list: ['qualifications', 'list'] as const,
@@ -204,6 +216,32 @@ export function useInspectionAnswers(inspectionId: string | undefined) {
     queryKey: inspectionId ? qk.inspections.answers(inspectionId) : ['inspections', 'answers', 'none'],
     queryFn: () => (inspectionId ? answersApi.list(inspectionId) : Promise.resolve([])),
     enabled: !!inspectionId,
+  });
+}
+
+// ── Equipment inspections ────────────────────────────────────────────────────
+
+export function useBobcatInspectionsByProject(projectId: string | undefined) {
+  return useQuery({
+    queryKey: projectId ? qk.bobcat.byProject(projectId) : ['bobcat', 'byProject', 'none'],
+    queryFn: () => (projectId ? bobcatApi.listByProject(projectId) : Promise.resolve([])),
+    enabled: !!projectId,
+  });
+}
+
+export function useExcavatorInspectionsByProject(projectId: string | undefined) {
+  return useQuery({
+    queryKey: projectId ? qk.excavator.byProject(projectId) : ['excavator', 'byProject', 'none'],
+    queryFn: () => (projectId ? excavatorApi.listByProject(projectId) : Promise.resolve([])),
+    enabled: !!projectId,
+  });
+}
+
+export function useGeneralEquipmentInspectionsByProject(projectId: string | undefined) {
+  return useQuery({
+    queryKey: projectId ? qk.generalEquipment.byProject(projectId) : ['generalEquipment', 'byProject', 'none'],
+    queryFn: () => (projectId ? generalEquipmentApi.listByProject(projectId) : Promise.resolve([])),
+    enabled: !!projectId,
   });
 }
 

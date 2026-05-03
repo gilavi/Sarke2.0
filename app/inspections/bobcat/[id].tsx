@@ -6,6 +6,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import * as ImagePicker from 'expo-image-picker';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -76,6 +77,9 @@ export default function BobcatInspectionScreen() {
   const [step, setStep] = useState(0);
   const prevStepRef = useRef(0);
   const [animateSteps, setAnimateSteps] = useState(false);
+  const inspectionRef = useRef<BobcatInspection | null>(null);
+  const animateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => { inspectionRef.current = inspection; }, [inspection]);
 
   const catalog: BobcatChecklistEntry[] = useMemo(
     () => inspection?.templateId === LARGE_LOADER_TEMPLATE_ID ? LARGE_LOADER_ITEMS : BOBCAT_ITEMS,
@@ -103,13 +107,18 @@ export default function BobcatInspectionScreen() {
   // ── Load ───────────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    if (!id) return;
+    if (!id) {
+      console.log('[Bobcat] no id, skipping load');
+      return;
+    }
+    console.log('[Bobcat] loading inspection:', id);
     let cancelled = false;
     (async () => {
       try {
         const insp = await bobcatApi.getById(id);
+        console.log('[Bobcat] loaded:', insp ? 'found' : 'null', 'cancelled:', cancelled);
         if (cancelled) return;
-        if (!insp) { router.back(); return; }
+        if (!insp) { console.log('[Bobcat] inspection not found, going back'); router.back(); return; }
 
         let patched = insp;
         if (!insp.inspectorName && session.state.status === 'signedIn') {
@@ -118,15 +127,25 @@ export default function BobcatInspectionScreen() {
           if (name) patched = { ...patched, inspectorName: name };
         }
         setInspection(patched);
+        if (patched.inspectorName && patched.inspectorName !== insp.inspectorName) {
+          bobcatApi.patch(patched.id, { inspectorName: patched.inspectorName }).catch(() => {});
+        }
+
+        // Compute correct step constants based on the loaded inspection's template
+        const loadedCatalog = insp.templateId === LARGE_LOADER_TEMPLATE_ID ? LARGE_LOADER_ITEMS : BOBCAT_ITEMS;
+        const loadedChecklistCount = loadedCatalog.length;
+        const loadedSummaryStep = 1 + loadedChecklistCount;
+        const loadedSignatureStep = loadedSummaryStep + 1;
+        const loadedDoneStep = loadedSignatureStep + 1;
 
         if (insp.status === 'completed') {
-          setStep(DONE_STEP);
+          setStep(loadedDoneStep);
         } else {
           // Restore saved step
           const saved = await AsyncStorage.getItem(persistKey);
           if (saved && !cancelled) {
             const s = parseInt(saved, 10);
-            if (!isNaN(s) && s >= 0 && s <= SIGNATURE_STEP) {
+            if (!isNaN(s) && s >= 0 && s <= loadedSignatureStep) {
               setStep(s);
             }
           }
@@ -157,19 +176,24 @@ export default function BobcatInspectionScreen() {
         const tourSeen = await AsyncStorage.getItem(TOUR_SEEN_KEY);
         if (!tourSeen && !cancelled) setShowTour(true);
       } catch (e) {
+        console.log('[Bobcat] load error:', e);
         if (!cancelled) {
           toast.error(friendlyError(e, 'ვერ ჩაიტვირთა'));
           router.back();
         }
       } finally {
         if (!cancelled) {
+          console.log('[Bobcat] load complete, setting loading=false');
           setLoading(false);
           // Enable animations after load to avoid animation on restored step
-          setTimeout(() => setAnimateSteps(true), 50);
+          animateTimeoutRef.current = setTimeout(() => setAnimateSteps(true), 50);
         }
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      if (animateTimeoutRef.current) clearTimeout(animateTimeoutRef.current);
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -263,9 +287,10 @@ export default function BobcatInspectionScreen() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const uploadPhoto = async (itemId: number, uri: string) => {
-    if (!inspection) return;
+    const insp = inspectionRef.current;
+    if (!insp) return;
     try {
-      const path = await bobcatApi.uploadPhoto(inspection.id, itemId, uri);
+      const path = await bobcatApi.uploadPhoto(insp.id, itemId, uri);
       setInspection(prev => {
         if (!prev) return prev;
         const items = prev.items.map(i =>
@@ -280,18 +305,23 @@ export default function BobcatInspectionScreen() {
     }
   };
 
-  const handleDeletePhoto = useCallback((itemId: number, path: string) => {
-    bobcatApi.deletePhoto(path).catch(() => {});
+  const handleDeletePhoto = useCallback(async (itemId: number, path: string) => {
+    try {
+      await bobcatApi.deletePhoto(path);
+    } catch (e) {
+      toast.error(friendlyError(e, 'ფოტოს წაშლა ვერ მოხერხდა'));
+      return;
+    }
     setInspection(prev => {
       if (!prev) return prev;
       const items = prev.items.map(i =>
-        i.id === itemId ? { ...i, photo_paths: i.photo_paths.filter(p => p !== path) } : i,
+        i.id === itemId ? { ...i, photo_paths: (i.photo_paths ?? []).filter(p => p !== path) } : i,
       );
       const next = { ...prev, items };
       scheduleSave(next);
       return next;
     });
-  }, [scheduleSave]);
+  }, [scheduleSave, toast]);
 
   // ── Signature ──────────────────────────────────────────────────────────────
 
@@ -410,6 +440,9 @@ export default function BobcatInspectionScreen() {
 
   const canGoNext = useMemo(() => {
     if (!inspection || step >= DONE_STEP) return false;
+    if (step === 0) {
+      return !!inspection.company?.trim() && !!inspection.equipmentModel?.trim() && !!inspection.registrationNumber?.trim();
+    }
     if (step === SIGNATURE_STEP) return !!inspection.inspectorSignature && !completing;
     return true;
   }, [step, inspection, completing, SIGNATURE_STEP, DONE_STEP]);
@@ -423,8 +456,12 @@ export default function BobcatInspectionScreen() {
   }, [step, SIGNATURE_STEP, DONE_STEP, handleComplete]);
 
   const handlePrev = useCallback(() => {
-    if (step > 0) setStep(s => s - 1);
-  }, [step]);
+    if (step === DONE_STEP) {
+      router.back();
+    } else if (step > 0) {
+      setStep(s => s - 1);
+    }
+  }, [step, DONE_STEP, router]);
 
   // ── Render helpers ─────────────────────────────────────────────────────────
 
@@ -508,7 +545,14 @@ export default function BobcatInspectionScreen() {
         >
           {/* ── Step 0: General Info ────────────────────────────────────── */}
           {step === 0 && (
-            <View style={styles.stepBody}>
+            <KeyboardAwareScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24, gap: 12 }}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
+              showsVerticalScrollIndicator={false}
+              bottomOffset={120}
+            >
               <FloatingLabelInput
                 label="ობიექტი / კომპანია *"
                 value={inspection.company ?? ''}
@@ -537,7 +581,7 @@ export default function BobcatInspectionScreen() {
                 <DateTimeField
                   mode="date"
                   value={new Date(inspection.inspectionDate)}
-                  onChange={d => update('inspectionDate', d.toISOString().slice(0, 10))}
+                  onChange={d => update('inspectionDate', d.toLocaleDateString('en-CA'))}
                   maxDate={new Date()}
                 />
               </View>
@@ -566,7 +610,7 @@ export default function BobcatInspectionScreen() {
                 value={inspection.inspectorName ?? ''}
                 onChangeText={v => update('inspectorName', v || null)}
               />
-            </View>
+            </KeyboardAwareScrollView>
           )}
 
           {/* ── Steps 1..N: Checklist items ─────────────────────────────── */}
@@ -576,7 +620,14 @@ export default function BobcatInspectionScreen() {
 
           {/* ── Step N+1: Summary + Verdict ─────────────────────────────── */}
           {step === SUMMARY_STEP && (
-            <View style={styles.stepBody}>
+            <KeyboardAwareScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24, gap: 12 }}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
+              showsVerticalScrollIndicator={false}
+              bottomOffset={120}
+            >
               <View style={styles.sumTable}>
                 <View style={[styles.sumRow, styles.sumHeaderRow]}>
                   <Text style={[styles.sumCell, styles.sumCatCell, styles.sumHeaderText]}>კატეგორია</Text>
@@ -645,12 +696,19 @@ export default function BobcatInspectionScreen() {
                 multiline
                 numberOfLines={4}
               />
-            </View>
+            </KeyboardAwareScrollView>
           )}
 
           {/* ── Step N+2: Signature ─────────────────────────────────────── */}
           {step === SIGNATURE_STEP && (
-            <View style={styles.stepBody}>
+            <KeyboardAwareScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24, gap: 12 }}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
+              showsVerticalScrollIndicator={false}
+              bottomOffset={120}
+            >
               <StepSectionLabel title="ინსპექტორის ხელმოწერა" />
               <Pressable
                 style={[styles.sigArea, inspection.inspectorSignature && styles.sigAreaSigned]}
@@ -689,12 +747,19 @@ export default function BobcatInspectionScreen() {
                   <Text style={styles.completingText}>მიმდინარეობს…</Text>
                 </View>
               )}
-            </View>
+            </KeyboardAwareScrollView>
           )}
 
           {/* ── Step N+3: Done ──────────────────────────────────────────── */}
           {step === DONE_STEP && (
-            <View style={styles.stepBody}>
+            <KeyboardAwareScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24, gap: 12 }}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
+              showsVerticalScrollIndicator={false}
+              bottomOffset={120}
+            >
               <View style={styles.doneHero}>
                 <Ionicons name="checkmark-circle" size={72} color={theme.colors.semantic.success} />
                 <Text style={styles.doneTitle}>შემოწმება დასრულდა!</Text>
@@ -735,7 +800,7 @@ export default function BobcatInspectionScreen() {
                 variant="secondary"
                 onPress={() => router.back()}
               />
-            </View>
+            </KeyboardAwareScrollView>
           )}
         </WizardStepTransition>
 

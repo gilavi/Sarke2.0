@@ -1,5 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  InputAccessoryView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -8,6 +10,7 @@ import {
 import Animated, { FadeInDown, FadeOut } from 'react-native-reanimated';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
+import { KeyboardAwareScrollView, KeyboardController } from 'react-native-keyboard-controller';
 import { A11yText as Text } from '../primitives/A11yText';
 import { FloatingLabelInput } from '../inputs/FloatingLabelInput';
 import { useTheme, type Theme } from '../../lib/theme';
@@ -45,9 +48,14 @@ export const ChecklistItemStep = memo(function ChecklistItemStep({
 
   const [commentDraft, setCommentDraft] = useState(state.comment ?? '');
 
+  // Re-sync comment draft when parent state changes externally (server sync, etc.)
+  useEffect(() => {
+    setCommentDraft(state.comment ?? '');
+  }, [state.comment]);
+
   const unusableLabel = catalog.unusableLabel ?? 'გამოუსადეგ.';
   const unusableIsNeutral = catalog.unusableIsNeutral === true;
-  const showUnusable = true; // always show the 3rd option
+  const showUnusable = true;
 
   const setResult = useCallback((r: NonNullable<ChecklistItemState['result']>) => {
     haptic.light();
@@ -69,8 +77,18 @@ export const ChecklistItemStep = memo(function ChecklistItemStep({
   const unusableActive = state.result === 'unusable';
   const hasProblem = defActive || unusableActive;
 
+  const accessoryId = Platform.OS === 'ios' ? 'checklist-comment-accessory' : undefined;
+
   return (
-    <View style={styles.root}>
+    <KeyboardAwareScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="interactive"
+      bounces={false}
+      showsVerticalScrollIndicator={false}
+      bottomOffset={100}
+    >
       {/* Progress header */}
       <View style={styles.progressRow}>
         <View style={styles.categoryPill}>
@@ -94,7 +112,7 @@ export const ChecklistItemStep = memo(function ChecklistItemStep({
       </View>
 
       {/* Item content */}
-      <View style={styles.content}>
+      <View style={styles.itemContent}>
         <Text style={styles.label}>{catalog.label}</Text>
         <Text style={styles.description}>{catalog.description}</Text>
       </View>
@@ -182,12 +200,15 @@ export const ChecklistItemStep = memo(function ChecklistItemStep({
             onChangeText={handleCommentChange}
             multiline
             numberOfLines={3}
+            inputAccessoryViewID={accessoryId}
           />
 
+          {/* Photo strip */}
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.photoStrip}
+            keyboardShouldPersistTaps="handled"
           >
             {state.photo_paths.map(path => (
               <PhotoThumb
@@ -207,9 +228,39 @@ export const ChecklistItemStep = memo(function ChecklistItemStep({
           </ScrollView>
         </Animated.View>
       )}
-    </View>
+
+      {/* iOS Input Accessory View for comment field */}
+      {Platform.OS === 'ios' && (
+        <InputAccessoryView nativeID={accessoryId}>
+          <View style={[styles.accessoryBar, { backgroundColor: theme.colors.card, borderTopColor: theme.colors.hairline }]}>
+            <Pressable
+              onPress={() => {
+                KeyboardController.dismiss();
+              }}
+              style={styles.accessoryBtn}
+            >
+              <Text style={[styles.accessoryBtnText, { color: theme.colors.accent }]}>მზადაა</Text>
+            </Pressable>
+          </View>
+        </InputAccessoryView>
+      )}
+    </KeyboardAwareScrollView>
   );
 });
+
+// ── Bounded photo URL cache (mirrors generic wizard pattern) ─────────────────
+
+const PHOTO_URL_CACHE_MAX = 100;
+const photoUrlCache = new Map<string, string>();
+
+function setPhotoUrlCache(key: string, url: string) {
+  if (photoUrlCache.has(key)) photoUrlCache.delete(key);
+  photoUrlCache.set(key, url);
+  if (photoUrlCache.size > PHOTO_URL_CACHE_MAX) {
+    const oldest = photoUrlCache.keys().next().value;
+    if (oldest !== undefined) photoUrlCache.delete(oldest);
+  }
+}
 
 // ── Photo thumbnail ──────────────────────────────────────────────────────────
 
@@ -225,7 +276,21 @@ const PhotoThumb = memo(function PhotoThumb({
   const [uri, setUri] = useState('');
 
   useEffect(() => {
-    imageForDisplay(STORAGE_BUCKETS.answerPhotos, path).then(setUri).catch(() => {});
+    const cacheKey = `${STORAGE_BUCKETS.answerPhotos}:${path}`;
+    if (photoUrlCache.has(cacheKey)) {
+      setUri(photoUrlCache.get(cacheKey)!);
+      return;
+    }
+    let cancelled = false;
+    imageForDisplay(STORAGE_BUCKETS.answerPhotos, path)
+      .then(url => {
+        if (!cancelled) {
+          setPhotoUrlCache(cacheKey, url);
+          setUri(url);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
   }, [path]);
 
   return (
@@ -247,8 +312,10 @@ const PhotoThumb = memo(function PhotoThumb({
 
 function getstyles(theme: Theme) {
   return StyleSheet.create({
-    root: {
+    scroll: {
       flex: 1,
+    },
+    content: {
       paddingHorizontal: 16,
       paddingTop: 8,
       paddingBottom: 16,
@@ -298,7 +365,7 @@ function getstyles(theme: Theme) {
     helpPlaceholder: {
       width: 28,
     },
-    content: {
+    itemContent: {
       gap: 8,
       marginBottom: 24,
     },
@@ -438,6 +505,21 @@ function getstyles(theme: Theme) {
       position: 'absolute',
       top: 2,
       right: 2,
+    },
+    accessoryBar: {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderTopWidth: StyleSheet.hairlineWidth,
+    },
+    accessoryBtn: {
+      paddingHorizontal: 12,
+      paddingVertical: 4,
+    },
+    accessoryBtnText: {
+      fontSize: 15,
+      fontWeight: '600',
     },
   });
 }

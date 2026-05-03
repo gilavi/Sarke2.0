@@ -87,11 +87,19 @@ const MemoizedHistoryItem = memo(function HistoryItem({
       overshootRight={false}
     >
       <Pressable
-        onPress={() =>
-          q.status === 'completed'
-            ? router.push(`/inspections/${q.id}` as any)
-            : router.push(`/inspections/${q.id}/wizard` as any)
-        }
+        onPress={() => {
+          if (q.status === 'completed') {
+            router.push(`/inspections/${q.id}` as any);
+          } else if (tpl?.category === 'bobcat') {
+            router.push(`/inspections/bobcat/${q.id}` as any);
+          } else if (tpl?.category === 'excavator') {
+            router.push(`/inspections/excavator/${q.id}` as any);
+          } else if (tpl?.category === 'general_equipment') {
+            router.push(`/inspections/general-equipment/${q.id}` as any);
+          } else {
+            router.push(`/inspections/${q.id}/wizard` as any);
+          }
+        }}
         style={({ pressed }) => pressed ? { opacity: 0.7 } : undefined}
         {...a11y(
           `${tpl?.name ?? t('common.inspection')} — ${p?.name ?? ''}`.trim(),
