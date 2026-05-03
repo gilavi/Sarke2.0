@@ -8,36 +8,13 @@ struct YesNoQuestionView: View {
     let question: Question
 
     var body: some View {
-        let current = vm.answersByQuestion[question.id]?.valueBool
-        HStack(spacing: 12) {
-            choiceButton("კი", isSelected: current == true, color: .green) {
-                Task { await save(true) }
+        let binding = Binding<Bool?>(
+            get: { vm.answersByQuestion[question.id]?.valueBool },
+            set: { newValue in
+                Task { await vm.saveAnswer(for: question) { $0.valueBool = newValue } }
             }
-            choiceButton("არა", isSelected: current == false, color: .red) {
-                Task { await save(false) }
-            }
-        }
-    }
-
-    private func choiceButton(_ label: String, isSelected: Bool, color: Color, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(label)
-                .font(.headline)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(isSelected ? color.opacity(0.18) : Theme.subtleSurface)
-                .foregroundStyle(isSelected ? color : .primary)
-                .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius))
-                .overlay(
-                    RoundedRectangle(cornerRadius: Theme.cornerRadius)
-                        .stroke(isSelected ? color : .clear, lineWidth: 2)
-                )
-        }
-    }
-
-    private func save(_ value: Bool) async {
-        Haptic.tap()
-        await vm.saveAnswer(for: question) { $0.valueBool = value }
+        )
+        AnswerButtonsRow(value: binding)
     }
 }
 
@@ -445,39 +422,47 @@ struct ConclusionStepView: View {
     @Bindable var vm: WizardViewModel
 
     var body: some View {
-        Form {
-            if !vm.unansweredQuestions.isEmpty {
-                Section {
-                    Label("\(vm.unansweredQuestions.count) კითხვა უპასუხოდ დარჩა. შეამოწმე კითხვარი.",
-                          systemImage: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.orange)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                if !vm.unansweredQuestions.isEmpty {
+                    HStack(spacing: 10) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(Theme.Color.semantic.warning)
+                            .font(.inter(16, weight: .bold))
+                        Text("\(vm.unansweredQuestions.count) კითხვა უპასუხოდ დარჩა. შეამოწმე კითხვარი.")
+                            .font(.inter(13, weight: .medium))
+                            .foregroundStyle(Theme.ink)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(14)
+                    .background(Theme.Color.semantic.warningSoft)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.radius.md, style: .continuous))
                 }
-            }
 
-            if vm.template.categoryKind == .harness {
-                Section("ღვედის დასახელება") {
-                    TextField("მაგ. Petzl NEWTON", text: $vm.harnessName)
+                if vm.template.categoryKind == .harness {
+                    FloatingLabelInput(label: "ღვედის დასახელება", text: $vm.harnessName)
+                }
+
+                FloatingLabelInput.multiline(label: "დასკვნა", text: $vm.conclusionText, minHeight: 160)
+
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("უსაფრთხოების დასკვნა")
+                        .font(.inter(13, weight: .semibold))
+                        .foregroundStyle(Theme.inkSoft)
+                    AnswerButtonsRow(
+                        value: $vm.isSafeForUse,
+                        yesLabel: "უსაფრთხოა",
+                        noLabel: "არ არის უსაფრთხო",
+                        large: true
+                    )
+                    if vm.isSafeForUse == nil {
+                        Text("აუცილებლად აირჩიე უსაფრთხოების სტატუსი PDF-ის დაგენერირებამდე.")
+                            .font(.inter(12, weight: .medium))
+                            .foregroundStyle(Theme.Color.semantic.danger)
+                    }
                 }
             }
-            Section("დასკვნა") {
-                TextEditor(text: $vm.conclusionText).frame(minHeight: 140)
-            }
-            Section("უსაფრთხოების დასკვნა") {
-                Picker("სტატუსი", selection: Binding(
-                    get: { vm.isSafeForUse },
-                    set: { vm.isSafeForUse = $0 }
-                )) {
-                    Text("აირჩიე").tag(Bool?.none)
-                    Text("✓ უსაფრთხოა").tag(Bool?.some(true))
-                    Text("✗ არ არის უსაფრთხო").tag(Bool?.some(false))
-                }
-                .pickerStyle(.inline)
-                .labelsHidden()
-                if vm.isSafeForUse == nil {
-                    Text("აუცილებლად აირჩიე უსაფრთხოების სტატუსი PDF-ის დაგენერირებამდე.")
-                        .font(.caption).foregroundStyle(.red)
-                }
-            }
+            .padding(16)
         }
     }
 }

@@ -24,11 +24,15 @@ struct WizardView: View {
         var steps: [WizardStep] = []
         for q in vm.orderedQuestions {
             if q.type == .componentGrid, let rows = q.gridRows {
-                // For harness template, only show active N-rows
                 let isHarness = rows.first == "N1"
-                let activeRows = isHarness ? Array(rows.prefix(vm.harnessRowCount)) : rows
-                for (i, row) in activeRows.enumerated() {
-                    steps.append(.gridRow(q, row: row, rowIndex: i))
+                if isHarness {
+                    // Harness takes the entire matrix view in one step rather
+                    // than paginating per-belt — Phase F change.
+                    steps.append(.question(q))
+                } else {
+                    for (i, row) in rows.enumerated() {
+                        steps.append(.gridRow(q, row: row, rowIndex: i))
+                    }
                 }
             } else {
                 steps.append(.question(q))
@@ -38,25 +42,34 @@ struct WizardView: View {
         return steps
     }
 
+    private func isHarnessGrid(_ q: Question) -> Bool {
+        q.type == .componentGrid && (q.gridRows ?? []).first == "N1"
+    }
+
     private var stepCount: Int { flatSteps.count }
 
     var body: some View {
         VStack(spacing: 0) {
-            ProgressView(value: Double(stepIndex + 1), total: Double(stepCount))
-                .padding(.horizontal)
-                .padding(.top, 8)
-
-            Text("\(stepIndex + 1) / \(stepCount)")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .padding(.top, 4)
+            // Restyled progress chrome
+            VStack(spacing: 6) {
+                ProgressView(value: Double(stepIndex + 1), total: Double(stepCount))
+                    .progressViewStyle(.linear)
+                    .tint(Theme.accentPrimary)
+                    .scaleEffect(x: 1, y: 1.5, anchor: .center)
+                Text("\(stepIndex + 1) / \(stepCount)")
+                    .font(.inter(11, weight: .semibold))
+                    .foregroundStyle(Theme.inkFaint)
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 12)
+            .padding(.bottom, 8)
 
             if vm.isLoading {
                 Spacer(); ProgressView(); Spacer()
             } else {
                 let steps = flatSteps
                 let safeIndex = min(stepIndex, steps.count - 1)
-                stepView(for: steps[safeIndex])
+                stepView(for: steps[safeIndex], stepIndex: safeIndex)
                     .id(safeIndex)
             }
 
@@ -132,12 +145,41 @@ struct WizardView: View {
     }
 
     @ViewBuilder
-    private func stepView(for step: WizardStep) -> some View {
+    private func stepView(for step: WizardStep, stepIndex: Int) -> some View {
         switch step {
         case .question(let q):
-            QuestionStepView(vm: vm, question: q)
+            if isHarnessGrid(q) {
+                // Harness gets a full-screen matrix takeover (no card chrome).
+                HarnessMatrixView(vm: vm, question: q) {
+                    if self.stepIndex < stepCount - 1 { self.stepIndex += 1 }
+                }
+            } else {
+                ScrollView {
+                    QuestionCardContainer(
+                        stepNumber: stepIndex + 1,
+                        totalSteps: stepCount,
+                        title: q.title,
+                        keyChange: stepIndex
+                    ) {
+                        QuestionStepView(vm: vm, question: q)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+                }
+            }
         case .gridRow(let q, let row, _):
-            GridRowStepView(vm: vm, question: q, row: row)
+            ScrollView {
+                QuestionCardContainer(
+                    stepNumber: stepIndex + 1,
+                    totalSteps: stepCount,
+                    title: "\(q.title) — \(row)",
+                    keyChange: stepIndex
+                ) {
+                    GridRowStepView(vm: vm, question: q, row: row)
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+            }
         case .conclusion:
             ConclusionStepView(vm: vm)
         }
@@ -154,42 +196,37 @@ struct QuestionStepView: View {
     @State private var photoSheet = false
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                Text(question.title).font(.title3.bold())
+        // Title is rendered by the parent QuestionCardContainer; only the
+        // type-specific control + comment/photo affordances live here.
+        VStack(alignment: .leading, spacing: 16) {
+            switch question.type {
+            case .yesno:
+                YesNoQuestionView(vm: vm, question: question)
+            case .measure:
+                MeasureQuestionView(vm: vm, question: question)
+            case .freetext:
+                FreetextQuestionView(vm: vm, question: question)
+            case .photoUpload:
+                PhotoUploadQuestionView(vm: vm, question: question)
+            case .componentGrid:
+                EmptyView()  // routed to GridRowStepView or HarnessMatrixView via flatSteps
+            }
 
-                switch question.type {
-                case .yesno:
-                    YesNoQuestionView(vm: vm, question: question)
-                case .measure:
-                    MeasureQuestionView(vm: vm, question: question)
-                case .freetext:
-                    FreetextQuestionView(vm: vm, question: question)
-                case .photoUpload:
-                    PhotoUploadQuestionView(vm: vm, question: question)
-                case .componentGrid:
-                    EmptyView() // routed to GridRowStepView via flatSteps
+            HStack(spacing: 10) {
+                Button { commentSheet = true } label: {
+                    Label(commentLabel, systemImage: "text.bubble")
+                        .font(.inter(13, weight: .medium))
                 }
+                .buttonStyle(.secondaryMuted)
 
-                HStack {
-                    Button {
-                        commentSheet = true
-                    } label: {
-                        Label(commentLabel, systemImage: "text.bubble")
+                if question.type != .photoUpload {
+                    Button { photoSheet = true } label: {
+                        Label(photoLabel, systemImage: "camera")
+                            .font(.inter(13, weight: .medium))
                     }
-                    .buttonStyle(.bordered)
-
-                    if question.type != .photoUpload {
-                        Button {
-                            photoSheet = true
-                        } label: {
-                            Label(photoLabel, systemImage: "camera")
-                        }
-                        .buttonStyle(.bordered)
-                    }
+                    .buttonStyle(.secondaryMuted)
                 }
             }
-            .padding()
         }
         .sheet(isPresented: $commentSheet) {
             CommentSheet(vm: vm, question: question)
