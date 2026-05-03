@@ -98,6 +98,7 @@ struct LoginForm: View {
 
     @State private var email = ""
     @State private var password = ""
+    @State private var passwordHidden = true
     @State private var isWorking = false
     @State private var errorMessage: String?
     @State private var infoMessage: String?
@@ -105,35 +106,28 @@ struct LoginForm: View {
 
     var body: some View {
         VStack(spacing: 14) {
-            labeledField(label: "იმეილი") {
-                TextField("you@example.com", text: $email)
-                    .keyboardType(.emailAddress)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .textFieldStyle(.rounded)
-            }
-            labeledField(label: "პაროლი") {
-                SecureField("••••••••", text: $password)
-                    .textFieldStyle(.rounded)
-            }
+            FloatingLabelInput(label: "ელ-ფოსტა", text: $email)
+
+            FloatingLabelInput(label: "პაროლი", text: $password, isSecure: passwordHidden)
+                .trailing { PasswordEyeToggle(isSecure: $passwordHidden) }
 
             HStack {
                 Spacer()
                 Button("პაროლი დაგავიწყდა?") { showingReset = true }
-                    .font(.footnote)
-                    .foregroundStyle(Theme.accent)
+                    .font(.inter(13, weight: .medium))
+                    .foregroundStyle(Theme.accentPrimary)
             }
 
             if let errorMessage {
                 Text(errorMessage)
-                    .font(.footnote)
-                    .foregroundStyle(Theme.danger)
+                    .font(.inter(13, weight: .medium))
+                    .foregroundStyle(Theme.Color.semantic.danger)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             if let infoMessage {
                 Text(infoMessage)
-                    .font(.footnote)
-                    .foregroundStyle(Theme.accent)
+                    .font(.inter(13, weight: .medium))
+                    .foregroundStyle(Theme.accentPrimary)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
 
@@ -147,6 +141,43 @@ struct LoginForm: View {
             }
             .buttonStyle(.primary)
             .disabled(isWorking || email.isEmpty || password.isEmpty)
+
+            // Divider + Google placeholder (Plan B Phase 5 wires the OAuth flow
+            // once a Google Cloud OAuth client + Apple Developer team-ID land.)
+            HStack(spacing: 12) {
+                Rectangle().fill(Theme.border).frame(height: 1)
+                Text("ან")
+                    .font(.inter(11, weight: .medium))
+                    .foregroundStyle(Theme.inkFaint)
+                Rectangle().fill(Theme.border).frame(height: 1)
+            }
+            .padding(.vertical, 4)
+
+            Button {
+                Haptic.tap()
+                infoMessage = "Google-ით შესვლა მალე გამოვა."
+            } label: {
+                HStack(spacing: 10) {
+                    Text("G")
+                        .font(.spaceGrotesk(18, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 24, height: 24)
+                        .background(LinearGradient(colors: [Color(hex: 0x4285F4), Color(hex: 0x34A853)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .clipShape(Circle())
+                    Text("Google-ით შესვლა")
+                        .font(.inter(15, weight: .semibold))
+                        .foregroundStyle(Theme.ink)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(Theme.surface)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.radius.md, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: Theme.radius.md, style: .continuous)
+                        .strokeBorder(Theme.border, lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
         }
         .sheet(isPresented: $showingReset) {
             PasswordResetSheet(prefilledEmail: email) { sentTo in
@@ -240,37 +271,28 @@ struct RegisterForm: View {
     @State private var errorMessage: String?
     @State private var infoMessage: String?
 
+    @State private var passwordHidden = true
+
     var body: some View {
         VStack(spacing: 14) {
             HStack(spacing: 10) {
-                labeledField(label: "სახელი") {
-                    TextField("გიორგი", text: $firstName).textFieldStyle(.rounded)
-                }
-                labeledField(label: "გვარი") {
-                    TextField("ხელაძე", text: $lastName).textFieldStyle(.rounded)
-                }
+                FloatingLabelInput(label: "სახელი", text: $firstName)
+                FloatingLabelInput(label: "გვარი", text: $lastName)
             }
-            labeledField(label: "იმეილი") {
-                TextField("you@example.com", text: $email)
-                    .keyboardType(.emailAddress)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .textFieldStyle(.rounded)
-            }
-            labeledField(label: "პაროლი (მინ. 6)") {
-                SecureField("••••••••", text: $password).textFieldStyle(.rounded)
-            }
+            FloatingLabelInput(label: "ელ-ფოსტა", text: $email)
+            FloatingLabelInput(label: "პაროლი (მინ. 6)", text: $password, isSecure: passwordHidden)
+                .trailing { PasswordEyeToggle(isSecure: $passwordHidden) }
 
             if let errorMessage {
                 Text(errorMessage)
-                    .font(.footnote)
-                    .foregroundStyle(Theme.danger)
+                    .font(.inter(13, weight: .medium))
+                    .foregroundStyle(Theme.Color.semantic.danger)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             if let infoMessage {
                 Text(infoMessage)
-                    .font(.footnote)
-                    .foregroundStyle(Theme.accent)
+                    .font(.inter(13, weight: .medium))
+                    .foregroundStyle(Theme.accentPrimary)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
 
