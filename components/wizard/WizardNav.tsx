@@ -84,7 +84,7 @@ export function WizardNav({ isLast, canGoNext, canGoPrev, onNext, onPrev }: Wiza
           ]}
           {...a11y(
             isLast ? 'დასრულება' : 'შემდეგი კითხვა',
-            isLast ? 'შეეხეთ ინსპექციის დასასრულებლად' : 'შეეხეთ შემდეგ კითხვაზე გადასვლისთვის',
+            isLast ? 'შეეხეთ შემოწმების აქტის დასასრულებლად' : 'შეეხეთ შემდეგ კითხვაზე გადასვლისთვის',
             'button',
             { disabled: !canGoNext }
           )}

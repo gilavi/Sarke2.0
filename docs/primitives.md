@@ -47,6 +47,31 @@ One file: [lib/formatDate.ts](../lib/formatDate.ts). `lib/locale.ts` was deleted
 
 Always reference via `STORAGE_BUCKETS.x` from [lib/supabase.ts](../lib/supabase.ts). Never inline string literals like `'incident-photos'` — bucket renames have to ripple through the whole codebase otherwise.
 
+## Inspection PDF helpers
+
+One file: [lib/pdfShared.ts](../lib/pdfShared.ts). The bobcat / excavator / general-equipment PDF generators each had their own `fmtDate`, `escHtml`, and photo-embed loop — and the photo loop didn't dedupe paths, so the same photo was fetched twice if it appeared in two items.
+
+| Use case | Function |
+|---|---|
+| Format ISO date as Georgian long form (or `—` if missing) | `fmtDate(iso)` |
+| Escape user-supplied text for HTML interpolation | `escHtml(s)` |
+| Resolve a list of `answer-photos` paths to data URLs keyed by path (deduped, broken paths skipped) | `embedInspectionPhotos(paths)` |
+
+**Don't** copy these helpers into a new PDF generator — fix the canonical owner if you need different behavior. **Don't** call `pdfPhotoEmbed` directly in a loop; `embedInspectionPhotos` already wraps it with deduplication and bucket selection.
+
+## Inspection wizard shared UI
+
+Shared step-flow chrome lives in [`components/wizard/`](../components/wizard/). The full header + back + progress bar comes from `FlowHeader`; don't roll a custom per-screen header.
+
+| Component | Export | Purpose |
+|---|---|---|
+| [components/FlowHeader.tsx](../components/FlowHeader.tsx) | `FlowHeader` | Header for all inspection / briefing / incident flows: project name, back button, optional trailing element, edge-to-edge progress bar. Use `trailing="none"` + `trailingElement` for a custom right button (e.g. PDF icon). |
+| [components/wizard/StepBar.tsx](../components/wizard/StepBar.tsx) | `StepBar` | Dot + connector step indicator for multi-step flows with named steps. Pass `step` (0-based) and `stepLabels` (label per step). Used below `FlowHeader` in bobcat and excavator screens. |
+| [components/wizard/StepSectionLabel.tsx](../components/wizard/StepSectionLabel.tsx) | `StepSectionLabel` | Uppercase hairline-bottom section divider used between named sections inside a step. |
+| [components/wizard/WizardNav.tsx](../components/wizard/WizardNav.tsx) | `WizardNav` | Fixed-footer "წინა / შემდეგი / ✓ დასრულება" row. Shared by all five inspection flows. |
+
+**Don't** define a local `StepBar` or `StepSectionLabel` inline in a screen file — that's exactly the duplication pattern that was cleaned up (two copy-pasted `StepBar` + `slStyles` blocks in bobcat and excavator). **Don't** hardcode `'#10B981'` or `'#1D9E75'` for inspection green — use `theme.colors.semantic.success` and `theme.colors.semantic.successSoft`.
+
 ## Adding a new primitive
 
 If you're about to add a util in `lib/` or a wrapper in `components/`:

@@ -67,7 +67,7 @@ export function ScaffoldTour({ visible, onClose }: { visible: boolean; onClose: 
           </View>
 
           <Text style={styles.intro}>
-            გაიცანით ხარაჩოს კომპონენტები ინსპექციამდე
+            გაიცანით ხარაჩოს კომპონენტები შემოწმების აქტამდე
           </Text>
 
           <FlatList

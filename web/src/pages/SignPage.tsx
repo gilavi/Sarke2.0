@@ -98,7 +98,7 @@ export function SignPage({ token, onNavigate }: { token: string; onNavigate: (ha
   return (
     <div className="app">
       <Brand />
-      <h1 className="title">ინსპექციის რეპორტის ხელის მოწერა</h1>
+      <h1 className="title">შემოწმების აქტის რეპორტის ხელის მოწერა</h1>
       <p className="subtitle">
         გამარჯობა, <strong>{data.signer_name}</strong>. {data.expert_name}-მ მოგთხოვათ ხელის
         მოწერა როგორც{' '}
@@ -106,7 +106,7 @@ export function SignPage({ token, onNavigate }: { token: string; onNavigate: (ha
       </p>
 
       <div className="card">
-        <p className="eyebrow">ინსპექცია</p>
+        <p className="eyebrow">შემოწმების აქტი</p>
         <p style={{ fontSize: 17, fontWeight: 700, margin: '4px 0' }}>{data.inspection_title}</p>
         {data.project_name ? <p className="meta">{data.project_name}</p> : null}
         {data.completed_at ? (

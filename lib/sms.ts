@@ -37,7 +37,7 @@ export async function openSigningSMS({
 }): Promise<boolean> {
   const url = buildSigningUrl(token);
   const body =
-    `${name}, გთხოვთ ხელი მოაწეროთ სარკეს ინსპექციის რეპორტს:\n` +
+    `${name}, გთხოვთ ხელი მოაწეროთ სარკეს შემოწმების აქტის რეპორტს:\n` +
     `${url}\n` +
     `(ლინკი 14 დღეში იწურება)`;
   const sep = Platform.OS === 'ios' ? '&' : '?';

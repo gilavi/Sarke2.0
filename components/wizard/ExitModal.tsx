@@ -31,7 +31,7 @@ export function ExitConfirmationModal({ visible, onStay, onExit }: ExitModalProp
               გასვლა?
             </A11yText>
             <A11yText size="sm" color="#6B7280" style={styles.subtitle}>
-              თუ ახლა გახვალთ, მიმდინარე პასუხები შეინახება, მაგრამ ინსპექცია დასრულებულად არ ჩაითვლება.
+              თუ ახლა გახვალთ, მიმდინარე პასუხები შეინახება, მაგრამ შემოწმების აქტი დასრულებულად არ ჩაითვლება.
             </A11yText>
 
             <View style={styles.buttonRow}>

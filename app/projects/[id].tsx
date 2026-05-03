@@ -634,7 +634,7 @@ export default function ProjectDetail() {
                     <Swipeable
                       key={q.id}
                       renderRightActions={() => (
-                        <Pressable onPress={() => deleteQuestionnaire(q)} style={styles.swipeDelete} {...a11y('ინსპექციას წაშლა', 'ინსპექციას წაშლა', 'button')}>
+                        <Pressable onPress={() => deleteQuestionnaire(q)} style={styles.swipeDelete} {...a11y('შემოწმების აქტს წაშლა', 'შემოწმების აქტს წაშლა', 'button')}>
                           <Ionicons name="trash" size={18} color={theme.colors.white} />
                         </Pressable>
                       )}
@@ -649,7 +649,7 @@ export default function ProjectDetail() {
                           )
                         }
                         style={styles.listRow}
-                        {...a11y(tpl?.name ?? 'ინსპექცია', isCompleted ? 'დასრულებული ინსპექციას ნახვა' : 'დრაფტის გასაგრძელებლად დააჭირეთ', 'button')}
+                        {...a11y(tpl?.name ?? 'შემოწმების აქტი', isCompleted ? 'დასრულებული შემოწმების აქტს ნახვა' : 'დრაფტის გასაგრძელებლად დააჭირეთ', 'button')}
                       >
                         <View style={[styles.statusIcon, { backgroundColor: isCompleted ? theme.colors.semantic.successSoft : theme.colors.semantic.warningSoft }]}>
                           <Ionicons

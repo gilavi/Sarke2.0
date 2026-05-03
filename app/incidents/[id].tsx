@@ -397,7 +397,7 @@ export default function IncidentDetail() {
           <View style={s.warningBanner}>
             <Ionicons name="warning" size={18} color="#991B1B" />
             <Text style={s.warningText}>
-              შრომის ინსპექციის სამსახური უნდა ეცნობოს 24 საათის
+              შრომის შემოწმების აქტის სამსახური უნდა ეცნობოს 24 საათის
               განმავლობაში:{'\n'}
               <Text
                 style={{ fontWeight: '700', textDecorationLine: 'underline' }}

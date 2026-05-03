@@ -30,12 +30,12 @@ export default function Home() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">ინსპექციები</CardTitle>
+            <CardTitle className="text-lg">შემოწმების აქტები</CardTitle>
             <CardDescription>მალე დაემატება</CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-neutral-600">
-              ინსპექციების ნახვა და PDF რეპორტების გამოწერა.
+              შემოწმების აქტების ნახვა და PDF რეპორტების გამოწერა.
             </p>
           </CardContent>
         </Card>

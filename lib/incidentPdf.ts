@@ -282,7 +282,7 @@ export function buildIncidentPdfHtml(args: IncidentPdfArgs): string {
 ${
   needsNotice
     ? `<div class="notice-banner">
-    ⚠ შრომის ინსპექციის სამსახური უნდა ეცნობოს 24 საათის განმავლობაში:<br>
+    ⚠ შრომის შემოწმების აქტის სამსახური უნდა ეცნობოს 24 საათის განმავლობაში:<br>
     <span style="font-size:12pt">0322 43 00 43</span>
   </div>`
     : ''

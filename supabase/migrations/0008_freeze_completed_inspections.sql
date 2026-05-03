@@ -45,14 +45,12 @@ begin
   return new;
 end;
 $$;
-
 drop trigger if exists trg_freeze_completed_inspection on inspections;
 create trigger trg_freeze_completed_inspection
   before update on inspections
   for each row
   when (old.status = 'completed')
   execute function freeze_completed_inspection();
-
 -- =========================================================================
 -- Trigger: block answer writes when the parent inspection is completed
 -- =========================================================================
@@ -74,13 +72,11 @@ begin
   return coalesce(new, old);
 end;
 $$;
-
 drop trigger if exists trg_block_answer_write on answers;
 create trigger trg_block_answer_write
   before insert or update or delete on answers
   for each row
   execute function block_answer_write_when_completed();
-
 -- =========================================================================
 -- Trigger: block answer_photos writes when the parent inspection is completed
 -- =========================================================================
@@ -108,7 +104,6 @@ begin
   return coalesce(new, old);
 end;
 $$;
-
 drop trigger if exists trg_block_answer_photo_write on answer_photos;
 create trigger trg_block_answer_photo_write
   before insert or update or delete on answer_photos

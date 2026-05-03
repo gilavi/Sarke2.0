@@ -400,10 +400,10 @@ export default function InspectionResultScreen() {
   if (!loading && (notFound || loadError)) {
     return (
       <Screen>
-        <Stack.Screen options={{ headerShown: true, title: 'ინსპექცია' }} />
+        <Stack.Screen options={{ headerShown: true, title: 'შემოწმების აქტი' }} />
         <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
           <ErrorState
-            title={notFound ? 'ინსპექცია ვერ მოიძებნა' : 'ვერ ჩაიტვირთა'}
+            title={notFound ? 'შემოწმების აქტი ვერ მოიძებნა' : 'ვერ ჩაიტვირთა'}
             error={loadError ?? undefined}
             message={notFound ? 'შესაძლოა წაიშალა, ან თქვენ არ გაქვთ წვდომა.' : undefined}
             icon={notFound ? 'alert-circle-outline' : 'cloud-offline-outline'}
@@ -434,7 +434,7 @@ export default function InspectionResultScreen() {
       <Stack.Screen
         options={{
           headerShown: true,
-          title: template?.name ?? 'ინსპექცია',
+          title: template?.name ?? 'შემოწმების აქტი',
           headerBackTitle: 'უკან',
         }}
       />

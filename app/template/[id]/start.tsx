@@ -17,6 +17,10 @@ import { Button, Screen } from '../../../components/ui';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
 import { Skeleton } from '../../../components/Skeleton';
 import { questionnairesApi, projectsApi } from '../../../lib/services';
+import { InspectionTypeAvatar } from '../../../components/InspectionTypeAvatar';
+import { bobcatApi } from '../../../lib/bobcatService';
+import { excavatorApi } from '../../../lib/excavatorService';
+import { generalEquipmentApi } from '../../../lib/generalEquipmentService';
 import { useToast } from '../../../lib/toast';
 import { useTheme } from '../../../lib/theme';
 
@@ -51,13 +55,24 @@ export default function StartTemplateScreen() {
     if (!template || !selected) return;
     setBusy(true);
     try {
-      const q = (await questionnairesApi.create({
-        projectId: selected,
-        templateId: template.id,
-      }));
-      router.replace(`/inspections/${q.id}/wizard` as any);
+      if (template.category === 'bobcat') {
+        const b = await bobcatApi.create({ projectId: selected, templateId: template.id });
+        router.replace(`/inspections/bobcat/${b.id}` as any);
+      } else if (template.category === 'excavator') {
+        const e = await excavatorApi.create({ projectId: selected, templateId: template.id });
+        router.replace(`/inspections/excavator/${e.id}` as any);
+      } else if (template.category === 'general_equipment') {
+        const g = await generalEquipmentApi.create({ projectId: selected, templateId: template.id });
+        router.replace(`/inspections/general-equipment/${g.id}` as any);
+      } else {
+        const q = await questionnairesApi.create({
+          projectId: selected,
+          templateId: template.id,
+        });
+        router.replace(`/inspections/${q.id}/wizard` as any);
+      }
     } catch (e) {
-      toast.error(friendlyError(e, 'ინსპექცია ვერ შეიქმნა'));
+      toast.error(friendlyError(e, 'შემოწმების აქტი ვერ შეიქმნა'));
     } finally {
       setBusy(false);
     }
@@ -71,16 +86,19 @@ export default function StartTemplateScreen() {
 
   return (
     <Screen>
-      <Stack.Screen options={{ headerShown: true, title: 'ახალი ინსპექცია', presentation: 'modal' }} />
+      <Stack.Screen options={{ headerShown: true, title: 'ახალი შემოწმების აქტი', presentation: 'modal' }} />
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
         <ScrollView contentContainerStyle={styles.scroll}>
-          <View style={{ gap: 4 }}>
-            <Text style={styles.eyebrow}>შაბლონი</Text>
-            {template ? (
-              <Text style={styles.templateName}>{template.name}</Text>
-            ) : (
-              <Skeleton width={'80%'} height={22} />
-            )}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+            <InspectionTypeAvatar category={template?.category} size={56} />
+            <View style={{ flex: 1, gap: 4 }}>
+              <Text style={styles.eyebrow}>შაბლონი</Text>
+              {template ? (
+                <Text style={styles.templateName}>{template.name}</Text>
+              ) : (
+                <Skeleton width={'80%'} height={22} />
+              )}
+            </View>
           </View>
 
           <View style={{ gap: 4, marginTop: 20 }}>
@@ -164,7 +182,7 @@ export default function StartTemplateScreen() {
 
         <View style={styles.footer}>
           <Button
-            title="დაიწყე ინსპექცია"
+            title="დაიწყე შემოწმების აქტი"
             onPress={start}
             loading={busy}
             disabled={!selected}

@@ -1,5 +1,7 @@
 import '../lib/polyfills';
 import '../lib/i18n';
+import { LogBox } from 'react-native';
+LogBox.ignoreLogs(['AuthApiError: Invalid Refresh Token', 'Refresh Token Not Found']);
 import { useEffect } from 'react';
 import * as Linking from 'expo-linking';
 import { Stack, useNavigationContainerRef, useRouter, useSegments, useGlobalSearchParams } from 'expo-router';

@@ -562,7 +562,7 @@ function Step1({
         <View style={s.warningBanner}>
           <Ionicons name="warning" size={18} color="#991B1B" />
           <Text style={s.warningBannerText}>
-            კანონის მოთხოვნით შრომის ინსპექცია უნდა ეცნობოს 24 საათის
+            კანონის მოთხოვნით შრომის შემოწმების აქტი უნდა ეცნობოს 24 საათის
             განმავლობაში
           </Text>
         </View>
@@ -849,7 +849,7 @@ function Step4({
         <View style={s.warningBanner}>
           <Ionicons name="warning" size={18} color="#991B1B" />
           <Text style={s.warningBannerText}>
-            კანონის მოთხოვნით შრომის ინსპექცია უნდა ეცნობოს 24 საათის
+            კანონის მოთხოვნით შრომის შემოწმების აქტი უნდა ეცნობოს 24 საათის
             განმავლობაში
           </Text>
         </View>

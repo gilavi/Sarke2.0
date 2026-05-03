@@ -22,7 +22,7 @@ interface NavItem {
 const items: NavItem[] = [
   { to: '/', label: 'მთავარი', icon: Home, enabled: true },
   { to: '/projects', label: 'პროექტები', icon: Folder, enabled: false },
-  { to: '/inspections', label: 'ინსპექციები', icon: ClipboardCheck, enabled: false },
+  { to: '/inspections', label: 'შემოწმების აქტები', icon: ClipboardCheck, enabled: false },
   { to: '/certificates', label: 'სერტიფიკატები', icon: Award, enabled: false },
   { to: '/calendar', label: 'კალენდარი', icon: Calendar, enabled: false },
   { to: '/regulations', label: 'რეგულაციები', icon: BookOpen, enabled: false },

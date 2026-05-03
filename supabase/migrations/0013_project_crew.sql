@@ -16,7 +16,6 @@
 
 alter table projects
   add column if not exists crew jsonb;
-
 -- Treat NULL as "legacy / not yet edited" so migrations don't have to
 -- backfill. The app reads `crew ?? []`. We still validate the shape when
 -- the column is present so a malformed write fails loudly.

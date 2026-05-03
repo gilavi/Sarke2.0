@@ -47,6 +47,10 @@ import { useToast } from '../../lib/toast';
 import { haptic } from '../../lib/haptics';
 import { useTranslation } from 'react-i18next';
 import type { Inspection, Project, Qualification, Template } from '../../types/models';
+import { bobcatApi } from '../../lib/bobcatService';
+import { excavatorApi } from '../../lib/excavatorService';
+import { generalEquipmentApi } from '../../lib/generalEquipmentService';
+import { InspectionTypeAvatar } from '../../components/InspectionTypeAvatar';
 
 const staticStyles = StyleSheet.create({
   scrollContent: { paddingBottom: 100 },
@@ -439,7 +443,9 @@ export default function HomeScreen() {
               </Pressable>
             </View>
             <View style={[styles.recentList, staticStyles.recentListMargin]}>
-              {recent.slice(0, 4).map((q, i) => (
+              {recent.slice(0, 4).map((q, i) => {
+                const tpl = templates.find(t => t.id === q.template_id);
+                return (
                 <Pressable
                   key={q.id}
                   onPress={() =>
@@ -454,21 +460,11 @@ export default function HomeScreen() {
                     'button'
                   )}
                 >
-                  <View
-                    style={[
-                      styles.recentDot,
-                      {
-                        backgroundColor:
-                          q.status === 'completed' ? theme.colors.harnessSoft : theme.colors.warnSoft,
-                      },
-                    ]}
-                  >
-                    <Ionicons
-                      name={q.status === 'completed' ? 'checkmark' : 'pencil'}
-                      size={14}
-                      color={q.status === 'completed' ? theme.colors.harnessTint : theme.colors.warn}
-                    />
-                  </View>
+                  <InspectionTypeAvatar
+                    category={tpl?.category}
+                    size={38}
+                    status={q.status === 'completed' ? 'completed' : 'draft'}
+                  />
                   <View style={staticStyles.flex}>
                     <Text style={styles.recentTitle} numberOfLines={1}>
                       {templateName(q.template_id)}
@@ -477,7 +473,8 @@ export default function HomeScreen() {
                   </View>
                   <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
                 </Pressable>
-              ))}
+                );
+              })}
             </View>
           </>
         ) : null}
@@ -619,6 +616,37 @@ function ProjectPickerSheet({
   };
 
   const startInspection = async (projectId: string, templateId: string) => {
+    const tpl = templates.find(t => t.id === templateId);
+    if (tpl?.category === 'bobcat') {
+      try {
+        const b = await bobcatApi.create({ projectId, templateId });
+        onClose();
+        router.push(`/inspections/bobcat/${b.id}` as any);
+      } catch (e) {
+        toast.error(friendlyError(e, t('errors.createFailed')));
+      }
+      return;
+    }
+    if (tpl?.category === 'excavator') {
+      try {
+        const e = await excavatorApi.create({ projectId, templateId });
+        onClose();
+        router.push(`/inspections/excavator/${e.id}` as any);
+      } catch (e) {
+        toast.error(friendlyError(e, t('errors.createFailed')));
+      }
+      return;
+    }
+    if (tpl?.category === 'general_equipment') {
+      try {
+        const g = await generalEquipmentApi.create({ projectId, templateId });
+        onClose();
+        router.push(`/inspections/general-equipment/${g.id}` as any);
+      } catch (e) {
+        toast.error(friendlyError(e, t('errors.createFailed')));
+      }
+      return;
+    }
     try {
       const q = await questionnairesApi.create({ projectId, templateId });
       onClose();
@@ -689,7 +717,13 @@ function ProjectPickerSheet({
               <>
                 {/* Sheet header */}
                 <View style={pickerStyles.sheetHeader}>
-                  <Text style={pickerStyles.sheetTitle}>{t('home.startInspectionSheetTitle')}</Text>
+                  {pickedTemplateId ? (
+                    <InspectionTypeAvatar
+                      category={templates.find(t => t.id === pickedTemplateId)?.category}
+                      size={36}
+                    />
+                  ) : null}
+                  <Text style={[pickerStyles.sheetTitle, { flex: 1 }]}>{t('home.startInspectionSheetTitle')}</Text>
                   <Pressable onPress={onClose} hitSlop={10}>
                     <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
                   </Pressable>
@@ -1355,13 +1389,6 @@ function getstyles(theme: Theme) {
   recentRowBorder: {
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: theme.colors.hairline,
-  },
-  recentDot: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   recentTitle: {
     fontSize: 14,

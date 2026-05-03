@@ -772,7 +772,7 @@ export default function QuestionnaireWizard() {
       router.replace(`/inspections/${questionnaire.id}` as any);
     } catch (e) {
       haptic.error();
-      toast.error(`ინსპექციის დასრულება ვერ მოხერხდა: ${toErrorMessage(e, 'ქსელის შეცდომა')}`);
+      toast.error(`შემოწმების აქტის დასრულება ვერ მოხერხდა: ${toErrorMessage(e, 'ქსელის შეცდომა')}`);
       setFinishing(false);
     }
     // On success we navigate away, so we don't reset finishing — leaving
@@ -1030,7 +1030,7 @@ export default function QuestionnaireWizard() {
                 </View>
                 <Text style={{ fontSize: 18, fontWeight: '700', color: theme.colors.ink }}>წაშლა?</Text>
                 <Text style={{ fontSize: 14, color: theme.colors.inkSoft, textAlign: 'center', lineHeight: 20 }}>
-                  ინსპექცია სამუდამოდ წაიშლება.
+                  შემოწმების აქტი სამუდამოდ წაიშლება.
                 </Text>
               </View>
               <View style={{ gap: 8, marginTop: 4 }}>

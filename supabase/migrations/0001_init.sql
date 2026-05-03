@@ -2,7 +2,6 @@
 -- Postgres 15+ (Supabase). All user data is RLS-scoped.
 
 create extension if not exists "uuid-ossp";
-
 -- ---------- enums ----------
 
 create type question_type as enum (
@@ -12,15 +11,12 @@ create type question_type as enum (
   'freetext',
   'photo_upload'
 );
-
 create type questionnaire_status as enum ('draft', 'completed');
-
 create type signer_role as enum (
   'expert',
   'xaracho_supervisor',
   'xaracho_assembler'
 );
-
 -- ---------- users ----------
 
 create table users (
@@ -30,7 +26,6 @@ create table users (
   last_name text not null,
   created_at timestamptz not null default now()
 );
-
 -- ---------- certificates ----------
 
 create table certificates (
@@ -43,9 +38,7 @@ create table certificates (
   file_url text,                     -- storage path in bucket 'certificates'
   created_at timestamptz not null default now()
 );
-
 create index idx_certificates_user on certificates(user_id);
-
 -- ---------- projects ----------
 
 create table projects (
@@ -56,9 +49,7 @@ create table projects (
   address text,
   created_at timestamptz not null default now()
 );
-
 create index idx_projects_user on projects(user_id);
-
 -- ---------- project_signers ----------
 
 create table project_signers (
@@ -71,9 +62,7 @@ create table project_signers (
   signature_png_url text,            -- saved signature in bucket 'signatures'
   created_at timestamptz not null default now()
 );
-
 create index idx_signers_project on project_signers(project_id);
-
 -- ---------- templates ----------
 
 create table templates (
@@ -86,7 +75,6 @@ create table templates (
   required_signer_roles signer_role[] not null default '{}',
   created_at timestamptz not null default now()
 );
-
 -- ---------- questions ----------
 
 create table questions (
@@ -102,9 +90,7 @@ create table questions (
   grid_rows jsonb,                   -- array of row labels
   grid_cols jsonb                    -- array of column labels
 );
-
 create index idx_questions_template on questions(template_id, section, "order");
-
 -- ---------- questionnaires ----------
 
 create table questionnaires (
@@ -120,10 +106,8 @@ create table questionnaires (
   created_at timestamptz not null default now(),
   completed_at timestamptz
 );
-
 create index idx_quest_project on questionnaires(project_id);
 create index idx_quest_user on questionnaires(user_id);
-
 -- ---------- answers ----------
 
 create table answers (
@@ -137,9 +121,7 @@ create table answers (
   comment text,
   unique (questionnaire_id, question_id)
 );
-
 create index idx_answers_q on answers(questionnaire_id);
-
 -- ---------- answer_photos ----------
 
 create table answer_photos (
@@ -149,9 +131,7 @@ create table answer_photos (
   caption text,
   created_at timestamptz not null default now()
 );
-
 create index idx_photos_answer on answer_photos(answer_id);
-
 -- ---------- signatures (applied on a questionnaire) ----------
 
 create table signatures (
@@ -165,7 +145,6 @@ create table signatures (
   signed_at timestamptz not null default now(),
   unique (questionnaire_id, signer_role)
 );
-
 -- ===========================================================================
 -- Row Level Security
 -- ===========================================================================
@@ -180,25 +159,20 @@ alter table questionnaires enable row level security;
 alter table answers enable row level security;
 alter table answer_photos enable row level security;
 alter table signatures enable row level security;
-
 -- users: a row is readable/writable only by its owner
 create policy "users self" on users
   for all using (auth.uid() = id) with check (auth.uid() = id);
-
 -- certificates: owner only
 create policy "cert owner" on certificates
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
-
 -- projects: owner only
 create policy "proj owner" on projects
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
-
 -- signers: accessible if project owner
 create policy "signers via project" on project_signers
   for all using (exists (
     select 1 from projects p where p.id = project_id and p.user_id = auth.uid()
   ));
-
 -- templates: system templates readable by everyone; user templates owner only
 create policy "templates read" on templates
   for select using (is_system or auth.uid() = owner_id);
@@ -208,7 +182,6 @@ create policy "templates update" on templates
   for update using (auth.uid() = owner_id) with check (auth.uid() = owner_id);
 create policy "templates delete" on templates
   for delete using (auth.uid() = owner_id);
-
 -- questions: visible if parent template is visible
 create policy "questions read" on questions
   for select using (exists (
@@ -218,29 +191,24 @@ create policy "questions write" on questions
   for all using (exists (
     select 1 from templates t where t.id = template_id and t.owner_id = auth.uid()
   ));
-
 -- questionnaires: owner only
 create policy "quest owner" on questionnaires
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
-
 -- answers / photos / signatures: via parent questionnaire
 create policy "answers via quest" on answers
   for all using (exists (
     select 1 from questionnaires q where q.id = questionnaire_id and q.user_id = auth.uid()
   ));
-
 create policy "photos via answer" on answer_photos
   for all using (exists (
     select 1 from answers a
     join questionnaires q on q.id = a.questionnaire_id
     where a.id = answer_id and q.user_id = auth.uid()
   ));
-
 create policy "signatures via quest" on signatures
   for all using (exists (
     select 1 from questionnaires q where q.id = questionnaire_id and q.user_id = auth.uid()
   ));
-
 -- ===========================================================================
 -- Auth trigger: provision users row on signup
 -- ===========================================================================
@@ -262,7 +230,6 @@ begin
   return new;
 end;
 $$;
-
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users

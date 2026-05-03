@@ -7,7 +7,6 @@
 
 alter table schedules
   add column if not exists google_event_id text;
-
 -- ---------- trigger function ----------
 
 create or replace function advance_schedule_on_complete()
@@ -54,16 +53,13 @@ begin
   return new;
 end;
 $$;
-
 -- ---------- trigger ----------
 
 drop trigger if exists trg_advance_schedule_on_complete on questionnaires;
-
 create trigger trg_advance_schedule_on_complete
   after update on questionnaires
   for each row
   execute function advance_schedule_on_complete();
-
 -- ---------- indexes (kept idempotent; 0003 already created idx_schedules_due) ----------
 
 create index if not exists idx_schedules_due on schedules(next_due_at);

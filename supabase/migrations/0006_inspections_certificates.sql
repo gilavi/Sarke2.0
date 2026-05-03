@@ -28,33 +28,26 @@
 -- =========================================================================
 
 alter table certificates rename to qualifications;
-
 alter index if exists idx_certificates_user rename to idx_qualifications_user;
-
 -- Policy text doesn't reference the table by name (just auth.uid() = user_id),
 -- so renaming the table carries the policy correctly. Rename for clarity.
 alter policy "cert owner" on qualifications rename to "qual owner";
-
 -- =========================================================================
 -- Step 2: rename `questionnaires` → `inspections`
 -- =========================================================================
 
 alter table questionnaires rename to inspections;
-
 alter index if exists idx_quest_project rename to idx_insp_project;
 alter index if exists idx_quest_user rename to idx_insp_user;
 alter index if exists idx_quest_project_item rename to idx_insp_project_item;
-
 -- Policy body only checks user_id; rename for consistency.
 alter policy "quest owner" on inspections rename to "insp owner";
-
 -- =========================================================================
 -- Step 3: rename FK columns on dependent tables → inspection_id
 -- =========================================================================
 
 alter table answers    rename column questionnaire_id to inspection_id;
 alter table signatures rename column questionnaire_id to inspection_id;
-
 -- The UNIQUE constraints (answers: questionnaire_id+question_id; signatures:
 -- questionnaire_id+signer_role) keep their names but now reference the renamed
 -- column. Leave the names — they still function.
@@ -70,7 +63,6 @@ create policy "answers via insp" on answers
   for all using (exists (
     select 1 from inspections i where i.id = inspection_id and i.user_id = auth.uid()
   ));
-
 drop policy if exists "photos via answer" on answer_photos;
 create policy "photos via answer" on answer_photos
   for all using (exists (
@@ -78,13 +70,11 @@ create policy "photos via answer" on answer_photos
     join inspections i on i.id = a.inspection_id
     where a.id = answer_id and i.user_id = auth.uid()
   ));
-
 drop policy if exists "signatures via quest" on signatures;
 create policy "signatures via insp" on signatures
   for all using (exists (
     select 1 from inspections i where i.id = inspection_id and i.user_id = auth.uid()
   ));
-
 -- =========================================================================
 -- Step 5: re-attach the schedule-advance trigger to the renamed table
 -- =========================================================================
@@ -96,7 +86,6 @@ create trigger trg_advance_schedule_on_complete
   after update on inspections
   for each row
   execute function advance_schedule_on_complete();
-
 -- =========================================================================
 -- Step 6: NEW `certificates` table — generated PDF from an inspection
 -- =========================================================================
@@ -112,15 +101,11 @@ create table certificates (
   params jsonb not null default '{}'::jsonb,
   generated_at timestamptz not null default now()
 );
-
 create index idx_certificates_inspection on certificates(inspection_id);
 create index idx_certificates_user on certificates(user_id);
-
 alter table certificates enable row level security;
-
 create policy "cert owner" on certificates
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
-
 -- =========================================================================
 -- Step 7: backfill — 1:1 from completed inspections with a pdf_url
 -- =========================================================================
@@ -140,7 +125,6 @@ select
   coalesce(i.completed_at, i.created_at, now())
 from inspections i
 where i.pdf_url is not null;
-
 -- =========================================================================
 -- Step 8: drop inspections.pdf_url — data now lives on certificates.pdf_url
 -- =========================================================================

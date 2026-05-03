@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
     // ── Build SMS body ────────────────────────────────────────────────────
     const signingUrl = `${SIGN_WEB_URL}/#/sign/${rsr.token}`;
     const smsBody =
-      `${rsr.signer_name}, გთხოვთ ხელი მოაწეროთ სარკეს ინსპექციის რეპორტს:\n` +
+      `${rsr.signer_name}, გთხოვთ ხელი მოაწეროთ სარკეს შემოწმების აქტის რეპორტს:\n` +
       `${signingUrl}\n` +
       `(ლინკი 14 დღეში იწურება)`;
 

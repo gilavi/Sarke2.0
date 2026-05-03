@@ -4,7 +4,6 @@ import {
   ScrollView,
   StyleProp,
   StyleSheet,
-  TouchableWithoutFeedback,
   ViewStyle,
 } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
@@ -44,24 +43,23 @@ export function KeyboardSafeArea({
   const insets = useSafeAreaInsets();
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior="padding"
-        keyboardVerticalOffset={insets.top + headerHeight}
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior="padding"
+      keyboardVerticalOffset={insets.top + headerHeight}
+    >
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[styles.content, contentStyle]}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        onScrollBeginDrag={Keyboard.dismiss}
+        bounces={false}
+        showsVerticalScrollIndicator={false}
       >
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={[styles.content, contentStyle]}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="interactive"
-          bounces={false}
-          showsVerticalScrollIndicator={false}
-        >
-          {children}
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </TouchableWithoutFeedback>
+        {children}
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

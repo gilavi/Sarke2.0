@@ -10,10 +10,14 @@ Expo (React Native) app for people who climb scaffolding and pretend it's safe. 
 
 ## 🏗️ MVP Scope (a.k.a. "What Actually Works")
 
-Two seeded templates, both in ქართული, because Google Translate doesn't know what a ხარაჩო is:
+Five seeded templates, all in ქართული, because Google Translate doesn't know what a ხარაჩო is:
 
 - **ფასადის ხარაჩოს შემოწმების აქტი** — faÇade scaffolding inspection (yes, the Ç is intentional, we fancy now)
 - **დამცავი ქამრების შემოწმების აქტი** — fall-protection harness inspection. If this fails, you're already dead.
+- **ციცხვიანი დამტვირთველის შემოწმების აქტი** — Bobcat / Skid-Steer Loader inspection. 30-item checklist (3-option: good / deficient / unusable), general info section, auto-calculated summary table with verdict auto-suggestion, inspector signature, and dedicated PDF. Stored in `bobcat_inspections` table (migration 0024). Routed via `category: 'bobcat'` — selection from the same template picker routes to `app/inspections/bobcat/[id].tsx` instead of the generic wizard.
+- **დიდი ციცხვიანი დამტვირთველის შემოწმება** — Large Loader inspection. 33-item variant of the Bobcat template (item IDs 1-32 + #40). Shares the same screen, DB table, and PDF generator. New items: #10 (Z-bar mechanism), #32 (steering wheel), #40 (reverse camera — neutral 3rd option "არ გААჩნია" that does not trigger rejection verdict). Template UUID `44444444-4444-4444-4444-444444444444`, inserted by migration 0025 with `category: 'bobcat'`.
+- **ექსკავატორის ტექნიკური შემოწმების აქტი** — Excavator technical inspection. 6-step wizard (info → engine → undercarriage → cabin+safety → maintenance+verdict → signature). Pre-filled item lists per ISO 9457 section grouping; verdict auto-suggestion from checklist results; dedicated PDF with section tables and verdict block. Stored in `excavator_inspections` table (migration 0026). Routed via `category: 'excavator'` → `app/inspections/excavator/[id].tsx`.
+- **ტექნიკური აღჭურვილობის შემოწმების აქტი** — Flexible general-equipment inspection. User builds their own equipment list row-by-row (name, model, serial, 3-state condition with accordion for note + photos). 4-step wizard (info → equipment → summary → signature). No predefined checklist items. Stored in `general_equipment_inspections` table (migration 0027). Routed via `category: 'general_equipment'` → `app/inspections/general-equipment/[id].tsx`.
 
 **Contextual help (ხარაჩო tour):** the first time a user starts a scaffold questionnaire they see a 9‑card swipeable tour explaining each component. Dismissal is persisted in `AsyncStorage` under `haraco_tour_seen`. Every Section 2 row also shows a "?" icon that opens a bottom sheet with the component illustration + one‑line guidance.
 
@@ -98,6 +102,10 @@ Schema + seed already applied to the hosted project. Relevant files preserved he
 - `supabase/migrations/0020_storage_rls_and_timestamps.sql` — tightens `incident-photos` and `report-photos` storage RLS to the row owner; adds `updated_at` + audit trigger to mutable user-data tables; adds composite indexes for project-signer lookup and certificate pagination
 - `supabase/migrations/0021_inspection_attachments.sql` — `inspection_attachments` table for equipment certificates uploaded against an inspection (type chip + №number + 16:9 photo). Distinct from `qualifications` (expert credentials) and `certificates` (generated PDFs). Photos live in the existing `certificates` bucket.
 - `supabase/migrations/0023_photo_location.sql` — adds `latitude double precision`, `longitude double precision`, `address text` to `answer_photos`; backfills from legacy `addr:` caption prefix.
+- `supabase/migrations/0024_bobcat_inspections.sql` — `bobcat_inspections` table, RLS, updated_at trigger, and system template rows for Bobcat and Large Loader (`category: 'bobcat'`).
+- `supabase/migrations/0025_large_loader_template.sql` — inserts the Large Loader system template variant (`44444444-…`).
+- `supabase/migrations/0026_excavator_template.sql` — `excavator_inspections` table, RLS, updated_at trigger, and system template row (`category: 'excavator'`).
+- `supabase/migrations/0027_general_equipment_inspection.sql` — `general_equipment_inspections` table (JSONB `equipment` array, JSONB `summary_photos`), RLS, updated_at trigger, and system template row (`66666666-…`, `category: 'general_equipment'`).
 - `supabase/seed/01_system_templates.sql` — system templates
 
 Storage buckets: `certificates`, `answer-photos`, `pdfs`, `signatures`, `incident-photos`, `report-photos`, `project-files`, `remote-signatures`. 
@@ -242,7 +250,7 @@ All in-app strings are inline (no i18n file). Keep the voice consistent:
 |---|---|
 | You-form | Polite `თქვენ` everywhere: `შეიყვანეთ`, `აირჩიეთ`, `დააჭირეთ`, `დაამატეთ`, `შეამოწმეთ`. Never `შეიყვანე` / `აირჩიე` / `დააჭირე` / `დაამატე` / `შეამოწმე`. |
 | Email | `ელ-ფოსტა` (never `იმეილი`). |
-| Inspection (noun) | `ინსპექცია` (never `შემოწმება` / `ინსპექტირება` as the artifact noun). |
+| Inspection (noun) | `შემოწმების აქტი` (never `შემოწმება` / `ინსპექტირება` as the artifact noun). |
 | To inspect (verb) | `შემოწმება` allowed only as the verbal action, not as the noun for the artifact. |
 | PDF artifact | `PDF რეპორტი` (not `PDF ანგარიში`). |
 | Qualification credential | `კვალიფიკაციის სერტიფიკატი`; short form `სერტიფიკატი` only inside qualifications screens. |

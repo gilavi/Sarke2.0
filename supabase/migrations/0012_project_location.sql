@@ -9,7 +9,6 @@
 alter table projects
   add column if not exists latitude  double precision,
   add column if not exists longitude double precision;
-
 -- Sanity bounds. A coordinate outside these ranges is always a bug
 -- (probably a swap of lat/lng or a parse error from the geocoder).
 alter table projects

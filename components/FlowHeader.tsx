@@ -8,8 +8,6 @@ import { useTheme } from '../lib/theme';
 import { a11y } from '../lib/accessibility';
 import { ExitConfirmationModal } from './wizard/ExitModal';
 
-const PROGRESS_GREEN = '#1D9E75';
-
 type LeadingControl = 'back' | 'none';
 type TrailingControl = 'help' | 'close' | 'none';
 
@@ -171,7 +169,12 @@ export function FlowHeader({
       </View>
 
       <View style={[styles.progressTrack, { backgroundColor: theme.colors.subtleSurface }]}>
-        <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
+        <View
+          style={[
+            styles.progressFill,
+            { width: `${progress * 100}%`, backgroundColor: theme.colors.semantic.success },
+          ]}
+        />
       </View>
 
       <ExitConfirmationModal
@@ -262,6 +265,5 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: '100%',
-    backgroundColor: PROGRESS_GREEN,
   },
 });

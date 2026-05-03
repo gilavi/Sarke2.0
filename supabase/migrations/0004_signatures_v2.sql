@@ -12,7 +12,6 @@
 
 alter table users
   add column if not exists saved_signature_url text;
-
 -- RLS already scoped to self via existing "users self" policy, no change.
 
 -- ---------- signatures.status ----------
@@ -22,16 +21,13 @@ do $$ begin
     create type signature_status as enum ('signed', 'not_present');
   end if;
 end $$;
-
 alter table signatures
   add column if not exists status signature_status not null default 'signed',
   add column if not exists person_name text;
-
 -- signature_png_url is no longer required when status = 'not_present'.
 -- Drop the NOT NULL, enforced via check instead.
 alter table signatures
   alter column signature_png_url drop not null;
-
 -- Ensure a signed row has an image path.
 do $$ begin
   if not exists (

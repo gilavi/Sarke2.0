@@ -8,6 +8,7 @@ import { Card, Screen } from '../components/ui';
 import { Skeleton } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
 import { inspectionsApi } from '../lib/services';
+import { InspectionTypeAvatar } from '../components/InspectionTypeAvatar';
 import { useToast } from '../lib/toast';
 import { useTheme } from '../lib/theme';
 
@@ -76,7 +77,7 @@ const MemoizedHistoryItem = memo(function HistoryItem({
         if (openSwipeId.current === q.id) openSwipeId.current = null;
       }}
       renderRightActions={() => (
-        <Pressable onPress={() => onDelete(q)} style={styles.swipeDelete} {...a11y(t('common.delete'), 'ინსპექციის წაშლა', 'button')}>
+        <Pressable onPress={() => onDelete(q)} style={styles.swipeDelete} {...a11y(t('common.delete'), 'შემოწმების აქტის წაშლა', 'button')}>
           <Ionicons name="trash" size={18} color={theme.colors.white} />
           <Text style={{ color: theme.colors.white, fontSize: 11, fontWeight: '700' }}>
             {t('common.delete')}
@@ -94,27 +95,17 @@ const MemoizedHistoryItem = memo(function HistoryItem({
         style={({ pressed }) => pressed ? { opacity: 0.7 } : undefined}
         {...a11y(
           `${tpl?.name ?? t('common.inspection')} — ${p?.name ?? ''}`.trim(),
-          q.status === 'completed' ? 'დასრულებული ინსპექციის ნახვა' : 'დრაფტის გაგრძელება',
+          q.status === 'completed' ? 'დასრულებული შემოწმების აქტის ნახვა' : 'დრაფტის გაგრძელება',
           'button'
         )}
       >
         <Card padding={12}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <View
-              style={[
-                styles.icon,
-                {
-                  backgroundColor:
-                    q.status === 'completed' ? theme.colors.accentSoft : theme.colors.warnSoft,
-                },
-              ]}
-            >
-              <Ionicons
-                name={q.status === 'completed' ? 'checkmark-circle' : 'pencil'}
-                size={20}
-                color={q.status === 'completed' ? theme.colors.accent : theme.colors.warn}
-              />
-            </View>
+            <InspectionTypeAvatar
+              category={tpl?.category}
+              size={44}
+              status={q.status === 'completed' ? 'completed' : 'draft'}
+            />
             <View style={{ flex: 1 }}>
               <Text style={{ fontWeight: '600', color: theme.colors.ink }}>
                 {tpl?.name ?? t('common.inspection')}
@@ -266,13 +257,6 @@ function getstyles(theme: any) {
     letterSpacing: 0.8,
     marginTop: 8,
     marginBottom: 2,
-  },
-  icon: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   swipeDelete: {
     width: 86,

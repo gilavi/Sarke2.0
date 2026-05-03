@@ -38,21 +38,17 @@ create table remote_signing_requests (
   last_sent_at timestamptz,
   created_at timestamptz not null default now()
 );
-
 create index idx_rsr_inspection on remote_signing_requests(inspection_id);
 create index idx_rsr_token on remote_signing_requests(token);
 create index idx_rsr_expert on remote_signing_requests(expert_user_id);
-
 -- ---------- RLS ----------
 
 alter table remote_signing_requests enable row level security;
-
 -- Authenticated experts: full access to their own requests.
 create policy "rsr expert owner" on remote_signing_requests
   for all
   using (auth.uid() = expert_user_id)
   with check (auth.uid() = expert_user_id);
-
 -- Anon role: NO direct table access. Token-scoped reads/writes go through
 -- the SECURITY DEFINER RPCs below.
 
@@ -117,10 +113,8 @@ begin
   );
 end;
 $$;
-
 revoke all on function get_signing_request(text) from public;
 grant execute on function get_signing_request(text) to anon, authenticated;
-
 -- ---------- RPC: submit_signature ----------
 -- Records the signature path against a valid token and marks status='signed'.
 -- The web client uploads the PNG directly to storage (RLS-permitted on the
@@ -163,10 +157,8 @@ begin
   return jsonb_build_object('ok', true);
 end;
 $$;
-
 revoke all on function submit_signature(text, text) from public;
 grant execute on function submit_signature(text, text) to anon, authenticated;
-
 -- ---------- RPC: decline_signature ----------
 
 create or replace function decline_signature(p_token text, p_reason text)
@@ -194,10 +186,8 @@ begin
   return jsonb_build_object('ok', true);
 end;
 $$;
-
 revoke all on function decline_signature(text, text) from public;
 grant execute on function decline_signature(text, text) to anon, authenticated;
-
 -- ---------- storage bucket + policies ----------
 -- Bucket creation in Supabase is idempotent via insert ... on conflict.
 -- Bucket is private; access governed by storage.objects policies below.
@@ -205,7 +195,6 @@ grant execute on function decline_signature(text, text) to anon, authenticated;
 insert into storage.buckets (id, name, public)
 values ('remote-signatures', 'remote-signatures', false)
 on conflict (id) do nothing;
-
 -- Anon INSERT: allowed only to paths that start with a valid open token,
 -- i.e. the first path component (folder) must equal a token whose row is
 -- still pending/sent and not expired.
@@ -221,7 +210,6 @@ create policy "rsr storage anon insert" on storage.objects
          and expires_at > now()
     )
   );
-
 -- Anon SELECT: not granted (mobile app fetches via signed URLs as the owner).
 
 -- Authenticated SELECT: experts can read signatures for their own requests.
@@ -236,7 +224,6 @@ create policy "rsr storage owner read" on storage.objects
          and r.expert_user_id = auth.uid()
     )
   );
-
 -- Authenticated DELETE: experts can clean up their own request files when
 -- cancelling or after the row is deleted.
 create policy "rsr storage owner delete" on storage.objects

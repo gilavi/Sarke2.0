@@ -12,6 +12,7 @@ import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { useTheme } from '../../../lib/theme';
 import { formatShortDateTime } from '../../../lib/formatDate';
 import { useProject, useInspectionsByProject, useTemplates } from '../../../lib/apiHooks';
+import { InspectionTypeAvatar } from '../../../components/InspectionTypeAvatar';
 import type { Questionnaire } from '../../../types/models';
 
 function formatGeorgianDate(isoDate: string): string {
@@ -39,14 +40,14 @@ export default function ProjectInspectionsList() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <Stack.Screen options={{ title: 'ინსპექციები' }} />
+      <Stack.Screen options={{ title: 'შემოწმების აქტები' }} />
 
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 }}
       >
         <View style={styles.pageHeader}>
-          <Text style={styles.pageTitle}>ინსპექციები</Text>
+          <Text style={styles.pageTitle}>შემოწმების აქტები</Text>
           {project?.name ? (
             <Text style={styles.pageSubtitle}>{project.name}</Text>
           ) : null}
@@ -81,24 +82,13 @@ export default function ProjectInspectionsList() {
                       }
                       style={styles.listRow}
                     >
-                      <View
-                        style={[
-                          styles.statusIcon,
-                          {
-                            backgroundColor: isCompleted
-                              ? theme.colors.semantic.successSoft
-                              : theme.colors.semantic.warningSoft,
-                          },
-                        ]}
-                      >
-                        <Ionicons
-                          name={isCompleted ? 'checkmark-circle' : 'pencil'}
-                          size={14}
-                          color={isCompleted ? theme.colors.primary[700] : '#92400E'}
-                        />
-                      </View>
+                      <InspectionTypeAvatar
+                        category={tpl?.category}
+                        size={40}
+                        status={isCompleted ? 'completed' : 'draft'}
+                      />
                       <View style={{ flex: 1 }}>
-                        <Text style={styles.listRowTitle}>{tpl?.name ?? 'ინსპექცია'}</Text>
+                        <Text style={styles.listRowTitle}>{tpl?.name ?? 'შემოწმების აქტი'}</Text>
                         <Text style={styles.listRowSubtitle}>
                           {formatShortDateTime(q.created_at)}
                         </Text>

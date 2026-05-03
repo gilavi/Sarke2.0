@@ -171,7 +171,7 @@ The in-person "phone-passing" flow lives at [app/briefings/[id]/sign.tsx](../app
 ### Key Conventions
 | Term | Georgian | Never Use |
 |------|----------|-----------|
-| Inspection (noun, artifact) | ინსპექცია | შემოწმება, ინსპექტირება |
+| Inspection (noun, artifact) | შემოწმების აქტი | შემოწმება, ინსპექტირება |
 | To inspect (verb) | შემოწმება | n/a |
 | Email | ელ-ფოსტა | იმეილი |
 | PDF artifact | PDF რეპორტი | PDF ანგარიში |
@@ -197,7 +197,7 @@ Never: `შეიყვანე`, `აირჩიე`, `დააჭირე`
 - Authentication via Supabase Auth
 - Role-based: expert (creates inspections) or worker (signs)
 
-### Inspection (ინსპექცია)
+### Inspection (შემოწმების აქტი)
 - Tied to a Template
 - Contains questionnaire answers (matrix-style)
 - Can have multiple signers

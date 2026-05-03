@@ -28,7 +28,7 @@ const persister = createAsyncStoragePersister({
 
 // Bump on cache-shape changes so a stale persisted blob from a previous
 // version doesn't poison the new schema.
-const CACHE_BUSTER = 'sdk54-v1';
+const CACHE_BUSTER = 'sdk54-v2';
 
 // Bind once at module load. The hook variant (`PersistQueryClientProvider`)
 // would gate render until rehydration completes, which we don't want — better
