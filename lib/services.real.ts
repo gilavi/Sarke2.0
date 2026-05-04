@@ -144,7 +144,7 @@ export const projectsApi = {
   },
   create: async (args: {
     name: string;
-    companyName?: string | null;
+    companyName: string;
     address?: string | null;
     latitude?: number | null;
     longitude?: number | null;
@@ -160,7 +160,7 @@ export const projectsApi = {
         .insert({
           user_id: user.id,
           name: args.name,
-          company_name: args.companyName ?? null,
+          company_name: args.companyName,
           address: args.address ?? null,
           latitude: args.latitude ?? null,
           longitude: args.longitude ?? null,

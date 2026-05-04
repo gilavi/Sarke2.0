@@ -102,7 +102,7 @@ const MemoizedHistoryItem = memo(function HistoryItem({
         }}
         style={({ pressed }) => pressed ? { opacity: 0.7 } : undefined}
         {...a11y(
-          `${tpl?.name ?? t('common.inspection')} — ${p?.name ?? ''}`.trim(),
+          `${tpl?.name ?? t('common.inspection')} — ${p?.company_name || p?.name || ''}`.trim(),
           q.status === 'completed' ? 'დასრულებული შემოწმების აქტის ნახვა' : 'დრაფტის გაგრძელება',
           'button'
         )}
@@ -119,7 +119,7 @@ const MemoizedHistoryItem = memo(function HistoryItem({
                 {tpl?.name ?? t('common.inspection')}
               </Text>
               {p ? (
-                <Text style={{ fontSize: 11, color: theme.colors.inkSoft }}>{p.name}</Text>
+                <Text style={{ fontSize: 11, color: theme.colors.inkSoft }}>{p.company_name || p.name}</Text>
               ) : null}
               <Text style={{ fontSize: 10, color: theme.colors.inkFaint }}>
                 {new Date(q.created_at).toLocaleString(t('common.localeTag'))}
@@ -216,7 +216,7 @@ export default function HistoryScreen() {
       <FlatList
           data={items}
           keyExtractor={(item) => (item.kind === 'header' ? `h-${item.label}` : item.q.id)}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 32, gap: 8 }}
+          contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 12, paddingBottom: 32, gap: 8 }}
           renderItem={renderItem}
           initialNumToRender={10}
           windowSize={7}

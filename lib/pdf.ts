@@ -791,11 +791,11 @@ async function buildHtml(
   <div class="info-card">
     <div class="info-row">
       <span class="info-label">${t('pdf.infoCompany')}</span>
-      <span class="info-value">${escapeHtml(project.company_name ?? '—')}</span>
+      <span class="info-value">${escapeHtml(project.company_name)}</span>
     </div>
     <div class="info-row">
       <span class="info-label">${t('pdf.infoObject')}</span>
-      <span class="info-value">${escapeHtml(project.address ?? project.name)}</span>
+      <span class="info-value">${escapeHtml(project.address ?? '—')}</span>
     </div>
     <div class="info-row">
       <span class="info-label">${t('pdf.metaDate', { date: '' }).replace(/[:：].*/, '').trim() || 'თარიღი'}</span>
@@ -1088,9 +1088,9 @@ function pad2(n: number): string {
 
 function renderProjectBrand(project: Project): string {
   if (project.logo) {
-    return `<img class="project-brand-logo" src="${escapeHtml(project.logo)}" alt="${escapeHtml(project.name)}" />`;
+    return `<img class="project-brand-logo" src="${escapeHtml(project.logo)}" alt="${escapeHtml(project.company_name || project.name)}" />`;
   }
-  const trimmed = (project.name ?? '').trim();
+  const trimmed = (project.company_name || project.name || '').trim();
   const initials = trimmed
     ? Array.from(trimmed).slice(0, 2).join('').toLocaleUpperCase('ka-GE')
     : '—';

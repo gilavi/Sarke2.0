@@ -10,6 +10,17 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
+import Reanimated, {
+  useSharedValue,
+  useAnimatedProps,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useDerivedValue,
+  interpolate,
+  withSpring,
+  withDelay,
+} from 'react-native-reanimated';
+import { Path, Svg } from 'react-native-svg';
 import { useSheetKeyboardMargin } from '../../lib/useSheetKeyboardMargin';
 import { Image } from 'expo-image';
 import { A11yText as Text } from '../../components/primitives/A11yText';
@@ -20,12 +31,17 @@ import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import { MapPreview } from '../../components/MapPreview';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
+import { SkeletonMap } from '../../components/SkeletonMap';
+import { LocationRow } from '../../components/LocationRow';
+import { MapPickerInline } from '../../components/MapPickerInline';
+import { routeForInspection } from '../../lib/inspectionRouting';
 import { useBottomSheet } from '../../components/BottomSheet';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { Button } from '../../components/ui';
 import { FloatingLabelInput } from '../../components/inputs/FloatingLabelInput';
 import { Skeleton, SkeletonCard, SkeletonListCard } from '../../components/Skeleton';
 import { MapPicker, type LatLng } from '../../components/MapPicker';
+import { SectionEmptyState } from '../../components/EmptyState';
 import { UploadedFilesSection } from '../../components/UploadedFilesSection';
 import {
   projectsApi,
@@ -55,6 +71,7 @@ import { supabase, STORAGE_BUCKETS } from '../../lib/supabase';
 import { useToast } from '../../lib/toast';
 import { imageForDisplay } from '../../lib/imageUrl';
 import { useTheme } from '../../lib/theme';
+import { INCIDENT_COLORS, STATUS_DOT_COLOR } from '../../lib/statusColors';
 
 import { toErrorMessage } from '../../lib/logError';
 import { friendlyError } from '../../lib/errorMap';
@@ -71,11 +88,19 @@ import { TourGuide, type TourStep } from '../../components/TourGuide';
 import { useTranslation } from 'react-i18next';
 import { setPhotoPickerCallback, setPhotoAnnotateCallback } from '../../lib/photoPickerBus';
 import { QuickActions, type QuickAction } from '../../components/QuickActions';
+import { InspectionTypeAvatar } from '../../components/InspectionTypeAvatar';
+import { TemplatePickerModal } from '../../components/TemplatePickerModal';
+
+const SCREEN_W = Dimensions.get('window').width;
+const SVG_H = 80;      // total SVG element height
+const SVG_EDGE_Y = 68; // y within SVG where arch edges sit (stays fixed)
+
+const AnimatedPath = Reanimated.createAnimatedComponent(Path);
 
 export default function ProjectDetail() {
   const { theme } = useTheme();
   const { t } = useTranslation();
-  const styles = useMemo(() => getstyles(theme), [theme]);
+  const styles = useMemo(() => getStyles(theme), [theme]);
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const showActionSheetWithOptions = useBottomSheet();
@@ -92,12 +117,11 @@ export default function ProjectDetail() {
   const [files, setFiles] = useState<ProjectFile[]>([]);
   const [filesBusy, setFilesBusy] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [incidents, setIncidents] = useState<Incident[]>([]);
   const [mapModalVisible, setMapModalVisible] = useState(false);
+  const [templatePickerVisible, setTemplatePickerVisible] = useState(false);
+  const [templatePickerOptions, setTemplatePickerOptions] = useState<Template[]>([]);
   const [allProjects, setAllProjects] = useState<Project[]>([]);
   const [loaded, setLoaded] = useState(false);
-  const [briefings, setBriefings] = useState<Briefing[]>([]);
-  const [reports, setReports] = useState<Report[]>([]);
 
   // React Query hooks provide cached data instantly + background refetch.
   // We sync their results into local state so existing mutations (crew edit,
@@ -112,6 +136,11 @@ export default function ProjectDetail() {
   const incidentsQ = useIncidentsByProject(id);
   const briefingsQ = useBriefingsByProject(id);
   const reportsQ = useReportsByProject(id);
+
+  // Read-only data consumed directly from the query cache (no local state needed)
+  const incidents = incidentsQ.data ?? [];
+  const briefings = briefingsQ.data ?? [];
+  const reports = reportsQ.data ?? [];
 
   useEffect(() => {
     if (projectQ.data !== undefined) setProject(projectQ.data);
@@ -134,15 +163,6 @@ export default function ProjectDetail() {
   useEffect(() => {
     if (filesQ.data !== undefined) setFiles(filesQ.data);
   }, [filesQ.data]);
-  useEffect(() => {
-    if (incidentsQ.data !== undefined) setIncidents(incidentsQ.data);
-  }, [incidentsQ.data]);
-  useEffect(() => {
-    if (briefingsQ.data !== undefined) setBriefings(briefingsQ.data);
-  }, [briefingsQ.data]);
-  useEffect(() => {
-    if (reportsQ.data !== undefined) setReports(reportsQ.data);
-  }, [reportsQ.data]);
   useEffect(() => {
     const anyLoading = projectQ.isLoading || questionnairesQ.isLoading || bobcatQ.isLoading
       || excavatorQ.isLoading || generalEquipmentQ.isLoading || templatesQ.isLoading
@@ -338,32 +358,23 @@ export default function ProjectDetail() {
       void createInspectionForTemplate(id, system[0]);
       return;
     }
-    const options = [...system.map(tpl => tpl.name), t('common.cancel')];
-    showActionSheetWithOptions(
-      { title: t('projects.chooseTemplateTitle'), options, cancelButtonIndex: options.length - 1 },
-      async idx => {
-        if (idx == null || idx === options.length - 1 || !id) return;
-        const tpl = system[idx];
-        await createInspectionForTemplate(id, tpl);
-      },
-    );
+    setTemplatePickerOptions(system);
+    setTemplatePickerVisible(true);
   };
 
   const createInspectionForTemplate = async (projectId: string, tpl: Template) => {
     try {
+      let newId: string;
       if (tpl.category === 'bobcat') {
-        const b = await bobcatApi.create({ projectId, templateId: tpl.id });
-        router.push(`/inspections/bobcat/${b.id}` as any);
+        newId = (await bobcatApi.create({ projectId, templateId: tpl.id })).id;
       } else if (tpl.category === 'excavator') {
-        const e = await excavatorApi.create({ projectId, templateId: tpl.id });
-        router.push(`/inspections/excavator/${e.id}` as any);
+        newId = (await excavatorApi.create({ projectId, templateId: tpl.id })).id;
       } else if (tpl.category === 'general_equipment') {
-        const g = await generalEquipmentApi.create({ projectId, templateId: tpl.id });
-        router.push(`/inspections/general-equipment/${g.id}` as any);
+        newId = (await generalEquipmentApi.create({ projectId, templateId: tpl.id })).id;
       } else {
-        const q = await questionnairesApi.create({ projectId, templateId: tpl.id });
-        router.push(`/inspections/${q.id}/wizard` as any);
+        newId = (await questionnairesApi.create({ projectId, templateId: tpl.id })).id;
       }
+      router.push(routeForInspection(tpl.category, newId, false) as any);
     } catch (e) {
       toast.error(friendlyError(e, t('errors.createFailed')));
     }
@@ -381,8 +392,6 @@ export default function ProjectDetail() {
         if (idx !== 0) return;
         try {
           if (item.source === 'bobcat') {
-            await bobcatApi.complete(item.id); // soft-delete by completing with a flag? No, need actual delete
-            // Actually bobcatApi doesn't have remove. Let's use supabase directly
             const { error } = await supabase.from('bobcat_inspections').delete().eq('id', item.id);
             if (error) throw error;
             setBobcatInspections(prev => prev.filter(x => x.id !== item.id));
@@ -567,22 +576,64 @@ export default function ProjectDetail() {
     return withCoords.slice(0, 20);
   }, [allProjects]);
 
+  // ── Arch SVG morph animation ──────────────────────────────────────────────
+  // archMountProgress: 0→1 on load (arch curves in from flat)
+  // archScrollDelta: scroll-driven offset (negative = deeper arch on pull-down)
+  const archMountProgress = useSharedValue(0);
+  const archScrollDelta = useSharedValue(0);
+  const logoProgress = useSharedValue(0);
+
+  // peakY: controls the SVG bezier control point.
+  //   SVG_EDGE_Y = flat (no curve), 0 = full arch, negative = extra deep
+  const archPeakY = useDerivedValue(() => {
+    'worklet';
+    const mount = interpolate(archMountProgress.value, [0, 1], [SVG_EDGE_Y, 0]);
+    return mount + archScrollDelta.value;
+  });
+
+  const archProps = useAnimatedProps(() => {
+    'worklet';
+    const p = archPeakY.value;
+    const W = SCREEN_W;
+    return {
+      d: `M0,${SVG_EDGE_Y} Q${W / 2},${p.toFixed(1)} ${W},${SVG_EDGE_Y} L${W},${SVG_H} L0,${SVG_H} Z`,
+    };
+  });
+
+  const logoStyle = useAnimatedStyle(() => ({
+    opacity: logoProgress.value,
+    transform: [{ scale: interpolate(logoProgress.value, [0, 1], [0.6, 1]) }],
+  }));
+
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      'worklet';
+      archScrollDelta.value = interpolate(
+        event.contentOffset.y,
+        [-80, 0, 100],
+        [-22, 0, SVG_EDGE_Y],
+        'clamp' as any,
+      );
+    },
+  });
+
+  useEffect(() => {
+    if (!loaded) return;
+    archMountProgress.value = withSpring(1, { damping: 16, stiffness: 120 });
+    logoProgress.value = withDelay(160, withSpring(1, { damping: 12, stiffness: 150 }));
+  }, [loaded]); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (!loaded && !project) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-        <Stack.Screen
-          options={{
-            headerShown: true,
-            title: t('common.project'),
-          }}
-        />
+        <Stack.Screen options={{ headerShown: false }} />
         <ScrollView
           style={{ flex: 1 }}
           contentInsetAdjustmentBehavior="never"
           automaticallyAdjustContentInsets={false}
           contentInset={{ top: 0, bottom: 0, left: 0, right: 0 }}
           contentContainerStyle={{
-            paddingHorizontal: 16,
+            paddingHorizontal: 24,
             paddingTop: 12,
             paddingBottom: 32,
             gap: 14,
@@ -604,96 +655,141 @@ export default function ProjectDetail() {
     );
   }
 
+  const participantCount = (project?.crew?.length ?? 0) + (inspector ? 1 : 0);
+
   return (
     <TourGuide tourId="project_screen_v1" steps={tourSteps}>
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          title: project?.name
-            ? (project.name.length > 16 ? `${project.name.slice(0, 16)}…` : project.name)
-            : t('common.project'),
-          headerTitleStyle: { fontSize: 18, fontWeight: '700', color: theme.colors.ink },
-        }}
-      />
-      <ScrollView
-        style={{ flex: 1 }}
+      <Stack.Screen options={{ headerShown: false }} />
+
+      {/* ── Floating buttons — always fixed over content ── */}
+      <Pressable
+        onPress={() => router.back()}
+        hitSlop={8}
+        style={[styles.floatingBtn, { position: 'absolute', top: insets.top + 8, left: 16, zIndex: 30 }]}
+        {...a11y('უკან', 'წინა გვერდზე დაბრუნება', 'button')}
+      >
+        <Ionicons name="chevron-back" size={20} color="#444441" />
+      </Pressable>
+      <Pressable
+        onPress={() => setEditing(true)}
+        hitSlop={8}
+        style={[styles.floatingBtn, { position: 'absolute', top: insets.top + 8, right: 16, zIndex: 30 }]}
+        {...a11y('რედაქტირება', 'პროექტის დეტალების შეცვლა', 'button')}
+      >
+        <Ionicons name="pencil-outline" size={18} color="#444441" />
+      </Pressable>
+
+      {/* ── Single full-page scroll ── */}
+      <Reanimated.ScrollView
+        onScroll={scrollHandler}
+        scrollEventThrottle={1}
         contentInsetAdjustmentBehavior="never"
         automaticallyAdjustContentInsets={false}
-        contentInset={{ top: 0, bottom: 0, left: 0, right: 0 }}
-        contentContainerStyle={{
-          paddingHorizontal: 16,
-          paddingTop: 12,
-          paddingBottom: 32,
-          gap: 16,
-        }}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 40 }}
       >
-          {/* ── Hero / Project Details Card ── */}
-          <View ref={heroRef} collapsable={false} style={styles.heroCard}>
-            <Pressable
-              onPress={() => setEditing(true)}
-              hitSlop={10}
-              style={styles.heroEditBtn}
-              {...a11y('რედაქტირება', 'პროექტის დეტალების შეცვლა', 'button')}
-            >
-              <Ionicons name="pencil-outline" size={18} color={theme.colors.ink} />
-            </Pressable>
 
-            <View style={styles.heroRow}>
-              <ProjectAvatar
-                project={project}
-                size={64}
-                editable
-                onEdit={onEditLogo}
-              />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.heroName}>{project?.name ?? '—'}</Text>
-                {project?.company_name ? (
-                  <View style={styles.heroMetaRow}>
-                    <Ionicons name="business-outline" size={14} color={theme.colors.inkSoft} />
-                    <Text style={styles.heroMetaText}>{project.company_name}</Text>
-                  </View>
-                ) : null}
-                {project?.address ? (
-                  <View style={styles.heroMetaRow}>
-                    <Ionicons name="location-outline" size={14} color={theme.colors.inkSoft} />
-                    <Text style={styles.heroMetaText}>{project.address}</Text>
-                  </View>
-                ) : null}
-                {project?.contact_phone ? (
-                  <Pressable
-                    onPress={() => Linking.openURL(`tel:${project.contact_phone}`)}
-                    style={styles.heroMetaRow}
-                    hitSlop={8}
-                    {...a11y('დარეკვა', `${project.contact_phone}-ზე დარეკვა`, 'button')}
-                  >
-                    <Ionicons name="call-outline" size={14} color={theme.colors.accent} />
-                    <Text style={[styles.heroMetaText, { color: theme.colors.accent, fontWeight: '600' }]}>
-                      {project.contact_phone}
-                    </Text>
-                  </Pressable>
-                ) : null}
-              </View>
-            </View>
-
+        {/* Map hero — no parallax */}
+        <View ref={heroRef} collapsable={false} style={{ height: 220, overflow: 'hidden' }}>
+          <View style={StyleSheet.absoluteFill}>
             {project?.latitude != null && project?.longitude != null ? (
-              <Pressable onPress={openMapModal} {...a11y('რუქა', 'გახსნა სრულ ეკრანზე', 'button')}>
-                <MapPreview
-                  latitude={project.latitude}
-                  longitude={project.longitude}
-                  pinColor={theme.colors.accent}
-                  style={styles.mapWrap}
-                />
+              <Pressable
+                style={StyleSheet.absoluteFill}
+                onPress={openMapModal}
+                {...a11y('რუქა', 'გახსნა სრულ ეკრანზე', 'button')}
+              >
+                <MapView
+                  style={StyleSheet.absoluteFill}
+                  region={{
+                    latitude: project.latitude,
+                    longitude: project.longitude,
+                    latitudeDelta: 0.008,
+                    longitudeDelta: 0.008,
+                  }}
+                  scrollEnabled={false}
+                  zoomEnabled={false}
+                  pitchEnabled={false}
+                  rotateEnabled={false}
+                  provider={PROVIDER_DEFAULT}
+                >
+                  <Marker
+                    coordinate={{ latitude: project.latitude, longitude: project.longitude }}
+                    pinColor={theme.colors.accent}
+                  />
+                </MapView>
               </Pressable>
-            ) : null}
-
+            ) : (
+              <SkeletonMap onAddLocation={() => setEditing(true)} />
+            )}
           </View>
 
-          {/* ── Quick actions row (BOG-style) ── */}
-          <QuickActions actions={quickActions} />
+          {/* SVG arch — morphs between flat and curved via Reanimated */}
+          <Svg
+            width={SCREEN_W}
+            height={SVG_H}
+            style={{ position: 'absolute', bottom: 0, left: 0 }}
+            pointerEvents="none"
+          >
+            <AnimatedPath animatedProps={archProps} fill={theme.colors.background} />
+          </Svg>
+        </View>
 
-          {/* ── Upcoming schedule ── */}
-          <UpcomingSection projectId={id} />
+        {/* ── Sheet — sits flush below the arch ── */}
+        <View style={styles.sheet}>
+
+          {/* Logo springs in after arch, centered on arch peak */}
+          <Reanimated.View style={[styles.logoContainer, logoStyle]}>
+            <Pressable
+              onPress={onEditLogo}
+              style={{ position: 'relative' }}
+              hitSlop={4}
+              {...a11y('ლოგოს შეცვლა', 'პროექტის ლოგოს შეცვლა', 'button')}
+            >
+              <View style={styles.logoOuter}>
+                {project?.logo ? (
+                  <Image source={{ uri: project.logo }} style={styles.logoImage} contentFit="cover" />
+                ) : (
+                  <Text style={styles.logoInitials}>
+                    {(project?.company_name || project?.name || '?').slice(0, 2).toUpperCase()}
+                  </Text>
+                )}
+              </View>
+              <View style={styles.logoBadge} pointerEvents="none">
+                <Ionicons name="add" size={13} color="#fff" />
+              </View>
+            </Pressable>
+          </Reanimated.View>
+
+
+        <View style={styles.projectInfoCenter}>
+          <Text style={styles.heroName}>{project?.company_name || project?.name || '—'}</Text>
+          {project?.address ? (
+            <Text style={styles.heroMetaText} numberOfLines={2}>
+              {project.address}
+            </Text>
+          ) : null}
+          {project?.contact_phone ? (
+            <Pressable
+              onPress={() => Linking.openURL(`tel:${project.contact_phone}`)}
+              hitSlop={8}
+              {...a11y('დარეკვა', `${project.contact_phone}-ზე დარეკვა`, 'button')}
+            >
+              <Text style={styles.heroPhoneText}>{project.contact_phone}</Text>
+            </Pressable>
+          ) : null}
+        </View>
+
+        {/* Quick actions — edgeInset matches parent paddingHorizontal to reach screen edges */}
+        <View style={{ paddingHorizontal: 24, paddingBottom: 4 }}>
+          <QuickActions actions={quickActions} scrollable edgeInset={24} />
+        </View>
+
+        {/* Upcoming schedule */}
+        <UpcomingSection projectId={id} />
+
+        {/* ── Section cards ── */}
+        <View style={{ paddingHorizontal: 24, gap: 16, paddingTop: 8 }}>
 
           {/* ── Inspections (generic + equipment) ── */}
           <View ref={questionnairesRef} collapsable={false} style={styles.sectionCard}>
@@ -715,12 +811,7 @@ export default function ProjectDetail() {
                 {allInspectionsPreview.map(item => {
                   const tpl = templates.find(t => t.id === item.template_id);
                   const isCompleted = item.status === 'completed';
-                  const route = (() => {
-                    if (item.source === 'bobcat') return `/inspections/bobcat/${item.id}`;
-                    if (item.source === 'excavator') return `/inspections/excavator/${item.id}`;
-                    if (item.source === 'general_equipment') return `/inspections/general-equipment/${item.id}`;
-                    return isCompleted ? `/inspections/${item.id}` : `/inspections/${item.id}/wizard`;
-                  })();
+                  const route = routeForInspection(item.source, item.id, isCompleted);
                   return (
                     <Swipeable
                       key={`${item.source}-${item.id}`}
@@ -736,13 +827,11 @@ export default function ProjectDetail() {
                         style={styles.listRow}
                         {...a11y(tpl?.name ?? 'შემოწმების აქტი', isCompleted ? 'დასრულებული შემოწმების აქტს ნახვა' : 'დრაფტის გასაგრძელებლად დააჭირეთ', 'button')}
                       >
-                        <View style={[styles.statusIcon, { backgroundColor: isCompleted ? theme.colors.semantic.successSoft : theme.colors.semantic.warningSoft }]}>
-                          <Ionicons
-                            name={isCompleted ? 'checkmark-circle' : 'pencil'}
-                            size={14}
-                            color={isCompleted ? theme.colors.primary[700] : '#92400E'}
-                          />
-                        </View>
+                        <InspectionTypeAvatar
+                          category={item.source === 'generic' ? tpl?.category : item.source}
+                          size={36}
+                          status={isCompleted ? 'completed' : 'draft'}
+                        />
                         <View style={{ flex: 1 }}>
                           <Text style={styles.listRowTitle}>{tpl?.name ?? t('common.inspection')}</Text>
                           <Text style={styles.listRowSubtitle}>
@@ -758,7 +847,7 @@ export default function ProjectDetail() {
                   <ViewMoreRow
                     items={overflowAllInspections.map(item => {
                       const tpl = templates.find(t => t.id === item.template_id);
-                      return tpl?.name ?? 'ინსპ';
+                      return { category: item.source === 'generic' ? (tpl?.category ?? null) : item.source };
                     })}
                     total={overflowAllInspections.length}
                     onPress={() => router.push(`/projects/${id}/inspections` as any)}
@@ -782,7 +871,7 @@ export default function ProjectDetail() {
             </View>
 
             {incidents.length === 0 ? (
-              <EmptyState text="ინციდენტები არ არის" />
+              <SectionEmptyState type="incidents" />
             ) : (
               <View style={{ gap: 8, marginTop: 10 }}>
                 {incidentsPreview.map(inc => (
@@ -794,9 +883,7 @@ export default function ProjectDetail() {
                 ))}
                 {overflowIncidents.length > 0 ? (
                   <ViewMoreRow
-                    items={overflowIncidents.map(
-                      inc => INCIDENT_TYPE_LABEL[inc.type as IncidentType] ?? inc.type,
-                    )}
+                    items={overflowIncidents.map(() => ({ ionicon: 'warning-outline' }))}
                     total={overflowIncidents.length}
                     onPress={() => router.push(`/projects/${id}/incidents` as any)}
                   />
@@ -820,7 +907,7 @@ export default function ProjectDetail() {
             </View>
 
             {briefings.length === 0 ? (
-              <EmptyState text="ინსტრუქტაჟი ჯერ არ ჩატარებულა" />
+              <SectionEmptyState type="briefings" />
             ) : (
               <View style={{ gap: 8, marginTop: 10 }}>
                 {briefingsPreview.map(b => {
@@ -853,9 +940,7 @@ export default function ProjectDetail() {
                 })}
                 {overflowBriefings.length > 0 ? (
                   <ViewMoreRow
-                    items={overflowBriefings.map(
-                      b => b.topics[0]?.replace(/^custom:/, '') ?? 'ინსტ',
-                    )}
+                    items={overflowBriefings.map(() => ({ ionicon: 'megaphone-outline' }))}
                     total={overflowBriefings.length}
                     onPress={() => router.push(`/projects/${id}/briefings` as any)}
                   />
@@ -882,7 +967,7 @@ export default function ProjectDetail() {
             </View>
 
             {reports.length === 0 ? (
-              <EmptyState text="რეპორტი ჯერ არ შექმნილა" />
+              <SectionEmptyState type="reports" />
             ) : (
               <View style={{ gap: 8, marginTop: 10 }}>
                 {reportsPreview.map(r => {
@@ -919,7 +1004,7 @@ export default function ProjectDetail() {
                 })}
                 {overflowReports.length > 0 ? (
                   <ViewMoreRow
-                    items={overflowReports.map(r => r.title)}
+                    items={overflowReports.map(() => ({ ionicon: 'document-text-outline' }))}
                     total={overflowReports.length}
                     onPress={() => router.push(`/projects/${id}/reports` as any)}
                   />
@@ -944,7 +1029,7 @@ export default function ProjectDetail() {
             </View>
 
             {files.length === 0 ? (
-              <EmptyState text="ფაილები არ არის" />
+              <SectionEmptyState type="documents" />
             ) : (
               <View style={{ gap: 8, marginTop: 10 }}>
                 {filesPreview.map(f => (
@@ -975,7 +1060,7 @@ export default function ProjectDetail() {
                 ))}
                 {overflowFiles.length > 0 ? (
                   <ViewMoreRow
-                    items={overflowFiles.map(f => f.name)}
+                    items={overflowFiles.map(() => ({ ionicon: 'document-outline' }))}
                     total={overflowFiles.length}
                     onPress={() => router.push(`/projects/${id}/files` as any)}
                   />
@@ -991,7 +1076,7 @@ export default function ProjectDetail() {
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <Ionicons name="person-add-outline" size={16} color={theme.colors.inkSoft} />
                 <Text style={styles.sectionTitle}>{t('projects.participantsSection')}</Text>
-                <Text style={styles.sectionCount}>{(project?.crew?.length ?? 0) + (inspector ? 1 : 0)}</Text>
+                <Text style={styles.sectionCount}>{participantCount}</Text>
               </View>
             </View>
             <View style={{ marginTop: 10 }}>
@@ -1008,7 +1093,10 @@ export default function ProjectDetail() {
             </View>
           </View>
 
-        </ScrollView>
+        </View>{/* end section cards wrapper */}
+
+        </View>{/* end sheet */}
+      </Reanimated.ScrollView>
 
       <EditProjectSheet
         visible={editing}
@@ -1021,11 +1109,22 @@ export default function ProjectDetail() {
         }}
       />
 
+      <TemplatePickerModal
+        visible={templatePickerVisible}
+        templates={templatePickerOptions}
+        title={t('projects.chooseTemplateTitle')}
+        onSelect={async tpl => {
+          setTemplatePickerVisible(false);
+          if (id) await createInspectionForTemplate(id, tpl);
+        }}
+        onClose={() => setTemplatePickerVisible(false)}
+      />
+
       {/* Full-screen map with all projects */}
       {mapModalVisible && (
         <View style={StyleSheet.absoluteFillObject} pointerEvents="auto">
           <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: insets.top + 12, paddingBottom: 12 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingTop: insets.top + 12, paddingBottom: 12 }}>
               <View style={{ width: 24 }} />
               <Text style={{ flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '700', color: theme.colors.ink }}>
                 პროექტები რუკაზე
@@ -1049,7 +1148,7 @@ export default function ProjectDetail() {
                   key={p.id}
                   coordinate={{ latitude: p.latitude!, longitude: p.longitude! }}
                   pinColor={p.id === id ? theme.colors.accent : undefined}
-                  title={p.name}
+                  title={p.company_name || p.name}
                 />
               ))}
             </MapView>
@@ -1070,9 +1169,18 @@ export default function ProjectDetail() {
   );
 }
 
+function StatItem({ number, label, theme }: { number: number; label: string; theme: any }) {
+  return (
+    <View style={{ alignItems: 'center', flex: 1 }}>
+      <Text style={{ fontSize: 22, fontWeight: '700', color: theme.colors.ink }}>{number}</Text>
+      <Text style={{ fontSize: 11, color: theme.colors.inkSoft, marginTop: 2, fontWeight: '500' }}>{label}</Text>
+    </View>
+  );
+}
+
 function EmptyState({ text }: { text: string }) {
   const { theme } = useTheme();
-  const styles = useMemo(() => getstyles(theme), [theme]);
+  const styles = useMemo(() => getStyles(theme), [theme]);
 
   return (
     <View style={styles.emptyState}>
@@ -1139,9 +1247,9 @@ const FileThumbnail = memo(function FileThumbnail({ file }: { file: ProjectFile 
 
 /**
  * "View more" row at the bottom of a section preview.
- * Renders stacked initials for the items beyond the first 3.
+ * Renders stacked inspection-type icons for the hidden items.
  * Inputs:
- *   - items: labels for the overflow items (used to derive avatar initials)
+ *   - items: icon descriptors for the overflow items
  *   - total: number of overflow items shown in the "+ N მეტი" label
  *   - onPress: navigate to the full list screen
  */
@@ -1150,13 +1258,13 @@ function ViewMoreRow({
   total,
   onPress,
 }: {
-  items: string[];
+  items: { category?: string | null; ionicon?: string }[];
   total: number;
   onPress: () => void;
 }) {
   const { theme } = useTheme();
-  const styles = useMemo(() => getstyles(theme), [theme]);
-  const avatarLabels = items.slice(0, 3);
+  const styles = useMemo(() => getStyles(theme), [theme]);
+  const avatarItems = items.slice(0, 3);
 
   return (
     <Pressable
@@ -1165,29 +1273,38 @@ function ViewMoreRow({
       {...a11y(`+ ${total} მეტი`, 'სრული სიის გახსნა', 'button')}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        {avatarLabels.map((label, idx) => {
-          const ch = (label || '?').trim().charAt(0).toUpperCase() || '?';
-          return (
+        {avatarItems.map((item, idx) => (
+          item.category != null ? (
+            <View key={idx} style={{ marginLeft: idx === 0 ? 0 : -10 }}>
+              <InspectionTypeAvatar category={item.category} size={32} />
+            </View>
+          ) : (
             <View
               key={idx}
               style={{
-                width: 28,
-                height: 28,
-                borderRadius: 14,
-                backgroundColor: theme.colors.surfaceSecondary,
-                borderWidth: 2,
-                borderColor: theme.colors.surface,
+                width: 32,
+                height: 32,
+                borderRadius: 16,
+                backgroundColor: '#FFFFFF',
+                borderWidth: 1.5,
+                borderColor: '#F5F3EE',
                 alignItems: 'center',
                 justifyContent: 'center',
-                marginLeft: idx === 0 ? 0 : -8,
+                marginLeft: idx === 0 ? 0 : -10,
+                shadowColor: '#000',
+                shadowOpacity: 0.06,
+                shadowRadius: 4,
+                elevation: 2,
               }}
             >
-              <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.inkSoft }}>
-                {ch}
-              </Text>
+              <Ionicons
+                name={(item.ionicon ?? 'document-outline') as any}
+                size={14}
+                color={theme.colors.inkSoft}
+              />
             </View>
-          );
-        })}
+          )
+        ))}
       </View>
       <View style={{ flex: 1 }}>
         <Text style={styles.listRowTitle}>+ {total} მეტი</Text>
@@ -1199,7 +1316,7 @@ function ViewMoreRow({
 
 function SafeSigImage({ uri }: { uri: string }) {
   const { theme } = useTheme();
-  const styles = useMemo(() => getstyles(theme), [theme]);
+  const styles = useMemo(() => getStyles(theme), [theme]);
 
   const [err, setErr] = useState(false);
   if (err) return <Ionicons name="person" size={20} color={theme.colors.inkFaint} />;
@@ -1228,7 +1345,6 @@ function EditProjectSheet({
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const toast = useToast();
-  const [name, setName] = useState('');
   const [company, setCompany] = useState('');
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
@@ -1242,8 +1358,7 @@ function EditProjectSheet({
   useFocusEffect(
     useCallback(() => {
       if (visible && project) {
-        setName(project.name);
-        setCompany(project.company_name ?? '');
+        setCompany(project.company_name || project.name);
         setAddress(project.address ?? '');
         setPhone(project.contact_phone ?? '');
         setPin(
@@ -1262,12 +1377,12 @@ function EditProjectSheet({
   };
 
   const save = async () => {
-    if (!project || !name.trim()) return;
+    if (!project || !company.trim()) return;
     setBusy(true);
     try {
       const saved = (await projectsApi.update(project.id, {
-        name: name.trim(),
-        company_name: company.trim() || null,
+        name: company.trim(),
+        company_name: company.trim(),
         address: address.trim() || null,
         contact_phone: phone.trim() || null,
         latitude: pin?.latitude ?? null,
@@ -1303,13 +1418,13 @@ function EditProjectSheet({
                     size="lg"
                     onPress={save}
                     loading={busy}
-                    disabled={!name.trim()}
+                    disabled={!company.trim()}
                   />
                 }
               >
                 <View style={{ alignItems: 'center', gap: 8, paddingVertical: 4 }}>
                   <ProjectAvatar
-                    project={{ name, logo }}
+                    project={{ name: company, logo }}
                     size={88}
                     editable
                     onEdit={onPickLogo}
@@ -1324,17 +1439,11 @@ function EditProjectSheet({
                 </View>
 
                 <FloatingLabelInput
-                  label={t('common.name')}
-                  required
-                  value={name}
-                  onChangeText={setName}
-                  autoFocus
-                />
-
-                <FloatingLabelInput
                   label={t('common.company')}
+                  required
                   value={company}
                   onChangeText={setCompany}
+                  autoFocus
                 />
 
                 <FloatingLabelInput
@@ -1359,7 +1468,7 @@ function EditProjectSheet({
         {mapVisible && (
           <View style={StyleSheet.absoluteFillObject}>
             <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: insets.top + 12, paddingVertical: 12 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingTop: insets.top + 12, paddingVertical: 12 }}>
                 <View style={{ width: 24 }} />
                 <Text style={{ flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '700', color: theme.colors.ink }}>
                   მდებარეობის არჩევა
@@ -1386,147 +1495,6 @@ function EditProjectSheet({
   );
 }
 
-// ── Compact location row (shows preview or picker prompt) ──
-function LocationRow({
-  pin,
-  address,
-  onPress,
-}: {
-  pin: LatLng | null;
-  address: string;
-  onPress: () => void;
-}) {
-  const { theme } = useTheme();
-
-  if (!pin) {
-    return (
-      <Pressable
-        onPress={onPress}
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 10,
-          paddingVertical: 14,
-          paddingHorizontal: 16,
-          backgroundColor: theme.colors.surfaceSecondary,
-          borderRadius: 12,
-          borderWidth: 1,
-          borderColor: theme.colors.hairline,
-          borderStyle: 'dashed',
-        }}
-      >
-        <Ionicons name="location-outline" size={20} color={theme.colors.accent} />
-        <Text style={{ fontSize: 14, color: theme.colors.inkSoft, fontWeight: '500' }}>
-          დააჭირეთ მდებარეობის ასარჩევად
-        </Text>
-      </Pressable>
-    );
-  }
-
-  return (
-    <Pressable onPress={onPress}>
-      <View style={{ gap: 8 }}>
-        <MapPreview
-          latitude={pin.latitude}
-          longitude={pin.longitude}
-          pinColor={theme.colors.accent}
-          style={{ height: 120, borderRadius: 12, overflow: 'hidden' }}
-        />
-        {address ? (
-          <Text style={{ fontSize: 13, color: theme.colors.inkSoft }} numberOfLines={2}>
-            {address}
-          </Text>
-        ) : null}
-        <Text style={{ fontSize: 13, color: theme.colors.accent, fontWeight: '600' }}>
-          შეცვლა
-        </Text>
-      </View>
-    </Pressable>
-  );
-}
-
-// ── Inline map picker (no nested Modal) ──
-function MapPickerInline({
-  initialPin,
-  initialAddress,
-  onConfirm,
-  onCancel,
-}: {
-  initialPin: LatLng | null;
-  initialAddress: string;
-  onConfirm: (pin: LatLng | null, address: string) => void;
-  onCancel: () => void;
-}) {
-  const { theme } = useTheme();
-  const insets = useSafeAreaInsets();
-  const [pin, setPin] = useState<LatLng | null>(initialPin);
-  const [address, setAddress] = useState(initialAddress);
-  const screenH = Dimensions.get('window').height;
-  // Reserve space for header (~60) + bottom action bar (~160) + safe areas
-  const mapHeight = Math.max(240, screenH - insets.top - insets.bottom - 220);
-
-  useEffect(() => {
-    setPin(initialPin);
-    setAddress(initialAddress);
-  }, [initialPin, initialAddress]);
-
-  return (
-    <View style={{ flex: 1 }}>
-      {/* Map with modest horizontal inset */}
-      <View style={{ flex: 1, marginHorizontal: 16 }}>
-        <MapPicker
-          value={pin}
-          onChange={setPin}
-          address={address}
-          onAddressChange={setAddress}
-          height={mapHeight}
-        />
-      </View>
-
-      {/* Bottom action bar */}
-      <View
-        style={{
-          backgroundColor: theme.colors.surface,
-          borderTopLeftRadius: 20,
-          borderTopRightRadius: 20,
-          paddingHorizontal: 20,
-          paddingTop: 16,
-          paddingBottom: insets.bottom + 16,
-          gap: 8,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.08,
-          shadowRadius: 12,
-          elevation: 8,
-        }}
-      >
-        <Button
-          title="დადასტურება"
-          size="lg"
-          onPress={() => onConfirm(pin, address)}
-          disabled={!pin}
-        />
-        <Pressable onPress={onCancel} style={{ alignSelf: 'center', paddingVertical: 8 }}>
-          <Text style={{ fontSize: 15, fontWeight: '600', color: theme.colors.inkSoft }}>
-            გაუქმება
-          </Text>
-        </Pressable>
-      </View>
-    </View>
-  );
-}
-
-const INCIDENT_BADGE_COLORS: Record<
-  IncidentType,
-  { bg: string; text: string; border: string }
-> = {
-  minor:    { bg: '#FEF3C7', text: '#92400E', border: '#F59E0B' },
-  severe:   { bg: '#FFEDD5', text: '#9A3412', border: '#F97316' },
-  fatal:    { bg: '#FEE2E2', text: '#991B1B', border: '#EF4444' },
-  mass:     { bg: '#FEE2E2', text: '#991B1B', border: '#EF4444' },
-  nearmiss: { bg: '#EDE9FE', text: '#5B21B6', border: '#8B5CF6' },
-};
-
 function IncidentRow({
   incident,
   onPress,
@@ -1535,8 +1503,8 @@ function IncidentRow({
   onPress: () => void;
 }) {
   const { theme } = useTheme();
-  const badge = INCIDENT_BADGE_COLORS[incident.type as IncidentType] ?? INCIDENT_BADGE_COLORS.minor;
-  const styles = useMemo(() => getstyles(theme), [theme]);
+  const badge = INCIDENT_COLORS[incident.type as IncidentType] ?? INCIDENT_COLORS.minor;
+  const styles = useMemo(() => getStyles(theme), [theme]);
 
   return (
     <Pressable onPress={onPress} style={styles.listRow}>
@@ -1593,11 +1561,6 @@ function IncidentRow({
 
 // ── Upcoming section ────────────────────────────────────────────────────────
 
-const STATUS_COLORS: Record<string, string> = {
-  due_today: '#F59E0B',
-  overdue: '#DC2626',
-  upcoming: '#9CA3AF',
-};
 
 function UpcomingSection({ projectId }: { projectId: string | undefined }) {
   const { theme } = useTheme();
@@ -1627,148 +1590,162 @@ function UpcomingSection({ projectId }: { projectId: string | undefined }) {
     return t('calendar.overdueDays', { count: Math.abs(diff), defaultValue: `${Math.abs(diff)} დღე გადაცილდა` });
   }
 
+  const styles = useMemo(() => getStyles(theme), [theme]);
+
   return (
-    <View
-      style={{
-        backgroundColor: theme.colors.surface,
-        borderRadius: 16,
-        marginHorizontal: 16,
-        marginTop: 12,
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-      }}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+    <View style={[styles.sectionCard, { marginHorizontal: 16, marginTop: 12 }]}>
+      <View style={styles.sectionHeader}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <Ionicons name="calendar-outline" size={16} color={theme.colors.inkSoft} />
-          <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.inkSoft }}>
-            {t('calendar.upcomingSection', 'მომავალი')}
-          </Text>
+          <Text style={styles.sectionTitle}>{t('calendar.upcomingSection')}</Text>
+          <Text style={styles.sectionCount}>{upcoming.length}</Text>
         </View>
         <Pressable
           onPress={() => router.push(`/(tabs)/calendar?projectId=${projectId}` as any)}
           hitSlop={8}
         >
-          <Text style={{ fontSize: 13, color: theme.colors.accent }}>
-            {t('common.all', 'ყველა')}
-          </Text>
+          <Text style={styles.sectionAddLink}>{t('common.all', 'ყველა')}</Text>
         </Pressable>
       </View>
-      {upcoming.map(event => {
-        const color = STATUS_COLORS[event.status] ?? theme.colors.inkSoft;
-        const iconName = event.type === 'inspection' ? 'shield-checkmark-outline' : 'people-outline';
-        return (
-          <Pressable
-            key={event.id}
-            onPress={() => router.push(`/(tabs)/calendar?projectId=${projectId}` as any)}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              paddingVertical: 8,
-              gap: 10,
-              borderTopWidth: 1,
-              borderTopColor: theme.colors.hairline,
-            }}
-          >
-            <View
-              style={{
-                width: 30,
-                height: 30,
-                borderRadius: 8,
-                backgroundColor: color + '20',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
+      <View style={{ gap: 8, marginTop: 10 }}>
+        {upcoming.map(event => {
+          const color = STATUS_DOT_COLOR[event.status as keyof typeof STATUS_DOT_COLOR] ?? theme.colors.inkSoft;
+          const iconName = event.type === 'inspection' ? 'shield-checkmark-outline' : 'people-outline';
+          return (
+            <Pressable
+              key={event.id}
+              onPress={() => router.push(`/(tabs)/calendar?projectId=${projectId}` as any)}
+              style={styles.listRow}
             >
-              <Ionicons name={iconName as any} size={16} color={color} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.ink }} numberOfLines={1}>
-                {event.title}
+              <View
+                style={[
+                  styles.statusIcon,
+                  { backgroundColor: color + '20', width: 30, height: 30, borderRadius: 8 },
+                ]}
+              >
+                <Ionicons name={iconName as any} size={16} color={color} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.listRowTitle} numberOfLines={1}>{event.title}</Text>
+              </View>
+              <Text style={{ fontSize: 12, fontWeight: '600', color }}>
+                {relativeLabel(event.date)}
               </Text>
-            </View>
-            <Text style={{ fontSize: 12, fontWeight: '600', color }}>
-              {relativeLabel(event.date)}
-            </Text>
-          </Pressable>
-        );
-      })}
+            </Pressable>
+          );
+        })}
+      </View>
     </View>
   );
 }
 
-function getstyles(theme: any) {
+function getStyles(theme: any) {
   return StyleSheet.create({
-  // ── Hero ──
-  heroCard: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: theme.colors.ink,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 3,
+  // ── Sheet — sits flush below the arch ──
+  sheet: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
   },
-  heroRow: {
-    flexDirection: 'row',
+  // Arch peak (actual bezier peak at t=0.5): y = 0.25*SVG_EDGE_Y + 0 + 0.25*SVG_EDGE_Y = 34 within SVG.
+  // Screen y = (220 - 80) + 34 = 174. Logo half = 40. marginTop = 174 - 220 - 40 = -86.
+  logoContainer: {
     alignItems: 'center',
-    gap: 14,
+    marginTop: -86,
+    marginBottom: 4,
   },
-  heroEditBtn: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 6,
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    zIndex: 5,
-  },
-  mapWrap: {
-    marginTop: 14,
-    height: 160,
-    borderRadius: 12,
+  logoOuter: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: theme.colors.accent,
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 12,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: theme.colors.border,
+  },
+  logoImage: {
+    width: 74,
+    height: 74,
+    borderRadius: 37,
+  },
+  logoInitials: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  logoBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: theme.colors.accent,
+    borderWidth: 2,
+    borderColor: theme.colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Floating pill buttons over map
+  floatingBtn: {
+    position: 'absolute',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.10,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  // Centered project info below logo
+  projectInfoCenter: {
+    paddingTop: 6,
+    paddingHorizontal: 24,
+    paddingBottom: 16,
+    alignItems: 'center',
   },
   heroName: {
     fontSize: 22,
-    fontWeight: '800',
+    fontWeight: '600',
     color: theme.colors.ink,
-  },
-  heroMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 6,
+    marginBottom: 4,
+    textAlign: 'center',
   },
   heroMetaText: {
-    fontSize: 14,
+    fontSize: 13,
     color: theme.colors.inkSoft,
-    flexShrink: 1,
+    textAlign: 'center',
+    marginTop: 2,
   },
-
-  // ── FAB ──
-  fab: {
-    position: 'absolute',
-    right: 20,
-    bottom: 28,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: theme.colors.accent,
-    alignItems: 'center',
+  heroPhoneText: {
+    fontSize: 13,
+    color: theme.colors.accent,
+    fontWeight: '600',
+    marginTop: 6,
+  },
+  // Stats row
+  statsRow: {
+    flexDirection: 'row',
     justifyContent: 'center',
-    zIndex: 40,
-    shadowColor: theme.colors.accent,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 10,
+    alignItems: 'center',
+    paddingHorizontal: 32,
+    paddingBottom: 16,
+  },
+  statDivider: {
+    width: 1,
+    height: 28,
+    backgroundColor: theme.colors.hairline,
   },
 
   // ── Section Cards ──
@@ -1776,11 +1753,6 @@ function getstyles(theme: any) {
     backgroundColor: theme.colors.surface,
     borderRadius: 16,
     padding: 16,
-    shadowColor: theme.colors.ink,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 3,
   },
   sectionHeader: {
     flexDirection: 'row',

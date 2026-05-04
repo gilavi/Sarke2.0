@@ -107,7 +107,7 @@ export default function QualificationsScreen() {
       <Stack.Screen options={{ headerShown: true, title: 'სერტიფიკატები' }} />
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
         <ScrollView
-          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 100, gap: 20 }}
+          contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 8, paddingBottom: 100, gap: 20 }}
           contentInsetAdjustmentBehavior="automatic"
         >
           {/* Required section */}

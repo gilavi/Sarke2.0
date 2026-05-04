@@ -327,7 +327,7 @@ function getStyles(theme: Theme) {
     grid: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      paddingHorizontal: 16,
+      paddingHorizontal: 24,
       gap: 12,
     },
     hubTileWrap: {

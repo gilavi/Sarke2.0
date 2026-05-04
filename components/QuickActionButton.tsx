@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { A11yText } from './primitives/A11yText';
-import { useTheme } from '../lib/theme';
+import { useTheme, type Theme } from '../lib/theme';
 import { a11y } from '../lib/accessibility';
 
 export type ActionColorKey =
@@ -26,12 +26,13 @@ interface QuickActionButtonProps {
   label: string;
   colorKey: ActionColorKey;
   onPress: () => void;
+  fixedWidth?: number;
 }
 
-export function QuickActionButton({ label, colorKey, onPress }: QuickActionButtonProps) {
+export function QuickActionButton({ label, colorKey, onPress, fixedWidth }: QuickActionButtonProps) {
   const { theme } = useTheme();
-  const styles = useMemo(() => getstyles(theme, colorKey), [theme, colorKey]);
-  const iconColor = theme.colors.actionColors[colorKey].icon;
+  const styles = useMemo(() => getStyles(theme, colorKey, fixedWidth), [theme, colorKey, fixedWidth]);
+  const iconColor = (theme.colors.actionColors[colorKey] ?? theme.colors.actionColors.inspection).icon;
 
   return (
     <Pressable
@@ -55,11 +56,11 @@ export function QuickActionButton({ label, colorKey, onPress }: QuickActionButto
   );
 }
 
-function getstyles(theme: any, colorKey: ActionColorKey) {
-  const ac = theme.colors.actionColors[colorKey];
+function getStyles(theme: Theme, colorKey: ActionColorKey, fixedWidth?: number) {
+  const ac = theme.colors.actionColors[colorKey] ?? theme.colors.actionColors.inspection;
   return StyleSheet.create({
     container: {
-      flex: 1,
+      ...(fixedWidth ? { width: fixedWidth } : { flex: 1 }),
       alignItems: 'center',
       gap: theme.space(2),
       paddingHorizontal: 4,

@@ -1,6 +1,7 @@
 import { createElement, useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
+import { ErrorScreen } from '../../components/ErrorScreen';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
@@ -37,7 +38,7 @@ export default function BriefingDetailScreen() {
     setSharing(true);
     try {
       const html = buildBriefingPdfHtml(briefing, project);
-      const pdfName = generatePdfName(project.name, 'ინსტრუქტაჟი', new Date(briefing.dateTime), briefing.id);
+      const pdfName = generatePdfName(project.company_name || project.name, 'ინსტრუქტაჟი', new Date(briefing.dateTime), briefing.id);
       await generateAndSharePdf(html, pdfName);
     } catch {
       Alert.alert('შეცდომა', 'PDF გენერირება ვერ მოხერხდა');
@@ -45,6 +46,10 @@ export default function BriefingDetailScreen() {
       setSharing(false);
     }
   }, [briefing, project]);
+
+  if (!id) {
+    return <ErrorScreen onGoHome={() => router.replace('/(tabs)/home')} onRetry={() => router.back()} />;
+  }
 
   if (loading) {
     return (

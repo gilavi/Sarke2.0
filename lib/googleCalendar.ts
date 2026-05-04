@@ -180,7 +180,8 @@ export const googleCalendar = {
   async pushDueDate(schedule: ScheduleWithItem): Promise<string | null> {
     if (!schedule.next_due_at) return null;
     const itemName = schedule.project_items?.name ?? 'შემოწმება';
-    const projectName = schedule.project_items?.projects?.name ?? '';
+    const proj = schedule.project_items?.projects;
+    const projectName = proj?.company_name || proj?.name || '';
     const summary = `შემოწმება: ${projectName} — ${itemName}`;
     const startYmd = allDayIsoDate(schedule.next_due_at);
     const endYmd = addDaysYmd(startYmd, 1);

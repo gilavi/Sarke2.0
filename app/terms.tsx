@@ -120,7 +120,7 @@ export default function TermsScreen() {
           </View>
 
           {/* Sections */}
-          <View style={{ paddingHorizontal: 16, gap: 12 }}>
+          <View style={{ paddingHorizontal: 24, gap: 12 }}>
             {body.sections.map((s, index) => (
               <Card key={s.title} padding="none" style={{ overflow: 'hidden' }}>
                 <View style={styles.cardAccent} />
@@ -175,7 +175,7 @@ export default function TermsScreen() {
 
           {/* Action buttons */}
           {!viewOnly ? (
-            <View style={{ paddingHorizontal: 16, gap: 10, marginTop: 20 }}>
+            <View style={{ paddingHorizontal: 24, gap: 10, marginTop: 20 }}>
               <Button title={body.agreeLabel} onPress={accept} loading={busy} {...a11y(body.agreeLabel, 'ვეთანხმები წესებსა და პირობებს', 'button')} />
               <Button title={body.declineLabel} variant="secondary" onPress={decline} disabled={busy} {...a11y(body.declineLabel, 'არ ვეთანხმები წესებსა და პირობებს', 'button')} />
             </View>

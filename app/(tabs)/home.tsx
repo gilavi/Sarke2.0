@@ -3,7 +3,6 @@ import { Swipeable } from 'react-native-gesture-handler';
 import {
   Alert,
   Animated as RNAnimated,
-  Dimensions,
   Keyboard,
   Modal,
   Pressable,
@@ -23,6 +22,7 @@ import { useSession } from '../../lib/session';
 import { ProjectAvatar } from '../../components/ProjectAvatar';
 import { pickProjectLogo } from '../../lib/projectLogo';
 import { isExpiringSoon, questionnairesApi, projectsApi } from '../../lib/services';
+import { supabase } from '../../lib/supabase';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   useProjects,
@@ -41,9 +41,12 @@ import { NumberPop, useScrollHeader } from '../../components/animations';
 import { QuickActions, type QuickAction } from '../../components/QuickActions';
 import { useBottomSheet } from '../../components/BottomSheet';
 import { Skeleton } from '../../components/Skeleton';
-import { MapPicker, type LatLng } from '../../components/MapPicker';
-import { MapPreview } from '../../components/MapPreview';
+import type { LatLng } from '../../components/MapPicker';
+import { LocationRow } from '../../components/LocationRow';
+import { MapPickerInline } from '../../components/MapPickerInline';
+import { routeForInspection } from '../../lib/inspectionRouting';
 import { useToast } from '../../lib/toast';
+import MapView, { PROVIDER_DEFAULT } from 'react-native-maps';
 import { haptic } from '../../lib/haptics';
 import { useTranslation } from 'react-i18next';
 import type { Inspection, Project, Qualification, Template } from '../../types/models';
@@ -54,8 +57,8 @@ import { InspectionTypeAvatar } from '../../components/InspectionTypeAvatar';
 
 const staticStyles = StyleSheet.create({
   scrollContent: { paddingBottom: 100 },
-  projectRowWrap: { flexDirection: 'row', paddingHorizontal: 20, paddingTop: 10, gap: 12 },
-  emptyProjectWrap: { paddingHorizontal: 20, marginTop: 10 },
+  projectRowWrap: { flexDirection: 'row', paddingHorizontal: 20, paddingTop: 10, gap: 12, marginBottom: 24 },
+  emptyProjectWrap: { paddingHorizontal: 20, marginTop: 10, marginBottom: 24 },
   sectionHeaderMargin: { marginTop: 28 },
   recentListMargin: { marginTop: 8 },
   flex: { flex: 1 },
@@ -63,18 +66,14 @@ const staticStyles = StyleSheet.create({
   backButtonMargin: { marginRight: 10 },
   formContent: { paddingTop: 4, paddingBottom: 8, gap: 16 },
   logoWrap: { alignItems: 'center', gap: 8, marginBottom: 4 },
-  mapPreview: { height: 120, borderRadius: 12, overflow: 'hidden' },
-  gap8: { gap: 8 },
-  mapWrap: { flex: 1, marginHorizontal: 16 },
-  cancelButton: { alignSelf: 'center', paddingVertical: 8 },
   recentSkeletonMeta: { flex: 1, gap: 6 },
 });
 
 export default function HomeScreen() {
   const { theme } = useTheme();
   const { t, i18n } = useTranslation();
-  const styles = useMemo(() => getstyles(theme), [theme]);
-  const pickerStyles = useMemo(() => getpickerStyles(theme), [theme]);
+  const styles = useMemo(() => getStyles(theme), [theme]);
+  const pickerStyles = useMemo(() => getPickerStyles(theme), [theme]);
   const { state } = useSession();
   const router = useRouter();
   const qc = useQueryClient();
@@ -119,6 +118,53 @@ export default function HomeScreen() {
   const latestDraft = useMemo(() => recent.find(q => q.status === 'draft'), [recent]);
   const showCertBanner = certs.length === 0 || expiringCount > 0;
   const tip = tipOfTheDay(t);
+
+  const recentGrouped = useMemo(
+    () => groupByDate(recent.slice(0, 10), i18n.language),
+    [recent, i18n.language],
+  );
+
+  const swipeableRef = useRef<Swipeable>(null);
+  const deleteOpacity = useRef(new RNAnimated.Value(1)).current;
+  const deleteScale = useRef(new RNAnimated.Value(1)).current;
+
+  const handleDraftDelete = useCallback(async (draftId: string) => {
+    swipeableRef.current?.close();
+    await new Promise<void>(resolve => {
+      RNAnimated.parallel([
+        RNAnimated.timing(deleteOpacity, { toValue: 0, duration: 160, useNativeDriver: true }),
+        RNAnimated.timing(deleteScale, { toValue: 0.94, duration: 160, useNativeDriver: true }),
+      ]).start(() => resolve());
+    });
+    try {
+      await questionnairesApi.remove(draftId);
+      await qc.invalidateQueries({ queryKey: ['inspections', 'recent'] });
+    } catch {
+      Alert.alert('შეცდომა', 'წაშლა ვერ მოხერხდა');
+    }
+    deleteOpacity.setValue(1);
+    deleteScale.setValue(1);
+  }, [deleteOpacity, deleteScale, qc]);
+
+  const deleteRecentDraft = useCallback(async (id: string, category: string | undefined) => {
+    try {
+      if (category === 'bobcat') {
+        const { error } = await supabase.from('bobcat_inspections').delete().eq('id', id);
+        if (error) throw error;
+      } else if (category === 'excavator') {
+        const { error } = await supabase.from('excavator_inspections').delete().eq('id', id);
+        if (error) throw error;
+      } else if (category === 'general_equipment') {
+        const { error } = await supabase.from('general_equipment_inspections').delete().eq('id', id);
+        if (error) throw error;
+      } else {
+        await questionnairesApi.remove(id);
+      }
+      await qc.invalidateQueries({ queryKey: ['inspections', 'recent'] });
+    } catch {
+      Alert.alert('შეცდომა', 'წაშლა ვერ მოხერხდა');
+    }
+  }, [qc]);
 
   const onRefresh = useCallback(async () => {
     haptic.medium();
@@ -197,20 +243,18 @@ export default function HomeScreen() {
 
         {/* ───────── CONTINUE DRAFT ───────── */}
         {latestDraft ? (
-          <View style={styles.sectionWrap}>
+          <RNAnimated.View style={{
+            opacity: deleteOpacity,
+            transform: [{ scale: deleteScale }],
+          }}>
             <Swipeable
+              ref={swipeableRef}
               friction={2}
-              rightThreshold={60}
+              rightThreshold={40}
+              overshootRight={false}
               renderRightActions={() => (
                 <Pressable
-                  onPress={async () => {
-                    try {
-                      await questionnairesApi.remove(latestDraft.id);
-                      await qc.invalidateQueries({ queryKey: ['inspections', 'recent'] });
-                    } catch {
-                      Alert.alert('შეცდომა', 'წაშლა ვერ მოხერხდა');
-                    }
-                  }}
+                  onPress={() => handleDraftDelete(latestDraft.id)}
                   style={styles.deleteAction}
                 >
                   <Ionicons name="trash-outline" size={22} color="#fff" />
@@ -218,38 +262,32 @@ export default function HomeScreen() {
                 </Pressable>
               )}
             >
-              <Card
-                onPress={() => {
-                  const tpl = templates.find(t => t.id === latestDraft.template_id);
-                  if (tpl?.category === 'bobcat') {
-                    router.push(`/inspections/bobcat/${latestDraft.id}` as any);
-                  } else if (tpl?.category === 'excavator') {
-                    router.push(`/inspections/excavator/${latestDraft.id}` as any);
-                  } else if (tpl?.category === 'general_equipment') {
-                    router.push(`/inspections/general-equipment/${latestDraft.id}` as any);
-                  } else {
-                    router.push(`/inspections/${latestDraft.id}/wizard` as any);
-                  }
-                }}
-                a11y={a11y('შევსების გაგრძელება', 'შეეხეთ მონახაზის გასაგრძელებლად', 'button')}
-                style={styles.resumeCard}
-              >
-                  <View style={styles.resumeIcon}>
-                    <Ionicons name="pencil" size={16} color={theme.colors.warn} />
-                  </View>
-                  <View style={staticStyles.flex}>
-                    <Text style={styles.resumeEyebrow}>{t('home.resumeDraft')}</Text>
-                    <Text style={styles.resumeTitle} numberOfLines={1}>
-                      {templateName(latestDraft.template_id)}
-                    </Text>
-                    <Text style={styles.resumeMeta} numberOfLines={1}>
-                      {relativeTime(latestDraft.created_at, t, i18n.language)}
-                    </Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={18} color={theme.colors.inkFaint} />
-              </Card>
+              <View style={{ paddingHorizontal: 20 }}>
+                <Card
+                  onPress={() => {
+                    const tpl = templates.find(t => t.id === latestDraft.template_id);
+                    router.push(routeForInspection(tpl?.category, latestDraft.id, false) as any);
+                  }}
+                  a11y={a11y('შევსების გაგრძელება', 'შეეხეთ მონახაზის გასაგრძელებლად', 'button')}
+                  style={styles.resumeCard}
+                >
+                    <View style={styles.resumeIcon}>
+                      <Ionicons name="pencil" size={16} color={theme.colors.warn} />
+                    </View>
+                    <View style={staticStyles.flex}>
+                      <Text style={styles.resumeEyebrow}>{t('home.resumeDraft')}</Text>
+                      <Text style={styles.resumeTitle} numberOfLines={1}>
+                        {templateName(latestDraft.template_id)}
+                      </Text>
+                      <Text style={styles.resumeMeta} numberOfLines={1}>
+                        {relativeTime(latestDraft.created_at, t, i18n.language)}
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color={theme.colors.inkFaint} />
+                </Card>
+              </View>
             </Swipeable>
-          </View>
+          </RNAnimated.View>
         ) : null}
 
         {/* ───────── CERT BANNER (warn only) ───────── */}
@@ -381,7 +419,7 @@ export default function HomeScreen() {
             horizontal
             showsHorizontalScrollIndicator={false}
             directionalLockEnabled
-            contentContainerStyle={{ paddingHorizontal: HPAD, paddingTop: 10, paddingBottom: 4, gap: GAP }}
+            contentContainerStyle={{ paddingHorizontal: HPAD, paddingTop: 10, paddingBottom: 24, gap: GAP }}
           >
             {projects.slice(0, 8).map(p => (
               <ProjectCard
@@ -397,7 +435,7 @@ export default function HomeScreen() {
                 setPickerInitialView('new');
                 setPickerVisible(true);
               }}
-              style={{ width: Math.round(projectCardWidth * 0.72) }}
+              style={{ width: projectCardWidth }}
               {...a11y('ახალი პროექტის შექმნა', 'შეეხეთ ახალი პროექტის შესაქმნელად', 'button')}
             >
               <View style={styles.newProjectCard}>
@@ -426,16 +464,10 @@ export default function HomeScreen() {
               <Ionicons name="time-outline" size={14} color={theme.colors.inkSoft} style={{ marginRight: 5 }} />
               <Text style={styles.sectionHeader}>{t('home.recentActs')}</Text>
             </View>
-            <View style={[styles.recentList, staticStyles.recentListMargin]}>
+            <View style={staticStyles.recentListMargin}>
               {RECENT_SKELETONS.map((i) => (
-                <View
-                  key={`skeleton-${i}`}
-                  style={[
-                    styles.recentRow,
-                    i > 0 && styles.recentRowBorder,
-                  ]}
-                >
-                  <Skeleton width={30} height={30} radius={15} />
+                <View key={`skeleton-${i}`} style={[styles.recentRow, i < RECENT_SKELETONS.length - 1 && styles.recentRowBorder]}>
+                  <Skeleton width={48} height={48} radius={12} style={{ marginRight: 14 }} />
                   <View style={staticStyles.recentSkeletonMeta}>
                     <Skeleton width={'70%'} height={14} />
                     <Skeleton width={'35%'} height={11} />
@@ -453,47 +485,70 @@ export default function HomeScreen() {
                 <Text style={styles.sectionLink}>ყველა</Text>
               </Pressable>
             </View>
-            <View style={[styles.recentList, staticStyles.recentListMargin]}>
-              {recent.slice(0, 4).map((q, i) => {
-                const tpl = templates.find(t => t.id === q.template_id);
+            <View style={staticStyles.recentListMargin}>
+              {recentGrouped.map((group, gi) => {
+                const isLastGroup = gi === recentGrouped.length - 1;
                 return (
-                <Pressable
-                  key={q.id}
-                  onPress={() =>
-                    q.status === 'completed'
-                      ? router.push(`/inspections/${q.id}` as any)
-                      : (() => {
-                          if (tpl?.category === 'bobcat') {
-                            router.push(`/inspections/bobcat/${q.id}` as any);
-                          } else if (tpl?.category === 'excavator') {
-                            router.push(`/inspections/excavator/${q.id}` as any);
-                          } else if (tpl?.category === 'general_equipment') {
-                            router.push(`/inspections/general-equipment/${q.id}` as any);
-                          } else {
-                            router.push(`/inspections/${q.id}/wizard` as any);
+                  <View key={group.label}>
+                    <View style={styles.dateSeparator}>
+                      <Text style={styles.dateSeparatorText}>{group.label}</Text>
+                    </View>
+                    {group.items.map((q, i) => {
+                      const tpl = templates.find(t => t.id === q.template_id);
+                      const isLast = isLastGroup && i === group.items.length - 1;
+                      const rowContent = (
+                        <Pressable
+                          onPress={() =>
+                            router.push(routeForInspection(tpl?.category, q.id, q.status === 'completed') as any)
                           }
-                        })()
-                  }
-                  style={[styles.recentRow, i > 0 && styles.recentRowBorder]}
-                  {...a11y(
-                    `${templateName(q.template_id)}, ${q.status === 'completed' ? 'დასრულებული' : 'მონახაზი'}`,
-                    q.status === 'completed' ? 'შეეხეთ დეტალების სანახავად' : 'შეეხეთ გასაგრძელებლად',
-                    'button'
-                  )}
-                >
-                  <InspectionTypeAvatar
-                    category={tpl?.category}
-                    size={38}
-                    status={q.status === 'completed' ? 'completed' : 'draft'}
-                  />
-                  <View style={staticStyles.flex}>
-                    <Text style={styles.recentTitle} numberOfLines={1}>
-                      {templateName(q.template_id)}
-                    </Text>
-                    <Text style={styles.recentMeta}>{relativeTime(q.created_at, t, i18n.language)}</Text>
+                          style={[styles.recentRow, !isLast && styles.recentRowBorder]}
+                          {...a11y(
+                            `${templateName(q.template_id)}, ${q.status === 'completed' ? 'დასრულებული' : 'მონახაზი'}`,
+                            q.status === 'completed' ? 'შეეხეთ დეტალების სანახავად' : 'შეეხეთ გასაგრძელებლად',
+                            'button',
+                          )}
+                        >
+                          <InspectionTypeAvatar
+                            category={tpl?.category}
+                            size={48}
+                            status={q.status === 'completed' ? 'completed' : 'draft'}
+                            style={{ marginRight: 14 }}
+                          />
+                          <View style={staticStyles.flex}>
+                            <Text style={styles.recentTitle} numberOfLines={1}>
+                              {templateName(q.template_id)}
+                            </Text>
+                            <Text style={styles.recentMeta} numberOfLines={1}>
+                              {projects.find(p => p.id === q.project_id)?.name ?? ''}
+                            </Text>
+                          </View>
+                          <Text style={styles.recentTime}>{relativeTime(q.created_at, t, i18n.language)}</Text>
+                          <Ionicons name="chevron-forward" size={14} color="#D3D1C7" />
+                        </Pressable>
+                      );
+                      return q.status === 'draft' ? (
+                        <Swipeable
+                          key={q.id}
+                          friction={2}
+                          rightThreshold={40}
+                          overshootRight={false}
+                          renderRightActions={() => (
+                            <Pressable
+                              onPress={() => deleteRecentDraft(q.id, tpl?.category ?? undefined)}
+                              style={styles.deleteAction}
+                            >
+                              <Ionicons name="trash-outline" size={22} color="#fff" />
+                              <Text style={styles.deleteActionText}>წაშლა</Text>
+                            </Pressable>
+                          )}
+                        >
+                          {rowContent}
+                        </Swipeable>
+                      ) : (
+                        <View key={q.id}>{rowContent}</View>
+                      );
+                    })}
                   </View>
-                  <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
-                </Pressable>
                 );
               })}
             </View>
@@ -582,14 +637,13 @@ function ProjectPickerSheet({
   const { theme } = useTheme();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const pickerStyles = useMemo(() => getpickerStyles(theme), [theme]);
+  const pickerStyles = useMemo(() => getPickerStyles(theme), [theme]);
   const router = useRouter();
   const toast = useToast();
   const [view, setView] = useState<'list' | 'new'>('list');
   const [pickedTemplateId, setPickedTemplateId] = useState<string | null>(null);
   const pickedTemplateIdRef = useRef<string | null>(null);
   useEffect(() => { pickedTemplateIdRef.current = pickedTemplateId; }, [pickedTemplateId]);
-  const [name, setName] = useState('');
   const [company, setCompany] = useState('');
   const [address, setAddress] = useState('');
   const [pin, setPin] = useState<LatLng | null>(null);
@@ -603,7 +657,6 @@ function ProjectPickerSheet({
     if (visible) {
       setView(initialView);
       setPickedTemplateId(preselectedTemplateId ?? null);
-      setName('');
       setCompany('');
       setAddress('');
       setPin(null);
@@ -638,53 +691,32 @@ function ProjectPickerSheet({
 
   const startInspection = async (projectId: string, templateId: string) => {
     const tpl = templates.find(t => t.id === templateId);
-    if (tpl?.category === 'bobcat') {
-      try {
-        const b = await bobcatApi.create({ projectId, templateId });
-        onClose();
-        router.push(`/inspections/bobcat/${b.id}` as any);
-      } catch (e) {
-        toast.error(friendlyError(e, t('errors.createFailed')));
-      }
-      return;
-    }
-    if (tpl?.category === 'excavator') {
-      try {
-        const e = await excavatorApi.create({ projectId, templateId });
-        onClose();
-        router.push(`/inspections/excavator/${e.id}` as any);
-      } catch (e) {
-        toast.error(friendlyError(e, t('errors.createFailed')));
-      }
-      return;
-    }
-    if (tpl?.category === 'general_equipment') {
-      try {
-        const g = await generalEquipmentApi.create({ projectId, templateId });
-        onClose();
-        router.push(`/inspections/general-equipment/${g.id}` as any);
-      } catch (e) {
-        toast.error(friendlyError(e, t('errors.createFailed')));
-      }
-      return;
-    }
     try {
-      const q = await questionnairesApi.create({ projectId, templateId });
+      let newId: string;
+      if (tpl?.category === 'bobcat') {
+        newId = (await bobcatApi.create({ projectId, templateId })).id;
+      } else if (tpl?.category === 'excavator') {
+        newId = (await excavatorApi.create({ projectId, templateId })).id;
+      } else if (tpl?.category === 'general_equipment') {
+        newId = (await generalEquipmentApi.create({ projectId, templateId })).id;
+      } else {
+        newId = (await questionnairesApi.create({ projectId, templateId })).id;
+      }
       onClose();
-      router.push(`/inspections/${q.id}/wizard` as any);
+      router.push(routeForInspection(tpl?.category, newId, false) as any);
     } catch (e) {
       toast.error(friendlyError(e, t('errors.createFailed')));
     }
   };
 
   const createProject = async () => {
-    if (!name.trim()) return;
+    if (!company.trim()) return;
     setBusy(true);
     try {
       // Create project — API returns the created object directly
       const created = await projectsApi.create({
-        name: name.trim(),
-        companyName: company.trim() || null,
+        name: company.trim(),
+        companyName: company.trim(),
         address: address.trim() || null,
         latitude: pin?.latitude ?? null,
         longitude: pin?.longitude ?? null,
@@ -697,7 +729,6 @@ function ProjectPickerSheet({
       void onCreated();
       // Use returned project directly (no stale prop issues)
       if (created?.id) {
-        setName('');
         setCompany('');
         setAddress('');
         setPin(null);
@@ -787,10 +818,7 @@ function ProjectPickerSheet({
                       >
                         <ProjectAvatar project={p} size={44} />
                         <View style={staticStyles.flex}>
-                          <Text style={pickerStyles.rowName} numberOfLines={1}>{p.name}</Text>
-                          {p.company_name ? (
-                            <Text style={pickerStyles.rowSub} numberOfLines={1}>{p.company_name}</Text>
-                          ) : null}
+                          <Text style={pickerStyles.rowName} numberOfLines={1}>{p.company_name || p.name}</Text>
                         </View>
                         <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
                       </Pressable>
@@ -821,7 +849,7 @@ function ProjectPickerSheet({
                 >
                   <View style={staticStyles.logoWrap}>
                     <ProjectAvatar
-                      project={{ name: name || '—', logo }}
+                      project={{ name: company || '—', logo }}
                       size={88}
                       editable
                       onEdit={onPickLogo}
@@ -835,16 +863,11 @@ function ProjectPickerSheet({
                     ) : null}
                   </View>
                   <FloatingLabelInput
-                    label={t('common.name')}
-                    required
-                    value={name}
-                    onChangeText={setName}
-                    autoFocus
-                  />
-                  <FloatingLabelInput
                     label={t('common.company')}
+                    required
                     value={company}
                     onChangeText={setCompany}
+                    autoFocus
                   />
                   <FloatingLabelInput
                     label={t('common.address')}
@@ -854,12 +877,12 @@ function ProjectPickerSheet({
                   />
                   <LocationRow pin={pin} address={address} onPress={() => { Keyboard.dismiss(); setMapVisible(true); }} />
                 </ScrollView>
-                <View style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: insets.bottom || 16 }}>
+                <View style={{ paddingHorizontal: 24, paddingTop: 10, paddingBottom: insets.bottom || 16 }}>
                   <Button
                     title={t('projects.createButton')}
                     onPress={createProject}
                     loading={busy}
-                    disabled={!name.trim()}
+                    disabled={!company.trim()}
                     {...a11y(t('projects.createButton'), 'შეეხეთ ახალი პროექტის შესაქმნელად', 'button')}
                   />
                 </View>
@@ -871,7 +894,7 @@ function ProjectPickerSheet({
         {/* Full-screen map overlay — no nested Modal */}
         {mapVisible && (
           <View style={[StyleSheet.absoluteFillObject, { backgroundColor: theme.colors.background }]}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: insets.top + 12, paddingVertical: 12 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingTop: insets.top + 12, paddingVertical: 12 }}>
               <View style={{ width: 24 }} />
               <Text style={{ flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '700', color: theme.colors.ink }}>
                 მდებარეობის არჩევა
@@ -909,23 +932,43 @@ const ProjectCard = memo(function ProjectCard({
   onPress: () => void;
 }) {
   const { theme } = useTheme();
-  const styles = useMemo(() => getstyles(theme), [theme]);
+  const styles = useMemo(() => getStyles(theme), [theme]);
 
   return (
     <Pressable
       onPress={onPress}
       {...a11y(
-        `პროექტი: ${project.name}${project.company_name ? ', ' + project.company_name : ''}`,
+        `პროექტი: ${project.company_name || project.name}`,
         'შეეხეთ პროექტის დეტალების სანახავად',
         'button'
       )}
     >
       <View style={[styles.projectCard, { width }]}>
-        <ProjectAvatar project={project} size={48} />
-        <Text style={styles.projectName} numberOfLines={2}>{project.name}</Text>
-        {project.company_name ? (
-          <Text style={styles.projectSub} numberOfLines={1}>{project.company_name}</Text>
-        ) : null}
+        {project.latitude != null && project.longitude != null && (
+          <>
+            <MapView
+              style={StyleSheet.absoluteFill}
+              provider={PROVIDER_DEFAULT}
+              region={{
+                latitude: project.latitude,
+                longitude: project.longitude,
+                latitudeDelta: 0.018,
+                longitudeDelta: 0.018,
+              }}
+              scrollEnabled={false}
+              zoomEnabled={false}
+              pitchEnabled={false}
+              rotateEnabled={false}
+              liteMode
+              pointerEvents="none"
+            />
+            <View style={styles.projectCardMapOverlay} />
+          </>
+        )}
+        <View style={{ width: 44, height: 44, borderRadius: 22, overflow: 'hidden' }}>
+          <ProjectAvatar project={project} size={44} />
+        </View>
+        <Text style={styles.projectName} numberOfLines={2}>{project.company_name || project.name}</Text>
       </View>
     </Pressable>
   );
@@ -978,141 +1021,38 @@ function tipOfTheDay(t: (key: string) => string) {
   return t(TIP_KEYS[day % TIP_KEYS.length]);
 }
 
+function dateGroupLabel(iso: string, lang: string): string {
+  const d = new Date(iso);
+  d.setHours(0, 0, 0, 0);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const diff = Math.round((today.getTime() - d.getTime()) / 86400000);
+  if (diff === 0) return 'დღეს';
+  if (diff === 1) return 'გუშინ';
+  const locale = lang.startsWith('en') ? 'en-US' : 'ka-GE';
+  return d.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
+}
+
+function groupByDate<T extends { created_at: string }>(
+  items: T[],
+  lang: string,
+): { label: string; items: T[] }[] {
+  const groups: { label: string; items: T[] }[] = [];
+  for (const item of items) {
+    const label = dateGroupLabel(item.created_at, lang);
+    const existing = groups.find(g => g.label === label);
+    if (existing) existing.items.push(item);
+    else groups.push({ label, items: [item] });
+  }
+  return groups;
+}
+
 // ──────────── STYLES ────────────
 
-const PROJECT_CARD_HEIGHT = 150;
+const PROJECT_CARD_HEIGHT = 120;
 
-// ── Compact location row (shows preview or picker prompt) ──
-function LocationRow({
-  pin,
-  address,
-  onPress,
-}: {
-  pin: LatLng | null;
-  address: string;
-  onPress: () => void;
-}) {
-  const { theme } = useTheme();
 
-  if (!pin) {
-    return (
-      <Pressable
-        onPress={onPress}
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 10,
-          paddingVertical: 14,
-          paddingHorizontal: 16,
-          backgroundColor: theme.colors.surfaceSecondary,
-          borderRadius: 12,
-          borderWidth: 1,
-          borderColor: theme.colors.hairline,
-          borderStyle: 'dashed',
-        }}
-      >
-        <Ionicons name="location-outline" size={20} color={theme.colors.accent} />
-        <Text style={{ fontSize: 14, color: theme.colors.inkSoft, fontWeight: '500' }}>
-          დააჭირეთ მდებარეობის ასარჩევად
-        </Text>
-      </Pressable>
-    );
-  }
-
-  return (
-    <Pressable onPress={onPress}>
-      <View style={staticStyles.gap8}>
-        <MapPreview
-          latitude={pin.latitude}
-          longitude={pin.longitude}
-          pinColor={theme.colors.accent}
-          style={staticStyles.mapPreview}
-        />
-        {address ? (
-          <Text style={{ fontSize: 13, color: theme.colors.inkSoft }} numberOfLines={2}>
-            {address}
-          </Text>
-        ) : null}
-        <Text style={{ fontSize: 13, color: theme.colors.accent, fontWeight: '600' }}>
-          შეცვლა
-        </Text>
-      </View>
-    </Pressable>
-  );
-}
-
-// ── Full-screen map picker modal ──
-function MapPickerInline({
-  initialPin,
-  initialAddress,
-  onConfirm,
-  onCancel,
-}: {
-  initialPin: LatLng | null;
-  initialAddress: string;
-  onConfirm: (pin: LatLng | null, address: string) => void;
-  onCancel: () => void;
-}) {
-  const { theme } = useTheme();
-  const insets = useSafeAreaInsets();
-  const [pin, setPin] = useState<LatLng | null>(initialPin);
-  const [address, setAddress] = useState(initialAddress);
-  const screenH = Dimensions.get('window').height;
-  // Reserve space for header (~60) + bottom action bar (~160) + safe areas
-  const mapHeight = Math.max(240, screenH - insets.top - insets.bottom - 220);
-
-  useEffect(() => {
-    setPin(initialPin);
-    setAddress(initialAddress);
-  }, [initialPin, initialAddress]);
-
-  return (
-    <View style={staticStyles.flex}>
-      {/* Map with modest horizontal inset */}
-      <View style={staticStyles.mapWrap}>
-        <MapPicker
-          value={pin}
-          onChange={setPin}
-          address={address}
-          onAddressChange={setAddress}
-          height={mapHeight}
-        />
-      </View>
-
-      {/* Bottom action bar */}
-      <View
-        style={{
-          backgroundColor: theme.colors.surface,
-          borderTopLeftRadius: 24,
-          borderTopRightRadius: 24,
-          paddingHorizontal: 20,
-          paddingTop: 16,
-          paddingBottom: insets.bottom + 16,
-          gap: 8,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.08,
-          shadowRadius: 12,
-          elevation: 8,
-        }}
-      >
-        <Button
-          title="დადასტურება"
-          size="lg"
-          onPress={() => onConfirm(pin, address)}
-          disabled={!pin}
-        />
-        <Pressable onPress={onCancel} style={staticStyles.cancelButton}>
-          <Text style={{ fontSize: 15, fontWeight: '600', color: theme.colors.inkSoft }}>
-            გაუქმება
-          </Text>
-        </Pressable>
-      </View>
-    </View>
-  );
-}
-
-function getstyles(theme: Theme) {
+function getStyles(theme: Theme) {
   return StyleSheet.create({
   // SCROLL-DRIVEN HEADER (Airbnb-style shrinking)
   scrollHeader: {
@@ -1201,21 +1141,23 @@ function getstyles(theme: Theme) {
   sectionHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
+    paddingTop: 8,
+    paddingBottom: 4,
     marginTop: 28,
   },
   sectionHeader: {
     flex: 1,
-    fontSize: 11,
-    fontWeight: '800',
-    color: theme.colors.inkSoft,
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6B7280',
     textTransform: 'uppercase',
-    letterSpacing: 1.1,
+    letterSpacing: 0.05,
   },
   sectionLink: {
     fontSize: 13,
     color: theme.colors.accent,
-    fontWeight: '700',
+    fontWeight: '500',
   },
 
   // RESUME CARD
@@ -1323,8 +1265,14 @@ function getstyles(theme: Theme) {
     borderWidth: 1,
     borderColor: theme.colors.hairline,
     padding: 12,
-    gap: 10,
+    gap: 6,
     height: PROJECT_CARD_HEIGHT,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  projectCardMapOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: withOpacity(theme.colors.card, 0.88),
   },
   projectEmoji: {
     width: 48,
@@ -1334,11 +1282,10 @@ function getstyles(theme: Theme) {
     justifyContent: 'center',
   },
   projectName: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
     color: theme.colors.ink,
-    lineHeight: 20,
-    minHeight: 36,
+    lineHeight: 19,
   },
   projectSub: {
     fontSize: 11,
@@ -1374,7 +1321,6 @@ function getstyles(theme: Theme) {
     color: theme.colors.ink,
   },
   newProjectCard: {
-    flex: 1,
     backgroundColor: theme.colors.accentSoft,
     borderRadius: 16,
     borderWidth: 1.5,
@@ -1391,35 +1337,47 @@ function getstyles(theme: Theme) {
     color: theme.colors.accent,
   },
 
-  // RECENT
-  recentList: {
-    marginHorizontal: 20,
-    backgroundColor: theme.colors.card,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: theme.colors.hairline,
-    overflow: 'hidden',
-  },
+  // RECENT — flat list, no card wrapper
   recentRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 14,
+    paddingHorizontal: 24,
     paddingVertical: 14,
+    backgroundColor: 'transparent',
   },
   recentRowBorder: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: theme.colors.hairline,
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(0,0,0,0.06)',
   },
   recentTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: theme.colors.ink,
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#1A1A1A',
+    lineHeight: 20,
+    marginBottom: 3,
   },
   recentMeta: {
-    fontSize: 11,
-    color: theme.colors.inkSoft,
-    marginTop: 2,
+    fontSize: 12,
+    color: '#9CA3AF',
+    fontWeight: '400',
+  },
+  recentTime: {
+    fontSize: 12,
+    color: '#B4B2A9',
+    marginLeft: 8,
+    marginRight: 4,
+  },
+  dateSeparator: {
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 10,
+  },
+  dateSeparatorText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#9CA3AF',
+    textTransform: 'uppercase',
+    letterSpacing: 0.08,
   },
 
   // DRAFT DELETE ACTION
@@ -1427,9 +1385,11 @@ function getstyles(theme: Theme) {
     backgroundColor: '#EF4444',
     justifyContent: 'center',
     alignItems: 'center',
-    width: 80,
-    borderRadius: 16,
+    width: 72,
+    borderRadius: 14,
     marginLeft: 8,
+    marginRight: 20,
+    marginVertical: 2,
     gap: 4,
   },
   deleteActionText: {
@@ -1472,7 +1432,7 @@ function getstyles(theme: Theme) {
 });
 }
 
-function getpickerStyles(theme: Theme) {
+function getPickerStyles(theme: Theme) {
   return StyleSheet.create({
   container: {
     flex: 1,

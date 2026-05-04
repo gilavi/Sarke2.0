@@ -316,7 +316,7 @@ function getstyles(theme: Theme) {
       flex: 1,
     },
     content: {
-      paddingHorizontal: 16,
+      paddingHorizontal: 24,
       paddingTop: 8,
       paddingBottom: 16,
     },

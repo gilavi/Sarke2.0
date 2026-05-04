@@ -39,7 +39,7 @@ export default function BriefingDoneScreen() {
     setSharing(true);
     try {
       const html = buildBriefingPdfHtml(briefing, project);
-      const pdfName = generatePdfName(project.name, 'ინსტრუქტაჟი', new Date(briefing.dateTime), briefing.id);
+      const pdfName = generatePdfName(project.company_name || project.name, 'ინსტრუქტაჟი', new Date(briefing.dateTime), briefing.id);
       await generateAndSharePdf(html, pdfName);
     } catch {
       Alert.alert('შეცდომა', 'PDF გენერირება ვერ მოხერხდა');
@@ -92,7 +92,7 @@ export default function BriefingDoneScreen() {
         {briefing && project ? (
           <View style={styles.infoCard}>
             <Text style={styles.infoProjectName} numberOfLines={1}>
-              {project.name}
+              {project.company_name || project.name}
             </Text>
             {project.address ? (
               <Text style={styles.infoAddress} numberOfLines={2}>

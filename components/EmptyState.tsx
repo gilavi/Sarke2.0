@@ -14,7 +14,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import Svg, { Line, Rect, Circle, Path, Polygon, G } from 'react-native-svg';
+import Svg, { Line, Rect, Circle, Path, Polygon, Ellipse, Polyline, G } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { haptic } from '../lib/haptics';
 import { a11y, useAccessibilitySettings } from '../lib/accessibility';
@@ -34,7 +34,7 @@ export interface EmptyStateProps {
   subtitle?: string;
   action?: {
     label: string;
-    icon?: string;
+    icon?: React.ComponentProps<typeof Ionicons>['name'];
     onPress: () => void;
   };
   backgroundPattern?: boolean;
@@ -48,7 +48,6 @@ export interface EmptyStateProps {
 
 function IllustrationProjects() {
   const { theme } = useTheme();
-  const styles = useMemo(() => getstyles(theme), [theme]);
 
   return (
     <Svg width={160} height={160} viewBox="0 0 160 160">
@@ -87,7 +86,6 @@ function IllustrationProjects() {
 
 function IllustrationCertificates() {
   const { theme } = useTheme();
-  const styles = useMemo(() => getstyles(theme), [theme]);
 
   return (
     <Svg width={160} height={160} viewBox="0 0 160 160">
@@ -122,7 +120,6 @@ function IllustrationCertificates() {
 
 function IllustrationHistory() {
   const { theme } = useTheme();
-  const styles = useMemo(() => getstyles(theme), [theme]);
 
   return (
     <Svg width={160} height={160} viewBox="0 0 160 160">
@@ -176,7 +173,6 @@ function IllustrationHistory() {
 
 function IllustrationQualifications() {
   const { theme } = useTheme();
-  const styles = useMemo(() => getstyles(theme), [theme]);
 
   return (
     <Svg width={160} height={160} viewBox="0 0 160 160">
@@ -211,7 +207,6 @@ function IllustrationQualifications() {
 
 function IllustrationTemplates() {
   const { theme } = useTheme();
-  const styles = useMemo(() => getstyles(theme), [theme]);
 
   return (
     <Svg width={160} height={160} viewBox="0 0 160 160">
@@ -264,7 +259,6 @@ const ILLUSTRATIONS: Record<EmptyStateType, React.FC> = {
 
 function ScaffoldingPattern() {
   const { theme } = useTheme();
-  const styles = useMemo(() => getstyles(theme), [theme]);
 
   const hLines = [20, 50, 80, 110, 140, 170, 200, 230, 260, 290, 320, 350, 380, 410, 440, 470, 500, 530, 560, 590];
   const vLines = [30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 360];
@@ -294,7 +288,7 @@ export default function EmptyState({
   style,
 }: EmptyStateProps) {
   const { theme } = useTheme();
-  const styles = useMemo(() => getstyles(theme), [theme]);
+  const styles = useMemo(() => getStyles(theme), [theme]);
   const { reduceMotion } = useAccessibilitySettings();
   const entry = useSharedValue(0);
   const btnScale = useSharedValue(1);
@@ -337,7 +331,7 @@ export default function EmptyState({
     action?.onPress();
   }, [action]);
 
-  const Illustration = ILLUSTRATIONS[type];
+  const Illustration = ILLUSTRATIONS[type] ?? IllustrationProjects;
 
   return (
     <Animated.View
@@ -374,7 +368,7 @@ export default function EmptyState({
             >
               {action.icon ? (
                 <Ionicons
-                  name={action.icon as any}
+                  name={action.icon}
                   size={18}
                   color={theme.colors.white}
                   style={{ marginRight: 8 }}
@@ -393,7 +387,140 @@ export default function EmptyState({
    Styles
    ═══════════════════════════════════════════════════════════════════════ */
 
-function getstyles(theme: Theme) {
+/* ═══════════════════════════════════════════════════════════════════════
+   Section Empty States — compact, SVG-illustrated, for project screen cards
+   ═══════════════════════════════════════════════════════════════════════ */
+
+type SectionType = 'incidents' | 'briefings' | 'reports' | 'documents';
+
+const SC = {
+  fill: '#E8F5F0',
+  primary: 'rgba(29,158,117,0.25)',
+  stroke: 'rgba(29,158,117,0.4)',
+  sw: 1.5 as number,
+};
+
+function IncidentsIllustration() {
+  return (
+    <Svg width={52} height={48} viewBox="0 0 52 48" fill="none">
+      {/* Hard hat brim */}
+      <Ellipse cx={20} cy={30} rx={13} ry={3.5} fill={SC.fill} stroke={SC.stroke} strokeWidth={SC.sw} />
+      {/* Hard hat dome */}
+      <Path d="M9 30 Q9 16 20 16 Q31 16 31 30" fill={SC.primary} stroke={SC.stroke} strokeWidth={SC.sw} />
+      {/* Hat band */}
+      <Line x1={9} y1={27} x2={31} y2={27} stroke={SC.stroke} strokeWidth={SC.sw} />
+      {/* Shield */}
+      <Path d="M36 12 L44 15 L44 23 Q44 29 36 32 Q28 29 28 23 L28 15 Z" fill={SC.fill} stroke={SC.stroke} strokeWidth={SC.sw} />
+      {/* Checkmark */}
+      <Polyline points="31,22 34,26 41,18" stroke="rgba(29,158,117,0.8)" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+function BriefingsIllustration() {
+  return (
+    <Svg width={52} height={48} viewBox="0 0 52 48" fill="none">
+      {/* Instructor figure head */}
+      <Circle cx={19} cy={13} r={5} fill={SC.fill} stroke={SC.stroke} strokeWidth={SC.sw} />
+      {/* Instructor body */}
+      <Path d="M12 34 Q12 22 19 22 Q26 22 26 34" fill={SC.primary} stroke={SC.stroke} strokeWidth={SC.sw} />
+      {/* Participant figure head */}
+      <Circle cx={35} cy={16} r={4} fill={SC.fill} stroke={SC.stroke} strokeWidth={SC.sw} />
+      {/* Participant body */}
+      <Path d="M29 34 Q29 24 35 24 Q41 24 41 34" fill={SC.primary} stroke={SC.stroke} strokeWidth={SC.sw} />
+      {/* Speech bubble */}
+      <Rect x={22} y={5} width={18} height={11} rx={4} fill={SC.fill} stroke={SC.stroke} strokeWidth={SC.sw} />
+      <Path d="M25 16 L22 20 L28 16" fill={SC.fill} stroke={SC.stroke} strokeWidth={SC.sw} strokeLinejoin="round" />
+      {/* Dots in bubble */}
+      <Circle cx={27} cy={10.5} r={1.2} fill={SC.stroke} />
+      <Circle cx={31} cy={10.5} r={1.2} fill={SC.stroke} />
+      <Circle cx={35} cy={10.5} r={1.2} fill={SC.stroke} />
+    </Svg>
+  );
+}
+
+function ReportsIllustration() {
+  return (
+    <Svg width={52} height={48} viewBox="0 0 52 48" fill="none">
+      {/* Document body */}
+      <Rect x={10} y={5} width={28} height={37} rx={3} fill={SC.fill} stroke={SC.stroke} strokeWidth={SC.sw} />
+      {/* Folded corner */}
+      <Path d="M30 5 L38 13 L30 13 Z" fill={SC.primary} stroke={SC.stroke} strokeWidth={SC.sw} strokeLinejoin="round" />
+      {/* Title lines */}
+      <Line x1={15} y1={18} x2={29} y2={18} stroke={SC.stroke} strokeWidth={1.2} strokeLinecap="round" />
+      <Line x1={15} y1={21} x2={25} y2={21} stroke={SC.stroke} strokeWidth={1} strokeLinecap="round" />
+      {/* Bar chart */}
+      <Rect x={15} y={28} width={4} height={9} rx={1} fill={SC.primary} stroke={SC.stroke} strokeWidth={1} />
+      <Rect x={21} y={23} width={4} height={14} rx={1} fill={SC.primary} stroke={SC.stroke} strokeWidth={1} />
+      <Rect x={27} y={26} width={4} height={11} rx={1} fill={SC.primary} stroke={SC.stroke} strokeWidth={1} />
+      {/* Baseline */}
+      <Line x1={14} y1={37} x2={32} y2={37} stroke={SC.stroke} strokeWidth={1} />
+    </Svg>
+  );
+}
+
+function DocumentsIllustration() {
+  return (
+    <Svg width={52} height={48} viewBox="0 0 52 48" fill="none">
+      {/* Folder back */}
+      <Path d="M8 18 L8 40 Q8 42 10 42 L42 42 Q44 42 44 40 L44 18 Z" fill={SC.fill} stroke={SC.stroke} strokeWidth={SC.sw} />
+      {/* Folder tab */}
+      <Path d="M8 18 L8 16 Q8 14 10 14 L22 14 Q24 14 25 16 L27 18 Z" fill={SC.primary} stroke={SC.stroke} strokeWidth={SC.sw} strokeLinejoin="round" />
+      {/* Dotted empty interior */}
+      <Rect x={15} y={23} width={22} height={13} rx={2} fill="none" stroke={SC.stroke} strokeWidth={1.2} strokeDasharray="3 2.5" />
+      {/* Plus hint */}
+      <Line x1={26} y1={27} x2={26} y2={32} stroke={SC.stroke} strokeWidth={1.2} strokeLinecap="round" />
+      <Line x1={23.5} y1={29.5} x2={28.5} y2={29.5} stroke={SC.stroke} strokeWidth={1.2} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+const SECTION_ILLUSTRATIONS: Record<SectionType, React.FC> = {
+  incidents: IncidentsIllustration,
+  briefings: BriefingsIllustration,
+  reports: ReportsIllustration,
+  documents: DocumentsIllustration,
+};
+
+const SECTION_SUBTITLES: Record<SectionType, string> = {
+  incidents: 'ინციდენტი არ დაფიქსირებულა',
+  briefings: 'ინსტრუქტაჟი ჯერ არ ჩატარებულა',
+  reports: 'რეპორტი ჯერ არ შეიქმნა',
+  documents: 'ფაილები არ არის ატვირთული',
+};
+
+export function SectionEmptyState({ type, subtitle }: { type: SectionType; subtitle?: string }) {
+  const Illustration = SECTION_ILLUSTRATIONS[type];
+  const text = subtitle ?? SECTION_SUBTITLES[type];
+  return (
+    <View style={sectionStyles.container}>
+      <View style={sectionStyles.illustration}>
+        <Illustration />
+      </View>
+      <Text style={sectionStyles.subtitle}>{text}</Text>
+    </View>
+  );
+}
+
+const sectionStyles = StyleSheet.create({
+  container: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    gap: 10,
+  },
+  illustration: {
+    alignItems: 'center',
+    width: 52,
+  },
+  subtitle: {
+    fontSize: 13,
+    color: '#9CA3AF',
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+});
+
+function getStyles(theme: Theme) {
   return StyleSheet.create({
   container: {
     flex: 1,

@@ -107,7 +107,7 @@ function getstyles(theme: any) {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 24,
     paddingVertical: 12,
     paddingBottom: 24,
   },

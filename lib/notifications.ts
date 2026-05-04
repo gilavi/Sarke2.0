@@ -55,7 +55,8 @@ export async function scheduleReminder(s: ScheduleWithItem): Promise<void> {
   const fireAt = new Date(new Date(s.next_due_at).getTime() - 24 * 60 * 60 * 1000);
   if (fireAt.getTime() <= Date.now()) return;
   const itemName = s.project_items?.name ?? 'შემოწმება';
-  const projectName = s.project_items?.projects?.name ?? '';
+  const proj = s.project_items?.projects;
+  const projectName = proj?.company_name || proj?.name || '';
   const id = await Notifications.scheduleNotificationAsync({
     content: {
       title: 'ვადა გასდის ხვალ',

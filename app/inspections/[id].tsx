@@ -381,7 +381,7 @@ export default function InspectionResultScreen() {
       });
 
       const filename = generatePdfName(
-        project.name,
+        project.company_name || project.name,
         template.category === 'harness' ? 'aprzhilebis_shemowmeba' : 'kharachos_shemowmeba',
         new Date(inspection.created_at),
         inspection.id,
@@ -554,7 +554,7 @@ function createStyles(theme: any) {
     bottomBar: {
       flexDirection: 'column',
       gap: 8,
-      paddingHorizontal: 12,
+      paddingHorizontal: 24,
       paddingTop: 8,
       paddingBottom: 8,
     },

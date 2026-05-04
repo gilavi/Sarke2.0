@@ -271,7 +271,7 @@ export const projectsApi = {
   },
   create: async (args: {
     name: string;
-    companyName?: string | null;
+    companyName: string;
     address?: string | null;
     latitude?: number | null;
     longitude?: number | null;
@@ -282,7 +282,7 @@ export const projectsApi = {
       id: uuid(),
       user_id: db.user_id,
       name: args.name,
-      company_name: args.companyName ?? null,
+      company_name: args.companyName,
       address: args.address ?? null,
       latitude: args.latitude ?? null,
       longitude: args.longitude ?? null,

@@ -93,7 +93,7 @@ export default function RegulationsScreen() {
 
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40, gap: 12 }}
+        contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 40, gap: 12 }}
       >
         {REGULATIONS.map((item, index) => {
           const st = stateById(item.id);

@@ -26,6 +26,7 @@ import { buildReportPdfHtml } from '../../lib/reportPdf';
 import { generatePdfName } from '../../lib/pdfName';
 import { formatShortDateTime } from '../../lib/formatDate';
 import { useReport, useProject } from '../../lib/apiHooks';
+import { ErrorScreen } from '../../components/ErrorScreen';
 import type { Report, ReportSlide } from '../../types/models';
 
 export default function ReportDetailScreen() {
@@ -110,6 +111,10 @@ export default function ReportDetailScreen() {
     );
   };
 
+  if (!id) {
+    return <ErrorScreen onGoHome={() => router.replace('/(tabs)/home')} onRetry={() => router.back()} />;
+  }
+
   if (!report) {
     return (
       <View style={[styles.centered, { flex: 1, backgroundColor: theme.colors.background }]}>
@@ -144,7 +149,7 @@ export default function ReportDetailScreen() {
         <View style={styles.heroCard}>
           <Text style={styles.heroTitle}>{report.title}</Text>
           <Text style={styles.heroMeta}>
-            {project?.name ? `${project.name} · ` : ''}
+            {project ? `${project.company_name || project.name} · ` : ''}
             {report.slides.length} სლაიდი · {formatShortDateTime(report.created_at)}
           </Text>
           <View style={styles.statusChip}>
@@ -282,7 +287,7 @@ function makeStyles(theme: any) {
       lineHeight: 18,
     },
     footer: {
-      paddingHorizontal: 16,
+      paddingHorizontal: 24,
       paddingTop: 12,
       borderTopWidth: 1,
       borderTopColor: theme.colors.hairline,

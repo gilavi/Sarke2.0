@@ -97,7 +97,7 @@ function renderSlide(slide: ReportSlide, idx: number, imageUrl: string | undefin
 export function buildReportPdfHtml(args: ReportPdfArgs): string {
   const { report, project, inspectorName, slideImageDataUrls } = args;
   const slidesSorted = report.slides.slice().sort((a, b) => a.order - b.order);
-  const projectName = project?.name ?? '';
+  const projectName = project?.company_name || project?.name || '';
   const dateStr = formatDate(report.created_at);
   const reportTitle = escapeHtml(report.title);
 

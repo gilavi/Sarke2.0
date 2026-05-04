@@ -76,8 +76,8 @@ export default function ProjectInspectionsList() {
       >
         <View style={styles.pageHeader}>
           <Text style={styles.pageTitle}>შემოწმების აქტები</Text>
-          {project?.name ? (
-            <Text style={styles.pageSubtitle}>{project.name}</Text>
+          {project ? (
+            <Text style={styles.pageSubtitle}>{project.company_name || project.name}</Text>
           ) : null}
         </View>
 

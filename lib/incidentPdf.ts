@@ -294,11 +294,7 @@ ${
 <table class="meta-table">
   <tr>
     <td>ობიექტი / ორგანიზაცია:</td>
-    <td>${project.company_name ?? project.name}</td>
-  </tr>
-  <tr>
-    <td>პროექტი:</td>
-    <td>${project.name}</td>
+    <td>${project.company_name || project.name}</td>
   </tr>
   <tr>
     <td>მისამართი:</td>
