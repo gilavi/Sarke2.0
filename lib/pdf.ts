@@ -1032,7 +1032,9 @@ function renderSignatures(signatures: SignatureRecord[]): string {
   return ordered
     .map(sig => {
       const role = sig.signer_role;
-      const label = role === 'expert'
+      const label = !role
+        ? 'ხელმომწერი'
+        : role === 'expert'
         ? tPdf('pdf.expertLabel') ?? 'Expert'
         : (tPdf(`roles.${role.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase())}`) ?? SIGNER_ROLE_LABEL[role as SignerRole] ?? role);
       const signedDate = sig.signed_at
@@ -1097,10 +1099,11 @@ function renderProjectBrand(project: Project): string {
   return `<div class="project-brand-initials">${escapeHtml(initials)}</div>`;
 }
 
-function escapeHtml(s: string): string {
+function escapeHtml(s: string | null | undefined): string {
   // Apostrophes matter here because some interpolated values land inside
   // single-quoted JS strings in onerror handlers (e.g. names like O'Brien
   // would break the handler and prevent the fallback UI from rendering).
+  if (s == null) return '';
   return s
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
