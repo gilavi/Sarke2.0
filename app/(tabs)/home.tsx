@@ -220,16 +220,7 @@ export default function HomeScreen() {
             >
               <Card
                 onPress={() => {
-                  const tpl = templates.find(t => t.id === latestDraft.template_id);
-                  if (tpl?.category === 'bobcat') {
-                    router.push(`/inspections/bobcat/${latestDraft.id}` as any);
-                  } else if (tpl?.category === 'excavator') {
-                    router.push(`/inspections/excavator/${latestDraft.id}` as any);
-                  } else if (tpl?.category === 'general_equipment') {
-                    router.push(`/inspections/general-equipment/${latestDraft.id}` as any);
-                  } else {
-                    router.push(`/inspections/${latestDraft.id}/wizard` as any);
-                  }
+                  router.push(`/inspections/${latestDraft.id}/wizard` as any);
                 }}
                 a11y={a11y('შევსების გაგრძელება', 'შეეხეთ მონახაზის გასაგრძელებლად', 'button')}
                 style={styles.resumeCard}
@@ -462,17 +453,7 @@ export default function HomeScreen() {
                   onPress={() =>
                     q.status === 'completed'
                       ? router.push(`/inspections/${q.id}` as any)
-                      : (() => {
-                          if (tpl?.category === 'bobcat') {
-                            router.push(`/inspections/bobcat/${q.id}` as any);
-                          } else if (tpl?.category === 'excavator') {
-                            router.push(`/inspections/excavator/${q.id}` as any);
-                          } else if (tpl?.category === 'general_equipment') {
-                            router.push(`/inspections/general-equipment/${q.id}` as any);
-                          } else {
-                            router.push(`/inspections/${q.id}/wizard` as any);
-                          }
-                        })()
+                      : router.push(`/inspections/${q.id}/wizard` as any)
                   }
                   style={[styles.recentRow, i > 0 && styles.recentRowBorder]}
                   {...a11y(

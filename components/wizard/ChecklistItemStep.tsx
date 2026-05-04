@@ -47,6 +47,7 @@ export const ChecklistItemStep = memo(function ChecklistItemStep({
   const styles = useMemo(() => getstyles(theme), [theme]);
 
   const [commentDraft, setCommentDraft] = useState(state.comment ?? '');
+  const [noteOpen, setNoteOpen] = useState(false);
 
   // Re-sync comment draft when parent state changes externally (server sync, etc.)
   useEffect(() => {
@@ -62,6 +63,7 @@ export const ChecklistItemStep = memo(function ChecklistItemStep({
     if (state.result === r) {
       onChange({ result: null, comment: null });
       setCommentDraft('');
+      setNoteOpen(false);
     } else {
       onChange({ result: r });
     }
@@ -76,6 +78,7 @@ export const ChecklistItemStep = memo(function ChecklistItemStep({
   const defActive = state.result === 'deficient';
   const unusableActive = state.result === 'unusable';
   const hasProblem = defActive || unusableActive;
+  const showComment = hasProblem || noteOpen || !!state.comment;
 
   const accessoryId = Platform.OS === 'ios' ? 'checklist-comment-accessory' : undefined;
 
@@ -89,110 +92,147 @@ export const ChecklistItemStep = memo(function ChecklistItemStep({
       showsVerticalScrollIndicator={false}
       bottomOffset={100}
     >
-      {/* Progress header */}
-      <View style={styles.progressRow}>
-        <View style={styles.categoryPill}>
-          <Text style={styles.categoryText}>{catalog.category}</Text>
+      {/* Progress indicator */}
+      <Text style={styles.progressText}>
+        პუნქტი {index + 1} / {total}
+      </Text>
+
+      {/* Centered icon */}
+      <View style={styles.avatarWrap}>
+        <View style={[styles.avatarCircle, { backgroundColor: theme.colors.accentSoft }]}>
+          <Ionicons name="document-text-outline" size={32} color={theme.colors.accent} />
         </View>
-        <Text style={styles.progressText}>
-          პუნქტი {index + 1} / {total}
-        </Text>
-        {onHelp ? (
-          <Pressable
-            onPress={onHelp}
-            hitSlop={12}
-            style={styles.helpBtn}
-            {...a11y('დახმარება', 'კომპონენტის აღწერა', 'button')}
-          >
-            <Text style={styles.helpText}>?</Text>
-          </Pressable>
-        ) : (
-          <View style={styles.helpPlaceholder} />
-        )}
       </View>
 
-      {/* Item content */}
-      <View style={styles.itemContent}>
+      {/* Title & description */}
+      <View style={styles.titleWrap}>
         <Text style={styles.label}>{catalog.label}</Text>
-        <Text style={styles.description}>{catalog.description}</Text>
+        {catalog.description ? (
+          <Text style={styles.description}>{catalog.description}</Text>
+        ) : null}
       </View>
 
-      {/* Action buttons */}
-      <View style={styles.actions}>
-        {/* Primary: Good */}
+      {/* Assist chips — photo + note */}
+      <View style={styles.chipRow}>
+        <Pressable style={styles.assistChip} onPress={onAddPhoto}>
+          <Ionicons name="camera-outline" size={18} color={theme.colors.inkSoft} />
+          <Text style={styles.assistChipText}>ფოტო</Text>
+        </Pressable>
         <Pressable
-          style={[styles.btnPrimary, goodActive && styles.btnPrimaryActive]}
+          style={styles.assistChip}
+          onPress={() => setNoteOpen(v => !v)}
+        >
+          <Ionicons name="create-outline" size={18} color={theme.colors.inkSoft} />
+          <Text style={styles.assistChipText}>შენიშვნა</Text>
+        </Pressable>
+        {onHelp ? (
+          <Pressable style={styles.assistChip} onPress={onHelp}>
+            <Ionicons name="help-circle-outline" size={18} color={theme.colors.inkSoft} />
+            <Text style={styles.assistChipText}>დახმარება</Text>
+          </Pressable>
+        ) : null}
+      </View>
+
+      {/* Photo strip */}
+      {state.photo_paths.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.photoStrip}
+          keyboardShouldPersistTaps="handled"
+        >
+          {state.photo_paths.map(path => (
+            <PhotoThumb
+              key={path}
+              path={path}
+              onDelete={() => onDeletePhoto(path)}
+            />
+          ))}
+          <Pressable
+            style={styles.addPhoto}
+            onPress={onAddPhoto}
+            {...a11y('ფოტოს დამატება', 'ფოტოს გადაღება ან ბიბლიოთეკიდან', 'button')}
+          >
+            <Ionicons name="camera-outline" size={22} color={theme.colors.inkSoft} />
+            <Text style={styles.addPhotoLabel}>+ ფოტო</Text>
+          </Pressable>
+        </ScrollView>
+      )}
+
+      {/* Choice buttons — Good & Deficient side by side */}
+      <View style={styles.choiceRow}>
+        <Pressable
+          style={[styles.choice, styles.choiceGood, goodActive && styles.choiceGoodActive]}
           onPress={() => setResult('good')}
           {...a11y('გამართულია', '✓ გამართულია — შემდეგ პუნქტზე გადასვლა', 'button')}
         >
           <Ionicons
-            name="checkmark-circle"
-            size={22}
+            name="checkmark"
+            size={24}
             color={goodActive ? '#fff' : theme.colors.semantic.success}
           />
-          <Text style={[styles.btnPrimaryText, goodActive && styles.btnPrimaryTextActive]}>
+          <Text style={[styles.choiceText, goodActive && styles.choiceTextActive]}>
             გამართულია
           </Text>
         </Pressable>
 
-        {/* Secondary: Deficient */}
         <Pressable
-          style={[styles.btnSecondary, defActive && styles.btnSecondaryActive]}
+          style={[styles.choice, styles.choiceDef, defActive && styles.choiceDefActive]}
           onPress={() => setResult('deficient')}
           {...a11y('ხარვეზია', '⚠ ხარვეზია — კომენტარის და ფოტოს დამატება', 'button')}
         >
           <Ionicons
-            name="warning-outline"
-            size={20}
+            name="warning"
+            size={24}
             color={defActive ? '#fff' : theme.colors.warn}
           />
-          <Text style={[styles.btnSecondaryText, defActive && styles.btnSecondaryTextActive]}>
+          <Text style={[styles.choiceText, defActive && styles.choiceTextActive]}>
             ხარვეზია
           </Text>
         </Pressable>
-
-        {/* Tertiary: Unusable / Not present */}
-        {showUnusable && (
-          <Pressable
-            style={[
-              styles.btnTertiary,
-              unusableIsNeutral ? styles.btnTertiaryNeutral : styles.btnTertiaryBad,
-              unusableActive && (unusableIsNeutral ? styles.btnTertiaryNeutralActive : styles.btnTertiaryBadActive),
-            ]}
-            onPress={() => setResult('unusable')}
-            {...a11y(unusableLabel, `✗ ${unusableLabel}`, 'button')}
-          >
-            <Ionicons
-              name={unusableIsNeutral ? 'remove-circle-outline' : 'close-circle-outline'}
-              size={18}
-              color={
-                unusableActive
-                  ? '#fff'
-                  : unusableIsNeutral
-                  ? theme.colors.inkSoft
-                  : theme.colors.danger
-              }
-            />
-            <Text
-              style={[
-                styles.btnTertiaryText,
-                unusableActive && styles.btnTertiaryTextActive,
-                !unusableActive && unusableIsNeutral && { color: theme.colors.inkSoft },
-                !unusableActive && !unusableIsNeutral && { color: theme.colors.danger },
-              ]}
-            >
-              {unusableLabel}
-            </Text>
-          </Pressable>
-        )}
       </View>
 
-      {/* Problem details — comment + photos */}
-      {hasProblem && (
+      {/* Unusable / Not present */}
+      {showUnusable && (
+        <Pressable
+          style={[
+            styles.unusableBtn,
+            unusableIsNeutral ? styles.unusableNeutral : styles.unusableBad,
+            unusableActive && (unusableIsNeutral ? styles.unusableNeutralActive : styles.unusableBadActive),
+          ]}
+          onPress={() => setResult('unusable')}
+          {...a11y(unusableLabel, `✕ ${unusableLabel}`, 'button')}
+        >
+          <Ionicons
+            name={unusableIsNeutral ? 'remove-circle-outline' : 'close-circle-outline'}
+            size={18}
+            color={
+              unusableActive
+                ? '#fff'
+                : unusableIsNeutral
+                ? theme.colors.inkSoft
+                : theme.colors.danger
+            }
+          />
+          <Text
+            style={[
+              styles.unusableText,
+              unusableActive && styles.unusableTextActive,
+              !unusableActive && unusableIsNeutral && { color: theme.colors.inkSoft },
+              !unusableActive && !unusableIsNeutral && { color: theme.colors.danger },
+            ]}
+          >
+            {unusableLabel}
+          </Text>
+        </Pressable>
+      )}
+
+      {/* Comment input */}
+      {showComment && (
         <Animated.View
           entering={reduceMotion ? undefined : FadeInDown.duration(180)}
           exiting={reduceMotion ? undefined : FadeOut.duration(100)}
-          style={styles.problemPanel}
+          style={styles.commentWrap}
         >
           <FloatingLabelInput
             label="ხარვეზის აღწერა"
@@ -202,30 +242,6 @@ export const ChecklistItemStep = memo(function ChecklistItemStep({
             numberOfLines={3}
             inputAccessoryViewID={accessoryId}
           />
-
-          {/* Photo strip */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.photoStrip}
-            keyboardShouldPersistTaps="handled"
-          >
-            {state.photo_paths.map(path => (
-              <PhotoThumb
-                key={path}
-                path={path}
-                onDelete={() => onDeletePhoto(path)}
-              />
-            ))}
-            <Pressable
-              style={styles.addPhoto}
-              onPress={onAddPhoto}
-              {...a11y('ფოტოს დამატება', 'ფოტოს გადაღება ან ბიბლიოთეკიდან', 'button')}
-            >
-              <Ionicons name="camera-outline" size={22} color={theme.colors.inkSoft} />
-              <Text style={styles.addPhotoLabel}>+ ფოტო</Text>
-            </Pressable>
-          </ScrollView>
         </Animated.View>
       )}
 
@@ -248,7 +264,7 @@ export const ChecklistItemStep = memo(function ChecklistItemStep({
   );
 });
 
-// ── Bounded photo URL cache (mirrors generic wizard pattern) ─────────────────
+// �"?�"? Bounded photo URL cache (mirrors generic wizard pattern) �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
 
 const PHOTO_URL_CACHE_MAX = 100;
 const photoUrlCache = new Map<string, string>();
@@ -262,7 +278,7 @@ function setPhotoUrlCache(key: string, url: string) {
   }
 }
 
-// ── Photo thumbnail ──────────────────────────────────────────────────────────
+// �"?�"? Photo thumbnail �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
 
 const PhotoThumb = memo(function PhotoThumb({
   path,
@@ -308,7 +324,7 @@ const PhotoThumb = memo(function PhotoThumb({
   );
 });
 
-// ── Styles ───────────────────────────────────────────────────────────────────
+// �"?�"? Styles �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
 
 function getstyles(theme: Theme) {
   return StyleSheet.create({
@@ -316,161 +332,70 @@ function getstyles(theme: Theme) {
       flex: 1,
     },
     content: {
-      paddingHorizontal: 16,
-      paddingTop: 8,
-      paddingBottom: 16,
-    },
-    progressRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: 20,
-    },
-    categoryPill: {
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-      borderRadius: 8,
-      backgroundColor: theme.colors.subtleSurface,
-      borderWidth: 1,
-      borderColor: theme.colors.hairline,
-    },
-    categoryText: {
-      fontSize: 11,
-      fontWeight: '700',
-      color: theme.colors.inkSoft,
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
+      paddingHorizontal: 20,
+      paddingTop: 16,
+      paddingBottom: 24,
+      gap: 16,
     },
     progressText: {
       fontSize: 13,
       fontWeight: '600',
       color: theme.colors.inkSoft,
+      textAlign: 'center',
     },
-    helpBtn: {
-      width: 28,
-      height: 28,
-      borderRadius: 14,
-      borderWidth: 1.5,
-      borderColor: theme.colors.accent,
+    avatarWrap: {
+      alignItems: 'center',
+      paddingVertical: 8,
+    },
+    avatarCircle: {
+      width: 72,
+      height: 72,
+      borderRadius: 36,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: theme.colors.surface,
     },
-    helpText: {
-      fontSize: 14,
-      fontWeight: '800',
-      color: theme.colors.accent,
-      lineHeight: 16,
-    },
-    helpPlaceholder: {
-      width: 28,
-    },
-    itemContent: {
+    titleWrap: {
+      alignItems: 'center',
       gap: 8,
-      marginBottom: 24,
+      marginBottom: 4,
     },
     label: {
-      fontSize: 22,
-      fontWeight: '800',
+      fontSize: 24,
+      fontWeight: '700',
       color: theme.colors.ink,
-      lineHeight: 28,
+      lineHeight: 32,
+      textAlign: 'center',
+      paddingHorizontal: 8,
     },
     description: {
       fontSize: 15,
       color: theme.colors.inkSoft,
       lineHeight: 22,
+      textAlign: 'center',
+      paddingHorizontal: 16,
     },
-    actions: {
-      gap: 10,
-    },
-    btnPrimary: {
+    chipRow: {
       flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
       gap: 8,
-      paddingVertical: 16,
-      borderRadius: 14,
-      borderWidth: 2,
-      borderColor: theme.colors.semantic.success,
-      backgroundColor: theme.colors.semantic.successSoft,
+      flexWrap: 'wrap',
+      justifyContent: 'center',
+      paddingTop: 4,
     },
-    btnPrimaryActive: {
-      backgroundColor: theme.colors.semantic.success,
-      borderColor: theme.colors.semantic.success,
-    },
-    btnPrimaryText: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: theme.colors.semantic.success,
-    },
-    btnPrimaryTextActive: {
-      color: '#fff',
-    },
-    btnSecondary: {
+    assistChip: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center',
       gap: 8,
-      paddingVertical: 14,
-      borderRadius: 14,
-      borderWidth: 2,
-      borderColor: theme.colors.warn,
-      backgroundColor: theme.colors.warnSoft,
-    },
-    btnSecondaryActive: {
-      backgroundColor: theme.colors.warn,
-      borderColor: theme.colors.warn,
-    },
-    btnSecondaryText: {
-      fontSize: 15,
-      fontWeight: '700',
-      color: theme.colors.warn,
-    },
-    btnSecondaryTextActive: {
-      color: '#fff',
-    },
-    btnTertiary: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 6,
       paddingVertical: 12,
-      borderRadius: 14,
-      borderWidth: 1.5,
-      alignSelf: 'center',
       paddingHorizontal: 20,
-    },
-    btnTertiaryNeutral: {
+      borderRadius: 16,
+      borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.colors.hairline,
-      backgroundColor: theme.colors.subtleSurface,
+      backgroundColor: theme.colors.card,
     },
-    btnTertiaryBad: {
-      borderColor: theme.colors.danger,
-      backgroundColor: theme.colors.dangerSoft,
-    },
-    btnTertiaryNeutralActive: {
-      backgroundColor: theme.colors.inkSoft,
-      borderColor: theme.colors.inkSoft,
-    },
-    btnTertiaryBadActive: {
-      backgroundColor: theme.colors.danger,
-      borderColor: theme.colors.danger,
-    },
-    btnTertiaryText: {
-      fontSize: 14,
-      fontWeight: '600',
-    },
-    btnTertiaryTextActive: {
-      color: '#fff',
-    },
-    problemPanel: {
-      marginTop: 16,
-      padding: 14,
-      borderRadius: 14,
-      backgroundColor: theme.colors.warnSoft,
-      borderWidth: 1,
-      borderColor: theme.colors.warn,
-      gap: 12,
+    assistChipText: {
+      fontSize: 16,
+      color: theme.colors.inkSoft,
+      fontWeight: '500',
     },
     photoStrip: {
       gap: 8,
@@ -491,20 +416,83 @@ function getstyles(theme: Theme) {
       fontSize: 11,
       color: theme.colors.inkSoft,
     },
-    thumb: {
-      width: 72,
-      height: 72,
-      borderRadius: 10,
-      overflow: 'hidden',
+    choiceRow: {
+      flexDirection: 'row',
+      gap: 12,
+      paddingTop: 8,
     },
-    thumbImg: {
-      width: 72,
-      height: 72,
+    choice: {
+      flex: 1,
+      minHeight: 92,
+      paddingVertical: 16,
+      paddingHorizontal: 12,
+      borderRadius: 16,
+      borderWidth: 2,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
     },
-    thumbDelete: {
-      position: 'absolute',
-      top: 2,
-      right: 2,
+    choiceGood: {
+      borderColor: theme.colors.semantic.success,
+      backgroundColor: theme.colors.semantic.successSoft,
+    },
+    choiceGoodActive: {
+      backgroundColor: theme.colors.semantic.success,
+      borderColor: theme.colors.semantic.success,
+    },
+    choiceDef: {
+      borderColor: theme.colors.warn,
+      backgroundColor: theme.colors.warnSoft,
+    },
+    choiceDefActive: {
+      backgroundColor: theme.colors.warn,
+      borderColor: theme.colors.warn,
+    },
+    choiceText: {
+      fontSize: 14,
+      fontWeight: '700',
+      textAlign: 'center',
+    },
+    choiceTextActive: {
+      color: '#fff',
+    },
+    unusableBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      paddingVertical: 14,
+      borderRadius: 16,
+      borderWidth: 1.5,
+      alignSelf: 'center',
+      paddingHorizontal: 24,
+      marginTop: 4,
+    },
+    unusableNeutral: {
+      borderColor: theme.colors.hairline,
+      backgroundColor: theme.colors.subtleSurface,
+    },
+    unusableBad: {
+      borderColor: theme.colors.danger,
+      backgroundColor: theme.colors.dangerSoft,
+    },
+    unusableNeutralActive: {
+      backgroundColor: theme.colors.inkSoft,
+      borderColor: theme.colors.inkSoft,
+    },
+    unusableBadActive: {
+      backgroundColor: theme.colors.danger,
+      borderColor: theme.colors.danger,
+    },
+    unusableText: {
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    unusableTextActive: {
+      color: '#fff',
+    },
+    commentWrap: {
+      marginTop: 4,
     },
     accessoryBar: {
       flexDirection: 'row',
@@ -520,6 +508,24 @@ function getstyles(theme: Theme) {
     accessoryBtnText: {
       fontSize: 15,
       fontWeight: '600',
+    },
+    thumb: {
+      width: 72,
+      height: 72,
+      borderRadius: 10,
+      overflow: 'hidden',
+    },
+    thumbImg: {
+      width: 72,
+      height: 72,
+    },
+    thumbDelete: {
+      position: 'absolute',
+      top: 4,
+      right: 4,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      borderRadius: 10,
+      padding: 2,
     },
   });
 }

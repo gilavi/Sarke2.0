@@ -1,4 +1,5 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+﻿import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ActivityIndicator,
   Alert,
@@ -19,9 +20,9 @@ import { Button } from '../../../components/ui';
 import { KeyboardSafeArea } from '../../../components/layout/KeyboardSafeArea';
 import { SignatureCanvas } from '../../../components/SignatureCanvas';
 import { EquipmentRow } from '../../../components/generalEquipment/EquipmentRow';
-import { WizardNav } from '../../../components/wizard/WizardNav';
+
 import { WizardStepTransition } from '../../../components/wizard/WizardStepTransition';
-import { StepBar } from '../../../components/wizard/StepBar';
+
 import { StepSectionLabel } from '../../../components/wizard/StepSectionLabel';
 import { ChecklistTour, TOUR_SEEN_KEY } from '../../../components/wizard/ChecklistTour';
 import { FlowHeader } from '../../../components/FlowHeader';
@@ -50,12 +51,15 @@ import {
   type GESignerRole,
 } from '../../../types/generalEquipment';
 
-const STEP_LABELS = ['ინფო', 'აღჭ.', 'შეჯამება', 'ხელმოწ.'];
+const STEP_LABELS = ['áƒ˜áƒœáƒ¤áƒ', 'áƒáƒ¦áƒ­.', 'áƒ¨áƒ”áƒ¯áƒáƒ›áƒ”áƒ‘áƒ', 'áƒ®áƒ”áƒšáƒ›áƒáƒ¬.'];
 const TOTAL_STEPS = 4;
+const SIGNATURE_STEP = 3;
+const DONE_STEP = 4;
 
 export default function GeneralEquipmentScreen() {
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const toast = useToast();
@@ -82,7 +86,7 @@ export default function GeneralEquipmentScreen() {
   const direction: 'next' | 'prev' = step >= prevStepRef.current ? 'next' : 'prev';
   useEffect(() => { prevStepRef.current = step; }, [step]);
 
-  // ── Load ────────────────────────────────────────────────────────────────────
+  // â”€â”€ Load â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   useEffect(() => {
     if (!id) {
@@ -127,7 +131,7 @@ export default function GeneralEquipmentScreen() {
       } catch (e) {
         console.log('[GE] load error:', e);
         if (!cancelled) {
-          toast.error(friendlyError(e, 'ვერ ჩაიტვირთა'));
+          toast.error(friendlyError(e, 'áƒ•áƒ”áƒ  áƒ©áƒáƒ˜áƒ¢áƒ•áƒ˜áƒ áƒ—áƒ'));
           router.back();
         }
       } finally {
@@ -159,7 +163,7 @@ export default function GeneralEquipmentScreen() {
     };
   }, []);
 
-  // ── Auto-save ───────────────────────────────────────────────────────────────
+  // â”€â”€ Auto-save â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -183,7 +187,7 @@ export default function GeneralEquipmentScreen() {
         signerRoleCustom:   insp.signerRoleCustom,
         inspectorSignature: insp.inspectorSignature,
       }).catch(e => {
-        toast.error(friendlyError(e, 'შენახვა ვერ მოხერხდა'));
+        toast.error(friendlyError(e, 'áƒ¨áƒ”áƒœáƒáƒ®áƒ•áƒ áƒ•áƒ”áƒ  áƒ›áƒáƒ®áƒ”áƒ áƒ®áƒ“áƒ'));
       }).finally(() => setSaving(false));
     }, 700);
   }, [toast]);
@@ -200,7 +204,7 @@ export default function GeneralEquipmentScreen() {
     });
   }, [scheduleSave]);
 
-  // ── Equipment row updates ───────────────────────────────────────────────────
+  // â”€â”€ Equipment row updates â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const updateEquipmentRow = useCallback((rowId: string, patch: Partial<EquipmentItem>) => {
     setInspection(prev => {
@@ -235,29 +239,29 @@ export default function GeneralEquipmentScreen() {
     });
   }, [scheduleSave]);
 
-  // ── Photo handling — equipment rows ─────────────────────────────────────────
+  // â”€â”€ Photo handling â€” equipment rows â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const handleAddEquipmentPhoto = useCallback((rowId: string) => {
-    Alert.alert('ფოტოს წყარო', undefined, [
+    Alert.alert('áƒ¤áƒáƒ¢áƒáƒ¡ áƒ¬áƒ§áƒáƒ áƒ', undefined, [
       {
-        text: 'კამერა',
+        text: 'áƒ™áƒáƒ›áƒ”áƒ áƒ',
         onPress: async () => {
           const perm = await ImagePicker.requestCameraPermissionsAsync();
-          if (!perm.granted) { toast.error('კამერაზე წვდომა დახურულია'); return; }
+          if (!perm.granted) { toast.error('áƒ™áƒáƒ›áƒ”áƒ áƒáƒ–áƒ” áƒ¬áƒ•áƒ“áƒáƒ›áƒ áƒ“áƒáƒ®áƒ£áƒ áƒ£áƒšáƒ˜áƒ'); return; }
           const res = await ImagePicker.launchCameraAsync({ quality: 0.8 });
           if (!res.canceled && res.assets[0]) await uploadEquipmentPhoto(rowId, res.assets[0].uri);
         },
       },
       {
-        text: 'გალერეა',
+        text: 'áƒ’áƒáƒšáƒ”áƒ áƒ”áƒ',
         onPress: async () => {
           const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-          if (!perm.granted) { toast.error('გალერეაზე წვდომა დახურულია'); return; }
+          if (!perm.granted) { toast.error('áƒ’áƒáƒšáƒ”áƒ áƒ”áƒáƒ–áƒ” áƒ¬áƒ•áƒ“áƒáƒ›áƒ áƒ“áƒáƒ®áƒ£áƒ áƒ£áƒšáƒ˜áƒ'); return; }
           const res = await ImagePicker.launchImageLibraryAsync({ quality: 0.8 });
           if (!res.canceled && res.assets[0]) await uploadEquipmentPhoto(rowId, res.assets[0].uri);
         },
       },
-      { text: 'გაუქმება', style: 'cancel' },
+      { text: 'áƒ’áƒáƒ£áƒ¥áƒ›áƒ”áƒ‘áƒ', style: 'cancel' },
     ]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -277,7 +281,7 @@ export default function GeneralEquipmentScreen() {
         return next;
       });
     } catch (e) {
-      toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
+      toast.error(friendlyError(e, 'áƒ¤áƒáƒ¢áƒ áƒ•áƒ”áƒ  áƒáƒ˜áƒ¢áƒ•áƒ˜áƒ áƒ—áƒ'));
     }
   };
 
@@ -285,7 +289,7 @@ export default function GeneralEquipmentScreen() {
     try {
       await generalEquipmentApi.deletePhoto(path);
     } catch (e) {
-      toast.error(friendlyError(e, 'ფოტოს წაშლა ვერ მოხერხდა'));
+      toast.error(friendlyError(e, 'áƒ¤áƒáƒ¢áƒáƒ¡ áƒ¬áƒáƒ¨áƒšáƒ áƒ•áƒ”áƒ  áƒ›áƒáƒ®áƒ”áƒ áƒ®áƒ“áƒ'));
       return;
     }
     setInspection(prev => {
@@ -299,29 +303,29 @@ export default function GeneralEquipmentScreen() {
     });
   }, [scheduleSave, toast]);
 
-  // ── Photo handling — summary ─────────────────────────────────────────────────
+  // â”€â”€ Photo handling â€” summary â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const handleAddSummaryPhoto = useCallback(() => {
-    Alert.alert('ფოტოს წყარო', undefined, [
+    Alert.alert('áƒ¤áƒáƒ¢áƒáƒ¡ áƒ¬áƒ§áƒáƒ áƒ', undefined, [
       {
-        text: 'კამერა',
+        text: 'áƒ™áƒáƒ›áƒ”áƒ áƒ',
         onPress: async () => {
           const perm = await ImagePicker.requestCameraPermissionsAsync();
-          if (!perm.granted) { toast.error('კამერაზე წვდომა დახურულია'); return; }
+          if (!perm.granted) { toast.error('áƒ™áƒáƒ›áƒ”áƒ áƒáƒ–áƒ” áƒ¬áƒ•áƒ“áƒáƒ›áƒ áƒ“áƒáƒ®áƒ£áƒ áƒ£áƒšáƒ˜áƒ'); return; }
           const res = await ImagePicker.launchCameraAsync({ quality: 0.8 });
           if (!res.canceled && res.assets[0]) await uploadSummaryPhoto(res.assets[0].uri);
         },
       },
       {
-        text: 'გალერეა',
+        text: 'áƒ’áƒáƒšáƒ”áƒ áƒ”áƒ',
         onPress: async () => {
           const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-          if (!perm.granted) { toast.error('გალერეაზე წვდომა დახურულია'); return; }
+          if (!perm.granted) { toast.error('áƒ’áƒáƒšáƒ”áƒ áƒ”áƒáƒ–áƒ” áƒ¬áƒ•áƒ“áƒáƒ›áƒ áƒ“áƒáƒ®áƒ£áƒ áƒ£áƒšáƒ˜áƒ'); return; }
           const res = await ImagePicker.launchImageLibraryAsync({ quality: 0.8 });
           if (!res.canceled && res.assets[0]) await uploadSummaryPhoto(res.assets[0].uri);
         },
       },
-      { text: 'გაუქმება', style: 'cancel' },
+      { text: 'áƒ’áƒáƒ£áƒ¥áƒ›áƒ”áƒ‘áƒ', style: 'cancel' },
     ]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -338,7 +342,7 @@ export default function GeneralEquipmentScreen() {
         return next;
       });
     } catch (e) {
-      toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
+      toast.error(friendlyError(e, 'áƒ¤áƒáƒ¢áƒ áƒ•áƒ”áƒ  áƒáƒ˜áƒ¢áƒ•áƒ˜áƒ áƒ—áƒ'));
     }
   };
 
@@ -346,7 +350,7 @@ export default function GeneralEquipmentScreen() {
     try {
       await generalEquipmentApi.deletePhoto(path);
     } catch (e) {
-      toast.error(friendlyError(e, 'ფოტოს წაშლა ვერ მოხერხდა'));
+      toast.error(friendlyError(e, 'áƒ¤áƒáƒ¢áƒáƒ¡ áƒ¬áƒáƒ¨áƒšáƒ áƒ•áƒ”áƒ  áƒ›áƒáƒ®áƒ”áƒ áƒ®áƒ“áƒ'));
       return;
     }
     setInspection(prev => {
@@ -357,33 +361,33 @@ export default function GeneralEquipmentScreen() {
     });
   }, [scheduleSave, toast]);
 
-  // ── Signature ────────────────────────────────────────────────────────────────
+  // â”€â”€ Signature â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const handleSignatureConfirm = useCallback((base64Png: string) => {
     setShowSig(false);
     update('inspectorSignature', base64Png);
   }, [update]);
 
-  // ── Complete ─────────────────────────────────────────────────────────────────
+  // â”€â”€ Complete â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const handleComplete = useCallback(async () => {
     if (!inspection || completing) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     const missing: string[] = [];
-    if (!inspection.objectName?.trim())    missing.push('ობიექტის დასახელება');
-    if (!inspection.conclusion?.trim())    missing.push('დასკვნა');
-    if (!inspection.inspectorSignature)    missing.push('ხელმოწერა');
+    if (!inspection.objectName?.trim())    missing.push('áƒáƒ‘áƒ˜áƒ”áƒ¥áƒ¢áƒ˜áƒ¡ áƒ“áƒáƒ¡áƒáƒ®áƒ”áƒšáƒ”áƒ‘áƒ');
+    if (!inspection.conclusion?.trim())    missing.push('áƒ“áƒáƒ¡áƒ™áƒ•áƒœáƒ');
+    if (!inspection.inspectorSignature)    missing.push('áƒ®áƒ”áƒšáƒ›áƒáƒ¬áƒ”áƒ áƒ');
     const hasFilledRow = inspection.equipment.some(r => r.name.trim());
-    if (!hasFilledRow)                     missing.push('მინიმუმ 1 აღჭ. სტრ.');
+    if (!hasFilledRow)                     missing.push('áƒ›áƒ˜áƒœáƒ˜áƒ›áƒ£áƒ› 1 áƒáƒ¦áƒ­. áƒ¡áƒ¢áƒ .');
     // Validate notes on degraded equipment rows
     const degradedWithoutNote = inspection.equipment.filter(
       r => (r.condition === 'needs_service' || r.condition === 'unusable') && !r.note?.trim(),
     );
     if (degradedWithoutNote.length > 0) {
-      missing.push(`შენიშვნა საჭიროა ${degradedWithoutNote.length} აღჭურვილობაზე`);
+      missing.push(`áƒ¨áƒ”áƒœáƒ˜áƒ¨áƒ•áƒœáƒ áƒ¡áƒáƒ­áƒ˜áƒ áƒáƒ ${degradedWithoutNote.length} áƒáƒ¦áƒ­áƒ£áƒ áƒ•áƒ˜áƒšáƒáƒ‘áƒáƒ–áƒ”`);
     }
     if (missing.length > 0) {
-      Alert.alert('შეავსეთ სავალდებულო ველები', missing.map(m => `• ${m}`).join('\n'));
+      Alert.alert('áƒ¨áƒ”áƒáƒ•áƒ¡áƒ”áƒ— áƒ¡áƒáƒ•áƒáƒšáƒ“áƒ”áƒ‘áƒ£áƒšáƒ áƒ•áƒ”áƒšáƒ”áƒ‘áƒ˜', missing.map(m => `â€¢ ${m}`).join('\n'));
       return;
     }
     setCompleting(true);
@@ -415,15 +419,15 @@ export default function GeneralEquipmentScreen() {
       setInspection(prev => prev ? { ...prev, status: 'completed', completedAt } : prev);
       await AsyncStorage.removeItem(persistKey);
       setStep(4);
-      toast.success('შემოწმება დასრულდა');
+      toast.success('áƒ¨áƒ”áƒ›áƒáƒ¬áƒ›áƒ”áƒ‘áƒ áƒ“áƒáƒ¡áƒ áƒ£áƒšáƒ“áƒ');
     } catch (e) {
-      toast.error(friendlyError(e, 'შეცდომა'));
+      toast.error(friendlyError(e, 'áƒ¨áƒ”áƒªáƒ“áƒáƒ›áƒ'));
     } finally {
       setCompleting(false);
     }
   }, [inspection, toast, persistKey]);
 
-  // ── PDF ──────────────────────────────────────────────────────────────────────
+  // â”€â”€ PDF â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const handlePdf = useCallback(async () => {
     if (!inspection) return;
@@ -431,7 +435,7 @@ export default function GeneralEquipmentScreen() {
     try {
       const html = await buildGeneralEquipmentPdfHtml({
         inspection,
-        projectName: projectName || 'პროექტი',
+        projectName: projectName || 'áƒžáƒ áƒáƒ”áƒ¥áƒ¢áƒ˜',
       });
       const pdfName = generatePdfName(
         projectName || 'project',
@@ -441,13 +445,13 @@ export default function GeneralEquipmentScreen() {
       );
       await generateAndSharePdf(html, pdfName);
     } catch (e) {
-      toast.error(friendlyError(e, 'PDF ვერ შეიქმნა'));
+      toast.error(friendlyError(e, 'PDF áƒ•áƒ”áƒ  áƒ¨áƒ”áƒ˜áƒ¥áƒ›áƒœáƒ'));
     } finally {
       setGeneratingPdf(false);
     }
   }, [inspection, projectName, toast]);
 
-  // ── Step navigation ──────────────────────────────────────────────────────────
+  // â”€â”€ Step navigation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const canGoNext = useMemo(() => {
     if (!inspection || step >= 4) return false;
@@ -471,18 +475,18 @@ export default function GeneralEquipmentScreen() {
     }
   }, [step, router]);
 
-  // ── Render helpers ───────────────────────────────────────────────────────────
+  // â”€â”€ Render helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const filledCount = inspection?.equipment.filter(r => r.name.trim()).length ?? 0;
   const totalCount = inspection?.equipment.length ?? 0;
 
-  // ── Render ───────────────────────────────────────────────────────────────────
+  // â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   if (loading || !inspection) {
     return (
       <View style={[styles.root, styles.centred]}>
-        <Stack.Screen options={{ headerShown: true, title: 'შემოწმება' }} />
-        <Text style={{ color: theme.colors.inkSoft }}>იტვირთება…</Text>
+        <Stack.Screen options={{ headerShown: true, title: 'áƒ¨áƒ”áƒ›áƒáƒ¬áƒ›áƒ”áƒ‘áƒ' }} />
+        <Text style={{ color: theme.colors.inkSoft }}>áƒ˜áƒ¢áƒ•áƒ˜áƒ áƒ—áƒ”áƒ‘áƒâ€¦</Text>
       </View>
     );
   }
@@ -492,34 +496,37 @@ export default function GeneralEquipmentScreen() {
       <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
 
       <FlowHeader
-        flowTitle="ტექ. აღჭ."
+        flowTitle="áƒ¢áƒ”áƒ¥. áƒáƒ¦áƒ­."
         project={projectName ? { name: projectName } : null}
         step={step + 1}
         totalSteps={TOTAL_STEPS}
         leading="back"
-        trailing="none"
+        trailing="close"
+        onClose={() => router.back()}
         trailingElement={
-          <Pressable
-            onPress={handlePdf}
-            disabled={generatingPdf}
-            hitSlop={10}
-            {...a11y('PDF', 'PDF დოკუმენტის გენერირება', 'button')}
-          >
-            <Ionicons
-              name={generatingPdf ? 'hourglass-outline' : 'document-text-outline'}
-              size={22}
-              color={theme.colors.accent}
-            />
-          </Pressable>
+          step > 0 ? (
+            <Pressable
+              onPress={handlePdf}
+              disabled={generatingPdf}
+              hitSlop={10}
+              {...a11y('PDF', 'PDF დოკუმენტის გენერირება', 'button')}
+            >
+              <Ionicons
+                name={generatingPdf ? 'hourglass-outline' : 'document-text-outline'}
+                size={22}
+                color={theme.colors.accent}
+              />
+            </Pressable>
+          ) : null
         }
         onBack={step === 0 ? () => router.back() : handlePrev}
         backDisabled={false}
       />
 
-      {step < 4 && <StepBar step={step} stepLabels={STEP_LABELS} />}
+
 
       {saving && (
-        <Text style={styles.savingHint}>შენახვა…</Text>
+        <Text style={styles.savingHint}>áƒ¨áƒ”áƒœáƒáƒ®áƒ•áƒâ€¦</Text>
       )}
 
       <KeyboardSafeArea>
@@ -528,37 +535,37 @@ export default function GeneralEquipmentScreen() {
           direction={direction}
           animate={animateSteps}
         >
-          {/* ── Step 0: General info ────────────────────────────────────── */}
+          {/* â”€â”€ Step 0: General info â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
           {step === 0 && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24, gap: 12 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24, gap: 12 }}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="interactive"
               showsVerticalScrollIndicator={false}
               bottomOffset={120}
             >
-              <StepSectionLabel title="I — ზოგადი ინფორმაცია" />
+              <StepSectionLabel title="I â€” áƒ–áƒáƒ’áƒáƒ“áƒ˜ áƒ˜áƒœáƒ¤áƒáƒ áƒ›áƒáƒªáƒ˜áƒ" />
 
               <FloatingLabelInput
-                label="ობიექტის დასახელება *"
+                label="áƒáƒ‘áƒ˜áƒ”áƒ¥áƒ¢áƒ˜áƒ¡ áƒ“áƒáƒ¡áƒáƒ®áƒ”áƒšáƒ”áƒ‘áƒ *"
                 value={inspection.objectName ?? ''}
                 onChangeText={v => update('objectName', v || null)}
                 required
               />
               <FloatingLabelInput
-                label="მისამართი"
+                label="áƒ›áƒ˜áƒ¡áƒáƒ›áƒáƒ áƒ—áƒ˜"
                 value={inspection.address ?? ''}
                 onChangeText={v => update('address', v || null)}
               />
               <FloatingLabelInput
-                label="საქმიანობის სახე"
+                label="áƒ¡áƒáƒ¥áƒ›áƒ˜áƒáƒœáƒáƒ‘áƒ˜áƒ¡ áƒ¡áƒáƒ®áƒ”"
                 value={inspection.activityType ?? ''}
                 onChangeText={v => update('activityType', v || null)}
               />
 
               <View style={styles.fieldRow}>
-                <Text style={styles.fieldLabel}>შემოწმების თარიღი</Text>
+                <Text style={styles.fieldLabel}>áƒ¨áƒ”áƒ›áƒáƒ¬áƒ›áƒ”áƒ‘áƒ˜áƒ¡ áƒ—áƒáƒ áƒ˜áƒ¦áƒ˜</Text>
                 <DateTimeField
                   mode="date"
                   value={new Date(inspection.inspectionDate)}
@@ -568,12 +575,12 @@ export default function GeneralEquipmentScreen() {
               </View>
 
               <FloatingLabelInput
-                label="აქტის №"
+                label="áƒáƒ¥áƒ¢áƒ˜áƒ¡ â„–"
                 value={inspection.actNumber ?? ''}
                 onChangeText={v => update('actNumber', v || null)}
               />
 
-              <Text style={styles.fieldLabel}>შემოწმების სახე</Text>
+              <Text style={styles.fieldLabel}>áƒ¨áƒ”áƒ›áƒáƒ¬áƒ›áƒ”áƒ‘áƒ˜áƒ¡ áƒ¡áƒáƒ®áƒ”</Text>
               <View style={styles.typeChips}>
                 {(['initial', 'repeat', 'scheduled'] as GEInspectionType[]).map(t => {
                   const active = inspection.inspectionType === t;
@@ -593,28 +600,28 @@ export default function GeneralEquipmentScreen() {
               </View>
 
               <FloatingLabelInput
-                label="შემომწმებელი"
+                label="áƒ¨áƒ”áƒ›áƒáƒ›áƒ¬áƒ›áƒ”áƒ‘áƒ”áƒšáƒ˜"
                 value={inspection.inspectorName ?? ''}
                 onChangeText={v => update('inspectorName', v || null)}
               />
             </KeyboardAwareScrollView>
           )}
 
-          {/* ── Step 1: Equipment list ──────────────────────────────────── */}
+          {/* â”€â”€ Step 1: Equipment list â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
           {step === 1 && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24, gap: 12 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24, gap: 12 }}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="interactive"
               showsVerticalScrollIndicator={false}
               bottomOffset={120}
             >
               <View style={styles.equipHeader}>
-                <StepSectionLabel title="II — აღჭურვილობის სია" />
+                <StepSectionLabel title="II â€” áƒáƒ¦áƒ­áƒ£áƒ áƒ•áƒ˜áƒšáƒáƒ‘áƒ˜áƒ¡ áƒ¡áƒ˜áƒ" />
                 <View style={styles.progressPill}>
                   <Text style={styles.progressPillText}>
-                    შევსებულია {filledCount} / {totalCount}
+                    áƒ¨áƒ”áƒ•áƒ¡áƒ”áƒ‘áƒ£áƒšáƒ˜áƒ {filledCount} / {totalCount}
                   </Text>
                 </View>
               </View>
@@ -635,37 +642,37 @@ export default function GeneralEquipmentScreen() {
               <Pressable
                 style={styles.addRowBtn}
                 onPress={addEquipmentRow}
-                {...a11y('აღჭ. დამატება', '+ აღჭურვილობის სტრიქონის დამატება', 'button')}
+                {...a11y('áƒáƒ¦áƒ­. áƒ“áƒáƒ›áƒáƒ¢áƒ”áƒ‘áƒ', '+ áƒáƒ¦áƒ­áƒ£áƒ áƒ•áƒ˜áƒšáƒáƒ‘áƒ˜áƒ¡ áƒ¡áƒ¢áƒ áƒ˜áƒ¥áƒáƒœáƒ˜áƒ¡ áƒ“áƒáƒ›áƒáƒ¢áƒ”áƒ‘áƒ', 'button')}
               >
                 <Ionicons name="add-circle-outline" size={18} color={theme.colors.accent} />
-                <Text style={styles.addRowText}>+ აღჭურვილობის დამატება</Text>
+                <Text style={styles.addRowText}>+ áƒáƒ¦áƒ­áƒ£áƒ áƒ•áƒ˜áƒšáƒáƒ‘áƒ˜áƒ¡ áƒ“áƒáƒ›áƒáƒ¢áƒ”áƒ‘áƒ</Text>
               </Pressable>
 
               {filledCount === 0 && (
                 <View style={styles.emptyHint}>
                   <Ionicons name="information-circle-outline" size={18} color={theme.colors.inkFaint} />
                   <Text style={styles.emptyHintText}>
-                    შეავსეთ მინიმუმ ერთი აღჭურვილობის სტრიქონი
+                    áƒ¨áƒ”áƒáƒ•áƒ¡áƒ”áƒ— áƒ›áƒ˜áƒœáƒ˜áƒ›áƒ£áƒ› áƒ”áƒ áƒ—áƒ˜ áƒáƒ¦áƒ­áƒ£áƒ áƒ•áƒ˜áƒšáƒáƒ‘áƒ˜áƒ¡ áƒ¡áƒ¢áƒ áƒ˜áƒ¥áƒáƒœáƒ˜
                   </Text>
                 </View>
               )}
             </KeyboardAwareScrollView>
           )}
 
-          {/* ── Step 2: Summary ─────────────────────────────────────────── */}
+          {/* â”€â”€ Step 2: Summary â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
           {step === 2 && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24, gap: 12 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24, gap: 12 }}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="interactive"
               showsVerticalScrollIndicator={false}
               bottomOffset={120}
             >
-              <StepSectionLabel title="III — შეჯამება" />
+              <StepSectionLabel title="III â€” áƒ¨áƒ”áƒ¯áƒáƒ›áƒ”áƒ‘áƒ" />
 
               <FloatingLabelInput
-                label="დასკვნა *"
+                label="áƒ“áƒáƒ¡áƒ™áƒ•áƒœáƒ *"
                 value={inspection.conclusion ?? ''}
                 onChangeText={v => update('conclusion', v || null)}
                 multiline
@@ -673,7 +680,7 @@ export default function GeneralEquipmentScreen() {
                 required
               />
 
-              <Text style={[styles.fieldLabel, { marginTop: 8 }]}>ფოტოები (სურვ.)</Text>
+              <Text style={[styles.fieldLabel, { marginTop: 8 }]}>áƒ¤áƒáƒ¢áƒáƒ”áƒ‘áƒ˜ (áƒ¡áƒ£áƒ áƒ•.)</Text>
 
               <SummaryPhotoStrip
                 paths={inspection.summaryPhotos}
@@ -684,25 +691,25 @@ export default function GeneralEquipmentScreen() {
             </KeyboardAwareScrollView>
           )}
 
-          {/* ── Step 3: Signature ───────────────────────────────────────── */}
+          {/* â”€â”€ Step 3: Signature â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
           {step === 3 && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24, gap: 12 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24, gap: 12 }}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="interactive"
               showsVerticalScrollIndicator={false}
               bottomOffset={120}
             >
-              <StepSectionLabel title="IV — ხელმოწერა" />
+              <StepSectionLabel title="IV â€” áƒ®áƒ”áƒšáƒ›áƒáƒ¬áƒ”áƒ áƒ" />
 
               <FloatingLabelInput
-                label="სახელი / გვარი"
+                label="áƒ¡áƒáƒ®áƒ”áƒšáƒ˜ / áƒ’áƒ•áƒáƒ áƒ˜"
                 value={inspection.signerName ?? ''}
                 onChangeText={v => update('signerName', v || null)}
               />
 
-              <Text style={styles.fieldLabel}>თანამდებობა</Text>
+              <Text style={styles.fieldLabel}>áƒ—áƒáƒœáƒáƒ›áƒ“áƒ”áƒ‘áƒáƒ‘áƒ</Text>
               <View style={styles.typeChips}>
                 {(['electrician', 'technician', 'safety_specialist', 'other'] as GESignerRole[]).map(r => {
                   const active = inspection.signerRole === r;
@@ -723,7 +730,7 @@ export default function GeneralEquipmentScreen() {
 
               {inspection.signerRole === 'other' && (
                 <FloatingLabelInput
-                  label="სხვა თანამდებობა"
+                  label="áƒ¡áƒ®áƒ•áƒ áƒ—áƒáƒœáƒáƒ›áƒ“áƒ”áƒ‘áƒáƒ‘áƒ"
                   value={inspection.signerRoleCustom ?? ''}
                   onChangeText={v => update('signerRoleCustom', v || null)}
                   autoFocus
@@ -733,48 +740,48 @@ export default function GeneralEquipmentScreen() {
               <Pressable
                 style={[styles.sigArea, inspection.inspectorSignature && styles.sigAreaSigned]}
                 onPress={() => setShowSig(true)}
-                {...a11y('ხელმოწერა', 'შემომწმებლის ხელმოწერის დამატება', 'button')}
+                {...a11y('áƒ®áƒ”áƒšáƒ›áƒáƒ¬áƒ”áƒ áƒ', 'áƒ¨áƒ”áƒ›áƒáƒ›áƒ¬áƒ›áƒ”áƒ‘áƒšáƒ˜áƒ¡ áƒ®áƒ”áƒšáƒ›áƒáƒ¬áƒ”áƒ áƒ˜áƒ¡ áƒ“áƒáƒ›áƒáƒ¢áƒ”áƒ‘áƒ', 'button')}
               >
                 {inspection.inspectorSignature ? (
                   <View style={styles.sigContent}>
                     <Ionicons name="checkmark-circle" size={20} color={theme.colors.semantic.success} />
-                    <Text style={[styles.sigHint, { color: theme.colors.semantic.success }]}>ხელმოწერა დაყენებულია</Text>
+                    <Text style={[styles.sigHint, { color: theme.colors.semantic.success }]}>áƒ®áƒ”áƒšáƒ›áƒáƒ¬áƒ”áƒ áƒ áƒ“áƒáƒ§áƒ”áƒœáƒ”áƒ‘áƒ£áƒšáƒ˜áƒ</Text>
                     <Pressable
                       onPress={() => update('inspectorSignature', null)}
                       hitSlop={10}
-                      {...a11y('ხელმოწერის წაშლა', undefined, 'button')}
+                      {...a11y('áƒ®áƒ”áƒšáƒ›áƒáƒ¬áƒ”áƒ áƒ˜áƒ¡ áƒ¬áƒáƒ¨áƒšáƒ', undefined, 'button')}
                     >
-                      <Text style={styles.sigClear}>გასუფთავება</Text>
+                      <Text style={styles.sigClear}>áƒ’áƒáƒ¡áƒ£áƒ¤áƒ—áƒáƒ•áƒ”áƒ‘áƒ</Text>
                     </Pressable>
                   </View>
                 ) : (
                   <View style={styles.sigContent}>
                     <Ionicons name="pencil-outline" size={20} color={theme.colors.accent} />
-                    <Text style={styles.sigHint}>შეეხეთ ხელმოწერისთვის</Text>
+                    <Text style={styles.sigHint}>áƒ¨áƒ”áƒ”áƒ®áƒ”áƒ— áƒ®áƒ”áƒšáƒ›áƒáƒ¬áƒ”áƒ áƒ˜áƒ¡áƒ—áƒ•áƒ˜áƒ¡</Text>
                   </View>
                 )}
               </Pressable>
 
               {!inspection.inspectorSignature && (
                 <Text style={styles.sigRequiredHint}>
-                  ხელმოწერა სავალდებულოა დასასრულებლად
+                  áƒ®áƒ”áƒšáƒ›áƒáƒ¬áƒ”áƒ áƒ áƒ¡áƒáƒ•áƒáƒšáƒ“áƒ”áƒ‘áƒ£áƒšáƒáƒ áƒ“áƒáƒ¡áƒáƒ¡áƒ áƒ£áƒšáƒ”áƒ‘áƒšáƒáƒ“
                 </Text>
               )}
 
               {completing && (
                 <View style={styles.completingRow}>
                   <ActivityIndicator size="small" color={theme.colors.accent} />
-                  <Text style={styles.completingText}>მიმდინარეობს…</Text>
+                  <Text style={styles.completingText}>áƒ›áƒ˜áƒ›áƒ“áƒ˜áƒœáƒáƒ áƒ”áƒáƒ‘áƒ¡â€¦</Text>
                 </View>
               )}
             </KeyboardAwareScrollView>
           )}
 
-          {/* ── Step 4: Done ────────────────────────────────────────────── */}
+          {/* â”€â”€ Step 4: Done â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
           {step === 4 && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24, gap: 12 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24, gap: 12 }}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="interactive"
               showsVerticalScrollIndicator={false}
@@ -782,7 +789,7 @@ export default function GeneralEquipmentScreen() {
             >
               <View style={styles.doneHero}>
                 <Ionicons name="checkmark-circle" size={72} color={theme.colors.semantic.success} />
-                <Text style={styles.doneTitle}>შემოწმება დასრულდა!</Text>
+                <Text style={styles.doneTitle}>áƒ¨áƒ”áƒ›áƒáƒ¬áƒ›áƒ”áƒ‘áƒ áƒ“áƒáƒ¡áƒ áƒ£áƒšáƒ“áƒ!</Text>
                 {inspection.completedAt && (
                   <Text style={styles.doneDate}>
                     {new Date(inspection.completedAt).toLocaleDateString('ka-GE', {
@@ -800,13 +807,13 @@ export default function GeneralEquipmentScreen() {
               </View>
 
               <Button
-                title="PDF გენერირება / გაზიარება"
+                title="PDF áƒ’áƒ”áƒœáƒ”áƒ áƒ˜áƒ áƒ”áƒ‘áƒ / áƒ’áƒáƒ–áƒ˜áƒáƒ áƒ”áƒ‘áƒ"
                 onPress={handlePdf}
                 loading={generatingPdf}
                 style={{ marginBottom: 12 }}
               />
               <Button
-                title="პროექტზე დაბრუნება"
+                title="áƒžáƒ áƒáƒ”áƒ¥áƒ¢áƒ–áƒ” áƒ“áƒáƒ‘áƒ áƒ£áƒœáƒ”áƒ‘áƒ"
                 variant="secondary"
                 onPress={() => router.back()}
               />
@@ -814,20 +821,38 @@ export default function GeneralEquipmentScreen() {
           )}
         </WizardStepTransition>
 
-        {step < 4 && (
-          <WizardNav
-            isLast={step === 3}
-            canGoNext={canGoNext}
-            canGoPrev={step > 0}
-            onNext={handleNext}
-            onPrev={handlePrev}
-          />
+        {step < DONE_STEP && (
+          <View style={[styles.footer, { paddingBottom: 16 + insets.bottom }]}>
+            {step === SIGNATURE_STEP ? (
+              <Button
+                title="áƒ¨áƒ”áƒœáƒáƒ®áƒ•áƒ áƒ“áƒ áƒ“áƒáƒ¡áƒ áƒ£áƒšáƒ”áƒ‘áƒ"
+                style={{ paddingVertical: 14 }}
+                iconRight={<Ionicons name="checkmark" size={20} color={theme.colors.white} />}
+                loading={completing}
+                disabled={completing}
+                onPress={handleComplete}
+              />
+            ) : (
+              <Button
+                title={canGoNext ? 'áƒ¨áƒ”áƒ›áƒ“áƒ”áƒ’áƒ˜' : 'áƒ’áƒáƒ’áƒ áƒ«áƒ”áƒšáƒ”áƒ‘áƒ'}
+                variant={canGoNext ? 'primary' : 'secondary'}
+                size="lg"
+                style={{ alignSelf: 'stretch', paddingVertical: 16, justifyContent: 'center' }}
+                iconRight={
+                  canGoNext ? (
+                    <Ionicons name="chevron-forward" size={18} color={theme.colors.white} />
+                  ) : undefined
+                }
+                onPress={handleNext}
+              />
+            )}
+          </View>
         )}
       </KeyboardSafeArea>
 
       <SignatureCanvas
         visible={showSig}
-        personName={inspection.signerName ?? 'შემომწმებელი'}
+        personName={inspection.signerName ?? 'áƒ¨áƒ”áƒ›áƒáƒ›áƒ¬áƒ›áƒ”áƒ‘áƒ”áƒšáƒ˜'}
         onCancel={() => setShowSig(false)}
         onConfirm={handleSignatureConfirm}
       />
@@ -843,7 +868,7 @@ export default function GeneralEquipmentScreen() {
   );
 }
 
-// ── Sub-components ───────────────────────────────────────────────────────────
+// â”€â”€ Sub-components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function SummaryPhotoStrip({
   paths,
@@ -869,10 +894,10 @@ function SummaryPhotoStrip({
       <Pressable
         style={styles.addPhoto}
         onPress={onAdd}
-        {...a11y('ფოტოს დამატება', 'ფოტოს გადაღება ან ბიბლიოთეკიდან', 'button')}
+        {...a11y('áƒ¤áƒáƒ¢áƒáƒ¡ áƒ“áƒáƒ›áƒáƒ¢áƒ”áƒ‘áƒ', 'áƒ¤áƒáƒ¢áƒáƒ¡ áƒ’áƒáƒ“áƒáƒ¦áƒ”áƒ‘áƒ áƒáƒœ áƒ‘áƒ˜áƒ‘áƒšáƒ˜áƒáƒ—áƒ”áƒ™áƒ˜áƒ“áƒáƒœ', 'button')}
       >
         <Ionicons name="camera-outline" size={20} color={theme.colors.inkSoft} />
-        <Text style={styles.addPhotoLabel}>+ ფოტო</Text>
+        <Text style={styles.addPhotoLabel}>+ áƒ¤áƒáƒ¢áƒ</Text>
       </Pressable>
     </ScrollView>
   );
@@ -899,18 +924,25 @@ const SummaryThumb = memo(function SummaryThumb({
   return (
     <View style={styles.thumb}>
       <Image source={{ uri }} style={styles.thumbImg} contentFit="cover" />
-      <Pressable style={styles.thumbDelete} onPress={onDelete} hitSlop={8} {...a11y('ფოტოს წაშლა', undefined, 'button')}>
+      <Pressable style={styles.thumbDelete} onPress={onDelete} hitSlop={8} {...a11y('áƒ¤áƒáƒ¢áƒáƒ¡ áƒ¬áƒáƒ¨áƒšáƒ', undefined, 'button')}>
         <Ionicons name="close-circle" size={18} color={theme.colors.white} />
       </Pressable>
     </View>
   );
 });
 
-// ── Styles ───────────────────────────────────────────────────────────────────
+// â”€â”€ Styles â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function getstyles(theme: Theme) {
   return StyleSheet.create({
-    root:    { flex: 1, backgroundColor: theme.colors.background },
+    root:    { flex: 1, backgroundColor: theme.colors.card },
+    footer: {
+      gap: 10,
+      paddingHorizontal: 20,
+      paddingTop: 8,
+      paddingBottom: 16,
+      backgroundColor: theme.colors.card,
+    },
     centred: { alignItems: 'center', justifyContent: 'center' },
     savingHint: { fontSize: 11, color: theme.colors.inkFaint, textAlign: 'right', paddingHorizontal: 16, paddingTop: 4 },
     stepBody: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 16, gap: 12 },

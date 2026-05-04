@@ -16,9 +16,7 @@ import { DateTimeField } from '../../../components/DateTimeField';
 import { Button } from '../../../components/ui';
 import { KeyboardSafeArea } from '../../../components/layout/KeyboardSafeArea';
 import { SignatureCanvas } from '../../../components/SignatureCanvas';
-import { WizardNav } from '../../../components/wizard/WizardNav';
 import { WizardStepTransition } from '../../../components/wizard/WizardStepTransition';
-import { StepBar } from '../../../components/wizard/StepBar';
 import { StepSectionLabel } from '../../../components/wizard/StepSectionLabel';
 import { ChecklistItemStep } from '../../../components/wizard/ChecklistItemStep';
 import { ChecklistTour, TOUR_SEEN_KEY } from '../../../components/wizard/ChecklistTour';
@@ -27,6 +25,7 @@ import { useTheme, type Theme } from '../../../lib/theme';
 import { useSession } from '../../../lib/session';
 import { useToast } from '../../../lib/toast';
 import { useBottomSheet } from '../../../components/BottomSheet';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { bobcatApi } from '../../../lib/bobcatService';
 import { projectsApi } from '../../../lib/services';
 import { buildBobcatPdfHtml } from '../../../lib/bobcatPdf';
@@ -63,6 +62,7 @@ export default function BobcatInspectionScreen() {
   const toast = useToast();
   const session = useSession();
   const showSheet = useBottomSheet();
+  const insets = useSafeAreaInsets();
 
   const [inspection, setInspection] = useState<BobcatInspection | null>(null);
   const [projectName, setProjectName] = useState('');
@@ -506,32 +506,28 @@ export default function BobcatInspectionScreen() {
         step={step + 1}
         totalSteps={TOTAL_STEPS}
         leading="back"
-        trailing="none"
+        trailing="close"
+        onClose={() => router.back()}
         trailingElement={
-          <Pressable
-            onPress={handlePdf}
-            disabled={generatingPdf}
-            hitSlop={10}
-            {...a11y('PDF', 'PDF დოკუმენტის გენერირება', 'button')}
-          >
-            <Ionicons
-              name={generatingPdf ? 'hourglass-outline' : 'document-text-outline'}
-              size={22}
-              color={theme.colors.accent}
-            />
-          </Pressable>
+          step > 0 ? (
+            <Pressable
+              onPress={handlePdf}
+              disabled={generatingPdf}
+              hitSlop={10}
+              {...a11y('PDF', 'PDF დოკუმენტის გენერირება', 'button')}
+            >
+              <Ionicons
+                name={generatingPdf ? 'hourglass-outline' : 'document-text-outline'}
+                size={22}
+                color={theme.colors.accent}
+              />
+            </Pressable>
+          ) : null
         }
         onBack={step === 0 ? () => router.back() : handlePrev}
         backDisabled={false}
       />
 
-      {/* Step indicator bar (hidden on done screen) */}
-      {step < DONE_STEP && (
-        <StepBar
-          step={step}
-          stepLabels={STEP_LABELS}
-        />
-      )}
 
       {saving && (
         <Text style={styles.savingHint}>შენახვა…</Text>
@@ -547,7 +543,7 @@ export default function BobcatInspectionScreen() {
           {step === 0 && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24, gap: 12 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24, gap: 12 }}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="interactive"
               showsVerticalScrollIndicator={false}
@@ -622,7 +618,7 @@ export default function BobcatInspectionScreen() {
           {step === SUMMARY_STEP && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24, gap: 12 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24, gap: 12 }}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="interactive"
               showsVerticalScrollIndicator={false}
@@ -703,7 +699,7 @@ export default function BobcatInspectionScreen() {
           {step === SIGNATURE_STEP && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24, gap: 12 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24, gap: 12 }}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="interactive"
               showsVerticalScrollIndicator={false}
@@ -754,7 +750,7 @@ export default function BobcatInspectionScreen() {
           {step === DONE_STEP && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24, gap: 12 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24, gap: 12 }}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="interactive"
               showsVerticalScrollIndicator={false}
@@ -804,15 +800,32 @@ export default function BobcatInspectionScreen() {
           )}
         </WizardStepTransition>
 
-        {/* WizardNav — not rendered on done screen */}
         {step < DONE_STEP && (
-          <WizardNav
-            isLast={step === SIGNATURE_STEP}
-            canGoNext={canGoNext}
-            canGoPrev={step > 0}
-            onNext={handleNext}
-            onPrev={handlePrev}
-          />
+          <View style={[styles.footer, { paddingBottom: 16 + insets.bottom }]}>
+            {step === SIGNATURE_STEP ? (
+              <Button
+                title="შენახვა და დასრულება"
+                style={{ paddingVertical: 14 }}
+                iconRight={<Ionicons name="checkmark" size={20} color={theme.colors.white} />}
+                loading={completing}
+                disabled={completing}
+                onPress={handleComplete}
+              />
+            ) : (
+              <Button
+                title={canGoNext ? 'შემდეგი' : 'გაგრძელება'}
+                variant={canGoNext ? 'primary' : 'secondary'}
+                size="lg"
+                style={{ alignSelf: 'stretch', paddingVertical: 16, justifyContent: 'center' }}
+                iconRight={
+                  canGoNext ? (
+                    <Ionicons name="chevron-forward" size={18} color={theme.colors.white} />
+                  ) : undefined
+                }
+                onPress={handleNext}
+              />
+            )}
+          </View>
         )}
       </KeyboardSafeArea>
 
@@ -889,10 +902,17 @@ function helpStyles(theme: Theme) {
 
 function getstyles(theme: Theme) {
   return StyleSheet.create({
-    root: { flex: 1, backgroundColor: theme.colors.background },
+    root: { flex: 1, backgroundColor: theme.colors.card },
     centred: { alignItems: 'center', justifyContent: 'center' },
     savingHint: { fontSize: 11, color: theme.colors.inkFaint, textAlign: 'right', paddingHorizontal: 16, paddingTop: 4 },
     stepBody: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 16, gap: 12 },
+    footer: {
+      gap: 10,
+      paddingHorizontal: 20,
+      paddingTop: 8,
+      paddingBottom: 16,
+      backgroundColor: theme.colors.card,
+    },
 
     fieldRow: { marginBottom: 4, gap: 6 },
     fieldLabel: { fontSize: 12, fontWeight: '600', color: theme.colors.inkSoft },
