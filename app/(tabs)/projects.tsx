@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -29,9 +30,11 @@ import EmptyState from '../../components/EmptyState';
 import { Skeleton } from '../../components/Skeleton';
 import { MapPicker, type LatLng } from '../../components/MapPicker';
 import { MapPreview } from '../../components/MapPreview';
+import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { projectsApi } from '../../lib/services';
 import { useToast } from '../../lib/toast';
 import { useTheme } from '../../lib/theme';
+import { useCalendarEvents } from '../../lib/apiHooks';
 import { useBottomSheet } from '../../components/BottomSheet';
 import { friendlyError } from '../../lib/errorMap';
 import { haptic } from '../../lib/haptics';
@@ -56,7 +59,19 @@ export default function ProjectsScreen() {
   const qc = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'grid' | 'map'>('list');
   const openSwipeRefs = useRef(new Map<string, { close: () => void }>());
+
+  useEffect(() => {
+    AsyncStorage.getItem('projects_view_pref').then(v => {
+      if (v === 'grid' || v === 'map') setViewMode(v);
+    });
+  }, []);
+
+  const applyView = useCallback((mode: 'list' | 'grid' | 'map') => {
+    setViewMode(mode);
+    void AsyncStorage.setItem('projects_view_pref', mode);
+  }, []);
 
   // Tour refs
   const listRef = useRef<View>(null);
@@ -79,9 +94,18 @@ export default function ProjectsScreen() {
 
   const projects = projectsQ.data ?? [];
   const stats = statsQ.data ?? {};
-  // Spinner only shows when there's no cached data at all. Cached + revalidating
-  // counts as "ready" so tab-switching back never re-shows the skeletons.
   const loading = projectsQ.isPending && !projectsQ.data;
+
+  const calendarEvents = useCalendarEvents();
+  const overdueByProject = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const e of calendarEvents) {
+      if (e.status === 'overdue') {
+        map[e.projectId] = (map[e.projectId] ?? 0) + 1;
+      }
+    }
+    return map;
+  }, [calendarEvents]);
 
   const onDelete = useCallback((project: Project) => {
     showActionSheet(
@@ -140,32 +164,84 @@ export default function ProjectsScreen() {
     <ProjectRow
       project={item}
       stats={stats[item.id]}
+      overdue={overdueByProject[item.id] ?? 0}
+      isGrid={viewMode === 'grid'}
       cardRef={index === 0 ? firstCardRef : undefined}
       onOpen={() => router.push(`/projects/${item.id}` as any)}
       onDelete={() => onDelete(item)}
-      registerSwipeable={(ref) => {
+      registerSwipeable={viewMode === 'list' ? (ref) => {
         if (ref) openSwipeRefs.current.set(item.id, ref);
         else openSwipeRefs.current.delete(item.id);
-      }}
-      onSwipeOpen={() => {
+      } : undefined}
+      onSwipeOpen={viewMode === 'list' ? () => {
         openSwipeRefs.current.forEach((ref, id) => {
           if (id !== item.id) ref.close();
         });
-      }}
+      } : undefined}
     />
-  ), [stats, firstCardRef, router, onDelete, openSwipeRefs]);
+  ), [stats, overdueByProject, viewMode, firstCardRef, router, onDelete, openSwipeRefs]);
 
   return (
     <TourGuide tourId="homepage_v1" steps={tourSteps}>
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.title}>{t('projects.title')}</Text>
+        <View style={styles.viewToggle}>
+          <Pressable
+            onPress={() => applyView('list')}
+            hitSlop={8}
+            style={[styles.toggleBtn, viewMode === 'list' && styles.toggleBtnActive]}
+          >
+            <Ionicons
+              name="list"
+              size={22}
+              color={viewMode === 'list' ? theme.colors.accent : theme.colors.inkSoft}
+            />
+          </Pressable>
+          <Pressable
+            onPress={() => applyView('grid')}
+            hitSlop={8}
+            style={[styles.toggleBtn, viewMode === 'grid' && styles.toggleBtnActive]}
+          >
+            <Ionicons
+              name="grid"
+              size={19}
+              color={viewMode === 'grid' ? theme.colors.accent : theme.colors.inkSoft}
+            />
+          </Pressable>
+          <Pressable
+            onPress={() => applyView('map')}
+            hitSlop={8}
+            style={[styles.toggleBtn, viewMode === 'map' && styles.toggleBtnActive]}
+          >
+            <Ionicons
+              name="location"
+              size={20}
+              color={viewMode === 'map' ? theme.colors.accent : theme.colors.inkSoft}
+            />
+          </Pressable>
+        </View>
       </View>
       <View ref={listRef} collapsable={false} style={{ flex: 1 }}>
+      {viewMode === 'map' ? (
+        <ProjectsMapView
+          projects={projects}
+          stats={stats}
+          overdueByProject={overdueByProject}
+          onProjectOpen={id => router.push(`/projects/${id}` as any)}
+        />
+      ) : (
       <FlatList
+        key={viewMode}
         data={projects}
         keyExtractor={p => p.id}
-        contentContainerStyle={{ padding: 16, paddingBottom: 100, gap: 10 }}
+        numColumns={viewMode === 'grid' ? 2 : 1}
+        columnWrapperStyle={viewMode === 'grid' ? { gap: 10, paddingHorizontal: 24, marginBottom: 10 } : undefined}
+        contentContainerStyle={
+          viewMode === 'list'
+            ? { padding: 16, paddingBottom: 100, gap: 10 }
+            : { paddingTop: 12, paddingBottom: 100 }
+        }
         renderItem={renderItem}
         initialNumToRender={8}
         windowSize={7}
@@ -203,6 +279,7 @@ export default function ProjectsScreen() {
           )
         }
       />
+      )}
       </View>
 
       <FabButton
@@ -250,7 +327,6 @@ function CreateProjectSheet({
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const toast = useToast();
-  const [name, setName] = useState('');
   const [company, setCompany] = useState('');
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
@@ -262,7 +338,6 @@ function CreateProjectSheet({
 
   useEffect(() => {
     if (visible) {
-      setName('');
       setCompany('');
       setAddress('');
       setPhone('');
@@ -279,12 +354,12 @@ function CreateProjectSheet({
   };
 
   const save = async () => {
-    if (!name.trim()) return;
+    if (!company.trim()) return;
     setBusy(true);
     try {
       const p = await projectsApi.create({
-        name: name.trim(),
-        companyName: company.trim() || null,
+        name: company.trim(),
+        companyName: company.trim(),
         address: address.trim() || null,
         latitude: pin?.latitude ?? null,
         longitude: pin?.longitude ?? null,
@@ -320,13 +395,13 @@ function CreateProjectSheet({
                     size="lg"
                     onPress={save}
                     loading={busy}
-                    disabled={!name.trim()}
+                    disabled={!company.trim()}
                   />
                 }
               >
                 <View style={{ alignItems: 'center', gap: 8 }}>
                   <ProjectAvatar
-                    project={{ name: name || '—', logo }}
+                    project={{ name: company || '—', logo }}
                     size={88}
                     editable
                     onEdit={onPickLogo}
@@ -341,17 +416,11 @@ function CreateProjectSheet({
                 </View>
 
                 <FloatingLabelInput
-                  label={t('common.name')}
-                  required
-                  value={name}
-                  onChangeText={setName}
-                  autoFocus
-                />
-
-                <FloatingLabelInput
                   label={t('common.company')}
+                  required
                   value={company}
                   onChangeText={setCompany}
+                  autoFocus
                 />
 
                 <FloatingLabelInput
@@ -376,7 +445,7 @@ function CreateProjectSheet({
         {mapVisible && (
           <View style={StyleSheet.absoluteFillObject}>
             <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: insets.top + 12, paddingVertical: 12 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingTop: insets.top + 12, paddingVertical: 12 }}>
                 <View style={{ width: 24 }} />
                 <Text style={{ flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '700', color: theme.colors.ink }}>
                   მდებარეობის არჩევა
@@ -550,9 +619,28 @@ function ProjectRowSkeleton() {
   );
 }
 
+function extractCity(address: string | null): string | null {
+  if (!address) return null;
+  const comma = address.indexOf(',');
+  return (comma > 0 ? address.substring(0, comma) : address).trim() || null;
+}
+
+function projectStatusLine(
+  stats: { drafts: number; completed: number } | undefined,
+  overdue: number,
+  theme: any,
+): { text: string; color: string } {
+  if (overdue > 0) return { text: `⚠ ${overdue} ვადაგადაცილებული`, color: theme.colors.danger };
+  if ((stats?.drafts ?? 0) > 0) return { text: `✎ ${stats!.drafts} დრაფტი`, color: theme.colors.warn };
+  if ((stats?.completed ?? 0) > 0) return { text: `✓ ${stats!.completed} დასრულებული`, color: theme.colors.inkSoft };
+  return { text: 'შემოწმება არ არის', color: theme.colors.inkFaint };
+}
+
 const ProjectRow = memo(function ProjectRow({
   project,
   stats,
+  overdue = 0,
+  isGrid = false,
   onOpen,
   onDelete,
   registerSwipeable,
@@ -561,6 +649,8 @@ const ProjectRow = memo(function ProjectRow({
 }: {
   project: Project;
   stats?: { drafts: number; completed: number };
+  overdue?: number;
+  isGrid?: boolean;
   onOpen: () => void;
   onDelete: () => void;
   registerSwipeable?: (ref: { close: () => void } | null) => void;
@@ -571,6 +661,11 @@ const ProjectRow = memo(function ProjectRow({
   const { t } = useTranslation();
   const styles = useMemo(() => getstyles(theme), [theme]);
   const swipeRef = useRef<any>(null);
+
+  const city = extractCity(project.address);
+  const subLine = city || null;
+  const status = projectStatusLine(stats, overdue, theme);
+
   const renderRightActions = () => (
     <Pressable onPress={onDelete} style={styles.swipeDelete}>
       <Ionicons name="trash" size={20} color={theme.colors.white} />
@@ -578,81 +673,427 @@ const ProjectRow = memo(function ProjectRow({
     </Pressable>
   );
 
+  if (isGrid) {
+    return (
+      <View ref={cardRef} collapsable={false} style={{ flex: 1 }}>
+        <PressableScale onPress={onOpen} hapticOnPress="navigate" scaleTo={0.98}>
+          <Card padding={12}>
+            <View style={{ gap: 6 }}>
+              <ProjectAvatar project={project} size={36} />
+              <A11yText size="base" weight="bold" numberOfLines={2}>
+                {project.company_name || project.name}
+              </A11yText>
+              {subLine ? (
+                <A11yText
+                  size="xs"
+                  color={theme.colors.inkSoft}
+                  numberOfLines={1}
+                  style={{ marginTop: -2 }}
+                >
+                  {subLine}
+                </A11yText>
+              ) : null}
+              <Text style={[styles.statusText, { color: status.color }]}>
+                {status.text}
+              </Text>
+            </View>
+          </Card>
+        </PressableScale>
+      </View>
+    );
+  }
+
   return (
     <View ref={cardRef} collapsable={false}>
-    <Swipeable
-      ref={swipeRef as any}
-      onSwipeableOpen={() => registerSwipeable?.(swipeRef.current)}
-      renderRightActions={renderRightActions}
-      overshootRight={false}
-      onSwipeableWillOpen={onSwipeOpen}
-    >
-      <PressableScale
-        onPress={onOpen}
-        hapticOnPress="navigate"
-        scaleTo={0.98}
+      <Swipeable
+        ref={swipeRef as any}
+        onSwipeableOpen={() => registerSwipeable?.(swipeRef.current)}
+        renderRightActions={renderRightActions}
+        overshootRight={false}
+        onSwipeableWillOpen={onSwipeOpen}
       >
-        <Card padding={14}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <ProjectAvatar project={project} size={44} />
-            <View style={{ flex: 1 }}>
-              <A11yText size="base" weight="bold" numberOfLines={1}>
-                {project.name}
-              </A11yText>
-              {project.company_name ? (
-                <A11yText size="xs" color={theme.colors.inkSoft} style={{ marginTop: 2 }} numberOfLines={1}>
-                  {project.company_name}
-                  {project.address ? ` · ${project.address}` : ''}
+        <PressableScale onPress={onOpen} hapticOnPress="navigate" scaleTo={0.98}>
+          <Card padding={14}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <ProjectAvatar project={project} size={44} />
+              <View style={{ flex: 1 }}>
+                <A11yText size="base" weight="bold" numberOfLines={1}>
+                  {project.company_name || project.name}
                 </A11yText>
-              ) : project.address ? (
-                <A11yText size="xs" color={theme.colors.inkSoft} style={{ marginTop: 2 }} numberOfLines={1}>
-                  {project.address}
-                </A11yText>
-              ) : null}
-              {stats && (stats.drafts > 0 || stats.completed > 0) ? (
-                <View style={{ flexDirection: 'row', gap: 10, marginTop: 6 }}>
-                  {stats.drafts > 0 ? (() => {
-                    const urgent = stats.drafts >= 3;
-                    const elevated = stats.drafts === 2;
-                    return (
-                      <View style={[
-                        styles.counter,
-                        urgent
-                          ? { backgroundColor: theme.colors.warn }
-                          : elevated
-                          ? { backgroundColor: theme.colors.warnSoft, borderWidth: 1, borderColor: theme.colors.warn }
-                          : { backgroundColor: theme.colors.warnSoft },
-                      ]}>
-                        <Ionicons
-                          name="document-text-outline"
-                          size={11}
-                          color={urgent ? theme.colors.white : theme.colors.warn}
-                        />
-                        <A11yText size="xs" weight="bold" color={urgent ? theme.colors.white : theme.colors.warn}>
-                          {stats.drafts} {t('common.draft')}
-                        </A11yText>
-                      </View>
-                    );
-                  })() : null}
-                  {stats.completed > 0 ? (
-                    <View style={[styles.counter, { backgroundColor: theme.colors.accentSoft }]}>
-                      <Ionicons name="checkmark" size={11} color={theme.colors.accent} />
-                      <A11yText size="xs" weight="bold" color={theme.colors.accent}>
-                        {stats.completed} {t('common.completed').toLowerCase()}
-                      </A11yText>
-                    </View>
-                  ) : null}
-                </View>
-              ) : null}
+                {subLine ? (
+                  <A11yText
+                    size="xs"
+                    color={theme.colors.inkSoft}
+                    style={{ marginTop: 2 }}
+                    numberOfLines={1}
+                  >
+                    {subLine}
+                  </A11yText>
+                ) : null}
+                <Text style={[styles.statusText, { color: status.color, marginTop: 4 }]}>
+                  {status.text}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={theme.colors.inkFaint} />
             </View>
-            <Ionicons name="chevron-forward" size={18} color={theme.colors.inkFaint} />
-          </View>
-        </Card>
-      </PressableScale>
-    </Swipeable>
+          </Card>
+        </PressableScale>
+      </Swipeable>
     </View>
   );
 });
+
+// ── Map view ──────────────────────────────────────────────────────────────────
+
+function pinColor(
+  project: Project,
+  stats: Stats,
+  overdueByProject: Record<string, number>,
+): string {
+  if ((overdueByProject[project.id] ?? 0) > 0) return '#EF4444';
+  if ((stats[project.id]?.drafts ?? 0) > 0) return '#F59E0B';
+  return '#1D9E75';
+}
+
+function ProjectsMapView({
+  projects,
+  stats,
+  overdueByProject,
+  onProjectOpen,
+}: {
+  projects: Project[];
+  stats: Stats;
+  overdueByProject: Record<string, number>;
+  onProjectOpen: (id: string) => void;
+}) {
+  const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
+
+  const mappedProjects = useMemo(
+    () => projects.filter(p => p.latitude != null && p.longitude != null),
+    [projects],
+  );
+  const unmappedCount = projects.length - mappedProjects.length;
+
+  const [selected, setSelected] = useState<Project | null>(null);
+  const [showUnmapped, setShowUnmapped] = useState(false);
+  const cardAnim = useRef(new Animated.Value(240)).current;
+
+  const openCard = useCallback((project: Project) => {
+    setSelected(project);
+    Animated.spring(cardAnim, { toValue: 0, useNativeDriver: true, tension: 70, friction: 12 }).start();
+  }, [cardAnim]);
+
+  const closeCard = useCallback(() => {
+    Animated.timing(cardAnim, { toValue: 240, duration: 200, useNativeDriver: true }).start(() =>
+      setSelected(null),
+    );
+  }, [cardAnim]);
+
+  const initialRegion = useMemo(() => {
+    if (mappedProjects.length === 0) {
+      return { latitude: 41.7151, longitude: 44.8271, latitudeDelta: 0.12, longitudeDelta: 0.12 };
+    }
+    const lats = mappedProjects.map(p => p.latitude!);
+    const lngs = mappedProjects.map(p => p.longitude!);
+    const minLat = Math.min(...lats);
+    const maxLat = Math.max(...lats);
+    const minLng = Math.min(...lngs);
+    const maxLng = Math.max(...lngs);
+    const pad = 0.06;
+    return {
+      latitude: (minLat + maxLat) / 2,
+      longitude: (minLng + maxLng) / 2,
+      latitudeDelta: Math.max(0.03, maxLat - minLat + pad * 2),
+      longitudeDelta: Math.max(0.03, maxLng - minLng + pad * 2),
+    };
+  }, [mappedProjects]);
+
+  return (
+    <View style={{ flex: 1 }}>
+      <MapView
+        provider={PROVIDER_DEFAULT}
+        style={StyleSheet.absoluteFill}
+        initialRegion={initialRegion}
+        onPress={closeCard}
+      >
+        {mappedProjects.map(project => {
+          const color = pinColor(project, stats, overdueByProject);
+          return (
+            <Marker
+              key={project.id}
+              coordinate={{ latitude: project.latitude!, longitude: project.longitude! }}
+              onPress={() => openCard(project)}
+              tracksViewChanges={false}
+            >
+              <View style={{ alignItems: 'center' }}>
+                <View
+                  style={{
+                    backgroundColor: color,
+                    borderRadius: 20,
+                    width: 32,
+                    height: 32,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.28,
+                    shadowRadius: 4,
+                    elevation: 5,
+                  }}
+                >
+                  <Ionicons name="business" size={15} color="#fff" />
+                </View>
+                {/* Pin tail */}
+                <View
+                  style={{
+                    width: 0,
+                    height: 0,
+                    borderLeftWidth: 5,
+                    borderRightWidth: 5,
+                    borderTopWidth: 7,
+                    borderLeftColor: 'transparent',
+                    borderRightColor: 'transparent',
+                    borderTopColor: color,
+                    marginTop: -1,
+                  }}
+                />
+              </View>
+            </Marker>
+          );
+        })}
+      </MapView>
+
+      {/* No-location pill */}
+      {unmappedCount > 0 && (
+        <Pressable
+          onPress={() => setShowUnmapped(true)}
+          hitSlop={8}
+          style={{
+            position: 'absolute',
+            bottom: insets.bottom + 100,
+            alignSelf: 'center',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 6,
+            backgroundColor: 'rgba(0,0,0,0.68)',
+            borderRadius: 999,
+            paddingHorizontal: 14,
+            paddingVertical: 8,
+          }}
+        >
+          <Ionicons name="location-outline" size={14} color="#fff" />
+          <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>
+            {unmappedCount} პროექტს ლოკაცია არ აქვს
+          </Text>
+        </Pressable>
+      )}
+
+      {/* Sliding project card */}
+      {selected && (
+        <Animated.View
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            transform: [{ translateY: cardAnim }],
+          }}
+        >
+          <ProjectMapCard
+            project={selected}
+            stats={stats[selected.id]}
+            overdue={overdueByProject[selected.id] ?? 0}
+            onOpen={() => {
+              onProjectOpen(selected.id);
+              closeCard();
+            }}
+            onClose={closeCard}
+            bottomInset={insets.bottom}
+          />
+        </Animated.View>
+      )}
+
+      {/* Unmapped projects sheet */}
+      <UnmappedSheet
+        visible={showUnmapped}
+        projects={projects.filter(p => p.latitude == null || p.longitude == null)}
+        onClose={() => setShowUnmapped(false)}
+        onOpen={id => {
+          setShowUnmapped(false);
+          onProjectOpen(id);
+        }}
+      />
+    </View>
+  );
+}
+
+function ProjectMapCard({
+  project,
+  stats,
+  overdue = 0,
+  onOpen,
+  onClose,
+  bottomInset,
+}: {
+  project: Project;
+  stats?: { drafts: number; completed: number };
+  overdue?: number;
+  onOpen: () => void;
+  onClose: () => void;
+  bottomInset: number;
+}) {
+  const { theme } = useTheme();
+  const city = extractCity(project.address);
+  const subLine = city || null;
+  const status = projectStatusLine(stats, overdue, theme);
+
+  return (
+    <View
+      style={{
+        backgroundColor: theme.colors.surface,
+        borderTopLeftRadius: 22,
+        borderTopRightRadius: 22,
+        paddingHorizontal: 16,
+        paddingTop: 10,
+        paddingBottom: bottomInset + 20,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.12,
+        shadowRadius: 16,
+        elevation: 12,
+      }}
+    >
+      {/* Drag handle */}
+      <Pressable onPress={onClose} hitSlop={12} style={{ alignItems: 'center', paddingBottom: 10 }}>
+        <View
+          style={{
+            width: 36,
+            height: 4,
+            borderRadius: 2,
+            backgroundColor: theme.colors.hairline,
+          }}
+        />
+      </Pressable>
+
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <ProjectAvatar project={project} size={44} />
+        <View style={{ flex: 1 }}>
+          <A11yText size="base" weight="bold" numberOfLines={1}>
+            {project.company_name || project.name}
+          </A11yText>
+          {subLine ? (
+            <A11yText
+              size="xs"
+              color={theme.colors.inkSoft}
+              numberOfLines={1}
+              style={{ marginTop: 2 }}
+            >
+              {subLine}
+            </A11yText>
+          ) : null}
+          <Text style={{ fontSize: 12, color: status.color, marginTop: 4 }}>{status.text}</Text>
+        </View>
+        <Pressable
+          onPress={onOpen}
+          hitSlop={8}
+          style={{
+            backgroundColor: theme.colors.accent,
+            borderRadius: 10,
+            paddingHorizontal: 14,
+            paddingVertical: 9,
+          }}
+          {...a11y('გახსნა', 'პროექტის გახსნა', 'button')}
+        >
+          <A11yText size="sm" weight="semibold" color="#fff">
+            გახსნა →
+          </A11yText>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+function UnmappedSheet({
+  visible,
+  projects,
+  onClose,
+  onOpen,
+}: {
+  visible: boolean;
+  projects: Project[];
+  onClose: () => void;
+  onOpen: (id: string) => void;
+}) {
+  const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <View style={{ flex: 1, justifyContent: 'flex-end' }}>
+        <Pressable
+          style={[StyleSheet.absoluteFillObject, { backgroundColor: theme.colors.overlay }]}
+          onPress={onClose}
+        />
+        <View
+          style={{
+            backgroundColor: theme.colors.surface,
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
+            paddingBottom: insets.bottom + 16,
+            maxHeight: '70%',
+          }}
+        >
+          {/* Handle */}
+          <View style={{ alignItems: 'center', paddingTop: 10, paddingBottom: 4 }}>
+            <View
+              style={{
+                width: 36,
+                height: 4,
+                borderRadius: 2,
+                backgroundColor: theme.colors.hairline,
+              }}
+            />
+          </View>
+          <View style={{ paddingHorizontal: 20, paddingBottom: 12 }}>
+            <A11yText size="lg" weight="bold">
+              ლოკაციის გარეშე
+            </A11yText>
+            <A11yText size="sm" color={theme.colors.inkSoft} style={{ marginTop: 2 }}>
+              ამ პროექტებს კოორდინატები არ აქვთ
+            </A11yText>
+          </View>
+          <FlatList
+            data={projects}
+            keyExtractor={p => p.id}
+            contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
+            renderItem={({ item }) => (
+              <Pressable
+                onPress={() => onOpen(item.id)}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 12,
+                  backgroundColor: theme.colors.card,
+                  borderRadius: 12,
+                  padding: 12,
+                }}
+              >
+                <ProjectAvatar project={item} size={36} />
+                <View style={{ flex: 1 }}>
+                  <A11yText size="base" weight="semibold" numberOfLines={1}>
+                    {item.company_name || item.name}
+                  </A11yText>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
+              </Pressable>
+            )}
+          />
+        </View>
+      </View>
+    </Modal>
+  );
+}
 
 function getstyles(theme: any) {
   return StyleSheet.create({
@@ -699,6 +1140,31 @@ function getstyles(theme: any) {
     gap: 4,
     marginLeft: 8,
     borderRadius: theme.radius.lg,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '400',
+  },
+  viewToggle: {
+    flexDirection: 'row',
+    backgroundColor: theme.colors.subtleSurface,
+    borderRadius: 8,
+    padding: 3,
+  },
+  toggleBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  toggleBtnActive: {
+    backgroundColor: theme.colors.card,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
+    elevation: 1,
   },
 });
 }

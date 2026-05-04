@@ -120,7 +120,7 @@ export default function GeneralEquipmentScreen() {
 
         projectsApi.getById(insp.projectId).then(p => {
           if (cancelled || !p) return;
-          setProjectName(p.name);
+          setProjectName(p.company_name || p.name);
         }).catch(() => {});
       } catch (e) {
         console.log('[GE] load error:', e);
@@ -538,7 +538,7 @@ export default function GeneralEquipmentScreen() {
           {step === INFO_STEP && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24, gap: 12 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 12 }}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="interactive"
               showsVerticalScrollIndicator={false}
@@ -610,7 +610,7 @@ export default function GeneralEquipmentScreen() {
           {step === CHECKLIST_STEP && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24, gap: 12 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 12 }}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="interactive"
               showsVerticalScrollIndicator={false}
@@ -672,7 +672,7 @@ export default function GeneralEquipmentScreen() {
           {step === CONCLUSION_STEP && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24, gap: 12 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 12 }}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="interactive"
               showsVerticalScrollIndicator={false}
@@ -697,6 +697,20 @@ export default function GeneralEquipmentScreen() {
                 onDelete={handleDeleteSummaryPhoto}
                 styles={styles}
               />
+            </KeyboardAwareScrollView>
+          )}
+
+          {/* ── Step 3: Signature ───────────────────────────────────────── */}
+          {step === 3 && (
+            <KeyboardAwareScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 12 }}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
+              showsVerticalScrollIndicator={false}
+              bottomOffset={120}
+            >
+              <StepSectionLabel title="IV — ხელმოწერა" />
 
               <FloatingLabelInput
                 label="სახელი / გვარი"
@@ -769,6 +783,49 @@ export default function GeneralEquipmentScreen() {
                   <Text style={styles.completingText}>მიმდინარეობს…</Text>
                 </View>
               )}
+            </KeyboardAwareScrollView>
+          )}
+
+          {/* ── Step 4: Done ────────────────────────────────────────────── */}
+          {step === 4 && (
+            <KeyboardAwareScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 12 }}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
+              showsVerticalScrollIndicator={false}
+              bottomOffset={120}
+            >
+              <View style={styles.doneHero}>
+                <Ionicons name="checkmark-circle" size={72} color={theme.colors.semantic.success} />
+                <Text style={styles.doneTitle}>შემოწმება დასრულდა!</Text>
+                {inspection.completedAt && (
+                  <Text style={styles.doneDate}>
+                    {new Date(inspection.completedAt).toLocaleDateString('ka-GE', {
+                      day: 'numeric', month: 'long', year: 'numeric',
+                    })}
+                  </Text>
+                )}
+                {inspection.signerRole && (
+                  <View style={styles.doneRole}>
+                    <Text style={styles.doneRoleText}>
+                      {resolveSignerPosition(inspection.signerRole, inspection.signerRoleCustom)}
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              <Button
+                title="PDF გენერირება / გაზიარება"
+                onPress={handlePdf}
+                loading={generatingPdf}
+                style={{ marginBottom: 12 }}
+              />
+              <Button
+                title="პროექტზე დაბრუნება"
+                variant="secondary"
+                onPress={() => router.back()}
+              />
             </KeyboardAwareScrollView>
           )}
         </WizardStepTransition>
@@ -886,8 +943,8 @@ function getstyles(theme: Theme) {
       backgroundColor: theme.colors.card,
     },
     centred: { alignItems: 'center', justifyContent: 'center' },
-    savingHint: { fontSize: 11, color: theme.colors.inkFaint, textAlign: 'right', paddingHorizontal: 16, paddingTop: 4 },
-    stepBody: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 16, gap: 12 },
+    savingHint: { fontSize: 11, color: theme.colors.inkFaint, textAlign: 'right', paddingHorizontal: 24, paddingTop: 4 },
+    stepBody: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 16, gap: 12 },
 
     fieldRow:   { marginBottom: 4, gap: 6 },
     fieldLabel: { fontSize: 12, fontWeight: '600', color: theme.colors.inkSoft, marginBottom: 6 },

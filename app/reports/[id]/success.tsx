@@ -140,7 +140,7 @@ function makeStyles(theme: any) {
       textAlign: 'center',
     },
     footer: {
-      paddingHorizontal: 16,
+      paddingHorizontal: 24,
       paddingTop: 12,
       gap: 12,
     },

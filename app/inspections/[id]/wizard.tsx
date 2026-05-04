@@ -2516,7 +2516,7 @@ const staticStyles = StyleSheet.create({
   padTop16: { paddingTop: 16 },
   padTop20: { paddingTop: 20 },
   padV8: { paddingVertical: 8 },
-  padH16: { paddingHorizontal: 16 },
+  padH16: { paddingHorizontal: 24 },
   padB12: { paddingBottom: 12 },
   padB16: { paddingBottom: 16 },
   padB24: { paddingBottom: 24 },
@@ -2530,7 +2530,7 @@ const staticStyles = StyleSheet.create({
   rowCenterGap12: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   mt24gap16: { marginTop: 24, gap: 16 },
   mt12: { marginTop: 12 },
-  padH16gap8: { paddingHorizontal: 16, gap: 8 },
+  padH16gap8: { paddingHorizontal: 24, gap: 8 },
   stepScrollContent: { padding: 20, paddingBottom: 12, gap: 16 },
 });
 

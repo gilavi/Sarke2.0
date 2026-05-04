@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -8,30 +8,29 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { A11yText as Text } from '../../components/primitives/A11yText';
-import { Card } from '../../components/ui';
 import { Skeleton } from '../../components/Skeleton';
-import { useBottomSheet } from '../../components/BottomSheet';
+import { InspectionTypeAvatar } from '../../components/InspectionTypeAvatar';
+import type { InspectionStatus } from '../../components/StatusBadge';
 import { useTheme } from '../../lib/theme';
-import { useTranslation } from 'react-i18next';
+import { STATUS_DOT_COLOR } from '../../lib/statusColors';
 import {
   useCalendarEvents,
   useAllInspections,
   useAllBriefings,
-  useProjects,
+  useTemplates,
   qk,
 } from '../../lib/apiHooks';
 import {
-  eventsForDay,
   dotStatusesForDay,
   isSameDay,
 } from '../../lib/calendarEvents';
 import { runMigrationIfNeeded } from '../../lib/calendarSchedule';
-import type { CalendarEvent, CalendarEventStatus } from '../../lib/calendarEvents';
+import type { CalendarEvent } from '../../lib/calendarEvents';
 
-// ── Date helpers (local) ─────────────────────────────────────────────────────
+// ── Date helpers ──────────────────────────────────────────────────────────────
 
 function startOfDay(d: Date): Date {
   const c = new Date(d);
@@ -39,10 +38,9 @@ function startOfDay(d: Date): Date {
   return c;
 }
 
-/** Returns the 7-day array for the week at Monday + weekOffset*7 days. */
 function getWeekDays(weekOffset: number): Date[] {
   const today = new Date();
-  const dow = (today.getDay() + 6) % 7; // 0 = Monday
+  const dow = (today.getDay() + 6) % 7;
   const monday = startOfDay(today);
   monday.setDate(today.getDate() - dow + weekOffset * 7);
   return Array.from({ length: 7 }, (_, i) => {
@@ -52,69 +50,133 @@ function getWeekDays(weekOffset: number): Date[] {
   });
 }
 
-const WEEKDAY_SHORT = ['ორ', 'სა', 'ოთ', 'ხუ', 'პა', 'შა', 'კვ'];
+/** How many full weeks offset is `date` from the current week's Monday. */
+function weekOffsetForDate(date: Date): number {
+  const today = new Date();
+  const dow = (today.getDay() + 6) % 7;
+  const thisMonday = startOfDay(today);
+  thisMonday.setDate(today.getDate() - dow);
+  const targetDay = startOfDay(date);
+  const diff = targetDay.getTime() - thisMonday.getTime();
+  return Math.floor(diff / (7 * 86_400_000));
+}
+
+const WEEKDAY_SHORT = ['ორშ.', 'სამ.', 'ოთხ.', 'ხუთ.', 'პარ.', 'შაბ.', 'კვ.'];
+
+const WEEKDAY_FULL = [
+  'ორშაბათი', 'სამშაბათი', 'ოთხშაბათი', 'ხუთშაბათი',
+  'პარასკევი', 'შაბათი', 'კვირა',
+];
+
+const MONTH_FULL = [
+  'იანვარი', 'თებერვალი', 'მარტი', 'აპრილი', 'მაისი', 'ივნისი',
+  'ივლისი', 'აგვისტო', 'სექტემბერი', 'ოქტომბერი', 'ნოემბერი', 'დეკემბერი',
+];
 
 const MONTH_SHORT = [
   'იან', 'თებ', 'მარ', 'აპრ', 'მაი', 'ივნ',
   'ივლ', 'აგვ', 'სექ', 'ოქტ', 'ნოე', 'დეკ',
 ];
 
-function formatMonthYear(d: Date): string {
-  const months = [
-    'იანვარი', 'თებერვალი', 'მარტი', 'აპრილი', 'მაისი', 'ივნისი',
-    'ივლისი', 'აგვისტო', 'სექტემბერი', 'ოქტომბერი', 'ნოემბერი', 'დეკემბერი',
-  ];
-  return `${months[d.getMonth()]} ${d.getFullYear()}`;
+function formatWeekLabel(weekDays: Date[]): string {
+  const first = weekDays[0];
+  const last = weekDays[6];
+  if (first.getMonth() === last.getMonth()) {
+    return `${first.getDate()}–${last.getDate()} ${MONTH_SHORT[first.getMonth()]} ${first.getFullYear()}`;
+  }
+  return `${first.getDate()} ${MONTH_SHORT[first.getMonth()]} – ${last.getDate()} ${MONTH_SHORT[last.getMonth()]}`;
+}
+
+function formatDayLabel(date: Date): string {
+  const dow = (date.getDay() + 6) % 7;
+  return `${date.getDate()} ${MONTH_FULL[date.getMonth()]}, ${WEEKDAY_FULL[dow]}`;
 }
 
 function relativeDayLabel(date: Date): string {
   const today = startOfDay(new Date());
   const target = startOfDay(date);
   const diffMs = target.getTime() - today.getTime();
-  const diffDays = Math.round(diffMs / 86400000);
+  const diffDays = Math.round(diffMs / 86_400_000);
   if (diffDays === 0) return 'დღეს';
   if (diffDays > 0) return `${diffDays} დღეში`;
   return `${Math.abs(diffDays)} დღე გადაცილდა`;
 }
 
-function relativeDayColor(event: CalendarEvent): string {
-  if (event.status === 'overdue') return '#DC2626';
-  if (event.status === 'due_today') return '#F59E0B';
-  return '#9CA3AF';
+// ── Section grouping ──────────────────────────────────────────────────────────
+
+type DaySection = {
+  dateKey: string;
+  date: Date;
+  label: string;
+  overdue: CalendarEvent[];
+  rest: CalendarEvent[];
+};
+
+function buildSections(events: CalendarEvent[]): DaySection[] {
+  const map = new Map<string, DaySection>();
+  for (const event of events) {
+    const key = startOfDay(event.date).toDateString();
+    if (!map.has(key)) {
+      map.set(key, {
+        dateKey: key,
+        date: startOfDay(event.date),
+        label: formatDayLabel(startOfDay(event.date)),
+        overdue: [],
+        rest: [],
+      });
+    }
+    const sec = map.get(key)!;
+    if (event.status === 'overdue') {
+      sec.overdue.push(event);
+    } else {
+      sec.rest.push(event);
+    }
+  }
+  return Array.from(map.values()).sort((a, b) => a.date.getTime() - b.date.getTime());
 }
 
-type FilterType = 'all' | 'inspection' | 'briefing' | 'overdue' | 'upcoming';
+/** Returns the section whose date best matches the current scroll Y. */
+function findVisibleSection(
+  scrollY: number,
+  offsets: Record<string, number>,
+  sections: DaySection[],
+): DaySection | null {
+  let best: DaySection | null = null;
+  for (const sec of sections) {
+    const off = offsets[sec.dateKey];
+    if (off === undefined) continue;
+    if (off <= scrollY + 64) best = sec;
+    else break;
+  }
+  return best;
+}
 
-// ── Main screen ──────────────────────────────────────────────────────────────
+// ── Main screen ───────────────────────────────────────────────────────────────
 
 export default function CalendarScreen() {
   const { theme } = useTheme();
-  const { t } = useTranslation();
-  const router = useRouter();
   const queryClient = useQueryClient();
-  const showSheet = useBottomSheet();
-  const params = useLocalSearchParams<{ projectId?: string }>();
-  const styles = useMemo(() => getstyles(theme), [theme]);
+  const styles = useMemo(() => getStyles(theme), [theme]);
 
   const [selectedDay, setSelectedDay] = useState<Date>(() => startOfDay(new Date()));
   const [weekOffset, setWeekOffset] = useState(0);
-  const [filterType, setFilterType] = useState<FilterType>('all');
-  const [filterProjectId, setFilterProjectId] = useState<string | null>(null);
 
-  // Pre-filter by projectId deep-link param
-  useEffect(() => {
-    if (params.projectId) {
-      setFilterProjectId(params.projectId);
-    }
-  }, [params.projectId]);
+  const scrollRef = useRef<ScrollView>(null);
+  const sectionOffsets = useRef<Record<string, number>>({});
+  const suppressScrollSync = useRef(false);
+  const didInitialScroll = useRef(false);
 
   const { data: allInspections = [], isLoading: loadingInsp } = useAllInspections();
   const { data: allBriefings = [], isLoading: loadingBrief } = useAllBriefings();
-  const { data: projects = [] } = useProjects();
+  const { data: templates = [] } = useTemplates();
   const events = useCalendarEvents();
   const isLoading = loadingInsp || loadingBrief;
 
-  // One-time migration — seeds schedule entries for all existing completions
+  const templateCategoryMap = useMemo(
+    () => Object.fromEntries(templates.map(t => [t.id, t.category as string])),
+    [templates],
+  );
+
   useEffect(() => {
     if (allInspections.length === 0 && allBriefings.length === 0) return;
     void runMigrationIfNeeded(
@@ -132,24 +194,43 @@ export default function CalendarScreen() {
     ).then(() => {
       void queryClient.invalidateQueries({ queryKey: qk.calendar.schedules });
     });
-  // Only re-run when the counts change (i.e. new completions came in)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allInspections.length, allBriefings.length]);
 
   const today = startOfDay(new Date());
   const weekDays = useMemo(() => getWeekDays(weekOffset), [weekOffset]);
-  const weekLabel = useMemo(() => {
-    const first = weekDays[0];
-    const last = weekDays[6];
-    if (first.getMonth() === last.getMonth()) {
-      return `${first.getDate()}–${last.getDate()} ${MONTH_SHORT[first.getMonth()]} ${first.getFullYear()}`;
-    }
-    return `${first.getDate()} ${MONTH_SHORT[first.getMonth()]} – ${last.getDate()} ${MONTH_SHORT[last.getMonth()]}`;
+  const weekLabel = useMemo(() => formatWeekLabel(weekDays), [weekDays]);
+
+  const headerMonth = useMemo(() => {
+    const rep = weekDays[3];
+    return `${MONTH_FULL[rep.getMonth()]} ${rep.getFullYear()}`;
   }, [weekDays]);
 
-  const isCurrentWeek = weekOffset === 0;
+  const sections = useMemo(() => buildSections(events), [events]);
 
-  // Swipe gesture — follow wizard.tsx pattern
+  // Scroll to today (or nearest future section) once sections + layout are ready
+  useEffect(() => {
+    if (sections.length === 0 || didInitialScroll.current) return;
+    const todayKey = today.toDateString();
+    const target =
+      sections.find(s => s.dateKey >= todayKey) ?? sections[sections.length - 1];
+    const tryScroll = () => {
+      const off = sectionOffsets.current[target.dateKey];
+      if (off !== undefined) {
+        didInitialScroll.current = true;
+        suppressScrollSync.current = true;
+        scrollRef.current?.scrollTo({ y: off, animated: false });
+        setTimeout(() => { suppressScrollSync.current = false; }, 300);
+      } else {
+        // Layout not yet measured — retry shortly
+        setTimeout(tryScroll, 80);
+      }
+    };
+    setTimeout(tryScroll, 100);
+  // Only run when sections change in length (new data arrived)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sections.length]);
+
   const swipeWeek = useMemo(
     () =>
       Gesture.Pan()
@@ -164,60 +245,64 @@ export default function CalendarScreen() {
     [],
   );
 
-  const jumpToToday = useCallback(() => {
-    setSelectedDay(startOfDay(new Date()));
-    setWeekOffset(0);
-  }, []);
+  const handleDayTap = useCallback(
+    (day: Date) => {
+      const d = startOfDay(day);
+      setSelectedDay(d);
+      const key = d.toDateString();
+      const off = sectionOffsets.current[key];
+      if (off !== undefined) {
+        suppressScrollSync.current = true;
+        scrollRef.current?.scrollTo({ y: off, animated: true });
+        setTimeout(() => { suppressScrollSync.current = false; }, 600);
+      }
+    },
+    [],
+  );
 
-  // Filtered events for the selected day
-  const dayEvents = useMemo(() => {
-    const base = eventsForDay(events, selectedDay);
-    return base.filter(e => {
-      if (filterType === 'inspection' && e.type !== 'inspection') return false;
-      if (filterType === 'briefing' && e.type !== 'briefing') return false;
-      if (filterType === 'overdue' && e.status !== 'overdue') return false;
-      if (filterType === 'upcoming' && (e.isPast || e.status === 'overdue')) return false;
-      if (filterProjectId && e.projectId !== filterProjectId) return false;
-      return true;
-    });
-  }, [events, selectedDay, filterType, filterProjectId]);
+  const handleScroll = useCallback(
+    (y: number) => {
+      if (suppressScrollSync.current) return;
+      const visible = findVisibleSection(y, sectionOffsets.current, sections);
+      if (!visible) return;
+      if (!isSameDay(visible.date, selectedDay)) {
+        setSelectedDay(visible.date);
+        setWeekOffset(weekOffsetForDate(visible.date));
+      }
+    },
+    [sections, selectedDay],
+  );
 
-  const hasAnyFilter = filterType !== 'all' || filterProjectId !== null;
-
-  const openProjectFilter = useCallback(() => {
-    const opts = [t('calendar.allProjects'), ...projects.map(p => p.name), t('common.cancel')];
-    showSheet(
-      { title: t('calendar.filterProject'), options: opts, cancelButtonIndex: opts.length - 1 },
-      idx => {
-        if (idx === undefined || idx === opts.length - 1) return;
-        if (idx === 0) setFilterProjectId(null);
-        else setFilterProjectId(projects[idx - 1].id);
-      },
-    );
-  }, [projects, showSheet, t]);
-
-  const selectedProjectName = filterProjectId
-    ? (projects.find(p => p.id === filterProjectId)?.name ?? 'პროექტი')
-    : null;
-
-  // ── Render ──────────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────────
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>{t('calendar.title')}</Text>
-        {(!isCurrentWeek || !isSameDay(selectedDay, today)) && (
-          <Pressable onPress={jumpToToday} hitSlop={8} style={styles.todayBtn}>
-            <Text style={styles.todayBtnText}>{t('calendar.jumpToToday')}</Text>
-          </Pressable>
-        )}
+        <Text style={styles.title}>კალენდარი</Text>
+        <Text style={styles.headerMonth}>{headerMonth}</Text>
       </View>
 
       {/* Week strip */}
       <GestureDetector gesture={swipeWeek}>
-        <View style={styles.weekStripContainer}>
-          <Text style={styles.weekLabel}>{weekLabel}</Text>
+        <View style={styles.weekContainer}>
+          <View style={styles.weekNavRow}>
+            <Pressable
+              onPress={() => setWeekOffset(o => o - 1)}
+              hitSlop={8}
+              style={styles.navArrow}
+            >
+              <Ionicons name="chevron-back" size={20} color={theme.colors.inkSoft} />
+            </Pressable>
+            <Text style={styles.weekLabel}>{weekLabel}</Text>
+            <Pressable
+              onPress={() => setWeekOffset(o => o + 1)}
+              hitSlop={8}
+              style={styles.navArrow}
+            >
+              <Ionicons name="chevron-forward" size={20} color={theme.colors.inkSoft} />
+            </Pressable>
+          </View>
           <View style={styles.weekRow}>
             {weekDays.map((day, idx) => {
               const isToday = isSameDay(day, today);
@@ -226,29 +311,40 @@ export default function CalendarScreen() {
               return (
                 <Pressable
                   key={idx}
-                  onPress={() => setSelectedDay(startOfDay(day))}
-                  style={[
-                    styles.dayCell,
-                    isToday && !isSelected && styles.dayCellToday,
-                    isSelected && styles.dayCellSelected,
-                  ]}
+                  onPress={() => handleDayTap(day)}
+                  style={styles.dayCol}
                 >
-                  <Text style={[styles.dayWeekday, isSelected && styles.dayTextSelected]}>
+                  <Text style={[
+                    styles.dayLetterLabel,
+                    isSelected && styles.dayLetterSelected,
+                  ]}>
                     {WEEKDAY_SHORT[idx]}
                   </Text>
-                  <Text style={[
-                    styles.dayNum,
-                    isToday && !isSelected && styles.dayNumToday,
-                    isSelected && styles.dayTextSelected,
+                  <View style={[
+                    styles.dayNumWrap,
+                    isToday && styles.dayNumWrapToday,
+                    isSelected && !isToday && styles.dayNumWrapSelected,
                   ]}>
-                    {day.getDate()}
-                  </Text>
+                    <Text style={[
+                      styles.dayNum,
+                      isToday && styles.dayNumTodayText,
+                      isSelected && !isToday && styles.dayNumSelected,
+                    ]}>
+                      {day.getDate()}
+                    </Text>
+                  </View>
                   <View style={styles.dotRow}>
-                    {dots.has('completed') && <View style={[styles.dot, { backgroundColor: '#1D9E75' }]} />}
-                    {dots.has('due_today') && <View style={[styles.dot, { backgroundColor: '#F59E0B' }]} />}
-                    {dots.has('overdue') && <View style={[styles.dot, { backgroundColor: '#DC2626' }]} />}
+                    {dots.has('completed') && (
+                      <View style={[styles.dot, { backgroundColor: STATUS_DOT_COLOR.completed }]} />
+                    )}
+                    {dots.has('due_today') && (
+                      <View style={[styles.dot, { backgroundColor: STATUS_DOT_COLOR.due_today }]} />
+                    )}
+                    {dots.has('overdue') && (
+                      <View style={[styles.dot, { backgroundColor: STATUS_DOT_COLOR.overdue }]} />
+                    )}
                     {dots.has('upcoming') && !dots.has('due_today') && !dots.has('overdue') && (
-                      <View style={[styles.dot, { backgroundColor: '#9CA3AF' }]} />
+                      <View style={[styles.dot, { backgroundColor: STATUS_DOT_COLOR.upcoming }]} />
                     )}
                   </View>
                 </Pressable>
@@ -258,128 +354,125 @@ export default function CalendarScreen() {
         </View>
       </GestureDetector>
 
-      {/* Chips + event list share the remaining space */}
-      <View style={{ flex: 1 }}>
-        {/* Filter chips */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={{ flexShrink: 0 }}
-          contentContainerStyle={styles.filterRow}
-        >
-          {(
-            [
-              ['all', t('calendar.filterAll')],
-              ['inspection', t('calendar.filterInspection')],
-              ['briefing', t('calendar.filterBriefing')],
-              ['overdue', t('calendar.filterOverdue')],
-              ['upcoming', t('calendar.filterUpcoming')],
-            ] as Array<[FilterType, string]>
-          ).map(([key, label]) => (
-            <Pressable
-              key={key}
-              onPress={() => setFilterType(key)}
-              style={[styles.chip, filterType === key && styles.chipActive]}
-            >
-              <Text style={[styles.chipText, filterType === key && styles.chipTextActive]}>
-                {label}
-              </Text>
-            </Pressable>
+      {/* Event list */}
+      {isLoading && sections.length === 0 ? (
+        <View style={styles.skeletonContainer}>
+          {[0, 1, 2].map(i => (
+            <View key={i} style={styles.skeletonRow}>
+              <Skeleton width={48} height={48} radius={10} />
+              <View style={{ flex: 1, gap: 8 }}>
+                <Skeleton width="60%" height={14} />
+                <Skeleton width="38%" height={11} />
+              </View>
+            </View>
           ))}
-          {/* Project filter chip */}
-          <Pressable
-            onPress={openProjectFilter}
-            style={[styles.chip, filterProjectId !== null && styles.chipActive]}
-          >
-            <Text style={[styles.chipText, filterProjectId !== null && styles.chipTextActive]}>
-              {selectedProjectName ? `${selectedProjectName} ▾` : `${t('calendar.filterProject')} ▾`}
-            </Text>
-          </Pressable>
-        </ScrollView>
-
-        {/* Day header + event list */}
-        <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
-          <View style={styles.dayHeader}>
-            <Text style={styles.dayHeaderText}>
-              {`${selectedDay.getDate()} ${MONTH_SHORT[selectedDay.getMonth()]}, ${formatMonthYear(selectedDay).split(' ')[0].toLowerCase()}`}
-            </Text>
-          </View>
-
-          {/* Event list */}
-          <View style={styles.eventList}>
-            {isLoading && dayEvents.length === 0 ? (
-              [0, 1].map(i => (
-                <Card key={`sk-${i}`} padding={12}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                    <Skeleton width={36} height={36} radius={18} />
-                    <View style={{ flex: 1, gap: 8 }}>
-                      <Skeleton width="65%" height={14} />
-                      <Skeleton width="40%" height={11} />
-                    </View>
+        </View>
+      ) : sections.length === 0 ? (
+        <View style={styles.emptyWrap}>
+          <Ionicons name="calendar-outline" size={30} color={theme.colors.inkFaint} />
+          <Text style={styles.emptyText}>მოვლენები არ არის</Text>
+        </View>
+      ) : (
+        <ScrollView
+          ref={scrollRef}
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingBottom: 48 }}
+          onScroll={e => handleScroll(e.nativeEvent.contentOffset.y)}
+          scrollEventThrottle={16}
+          showsVerticalScrollIndicator={false}
+        >
+          {sections.map(section => (
+            <View
+              key={section.dateKey}
+              onLayout={e => {
+                sectionOffsets.current[section.dateKey] = e.nativeEvent.layout.y;
+              }}
+            >
+              {/* Day section header */}
+              <View style={[
+                styles.sectionHeader,
+                isSameDay(section.date, selectedDay) && styles.sectionHeaderActive,
+              ]}>
+                <Text style={[
+                  styles.sectionHeaderText,
+                  isSameDay(section.date, today) && styles.sectionHeaderToday,
+                ]}>
+                  {section.label}
+                </Text>
+                {isSameDay(section.date, today) && (
+                  <View style={styles.todayPill}>
+                    <Text style={styles.todayPillText}>დღეს</Text>
                   </View>
-                </Card>
-              ))
-            ) : dayEvents.length === 0 ? (
-              <EmptyDayState hasFilter={hasAnyFilter} />
-            ) : (
-              dayEvents.map(event => (
-                <EventCard key={event.id} event={event} />
-              ))
-            )}
-          </View>
+                )}
+              </View>
+
+              <View style={styles.sectionEvents}>
+                {section.overdue.length > 0 && (
+                  <>
+                    <View style={styles.overdueHeader}>
+                      <Text style={styles.overdueHeaderText}>⚠ ვადაგადაცილებული</Text>
+                    </View>
+                    {section.overdue.map((event, idx) => (
+                      <EventRow
+                        key={event.id}
+                        event={event}
+                        isLast={idx === section.overdue.length - 1 && section.rest.length === 0}
+                        templateCategoryMap={templateCategoryMap}
+                      />
+                    ))}
+                  </>
+                )}
+                {section.rest.map((event, idx) => (
+                  <EventRow
+                    key={event.id}
+                    event={event}
+                    isLast={idx === section.rest.length - 1}
+                    templateCategoryMap={templateCategoryMap}
+                  />
+                ))}
+              </View>
+            </View>
+          ))}
         </ScrollView>
-      </View>
+      )}
     </SafeAreaView>
   );
 }
 
-// ── Empty state ──────────────────────────────────────────────────────────────
+// ── Event row ─────────────────────────────────────────────────────────────────
 
-function EmptyDayState({ hasFilter }: { hasFilter: boolean }) {
-  const { theme } = useTheme();
-  const { t } = useTranslation();
-  return (
-    <Card padding={20}>
-      <View style={{ alignItems: 'center', gap: 8 }}>
-        <Ionicons name="calendar-outline" size={32} color={theme.colors.inkFaint} />
-        <Text style={{ color: theme.colors.inkSoft, fontSize: 13, textAlign: 'center' }}>
-          {hasFilter ? t('calendar.emptyFilter') : t('calendar.emptyDay')}
-        </Text>
-      </View>
-    </Card>
-  );
-}
-
-// ── Event card ───────────────────────────────────────────────────────────────
-
-function EventCard({ event }: { event: CalendarEvent }) {
-  const { theme } = useTheme();
-  const { t } = useTranslation();
+function EventRow({
+  event,
+  isLast,
+  templateCategoryMap,
+}: {
+  event: CalendarEvent;
+  isLast: boolean;
+  templateCategoryMap: Record<string, string>;
+}) {
   const router = useRouter();
-  const styles = useMemo(() => getstyles(theme), [theme]);
 
-  const iconName: React.ComponentProps<typeof Ionicons>['name'] =
-    event.type === 'inspection' ? 'shield-checkmark-outline' : 'people-outline';
+  const category = event.type === 'inspection'
+    ? (templateCategoryMap[event.templateId ?? ''] ?? null)
+    : null;
 
-  const iconColor = useMemo(() => {
-    if (event.isPast) {
-      return event.type === 'inspection' ? '#1D9E75' : '#4F46E5';
-    }
-    if (event.status === 'overdue') return '#DC2626';
-    if (event.status === 'due_today') return '#F59E0B';
-    return '#9CA3AF';
+  const badgeStatus = useMemo((): InspectionStatus | null => {
+    if (event.isPast || event.status === 'completed') return 'completed';
+    if (event.status === 'overdue') return 'overdue';
+    if (event.status === 'due_today') return 'due_today';
+    if (event.status === 'upcoming') return 'due_soon';
+    return null;
   }, [event]);
 
-  const iconBg = useMemo(() => {
+  const timeLabel = useMemo(() => {
     if (event.isPast) {
-      return event.type === 'inspection' ? '#D1FAE5' : '#EEF2FF';
+      const d = event.date;
+      return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
     }
-    if (event.status === 'overdue') return '#FEE2E2';
-    if (event.status === 'due_today') return '#FEF3C7';
-    return '#F3F4F6';
+    return relativeDayLabel(event.date);
   }, [event]);
 
-  const handleCardPress = useCallback(() => {
+  const handlePress = useCallback(() => {
     if (event.type === 'inspection') {
       router.push(`/inspections/${event.entityId}` as any);
     } else {
@@ -387,61 +480,62 @@ function EventCard({ event }: { event: CalendarEvent }) {
     }
   }, [event, router]);
 
-  const handleGoToSite = useCallback(() => {
-    router.push(`/projects/${event.projectId}` as any);
-  }, [event.projectId, router]);
-
-  const timeLabel = useMemo(() => {
-    if (event.isPast) {
-      const d = event.date;
-      const hh = String(d.getHours()).padStart(2, '0');
-      const mm = String(d.getMinutes()).padStart(2, '0');
-      return `${hh}:${mm}`;
-    }
-    return relativeDayLabel(event.date);
-  }, [event]);
-
-  const timeLabelColor = event.isPast ? theme.colors.inkSoft : relativeDayColor(event);
-
-  const statusLabel = useMemo((): string | null => {
-    if (event.isPast) return null;
-    if (event.status === 'due_today') return 'დღეს ვადა';
-    if (event.status === 'overdue') return 'ვადა გადაცილდა';
-    return 'დაგეგმილი';
-  }, [event]);
-
   return (
-    <Pressable onPress={handleCardPress} style={styles.eventCard}>
-      {/* Icon */}
-      <View style={[styles.eventIconWrap, { backgroundColor: iconBg }]}>
-        <Ionicons name={iconName} size={18} color={iconColor} />
+    <Pressable
+      onPress={handlePress}
+      style={[rowStyles.row, !isLast && rowStyles.rowBorder]}
+    >
+      <InspectionTypeAvatar
+        category={category}
+        size={48}
+        status={badgeStatus}
+        style={{ marginRight: 14, flexShrink: 0 }}
+      />
+      <View style={{ flex: 1 }}>
+        <Text style={rowStyles.title} numberOfLines={1}>{event.title}</Text>
+        <Text style={rowStyles.meta} numberOfLines={1}>{event.projectName}</Text>
       </View>
-
-      {/* Title + project */}
-      <View style={{ flex: 1, gap: 2 }}>
-        <Text style={styles.eventTitle} numberOfLines={1}>{event.title}</Text>
-        <Text style={styles.eventProject} numberOfLines={1}>{event.projectName}</Text>
-        {statusLabel && (
-          <Text style={[styles.eventStatusLabel, { color: iconColor }]}>{statusLabel}</Text>
-        )}
-      </View>
-
-      {/* Time / due label */}
-      <Text style={[styles.eventTime, { color: timeLabelColor }]}>{timeLabel}</Text>
-
-      {/* "Go to site" button for future events */}
-      {!event.isPast && (
-        <Pressable onPress={handleGoToSite} style={styles.goToSiteBtn} hitSlop={4}>
-          <Text style={styles.goToSiteBtnText}>{t('calendar.goToSite')}</Text>
-        </Pressable>
-      )}
+      <Text style={rowStyles.time}>{timeLabel}</Text>
+      <Ionicons name="chevron-forward" size={14} color="#D3D1C7" />
     </Pressable>
   );
 }
 
-// ── Styles ───────────────────────────────────────────────────────────────────
+// Matches home screen recentRow styles exactly
+const rowStyles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+  },
+  rowBorder: {
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(0,0,0,0.06)',
+  },
+  title: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#1A1A1A',
+    lineHeight: 20,
+    marginBottom: 3,
+  },
+  meta: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    fontWeight: '400',
+  },
+  time: {
+    fontSize: 12,
+    color: '#B4B2A9',
+    marginLeft: 8,
+    marginRight: 4,
+  },
+});
 
-function getstyles(theme: any) {
+// ── Styles ────────────────────────────────────────────────────────────────────
+
+function getStyles(theme: any) {
   return StyleSheet.create({
     header: {
       flexDirection: 'row',
@@ -452,75 +546,90 @@ function getstyles(theme: any) {
       paddingBottom: 6,
     },
     title: {
-      fontSize: 28,
+      fontSize: 26,
       fontWeight: '800',
       color: theme.colors.ink,
     },
-    todayBtn: {
-      paddingVertical: 6,
-      paddingHorizontal: 14,
-      borderRadius: 999,
-      backgroundColor: theme.colors.accentSoft,
+    headerMonth: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: theme.colors.inkSoft,
     },
-    todayBtnText: {
-      fontSize: 12,
-      fontWeight: '700',
-      color: theme.colors.accent,
-    },
-    weekStripContainer: {
-      paddingHorizontal: 16,
-      paddingBottom: 8,
-      borderBottomWidth: 1,
+    // ── Week strip ──
+    weekContainer: {
+      borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.colors.hairline,
+      paddingBottom: 12,
+    },
+    weekNavRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 24,
+      paddingTop: 6,
+      paddingBottom: 8,
+    },
+    navArrow: {
+      padding: 6,
     },
     weekLabel: {
-      fontSize: 11,
-      fontWeight: '700',
+      fontSize: 13,
+      fontWeight: '600',
       color: theme.colors.inkSoft,
-      textTransform: 'uppercase',
-      letterSpacing: 0.6,
-      marginBottom: 6,
-      textAlign: 'center',
     },
     weekRow: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
+      paddingHorizontal: 6,
     },
-    dayCell: {
+    dayCol: {
       flex: 1,
       alignItems: 'center',
-      paddingVertical: 6,
-      borderRadius: 12,
-      gap: 2,
+      gap: 3,
+      paddingVertical: 2,
+      minHeight: 72,
     },
-    dayCellToday: {
-      borderWidth: 1.5,
-      borderColor: theme.colors.accent,
+    dayLetterLabel: {
+      fontSize: 12,
+      color: '#9CA3AF',
+      fontWeight: '500',
     },
-    dayCellSelected: {
-      backgroundColor: theme.colors.accent,
+    dayLetterSelected: {
+      color: '#1D9E75',
+      fontWeight: '700',
     },
-    dayWeekday: {
-      fontSize: 10,
-      fontWeight: '600',
-      color: theme.colors.inkSoft,
-      textTransform: 'uppercase',
+    dayNumWrap: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    dayNumWrapToday: {
+      backgroundColor: '#1D9E75',
+    },
+    // Selected (non-today): outlined ring
+    dayNumWrapSelected: {
+      borderWidth: 2,
+      borderColor: '#1D9E75',
+      backgroundColor: '#E8F5F0',
     },
     dayNum: {
-      fontSize: 15,
-      fontWeight: '700',
+      fontSize: 18,
+      fontWeight: '600',
       color: theme.colors.ink,
     },
-    dayNumToday: {
-      color: theme.colors.accent,
+    dayNumTodayText: {
+      color: '#FFFFFF',
+      fontWeight: '700',
     },
-    dayTextSelected: {
-      color: theme.colors.white,
+    dayNumSelected: {
+      color: '#1D9E75',
+      fontWeight: '700',
     },
     dotRow: {
       flexDirection: 'row',
       gap: 2,
-      minHeight: 6,
+      minHeight: 5,
       alignItems: 'center',
     },
     dot: {
@@ -528,96 +637,78 @@ function getstyles(theme: any) {
       height: 4,
       borderRadius: 2,
     },
-    filterRow: {
-      paddingHorizontal: 16,
-      paddingVertical: 10,
-      gap: 8,
-    },
-    chip: {
-      paddingHorizontal: 14,
-      paddingVertical: 7,
-      borderRadius: 999,
-      backgroundColor: theme.colors.subtleSurface,
-      borderWidth: 1,
-      borderColor: theme.colors.hairline,
-    },
-    chipActive: {
-      backgroundColor: theme.colors.accentSoft,
-      borderColor: theme.colors.accent,
-    },
-    chipText: {
-      fontSize: 12,
-      fontWeight: '600',
-      color: theme.colors.inkSoft,
-    },
-    chipTextActive: {
-      color: theme.colors.accent,
-    },
-    dayHeader: {
+    // ── Skeletons / empty ──
+    skeletonContainer: {
+      flex: 1,
       paddingHorizontal: 20,
-      paddingBottom: 8,
+      paddingTop: 20,
+      gap: 20,
     },
-    dayHeaderText: {
-      fontSize: 12,
-      fontWeight: '800',
-      color: theme.colors.inkSoft,
-      textTransform: 'uppercase',
-      letterSpacing: 0.8,
-    },
-    eventList: {
-      paddingHorizontal: 16,
-      gap: 10,
-    },
-    eventCard: {
-      backgroundColor: theme.colors.card,
-      borderRadius: theme.radius.md,
-      padding: 12,
+    skeletonRow: {
       flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: 10,
-      borderWidth: 1,
-      borderColor: theme.colors.hairline,
+      alignItems: 'center',
+      gap: 12,
     },
-    eventIconWrap: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
+    emptyWrap: {
+      flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
-      flexShrink: 0,
+      gap: 10,
     },
-    eventTitle: {
-      fontSize: 14,
-      fontWeight: '700',
-      color: theme.colors.ink,
-    },
-    eventProject: {
-      fontSize: 12,
+    emptyText: {
+      fontSize: 13,
       color: theme.colors.inkSoft,
     },
-    eventStatusLabel: {
-      fontSize: 11,
-      fontWeight: '600',
+    // ── Section header ──
+    sectionHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingHorizontal: 20,
+      paddingTop: 20,
+      paddingBottom: 6,
     },
-    eventTime: {
-      fontSize: 12,
-      fontWeight: '600',
-      flexShrink: 0,
-      marginTop: 2,
+    sectionHeaderActive: {
+      borderLeftWidth: 3,
+      borderLeftColor: STATUS_DOT_COLOR.completed,
+      paddingLeft: 12,
+      marginLeft: 20,
+      paddingHorizontal: 0,
     },
-    goToSiteBtn: {
-      position: 'absolute',
-      bottom: 10,
-      right: 12,
-      paddingHorizontal: 10,
-      paddingVertical: 5,
+    sectionHeaderText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: theme.colors.inkSoft,
+      textTransform: 'uppercase',
+      letterSpacing: 0.4,
+    },
+    sectionHeaderToday: {
+      color: '#1D9E75',
+    },
+    todayPill: {
+      backgroundColor: '#1D9E7520',
       borderRadius: 999,
-      backgroundColor: theme.colors.accentSoft,
+      paddingHorizontal: 8,
+      paddingVertical: 2,
     },
-    goToSiteBtnText: {
+    todayPillText: {
       fontSize: 11,
       fontWeight: '700',
-      color: theme.colors.accent,
+      color: '#1D9E75',
+    },
+    sectionEvents: {
+      // rows handle their own paddingHorizontal to match home screen
+    },
+    // ── Overdue sub-header ──
+    overdueHeader: {
+      paddingTop: 2,
+      paddingBottom: 4,
+      paddingHorizontal: 24,
+    },
+    overdueHeaderText: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: '#DC2626',
     },
   });
 }

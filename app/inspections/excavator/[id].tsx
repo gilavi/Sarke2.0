@@ -177,10 +177,10 @@ export default function ExcavatorInspectionScreen() {
 
         projectsApi.getById(insp.projectId).then(p => {
           if (cancelled || !p) return;
-          setProjectName(p.name);
+          setProjectName(p.company_name || p.name);
           setInspection(prev => {
             if (!prev) return prev;
-            const projectNameFill = !prev.projectName?.trim() ? p.name : null;
+            const projectNameFill = !prev.projectName?.trim() ? (p.company_name || p.name) : null;
             if (!projectNameFill) return prev;
             const next = { ...prev, projectName: projectNameFill };
             excavatorApi.patch(next.id, { projectName: next.projectName }).catch(() => {});
@@ -705,7 +705,7 @@ export default function ExcavatorInspectionScreen() {
           {step === 0 && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24, gap: 12 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 12 }}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="interactive"
               showsVerticalScrollIndicator={false}
@@ -771,7 +771,7 @@ export default function ExcavatorInspectionScreen() {
           {step === CHECKLIST_STEP && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24, gap: 4 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 12 }}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="interactive"
               showsVerticalScrollIndicator={false}
@@ -960,32 +960,28 @@ export default function ExcavatorInspectionScreen() {
                 numberOfLines={4}
               />
 
-              <StepSectionLabel title="ფოტოები" />
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ gap: 8, paddingVertical: 4 }}
-              >
-                {(inspection.summaryPhotos ?? []).map(path => (
-                  <View key={path} style={{ position: 'relative', width: 64, height: 64, borderRadius: 8, overflow: 'hidden' }}>
-                    <Image source={{ uri: path }} style={{ width: 64, height: 64 }} />
-                    <Pressable
-                      onPress={() => handleDeleteSummaryPhoto(path)}
-                      style={{ position: 'absolute', top: 2, right: 2, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 10, padding: 2 }}
-                      hitSlop={6}
-                    >
-                      <Ionicons name="close-circle" size={16} color="#fff" />
-                    </Pressable>
-                  </View>
-                ))}
-              </ScrollView>
-              <Pressable
-                onPress={handleAddSummaryPhoto}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, padding: 10, borderWidth: 1.5, borderStyle: 'dashed', borderColor: theme.colors.hairline, borderRadius: 8, alignSelf: 'flex-start' }}
-              >
-                <Ionicons name="camera-outline" size={18} color={theme.colors.accent} />
-                <Text style={{ fontSize: 13, color: theme.colors.accent }}>ფოტოს დამატება</Text>
-              </Pressable>
+          {/* ── Step N+2: Signature ─────────────────────────────────────── */}
+          {step === SIGNATURE_STEP && (
+            <KeyboardAwareScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 12 }}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
+              showsVerticalScrollIndicator={false}
+              bottomOffset={120}
+            >
+              <StepSectionLabel title="V — შემომწმებელი" />
+
+              <FloatingLabelInput
+                label="სახელი / გვარი"
+                value={inspection.inspectorName ?? ''}
+                onChangeText={v => update('inspectorName', v || null)}
+              />
+              <FloatingLabelInput
+                label="თანამდებობა"
+                value={inspection.inspectorPosition ?? ''}
+                onChangeText={v => update('inspectorPosition', v || null)}
+              />
 
               <Pressable
                 style={[styles.sigArea, inspection.inspectorSignature && styles.sigAreaSigned]}
@@ -1024,6 +1020,59 @@ export default function ExcavatorInspectionScreen() {
                   <Text style={styles.completingText}>მიმდინარეობს…</Text>
                 </View>
               )}
+            </KeyboardAwareScrollView>
+          )}
+
+          {/* ── Step N+3: Done ──────────────────────────────────────────── */}
+          {step === DONE_STEP && (
+            <KeyboardAwareScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 12 }}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
+              showsVerticalScrollIndicator={false}
+              bottomOffset={120}
+            >
+              <View style={styles.doneHero}>
+                <Ionicons name="checkmark-circle" size={72} color={theme.colors.semantic.success} />
+                <Text style={styles.doneTitle}>შემოწმება დასრულდა!</Text>
+                {inspection.completedAt && (
+                  <Text style={styles.doneDate}>
+                    {new Date(inspection.completedAt).toLocaleDateString('ka-GE', {
+                      day: 'numeric', month: 'long', year: 'numeric',
+                    })}
+                  </Text>
+                )}
+                {inspection.verdict && (
+                  <View style={[
+                    styles.doneVerdict,
+                    inspection.verdict === 'approved'    && styles.doneVerdictGreen,
+                    inspection.verdict === 'conditional' && styles.doneVerdictAmber,
+                    inspection.verdict === 'rejected'    && styles.doneVerdictRed,
+                  ]}>
+                    <Text style={[
+                      styles.doneVerdictText,
+                      inspection.verdict === 'approved'    && { color: theme.colors.semantic.success },
+                      inspection.verdict === 'conditional' && { color: theme.colors.warn },
+                      inspection.verdict === 'rejected'    && { color: theme.colors.danger },
+                    ]}>
+                      {EXCAVATOR_VERDICT_LABEL[inspection.verdict].split(' — ')[0]}
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              <Button
+                title="PDF გენერირება / გაზიარება"
+                onPress={handlePdf}
+                loading={generatingPdf}
+                style={{ marginBottom: 12 }}
+              />
+              <Button
+                title="პროექტზე დაბრუნება"
+                variant="secondary"
+                onPress={() => router.back()}
+              />
             </KeyboardAwareScrollView>
           )}
         </WizardStepTransition>
@@ -1149,8 +1198,8 @@ function getstyles(theme: Theme) {
   return StyleSheet.create({
     root:    { flex: 1, backgroundColor: theme.colors.card },
     centred: { alignItems: 'center', justifyContent: 'center' },
-    savingHint: { fontSize: 11, color: theme.colors.inkFaint, textAlign: 'right', paddingHorizontal: 16, paddingTop: 4 },
-    stepBody: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 16, gap: 12 },
+    savingHint: { fontSize: 11, color: theme.colors.inkFaint, textAlign: 'right', paddingHorizontal: 24, paddingTop: 4 },
+    stepBody: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 16, gap: 12 },
     footer: {
       gap: 10,
       paddingHorizontal: 20,

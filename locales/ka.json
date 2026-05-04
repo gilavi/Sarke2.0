@@ -513,7 +513,7 @@
     "inDays": "{{count}} დღეში",
     "dueToday": "დღეს",
     "jumpToToday": "დღეს",
-    "upcomingSection": "მომავალი"
+    "upcomingSection": "შეხსენებები"
   },
   "regulations": {
     "title": "რეგულაციები",
@@ -622,7 +622,9 @@
     "errorStateRetry": "ხელახლა ცდა",
     "errorBoundaryTitle": "მოხდა შეცდომა",
     "errorBoundarySubtitle": "გთხოვთ, სცადოთ თავიდან",
-    "errorBoundaryRetry": "თავიდან ცდა"
+    "errorBoundaryRetry": "თავიდან ცდა",
+    "skeletonMapNoLocation": "ლოკაცია არ დაემატა",
+    "skeletonMapAddLocation": "ლოკაციის დამატება"
   },
   "roles": {
     "expert": "შრომის უსაფრთხოების სპეციალისტი",

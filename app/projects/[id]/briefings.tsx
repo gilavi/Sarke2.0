@@ -48,8 +48,8 @@ export default function ProjectBriefingsList() {
       >
         <View style={styles.pageHeader}>
           <Text style={styles.pageTitle}>ინსტრუქტაჟი</Text>
-          {project?.name ? (
-            <Text style={styles.pageSubtitle}>{project.name}</Text>
+          {project ? (
+            <Text style={styles.pageSubtitle}>{project.company_name || project.name}</Text>
           ) : null}
         </View>
 

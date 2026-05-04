@@ -371,7 +371,7 @@ export default function NewIncident() {
       // 6. open/share PDF instantly; keep the pretty-named copy for background upload
       const incidentTypeLabel = INCIDENT_TYPE_FULL_LABEL[form.type!];
       const docType = `ინციდენტი_${incidentTypeLabel}`;
-      const pdfName = generatePdfName(project.name, docType, form.dateTime, savedId);
+      const pdfName = generatePdfName(project.company_name || project.name, docType, form.dateTime, savedId);
       const pdfPath = `incidents/${pdfName}`;
       const localUri = await generateAndSharePdf(html, pdfName, true);
       if (localUri) {

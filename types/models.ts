@@ -110,7 +110,7 @@ export interface Project {
   id: string;
   user_id: string;
   name: string;
-  company_name: string | null;
+  company_name: string;
   address: string | null;
   latitude: number | null;
   longitude: number | null;
@@ -257,7 +257,7 @@ export interface ScheduleWithItem extends Schedule {
     projects: {
       id: string;
       name: string;
-      company_name: string | null;
+      company_name: string;
     } | null;
   } | null;
 }

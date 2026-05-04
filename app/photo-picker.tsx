@@ -89,14 +89,17 @@ export default function PhotoPickerScreen() {
   }, [libPerm?.granted]);
 
   // Use router.dismiss() (modal-aware close) instead of router.back(). back()
-  // emits a GO_BACK action that the AuthGate __unsafe_action__ listener
-  // (app/_layout.tsx) intercepts and redirects to /home — sending the user to
-  // the dashboard after every capture.
+  // emits a GO_BACK action that the AuthGate listener intercepts and redirects
+  // to /home — sending the user to the dashboard after every capture.
+  // Guard with canDismiss() first: dismiss() throws a "POP was not handled"
+  // error when the modal stack has nothing to pop (e.g. opened via deep link).
   const close = useCallback(() => {
-    try {
+    if (router.canDismiss()) {
       router.dismiss();
-    } catch {
-      if (router.canGoBack()) router.back();
+    } else if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)/home');
     }
   }, [router]);
 

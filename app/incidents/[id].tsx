@@ -36,6 +36,7 @@ import { logError } from '../../lib/logError';
 import { friendlyError } from '../../lib/errorMap';
 import { formatShortDateTime } from '../../lib/formatDate';
 import type { Incident, Project } from '../../types/models';
+import { ErrorScreen } from '../../components/ErrorScreen';
 import {
   INCIDENT_TYPE_FULL_LABEL,
   INCIDENT_TYPE_LABEL,
@@ -159,7 +160,7 @@ export default function IncidentDetail() {
       // Keep the pretty-named copy for background upload
       const incidentTypeLabel = INCIDENT_TYPE_FULL_LABEL[incident.type];
       const docType = `ინციდენტი_${incidentTypeLabel}`;
-      const pdfName = generatePdfName(project.name, docType, new Date(incident.date_time), incident.id);
+      const pdfName = generatePdfName(project.company_name || project.name, docType, new Date(incident.date_time), incident.id);
       const pdfPath = `incidents/${pdfName}`;
       const localUri = await generateAndSharePdf(html, pdfName, true);
       if (localUri) {
@@ -228,6 +229,10 @@ export default function IncidentDetail() {
   };
 
   // ── loading ──────────────────────────────────────────────────────────────
+
+  if (!id) {
+    return <ErrorScreen onGoHome={() => router.replace('/(tabs)/home')} onRetry={() => router.back()} />;
+  }
 
   if (!loaded) {
     return (
@@ -330,7 +335,7 @@ export default function IncidentDetail() {
             <DetailRow
               icon="business-outline"
               label="პროექტი"
-              value={`${project.name}${project.company_name ? ` · ${project.company_name}` : ''}`}
+              value={project.company_name || project.name}
               theme={theme}
               s={s}
             />
@@ -607,7 +612,7 @@ function makeStyles(theme: any) {
       backgroundColor: theme.colors.surface,
       borderTopWidth: 1,
       borderTopColor: theme.colors.border,
-      paddingHorizontal: 16,
+      paddingHorizontal: 24,
       paddingTop: 12,
     },
   });

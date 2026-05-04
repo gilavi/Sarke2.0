@@ -77,8 +77,8 @@ export default function ProjectFilesList() {
       >
         <View style={styles.pageHeader}>
           <Text style={styles.pageTitle}>დოკუმენტები</Text>
-          {project?.name ? (
-            <Text style={styles.pageSubtitle}>{project.name}</Text>
+          {project ? (
+            <Text style={styles.pageSubtitle}>{project.company_name || project.name}</Text>
           ) : null}
         </View>
 

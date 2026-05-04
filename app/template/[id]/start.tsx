@@ -30,6 +30,7 @@ import { useTemplate, useProjects, qk } from '../../../lib/apiHooks';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Project, Questionnaire, Template } from '../../../types/models';
 import { a11y } from '../../../lib/accessibility';
+import { ErrorScreen } from '../../../components/ErrorScreen';
 
 export default function StartTemplateScreen() {
   const { theme } = useTheme();
@@ -83,6 +84,10 @@ export default function StartTemplateScreen() {
     setSelected(p.id);
     setShowingCreate(false);
   };
+
+  if (!id) {
+    return <ErrorScreen onGoHome={() => router.replace('/(tabs)/home')} onRetry={() => router.back()} />;
+  }
 
   return (
     <Screen>
@@ -141,7 +146,7 @@ export default function StartTemplateScreen() {
                     key={p.id}
                     onPress={() => setSelected(p.id)}
                     style={[styles.projectRow, isSelected && styles.projectRowSelected]}
-                    {...a11y(p.name, 'პროექტის არჩევა', 'radio')}
+                    {...a11y(p.company_name || p.name, 'პროექტის არჩევა', 'radio')}
                   >
                     <View style={[styles.radio, isSelected && styles.radioOn]}>
                       {isSelected ? (
@@ -150,16 +155,8 @@ export default function StartTemplateScreen() {
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={{ fontSize: 15, fontWeight: '600', color: theme.colors.ink }}>
-                        {p.name}
+                        {p.company_name || p.name}
                       </Text>
-                      {p.company_name ? (
-                        <Text
-                          numberOfLines={1}
-                          style={{ fontSize: 12, color: theme.colors.inkSoft, marginTop: 2 }}
-                        >
-                          {p.company_name}
-                        </Text>
-                      ) : null}
                       {p.address ? (
                         <Text
                           numberOfLines={1}
@@ -212,23 +209,21 @@ function CreateProjectSheet({
   const styles = useMemo(() => getstyles(theme), [theme]);
 
   const toast = useToast();
-  const [name, setName] = useState('');
   const [company, setCompany] = useState('');
   const [address, setAddress] = useState('');
   const [busy, setBusy] = useState(false);
   const keyboardMargin = useSheetKeyboardMargin();
 
   const save = async () => {
-    if (!name.trim()) return;
+    if (!company.trim()) return;
     setBusy(true);
     try {
       const p = (await projectsApi.create({
-        name: name.trim(),
-        companyName: company.trim() || null,
+        name: company.trim(),
+        companyName: company.trim(),
         address: address.trim() || null,
       }));
       toast.success('პროექტი შეიქმნა');
-      setName('');
       setCompany('');
       setAddress('');
       onCreated(p);
@@ -259,20 +254,16 @@ function CreateProjectSheet({
                 title="შენახვა"
                 onPress={save}
                 loading={busy}
-                disabled={!name.trim()}
+                disabled={!company.trim()}
               />
             }
           >
             <FloatingLabelInput
-              label="სახელი"
-              value={name}
-              onChangeText={setName}
-              autoFocus
-            />
-            <FloatingLabelInput
               label="კომპანია"
+              required
               value={company}
               onChangeText={setCompany}
+              autoFocus
             />
             <FloatingLabelInput
               label="მისამართი"

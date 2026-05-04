@@ -468,7 +468,7 @@ function makeStyles(theme: any) {
     },
     addBtnText: { fontSize: 14, fontWeight: '700' },
     stickyFooter: {
-      paddingHorizontal: 16,
+      paddingHorizontal: 24,
       paddingTop: 12,
       borderTopWidth: 1,
       borderTopColor: theme.colors.hairline,
