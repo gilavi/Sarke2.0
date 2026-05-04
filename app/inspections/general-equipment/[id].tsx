@@ -54,7 +54,9 @@ import {
 const INFO_STEP = 0;
 const CHECKLIST_STEP = 1;
 const CONCLUSION_STEP = 2;
-const TOTAL_STEPS = 3;
+const SIGNATURE_STEP = 3;
+const DONE_STEP = 4;
+const TOTAL_STEPS = 4;
 
 export default function GeneralEquipmentScreen() {
   const { theme } = useTheme();
@@ -401,17 +403,17 @@ export default function GeneralEquipmentScreen() {
     if (step === CHECKLIST_STEP) {
       return inspection.equipment.length > 0 && inspection.equipment.every(r => !!r.condition);
     }
-    if (step === CONCLUSION_STEP) return !!inspection.inspectorSignature && !completing;
+    if (step === SIGNATURE_STEP) return !!inspection.inspectorSignature && !completing;
     return true;
-  }, [step, inspection, completing]);
+  }, [step, inspection, completing, SIGNATURE_STEP]);
 
   const handleNext = useCallback(() => {
-    if (step === CONCLUSION_STEP) {
+    if (step === SIGNATURE_STEP) {
       handleComplete();
-    } else {
+    } else if (step < SIGNATURE_STEP) {
       setStep(s => s + 1);
     }
-  }, [step, handleComplete]);
+  }, [step, SIGNATURE_STEP, handleComplete]);
 
   const handlePrev = useCallback(() => {
     if (step > 0) {
@@ -701,7 +703,7 @@ export default function GeneralEquipmentScreen() {
           )}
 
           {/* ── Step 3: Signature ───────────────────────────────────────── */}
-          {step === 3 && (
+          {step === SIGNATURE_STEP && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
               contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 12 }}
@@ -787,7 +789,7 @@ export default function GeneralEquipmentScreen() {
           )}
 
           {/* ── Step 4: Done ────────────────────────────────────────────── */}
-          {step === 4 && (
+          {step === DONE_STEP && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
               contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 12 }}
@@ -830,31 +832,33 @@ export default function GeneralEquipmentScreen() {
           )}
         </WizardStepTransition>
 
-        <View style={[styles.footer, { paddingBottom: 16 + insets.bottom }]}>
-          {step === CONCLUSION_STEP ? (
-            <Button
-              title="დასრულება"
-              style={{ paddingVertical: 14 }}
-              iconRight={<Ionicons name="checkmark" size={20} color={theme.colors.white} />}
-              loading={completing}
-              disabled={completing}
-              onPress={handleComplete}
-            />
-          ) : (
-            <Button
-              title={canGoNext ? 'შემდეგი' : 'გაგრძელება'}
-              variant={canGoNext ? 'primary' : 'secondary'}
-              size="lg"
-              style={{ alignSelf: 'stretch', paddingVertical: 16, justifyContent: 'center' }}
-              iconRight={
-                canGoNext ? (
-                  <Ionicons name="chevron-forward" size={18} color={theme.colors.white} />
-                ) : undefined
-              }
-              onPress={handleNext}
-            />
-          )}
-        </View>
+        {step !== DONE_STEP && (
+          <View style={[styles.footer, { paddingBottom: 16 + insets.bottom }]}>
+            {step === SIGNATURE_STEP ? (
+              <Button
+                title="დასრულება"
+                style={{ paddingVertical: 14 }}
+                iconRight={<Ionicons name="checkmark" size={20} color={theme.colors.white} />}
+                loading={completing}
+                disabled={!canGoNext || completing}
+                onPress={handleComplete}
+              />
+            ) : (
+              <Button
+                title={canGoNext ? 'შემდეგი' : 'გაგრძელება'}
+                variant={canGoNext ? 'primary' : 'secondary'}
+                size="lg"
+                style={{ alignSelf: 'stretch', paddingVertical: 16, justifyContent: 'center' }}
+                iconRight={
+                  canGoNext ? (
+                    <Ionicons name="chevron-forward" size={18} color={theme.colors.white} />
+                  ) : undefined
+                }
+                onPress={handleNext}
+              />
+            )}
+          </View>
+        )}
       </KeyboardSafeArea>
 
       <SignatureCanvas

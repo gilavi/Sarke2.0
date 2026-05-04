@@ -120,7 +120,9 @@ export default function ExcavatorInspectionScreen() {
   const INFO_STEP = 0;
   const CHECKLIST_STEP = 1;
   const CONCLUSION_STEP = 2;
-  const TOTAL_STEPS = 3;
+  const SIGNATURE_STEP = 3;
+  const DONE_STEP = 4;
+  const TOTAL_STEPS = 4;
 
   const persistKey = useMemo(() => `excavator-wizard:${id}:step`, [id]);
   const summaryPhotosKey = useMemo(() => `excavator-wizard:${id}:summaryPhotos`, [id]);
@@ -170,7 +172,7 @@ export default function ExcavatorInspectionScreen() {
         const saved = await AsyncStorage.getItem(persistKey);
         if (saved && !cancelled) {
           const s = parseInt(saved, 10);
-          if (!isNaN(s) && s >= 0 && s <= CONCLUSION_STEP) {
+          if (!isNaN(s) && s >= 0 && s <= DONE_STEP) {
             setStep(s);
           }
         }
@@ -570,17 +572,18 @@ export default function ExcavatorInspectionScreen() {
     if (!inspection) return false;
     if (step === INFO_STEP) return !!inspection.projectName?.trim() && !!inspection.inspectorName?.trim();
     if (step === CHECKLIST_STEP) return flatState.every(s => s.result !== null);
-    if (step === CONCLUSION_STEP) return !!inspection.verdict && !!inspection.inspectorSignature && !completing;
+    if (step === CONCLUSION_STEP) return !!inspection.verdict;
+    if (step === SIGNATURE_STEP) return !!inspection.inspectorSignature && !completing;
     return false;
-  }, [step, inspection, flatState, completing]);
+  }, [step, inspection, flatState, completing, SIGNATURE_STEP, CONCLUSION_STEP]);
 
   const handleNext = useCallback(() => {
-    if (step === CONCLUSION_STEP) {
+    if (step === SIGNATURE_STEP) {
       handleComplete();
-    } else if (step < CONCLUSION_STEP) {
+    } else if (step < SIGNATURE_STEP) {
       setStep(s => s + 1);
     }
-  }, [step, handleComplete]);
+  }, [step, SIGNATURE_STEP, handleComplete]);
 
   const handlePrev = useCallback(() => {
     if (step > 0) setStep(s => s - 1);
@@ -1079,31 +1082,33 @@ export default function ExcavatorInspectionScreen() {
           )}
         </WizardStepTransition>
 
-        <View style={[styles.footer, { paddingBottom: 16 + insets.bottom }]}>
-          {step === CONCLUSION_STEP ? (
-            <Button
-              title="დასრულება"
-              style={{ paddingVertical: 14 }}
-              iconRight={<Ionicons name="checkmark" size={20} color={theme.colors.white} />}
-              loading={completing}
-              disabled={!canGoNext || completing}
-              onPress={handleComplete}
-            />
-          ) : (
-            <Button
-              title="შემდეგი"
-              variant={canGoNext ? 'primary' : 'secondary'}
-              size="lg"
-              style={{ alignSelf: 'stretch', paddingVertical: 16, justifyContent: 'center' }}
-              iconRight={
-                canGoNext ? (
-                  <Ionicons name="chevron-forward" size={18} color={theme.colors.white} />
-                ) : undefined
-              }
-              onPress={handleNext}
-            />
-          )}
-        </View>
+        {step !== DONE_STEP && (
+          <View style={[styles.footer, { paddingBottom: 16 + insets.bottom }]}>
+            {step === SIGNATURE_STEP ? (
+              <Button
+                title="დასრულება"
+                style={{ paddingVertical: 14 }}
+                iconRight={<Ionicons name="checkmark" size={20} color={theme.colors.white} />}
+                loading={completing}
+                disabled={!canGoNext || completing}
+                onPress={handleComplete}
+              />
+            ) : (
+              <Button
+                title="შემდეგი"
+                variant={canGoNext ? 'primary' : 'secondary'}
+                size="lg"
+                style={{ alignSelf: 'stretch', paddingVertical: 16, justifyContent: 'center' }}
+                iconRight={
+                  canGoNext ? (
+                    <Ionicons name="chevron-forward" size={18} color={theme.colors.white} />
+                  ) : undefined
+                }
+                onPress={handleNext}
+              />
+            )}
+          </View>
+        )}
       </KeyboardSafeArea>
 
       <SignatureCanvas
