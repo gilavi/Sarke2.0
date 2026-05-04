@@ -47,6 +47,7 @@ import { MapPickerInline } from '../../components/MapPickerInline';
 import { routeForInspection } from '../../lib/inspectionRouting';
 import { useToast } from '../../lib/toast';
 import MapView, { PROVIDER_DEFAULT } from 'react-native-maps';
+import { SkeletonMap } from '../../components/SkeletonMap';
 import { haptic } from '../../lib/haptics';
 import { useTranslation } from 'react-i18next';
 import type { Inspection, Project, Qualification, Template } from '../../types/models';
@@ -944,7 +945,7 @@ const ProjectCard = memo(function ProjectCard({
       )}
     >
       <View style={[styles.projectCard, { width }]}>
-        {project.latitude != null && project.longitude != null && (
+        {project.latitude != null && project.longitude != null ? (
           <>
             <MapView
               style={StyleSheet.absoluteFill}
@@ -964,6 +965,10 @@ const ProjectCard = memo(function ProjectCard({
             />
             <View style={styles.projectCardMapOverlay} />
           </>
+        ) : (
+          <View style={StyleSheet.absoluteFill} pointerEvents="none">
+            <SkeletonMap hideContent />
+          </View>
         )}
         <View style={{ width: 44, height: 44, borderRadius: 22, overflow: 'hidden' }}>
           <ProjectAvatar project={project} size={44} />

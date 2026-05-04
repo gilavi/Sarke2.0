@@ -11,13 +11,15 @@ const BLUEPRINT_BG = '#1A2E24';
 
 interface SkeletonMapProps {
   onAddLocation?: () => void;
+  /** Suppress the pin, label, and CTA — use when rendering as a card background. */
+  hideContent?: boolean;
 }
 
 /**
  * Blueprint-style placeholder shown when a project has no coordinates set.
  * Renders a dark technical-drawing aesthetic with a pulsing location pin.
  */
-export function SkeletonMap({ onAddLocation }: SkeletonMapProps) {
+export function SkeletonMap({ onAddLocation, hideContent }: SkeletonMapProps) {
   const { theme } = useTheme();
   const { t } = useTranslation();
   const pulse = useRef(new Animated.Value(1)).current;
@@ -71,20 +73,22 @@ export function SkeletonMap({ onAddLocation }: SkeletonMapProps) {
         )}
       </Svg>
 
-      <View style={styles.pinArea}>
-        <Animated.View
-          style={[styles.pulseRing, { transform: [{ scale: pulse }] }]}
-        />
-        <Ionicons name="location" size={36} color={accent} />
-        <Text style={styles.noLocText}>{t('components.skeletonMapNoLocation')}</Text>
-        {onAddLocation ? (
-          <Pressable onPress={onAddLocation} hitSlop={8}>
-            <Text style={[styles.addLocLink, { color: accent }]}>
-              {t('components.skeletonMapAddLocation')}
-            </Text>
-          </Pressable>
-        ) : null}
-      </View>
+      {!hideContent && (
+        <View style={styles.pinArea}>
+          <Animated.View
+            style={[styles.pulseRing, { transform: [{ scale: pulse }] }]}
+          />
+          <Ionicons name="location" size={36} color={accent} />
+          <Text style={styles.noLocText}>{t('components.skeletonMapNoLocation')}</Text>
+          {onAddLocation ? (
+            <Pressable onPress={onAddLocation} hitSlop={8}>
+              <Text style={[styles.addLocLink, { color: accent }]}>
+                {t('components.skeletonMapAddLocation')}
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
+      )}
     </View>
   );
 }
