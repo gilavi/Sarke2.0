@@ -854,6 +854,33 @@ export default function BobcatInspectionScreen() {
                 multiline
                 numberOfLines={4}
               />
+
+              <StepSectionLabel title="ფოტოები" />
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ gap: 8, paddingVertical: 4 }}
+              >
+                {(inspection.summaryPhotos ?? []).map(path => (
+                  <View key={path} style={{ position: 'relative', width: 64, height: 64, borderRadius: 8, overflow: 'hidden' }}>
+                    <Image source={{ uri: path }} style={{ width: 64, height: 64 }} />
+                    <Pressable
+                      onPress={() => handleDeleteSummaryPhoto(path)}
+                      style={{ position: 'absolute', top: 2, right: 2, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 10, padding: 2 }}
+                      hitSlop={6}
+                    >
+                      <Ionicons name="close-circle" size={16} color="#fff" />
+                    </Pressable>
+                  </View>
+                ))}
+              </ScrollView>
+              <Pressable
+                onPress={handleAddSummaryPhoto}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, padding: 10, borderWidth: 1.5, borderStyle: 'dashed', borderColor: theme.colors.hairline, borderRadius: 8, alignSelf: 'flex-start' }}
+              >
+                <Ionicons name="camera-outline" size={18} color={theme.colors.accent} />
+                <Text style={{ fontSize: 13, color: theme.colors.accent }}>ფოტოს დამატება</Text>
+              </Pressable>
             </KeyboardAwareScrollView>
           )}
 
