@@ -959,6 +959,8 @@ export default function ExcavatorInspectionScreen() {
                 multiline
                 numberOfLines={4}
               />
+            </KeyboardAwareScrollView>
+          )}
 
           {/* ── Step N+2: Signature ─────────────────────────────────────── */}
           {step === SIGNATURE_STEP && (

@@ -852,6 +852,8 @@ export default function BobcatInspectionScreen() {
                 multiline
                 numberOfLines={4}
               />
+            </KeyboardAwareScrollView>
+          )}
 
           {/* ── Step N+2: Signature ─────────────────────────────────────── */}
           {step === SIGNATURE_STEP && (
