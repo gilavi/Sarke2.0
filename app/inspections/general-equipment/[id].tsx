@@ -54,9 +54,8 @@ import {
 const INFO_STEP = 0;
 const CHECKLIST_STEP = 1;
 const CONCLUSION_STEP = 2;
-const SIGNATURE_STEP = 3;
-const DONE_STEP = 4;
-const TOTAL_STEPS = 4;
+const DONE_STEP = 3;
+const TOTAL_STEPS = 3;
 
 export default function GeneralEquipmentScreen() {
   const { theme } = useTheme();
@@ -403,17 +402,17 @@ export default function GeneralEquipmentScreen() {
     if (step === CHECKLIST_STEP) {
       return inspection.equipment.length > 0 && inspection.equipment.every(r => !!r.condition);
     }
-    if (step === SIGNATURE_STEP) return !!inspection.inspectorSignature && !completing;
+    if (step === CONCLUSION_STEP) return !!inspection.inspectorSignature && !completing;
     return true;
-  }, [step, inspection, completing, SIGNATURE_STEP]);
+  }, [step, inspection, completing, CONCLUSION_STEP]);
 
   const handleNext = useCallback(() => {
-    if (step === SIGNATURE_STEP) {
+    if (step === CONCLUSION_STEP) {
       handleComplete();
-    } else if (step < SIGNATURE_STEP) {
+    } else if (step < CONCLUSION_STEP) {
       setStep(s => s + 1);
     }
-  }, [step, SIGNATURE_STEP, handleComplete]);
+  }, [step, CONCLUSION_STEP, handleComplete]);
 
   const handlePrev = useCallback(() => {
     if (step > 0) {
@@ -699,19 +698,7 @@ export default function GeneralEquipmentScreen() {
                 onDelete={handleDeleteSummaryPhoto}
                 styles={styles}
               />
-            </KeyboardAwareScrollView>
-          )}
 
-          {/* ── Step 3: Signature ───────────────────────────────────────── */}
-          {step === SIGNATURE_STEP && (
-            <KeyboardAwareScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 12 }}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
-              showsVerticalScrollIndicator={false}
-              bottomOffset={120}
-            >
               <StepSectionLabel title="IV — ხელმოწერა" />
 
               <FloatingLabelInput
@@ -788,7 +775,7 @@ export default function GeneralEquipmentScreen() {
             </KeyboardAwareScrollView>
           )}
 
-          {/* ── Step 4: Done ────────────────────────────────────────────── */}
+          {/* ── Step 3: Done ────────────────────────────────────────────── */}
           {step === DONE_STEP && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
@@ -834,7 +821,7 @@ export default function GeneralEquipmentScreen() {
 
         {step !== DONE_STEP && (
           <View style={[styles.footer, { paddingBottom: 16 + insets.bottom }]}>
-            {step === SIGNATURE_STEP ? (
+            {step === CONCLUSION_STEP ? (
               <Button
                 title="დასრულება"
                 style={{ paddingVertical: 14 }}

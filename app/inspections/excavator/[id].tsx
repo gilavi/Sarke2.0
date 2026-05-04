@@ -121,9 +121,8 @@ export default function ExcavatorInspectionScreen() {
   const INFO_STEP = 0;
   const CHECKLIST_STEP = 1;
   const CONCLUSION_STEP = 2;
-  const SIGNATURE_STEP = 3;
-  const DONE_STEP = 4;
-  const TOTAL_STEPS = 4;
+  const DONE_STEP = 3;
+  const TOTAL_STEPS = 3;
 
   const persistKey = useMemo(() => `excavator-wizard:${id}:step`, [id]);
   const summaryPhotosKey = useMemo(() => `excavator-wizard:${id}:summaryPhotos`, [id]);
@@ -173,7 +172,7 @@ export default function ExcavatorInspectionScreen() {
         const saved = await AsyncStorage.getItem(persistKey);
         if (saved && !cancelled) {
           const s = parseInt(saved, 10);
-          if (!isNaN(s) && s >= 0 && s <= DONE_STEP) {
+          if (!isNaN(s) && s >= 0 && s <= CONCLUSION_STEP) {
             setStep(s);
           }
         }
@@ -573,18 +572,17 @@ export default function ExcavatorInspectionScreen() {
     if (!inspection) return false;
     if (step === INFO_STEP) return !!inspection.projectName?.trim() && !!inspection.inspectorName?.trim();
     if (step === CHECKLIST_STEP) return flatState.every(s => s.result !== null);
-    if (step === CONCLUSION_STEP) return !!inspection.verdict;
-    if (step === SIGNATURE_STEP) return !!inspection.inspectorSignature && !completing;
+    if (step === CONCLUSION_STEP) return !!inspection.verdict && !!inspection.inspectorSignature && !completing;
     return false;
-  }, [step, inspection, flatState, completing, SIGNATURE_STEP, CONCLUSION_STEP]);
+  }, [step, inspection, flatState, completing, CONCLUSION_STEP]);
 
   const handleNext = useCallback(() => {
-    if (step === SIGNATURE_STEP) {
+    if (step === CONCLUSION_STEP) {
       handleComplete();
-    } else if (step < SIGNATURE_STEP) {
+    } else if (step < CONCLUSION_STEP) {
       setStep(s => s + 1);
     }
-  }, [step, SIGNATURE_STEP, handleComplete]);
+  }, [step, CONCLUSION_STEP, handleComplete]);
 
   const handlePrev = useCallback(() => {
     if (step > 0) setStep(s => s - 1);
@@ -990,19 +988,7 @@ export default function ExcavatorInspectionScreen() {
                 <Ionicons name="camera-outline" size={18} color={theme.colors.accent} />
                 <Text style={{ fontSize: 13, color: theme.colors.accent }}>ფოტოს დამატება</Text>
               </Pressable>
-            </KeyboardAwareScrollView>
-          )}
 
-          {/* ── Step N+2: Signature ─────────────────────────────────────── */}
-          {step === SIGNATURE_STEP && (
-            <KeyboardAwareScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 12 }}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
-              showsVerticalScrollIndicator={false}
-              bottomOffset={120}
-            >
               <StepSectionLabel title="V — შემომწმებელი" />
 
               <FloatingLabelInput
@@ -1056,7 +1042,7 @@ export default function ExcavatorInspectionScreen() {
             </KeyboardAwareScrollView>
           )}
 
-          {/* ── Step N+3: Done ──────────────────────────────────────────── */}
+          {/* ── Step N+2: Done ──────────────────────────────────────────── */}
           {step === DONE_STEP && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
@@ -1112,7 +1098,7 @@ export default function ExcavatorInspectionScreen() {
 
         {step !== DONE_STEP && (
           <View style={[styles.footer, { paddingBottom: 16 + insets.bottom }]}>
-            {step === SIGNATURE_STEP ? (
+            {step === CONCLUSION_STEP ? (
               <Button
                 title="დასრულება"
                 style={{ paddingVertical: 14 }}

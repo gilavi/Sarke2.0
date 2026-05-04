@@ -69,10 +69,9 @@ export default function BobcatInspectionScreen() {
   const INFO_STEP = 0;
   const CHECKLIST_STEP = 1;
   const CONCLUSION_STEP = 2;
-  const SIGNATURE_STEP = 3;
-  const DONE_STEP = 4;
-  const TOTAL_STEPS = 4;
-  const STEP_LABELS = ['ინფო', 'შემოწმება', 'დასკვნა', 'ხელმოწერა'];
+  const DONE_STEP = 3;
+  const TOTAL_STEPS = 3;
+  const STEP_LABELS = ['ინფო', 'შემოწმება', 'დასკვნა'];
 
   const [inspection, setInspection] = useState<BobcatInspection | null>(null);
   const [projectName, setProjectName] = useState('');
@@ -162,7 +161,7 @@ export default function BobcatInspectionScreen() {
           const saved = await AsyncStorage.getItem(persistKey);
           if (saved && !cancelled) {
             const s = parseInt(saved, 10);
-            if (!isNaN(s) && s >= INFO_STEP && s <= DONE_STEP) {
+            if (!isNaN(s) && s >= INFO_STEP && s <= CONCLUSION_STEP) {
               setStep(s);
             }
           }
@@ -517,17 +516,17 @@ export default function BobcatInspectionScreen() {
     if (step === INFO_STEP) {
       return !!inspection.company?.trim() && !!inspection.equipmentModel?.trim() && !!inspection.registrationNumber?.trim();
     }
-    if (step === SIGNATURE_STEP) return !!inspection.inspectorSignature && !completing;
+    if (step === CONCLUSION_STEP) return !!inspection.inspectorSignature && !completing;
     return true;
-  }, [step, inspection, completing, SIGNATURE_STEP]);
+  }, [step, inspection, completing, CONCLUSION_STEP]);
 
   const handleNext = useCallback(() => {
-    if (step === SIGNATURE_STEP) {
+    if (step === CONCLUSION_STEP) {
       handleComplete();
-    } else if (step < SIGNATURE_STEP) {
+    } else if (step < CONCLUSION_STEP) {
       setStep(s => s + 1);
     }
-  }, [step, SIGNATURE_STEP, handleComplete]);
+  }, [step, CONCLUSION_STEP, handleComplete]);
 
   const handlePrev = useCallback(() => {
     if (step === INFO_STEP) {
@@ -881,19 +880,7 @@ export default function BobcatInspectionScreen() {
                 <Ionicons name="camera-outline" size={18} color={theme.colors.accent} />
                 <Text style={{ fontSize: 13, color: theme.colors.accent }}>ფოტოს დამატება</Text>
               </Pressable>
-            </KeyboardAwareScrollView>
-          )}
 
-          {/* ── Step N+2: Signature ─────────────────────────────────────── */}
-          {step === SIGNATURE_STEP && (
-            <KeyboardAwareScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 12 }}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
-              showsVerticalScrollIndicator={false}
-              bottomOffset={120}
-            >
               <StepSectionLabel title="ინსპექტორის ხელმოწერა" />
               <Pressable
                 style={[styles.sigArea, inspection.inspectorSignature && styles.sigAreaSigned]}
@@ -991,7 +978,7 @@ export default function BobcatInspectionScreen() {
 
         {step !== DONE_STEP && (
           <View style={[styles.footer, { paddingBottom: 16 + insets.bottom }]}>
-            {step === SIGNATURE_STEP ? (
+            {step === CONCLUSION_STEP ? (
               <Button
                 title="შენახვა და დასრულება"
                 style={{ paddingVertical: 14 }}
