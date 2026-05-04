@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -26,6 +26,9 @@ import {
 import { useToast } from '../../lib/toast';
 import { useTheme, type Theme } from '../../lib/theme';
 import { useBottomSheet } from '../../components/BottomSheet';
+import { usePdfUsage, type PdfUsage } from '../../lib/usePdfUsage';
+import { PaywallModal } from '../../components/PaywallModal';
+import { formatShortDate } from '../../lib/formatDate';
 
 import { a11y } from '../../lib/accessibility';
 import { useTranslation } from 'react-i18next';
@@ -43,7 +46,9 @@ export default function MoreScreen() {
   const toast = useToast();
   const showActionSheet = useBottomSheet();
   const [signingOut, setSigningOut] = useState(false);
+  const [paywallVisible, setPaywallVisible] = useState(false);
   const signingOutGuard = useRef(false);
+  const pdfUsage = usePdfUsage().data;
   const countsQ = useInspectionCounts();
   const certsQ = useQualifications();
   const templatesQ = useTemplates();
@@ -130,6 +135,32 @@ export default function MoreScreen() {
           </View>
         </Card>
 
+        {/* Subscription management */}
+        <SubscriptionSection
+          pdfUsage={pdfUsage}
+          onOpenPaywall={() => setPaywallVisible(true)}
+        />
+
+        {/* Payment history — scaffold */}
+        <Card style={{ marginHorizontal: 16 }}>
+          <Text style={styles.sectionHeader}>გადახდის ისტორია</Text>
+          {/* TODO: fetch payment history from Supabase once BOG webhook stores transaction records */}
+          <View style={styles.emptyScaffold}>
+            <Ionicons name="receipt-outline" size={28} color={theme.colors.inkFaint} />
+            <Text style={styles.emptyScaffoldText}>ჩანაწერები არ არის</Text>
+          </View>
+        </Card>
+
+        {/* Invoices — scaffold */}
+        <Card style={{ marginHorizontal: 16 }}>
+          <Text style={styles.sectionHeader}>ანგარიშ-ფაქტურები</Text>
+          {/* TODO: generate VAT invoices once company registration is complete */}
+          <View style={styles.emptyScaffold}>
+            <Ionicons name="document-outline" size={28} color={theme.colors.inkFaint} />
+            <Text style={styles.emptyScaffoldText}>ხელმისაწვდომი იქნება კომპანიის{'\n'}რეგისტრაციის შემდეგ</Text>
+          </View>
+        </Card>
+
         {/* Hub tiles */}
         <View style={styles.grid}>
           <HubTile
@@ -213,7 +244,160 @@ export default function MoreScreen() {
           </Pressable>
         </Card>
       </ScrollView>
+      <PaywallModal visible={paywallVisible} onClose={() => setPaywallVisible(false)} />
     </SafeAreaView>
+  );
+}
+
+// ───────── SUBSCRIPTION SECTION ─────────
+
+function SubscriptionSection({
+  pdfUsage,
+  onOpenPaywall,
+}: {
+  pdfUsage: PdfUsage | undefined;
+  onOpenPaywall: () => void;
+}) {
+  const { theme } = useTheme();
+  const toast = useToast();
+  const s = useMemo(() => getStyles(theme), [theme]);
+
+  if (!pdfUsage) return null;
+
+  const { status, count, limit, expiresAt } = pdfUsage;
+
+  const confirmCancel = () => {
+    const until = expiresAt ? formatShortDate(expiresAt) : null;
+    Alert.alert(
+      'გამოწერის გაუქმება?',
+      until
+        ? `წვდომა გაგრძელდება ${until}-მდე. ავტომატური განახლება არ მოხდება.`
+        : 'გამოწერა გაუქმდება. ახალი გადახდა არ მოხდება.',
+      [
+        { text: 'უკან', style: 'cancel' },
+        {
+          text: 'გაუქმება',
+          style: 'destructive',
+          onPress: () => {
+            // No DB call needed — subscription expires naturally via subscription_expires_at.
+            // Auto-renewal is not yet implemented, so cancellation is a no-op on the backend.
+            toast.success(until ? `წვდომა გაგრძელდება ${until}-მდე` : 'გამოწერა გაუქმდა');
+          },
+        },
+      ],
+    );
+  };
+
+  return (
+    <View style={{ marginHorizontal: 16, gap: 0 }}>
+      {/* Section label */}
+      <Text style={[s.sectionHeader, { marginBottom: 8 }]}>გამოწერა</Text>
+
+      {status === 'active' ? (
+        <Card style={{ gap: 12 }}>
+          {/* PRO badge row */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <View style={s.proBadge}>
+              <Text style={s.proBadgeText}>PRO ✓</Text>
+            </View>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: theme.colors.ink }}>Sarke Pro</Text>
+          </View>
+
+          {/* Expiry */}
+          {expiresAt && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Ionicons name="calendar-outline" size={15} color={theme.colors.inkSoft} />
+              <Text style={{ fontSize: 13, color: theme.colors.inkSoft }}>
+                {`მოქმედია: ${formatShortDate(expiresAt)}-მდე`}
+              </Text>
+            </View>
+          )}
+
+          {/* Perk line */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Ionicons name="infinite-outline" size={15} color={theme.colors.inkSoft} />
+            <Text style={{ fontSize: 13, color: theme.colors.inkSoft }}>შეუზღუდავი PDF გენერაცია</Text>
+          </View>
+
+          {/* Cancel link */}
+          <Pressable
+            onPress={confirmCancel}
+            hitSlop={8}
+            style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, alignSelf: 'flex-start' })}
+            {...a11y('გამოწერის გაუქმება', undefined, 'button')}
+          >
+            <Text style={{ fontSize: 13, color: theme.colors.danger, fontWeight: '600' }}>
+              გამოწერის გაუქმება
+            </Text>
+          </Pressable>
+        </Card>
+      ) : status === 'expired' ? (
+        <Card style={{ gap: 12 }}>
+          {/* Expired amber banner */}
+          <View style={[s.expiredBanner]}>
+            <Ionicons name="warning-outline" size={16} color={theme.colors.warn} />
+            <Text style={[s.expiredBannerText]}>გამოწერა ამოიწურა</Text>
+          </View>
+
+          {/* PDF usage */}
+          <View style={{ gap: 6 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Text style={{ fontSize: 13, color: theme.colors.inkSoft }}>PDF გამოყენება</Text>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.warn }}>
+                {`${count} / ${limit}`}
+              </Text>
+            </View>
+            <ProgressBar value={count} max={limit} locked />
+          </View>
+
+          {/* Renew button */}
+          <Pressable
+            style={({ pressed }) => [s.proBtn, pressed && { opacity: 0.85 }]}
+            onPress={onOpenPaywall}
+            {...a11y('განახლება', 'გამოწერის განახლება', 'button')}
+          >
+            <Text style={s.proBtnText}>განახლება ₾19/თვე</Text>
+          </Pressable>
+        </Card>
+      ) : (
+        /* free */
+        <Card style={{ gap: 12 }}>
+          {/* Plan label + count */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.ink }}>უფასო გეგმა</Text>
+            <Text style={{ fontSize: 13, color: count >= limit ? theme.colors.warn : theme.colors.inkSoft }}>
+              {`PDF: ${count}/${limit} გამოყენებული`}
+            </Text>
+          </View>
+
+          <ProgressBar value={count} max={limit} locked={count >= limit} />
+
+          {/* Upgrade button */}
+          <Pressable
+            style={({ pressed }) => [s.proBtn, pressed && { opacity: 0.85 }]}
+            onPress={onOpenPaywall}
+            {...a11y('PRO-ზე გადასვლა', 'Sarke Pro-ს გამოწერა', 'button')}
+          >
+            <Text style={s.proBtnText}>PRO-ზე გადასვლა ₾19/თვე</Text>
+          </Pressable>
+        </Card>
+      )}
+    </View>
+  );
+}
+
+function ProgressBar({ value, max, locked }: { value: number; max: number; locked: boolean }) {
+  const { theme } = useTheme();
+  const pct = `${Math.min(100, Math.round((value / max) * 100))}%` as const;
+  return (
+    <View style={{ height: 6, backgroundColor: theme.colors.surfaceSecondary, borderRadius: 3, overflow: 'hidden' }}>
+      <View style={{
+        width: pct,
+        height: '100%',
+        backgroundColor: locked ? theme.colors.warn : theme.colors.accent,
+        borderRadius: 3,
+      }} />
+    </View>
   );
 }
 
@@ -376,6 +560,62 @@ function getStyles(theme: Theme) {
       height: StyleSheet.hairlineWidth,
       backgroundColor: theme.colors.hairline,
       marginLeft: 46,
+    },
+    sectionHeader: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: theme.colors.inkFaint,
+      textTransform: 'uppercase' as const,
+      letterSpacing: 0.6,
+      marginBottom: 4,
+    },
+    proBadge: {
+      backgroundColor: theme.colors.semantic.successSoft,
+      borderRadius: 8,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+    },
+    proBadgeText: {
+      fontSize: 13,
+      fontWeight: '800',
+      color: theme.colors.semantic.success,
+      letterSpacing: 0.3,
+    },
+    expiredBanner: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      gap: 6,
+      backgroundColor: theme.colors.warnSoft,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+    },
+    expiredBannerText: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: theme.colors.warn,
+    },
+    proBtn: {
+      backgroundColor: theme.colors.accent,
+      borderRadius: 10,
+      paddingVertical: 13,
+      alignItems: 'center' as const,
+    },
+    proBtnText: {
+      color: '#FFFFFF',
+      fontSize: 15,
+      fontWeight: '700',
+    },
+    emptyScaffold: {
+      alignItems: 'center' as const,
+      paddingVertical: 24,
+      gap: 8,
+    },
+    emptyScaffoldText: {
+      fontSize: 13,
+      color: theme.colors.inkFaint,
+      textAlign: 'center' as const,
+      lineHeight: 19,
     },
   });
 }

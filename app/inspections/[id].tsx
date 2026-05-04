@@ -44,15 +44,18 @@ import {
   useSignatures,
 } from '../../lib/apiHooks';
 import { buildPdfHtml, buildPdfPreviewHtml, type PdfAttachment } from '../../lib/pdf';
-import { generateAndSharePdf } from '../../lib/pdfOpen';
+import { generateAndSharePdf, PdfLimitReachedError } from '../../lib/pdfOpen';
 import { generatePdfName } from '../../lib/pdfName';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import {
   signatureAsDataUrl,
   pdfPhotoEmbed,
 } from '../../lib/imageUrl';
+import { useSession } from '../../lib/session';
 import { useToast } from '../../lib/toast';
 import { friendlyError } from '../../lib/errorMap';
+import { PaywallModal } from '../../components/PaywallModal';
+import { usePdfUsage, useInvalidatePdfUsage } from '../../lib/usePdfUsage';
 import { toErrorMessage } from '../../lib/logError';
 import { haptic } from '../../lib/haptics';
 import { useTheme } from '../../lib/theme';
@@ -73,6 +76,7 @@ export default function InspectionResultScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const toast = useToast();
+  const session = useSession();
   const showSheet = useBottomSheet();
 
   const [inspection, setInspection] = useState<Inspection | null>(null);
@@ -90,6 +94,9 @@ export default function InspectionResultScreen() {
   const [loadError, setLoadError] = useState<unknown>(null);
   const [notFound, setNotFound] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [paywallVisible, setPaywallVisible] = useState(false);
+  const { data: pdfUsage } = usePdfUsage();
+  const invalidatePdfUsage = useInvalidatePdfUsage();
 
   // React Query hooks seed cached data instantly so skeletons disappear faster.
   // loadAll() below still runs on mount for nested photo / attachment data.
@@ -314,6 +321,7 @@ export default function InspectionResultScreen() {
 
   const downloadPdf = useCallback(async () => {
     if (!inspection || !template || !project || downloading) return;
+    if (pdfUsage?.isLocked) { setPaywallVisible(true); return; }
     setDownloading(true);
     try {
       // Re-embed everything fresh — signatures or attachments may have been
@@ -386,9 +394,12 @@ export default function InspectionResultScreen() {
         new Date(inspection.created_at),
         inspection.id,
       );
-      await generateAndSharePdf(html, filename, false);
+      const userId = session.state.status === 'signedIn' ? session.state.session.user.id : undefined;
+      await generateAndSharePdf(html, filename, false, userId);
       haptic.success();
+      invalidatePdfUsage();
     } catch (e) {
+      if (e instanceof PdfLimitReachedError) { setPaywallVisible(true); return; }
       toast.error(friendlyError(e, 'PDF-ის გენერირება ვერ მოხერხდა'));
     } finally {
       setDownloading(false);
@@ -404,6 +415,8 @@ export default function InspectionResultScreen() {
     photosByAnswer,
     downloading,
     toast,
+    pdfUsage,
+    invalidatePdfUsage,
   ]);
 
   if (!loading && (notFound || loadError)) {
@@ -517,15 +530,16 @@ export default function InspectionResultScreen() {
               <ActivityIndicator color="#fff" />
             ) : (
               <>
-                <Ionicons name="share-outline" size={18} color="#fff" />
+                <Ionicons name={pdfUsage?.isLocked ? 'lock-closed-outline' : 'share-outline'} size={18} color="#fff" />
                 <Text style={[styles.bottomBtnText, { color: '#fff' }]} numberOfLines={1}>
-                  გადმოწერა
+                  {pdfUsage?.isLocked ? '🔒 გადმოწერა' : 'გადმოწერა'}
                 </Text>
               </>
             )}
           </Pressable>
         </View>
       </SafeAreaView>
+      <PaywallModal visible={paywallVisible} onClose={() => setPaywallVisible(false)} />
     </Screen>
   );
 }

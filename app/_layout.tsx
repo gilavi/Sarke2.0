@@ -57,12 +57,24 @@ function AuthGate() {
   // legitimate back navigations from modals (photo-picker → wizard) and
   // redirecting to home, breaking the photo flow.
 
-  // Handle Supabase password-recovery deep links (sarke://reset?code=...).
-  // Exchange the PKCE code for a session, then route to the reset form.
+  // Handle deep links:
+  //   sarke://reset?code=...        — password-recovery PKCE exchange
+  //   sarke://payment/success       — BOG payment success cold-start fallback
+  //                                   (warm case is handled by WebBrowser.openAuthSessionAsync)
   useEffect(() => {
     const handle = async (url: string | null) => {
       if (!url) return;
       const parsed = Linking.parse(url);
+
+      // BOG payment success cold-start: user was kicked out of in-app browser
+      // and the OS opened the app via the deep link instead.
+      const isPaymentSuccess =
+        parsed.hostname === 'payment' && parsed.path === 'success';
+      if (isPaymentSuccess) {
+        queryClient.invalidateQueries({ queryKey: ['pdf-usage'] });
+        return;
+      }
+
       const code = (parsed.queryParams?.code as string | undefined) ?? undefined;
       const isReset = parsed.path === 'reset' || parsed.hostname === 'reset';
       if (!isReset || !code) return;

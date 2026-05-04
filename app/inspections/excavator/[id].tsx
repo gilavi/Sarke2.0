@@ -34,7 +34,10 @@ import { useBottomSheet } from '../../../components/BottomSheet';
 import { excavatorApi } from '../../../lib/excavatorService';
 import { projectsApi } from '../../../lib/services';
 import { buildExcavatorPdfHtml } from '../../../lib/excavatorPdf';
-import { generateAndSharePdf } from '../../../lib/pdfOpen';
+import { generateAndSharePdf, PdfLimitReachedError } from '../../../lib/pdfOpen';
+import { PaywallModal } from '../../../components/PaywallModal';
+import { PdfLockedBanner } from '../../../components/PdfLockedBanner';
+import { usePdfUsage, useInvalidatePdfUsage } from '../../../lib/usePdfUsage';
 import { generatePdfName } from '../../../lib/pdfName';
 import { recordCompletion } from '../../../lib/calendarSchedule';
 import { friendlyError } from '../../../lib/errorMap';
@@ -106,6 +109,9 @@ export default function ExcavatorInspectionScreen() {
   const [saving, setSaving] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [paywallVisible, setPaywallVisible] = useState(false);
+  const { data: pdfUsage } = usePdfUsage();
+  const invalidatePdfUsage = useInvalidatePdfUsage();
   const [showSig, setShowSig] = useState(false);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewBusy, setPreviewBusy] = useState(false);
@@ -430,6 +436,7 @@ export default function ExcavatorInspectionScreen() {
 
   const handlePdf = useCallback(async () => {
     if (!inspection) return;
+    if (pdfUsage?.isLocked) { setPaywallVisible(true); return; }
     setGeneratingPdf(true);
     try {
       const html = await buildExcavatorPdfHtml({
@@ -442,13 +449,16 @@ export default function ExcavatorInspectionScreen() {
         new Date(inspection.inspectionDate),
         inspection.id,
       );
-      await generateAndSharePdf(html, pdfName);
+      const userId = session.state.status === 'signedIn' ? session.state.session.user.id : undefined;
+      await generateAndSharePdf(html, pdfName, undefined, userId);
+      invalidatePdfUsage();
     } catch (e) {
+      if (e instanceof PdfLimitReachedError) { setPaywallVisible(true); return; }
       toast.error(friendlyError(e, 'PDF ვერ შეიქმნა'));
     } finally {
       setGeneratingPdf(false);
     }
-  }, [inspection, projectName, toast]);
+  }, [inspection, projectName, session.state, toast, pdfUsage, invalidatePdfUsage]);
 
   // ── Summary Photos ─────────────────────────────────────────────────────────
 
@@ -624,13 +634,14 @@ export default function ExcavatorInspectionScreen() {
               {...a11y('PDF', 'PDF დოკუმენტის გენერირება', 'button')}
             >
               <Ionicons
-                name={generatingPdf ? 'hourglass-outline' : 'document-text-outline'}
+                name={pdfUsage?.isLocked ? 'lock-closed-outline' : generatingPdf ? 'hourglass-outline' : 'document-text-outline'}
                 size={22}
                 color={theme.colors.accent}
               />
             </Pressable>
           }
         />
+        {pdfUsage?.isLocked && <PdfLockedBanner onSubscribe={() => setPaywallVisible(true)} />}
         <View style={{ flex: 1, backgroundColor: theme.colors.subtleSurface }}>
           {previewBusy && !previewHtml ? (
             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
@@ -651,12 +662,13 @@ export default function ExcavatorInspectionScreen() {
         <SafeAreaView edges={['bottom']} style={{ backgroundColor: theme.colors.surface, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.colors.hairline }}>
           <View style={{ paddingHorizontal: 12, paddingTop: 8, paddingBottom: 8 }}>
             <Button
-              title="PDF გენერირება / გაზიარება"
+              title={pdfUsage?.isLocked ? '🔒 PDF გენერირება' : 'PDF გენერირება / გაზიარება'}
               onPress={handlePdf}
               loading={generatingPdf}
             />
           </View>
         </SafeAreaView>
+        <PaywallModal visible={paywallVisible} onClose={() => setPaywallVisible(false)} />
       </View>
     );
   }
@@ -682,7 +694,7 @@ export default function ExcavatorInspectionScreen() {
               {...a11y('PDF', 'PDF დოკუმენტის გენერირება', 'button')}
             >
               <Ionicons
-                name={generatingPdf ? 'hourglass-outline' : 'document-text-outline'}
+                name={pdfUsage?.isLocked ? 'lock-closed-outline' : generatingPdf ? 'hourglass-outline' : 'document-text-outline'}
                 size={22}
                 color={theme.colors.accent}
               />
@@ -1082,7 +1094,7 @@ export default function ExcavatorInspectionScreen() {
               </View>
 
               <Button
-                title="PDF გენერირება / გაზიარება"
+                title={pdfUsage?.isLocked ? '🔒 PDF გენერირება' : 'PDF გენერირება / გაზიარება'}
                 onPress={handlePdf}
                 loading={generatingPdf}
                 style={{ marginBottom: 12 }}

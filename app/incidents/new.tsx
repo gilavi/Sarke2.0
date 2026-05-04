@@ -10,7 +10,9 @@ import * as ImagePicker from 'expo-image-picker';
 import { getCurrentLocation, reverseGeocode } from '../../utils/location';
 import type { PhotoLocation } from '../../utils/location';
 import { showPhotoLocationAlert } from '../../lib/photoLocationAlert';
-import { generateAndSharePdf } from '../../lib/pdfOpen';
+import { generateAndSharePdf, PdfLimitReachedError } from '../../lib/pdfOpen';
+import { PaywallModal } from '../../components/PaywallModal';
+import { usePdfUsage, useInvalidatePdfUsage } from '../../lib/usePdfUsage';
 import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -110,6 +112,9 @@ export default function NewIncident() {
   const [form, setForm] = useState<FormData>(INITIAL_FORM);
   const [project, setProject] = useState<Project | null>(null);
   const [saving, setSaving] = useState(false);
+  const [paywallVisible, setPaywallVisible] = useState(false);
+  const { data: pdfUsage } = usePdfUsage();
+  const invalidatePdfUsage = useInvalidatePdfUsage();
   // stable incident id — lets us upload photos before the row is created
   const incidentId = useRef(Crypto.randomUUID()).current;
 
@@ -303,6 +308,7 @@ export default function NewIncident() {
       toast.error('პროექტი ვერ მოიძებნა');
       return;
     }
+    if (pdfUsage?.isLocked) { setPaywallVisible(true); return; }
     setSaving(true);
     let savedId = incidentId;
     try {
@@ -373,7 +379,9 @@ export default function NewIncident() {
       const docType = `ინციდენტი_${incidentTypeLabel}`;
       const pdfName = generatePdfName(project.company_name || project.name, docType, form.dateTime, savedId);
       const pdfPath = `incidents/${pdfName}`;
-      const localUri = await generateAndSharePdf(html, pdfName, true);
+      const userId = session.state.status === 'signedIn' ? session.state.session.user.id : undefined;
+      const localUri = await generateAndSharePdf(html, pdfName, true, userId);
+      invalidatePdfUsage();
       if (localUri) {
 
         toast.success('ოქმი შექმნილია');
@@ -408,6 +416,7 @@ export default function NewIncident() {
         router.replace(`/incidents/${savedId}` as any);
       }
     } catch (e) {
+      if (e instanceof PdfLimitReachedError) { setPaywallVisible(true); return; }
       console.warn('[incident] PDF generation failed', e);
       toast.error(friendlyError(e, 'PDF-ის შექმნა ვერ მოხერხდა — ინციდენტი შენახულია'));
       router.replace(`/incidents/${savedId}` as any);
@@ -479,7 +488,7 @@ export default function NewIncident() {
           ) : (
             <View style={{ gap: 10 }}>
               <Button
-                title="PDF გენერირება"
+                title={pdfUsage?.isLocked ? '🔒 PDF გენერირება' : 'PDF გენერირება'}
                 leftIcon="document-text"
                 loading={saving}
                 onPress={saveAndGeneratePdf}
@@ -496,7 +505,7 @@ export default function NewIncident() {
           )}
         </View>
       </KeyboardSafeArea>
-
+      <PaywallModal visible={paywallVisible} onClose={() => setPaywallVisible(false)} />
     </View>
   );
 }

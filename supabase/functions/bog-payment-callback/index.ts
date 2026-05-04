@@ -1,0 +1,111 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+function json(data: unknown, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
+async function getBogToken(): Promise<string> {
+  const clientId = Deno.env.get('BOG_CLIENT_ID')!;
+  const clientSecret = Deno.env.get('BOG_CLIENT_SECRET')!;
+  const credentials = btoa(`${clientId}:${clientSecret}`);
+
+  const res = await fetch(
+    'https://oauth2.bog.ge/auth/realms/bog/protocol/openid-connect/token',
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${credentials}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: 'grant_type=client_credentials',
+    },
+  );
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`BOG token error ${res.status}: ${text}`);
+  }
+
+  const data = await res.json();
+  return data.access_token as string;
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+
+  try {
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    );
+
+    // BOG sends the order_id in the request body
+    const body = await req.json();
+    const orderId: string = body.order_id ?? body.id;
+    if (!orderId) return json({ error: 'missing order_id' }, 400);
+
+    // Re-verify payment status server-side — never trust the redirect alone
+    const token = await getBogToken();
+    const verifyRes = await fetch(
+      `https://api.bog.ge/payments/v1/ecommerce/orders/${orderId}`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      },
+    );
+
+    if (!verifyRes.ok) {
+      const text = await verifyRes.text();
+      throw new Error(`BOG verify error ${verifyRes.status}: ${text}`);
+    }
+
+    const order = await verifyRes.json();
+
+    // external_order_id was set to the user's Supabase userId when the order was created
+    const userId: string = order.external_order_id;
+    if (!userId) return json({ error: 'missing external_order_id in order' }, 400);
+
+    const paymentStatus: string = order.payment_status ?? order.status;
+    if (paymentStatus !== 'completed') {
+      // Not yet paid — BOG may call this webhook multiple times
+      return json({ ok: true, status: paymentStatus });
+    }
+
+    // Activate subscription for 30 days
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30);
+
+    // Extract card token if BOG returned one (for future auto-renewal)
+    const cardToken: string | null =
+      order.payment_detail?.card_token ??
+      order.card_token ??
+      null;
+
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({
+        subscription_status: 'active',
+        subscription_expires_at: expiresAt.toISOString(),
+        ...(cardToken ? { bog_card_token: cardToken } : {}),
+      })
+      .eq('id', userId);
+
+    if (updateError) {
+      console.error('Failed to activate subscription:', updateError);
+      return json({ error: 'db update failed' }, 500);
+    }
+
+    console.log(`Subscription activated for user ${userId}, expires ${expiresAt.toISOString()}`);
+    return json({ ok: true });
+  } catch (e) {
+    console.error('bog-payment-callback error:', e);
+    return json({ error: String(e) }, 500);
+  }
+});

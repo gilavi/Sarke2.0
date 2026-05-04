@@ -40,6 +40,13 @@ export interface AppUser {
   tc_accepted_version: string | null;
   tc_accepted_at: string | null;
   saved_signature_url: string | null;
+  /** Number of PDFs generated. Defaults to 0. Added in migration 0028. */
+  pdf_count?: number;
+  /** Free-tier users are blocked after pdf_count reaches 3. Added in migration 0028. */
+  subscription_status?: 'free' | 'active' | 'expired';
+  subscription_expires_at?: string | null;
+  /** BOG recurring-payment card token for renewals. Added in migration 0028. */
+  bog_card_token?: string | null;
 }
 
 /**

@@ -5,7 +5,10 @@ import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from '../../../components/ui';
-import { generateAndSharePdf } from '../../../lib/pdfOpen';
+import { generateAndSharePdf, PdfLimitReachedError } from '../../../lib/pdfOpen';
+import { useSession } from '../../../lib/session';
+import { PaywallModal } from '../../../components/PaywallModal';
+import { usePdfUsage, useInvalidatePdfUsage } from '../../../lib/usePdfUsage';
 import { useTheme } from '../../../lib/theme';
 import { briefingsApi } from '../../../lib/briefingsApi';
 import { buildBriefingPdfHtml } from '../../../lib/briefingPdf';
@@ -22,7 +25,11 @@ export default function BriefingDoneScreen() {
 
   const [briefing, setBriefing] = useState<Briefing | null>(null);
   const [project, setProject] = useState<Project | null>(null);
+  const session = useSession();
   const [sharing, setSharing] = useState(false);
+  const [paywallVisible, setPaywallVisible] = useState(false);
+  const { data: pdfUsage } = usePdfUsage();
+  const invalidatePdfUsage = useInvalidatePdfUsage();
 
   useEffect(() => {
     if (!id) return;
@@ -36,17 +43,21 @@ export default function BriefingDoneScreen() {
 
   const sharePdf = useCallback(async () => {
     if (!briefing || !project) return;
+    if (pdfUsage?.isLocked) { setPaywallVisible(true); return; }
     setSharing(true);
     try {
       const html = buildBriefingPdfHtml(briefing, project);
       const pdfName = generatePdfName(project.company_name || project.name, 'ინსტრუქტაჟი', new Date(briefing.dateTime), briefing.id);
-      await generateAndSharePdf(html, pdfName);
-    } catch {
+      const userId = session.state.status === 'signedIn' ? session.state.session.user.id : undefined;
+      await generateAndSharePdf(html, pdfName, undefined, userId);
+      invalidatePdfUsage();
+    } catch (e) {
+      if (e instanceof PdfLimitReachedError) { setPaywallVisible(true); return; }
       Alert.alert('შეცდომა', 'PDF გენერირება ვერ მოხერხდა');
     } finally {
       setSharing(false);
     }
-  }, [briefing, project]);
+  }, [briefing, project, pdfUsage, invalidatePdfUsage]);
 
   const goToProject = () => {
     if (briefing?.projectId) {
@@ -108,7 +119,7 @@ export default function BriefingDoneScreen() {
       {/* Actions */}
       <View style={styles.footer}>
         <Button
-          title={sharing ? 'PDF მზადდება...' : 'PDF გაზიარება'}
+          title={sharing ? 'PDF მზადდება...' : pdfUsage?.isLocked ? '🔒 PDF გაზიარება' : 'PDF გაზიარება'}
           size="lg"
           leftIcon="share-outline"
           onPress={sharePdf}
@@ -132,6 +143,7 @@ export default function BriefingDoneScreen() {
           <Text style={styles.ghostBtnText}>პროექტზე დაბრუნება</Text>
         </Pressable>
       </View>
+      <PaywallModal visible={paywallVisible} onClose={() => setPaywallVisible(false)} />
     </SafeAreaView>
   );
 }
