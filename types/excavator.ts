@@ -152,6 +152,7 @@ export interface ExcavatorInspection {
   // Section V — Inspector
   inspectorPosition: string | null;
   inspectorSignature: string | null;
+  summaryPhotos?: string[];
 
   completedAt: string | null;
   createdAt: string;

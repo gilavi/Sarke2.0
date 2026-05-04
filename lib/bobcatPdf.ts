@@ -251,6 +251,7 @@ export async function buildBobcatPdfHtml(args: {
   const photoEmbeds = await embedInspectionPhotos(
     insp.items.flatMap(i => i.photo_paths ?? []),
   );
+  const summaryPhotoEmbeds = await embedInspectionPhotos(insp.summaryPhotos ?? []);
 
   // Signature embed
   let sigDataUrl: string | null = null;
@@ -457,6 +458,15 @@ export async function buildBobcatPdfHtml(args: {
     ${insp.notes ? `
       <div class="notes-label" style="margin-top:14px;">შენიშვნები / ხარვეზები</div>
       <div class="notes-block">${escHtml(insp.notes)}</div>
+    ` : ''}
+    ${(insp.summaryPhotos ?? []).length > 0 ? `
+      <div class="notes-label" style="margin-top:14px;">ფოტოები</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">
+        ${(insp.summaryPhotos ?? []).map(p => {
+          const src = summaryPhotoEmbeds[p];
+          return src ? `<img src="${src}" style="width:80px;height:80px;object-fit:cover;border-radius:4px;border:0.5px solid var(--hairline);" alt="ფოტო" />` : '';
+        }).join('')}
+      </div>
     ` : ''}
   `;
 

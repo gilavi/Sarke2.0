@@ -2,12 +2,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Pressable,
   StyleSheet,
   View,
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import WebView from 'react-native-webview';
 import * as ImagePicker from 'expo-image-picker';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,8 +25,6 @@ import { ExcavatorMaintenanceItem } from '../../../components/excavator/Excavato
 import { WizardStepTransition } from '../../../components/wizard/WizardStepTransition';
 
 import { StepSectionLabel } from '../../../components/wizard/StepSectionLabel';
-import { ChecklistItemStep } from '../../../components/wizard/ChecklistItemStep';
-import { ChecklistTour, TOUR_SEEN_KEY } from '../../../components/wizard/ChecklistTour';
 import { FlowHeader } from '../../../components/FlowHeader';
 import { useTheme, type Theme } from '../../../lib/theme';
 import { useSession } from '../../../lib/session';
@@ -105,7 +106,8 @@ export default function ExcavatorInspectionScreen() {
   const [completing, setCompleting] = useState(false);
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [showSig, setShowSig] = useState(false);
-  const [showTour, setShowTour] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [previewBusy, setPreviewBusy] = useState(false);
 
   // Step state
   const [step, setStep] = useState(0);
@@ -115,23 +117,13 @@ export default function ExcavatorInspectionScreen() {
   const animateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => { inspectionRef.current = inspection; }, [inspection]);
 
-  const CHECKLIST_START = 1;
-  const CHECKLIST_COUNT = FLAT_CATALOG.length;
-  const MAINTENANCE_STEP = CHECKLIST_START + CHECKLIST_COUNT;
-  const SUMMARY_STEP = MAINTENANCE_STEP; // maintenance + verdict together
-  const SIGNATURE_STEP = SUMMARY_STEP + 1;
-  const DONE_STEP = SIGNATURE_STEP + 1;
-  const TOTAL_STEPS = DONE_STEP + 1;
-
-  // Step labels: info, then "1", "2" ... for each checklist item, then maintenance, signature
-  const STEP_LABELS = useMemo(() => [
-    'ინფო',
-    ...FLAT_CATALOG.map((_, i) => `${i + 1}`),
-    'ტ.მომს.',
-    'ხელმოწ.',
-  ], []);
+  const INFO_STEP = 0;
+  const CHECKLIST_STEP = 1;
+  const CONCLUSION_STEP = 2;
+  const TOTAL_STEPS = 3;
 
   const persistKey = useMemo(() => `excavator-wizard:${id}:step`, [id]);
+  const summaryPhotosKey = useMemo(() => `excavator-wizard:${id}:summaryPhotos`, [id]);
 
   const direction: 'next' | 'prev' = step >= prevStepRef.current ? 'next' : 'prev';
   useEffect(() => { prevStepRef.current = step; }, [step]);
@@ -152,6 +144,10 @@ export default function ExcavatorInspectionScreen() {
         if (cancelled) return;
         if (!insp) { console.log('[Excavator] inspection not found, going back'); router.back(); return; }
 
+        if (insp.status === 'completed') {
+          // Will render result view instead of wizard
+        }
+
         let patched = insp;
         if (!insp.inspectorName && session.state.status === 'signedIn') {
           const u = session.state.user;
@@ -160,15 +156,22 @@ export default function ExcavatorInspectionScreen() {
         }
         setInspection(patched);
 
-        if (insp.status === 'completed') {
-          setStep(DONE_STEP);
-        } else {
-          const saved = await AsyncStorage.getItem(persistKey);
-          if (saved && !cancelled) {
-            const s = parseInt(saved, 10);
-            if (!isNaN(s) && s >= 0 && s <= SIGNATURE_STEP) {
-              setStep(s);
+        // Load summary photos from AsyncStorage
+        const savedPhotos = await AsyncStorage.getItem(summaryPhotosKey);
+        if (savedPhotos && !cancelled) {
+          try {
+            const parsed = JSON.parse(savedPhotos);
+            if (Array.isArray(parsed)) {
+              setInspection(prev => prev ? { ...prev, summaryPhotos: parsed } : prev);
             }
+          } catch {}
+        }
+
+        const saved = await AsyncStorage.getItem(persistKey);
+        if (saved && !cancelled) {
+          const s = parseInt(saved, 10);
+          if (!isNaN(s) && s >= 0 && s <= CONCLUSION_STEP) {
+            setStep(s);
           }
         }
 
@@ -185,8 +188,6 @@ export default function ExcavatorInspectionScreen() {
           });
         }).catch(() => {});
 
-        const tourSeen = await AsyncStorage.getItem(TOUR_SEEN_KEY);
-        if (!tourSeen && !cancelled) setShowTour(true);
       } catch (e) {
         console.log('[Excavator] load error:', e);
         if (!cancelled) {
@@ -210,10 +211,8 @@ export default function ExcavatorInspectionScreen() {
 
   // Persist step
   useEffect(() => {
-    if (step >= CHECKLIST_START && step <= SIGNATURE_STEP) {
-      AsyncStorage.setItem(persistKey, String(step)).catch(() => {});
-    }
-  }, [step, persistKey, CHECKLIST_START, SIGNATURE_STEP]);
+    AsyncStorage.setItem(persistKey, String(step)).catch(() => {});
+  }, [step, persistKey]);
 
   // ── Auto-save (debounced) ──────────────────────────────────────────────────
 
@@ -417,14 +416,13 @@ export default function ExcavatorInspectionScreen() {
       ).catch(() => {});
       setInspection(prev => prev ? { ...prev, status: 'completed', completedAt } : prev);
       await AsyncStorage.removeItem(persistKey);
-      setStep(DONE_STEP);
       toast.success('შემოწმება დასრულდა');
     } catch (e) {
       toast.error(friendlyError(e, 'შეცდომა'));
     } finally {
       setCompleting(false);
     }
-  }, [inspection, toast, persistKey, DONE_STEP]);
+  }, [inspection, toast, persistKey, router]);
 
   // ── PDF ────────────────────────────────────────────────────────────────────
 
@@ -450,6 +448,88 @@ export default function ExcavatorInspectionScreen() {
     }
   }, [inspection, projectName, toast]);
 
+  // ── Summary Photos ─────────────────────────────────────────────────────────
+
+  const handleAddSummaryPhoto = useCallback(() => {
+    Alert.alert('ფოტოს წყარო', undefined, [
+      {
+        text: 'კამერა',
+        onPress: async () => {
+          const perm = await ImagePicker.requestCameraPermissionsAsync();
+          if (!perm.granted) { toast.error('კამერაზე წვდომა დაუშვებულია'); return; }
+          const res = await ImagePicker.launchCameraAsync({ quality: 0.8 });
+          if (!res.canceled && res.assets[0]) await uploadSummaryPhoto(res.assets[0].uri);
+        },
+      },
+      {
+        text: 'გალერეა',
+        onPress: async () => {
+          const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+          if (!perm.granted) { toast.error('გალერეაზე წვდომა დაუშვებულია'); return; }
+          const res = await ImagePicker.launchImageLibraryAsync({ quality: 0.8 });
+          if (!res.canceled && res.assets[0]) await uploadSummaryPhoto(res.assets[0].uri);
+        },
+      },
+      { text: 'გაუქმება', style: 'cancel' },
+    ]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const uploadSummaryPhoto = async (uri: string) => {
+    const insp = inspectionRef.current;
+    if (!insp) return;
+    try {
+      const path = await excavatorApi.uploadSummaryPhoto(insp.id, uri);
+      setInspection(prev => {
+        if (!prev) return prev;
+        const next = { ...prev, summaryPhotos: [...(prev.summaryPhotos ?? []), path] };
+        AsyncStorage.setItem(summaryPhotosKey, JSON.stringify(next.summaryPhotos)).catch(() => {});
+        return next;
+      });
+    } catch (e) {
+      toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
+    }
+  };
+
+  const handleDeleteSummaryPhoto = useCallback(async (path: string) => {
+    try {
+      await excavatorApi.deletePhoto(path);
+    } catch (e) {
+      toast.error(friendlyError(e, 'ფოტოს წაშლა ვერ მოხერხდა'));
+      return;
+    }
+    setInspection(prev => {
+      if (!prev) return prev;
+      const next = { ...prev, summaryPhotos: (prev.summaryPhotos ?? []).filter(p => p !== path) };
+      AsyncStorage.setItem(summaryPhotosKey, JSON.stringify(next.summaryPhotos)).catch(() => {});
+      return next;
+    });
+  }, [summaryPhotosKey, toast]);
+
+  // ── PDF Preview ────────────────────────────────────────────────────────────
+
+  const buildPreview = useCallback(async () => {
+    if (!inspection) return;
+    setPreviewBusy(true);
+    try {
+      const html = await buildExcavatorPdfHtml({
+        inspection,
+        projectName: projectName || 'პროექტი',
+      });
+      setPreviewHtml(html);
+    } catch (e) {
+      toast.error(friendlyError(e, 'PDF ვერ შეიქმნა'));
+    } finally {
+      setPreviewBusy(false);
+    }
+  }, [inspection, projectName, toast]);
+
+  useEffect(() => {
+    if (inspection?.status === 'completed') {
+      buildPreview();
+    }
+  }, [inspection, buildPreview]);
+
   // ── Help sheet ─────────────────────────────────────────────────────────────
 
   const showHelp = useCallback((entry: ExcavatorChecklistEntry) => {
@@ -473,54 +553,45 @@ export default function ExcavatorInspectionScreen() {
     });
   }, [showSheet, theme]);
 
-  // ── Step navigation ────────────────────────────────────────────────────────
-
-  const canGoNext = useMemo(() => {
-    if (!inspection || step >= DONE_STEP) return false;
-    if (step === 0) return !!inspection.serialNumber?.trim();
-    if (step === SIGNATURE_STEP) return !!inspection.inspectorSignature && !completing;
-    return true;
-  }, [step, inspection, completing, SIGNATURE_STEP, DONE_STEP]);
-
-  const handleNext = useCallback(() => {
-    if (step === SIGNATURE_STEP) {
-      handleComplete();
-    } else if (step < DONE_STEP) {
-      setStep(s => s + 1);
-    }
-  }, [step, SIGNATURE_STEP, DONE_STEP, handleComplete]);
-
-  const handlePrev = useCallback(() => {
-    if (step === DONE_STEP) {
-      router.back();
-    } else if (step > 0) {
-      setStep(s => s - 1);
-    }
-  }, [step, DONE_STEP, router]);
-
-  // ── Render helpers ─────────────────────────────────────────────────────────
+  // ── Summary counts ─────────────────────────────────────────────────────────
 
   const flatState = useMemo(() => inspection ? getFlatState(inspection) : [], [inspection]);
 
-  const renderChecklistItem = (flatIndex: number) => {
-    if (!inspection) return null;
-    const { sectionLabel, entry } = FLAT_CATALOG[flatIndex];
-    const state = flatState[flatIndex];
-    const { section } = FLAT_CATALOG[flatIndex];
+  const counts = useMemo(() => {
+    const good = flatState.filter(s => s.result === 'good').length;
+    const deficient = flatState.filter(s => s.result === 'deficient').length;
+    const unusable = flatState.filter(s => s.result === 'unusable').length;
+    return { good, deficient, unusable, total: FLAT_CATALOG.length };
+  }, [flatState]);
 
-    return (
-      <ChecklistItemStep
-        index={flatIndex}
-        total={CHECKLIST_COUNT}
-        catalog={{ ...entry, category: sectionLabel }}
-        state={state}
-        onChange={patch => updateFlatItem(flatIndex, patch)}
-        onAddPhoto={() => handleAddPhoto(section, entry.id)}
-        onDeletePhoto={path => handleDeletePhoto(section, entry.id, path)}
-        onHelp={() => showHelp(entry)}
-      />
-    );
-  };
+  // ── Step navigation ────────────────────────────────────────────────────────
+
+  const canGoNext = useMemo(() => {
+    if (!inspection) return false;
+    if (step === INFO_STEP) return !!inspection.projectName?.trim() && !!inspection.inspectorName?.trim();
+    if (step === CHECKLIST_STEP) return flatState.every(s => s.result !== null);
+    if (step === CONCLUSION_STEP) return !!inspection.verdict && !!inspection.inspectorSignature && !completing;
+    return false;
+  }, [step, inspection, flatState, completing]);
+
+  const handleNext = useCallback(() => {
+    if (step === CONCLUSION_STEP) {
+      handleComplete();
+    } else if (step < CONCLUSION_STEP) {
+      setStep(s => s + 1);
+    }
+  }, [step, handleComplete]);
+
+  const handlePrev = useCallback(() => {
+    if (step > 0) setStep(s => s - 1);
+  }, [step]);
+
+  // ── List item update helper ────────────────────────────────────────────────
+
+  const updateItem = useCallback((itemId: number, result: 'good' | 'deficient' | 'unusable') => {
+    const flatIndex = FLAT_CATALOG.findIndex(e => e.entry.id === itemId);
+    if (flatIndex >= 0) updateFlatItem(flatIndex, { result });
+  }, [updateFlatItem]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -529,6 +600,61 @@ export default function ExcavatorInspectionScreen() {
       <View style={[styles.root, styles.centred]}>
         <Stack.Screen options={{ headerShown: true, title: 'შემოწმება' }} />
         <Text style={{ color: theme.colors.inkSoft }}>იტვირთება…</Text>
+      </View>
+    );
+  }
+
+  // ── Completed inspection result view ───────────────────────────────────────
+  if (inspection.status === 'completed') {
+    return (
+      <View style={{ flex: 1, backgroundColor: theme.colors.card }}>
+        <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
+        <FlowHeader
+          flowTitle="ექსკავატორი"
+          project={projectName ? { name: projectName } : null}
+          leading="back"
+          onBack={() => router.back()}
+          trailingElement={
+            <Pressable
+              onPress={handlePdf}
+              disabled={generatingPdf}
+              hitSlop={10}
+              {...a11y('PDF', 'PDF დოკუმენტის გენერირება', 'button')}
+            >
+              <Ionicons
+                name={generatingPdf ? 'hourglass-outline' : 'document-text-outline'}
+                size={22}
+                color={theme.colors.accent}
+              />
+            </Pressable>
+          }
+        />
+        <View style={{ flex: 1, backgroundColor: theme.colors.subtleSurface }}>
+          {previewBusy && !previewHtml ? (
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+              <ActivityIndicator size="large" color={theme.colors.accent} />
+              <Text style={{ color: theme.colors.inkSoft }}>PDF-ის მომზადება…</Text>
+            </View>
+          ) : previewHtml ? (
+            <WebView
+              originWhitelist={['*']}
+              source={{ html: previewHtml }}
+              style={{ flex: 1, backgroundColor: '#fff' }}
+              scalesPageToFit
+              javaScriptEnabled={false}
+              domStorageEnabled={false}
+            />
+          ) : null}
+        </View>
+        <SafeAreaView edges={['bottom']} style={{ backgroundColor: theme.colors.surface, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.colors.hairline }}>
+          <View style={{ paddingHorizontal: 12, paddingTop: 8, paddingBottom: 8 }}>
+            <Button
+              title="PDF გენერირება / გაზიარება"
+              onPress={handlePdf}
+              loading={generatingPdf}
+            />
+          </View>
+        </SafeAreaView>
       </View>
     );
   }
@@ -641,21 +767,80 @@ export default function ExcavatorInspectionScreen() {
             </KeyboardAwareScrollView>
           )}
 
-          {/* ── Steps 1..N: Checklist items ─────────────────────────────── */}
-          {step >= CHECKLIST_START && step < MAINTENANCE_STEP && (
-            renderChecklistItem(step - CHECKLIST_START)
-          )}
-
-          {/* ── Step N+1: Maintenance + Verdict ─────────────────────────── */}
-          {step === MAINTENANCE_STEP && (
+          {/* ── Step 1: Checklist list + Maintenance ────────────────────── */}
+          {step === CHECKLIST_STEP && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24, gap: 12 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24, gap: 4 }}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="interactive"
               showsVerticalScrollIndicator={false}
               bottomOffset={120}
             >
+              <StepSectionLabel title="III — ჩეკლისტი" />
+              {FLAT_CATALOG.map((entry, index) => {
+                const state = flatState[index];
+                const result = state.result;
+                const isFirstInSection = index === 0 || FLAT_CATALOG[index - 1].section !== entry.section;
+                return (
+                  <View key={entry.entry.id}>
+                    {isFirstInSection && (
+                      <Text style={styles.sectionHeader}>{entry.sectionLabel}</Text>
+                    )}
+                    <View style={styles.listRow}>
+                      <View style={styles.listRowText}>
+                        <Text style={styles.listRowNumber}>{index + 1}.</Text>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.listRowLabel}>{entry.entry.label}</Text>
+                          <Text style={styles.listRowDesc}>{entry.entry.description}</Text>
+                        </View>
+                      </View>
+                      <View style={styles.listRowActions}>
+                        <Pressable
+                          style={[styles.statusBtn, result === 'good' && styles.statusBtnGoodActive]}
+                          onPress={() => updateItem(entry.entry.id, 'good')}
+                        >
+                          <Ionicons name="checkmark" size={22} color={result === 'good' ? '#fff' : theme.colors.semantic.success} />
+                        </Pressable>
+                        <Pressable
+                          style={[styles.statusBtn, result === 'deficient' && styles.statusBtnDefActive]}
+                          onPress={() => updateItem(entry.entry.id, 'deficient')}
+                        >
+                          <Ionicons name="warning" size={20} color={result === 'deficient' ? '#fff' : theme.colors.warn} />
+                        </Pressable>
+                        <Pressable
+                          style={[styles.statusBtn, result === 'unusable' && styles.statusBtnBadActive]}
+                          onPress={() => updateItem(entry.entry.id, 'unusable')}
+                        >
+                          <Ionicons name="close" size={20} color={result === 'unusable' ? '#fff' : theme.colors.danger} />
+                        </Pressable>
+                      </View>
+                    </View>
+                    {(state.photo_paths?.length ?? 0) > 0 && (
+                      <View style={styles.photoRow}>
+                        {state.photo_paths.map(path => (
+                          <View key={path} style={styles.photoThumbWrap}>
+                            <Image source={{ uri: path }} style={styles.photoThumb} />
+                            <Pressable
+                              onPress={() => handleDeletePhoto(entry.section, entry.entry.id, path)}
+                              style={styles.photoDelete}
+                            >
+                              <Ionicons name="close" size={10} color="#fff" />
+                            </Pressable>
+                          </View>
+                        ))}
+                        <Pressable
+                          onPress={() => handleAddPhoto(entry.section, entry.entry.id)}
+                          style={styles.photoAddBtn}
+                        >
+                          <Ionicons name="camera-outline" size={16} color={theme.colors.accent} />
+                        </Pressable>
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
+
               <StepSectionLabel title="VI — ტექნიკური მომსახურება" />
               {MAINTENANCE_ITEMS.map((entry, idx) => {
                 const state = inspection.maintenanceItems.find(i => i.id === entry.id)
@@ -670,8 +855,64 @@ export default function ExcavatorInspectionScreen() {
                   />
                 );
               })}
+            </KeyboardAwareScrollView>
+          )}
 
-              <StepSectionLabel title="IV — დასკვნა *" />
+          {/* ── Step 2: Conclusion ──────────────────────────────────────── */}
+          {step === CONCLUSION_STEP && (
+            <KeyboardAwareScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24, gap: 12 }}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
+              showsVerticalScrollIndicator={false}
+              bottomOffset={120}
+            >
+              <StepSectionLabel title="IV — დასკვნა" />
+
+              <View style={styles.summaryCard}>
+                <Text style={styles.summaryTitle}>ჩეკლისტის შედეგები</Text>
+                <View style={styles.summaryCounts}>
+                  <View style={styles.countBadge}>
+                    <Ionicons name="checkmark-circle" size={18} color={theme.colors.semantic.success} />
+                    <Text style={[styles.countNumber, { color: theme.colors.semantic.success }]}>{counts.good}</Text>
+                    <Text style={styles.countLabel}>კარგი</Text>
+                  </View>
+                  <View style={styles.countBadge}>
+                    <Ionicons name="warning" size={18} color={theme.colors.warn} />
+                    <Text style={[styles.countNumber, { color: theme.colors.warn }]}>{counts.deficient}</Text>
+                    <Text style={styles.countLabel}>დეფიციტი</Text>
+                  </View>
+                  <View style={styles.countBadge}>
+                    <Ionicons name="close-circle" size={18} color={theme.colors.danger} />
+                    <Text style={[styles.countNumber, { color: theme.colors.danger }]}>{counts.unusable}</Text>
+                    <Text style={styles.countLabel}>გამოუსადეგარი</Text>
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.summaryCard}>
+                <Text style={styles.summaryTitle}>ტექნიკური მომსახურება</Text>
+                {inspection.maintenanceItems.map(item => {
+                  const entry = MAINTENANCE_ITEMS.find(e => e.id === item.id);
+                  if (!entry) return null;
+                  return (
+                    <View key={item.id} style={styles.maintenanceSummaryRow}>
+                      <Text style={styles.maintenanceSummaryLabel}>{entry.label}</Text>
+                      <Text style={[
+                        styles.maintenanceSummaryValue,
+                        item.answer === 'yes' && { color: theme.colors.semantic.success },
+                        item.answer === 'no' && { color: theme.colors.danger },
+                      ]}>
+                        {item.answer === 'yes' ? 'კი' : item.answer === 'no' ? 'არა' : '—'}
+                      </Text>
+                      {item.date ? (
+                        <Text style={styles.maintenanceSummaryDate}>{item.date}</Text>
+                      ) : null}
+                    </View>
+                  );
+                })}
+              </View>
 
               {showVerdictBanner && verdictSuggestion && (
                 <View style={styles.suggestionBanner}>
@@ -718,31 +959,33 @@ export default function ExcavatorInspectionScreen() {
                 multiline
                 numberOfLines={4}
               />
-            </KeyboardAwareScrollView>
-          )}
 
-          {/* ── Step N+2: Signature ─────────────────────────────────────── */}
-          {step === SIGNATURE_STEP && (
-            <KeyboardAwareScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24, gap: 12 }}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
-              showsVerticalScrollIndicator={false}
-              bottomOffset={120}
-            >
-              <StepSectionLabel title="V — შემომწმებელი" />
-
-              <FloatingLabelInput
-                label="სახელი / გვარი"
-                value={inspection.inspectorName ?? ''}
-                onChangeText={v => update('inspectorName', v || null)}
-              />
-              <FloatingLabelInput
-                label="თანამდებობა"
-                value={inspection.inspectorPosition ?? ''}
-                onChangeText={v => update('inspectorPosition', v || null)}
-              />
+              <StepSectionLabel title="ფოტოები" />
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ gap: 8, paddingVertical: 4 }}
+              >
+                {(inspection.summaryPhotos ?? []).map(path => (
+                  <View key={path} style={{ position: 'relative', width: 64, height: 64, borderRadius: 8, overflow: 'hidden' }}>
+                    <Image source={{ uri: path }} style={{ width: 64, height: 64 }} />
+                    <Pressable
+                      onPress={() => handleDeleteSummaryPhoto(path)}
+                      style={{ position: 'absolute', top: 2, right: 2, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 10, padding: 2 }}
+                      hitSlop={6}
+                    >
+                      <Ionicons name="close-circle" size={16} color="#fff" />
+                    </Pressable>
+                  </View>
+                ))}
+              </ScrollView>
+              <Pressable
+                onPress={handleAddSummaryPhoto}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, padding: 10, borderWidth: 1.5, borderStyle: 'dashed', borderColor: theme.colors.hairline, borderRadius: 8, alignSelf: 'flex-start' }}
+              >
+                <Ionicons name="camera-outline" size={18} color={theme.colors.accent} />
+                <Text style={{ fontSize: 13, color: theme.colors.accent }}>ფოტოს დამატება</Text>
+              </Pressable>
 
               <Pressable
                 style={[styles.sigArea, inspection.inspectorSignature && styles.sigAreaSigned]}
@@ -783,88 +1026,33 @@ export default function ExcavatorInspectionScreen() {
               )}
             </KeyboardAwareScrollView>
           )}
-
-          {/* ── Step N+3: Done ──────────────────────────────────────────── */}
-          {step === DONE_STEP && (
-            <KeyboardAwareScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24, gap: 12 }}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
-              showsVerticalScrollIndicator={false}
-              bottomOffset={120}
-            >
-              <View style={styles.doneHero}>
-                <Ionicons name="checkmark-circle" size={72} color={theme.colors.semantic.success} />
-                <Text style={styles.doneTitle}>შემოწმება დასრულდა!</Text>
-                {inspection.completedAt && (
-                  <Text style={styles.doneDate}>
-                    {new Date(inspection.completedAt).toLocaleDateString('ka-GE', {
-                      day: 'numeric', month: 'long', year: 'numeric',
-                    })}
-                  </Text>
-                )}
-                {inspection.verdict && (
-                  <View style={[
-                    styles.doneVerdict,
-                    inspection.verdict === 'approved'    && styles.doneVerdictGreen,
-                    inspection.verdict === 'conditional' && styles.doneVerdictAmber,
-                    inspection.verdict === 'rejected'    && styles.doneVerdictRed,
-                  ]}>
-                    <Text style={[
-                      styles.doneVerdictText,
-                      inspection.verdict === 'approved'    && { color: theme.colors.semantic.success },
-                      inspection.verdict === 'conditional' && { color: theme.colors.warn },
-                      inspection.verdict === 'rejected'    && { color: theme.colors.danger },
-                    ]}>
-                      {EXCAVATOR_VERDICT_LABEL[inspection.verdict].split(' — ')[0]}
-                    </Text>
-                  </View>
-                )}
-              </View>
-
-              <Button
-                title="PDF გენერირება / გაზიარება"
-                onPress={handlePdf}
-                loading={generatingPdf}
-                style={{ marginBottom: 12 }}
-              />
-              <Button
-                title="პროექტზე დაბრუნება"
-                variant="secondary"
-                onPress={() => router.back()}
-              />
-            </KeyboardAwareScrollView>
-          )}
         </WizardStepTransition>
 
-        {step < DONE_STEP && (
-          <View style={[styles.footer, { paddingBottom: 16 + insets.bottom }]}>
-            {step === SIGNATURE_STEP ? (
-              <Button
-                title="შენახვა და დასრულება"
-                style={{ paddingVertical: 14 }}
-                iconRight={<Ionicons name="checkmark" size={20} color={theme.colors.white} />}
-                loading={completing}
-                disabled={completing}
-                onPress={handleComplete}
-              />
-            ) : (
-              <Button
-                title={canGoNext ? 'შემდეგი' : 'გაგრძელება'}
-                variant={canGoNext ? 'primary' : 'secondary'}
-                size="lg"
-                style={{ alignSelf: 'stretch', paddingVertical: 16, justifyContent: 'center' }}
-                iconRight={
-                  canGoNext ? (
-                    <Ionicons name="chevron-forward" size={18} color={theme.colors.white} />
-                  ) : undefined
-                }
-                onPress={handleNext}
-              />
-            )}
-          </View>
-        )}
+        <View style={[styles.footer, { paddingBottom: 16 + insets.bottom }]}>
+          {step === CONCLUSION_STEP ? (
+            <Button
+              title="დასრულება"
+              style={{ paddingVertical: 14 }}
+              iconRight={<Ionicons name="checkmark" size={20} color={theme.colors.white} />}
+              loading={completing}
+              disabled={!canGoNext || completing}
+              onPress={handleComplete}
+            />
+          ) : (
+            <Button
+              title="შემდეგი"
+              variant={canGoNext ? 'primary' : 'secondary'}
+              size="lg"
+              style={{ alignSelf: 'stretch', paddingVertical: 16, justifyContent: 'center' }}
+              iconRight={
+                canGoNext ? (
+                  <Ionicons name="chevron-forward" size={18} color={theme.colors.white} />
+                ) : undefined
+              }
+              onPress={handleNext}
+            />
+          )}
+        </View>
       </KeyboardSafeArea>
 
       <SignatureCanvas
@@ -872,14 +1060,6 @@ export default function ExcavatorInspectionScreen() {
         personName={inspection.inspectorName ?? 'ინსპექტორი'}
         onCancel={() => setShowSig(false)}
         onConfirm={handleSignatureConfirm}
-      />
-
-      <ChecklistTour
-        visible={showTour}
-        onClose={() => {
-          setShowTour(false);
-          AsyncStorage.setItem(TOUR_SEEN_KEY, '1').catch(() => {});
-        }}
       />
     </View>
   );
@@ -1003,6 +1183,61 @@ function getstyles(theme: Theme) {
 
     fieldRow:   { marginBottom: 4, gap: 6 },
     fieldLabel: { fontSize: 12, fontWeight: '600', color: theme.colors.inkSoft },
+
+    sectionHeader: {
+      fontSize: 11, fontWeight: '700', color: theme.colors.inkSoft,
+      textTransform: 'uppercase', letterSpacing: 0.5,
+      marginTop: 16, marginBottom: 4, paddingHorizontal: 4,
+    },
+
+    listRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 4, gap: 8 },
+    listRowText: { flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
+    listRowNumber: { fontSize: 12, color: theme.colors.inkFaint, marginTop: 2, minWidth: 18 },
+    listRowLabel: { fontSize: 13, fontWeight: '600', color: theme.colors.ink, lineHeight: 18 },
+    listRowDesc: { fontSize: 11, color: theme.colors.inkSoft, lineHeight: 15, marginTop: 1 },
+    listRowActions: { flexDirection: 'row', gap: 6 },
+    statusBtn: {
+      width: 44, height: 44, borderRadius: 10, borderWidth: 1.5,
+      borderColor: theme.colors.hairline, alignItems: 'center', justifyContent: 'center',
+    },
+    statusBtnGoodActive: { backgroundColor: theme.colors.semantic.success, borderColor: theme.colors.semantic.success },
+    statusBtnDefActive:  { backgroundColor: theme.colors.warn, borderColor: theme.colors.warn },
+    statusBtnBadActive:  { backgroundColor: theme.colors.danger, borderColor: theme.colors.danger },
+
+    photoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingLeft: 32, paddingBottom: 8 },
+    photoThumbWrap: { position: 'relative', width: 44, height: 44, borderRadius: 6, overflow: 'hidden' },
+    photoThumb: { width: 44, height: 44 },
+    photoDelete: {
+      position: 'absolute', top: 2, right: 2,
+      backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 10,
+      width: 16, height: 16, alignItems: 'center', justifyContent: 'center',
+    },
+    photoAddBtn: {
+      width: 44, height: 44, borderRadius: 6,
+      borderWidth: 1, borderColor: theme.colors.hairline, borderStyle: 'dashed',
+      alignItems: 'center', justifyContent: 'center',
+    },
+
+    summaryCard: {
+      borderWidth: 1, borderColor: theme.colors.hairline,
+      borderRadius: 10, padding: 12, gap: 10, marginBottom: 12,
+    },
+    summaryTitle: {
+      fontSize: 12, fontWeight: '700', color: theme.colors.inkSoft,
+      textTransform: 'uppercase', letterSpacing: 0.5,
+    },
+    summaryCounts: { flexDirection: 'row', gap: 10, justifyContent: 'space-around' },
+    countBadge: { alignItems: 'center', gap: 2 },
+    countNumber: { fontSize: 18, fontWeight: '800', color: theme.colors.ink },
+    countLabel: { fontSize: 11, color: theme.colors.inkSoft },
+
+    maintenanceSummaryRow: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingVertical: 6, borderBottomWidth: 0.5, borderBottomColor: theme.colors.hairline,
+    },
+    maintenanceSummaryLabel: { flex: 1, fontSize: 12, color: theme.colors.inkSoft },
+    maintenanceSummaryValue: { fontSize: 12, fontWeight: '700', color: theme.colors.ink },
+    maintenanceSummaryDate: { fontSize: 11, color: theme.colors.inkFaint, marginLeft: 8 },
 
     suggestionBanner: {
       flexDirection: 'row', alignItems: 'center', gap: 6,

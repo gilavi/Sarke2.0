@@ -2,11 +2,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Pressable,
+  ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import WebView from 'react-native-webview';
 import * as ImagePicker from 'expo-image-picker';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,13 +22,12 @@ import { KeyboardSafeArea } from '../../../components/layout/KeyboardSafeArea';
 import { SignatureCanvas } from '../../../components/SignatureCanvas';
 import { WizardStepTransition } from '../../../components/wizard/WizardStepTransition';
 import { StepSectionLabel } from '../../../components/wizard/StepSectionLabel';
-import { ChecklistItemStep } from '../../../components/wizard/ChecklistItemStep';
-import { ChecklistTour, TOUR_SEEN_KEY } from '../../../components/wizard/ChecklistTour';
+// checklist list render is inline below
 import { FlowHeader } from '../../../components/FlowHeader';
 import { useTheme, type Theme } from '../../../lib/theme';
 import { useSession } from '../../../lib/session';
 import { useToast } from '../../../lib/toast';
-import { useBottomSheet } from '../../../components/BottomSheet';
+
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { bobcatApi } from '../../../lib/bobcatService';
 import { projectsApi } from '../../../lib/services';
@@ -61,8 +64,13 @@ export default function BobcatInspectionScreen() {
   const router = useRouter();
   const toast = useToast();
   const session = useSession();
-  const showSheet = useBottomSheet();
   const insets = useSafeAreaInsets();
+
+  const INFO_STEP = 0;
+  const CHECKLIST_STEP = 1;
+  const CONCLUSION_STEP = 2;
+  const TOTAL_STEPS = 3;
+  const STEP_LABELS = ['ინფო', 'შემოწმება', 'დასკვნა'];
 
   const [inspection, setInspection] = useState<BobcatInspection | null>(null);
   const [projectName, setProjectName] = useState('');
@@ -71,11 +79,12 @@ export default function BobcatInspectionScreen() {
   const [completing, setCompleting] = useState(false);
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [showSig, setShowSig] = useState(false);
-  const [showTour, setShowTour] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [previewBusy, setPreviewBusy] = useState(false);
 
-  // Step state: 0=info, 1..N=checklist items, N+1=summary, N+2=signature, N+3=done
-  const [step, setStep] = useState(0);
-  const prevStepRef = useRef(0);
+  // Step state: 0=info, 1=checklist list, 2=conclusion
+  const [step, setStep] = useState(INFO_STEP);
+  const prevStepRef = useRef(INFO_STEP);
   const [animateSteps, setAnimateSteps] = useState(false);
   const inspectionRef = useRef<BobcatInspection | null>(null);
   const animateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -89,16 +98,10 @@ export default function BobcatInspectionScreen() {
   const isLargeLoader = inspection?.templateId === LARGE_LOADER_TEMPLATE_ID;
   const screenTitle = isLargeLoader ? 'დიდი ციცხვიანი დამტვირთველი' : 'ციცხვიანი დამტვირთველი';
 
-  // Step layout
-  const CHECKLIST_START = 1;
-  const CHECKLIST_COUNT = catalog.length;
-  const SUMMARY_STEP = CHECKLIST_START + CHECKLIST_COUNT;
-  const SIGNATURE_STEP = SUMMARY_STEP + 1;
-  const DONE_STEP = SIGNATURE_STEP + 1;
-  const TOTAL_STEPS = DONE_STEP + 1;
-  const STEP_LABELS = ['ინფო', ...catalog.map((_, i) => `${i + 1}`), 'შეჯამება', 'ხელმოწ.'];
+
 
   const persistKey = useMemo(() => `bobcat-wizard:${id}:step`, [id]);
+  const summaryPhotosKey = useMemo(() => `bobcat-wizard:${id}:summaryPhotos`, [id]);
 
   // Direction for animations
   const direction: 'next' | 'prev' = step >= prevStepRef.current ? 'next' : 'prev';
@@ -127,6 +130,18 @@ export default function BobcatInspectionScreen() {
           if (name) patched = { ...patched, inspectorName: name };
         }
         setInspection(patched);
+
+        // Load summary photos from AsyncStorage
+        const savedPhotos = await AsyncStorage.getItem(summaryPhotosKey);
+        if (savedPhotos && !cancelled) {
+          try {
+            const parsed = JSON.parse(savedPhotos);
+            if (Array.isArray(parsed)) {
+              setInspection(prev => prev ? { ...prev, summaryPhotos: parsed } : prev);
+            }
+          } catch {}
+        }
+
         if (patched.inspectorName && patched.inspectorName !== insp.inspectorName) {
           bobcatApi.patch(patched.id, { inspectorName: patched.inspectorName }).catch(() => {});
         }
@@ -139,13 +154,13 @@ export default function BobcatInspectionScreen() {
         const loadedDoneStep = loadedSignatureStep + 1;
 
         if (insp.status === 'completed') {
-          setStep(loadedDoneStep);
+          // Will render result view instead of wizard
         } else {
           // Restore saved step
           const saved = await AsyncStorage.getItem(persistKey);
           if (saved && !cancelled) {
             const s = parseInt(saved, 10);
-            if (!isNaN(s) && s >= 0 && s <= loadedSignatureStep) {
+            if (!isNaN(s) && s >= INFO_STEP && s <= CONCLUSION_STEP) {
               setStep(s);
             }
           }
@@ -172,9 +187,7 @@ export default function BobcatInspectionScreen() {
           });
         }).catch(() => {});
 
-        // Show tour on first visit
-        const tourSeen = await AsyncStorage.getItem(TOUR_SEEN_KEY);
-        if (!tourSeen && !cancelled) setShowTour(true);
+
       } catch (e) {
         console.log('[Bobcat] load error:', e);
         if (!cancelled) {
@@ -199,10 +212,10 @@ export default function BobcatInspectionScreen() {
 
   // Persist step when in checklist range
   useEffect(() => {
-    if (step >= CHECKLIST_START && step <= SIGNATURE_STEP) {
+    if (step >= INFO_STEP && step <= CONCLUSION_STEP) {
       AsyncStorage.setItem(persistKey, String(step)).catch(() => {});
     }
-  }, [step, persistKey, CHECKLIST_START, SIGNATURE_STEP]);
+  }, [step, persistKey, INFO_STEP, CONCLUSION_STEP]);
 
   // ── Auto-save (debounced) ──────────────────────────────────────────────────
 
@@ -379,14 +392,13 @@ export default function BobcatInspectionScreen() {
       ).catch(() => {});
       setInspection(prev => prev ? { ...prev, status: 'completed', completedAt } : prev);
       await AsyncStorage.removeItem(persistKey);
-      setStep(DONE_STEP);
       toast.success('შემოწმება დასრულდა');
     } catch (e) {
       toast.error(friendlyError(e, 'შეცდომა'));
     } finally {
       setCompleting(false);
     }
-  }, [inspection, toast, persistKey, DONE_STEP]);
+  }, [inspection, toast, persistKey]);
 
   // ── PDF ────────────────────────────────────────────────────────────────────
 
@@ -413,75 +425,170 @@ export default function BobcatInspectionScreen() {
     }
   }, [inspection, projectName, catalog, isLargeLoader, toast]);
 
-  // ── Help sheet ─────────────────────────────────────────────────────────────
+  // ── Summary Photos ─────────────────────────────────────────────────────────
 
-  const showHelp = useCallback((entry: BobcatChecklistEntry) => {
-    showSheet({
-      dismissable: true,
-      content: ({ dismiss }) => (
-        <View style={helpStyles(theme).body}>
-          <Text style={helpStyles(theme).title}>{entry.label}</Text>
-          <Text style={helpStyles(theme).desc}>{entry.description}</Text>
-          {entry.helpText ? (
-            <Text style={helpStyles(theme).help}>{entry.helpText}</Text>
-          ) : null}
-          <Pressable
-            onPress={dismiss}
-            style={({ pressed }) => [helpStyles(theme).btn, pressed && { opacity: 0.8 }]}
-          >
-            <Text style={helpStyles(theme).btnText}>დახურვა</Text>
-          </Pressable>
-        </View>
-      ),
+  const handleAddSummaryPhoto = useCallback(() => {
+    Alert.alert('ფოტოს წყარო', undefined, [
+      {
+        text: 'კამერა',
+        onPress: async () => {
+          const perm = await ImagePicker.requestCameraPermissionsAsync();
+          if (!perm.granted) { toast.error('კამერაზე წვდომა დაუშვებულია'); return; }
+          const res = await ImagePicker.launchCameraAsync({ quality: 0.8 });
+          if (!res.canceled && res.assets[0]) await uploadSummaryPhoto(res.assets[0].uri);
+        },
+      },
+      {
+        text: 'გალერეა',
+        onPress: async () => {
+          const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+          if (!perm.granted) { toast.error('გალერეაზე წვდომა დაუშვებულია'); return; }
+          const res = await ImagePicker.launchImageLibraryAsync({ quality: 0.8 });
+          if (!res.canceled && res.assets[0]) await uploadSummaryPhoto(res.assets[0].uri);
+        },
+      },
+      { text: 'გაუქმება', style: 'cancel' },
+    ]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const uploadSummaryPhoto = async (uri: string) => {
+    const insp = inspectionRef.current;
+    if (!insp) return;
+    try {
+      const path = await bobcatApi.uploadSummaryPhoto(insp.id, uri);
+      setInspection(prev => {
+        if (!prev) return prev;
+        const next = { ...prev, summaryPhotos: [...(prev.summaryPhotos ?? []), path] };
+        AsyncStorage.setItem(summaryPhotosKey, JSON.stringify(next.summaryPhotos)).catch(() => {});
+        return next;
+      });
+    } catch (e) {
+      toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
+    }
+  };
+
+  const handleDeleteSummaryPhoto = useCallback(async (path: string) => {
+    try {
+      await bobcatApi.deletePhoto(path);
+    } catch (e) {
+      toast.error(friendlyError(e, 'ფოტოს წაშლა ვერ მოხერხდა'));
+      return;
+    }
+    setInspection(prev => {
+      if (!prev) return prev;
+      const next = { ...prev, summaryPhotos: (prev.summaryPhotos ?? []).filter(p => p !== path) };
+      AsyncStorage.setItem(summaryPhotosKey, JSON.stringify(next.summaryPhotos)).catch(() => {});
+      return next;
     });
-  }, [showSheet, theme]);
+  }, [summaryPhotosKey, toast]);
+
+  // ── PDF Preview ────────────────────────────────────────────────────────────
+
+  const buildPreview = useCallback(async () => {
+    if (!inspection) return;
+    setPreviewBusy(true);
+    try {
+      const html = await buildBobcatPdfHtml({
+        inspection,
+        projectName: projectName || 'პროექტი',
+        catalog,
+      });
+      setPreviewHtml(html);
+    } catch (e) {
+      toast.error(friendlyError(e, 'PDF ვერ შეიქმნა'));
+    } finally {
+      setPreviewBusy(false);
+    }
+  }, [inspection, projectName, catalog, toast]);
+
+  useEffect(() => {
+    if (inspection?.status === 'completed') {
+      buildPreview();
+    }
+  }, [inspection, buildPreview]);
 
   // ── Step navigation ────────────────────────────────────────────────────────
 
   const canGoNext = useMemo(() => {
-    if (!inspection || step >= DONE_STEP) return false;
-    if (step === 0) {
+    if (!inspection) return false;
+    if (step === INFO_STEP) {
       return !!inspection.company?.trim() && !!inspection.equipmentModel?.trim() && !!inspection.registrationNumber?.trim();
     }
-    if (step === SIGNATURE_STEP) return !!inspection.inspectorSignature && !completing;
+    if (step === CONCLUSION_STEP) return !!inspection.inspectorSignature && !completing;
     return true;
-  }, [step, inspection, completing, SIGNATURE_STEP, DONE_STEP]);
+  }, [step, inspection, completing, CONCLUSION_STEP]);
 
   const handleNext = useCallback(() => {
-    if (step === SIGNATURE_STEP) {
+    if (step === CONCLUSION_STEP) {
       handleComplete();
-    } else if (step < DONE_STEP) {
+    } else if (step < CONCLUSION_STEP) {
       setStep(s => s + 1);
     }
-  }, [step, SIGNATURE_STEP, DONE_STEP, handleComplete]);
+  }, [step, CONCLUSION_STEP, handleComplete]);
 
   const handlePrev = useCallback(() => {
-    if (step === DONE_STEP) {
+    if (step === INFO_STEP) {
       router.back();
-    } else if (step > 0) {
+    } else if (step > INFO_STEP) {
       setStep(s => s - 1);
     }
-  }, [step, DONE_STEP, router]);
+  }, [step, router]);
 
   // ── Render helpers ─────────────────────────────────────────────────────────
 
-  const renderChecklistItem = (itemIndex: number) => {
+  const renderChecklistList = () => {
     if (!inspection) return null;
-    const entry = catalog[itemIndex];
-    const state = inspection.items.find(i => i.id === entry.id)
-      ?? { id: entry.id, result: null, comment: null, photo_paths: [] };
-
     return (
-      <ChecklistItemStep
-        index={itemIndex}
-        total={CHECKLIST_COUNT}
-        catalog={entry}
-        state={state}
-        onChange={patch => updateItem(entry.id, patch)}
-        onAddPhoto={() => handleAddPhoto(entry.id)}
-        onDeletePhoto={path => handleDeletePhoto(entry.id, path)}
-        onHelp={() => showHelp(entry)}
-      />
+      <KeyboardAwareScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24, gap: 8 }}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        showsVerticalScrollIndicator={false}
+        bottomOffset={120}
+      >
+        {catalog.map((entry, idx) => {
+          const state = inspection.items.find(i => i.id === entry.id)
+            ?? { id: entry.id, result: null, comment: null, photo_paths: [] };
+          const active = state.result;
+          return (
+            <View key={entry.id} style={styles.listRow}>
+              <View style={styles.listRowInfo}>
+                <Text style={styles.listRowLabel} numberOfLines={1}>
+                  {idx + 1}. {entry.label}
+                </Text>
+                <Text style={styles.listRowDesc} numberOfLines={2}>
+                  {entry.description}
+                </Text>
+              </View>
+              <View style={styles.listRowActions}>
+                <Pressable
+                  style={[styles.statusBtn, active === 'good' && styles.statusBtnGood]}
+                  onPress={() => updateItem(entry.id, { result: active === 'good' ? null : 'good' })}
+                  hitSlop={6}
+                >
+                  <Text style={[styles.statusBtnText, active === 'good' && styles.statusBtnTextActive]}>✓</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.statusBtn, active === 'deficient' && styles.statusBtnWarn]}
+                  onPress={() => updateItem(entry.id, { result: active === 'deficient' ? null : 'deficient' })}
+                  hitSlop={6}
+                >
+                  <Text style={[styles.statusBtnText, active === 'deficient' && styles.statusBtnTextActive]}>⚠</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.statusBtn, active === 'unusable' && styles.statusBtnBad]}
+                  onPress={() => updateItem(entry.id, { result: active === 'unusable' ? null : 'unusable' })}
+                  hitSlop={6}
+                >
+                  <Text style={[styles.statusBtnText, active === 'unusable' && styles.statusBtnTextActive]}>✗</Text>
+                </Pressable>
+              </View>
+            </View>
+          );
+        })}
+      </KeyboardAwareScrollView>
     );
   };
 
@@ -492,6 +599,61 @@ export default function BobcatInspectionScreen() {
       <View style={[styles.root, styles.centred]}>
         <Stack.Screen options={{ headerShown: true, title: 'შემოწმება' }} />
         <Text style={{ color: theme.colors.inkSoft }}>იტვირთება…</Text>
+      </View>
+    );
+  }
+
+  // ── Completed inspection result view ───────────────────────────────────────
+  if (inspection.status === 'completed') {
+    return (
+      <View style={{ flex: 1, backgroundColor: theme.colors.card }}>
+        <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
+        <FlowHeader
+          flowTitle={screenTitle}
+          project={projectName ? { name: projectName } : null}
+          leading="back"
+          onBack={() => router.back()}
+          trailingElement={
+            <Pressable
+              onPress={handlePdf}
+              disabled={generatingPdf}
+              hitSlop={10}
+              {...a11y('PDF', 'PDF დოკუმენტის გენერირება', 'button')}
+            >
+              <Ionicons
+                name={generatingPdf ? 'hourglass-outline' : 'document-text-outline'}
+                size={22}
+                color={theme.colors.accent}
+              />
+            </Pressable>
+          }
+        />
+        <View style={{ flex: 1, backgroundColor: theme.colors.subtleSurface }}>
+          {previewBusy && !previewHtml ? (
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+              <ActivityIndicator size="large" color={theme.colors.accent} />
+              <Text style={{ color: theme.colors.inkSoft }}>PDF-ის მომზადება…</Text>
+            </View>
+          ) : previewHtml ? (
+            <WebView
+              originWhitelist={['*']}
+              source={{ html: previewHtml }}
+              style={{ flex: 1, backgroundColor: '#fff' }}
+              scalesPageToFit
+              javaScriptEnabled={false}
+              domStorageEnabled={false}
+            />
+          ) : null}
+        </View>
+        <SafeAreaView edges={['bottom']} style={{ backgroundColor: theme.colors.surface, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.colors.hairline }}>
+          <View style={{ paddingHorizontal: 12, paddingTop: 8, paddingBottom: 8 }}>
+            <Button
+              title="PDF გენერირება / გაზიარება"
+              onPress={handlePdf}
+              loading={generatingPdf}
+            />
+          </View>
+        </SafeAreaView>
       </View>
     );
   }
@@ -609,13 +771,11 @@ export default function BobcatInspectionScreen() {
             </KeyboardAwareScrollView>
           )}
 
-          {/* ── Steps 1..N: Checklist items ─────────────────────────────── */}
-          {step >= CHECKLIST_START && step < SUMMARY_STEP && (
-            renderChecklistItem(step - CHECKLIST_START)
-          )}
+          {/* ── Step 1: Checklist list ──────────────────────────────────── */}
+          {step === CHECKLIST_STEP && renderChecklistList()}
 
-          {/* ── Step N+1: Summary + Verdict ─────────────────────────────── */}
-          {step === SUMMARY_STEP && (
+          {/* ── Step 2: Conclusion (summary + verdict + notes + signature) ─ */}
+          {step === CONCLUSION_STEP && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
               contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24, gap: 12 }}
@@ -692,19 +852,34 @@ export default function BobcatInspectionScreen() {
                 multiline
                 numberOfLines={4}
               />
-            </KeyboardAwareScrollView>
-          )}
 
-          {/* ── Step N+2: Signature ─────────────────────────────────────── */}
-          {step === SIGNATURE_STEP && (
-            <KeyboardAwareScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24, gap: 12 }}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
-              showsVerticalScrollIndicator={false}
-              bottomOffset={120}
-            >
+              <StepSectionLabel title="ფოტოები" />
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ gap: 8, paddingVertical: 4 }}
+              >
+                {(inspection.summaryPhotos ?? []).map(path => (
+                  <View key={path} style={{ position: 'relative', width: 64, height: 64, borderRadius: 8, overflow: 'hidden' }}>
+                    <Image source={{ uri: path }} style={{ width: 64, height: 64 }} />
+                    <Pressable
+                      onPress={() => handleDeleteSummaryPhoto(path)}
+                      style={{ position: 'absolute', top: 2, right: 2, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 10, padding: 2 }}
+                      hitSlop={6}
+                    >
+                      <Ionicons name="close-circle" size={16} color="#fff" />
+                    </Pressable>
+                  </View>
+                ))}
+              </ScrollView>
+              <Pressable
+                onPress={handleAddSummaryPhoto}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, padding: 10, borderWidth: 1.5, borderStyle: 'dashed', borderColor: theme.colors.hairline, borderRadius: 8, alignSelf: 'flex-start' }}
+              >
+                <Ionicons name="camera-outline" size={18} color={theme.colors.accent} />
+                <Text style={{ fontSize: 13, color: theme.colors.accent }}>ფოტოს დამატება</Text>
+              </Pressable>
+
               <StepSectionLabel title="ინსპექტორის ხელმოწერა" />
               <Pressable
                 style={[styles.sigArea, inspection.inspectorSignature && styles.sigAreaSigned]}
@@ -745,88 +920,33 @@ export default function BobcatInspectionScreen() {
               )}
             </KeyboardAwareScrollView>
           )}
-
-          {/* ── Step N+3: Done ──────────────────────────────────────────── */}
-          {step === DONE_STEP && (
-            <KeyboardAwareScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24, gap: 12 }}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
-              showsVerticalScrollIndicator={false}
-              bottomOffset={120}
-            >
-              <View style={styles.doneHero}>
-                <Ionicons name="checkmark-circle" size={72} color={theme.colors.semantic.success} />
-                <Text style={styles.doneTitle}>შემოწმება დასრულდა!</Text>
-                {inspection.completedAt && (
-                  <Text style={styles.doneDate}>
-                    {new Date(inspection.completedAt).toLocaleDateString('ka-GE', {
-                      day: 'numeric', month: 'long', year: 'numeric',
-                    })}
-                  </Text>
-                )}
-                {inspection.verdict && (
-                  <View style={[
-                    styles.doneVerdict,
-                    inspection.verdict === 'approved' && styles.doneVerdictGreen,
-                    inspection.verdict === 'limited'  && styles.doneVerdictAmber,
-                    inspection.verdict === 'rejected' && styles.doneVerdictRed,
-                  ]}>
-                    <Text style={[
-                      styles.doneVerdictText,
-                      inspection.verdict === 'approved' && { color: theme.colors.semantic.success },
-                      inspection.verdict === 'limited'  && { color: theme.colors.warn },
-                      inspection.verdict === 'rejected' && { color: theme.colors.danger },
-                    ]}>
-                      {VERDICT_LABEL[inspection.verdict].split(' — ')[0]}
-                    </Text>
-                  </View>
-                )}
-              </View>
-
-              <Button
-                title="PDF გენერირება / გაზიარება"
-                onPress={handlePdf}
-                loading={generatingPdf}
-                style={{ marginBottom: 12 }}
-              />
-              <Button
-                title="პროექტზე დაბრუნება"
-                variant="secondary"
-                onPress={() => router.back()}
-              />
-            </KeyboardAwareScrollView>
-          )}
         </WizardStepTransition>
 
-        {step < DONE_STEP && (
-          <View style={[styles.footer, { paddingBottom: 16 + insets.bottom }]}>
-            {step === SIGNATURE_STEP ? (
-              <Button
-                title="შენახვა და დასრულება"
-                style={{ paddingVertical: 14 }}
-                iconRight={<Ionicons name="checkmark" size={20} color={theme.colors.white} />}
-                loading={completing}
-                disabled={completing}
-                onPress={handleComplete}
-              />
-            ) : (
-              <Button
-                title={canGoNext ? 'შემდეგი' : 'გაგრძელება'}
-                variant={canGoNext ? 'primary' : 'secondary'}
-                size="lg"
-                style={{ alignSelf: 'stretch', paddingVertical: 16, justifyContent: 'center' }}
-                iconRight={
-                  canGoNext ? (
-                    <Ionicons name="chevron-forward" size={18} color={theme.colors.white} />
-                  ) : undefined
-                }
-                onPress={handleNext}
-              />
-            )}
-          </View>
-        )}
+        <View style={[styles.footer, { paddingBottom: 16 + insets.bottom }]}>
+          {step === CONCLUSION_STEP ? (
+            <Button
+              title="შენახვა და დასრულება"
+              style={{ paddingVertical: 14 }}
+              iconRight={<Ionicons name="checkmark" size={20} color={theme.colors.white} />}
+              loading={completing}
+              disabled={completing}
+              onPress={handleComplete}
+            />
+          ) : (
+            <Button
+              title={canGoNext ? 'შემდეგი' : 'გაგრძელება'}
+              variant={canGoNext ? 'primary' : 'secondary'}
+              size="lg"
+              style={{ alignSelf: 'stretch', paddingVertical: 16, justifyContent: 'center' }}
+              iconRight={
+                canGoNext ? (
+                  <Ionicons name="chevron-forward" size={18} color={theme.colors.white} />
+                ) : undefined
+              }
+              onPress={handleNext}
+            />
+          )}
+        </View>
       </KeyboardSafeArea>
 
       <SignatureCanvas
@@ -836,66 +956,9 @@ export default function BobcatInspectionScreen() {
         onConfirm={handleSignatureConfirm}
       />
 
-      <ChecklistTour
-        visible={showTour}
-        onClose={() => {
-          setShowTour(false);
-          AsyncStorage.setItem(TOUR_SEEN_KEY, '1').catch(() => {});
-        }}
-      />
+
     </View>
   );
-}
-
-// ── Help sheet styles ────────────────────────────────────────────────────────
-
-function helpStyles(theme: Theme) {
-  return StyleSheet.create({
-    body: {
-      alignItems: 'center',
-      paddingVertical: 8,
-      gap: 14,
-    },
-    title: {
-      fontSize: 18,
-      fontWeight: '800',
-      color: theme.colors.ink,
-      textAlign: 'center',
-    },
-    desc: {
-      fontSize: 14,
-      color: theme.colors.inkSoft,
-      textAlign: 'center',
-      lineHeight: 20,
-      paddingHorizontal: 8,
-    },
-    help: {
-      fontSize: 13,
-      color: theme.colors.ink,
-      textAlign: 'center',
-      lineHeight: 20,
-      paddingHorizontal: 12,
-      backgroundColor: theme.colors.subtleSurface,
-      paddingVertical: 10,
-      borderRadius: 10,
-      alignSelf: 'stretch',
-    },
-    btn: {
-      marginTop: 4,
-      alignSelf: 'stretch',
-      paddingVertical: 14,
-      borderRadius: 12,
-      borderWidth: 1.5,
-      borderColor: theme.colors.accent,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    btnText: {
-      fontSize: 15,
-      fontWeight: '700',
-      color: theme.colors.accent,
-    },
-  });
 }
 
 // ── Screen styles ────────────────────────────────────────────────────────────
@@ -1003,5 +1066,34 @@ function getstyles(theme: Theme) {
     doneVerdictAmber: { borderColor: theme.colors.warn, backgroundColor: theme.colors.warnSoft },
     doneVerdictRed:   { borderColor: theme.colors.dangerBorder, backgroundColor: theme.colors.dangerTint },
     doneVerdictText:  { fontSize: 13, fontWeight: '700' },
+
+    // List row styles
+    listRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 12,
+      borderRadius: 10,
+      backgroundColor: theme.colors.card,
+      borderWidth: 1,
+      borderColor: theme.colors.hairline,
+      gap: 10,
+    },
+    listRowInfo: { flex: 1, gap: 2 },
+    listRowLabel: { fontSize: 13, fontWeight: '600', color: theme.colors.ink },
+    listRowDesc: { fontSize: 11, color: theme.colors.inkSoft, lineHeight: 16 },
+    listRowActions: { flexDirection: 'row', gap: 6 },
+    statusBtn: {
+      width: 44, height: 44,
+      borderRadius: 8,
+      borderWidth: 1.5,
+      borderColor: theme.colors.hairline,
+      backgroundColor: theme.colors.card,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    statusBtnGood: { backgroundColor: theme.colors.semantic.successSoft, borderColor: theme.colors.semantic.success },
+    statusBtnWarn: { backgroundColor: theme.colors.warnSoft, borderColor: theme.colors.warn },
+    statusBtnBad:  { backgroundColor: theme.colors.dangerTint, borderColor: theme.colors.dangerBorder },
+    statusBtnText: { fontSize: 18, color: theme.colors.inkSoft },
+    statusBtnTextActive: { fontWeight: '700' },
   });
 }

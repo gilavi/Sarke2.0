@@ -205,6 +205,22 @@ export const excavatorApi = {
     return ((data ?? []) as DbRow[]).map(toModel);
   },
 
+  uploadSummaryPhoto: async (
+    inspectionId: string,
+    photoUri: string,
+  ): Promise<string> => {
+    const uuid = Crypto.randomUUID();
+    const path = `excavator/${inspectionId}/summary/${uuid}.jpg`;
+    await storageApi.uploadFromUri(
+      STORAGE_BUCKETS.answerPhotos,
+      path,
+      photoUri,
+      'image/jpeg',
+      'inspection',
+    );
+    return path;
+  },
+
   deletePhoto: async (path: string): Promise<void> => {
     await storageApi.remove(STORAGE_BUCKETS.answerPhotos, path)
       .catch((e) => logError(e, 'excavator.deletePhoto'));

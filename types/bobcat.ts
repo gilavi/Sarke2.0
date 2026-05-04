@@ -39,6 +39,7 @@ export interface BobcatInspection {
   notes: string | null;
   // Section V
   inspectorSignature: string | null;
+  summaryPhotos?: string[];
   completedAt: string | null;
   createdAt: string;
   updatedAt: string;
