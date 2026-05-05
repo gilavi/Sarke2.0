@@ -475,6 +475,7 @@ export default function QuestionnaireWizard() {
   // benign double-fire.
   useEffect(() => {
     if (id) void load();
+    return () => { loadCtrlRef.current.cancelled = true; };
   }, [id]);
 
   useFocusEffect(

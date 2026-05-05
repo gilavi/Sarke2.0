@@ -29,13 +29,16 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 // is backgrounded, then fires a burst of network calls on resume. Bind it to
 // AppState so it pauses on background and resumes on active — cleaner foreground
 // handover, no "mushy" stall right after the app comes back.
-AppState.addEventListener('change', (next: AppStateStatus) => {
-  if (next === 'active') {
-    supabase.auth.startAutoRefresh();
-  } else {
-    supabase.auth.stopAutoRefresh();
-  }
-});
+let appStateSub: ReturnType<typeof AppState.addEventListener> | null = null;
+if (!appStateSub) {
+  appStateSub = AppState.addEventListener('change', (next: AppStateStatus) => {
+    if (next === 'active') {
+      supabase.auth.startAutoRefresh();
+    } else {
+      supabase.auth.stopAutoRefresh();
+    }
+  });
+}
 
 export const STORAGE_BUCKETS = {
   certificates: 'certificates',

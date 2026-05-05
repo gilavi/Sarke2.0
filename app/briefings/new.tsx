@@ -50,7 +50,9 @@ export default function NewBriefingScreen() {
   const [project, setProject] = useState<Project | null>(null);
   useEffect(() => {
     if (!projectId) return;
-    projectsApi.getById(projectId).then(setProject).catch(() => null);
+    let mounted = true;
+    projectsApi.getById(projectId).then(p => { if (mounted) setProject(p); }).catch(() => null);
+    return () => { mounted = false; };
   }, [projectId]);
 
   // ── Date/time state ──

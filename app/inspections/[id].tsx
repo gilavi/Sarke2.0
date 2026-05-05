@@ -9,7 +9,7 @@
 // The preview is regenerated whenever a sheet saves a change, so the inspector
 // always sees the current state of the PDF.
 
-import { createElement, useCallback, useEffect, useMemo, useState } from 'react';
+import { createElement, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Platform,
@@ -93,6 +93,7 @@ export default function InspectionResultScreen() {
   const [downloading, setDownloading] = useState(false);
   const [redirectBlocked, setRedirectBlocked] = useState(false);
   const [loadTimedOut, setLoadTimedOut] = useState(false);
+  const mountedRef = useRef(true);
 
   // React Query hooks seed cached data instantly so skeletons disappear faster.
   // loadAll() below still runs on mount for nested photo / attachment data.
@@ -112,19 +113,21 @@ export default function InspectionResultScreen() {
 
   const loadAll = useCallback(async () => {
     if (!id) {
-      setLoading(false);
+      if (mountedRef.current) setLoading(false);
       return;
     }
-    setLoading(true);
-    setLoadError(null);
-    setNotFound(false);
+    if (mountedRef.current) {
+      setLoading(true);
+      setLoadError(null);
+      setNotFound(false);
+    }
     try {
       const insp = await inspectionsApi.getById(id);
       if (!insp) {
-        setNotFound(true);
+        if (mountedRef.current) setNotFound(true);
         return;
       }
-      setInspection(insp);
+      if (mountedRef.current) setInspection(insp);
       if (insp.status === 'draft' && !redirectBlocked) {
         const tpl = await templatesApi.getById(insp.template_id).catch(() => null);
         const target =
@@ -133,7 +136,7 @@ export default function InspectionResultScreen() {
           tpl?.category === 'general_equipment' ? `general-equipment/${insp.id}` :
           `${insp.id}/wizard`;
         if (isOscillating('detail', target)) {
-          setRedirectBlocked(true);
+          if (mountedRef.current) setRedirectBlocked(true);
           console.log('[InspectionResult] oscillation detected — blocking redirect to', target);
         } else {
           recordRedirect('detail', target);
@@ -149,28 +152,32 @@ export default function InspectionResultScreen() {
           .listByInspection(insp.id)
           .catch(() => [] as InspectionAttachment[]),
       ]);
-      setTemplate(tpl);
-      setProject(proj);
-      setSignatures(sigs);
-      setAttachments(atts);
-      if (tpl) {
+      if (mountedRef.current) {
+        setTemplate(tpl);
+        setProject(proj);
+        setSignatures(sigs);
+        setAttachments(atts);
+      }
+      if (tpl && mountedRef.current) {
         const [qs, ans] = await Promise.all([
           templatesApi.questions(tpl.id).catch(() => [] as Question[]),
           answersApi.list(insp.id).catch(() => [] as Answer[]),
         ]);
-        setQuestions(qs);
-        setAnswers(ans);
-        if (ans.length > 0) {
+        if (mountedRef.current) {
+          setQuestions(qs);
+          setAnswers(ans);
+        }
+        if (ans.length > 0 && mountedRef.current) {
           const photoMap = await answersApi
             .photosByAnswerIds(ans.map(a => a.id))
             .catch(() => ({} as Record<string, AnswerPhoto[]>));
-          setPhotosByAnswer(photoMap);
+          if (mountedRef.current) setPhotosByAnswer(photoMap);
         }
       }
     } catch (e) {
-      setLoadError(e);
+      if (mountedRef.current) setLoadError(e);
     } finally {
-      setLoading(false);
+      if (mountedRef.current) setLoading(false);
     }
   }, [id, router]);
 
@@ -178,7 +185,9 @@ export default function InspectionResultScreen() {
   // back-navigation. Cached data from the hooks above renders instantly;
   // loadAll() fills in nested photo / attachment data on first paint.
   useEffect(() => {
+    mountedRef.current = true;
     void loadAll();
+    return () => { mountedRef.current = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
