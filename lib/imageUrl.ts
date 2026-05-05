@@ -34,17 +34,28 @@ import { blobToDataUrl } from './blob';
  * (the network layer fetches it). Falls back to an authenticated download as
  * a data: URL, then to the public URL. Always returns a string.
  */
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('timeout')), ms);
+    promise.then(
+      val => { clearTimeout(timer); resolve(val); },
+      err => { clearTimeout(timer); reject(err); }
+    );
+  });
+}
+
 export async function imageForDisplay(
   bucket: string,
   path: string,
+  timeoutMs: number = 8000,
 ): Promise<string> {
   try {
-    return await storageApi.signedUrl(bucket, path, 3600);
+    return await withTimeout(storageApi.signedUrl(bucket, path, 3600), timeoutMs);
   } catch {
     // fall through
   }
   try {
-    const blob = await storageApi.download(bucket, path);
+    const blob = await withTimeout(storageApi.download(bucket, path), timeoutMs);
     return await blobToDataUrl(blob);
   } catch {
     // fall through

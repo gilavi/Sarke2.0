@@ -2161,7 +2161,7 @@ function PhotoPreviewModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
 
-  useEffect(() => {
+  const loadUri = useCallback(() => {
     if (!photo) {
       setUri(null);
       setError(false);
@@ -2170,6 +2170,8 @@ function PhotoPreviewModal({
     const isLocal = /^(file|content|ph|asset):\/\//.test(photo.storage_path);
     if (isLocal) {
       setUri(photo.storage_path);
+      setLoading(false);
+      setError(false);
       return;
     }
     setLoading(true);
@@ -2179,11 +2181,19 @@ function PhotoPreviewModal({
       .then(url => { if (!cancelled) setUri(url); })
       .catch((e) => {
         logError(e, 'wizard.photoDisplayUrl');
-        if (!cancelled) setUri(storageApi.publicUrl(STORAGE_BUCKETS.answerPhotos, photo.storage_path));
+        if (!cancelled) {
+          setUri(storageApi.publicUrl(STORAGE_BUCKETS.answerPhotos, photo.storage_path));
+          setError(true);
+        }
       })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [photo]);
+
+  useEffect(() => {
+    const cleanup = loadUri();
+    return cleanup;
+  }, [loadUri]);
 
   if (!visible || !photo) return null;
 
@@ -2199,6 +2209,9 @@ function PhotoPreviewModal({
           <View style={[styles.previewImage, { alignItems: 'center', justifyContent: 'center', gap: 12 }]}>
             <Ionicons name="image-outline" size={48} color="rgba(255,255,255,0.5)" />
             <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14 }}>ფოტო ვერ ჩაიტვირთა</Text>
+            <Pressable onPress={loadUri} style={{ padding: 8 }} {...a11y('თავიდან ცდა', 'შეეხეთ ფოტოს ხელახლა ჩასატვირთად', 'button')}>
+              <Ionicons name="refresh" size={28} color="rgba(255,255,255,0.7)" />
+            </Pressable>
           </View>
         ) : (
           <Image
