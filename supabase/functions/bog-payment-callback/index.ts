@@ -75,12 +75,22 @@ Deno.serve(async (req) => {
     }
 
     const order = await verifyRes.json();
+    console.log('BOG order verify response:', JSON.stringify(order));
 
     // external_order_id was set to the user's Supabase userId when the order was created
     const userId: string = order.external_order_id;
     if (!userId) return json({ error: 'missing external_order_id in order' }, 400);
 
-    const paymentStatus: string = order.payment_status ?? order.status;
+    // BOG returns order_status as { key, value } where key is e.g. "completed".
+    // Old code looked at order.payment_status (doesn't exist), so the callback
+    // always no-op'd and the user stayed on the free tier even after paying.
+    const paymentStatus: string =
+      order.order_status?.key ??
+      order.order_status ??
+      order.payment_status ??
+      order.status ??
+      'unknown';
+
     if (paymentStatus !== 'completed') {
       // Not yet paid — BOG may call this webhook multiple times
       return json({ ok: true, status: paymentStatus });
