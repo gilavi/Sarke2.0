@@ -137,7 +137,7 @@ export default function InspectionResultScreen() {
           `${insp.id}/wizard`;
         if (isOscillating('detail', target)) {
           if (mountedRef.current) setRedirectBlocked(true);
-          console.log('[InspectionResult] oscillation detected — blocking redirect to', target);
+          /* oscillation detected — blocking redirect */
         } else {
           recordRedirect('detail', target);
           router.replace(`/inspections/${target}` as any);

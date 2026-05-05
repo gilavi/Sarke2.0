@@ -136,7 +136,9 @@ async function readQueue(): Promise<QueueOp[]> {
   const raw = await AsyncStorage.getItem(QUEUE_KEY);
   if (!raw) return [];
   try {
-    return JSON.parse(raw) as QueueOp[];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed as QueueOp[];
   } catch (e) {
     logError(e, 'offline.readQueue.parse');
     return [];
@@ -151,7 +153,9 @@ async function readFailedQueue(): Promise<QueueOp[]> {
   const raw = await AsyncStorage.getItem(FAILED_QUEUE_KEY);
   if (!raw) return [];
   try {
-    return JSON.parse(raw) as QueueOp[];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed as QueueOp[];
   } catch (e) {
     logError(e, 'offline.readFailedQueue.parse');
     return [];

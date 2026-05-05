@@ -120,7 +120,7 @@ export default function MoreScreen() {
         {/* Profile */}
         <Card style={{ marginHorizontal: 16 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-            <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+            <Image source={{ uri: avatarUrl }} style={styles.avatar} contentFit="cover" />
             <View style={{ flex: 1 }}>
               <Text style={{ fontWeight: '600', fontSize: 17, color: theme.colors.ink }}>
                 {`${user?.first_name ?? ''} ${user?.last_name ?? ''}`.trim() || '—'}

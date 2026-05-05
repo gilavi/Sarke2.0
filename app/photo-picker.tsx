@@ -33,7 +33,7 @@ const MemoizedAssetItem = memo(function AssetItem({ item, onPress, disabled }: {
       style={styles.thumb}
       disabled={disabled}
     >
-      <Image source={{ uri: item.uri }} style={StyleSheet.absoluteFillObject} />
+      <Image source={{ uri: item.uri }} style={StyleSheet.absoluteFillObject} contentFit="cover" />
     </Pressable>
   );
 });

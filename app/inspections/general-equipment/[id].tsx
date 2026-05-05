@@ -103,17 +103,14 @@ export default function GeneralEquipmentScreen() {
 
   useEffect(() => {
     if (!id) {
-      console.log('[GE] no id, skipping load');
       return;
     }
-    console.log('[GE] loading inspection:', id);
     let cancelled = false;
     (async () => {
       try {
         const insp = await generalEquipmentApi.getById(id);
-        console.log('[GE] loaded:', insp ? 'found' : 'null', 'cancelled:', cancelled);
         if (cancelled) return;
-        if (!insp) { console.log('[GE] inspection not found, going back'); router.back(); return; }
+        if (!insp) { router.back(); return; }
 
         let patched = insp;
         if (session.state.status === 'signedIn') {
@@ -135,14 +132,12 @@ export default function GeneralEquipmentScreen() {
           setProjectName(p.company_name || p.name);
         }).catch(() => {});
       } catch (e) {
-        console.log('[GE] load error:', e);
         if (!cancelled) {
           toast.error(friendlyError(e, 'ვერ ჩაიტვირთა'));
           router.back();
         }
       } finally {
         if (!cancelled) {
-          console.log('[GE] load complete, setting loading=false');
           setLoading(false);
           animateTimeoutRef.current = setTimeout(() => setAnimateSteps(true), 50);
         }

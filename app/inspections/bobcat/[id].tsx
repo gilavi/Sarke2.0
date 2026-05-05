@@ -116,17 +116,14 @@ export default function BobcatInspectionScreen() {
 
   useEffect(() => {
     if (!id) {
-      console.log('[Bobcat] no id, skipping load');
       return;
     }
-    console.log('[Bobcat] loading inspection:', id);
     let cancelled = false;
     (async () => {
       try {
         const insp = await bobcatApi.getById(id);
-        console.log('[Bobcat] loaded:', insp ? 'found' : 'null', 'cancelled:', cancelled);
         if (cancelled) return;
-        if (!insp) { console.log('[Bobcat] inspection not found, going back'); router.back(); return; }
+        if (!insp) { router.back(); return; }
 
         let patched = insp;
         if (!insp.inspectorName && session.state.status === 'signedIn') {
@@ -194,14 +191,12 @@ export default function BobcatInspectionScreen() {
 
 
       } catch (e) {
-        console.log('[Bobcat] load error:', e);
         if (!cancelled) {
           toast.error(friendlyError(e, 'ვერ ჩაიტვირთა'));
           router.back();
         }
       } finally {
         if (!cancelled) {
-          console.log('[Bobcat] load complete, setting loading=false');
           setLoading(false);
           // Enable animations after load to avoid animation on restored step
           animateTimeoutRef.current = setTimeout(() => setAnimateSteps(true), 50);

@@ -290,6 +290,7 @@ export default function QuestionnaireWizard() {
         useNativeDriver: true,
       }).start();
     }
+    return () => { enterAnim.stopAnimation(); };
   }, [loading, enterAnim]);
 
   // Cancellation token for in-flight load(). Each load() run gets its own
@@ -868,11 +869,8 @@ export default function QuestionnaireWizard() {
   // which let the conclusion form flash with empty isSafe/conclusion values
   // for ~100-200 ms while answers were still hydrating.
   const ready = !loading && !!questionnaire && !!template;
-  console.log('[Wizard] render — loading:', loading, 'ready:', ready, 'stepIndex:', stepIndex, 'steps:', steps.length, 'step:', step?.kind, 'template:', template?.category);
-
   // Early return — absolutely NO form elements render while data is missing.
   if (!ready) {
-    console.log('[Wizard] not ready — loading:', loading, 'questionnaire:', !!questionnaire, 'template:', !!template, 'questions:', questions.length);
     if (loadTimedOut) {
       return <NavigationRecovery id={id} onRetry={() => { setLoadTimedOut(false); setLoading(true); load(); }} />;
     }
@@ -892,11 +890,9 @@ export default function QuestionnaireWizard() {
   // Completed inspection → bounce to the dedicated detail screen. The
   // redirect fires in an effect so we don't mutate navigation during render.
   if (questionnaire?.status === 'completed') {
-    console.log('[Wizard] completed — redirecting');
     if (!isOscillating('wizard', 'detail')) {
       return <CompletedRedirect id={questionnaire.id} />;
     }
-    console.log('[Wizard] oscillation detected — staying on wizard');
   }
 
   const stepAnswered = hasAnswer(step, answers, photos, conclusion, isSafe, harnessName, template);
@@ -911,13 +907,10 @@ export default function QuestionnaireWizard() {
   const isScaffoldRow = step.kind === 'gridRow' && (step.question.grid_rows?.[0] ?? '') !== 'N1';
 
 
-  console.log('[Wizard] ready-render — step:', step.kind, 'isYesNo:', isYesNo, 'isLast:', isLast, 'isScaffoldRow:', isScaffoldRow);
-
   // HarnessListFlow: full-screen takeover for harness templates.
   // Render it directly without Screen wrapper — HarnessListFlow owns its own
   // SafeAreaView and layout; nesting inside Screen causes double insets.
   if (step.kind === 'harnessFlow') {
-    console.log('[Wizard] → harnessFlow branch');
     return (
       <View style={{ flex: 1, backgroundColor: theme.colors.card }}>
         <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
@@ -2118,6 +2111,7 @@ const PhotoThumb = memo(function PhotoThumb({ photo, size = 80 }: { photo: Answe
 
   useEffect(() => {
     void load();
+    return () => { fadeAnim.stopAnimation(); };
   }, [load]);
 
   const containerStyle = [styles.photoThumb, { width: size, height: size }];

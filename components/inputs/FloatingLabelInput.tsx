@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   KeyboardTypeOptions,
@@ -87,6 +87,8 @@ export const FloatingLabelInput = React.forwardRef<TextInput, FloatingLabelInput
         }).start();
       }
     };
+
+    useEffect(() => () => { floatAnim.stopAnimation(); }, []);
 
     // Keep label floated when value is set externally (e.g. pre-filled edit form)
     const prevValue = useRef(value);

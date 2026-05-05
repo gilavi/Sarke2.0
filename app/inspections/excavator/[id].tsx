@@ -140,17 +140,14 @@ export default function ExcavatorInspectionScreen() {
 
   useEffect(() => {
     if (!id) {
-      console.log('[Excavator] no id, skipping load');
       return;
     }
-    console.log('[Excavator] loading inspection:', id);
     let cancelled = false;
     (async () => {
       try {
         const insp = await excavatorApi.getById(id);
-        console.log('[Excavator] loaded:', insp ? 'found' : 'null', 'cancelled:', cancelled);
         if (cancelled) return;
-        if (!insp) { console.log('[Excavator] inspection not found, going back'); router.back(); return; }
+        if (!insp) { router.back(); return; }
 
         if (insp.status === 'completed') {
           // Will render result view instead of wizard
@@ -197,14 +194,12 @@ export default function ExcavatorInspectionScreen() {
         }).catch(() => {});
 
       } catch (e) {
-        console.log('[Excavator] load error:', e);
         if (!cancelled) {
           toast.error(friendlyError(e, 'ვერ ჩაიტვირთა'));
           router.back();
         }
       } finally {
         if (!cancelled) {
-          console.log('[Excavator] load complete, setting loading=false');
           setLoading(false);
           animateTimeoutRef.current = setTimeout(() => setAnimateSteps(true), 50);
         }
@@ -793,7 +788,7 @@ export default function ExcavatorInspectionScreen() {
                       <View style={styles.photoRow}>
                         {state.photo_paths.map(path => (
                           <View key={path} style={styles.photoThumbWrap}>
-                            <Image source={{ uri: path }} style={styles.photoThumb} />
+                            <Image source={{ uri: path }} style={styles.photoThumb} resizeMode="cover" />
                             <Pressable
                               onPress={() => handleDeletePhoto(entry.section, entry.entry.id, path)}
                               style={styles.photoDelete}
