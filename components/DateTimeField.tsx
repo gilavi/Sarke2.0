@@ -179,13 +179,13 @@ export function DateTimeField({
           >
             {/* Header — Cancel / Title / Confirm */}
             <View style={styles.header}>
-              <Pressable onPress={cancel} hitSlop={8} {...a11y('გაუქმება', '', 'button')}>
+              <Pressable onPress={cancel} hitSlop={16} {...a11y('გაუქმება', '', 'button')}>
                 <Text style={styles.headerAction}>გაუქმება</Text>
               </Pressable>
               <Text style={styles.headerTitle} numberOfLines={1}>
                 {sheetTitle}
               </Text>
-              <Pressable onPress={confirm} hitSlop={8} {...a11y('დადასტურება', '', 'button')}>
+              <Pressable onPress={confirm} hitSlop={16} {...a11y('დადასტურება', '', 'button')}>
                 <Text style={[styles.headerAction, styles.headerActionPrimary]}>
                   დადასტურება
                 </Text>
@@ -281,7 +281,7 @@ const tabStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingVertical: 10,
+    paddingVertical: 14,
     borderRadius: 10,
     borderWidth: 1,
   },

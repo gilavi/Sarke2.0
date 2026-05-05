@@ -183,7 +183,7 @@ function LoginForm({ onForgotPassword }: { onForgotPassword: () => void }) {
   };
 
   return (
-    <View style={{ gap: 14 }}>
+    <View style={{ gap: 12 }}>
       <FloatingLabelInput
         label={t('common.email')}
         value={email}
@@ -203,6 +203,7 @@ function LoginForm({ onForgotPassword }: { onForgotPassword: () => void }) {
       <Pressable
         onPress={onForgotPassword}
         style={{ alignSelf: 'flex-end', marginTop: -4 }}
+        hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
       >
         <Text style={styles.linkText}>{t('auth.forgotPassword')}</Text>
       </Pressable>
@@ -291,7 +292,7 @@ function RegisterForm({
   };
 
   return (
-    <View style={{ gap: 14 }}>
+    <View style={{ gap: 12 }}>
       <View style={{ flexDirection: 'row', gap: 10 }}>
         <View style={{ flex: 1 }}>
           <FloatingLabelInput label={t('auth.firstName')} value={firstName} onChangeText={setFirstName} />
@@ -503,7 +504,7 @@ function getstyles(theme: any) {
     alignItems: 'center',
     gap: 6,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 15,
     borderRadius: 20,
     backgroundColor: theme.colors.subtleSurface,
   },
@@ -533,7 +534,7 @@ function getstyles(theme: any) {
   },
   segment: {
     flex: 1,
-    paddingVertical: 9,
+    paddingVertical: 15,
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',

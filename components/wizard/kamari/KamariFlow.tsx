@@ -483,6 +483,7 @@ export function KamariDetailModal({
                     </View>
                     <Pressable
                       onPress={() => closeItem(col)}
+                      hitSlop={{ top: 9, bottom: 9, left: 0, right: 0 }}
                       style={styles.closeBtn}
                     >
                       <Text size="sm" weight="semibold" color={theme.colors.inkSoft}>
@@ -531,7 +532,7 @@ const KamariPhotoThumb = memo(function KamariPhotoThumb({
       <View style={styles.thumb}>
         {uri ? <Image source={{ uri }} style={styles.thumbImg} contentFit="cover" /> : null}
       </View>
-      <Pressable onPress={onDelete} style={styles.thumbDelete} hitSlop={8}>
+      <Pressable onPress={onDelete} style={styles.thumbDelete} hitSlop={12}>
         <Ionicons name="close" size={12} color="#fff" />
       </Pressable>
     </View>

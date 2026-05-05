@@ -60,10 +60,7 @@ export default function ProjectReportsList() {
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 }}
       >
-        <View style={styles.pageHeader}>
-          <Text style={styles.pageTitle}>რეპორტები</Text>
-          {project?.name ? <Text style={styles.pageSubtitle}>{project.name}</Text> : null}
-        </View>
+        {project?.name ? <Text style={styles.pageSubtitle}>{project.name}</Text> : null}
 
         <View style={styles.filterRow}>
           <FilterChip label={`ყველა · ${counts.all}`} active={filter === 'all'} onPress={() => setFilter('all')} theme={theme} />
@@ -149,7 +146,7 @@ function FilterChip({
       style={({ pressed }) => [
         {
           paddingHorizontal: 12,
-          paddingVertical: 6,
+          paddingVertical: 12,
           borderRadius: 999,
           backgroundColor: active ? theme.colors.accent : theme.colors.subtleSurface,
         },

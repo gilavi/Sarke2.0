@@ -250,7 +250,7 @@ export default function NewBriefingScreen() {
                   </Text>
                   <Pressable
                     onPress={() => removeParticipant(idx)}
-                    hitSlop={8}
+                    hitSlop={12}
                     {...a11y('წაშლა', `${p.name} წაშლა`, 'button')}
                   >
                     <Ionicons name="close-circle" size={18} color={theme.colors.inkFaint} />

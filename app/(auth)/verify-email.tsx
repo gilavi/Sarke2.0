@@ -216,7 +216,7 @@ export default function VerifyEmailScreen() {
                 <Pressable
                   onPress={handleResend}
                   disabled={cooldown > 0 || resendBusy}
-                  hitSlop={8}
+                  hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
                 >
                   <Text
                     style={[

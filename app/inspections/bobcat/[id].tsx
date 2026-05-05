@@ -1050,7 +1050,7 @@ function getstyles(theme: Theme) {
     fieldLabel: { fontSize: 12, fontWeight: '600', color: theme.colors.inkSoft },
     chipRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
     typeChip: {
-      paddingHorizontal: 14, paddingVertical: 7,
+      paddingHorizontal: 14, paddingVertical: 16,
       borderRadius: 20, borderWidth: 1.5,
       borderColor: theme.colors.hairline,
       backgroundColor: theme.colors.card,

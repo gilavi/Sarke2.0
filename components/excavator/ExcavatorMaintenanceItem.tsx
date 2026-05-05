@@ -53,6 +53,7 @@ export const ExcavatorMaintenanceItem = memo(function ExcavatorMaintenanceItem({
           <Pressable
             style={[styles.toggle, yesActive && styles.toggleYesActive]}
             onPress={() => setAnswer('yes')}
+            hitSlop={{ top: 9, bottom: 9, left: 0, right: 0 }}
             {...a11y('კი', undefined, 'button')}
           >
             <Ionicons
@@ -66,6 +67,7 @@ export const ExcavatorMaintenanceItem = memo(function ExcavatorMaintenanceItem({
           <Pressable
             style={[styles.toggle, noActive && styles.toggleNoActive]}
             onPress={() => setAnswer('no')}
+            hitSlop={{ top: 9, bottom: 9, left: 0, right: 0 }}
             {...a11y('არა', undefined, 'button')}
           >
             <Ionicons

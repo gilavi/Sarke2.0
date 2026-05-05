@@ -119,7 +119,7 @@ export const Input = React.forwardRef<TextInput, InputProps & { required?: boole
           {...rest}
         />
         {rightIcon && (
-          <Pressable onPress={onRightIconPress} hitSlop={8}>
+          <Pressable onPress={onRightIconPress} hitSlop={13}>
             <Ionicons
               name={rightIcon}
               size={18}

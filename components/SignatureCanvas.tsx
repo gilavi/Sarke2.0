@@ -124,12 +124,14 @@ export function SignatureCanvas({ visible, personName, onCancel, onConfirm }: Pr
           <Button
             title="გაუქმება"
             variant="secondary"
+            size="lg"
             onPress={onCancel}
             style={{ flex: 1 }}
             {...a11y('გაუქმება', undefined, 'button')}
           />
           <Button
             title="შენახვა"
+            size="lg"
             onPress={handleConfirm}
             disabled={!hasStroke}
             style={{ flex: 1.6 }}

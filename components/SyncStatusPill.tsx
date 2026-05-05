@@ -83,7 +83,7 @@ export function SyncStatusPill() {
           accessibilityRole="button"
           accessibilityLabel={label}
           accessibilityState={{ busy: mode === 'pending' }}
-          hitSlop={8}
+          hitSlop={{ top: 5, bottom: 5, left: 0, right: 0 }}
           style={({ pressed }) => [styles.pill, { backgroundColor: bg }, pressed && { opacity: 0.85 }]}
         >
           <Ionicons name={icon} size={14} color={theme.colors.white} />

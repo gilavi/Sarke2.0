@@ -144,7 +144,7 @@ export default function ReportDetailScreen() {
           headerTintColor: theme.colors.accent,
           headerTitleStyle: { color: theme.colors.ink, fontWeight: '700', fontSize: 17 },
           headerRight: () => (
-            <Pressable onPress={onDelete} hitSlop={8} style={{ marginRight: 8 }}>
+            <Pressable onPress={onDelete} hitSlop={12} style={{ marginRight: 8 }}>
               <Ionicons name="trash-outline" size={20} color={theme.colors.danger} />
             </Pressable>
           ),

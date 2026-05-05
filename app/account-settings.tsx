@@ -110,7 +110,7 @@ export default function AccountSettingsScreen() {
         <A11yText size="lg" weight="bold" color={theme.colors.ink}>
           {t('account.changePassword')}
         </A11yText>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
+        <Pressable onPress={() => router.back()} hitSlop={10}>
           <Ionicons name="close" size={24} color={theme.colors.ink} />
         </Pressable>
       </View>

@@ -14,8 +14,9 @@ type TrailingControl = 'help' | 'close' | 'none';
 interface FlowHeaderProps {
   flowTitle: string;
   project?: { name: string; logo?: string | null } | null;
-  step: number; // 1-based
-  totalSteps: number;
+  /** 1-based. Omit (with `totalSteps`) to hide the progress bar — used by the post-completion result view. */
+  step?: number;
+  totalSteps?: number;
   /**
    * `back` (default) — pill "< უკან" on the left.
    * `none` — no leading control (used by კითხვარი which has X-close on the right).
@@ -72,7 +73,10 @@ export function FlowHeader({
     }
   };
 
-  const progress = Math.max(0, Math.min(1, step / Math.max(1, totalSteps)));
+  const showProgress = step !== undefined && totalSteps !== undefined;
+  const progress = showProgress
+    ? Math.max(0, Math.min(1, step / Math.max(1, totalSteps)))
+    : 0;
 
   return (
     <View
@@ -89,7 +93,7 @@ export function FlowHeader({
         {leading === 'back' ? (
           <>
             <Pressable
-              hitSlop={8}
+              hitSlop={11}
               disabled={backDisabled}
               onPress={wrapExit(onBack)}
               style={({ pressed }) => [
@@ -140,7 +144,7 @@ export function FlowHeader({
         <View style={styles.trailing}>
           {trailing === 'help' && onHelp ? (
             <Pressable
-              hitSlop={8}
+              hitSlop={9}
               onPress={onHelp}
               style={({ pressed }) => [
                 styles.helpBtn,
@@ -153,7 +157,7 @@ export function FlowHeader({
             </Pressable>
           ) : trailing === 'close' ? (
             <Pressable
-              hitSlop={8}
+              hitSlop={4}
               onPress={wrapExit(onClose)}
               style={({ pressed }) => [
                 styles.closeBtn,
@@ -168,14 +172,16 @@ export function FlowHeader({
         </View>
       </View>
 
-      <View style={[styles.progressTrack, { backgroundColor: theme.colors.subtleSurface }]}>
-        <View
-          style={[
-            styles.progressFill,
-            { width: `${progress * 100}%`, backgroundColor: theme.colors.semantic.success },
-          ]}
-        />
-      </View>
+      {showProgress ? (
+        <View style={[styles.progressTrack, { backgroundColor: theme.colors.subtleSurface }]}>
+          <View
+            style={[
+              styles.progressFill,
+              { width: `${progress * 100}%`, backgroundColor: theme.colors.semantic.success },
+            ]}
+          />
+        </View>
+      ) : null}
 
       <ExitConfirmationModal
         visible={exitVisible}

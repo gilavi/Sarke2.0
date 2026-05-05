@@ -45,6 +45,7 @@ export function SectionHeader({
       {action && (
         <Pressable
           onPress={action.onPress}
+          hitSlop={{ top: 6, bottom: 6, left: 0, right: 0 }}
           style={({ pressed }) => [
             styles.actionButton,
             pressed && styles.actionButtonPressed,

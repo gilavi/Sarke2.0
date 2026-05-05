@@ -439,6 +439,7 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
               <Pressable
                 key={c.value}
                 onPress={() => setColor(c.value)}
+                hitSlop={8}
                 style={[
                   styles.colorBtn,
                   { backgroundColor: c.value },
@@ -496,6 +497,7 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
               <Pressable
                 key={w}
                 onPress={() => setWidth(w)}
+                hitSlop={4}
                 style={[styles.widthBtn, width === w && styles.widthBtnActive]}
                 {...a11y(`სისქე: ${w}px`, 'შეეხეთ ამ სისქის ასარჩევად', 'button')}
               >
@@ -723,7 +725,7 @@ function getmodalStyles(theme: any) {
   },
   cancelBtn: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 14,
     alignItems: 'center',
     borderRadius: theme.radius.md,
     borderWidth: 1.5,
@@ -736,7 +738,7 @@ function getmodalStyles(theme: any) {
   },
   confirmBtn: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 14,
     alignItems: 'center',
     borderRadius: theme.radius.md,
     backgroundColor: theme.colors.accent,

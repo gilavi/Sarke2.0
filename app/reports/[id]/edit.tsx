@@ -354,7 +354,7 @@ function SlideCard({
             <Pressable
               onPress={onUp}
               disabled={index === 0}
-              hitSlop={6}
+              hitSlop={10}
               style={({ pressed }) => [
                 styles.reorderBtn,
                 index === 0 && { opacity: 0.3 },
@@ -366,7 +366,7 @@ function SlideCard({
             <Pressable
               onPress={onDown}
               disabled={index === total - 1}
-              hitSlop={6}
+              hitSlop={10}
               style={({ pressed }) => [
                 styles.reorderBtn,
                 index === total - 1 && { opacity: 0.3 },

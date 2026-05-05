@@ -347,7 +347,7 @@ export function RoleSlotList({ projectId, inspector, crew, onChange, maxVisible,
               </View>
               <Pressable
                 onPress={() => openEditSheet(member)}
-                hitSlop={6}
+                hitSlop={10}
                 style={styles.actionBtn}
                 {...a11y('რედაქტირება', 'მონაწილის რედაქტირება', 'button')}
               >
@@ -355,7 +355,7 @@ export function RoleSlotList({ projectId, inspector, crew, onChange, maxVisible,
               </Pressable>
               <Pressable
                 onPress={() => removeWithConfirm(member)}
-                hitSlop={6}
+                hitSlop={10}
                 style={styles.actionBtn}
                 {...a11y('წაშლა', 'მონაწილის წაშლა', 'button')}
               >

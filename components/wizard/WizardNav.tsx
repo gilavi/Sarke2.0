@@ -115,7 +115,7 @@ function getstyles(theme: any) {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 16,
     borderRadius: theme.radius.md,
   },

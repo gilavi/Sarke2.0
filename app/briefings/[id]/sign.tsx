@@ -568,7 +568,7 @@ function RosterSheet({
                     e.stopPropagation();
                     handleRestore(idx);
                   }}
-                  hitSlop={8}
+                  hitSlop={10}
                   style={styles.restoreBtn}
                   disabled={restoring === idx}
                 >

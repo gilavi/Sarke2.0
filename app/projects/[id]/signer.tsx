@@ -140,7 +140,7 @@ export default function SignerForm() {
           title: editing ? t('projectSigner.editTitle') : t('projectSigner.newTitle'),
           headerRight: () =>
             editing ? (
-              <Pressable onPress={remove} hitSlop={10}>
+              <Pressable onPress={remove} hitSlop={12}>
                 <Ionicons name="trash-outline" size={22} color={theme.colors.danger} />
               </Pressable>
             ) : null,
@@ -273,7 +273,7 @@ function SignatureCaptureModal({
             <Text style={{ fontSize: 16, fontWeight: '700', color: theme.colors.ink, flex: 1 }}>
               {title}
             </Text>
-            <Pressable onPress={onCancel} hitSlop={10}>
+            <Pressable onPress={onCancel} hitSlop={12}>
               <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
             </Pressable>
           </View>

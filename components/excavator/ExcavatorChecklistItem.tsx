@@ -75,6 +75,7 @@ export const ExcavatorChecklistItem = memo(function ExcavatorChecklistItem({
           <Pressable
             style={[styles.chip, styles.chipGood, goodActive && styles.chipGoodActive]}
             onPress={() => setResult('good')}
+            hitSlop={8}
             {...a11y('კარგია', '✓ კარგია', 'button')}
           >
             <Ionicons name="checkmark" size={14} color={goodActive ? theme.colors.white : theme.colors.semantic.success} />
@@ -83,6 +84,7 @@ export const ExcavatorChecklistItem = memo(function ExcavatorChecklistItem({
           <Pressable
             style={[styles.chip, styles.chipDef, defActive && styles.chipDefActive]}
             onPress={() => setResult('deficient')}
+            hitSlop={8}
             {...a11y('ნაკლი', '⚠ ნაკლი', 'button')}
           >
             <Ionicons
@@ -95,6 +97,7 @@ export const ExcavatorChecklistItem = memo(function ExcavatorChecklistItem({
           <Pressable
             style={[styles.chip, styles.chipBad, unusableActive && styles.chipBadActive]}
             onPress={() => setResult('unusable')}
+            hitSlop={8}
             {...a11y('გამოუსადეგარია', '✗ გამოუსადეგარია', 'button')}
           >
             <Ionicons name="close" size={14} color={unusableActive ? theme.colors.white : theme.colors.danger} />

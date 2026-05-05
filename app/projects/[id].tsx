@@ -665,7 +665,7 @@ export default function ProjectDetail() {
       {/* ── Floating buttons — always fixed over content ── */}
       <Pressable
         onPress={() => router.back()}
-        hitSlop={8}
+        hitSlop={13}
         style={[styles.floatingBtn, { position: 'absolute', top: insets.top + 8, left: 16, zIndex: 30 }]}
         {...a11y('უკან', 'წინა გვერდზე დაბრუნება', 'button')}
       >
@@ -673,7 +673,7 @@ export default function ProjectDetail() {
       </Pressable>
       <Pressable
         onPress={() => setEditing(true)}
-        hitSlop={8}
+        hitSlop={13}
         style={[styles.floatingBtn, { position: 'absolute', top: insets.top + 8, right: 16, zIndex: 30 }]}
         {...a11y('რედაქტირება', 'პროექტის დეტალების შეცვლა', 'button')}
       >
@@ -772,7 +772,8 @@ export default function ProjectDetail() {
           {project?.contact_phone ? (
             <Pressable
               onPress={() => Linking.openURL(`tel:${project.contact_phone}`)}
-              hitSlop={8}
+              hitSlop={16}
+              style={{ paddingVertical: 8 }}
               {...a11y('დარეკვა', `${project.contact_phone}-ზე დარეკვა`, 'button')}
             >
               <Text style={styles.heroPhoneText}>{project.contact_phone}</Text>
@@ -799,7 +800,7 @@ export default function ProjectDetail() {
                 <Text style={styles.sectionTitle}>{t('projects.questionnairesSection')}</Text>
                 <Text style={styles.sectionCount}>{allInspections.length}</Text>
               </View>
-              <Pressable onPress={startNewInspection} hitSlop={8}>
+              <Pressable onPress={startNewInspection} hitSlop={16}>
                 <Text style={styles.sectionAddLink}>+ დამატება</Text>
               </Pressable>
             </View>
@@ -865,7 +866,7 @@ export default function ProjectDetail() {
                 <Text style={styles.sectionTitle}>ინციდენტები</Text>
                 <Text style={styles.sectionCount}>{incidents.length}</Text>
               </View>
-              <Pressable onPress={() => router.push(`/incidents/new?projectId=${id}` as any)} hitSlop={8}>
+              <Pressable onPress={() => router.push(`/incidents/new?projectId=${id}` as any)} hitSlop={16}>
                 <Text style={styles.sectionAddLink}>+ დამატება</Text>
               </Pressable>
             </View>
@@ -901,7 +902,7 @@ export default function ProjectDetail() {
                 <Text style={styles.sectionTitle}>ინსტრუქტაჟი</Text>
                 <Text style={styles.sectionCount}>{briefings.length}</Text>
               </View>
-              <Pressable onPress={() => id && router.push(`/briefings/new?projectId=${id}` as any)} hitSlop={8}>
+              <Pressable onPress={() => id && router.push(`/briefings/new?projectId=${id}` as any)} hitSlop={16}>
                 <Text style={styles.sectionAddLink}>+ დამატება</Text>
               </Pressable>
             </View>
@@ -960,7 +961,7 @@ export default function ProjectDetail() {
               </View>
               <Pressable
                 onPress={() => id && router.push(`/reports/new?projectId=${id}` as any)}
-                hitSlop={8}
+                hitSlop={16}
               >
                 <Text style={styles.sectionAddLink}>+ ახალი რეპორტი</Text>
               </Pressable>
@@ -1021,7 +1022,7 @@ export default function ProjectDetail() {
                 <Text style={styles.sectionTitle}>დოკუმენტები</Text>
                 <Text style={styles.sectionCount}>{files.length}</Text>
               </View>
-              <Pressable onPress={uploadFile} disabled={filesBusy} hitSlop={8}>
+              <Pressable onPress={uploadFile} disabled={filesBusy} hitSlop={16}>
                 <Text style={[styles.sectionAddLink, filesBusy && { opacity: 0.5 }]}>
                   {filesBusy ? 'იტვირთება…' : '+ ატვირთვა'}
                 </Text>
@@ -1430,7 +1431,7 @@ function EditProjectSheet({
                     onEdit={onPickLogo}
                   />
                   {logo ? (
-                    <Pressable onPress={() => setLogo(null)} hitSlop={6}>
+                    <Pressable onPress={() => setLogo(null)} hitSlop={13}>
                       <Text style={{ color: theme.colors.danger, fontSize: 13, fontWeight: '600' }}>
                         {t('projects.logoRemove')}
                       </Text>
@@ -1602,7 +1603,7 @@ function UpcomingSection({ projectId }: { projectId: string | undefined }) {
         </View>
         <Pressable
           onPress={() => router.push(`/(tabs)/calendar?projectId=${projectId}` as any)}
-          hitSlop={8}
+          hitSlop={16}
         >
           <Text style={styles.sectionAddLink}>{t('common.all', 'ყველა')}</Text>
         </Pressable>

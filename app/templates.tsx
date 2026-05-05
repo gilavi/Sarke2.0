@@ -27,7 +27,7 @@ const MemoizedTemplateItem = memo(function TemplateItem({ item, onHelpPress }: {
         <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 8 }}>
           <Pressable
             onPress={onHelpPress}
-            hitSlop={8}
+            hitSlop={13}
             accessibilityRole="button"
             accessibilityLabel="დახმარება"
           >

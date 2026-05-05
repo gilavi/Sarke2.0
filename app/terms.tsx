@@ -161,7 +161,7 @@ export default function TermsScreen() {
             </Card>
 
             {/* Public link */}
-            <Pressable onPress={() => Linking.openURL(TERMS_PUBLIC_URL)} {...a11y(body.linkLabel, 'გახსნის ვებ-ბრაუზერში', 'link')}>
+            <Pressable onPress={() => Linking.openURL(TERMS_PUBLIC_URL)} hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }} {...a11y(body.linkLabel, 'გახსნის ვებ-ბრაუზერში', 'link')}>
               <Text style={{ color: theme.colors.accent, textAlign: 'center', marginTop: 6, fontWeight: '600', fontSize: 13 }}>
                 {body.linkLabel} →
               </Text>
@@ -220,7 +220,7 @@ function getstyles(theme: any) {
     },
     langBtn: {
       paddingHorizontal: 16,
-      paddingVertical: 8,
+      paddingVertical: 14,
       borderRadius: 999,
     },
     langBtnActive: {

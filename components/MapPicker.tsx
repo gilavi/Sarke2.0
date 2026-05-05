@@ -201,7 +201,7 @@ export function MapPicker({ value, onChange, address, onAddressChange, height = 
             </View>
           </View>
         ) : (
-          <Pressable onPress={() => onChange(null)} style={styles.clearBtn} {...a11y('მდებარეობის გასუფთავება', 'შეეხეთ მონიშნული მდებარეობის წასაშლელად', 'button')}>
+          <Pressable onPress={() => onChange(null)} hitSlop={{ top: 7, bottom: 7, left: 0, right: 0 }} style={styles.clearBtn} {...a11y('მდებარეობის გასუფთავება', 'შეეხეთ მონიშნული მდებარეობის წასაშლელად', 'button')}>
             <Ionicons name="close" size={14} color={theme.colors.white} />
             <Text style={styles.clearTxt}>პინის მოხსნა</Text>
           </Pressable>

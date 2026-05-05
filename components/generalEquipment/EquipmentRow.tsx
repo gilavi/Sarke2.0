@@ -114,6 +114,7 @@ export const EquipmentRow = memo(function EquipmentRow({
           <Pressable
             style={[styles.chip, styles.chipGood, goodActive && styles.chipGoodActive]}
             onPress={() => setCondition('good')}
+            hitSlop={{ top: 9, bottom: 9, left: 0, right: 0 }}
             {...a11y('კარგი', '✓ კარგია', 'button')}
           >
             <Ionicons name="checkmark" size={13} color={goodActive ? theme.colors.white : theme.colors.semantic.success} />
@@ -123,6 +124,7 @@ export const EquipmentRow = memo(function EquipmentRow({
           <Pressable
             style={[styles.chip, styles.chipWarn, warnActive && styles.chipWarnActive]}
             onPress={() => setCondition('needs_service')}
+            hitSlop={{ top: 9, bottom: 9, left: 0, right: 0 }}
             {...a11y('საჭ. მომსახ.', '⚠ საჭ. მომსახ.', 'button')}
           >
             <Ionicons name="warning-outline" size={12} color={warnActive ? theme.colors.white : theme.colors.warn} />
@@ -132,6 +134,7 @@ export const EquipmentRow = memo(function EquipmentRow({
           <Pressable
             style={[styles.chip, styles.chipBad, badActive && styles.chipBadActive]}
             onPress={() => setCondition('unusable')}
+            hitSlop={{ top: 9, bottom: 9, left: 0, right: 0 }}
             {...a11y('გამოუსადეგ.', '✗ გამოუსადეგარია', 'button')}
           >
             <Ionicons name="close" size={13} color={badActive ? theme.colors.white : theme.colors.danger} />

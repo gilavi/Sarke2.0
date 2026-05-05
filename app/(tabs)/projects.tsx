@@ -407,7 +407,7 @@ function CreateProjectSheet({
                     onEdit={onPickLogo}
                   />
                   {logo ? (
-                    <Pressable onPress={onPickLogo} hitSlop={6} {...a11y(t('projects.changePhoto'), 'შეეხეთ ლოგოს ასარჩევად', 'button')}>
+                    <Pressable onPress={onPickLogo} hitSlop={13} {...a11y(t('projects.changePhoto'), 'შეეხეთ ლოგოს ასარჩევად', 'button')}>
                       <A11yText size="sm" weight="semibold" color={theme.colors.accent}>
                         {t('projects.changePhoto')}
                       </A11yText>
@@ -427,6 +427,8 @@ function CreateProjectSheet({
                   label={t('common.address')}
                   value={address}
                   onChangeText={setAddress}
+                  rightIcon={pin ? 'location' : 'location-outline'}
+                  onRightIconPress={() => { Keyboard.dismiss(); setMapVisible(true); }}
                 />
 
                 <FloatingLabelInput
@@ -435,8 +437,6 @@ function CreateProjectSheet({
                   onChangeText={setPhone}
                   keyboardType="phone-pad"
                 />
-
-                <LocationRow pin={pin} address={address} onPress={() => { Keyboard.dismiss(); setMapVisible(true); }} />
               </SheetLayout>
           </Pressable>
         </Animated.View>
@@ -592,7 +592,7 @@ function MapPickerInline({
           onPress={() => onConfirm(pin, address)}
           disabled={!pin}
         />
-        <Pressable onPress={onCancel} style={{ alignSelf: 'center', paddingVertical: 8 }}>
+        <Pressable onPress={onCancel} style={{ alignSelf: 'center', paddingVertical: 8 }} hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}>
           <Text style={{ fontSize: 15, fontWeight: '600', color: theme.colors.inkSoft }}>
             გაუქმება
           </Text>

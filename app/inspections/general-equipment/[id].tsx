@@ -954,7 +954,7 @@ function getstyles(theme: Theme) {
 
     typeChips:         { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
     typeChip: {
-      paddingHorizontal: 12, paddingVertical: 8,
+      paddingHorizontal: 12, paddingVertical: 16,
       borderRadius: 20, borderWidth: 1.5,
       borderColor: theme.colors.hairline,
       backgroundColor: theme.colors.card,

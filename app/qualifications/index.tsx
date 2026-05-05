@@ -251,7 +251,7 @@ function FilledCard({ qual, onDelete }: { qual: QualWithThumb; onDelete: () => v
         <StatusBadge status={status} />
         <Pressable
           onPress={onDelete}
-          hitSlop={10}
+          hitSlop={12}
           style={{ padding: 6 }}
           {...a11y('წაშლა', 'სერტიფიკატის წაშლა', 'button')}
         >

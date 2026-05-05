@@ -566,7 +566,7 @@ function gets(theme: Theme) {
     },
     chip: {
       width: 40,
-      height: 34,
+      height: 44,
       borderRadius: 8,
       borderWidth: 1.5,
       borderColor: theme.colors.hairline,

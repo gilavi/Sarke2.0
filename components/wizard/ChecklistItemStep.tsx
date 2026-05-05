@@ -523,7 +523,7 @@ function getstyles(theme: Theme) {
     },
     accessoryBtn: {
       paddingHorizontal: 12,
-      paddingVertical: 4,
+      paddingVertical: 10,
     },
     accessoryBtnText: {
       fontSize: 15,

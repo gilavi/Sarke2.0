@@ -82,6 +82,7 @@ export default function BriefingDetailScreen() {
               onPress={sharePdf}
               disabled={sharing || !briefing || !project}
               style={{ paddingHorizontal: 4 }}
+              hitSlop={11}
               {...a11y('PDF გაზიარება', undefined, 'button')}
             >
               {sharing ? (

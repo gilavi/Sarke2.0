@@ -105,7 +105,7 @@ export function RoleSlotSheet({
           {mode === 'editDetails' && onResign ? (
             <Pressable
               onPress={onResign}
-              hitSlop={6}
+              hitSlop={{ top: 8, bottom: 8, left: 0, right: 0 }}
               style={styles.resignBtn}
               {...a11y('ხელმოწერა ხელახლა', 'ახალი ხელმოწერის გაკეთება', 'button')}
             >

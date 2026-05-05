@@ -93,6 +93,7 @@ export const BobcatChecklistItem = memo(function BobcatChecklistItem({
           <Pressable
             style={[styles.chip, styles.chipGood, goodActive && styles.chipGoodActive]}
             onPress={() => setResult('good')}
+            hitSlop={8}
             {...a11y('კარგია', '✓ კარგია', 'button')}
           >
             <Ionicons
@@ -105,6 +106,7 @@ export const BobcatChecklistItem = memo(function BobcatChecklistItem({
           <Pressable
             style={[styles.chip, styles.chipDef, defActive && styles.chipDefActive]}
             onPress={() => setResult('deficient')}
+            hitSlop={8}
             {...a11y('ნაკლი', '⚠ ნაკლი', 'button')}
           >
             <Ionicons
@@ -122,6 +124,7 @@ export const BobcatChecklistItem = memo(function BobcatChecklistItem({
               unusableActive && (unusableIsNeutral ? styles.chipNAActive : styles.chipBadActive),
             ]}
             onPress={() => setResult('unusable')}
+            hitSlop={8}
             {...a11y(unusableLabel, `✗ ${unusableLabel}`, 'button')}
           >
             <Ionicons

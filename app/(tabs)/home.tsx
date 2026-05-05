@@ -386,7 +386,7 @@ export default function HomeScreen() {
         <View style={styles.sectionHeaderRow}>
           <Ionicons name="folder-outline" size={14} color={theme.colors.inkSoft} style={{ marginRight: 5 }} />
           <Text style={styles.sectionHeader}>{t('home.sectionProjects')}</Text>
-          <Pressable onPress={() => router.push('/(tabs)/projects' as any)} hitSlop={8}>
+          <Pressable onPress={() => router.push('/(tabs)/projects' as any)} hitSlop={16}>
             <Text style={styles.sectionLink}>{t('home.allProjects')}</Text>
           </Pressable>
         </View>
@@ -482,7 +482,7 @@ export default function HomeScreen() {
             <View style={[styles.sectionHeaderRow, staticStyles.sectionHeaderMargin]}>
               <Ionicons name="time-outline" size={14} color={theme.colors.inkSoft} style={{ marginRight: 5 }} />
               <Text style={styles.sectionHeader}>{t('home.recentActs')}</Text>
-              <Pressable onPress={() => router.push('/history' as any)} hitSlop={8} {...a11y('ყველა აქტივობის ნახვა', 'შეეხეთ ისტორიის სანახავად', 'button')}>
+              <Pressable onPress={() => router.push('/history' as any)} hitSlop={16} {...a11y('ყველა აქტივობის ნახვა', 'შეეხეთ ისტორიის სანახავად', 'button')}>
                 <Text style={styles.sectionLink}>ყველა</Text>
               </Pressable>
             </View>
@@ -777,7 +777,7 @@ function ProjectPickerSheet({
                     />
                   ) : null}
                   <Text style={[pickerStyles.sheetTitle, { flex: 1 }]}>{t('home.startInspectionSheetTitle')}</Text>
-                  <Pressable onPress={onClose} hitSlop={10}>
+                  <Pressable onPress={onClose} hitSlop={12}>
                     <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
                   </Pressable>
                 </View>
@@ -831,11 +831,11 @@ function ProjectPickerSheet({
               <>
                 {/* New project form header with back button */}
                 <View style={pickerStyles.sheetHeader}>
-                  <Pressable onPress={() => setView('list')} hitSlop={10} style={staticStyles.backButtonMargin}>
+                  <Pressable onPress={() => setView('list')} hitSlop={12} style={staticStyles.backButtonMargin}>
                     <Ionicons name="arrow-back" size={22} color={theme.colors.accent} />
                   </Pressable>
                   <Text style={[pickerStyles.sheetTitle, staticStyles.flex]}>{t('home.newProjectFormTitle')}</Text>
-                  <Pressable onPress={onClose} hitSlop={10}>
+                  <Pressable onPress={onClose} hitSlop={12}>
                     <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
                   </Pressable>
                 </View>
@@ -856,7 +856,7 @@ function ProjectPickerSheet({
                       onEdit={onPickLogo}
                     />
                     {logo ? (
-                      <Pressable onPress={onPickLogo} hitSlop={6}>
+                      <Pressable onPress={onPickLogo} hitSlop={13}>
                         <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.accent }}>
                           {t('projects.changePhoto')}
                         </Text>
@@ -900,7 +900,7 @@ function ProjectPickerSheet({
               <Text style={{ flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '700', color: theme.colors.ink }}>
                 მდებარეობის არჩევა
               </Text>
-              <Pressable onPress={() => setMapVisible(false)} hitSlop={10} {...a11y('დახურვა', 'რუკის დახურვა', 'button')}>
+              <Pressable onPress={() => setMapVisible(false)} hitSlop={12} {...a11y('დახურვა', 'რუკის დახურვა', 'button')}>
                 <Ionicons name="close" size={24} color={theme.colors.ink} />
               </Pressable>
             </View>

@@ -691,7 +691,7 @@ function Step3({
           <View key={`${i}-${w}`} style={s.witnessRow}>
             <Ionicons name="person-outline" size={15} color={theme.colors.inkSoft} />
             <Text style={s.witnessName}>{w}</Text>
-            <Pressable onPress={() => onRemoveWitness(i)} hitSlop={8}>
+            <Pressable onPress={() => onRemoveWitness(i)} hitSlop={12}>
               <Ionicons name="close-circle" size={18} color={theme.colors.danger} />
             </Pressable>
           </View>
@@ -728,7 +728,7 @@ function Step3({
                 <Pressable
                   onPress={() => onRemovePhoto(i)}
                   style={s.photoRemoveBtn}
-                  hitSlop={4}
+                  hitSlop={10}
                 >
                   <Ionicons name="close-circle" size={20} color="#fff" />
                 </Pressable>
