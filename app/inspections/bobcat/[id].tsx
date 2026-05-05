@@ -20,6 +20,7 @@ import { WizardStepTransition } from '../../../components/wizard/WizardStepTrans
 
 // checklist list render is inline below
 import { FlowHeader } from '../../../components/FlowHeader';
+import { InspectionResultView } from '../../../components/InspectionResultView';
 import { useTheme, type Theme } from '../../../lib/theme';
 import { useSession } from '../../../lib/session';
 import { useToast } from '../../../lib/toast';
@@ -624,59 +625,30 @@ export default function BobcatInspectionScreen() {
   }
 
   // ── Completed inspection result view ───────────────────────────────────────
+  // Same shell as xaracho's `/inspections/[id]` (Stack header + WebView
+  // preview + bottom action bar). Bobcat rows live in `bobcat_inspections`,
+  // not `inspections`, so the certificate/signature action sheets — which
+  // FK to `inspections.id` — are hidden until the backend is unified.
   if (inspection.status === 'completed') {
     return (
-      <View style={{ flex: 1, backgroundColor: theme.colors.card }}>
-        <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
-        <FlowHeader
-          flowTitle={screenTitle}
-          project={projectName ? { name: projectName } : null}
-          leading="back"
-          onBack={() => router.back()}
-          trailingElement={
-            <Pressable
-              onPress={handlePdf}
-              disabled={generatingPdf}
-              hitSlop={10}
-              {...a11y('PDF', 'PDF დოკუმენტის გენერირება', 'button')}
-            >
-              <Ionicons
-                name={pdfUsage?.isLocked ? 'lock-closed-outline' : generatingPdf ? 'hourglass-outline' : 'document-text-outline'}
-                size={22}
-                color={pdfUsage?.isLocked ? theme.colors.inkSoft : theme.colors.accent}
-              />
-            </Pressable>
-          }
-        />
-        {pdfUsage?.isLocked && <PdfLockedBanner onSubscribe={() => setPaywallVisible(true)} />}
-        <View style={{ flex: 1, backgroundColor: theme.colors.subtleSurface }}>
-          {previewBusy && !previewHtml ? (
-            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-              <ActivityIndicator size="large" color={theme.colors.accent} />
-              <Text style={{ color: theme.colors.inkSoft }}>PDF-ის მომზადება…</Text>
-            </View>
-          ) : previewHtml ? (
-            <WebView
-              originWhitelist={['*']}
-              source={{ html: previewHtml }}
-              style={{ flex: 1, backgroundColor: '#fff' }}
-              scalesPageToFit
-              javaScriptEnabled={false}
-              domStorageEnabled={false}
-            />
-          ) : null}
-        </View>
-        <SafeAreaView edges={['bottom']} style={{ backgroundColor: theme.colors.surface, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.colors.hairline }}>
-          <View style={{ paddingHorizontal: 24, paddingTop: 8, paddingBottom: 8 }}>
-            <Button
-              title={pdfUsage?.isLocked ? '🔒 PDF გენერირება' : 'PDF გენერირება / გაზიარება'}
-              onPress={handlePdf}
-              loading={generatingPdf}
-            />
-          </View>
-        </SafeAreaView>
-        <PaywallModal visible={paywallVisible} onClose={() => setPaywallVisible(false)} />
-      </View>
+      <InspectionResultView
+        inspectionId={inspection.id}
+        templateName={screenTitle}
+        requiredSignerRoles={[]}
+        previewHtml={previewHtml}
+        previewBusy={previewBusy}
+        previewError={null}
+        signedCount={0}
+        totalSlots={0}
+        attachmentCount={0}
+        pdfLocked={pdfUsage?.isLocked}
+        downloading={generatingPdf}
+        paywallVisible={paywallVisible}
+        onPaywallClose={() => setPaywallVisible(false)}
+        onDownloadPdf={() => void handlePdf()}
+        onSheetSaved={() => {}}
+        hideSheets
+      />
     );
   }
 
