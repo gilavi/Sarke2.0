@@ -53,6 +53,20 @@ Deno.serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser(jwt);
     if (authError || !user) return json({ error: 'unauthorized' }, 401);
 
+    // Optional client-supplied redirect URLs (web flow). Mobile callers send no
+    // body and fall back to the sarke:// deep links below.
+    let body: { success_url?: string; fail_url?: string } = {};
+    try { body = await req.json(); } catch { /* no body — mobile path */ }
+
+    const ALLOWED_PREFIXES = ['sarke://', 'https://gilavi.github.io/Sarke2.0/'];
+    const isAllowed = (u: string) => ALLOWED_PREFIXES.some((p) => u.startsWith(p));
+
+    const successUrl = body.success_url ?? 'sarke://payment/success';
+    const failUrl = body.fail_url ?? 'sarke://payment/fail';
+    if (!isAllowed(successUrl) || !isAllowed(failUrl)) {
+      return json({ error: 'invalid redirect url' }, 400);
+    }
+
     const token = await getBogToken();
     const callbackUrl = Deno.env.get('BOG_CALLBACK_URL')!;
 
@@ -78,8 +92,8 @@ Deno.serve(async (req) => {
           ],
         },
         redirect_urls: {
-          success: 'sarke://payment/success',
-          fail: 'sarke://payment/fail',
+          success: successUrl,
+          fail: failUrl,
         },
         // TODO: enable card saving for auto-renewal when BOG approves recurring payments
         // save_payment_method: true,

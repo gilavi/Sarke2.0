@@ -7,8 +7,13 @@ import { A11yText as Text } from './primitives/A11yText';
 import { useTheme } from '../lib/theme';
 import { useToast } from '../lib/toast';
 import { PDF_FREE_LIMIT } from '../lib/pdfGate';
-import { createBogOrder } from '../lib/bogPayment';
+import { supabase } from '../lib/supabase';
 import { useInvalidatePdfUsage } from '../lib/usePdfUsage';
+
+// Hosted on GitHub Pages alongside the dashboard. The web subscribe page
+// authenticates via tokens passed in the URL hash, then drives the BOG order.
+// Selling subscriptions through Apple's app would require IAP (Apple guideline 3.1.1).
+const SUBSCRIBE_BASE_URL = 'https://gilavi.github.io/Sarke2.0/app/#/subscribe';
 
 interface Props {
   visible: boolean;
@@ -24,8 +29,8 @@ const FEATURES = [
 
 /**
  * Full-screen paywall shown when the user exhausts their free-tier PDF limit.
- * Opens the BOG payment page in an in-app browser and activates the subscription
- * once the user completes payment.
+ * Opens the public web subscribe page in Safari (SFAuthenticationSession),
+ * which handles BOG payment outside the app per Apple guideline 3.1.1.
  */
 export function PaywallModal({ visible, onClose }: Props) {
   const { theme } = useTheme();
@@ -37,21 +42,31 @@ export function PaywallModal({ visible, onClose }: Props) {
   const handleSubscribe = async () => {
     setSubscribing(true);
     try {
-      const { redirectUrl } = await createBogOrder();
-      const result = await WebBrowser.openAuthSessionAsync(redirectUrl, 'sarke://payment');
+      // Pull the freshest tokens — the client auto-refreshes if near expiry.
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('სესია არ არის');
+        return;
+      }
+
+      const url =
+        `${SUBSCRIBE_BASE_URL}` +
+        `?at=${encodeURIComponent(session.access_token)}` +
+        `&rt=${encodeURIComponent(session.refresh_token)}`;
+
+      const result = await WebBrowser.openAuthSessionAsync(url, 'sarke://payment');
 
       if (result.type === 'success') {
-        const url = result.url ?? '';
-        if (url.includes('sarke://payment/success')) {
+        const returnedUrl = result.url ?? '';
+        if (returnedUrl.includes('sarke://payment/success')) {
           invalidatePdfUsage();
           toast.success('გამოწერა გააქტიურდა!');
           onClose();
         } else {
-          // sarke://payment/fail or unknown redirect
           toast.error('გადახდა გაუქმდა');
         }
       }
-      // result.type === 'cancel' means user closed browser — no toast needed
+      // result.type === 'cancel' — user closed Safari, no toast needed
     } catch (e) {
       console.error('BOG payment error:', e);
       toast.error('გადახდა ვერ მოხერხდა');
