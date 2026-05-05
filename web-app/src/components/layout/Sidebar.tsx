@@ -85,10 +85,18 @@ export function Sidebar() {
       </nav>
 
       <div className="border-t border-neutral-200 p-3">
-        <div className="px-3 py-2">
+        <NavLink
+          to="/account"
+          className={({ isActive }) =>
+            cn(
+              'block rounded-lg px-3 py-2 transition-colors',
+              isActive ? 'bg-brand-50' : 'hover:bg-neutral-100',
+            )
+          }
+        >
           <div className="text-sm font-medium text-neutral-900 truncate">{displayName}</div>
           <div className="text-xs text-neutral-500 truncate">{user?.email}</div>
-        </div>
+        </NavLink>
         <button
           onClick={() => void signOut()}
           className="mt-1 flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100"

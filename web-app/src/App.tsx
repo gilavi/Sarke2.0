@@ -18,6 +18,7 @@ import InspectionDetail from '@/pages/InspectionDetail';
 import Certificates from '@/pages/Certificates';
 import Calendar from '@/pages/Calendar';
 import Regulations from '@/pages/Regulations';
+import Account from '@/pages/Account';
 
 // HashRouter — GitHub Pages only honors 404.html at the site root, not in
 // subdirectories like /Sarke2.0/app/, so deep BrowserRouter links 404 in
@@ -51,6 +52,7 @@ export default function App() {
           <Route path="/certificates" element={<Shell><Certificates /></Shell>} />
           <Route path="/calendar" element={<Shell><Calendar /></Shell>} />
           <Route path="/regulations" element={<Shell><Regulations /></Shell>} />
+          <Route path="/account" element={<Shell><Account /></Shell>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>

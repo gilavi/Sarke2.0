@@ -19,6 +19,7 @@ interface AuthContextValue {
   signOut: () => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
   updatePassword: (password: string) => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const Ctx = createContext<AuthContextValue | null>(null);
@@ -99,6 +100,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async updatePassword(password) {
         const { error } = await supabase.auth.updateUser({ password });
         if (error) throw error;
+      },
+      async refreshProfile() {
+        const userId = session?.user.id;
+        if (!userId) return;
+        const { data } = await supabase
+          .from('users')
+          .select('id, first_name, last_name, email')
+          .eq('id', userId)
+          .maybeSingle();
+        setProfile((data as Profile | null) ?? null);
       },
     }),
     [session, profile, loading],
