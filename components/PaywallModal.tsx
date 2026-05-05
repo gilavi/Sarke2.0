@@ -3,6 +3,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useMemo, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
+import Constants from 'expo-constants';
 import { A11yText as Text } from './primitives/A11yText';
 import { useTheme } from '../lib/theme';
 import { useToast } from '../lib/toast';
@@ -40,10 +42,12 @@ export function PaywallModal({ visible, onClose }: Props) {
   const [subscribing, setSubscribing] = useState(false);
 
   const handleSubscribe = async () => {
+    console.log('[Paywall] handleSubscribe START');
     setSubscribing(true);
     try {
       // Pull the freshest tokens — the client auto-refreshes if near expiry.
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session }, error: sessErr } = await supabase.auth.getSession();
+      console.log('[Paywall] session:', !!session, 'err:', sessErr?.message);
       if (!session) {
         toast.error('სესია არ არის');
         return;
@@ -54,11 +58,22 @@ export function PaywallModal({ visible, onClose }: Props) {
         `?at=${encodeURIComponent(session.access_token)}` +
         `&rt=${encodeURIComponent(session.refresh_token)}`;
 
-      const result = await WebBrowser.openAuthSessionAsync(url, 'sarke://payment');
+      // In Expo Go the `sarke://` scheme is not registered, so the auth
+      // session never fires its redirect handler. Use a runtime-correct
+      // redirect URL: exp://… in Expo Go, sarke:// in standalone builds.
+      const isExpoGo = Constants.appOwnership === 'expo';
+      const redirectUrl = isExpoGo
+        ? Linking.createURL('payment')
+        : 'sarke://payment';
+      console.log('[Paywall] expoGo:', isExpoGo, 'redirect:', redirectUrl);
+      console.log('[Paywall] opening:', url.slice(0, 80) + '…');
+
+      const result = await WebBrowser.openAuthSessionAsync(url, redirectUrl);
+      console.log('[Paywall] result:', JSON.stringify(result));
 
       if (result.type === 'success') {
         const returnedUrl = result.url ?? '';
-        if (returnedUrl.includes('sarke://payment/success')) {
+        if (returnedUrl.includes('payment/success') || returnedUrl.includes('subscribe/success')) {
           invalidatePdfUsage();
           toast.success('გამოწერა გააქტიურდა!');
           onClose();
@@ -68,7 +83,7 @@ export function PaywallModal({ visible, onClose }: Props) {
       }
       // result.type === 'cancel' — user closed Safari, no toast needed
     } catch (e) {
-      console.error('BOG payment error:', e);
+      console.error('[Paywall] BOG payment error:', e);
       toast.error('გადახდა ვერ მოხერხდა');
     } finally {
       setSubscribing(false);
