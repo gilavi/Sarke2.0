@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../lib/theme';
 import { InspectionTypeAvatar } from './InspectionTypeAvatar';
@@ -36,17 +36,17 @@ export const TemplatePickerModal = memo(function TemplatePickerModal({
         <Text style={[styles.title, { color: c.ink }]}>{title}</Text>
         <ScrollView bounces={false}>
           {templates.map((tpl, i) => (
-            <TouchableOpacity
+            <Pressable
               key={tpl.id}
-              style={[
+              style={({ pressed }) => [
                 styles.row,
                 {
                   borderBottomColor: c.borderStrong,
                   borderBottomWidth: i < templates.length - 1 ? StyleSheet.hairlineWidth : 0,
+                  opacity: pressed ? 0.7 : 1,
                 },
               ]}
               onPress={() => onSelect(tpl)}
-              activeOpacity={0.7}
             >
               <InspectionTypeAvatar
                 category={tpl.category}
@@ -57,12 +57,12 @@ export const TemplatePickerModal = memo(function TemplatePickerModal({
                 {tpl.name}
               </Text>
               <Ionicons name="chevron-forward" size={16} color={c.inkSoft} />
-            </TouchableOpacity>
+            </Pressable>
           ))}
         </ScrollView>
-        <TouchableOpacity style={[styles.cancel, { borderTopColor: c.borderStrong }]} onPress={onClose}>
+        <Pressable style={({ pressed }) => [styles.cancel, { borderTopColor: c.borderStrong, opacity: pressed ? 0.7 : 1 }]} onPress={onClose}>
           <Text style={[styles.cancelText, { color: c.inkSoft }]}>გაუქმება</Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
     </Modal>
   );

@@ -219,6 +219,7 @@ export default function QuestionnaireWizard() {
   // detail modal, plus a set of visited indices for the amber "in-progress"
   // tint shown when a belt was opened but no problems were logged.
   const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [showTour, setShowTour] = useState(false);
   const showHelp = useScaffoldHelpSheet();
   const showSheet = useBottomSheet();
@@ -1097,15 +1098,19 @@ export default function QuestionnaireWizard() {
                 <Button
                   title="წაშლა"
                   variant="danger"
+                  loading={deleting}
+                  disabled={deleting}
                   onPress={async () => {
+                    setDeleting(true);
                     setDeleteConfirmVisible(false);
-                    if (!id) return;
+                    if (!id) { setDeleting(false); return; }
                     try {
                       await inspectionsApi.remove(id);
                       haptic.success();
                       toast.success('წაიშალა');
                       router.back();
                     } catch (e) {
+                      setDeleting(false);
                       haptic.error();
                       toast.error(toErrorMessage(e, 'ვერ წაიშალა'));
                     }

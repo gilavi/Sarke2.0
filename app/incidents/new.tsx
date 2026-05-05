@@ -698,7 +698,7 @@ function Step3({
               style={{ marginBottom: 0 }}
             />
           </View>
-          <Pressable onPress={onAddWitness} style={s.addWitnessBtn}>
+          <Pressable onPress={onAddWitness} style={s.addWitnessBtn} hitSlop={2}>
             <Ionicons name="add" size={20} color={theme.colors.accent} />
           </Pressable>
         </View>
@@ -719,7 +719,7 @@ function Step3({
                 <Pressable
                   onPress={() => onRemovePhoto(i)}
                   style={s.photoRemoveBtn}
-                  hitSlop={4}
+                  hitSlop={12}
                 >
                   <Ionicons name="close-circle" size={20} color="#fff" />
                 </Pressable>

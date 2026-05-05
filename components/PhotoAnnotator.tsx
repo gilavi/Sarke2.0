@@ -439,6 +439,7 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
               <Pressable
                 key={c.value}
                 onPress={() => setColor(c.value)}
+                hitSlop={6}
                 style={[
                   styles.colorBtn,
                   { backgroundColor: c.value },
@@ -496,6 +497,7 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
               <Pressable
                 key={w}
                 onPress={() => setWidth(w)}
+                hitSlop={4}
                 style={[styles.widthBtn, width === w && styles.widthBtnActive]}
                 {...a11y(`სისქე: ${w}px`, 'შეეხეთ ამ სისქის ასარჩევად', 'button')}
               >
@@ -528,8 +530,9 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
         animationType="fade"
         onRequestClose={() => setTextModalVisible(false)}
       >
-        <View style={modalStyles.overlay}>
-          <View style={modalStyles.card}>
+        <Pressable style={modalStyles.overlay} onPress={() => setTextModalVisible(false)}>
+          <Pressable onPress={() => {}}>
+            <View style={modalStyles.card}>
             <FloatingLabelInput
               label="ტექსტის დამატება"
               value={textInput}
@@ -547,7 +550,8 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
               </Pressable>
             </View>
           </View>
-        </View>
+          </Pressable>
+        </Pressable>
       </Modal>
     </SafeAreaView>
   );

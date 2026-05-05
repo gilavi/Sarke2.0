@@ -140,7 +140,7 @@ export function FlowHeader({
         <View style={styles.trailing}>
           {trailing === 'help' && onHelp ? (
             <Pressable
-              hitSlop={8}
+              hitSlop={10}
               onPress={onHelp}
               style={({ pressed }) => [
                 styles.helpBtn,

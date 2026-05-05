@@ -100,8 +100,9 @@ function ForgotPasswordModal({ visible, onClose }: { visible: boolean; onClose: 
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
-      <View style={styles.overlay}>
-        <Card padding={24} style={styles.modalCard}>
+      <Pressable style={styles.overlay} onPress={handleClose}>
+        <Pressable onPress={() => {}}>
+          <Card padding={24} style={styles.modalCard}>
           <ModalHeader title={t('auth.resetPassword')} onClose={handleClose} />
           {sent ? (
             <View style={{ gap: 16, alignItems: 'center', marginTop: 12 }}>
@@ -130,7 +131,8 @@ function ForgotPasswordModal({ visible, onClose }: { visible: boolean; onClose: 
             </View>
           )}
         </Card>
-      </View>
+        </Pressable>
+      </Pressable>
     </Modal>
   );
 }

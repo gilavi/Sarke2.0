@@ -22,6 +22,7 @@ export default function ResetPasswordScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
 
   const canSubmit = password.length >= 6 && password === confirm;
 
@@ -72,7 +73,10 @@ export default function ResetPasswordScreen() {
                 </Text>
                 <Button
                   title="შესვლა"
+                  loading={signingOut}
+                  disabled={signingOut}
                   onPress={async () => {
+                    setSigningOut(true);
                     await signOut().catch((e) => logError(e, 'reset.signOut'));
                     router.replace('/(auth)/login');
                   }}
