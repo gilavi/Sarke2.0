@@ -530,8 +530,9 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
         animationType="fade"
         onRequestClose={() => setTextModalVisible(false)}
       >
-        <View style={modalStyles.overlay}>
-          <View style={modalStyles.card}>
+        <Pressable style={modalStyles.overlay} onPress={() => setTextModalVisible(false)}>
+          <Pressable onPress={() => {}}>
+            <View style={modalStyles.card}>
             <FloatingLabelInput
               label="ტექსტის დამატება"
               value={textInput}
@@ -549,7 +550,8 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
               </Pressable>
             </View>
           </View>
-        </View>
+          </Pressable>
+        </Pressable>
       </Modal>
     </SafeAreaView>
   );

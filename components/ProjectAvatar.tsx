@@ -57,7 +57,7 @@ export const ProjectAvatar = memo(function ProjectAvatar({
   const initials = projectInitials(project?.name);
 
   const inner = logo ? (
-    <Image source={{ uri: logo }} style={{ width: size, height: size, borderRadius: r }} />
+    <Image source={{ uri: logo }} style={{ width: size, height: size, borderRadius: r }} contentFit="cover" />
   ) : (
     <View
       style={{

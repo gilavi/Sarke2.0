@@ -53,6 +53,7 @@ export function SyncStatusPill() {
   useEffect(
     () => () => {
       if (successTimer.current) clearTimeout(successTimer.current);
+      opacity.stopAnimation();
     },
     [],
   );

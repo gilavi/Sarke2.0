@@ -9,10 +9,19 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // the live fetch overwrites it.
 const USER_SCOPED_PREFIXES = [
   'wizard:',
+  'bobcat-wizard:',
+  'excavator-wizard:',
+  'ge-wizard:',
   '@offline:',
   'pending-signatures',
+  'pending-pdf-uploads',
   'home_cache_',
   'regulation_seen_',
+  'regulations_last_fetch',
+  'regulation_date_',
+  'projects_view_pref',
+  'theme_dark',
+  'pdf_language',
 ];
 
 /**

@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system/legacy';
+import * as Crypto from 'expo-crypto';
 import { storageApi, certificatesApi, incidentsApi } from './services';
 import { logError } from './logError';
 import type { IncidentStatus } from '../types/models';
@@ -72,7 +73,10 @@ export interface PendingPdfUpload {
 async function readPending(): Promise<PendingPdfUpload[]> {
   try {
     const raw = await AsyncStorage.getItem(PENDING_KEY);
-    return raw ? (JSON.parse(raw) as PendingPdfUpload[]) : [];
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed as PendingPdfUpload[];
   } catch {
     return [];
   }
@@ -92,7 +96,7 @@ async function writePending(list: PendingPdfUpload[]): Promise<void> {
 export async function queuePdfUpload(
   item: Omit<PendingPdfUpload, 'id' | 'attempts'>,
 ): Promise<string> {
-  const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const id = Crypto.randomUUID();
   const list = await readPending();
   list.push({ ...item, id, attempts: 0 });
   await writePending(list);

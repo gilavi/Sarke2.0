@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   KeyboardTypeOptions,
@@ -53,7 +53,7 @@ const SINK_SIZE = 15;
 export const FloatingLabelInput = React.forwardRef<TextInput, FloatingLabelInputProps>(
   function FloatingLabelInput(props, ref) {
     const {
-      label, value, onChangeText, required, error, helper,
+      label, value: valueProp, onChangeText, required, error, helper,
       disabled, multiline, numberOfLines, keyboardType, secureTextEntry,
       onFocus, onBlur, returnKeyType, onSubmitEditing,
       rightIcon, onRightIconPress,
@@ -61,6 +61,7 @@ export const FloatingLabelInput = React.forwardRef<TextInput, FloatingLabelInput
       onEndEditing, inputAccessoryViewID, textAlignVertical,
       editable, style,
     } = props;
+    const value = valueProp ?? '';
 
     const { theme } = useTheme();
     const isDisabled = disabled || editable === false;
@@ -86,6 +87,8 @@ export const FloatingLabelInput = React.forwardRef<TextInput, FloatingLabelInput
         }).start();
       }
     };
+
+    useEffect(() => () => { floatAnim.stopAnimation(); }, []);
 
     // Keep label floated when value is set externally (e.g. pre-filled edit form)
     const prevValue = useRef(value);

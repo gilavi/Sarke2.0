@@ -129,7 +129,10 @@ export async function saveExpertSignature(base64: string): Promise<string> {
 async function readPending(): Promise<PendingSignature[]> {
   try {
     const raw = await AsyncStorage.getItem(PENDING_KEY);
-    return raw ? (JSON.parse(raw) as PendingSignature[]) : [];
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed as PendingSignature[];
   } catch {
     return [];
   }

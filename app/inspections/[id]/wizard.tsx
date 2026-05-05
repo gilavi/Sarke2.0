@@ -40,6 +40,7 @@ import { getCurrentLocation, reverseGeocode } from '../../../utils/location';
 import type { PhotoLocation } from '../../../utils/location';
 import { showPhotoLocationAlert } from '../../../lib/photoLocationAlert';
 import { useOffline, stripServerFields } from '../../../lib/offline';
+import { recordRedirect, isOscillating } from '../../../lib/navigationGuard';
 import { logError, toErrorMessage } from '../../../lib/logError';
 import { useToast } from '../../../lib/toast';
 import { useTheme } from '../../../lib/theme';
@@ -191,6 +192,7 @@ export default function QuestionnaireWizard() {
   const [photos, setPhotos] = useState<Record<string, AnswerPhoto[]>>({});
   const [stepIndex, setStepIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadTimedOut, setLoadTimedOut] = useState(false);
   const [animateSteps, setAnimateSteps] = useState(false);
   const [harnessRowCount, setHarnessRowCount] = useState(5);
   // Measured WizardHeader height — used as keyboardVerticalOffset so the
@@ -217,6 +219,7 @@ export default function QuestionnaireWizard() {
   // detail modal, plus a set of visited indices for the amber "in-progress"
   // tint shown when a belt was opened but no problems were logged.
   const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [showTour, setShowTour] = useState(false);
   const showHelp = useScaffoldHelpSheet();
   const showSheet = useBottomSheet();
@@ -233,6 +236,16 @@ export default function QuestionnaireWizard() {
       cancelled = true;
     };
   }, [template]);
+
+  // Navigation timeout guard: if loading takes >5 s, show recovery UI.
+  useEffect(() => {
+    if (!loading) {
+      setLoadTimedOut(false);
+      return;
+    }
+    const t = setTimeout(() => setLoadTimedOut(true), 5000);
+    return () => clearTimeout(t);
+  }, [loading]);
 
   const dismissTour = useCallback(() => {
     setShowTour(false);
@@ -277,6 +290,7 @@ export default function QuestionnaireWizard() {
         useNativeDriver: true,
       }).start();
     }
+    return () => { enterAnim.stopAnimation(); };
   }, [loading, enterAnim]);
 
   // Cancellation token for in-flight load(). Each load() run gets its own
@@ -462,6 +476,7 @@ export default function QuestionnaireWizard() {
   // benign double-fire.
   useEffect(() => {
     if (id) void load();
+    return () => { loadCtrlRef.current.cancelled = true; };
   }, [id]);
 
   useFocusEffect(
@@ -854,12 +869,12 @@ export default function QuestionnaireWizard() {
   // which let the conclusion form flash with empty isSafe/conclusion values
   // for ~100-200 ms while answers were still hydrating.
   const ready = !loading && !!questionnaire && !!template;
-  console.log('[Wizard] render — loading:', loading, 'ready:', ready, 'stepIndex:', stepIndex, 'steps:', steps.length, 'step:', step?.kind, 'template:', template?.category);
-
   // Early return — absolutely NO form elements render while data is missing.
   if (!ready) {
-    console.log('[Wizard] not ready — loading:', loading, 'questionnaire:', !!questionnaire, 'template:', !!template, 'questions:', questions.length);
-    if (questionnaire?.status === 'completed') {
+    if (loadTimedOut) {
+      return <NavigationRecovery id={id} onRetry={() => { setLoadTimedOut(false); setLoading(true); load(); }} />;
+    }
+    if (questionnaire?.status === 'completed' && !isOscillating('wizard', 'detail')) {
       return <CompletedRedirect id={questionnaire.id} />;
     }
     return (
@@ -875,8 +890,9 @@ export default function QuestionnaireWizard() {
   // Completed inspection → bounce to the dedicated detail screen. The
   // redirect fires in an effect so we don't mutate navigation during render.
   if (questionnaire?.status === 'completed') {
-    console.log('[Wizard] completed — redirecting');
-    return <CompletedRedirect id={questionnaire.id} />;
+    if (!isOscillating('wizard', 'detail')) {
+      return <CompletedRedirect id={questionnaire.id} />;
+    }
   }
 
   const stepAnswered = hasAnswer(step, answers, photos, conclusion, isSafe, harnessName, template);
@@ -891,13 +907,10 @@ export default function QuestionnaireWizard() {
   const isScaffoldRow = step.kind === 'gridRow' && (step.question.grid_rows?.[0] ?? '') !== 'N1';
 
 
-  console.log('[Wizard] ready-render — step:', step.kind, 'isYesNo:', isYesNo, 'isLast:', isLast, 'isScaffoldRow:', isScaffoldRow);
-
   // HarnessListFlow: full-screen takeover for harness templates.
   // Render it directly without Screen wrapper — HarnessListFlow owns its own
   // SafeAreaView and layout; nesting inside Screen causes double insets.
   if (step.kind === 'harnessFlow') {
-    console.log('[Wizard] → harnessFlow branch');
     return (
       <View style={{ flex: 1, backgroundColor: theme.colors.card }}>
         <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
@@ -1079,15 +1092,19 @@ export default function QuestionnaireWizard() {
                 <Button
                   title="წაშლა"
                   variant="danger"
+                  loading={deleting}
+                  disabled={deleting}
                   onPress={async () => {
+                    setDeleting(true);
                     setDeleteConfirmVisible(false);
-                    if (!id) return;
+                    if (!id) { setDeleting(false); return; }
                     try {
                       await inspectionsApi.remove(id);
                       haptic.success();
                       toast.success('წაიშალა');
                       router.back();
                     } catch (e) {
+                      setDeleting(false);
                       haptic.error();
                       toast.error(toErrorMessage(e, 'ვერ წაიშალა'));
                     }
@@ -2094,6 +2111,7 @@ const PhotoThumb = memo(function PhotoThumb({ photo, size = 80 }: { photo: Answe
 
   useEffect(() => {
     void load();
+    return () => { fadeAnim.stopAnimation(); };
   }, [load]);
 
   const containerStyle = [styles.photoThumb, { width: size, height: size }];
@@ -2143,7 +2161,7 @@ function PhotoPreviewModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
 
-  useEffect(() => {
+  const loadUri = useCallback(() => {
     if (!photo) {
       setUri(null);
       setError(false);
@@ -2152,6 +2170,8 @@ function PhotoPreviewModal({
     const isLocal = /^(file|content|ph|asset):\/\//.test(photo.storage_path);
     if (isLocal) {
       setUri(photo.storage_path);
+      setLoading(false);
+      setError(false);
       return;
     }
     setLoading(true);
@@ -2161,11 +2181,19 @@ function PhotoPreviewModal({
       .then(url => { if (!cancelled) setUri(url); })
       .catch((e) => {
         logError(e, 'wizard.photoDisplayUrl');
-        if (!cancelled) setUri(storageApi.publicUrl(STORAGE_BUCKETS.answerPhotos, photo.storage_path));
+        if (!cancelled) {
+          setUri(storageApi.publicUrl(STORAGE_BUCKETS.answerPhotos, photo.storage_path));
+          setError(true);
+        }
       })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [photo]);
+
+  useEffect(() => {
+    const cleanup = loadUri();
+    return cleanup;
+  }, [loadUri]);
 
   if (!visible || !photo) return null;
 
@@ -2181,6 +2209,9 @@ function PhotoPreviewModal({
           <View style={[styles.previewImage, { alignItems: 'center', justifyContent: 'center', gap: 12 }]}>
             <Ionicons name="image-outline" size={48} color="rgba(255,255,255,0.5)" />
             <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14 }}>ფოტო ვერ ჩაიტვირთა</Text>
+            <Pressable onPress={loadUri} style={{ padding: 8 }} {...a11y('თავიდან ცდა', 'შეეხეთ ფოტოს ხელახლა ჩასატვირთად', 'button')}>
+              <Ionicons name="refresh" size={28} color="rgba(255,255,255,0.7)" />
+            </Pressable>
           </View>
         ) : (
           <Image
@@ -2226,9 +2257,33 @@ function PhotoGrid({ photos }: { photos: AnswerPhoto[] }) {
 function CompletedRedirect({ id }: { id: string }) {
   const router = useRouter();
   useEffect(() => {
+    recordRedirect('wizard', 'detail');
     router.replace(`/inspections/${id}` as any);
   }, [id, router]);
   return null;
+}
+
+function NavigationRecovery({ id, onRetry }: { id: string; onRetry: () => void }) {
+  const { theme } = useTheme();
+  const router = useRouter();
+  return (
+    <Screen edgeToEdge edges={['top']} style={{ backgroundColor: theme.colors.background }}>
+      <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
+      <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+        <Ionicons name="warning-outline" size={48} color={theme.colors.semantic.warning} style={{ marginBottom: 16 }} />
+        <Text style={{ fontSize: 18, fontWeight: '600', color: theme.colors.ink, marginBottom: 8, textAlign: 'center' }}>
+          ჩატვირთვა ვერ მოხერხდა
+        </Text>
+        <Text style={{ fontSize: 14, color: theme.colors.inkSoft, marginBottom: 24, textAlign: 'center' }}>
+          ინსპექციის მონაცემების ჩატვირთვა ძალიან დიდხანს გრძელდება. სცადეთ თავიდან ან გადადით უკან.
+        </Text>
+        <View style={{ flexDirection: 'row', gap: 12 }}>
+          <Button variant="secondary" onPress={() => router.back()} title="უკან" />
+          <Button variant="primary" onPress={onRetry} title="თავიდან ცდა" />
+        </View>
+      </SafeAreaView>
+    </Screen>
+  );
 }
 
 function getstyles(theme: any) {

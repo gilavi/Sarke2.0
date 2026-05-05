@@ -38,6 +38,7 @@ export const Input = React.forwardRef<TextInput, InputProps & { required?: boole
   onFocus,
   onBlur,
   required,
+  value = '',
   ...rest
 }: InputProps & { required?: boolean }, ref) {
   const { theme } = useTheme();
@@ -116,6 +117,7 @@ export const Input = React.forwardRef<TextInput, InputProps & { required?: boole
           placeholderTextColor={theme.colors.inkFaint}
           onFocus={handleFocus}
           onBlur={handleBlur}
+          value={value}
           {...rest}
         />
         {rightIcon && (

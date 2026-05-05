@@ -132,14 +132,14 @@ export default function NewIncident() {
   }, [session.state]);
 
   // load project once
-  const loadProject = useCallback(async () => {
+  useEffect(() => {
     if (!projectId || project) return;
-    const p = await projectsApi.getById(projectId).catch(() => null);
-    setProject(p);
+    let mounted = true;
+    projectsApi.getById(projectId)
+      .then(p => { if (mounted) setProject(p); })
+      .catch(() => null);
+    return () => { mounted = false; };
   }, [projectId, project]);
-
-  // run on mount
-  useEffect(() => { void loadProject(); }, [loadProject]);
 
   // ── navigation ──────────────────────────────────────────────────────────────
 
@@ -272,13 +272,17 @@ export default function NewIncident() {
 
   const saveDraft = async () => {
     if (!projectId) return;
+    if (!form.type) {
+      toast.error('აირჩიეთ ინციდენტის ტიპი');
+      return;
+    }
     setSaving(true);
     try {
       const uploaded = await uploadPhotos();
       await incidentsApi.create({
         id: incidentId,
         project_id: projectId,
-        type: form.type!,
+        type: form.type,
         injured_name: form.type !== 'nearmiss' ? form.injuredName || null : null,
         injured_role: form.type !== 'nearmiss' ? form.injuredRole || null : null,
         date_time: form.dateTime.toISOString(),
@@ -309,6 +313,10 @@ export default function NewIncident() {
       return;
     }
     if (pdfUsage?.isLocked) { setPaywallVisible(true); return; }
+    if (!form.type) {
+      toast.error('აირჩიეთ ინციდენტის ტიპი');
+      return;
+    }
     setSaving(true);
     let savedId = incidentId;
     try {
@@ -320,7 +328,7 @@ export default function NewIncident() {
       const saved = await incidentsApi.create({
         id: incidentId,
         project_id: projectId,
-        type: form.type!,
+        type: form.type,
         injured_name: form.type !== 'nearmiss' ? form.injuredName || null : null,
         injured_role: form.type !== 'nearmiss' ? form.injuredRole || null : null,
         date_time: form.dateTime.toISOString(),
@@ -375,7 +383,7 @@ export default function NewIncident() {
       });
 
       // 6. open/share PDF instantly; keep the pretty-named copy for background upload
-      const incidentTypeLabel = INCIDENT_TYPE_FULL_LABEL[form.type!];
+      const incidentTypeLabel = INCIDENT_TYPE_FULL_LABEL[form.type];
       const docType = `ინციდენტი_${incidentTypeLabel}`;
       const pdfName = generatePdfName(project.company_name || project.name, docType, form.dateTime, savedId);
       const pdfPath = `incidents/${pdfName}`;
@@ -707,7 +715,7 @@ function Step3({
               style={{ marginBottom: 0 }}
             />
           </View>
-          <Pressable onPress={onAddWitness} style={s.addWitnessBtn}>
+          <Pressable onPress={onAddWitness} style={s.addWitnessBtn} hitSlop={2}>
             <Ionicons name="add" size={20} color={theme.colors.accent} />
           </Pressable>
         </View>
@@ -728,7 +736,7 @@ function Step3({
                 <Pressable
                   onPress={() => onRemovePhoto(i)}
                   style={s.photoRemoveBtn}
-                  hitSlop={10}
+                  hitSlop={12}
                 >
                   <Ionicons name="close-circle" size={20} color="#fff" />
                 </Pressable>

@@ -418,7 +418,8 @@ export function RoleSlotList({ projectId, inspector, crew, onChange, maxVisible,
 function cryptoUuid(): string {
   const g = (globalThis as { crypto?: { randomUUID?: () => string } }).crypto;
   if (g?.randomUUID) return g.randomUUID();
-  return `crew_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  // Fallback should not happen — lib/polyfills.ts wires expo-crypto into globalThis.crypto
+  return `crew_${Date.now()}_${Math.random().toString(36).slice(2, 10)}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
 const styles = StyleSheet.create({

@@ -571,7 +571,7 @@ export default function ProjectDetail() {
   const mapMarkers = useMemo(() => {
     const withCoords = allProjects.filter(p => p.latitude != null && p.longitude != null);
     if (withCoords.length > 20) {
-      console.warn(`[ProjectDetail] Too many projects to show on map (${withCoords.length}), limiting to 20.`);
+      // Limit map markers to 20 for performance
     }
     return withCoords.slice(0, 20);
   }, [allProjects]);

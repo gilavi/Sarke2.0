@@ -86,7 +86,6 @@ export type HarnessListFlowProps = {
 };
 
 export function HarnessListFlow(props: HarnessListFlowProps) {
-  console.log('[HarnessListFlow] render start');
   const { theme } = useTheme();
   const s = useMemo(() => gets(theme), [theme]);
   const {
@@ -108,14 +107,10 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
     () => rowLabelsFor(questions, harnessRowCount),
     [questions, harnessRowCount],
   );
-  console.log('[HarnessListFlow] items:', items.length, 'rowLabels:', rowLabels.length, 'harnessRowCount:', harnessRowCount);
-
   /** 'count' = number picker; 'list' = per-harness chip list */
   const [step, setStep] = useState<'count' | 'list'>('count');
   const [currentRowIdx, setCurrentRowIdx] = useState(0);
   const showHelp = useScaffoldHelpSheet();
-  console.log('[HarnessListFlow] step:', step, 'currentRowIdx:', currentRowIdx);
-
   // Tour refs
   const headerRef = useRef<View>(null);
   const firstRowRef = useRef<View>(null);
@@ -505,7 +500,7 @@ const CellPhotoThumb = memo(function CellPhotoThumb({
   return (
     <View style={s.thumbWrap}>
       {uri ? (
-        <Image source={{ uri }} style={{ width: '100%', height: '100%' }} />
+        <Image source={{ uri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
       ) : (
         <ActivityIndicator color={theme.colors.inkSoft} />
       )}

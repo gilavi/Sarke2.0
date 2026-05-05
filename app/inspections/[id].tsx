@@ -9,7 +9,7 @@
 // The preview is regenerated whenever a sheet saves a change, so the inspector
 // always sees the current state of the PDF.
 
-import { createElement, useCallback, useEffect, useMemo, useState } from 'react';
+import { createElement, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Platform,
@@ -53,6 +53,7 @@ import {
 } from '../../lib/imageUrl';
 import { useSession } from '../../lib/session';
 import { useToast } from '../../lib/toast';
+import { recordRedirect, isOscillating } from '../../lib/navigationGuard';
 import { friendlyError } from '../../lib/errorMap';
 import { PaywallModal } from '../../components/PaywallModal';
 import { usePdfUsage, useInvalidatePdfUsage } from '../../lib/usePdfUsage';
@@ -97,6 +98,9 @@ export default function InspectionResultScreen() {
   const [paywallVisible, setPaywallVisible] = useState(false);
   const { data: pdfUsage } = usePdfUsage();
   const invalidatePdfUsage = useInvalidatePdfUsage();
+  const [redirectBlocked, setRedirectBlocked] = useState(false);
+  const [loadTimedOut, setLoadTimedOut] = useState(false);
+  const mountedRef = useRef(true);
 
   // React Query hooks seed cached data instantly so skeletons disappear faster.
   // loadAll() below still runs on mount for nested photo / attachment data.
@@ -116,31 +120,36 @@ export default function InspectionResultScreen() {
 
   const loadAll = useCallback(async () => {
     if (!id) {
-      setLoading(false);
+      if (mountedRef.current) setLoading(false);
       return;
     }
-    setLoading(true);
-    setLoadError(null);
-    setNotFound(false);
+    if (mountedRef.current) {
+      setLoading(true);
+      setLoadError(null);
+      setNotFound(false);
+    }
     try {
       const insp = await inspectionsApi.getById(id);
       if (!insp) {
-        setNotFound(true);
+        if (mountedRef.current) setNotFound(true);
         return;
       }
-      setInspection(insp);
-      if (insp.status === 'draft') {
+      if (mountedRef.current) setInspection(insp);
+      if (insp.status === 'draft' && !redirectBlocked) {
         const tpl = await templatesApi.getById(insp.template_id).catch(() => null);
-        if (tpl?.category === 'bobcat') {
-          router.replace(`/inspections/bobcat/${insp.id}` as any);
-        } else if (tpl?.category === 'excavator') {
-          router.replace(`/inspections/excavator/${insp.id}` as any);
-        } else if (tpl?.category === 'general_equipment') {
-          router.replace(`/inspections/general-equipment/${insp.id}` as any);
+        const target =
+          tpl?.category === 'bobcat' ? `bobcat/${insp.id}` :
+          tpl?.category === 'excavator' ? `excavator/${insp.id}` :
+          tpl?.category === 'general_equipment' ? `general-equipment/${insp.id}` :
+          `${insp.id}/wizard`;
+        if (isOscillating('detail', target)) {
+          if (mountedRef.current) setRedirectBlocked(true);
+          /* oscillation detected — blocking redirect */
         } else {
-          router.replace(`/inspections/${insp.id}/wizard` as any);
+          recordRedirect('detail', target);
+          router.replace(`/inspections/${target}` as any);
+          return;
         }
-        return;
       }
       const [tpl, proj, sigs, atts] = await Promise.all([
         templatesApi.getById(insp.template_id).catch(() => null),
@@ -150,28 +159,32 @@ export default function InspectionResultScreen() {
           .listByInspection(insp.id)
           .catch(() => [] as InspectionAttachment[]),
       ]);
-      setTemplate(tpl);
-      setProject(proj);
-      setSignatures(sigs);
-      setAttachments(atts);
-      if (tpl) {
+      if (mountedRef.current) {
+        setTemplate(tpl);
+        setProject(proj);
+        setSignatures(sigs);
+        setAttachments(atts);
+      }
+      if (tpl && mountedRef.current) {
         const [qs, ans] = await Promise.all([
           templatesApi.questions(tpl.id).catch(() => [] as Question[]),
           answersApi.list(insp.id).catch(() => [] as Answer[]),
         ]);
-        setQuestions(qs);
-        setAnswers(ans);
-        if (ans.length > 0) {
+        if (mountedRef.current) {
+          setQuestions(qs);
+          setAnswers(ans);
+        }
+        if (ans.length > 0 && mountedRef.current) {
           const photoMap = await answersApi
             .photosByAnswerIds(ans.map(a => a.id))
             .catch(() => ({} as Record<string, AnswerPhoto[]>));
-          setPhotosByAnswer(photoMap);
+          if (mountedRef.current) setPhotosByAnswer(photoMap);
         }
       }
     } catch (e) {
-      setLoadError(e);
+      if (mountedRef.current) setLoadError(e);
     } finally {
-      setLoading(false);
+      if (mountedRef.current) setLoading(false);
     }
   }, [id, router]);
 
@@ -179,9 +192,18 @@ export default function InspectionResultScreen() {
   // back-navigation. Cached data from the hooks above renders instantly;
   // loadAll() fills in nested photo / attachment data on first paint.
   useEffect(() => {
+    mountedRef.current = true;
     void loadAll();
+    return () => { mountedRef.current = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Navigation timeout guard: if loading takes >5 s, show recovery UI.
+  useEffect(() => {
+    if (!loading) return;
+    const t = setTimeout(() => setLoadTimedOut(true), 5000);
+    return () => clearTimeout(t);
+  }, [loading]);
 
   const buildPreview = useCallback(
     async (
@@ -273,13 +295,13 @@ export default function InspectionResultScreen() {
   // Initial preview build whenever core data is loaded. Subsequent rebuilds
   // are triggered explicitly when sheets save changes.
   useEffect(() => {
-    if (loading || !inspection || !template || !project) return;
+    if ((loading && !loadTimedOut) || !inspection || !template || !project) return;
     void buildPreview(signatures, attachments);
     // Intentional: don't refire on signatures/attachments changing — the
     // sheet onChanged handler does that with fresh data so we avoid races
     // with stale state still in the closure.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, inspection, template, project, questions, answers, photosByAnswer]);
+  }, [loading, loadTimedOut, inspection, template, project, questions, answers, photosByAnswer]);
 
   const refreshAfterSheetSave = useCallback(async () => {
     if (!inspection) return;
