@@ -593,7 +593,7 @@ function Step2({
   const isNearMiss = form.type === 'nearmiss';
 
   return (
-    <View style={{ gap: 16 }}>
+    <View style={{ gap: 12 }}>
       <Text style={s.stepTitle}>დაზარალებული და გარემოება</Text>
 
       {isNearMiss ? (
@@ -657,7 +657,7 @@ function Step3({
   onRemovePhoto: (i: number) => void;
 }) {
   return (
-    <View style={{ gap: 16 }}>
+    <View style={{ gap: 12 }}>
       <Text style={s.stepTitle}>აღწერა და მიზეზი</Text>
 
       <FloatingLabelInput
@@ -769,7 +769,7 @@ function Step4({
   const badge = form.type ? getTypeBadge(theme)[form.type] : null;
 
   return (
-    <View style={{ gap: 16 }}>
+    <View style={{ gap: 12 }}>
       <Text style={s.stepTitle}>ხელმოწერა და დასრულება</Text>
 
       {/* Summary card */}

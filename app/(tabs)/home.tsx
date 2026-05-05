@@ -646,6 +646,7 @@ function ProjectPickerSheet({
   const pickedTemplateIdRef = useRef<string | null>(null);
   useEffect(() => { pickedTemplateIdRef.current = pickedTemplateId; }, [pickedTemplateId]);
   const [company, setCompany] = useState('');
+  const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
   const [pin, setPin] = useState<LatLng | null>(null);
   const [logo, setLogo] = useState<string | null>(null);
@@ -659,6 +660,7 @@ function ProjectPickerSheet({
       setView(initialView);
       setPickedTemplateId(preselectedTemplateId ?? null);
       setCompany('');
+      setPhone('');
       setAddress('');
       setPin(null);
       setLogo(null);
@@ -711,7 +713,7 @@ function ProjectPickerSheet({
   };
 
   const createProject = async () => {
-    if (!company.trim()) return;
+    if (!company.trim() || !phone.trim() || !address.trim()) return;
     setBusy(true);
     try {
       // Create project — API returns the created object directly
@@ -722,6 +724,7 @@ function ProjectPickerSheet({
         latitude: pin?.latitude ?? null,
         longitude: pin?.longitude ?? null,
         logo,
+        contactPhone: phone.trim() || null,
       });
       // Refresh the dashboard in the background — `onCreated` re-fetches all
       // 4 home endpoints, which used to gate navigation on a full reload.
@@ -731,6 +734,7 @@ function ProjectPickerSheet({
       // Use returned project directly (no stale prop issues)
       if (created?.id) {
         setCompany('');
+        setPhone('');
         setAddress('');
         setPin(null);
         setLogo(null);
@@ -855,13 +859,12 @@ function ProjectPickerSheet({
                       editable
                       onEdit={onPickLogo}
                     />
-                    {logo ? (
-                      <Pressable onPress={onPickLogo} hitSlop={13}>
-                        <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.accent }}>
-                          {t('projects.changePhoto')}
-                        </Text>
-                      </Pressable>
-                    ) : null}
+                    <Pressable onPress={onPickLogo} hitSlop={13} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <Ionicons name={logo ? 'pencil' : 'add-circle-outline'} size={15} color={theme.colors.accent} />
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.accent }}>
+                        {logo ? t('projects.changePhoto') : t('projects.addPhoto')}
+                      </Text>
+                    </Pressable>
                   </View>
                   <FloatingLabelInput
                     label={t('common.company')}
@@ -871,7 +874,26 @@ function ProjectPickerSheet({
                     autoFocus
                   />
                   <FloatingLabelInput
+                    label={t('common.phone')}
+                    required
+                    value={phone}
+                    onChangeText={(text) => {
+                      const digits = text.replace(/\D/g, '').slice(0, 9);
+                      let formatted = digits;
+                      if (digits.length > 3 && digits.length <= 5) {
+                        formatted = `${digits.slice(0, 3)} ${digits.slice(3)}`;
+                      } else if (digits.length > 5 && digits.length <= 7) {
+                        formatted = `${digits.slice(0, 3)} ${digits.slice(3, 5)} ${digits.slice(5)}`;
+                      } else if (digits.length > 7) {
+                        formatted = `${digits.slice(0, 3)} ${digits.slice(3, 5)} ${digits.slice(5, 7)} ${digits.slice(7)}`;
+                      }
+                      setPhone(formatted);
+                    }}
+                    keyboardType="phone-pad"
+                  />
+                  <FloatingLabelInput
                     label={t('common.address')}
+                    required
                     value={address}
                     onChangeText={setAddress}
                     {...a11y(t('common.address'), 'შეიყვანეთ მისამართი', 'text')}
@@ -883,7 +905,7 @@ function ProjectPickerSheet({
                     title={t('projects.createButton')}
                     onPress={createProject}
                     loading={busy}
-                    disabled={!company.trim()}
+                    disabled={!company.trim() || !phone.trim() || !address.trim()}
                     {...a11y(t('projects.createButton'), 'შეეხეთ ახალი პროექტის შესაქმნელად', 'button')}
                   />
                 </View>

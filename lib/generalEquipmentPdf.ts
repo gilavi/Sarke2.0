@@ -19,6 +19,7 @@ import {
   type EquipmentItem,
   type GECondition,
 } from '../types/generalEquipment';
+import type { SignatureRecord } from '../types/models';
 
 function conditionClass(c: GECondition): string {
   if (c === 'good')         return 'ck-good';
@@ -214,8 +215,14 @@ const CSS = `
 export async function buildGeneralEquipmentPdfHtml(args: {
   inspection: GeneralEquipmentInspection;
   projectName: string;
+  /**
+   * Optional multi-signer records with `signature_png_url` already resolved
+   * to a data: URL. When present, replaces the legacy inline inspector
+   * signature — same mechanism as bobcat/excavator parity.
+   */
+  signatures?: SignatureRecord[];
 }): Promise<string> {
-  const { inspection: insp, projectName } = args;
+  const { inspection: insp, projectName, signatures } = args;
 
   const safeEquipment = Array.isArray(insp.equipment) ? insp.equipment : [];
   const safeSummaryPhotos = Array.isArray(insp.summaryPhotos) ? insp.summaryPhotos : [];
@@ -224,8 +231,11 @@ export async function buildGeneralEquipmentPdfHtml(args: {
     ...safeSummaryPhotos,
   ]);
 
+  const signedSigs = (signatures ?? []).filter(
+    s => s.status === 'signed' && !!s.signature_png_url,
+  );
   let sigDataUrl: string | null = null;
-  if (insp.inspectorSignature) {
+  if (signedSigs.length === 0 && insp.inspectorSignature) {
     sigDataUrl = `data:image/png;base64,${insp.inspectorSignature}`;
   }
 
@@ -368,10 +378,25 @@ export async function buildGeneralEquipmentPdfHtml(args: {
   const sigRoleFull = insp.signerRole && insp.signerRole !== 'other'
     ? SIGNER_ROLE_LABEL_FULL[insp.signerRole]
     : signerPosition;
+  const sigDate = insp.completedAt ? fmtDate(insp.completedAt) : fmtDate(insp.inspectionDate);
 
-  const signatureHtml = `
-    <div class="section-title">IV — ხელმოწერა / Signature</div>
-    <div class="sig-block">
+  const sigCellsHtml = signedSigs.length > 0
+    ? signedSigs.map(s => {
+        const name = s.full_name || s.person_name || insp.signerName || '—';
+        const role = s.position || s.signer_role || 'სახელი / გვარი';
+        const signedDate = s.signed_at ? fmtDate(s.signed_at) : sigDate;
+        return `
+          <div class="sig-cell">
+            <div class="sig-lbl">${escHtml(role)}</div>
+            <div class="sig-name">${escHtml(name)}</div>
+            ${s.signature_png_url
+              ? `<img class="sig-img" src="${s.signature_png_url}" alt="ხელმოწერა" />`
+              : '<div style="height:48px;border-bottom:1px dashed var(--hairline);"></div>'}
+            <div class="sig-date">${escHtml(signedDate)}</div>
+          </div>
+        `;
+      }).join('')
+    : `
       <div class="sig-cell">
         <div class="sig-lbl">შემომწმებელი / Inspector</div>
         <div class="sig-name">${escHtml(insp.signerName) || '—'}</div>
@@ -387,8 +412,14 @@ export async function buildGeneralEquipmentPdfHtml(args: {
       </div>
       <div class="sig-cell">
         <div class="sig-lbl">თარიღი / Date</div>
-        <div class="sig-date">${fmtDate(insp.completedAt ?? insp.inspectionDate)}</div>
+        <div class="sig-date">${sigDate}</div>
       </div>
+    `;
+
+  const signatureHtml = `
+    <div class="section-title">IV — ხელმოწერა / Signature</div>
+    <div class="sig-block">
+      ${sigCellsHtml}
     </div>
   `;
 

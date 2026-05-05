@@ -7,15 +7,13 @@ import {
   View,
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import WebView from 'react-native-webview';
 import * as ImagePicker from 'expo-image-picker';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
+import { PlateInput } from '../../../components/inputs/PlateInput';
 import { Button } from '../../../components/ui';
-import { SignatureCanvas } from '../../../components/SignatureCanvas';
 import { WizardStepTransition } from '../../../components/wizard/WizardStepTransition';
 
 // checklist list render is inline below
@@ -27,7 +25,10 @@ import { useToast } from '../../../lib/toast';
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { bobcatApi } from '../../../lib/bobcatService';
-import { projectsApi } from '../../../lib/services';
+import { projectsApi, signaturesApi, inspectionAttachmentsApi } from '../../../lib/services';
+import { signatureAsDataUrl } from '../../../lib/imageUrl';
+import { STORAGE_BUCKETS } from '../../../lib/supabase';
+import type { SignatureRecord } from '../../../types/models';
 import { buildBobcatPdfHtml } from '../../../lib/bobcatPdf';
 import { generateAndSharePdf, PdfLimitReachedError } from '../../../lib/pdfOpen';
 import { PaywallModal } from '../../../components/PaywallModal';
@@ -88,9 +89,10 @@ export default function BobcatInspectionScreen() {
   const [saving, setSaving] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [generatingPdf, setGeneratingPdf] = useState(false);
-  const [showSig, setShowSig] = useState(false);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewBusy, setPreviewBusy] = useState(false);
+  const [signatures, setSignatures] = useState<SignatureRecord[]>([]);
+  const [attachmentCount, setAttachmentCount] = useState(0);
 
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
@@ -348,12 +350,14 @@ export default function BobcatInspectionScreen() {
     });
   }, [scheduleSave, toast]);
 
-  // ── Signature ──────────────────────────────────────────────────────────────
+  // ── Load signatures/attachments when completed ────────────────────────────
 
-  const handleSignatureConfirm = useCallback((base64Png: string) => {
-    setShowSig(false);
-    update('inspectorSignature', base64Png);
-  }, [update]);
+  useEffect(() => {
+    if (inspection?.status !== 'completed') return;
+    signaturesApi.list(inspection.id).then(setSignatures).catch(() => {});
+    inspectionAttachmentsApi.listByInspection(inspection.id)
+      .then(a => setAttachmentCount(a.length)).catch(() => {});
+  }, [inspection?.status, inspection?.id]);
 
   // ── Complete ───────────────────────────────────────────────────────────────
 
@@ -490,14 +494,23 @@ export default function BobcatInspectionScreen() {
 
   // ── PDF Preview ────────────────────────────────────────────────────────────
 
-  const buildPreview = useCallback(async () => {
+  const buildPreview = useCallback(async (sigs: SignatureRecord[] = signatures) => {
     if (!inspection) return;
     setPreviewBusy(true);
     try {
+      const sigsEmbedded = await Promise.all(
+        sigs.map(async sig => {
+          if (!sig.signature_png_url || sig.signature_png_url.startsWith('data:')) return sig;
+          const dataUrl = await signatureAsDataUrl(STORAGE_BUCKETS.signatures, sig.signature_png_url)
+            .catch(() => sig.signature_png_url ?? '');
+          return { ...sig, signature_png_url: dataUrl };
+        }),
+      );
       const html = await buildBobcatPdfHtml({
         inspection,
         projectName: projectName || 'პროექტი',
         catalog,
+        signatures: sigsEmbedded,
       });
       setPreviewHtml(html);
     } catch (e) {
@@ -505,13 +518,13 @@ export default function BobcatInspectionScreen() {
     } finally {
       setPreviewBusy(false);
     }
-  }, [inspection, projectName, catalog, toast]);
+  }, [inspection, projectName, catalog, signatures, toast]);
 
   useEffect(() => {
     if (inspection?.status === 'completed') {
-      buildPreview();
+      void buildPreview();
     }
-  }, [inspection, buildPreview]);
+  }, [inspection?.status, buildPreview]);
 
   // ── Step navigation ────────────────────────────────────────────────────────
 
@@ -562,7 +575,7 @@ export default function BobcatInspectionScreen() {
             <View key={entry.id} style={styles.listRow}>
               <View style={styles.listRowInfo}>
                 <Text style={[styles.listRowLabel, { fontSize: 13, fontWeight: '400', color: theme.colors.ink }]} numberOfLines={2}>
-                  {idx + 1}. {entry.description}
+                  {entry.description}
                 </Text>
               </View>
               <View style={styles.listRowActions}>
@@ -625,11 +638,8 @@ export default function BobcatInspectionScreen() {
   }
 
   // ── Completed inspection result view ───────────────────────────────────────
-  // Same shell as xaracho's `/inspections/[id]` (Stack header + WebView
-  // preview + bottom action bar). Bobcat rows live in `bobcat_inspections`,
-  // not `inspections`, so the certificate/signature action sheets — which
-  // FK to `inspections.id` — are hidden until the backend is unified.
   if (inspection.status === 'completed') {
+    const signedCount = signatures.filter(s => s.status === 'signed' && !!s.signature_png_url).length;
     return (
       <InspectionResultView
         inspectionId={inspection.id}
@@ -638,16 +648,22 @@ export default function BobcatInspectionScreen() {
         previewHtml={previewHtml}
         previewBusy={previewBusy}
         previewError={null}
-        signedCount={0}
-        totalSlots={0}
-        attachmentCount={0}
+        signedCount={signedCount}
+        totalSlots={signatures.length}
+        attachmentCount={attachmentCount}
         pdfLocked={pdfUsage?.isLocked}
         downloading={generatingPdf}
         paywallVisible={paywallVisible}
         onPaywallClose={() => setPaywallVisible(false)}
         onDownloadPdf={() => void handlePdf()}
-        onSheetSaved={() => {}}
-        hideSheets
+        onSheetSaved={() => {
+          signaturesApi.list(inspection.id).then(sigs => {
+            setSignatures(sigs);
+            void buildPreview(sigs);
+          }).catch(() => {});
+          inspectionAttachmentsApi.listByInspection(inspection.id)
+            .then(a => setAttachmentCount(a.length)).catch(() => {});
+        }}
       />
     );
   }
@@ -729,16 +745,12 @@ export default function BobcatInspectionScreen() {
                 />
               )}
 
-              <FloatingLabelInput
-                label="სახელმწიფო / ს.ნ ნომერი *"
+              <PlateInput
+                label="სახელმწიფო / ს.ნ ნომერი"
                 value={inspection.registrationNumber ?? ''}
-                onChangeText={v => update('registrationNumber', v)}
-                onFocus={() => setFocusedField('registrationNumber')}
-                onBlur={() => {
-                  setFocusedField(null);
-                  if (inspection.registrationNumber?.trim()) {
-                    registrationNumberHistory.addToHistory(inspection.registrationNumber.trim());
-                  }
+                onChangeText={v => {
+                  update('registrationNumber', v);
+                  if (v.trim()) registrationNumberHistory.addToHistory(v.trim());
                 }}
                 required
               />
@@ -834,14 +846,6 @@ export default function BobcatInspectionScreen() {
         )}
       </View>
 
-      <SignatureCanvas
-        visible={showSig}
-        personName={inspection.inspectorName ?? 'ინსპექტორი'}
-        onCancel={() => setShowSig(false)}
-        onConfirm={handleSignatureConfirm}
-      />
-
-
     </View>
   );
 }
@@ -850,7 +854,7 @@ export default function BobcatInspectionScreen() {
 
 function getstyles(theme: Theme) {
   return StyleSheet.create({
-    root: { flex: 1, backgroundColor: theme.colors.card },
+    root: { flex: 1, backgroundColor: theme.colors.background },
     centred: { alignItems: 'center', justifyContent: 'center' },
     savingHint: { fontSize: 11, color: theme.colors.inkFaint, textAlign: 'right', paddingHorizontal: 24, paddingTop: 4 },
     stepBody: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 16, gap: 12 },

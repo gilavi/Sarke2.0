@@ -110,7 +110,7 @@ export function InspectionResultView(props: Props) {
   const sigBadge = totalSlots > 0 ? `(${signedCount}/${totalSlots})` : '';
 
   return (
-    <Screen edgeToEdge>
+    <Screen edges={['bottom']}>
       <Stack.Screen
         options={{
           headerShown: true,

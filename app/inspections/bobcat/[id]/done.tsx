@@ -49,8 +49,7 @@ export default function BobcatInspectionDoneScreen() {
   }, [load]);
 
   const viewInspection = () => {
-    if (!id) return;
-    router.replace(`/inspections/bobcat/${id}/preview` as any);
+    router.back();
   };
 
   const goHome = () => {

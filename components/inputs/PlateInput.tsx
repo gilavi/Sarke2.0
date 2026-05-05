@@ -1,6 +1,7 @@
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   NativeSyntheticEvent,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -53,6 +54,7 @@ export function PlateInput({ label, value, onChangeText, required }: PlateInputP
   const { theme } = useTheme();
   const refs = useRef<Array<TextInput | null>>([null, null, null, null, null, null, null]);
   const chars = useMemo(() => parseValue(value), [value]);
+  const [activeSlot, setActiveSlot] = useState<number | null>(null);
 
   const setSlot = (i: number, ch: string) => {
     const next = [...chars];
@@ -105,30 +107,43 @@ export function PlateInput({ label, value, onChangeText, required }: PlateInputP
     }
   };
 
-  const renderBox = (i: number) => {
+  const renderCell = (i: number) => {
     const ch = chars[i];
+    const isActive = activeSlot === i;
+    const isFilled = !!ch;
+
     return (
-      <TextInput
+      <Pressable
         key={i}
-        ref={r => { refs.current[i] = r; }}
-        value={ch}
-        onChangeText={t => handleChange(i, t)}
-        onKeyPress={e => handleKeyPress(i, e)}
-        keyboardType={SLOTS[i].kind === 'digit' ? 'number-pad' : 'default'}
-        autoCapitalize="characters"
-        autoCorrect={false}
-        maxLength={1}
-        selectTextOnFocus
+        onPress={() => refs.current[i]?.focus()}
         style={[
-          styles.box,
+          styles.cell,
           {
-            borderColor: ch ? BRAND_GREEN : theme.colors.border,
-            color: theme.colors.ink,
-            backgroundColor: theme.colors.surface,
-            fontFamily: theme.typography.fontFamily.body,
+            borderColor: isActive || isFilled ? BRAND_GREEN : theme.colors.hairline,
+            backgroundColor: isFilled ? theme.colors.card : theme.colors.subtleSurface,
           },
         ]}
-      />
+      >
+        <Text style={[styles.cellText, { color: theme.colors.ink, fontFamily: theme.typography?.fontFamily?.body }]}>
+          {ch}
+        </Text>
+        {/* Hidden TextInput per slot — handles keyboard type switching */}
+        <TextInput
+          ref={r => { refs.current[i] = r; }}
+          value={ch}
+          onChangeText={t => handleChange(i, t)}
+          onKeyPress={e => handleKeyPress(i, e)}
+          onFocus={() => setActiveSlot(i)}
+          onBlur={() => setActiveSlot(s => (s === i ? null : s))}
+          keyboardType={SLOTS[i].kind === 'digit' ? 'number-pad' : 'default'}
+          autoCapitalize="characters"
+          autoCorrect={false}
+          maxLength={1}
+          selectTextOnFocus
+          caretHidden
+          style={styles.hiddenInput}
+        />
+      </Pressable>
     );
   };
 
@@ -145,22 +160,22 @@ export function PlateInput({ label, value, onChangeText, required }: PlateInputP
         </Text>
       ) : null}
       <View style={styles.row}>
-        {renderBox(0)}
-        {renderBox(1)}
+        {renderCell(0)}
+        {renderCell(1)}
         {dash}
-        {renderBox(2)}
-        {renderBox(3)}
-        {renderBox(4)}
+        {renderCell(2)}
+        {renderCell(3)}
+        {renderCell(4)}
         {dash}
-        {renderBox(5)}
-        {renderBox(6)}
+        {renderCell(5)}
+        {renderCell(6)}
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrapper: { gap: 6 },
+  wrapper: { gap: 8 },
   label: { fontSize: 12, fontWeight: '600' },
   asterisk: { color: '#EF4444' },
   row: {
@@ -168,18 +183,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
-  box: {
-    width: 36,
-    height: 48,
+  cell: {
+    width: 40,
+    height: 52,
+    borderRadius: 12,
     borderWidth: 1.5,
-    borderRadius: 8,
-    textAlign: 'center',
-    fontSize: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  cellText: {
+    fontSize: 22,
     fontWeight: '700',
-    padding: 0,
+    textAlign: 'center',
+  },
+  hiddenInput: {
+    position: 'absolute',
+    opacity: 0,
+    width: 1,
+    height: 1,
   },
   dash: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '600',
     paddingHorizontal: 2,
   },

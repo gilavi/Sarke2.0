@@ -1,7 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import WebView from 'react-native-webview';
 import {
   ActivityIndicator,
   Alert,
@@ -20,16 +18,17 @@ import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInpu
 import { DateTimeField } from '../../../components/DateTimeField';
 import { Button } from '../../../components/ui';
 import { KeyboardSafeArea } from '../../../components/layout/KeyboardSafeArea';
-import { SignatureCanvas } from '../../../components/SignatureCanvas';
-
 import { WizardStepTransition } from '../../../components/wizard/WizardStepTransition';
 
 import { FlowHeader } from '../../../components/FlowHeader';
+import { InspectionResultView } from '../../../components/InspectionResultView';
 import { useTheme, type Theme } from '../../../lib/theme';
 import { useSession } from '../../../lib/session';
 import { useToast } from '../../../lib/toast';
 import { generalEquipmentApi } from '../../../lib/generalEquipmentService';
-import { projectsApi } from '../../../lib/services';
+import { projectsApi, signaturesApi, inspectionAttachmentsApi } from '../../../lib/services';
+import { signatureAsDataUrl, imageForDisplay } from '../../../lib/imageUrl';
+import type { SignatureRecord } from '../../../types/models';
 import { buildGeneralEquipmentPdfHtml } from '../../../lib/generalEquipmentPdf';
 import { generateAndSharePdf, PdfLimitReachedError } from '../../../lib/pdfOpen';
 import { PaywallModal } from '../../../components/PaywallModal';
@@ -39,7 +38,6 @@ import { generatePdfName } from '../../../lib/pdfName';
 import { recordCompletion } from '../../../lib/calendarSchedule';
 import { friendlyError } from '../../../lib/errorMap';
 import { a11y } from '../../../lib/accessibility';
-import { imageForDisplay } from '../../../lib/imageUrl';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SuggestionPills } from '../../../components/SuggestionPills';
@@ -89,9 +87,10 @@ export default function GeneralEquipmentScreen() {
   const [paywallVisible, setPaywallVisible] = useState(false);
   const { data: pdfUsage } = usePdfUsage();
   const invalidatePdfUsage = useInvalidatePdfUsage();
-  const [showSig, setShowSig] = useState(false);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewBusy, setPreviewBusy] = useState(false);
+  const [signatures, setSignatures] = useState<SignatureRecord[]>([]);
+  const [attachmentCount, setAttachmentCount] = useState(0);
 
   const [step, setStep] = useState(0);
   const prevStepRef = useRef(0);
@@ -298,12 +297,14 @@ export default function GeneralEquipmentScreen() {
     });
   }, [scheduleSave, toast]);
 
-  // ── Signature ────────────────────────────────────────────────────────────────
+  // ── Load signatures/attachments when completed ────────────────────────────
 
-  const handleSignatureConfirm = useCallback((base64Png: string) => {
-    setShowSig(false);
-    update('inspectorSignature', base64Png);
-  }, [update]);
+  useEffect(() => {
+    if (inspection?.status !== 'completed') return;
+    signaturesApi.list(inspection.id).then(setSignatures).catch(() => {});
+    inspectionAttachmentsApi.listByInspection(inspection.id)
+      .then(a => setAttachmentCount(a.length)).catch(() => {});
+  }, [inspection?.status, inspection?.id]);
 
   // ── Complete ─────────────────────────────────────────────────────────────────
 
@@ -393,13 +394,22 @@ export default function GeneralEquipmentScreen() {
 
   // ── PDF Preview ──────────────────────────────────────────────────────────────
 
-  const buildPreview = useCallback(async () => {
+  const buildPreview = useCallback(async (sigs: SignatureRecord[] = signatures) => {
     if (!inspection) return;
     setPreviewBusy(true);
     try {
+      const sigsEmbedded = await Promise.all(
+        sigs.map(async sig => {
+          if (!sig.signature_png_url || sig.signature_png_url.startsWith('data:')) return sig;
+          const dataUrl = await signatureAsDataUrl(STORAGE_BUCKETS.signatures, sig.signature_png_url)
+            .catch(() => sig.signature_png_url ?? '');
+          return { ...sig, signature_png_url: dataUrl };
+        }),
+      );
       const html = await buildGeneralEquipmentPdfHtml({
         inspection,
         projectName: projectName || 'პროექტი',
+        signatures: sigsEmbedded,
       });
       setPreviewHtml(html);
     } catch (e) {
@@ -407,13 +417,13 @@ export default function GeneralEquipmentScreen() {
     } finally {
       setPreviewBusy(false);
     }
-  }, [inspection, projectName, toast]);
+  }, [inspection, projectName, signatures, toast]);
 
   useEffect(() => {
     if (inspection?.status === 'completed') {
-      buildPreview();
+      void buildPreview();
     }
-  }, [inspection, buildPreview]);
+  }, [inspection?.status, buildPreview]);
 
   // ── Step navigation ──────────────────────────────────────────────────────────
 
@@ -462,58 +472,32 @@ export default function GeneralEquipmentScreen() {
 
   // ── Completed inspection result view ─────────────────────────────────────────
   if (inspection.status === 'completed') {
+    const signedCount = signatures.filter(s => s.status === 'signed' && !!s.signature_png_url).length;
     return (
-      <View style={{ flex: 1, backgroundColor: theme.colors.card }}>
-        <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
-        <FlowHeader
-          flowTitle="ტექ. აღჭ."
-          project={projectName ? { name: projectName } : null}
-          leading="back"
-          onBack={() => router.back()}
-          trailingElement={
-            <Pressable
-              onPress={handlePdf}
-              disabled={generatingPdf}
-              hitSlop={10}
-              {...a11y('PDF', 'PDF დოკუმენტის გენერირება', 'button')}
-            >
-              <Ionicons
-                name={pdfUsage?.isLocked ? 'lock-closed-outline' : generatingPdf ? 'hourglass-outline' : 'document-text-outline'}
-                size={22}
-                color={theme.colors.accent}
-              />
-            </Pressable>
-          }
-        />
-        {pdfUsage?.isLocked && <PdfLockedBanner onSubscribe={() => setPaywallVisible(true)} />}
-        <View style={{ flex: 1, backgroundColor: theme.colors.subtleSurface }}>
-          {previewBusy && !previewHtml ? (
-            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-              <ActivityIndicator size="large" color={theme.colors.accent} />
-              <Text style={{ color: theme.colors.inkSoft }}>PDF-ის მომზადება…</Text>
-            </View>
-          ) : previewHtml ? (
-            <WebView
-              originWhitelist={['*']}
-              source={{ html: previewHtml }}
-              style={{ flex: 1, backgroundColor: '#fff' }}
-              scalesPageToFit
-              javaScriptEnabled={false}
-              domStorageEnabled={false}
-            />
-          ) : null}
-        </View>
-        <SafeAreaView edges={['bottom']} style={{ backgroundColor: theme.colors.surface, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.colors.hairline }}>
-          <View style={{ paddingHorizontal: 8, paddingTop: 8, paddingBottom: 8 }}>
-            <Button
-              title={pdfUsage?.isLocked ? '🔒 PDF გენერირება' : 'PDF გენერირება / გაზიარება'}
-              onPress={handlePdf}
-              loading={generatingPdf}
-            />
-          </View>
-        </SafeAreaView>
-        <PaywallModal visible={paywallVisible} onClose={() => setPaywallVisible(false)} />
-      </View>
+      <InspectionResultView
+        inspectionId={inspection.id}
+        templateName="ტექ. აღჭურვილობა"
+        requiredSignerRoles={[]}
+        previewHtml={previewHtml}
+        previewBusy={previewBusy}
+        previewError={null}
+        signedCount={signedCount}
+        totalSlots={signatures.length}
+        attachmentCount={attachmentCount}
+        pdfLocked={pdfUsage?.isLocked}
+        downloading={generatingPdf}
+        paywallVisible={paywallVisible}
+        onPaywallClose={() => setPaywallVisible(false)}
+        onDownloadPdf={() => void handlePdf()}
+        onSheetSaved={() => {
+          signaturesApi.list(inspection.id).then(sigs => {
+            setSignatures(sigs);
+            void buildPreview(sigs);
+          }).catch(() => {});
+          inspectionAttachmentsApi.listByInspection(inspection.id)
+            .then(a => setAttachmentCount(a.length)).catch(() => {});
+        }}
+      />
     );
   }
 
@@ -702,7 +686,6 @@ export default function GeneralEquipmentScreen() {
               {inspection.equipment.map((item, index) => (
                 <View key={item.id} style={styles.listRow}>
                   <View style={styles.listRowText}>
-                    <Text style={styles.listRowNumber}>{index + 1}.</Text>
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.listRowLabel, { fontSize: 13, fontWeight: '400' }]} numberOfLines={2}>{item.model} · {item.serialNumber}</Text>
                     </View>
@@ -779,48 +762,6 @@ export default function GeneralEquipmentScreen() {
             </KeyboardAwareScrollView>
           )}
 
-          {/* ── Step 3: Done ────────────────────────────────────────────── */}
-          {step === DONE_STEP && (
-            <KeyboardAwareScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 12 }}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
-              showsVerticalScrollIndicator={false}
-              bottomOffset={120}
-            >
-              <View style={styles.doneHero}>
-                <Ionicons name="checkmark-circle" size={72} color={theme.colors.semantic.success} />
-                <Text style={styles.doneTitle}>შემოწმება დასრულდა!</Text>
-                {inspection.completedAt && (
-                  <Text style={styles.doneDate}>
-                    {new Date(inspection.completedAt).toLocaleDateString('ka-GE', {
-                      day: 'numeric', month: 'long', year: 'numeric',
-                    })}
-                  </Text>
-                )}
-                {inspection.signerRole && (
-                  <View style={styles.doneRole}>
-                    <Text style={styles.doneRoleText}>
-                      {resolveSignerPosition(inspection.signerRole, inspection.signerRoleCustom)}
-                    </Text>
-                  </View>
-                )}
-              </View>
-
-              <Button
-                title={pdfUsage?.isLocked ? '🔒 PDF გენერირება' : 'PDF გენერირება / გაზიარება'}
-                onPress={handlePdf}
-                loading={generatingPdf}
-                style={{ marginBottom: 12 }}
-              />
-              <Button
-                title="პროექტზე დაბრუნება"
-                variant="secondary"
-                onPress={() => router.back()}
-              />
-            </KeyboardAwareScrollView>
-          )}
         </WizardStepTransition>
 
         {step !== DONE_STEP && (
@@ -852,12 +793,6 @@ export default function GeneralEquipmentScreen() {
         )}
       </KeyboardSafeArea>
 
-      <SignatureCanvas
-        visible={showSig}
-        personName={inspection.signerName ?? 'შემომწმებელი'}
-        onCancel={() => setShowSig(false)}
-        onConfirm={handleSignatureConfirm}
-      />
     </View>
   );
 }
@@ -929,7 +864,7 @@ const SummaryThumb = memo(function SummaryThumb({
 
 function getstyles(theme: Theme) {
   return StyleSheet.create({
-    root:    { flex: 1, backgroundColor: theme.colors.card },
+    root:    { flex: 1, backgroundColor: theme.colors.background },
     footer: {
       gap: 10,
       paddingHorizontal: 8,

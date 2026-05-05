@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import {
   ActivityIndicator,
-  Pressable,
   ScrollView,
   StyleSheet,
   View,
@@ -20,7 +19,7 @@ import {
   useGeneralEquipmentInspectionsByProject,
 } from '../../../lib/apiHooks';
 import { InspectionTypeAvatar } from '../../../components/InspectionTypeAvatar';
-import type { Questionnaire } from '../../../types/models';
+import { RecentListRow } from '../../../components/RecentListRow';
 
 function formatGeorgianDate(isoDate: string): string {
   return new Date(isoDate).toLocaleDateString('ka-GE', {
@@ -72,7 +71,7 @@ export default function ProjectInspectionsList() {
 
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 }}
+        contentContainerStyle={{ paddingBottom: 40 }}
       >
         <View style={styles.pageHeader}>
           <Text style={styles.pageTitle}>შემოწმების აქტები</Text>
@@ -94,38 +93,34 @@ export default function ProjectInspectionsList() {
           grouped.map(group => (
             <View key={group.key}>
               <Text style={styles.dateSep}>{formatGeorgianDate(group.key)}</Text>
-              <View style={{ gap: 10 }}>
-                {group.items.map(item => {
-                  const tpl = templates.find(t => t.id === item.template_id);
-                  const isCompleted = item.status === 'completed';
-                  const route = (() => {
-                    if (item.source === 'bobcat') return `/inspections/bobcat/${item.id}`;
-                    if (item.source === 'excavator') return `/inspections/excavator/${item.id}`;
-                    if (item.source === 'general_equipment') return `/inspections/general-equipment/${item.id}`;
-                    return isCompleted ? `/inspections/${item.id}` : `/inspections/${item.id}/wizard`;
-                  })();
-                  return (
-                    <Pressable
-                      key={`${item.source}-${item.id}`}
-                      onPress={() => router.push(route as any)}
-                      style={styles.listRow}
-                    >
+              {group.items.map((item, i) => {
+                const tpl = templates.find(t => t.id === item.template_id);
+                const isCompleted = item.status === 'completed';
+                const isLast = i === group.items.length - 1;
+                const route = (() => {
+                  if (item.source === 'bobcat') return `/inspections/bobcat/${item.id}`;
+                  if (item.source === 'excavator') return `/inspections/excavator/${item.id}`;
+                  if (item.source === 'general_equipment') return `/inspections/general-equipment/${item.id}`;
+                  return isCompleted ? `/inspections/${item.id}` : `/inspections/${item.id}/wizard`;
+                })();
+                const sourceKey = item.source === 'generic' ? (tpl?.category ?? null) : item.source;
+                return (
+                  <RecentListRow
+                    key={`${item.source}-${item.id}`}
+                    leading={
                       <InspectionTypeAvatar
-                        category={tpl?.category}
+                        category={sourceKey}
                         size={40}
                         status={isCompleted ? 'completed' : 'draft'}
                       />
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.listRowTitle}>{tpl?.name ?? 'შემოწმების აქტი'}</Text>
-                        <Text style={styles.listRowSubtitle}>
-                          {formatShortDateTime(item.created_at)}
-                        </Text>
-                      </View>
-                      <Ionicons name="chevron-forward" size={18} color={theme.colors.borderStrong} />
-                    </Pressable>
-                  );
-                })}
-              </View>
+                    }
+                    title={tpl?.name ?? 'შემოწმების აქტი'}
+                    subtitle={formatShortDateTime(item.created_at)}
+                    isLast={isLast}
+                    onPress={() => router.push(route as any)}
+                  />
+                );
+              })}
             </View>
           ))
         )}
@@ -157,7 +152,9 @@ function groupByDateDesc<T>(
 function makeStyles(theme: any) {
   return StyleSheet.create({
     pageHeader: {
-      marginBottom: 24,
+      marginBottom: 16,
+      paddingHorizontal: 24,
+      paddingTop: 16,
     },
     pageTitle: {
       fontSize: 26,
@@ -185,34 +182,13 @@ function makeStyles(theme: any) {
       color: theme.colors.inkFaint,
       fontWeight: '500',
     },
-    listRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-      backgroundColor: theme.colors.surface,
-      borderRadius: 12,
-      padding: 14,
-      shadowColor: theme.colors.ink,
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.04,
-      shadowRadius: 4,
-      elevation: 1,
-    },
-    listRowTitle: { fontSize: 14, fontWeight: '600', color: theme.colors.ink },
-    listRowSubtitle: { fontSize: 12, color: theme.colors.inkSoft, marginTop: 2 },
-    statusIcon: {
-      width: 32,
-      height: 32,
-      borderRadius: 9,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
     dateSep: {
       fontSize: 12,
       fontWeight: '600',
       color: theme.colors.inkFaint,
-      marginBottom: 8,
+      marginBottom: 4,
       marginTop: 22,
+      paddingHorizontal: 24,
     },
   });
 }

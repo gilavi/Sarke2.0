@@ -49,8 +49,7 @@ export default function ExcavatorInspectionDoneScreen() {
   }, [load]);
 
   const viewInspection = () => {
-    if (!id) return;
-    router.replace(`/inspections/excavator/${id}/preview` as any);
+    router.back();
   };
 
   const goHome = () => {

@@ -48,8 +48,7 @@ export default function GeneralEquipmentInspectionDoneScreen() {
   }, [load]);
 
   const viewInspection = () => {
-    if (!id) return;
-    router.replace(`/inspections/general-equipment/${id}/preview` as any);
+    router.back();
   };
 
   const goHome = () => {
