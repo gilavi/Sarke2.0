@@ -17,7 +17,6 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
-import { DateTimeField } from '../../../components/DateTimeField';
 import { Button } from '../../../components/ui';
 import { KeyboardSafeArea } from '../../../components/layout/KeyboardSafeArea';
 import { SignatureCanvas } from '../../../components/SignatureCanvas';
@@ -25,7 +24,6 @@ import { ExcavatorMaintenanceItem } from '../../../components/excavator/Excavato
 
 import { WizardStepTransition } from '../../../components/wizard/WizardStepTransition';
 
-import { StepSectionLabel } from '../../../components/wizard/StepSectionLabel';
 import { FlowHeader } from '../../../components/FlowHeader';
 import { useTheme, type Theme } from '../../../lib/theme';
 import { useSession } from '../../../lib/session';
@@ -43,6 +41,8 @@ import { recordCompletion } from '../../../lib/calendarSchedule';
 import { friendlyError } from '../../../lib/errorMap';
 import { a11y } from '../../../lib/accessibility';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SuggestionPills } from '../../../components/SuggestionPills';
+import { useFieldHistory } from '../../../hooks/useFieldHistory';
 import {
   ENGINE_ITEMS,
   UNDERCARRIAGE_ITEMS,
@@ -51,7 +51,6 @@ import {
   MAINTENANCE_ITEMS,
   EXCAVATOR_VERDICT_LABEL,
   EXCAVATOR_MACHINE_SPECS,
-  computeExcavatorVerdictSuggestion,
   type ExcavatorInspection,
   type ExcavatorVerdict,
   type ExcavatorChecklistItemState,
@@ -103,6 +102,11 @@ export default function ExcavatorInspectionScreen() {
   const session = useSession();
   const showSheet = useBottomSheet();
 
+  const userId = session?.state?.status === 'signedIn' ? session.state.session.user.id : null;
+
+  // ── Field suggestion histories ────────────────────────────────────────────
+  const serialNumberHistory = useFieldHistory(userId, 'excavator:serialNumber');
+
   const [inspection, setInspection] = useState<ExcavatorInspection | null>(null);
   const [projectName, setProjectName] = useState('');
   const [loading, setLoading] = useState(true);
@@ -115,6 +119,8 @@ export default function ExcavatorInspectionScreen() {
   const [showSig, setShowSig] = useState(false);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewBusy, setPreviewBusy] = useState(false);
+
+  const [focusedField, setFocusedField] = useState<string | null>(null);
 
   // Step state
   const [step, setStep] = useState(0);
@@ -370,16 +376,6 @@ export default function ExcavatorInspectionScreen() {
     update('inspectorSignature', base64Png);
   }, [update]);
 
-  // ── Verdict auto-suggestion ────────────────────────────────────────────────
-
-  const verdictSuggestion = useMemo(
-    () => inspection ? computeExcavatorVerdictSuggestion(inspection) : null,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [inspection?.engineItems, inspection?.undercarriageItems, inspection?.cabinItems, inspection?.safetyItems],
-  );
-
-  const showVerdictBanner = verdictSuggestion !== null && inspection?.verdict !== verdictSuggestion;
-
   // ── Complete ───────────────────────────────────────────────────────────────
 
   const handleComplete = useCallback(async () => {
@@ -388,7 +384,7 @@ export default function ExcavatorInspectionScreen() {
     const missing: string[] = [];
     if (!inspection.serialNumber?.trim()) missing.push('სერიული ნომერი');
     if (!inspection.verdict)              missing.push('დასკვნა');
-    if (!inspection.inspectorSignature)   missing.push('ხელმოწერა');
+
     if (missing.length > 0) {
       Alert.alert('შეავსეთ სავალდებულო ველები', missing.map(m => `• ${m}`).join('\n'));
       return;
@@ -580,19 +576,20 @@ export default function ExcavatorInspectionScreen() {
 
   const canGoNext = useMemo(() => {
     if (!inspection) return false;
-    if (step === INFO_STEP) return !!inspection.projectName?.trim() && !!inspection.inspectorName?.trim();
+    if (step === INFO_STEP) return !!inspection.serialNumber?.trim();
     if (step === CHECKLIST_STEP) return flatState.every(s => s.result !== null);
-    if (step === CONCLUSION_STEP) return !!inspection.verdict && !!inspection.inspectorSignature && !completing;
+    if (step === CONCLUSION_STEP) return !!inspection.verdict && !completing;
     return false;
   }, [step, inspection, flatState, completing, CONCLUSION_STEP]);
 
-  const handleNext = useCallback(() => {
+  const handleNext = useCallback(async () => {
     if (step === CONCLUSION_STEP) {
-      handleComplete();
+      await handleComplete();
+      router.push(`/inspections/excavator/${id}/done` as any);
     } else if (step < CONCLUSION_STEP) {
       setStep(s => s + 1);
     }
-  }, [step, CONCLUSION_STEP, handleComplete]);
+  }, [step, CONCLUSION_STEP, handleComplete, id, router]);
 
   const handlePrev = useCallback(() => {
     if (step > 0) setStep(s => s - 1);
@@ -660,7 +657,7 @@ export default function ExcavatorInspectionScreen() {
           ) : null}
         </View>
         <SafeAreaView edges={['bottom']} style={{ backgroundColor: theme.colors.surface, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.colors.hairline }}>
-          <View style={{ paddingHorizontal: 12, paddingTop: 8, paddingBottom: 8 }}>
+          <View style={{ paddingHorizontal: 8, paddingTop: 8, paddingBottom: 8 }}>
             <Button
               title={pdfUsage?.isLocked ? '🔒 PDF გენერირება' : 'PDF გენერირება / გაზიარება'}
               onPress={handlePdf}
@@ -701,7 +698,7 @@ export default function ExcavatorInspectionScreen() {
             </Pressable>
           ) : undefined
         }
-        onBack={step === 0 ? () => router.back() : handlePrev}
+        onBack={step === 0 ? async () => { await AsyncStorage.removeItem(persistKey); router.back(); } : handlePrev}
         backDisabled={false}
       />
 
@@ -719,7 +716,7 @@ export default function ExcavatorInspectionScreen() {
           {step === 0 && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 12 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 8, paddingTop: 16, paddingBottom: 24, gap: 12 }}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="interactive"
               showsVerticalScrollIndicator={false}
@@ -727,57 +724,27 @@ export default function ExcavatorInspectionScreen() {
             >
               <MachineSpecsCard insp={inspection} styles={styles} />
 
-              <StepSectionLabel title="II — დოკუმენტის ინფორმაცია" />
               <FloatingLabelInput
                 label="სერიული ნომერი *"
                 value={inspection.serialNumber ?? ''}
                 onChangeText={v => update('serialNumber', v || null)}
+                onFocus={() => setFocusedField('serialNumber')}
+                onBlur={() => {
+                  setFocusedField(null);
+                  if (inspection.serialNumber?.trim()) {
+                    serialNumberHistory.addToHistory(inspection.serialNumber.trim());
+                  }
+                }}
                 required
               />
-              <FloatingLabelInput
-                label="საინვენტარო ნომერი"
-                value={inspection.inventoryNumber ?? ''}
-                onChangeText={v => update('inventoryNumber', v || null)}
+              <SuggestionPills
+                suggestions={serialNumberHistory.suggestions}
+                onSelect={v => {
+                  update('serialNumber', v);
+                  setFocusedField(null);
+                }}
+                visible={focusedField === 'serialNumber' || (!inspection.serialNumber?.trim() && serialNumberHistory.suggestions.length > 0)}
               />
-              <FloatingLabelInput
-                label="ობიექტი / პროექტი"
-                value={inspection.projectName ?? ''}
-                onChangeText={v => update('projectName', v || null)}
-              />
-              <FloatingLabelInput
-                label="განყოფილება"
-                value={inspection.department ?? ''}
-                onChangeText={v => update('department', v || null)}
-              />
-              <View style={styles.fieldRow}>
-                <Text style={styles.fieldLabel}>შემოწმების თარიღი</Text>
-                <DateTimeField
-                  mode="date"
-                  value={new Date(inspection.inspectionDate)}
-                  onChange={d => update('inspectionDate', d.toLocaleDateString('en-CA'))}
-                  maxDate={new Date()}
-                />
-              </View>
-              <FloatingLabelInput
-                label="მოტო საათები"
-                value={inspection.motoHours != null ? String(inspection.motoHours) : ''}
-                onChangeText={v => update('motoHours', v ? Number(v) : null)}
-                keyboardType="numeric"
-              />
-              <FloatingLabelInput
-                label="შემომწმებელი"
-                value={inspection.inspectorName ?? ''}
-                onChangeText={v => update('inspectorName', v || null)}
-              />
-              <View style={styles.fieldRow}>
-                <Text style={styles.fieldLabel}>ბოლო შემოწმების თარიღი</Text>
-                <DateTimeField
-                  mode="date"
-                  value={inspection.lastInspectionDate ? new Date(inspection.lastInspectionDate) : new Date()}
-                  onChange={d => update('lastInspectionDate', d.toLocaleDateString('en-CA'))}
-                  maxDate={new Date()}
-                />
-              </View>
             </KeyboardAwareScrollView>
           )}
 
@@ -785,45 +752,47 @@ export default function ExcavatorInspectionScreen() {
           {step === CHECKLIST_STEP && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 12 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 4, paddingTop: 16, paddingBottom: 24, gap: 12 }}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="interactive"
               showsVerticalScrollIndicator={false}
               bottomOffset={120}
             >
-              <StepSectionLabel title="III — ჩეკლისტი" />
               {FLAT_CATALOG.map((entry, index) => {
                 const state = flatState[index];
                 const result = state.result;
-                const isFirstInSection = index === 0 || FLAT_CATALOG[index - 1].section !== entry.section;
                 return (
-                  <View key={entry.entry.id}>
-                    {isFirstInSection && (
-                      <Text style={styles.sectionHeader}>{entry.sectionLabel}</Text>
-                    )}
+                  <View key={`${entry.section}-${entry.entry.id}`}>
                     <View style={styles.listRow}>
                       <View style={styles.listRowText}>
-                        <Text style={styles.listRowNumber}>{index + 1}.</Text>
                         <View style={{ flex: 1 }}>
-                          <Text style={styles.listRowLabel}>{entry.entry.label}</Text>
-                          <Text style={styles.listRowDesc}>{entry.entry.description}</Text>
+                          <Text style={[styles.listRowLabel, { fontSize: 13, fontWeight: '400' }]} numberOfLines={2}>{index + 1}. {entry.entry.description}</Text>
                         </View>
                       </View>
                       <View style={styles.listRowActions}>
                         <Pressable
-                          style={[styles.statusBtn, result === 'good' && styles.statusBtnGoodActive]}
+                          style={[
+                            styles.statusBtn,
+                            result === 'good' ? styles.statusBtnGoodActive : styles.statusBtnGood,
+                          ]}
                           onPress={() => updateItem(entry.entry.id, 'good')}
                         >
                           <Ionicons name="checkmark" size={22} color={result === 'good' ? '#fff' : theme.colors.semantic.success} />
                         </Pressable>
                         <Pressable
-                          style={[styles.statusBtn, result === 'deficient' && styles.statusBtnDefActive]}
+                          style={[
+                            styles.statusBtn,
+                            result === 'deficient' ? styles.statusBtnDefActive : styles.statusBtnDef,
+                          ]}
                           onPress={() => updateItem(entry.entry.id, 'deficient')}
                         >
                           <Ionicons name="warning" size={20} color={result === 'deficient' ? '#fff' : theme.colors.warn} />
                         </Pressable>
                         <Pressable
-                          style={[styles.statusBtn, result === 'unusable' && styles.statusBtnBadActive]}
+                          style={[
+                            styles.statusBtn,
+                            result === 'unusable' ? styles.statusBtnBadActive : styles.statusBtnBad,
+                          ]}
                           onPress={() => updateItem(entry.entry.id, 'unusable')}
                         >
                           <Ionicons name="close" size={20} color={result === 'unusable' ? '#fff' : theme.colors.danger} />
@@ -855,7 +824,6 @@ export default function ExcavatorInspectionScreen() {
                 );
               })}
 
-              <StepSectionLabel title="VI — ტექნიკური მომსახურება" />
               {MAINTENANCE_ITEMS.map((entry, idx) => {
                 const state = inspection.maintenanceItems.find(i => i.id === entry.id)
                   ?? { id: entry.id, answer: null, date: null };
@@ -876,89 +844,24 @@ export default function ExcavatorInspectionScreen() {
           {step === CONCLUSION_STEP && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24, gap: 12 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 4, paddingTop: 20, paddingBottom: 24, gap: 12 }}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="interactive"
               showsVerticalScrollIndicator={false}
               bottomOffset={120}
             >
-              <StepSectionLabel title="IV — დასკვნა" />
-
-              <View style={styles.summaryCard}>
-                <Text style={styles.summaryTitle}>ჩეკლისტის შედეგები</Text>
-                <View style={styles.summaryCounts}>
-                  <View style={styles.countBadge}>
-                    <Ionicons name="checkmark-circle" size={18} color={theme.colors.semantic.success} />
-                    <Text style={[styles.countNumber, { color: theme.colors.semantic.success }]}>{counts.good}</Text>
-                    <Text style={styles.countLabel}>კარგი</Text>
-                  </View>
-                  <View style={styles.countBadge}>
-                    <Ionicons name="warning" size={18} color={theme.colors.warn} />
-                    <Text style={[styles.countNumber, { color: theme.colors.warn }]}>{counts.deficient}</Text>
-                    <Text style={styles.countLabel}>დეფიციტი</Text>
-                  </View>
-                  <View style={styles.countBadge}>
-                    <Ionicons name="close-circle" size={18} color={theme.colors.danger} />
-                    <Text style={[styles.countNumber, { color: theme.colors.danger }]}>{counts.unusable}</Text>
-                    <Text style={styles.countLabel}>გამოუსადეგარი</Text>
-                  </View>
-                </View>
-              </View>
-
-              <View style={styles.summaryCard}>
-                <Text style={styles.summaryTitle}>ტექნიკური მომსახურება</Text>
-                {inspection.maintenanceItems.map(item => {
-                  const entry = MAINTENANCE_ITEMS.find(e => e.id === item.id);
-                  if (!entry) return null;
-                  return (
-                    <View key={item.id} style={styles.maintenanceSummaryRow}>
-                      <Text style={styles.maintenanceSummaryLabel}>{entry.label}</Text>
-                      <Text style={[
-                        styles.maintenanceSummaryValue,
-                        item.answer === 'yes' && { color: theme.colors.semantic.success },
-                        item.answer === 'no' && { color: theme.colors.danger },
-                      ]}>
-                        {item.answer === 'yes' ? 'კი' : item.answer === 'no' ? 'არა' : '—'}
-                      </Text>
-                      {item.date ? (
-                        <Text style={styles.maintenanceSummaryDate}>{item.date}</Text>
-                      ) : null}
-                    </View>
-                  );
-                })}
-              </View>
-
-              {showVerdictBanner && verdictSuggestion && (
-                <View style={styles.suggestionBanner}>
-                  <Ionicons name="information-circle-outline" size={16} color={theme.colors.warn} />
-                  <Text style={styles.suggestionText}>
-                    ავტომატური რეკომენდაცია:{' '}
-                    <Text style={{ fontWeight: '700' }}>
-                      {EXCAVATOR_VERDICT_LABEL[verdictSuggestion].split(' — ')[0]}
-                    </Text>
-                  </Text>
-                </View>
-              )}
-
-              <View style={styles.verdictBlock}>
+              <Text style={styles.fieldLabel}>დასკვნა *</Text>
+              <View style={styles.chipRow}>
                 {(['approved', 'conditional', 'rejected'] as ExcavatorVerdict[]).map(v => {
                   const active = inspection.verdict === v;
-                  const isSuggested = verdictSuggestion === v && !inspection.verdict;
                   return (
                     <Pressable
                       key={v}
-                      style={[
-                        styles.verdictOption,
-                        active && styles.verdictOptionActive,
-                        isSuggested && styles.verdictOptionSuggested,
-                      ]}
+                      style={[styles.typeChip, active && styles.typeChipActive]}
                       onPress={() => update('verdict', active ? null : v)}
                       {...a11y(EXCAVATOR_VERDICT_LABEL[v], undefined, 'radio')}
                     >
-                      <View style={[styles.verdictCheck, active && styles.verdictCheckActive]}>
-                        {active && <Ionicons name="checkmark" size={12} color={theme.colors.white} />}
-                      </View>
-                      <Text style={[styles.verdictLabel, active && styles.verdictLabelActive]}>
+                      <Text style={[styles.typeChipText, active && styles.typeChipTextActive]}>
                         {EXCAVATOR_VERDICT_LABEL[v]}
                       </Text>
                     </Pressable>
@@ -974,77 +877,6 @@ export default function ExcavatorInspectionScreen() {
                 numberOfLines={4}
               />
 
-              <StepSectionLabel title="ფოტოები" />
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ gap: 8, paddingVertical: 4 }}
-              >
-                {(inspection.summaryPhotos ?? []).map(path => (
-                  <View key={path} style={{ position: 'relative', width: 64, height: 64, borderRadius: 8, overflow: 'hidden' }}>
-                    <Image source={{ uri: path }} style={{ width: 64, height: 64 }} />
-                    <Pressable
-                      onPress={() => handleDeleteSummaryPhoto(path)}
-                      style={{ position: 'absolute', top: 2, right: 2, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 10, padding: 2 }}
-                      hitSlop={6}
-                    >
-                      <Ionicons name="close-circle" size={16} color="#fff" />
-                    </Pressable>
-                  </View>
-                ))}
-              </ScrollView>
-              <Pressable
-                onPress={handleAddSummaryPhoto}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, padding: 10, borderWidth: 1.5, borderStyle: 'dashed', borderColor: theme.colors.hairline, borderRadius: 8, alignSelf: 'flex-start' }}
-              >
-                <Ionicons name="camera-outline" size={18} color={theme.colors.accent} />
-                <Text style={{ fontSize: 13, color: theme.colors.accent }}>ფოტოს დამატება</Text>
-              </Pressable>
-
-              <StepSectionLabel title="V — შემომწმებელი" />
-
-              <FloatingLabelInput
-                label="სახელი / გვარი"
-                value={inspection.inspectorName ?? ''}
-                onChangeText={v => update('inspectorName', v || null)}
-              />
-              <FloatingLabelInput
-                label="თანამდებობა"
-                value={inspection.inspectorPosition ?? ''}
-                onChangeText={v => update('inspectorPosition', v || null)}
-              />
-
-              <Pressable
-                style={[styles.sigArea, inspection.inspectorSignature && styles.sigAreaSigned]}
-                onPress={() => setShowSig(true)}
-                {...a11y('ხელმოწერა', 'ინსპექტორის ხელმოწერის დამატება', 'button')}
-              >
-                {inspection.inspectorSignature ? (
-                  <View style={styles.sigContent}>
-                    <Ionicons name="checkmark-circle" size={20} color={theme.colors.semantic.success} />
-                    <Text style={[styles.sigHint, { color: theme.colors.semantic.success }]}>ხელმოწერა დაყენებულია</Text>
-                    <Pressable
-                      onPress={() => update('inspectorSignature', null)}
-                      hitSlop={10}
-                      {...a11y('ხელმოწერის წაშლა', undefined, 'button')}
-                    >
-                      <Text style={styles.sigClear}>გასუფთავება</Text>
-                    </Pressable>
-                  </View>
-                ) : (
-                  <View style={styles.sigContent}>
-                    <Ionicons name="pencil-outline" size={20} color={theme.colors.accent} />
-                    <Text style={styles.sigHint}>შეეხეთ ხელმოწერისთვის</Text>
-                  </View>
-                )}
-              </Pressable>
-
-              {!inspection.inspectorSignature && (
-                <Text style={styles.sigRequiredHint}>
-                  ხელმოწერა სავალდებულოა დასასრულებლად
-                </Text>
-              )}
-
               {completing && (
                 <View style={styles.completingRow}>
                   <ActivityIndicator size="small" color={theme.colors.accent} />
@@ -1056,6 +888,7 @@ export default function ExcavatorInspectionScreen() {
 
           {/* ── Step N+2: Done ──────────────────────────────────────────── */}
           {step === DONE_STEP && (
+
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
               contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 12 }}
@@ -1117,7 +950,7 @@ export default function ExcavatorInspectionScreen() {
                 iconRight={<Ionicons name="checkmark" size={20} color={theme.colors.white} />}
                 loading={completing}
                 disabled={!canGoNext || completing}
-                onPress={handleComplete}
+                onPress={handleNext}
               />
             ) : (
               <Button
@@ -1231,20 +1064,18 @@ function getstyles(theme: Theme) {
   return StyleSheet.create({
     root:    { flex: 1, backgroundColor: theme.colors.card },
     centred: { alignItems: 'center', justifyContent: 'center' },
-    savingHint: { fontSize: 11, color: theme.colors.inkFaint, textAlign: 'right', paddingHorizontal: 24, paddingTop: 4 },
-    stepBody: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 16, gap: 12 },
+    savingHint: { fontSize: 11, color: theme.colors.inkFaint, textAlign: 'right', paddingHorizontal: 8, paddingTop: 4 },
+    stepBody: { paddingHorizontal: 8, paddingTop: 16, paddingBottom: 16, gap: 12 },
     footer: {
       gap: 10,
-      paddingHorizontal: 20,
+      paddingHorizontal: 8,
       paddingTop: 8,
       paddingBottom: 16,
       backgroundColor: theme.colors.card,
     },
 
     specsCard: {
-      borderWidth: 1, borderColor: theme.colors.hairline,
-      borderRadius: 10, overflow: 'hidden', marginBottom: 16,
-      backgroundColor: theme.colors.card,
+      marginBottom: 16,
     },
     specsTitle: {
       fontSize: 10, fontWeight: '700', color: theme.colors.inkSoft,
@@ -1265,26 +1096,36 @@ function getstyles(theme: Theme) {
 
     fieldRow:   { marginBottom: 4, gap: 6 },
     fieldLabel: { fontSize: 12, fontWeight: '600', color: theme.colors.inkSoft },
-
-    sectionHeader: {
-      fontSize: 11, fontWeight: '700', color: theme.colors.inkSoft,
-      textTransform: 'uppercase', letterSpacing: 0.5,
-      marginTop: 16, marginBottom: 4, paddingHorizontal: 4,
+    chipRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+    typeChip: {
+      paddingHorizontal: 14, paddingVertical: 7,
+      borderRadius: 20, borderWidth: 1.5,
+      borderColor: theme.colors.hairline,
     },
+    typeChipActive: {
+      borderColor: theme.colors.accent,
+      backgroundColor: theme.colors.accentSoft,
+    },
+    typeChipText: { fontSize: 13, color: theme.colors.inkSoft },
+    typeChipTextActive: { color: theme.colors.accent, fontWeight: '700' },
+
+
 
     listRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 4, gap: 8 },
     listRowText: { flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
     listRowNumber: { fontSize: 12, color: theme.colors.inkFaint, marginTop: 2, minWidth: 18 },
     listRowLabel: { fontSize: 13, fontWeight: '600', color: theme.colors.ink, lineHeight: 18 },
-    listRowDesc: { fontSize: 11, color: theme.colors.inkSoft, lineHeight: 15, marginTop: 1 },
     listRowActions: { flexDirection: 'row', gap: 6 },
     statusBtn: {
-      width: 44, height: 44, borderRadius: 10, borderWidth: 1.5,
-      borderColor: theme.colors.hairline, alignItems: 'center', justifyContent: 'center',
+      width: 44, height: 44, borderRadius: 8, borderWidth: 1.5,
+      alignItems: 'center', justifyContent: 'center',
     },
-    statusBtnGoodActive: { backgroundColor: theme.colors.semantic.success, borderColor: theme.colors.semantic.success },
-    statusBtnDefActive:  { backgroundColor: theme.colors.warn, borderColor: theme.colors.warn },
-    statusBtnBadActive:  { backgroundColor: theme.colors.danger, borderColor: theme.colors.danger },
+    statusBtnGood:      { borderColor: theme.colors.semantic.success },
+    statusBtnGoodActive:{ backgroundColor: theme.colors.semantic.success, borderColor: theme.colors.semantic.success },
+    statusBtnDef:       { borderColor: theme.colors.warn },
+    statusBtnDefActive: { backgroundColor: theme.colors.warn, borderColor: theme.colors.warn },
+    statusBtnBad:        { borderColor: theme.colors.danger },
+    statusBtnBadActive: { backgroundColor: theme.colors.danger, borderColor: theme.colors.danger },
 
     photoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingLeft: 32, paddingBottom: 8 },
     photoThumbWrap: { position: 'relative', width: 44, height: 44, borderRadius: 6, overflow: 'hidden' },
@@ -1301,8 +1142,7 @@ function getstyles(theme: Theme) {
     },
 
     summaryCard: {
-      borderWidth: 1, borderColor: theme.colors.hairline,
-      borderRadius: 10, padding: 12, gap: 10, marginBottom: 12,
+      gap: 10, marginBottom: 12,
     },
     summaryTitle: {
       fontSize: 12, fontWeight: '700', color: theme.colors.inkSoft,
@@ -1324,19 +1164,19 @@ function getstyles(theme: Theme) {
     suggestionBanner: {
       flexDirection: 'row', alignItems: 'center', gap: 6,
       backgroundColor: theme.colors.warnSoft,
-      padding: 10, borderRadius: 8, marginBottom: 8,
+      padding: 10, marginBottom: 8,
     },
     suggestionText: { fontSize: 12, color: theme.colors.inkSoft, flex: 1 },
 
-    verdictBlock: { gap: 6, marginBottom: 12 },
+    verdictBlock: { gap: 0, marginBottom: 12 },
     verdictOption: {
       flexDirection: 'row', alignItems: 'flex-start', gap: 10,
-      padding: 10, borderRadius: 10, borderWidth: 1.5,
-      borderColor: theme.colors.hairline,
-      backgroundColor: theme.colors.card,
+      paddingVertical: 10, paddingHorizontal: 4,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.colors.hairline,
     },
-    verdictOptionActive:    { borderColor: theme.colors.accent, backgroundColor: theme.colors.accentSoft },
-    verdictOptionSuggested: { borderColor: theme.colors.warn,   backgroundColor: theme.colors.warnSoft },
+    verdictOptionActive:    { borderBottomColor: theme.colors.accent },
+    verdictOptionSuggested: { borderBottomColor: theme.colors.warn },
     verdictCheck: {
       width: 20, height: 20, borderRadius: 5,
       borderWidth: 1.5, borderColor: theme.colors.hairline,
@@ -1346,20 +1186,25 @@ function getstyles(theme: Theme) {
     verdictLabel:       { flex: 1, fontSize: 12, color: theme.colors.inkSoft, lineHeight: 18 },
     verdictLabelActive: { color: theme.colors.accent, fontWeight: '600' },
 
-    sigArea: {
-      borderWidth: 1.5, borderStyle: 'dashed', borderColor: theme.colors.hairline,
-      borderRadius: 12, padding: 24, alignItems: 'center', justifyContent: 'center',
-      minHeight: 80, marginBottom: 12,
+    sigRow: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingVertical: 14, paddingHorizontal: 12,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.colors.hairline,
     },
-    sigAreaSigned: { borderStyle: 'solid', borderColor: theme.colors.semantic.success, backgroundColor: theme.colors.semantic.successSoft },
-    sigContent:       { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    sigHint:          { fontSize: 14, color: theme.colors.accent },
-    sigClear:         { fontSize: 12, color: theme.colors.danger, marginLeft: 8 },
-    sigRequiredHint:  { fontSize: 12, color: theme.colors.inkFaint, textAlign: 'center', marginTop: 4 },
+    sigRowActive: {
+      borderBottomColor: theme.colors.semantic.success,
+    },
+    sigRowText: {
+      fontSize: 15, color: theme.colors.ink,
+    },
+    sigRowClear: {
+      fontSize: 13, color: theme.colors.accent,
+    },
     completingRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 16 },
     completingText:   { fontSize: 13, color: theme.colors.inkSoft },
 
-    doneHero:  { alignItems: 'center', paddingVertical: 32, gap: 10 },
+    doneHero: { paddingVertical: 16, gap: 6 },
     doneTitle: { fontSize: 22, fontWeight: '800', color: theme.colors.ink, textAlign: 'center' },
     doneDate:  { fontSize: 13, color: theme.colors.inkSoft, marginTop: 2 },
     doneVerdict: {

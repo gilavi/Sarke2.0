@@ -40,7 +40,14 @@ export async function generateAndSharePdf(
     await checkAndIncrementPdfCount(userId);
   }
 
-  const { uri } = await Print.printToFileAsync({ html });
+  // Wrap expo-print in a hard timeout so a stuck WebView can't freeze
+  // the UI forever. Observed hangs on iOS when the HTML contains complex
+  // Paged Media CSS (e.g. @bottom-center with counter()).
+  const printPromise = Print.printToFileAsync({ html });
+  const timeoutPromise = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error('PDF generation timed out')), 30_000),
+  );
+  const { uri } = await Promise.race([printPromise, timeoutPromise]);
 
   let shareUri = uri;
   let prettyUri: string | undefined;

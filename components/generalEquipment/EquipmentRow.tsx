@@ -5,6 +5,8 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { A11yText as Text } from '../primitives/A11yText';
 import { FloatingLabelInput } from '../inputs/FloatingLabelInput';
+import { SuggestionPills } from '../SuggestionPills';
+import { useFieldHistory } from '../../hooks/useFieldHistory';
 import { useTheme, type Theme } from '../../lib/theme';
 import { useAccessibilitySettings } from '../../lib/accessibility';
 import { haptic } from '../../lib/haptics';
@@ -17,6 +19,7 @@ interface Props {
   index: number;
   item: EquipmentItem;
   canDelete: boolean;
+  userId?: string | null;
   onChange: (patch: Partial<EquipmentItem>) => void;
   onDelete: () => void;
   onAddPhoto: () => void;
@@ -27,6 +30,7 @@ export const EquipmentRow = memo(function EquipmentRow({
   index,
   item,
   canDelete,
+  userId = null,
   onChange,
   onDelete,
   onAddPhoto,
@@ -35,6 +39,12 @@ export const EquipmentRow = memo(function EquipmentRow({
   const { theme } = useTheme();
   const { reduceMotion } = useAccessibilitySettings();
   const styles = useMemo(() => getstyles(theme), [theme]);
+
+  const [focusedField, setFocusedField] = useState<string | null>(null);
+
+  const nameHistory = useFieldHistory(userId, 'ge:equipmentName');
+  const modelHistory = useFieldHistory(userId, 'ge:equipmentModel');
+  const serialHistory = useFieldHistory(userId, 'ge:equipmentSerial');
 
   const [nameDraft,   setNameDraft]   = useState(item.name);
   const [modelDraft,  setModelDraft]  = useState(item.model);
@@ -83,6 +93,20 @@ export const EquipmentRow = memo(function EquipmentRow({
             setNameDraft(text);
             onChange({ name: text });
           }}
+          onFocus={() => setFocusedField('name')}
+          onBlur={() => {
+            setFocusedField(null);
+            if (nameDraft.trim()) nameHistory.addToHistory(nameDraft.trim());
+          }}
+        />
+        <SuggestionPills
+          suggestions={nameHistory.suggestions}
+          onSelect={v => {
+            setNameDraft(v);
+            onChange({ name: v });
+            setFocusedField(null);
+          }}
+          visible={focusedField === 'name' || (!nameDraft.trim() && nameHistory.suggestions.length > 0)}
         />
 
         {/* Model + Serial — 2 columns */}
@@ -95,6 +119,20 @@ export const EquipmentRow = memo(function EquipmentRow({
                 setModelDraft(text);
                 onChange({ model: text });
               }}
+              onFocus={() => setFocusedField('model')}
+              onBlur={() => {
+                setFocusedField(null);
+                if (modelDraft.trim()) modelHistory.addToHistory(modelDraft.trim());
+              }}
+            />
+            <SuggestionPills
+              suggestions={modelHistory.suggestions}
+              onSelect={v => {
+                setModelDraft(v);
+                onChange({ model: v });
+                setFocusedField(null);
+              }}
+              visible={focusedField === 'model' || (!modelDraft.trim() && modelHistory.suggestions.length > 0)}
             />
           </View>
           <View style={styles.colHalf}>
@@ -105,6 +143,20 @@ export const EquipmentRow = memo(function EquipmentRow({
                 setSerialDraft(text);
                 onChange({ serialNumber: text });
               }}
+              onFocus={() => setFocusedField('serial')}
+              onBlur={() => {
+                setFocusedField(null);
+                if (serialDraft.trim()) serialHistory.addToHistory(serialDraft.trim());
+              }}
+            />
+            <SuggestionPills
+              suggestions={serialHistory.suggestions}
+              onSelect={v => {
+                setSerialDraft(v);
+                onChange({ serialNumber: v });
+                setFocusedField(null);
+              }}
+              visible={focusedField === 'serial' || (!serialDraft.trim() && serialHistory.suggestions.length > 0)}
             />
           </View>
         </View>
@@ -112,33 +164,33 @@ export const EquipmentRow = memo(function EquipmentRow({
         {/* Condition chips */}
         <View style={styles.chips}>
           <Pressable
-            style={[styles.chip, styles.chipGood, goodActive && styles.chipGoodActive]}
+            style={[styles.chip, goodActive ? styles.chipGoodActive : styles.chipGood]}
             onPress={() => setCondition('good')}
             hitSlop={{ top: 9, bottom: 9, left: 0, right: 0 }}
             {...a11y('კარგი', '✓ კარგია', 'button')}
           >
             <Ionicons name="checkmark" size={13} color={goodActive ? theme.colors.white : theme.colors.semantic.success} />
-            <Text style={[styles.chipLabel, goodActive && styles.chipLabelGood]}>კარგი</Text>
+            <Text style={[styles.chipLabel, !goodActive && styles.chipLabelGood]}>კარგი</Text>
           </Pressable>
 
           <Pressable
-            style={[styles.chip, styles.chipWarn, warnActive && styles.chipWarnActive]}
+            style={[styles.chip, warnActive ? styles.chipWarnActive : styles.chipWarn]}
             onPress={() => setCondition('needs_service')}
             hitSlop={{ top: 9, bottom: 9, left: 0, right: 0 }}
             {...a11y('საჭ. მომსახ.', '⚠ საჭ. მომსახ.', 'button')}
           >
             <Ionicons name="warning-outline" size={12} color={warnActive ? theme.colors.white : theme.colors.warn} />
-            <Text style={[styles.chipLabel, warnActive && styles.chipLabelWarn]}>საჭ. მომს.</Text>
+            <Text style={[styles.chipLabel, !warnActive && styles.chipLabelWarn]}>საჭ. მომს.</Text>
           </Pressable>
 
           <Pressable
-            style={[styles.chip, styles.chipBad, badActive && styles.chipBadActive]}
+            style={[styles.chip, badActive ? styles.chipBadActive : styles.chipBad]}
             onPress={() => setCondition('unusable')}
             hitSlop={{ top: 9, bottom: 9, left: 0, right: 0 }}
             {...a11y('გამოუსადეგ.', '✗ გამოუსადეგარია', 'button')}
           >
             <Ionicons name="close" size={13} color={badActive ? theme.colors.white : theme.colors.danger} />
-            <Text style={[styles.chipLabel, badActive && styles.chipLabelBad]}>გამოუსადეგ.</Text>
+            <Text style={[styles.chipLabel, !badActive && styles.chipLabelBad]}>გამოუსადეგ.</Text>
           </Pressable>
         </View>
       </View>
@@ -214,12 +266,13 @@ function getstyles(theme: Theme) {
     container: { marginBottom: 8 },
 
     card: {
-      backgroundColor: theme.colors.card,
-      borderRadius: 10, borderWidth: 1, borderColor: theme.colors.hairline,
-      padding: 10, gap: 8,
+      paddingVertical: 10, paddingHorizontal: 4,
+      gap: 8,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.colors.hairline,
     },
     cardExpanded: {
-      borderBottomLeftRadius: 0, borderBottomRightRadius: 0, borderBottomWidth: 0,
+      borderBottomWidth: 0,
     },
 
     topRow: {
@@ -247,26 +300,28 @@ function getstyles(theme: Theme) {
       paddingHorizontal: 8, paddingVertical: 6, borderRadius: 8, borderWidth: 1.5,
     },
 
-    chipGood:       { borderColor: theme.colors.semantic.success, backgroundColor: theme.colors.semantic.successSoft },
+    chipGood:       { borderColor: theme.colors.semantic.success },
     chipGoodActive: { backgroundColor: theme.colors.semantic.success, borderColor: theme.colors.semantic.success },
     chipLabelGood:  { color: theme.colors.white },
 
-    chipWarn:       { borderColor: theme.colors.warn, backgroundColor: theme.colors.warnSoft },
+    chipWarn:       { borderColor: theme.colors.warn },
     chipWarnActive: { backgroundColor: theme.colors.warn, borderColor: theme.colors.warn },
     chipLabelWarn:  { color: theme.colors.white },
 
-    chipBad:       { borderColor: theme.colors.danger, backgroundColor: theme.colors.dangerTint },
+    chipBad:       { borderColor: theme.colors.danger },
     chipBadActive: { backgroundColor: theme.colors.danger, borderColor: theme.colors.danger },
     chipLabelBad:  { color: theme.colors.white },
 
     chipLabel: { fontSize: 11, fontWeight: '600', color: theme.colors.inkSoft },
+    chipLabelGood:   { color: theme.colors.semantic.success },
+    chipLabelWarn:   { color: theme.colors.warn },
+    chipLabelBad:    { color: theme.colors.danger },
 
     accordion: {
-      padding: 12, gap: 10, borderWidth: 1, borderTopWidth: 0,
-      borderBottomLeftRadius: 10, borderBottomRightRadius: 10,
+      padding: 12, gap: 10, borderTopWidth: 0,
     },
-    accordionWarn: { borderColor: theme.colors.warn,        backgroundColor: theme.colors.warnSoft },
-    accordionBad:  { borderColor: theme.colors.dangerBorder, backgroundColor: theme.colors.dangerTint },
+    accordionWarn: { borderColor: theme.colors.warn },
+    accordionBad:  { borderColor: theme.colors.dangerBorder },
 
     photoStrip:   { gap: 8, paddingVertical: 2 },
     addPhoto: {

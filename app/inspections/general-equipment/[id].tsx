@@ -24,7 +24,6 @@ import { SignatureCanvas } from '../../../components/SignatureCanvas';
 
 import { WizardStepTransition } from '../../../components/wizard/WizardStepTransition';
 
-import { StepSectionLabel } from '../../../components/wizard/StepSectionLabel';
 import { FlowHeader } from '../../../components/FlowHeader';
 import { useTheme, type Theme } from '../../../lib/theme';
 import { useSession } from '../../../lib/session';
@@ -43,15 +42,14 @@ import { a11y } from '../../../lib/accessibility';
 import { imageForDisplay } from '../../../lib/imageUrl';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SuggestionPills } from '../../../components/SuggestionPills';
+import { useFieldHistory } from '../../../hooks/useFieldHistory';
 import {
   buildDefaultEquipmentRow,
   INSPECTION_TYPE_LABEL,
-  SIGNER_ROLE_LABEL,
-  resolveSignerPosition,
   type GeneralEquipmentInspection,
   type EquipmentItem,
   type GEInspectionType,
-  type GESignerRole,
 } from '../../../types/generalEquipment';
 
 const INFO_STEP = 0;
@@ -68,6 +66,19 @@ export default function GeneralEquipmentScreen() {
   const router = useRouter();
   const toast = useToast();
   const session = useSession();
+
+  const userId = session?.state?.status === 'signedIn' ? session.state.session.user.id : null;
+
+  // ── Field suggestion histories ────────────────────────────────────────────
+  const objectNameHistory = useFieldHistory(userId, 'ge:objectName');
+  const addressHistory = useFieldHistory(userId, 'ge:address');
+  const activityTypeHistory = useFieldHistory(userId, 'ge:activityType');
+  const actNumberHistory = useFieldHistory(userId, 'ge:actNumber');
+  const inspectorNameHistory = useFieldHistory(userId, 'ge:inspectorName');
+  const conclusionHistory = useFieldHistory(userId, 'ge:conclusion');
+  const signerNameHistory = useFieldHistory(userId, 'ge:signerName');
+
+  const [focusedField, setFocusedField] = useState<string | null>(null);
 
   const [inspection, setInspection] = useState<GeneralEquipmentInspection | null>(null);
   const [projectName, setProjectName] = useState('');
@@ -302,7 +313,7 @@ export default function GeneralEquipmentScreen() {
     const missing: string[] = [];
     if (!inspection.objectName?.trim())    missing.push('ობიექტის დასახელება');
     if (!inspection.conclusion?.trim())    missing.push('დასკვნა');
-    if (!inspection.inspectorSignature)    missing.push('ხელმოწერა');
+
     const hasFilledRow = inspection.equipment.some(r => r.name.trim());
     if (!hasFilledRow)                     missing.push('მინიმუმ 1 აღჭ. სტრ.');
     // Validate notes on degraded equipment rows
@@ -412,17 +423,18 @@ export default function GeneralEquipmentScreen() {
     if (step === CHECKLIST_STEP) {
       return inspection.equipment.length > 0 && inspection.equipment.every(r => !!r.condition);
     }
-    if (step === CONCLUSION_STEP) return !!inspection.inspectorSignature && !completing;
+    if (step === CONCLUSION_STEP) return !!inspection.conclusion?.trim() && !completing;
     return true;
   }, [step, inspection, completing, CONCLUSION_STEP]);
 
-  const handleNext = useCallback(() => {
+  const handleNext = useCallback(async () => {
     if (step === CONCLUSION_STEP) {
-      handleComplete();
+      await handleComplete();
+      router.push(`/inspections/general-equipment/${id}/done` as any);
     } else if (step < CONCLUSION_STEP) {
       setStep(s => s + 1);
     }
-  }, [step, CONCLUSION_STEP, handleComplete]);
+  }, [step, CONCLUSION_STEP, handleComplete, id, router]);
 
   const handlePrev = useCallback(() => {
     if (step > 0) {
@@ -492,7 +504,7 @@ export default function GeneralEquipmentScreen() {
           ) : null}
         </View>
         <SafeAreaView edges={['bottom']} style={{ backgroundColor: theme.colors.surface, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.colors.hairline }}>
-          <View style={{ paddingHorizontal: 12, paddingTop: 8, paddingBottom: 8 }}>
+          <View style={{ paddingHorizontal: 8, paddingTop: 8, paddingBottom: 8 }}>
             <Button
               title={pdfUsage?.isLocked ? '🔒 PDF გენერირება' : 'PDF გენერირება / გაზიარება'}
               onPress={handlePdf}
@@ -533,7 +545,7 @@ export default function GeneralEquipmentScreen() {
             </Pressable>
           ) : null
         }
-        onBack={step === INFO_STEP ? () => router.back() : handlePrev}
+        onBack={step === INFO_STEP ? async () => { await AsyncStorage.removeItem(persistKey); router.back(); } : handlePrev}
         backDisabled={false}
       />
 
@@ -551,29 +563,59 @@ export default function GeneralEquipmentScreen() {
           {step === INFO_STEP && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 12 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 8, paddingTop: 16, paddingBottom: 24, gap: 12 }}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="interactive"
               showsVerticalScrollIndicator={false}
               bottomOffset={120}
             >
-              <StepSectionLabel title="I — ზოგადი ინფორმაცია" />
-
               <FloatingLabelInput
                 label="ობიექტის დასახელება *"
                 value={inspection.objectName ?? ''}
                 onChangeText={v => update('objectName', v || null)}
+                onFocus={() => setFocusedField('objectName')}
+                onBlur={() => {
+                  setFocusedField(null);
+                  if (inspection.objectName?.trim()) objectNameHistory.addToHistory(inspection.objectName.trim());
+                }}
                 required
               />
+              <SuggestionPills
+                suggestions={objectNameHistory.suggestions}
+                onSelect={v => update('objectName', v)}
+                visible={focusedField === 'objectName' || (!inspection.objectName?.trim() && objectNameHistory.suggestions.length > 0)}
+              />
+
               <FloatingLabelInput
                 label="მისამართი"
                 value={inspection.address ?? ''}
                 onChangeText={v => update('address', v || null)}
+                onFocus={() => setFocusedField('address')}
+                onBlur={() => {
+                  setFocusedField(null);
+                  if (inspection.address?.trim()) addressHistory.addToHistory(inspection.address.trim());
+                }}
               />
+              <SuggestionPills
+                suggestions={addressHistory.suggestions}
+                onSelect={v => update('address', v)}
+                visible={focusedField === 'address' || (!inspection.address?.trim() && addressHistory.suggestions.length > 0)}
+              />
+
               <FloatingLabelInput
                 label="საქმიანობის სახე"
                 value={inspection.activityType ?? ''}
                 onChangeText={v => update('activityType', v || null)}
+                onFocus={() => setFocusedField('activityType')}
+                onBlur={() => {
+                  setFocusedField(null);
+                  if (inspection.activityType?.trim()) activityTypeHistory.addToHistory(inspection.activityType.trim());
+                }}
+              />
+              <SuggestionPills
+                suggestions={activityTypeHistory.suggestions}
+                onSelect={v => update('activityType', v)}
+                visible={focusedField === 'activityType' || (!inspection.activityType?.trim() && activityTypeHistory.suggestions.length > 0)}
               />
 
               <View style={styles.fieldRow}>
@@ -590,6 +632,16 @@ export default function GeneralEquipmentScreen() {
                 label="აქტის №"
                 value={inspection.actNumber ?? ''}
                 onChangeText={v => update('actNumber', v || null)}
+                onFocus={() => setFocusedField('actNumber')}
+                onBlur={() => {
+                  setFocusedField(null);
+                  if (inspection.actNumber?.trim()) actNumberHistory.addToHistory(inspection.actNumber.trim());
+                }}
+              />
+              <SuggestionPills
+                suggestions={actNumberHistory.suggestions}
+                onSelect={v => update('actNumber', v)}
+                visible={focusedField === 'actNumber' || (!inspection.actNumber?.trim() && actNumberHistory.suggestions.length > 0)}
               />
 
               <Text style={styles.fieldLabel}>შემოწმების სახე</Text>
@@ -615,6 +667,16 @@ export default function GeneralEquipmentScreen() {
                 label="შემომწმებელი"
                 value={inspection.inspectorName ?? ''}
                 onChangeText={v => update('inspectorName', v || null)}
+                onFocus={() => setFocusedField('inspectorName')}
+                onBlur={() => {
+                  setFocusedField(null);
+                  if (inspection.inspectorName?.trim()) inspectorNameHistory.addToHistory(inspection.inspectorName.trim());
+                }}
+              />
+              <SuggestionPills
+                suggestions={inspectorNameHistory.suggestions}
+                onSelect={v => update('inspectorName', v)}
+                visible={focusedField === 'inspectorName' || (!inspection.inspectorName?.trim() && inspectorNameHistory.suggestions.length > 0)}
               />
             </KeyboardAwareScrollView>
           )}
@@ -623,14 +685,13 @@ export default function GeneralEquipmentScreen() {
           {step === CHECKLIST_STEP && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 12 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 4, paddingTop: 16, paddingBottom: 24, gap: 12 }}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="interactive"
               showsVerticalScrollIndicator={false}
               bottomOffset={120}
             >
-              <View style={styles.equipHeader}>
-                <StepSectionLabel title="II — აღჭურვილობის სია" />
+              <View style={{ alignItems: 'flex-end', marginBottom: 4 }}>
                 <View style={styles.progressPill}>
                   <Text style={styles.progressPillText}>
                     შევსებულია {filledCount} / {totalCount}
@@ -643,18 +704,17 @@ export default function GeneralEquipmentScreen() {
                   <View style={styles.listRowText}>
                     <Text style={styles.listRowNumber}>{index + 1}.</Text>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.listRowLabel}>{item.name}</Text>
-                      <Text style={styles.listRowDesc}>{item.model} · {item.serialNumber}</Text>
+                      <Text style={[styles.listRowLabel, { fontSize: 13, fontWeight: '400' }]} numberOfLines={2}>{item.model} · {item.serialNumber}</Text>
                     </View>
                   </View>
                   <View style={styles.listRowActions}>
-                    <Pressable style={[styles.statusBtn, item.condition==='good' && styles.statusBtnGoodActive]} onPress={() => updateCondition(index, 'good')}>
+                    <Pressable style={[styles.statusBtn, item.condition==='good' ? styles.statusBtnGoodActive : styles.statusBtnGood]} onPress={() => updateCondition(index, 'good')}>
                       <Ionicons name="checkmark" size={22} color={item.condition==='good' ? '#fff' : theme.colors.semantic.success} />
                     </Pressable>
-                    <Pressable style={[styles.statusBtn, item.condition==='needs_service' && styles.statusBtnDefActive]} onPress={() => updateCondition(index, 'needs_service')}>
+                    <Pressable style={[styles.statusBtn, item.condition==='needs_service' ? styles.statusBtnDefActive : styles.statusBtnDef]} onPress={() => updateCondition(index, 'needs_service')}>
                       <Ionicons name="warning" size={20} color={item.condition==='needs_service' ? '#fff' : theme.colors.warn} />
                     </Pressable>
-                    <Pressable style={[styles.statusBtn, item.condition==='unusable' && styles.statusBtnBadActive]} onPress={() => updateCondition(index, 'unusable')}>
+                    <Pressable style={[styles.statusBtn, item.condition==='unusable' ? styles.statusBtnBadActive : styles.statusBtnBad]} onPress={() => updateCondition(index, 'unusable')}>
                       <Ionicons name="close" size={20} color={item.condition==='unusable' ? '#fff' : theme.colors.danger} />
                     </Pressable>
                   </View>
@@ -685,98 +745,30 @@ export default function GeneralEquipmentScreen() {
           {step === CONCLUSION_STEP && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 12 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 4, paddingTop: 16, paddingBottom: 24, gap: 12 }}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="interactive"
               showsVerticalScrollIndicator={false}
               bottomOffset={120}
             >
-              <StepSectionLabel title="III — დასკვნა" />
-
               <FloatingLabelInput
                 label="დასკვნა *"
                 value={inspection.conclusion ?? ''}
                 onChangeText={v => update('conclusion', v || null)}
+                onFocus={() => setFocusedField('conclusion')}
+                onBlur={() => {
+                  setFocusedField(null);
+                  if (inspection.conclusion?.trim()) conclusionHistory.addToHistory(inspection.conclusion.trim());
+                }}
                 multiline
                 numberOfLines={4}
                 required
               />
-
-              <Text style={[styles.fieldLabel, { marginTop: 8 }]}>ფოტოები (სურვ.)</Text>
-
-              <SummaryPhotoStrip
-                paths={inspection.summaryPhotos}
-                onAdd={handleAddSummaryPhoto}
-                onDelete={handleDeleteSummaryPhoto}
-                styles={styles}
+              <SuggestionPills
+                suggestions={conclusionHistory.suggestions}
+                onSelect={v => update('conclusion', v)}
+                visible={focusedField === 'conclusion' || (!inspection.conclusion?.trim() && conclusionHistory.suggestions.length > 0)}
               />
-
-              <StepSectionLabel title="IV — ხელმოწერა" />
-
-              <FloatingLabelInput
-                label="სახელი / გვარი"
-                value={inspection.signerName ?? ''}
-                onChangeText={v => update('signerName', v || null)}
-              />
-
-              <Text style={styles.fieldLabel}>თანამდებობა</Text>
-              <View style={styles.typeChips}>
-                {(['electrician', 'technician', 'safety_specialist', 'other'] as GESignerRole[]).map(r => {
-                  const active = inspection.signerRole === r;
-                  return (
-                    <Pressable
-                      key={r}
-                      style={[styles.typeChip, active && styles.typeChipActive]}
-                      onPress={() => update('signerRole', active ? null : r)}
-                      {...a11y(SIGNER_ROLE_LABEL[r], undefined, 'radio')}
-                    >
-                      <Text style={[styles.typeChipText, active && styles.typeChipTextActive]}>
-                        {SIGNER_ROLE_LABEL[r]}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-
-              {inspection.signerRole === 'other' && (
-                <FloatingLabelInput
-                  label="სხვა თანამდებობა"
-                  value={inspection.signerRoleCustom ?? ''}
-                  onChangeText={v => update('signerRoleCustom', v || null)}
-                  autoFocus
-                />
-              )}
-
-              <Pressable
-                style={[styles.sigArea, inspection.inspectorSignature && styles.sigAreaSigned]}
-                onPress={() => setShowSig(true)}
-                {...a11y('ხელმოწერა', 'შემომწმებლის ხელმოწერის დამატება', 'button')}
-              >
-                {inspection.inspectorSignature ? (
-                  <View style={styles.sigContent}>
-                    <Ionicons name="checkmark-circle" size={20} color={theme.colors.semantic.success} />
-                    <Text style={[styles.sigHint, { color: theme.colors.semantic.success }]}>ხელმოწერა დაყენებულია</Text>
-                    <Pressable
-                      onPress={() => update('inspectorSignature', null)}
-                      hitSlop={10}
-                      {...a11y('ხელმოწერის წაშლა', undefined, 'button')}
-                    >
-                      <Text style={styles.sigClear}>გასუფთავება</Text>
-                    </Pressable>
-                  </View>
-                ) : (
-                  <View style={styles.sigContent}>
-                    <Ionicons name="pencil-outline" size={20} color={theme.colors.accent} />
-                    <Text style={styles.sigHint}>შეეხეთ ხელმოწერისთვის</Text>
-                  </View>
-                )}
-              </Pressable>
-
-              {!inspection.inspectorSignature && (
-                <Text style={styles.sigRequiredHint}>
-                  ხელმოწერა სავალდებულოა დასასრულებლად
-                </Text>
-              )}
 
               {completing && (
                 <View style={styles.completingRow}>
@@ -840,7 +832,7 @@ export default function GeneralEquipmentScreen() {
                 iconRight={<Ionicons name="checkmark" size={20} color={theme.colors.white} />}
                 loading={completing}
                 disabled={!canGoNext || completing}
-                onPress={handleComplete}
+                onPress={handleNext}
               />
             ) : (
               <Button
@@ -940,14 +932,14 @@ function getstyles(theme: Theme) {
     root:    { flex: 1, backgroundColor: theme.colors.card },
     footer: {
       gap: 10,
-      paddingHorizontal: 20,
+      paddingHorizontal: 8,
       paddingTop: 8,
       paddingBottom: 16,
       backgroundColor: theme.colors.card,
     },
     centred: { alignItems: 'center', justifyContent: 'center' },
-    savingHint: { fontSize: 11, color: theme.colors.inkFaint, textAlign: 'right', paddingHorizontal: 24, paddingTop: 4 },
-    stepBody: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 16, gap: 12 },
+    savingHint: { fontSize: 11, color: theme.colors.inkFaint, textAlign: 'right', paddingHorizontal: 8, paddingTop: 4 },
+    stepBody: { paddingHorizontal: 8, paddingTop: 16, paddingBottom: 16, gap: 12 },
 
     fieldRow:   { marginBottom: 4, gap: 6 },
     fieldLabel: { fontSize: 12, fontWeight: '600', color: theme.colors.inkSoft, marginBottom: 6 },
@@ -963,12 +955,7 @@ function getstyles(theme: Theme) {
     typeChipText:       { fontSize: 13, color: theme.colors.inkSoft, fontWeight: '500' },
     typeChipTextActive: { color: theme.colors.accent, fontWeight: '700' },
 
-    equipHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: 4,
-    },
+
     progressPill: {
       paddingHorizontal: 10,
       paddingVertical: 4,
@@ -996,11 +983,10 @@ function getstyles(theme: Theme) {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 8,
-      padding: 12,
-      borderRadius: 10,
-      backgroundColor: theme.colors.warnSoft,
-      borderWidth: 1,
-      borderColor: theme.colors.warn,
+      paddingVertical: 10,
+      paddingHorizontal: 4,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.colors.warn,
       marginTop: 8,
     },
     emptyHintText: {
@@ -1012,13 +998,11 @@ function getstyles(theme: Theme) {
     listRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: 12,
-      paddingHorizontal: 16,
-      backgroundColor: theme.colors.card,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: theme.colors.hairline,
-      marginBottom: 8,
+      paddingVertical: 10,
+      paddingHorizontal: 4,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.colors.hairline,
+      marginBottom: 4,
     },
     listRowText: {
       flexDirection: 'row',
@@ -1037,11 +1021,6 @@ function getstyles(theme: Theme) {
       fontWeight: '600',
       color: theme.colors.ink,
     },
-    listRowDesc: {
-      fontSize: 12,
-      color: theme.colors.inkSoft,
-      marginTop: 2,
-    },
     listRowActions: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -1050,20 +1029,27 @@ function getstyles(theme: Theme) {
     statusBtn: {
       width: 44,
       height: 44,
-      borderRadius: 22,
+      borderRadius: 8,
       borderWidth: 1.5,
-      borderColor: theme.colors.hairline,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: theme.colors.card,
+    },
+    statusBtnGood: {
+      borderColor: theme.colors.semantic.success,
     },
     statusBtnGoodActive: {
       backgroundColor: theme.colors.semantic.success,
       borderColor: theme.colors.semantic.success,
     },
+    statusBtnDef: {
+      borderColor: theme.colors.warn,
+    },
     statusBtnDefActive: {
       backgroundColor: theme.colors.warn,
       borderColor: theme.colors.warn,
+    },
+    statusBtnBad: {
+      borderColor: theme.colors.danger,
     },
     statusBtnBadActive: {
       backgroundColor: theme.colors.danger,
@@ -1081,16 +1067,23 @@ function getstyles(theme: Theme) {
     thumbImg:    { width: 64, height: 64 },
     thumbDelete: { position: 'absolute', top: 2, right: 2 },
 
-    sigArea: {
-      borderWidth: 1.5, borderStyle: 'dashed', borderColor: theme.colors.hairline,
-      borderRadius: 12, padding: 24, alignItems: 'center', justifyContent: 'center',
-      minHeight: 80, marginBottom: 12, marginTop: 8,
+    sigRow: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingVertical: 14, paddingHorizontal: 12,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.colors.hairline,
     },
-    sigAreaSigned: { borderStyle: 'solid', borderColor: theme.colors.semantic.success, backgroundColor: theme.colors.semantic.successSoft },
-    sigContent:       { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    sigHint:          { fontSize: 14, color: theme.colors.accent },
-    sigClear:         { fontSize: 12, color: theme.colors.danger, marginLeft: 8 },
-    sigRequiredHint:  { fontSize: 12, color: theme.colors.inkFaint, textAlign: 'center', marginTop: 4 },
+    sigRowActive: {
+      borderBottomColor: theme.colors.semantic.success,
+    },
+    sigRowText: {
+      fontSize: 15, color: theme.colors.ink,
+    },
+    sigRowClear: {
+      fontSize: 13, color: theme.colors.accent,
+    },
+    doneTitle: { fontSize: 20, fontWeight: '700', color: theme.colors.ink },
+    doneDate:  { fontSize: 13, color: theme.colors.inkSoft, marginTop: 4, marginBottom: 12 },
     completingRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 16 },
     completingText:   { fontSize: 13, color: theme.colors.inkSoft },
   });

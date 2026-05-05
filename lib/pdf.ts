@@ -236,17 +236,8 @@ async function buildHtml(
       font-size: 11px;
     }
 
-    ${isPdf ? `
-    @page {
-      margin: 20px 20px 44px 20px;
-      @bottom-center {
-        content: "${t('pdf.footerText', { systemName: t('pdf.systemName') })}" counter(page) " / " counter(pages);
-        font-size: 8px;
-        color: var(--gray);
-        font-family: Helvetica, Arial, sans-serif;
-      }
-    }
-    ` : ''}
+    /* @page margins removed — caused hangs on iOS WKWebView print renderer.
+       Body padding (20px) provides sufficient margin instead. */
 
     /* Watermark */
     .watermark {
