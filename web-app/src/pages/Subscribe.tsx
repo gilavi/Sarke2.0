@@ -69,7 +69,13 @@ export default function Subscribe() {
       }>('create-bog-order', {
         body: { success_url: SUCCESS_URL, fail_url: FAIL_URL },
       });
-      if (error) throw error;
+      if (error) {
+        // Extract the actual body from FunctionsHttpError for better diagnostics
+        const body = await (error as unknown as { context?: Response }).context
+          ?.json()
+          .catch(() => null);
+        throw new Error(body ? JSON.stringify(body) : error.message);
+      }
       if (!data?.redirect_url) throw new Error('No redirect URL');
 
       setPayStatus('redirecting');
