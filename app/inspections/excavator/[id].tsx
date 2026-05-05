@@ -15,6 +15,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
+import { PlateInput } from '../../../components/inputs/PlateInput';
 import { Button } from '../../../components/ui';
 import { ExcavatorMaintenanceItem } from '../../../components/excavator/ExcavatorMaintenanceItem';
 
@@ -106,6 +107,7 @@ export default function ExcavatorInspectionScreen() {
 
   // ── Field suggestion histories ────────────────────────────────────────────
   const serialNumberHistory = useFieldHistory(userId, 'excavator:serialNumber');
+  const registrationNumberHistory = useFieldHistory(userId, 'excavator:registrationNumber');
 
   const [inspection, setInspection] = useState<ExcavatorInspection | null>(null);
   const [projectName, setProjectName] = useState('');
@@ -234,6 +236,7 @@ export default function ExcavatorInspectionScreen() {
       setSaving(true);
       excavatorApi.patch(insp.id, {
         serialNumber: insp.serialNumber,
+        registrationNumber: insp.registrationNumber,
         inventoryNumber: insp.inventoryNumber,
         projectName: insp.projectName,
         department: insp.department,
@@ -391,6 +394,7 @@ export default function ExcavatorInspectionScreen() {
     try {
       await excavatorApi.patch(inspection.id, {
         serialNumber: inspection.serialNumber,
+        registrationNumber: inspection.registrationNumber,
         inventoryNumber: inspection.inventoryNumber,
         projectName: inspection.projectName,
         department: inspection.department,
@@ -704,6 +708,19 @@ export default function ExcavatorInspectionScreen() {
               bottomOffset={120}
             >
               <MachineSpecsCard insp={inspection} styles={styles} />
+
+              <PlateInput
+                label="სახელმწიფო / ს.ნ ნომერი"
+                value={inspection.registrationNumber ?? ''}
+                onChangeText={v => {
+                  update('registrationNumber', v || null);
+                  if (v.trim()) registrationNumberHistory.addToHistory(v.trim());
+                }}
+              />
+              <SuggestionPills
+                suggestions={registrationNumberHistory.suggestions}
+                onSelect={v => update('registrationNumber', v)}
+              />
 
               <FloatingLabelInput
                 label="სერიული ნომერი *"

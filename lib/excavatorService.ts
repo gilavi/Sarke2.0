@@ -23,6 +23,7 @@ type DbRow = {
   status: string;
   machine_specs: ExcavatorMachineSpecs;
   serial_number: string | null;
+  registration_number: string | null;
   inventory_number: string | null;
   project_name: string | null;
   department: string | null;
@@ -54,6 +55,7 @@ function toModel(row: DbRow): ExcavatorInspection {
     status: row.status as ExcavatorInspection['status'],
     machineSpecs: row.machine_specs ?? EXCAVATOR_MACHINE_SPECS,
     serialNumber: row.serial_number,
+    registrationNumber: row.registration_number,
     inventoryNumber: row.inventory_number,
     projectName: row.project_name,
     department: row.department,
@@ -124,6 +126,7 @@ export const excavatorApi = {
     id: string,
     patch: Partial<{
       serialNumber: string | null;
+      registrationNumber: string | null;
       inventoryNumber: string | null;
       projectName: string | null;
       department: string | null;
@@ -144,6 +147,7 @@ export const excavatorApi = {
   ): Promise<void> => {
     const db: Record<string, unknown> = {};
     if ('serialNumber'       in patch) db.serial_number        = patch.serialNumber;
+    if ('registrationNumber' in patch) db.registration_number  = patch.registrationNumber;
     if ('inventoryNumber'    in patch) db.inventory_number     = patch.inventoryNumber;
     if ('projectName'        in patch) db.project_name         = patch.projectName;
     if ('department'         in patch) db.department           = patch.department;

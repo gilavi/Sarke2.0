@@ -128,6 +128,7 @@ export interface ExcavatorInspection {
 
   // Section II — Document info
   serialNumber: string | null;
+  registrationNumber: string | null;
   inventoryNumber: string | null;
   projectName: string | null;   // ობიექტი / პროექტი — auto-filled from project
   department: string | null;

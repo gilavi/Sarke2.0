@@ -331,13 +331,20 @@ export async function buildExcavatorPdfHtml(args: {
     <table class="info-table">
       <tr>
         <td>
+          <span class="lbl">სახელმწიფო / ს.ნ ნომერი</span>
+          <span class="val">${escHtml(insp.registrationNumber) || '—'}</span>
+        </td>
+        <td>
           <span class="lbl">სერიული ნომერი</span>
           <span class="val">${escHtml(insp.serialNumber) || '—'}</span>
         </td>
+      </tr>
+      <tr>
         <td>
           <span class="lbl">საინვენტარო ნომერი</span>
           <span class="val">${escHtml(insp.inventoryNumber) || '—'}</span>
         </td>
+        <td></td>
       </tr>
       <tr>
         <td>

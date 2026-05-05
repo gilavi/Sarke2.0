@@ -39,7 +39,6 @@ import { Button, Card } from '../../components/ui';
 import { FloatingLabelInput } from '../../components/inputs/FloatingLabelInput';
 import { NumberPop, useScrollHeader } from '../../components/animations';
 import { QuickActions, type QuickAction } from '../../components/QuickActions';
-import { useBottomSheet } from '../../components/BottomSheet';
 import { Skeleton } from '../../components/Skeleton';
 import type { LatLng } from '../../components/MapPicker';
 import { LocationRow } from '../../components/LocationRow';
@@ -55,6 +54,7 @@ import { bobcatApi } from '../../lib/bobcatService';
 import { excavatorApi } from '../../lib/excavatorService';
 import { generalEquipmentApi } from '../../lib/generalEquipmentService';
 import { InspectionTypeAvatar } from '../../components/InspectionTypeAvatar';
+import { TemplatePickerModal } from '../../components/TemplatePickerModal';
 
 const staticStyles = StyleSheet.create({
   scrollContent: { paddingBottom: 100 },
@@ -92,13 +92,14 @@ export default function HomeScreen() {
   const loaded = !certsQ.isLoading && !templatesQ.isLoading && !recentQ.isLoading && !projectsQ.isLoading;
   const loadError = certsQ.isError && templatesQ.isError && recentQ.isError && projectsQ.isError;
 
-  const showActionSheet = useBottomSheet();
 
   const [refreshing, setRefreshing] = useState(false);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pickerInitialView, setPickerInitialView] = useState<'list' | 'new'>('list');
   const [pickerAction, setPickerAction] = useState<'inspection' | 'incident' | 'briefing' | 'report'>('inspection');
   const [pickerPreselectedTemplateId, setPickerPreselectedTemplateId] = useState<string | null>(null);
+  const [tplPickerVisible, setTplPickerVisible] = useState(false);
+  const [tplPickerTemplates, setTplPickerTemplates] = useState<Template[]>([]);
 
   const { width: screenWidth } = useWindowDimensions();
   const HPAD = 20;
@@ -339,15 +340,8 @@ export default function HomeScreen() {
                     setPickerPreselectedTemplateId(sysTpls[0].id);
                     setPickerVisible(true);
                   } else {
-                    const options = [...sysTpls.map(tpl => tpl.name), t('common.cancel')];
-                    showActionSheet(
-                      { title: t('home.chooseTemplate'), options, cancelButtonIndex: options.length - 1 },
-                      (idx) => {
-                        if (idx == null || idx === options.length - 1) return;
-                        setPickerPreselectedTemplateId(sysTpls[idx].id);
-                        setPickerVisible(true);
-                      },
-                    );
+                    setTplPickerTemplates(sysTpls);
+                    setTplPickerVisible(true);
                   }
                 },
               },
@@ -569,6 +563,18 @@ export default function HomeScreen() {
           </Card>
         </View>
       </Animated.ScrollView>
+
+      <TemplatePickerModal
+        visible={tplPickerVisible}
+        templates={tplPickerTemplates}
+        title={t('home.chooseTemplate')}
+        onSelect={(tpl) => {
+          setTplPickerVisible(false);
+          setPickerPreselectedTemplateId(tpl.id);
+          setPickerVisible(true);
+        }}
+        onClose={() => setTplPickerVisible(false)}
+      />
 
       <ProjectPickerSheet
         visible={pickerVisible}
@@ -988,9 +994,7 @@ const ProjectCard = memo(function ProjectCard({
             <View style={styles.projectCardMapOverlay} />
           </>
         ) : (
-          <View style={StyleSheet.absoluteFill} pointerEvents="none">
-            <SkeletonMap hideContent />
-          </View>
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: '#fff' }]} pointerEvents="none" />
         )}
         <View style={{ width: 44, height: 44, borderRadius: 22, overflow: 'hidden' }}>
           <ProjectAvatar project={project} size={44} />

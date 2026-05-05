@@ -51,7 +51,7 @@ export default function InspectionDoneScreen() {
   }, [load]);
 
   const viewInspection = () => {
-    router.back();
+    router.replace(`/inspections/${id}` as any);
   };
 
   const goHome = () => {
