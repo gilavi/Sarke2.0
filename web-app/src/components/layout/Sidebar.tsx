@@ -24,8 +24,8 @@ const items: NavItem[] = [
   { to: '/projects', label: 'პროექტები', icon: Folder, enabled: true },
   { to: '/inspections', label: 'შემოწმების აქტები', icon: ClipboardCheck, enabled: true },
   { to: '/certificates', label: 'სერტიფიკატები', icon: Award, enabled: true },
-  { to: '/calendar', label: 'კალენდარი', icon: Calendar, enabled: false },
-  { to: '/regulations', label: 'რეგულაციები', icon: BookOpen, enabled: false },
+  { to: '/calendar', label: 'კალენდარი', icon: Calendar, enabled: true },
+  { to: '/regulations', label: 'რეგულაციები', icon: BookOpen, enabled: true },
 ];
 
 export function Sidebar() {
