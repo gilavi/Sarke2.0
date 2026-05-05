@@ -50,7 +50,7 @@ export default function BobcatInspectionDoneScreen() {
 
   const viewInspection = () => {
     if (!id) return;
-    router.replace(`/inspections/bobcat/${id}` as any);
+    router.replace(`/inspections/bobcat/${id}/preview` as any);
   };
 
   const goHome = () => {

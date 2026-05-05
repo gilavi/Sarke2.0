@@ -378,7 +378,7 @@ export default function ExcavatorInspectionScreen() {
     const missing: string[] = [];
     if (!inspection.serialNumber?.trim()) missing.push('სერიული ნომერი');
     if (!inspection.verdict)              missing.push('დასკვნა');
-    if (!inspection.inspectorSignature)   missing.push('ხელმოწერა');
+
     if (missing.length > 0) {
       Alert.alert('შეავსეთ სავალდებულო ველები', missing.map(m => `• ${m}`).join('\n'));
       return;
@@ -568,17 +568,18 @@ export default function ExcavatorInspectionScreen() {
     if (!inspection) return false;
     if (step === INFO_STEP) return !!inspection.serialNumber?.trim();
     if (step === CHECKLIST_STEP) return flatState.every(s => s.result !== null);
-    if (step === CONCLUSION_STEP) return !!inspection.verdict && !!inspection.inspectorSignature && !completing;
+    if (step === CONCLUSION_STEP) return !!inspection.verdict && !completing;
     return false;
   }, [step, inspection, flatState, completing, CONCLUSION_STEP]);
 
-  const handleNext = useCallback(() => {
+  const handleNext = useCallback(async () => {
     if (step === CONCLUSION_STEP) {
-      handleComplete();
+      await handleComplete();
+      router.push(`/inspections/excavator/${id}/done` as any);
     } else if (step < CONCLUSION_STEP) {
       setStep(s => s + 1);
     }
-  }, [step, CONCLUSION_STEP, handleComplete]);
+  }, [step, CONCLUSION_STEP, handleComplete, id, router]);
 
   const handlePrev = useCallback(() => {
     if (step > 0) setStep(s => s - 1);
@@ -864,25 +865,6 @@ export default function ExcavatorInspectionScreen() {
                 numberOfLines={4}
               />
 
-              <Pressable
-                style={[styles.sigRow, inspection.inspectorSignature && styles.sigRowActive]}
-                onPress={() => setShowSig(true)}
-                {...a11y('ხელმოწერა', 'ინსპექტორის ხელმოწერის დამატება', 'button')}
-              >
-                <Text style={styles.sigRowText}>
-                  {inspection.inspectorSignature ? '✓ ხელმოწერა დაყენებულია' : 'ხელმოწერა *'}
-                </Text>
-                {inspection.inspectorSignature && (
-                  <Pressable
-                    onPress={() => update('inspectorSignature', null)}
-                    hitSlop={10}
-                    {...a11y('ხელმოწერის წაშლა', undefined, 'button')}
-                  >
-                    <Text style={styles.sigRowClear}>წაშლა</Text>
-                  </Pressable>
-                )}
-              </Pressable>
-
               {completing && (
                 <View style={styles.completingRow}>
                   <ActivityIndicator size="small" color={theme.colors.accent} />
@@ -892,55 +874,6 @@ export default function ExcavatorInspectionScreen() {
             </KeyboardAwareScrollView>
           )}
 
-          {/* ── Step N+2: Done ──────────────────────────────────────────── */}
-          {step === DONE_STEP && (
-            <KeyboardAwareScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 4, paddingTop: 16, paddingBottom: 24, gap: 12 }}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
-              showsVerticalScrollIndicator={false}
-              bottomOffset={120}
-            >
-              <Text style={styles.doneTitle}>შემოწმება დასრულდა!</Text>
-              {inspection.completedAt && (
-                <Text style={styles.doneDate}>
-                  {new Date(inspection.completedAt).toLocaleDateString('ka-GE', {
-                    day: 'numeric', month: 'long', year: 'numeric',
-                  })}
-                </Text>
-              )}
-              {inspection.verdict && (
-                <View style={[
-                  styles.doneVerdict,
-                  inspection.verdict === 'approved'    && styles.doneVerdictGreen,
-                  inspection.verdict === 'conditional' && styles.doneVerdictAmber,
-                  inspection.verdict === 'rejected'    && styles.doneVerdictRed,
-                ]}>
-                  <Text style={[
-                    styles.doneVerdictText,
-                    inspection.verdict === 'approved'    && { color: theme.colors.semantic.success },
-                    inspection.verdict === 'conditional' && { color: theme.colors.warn },
-                    inspection.verdict === 'rejected'    && { color: theme.colors.danger },
-                  ]}>
-                    {EXCAVATOR_VERDICT_LABEL[inspection.verdict].split(' — ')[0]}
-                  </Text>
-                </View>
-              )}
-
-              <Button
-                title="PDF გენერირება / გაზიარება"
-                onPress={handlePdf}
-                loading={generatingPdf}
-                style={{ marginBottom: 12 }}
-              />
-              <Button
-                title="პროექტზე დაბრუნება"
-                variant="secondary"
-                onPress={() => router.back()}
-              />
-            </KeyboardAwareScrollView>
-          )}
         </WizardStepTransition>
 
         {step !== DONE_STEP && (
@@ -952,7 +885,7 @@ export default function ExcavatorInspectionScreen() {
                 iconRight={<Ionicons name="checkmark" size={20} color={theme.colors.white} />}
                 loading={completing}
                 disabled={!canGoNext || completing}
-                onPress={handleComplete}
+                onPress={handleNext}
               />
             ) : (
               <Button

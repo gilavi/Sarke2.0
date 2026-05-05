@@ -50,7 +50,7 @@ export default function ExcavatorInspectionDoneScreen() {
 
   const viewInspection = () => {
     if (!id) return;
-    router.replace(`/inspections/excavator/${id}` as any);
+    router.replace(`/inspections/excavator/${id}/preview` as any);
   };
 
   const goHome = () => {

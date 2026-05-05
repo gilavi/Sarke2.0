@@ -307,7 +307,7 @@ export default function GeneralEquipmentScreen() {
     const missing: string[] = [];
     if (!inspection.objectName?.trim())    missing.push('ობიექტის დასახელება');
     if (!inspection.conclusion?.trim())    missing.push('დასკვნა');
-    if (!inspection.inspectorSignature)    missing.push('ხელმოწერა');
+
     const hasFilledRow = inspection.equipment.some(r => r.name.trim());
     if (!hasFilledRow)                     missing.push('მინიმუმ 1 აღჭ. სტრ.');
     // Validate notes on degraded equipment rows
@@ -413,17 +413,18 @@ export default function GeneralEquipmentScreen() {
     if (step === CHECKLIST_STEP) {
       return inspection.equipment.length > 0 && inspection.equipment.every(r => !!r.condition);
     }
-    if (step === CONCLUSION_STEP) return !!inspection.conclusion?.trim() && !!inspection.inspectorSignature && !completing;
+    if (step === CONCLUSION_STEP) return !!inspection.conclusion?.trim() && !completing;
     return true;
   }, [step, inspection, completing, CONCLUSION_STEP]);
 
-  const handleNext = useCallback(() => {
+  const handleNext = useCallback(async () => {
     if (step === CONCLUSION_STEP) {
-      handleComplete();
+      await handleComplete();
+      router.push(`/inspections/general-equipment/${id}/done` as any);
     } else if (step < CONCLUSION_STEP) {
       setStep(s => s + 1);
     }
-  }, [step, CONCLUSION_STEP, handleComplete]);
+  }, [step, CONCLUSION_STEP, handleComplete, id, router]);
 
   const handlePrev = useCallback(() => {
     if (step > 0) {
@@ -757,25 +758,6 @@ export default function GeneralEquipmentScreen() {
                 visible={focusedField === 'conclusion' || (!inspection.conclusion?.trim() && conclusionHistory.suggestions.length > 0)}
               />
 
-              <Pressable
-                style={[styles.sigRow, inspection.inspectorSignature && styles.sigRowActive]}
-                onPress={() => setShowSig(true)}
-                {...a11y('ხელმოწერა', 'შემომწმებლის ხელმოწერის დამატება', 'button')}
-              >
-                <Text style={styles.sigRowText}>
-                  {inspection.inspectorSignature ? '✓ ხელმოწერა დაყენებულია' : 'ხელმოწერა *'}
-                </Text>
-                {inspection.inspectorSignature && (
-                  <Pressable
-                    onPress={() => update('inspectorSignature', null)}
-                    hitSlop={10}
-                    {...a11y('ხელმოწერის წაშლა', undefined, 'button')}
-                  >
-                    <Text style={styles.sigRowClear}>წაშლა</Text>
-                  </Pressable>
-                )}
-              </Pressable>
-
               {completing && (
                 <View style={styles.completingRow}>
                   <ActivityIndicator size="small" color={theme.colors.accent} />
@@ -785,38 +767,6 @@ export default function GeneralEquipmentScreen() {
             </KeyboardAwareScrollView>
           )}
 
-          {/* ── Step 3: Done ────────────────────────────────────────────── */}
-          {step === DONE_STEP && (
-            <KeyboardAwareScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 4, paddingTop: 16, paddingBottom: 24, gap: 12 }}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
-              showsVerticalScrollIndicator={false}
-              bottomOffset={120}
-            >
-              <Text style={styles.doneTitle}>შემოწმება დასრულდა!</Text>
-              {inspection.completedAt && (
-                <Text style={styles.doneDate}>
-                  {new Date(inspection.completedAt).toLocaleDateString('ka-GE', {
-                    day: 'numeric', month: 'long', year: 'numeric',
-                  })}
-                </Text>
-              )}
-
-              <Button
-                title="PDF გენერირება / გაზიარება"
-                onPress={handlePdf}
-                loading={generatingPdf}
-                style={{ marginBottom: 12 }}
-              />
-              <Button
-                title="პროექტზე დაბრუნება"
-                variant="secondary"
-                onPress={() => router.back()}
-              />
-            </KeyboardAwareScrollView>
-          )}
         </WizardStepTransition>
 
         {step !== DONE_STEP && (
@@ -828,7 +778,7 @@ export default function GeneralEquipmentScreen() {
                 iconRight={<Ionicons name="checkmark" size={20} color={theme.colors.white} />}
                 loading={completing}
                 disabled={!canGoNext || completing}
-                onPress={handleComplete}
+                onPress={handleNext}
               />
             ) : (
               <Button
