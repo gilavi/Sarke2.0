@@ -611,6 +611,8 @@ export default function ExcavatorInspectionScreen() {
         <FlowHeader
           flowTitle="ექსკავატორი"
           project={projectName ? { name: projectName } : null}
+          step={TOTAL_STEPS}
+          totalSteps={TOTAL_STEPS}
           leading="back"
           onBack={() => router.back()}
           trailingElement={

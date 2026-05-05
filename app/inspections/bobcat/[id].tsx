@@ -621,6 +621,8 @@ export default function BobcatInspectionScreen() {
         <FlowHeader
           flowTitle={screenTitle}
           project={projectName ? { name: projectName } : null}
+          step={TOTAL_STEPS}
+          totalSteps={TOTAL_STEPS}
           leading="back"
           onBack={() => router.back()}
           trailingElement={

@@ -458,6 +458,8 @@ export default function GeneralEquipmentScreen() {
         <FlowHeader
           flowTitle="ტექ. აღჭ."
           project={projectName ? { name: projectName } : null}
+          step={TOTAL_STEPS}
+          totalSteps={TOTAL_STEPS}
           leading="back"
           onBack={() => router.back()}
           trailingElement={

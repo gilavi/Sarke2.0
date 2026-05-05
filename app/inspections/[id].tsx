@@ -52,6 +52,7 @@ import {
   pdfPhotoEmbed,
 } from '../../lib/imageUrl';
 import { useToast } from '../../lib/toast';
+import { recordRedirect, isOscillating } from '../../lib/navigationGuard';
 import { friendlyError } from '../../lib/errorMap';
 import { toErrorMessage } from '../../lib/logError';
 import { haptic } from '../../lib/haptics';
@@ -90,6 +91,8 @@ export default function InspectionResultScreen() {
   const [loadError, setLoadError] = useState<unknown>(null);
   const [notFound, setNotFound] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [redirectBlocked, setRedirectBlocked] = useState(false);
+  const [loadTimedOut, setLoadTimedOut] = useState(false);
 
   // React Query hooks seed cached data instantly so skeletons disappear faster.
   // loadAll() below still runs on mount for nested photo / attachment data.
@@ -122,18 +125,21 @@ export default function InspectionResultScreen() {
         return;
       }
       setInspection(insp);
-      if (insp.status === 'draft') {
+      if (insp.status === 'draft' && !redirectBlocked) {
         const tpl = await templatesApi.getById(insp.template_id).catch(() => null);
-        if (tpl?.category === 'bobcat') {
-          router.replace(`/inspections/bobcat/${insp.id}` as any);
-        } else if (tpl?.category === 'excavator') {
-          router.replace(`/inspections/excavator/${insp.id}` as any);
-        } else if (tpl?.category === 'general_equipment') {
-          router.replace(`/inspections/general-equipment/${insp.id}` as any);
+        const target =
+          tpl?.category === 'bobcat' ? `bobcat/${insp.id}` :
+          tpl?.category === 'excavator' ? `excavator/${insp.id}` :
+          tpl?.category === 'general_equipment' ? `general-equipment/${insp.id}` :
+          `${insp.id}/wizard`;
+        if (isOscillating('detail', target)) {
+          setRedirectBlocked(true);
+          console.log('[InspectionResult] oscillation detected — blocking redirect to', target);
         } else {
-          router.replace(`/inspections/${insp.id}/wizard` as any);
+          recordRedirect('detail', target);
+          router.replace(`/inspections/${target}` as any);
+          return;
         }
-        return;
       }
       const [tpl, proj, sigs, atts] = await Promise.all([
         templatesApi.getById(insp.template_id).catch(() => null),
@@ -175,6 +181,13 @@ export default function InspectionResultScreen() {
     void loadAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Navigation timeout guard: if loading takes >5 s, show recovery UI.
+  useEffect(() => {
+    if (!loading) return;
+    const t = setTimeout(() => setLoadTimedOut(true), 5000);
+    return () => clearTimeout(t);
+  }, [loading]);
 
   const buildPreview = useCallback(
     async (
@@ -266,13 +279,13 @@ export default function InspectionResultScreen() {
   // Initial preview build whenever core data is loaded. Subsequent rebuilds
   // are triggered explicitly when sheets save changes.
   useEffect(() => {
-    if (loading || !inspection || !template || !project) return;
+    if ((loading && !loadTimedOut) || !inspection || !template || !project) return;
     void buildPreview(signatures, attachments);
     // Intentional: don't refire on signatures/attachments changing — the
     // sheet onChanged handler does that with fresh data so we avoid races
     // with stale state still in the closure.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, inspection, template, project, questions, answers, photosByAnswer]);
+  }, [loading, loadTimedOut, inspection, template, project, questions, answers, photosByAnswer]);
 
   const refreshAfterSheetSave = useCallback(async () => {
     if (!inspection) return;

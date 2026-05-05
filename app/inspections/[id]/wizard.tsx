@@ -40,6 +40,7 @@ import { getCurrentLocation, reverseGeocode } from '../../../utils/location';
 import type { PhotoLocation } from '../../../utils/location';
 import { showPhotoLocationAlert } from '../../../lib/photoLocationAlert';
 import { useOffline, stripServerFields } from '../../../lib/offline';
+import { recordRedirect, isOscillating } from '../../../lib/navigationGuard';
 import { logError, toErrorMessage } from '../../../lib/logError';
 import { useToast } from '../../../lib/toast';
 import { useTheme } from '../../../lib/theme';
@@ -191,6 +192,7 @@ export default function QuestionnaireWizard() {
   const [photos, setPhotos] = useState<Record<string, AnswerPhoto[]>>({});
   const [stepIndex, setStepIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadTimedOut, setLoadTimedOut] = useState(false);
   const [animateSteps, setAnimateSteps] = useState(false);
   const [harnessRowCount, setHarnessRowCount] = useState(5);
   // Measured WizardHeader height — used as keyboardVerticalOffset so the
@@ -233,6 +235,16 @@ export default function QuestionnaireWizard() {
       cancelled = true;
     };
   }, [template]);
+
+  // Navigation timeout guard: if loading takes >5 s, show recovery UI.
+  useEffect(() => {
+    if (!loading) {
+      setLoadTimedOut(false);
+      return;
+    }
+    const t = setTimeout(() => setLoadTimedOut(true), 5000);
+    return () => clearTimeout(t);
+  }, [loading]);
 
   const dismissTour = useCallback(() => {
     setShowTour(false);
@@ -859,7 +871,10 @@ export default function QuestionnaireWizard() {
   // Early return — absolutely NO form elements render while data is missing.
   if (!ready) {
     console.log('[Wizard] not ready — loading:', loading, 'questionnaire:', !!questionnaire, 'template:', !!template, 'questions:', questions.length);
-    if (questionnaire?.status === 'completed') {
+    if (loadTimedOut) {
+      return <NavigationRecovery id={id} onRetry={() => { setLoadTimedOut(false); setLoading(true); load(); }} />;
+    }
+    if (questionnaire?.status === 'completed' && !isOscillating('wizard', 'detail')) {
       return <CompletedRedirect id={questionnaire.id} />;
     }
     return (
@@ -876,7 +891,10 @@ export default function QuestionnaireWizard() {
   // redirect fires in an effect so we don't mutate navigation during render.
   if (questionnaire?.status === 'completed') {
     console.log('[Wizard] completed — redirecting');
-    return <CompletedRedirect id={questionnaire.id} />;
+    if (!isOscillating('wizard', 'detail')) {
+      return <CompletedRedirect id={questionnaire.id} />;
+    }
+    console.log('[Wizard] oscillation detected — staying on wizard');
   }
 
   const stepAnswered = hasAnswer(step, answers, photos, conclusion, isSafe, harnessName, template);
@@ -2226,9 +2244,33 @@ function PhotoGrid({ photos }: { photos: AnswerPhoto[] }) {
 function CompletedRedirect({ id }: { id: string }) {
   const router = useRouter();
   useEffect(() => {
+    recordRedirect('wizard', 'detail');
     router.replace(`/inspections/${id}` as any);
   }, [id, router]);
   return null;
+}
+
+function NavigationRecovery({ id, onRetry }: { id: string; onRetry: () => void }) {
+  const { theme } = useTheme();
+  const router = useRouter();
+  return (
+    <Screen edgeToEdge edges={['top']} style={{ backgroundColor: theme.colors.background }}>
+      <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
+      <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+        <Ionicons name="warning-outline" size={48} color={theme.colors.semantic.warning} style={{ marginBottom: 16 }} />
+        <Text style={{ fontSize: 18, fontWeight: '600', color: theme.colors.ink, marginBottom: 8, textAlign: 'center' }}>
+          ჩატვირთვა ვერ მოხერხდა
+        </Text>
+        <Text style={{ fontSize: 14, color: theme.colors.inkSoft, marginBottom: 24, textAlign: 'center' }}>
+          ინსპექციის მონაცემების ჩატვირთვა ძალიან დიდხანს გრძელდება. სცადეთ თავიდან ან გადადით უკან.
+        </Text>
+        <View style={{ flexDirection: 'row', gap: 12 }}>
+          <Button variant="secondary" onPress={() => router.back()} title="უკან" />
+          <Button variant="primary" onPress={onRetry} title="თავიდან ცდა" />
+        </View>
+      </SafeAreaView>
+    </Screen>
+  );
 }
 
 function getstyles(theme: any) {
