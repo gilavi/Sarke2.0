@@ -18,7 +18,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
 import { Button } from '../../../components/ui';
-import { KeyboardSafeArea } from '../../../components/layout/KeyboardSafeArea';
 import { SignatureCanvas } from '../../../components/SignatureCanvas';
 import { ExcavatorMaintenanceItem } from '../../../components/excavator/ExcavatorMaintenanceItem';
 
@@ -657,7 +656,7 @@ export default function ExcavatorInspectionScreen() {
           ) : null}
         </View>
         <SafeAreaView edges={['bottom']} style={{ backgroundColor: theme.colors.surface, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.colors.hairline }}>
-          <View style={{ paddingHorizontal: 8, paddingTop: 8, paddingBottom: 8 }}>
+          <View style={{ paddingHorizontal: 24, paddingTop: 8, paddingBottom: 8 }}>
             <Button
               title={pdfUsage?.isLocked ? '🔒 PDF გენერირება' : 'PDF გენერირება / გაზიარება'}
               onPress={handlePdf}
@@ -706,7 +705,7 @@ export default function ExcavatorInspectionScreen() {
         <Text style={styles.savingHint}>შენახვა…</Text>
       )}
 
-      <KeyboardSafeArea>
+      <View style={{ flex: 1 }}>
         <WizardStepTransition
           stepKey={step}
           direction={direction}
@@ -716,7 +715,7 @@ export default function ExcavatorInspectionScreen() {
           {step === 0 && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 8, paddingTop: 16, paddingBottom: 24, gap: 12 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 12 }}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="interactive"
               showsVerticalScrollIndicator={false}
@@ -752,7 +751,7 @@ export default function ExcavatorInspectionScreen() {
           {step === CHECKLIST_STEP && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 4, paddingTop: 16, paddingBottom: 24, gap: 12 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 12 }}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="interactive"
               showsVerticalScrollIndicator={false}
@@ -844,7 +843,7 @@ export default function ExcavatorInspectionScreen() {
           {step === CONCLUSION_STEP && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 4, paddingTop: 20, paddingBottom: 24, gap: 12 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 20, paddingBottom: 24, gap: 12 }}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="interactive"
               showsVerticalScrollIndicator={false}
@@ -968,7 +967,7 @@ export default function ExcavatorInspectionScreen() {
             )}
           </View>
         )}
-      </KeyboardSafeArea>
+      </View>
 
       <SignatureCanvas
         visible={showSig}
@@ -1064,11 +1063,11 @@ function getstyles(theme: Theme) {
   return StyleSheet.create({
     root:    { flex: 1, backgroundColor: theme.colors.card },
     centred: { alignItems: 'center', justifyContent: 'center' },
-    savingHint: { fontSize: 11, color: theme.colors.inkFaint, textAlign: 'right', paddingHorizontal: 8, paddingTop: 4 },
-    stepBody: { paddingHorizontal: 8, paddingTop: 16, paddingBottom: 16, gap: 12 },
+    savingHint: { fontSize: 11, color: theme.colors.inkFaint, textAlign: 'right', paddingHorizontal: 24, paddingTop: 4 },
+    stepBody: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 16, gap: 12 },
     footer: {
       gap: 10,
-      paddingHorizontal: 8,
+      paddingHorizontal: 24,
       paddingTop: 8,
       paddingBottom: 16,
       backgroundColor: theme.colors.card,
