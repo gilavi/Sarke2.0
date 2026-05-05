@@ -386,7 +386,13 @@ export default function InspectionResultScreen() {
         new Date(inspection.created_at),
         inspection.id,
       );
-      await generateAndSharePdf(html, filename, false);
+      // Wrap in a 30-second timeout so a stuck expo-print call can't
+      // freeze the UI forever.
+      const pdfPromise = generateAndSharePdf(html, filename, false);
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('PDF გენერირება ძალიან დიდხანს გრძელდება — სცადე თავიდან')), 30_000),
+      );
+      await Promise.race([pdfPromise, timeoutPromise]);
       haptic.success();
     } catch (e) {
       toast.error(friendlyError(e, 'PDF-ის გენერირება ვერ მოხერხდა'));

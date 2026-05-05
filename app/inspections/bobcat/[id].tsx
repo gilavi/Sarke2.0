@@ -2,9 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Image,
   Pressable,
-  ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
@@ -16,12 +14,11 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
-import { DateTimeField } from '../../../components/DateTimeField';
 import { Button } from '../../../components/ui';
 import { KeyboardSafeArea } from '../../../components/layout/KeyboardSafeArea';
 import { SignatureCanvas } from '../../../components/SignatureCanvas';
 import { WizardStepTransition } from '../../../components/wizard/WizardStepTransition';
-import { StepSectionLabel } from '../../../components/wizard/StepSectionLabel';
+
 // checklist list render is inline below
 import { FlowHeader } from '../../../components/FlowHeader';
 import { useTheme, type Theme } from '../../../lib/theme';
@@ -38,15 +35,15 @@ import { recordCompletion } from '../../../lib/calendarSchedule';
 import { friendlyError } from '../../../lib/errorMap';
 import { a11y } from '../../../lib/accessibility';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SuggestionPills } from '../../../components/SuggestionPills';
+import { useFieldHistory } from '../../../hooks/useFieldHistory';
 import {
   BOBCAT_ITEMS,
   BOBCAT_CATEGORY_LABELS,
-  INSPECTION_TYPE_LABEL,
   VERDICT_LABEL,
   LARGE_LOADER_TEMPLATE_ID,
   LARGE_LOADER_ITEMS,
   categoryCounts,
-  computeVerdictSuggestion,
   type BobcatInspection,
   type BobcatVerdict,
   type BobcatItemState,
@@ -55,7 +52,6 @@ import {
 } from '../../../types/bobcat';
 
 const CATEGORIES: BobcatCategory[] = ['A', 'B', 'C', 'D'];
-const INSPECTION_TYPES: ('pre_work' | 'scheduled' | 'other')[] = ['pre_work', 'scheduled', 'other'];
 
 export default function BobcatInspectionScreen() {
   const { theme } = useTheme();
@@ -65,6 +61,12 @@ export default function BobcatInspectionScreen() {
   const toast = useToast();
   const session = useSession();
   const insets = useSafeAreaInsets();
+
+  const userId = session?.state?.status === 'signedIn' ? session.state.session.user.id : null;
+
+  // ── Field suggestion histories ────────────────────────────────────────────
+  const equipmentModelHistory = useFieldHistory(userId, 'bobcat:equipmentModel');
+  const registrationNumberHistory = useFieldHistory(userId, 'bobcat:registrationNumber');
 
   const INFO_STEP = 0;
   const CHECKLIST_STEP = 1;
@@ -82,6 +84,8 @@ export default function BobcatInspectionScreen() {
   const [showSig, setShowSig] = useState(false);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewBusy, setPreviewBusy] = useState(false);
+
+  const [focusedField, setFocusedField] = useState<string | null>(null);
 
   // Step state: 0=info, 1=checklist list, 2=conclusion
   const [step, setStep] = useState(INFO_STEP);
@@ -344,22 +348,11 @@ export default function BobcatInspectionScreen() {
     update('inspectorSignature', base64Png);
   }, [update]);
 
-  // ── Verdict auto-suggestion ────────────────────────────────────────────────
-
-  const verdictSuggestion = useMemo(
-    () => inspection ? computeVerdictSuggestion(inspection.items, catalog) : null,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [inspection?.items, catalog],
-  );
-
-  const showVerdictBanner = verdictSuggestion !== null && inspection?.verdict !== verdictSuggestion;
-
   // ── Complete ───────────────────────────────────────────────────────────────
 
   const handleComplete = useCallback(async () => {
     if (!inspection) return;
     const missing: string[] = [];
-    if (!inspection.company?.trim())            missing.push('ობიექტი / კომპანია');
     if (!inspection.equipmentModel?.trim())     missing.push('დამტვირთველის მარკა / მოდელი');
     if (!inspection.registrationNumber?.trim()) missing.push('სახელმწიფო / ს.ნ ნომერი');
     if (!inspection.verdict)                    missing.push('შეჯამება: დასკვნა');
@@ -514,9 +507,9 @@ export default function BobcatInspectionScreen() {
   const canGoNext = useMemo(() => {
     if (!inspection) return false;
     if (step === INFO_STEP) {
-      return !!inspection.company?.trim() && !!inspection.equipmentModel?.trim() && !!inspection.registrationNumber?.trim();
+      return !!inspection.equipmentModel?.trim() && !!inspection.registrationNumber?.trim();
     }
-    if (step === CONCLUSION_STEP) return !!inspection.inspectorSignature && !completing;
+    if (step === CONCLUSION_STEP) return !!inspection.verdict && !!inspection.inspectorSignature && !completing;
     return true;
   }, [step, inspection, completing, CONCLUSION_STEP]);
 
@@ -543,7 +536,7 @@ export default function BobcatInspectionScreen() {
     return (
       <KeyboardAwareScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24, gap: 8 }}
+        contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 4, paddingTop: 16, paddingBottom: 24, gap: 8 }}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
         showsVerticalScrollIndicator={false}
@@ -556,34 +549,49 @@ export default function BobcatInspectionScreen() {
           return (
             <View key={entry.id} style={styles.listRow}>
               <View style={styles.listRowInfo}>
-                <Text style={styles.listRowLabel} numberOfLines={1}>
-                  {idx + 1}. {entry.label}
-                </Text>
-                <Text style={styles.listRowDesc} numberOfLines={2}>
-                  {entry.description}
+                <Text style={[styles.listRowLabel, { fontSize: 13, fontWeight: '400', color: theme.colors.ink }]} numberOfLines={2}>
+                  {idx + 1}. {entry.description}
                 </Text>
               </View>
               <View style={styles.listRowActions}>
                 <Pressable
-                  style={[styles.statusBtn, active === 'good' && styles.statusBtnGood]}
+                  style={[
+                    styles.statusBtn,
+                    active === 'good' ? styles.statusBtnGoodActive : styles.statusBtnGood,
+                  ]}
                   onPress={() => updateItem(entry.id, { result: active === 'good' ? null : 'good' })}
                   hitSlop={6}
                 >
-                  <Text style={[styles.statusBtnText, active === 'good' && styles.statusBtnTextActive]}>✓</Text>
+                  <Text style={[
+                    styles.statusBtnText,
+                    active === 'good' ? styles.statusBtnTextActive : styles.statusBtnTextGood,
+                  ]}>✓</Text>
                 </Pressable>
                 <Pressable
-                  style={[styles.statusBtn, active === 'deficient' && styles.statusBtnWarn]}
+                  style={[
+                    styles.statusBtn,
+                    active === 'deficient' ? styles.statusBtnWarnActive : styles.statusBtnWarn,
+                  ]}
                   onPress={() => updateItem(entry.id, { result: active === 'deficient' ? null : 'deficient' })}
                   hitSlop={6}
                 >
-                  <Text style={[styles.statusBtnText, active === 'deficient' && styles.statusBtnTextActive]}>⚠</Text>
+                  <Text style={[
+                    styles.statusBtnText,
+                    active === 'deficient' ? styles.statusBtnTextActive : styles.statusBtnTextWarn,
+                  ]}>⚠</Text>
                 </Pressable>
                 <Pressable
-                  style={[styles.statusBtn, active === 'unusable' && styles.statusBtnBad]}
+                  style={[
+                    styles.statusBtn,
+                    active === 'unusable' ? styles.statusBtnBadActive : styles.statusBtnBad,
+                  ]}
                   onPress={() => updateItem(entry.id, { result: active === 'unusable' ? null : 'unusable' })}
                   hitSlop={6}
                 >
-                  <Text style={[styles.statusBtnText, active === 'unusable' && styles.statusBtnTextActive]}>✗</Text>
+                  <Text style={[
+                    styles.statusBtnText,
+                    active === 'unusable' ? styles.statusBtnTextActive : styles.statusBtnTextBad,
+                  ]}>✗</Text>
                 </Pressable>
               </View>
             </View>
@@ -647,7 +655,7 @@ export default function BobcatInspectionScreen() {
           ) : null}
         </View>
         <SafeAreaView edges={['bottom']} style={{ backgroundColor: theme.colors.surface, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.colors.hairline }}>
-          <View style={{ paddingHorizontal: 12, paddingTop: 8, paddingBottom: 8 }}>
+          <View style={{ paddingHorizontal: 8, paddingTop: 8, paddingBottom: 8 }}>
             <Button
               title="PDF გენერირება / გაზიარება"
               onPress={handlePdf}
@@ -687,7 +695,7 @@ export default function BobcatInspectionScreen() {
             </Pressable>
           ) : null
         }
-        onBack={step === 0 ? () => router.back() : handlePrev}
+        onBack={step === 0 ? async () => { await AsyncStorage.removeItem(persistKey); router.back(); } : handlePrev}
         backDisabled={false}
       />
 
@@ -706,69 +714,59 @@ export default function BobcatInspectionScreen() {
           {step === 0 && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 12 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 8, paddingTop: 16, paddingBottom: 24, gap: 12 }}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="interactive"
               showsVerticalScrollIndicator={false}
               bottomOffset={120}
             >
               <FloatingLabelInput
-                label="ობიექტი / კომპანია *"
-                value={inspection.company ?? ''}
-                onChangeText={v => update('company', v)}
-                required
-              />
-              <FloatingLabelInput
-                label="მისამართი"
-                value={inspection.address ?? ''}
-                onChangeText={v => update('address', v || null)}
-              />
-              <FloatingLabelInput
                 label="დამტვირთველის მარკა / მოდელი *"
                 value={inspection.equipmentModel ?? ''}
                 onChangeText={v => update('equipmentModel', v)}
+                onFocus={() => setFocusedField('equipmentModel')}
+                onBlur={() => {
+                  setFocusedField(null);
+                  if (inspection.equipmentModel?.trim()) {
+                    equipmentModelHistory.addToHistory(inspection.equipmentModel.trim());
+                  }
+                }}
                 required
               />
+              {equipmentModelHistory.suggestions.length > 0 && (
+                <SuggestionPills
+                  suggestions={equipmentModelHistory.suggestions}
+                  onSelect={v => {
+                    update('equipmentModel', v);
+                    setFocusedField(null);
+                  }}
+                  visible={focusedField === 'equipmentModel' || (!inspection.equipmentModel?.trim() && equipmentModelHistory.suggestions.length > 0)}
+                />
+              )}
+
               <FloatingLabelInput
                 label="სახელმწიფო / ს.ნ ნომერი *"
                 value={inspection.registrationNumber ?? ''}
                 onChangeText={v => update('registrationNumber', v)}
+                onFocus={() => setFocusedField('registrationNumber')}
+                onBlur={() => {
+                  setFocusedField(null);
+                  if (inspection.registrationNumber?.trim()) {
+                    registrationNumberHistory.addToHistory(inspection.registrationNumber.trim());
+                  }
+                }}
                 required
               />
-              <View style={styles.fieldRow}>
-                <Text style={styles.fieldLabel}>შემოწმების თარიღი</Text>
-                <DateTimeField
-                  mode="date"
-                  value={new Date(inspection.inspectionDate)}
-                  onChange={d => update('inspectionDate', d.toLocaleDateString('en-CA'))}
-                  maxDate={new Date()}
+              {equipmentModelHistory.suggestions.length > 0 && (
+                <SuggestionPills
+                  suggestions={equipmentModelHistory.suggestions}
+                  onSelect={v => {
+                    update('equipmentModel', v);
+                    setFocusedField(null);
+                  }}
+                  visible={focusedField === 'equipmentModel' || (!inspection.equipmentModel?.trim() && equipmentModelHistory.suggestions.length > 0)}
                 />
-              </View>
-              <View style={styles.fieldRow}>
-                <Text style={styles.fieldLabel}>შემოწმების სახე</Text>
-                <View style={styles.chipRow}>
-                  {INSPECTION_TYPES.map(type => {
-                    const active = inspection.inspectionType === type;
-                    return (
-                      <Pressable
-                        key={type}
-                        style={[styles.typeChip, active && styles.typeChipActive]}
-                        onPress={() => update('inspectionType', active ? null : type)}
-                        {...a11y(INSPECTION_TYPE_LABEL[type], undefined, 'radio')}
-                      >
-                        <Text style={[styles.typeChipText, active && styles.typeChipTextActive]}>
-                          {INSPECTION_TYPE_LABEL[type]}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              </View>
-              <FloatingLabelInput
-                label="ინსპექტორი"
-                value={inspection.inspectorName ?? ''}
-                onChangeText={v => update('inspectorName', v || null)}
-              />
+              )}
             </KeyboardAwareScrollView>
           )}
 
@@ -779,66 +777,24 @@ export default function BobcatInspectionScreen() {
           {step === CONCLUSION_STEP && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 12 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 4, paddingTop: 16, paddingBottom: 24, gap: 12 }}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="interactive"
               showsVerticalScrollIndicator={false}
               bottomOffset={120}
             >
-              <View style={styles.sumTable}>
-                <View style={[styles.sumRow, styles.sumHeaderRow]}>
-                  <Text style={[styles.sumCell, styles.sumCatCell, styles.sumHeaderText]}>კატეგორია</Text>
-                  <Text style={[styles.sumCountCell, styles.sumHeaderText]}>✓</Text>
-                  <Text style={[styles.sumCountCell, styles.sumHeaderText]}>⚠</Text>
-                  <Text style={[styles.sumCountCell, styles.sumHeaderText]}>✗</Text>
-                </View>
-                {CATEGORIES.map(cat => {
-                  const c = categoryCounts(inspection.items, cat, catalog);
-                  return (
-                    <View key={cat} style={styles.sumRow}>
-                      <Text style={[styles.sumCell, styles.sumCatCell]} numberOfLines={1}>
-                        {BOBCAT_CATEGORY_LABELS[cat]}
-                      </Text>
-                      <Text style={[styles.sumCountCell, { color: theme.colors.semantic.success, fontWeight: '700' }]}>{c.good}</Text>
-                      <Text style={[styles.sumCountCell, { color: theme.colors.warn, fontWeight: '700' }]}>{c.deficient}</Text>
-                      <Text style={[styles.sumCountCell, { color: theme.colors.danger, fontWeight: '700' }]}>{c.unusable}</Text>
-                    </View>
-                  );
-                })}
-              </View>
-
-              {showVerdictBanner && verdictSuggestion && (
-                <View style={styles.suggestionBanner}>
-                  <Ionicons name="information-circle-outline" size={16} color={theme.colors.warn} />
-                  <Text style={styles.suggestionText}>
-                    ავტომატური რეკომენდაცია:{' '}
-                    <Text style={{ fontWeight: '700' }}>
-                      {VERDICT_LABEL[verdictSuggestion].split(' — ')[0]}
-                    </Text>
-                  </Text>
-                </View>
-              )}
-
-              <StepSectionLabel title="დასკვნა *" />
-              <View style={styles.verdictBlock}>
+              <Text style={styles.fieldLabel}>დასკვნა *</Text>
+              <View style={styles.chipRow}>
                 {(['approved', 'limited', 'rejected'] as BobcatVerdict[]).map(v => {
                   const active = inspection.verdict === v;
-                  const isSuggested = verdictSuggestion === v && !inspection.verdict;
                   return (
                     <Pressable
                       key={v}
-                      style={[
-                        styles.verdictOption,
-                        active && styles.verdictOptionActive,
-                        isSuggested && styles.verdictOptionSuggested,
-                      ]}
+                      style={[styles.typeChip, active && styles.typeChipActive]}
                       onPress={() => update('verdict', active ? null : v)}
                       {...a11y(VERDICT_LABEL[v], undefined, 'radio')}
                     >
-                      <View style={[styles.verdictCheck, active && styles.verdictCheckActive]}>
-                        {active && <Ionicons name="checkmark" size={12} color={theme.colors.white} />}
-                      </View>
-                      <Text style={[styles.verdictLabel, active && styles.verdictLabelActive]}>
+                      <Text style={[styles.typeChipText, active && styles.typeChipTextActive]}>
                         {VERDICT_LABEL[v]}
                       </Text>
                     </Pressable>
@@ -854,64 +810,24 @@ export default function BobcatInspectionScreen() {
                 numberOfLines={4}
               />
 
-              <StepSectionLabel title="ფოტოები" />
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ gap: 8, paddingVertical: 4 }}
-              >
-                {(inspection.summaryPhotos ?? []).map(path => (
-                  <View key={path} style={{ position: 'relative', width: 64, height: 64, borderRadius: 8, overflow: 'hidden' }}>
-                    <Image source={{ uri: path }} style={{ width: 64, height: 64 }} />
-                    <Pressable
-                      onPress={() => handleDeleteSummaryPhoto(path)}
-                      style={{ position: 'absolute', top: 2, right: 2, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 10, padding: 2 }}
-                      hitSlop={6}
-                    >
-                      <Ionicons name="close-circle" size={16} color="#fff" />
-                    </Pressable>
-                  </View>
-                ))}
-              </ScrollView>
               <Pressable
-                onPress={handleAddSummaryPhoto}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, padding: 10, borderWidth: 1.5, borderStyle: 'dashed', borderColor: theme.colors.hairline, borderRadius: 8, alignSelf: 'flex-start' }}
-              >
-                <Ionicons name="camera-outline" size={18} color={theme.colors.accent} />
-                <Text style={{ fontSize: 13, color: theme.colors.accent }}>ფოტოს დამატება</Text>
-              </Pressable>
-
-              <StepSectionLabel title="ინსპექტორის ხელმოწერა" />
-              <Pressable
-                style={[styles.sigArea, inspection.inspectorSignature && styles.sigAreaSigned]}
+                style={[styles.sigRow, inspection.inspectorSignature && styles.sigRowActive]}
                 onPress={() => setShowSig(true)}
                 {...a11y('ხელმოწერა', 'ინსპექტორის ხელმოწერის დამატება', 'button')}
               >
-                {inspection.inspectorSignature ? (
-                  <View style={styles.sigContent}>
-                    <Ionicons name="checkmark-circle" size={20} color={theme.colors.semantic.success} />
-                    <Text style={[styles.sigHint, { color: theme.colors.semantic.success }]}>ხელმოწერა დაყენებულია</Text>
-                    <Pressable
-                      onPress={() => update('inspectorSignature', null)}
-                      hitSlop={10}
-                      {...a11y('ხელმოწერის წაშლა', undefined, 'button')}
-                    >
-                      <Text style={styles.sigClear}>გასუფთავება</Text>
-                    </Pressable>
-                  </View>
-                ) : (
-                  <View style={styles.sigContent}>
-                    <Ionicons name="pencil-outline" size={20} color={theme.colors.accent} />
-                    <Text style={styles.sigHint}>შეეხეთ ხელმოწერისთვის</Text>
-                  </View>
+                <Text style={styles.sigRowText}>
+                  {inspection.inspectorSignature ? '✓ ხელმოწერა დაყენებულია' : 'ხელმოწერა *'}
+                </Text>
+                {inspection.inspectorSignature && (
+                  <Pressable
+                    onPress={() => update('inspectorSignature', null)}
+                    hitSlop={10}
+                    {...a11y('ხელმოწერის წაშლა', undefined, 'button')}
+                  >
+                    <Text style={styles.sigRowClear}>წაშლა</Text>
+                  </Pressable>
                 )}
               </Pressable>
-
-              {!inspection.inspectorSignature && (
-                <Text style={styles.sigRequiredHint}>
-                  ხელმოწერა სავალდებულოა დასასრულებლად
-                </Text>
-              )}
 
               {completing && (
                 <View style={styles.completingRow}>
@@ -926,40 +842,37 @@ export default function BobcatInspectionScreen() {
           {step === DONE_STEP && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 12 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 4, paddingTop: 16, paddingBottom: 24, gap: 12 }}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="interactive"
               showsVerticalScrollIndicator={false}
               bottomOffset={120}
             >
-              <View style={styles.doneHero}>
-                <Ionicons name="checkmark-circle" size={72} color={theme.colors.semantic.success} />
-                <Text style={styles.doneTitle}>შემოწმება დასრულდა!</Text>
-                {inspection.completedAt && (
-                  <Text style={styles.doneDate}>
-                    {new Date(inspection.completedAt).toLocaleDateString('ka-GE', {
-                      day: 'numeric', month: 'long', year: 'numeric',
-                    })}
-                  </Text>
-                )}
-                {inspection.verdict && (
-                  <View style={[
-                    styles.doneVerdict,
-                    inspection.verdict === 'approved' && styles.doneVerdictGreen,
-                    inspection.verdict === 'limited'  && styles.doneVerdictAmber,
-                    inspection.verdict === 'rejected' && styles.doneVerdictRed,
+              <Text style={styles.doneTitle}>შემოწმება დასრულდა!</Text>
+              {inspection.completedAt && (
+                <Text style={styles.doneDate}>
+                  {new Date(inspection.completedAt).toLocaleDateString('ka-GE', {
+                    day: 'numeric', month: 'long', year: 'numeric',
+                  })}
+                </Text>
+              )}
+              {inspection.verdict && (
+                <View style={[
+                  styles.doneVerdict,
+                  inspection.verdict === 'approved' && styles.doneVerdictGreen,
+                  inspection.verdict === 'limited'  && styles.doneVerdictAmber,
+                  inspection.verdict === 'rejected' && styles.doneVerdictRed,
+                ]}>
+                  <Text style={[
+                    styles.doneVerdictText,
+                    inspection.verdict === 'approved' && { color: theme.colors.semantic.success },
+                    inspection.verdict === 'limited'  && { color: theme.colors.warn },
+                    inspection.verdict === 'rejected' && { color: theme.colors.danger },
                   ]}>
-                    <Text style={[
-                      styles.doneVerdictText,
-                      inspection.verdict === 'approved' && { color: theme.colors.semantic.success },
-                      inspection.verdict === 'limited'  && { color: theme.colors.warn },
-                      inspection.verdict === 'rejected' && { color: theme.colors.danger },
-                    ]}>
-                      {VERDICT_LABEL[inspection.verdict].split(' — ')[0]}
-                    </Text>
-                  </View>
-                )}
-              </View>
+                    {VERDICT_LABEL[inspection.verdict].split(' — ')[0]}
+                  </Text>
+                </View>
+              )}
 
               <Button
                 title="PDF გენერირება / გაზიარება"
@@ -1023,11 +936,11 @@ function getstyles(theme: Theme) {
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: theme.colors.card },
     centred: { alignItems: 'center', justifyContent: 'center' },
-    savingHint: { fontSize: 11, color: theme.colors.inkFaint, textAlign: 'right', paddingHorizontal: 24, paddingTop: 4 },
-    stepBody: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 16, gap: 12 },
+    savingHint: { fontSize: 11, color: theme.colors.inkFaint, textAlign: 'right', paddingHorizontal: 8, paddingTop: 4 },
+    stepBody: { paddingHorizontal: 8, paddingTop: 16, paddingBottom: 16, gap: 12 },
     footer: {
       gap: 10,
-      paddingHorizontal: 20,
+      paddingHorizontal: 8,
       paddingTop: 8,
       paddingBottom: 16,
       backgroundColor: theme.colors.card,
@@ -1050,10 +963,9 @@ function getstyles(theme: Theme) {
     typeChipTextActive: { color: theme.colors.accent, fontWeight: '700' },
 
     sumTable: {
-      borderWidth: 0.5, borderColor: theme.colors.hairline,
-      borderRadius: 10, overflow: 'hidden', marginBottom: 12,
+      marginBottom: 12,
     },
-    sumRow: { flexDirection: 'row', borderBottomWidth: 0.5, borderBottomColor: theme.colors.hairline },
+    sumRow: { flexDirection: 'row', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.hairline },
     sumHeaderRow: { backgroundColor: theme.colors.subtleSurface },
     sumCell: { flex: 1, padding: 8, fontSize: 11 },
     sumCatCell: { flex: 3, color: theme.colors.ink },
@@ -1063,23 +975,21 @@ function getstyles(theme: Theme) {
     suggestionBanner: {
       flexDirection: 'row', alignItems: 'center', gap: 6,
       backgroundColor: theme.colors.warnSoft,
-      padding: 10, borderRadius: 8, marginBottom: 8,
+      padding: 10, marginBottom: 8,
     },
     suggestionText: { fontSize: 12, color: theme.colors.inkSoft, flex: 1 },
-    verdictBlock: { gap: 6, marginBottom: 12 },
+    verdictBlock: { gap: 0, marginBottom: 12 },
     verdictOption: {
       flexDirection: 'row', alignItems: 'flex-start', gap: 10,
-      padding: 10, borderRadius: 10, borderWidth: 1.5,
-      borderColor: theme.colors.hairline,
-      backgroundColor: theme.colors.card,
+      paddingVertical: 10, paddingHorizontal: 4,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.colors.hairline,
     },
     verdictOptionActive: {
-      borderColor: theme.colors.accent,
-      backgroundColor: theme.colors.accentSoft,
+      borderBottomColor: theme.colors.accent,
     },
     verdictOptionSuggested: {
-      borderColor: theme.colors.warn,
-      backgroundColor: theme.colors.warnSoft,
+      borderBottomColor: theme.colors.warn,
     },
     verdictCheck: {
       width: 20, height: 20, borderRadius: 5,
@@ -1093,24 +1003,26 @@ function getstyles(theme: Theme) {
     verdictLabel: { flex: 1, fontSize: 12, color: theme.colors.inkSoft, lineHeight: 18 },
     verdictLabelActive: { color: theme.colors.accent, fontWeight: '600' },
 
-    sigArea: {
-      borderWidth: 1.5, borderStyle: 'dashed', borderColor: theme.colors.hairline,
-      borderRadius: 12, padding: 24, alignItems: 'center', justifyContent: 'center',
-      minHeight: 80, marginBottom: 12,
+    sigRow: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingVertical: 14, paddingHorizontal: 12,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.colors.hairline,
     },
-    sigAreaSigned: {
-      borderStyle: 'solid', borderColor: theme.colors.semantic.success,
-      backgroundColor: theme.colors.semantic.successSoft,
+    sigRowActive: {
+      borderBottomColor: theme.colors.semantic.success,
     },
-    sigContent: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    sigHint: { fontSize: 14, color: theme.colors.accent },
-    sigClear: { fontSize: 12, color: theme.colors.danger, marginLeft: 8 },
-    sigRequiredHint: { fontSize: 12, color: theme.colors.inkFaint, textAlign: 'center', marginTop: 4 },
+    sigRowText: {
+      fontSize: 15, color: theme.colors.ink,
+    },
+    sigRowClear: {
+      fontSize: 13, color: theme.colors.accent,
+    },
 
     completingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 16 },
     completingText: { fontSize: 13, color: theme.colors.inkSoft },
 
-    doneHero: { alignItems: 'center', paddingVertical: 32, gap: 10 },
+    doneHero: { paddingVertical: 16, gap: 6 },
     doneTitle: { fontSize: 22, fontWeight: '800', color: theme.colors.ink, textAlign: 'center' },
     doneDate: { fontSize: 13, color: theme.colors.inkSoft, marginTop: 2 },
     doneVerdict: {
@@ -1127,29 +1039,31 @@ function getstyles(theme: Theme) {
     listRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      padding: 12,
-      borderRadius: 10,
-      backgroundColor: theme.colors.card,
-      borderWidth: 1,
-      borderColor: theme.colors.hairline,
-      gap: 10,
+      paddingVertical: 10,
+      paddingHorizontal: 4,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.colors.hairline,
+      gap: 8,
     },
     listRowInfo: { flex: 1, gap: 2 },
     listRowLabel: { fontSize: 13, fontWeight: '600', color: theme.colors.ink },
-    listRowDesc: { fontSize: 11, color: theme.colors.inkSoft, lineHeight: 16 },
     listRowActions: { flexDirection: 'row', gap: 6 },
     statusBtn: {
       width: 44, height: 44,
       borderRadius: 8,
       borderWidth: 1.5,
-      borderColor: theme.colors.hairline,
-      backgroundColor: theme.colors.card,
       alignItems: 'center', justifyContent: 'center',
     },
-    statusBtnGood: { backgroundColor: theme.colors.semantic.successSoft, borderColor: theme.colors.semantic.success },
-    statusBtnWarn: { backgroundColor: theme.colors.warnSoft, borderColor: theme.colors.warn },
-    statusBtnBad:  { backgroundColor: theme.colors.dangerTint, borderColor: theme.colors.dangerBorder },
-    statusBtnText: { fontSize: 18, color: theme.colors.inkSoft },
-    statusBtnTextActive: { fontWeight: '700' },
+    statusBtnGood:       { borderColor: theme.colors.semantic.success },
+    statusBtnGoodActive: { backgroundColor: theme.colors.semantic.success, borderColor: theme.colors.semantic.success },
+    statusBtnWarn:       { borderColor: theme.colors.warn },
+    statusBtnWarnActive: { backgroundColor: theme.colors.warn, borderColor: theme.colors.warn },
+    statusBtnBad:        { borderColor: theme.colors.dangerBorder },
+    statusBtnBadActive:  { backgroundColor: theme.colors.danger, borderColor: theme.colors.danger },
+    statusBtnText:       { fontSize: 18 },
+    statusBtnTextGood:   { color: theme.colors.semantic.success },
+    statusBtnTextWarn:   { color: theme.colors.warn },
+    statusBtnTextBad:    { color: theme.colors.danger },
+    statusBtnTextActive: { color: theme.colors.white, fontWeight: '700' },
   });
 }
