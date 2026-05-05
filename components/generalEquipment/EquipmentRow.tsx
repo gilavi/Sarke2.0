@@ -169,7 +169,7 @@ export const EquipmentRow = memo(function EquipmentRow({
             {...a11y('კარგი', '✓ კარგია', 'button')}
           >
             <Ionicons name="checkmark" size={13} color={goodActive ? theme.colors.white : theme.colors.semantic.success} />
-            <Text style={[styles.chipLabel, !goodActive && styles.chipLabelGood]}>კარგი</Text>
+            <Text style={[styles.chipLabel, goodActive ? styles.chipLabelGoodActive : styles.chipLabelGood]}>კარგი</Text>
           </Pressable>
 
           <Pressable
@@ -178,7 +178,7 @@ export const EquipmentRow = memo(function EquipmentRow({
             {...a11y('საჭ. მომსახ.', '⚠ საჭ. მომსახ.', 'button')}
           >
             <Ionicons name="warning-outline" size={12} color={warnActive ? theme.colors.white : theme.colors.warn} />
-            <Text style={[styles.chipLabel, !warnActive && styles.chipLabelWarn]}>საჭ. მომს.</Text>
+            <Text style={[styles.chipLabel, warnActive ? styles.chipLabelWarnActive : styles.chipLabelWarn]}>საჭ. მომს.</Text>
           </Pressable>
 
           <Pressable
@@ -187,7 +187,7 @@ export const EquipmentRow = memo(function EquipmentRow({
             {...a11y('გამოუსადეგ.', '✗ გამოუსადეგარია', 'button')}
           >
             <Ionicons name="close" size={13} color={badActive ? theme.colors.white : theme.colors.danger} />
-            <Text style={[styles.chipLabel, !badActive && styles.chipLabelBad]}>გამოუსადეგ.</Text>
+            <Text style={[styles.chipLabel, badActive ? styles.chipLabelBadActive : styles.chipLabelBad]}>გამოუსადეგ.</Text>
           </Pressable>
         </View>
       </View>
@@ -299,15 +299,15 @@ function getstyles(theme: Theme) {
 
     chipGood:       { borderColor: theme.colors.semantic.success },
     chipGoodActive: { backgroundColor: theme.colors.semantic.success, borderColor: theme.colors.semantic.success },
-    chipLabelGood:  { color: theme.colors.white },
+    chipLabelGoodActive: { color: theme.colors.white },
 
     chipWarn:       { borderColor: theme.colors.warn },
     chipWarnActive: { backgroundColor: theme.colors.warn, borderColor: theme.colors.warn },
-    chipLabelWarn:  { color: theme.colors.white },
+    chipLabelWarnActive: { color: theme.colors.white },
 
     chipBad:       { borderColor: theme.colors.danger },
     chipBadActive: { backgroundColor: theme.colors.danger, borderColor: theme.colors.danger },
-    chipLabelBad:  { color: theme.colors.white },
+    chipLabelBadActive: { color: theme.colors.white },
 
     chipLabel: { fontSize: 11, fontWeight: '600', color: theme.colors.inkSoft },
     chipLabelGood:   { color: theme.colors.semantic.success },
