@@ -12,13 +12,21 @@ function json(data: unknown, status = 200) {
   });
 }
 
+const isSandbox = Deno.env.get('BOG_ENV') !== 'production';
+const BOG_OAUTH_URL = isSandbox
+  ? 'https://oauth2-sandbox.bog.ge/auth/realms/bog/protocol/openid-connect/token'
+  : 'https://oauth2.bog.ge/auth/realms/bog/protocol/openid-connect/token';
+const BOG_API_BASE = isSandbox
+  ? 'https://api-sandbox.bog.ge'
+  : 'https://api.bog.ge';
+
 async function getBogToken(): Promise<string> {
   const clientId = Deno.env.get('BOG_CLIENT_ID')!;
   const clientSecret = Deno.env.get('BOG_CLIENT_SECRET')!;
   const credentials = btoa(`${clientId}:${clientSecret}`);
 
   const res = await fetch(
-    'https://oauth2.bog.ge/auth/realms/bog/protocol/openid-connect/token',
+    BOG_OAUTH_URL,
     {
       method: 'POST',
       headers: {
@@ -55,7 +63,7 @@ Deno.serve(async (req) => {
     // Re-verify payment status server-side — never trust the redirect alone
     const token = await getBogToken();
     const verifyRes = await fetch(
-      `https://api.bog.ge/payments/v1/ecommerce/orders/${orderId}`,
+      `${BOG_API_BASE}/payments/v1/ecommerce/orders/${orderId}`,
       {
         headers: { Authorization: `Bearer ${token}` },
       },

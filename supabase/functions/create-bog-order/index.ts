@@ -83,6 +83,7 @@ Deno.serve(async (req) => {
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
+        'Accept-Language': 'ka',
       },
       body: JSON.stringify({
         callback_url: callbackUrl,
