@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,7 @@ type PayStatus = 'idle' | 'creating' | 'redirecting' | 'error';
 
 export default function Subscribe() {
   const [params] = useSearchParams();
+  const navigate = useNavigate();
   const [authStatus, setAuthStatus] = useState<AuthStatus>('loading');
   const [authError, setAuthError] = useState<string | null>(null);
   const [payStatus, setPayStatus] = useState<PayStatus>('idle');
@@ -31,8 +32,13 @@ export default function Subscribe() {
     const rt = params.get('rt');
 
     if (!at || !rt) {
-      setAuthError('ავტორიზაციის ტოკენი არ მოიძებნა. დაბრუნდით Sarke აპში და სცადეთ ხელახლა.');
-      setAuthStatus('error');
+      supabase.auth.getSession().then(({ data }) => {
+        if (data.session) {
+          setAuthStatus('ready');
+        } else {
+          navigate('/login', { replace: true, state: { from: '/subscribe' } });
+        }
+      });
       return;
     }
 
@@ -70,7 +76,8 @@ export default function Subscribe() {
       window.location.href = data.redirect_url;
     } catch (e) {
       console.error('Pay error:', e);
-      setPayError('გადახდის გვერდი ვერ გაიხსნა. სცადეთ ხელახლა.');
+      const msg = e instanceof Error ? e.message : String(e);
+      setPayError(`შეცდომა: ${msg}`);
       setPayStatus('error');
     }
   };
