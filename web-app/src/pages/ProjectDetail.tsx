@@ -3,7 +3,14 @@ import { Link, useParams } from 'react-router-dom';
 import { Download } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { getProject, type Project } from '@/lib/data/projects';
+import {
+  getProject,
+  listProjectSigners,
+  type Project,
+  type ProjectSigner,
+} from '@/lib/data/projects';
+import { listIncidents, type Incident } from '@/lib/data/incidents';
+import { listReports, type Report } from '@/lib/data/reports';
 import { listInspections, type Inspection } from '@/lib/data/inspections';
 import { listBriefings, topicLabel, type Briefing } from '@/lib/data/briefings';
 import {
@@ -19,6 +26,9 @@ export default function ProjectDetail() {
   const [inspections, setInspections] = useState<Inspection[]>([]);
   const [briefings, setBriefings] = useState<Briefing[]>([]);
   const [files, setFiles] = useState<ProjectFile[]>([]);
+  const [signers, setSigners] = useState<ProjectSigner[]>([]);
+  const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [reports, setReports] = useState<Report[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [opening, setOpening] = useState<string | null>(null);
@@ -30,12 +40,18 @@ export default function ProjectDetail() {
       listInspections(id),
       listBriefings(id),
       listProjectFiles(id),
+      listProjectSigners(id),
+      listIncidents(id),
+      listReports(id),
     ])
-      .then(([p, ins, bs, fs]) => {
+      .then(([p, ins, bs, fs, sg, inc, rp]) => {
         setProject(p);
         setInspections(ins);
         setBriefings(bs);
         setFiles(fs);
+        setSigners(sg);
+        setIncidents(inc);
+        setReports(rp);
       })
       .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
       .finally(() => setLoading(false));
@@ -81,6 +97,45 @@ export default function ProjectDetail() {
           <div>ტელეფონი: {project.contact_phone || '—'}</div>
         </CardContent>
       </Card>
+
+      {(project.crew?.length ?? 0) > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">გუნდი ({project.crew?.length ?? 0})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="divide-y divide-neutral-200">
+              {project.crew?.map((m) => (
+                <li key={m.id} className="py-2 text-sm">
+                  <div className="font-medium text-neutral-900">{m.name}</div>
+                  <div className="text-xs text-neutral-500">{m.role}</div>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
+      {signers.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">ხელმომწერები ({signers.length})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="divide-y divide-neutral-200">
+              {signers.map((s) => (
+                <li key={s.id} className="py-2 text-sm">
+                  <div className="font-medium text-neutral-900">{s.full_name}</div>
+                  <div className="text-xs text-neutral-500">
+                    {s.position || '—'}
+                    {s.phone ? ` · ${s.phone}` : ''}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
 
       <section>
         <h2 className="mb-3 font-display text-lg font-semibold">შემოწმების აქტები</h2>
@@ -131,6 +186,53 @@ export default function ProjectDetail() {
           </ul>
         )}
       </section>
+
+      {incidents.length > 0 && (
+        <section>
+          <h2 className="mb-3 font-display text-lg font-semibold">ინციდენტები</h2>
+          <ul className="divide-y divide-neutral-200 rounded-lg border border-neutral-200 bg-white">
+            {incidents.map((i) => (
+              <li key={i.id}>
+                <Link
+                  to={`/incidents/${i.id}`}
+                  className="flex items-center justify-between px-4 py-3 hover:bg-neutral-50"
+                >
+                  <div className="flex flex-col">
+                    <span className="text-sm text-neutral-800">
+                      {i.injured_name || (i.type === 'nearmiss' ? 'საშიში შემთხვევა' : i.type)}
+                    </span>
+                    <span className="text-xs text-neutral-500">
+                      {new Date(i.date_time).toLocaleDateString('ka-GE')} · {i.location || '—'}
+                    </span>
+                  </div>
+                  <span className="text-xs text-neutral-500">{i.status}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {reports.length > 0 && (
+        <section>
+          <h2 className="mb-3 font-display text-lg font-semibold">რეპორტები</h2>
+          <ul className="divide-y divide-neutral-200 rounded-lg border border-neutral-200 bg-white">
+            {reports.map((r) => (
+              <li key={r.id}>
+                <Link
+                  to={`/reports/${r.id}`}
+                  className="flex items-center justify-between px-4 py-3 hover:bg-neutral-50"
+                >
+                  <span className="text-sm text-neutral-800">
+                    {r.title || `რეპორტი #${r.id.slice(0, 8)}`}
+                  </span>
+                  <span className="text-xs text-neutral-500">{r.status}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section>
         <h2 className="mb-3 font-display text-lg font-semibold">ფაილები</h2>

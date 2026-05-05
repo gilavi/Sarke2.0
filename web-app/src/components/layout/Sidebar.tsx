@@ -9,6 +9,9 @@ import {
   LogOut,
   ShieldCheck,
   Megaphone,
+  AlertTriangle,
+  FileText,
+  GraduationCap,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { cn } from '@/lib/utils';
@@ -25,7 +28,10 @@ const items: NavItem[] = [
   { to: '/projects', label: 'პროექტები', icon: Folder, enabled: true },
   { to: '/inspections', label: 'შემოწმების აქტები', icon: ClipboardCheck, enabled: true },
   { to: '/briefings', label: 'ბრიფინგები', icon: Megaphone, enabled: true },
+  { to: '/incidents', label: 'ინციდენტები', icon: AlertTriangle, enabled: true },
+  { to: '/reports', label: 'რეპორტები', icon: FileText, enabled: true },
   { to: '/certificates', label: 'სერტიფიკატები', icon: Award, enabled: true },
+  { to: '/qualifications', label: 'ჩემი კვალიფიკაცია', icon: GraduationCap, enabled: true },
   { to: '/calendar', label: 'კალენდარი', icon: Calendar, enabled: true },
   { to: '/regulations', label: 'რეგულაციები', icon: BookOpen, enabled: true },
 ];
