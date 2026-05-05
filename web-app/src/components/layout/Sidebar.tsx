@@ -8,6 +8,7 @@ import {
   BookOpen,
   LogOut,
   ShieldCheck,
+  Megaphone,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { cn } from '@/lib/utils';
@@ -23,6 +24,7 @@ const items: NavItem[] = [
   { to: '/', label: 'მთავარი', icon: Home, enabled: true },
   { to: '/projects', label: 'პროექტები', icon: Folder, enabled: true },
   { to: '/inspections', label: 'შემოწმების აქტები', icon: ClipboardCheck, enabled: true },
+  { to: '/briefings', label: 'ბრიფინგები', icon: Megaphone, enabled: true },
   { to: '/certificates', label: 'სერტიფიკატები', icon: Award, enabled: true },
   { to: '/calendar', label: 'კალენდარი', icon: Calendar, enabled: true },
   { to: '/regulations', label: 'რეგულაციები', icon: BookOpen, enabled: true },
