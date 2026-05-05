@@ -32,7 +32,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { bobcatApi } from '../../../lib/bobcatService';
 import { projectsApi } from '../../../lib/services';
 import { buildBobcatPdfHtml } from '../../../lib/bobcatPdf';
-import { generateAndSharePdf } from '../../../lib/pdfOpen';
+import { generateAndSharePdf, PdfLimitReachedError } from '../../../lib/pdfOpen';
+import { PaywallModal } from '../../../components/PaywallModal';
+import { PdfLockedBanner } from '../../../components/PdfLockedBanner';
+import { usePdfUsage, useInvalidatePdfUsage } from '../../../lib/usePdfUsage';
 import { generatePdfName } from '../../../lib/pdfName';
 import { recordCompletion } from '../../../lib/calendarSchedule';
 import { friendlyError } from '../../../lib/errorMap';
@@ -65,6 +68,10 @@ export default function BobcatInspectionScreen() {
   const toast = useToast();
   const session = useSession();
   const insets = useSafeAreaInsets();
+
+  const [paywallVisible, setPaywallVisible] = useState(false);
+  const { data: pdfUsage } = usePdfUsage();
+  const invalidatePdfUsage = useInvalidatePdfUsage();
 
   const INFO_STEP = 0;
   const CHECKLIST_STEP = 1;
@@ -405,6 +412,7 @@ export default function BobcatInspectionScreen() {
 
   const handlePdf = useCallback(async () => {
     if (!inspection) return;
+    if (pdfUsage?.isLocked) { setPaywallVisible(true); return; }
     setGeneratingPdf(true);
     try {
       const html = await buildBobcatPdfHtml({
@@ -418,13 +426,16 @@ export default function BobcatInspectionScreen() {
         new Date(inspection.inspectionDate),
         inspection.id,
       );
-      await generateAndSharePdf(html, pdfName);
+      const userId = session.state.status === 'signedIn' ? session.state.session.user.id : undefined;
+      await generateAndSharePdf(html, pdfName, undefined, userId);
+      invalidatePdfUsage();
     } catch (e) {
+      if (e instanceof PdfLimitReachedError) { setPaywallVisible(true); return; }
       toast.error(friendlyError(e, 'PDF ვერ შეიქმნა'));
     } finally {
       setGeneratingPdf(false);
     }
-  }, [inspection, projectName, catalog, isLargeLoader, toast]);
+  }, [inspection, projectName, catalog, isLargeLoader, session.state, invalidatePdfUsage, toast]);
 
   // ── Summary Photos ─────────────────────────────────────────────────────────
 
@@ -622,13 +633,14 @@ export default function BobcatInspectionScreen() {
               {...a11y('PDF', 'PDF დოკუმენტის გენერირება', 'button')}
             >
               <Ionicons
-                name={generatingPdf ? 'hourglass-outline' : 'document-text-outline'}
+                name={pdfUsage?.isLocked ? 'lock-closed-outline' : generatingPdf ? 'hourglass-outline' : 'document-text-outline'}
                 size={22}
-                color={theme.colors.accent}
+                color={pdfUsage?.isLocked ? theme.colors.inkSoft : theme.colors.accent}
               />
             </Pressable>
           }
         />
+        {pdfUsage?.isLocked && <PdfLockedBanner onSubscribe={() => setPaywallVisible(true)} />}
         <View style={{ flex: 1, backgroundColor: theme.colors.subtleSurface }}>
           {previewBusy && !previewHtml ? (
             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
@@ -649,12 +661,13 @@ export default function BobcatInspectionScreen() {
         <SafeAreaView edges={['bottom']} style={{ backgroundColor: theme.colors.surface, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.colors.hairline }}>
           <View style={{ paddingHorizontal: 12, paddingTop: 8, paddingBottom: 8 }}>
             <Button
-              title="PDF გენერირება / გაზიარება"
+              title={pdfUsage?.isLocked ? '🔒 PDF გენერირება' : 'PDF გენერირება / გაზიარება'}
               onPress={handlePdf}
               loading={generatingPdf}
             />
           </View>
         </SafeAreaView>
+        <PaywallModal visible={paywallVisible} onClose={() => setPaywallVisible(false)} />
       </View>
     );
   }

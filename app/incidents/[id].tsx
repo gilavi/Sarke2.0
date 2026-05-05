@@ -9,7 +9,9 @@ import {
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { generateAndSharePdf } from '../../lib/pdfOpen';
+import { generateAndSharePdf, PdfLimitReachedError } from '../../lib/pdfOpen';
+import { PaywallModal } from '../../components/PaywallModal';
+import { usePdfUsage, useInvalidatePdfUsage } from '../../lib/usePdfUsage';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -80,6 +82,9 @@ export default function IncidentDetail() {
   const [photoDisplayUrls, setPhotoDisplayUrls] = useState<string[]>([]);
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [pdfPhase, setPdfPhase] = useState<string | null>(null);
+  const [paywallVisible, setPaywallVisible] = useState(false);
+  const { data: pdfUsage } = usePdfUsage();
+  const invalidatePdfUsage = useInvalidatePdfUsage();
 
   useEffect(() => { if (incidentQ.data !== undefined) setIncident(incidentQ.data); }, [incidentQ.data]);
   useEffect(() => { if (projectQ.data !== undefined) setProject(projectQ.data); }, [projectQ.data]);
@@ -132,6 +137,7 @@ export default function IncidentDetail() {
 
   const generatePdf = async () => {
     if (!incident || !project) return;
+    if (pdfUsage?.isLocked) { setPaywallVisible(true); return; }
     setGeneratingPdf(true);
     setPdfPhase('მზადდება...');
     try {
@@ -162,7 +168,9 @@ export default function IncidentDetail() {
       const docType = `ინციდენტი_${incidentTypeLabel}`;
       const pdfName = generatePdfName(project.company_name || project.name, docType, new Date(incident.date_time), incident.id);
       const pdfPath = `incidents/${pdfName}`;
-      const localUri = await generateAndSharePdf(html, pdfName, true);
+      const userId = session.state.status === 'signedIn' ? session.state.session.user.id : undefined;
+      const localUri = await generateAndSharePdf(html, pdfName, true, userId);
+      invalidatePdfUsage();
       if (localUri) {
 
         setPdfPhase('დასრულდა ✓');
@@ -201,6 +209,7 @@ export default function IncidentDetail() {
         toast.success('PDF შექმნილია');
       }
     } catch (e) {
+      if (e instanceof PdfLimitReachedError) { setPaywallVisible(true); return; }
       toast.error(friendlyError(e, 'PDF-ის შექმნა ვერ მოხერხდა'));
     } finally {
       setGeneratingPdf(false);
@@ -437,7 +446,7 @@ export default function IncidentDetail() {
         ) : incident.status === 'draft' ? (
           <View style={{ gap: 10 }}>
             <Button
-              title={generatingPdf && pdfPhase ? pdfPhase : "PDF გენერირება"}
+              title={generatingPdf && pdfPhase ? pdfPhase : pdfUsage?.isLocked ? '🔒 PDF გენერირება' : 'PDF გენერირება'}
               leftIcon="document-text"
               loading={generatingPdf}
               onPress={generatePdf}
@@ -452,6 +461,7 @@ export default function IncidentDetail() {
           </View>
         ) : null}
       </View>
+      <PaywallModal visible={paywallVisible} onClose={() => setPaywallVisible(false)} />
     </View>
   );
 }

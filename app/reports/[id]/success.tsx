@@ -9,7 +9,9 @@ import { useTheme } from '../../../lib/theme';
 import { useToast } from '../../../lib/toast';
 import { useSession } from '../../../lib/session';
 import { pdfPhotoEmbed } from '../../../lib/imageUrl';
-import { generateAndSharePdf } from '../../../lib/pdfOpen';
+import { generateAndSharePdf, PdfLimitReachedError } from '../../../lib/pdfOpen';
+import { PaywallModal } from '../../../components/PaywallModal';
+import { usePdfUsage, useInvalidatePdfUsage } from '../../../lib/usePdfUsage';
 import { buildReportPdfHtml } from '../../../lib/reportPdf';
 import { generatePdfName } from '../../../lib/pdfName';
 import { friendlyError } from '../../../lib/errorMap';
@@ -31,6 +33,9 @@ export default function ReportSuccessScreen() {
   const { data: report } = useReport(id);
   const { data: project } = useProject(report?.project_id);
   const [sharing, setSharing] = useState(false);
+  const [paywallVisible, setPaywallVisible] = useState(false);
+  const { data: pdfUsage } = usePdfUsage();
+  const invalidatePdfUsage = useInvalidatePdfUsage();
 
   const inspectorName = useMemo(() => {
     if (session.state.status !== 'signedIn') return '';
@@ -40,6 +45,7 @@ export default function ReportSuccessScreen() {
 
   const sharePdf = async () => {
     if (!report) return;
+    if (pdfUsage?.isLocked) { setPaywallVisible(true); return; }
     setSharing(true);
     try {
       const slidesWithImages = report.slides.filter(s => s.image_path || s.annotated_image_path);
@@ -65,8 +71,11 @@ export default function ReportSuccessScreen() {
         new Date(report.created_at),
         report.id,
       );
-      await generateAndSharePdf(html, pdfName);
+      const userId = session.state.status === 'signedIn' ? session.state.session.user.id : undefined;
+      await generateAndSharePdf(html, pdfName, undefined, userId);
+      invalidatePdfUsage();
     } catch (e) {
+      if (e instanceof PdfLimitReachedError) { setPaywallVisible(true); return; }
       toast.error(friendlyError(e, 'PDF გენერაცია ვერ მოხერხდა'));
     } finally {
       setSharing(false);
@@ -97,7 +106,7 @@ export default function ReportSuccessScreen() {
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
         <Button
-          title="PDF გაზიარება"
+          title={pdfUsage?.isLocked ? '🔒 PDF გაზიარება' : 'PDF გაზიარება'}
           onPress={sharePdf}
           loading={sharing}
         />
@@ -111,6 +120,7 @@ export default function ReportSuccessScreen() {
           </Text>
         </Pressable>
       </View>
+      <PaywallModal visible={paywallVisible} onClose={() => setPaywallVisible(false)} />
     </View>
   );
 }

@@ -21,7 +21,9 @@ import { friendlyError } from '../../lib/errorMap';
 import { reportsApi } from '../../lib/services';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { pdfPhotoEmbed, imageForDisplay } from '../../lib/imageUrl';
-import { generateAndSharePdf } from '../../lib/pdfOpen';
+import { generateAndSharePdf, PdfLimitReachedError } from '../../lib/pdfOpen';
+import { PaywallModal } from '../../components/PaywallModal';
+import { usePdfUsage, useInvalidatePdfUsage } from '../../lib/usePdfUsage';
 import { buildReportPdfHtml } from '../../lib/reportPdf';
 import { generatePdfName } from '../../lib/pdfName';
 import { formatShortDateTime } from '../../lib/formatDate';
@@ -42,6 +44,9 @@ export default function ReportDetailScreen() {
   const { data: report } = useReport(id);
   const { data: project } = useProject(report?.project_id);
   const [generating, setGenerating] = useState(false);
+  const [paywallVisible, setPaywallVisible] = useState(false);
+  const { data: pdfUsage } = usePdfUsage();
+  const invalidatePdfUsage = useInvalidatePdfUsage();
 
   const slides = useMemo(
     () => (report?.slides ?? []).slice().sort((a, b) => a.order - b.order),
@@ -56,6 +61,7 @@ export default function ReportDetailScreen() {
 
   const generatePdf = async () => {
     if (!report) return;
+    if (pdfUsage?.isLocked) { setPaywallVisible(true); return; }
     setGenerating(true);
     try {
       const slidesWithImages = report.slides.filter(s => s.image_path || s.annotated_image_path);
@@ -81,8 +87,11 @@ export default function ReportDetailScreen() {
         new Date(report.created_at),
         report.id,
       );
-      await generateAndSharePdf(html, pdfName);
+      const userId = session.state.status === 'signedIn' ? session.state.session.user.id : undefined;
+      await generateAndSharePdf(html, pdfName, undefined, userId);
+      invalidatePdfUsage();
     } catch (e) {
+      if (e instanceof PdfLimitReachedError) { setPaywallVisible(true); return; }
       toast.error(friendlyError(e, 'PDF გენერაცია ვერ მოხერხდა'));
     } finally {
       setGenerating(false);
@@ -167,8 +176,9 @@ export default function ReportDetailScreen() {
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
-        <Button title="PDF გენერირება" onPress={generatePdf} loading={generating} />
+        <Button title={pdfUsage?.isLocked ? '🔒 PDF გენერირება' : 'PDF გენერირება'} onPress={generatePdf} loading={generating} />
       </View>
+      <PaywallModal visible={paywallVisible} onClose={() => setPaywallVisible(false)} />
     </View>
   );
 }

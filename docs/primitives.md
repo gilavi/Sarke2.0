@@ -72,6 +72,19 @@ Shared step-flow chrome lives in [`components/wizard/`](../components/wizard/). 
 
 **Don't** define a local `StepBar` or `StepSectionLabel` inline in a screen file — that's exactly the duplication pattern that was cleaned up (two copy-pasted `StepBar` + `slStyles` blocks in bobcat and excavator). **Don't** hardcode `'#10B981'` or `'#1D9E75'` for inspection green — use `theme.colors.semantic.success` and `theme.colors.semantic.successSoft`.
 
+## PDF usage gate
+
+One file: [lib/pdfGate.ts](../lib/pdfGate.ts). Exports `checkAndIncrementPdfCount` and `PdfLimitReachedError`.
+
+**Never** call `supabase.rpc('increment_pdf_count', ...)` directly — always go through `checkAndIncrementPdfCount`. The function is re-exported from [lib/pdfOpen.ts](../lib/pdfOpen.ts) (`PdfLimitReachedError`) so callers only need to import from `pdfOpen`.
+
+Usage pattern in any screen that calls `generateAndSharePdf`:
+1. Pass `userId` as the 4th argument to `generateAndSharePdf`.
+2. In the `catch` block, check `if (e instanceof PdfLimitReachedError)` before the generic `toast.error` and show `<PaywallModal>`.
+3. Use `<PaywallModal>` from [components/PaywallModal.tsx](../components/PaywallModal.tsx) — don't write an inline alert with a subscribe prompt.
+
+**Don't** call `supabase.rpc('increment_pdf_count', ...)` from the client without going through `generateAndSharePdf`; the check is atomic — it only increments if the user is allowed, so a direct call would consume a use without generating anything.
+
 ## Adding a new primitive
 
 If you're about to add a util in `lib/` or a wrapper in `components/`:

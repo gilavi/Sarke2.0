@@ -2,6 +2,9 @@ import { Platform } from 'react-native';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
+import { checkAndIncrementPdfCount } from './pdfGate';
+
+export { PdfLimitReachedError } from './pdfGate';
 
 /**
  * Generate a PDF from HTML and open/share it on the current platform.
@@ -13,6 +16,9 @@ import * as FileSystem from 'expo-file-system/legacy';
  * iOS/Android: calls expo-print to convert HTML to a local PDF file, then
  *              opens the native share sheet via expo-sharing.
  *
+ * If `userId` is provided the free-tier gate is enforced server-side before
+ * the PDF is rendered. Throws `PdfLimitReachedError` if the cap is exceeded.
+ *
  * Returns the local file URI on native so the caller can upload it;
  * returns null on web (no local file exists).
  */
@@ -20,6 +26,7 @@ export async function generateAndSharePdf(
   html: string,
   suggestedName?: string,
   keepCopy?: boolean,
+  userId?: string,
 ): Promise<string | null> {
   if (Platform.OS === 'web') {
     const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
@@ -28,6 +35,11 @@ export async function generateAndSharePdf(
     setTimeout(() => URL.revokeObjectURL(url), 60_000);
     return null;
   }
+
+  if (userId) {
+    await checkAndIncrementPdfCount(userId);
+  }
+
   const { uri } = await Print.printToFileAsync({ html });
 
   let shareUri = uri;

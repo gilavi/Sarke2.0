@@ -7,6 +7,9 @@ import Register from '@/pages/auth/Register';
 import Forgot from '@/pages/auth/Forgot';
 import Reset from '@/pages/auth/Reset';
 import Home from '@/pages/Home';
+import Subscribe from '@/pages/Subscribe';
+import SubscribeSuccess from '@/pages/SubscribeSuccess';
+import SubscribeFail from '@/pages/SubscribeFail';
 
 // HashRouter — GitHub Pages only honors 404.html at the site root, not in
 // subdirectories like /Sarke2.0/app/, so deep BrowserRouter links 404 in
@@ -21,6 +24,9 @@ export default function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/forgot" element={<Forgot />} />
           <Route path="/reset" element={<Reset />} />
+          <Route path="/subscribe" element={<Subscribe />} />
+          <Route path="/subscribe/success" element={<SubscribeSuccess />} />
+          <Route path="/subscribe/fail" element={<SubscribeFail />} />
           <Route
             path="/"
             element={
