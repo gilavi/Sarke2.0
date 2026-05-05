@@ -23,6 +23,7 @@ import {
   type ExcavatorChecklistItemState,
   type ExcavatorVerdict,
 } from '../types/excavator';
+import type { SignatureRecord } from '../types/models';
 
 // ── CSS ───────────────────────────────────────────────────────────────────────
 
@@ -241,8 +242,15 @@ interface ChecklistSection {
 export async function buildExcavatorPdfHtml(args: {
   inspection: ExcavatorInspection;
   projectName: string;
+  /**
+   * Optional multi-signer records with `signature_png_url` already
+   * resolved to a data: URL. When non-empty, signed entries replace the
+   * legacy `inspection.inspectorSignature` blob in section V — same
+   * mechanism xaracho uses.
+   */
+  signatures?: SignatureRecord[];
 }): Promise<string> {
-  const { inspection: insp, projectName } = args;
+  const { inspection: insp, projectName, signatures } = args;
 
   const photoEmbeds = await embedInspectionPhotos(
     [
@@ -254,8 +262,11 @@ export async function buildExcavatorPdfHtml(args: {
   );
   const summaryPhotoEmbeds = await embedInspectionPhotos(insp.summaryPhotos ?? []);
 
+  const signedSigs = (signatures ?? []).filter(
+    s => s.status === 'signed' && !!s.signature_png_url,
+  );
   let sigDataUrl: string | null = null;
-  if (insp.inspectorSignature) {
+  if (signedSigs.length === 0 && insp.inspectorSignature) {
     sigDataUrl = `data:image/png;base64,${insp.inspectorSignature}`;
   }
 
@@ -514,9 +525,23 @@ export async function buildExcavatorPdfHtml(args: {
 
   const sigDate = insp.completedAt ? fmtDate(insp.completedAt) : fmtDate(insp.inspectionDate);
 
-  const sectionVHtml = `
-    <div class="section-title">V — შემომწმებელი</div>
-    <div class="sig-block">
+  const sigCellsHtml = signedSigs.length > 0
+    ? signedSigs.map(s => {
+        const name = s.full_name || s.person_name || insp.inspectorName || '—';
+        const role = s.position || s.signer_role || 'შემომწმებელი';
+        const signedDate = s.signed_at ? fmtDate(s.signed_at) : sigDate;
+        return `
+          <div class="sig-cell">
+            <div class="sig-lbl">${escHtml(role)}</div>
+            <div class="sig-name">${escHtml(name)}</div>
+            ${s.signature_png_url
+              ? `<img class="sig-img" src="${s.signature_png_url}" alt="ხელმოწერა" />`
+              : '<div style="height:48px;border-bottom:1px dashed var(--hairline);"></div>'}
+            <div class="sig-date">${escHtml(signedDate)}</div>
+          </div>
+        `;
+      }).join('')
+    : `
       <div class="sig-cell">
         <div class="sig-lbl">სახელი / გვარი</div>
         <div class="sig-name">${escHtml(insp.inspectorName) || '—'}</div>
@@ -537,6 +562,12 @@ export async function buildExcavatorPdfHtml(args: {
         <div class="sig-lbl">თარიღი</div>
         <div class="sig-date">${escHtml(sigDate)}</div>
       </div>
+    `;
+
+  const sectionVHtml = `
+    <div class="section-title">V — შემომწმებელი</div>
+    <div class="sig-block">
+      ${sigCellsHtml}
     </div>
   `;
 
