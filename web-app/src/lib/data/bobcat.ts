@@ -112,6 +112,7 @@ export async function createBobcatInspection(args: {
   inspectionType?: BobcatInspectionType | null;
   department?: string | null;
   inspectorName?: string | null;
+  inspectionDate?: string | null;
 }): Promise<BobcatInspection> {
   const { data: userData, error: userErr } = await supabase.auth.getUser();
   if (userErr || !userData.user) throw userErr ?? new Error('არაავტორიზებული');
@@ -129,6 +130,7 @@ export async function createBobcatInspection(args: {
       inspection_type: args.inspectionType ?? null,
       department: args.department ?? null,
       inspector_name: args.inspectorName ?? null,
+      ...(args.inspectionDate ? { inspection_date: args.inspectionDate } : {}),
       items: emptyItems(),
     })
     .select(COLS)

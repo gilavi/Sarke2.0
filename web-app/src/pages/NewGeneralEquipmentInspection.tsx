@@ -31,6 +31,7 @@ export default function NewGeneralEquipmentInspection() {
   const [actNumber, setActNumber] = useState('');
   const [department, setDepartment] = useState('');
   const [inspectorName, setInspectorName] = useState('');
+  const [inspectionDate, setInspectionDate] = useState('');
   const [inspectionType, setInspectionType] = useState<GEInspectionType>('initial');
 
   const mutation = useMutation({
@@ -42,6 +43,7 @@ export default function NewGeneralEquipmentInspection() {
         actNumber: actNumber.trim() || null,
         department: department.trim() || null,
         inspectorName: inspectorName.trim() || null,
+        inspectionDate: inspectionDate || null,
         inspectionType,
       }),
     onSuccess: (created: GeneralEquipmentInspection) => {
@@ -163,6 +165,16 @@ export default function NewGeneralEquipmentInspection() {
                 value={inspectorName}
                 onChange={(e) => setInspectorName(e.target.value)}
                 placeholder="სახელი, გვარი"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="inspectionDate">შემოწმების თარიღი</Label>
+              <Input
+                id="inspectionDate"
+                type="date"
+                value={inspectionDate}
+                onChange={(e) => setInspectionDate(e.target.value)}
               />
             </div>
 

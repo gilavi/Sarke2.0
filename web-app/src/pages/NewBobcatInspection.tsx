@@ -34,6 +34,7 @@ export default function NewBobcatInspection() {
   const [registrationNumber, setRegistrationNumber] = useState('');
   const [department, setDepartment] = useState('');
   const [inspectorName, setInspectorName] = useState('');
+  const [inspectionDate, setInspectionDate] = useState('');
   const [inspectionType, setInspectionType] = useState<BobcatInspectionType>('pre_work');
 
   const mutation = useMutation({
@@ -46,6 +47,7 @@ export default function NewBobcatInspection() {
         registrationNumber: registrationNumber.trim() || null,
         department: department.trim() || null,
         inspectorName: inspectorName.trim() || null,
+        inspectionDate: inspectionDate || null,
         inspectionType,
       }),
     onSuccess: (created: BobcatInspection) => {
@@ -192,6 +194,16 @@ export default function NewBobcatInspection() {
                 value={inspectorName}
                 onChange={(e) => setInspectorName(e.target.value)}
                 placeholder="სახელი, გვარი"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="inspectionDate">შემოწმების თარიღი</Label>
+              <Input
+                id="inspectionDate"
+                type="date"
+                value={inspectionDate}
+                onChange={(e) => setInspectionDate(e.target.value)}
               />
             </div>
 
