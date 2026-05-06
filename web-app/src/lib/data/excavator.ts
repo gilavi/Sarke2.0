@@ -139,6 +139,7 @@ export async function createExcavatorInspection(args: {
   serialNumber?: string | null;
   inventoryNumber?: string | null;
   projectName?: string | null;
+  department?: string | null;
   inspectorName?: string | null;
 }): Promise<ExcavatorInspection> {
   const { data: userData, error: userErr } = await supabase.auth.getUser();
@@ -154,6 +155,7 @@ export async function createExcavatorInspection(args: {
       serial_number: args.serialNumber ?? null,
       inventory_number: args.inventoryNumber ?? null,
       project_name: args.projectName ?? null,
+      department: args.department ?? null,
       inspector_name: args.inspectorName ?? null,
       engine_items: emptyChecklist(ENGINE_ITEMS),
       undercarriage_items: emptyChecklist(UNDERCARRIAGE_ITEMS),

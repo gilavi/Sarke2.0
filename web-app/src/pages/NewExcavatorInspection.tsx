@@ -21,6 +21,7 @@ export default function NewExcavatorInspection() {
   const [projectId, setProjectId] = useState(params.get('project') ?? '');
   const [serialNumber, setSerialNumber] = useState('');
   const [inventoryNumber, setInventoryNumber] = useState('');
+  const [department, setDepartment] = useState('');
   const [inspectorName, setInspectorName] = useState('');
 
   const projectName =
@@ -33,6 +34,7 @@ export default function NewExcavatorInspection() {
         serialNumber: serialNumber.trim() || null,
         inventoryNumber: inventoryNumber.trim() || null,
         projectName,
+        department: department.trim() || null,
         inspectorName: inspectorName.trim() || null,
       }),
     onSuccess: (created: ExcavatorInspection) => {
@@ -104,6 +106,16 @@ export default function NewExcavatorInspection() {
                   onChange={(e) => setInventoryNumber(e.target.value)}
                 />
               </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="department">დეპარტამენტი</Label>
+              <Input
+                id="department"
+                value={department}
+                onChange={(e) => setDepartment(e.target.value)}
+                placeholder="დეპარტამენტის დასახელება"
+              />
             </div>
 
             <div className="space-y-1">
