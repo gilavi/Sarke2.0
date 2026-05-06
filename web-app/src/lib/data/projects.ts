@@ -28,6 +28,31 @@ export interface ProjectSigner {
   phone: string | null;
 }
 
+export async function addProjectSigner(args: {
+  projectId: string;
+  fullName: string;
+  position?: string | null;
+  phone?: string | null;
+}): Promise<ProjectSigner> {
+  const { data, error } = await supabase
+    .from('project_signers')
+    .insert({
+      project_id: args.projectId,
+      full_name: args.fullName,
+      position: args.position ?? null,
+      phone: args.phone ?? null,
+    })
+    .select('id, project_id, full_name, position, phone')
+    .single();
+  if (error) throw error;
+  return data as ProjectSigner;
+}
+
+export async function deleteProjectSigner(id: string): Promise<void> {
+  const { error } = await supabase.from('project_signers').delete().eq('id', id);
+  if (error) throw error;
+}
+
 export async function listProjectSigners(projectId: string): Promise<ProjectSigner[]> {
   const { data, error } = await supabase
     .from('project_signers')

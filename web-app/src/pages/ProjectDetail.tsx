@@ -1,18 +1,21 @@
 import { useRef, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Download, Upload, Pencil, Check, X, Trash2 } from 'lucide-react';
+import { Download, Upload, Pencil, Check, X, Trash2, Plus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
+  addProjectSigner,
+  deleteProjectSigner,
   getProject,
   updateProject,
   deleteProject,
   listProjectSigners,
   type CrewMember,
   type Project,
+  type ProjectSigner,
 } from '@/lib/data/projects';
 import { listIncidents, INCIDENT_TYPE_LABEL, type IncidentType } from '@/lib/data/incidents';
 import { listReports } from '@/lib/data/reports';
@@ -157,7 +160,49 @@ export default function ProjectDetail() {
   const [saving, setSaving] = useState(false);
   const [deletingProject, setDeletingProject] = useState(false);
 
+  const [addingSigner, setAddingSigner] = useState(false);
+  const [signerForm, setSignerForm] = useState({ full_name: '', position: '', phone: '' });
+  const [signerBusy, setSignerBusy] = useState(false);
+  const [removingSignerId, setRemovingSignerId] = useState<string | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function saveSigner() {
+    if (!id || !signerForm.full_name.trim()) return;
+    setSignerBusy(true);
+    try {
+      const created = await addProjectSigner({
+        projectId: id,
+        fullName: signerForm.full_name.trim(),
+        position: signerForm.position.trim() || null,
+        phone: signerForm.phone.trim() || null,
+      });
+      qc.setQueryData<ProjectSigner[]>(['projectSigners', id], (prev) => [
+        ...(prev ?? []),
+        created,
+      ]);
+      setSignerForm({ full_name: '', position: '', phone: '' });
+      setAddingSigner(false);
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSignerBusy(false);
+    }
+  }
+
+  async function removeSigner(s: ProjectSigner) {
+    setRemovingSignerId(s.id);
+    try {
+      await deleteProjectSigner(s.id);
+      qc.setQueryData<ProjectSigner[]>(['projectSigners', id], (prev) =>
+        (prev ?? []).filter((x) => x.id !== s.id),
+      );
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setRemovingSignerId(null);
+    }
+  }
 
   function startEditing() {
     if (!project) return;
@@ -362,29 +407,89 @@ export default function ProjectDetail() {
       )}
 
       {/* Signers */}
-      {signers.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">
-              ხელმომწერები
-              <span className="ml-2 text-sm font-normal text-neutral-400">({signers.length})</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <CardTitle className="text-base">
+            ხელმომწერები
+            <span className="ml-2 text-sm font-normal text-neutral-400">({signers.length})</span>
+          </CardTitle>
+          {!addingSigner && (
+            <Button variant="outline" size="sm" onClick={() => setAddingSigner(true)}>
+              <Plus size={14} className="mr-1" />
+              დამატება
+            </Button>
+          )}
+        </CardHeader>
+        <CardContent>
+          {addingSigner && (
+            <div className="mb-3 space-y-2 rounded-md border border-brand-200 bg-brand-50/40 p-3">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                <Input
+                  placeholder="სახელი, გვარი"
+                  value={signerForm.full_name}
+                  onChange={(e) => setSignerForm((f) => ({ ...f, full_name: e.target.value }))}
+                />
+                <Input
+                  placeholder="თანამდებობა"
+                  value={signerForm.position}
+                  onChange={(e) => setSignerForm((f) => ({ ...f, position: e.target.value }))}
+                />
+                <Input
+                  placeholder="ტელეფონი"
+                  value={signerForm.phone}
+                  onChange={(e) => setSignerForm((f) => ({ ...f, phone: e.target.value }))}
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => void saveSigner()}
+                  disabled={signerBusy || !signerForm.full_name.trim()}
+                >
+                  {signerBusy ? 'ემატება…' : 'შენახვა'}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setAddingSigner(false);
+                    setSignerForm({ full_name: '', position: '', phone: '' });
+                  }}
+                  disabled={signerBusy}
+                >
+                  გაუქმება
+                </Button>
+              </div>
+            </div>
+          )}
+          {signers.length === 0 ? (
+            <p className="text-sm text-neutral-500">ხელმომწერები ჯერ არ არის.</p>
+          ) : (
             <ul className="divide-y divide-neutral-200">
               {signers.map((s) => (
-                <li key={s.id} className="py-2 text-sm">
-                  <div className="font-medium text-neutral-900">{s.full_name}</div>
-                  <div className="text-xs text-neutral-500">
-                    {s.position || '—'}
-                    {s.phone ? ` · ${s.phone}` : ''}
+                <li key={s.id} className="flex items-start justify-between gap-3 py-2 text-sm">
+                  <div>
+                    <div className="font-medium text-neutral-900">{s.full_name}</div>
+                    <div className="text-xs text-neutral-500">
+                      {s.position || '—'}
+                      {s.phone ? ` · ${s.phone}` : ''}
+                    </div>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => void removeSigner(s)}
+                    disabled={removingSignerId === s.id}
+                    className="text-neutral-400 hover:text-red-500 disabled:opacity-50"
+                    title="წაშლა"
+                  >
+                    <Trash2 size={14} />
+                  </button>
                 </li>
               ))}
             </ul>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
 
       {/* Inspections */}
       <section>
