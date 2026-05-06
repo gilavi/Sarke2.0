@@ -84,6 +84,7 @@ export default function InspectionPrint() {
         <h2>1. პროექტი</h2>
         <div className="field"><span className="field-label">დასახელება:</span> {p?.name || '—'}</div>
         <div className="field"><span className="field-label">კომპანია:</span> {p?.company_name || '—'}</div>
+        <div className="field"><span className="field-label">დეპარტამენტი:</span> {item.department || '—'}</div>
         <div className="field"><span className="field-label">ინსპექტორი:</span> {item.inspector_name || '—'}</div>
 
         {sections.map((s) => (

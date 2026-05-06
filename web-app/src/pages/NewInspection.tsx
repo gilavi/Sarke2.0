@@ -20,6 +20,7 @@ export default function NewInspection() {
   const [projectId, setProjectId] = useState(params.get('project') ?? '');
   const [templateId, setTemplateId] = useState('');
   const [harnessName, setHarnessName] = useState('');
+  const [department, setDepartment] = useState('');
   const [inspectorName, setInspectorName] = useState('');
 
   const mutation = useMutation({
@@ -28,6 +29,7 @@ export default function NewInspection() {
         projectId,
         templateId,
         harnessName: harnessName.trim() || null,
+        department: department.trim() || null,
         inspectorName: inspectorName.trim() || null,
       }),
     onSuccess: (created: Inspection) => {
@@ -105,6 +107,16 @@ export default function NewInspection() {
                 value={harnessName}
                 onChange={(e) => setHarnessName(e.target.value)}
                 placeholder="მაგ: ხარაჩო A"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="department">დეპარტამენტი</Label>
+              <Input
+                id="department"
+                value={department}
+                onChange={(e) => setDepartment(e.target.value)}
+                placeholder="დეპარტამენტის დასახელება"
               />
             </div>
 

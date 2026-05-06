@@ -60,6 +60,7 @@ export default function GeneralEquipmentPrint() {
         <div className="field"><span className="field-label">პროექტი:</span> {p?.name || '—'}</div>
         <div className="field"><span className="field-label">ობიექტი:</span> {item.objectName || '—'}</div>
         <div className="field"><span className="field-label">საქმიანობა:</span> {item.activityType || '—'}</div>
+        <div className="field"><span className="field-label">დეპარტამენტი:</span> {item.department || '—'}</div>
         <div className="field"><span className="field-label">ინსპექტორი:</span> {item.inspectorName || '—'}</div>
 
         <h2>II. აღჭურვილობა ({item.equipment.length})</h2>

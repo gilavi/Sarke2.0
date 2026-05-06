@@ -87,6 +87,7 @@ export default function BobcatPrint() {
         <div className="field"><span className="field-label">კომპანია:</span> {item.company || '—'}</div>
         <div className="field"><span className="field-label">მოდელი:</span> {item.equipmentModel || '—'}</div>
         <div className="field"><span className="field-label">სარეგ. ნომერი:</span> {item.registrationNumber || '—'}</div>
+        <div className="field"><span className="field-label">დეპარტამენტი:</span> {item.department || '—'}</div>
         <div className="field"><span className="field-label">ინსპექტორი:</span> {item.inspectorName || '—'}</div>
 
         <h2>III. შემოწმების სია</h2>

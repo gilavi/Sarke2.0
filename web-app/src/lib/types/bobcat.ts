@@ -31,6 +31,7 @@ export interface BobcatInspection {
   registrationNumber: string | null;
   inspectionDate: string; // ISO date string
   inspectionType: BobcatInspectionType | null;
+  department: string | null;
   inspectorName: string | null;
   // Section III
   items: BobcatItemState[];

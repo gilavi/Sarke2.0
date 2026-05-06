@@ -28,6 +28,7 @@ export interface GeneralEquipmentInspection {
   inspectionDate: string;
   actNumber: string | null;
   inspectionType: GEInspectionType | null;
+  department: string | null;
   inspectorName: string | null;
   equipment: GEEquipmentRow[];
   conclusion: string | null;
@@ -52,6 +53,7 @@ interface DbRow {
   inspection_date: string;
   act_number: string | null;
   inspection_type: GEInspectionType | null;
+  department: string | null;
   inspector_name: string | null;
   equipment: GEEquipmentRow[] | null;
   conclusion: string | null;
@@ -65,7 +67,7 @@ interface DbRow {
 }
 
 const COLS =
-  'id, project_id, template_id, user_id, status, object_name, address, activity_type, inspection_date, act_number, inspection_type, inspector_name, equipment, conclusion, signer_name, signer_role, signer_role_custom, inspector_signature, completed_at, created_at, updated_at';
+  'id, project_id, template_id, user_id, status, object_name, address, activity_type, inspection_date, act_number, inspection_type, department, inspector_name, equipment, conclusion, signer_name, signer_role, signer_role_custom, inspector_signature, completed_at, created_at, updated_at';
 
 function toModel(r: DbRow): GeneralEquipmentInspection {
   return {
@@ -80,6 +82,7 @@ function toModel(r: DbRow): GeneralEquipmentInspection {
     inspectionDate: r.inspection_date,
     actNumber: r.act_number,
     inspectionType: r.inspection_type,
+    department: r.department,
     inspectorName: r.inspector_name,
     equipment: r.equipment ?? [],
     conclusion: r.conclusion,
@@ -123,6 +126,7 @@ export async function createGeneralEquipmentInspection(args: {
   objectName?: string | null;
   activityType?: string | null;
   inspectionType?: GEInspectionType | null;
+  department?: string | null;
   inspectorName?: string | null;
   actNumber?: string | null;
 }): Promise<GeneralEquipmentInspection> {
@@ -138,6 +142,7 @@ export async function createGeneralEquipmentInspection(args: {
       object_name: args.objectName ?? null,
       activity_type: args.activityType ?? null,
       inspection_type: args.inspectionType ?? null,
+      department: args.department ?? null,
       inspector_name: args.inspectorName ?? null,
       act_number: args.actNumber ?? null,
       equipment: [],
@@ -156,6 +161,7 @@ export async function updateGeneralEquipmentInspection(
     activityType: string | null;
     actNumber: string | null;
     inspectionType: GEInspectionType | null;
+    department: string | null;
     inspectorName: string | null;
     equipment: GEEquipmentRow[];
     conclusion: string | null;
@@ -172,6 +178,7 @@ export async function updateGeneralEquipmentInspection(
   if (patch.activityType !== undefined) updates.activity_type = patch.activityType;
   if (patch.actNumber !== undefined) updates.act_number = patch.actNumber;
   if (patch.inspectionType !== undefined) updates.inspection_type = patch.inspectionType;
+  if (patch.department !== undefined) updates.department = patch.department;
   if (patch.inspectorName !== undefined) updates.inspector_name = patch.inspectorName;
   if (patch.equipment !== undefined) updates.equipment = patch.equipment;
   if (patch.conclusion !== undefined) updates.conclusion = patch.conclusion;

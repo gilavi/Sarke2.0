@@ -231,6 +231,26 @@ export default function InspectionDetail() {
         <CardHeader><CardTitle className="text-base">ზოგადი ინფორმაცია</CardTitle></CardHeader>
         <CardContent className="space-y-3">
           <div className="space-y-1">
+            <Label>დეპარტამენტი</Label>
+            {isDraft ? (
+              <input
+                key={inspection.department ?? ''}
+                defaultValue={inspection.department ?? ''}
+                onBlur={(e) => {
+                  const v = e.target.value.trim() || null;
+                  if (v !== inspection.department)
+                    updateInspection(id!, { department: v }).then(() =>
+                      qc.invalidateQueries({ queryKey: ['inspection', id] })
+                    );
+                }}
+                className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                placeholder="დეპარტამენტის დასახელება"
+              />
+            ) : (
+              <p className="text-sm text-neutral-700">{inspection.department || '—'}</p>
+            )}
+          </div>
+          <div className="space-y-1">
             <Label>ინსპექტორის სახელი</Label>
             {isDraft ? (
               <input

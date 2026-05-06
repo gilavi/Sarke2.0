@@ -32,6 +32,7 @@ export default function NewBobcatInspection() {
   const [company, setCompany] = useState('');
   const [equipmentModel, setEquipmentModel] = useState('');
   const [registrationNumber, setRegistrationNumber] = useState('');
+  const [department, setDepartment] = useState('');
   const [inspectorName, setInspectorName] = useState('');
   const [inspectionType, setInspectionType] = useState<BobcatInspectionType>('pre_work');
 
@@ -43,6 +44,7 @@ export default function NewBobcatInspection() {
         company: company.trim() || null,
         equipmentModel: equipmentModel.trim() || null,
         registrationNumber: registrationNumber.trim() || null,
+        department: department.trim() || null,
         inspectorName: inspectorName.trim() || null,
         inspectionType,
       }),
@@ -171,6 +173,16 @@ export default function NewBobcatInspection() {
                   onChange={(e) => setRegistrationNumber(e.target.value)}
                 />
               </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="department">დეპარტამენტი</Label>
+              <Input
+                id="department"
+                value={department}
+                onChange={(e) => setDepartment(e.target.value)}
+                placeholder="დეპარტამენტის დასახელება"
+              />
             </div>
 
             <div className="space-y-1">
