@@ -213,6 +213,12 @@ export default function BobcatInspectionDetail() {
             onSave={(v) => updateMutation.mutate({ registrationNumber: v })}
           />
           <Field
+            label="დეპარტამენტი"
+            value={item.department}
+            disabled={!isDraft}
+            onSave={(v) => updateMutation.mutate({ department: v })}
+          />
+          <Field
             label="ინსპექტორი"
             value={item.inspectorName}
             disabled={!isDraft}

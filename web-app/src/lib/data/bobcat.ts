@@ -34,6 +34,7 @@ interface DbRow {
   registration_number: string | null;
   inspection_date: string;
   inspection_type: BobcatInspectionType | null;
+  department: string | null;
   inspector_name: string | null;
   items: BobcatItemState[] | null;
   verdict: BobcatVerdict | null;
@@ -45,7 +46,7 @@ interface DbRow {
 }
 
 const COLS =
-  'id, project_id, template_id, user_id, status, company, address, equipment_model, registration_number, inspection_date, inspection_type, inspector_name, items, verdict, notes, inspector_signature, completed_at, created_at, updated_at';
+  'id, project_id, template_id, user_id, status, company, address, equipment_model, registration_number, inspection_date, inspection_type, department, inspector_name, items, verdict, notes, inspector_signature, completed_at, created_at, updated_at';
 
 function toModel(r: DbRow): BobcatInspection {
   return {
@@ -60,6 +61,7 @@ function toModel(r: DbRow): BobcatInspection {
     registrationNumber: r.registration_number,
     inspectionDate: r.inspection_date,
     inspectionType: r.inspection_type,
+    department: r.department,
     inspectorName: r.inspector_name,
     items: r.items ?? [],
     verdict: r.verdict,
@@ -108,6 +110,7 @@ export async function createBobcatInspection(args: {
   equipmentModel?: string | null;
   registrationNumber?: string | null;
   inspectionType?: BobcatInspectionType | null;
+  department?: string | null;
   inspectorName?: string | null;
 }): Promise<BobcatInspection> {
   const { data: userData, error: userErr } = await supabase.auth.getUser();
@@ -124,6 +127,7 @@ export async function createBobcatInspection(args: {
       equipment_model: args.equipmentModel ?? null,
       registration_number: args.registrationNumber ?? null,
       inspection_type: args.inspectionType ?? null,
+      department: args.department ?? null,
       inspector_name: args.inspectorName ?? null,
       items: emptyItems(),
     })
@@ -141,6 +145,7 @@ export async function updateBobcatInspection(
     equipmentModel: string | null;
     registrationNumber: string | null;
     inspectionType: BobcatInspectionType | null;
+    department: string | null;
     inspectorName: string | null;
     items: BobcatItemState[];
     verdict: BobcatVerdict | null;
@@ -156,6 +161,7 @@ export async function updateBobcatInspection(
   if (patch.registrationNumber !== undefined)
     updates.registration_number = patch.registrationNumber;
   if (patch.inspectionType !== undefined) updates.inspection_type = patch.inspectionType;
+  if (patch.department !== undefined) updates.department = patch.department;
   if (patch.inspectorName !== undefined) updates.inspector_name = patch.inspectorName;
   if (patch.items !== undefined) updates.items = patch.items;
   if (patch.verdict !== undefined) updates.verdict = patch.verdict;

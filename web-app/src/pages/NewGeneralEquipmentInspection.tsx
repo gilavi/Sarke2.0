@@ -29,6 +29,7 @@ export default function NewGeneralEquipmentInspection() {
   const [objectName, setObjectName] = useState('');
   const [activityType, setActivityType] = useState('');
   const [actNumber, setActNumber] = useState('');
+  const [department, setDepartment] = useState('');
   const [inspectorName, setInspectorName] = useState('');
   const [inspectionType, setInspectionType] = useState<GEInspectionType>('initial');
 
@@ -39,6 +40,7 @@ export default function NewGeneralEquipmentInspection() {
         objectName: objectName.trim() || null,
         activityType: activityType.trim() || null,
         actNumber: actNumber.trim() || null,
+        department: department.trim() || null,
         inspectorName: inspectorName.trim() || null,
         inspectionType,
       }),
@@ -142,6 +144,16 @@ export default function NewGeneralEquipmentInspection() {
                   onChange={(e) => setActNumber(e.target.value)}
                 />
               </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="department">დეპარტამენტი</Label>
+              <Input
+                id="department"
+                value={department}
+                onChange={(e) => setDepartment(e.target.value)}
+                placeholder="დეპარტამენტის დასახელება"
+              />
             </div>
 
             <div className="space-y-1">

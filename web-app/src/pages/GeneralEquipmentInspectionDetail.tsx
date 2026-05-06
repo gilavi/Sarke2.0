@@ -177,6 +177,8 @@ export default function GeneralEquipmentInspectionDetail() {
             onSave={(v) => updateMutation.mutate({ activityType: v })} />
           <Field label="აქტის ნომერი" value={item.actNumber} disabled={!isDraft}
             onSave={(v) => updateMutation.mutate({ actNumber: v })} />
+          <Field label="დეპარტამენტი" value={item.department} disabled={!isDraft}
+            onSave={(v) => updateMutation.mutate({ department: v })} />
           <Field label="ინსპექტორი" value={item.inspectorName} disabled={!isDraft}
             onSave={(v) => updateMutation.mutate({ inspectorName: v })} />
         </CardContent>
