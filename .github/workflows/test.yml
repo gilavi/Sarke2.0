@@ -59,9 +59,23 @@ jobs:
           version: latest
 
       - name: Start Supabase
-        run: supabase start -x studio,inbucket,imgproxy
+        id: supabase
+        continue-on-error: true
+        run: |
+          supabase start -x studio,inbucket,imgproxy
+          for i in $(seq 1 30); do
+            if curl -s http://localhost:54321/health > /dev/null 2>&1; then
+              echo "ready=true" >> "$GITHUB_OUTPUT"
+              echo "Supabase is ready"
+              exit 0
+            fi
+            echo "Waiting for Supabase... attempt $i"
+            sleep 2
+          done
+          echo "Supabase did not become healthy in time"
 
       - name: Run migrations
+        if: steps.supabase.outputs.ready == 'true'
         run: supabase db reset
 
       - name: Run integration tests
@@ -72,7 +86,7 @@ jobs:
           SUPABASE_SERVICE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU
 
       - name: Stop Supabase
-        if: always()
+        if: always() && steps.supabase.outputs.ready == 'true'
         run: supabase stop
 
   e2e-tests:
@@ -91,25 +105,24 @@ jobs:
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
 
+      - name: Build web app
+        run: npx expo export -p web
+
       - name: Install Playwright browsers
         run: npx playwright install chromium
 
-      - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v1
-        with:
-          version: latest
-
-      - name: Start Supabase
-        run: supabase start -x studio,inbucket,imgproxy
-
-      - name: Run migrations
-        run: supabase db reset
+      - name: Start static server
+        run: |
+          python3 -m http.server 8081 --directory dist &
+          sleep 3
+          curl -s http://localhost:8081 | head -c 100
+          echo ""
 
       - name: Run E2E tests
-        run: npm run test:e2e
+        run: npx playwright test
         env:
           PLAYWRIGHT_BASE_URL: http://localhost:8081
-          SUPABASE_URL: http://localhost:54321
+          CI: true
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
@@ -124,7 +137,3 @@ jobs:
         with:
           name: playwright-screenshots
           path: e2e/screenshots/
-
-      - name: Stop Supabase
-        if: always()
-        run: supabase stop
