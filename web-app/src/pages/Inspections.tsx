@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -15,39 +14,69 @@ import { listGeneralEquipmentInspections } from '@/lib/data/generalEquipment';
 import { listExcavatorInspections } from '@/lib/data/excavator';
 import { listProjects } from '@/lib/data/projects';
 
+const STATUS_LABEL: Record<string, string> = {
+  draft: 'დრაფტი',
+  completed: 'დასრულებული',
+  in_progress: 'მიმდინარე',
+};
+
+const TYPE_LABEL: Record<string, string> = {
+  harness: 'ხარაჩო / ქამარი',
+  bobcat: 'ციცხვიანი',
+  excavator: 'ექსკავატორი',
+  general: 'ტექ. აღჭურვილობა',
+};
+
+interface Row {
+  id: string;
+  label: string;
+  projectId: string;
+  type: keyof typeof TYPE_LABEL;
+  status: string;
+  date: string;
+  href: string;
+}
+
 export default function Inspections() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const projectParam = searchParams.get('project') ?? '';
 
-  const { data: items, error: itemsError } = useQuery({
-    queryKey: ['inspections'],
-    queryFn: () => listInspections(),
-  });
-  const { data: bobcats } = useQuery({
-    queryKey: ['bobcatInspections'],
-    queryFn: () => listBobcatInspections(),
-  });
-  const { data: generalEq } = useQuery({
-    queryKey: ['generalEquipmentInspections'],
-    queryFn: () => listGeneralEquipmentInspections(),
-  });
-  const { data: excavators } = useQuery({
-    queryKey: ['excavatorInspections'],
-    queryFn: () => listExcavatorInspections(),
-  });
-  const { data: projectList } = useQuery({
-    queryKey: ['projects'],
-    queryFn: listProjects,
-  });
+  const { data: harness, isLoading: l1 } = useQuery({ queryKey: ['inspections'], queryFn: () => listInspections() });
+  const { data: bobcats, isLoading: l2 } = useQuery({ queryKey: ['bobcatInspections'], queryFn: () => listBobcatInspections() });
+  const { data: generalEq, isLoading: l3 } = useQuery({ queryKey: ['generalEquipmentInspections'], queryFn: () => listGeneralEquipmentInspections() });
+  const { data: excavators, isLoading: l4 } = useQuery({ queryKey: ['excavatorInspections'], queryFn: () => listExcavatorInspections() });
+  const { data: projectList } = useQuery({ queryKey: ['projects'], queryFn: listProjects });
 
-  const projects = projectList
-    ? Object.fromEntries(projectList.map((p) => [p.id, p]))
-    : {};
+  const projects = projectList ? Object.fromEntries(projectList.map((p) => [p.id, p])) : {};
   const [filter, setFilter] = useState<string>(projectParam);
 
-  const filtered = items?.filter((i) => !filter || i.project_id === filter) ?? null;
-  const error = itemsError;
+  const isLoading = l1 || l2 || l3 || l4;
+
+  const allRows: Row[] = [
+    ...(harness ?? []).map((i): Row => ({
+      id: i.id, label: i.harness_name || `აქტი #${i.id.slice(0, 8)}`,
+      projectId: i.project_id, type: 'harness', status: i.status,
+      date: i.created_at ?? '', href: `/inspections/${i.id}`,
+    })),
+    ...(bobcats ?? []).map((i): Row => ({
+      id: i.id, label: i.equipmentModel || i.company || `ციცხვიანი #${i.id.slice(0, 8)}`,
+      projectId: i.projectId, type: 'bobcat', status: i.status,
+      date: i.createdAt, href: `/bobcat/${i.id}`,
+    })),
+    ...(excavators ?? []).map((i): Row => ({
+      id: i.id, label: `ექსკავატორი${i.serialNumber ? ` — ${i.serialNumber}` : ''}`,
+      projectId: i.projectId, type: 'excavator', status: i.status,
+      date: i.createdAt, href: `/excavator/${i.id}`,
+    })),
+    ...(generalEq ?? []).map((i): Row => ({
+      id: i.id, label: i.objectName || `ტექ. აქტი #${i.id.slice(0, 8)}`,
+      projectId: i.projectId, type: 'general', status: i.status,
+      date: i.createdAt, href: `/general-equipment/${i.id}`,
+    })),
+  ]
+    .filter((r) => !filter || r.projectId === filter)
+    .sort((a, b) => b.date.localeCompare(a.date));
 
   return (
     <div className="space-y-6">
@@ -88,15 +117,9 @@ export default function Inspections() {
         </DropdownMenu>
       </header>
 
-      {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error instanceof Error ? error.message : String(error)}
-        </div>
-      )}
-
       {Object.keys(projects).length > 0 && (
-        <div>
-          <label className="mr-2 text-sm text-neutral-600">პროექტი:</label>
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-neutral-600">პროექტი:</label>
           <select
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
@@ -104,123 +127,50 @@ export default function Inspections() {
           >
             <option value="">ყველა</option>
             {Object.values(projects).map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
+              <option key={p.id} value={p.id}>{p.name}</option>
             ))}
           </select>
         </div>
       )}
 
-      {!filtered && !error && <p className="text-sm text-neutral-500">იტვირთება…</p>}
+      {isLoading && <p className="text-sm text-neutral-500">იტვირთება…</p>}
 
-      {filtered && filtered.length === 0 && (
-        <p className="text-sm text-neutral-500">აქტები ვერ მოიძებნა.</p>
+      {!isLoading && allRows.length === 0 && (
+        <p className="text-sm text-neutral-500">
+          {filter ? 'ამ პროექტში აქტები ვერ მოიძებნა.' : 'აქტები ვერ მოიძებნა.'}
+        </p>
       )}
 
-      {bobcats && bobcats.length > 0 && (
-        <section>
-          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-neutral-500">
-            ციცხვიანი / დიდი დამტვირთველი
-          </h2>
-          <div className="grid gap-3">
-            {bobcats
-              .filter((b) => !filter || b.projectId === filter)
-              .map((b) => (
-                <Link key={b.id} to={`/bobcat/${b.id}`}>
-                  <Card className="transition hover:border-brand-300 hover:shadow-sm">
-                    <CardHeader>
-                      <CardTitle className="text-base">
-                        {b.equipmentModel || b.company || `აქტი #${b.id.slice(0, 8)}`}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="flex items-center justify-between text-sm text-neutral-600">
-                      <span>{projects[b.projectId]?.name ?? '—'}</span>
-                      <span className="text-xs text-neutral-500">{b.status}</span>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
-          </div>
-        </section>
-      )}
-
-      {excavators && excavators.length > 0 && (
-        <section>
-          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-neutral-500">
-            ექსკავატორი
-          </h2>
-          <div className="grid gap-3">
-            {excavators
-              .filter((x) => !filter || x.projectId === filter)
-              .map((x) => (
-                <Link key={x.id} to={`/excavator/${x.id}`}>
-                  <Card className="transition hover:border-brand-300 hover:shadow-sm">
-                    <CardHeader>
-                      <CardTitle className="text-base">
-                        ექსკავატორი — {x.serialNumber || `#${x.id.slice(0, 8)}`}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="flex items-center justify-between text-sm text-neutral-600">
-                      <span>{projects[x.projectId]?.name ?? '—'}</span>
-                      <span className="text-xs text-neutral-500">{x.status}</span>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
-          </div>
-        </section>
-      )}
-
-      {generalEq && generalEq.length > 0 && (
-        <section>
-          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-neutral-500">
-            ტექნიკური აღჭურვილობა
-          </h2>
-          <div className="grid gap-3">
-            {generalEq
-              .filter((g) => !filter || g.projectId === filter)
-              .map((g) => (
-                <Link key={g.id} to={`/general-equipment/${g.id}`}>
-                  <Card className="transition hover:border-brand-300 hover:shadow-sm">
-                    <CardHeader>
-                      <CardTitle className="text-base">
-                        {g.objectName || `ტექ. აქტი #${g.id.slice(0, 8)}`}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="flex items-center justify-between text-sm text-neutral-600">
-                      <span>{projects[g.projectId]?.name ?? '—'}</span>
-                      <span className="text-xs text-neutral-500">
-                        {g.equipment.length} ერთეული · {g.status}
-                      </span>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
-          </div>
-        </section>
-      )}
-
-      {filtered && filtered.length > 0 && (
-        <div className="grid gap-3">
-          {filtered.map((i) => {
-            const proj = projects[i.project_id];
-            return (
-              <Link key={i.id} to={`/inspections/${i.id}`}>
-                <Card className="transition hover:border-brand-300 hover:shadow-sm">
-                  <CardHeader>
-                    <CardTitle className="text-base">
-                      {i.harness_name || `აქტი #${i.id.slice(0, 8)}`}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="flex items-center justify-between text-sm text-neutral-600">
-                    <span>{proj?.name ?? '—'}</span>
-                    <span className="text-xs text-neutral-500">{i.status}</span>
-                  </CardContent>
-                </Card>
-              </Link>
-            );
-          })}
+      {allRows.length > 0 && (
+        <div className="divide-y divide-neutral-100 rounded-xl border border-neutral-200 bg-white">
+          {allRows.map((row) => (
+            <Link
+              key={row.id}
+              to={row.href}
+              className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-neutral-50 transition-colors"
+            >
+              <div className="min-w-0">
+                <p className="truncate font-medium text-neutral-900">{row.label}</p>
+                <p className="mt-0.5 text-xs text-neutral-500">
+                  {projects[row.projectId]?.name ?? '—'}
+                  {' · '}
+                  {new Date(row.date).toLocaleDateString('ka-GE')}
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600">
+                  {TYPE_LABEL[row.type]}
+                </span>
+                <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                  row.status === 'completed'
+                    ? 'bg-green-100 text-green-700'
+                    : 'bg-amber-100 text-amber-700'
+                }`}>
+                  {STATUS_LABEL[row.status] ?? row.status}
+                </span>
+              </div>
+            </Link>
+          ))}
         </div>
       )}
     </div>
