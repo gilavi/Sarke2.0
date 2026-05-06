@@ -26,9 +26,10 @@ import {
 import { useToast } from '../../lib/toast';
 import { useTheme, type Theme } from '../../lib/theme';
 import { useBottomSheet } from '../../components/BottomSheet';
-import { usePdfUsage, type PdfUsage } from '../../lib/usePdfUsage';
+import { usePdfUsage, useInvalidatePdfUsage, type PdfUsage } from '../../lib/usePdfUsage';
 import { PaywallModal } from '../../components/PaywallModal';
 import { formatShortDate } from '../../lib/formatDate';
+import { supabase } from '../../lib/supabase';
 
 import { a11y } from '../../lib/accessibility';
 import { useTranslation } from 'react-i18next';
@@ -267,6 +268,8 @@ function SubscriptionSection({
   const { theme } = useTheme();
   const toast = useToast();
   const s = useMemo(() => getStyles(theme), [theme]);
+  const invalidatePdfUsage = useInvalidatePdfUsage();
+  const { state } = useSession();
 
   if (!pdfUsage) return null;
 
@@ -274,6 +277,7 @@ function SubscriptionSection({
 
   const confirmCancel = () => {
     const until = expiresAt ? formatShortDate(expiresAt) : null;
+    const userId = state.status === 'signedIn' ? state.session.user.id : null;
     Alert.alert(
       'გამოწერის გაუქმება?',
       until
@@ -284,10 +288,20 @@ function SubscriptionSection({
         {
           text: 'გაუქმება',
           style: 'destructive',
-          onPress: () => {
-            // No DB call needed — subscription expires naturally via subscription_expires_at.
-            // Auto-renewal is not yet implemented, so cancellation is a no-op on the backend.
-            toast.success(until ? `წვდომა გაგრძელდება ${until}-მდე` : 'გამოწერა გაუქმდა');
+          onPress: async () => {
+            if (!userId) {
+              toast.error('სესია არ არის');
+              return;
+            }
+            try {
+              const { error } = await supabase.rpc('cancel_subscription', { user_id: userId });
+              if (error) throw error;
+              invalidatePdfUsage();
+              toast.success(until ? `წვდომა გაგრძელდება ${until}-მდე` : 'გამოწერა გაუქმდა');
+            } catch (e) {
+              console.error('cancel_subscription failed:', e);
+              toast.error('გაუქმება ვერ მოხერხდა');
+            }
           },
         },
       ],

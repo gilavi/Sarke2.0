@@ -1,5 +1,6 @@
 import { useAuth } from '@/lib/auth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { SubscriptionCard } from '@/components/SubscriptionCard';
 
 export default function Home() {
   const { profile, user } = useAuth();
@@ -15,6 +16,8 @@ export default function Home() {
           Sarke ვებ-აპლიკაცია — მუშაობს იმავე ანგარიშებზე, რასაც მობილური აპი.
         </p>
       </header>
+
+      <SubscriptionCard />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <Card>

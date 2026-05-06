@@ -46,6 +46,23 @@ async function getBogToken(): Promise<string> {
   return data.access_token as string;
 }
 
+// Maps BOG order_status keys to our payment_records.status enum.
+function mapBogStatus(bogStatus: string): 'pending' | 'success' | 'failed' | 'refunded' {
+  switch (bogStatus) {
+    case 'completed':
+      return 'success';
+    case 'refunded':
+    case 'refunded_partially':
+      return 'refunded';
+    case 'rejected':
+    case 'declined':
+    case 'expired':
+      return 'failed';
+    default:
+      return 'pending';
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
@@ -82,14 +99,41 @@ Deno.serve(async (req) => {
     if (!userId) return json({ error: 'missing external_order_id in order' }, 400);
 
     // BOG returns order_status as { key, value } where key is e.g. "completed".
-    // Old code looked at order.payment_status (doesn't exist), so the callback
-    // always no-op'd and the user stayed on the free tier even after paying.
     const paymentStatus: string =
       order.order_status?.key ??
       order.order_status ??
       order.payment_status ??
       order.status ??
       'unknown';
+
+    const recordStatus = mapBogStatus(paymentStatus);
+
+    // Record every callback (success + failure + intermediate). Unique index on
+    // (bog_order_id, status) prevents duplicate rows when BOG retries the webhook.
+    const amount = Number(order.purchase_units?.transfer_amount ?? order.amount ?? 0) || null;
+    const currency =
+      order.purchase_units?.currency_code ??
+      order.currency ??
+      'GEL';
+
+    const { error: insertError } = await supabase
+      .from('payment_records')
+      .upsert(
+        {
+          user_id: userId,
+          bog_order_id: orderId,
+          amount,
+          currency,
+          status: recordStatus,
+          raw_callback: order,
+        },
+        { onConflict: 'bog_order_id,status', ignoreDuplicates: true },
+      );
+
+    if (insertError) {
+      // Log but don't fail the callback — recording history is best-effort.
+      console.error('Failed to insert payment_record:', insertError);
+    }
 
     if (paymentStatus !== 'completed') {
       // Not yet paid — BOG may call this webhook multiple times
@@ -106,11 +150,13 @@ Deno.serve(async (req) => {
       order.card_token ??
       null;
 
+    // Renewal clears subscription_cancelled_at — user is opting back in.
     const { error: updateError } = await supabase
       .from('users')
       .update({
         subscription_status: 'active',
         subscription_expires_at: expiresAt.toISOString(),
+        subscription_cancelled_at: null,
         ...(cardToken ? { bog_card_token: cardToken } : {}),
       })
       .eq('id', userId);

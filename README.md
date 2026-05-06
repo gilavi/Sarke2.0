@@ -67,6 +67,19 @@ cp .env.example .env   # already has the public anon credentials
 npm run dev            # http://localhost:5173/Sarke2.0/app/
 ```
 
+#### Payments on the dashboard
+
+The dashboard has full BOG payment parity with the mobile app:
+
+- **`/`** — home shows a `<SubscriptionCard>` at the top (free / active / expired states with PDF usage bar)
+- **`/account`** — full subscription management + payment history
+- **`/subscribe`** — initiates a BOG order via the shared `create-bog-order` Edge Function
+- **`/subscribe/success` / `/subscribe/fail`** — BOG redirect targets; success invalidates `pdf-usage` cache
+- **`PaywallModal`** — wraps `/subscribe` for in-flow upsell when web PDF generation lands; gate calls via `checkAndIncrementPdfCount(userId)` from `web-app/src/lib/pdfGate.ts` (mirrors mobile [lib/pdfGate.ts](lib/pdfGate.ts))
+- **Cancel** — calls the `cancel_subscription` RPC (idempotent; access continues until `subscription_expires_at`)
+
+See [docs/payments.md](docs/payments.md) for the end-to-end flow.
+
 ---
 
 ## 🚀 Running Locally
@@ -106,6 +119,9 @@ Schema + seed already applied to the hosted project. Relevant files preserved he
 - `supabase/migrations/0025_large_loader_template.sql` — inserts the Large Loader system template variant (`44444444-…`).
 - `supabase/migrations/0026_excavator_template.sql` — `excavator_inspections` table, RLS, updated_at trigger, and system template row (`category: 'excavator'`).
 - `supabase/migrations/0027_general_equipment_inspection.sql` — `general_equipment_inspections` table (JSONB `equipment` array, JSONB `summary_photos`), RLS, updated_at trigger, and system template row (`66666666-…`, `category: 'general_equipment'`).
+- `supabase/migrations/0028_pdf_usage_tracking.sql` — adds `pdf_count`, `subscription_status`, `subscription_expires_at`, `bog_card_token` to `users`; defines `increment_pdf_count` RPC enforcing the 30-PDF free-tier cap.
+- `supabase/migrations/0029_subscription_unlimited.sql` — auto-expires lapsed subscriptions inside `increment_pdf_count` and grants unlimited PDFs to active subscribers.
+- `supabase/migrations/0031_subscription_cancel_and_history.sql` — adds `users.subscription_cancelled_at`, `cancel_subscription` RPC, and `payment_records` table (BOG callback writes one row per status transition).
 - `supabase/seed/01_system_templates.sql` — system templates
 
 Storage buckets: `certificates`, `answer-photos`, `pdfs`, `signatures`, `incident-photos`, `report-photos`, `project-files`, `remote-signatures`. 
