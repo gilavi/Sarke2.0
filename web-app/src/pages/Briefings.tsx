@@ -1,13 +1,18 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { listBriefings, topicLabel, type Briefing } from '@/lib/data/briefings';
 import { listProjects, type Project } from '@/lib/data/projects';
 
 export default function Briefings() {
+  const [searchParams] = useSearchParams();
+  const projectParam = searchParams.get('project') ?? '';
+
   const [items, setItems] = useState<Briefing[] | null>(null);
   const [projects, setProjects] = useState<Record<string, Project>>({});
   const [error, setError] = useState<string | null>(null);
+
+  const filtered = projectParam ? (items?.filter((b) => b.projectId === projectParam) ?? null) : items;
 
   useEffect(() => {
     Promise.all([listBriefings(), listProjects()])
@@ -21,6 +26,11 @@ export default function Briefings() {
   return (
     <div className="space-y-6">
       <header>
+        {projectParam && projects[projectParam] && (
+          <Link to={`/projects/${projectParam}`} className="mb-2 inline-block text-sm text-brand-600 hover:underline">
+            ← {projects[projectParam].name}
+          </Link>
+        )}
         <h1 className="font-display text-3xl font-bold text-neutral-900">ბრიფინგები</h1>
         <p className="mt-1 text-sm text-neutral-500">უსაფრთხოების ბრიფინგების ისტორია.</p>
       </header>
@@ -31,14 +41,14 @@ export default function Briefings() {
         </div>
       )}
 
-      {!items && !error && <p className="text-sm text-neutral-500">იტვირთება…</p>}
-      {items && items.length === 0 && (
+      {!filtered && !error && <p className="text-sm text-neutral-500">იტვირთება…</p>}
+      {filtered && filtered.length === 0 && (
         <p className="text-sm text-neutral-500">ბრიფინგები ვერ მოიძებნა.</p>
       )}
 
-      {items && items.length > 0 && (
+      {filtered && filtered.length > 0 && (
         <div className="grid gap-3">
-          {items.map((b) => {
+          {filtered.map((b) => {
             const proj = projects[b.projectId];
             return (
               <Link key={b.id} to={`/briefings/${b.id}`}>

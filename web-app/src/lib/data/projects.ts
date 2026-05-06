@@ -64,3 +64,11 @@ export async function getProject(id: string): Promise<Project | null> {
   if (error) throw error;
   return (data as Project | null) ?? null;
 }
+
+export async function updateProject(
+  id: string,
+  patch: { name?: string; address?: string | null; contact_phone?: string | null },
+): Promise<void> {
+  const { error } = await supabase.from('projects').update(patch).eq('id', id);
+  if (error) throw error;
+}

@@ -1,13 +1,16 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { listInspections, type Inspection } from '@/lib/data/inspections';
 import { listProjects, type Project } from '@/lib/data/projects';
 
 export default function Inspections() {
+  const [searchParams] = useSearchParams();
+  const projectParam = searchParams.get('project') ?? '';
+
   const [items, setItems] = useState<Inspection[] | null>(null);
   const [projects, setProjects] = useState<Record<string, Project>>({});
-  const [filter, setFilter] = useState<string>('');
+  const [filter, setFilter] = useState<string>(projectParam);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -24,6 +27,11 @@ export default function Inspections() {
   return (
     <div className="space-y-6">
       <header>
+        {filter && projects[filter] && (
+          <Link to={`/projects/${filter}`} className="mb-2 inline-block text-sm text-brand-600 hover:underline">
+            ← {projects[filter].name}
+          </Link>
+        )}
         <h1 className="font-display text-3xl font-bold text-neutral-900">შემოწმების აქტები</h1>
         <p className="mt-1 text-sm text-neutral-500">ყველა აქტი თქვენი ანგარიშიდან.</p>
       </header>
