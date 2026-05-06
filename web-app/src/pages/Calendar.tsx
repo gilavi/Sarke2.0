@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { listInspections, type Inspection } from '@/lib/data/inspections';
 import { listBriefings, type Briefing } from '@/lib/data/briefings';
+import { listIncidents, INCIDENT_TYPE_LABEL, type Incident } from '@/lib/data/incidents';
 import { listProjects, type Project } from '@/lib/data/projects';
 
 interface CalendarItem {
@@ -11,7 +12,7 @@ interface CalendarItem {
   title: string;
   projectName: string;
   date: Date;
-  kind: 'inspection' | 'briefing';
+  kind: 'inspection' | 'briefing' | 'incident';
   status: string;
 }
 
@@ -45,9 +46,23 @@ function startOfDay(d: Date): Date {
 function buildItems(
   inspections: Inspection[],
   briefings: Briefing[],
+  incidents: Incident[],
   projects: Map<string, Project>,
 ): CalendarItem[] {
   const out: CalendarItem[] = [];
+  for (const inc of incidents) {
+    const date = new Date(inc.date_time);
+    if (Number.isNaN(date.getTime())) continue;
+    out.push({
+      id: `inc-${inc.id}`,
+      href: `/incidents/${inc.id}`,
+      title: INCIDENT_TYPE_LABEL[inc.type] ?? inc.type,
+      projectName: projects.get(inc.project_id)?.name ?? '—',
+      date,
+      kind: 'incident',
+      status: inc.status,
+    });
+  }
   for (const i of inspections) {
     if (i.status !== 'completed' || !i.completed_at) continue;
     const date = new Date(i.completed_at);
@@ -143,14 +158,16 @@ function StatTile({
 export default function Calendar() {
   const [inspections, setInspections] = useState<Inspection[] | null>(null);
   const [briefings, setBriefings] = useState<Briefing[]>([]);
+  const [incidents, setIncidents] = useState<Incident[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([listInspections(), listBriefings(), listProjects()])
-      .then(([ins, bs, ps]) => {
+    Promise.all([listInspections(), listBriefings(), listIncidents(), listProjects()])
+      .then(([ins, bs, ics, ps]) => {
         setInspections(ins);
         setBriefings(bs);
+        setIncidents(ics);
         setProjects(ps);
       })
       .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)));
@@ -158,8 +175,8 @@ export default function Calendar() {
 
   const items = useMemo(() => {
     if (!inspections) return null;
-    return buildItems(inspections, briefings, new Map(projects.map((p) => [p.id, p])));
-  }, [inspections, briefings, projects]);
+    return buildItems(inspections, briefings, incidents, new Map(projects.map((p) => [p.id, p])));
+  }, [inspections, briefings, incidents, projects]);
 
   const buckets = useMemo(() => (items ? bucketByMonth(items) : null), [items]);
   const summary = useMemo(() => (items ? summarize(items) : null), [items]);
@@ -207,10 +224,16 @@ export default function Calendar() {
                             className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
                               it.kind === 'briefing'
                                 ? 'bg-amber-100 text-amber-800'
-                                : 'bg-brand-50 text-brand-700'
+                                : it.kind === 'incident'
+                                  ? 'bg-red-100 text-red-700'
+                                  : 'bg-brand-50 text-brand-700'
                             }`}
                           >
-                            {it.kind === 'briefing' ? 'ბრიფინგი' : 'აქტი'}
+                            {it.kind === 'briefing'
+                              ? 'ბრიფინგი'
+                              : it.kind === 'incident'
+                                ? 'ინციდენტი'
+                                : 'აქტი'}
                           </span>
                           <span>{it.title}</span>
                         </span>
