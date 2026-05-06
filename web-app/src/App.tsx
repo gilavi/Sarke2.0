@@ -25,6 +25,9 @@ const NewGeneralEquipmentInspection = lazy(() => import('@/pages/NewGeneralEquip
 const GeneralEquipmentInspectionDetail = lazy(() => import('@/pages/GeneralEquipmentInspectionDetail'));
 const NewExcavatorInspection = lazy(() => import('@/pages/NewExcavatorInspection'));
 const ExcavatorInspectionDetail = lazy(() => import('@/pages/ExcavatorInspectionDetail'));
+const IncidentPrint = lazy(() => import('@/pages/print/IncidentPrint'));
+const BriefingPrint = lazy(() => import('@/pages/print/BriefingPrint'));
+const ReportPrint = lazy(() => import('@/pages/print/ReportPrint'));
 
 // Lazy: everything else. Smaller initial bundle = faster first paint.
 const Subscribe = lazy(() => import('@/pages/Subscribe'));
@@ -127,6 +130,36 @@ export default function App() {
             <Route path="/general-equipment/:id" element={<Shell><GeneralEquipmentInspectionDetail /></Shell>} />
             <Route path="/excavator/new" element={<Shell><NewExcavatorInspection /></Shell>} />
             <Route path="/excavator/:id" element={<Shell><ExcavatorInspectionDetail /></Shell>} />
+            <Route
+              path="/incidents/:id/print"
+              element={
+                <ProtectedRoute>
+                  <Suspense fallback={<PageFallback />}>
+                    <IncidentPrint />
+                  </Suspense>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/briefings/:id/print"
+              element={
+                <ProtectedRoute>
+                  <Suspense fallback={<PageFallback />}>
+                    <BriefingPrint />
+                  </Suspense>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/reports/:id/print"
+              element={
+                <ProtectedRoute>
+                  <Suspense fallback={<PageFallback />}>
+                    <ReportPrint />
+                  </Suspense>
+                </ProtectedRoute>
+              }
+            />
             <Route path="/certificates" element={<Shell><Certificates /></Shell>} />
             <Route path="/calendar" element={<Shell><Calendar /></Shell>} />
             <Route path="/regulations" element={<Shell><Regulations /></Shell>} />

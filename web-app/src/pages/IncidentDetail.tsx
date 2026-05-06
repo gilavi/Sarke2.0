@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Pencil, Trash2 } from 'lucide-react';
+import { FileText, Pencil, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -126,7 +126,15 @@ export default function IncidentDetail() {
             {new Date(item.date_time).toLocaleString('ka-GE')} · {item.location || '—'}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => window.open(`#/incidents/${item.id}/print`, '_blank')}
+          >
+            <FileText size={14} className="mr-1" />
+            PDF
+          </Button>
           {!editing && item.status === 'draft' && (
             <Button variant="outline" size="sm" onClick={startEdit}>
               <Pencil size={14} className="mr-1" />
