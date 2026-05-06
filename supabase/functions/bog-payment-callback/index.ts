@@ -72,15 +72,21 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    // BOG sends the order_id in the request body
+    // BOG sends the webhook as { event, zoned_request_time, body: { order_id, ... } }
+    // Older/newer variants put the id at the top level — accept all three.
     const body = await req.json();
-    const orderId: string = body.order_id ?? body.id;
+    console.log('BOG webhook body:', JSON.stringify(body));
+    const orderId: string =
+      body.body?.order_id ??
+      body.body?.id ??
+      body.order_id ??
+      body.id;
     if (!orderId) return json({ error: 'missing order_id' }, 400);
 
     // Re-verify payment status server-side — never trust the redirect alone
     const token = await getBogToken();
     const verifyRes = await fetch(
-      `${BOG_API_BASE}/payments/v1/ecommerce/orders/${orderId}`,
+      `${BOG_API_BASE}/payments/v1/receipt/${orderId}`,
       {
         headers: { Authorization: `Bearer ${token}` },
       },
