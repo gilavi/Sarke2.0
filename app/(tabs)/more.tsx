@@ -244,6 +244,16 @@ export default function MoreScreen() {
             <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
           </Pressable>
           <View style={styles.divider} />
+          <Pressable
+            onPress={() => router.push('/safety-3d')}
+            style={styles.settingsRow}
+            {...a11y('3D Safety Guide / 3D უსაფრთხოების გიდი', undefined, 'button')}
+          >
+            <Ionicons name="cube-outline" size={18} color={theme.colors.inkSoft} />
+            <Text style={styles.settingsLabel}>3D Safety Guide / 3D უსაფრთხოების გიდი</Text>
+            <Ionicons name="open-outline" size={16} color={theme.colors.inkFaint} />
+          </Pressable>
+          <View style={styles.divider} />
           <Pressable onPress={handleLogout} disabled={signingOut} style={[styles.settingsRow, signingOut && { opacity: 0.5 }]} {...a11y(t('more.signOut'), undefined, 'button')}>
             <Ionicons name="log-out-outline" size={18} color={signingOut ? theme.colors.inkFaint : theme.colors.danger} />
             <Text style={{ flex: 1, fontSize: 15, fontWeight: '500', color: signingOut ? theme.colors.inkFaint : theme.colors.danger }}>{t('more.signOut')}</Text>
