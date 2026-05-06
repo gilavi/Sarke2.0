@@ -8,6 +8,7 @@ import { listGeneralEquipmentInspections, type GeneralEquipmentInspection } from
 import { listBriefings, type Briefing } from '@/lib/data/briefings';
 import { listIncidents, INCIDENT_TYPE_LABEL, type Incident } from '@/lib/data/incidents';
 import { listProjects, type Project } from '@/lib/data/projects';
+import { fmtDayMonthKa } from '@/lib/utils';
 
 interface CalendarItem {
   id: string;
@@ -304,10 +305,7 @@ export default function Calendar() {
                           <span>{it.title}</span>
                         </span>
                         <span className="text-xs font-normal text-neutral-500">
-                          {it.date.toLocaleDateString('ka-GE', {
-                            day: '2-digit',
-                            month: 'long',
-                          })}
+                          {fmtDayMonthKa(it.date)}
                         </span>
                       </CardTitle>
                     </CardHeader>
