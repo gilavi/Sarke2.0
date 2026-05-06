@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Download, Upload, Pencil, Check, X, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import {
   getProject,
   updateProject,
+  deleteProject,
   listProjectSigners,
   type CrewMember,
   type Project,
@@ -90,6 +91,7 @@ function EmptyState({ text }: { text: string }) {
 
 export default function ProjectDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const qc = useQueryClient();
 
@@ -153,6 +155,7 @@ export default function ProjectDetail() {
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState({ name: '', address: '', contact_phone: '' });
   const [saving, setSaving] = useState(false);
+  const [deletingProject, setDeletingProject] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -209,6 +212,25 @@ export default function ProjectDetail() {
       setActionError(e instanceof Error ? e.message : String(e));
     } finally {
       setDeleting(null);
+    }
+  }
+
+  async function handleDeleteProject() {
+    if (!id || !project) return;
+    const ok = window.confirm(
+      `წაშლა: "${project.name}"\n\n` +
+        `ყველა ინსპექცია, ბრიფინგი, ინციდენტი, რეპორტი და ფაილი წაიშლება. ეს მოქმედება უკან არ ბრუნდება.`,
+    );
+    if (!ok) return;
+    setDeletingProject(true);
+    try {
+      await deleteProject(id);
+      qc.setQueryData<Project[]>(['projects'], (prev) => (prev ?? []).filter((p) => p.id !== id));
+      qc.removeQueries({ queryKey: ['project', id] });
+      navigate('/projects');
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : String(e));
+      setDeletingProject(false);
     }
   }
 
@@ -561,6 +583,31 @@ export default function ProjectDetail() {
             ))}
           </ul>
         )}
+      </section>
+
+      {/* Danger zone */}
+      <section className="pt-4">
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-sm font-semibold text-red-900">პროექტის წაშლა</div>
+              <div className="text-xs text-red-700">
+                ყველა შემოწმება, ბრიფინგი, ინციდენტი, რეპორტი და ფაილი წაიშლება.
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void handleDeleteProject()}
+              disabled={deletingProject}
+              className="text-red-700 hover:border-red-400 hover:bg-red-100"
+            >
+              <Trash2 size={14} className="mr-1" />
+              {deletingProject ? 'იშლება…' : 'პროექტის წაშლა'}
+            </Button>
+          </div>
+        </div>
       </section>
     </div>
   );
