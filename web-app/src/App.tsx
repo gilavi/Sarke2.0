@@ -10,6 +10,7 @@ import Login from '@/pages/auth/Login';
 import Register from '@/pages/auth/Register';
 import Forgot from '@/pages/auth/Forgot';
 import Reset from '@/pages/auth/Reset';
+import VerifyEmail from '@/pages/auth/VerifyEmail';
 import Home from '@/pages/Home';
 import Projects from '@/pages/Projects';
 import ProjectDetail from '@/pages/ProjectDetail';
@@ -32,6 +33,8 @@ const IncidentDetail = lazy(() => import('@/pages/IncidentDetail'));
 const Reports = lazy(() => import('@/pages/Reports'));
 const ReportDetail = lazy(() => import('@/pages/ReportDetail'));
 const Qualifications = lazy(() => import('@/pages/Qualifications'));
+const Templates = lazy(() => import('@/pages/Templates'));
+const Terms = lazy(() => import('@/pages/Terms'));
 
 // HashRouter — GitHub Pages only honors 404.html at the site root, not in
 // subdirectories like /Sarke2.0/app/, so deep BrowserRouter links 404 in
@@ -74,6 +77,10 @@ export default function App() {
             <Route path="/forgot" element={<Forgot />} />
             <Route path="/reset" element={<Reset />} />
             <Route
+              path="/verify-email"
+              element={<VerifyEmail />}
+            />
+            <Route
               path="/subscribe"
               element={
                 <Suspense fallback={<PageFallback />}>
@@ -114,6 +121,8 @@ export default function App() {
             <Route path="/reports" element={<Shell><Reports /></Shell>} />
             <Route path="/reports/:id" element={<Shell><ReportDetail /></Shell>} />
             <Route path="/qualifications" element={<Shell><Qualifications /></Shell>} />
+            <Route path="/templates" element={<Shell><Templates /></Shell>} />
+            <Route path="/terms" element={<Shell><Terms /></Shell>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </AuthProvider>
