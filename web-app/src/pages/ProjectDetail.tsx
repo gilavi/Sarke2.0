@@ -21,6 +21,9 @@ import {
 import { listIncidents, INCIDENT_TYPE_LABEL, type IncidentType } from '@/lib/data/incidents';
 import { listReports } from '@/lib/data/reports';
 import { listInspections } from '@/lib/data/inspections';
+import { listBobcatInspections } from '@/lib/data/bobcat';
+import { listExcavatorInspections } from '@/lib/data/excavator';
+import { listGeneralEquipmentInspections } from '@/lib/data/generalEquipment';
 import { listBriefings, topicLabel } from '@/lib/data/briefings';
 import {
   listProjectFiles,
@@ -111,6 +114,21 @@ export default function ProjectDetail() {
     queryFn: () => listInspections(id!),
     enabled: !!id,
   });
+  const bobcatsQ = useQuery({
+    queryKey: ['bobcatInspections', id],
+    queryFn: () => listBobcatInspections(id!),
+    enabled: !!id,
+  });
+  const excavatorsQ = useQuery({
+    queryKey: ['excavatorInspections', id],
+    queryFn: () => listExcavatorInspections(id!),
+    enabled: !!id,
+  });
+  const generalEqQ = useQuery({
+    queryKey: ['generalEquipmentInspections', id],
+    queryFn: () => listGeneralEquipmentInspections(id!),
+    enabled: !!id,
+  });
   const briefingsQ = useQuery({
     queryKey: ['briefings', id],
     queryFn: () => listBriefings(id!),
@@ -138,7 +156,12 @@ export default function ProjectDetail() {
   });
 
   const project = projectQ.data ?? null;
-  const inspections = inspectionsQ.data ?? [];
+  const allProjectInspections = [
+    ...(inspectionsQ.data ?? []).map((i) => ({ id: i.id, label: i.harness_name || `#${i.id.slice(0, 8)}`, status: i.status, href: `/inspections/${i.id}`, date: i.created_at ?? '' })),
+    ...(bobcatsQ.data ?? []).map((i) => ({ id: i.id, label: i.equipmentModel || i.company || `ციცხვიანი #${i.id.slice(0, 8)}`, status: i.status, href: `/bobcat/${i.id}`, date: i.createdAt })),
+    ...(excavatorsQ.data ?? []).map((i) => ({ id: i.id, label: `ექსკავატორი${i.serialNumber ? ` — ${i.serialNumber}` : ''}`, status: i.status, href: `/excavator/${i.id}`, date: i.createdAt })),
+    ...(generalEqQ.data ?? []).map((i) => ({ id: i.id, label: i.objectName || `ტექ. #${i.id.slice(0, 8)}`, status: i.status, href: `/general-equipment/${i.id}`, date: i.createdAt })),
+  ].sort((a, b) => b.date.localeCompare(a.date));
   const briefings = briefingsQ.data ?? [];
   const files = filesQ.data ?? [];
   const signers = signersQ.data ?? [];
@@ -596,22 +619,20 @@ export default function ProjectDetail() {
       <section>
         <SectionHeader
           title="შემოწმების აქტები"
-          count={inspections.length}
+          count={allProjectInspections.length}
           viewAllTo={`/inspections?project=${id}`}
         />
-        {inspections.length === 0 ? (
+        {allProjectInspections.length === 0 ? (
           <EmptyState text="აქტები ჯერ არ არის." />
         ) : (
           <ul className="divide-y divide-neutral-200 rounded-lg border border-neutral-200 bg-white">
-            {inspections.map((i) => (
+            {allProjectInspections.map((i) => (
               <li key={i.id}>
                 <Link
-                  to={`/inspections/${i.id}`}
+                  to={i.href}
                   className="flex items-center justify-between px-4 py-3 hover:bg-neutral-50"
                 >
-                  <span className="text-sm text-neutral-800">
-                    {i.harness_name || `#${i.id.slice(0, 8)}`}
-                  </span>
+                  <span className="text-sm text-neutral-800">{i.label}</span>
                   <StatusBadge status={i.status} />
                 </Link>
               </li>
