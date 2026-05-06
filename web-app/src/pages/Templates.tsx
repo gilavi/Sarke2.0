@@ -2,6 +2,14 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { listTemplates, SIGNER_ROLE_LABEL, type Template } from '@/lib/data/templates';
 
+const CATEGORY_LABEL: Record<string, string> = {
+  harness: 'დამცავი ქამარი',
+  xaracho: 'ფასადის ხარაჩო',
+  bobcat: 'ციცხვიანი / დამტვირთველი',
+  excavator: 'ექსკავატორი',
+  general_equipment: 'ტექნიკური აღჭურვილობა',
+};
+
 function categoryLabel(t: Template): string {
   if (t.is_system) return 'სისტემური';
   return 'ჩემი';
@@ -39,7 +47,7 @@ export default function Templates() {
               <CardHeader>
                 <CardTitle className="text-base">{t.name}</CardTitle>
                 <p className="text-xs text-neutral-500">
-                  {categoryLabel(t)} · {t.category ?? '—'}
+                  {categoryLabel(t)} · {(t.category && CATEGORY_LABEL[t.category]) ?? t.category ?? '—'}
                 </p>
               </CardHeader>
               <CardContent>

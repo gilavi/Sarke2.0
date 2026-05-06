@@ -69,7 +69,7 @@ export default function Briefings() {
                           year: 'numeric',
                         })}
                       </span>
-                      <span className="text-xs font-normal text-neutral-500">{b.status}</span>
+                      <span className="text-xs font-normal text-neutral-500">{b.status === 'completed' ? 'დასრულებული' : 'დრაფტი'}</span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-1 text-sm text-neutral-600">
