@@ -1,6 +1,13 @@
-import { Receipt } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { useEffect, useState, type FormEvent } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Receipt, User, KeyRound } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { SubscriptionCard } from '@/components/SubscriptionCard';
+import { useAuth } from '@/lib/auth';
+import { updateUserName } from '@/lib/data/account';
 import { usePaymentHistory, type PaymentRecord } from '@/lib/subscription';
 
 const STATUS_LABEL: Record<PaymentRecord['status'], string> = {
@@ -27,6 +34,161 @@ function formatDateTime(iso: string): string {
   });
 }
 
+function ProfileCard() {
+  const { user, profile } = useAuth();
+  const qc = useQueryClient();
+  const [firstName, setFirstName] = useState(profile?.first_name ?? '');
+  const [lastName, setLastName] = useState(profile?.last_name ?? '');
+  const [info, setInfo] = useState<string | null>(null);
+
+  useEffect(() => {
+    setFirstName(profile?.first_name ?? '');
+    setLastName(profile?.last_name ?? '');
+  }, [profile?.first_name, profile?.last_name]);
+
+  const mutation = useMutation({
+    mutationFn: () => {
+      if (!user) throw new Error('არაავტორიზებული');
+      return updateUserName(user.id, firstName.trim(), lastName.trim());
+    },
+    onSuccess: () => {
+      setInfo('მონაცემები შენახულია.');
+      qc.invalidateQueries({ queryKey: ['users', user?.id] });
+      setTimeout(() => setInfo(null), 2500);
+    },
+  });
+
+  function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!firstName.trim() || !lastName.trim()) return;
+    mutation.mutate();
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <User size={16} /> პროფილი
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={onSubmit} className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="acct-first">სახელი</Label>
+              <Input
+                id="acct-first"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="acct-last">გვარი</Label>
+              <Input
+                id="acct-last"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                required
+              />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>ელ-ფოსტა</Label>
+            <Input value={user?.email ?? ''} disabled />
+          </div>
+          {mutation.error && (
+            <p className="text-sm text-danger">
+              {mutation.error instanceof Error ? mutation.error.message : String(mutation.error)}
+            </p>
+          )}
+          {info && <p className="text-sm text-brand-600">{info}</p>}
+          <div className="flex gap-2 pt-1">
+            <Button type="submit" size="sm" disabled={mutation.isPending}>
+              {mutation.isPending ? 'ინახება…' : 'შენახვა'}
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
+
+function PasswordCard() {
+  const { updatePassword } = useAuth();
+  const [pw, setPw] = useState('');
+  const [pw2, setPw2] = useState('');
+  const [info, setInfo] = useState<string | null>(null);
+
+  const mutation = useMutation({
+    mutationFn: () => updatePassword(pw),
+    onSuccess: () => {
+      setInfo('პაროლი შეცვლილია.');
+      setPw('');
+      setPw2('');
+      setTimeout(() => setInfo(null), 2500);
+    },
+  });
+
+  const canSubmit = pw.length >= 8 && pw === pw2 && !mutation.isPending;
+
+  function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (canSubmit) mutation.mutate();
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <KeyRound size={16} /> პაროლი
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={onSubmit} className="space-y-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="acct-pw">ახალი პაროლი</Label>
+            <Input
+              id="acct-pw"
+              type="password"
+              autoComplete="new-password"
+              minLength={8}
+              value={pw}
+              onChange={(e) => setPw(e.target.value)}
+              placeholder="მინ. 8 სიმბოლო"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="acct-pw2">გაიმეორეთ</Label>
+            <Input
+              id="acct-pw2"
+              type="password"
+              autoComplete="new-password"
+              minLength={8}
+              value={pw2}
+              onChange={(e) => setPw2(e.target.value)}
+            />
+          </div>
+          {pw && pw2 && pw !== pw2 && (
+            <p className="text-sm text-danger">პაროლები არ ემთხვევა.</p>
+          )}
+          {mutation.error && (
+            <p className="text-sm text-danger">
+              {mutation.error instanceof Error ? mutation.error.message : String(mutation.error)}
+            </p>
+          )}
+          {info && <p className="text-sm text-brand-600">{info}</p>}
+          <div className="flex gap-2 pt-1">
+            <Button type="submit" size="sm" disabled={!canSubmit}>
+              {mutation.isPending ? 'ინახება…' : 'შეცვლა'}
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function Account() {
   const { data: history, isLoading } = usePaymentHistory();
 
@@ -35,13 +197,15 @@ export default function Account() {
       <header>
         <h1 className="font-display text-3xl font-bold text-neutral-900">ანგარიში</h1>
         <p className="mt-1 text-sm text-neutral-500">
-          გამოწერა, PDF გამოყენება და გადახდის ისტორია.
+          პროფილი, გამოწერა, PDF გამოყენება და გადახდის ისტორია.
         </p>
       </header>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-1">
+        <div className="space-y-6 lg:col-span-1">
           <SubscriptionCard />
+          <ProfileCard />
+          <PasswordCard />
         </div>
 
         <div className="lg:col-span-2">
