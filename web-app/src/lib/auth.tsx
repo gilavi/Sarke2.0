@@ -23,17 +23,39 @@ interface AuthContextValue {
 
 const Ctx = createContext<AuthContextValue | null>(null);
 
+// Read the Supabase-persisted session synchronously from localStorage so the
+// app can render immediately for already-logged-in users instead of waiting
+// on the async getSession() round-trip. Supabase stores the session at a key
+// like `sb-<projectRef>-auth-token`. If the cached token is expired the
+// async getSession() effect below will refresh or null it.
+function readPersistedSession(): Session | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith('sb-') || !key.endsWith('-auth-token')) continue;
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+      const parsed = JSON.parse(raw) as Session | null;
+      if (parsed?.access_token && parsed.user) return parsed;
+    }
+  } catch {
+    // Corrupt entry — ignore, the async getSession() will sort it out.
+  }
+  return null;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
+  const [session, setSession] = useState<Session | null>(() => readPersistedSession());
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let mounted = true;
+    // Revalidate in the background — does NOT block render. Updates state
+    // only if Supabase returns a different session (e.g. after a refresh).
     supabase.auth.getSession().then(({ data }) => {
       if (!mounted) return;
       setSession(data.session);
-      setLoading(false);
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
       setSession(next);
@@ -74,7 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       user: session?.user ?? null,
       profile,
-      loading,
+      loading: false,
       async signIn(email, password) {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -101,7 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (error) throw error;
       },
     }),
-    [session, profile, loading],
+    [session, profile],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

@@ -44,7 +44,6 @@ export function usePdfUsage() {
       };
     },
     enabled: !!userId,
-    staleTime: 0,
   });
 }
 

@@ -1,13 +1,17 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { CalendarDays, Infinity as InfinityIcon, AlertTriangle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth';
 import { usePdfUsage, useInvalidatePdfUsage } from '@/lib/usePdfUsage';
 import { cancelSubscription } from '@/lib/subscription';
-import { PaywallModal } from './PaywallModal';
 import { PdfUsageBar } from './PdfUsageBar';
 import { useNavigate } from 'react-router-dom';
+
+// Defers @radix-ui/react-dialog (~15-20kb) out of the Home eager bundle.
+const PaywallModal = lazy(() =>
+  import('./PaywallModal').then((m) => ({ default: m.PaywallModal })),
+);
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
@@ -141,7 +145,9 @@ export function SubscriptionCard() {
         </CardContent>
       </Card>
 
-      <PaywallModal open={paywall} onOpenChange={setPaywall} />
+      <Suspense fallback={null}>
+        <PaywallModal open={paywall} onOpenChange={setPaywall} />
+      </Suspense>
     </>
   );
 }

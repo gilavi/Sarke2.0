@@ -11,6 +11,7 @@ import {
   updateProject,
   listProjectSigners,
   type CrewMember,
+  type Project,
 } from '@/lib/data/projects';
 import { listIncidents, INCIDENT_TYPE_LABEL, type IncidentType } from '@/lib/data/incidents';
 import { listReports } from '@/lib/data/reports';
@@ -96,6 +97,8 @@ export default function ProjectDetail() {
     queryKey: ['project', id],
     queryFn: () => getProject(id!),
     enabled: !!id,
+    placeholderData: () =>
+      qc.getQueryData<Project[]>(['projects'])?.find((p) => p.id === id) ?? undefined,
   });
   const inspectionsQ = useQuery({
     queryKey: ['inspections', id],
@@ -226,14 +229,16 @@ export default function ProjectDetail() {
     }
   }
 
-  if (projectQ.isLoading) return <p className="text-sm text-neutral-500">იტვირთება…</p>;
   if (error)
     return (
       <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
         {error}
       </div>
     );
-  if (!project) return <p className="text-sm text-neutral-500">პროექტი ვერ მოიძებნა.</p>;
+  if (!project) {
+    if (projectQ.isLoading) return <p className="text-sm text-neutral-500">იტვირთება…</p>;
+    return <p className="text-sm text-neutral-500">პროექტი ვერ მოიძებნა.</p>;
+  }
 
   const crew: CrewMember[] = project.crew ?? [];
 
