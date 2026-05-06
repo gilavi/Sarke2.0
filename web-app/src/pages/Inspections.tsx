@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { listInspections } from '@/lib/data/inspections';
 import { listBobcatInspections } from '@/lib/data/bobcat';
 import { listGeneralEquipmentInspections } from '@/lib/data/generalEquipment';
+import { listExcavatorInspections } from '@/lib/data/excavator';
 import { listProjects } from '@/lib/data/projects';
 
 export default function Inspections() {
@@ -23,6 +24,10 @@ export default function Inspections() {
   const { data: generalEq } = useQuery({
     queryKey: ['generalEquipmentInspections'],
     queryFn: () => listGeneralEquipmentInspections(),
+  });
+  const { data: excavators } = useQuery({
+    queryKey: ['excavatorInspections'],
+    queryFn: () => listExcavatorInspections(),
   });
   const { data: projectList } = useQuery({
     queryKey: ['projects'],
@@ -57,7 +62,10 @@ export default function Inspections() {
             <Button variant="outline">+ ციცხვიანი</Button>
           </Link>
           <Link to={`/general-equipment/new${filter ? `?project=${filter}` : ''}`}>
-            <Button>+ ტექ. აღჭურვილობა</Button>
+            <Button variant="outline">+ ტექ. აღჭურვილობა</Button>
+          </Link>
+          <Link to={`/excavator/new${filter ? `?project=${filter}` : ''}`}>
+            <Button>+ ექსკავატორი</Button>
           </Link>
         </div>
       </header>
@@ -111,6 +119,33 @@ export default function Inspections() {
                     <CardContent className="flex items-center justify-between text-sm text-neutral-600">
                       <span>{projects[b.projectId]?.name ?? '—'}</span>
                       <span className="text-xs text-neutral-500">{b.status}</span>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+          </div>
+        </section>
+      )}
+
+      {excavators && excavators.length > 0 && (
+        <section>
+          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-neutral-500">
+            ექსკავატორი
+          </h2>
+          <div className="grid gap-3">
+            {excavators
+              .filter((x) => !filter || x.projectId === filter)
+              .map((x) => (
+                <Link key={x.id} to={`/excavator/${x.id}`}>
+                  <Card className="transition hover:border-brand-300 hover:shadow-sm">
+                    <CardHeader>
+                      <CardTitle className="text-base">
+                        ექსკავატორი — {x.serialNumber || `#${x.id.slice(0, 8)}`}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex items-center justify-between text-sm text-neutral-600">
+                      <span>{projects[x.projectId]?.name ?? '—'}</span>
+                      <span className="text-xs text-neutral-500">{x.status}</span>
                     </CardContent>
                   </Card>
                 </Link>
