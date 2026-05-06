@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Camera, FileText, Pencil, Trash2, X } from 'lucide-react';
+import SignatureCanvas from '@/components/SignatureCanvas';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -393,6 +394,12 @@ export default function IncidentDetail() {
         </Card>
       )}
 
+      <SignatureSection
+        signature={item.inspector_signature}
+        isDraft={item.status === 'draft'}
+        onSave={(dataUrl) => updateIncident(item.id, { inspector_signature: dataUrl }).then(() => qc.invalidateQueries({ queryKey: ['incident', id] }))}
+      />
+
       {item.pdf_url && (
         <Button type="button" onClick={() => void openPdf()} disabled={opening}>
           {opening ? 'იხსნება…' : 'PDF რეპორტი'}
@@ -401,5 +408,46 @@ export default function IncidentDetail() {
         </>
       )}
     </div>
+  );
+}
+
+function SignatureSection({
+  signature,
+  isDraft,
+  onSave,
+}: {
+  signature: string | null;
+  isDraft: boolean;
+  onSave: (dataUrl: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const normSig = signature
+    ? (signature.startsWith('data:') ? signature : `data:image/png;base64,${signature}`)
+    : null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">ინსპექტორის ხელმოწერა</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {open && isDraft ? (
+          <SignatureCanvas
+            existing={normSig ?? undefined}
+            onSave={(dataUrl) => { onSave(dataUrl); setOpen(false); }}
+            onCancel={() => setOpen(false)}
+          />
+        ) : normSig ? (
+          <div className="space-y-2">
+            <img src={normSig} alt="ხელმოწერა" className="h-20 rounded border border-neutral-200 bg-white object-contain p-1" />
+            {isDraft && <Button variant="outline" size="sm" onClick={() => setOpen(true)}>განახლება</Button>}
+          </div>
+        ) : isDraft ? (
+          <Button variant="outline" size="sm" onClick={() => setOpen(true)}>ხელმოწერა</Button>
+        ) : (
+          <p className="text-sm text-neutral-500">ხელმოწერა არ არის.</p>
+        )}
+      </CardContent>
+    </Card>
   );
 }

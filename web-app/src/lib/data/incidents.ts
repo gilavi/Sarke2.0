@@ -26,11 +26,12 @@ export interface Incident {
   photos: string[];
   status: IncidentStatus;
   pdf_url: string | null;
+  inspector_signature: string | null;
   created_at: string;
 }
 
 const COLS =
-  'id, project_id, type, injured_name, injured_role, date_time, location, description, cause, actions_taken, witnesses, photos, status, pdf_url, created_at';
+  'id, project_id, type, injured_name, injured_role, date_time, location, description, cause, actions_taken, witnesses, photos, status, pdf_url, inspector_signature, created_at';
 
 export async function listIncidents(projectId?: string): Promise<Incident[]> {
   let q = supabase.from('incidents').select(COLS).order('date_time', { ascending: false });
@@ -108,6 +109,7 @@ export async function updateIncident(
     location: string | null;
     injured_name: string | null;
     injured_role: string | null;
+    inspector_signature: string | null;
   }>,
 ): Promise<void> {
   const { error } = await supabase.from('incidents').update(patch).eq('id', id);

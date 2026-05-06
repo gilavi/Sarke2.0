@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import PhotoUploadWidget from '@/components/PhotoUploadWidget';
+import SignatureCanvas from '@/components/SignatureCanvas';
 import {
   BOBCAT_ITEMS,
   BOBCAT_TEMPLATE_ID,
@@ -56,6 +57,7 @@ export default function BobcatInspectionDetail() {
 
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [signingOpen, setSigningOpen] = useState(false);
 
   const updateMutation = useMutation({
     mutationFn: (patch: Parameters<typeof updateBobcatInspection>[1]) =>
@@ -283,6 +285,39 @@ export default function BobcatInspectionDetail() {
           </CardContent>
         </Card>
       ))}
+
+      {/* Signature */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">ინსპექტორის ხელმოწერა</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {signingOpen && isDraft ? (
+            <SignatureCanvas
+              existing={item.inspectorSignature
+                ? (item.inspectorSignature.startsWith('data:') ? item.inspectorSignature : `data:image/png;base64,${item.inspectorSignature}`)
+                : undefined}
+              onSave={(dataUrl) => { updateMutation.mutate({ inspectorSignature: dataUrl }); setSigningOpen(false); }}
+              onCancel={() => setSigningOpen(false)}
+            />
+          ) : item.inspectorSignature ? (
+            <div className="space-y-2">
+              <img
+                src={item.inspectorSignature.startsWith('data:') ? item.inspectorSignature : `data:image/png;base64,${item.inspectorSignature}`}
+                alt="ხელმოწერა"
+                className="h-20 rounded border border-neutral-200 bg-white object-contain p-1"
+              />
+              {isDraft && (
+                <Button variant="outline" size="sm" onClick={() => setSigningOpen(true)}>განახლება</Button>
+              )}
+            </div>
+          ) : isDraft ? (
+            <Button variant="outline" size="sm" onClick={() => setSigningOpen(true)}>ხელმოწერა</Button>
+          ) : (
+            <p className="text-sm text-neutral-500">ხელმოწერა არ არის.</p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Summary */}
       <Card>

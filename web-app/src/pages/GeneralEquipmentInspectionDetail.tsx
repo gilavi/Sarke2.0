@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileText, Plus, Trash2, X } from 'lucide-react';
 import PhotoUploadWidget from '@/components/PhotoUploadWidget';
+import SignatureCanvas from '@/components/SignatureCanvas';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +28,7 @@ export default function GeneralEquipmentInspectionDetail() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [signingOpen, setSigningOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const { data: item, error, isLoading } = useQuery({
@@ -274,6 +276,45 @@ export default function GeneralEquipmentInspectionDetail() {
                 </li>
               ))}
             </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Signature */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">ინსპექტორის ხელმოწერა</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {item.inspectorSignature ? (
+            <div className="space-y-2">
+              <img
+                src={item.inspectorSignature.startsWith('data:') ? item.inspectorSignature : `data:image/png;base64,${item.inspectorSignature}`}
+                alt="ხელმოწერა"
+                className="h-20 rounded border border-neutral-200 bg-white object-contain p-1"
+              />
+              {isDraft && !signingOpen && (
+                <Button variant="outline" size="sm" onClick={() => setSigningOpen(true)}>განახლება</Button>
+              )}
+              {isDraft && signingOpen && (
+                <SignatureCanvas
+                  existing={item.inspectorSignature.startsWith('data:') ? item.inspectorSignature : `data:image/png;base64,${item.inspectorSignature}`}
+                  onSave={(dataUrl) => { updateMutation.mutate({ inspectorSignature: dataUrl }); setSigningOpen(false); }}
+                  onCancel={() => setSigningOpen(false)}
+                />
+              )}
+            </div>
+          ) : isDraft ? (
+            signingOpen ? (
+              <SignatureCanvas
+                onSave={(dataUrl) => { updateMutation.mutate({ inspectorSignature: dataUrl }); setSigningOpen(false); }}
+                onCancel={() => setSigningOpen(false)}
+              />
+            ) : (
+              <Button variant="outline" size="sm" onClick={() => setSigningOpen(true)}>ხელმოწერა</Button>
+            )
+          ) : (
+            <p className="text-sm text-neutral-500">ხელმოწერა არ არის.</p>
           )}
         </CardContent>
       </Card>

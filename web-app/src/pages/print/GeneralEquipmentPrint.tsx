@@ -99,7 +99,15 @@ export default function GeneralEquipmentPrint() {
           <div>
             {item.signerName || item.inspectorName || '—'}
             <br />
-            ხელმოწერა / თარიღი:
+            {item.inspectorSignature ? (
+              <img
+                src={item.inspectorSignature.startsWith('data:') ? item.inspectorSignature : `data:image/png;base64,${item.inspectorSignature}`}
+                alt="ხელმოწერა"
+                style={{ height: 48, objectFit: 'contain' }}
+              />
+            ) : (
+              <span>ხელმოწერა / თარიღი: _______________</span>
+            )}
           </div>
         </div>
       </div>

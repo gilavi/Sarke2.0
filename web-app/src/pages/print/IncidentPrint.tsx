@@ -150,7 +150,15 @@ export default function IncidentPrint() {
           <div>
             ინსპექტორი: {inspectorName}
             <br />
-            ხელმოწერა / თარიღი:
+            {item.inspector_signature ? (
+              <img
+                src={item.inspector_signature.startsWith('data:') ? item.inspector_signature : `data:image/png;base64,${item.inspector_signature}`}
+                alt="ხელმოწერა"
+                style={{ height: 48, objectFit: 'contain' }}
+              />
+            ) : (
+              <span>ხელმოწერა / თარიღი: _______________</span>
+            )}
           </div>
         </div>
       </div>

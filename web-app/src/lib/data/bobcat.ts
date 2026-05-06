@@ -145,6 +145,7 @@ export async function updateBobcatInspection(
     items: BobcatItemState[];
     verdict: BobcatVerdict | null;
     notes: string | null;
+    inspectorSignature: string | null;
     status: 'draft' | 'completed';
   }>,
 ): Promise<void> {
@@ -159,6 +160,7 @@ export async function updateBobcatInspection(
   if (patch.items !== undefined) updates.items = patch.items;
   if (patch.verdict !== undefined) updates.verdict = patch.verdict;
   if (patch.notes !== undefined) updates.notes = patch.notes;
+  if (patch.inspectorSignature !== undefined) updates.inspector_signature = patch.inspectorSignature;
   if (patch.status !== undefined) {
     updates.status = patch.status;
     if (patch.status === 'completed') updates.completed_at = new Date().toISOString();

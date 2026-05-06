@@ -185,6 +185,7 @@ export async function updateExcavatorInspection(
     verdict: ExcavatorVerdict | null;
     notes: string | null;
     inspectorPosition: string | null;
+    inspectorSignature: string | null;
     status: 'draft' | 'completed';
   }>,
 ): Promise<void> {
@@ -204,6 +205,7 @@ export async function updateExcavatorInspection(
   if (patch.verdict !== undefined) u.verdict = patch.verdict;
   if (patch.notes !== undefined) u.notes = patch.notes;
   if (patch.inspectorPosition !== undefined) u.inspector_position = patch.inspectorPosition;
+  if (patch.inspectorSignature !== undefined) u.inspector_signature = patch.inspectorSignature;
   if (patch.status !== undefined) {
     u.status = patch.status;
     if (patch.status === 'completed') u.completed_at = new Date().toISOString();
