@@ -15,6 +15,7 @@ import {
   updateBriefing,
   type BriefingParticipant,
 } from '@/lib/data/briefings';
+import { fmtDateKa } from '@/lib/utils';
 
 export default function BriefingDetail() {
   const { id } = useParams();
@@ -87,7 +88,7 @@ export default function BriefingDetail() {
             ← ბრიფინგები
           </Link>
           <h1 className="mt-2 font-display text-3xl font-bold text-neutral-900">
-            ბრიფინგი — {new Date(b.dateTime).toLocaleDateString('ka-GE', { day: '2-digit', month: 'long', year: 'numeric' })}
+            ბრიფინგი — {fmtDateKa(b.dateTime)}
           </h1>
           <p className="mt-1 text-sm text-neutral-500">სტატუსი: {b.status === 'completed' ? 'დასრულებული' : 'დრაფტი'}</p>
         </div>

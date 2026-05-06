@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { listBriefings, topicLabel } from '@/lib/data/briefings';
 import { listProjects } from '@/lib/data/projects';
+import { fmtDateKa } from '@/lib/utils';
 
 export default function Briefings() {
   const [searchParams] = useSearchParams();
@@ -63,11 +64,7 @@ export default function Briefings() {
                   <CardHeader className="pb-2">
                     <CardTitle className="flex items-center justify-between text-base">
                       <span>
-                        {new Date(b.dateTime).toLocaleDateString('ka-GE', {
-                          day: '2-digit',
-                          month: 'long',
-                          year: 'numeric',
-                        })}
+                        {fmtDateKa(b.dateTime)}
                       </span>
                       <span className="text-xs font-normal text-neutral-500">{b.status === 'completed' ? 'დასრულებული' : 'დრაფტი'}</span>
                     </CardTitle>
