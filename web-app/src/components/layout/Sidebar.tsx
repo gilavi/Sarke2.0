@@ -8,6 +8,7 @@ import {
   BookOpen,
   LogOut,
   ShieldCheck,
+  CreditCard,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { cn } from '@/lib/utils';
@@ -26,6 +27,7 @@ const items: NavItem[] = [
   { to: '/certificates', label: 'სერტიფიკატები', icon: Award, enabled: false },
   { to: '/calendar', label: 'კალენდარი', icon: Calendar, enabled: false },
   { to: '/regulations', label: 'რეგულაციები', icon: BookOpen, enabled: false },
+  { to: '/account', label: 'ანგარიში', icon: CreditCard, enabled: true },
 ];
 
 export function Sidebar() {
