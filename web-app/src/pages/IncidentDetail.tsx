@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import PhotoGallery from '@/components/PhotoGallery';
 import {
   getIncident,
   signedIncidentPdfUrl,
@@ -110,25 +111,7 @@ export default function IncidentDetail() {
             <CardTitle className="text-base">ფოტოები ({item.photos.length})</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
-              {photoUrls.map((url, i) =>
-                url ? (
-                  <a key={i} href={url} target="_blank" rel="noopener noreferrer">
-                    <img
-                      src={url}
-                      alt={`Photo ${i + 1}`}
-                      className="aspect-square w-full rounded-lg object-cover"
-                      loading="lazy"
-                    />
-                  </a>
-                ) : (
-                  <div
-                    key={i}
-                    className="aspect-square w-full rounded-lg bg-neutral-100"
-                  />
-                ),
-              )}
-            </div>
+            <PhotoGallery urls={photoUrls} />
           </CardContent>
         </Card>
       )}
