@@ -7,16 +7,14 @@ import { usePdfUsage, useInvalidatePdfUsage } from '@/lib/usePdfUsage';
 import { cancelSubscription } from '@/lib/subscription';
 import { PdfUsageBar } from './PdfUsageBar';
 import { useNavigate } from 'react-router-dom';
+import { fmtDateKa } from '@/lib/utils';
 
 // Defers @radix-ui/react-dialog (~15-20kb) out of the Home eager bundle.
 const PaywallModal = lazy(() =>
   import('./PaywallModal').then((m) => ({ default: m.PaywallModal })),
 );
 
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleDateString('ka-GE', { day: '2-digit', month: 'long', year: 'numeric' });
-}
+const formatDate = fmtDateKa;
 
 export function SubscriptionCard() {
   const navigate = useNavigate();

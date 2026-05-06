@@ -9,6 +9,7 @@ import { SubscriptionCard } from '@/components/SubscriptionCard';
 import { useAuth } from '@/lib/auth';
 import { updateUserName } from '@/lib/data/account';
 import { usePaymentHistory, type PaymentRecord } from '@/lib/subscription';
+import { fmtDateTimeKa } from '@/lib/utils';
 
 const STATUS_LABEL: Record<PaymentRecord['status'], string> = {
   success: 'წარმატებული',
@@ -24,15 +25,7 @@ const STATUS_CLASS: Record<PaymentRecord['status'], string> = {
   refunded: 'bg-amber-50 text-amber-700',
 };
 
-function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString('ka-GE', {
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
+const formatDateTime = fmtDateTimeKa;
 
 function ProfileCard() {
   const { user, profile } = useAuth();
