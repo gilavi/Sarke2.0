@@ -67,16 +67,22 @@ export default function Inspections() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onSelect={() => navigate(`/inspections/new${filter ? `?project=${filter}` : ''}`)}>
-              შაბლონით
+              ფასადის ხარაჩოს შემოწმების აქტი
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => navigate(`/inspections/new${filter ? `?project=${filter}` : ''}`)}>
+              დამცავი ქამრების შემოწმების აქტი
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => navigate(`/bobcat/new${filter ? `?project=${filter}` : ''}`)}>
-              ციცხვიანი / დიდი ჩამტვირთი
+              ციცხვიანი დამტვირთველის შემოწმების აქტი
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => navigate(`/general-equipment/new${filter ? `?project=${filter}` : ''}`)}>
-              ტექნიკური აღჭურვილობა
+            <DropdownMenuItem onSelect={() => navigate(`/bobcat/new${filter ? `?project=${filter}` : ''}`)}>
+              დიდი ციცხვიანი დამტვირთველის შემოწმება
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => navigate(`/excavator/new${filter ? `?project=${filter}` : ''}`)}>
-              ექსკავატორი
+              ექსკავატორის ტექნიკური შემოწმების აქტი
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => navigate(`/general-equipment/new${filter ? `?project=${filter}` : ''}`)}>
+              ტექნიკური აღჭურვილობის შემოწმების აქტი
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
