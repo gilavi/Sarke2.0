@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { listInspections } from '@/lib/data/inspections';
 import { listBobcatInspections } from '@/lib/data/bobcat';
+import { listGeneralEquipmentInspections } from '@/lib/data/generalEquipment';
 import { listProjects } from '@/lib/data/projects';
 
 export default function Inspections() {
@@ -18,6 +19,10 @@ export default function Inspections() {
   const { data: bobcats } = useQuery({
     queryKey: ['bobcatInspections'],
     queryFn: () => listBobcatInspections(),
+  });
+  const { data: generalEq } = useQuery({
+    queryKey: ['generalEquipmentInspections'],
+    queryFn: () => listGeneralEquipmentInspections(),
   });
   const { data: projectList } = useQuery({
     queryKey: ['projects'],
@@ -49,7 +54,10 @@ export default function Inspections() {
             <Button variant="outline">+ შაბლონით</Button>
           </Link>
           <Link to={`/bobcat/new${filter ? `?project=${filter}` : ''}`}>
-            <Button>+ ციცხვიანი დამტვირთველი</Button>
+            <Button variant="outline">+ ციცხვიანი</Button>
+          </Link>
+          <Link to={`/general-equipment/new${filter ? `?project=${filter}` : ''}`}>
+            <Button>+ ტექ. აღჭურვილობა</Button>
           </Link>
         </div>
       </header>
@@ -103,6 +111,35 @@ export default function Inspections() {
                     <CardContent className="flex items-center justify-between text-sm text-neutral-600">
                       <span>{projects[b.projectId]?.name ?? '—'}</span>
                       <span className="text-xs text-neutral-500">{b.status}</span>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+          </div>
+        </section>
+      )}
+
+      {generalEq && generalEq.length > 0 && (
+        <section>
+          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-neutral-500">
+            ტექნიკური აღჭურვილობა
+          </h2>
+          <div className="grid gap-3">
+            {generalEq
+              .filter((g) => !filter || g.projectId === filter)
+              .map((g) => (
+                <Link key={g.id} to={`/general-equipment/${g.id}`}>
+                  <Card className="transition hover:border-brand-300 hover:shadow-sm">
+                    <CardHeader>
+                      <CardTitle className="text-base">
+                        {g.objectName || `ტექ. აქტი #${g.id.slice(0, 8)}`}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex items-center justify-between text-sm text-neutral-600">
+                      <span>{projects[g.projectId]?.name ?? '—'}</span>
+                      <span className="text-xs text-neutral-500">
+                        {g.equipment.length} ერთეული · {g.status}
+                      </span>
                     </CardContent>
                   </Card>
                 </Link>
