@@ -18,6 +18,7 @@ import {
   updateIncident,
   INCIDENT_TYPE_LABEL,
 } from '@/lib/data/incidents';
+import { supabase } from '@/lib/supabase';
 
 export default function IncidentDetail() {
   const { id } = useParams();
@@ -421,8 +422,14 @@ function SignatureSection({
   onSave: (dataUrl: string) => void;
 }) {
   const [open, setOpen] = useState(false);
+  // Signatures from mobile are stored as storage paths (e.g. "expert/uuid.png").
+  // Web-created signatures are stored as raw base64 without the data: prefix.
   const normSig = signature
-    ? (signature.startsWith('data:') ? signature : `data:image/png;base64,${signature}`)
+    ? signature.startsWith('data:')
+      ? signature
+      : signature.includes('/')
+        ? supabase.storage.from('signatures').getPublicUrl(signature).data.publicUrl
+        : `data:image/png;base64,${signature}`
     : null;
 
   return (

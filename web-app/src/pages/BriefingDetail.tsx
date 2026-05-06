@@ -87,9 +87,9 @@ export default function BriefingDetail() {
             ← ბრიფინგები
           </Link>
           <h1 className="mt-2 font-display text-3xl font-bold text-neutral-900">
-            {new Date(b.dateTime).toLocaleString('ka-GE')}
+            ბრიფინგი — {new Date(b.dateTime).toLocaleDateString('ka-GE', { day: '2-digit', month: 'long', year: 'numeric' })}
           </h1>
-          <p className="mt-1 text-sm text-neutral-500">სტატუსი: {b.status}</p>
+          <p className="mt-1 text-sm text-neutral-500">სტატუსი: {b.status === 'completed' ? 'დასრულებული' : 'დრაფტი'}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button

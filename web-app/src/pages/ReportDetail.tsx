@@ -138,7 +138,7 @@ export default function ReportDetail() {
           <h1 className="mt-2 font-display text-3xl font-bold text-neutral-900">
             {item.title || `რეპორტი #${item.id.slice(0, 8)}`}
           </h1>
-          <p className="mt-1 text-sm text-neutral-500">სტატუსი: {item.status}</p>
+          <p className="mt-1 text-sm text-neutral-500">სტატუსი: {item.status === 'completed' ? 'დასრულებული' : 'დრაფტი'}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button

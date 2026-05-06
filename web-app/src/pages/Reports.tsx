@@ -51,7 +51,7 @@ export default function Reports() {
                   <CardHeader className="pb-2">
                     <CardTitle className="flex items-center justify-between text-base">
                       <span>{r.title || `რეპორტი #${r.id.slice(0, 8)}`}</span>
-                      <span className="text-xs font-normal text-neutral-500">{r.status}</span>
+                      <span className="text-xs font-normal text-neutral-500">{r.status === 'completed' ? 'დასრულებული' : 'დრაფტი'}</span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="text-sm text-neutral-600">
