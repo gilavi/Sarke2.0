@@ -72,7 +72,38 @@ const TOPIC_LABELS: Record<string, string> = {
   fire_safety: 'ხანძარსაწინააღმდეგო',
 };
 
+export const TOPIC_KEYS = Object.keys(TOPIC_LABELS);
+
 export function topicLabel(t: string): string {
   if (t.startsWith('custom:')) return t.slice(7);
   return TOPIC_LABELS[t] ?? t;
+}
+
+export interface CreateBriefingInput {
+  projectId: string;
+  dateTime: string;
+  topics: string[];
+  participants: BriefingParticipant[];
+  inspectorName: string;
+}
+
+export async function createBriefing(input: CreateBriefingInput): Promise<Briefing> {
+  const { data: userData, error: userErr } = await supabase.auth.getUser();
+  if (userErr || !userData.user) throw userErr ?? new Error('არაავტორიზებული');
+
+  const { data, error } = await supabase
+    .from('briefings')
+    .insert({
+      project_id: input.projectId,
+      user_id: userData.user.id,
+      date_time: input.dateTime,
+      topics: input.topics,
+      participants: input.participants,
+      inspector_name: input.inspectorName,
+      status: 'draft',
+    })
+    .select('id, project_id, date_time, topics, participants, inspector_name, status, created_at')
+    .single();
+  if (error) throw error;
+  return toModel(data as DbRow);
 }

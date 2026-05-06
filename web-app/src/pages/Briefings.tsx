@@ -1,6 +1,7 @@
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { listBriefings, topicLabel } from '@/lib/data/briefings';
 import { listProjects } from '@/lib/data/projects';
 
@@ -26,14 +27,19 @@ export default function Briefings() {
 
   return (
     <div className="space-y-6">
-      <header>
-        {projectParam && projects[projectParam] && (
-          <Link to={`/projects/${projectParam}`} className="mb-2 inline-block text-sm text-brand-600 hover:underline">
-            ← {projects[projectParam].name}
-          </Link>
-        )}
-        <h1 className="font-display text-3xl font-bold text-neutral-900">ბრიფინგები</h1>
-        <p className="mt-1 text-sm text-neutral-500">უსაფრთხოების ბრიფინგების ისტორია.</p>
+      <header className="flex items-start justify-between gap-4">
+        <div>
+          {projectParam && projects[projectParam] && (
+            <Link to={`/projects/${projectParam}`} className="mb-2 inline-block text-sm text-brand-600 hover:underline">
+              ← {projects[projectParam].name}
+            </Link>
+          )}
+          <h1 className="font-display text-3xl font-bold text-neutral-900">ბრიფინგები</h1>
+          <p className="mt-1 text-sm text-neutral-500">უსაფრთხოების ბრიფინგების ისტორია.</p>
+        </div>
+        <Link to={`/briefings/new${projectParam ? `?project=${projectParam}` : ''}`}>
+          <Button>+ ახალი ბრიფინგი</Button>
+        </Link>
       </header>
 
       {error && (
