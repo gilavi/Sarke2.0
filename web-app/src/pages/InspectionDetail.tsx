@@ -560,9 +560,18 @@ function QuestionRow({
         answerId = saved.id;
         qc.invalidateQueries({ queryKey: ['answers', inspectionId] });
       }
+      // Best-effort geolocation — don't block upload if denied/unavailable
+      const geo = await new Promise<{ latitude?: number; longitude?: number; address?: string } | null>((resolve) => {
+        if (!navigator.geolocation) { resolve(null); return; }
+        navigator.geolocation.getCurrentPosition(
+          (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+          () => resolve(null),
+          { timeout: 5000 },
+        );
+      });
       for (const file of Array.from(files)) {
         const path = await upload('inspections', inspectionId, q.id, file);
-        await addAnswerPhoto(answerId, path);
+        await addAnswerPhoto(answerId, path, null, geo ?? undefined);
       }
       qc.invalidateQueries({ queryKey: ['answerPhotos', answerId] });
     } catch (e) {

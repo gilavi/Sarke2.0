@@ -95,6 +95,11 @@ export async function getProject(id: string): Promise<Project | null> {
   return (data as Project | null) ?? null;
 }
 
+export async function updateProjectLogo(id: string, logoDataUrl: string | null): Promise<void> {
+  const { error } = await supabase.from('projects').update({ logo: logoDataUrl }).eq('id', id);
+  if (error) throw error;
+}
+
 export async function updateProject(
   id: string,
   patch: { name?: string; address?: string | null; contact_phone?: string | null },

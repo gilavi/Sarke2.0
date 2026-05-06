@@ -201,10 +201,18 @@ export async function addAnswerPhoto(
   answerId: string,
   storagePath: string,
   caption?: string | null,
+  geo?: { latitude?: number | null; longitude?: number | null; address?: string | null },
 ): Promise<AnswerPhoto> {
   const { data, error } = await supabase
     .from('answer_photos')
-    .insert({ answer_id: answerId, storage_path: storagePath, caption: caption ?? null })
+    .insert({
+      answer_id: answerId,
+      storage_path: storagePath,
+      caption: caption ?? null,
+      latitude: geo?.latitude ?? null,
+      longitude: geo?.longitude ?? null,
+      address: geo?.address ?? null,
+    })
     .select('id, answer_id, storage_path, caption, created_at')
     .single();
   if (error) throw error;

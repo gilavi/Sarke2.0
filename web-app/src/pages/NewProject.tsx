@@ -1,12 +1,13 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Upload } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/lib/auth';
-import { createProject, type Project } from '@/lib/data/projects';
+import { createProject, updateProjectLogo, type Project } from '@/lib/data/projects';
 
 export default function NewProject() {
   const { user } = useAuth();
@@ -17,17 +18,32 @@ export default function NewProject() {
   const [companyName, setCompanyName] = useState('');
   const [address, setAddress] = useState('');
   const [contactPhone, setContactPhone] = useState('');
+  const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+
+  function handleLogoSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setLogoDataUrl(reader.result as string);
+    reader.readAsDataURL(file);
+  }
 
   const mutation = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       if (!user) throw new Error('არაავტორიზებული');
-      return createProject({
+      const created = await createProject({
         userId: user.id,
         name: name.trim(),
         companyName: companyName.trim() || name.trim(),
         address: address.trim() || null,
         contactPhone: contactPhone.trim() || null,
       });
+      if (logoDataUrl) {
+        await updateProjectLogo(created.id, logoDataUrl);
+        return { ...created, logo: logoDataUrl };
+      }
+      return created;
     },
     onSuccess: (created) => {
       qc.setQueryData<Project[]>(['projects'], (prev) => (prev ? [created, ...prev] : [created]));
@@ -62,6 +78,39 @@ export default function NewProject() {
               if (canSubmit) mutation.mutate();
             }}
           >
+            {/* Logo picker */}
+            <div className="space-y-1">
+              <Label>ლოგო (სურვილისამებრ)</Label>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => logoInputRef.current?.click()}
+                  className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100 transition hover:border-brand-400"
+                >
+                  {logoDataUrl ? (
+                    <img src={logoDataUrl} alt="logo preview" className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="flex h-full w-full items-center justify-center text-lg font-bold text-neutral-400">
+                      {name ? name.charAt(0).toUpperCase() : '?'}
+                    </span>
+                  )}
+                  <span className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 transition hover:opacity-100">
+                    <Upload size={16} className="text-white" />
+                  </span>
+                </button>
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleLogoSelect}
+                />
+                <span className="text-sm text-neutral-500">
+                  {logoDataUrl ? 'ლოგო არჩეულია' : 'დააჭირეთ ლოგოს ასარჩევად'}
+                </span>
+              </div>
+            </div>
+
             <div className="space-y-1">
               <Label htmlFor="name">პროექტის სახელი *</Label>
               <Input
