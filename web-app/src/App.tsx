@@ -14,6 +14,7 @@ import Home from '@/pages/Home';
 import Projects from '@/pages/Projects';
 import ProjectDetail from '@/pages/ProjectDetail';
 const NewProject = lazy(() => import('@/pages/NewProject'));
+const NewIncident = lazy(() => import('@/pages/NewIncident'));
 
 // Lazy: everything else. Smaller initial bundle = faster first paint.
 const Subscribe = lazy(() => import('@/pages/Subscribe'));
@@ -110,6 +111,7 @@ export default function App() {
             <Route path="/briefings" element={<Shell><Briefings /></Shell>} />
             <Route path="/briefings/:id" element={<Shell><BriefingDetail /></Shell>} />
             <Route path="/incidents" element={<Shell><Incidents /></Shell>} />
+            <Route path="/incidents/new" element={<Shell><NewIncident /></Shell>} />
             <Route path="/incidents/:id" element={<Shell><IncidentDetail /></Shell>} />
             <Route path="/reports" element={<Shell><Reports /></Shell>} />
             <Route path="/reports/:id" element={<Shell><ReportDetail /></Shell>} />
