@@ -64,7 +64,7 @@ export async function getBriefing(id: string): Promise<Briefing | null> {
   return data ? toModel(data as DbRow) : null;
 }
 
-const TOPIC_LABELS: Record<string, string> = {
+export const TOPIC_LABELS: Record<string, string> = {
   scaffold_safety: 'ხარაჩოს უსაფრთხოება',
   height_work: 'სიმაღლეზე მუშაობა',
   ppe: 'დამცავი აღჭურვილობა',
@@ -99,6 +99,7 @@ export async function updateBriefing(
     inspectorName?: string;
     topics?: string[];
     participants?: BriefingParticipant[];
+    status?: 'draft' | 'completed';
   },
 ): Promise<void> {
   const updates: Record<string, unknown> = {};
@@ -106,6 +107,7 @@ export async function updateBriefing(
   if (patch.inspectorName !== undefined) updates.inspector_name = patch.inspectorName;
   if (patch.topics !== undefined) updates.topics = patch.topics;
   if (patch.participants !== undefined) updates.participants = patch.participants;
+  if (patch.status !== undefined) updates.status = patch.status;
   const { error } = await supabase.from('briefings').update(updates).eq('id', id);
   if (error) throw error;
 }

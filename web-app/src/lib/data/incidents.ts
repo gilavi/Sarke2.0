@@ -64,6 +64,41 @@ export async function signedIncidentPhotoUrl(path: string): Promise<string> {
   return data.signedUrl;
 }
 
+/**
+ * Add a photo to an existing incident by uploading to `incident-photos` bucket
+ * and appending the storage path to the incident's photos array.
+ */
+export async function addIncidentPhoto(
+  incident: Incident,
+  file: File,
+): Promise<string> {
+  const ext = file.name.split('.').pop() ?? 'jpg';
+  const path = `${incident.project_id}/${incident.id}_${Date.now()}.${ext}`;
+  const { error: upErr } = await supabase.storage.from('incident-photos').upload(path, file, {
+    contentType: file.type || 'image/jpeg',
+  });
+  if (upErr) throw upErr;
+
+  const next = [...incident.photos, path];
+  const { error } = await supabase.from('incidents').update({ photos: next }).eq('id', incident.id);
+  if (error) throw error;
+  return path;
+}
+
+/**
+ * Remove a single photo from an incident (storage + row).
+ */
+export async function removeIncidentPhoto(
+  incident: Incident,
+  path: string,
+): Promise<void> {
+  const next = incident.photos.filter((p) => p !== path);
+  const { error } = await supabase.from('incidents').update({ photos: next }).eq('id', incident.id);
+  if (error) throw error;
+  // best-effort blob removal
+  await supabase.storage.from('incident-photos').remove([path]);
+}
+
 export async function updateIncident(
   id: string,
   patch: Partial<{

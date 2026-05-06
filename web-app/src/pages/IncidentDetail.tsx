@@ -1,15 +1,17 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileText, Pencil, Trash2 } from 'lucide-react';
+import { Camera, FileText, Pencil, Trash2, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import PhotoGallery from '@/components/PhotoGallery';
 import {
+  addIncidentPhoto,
   deleteIncident,
   getIncident,
+  removeIncidentPhoto,
   signedIncidentPdfUrl,
   signedIncidentPhotoUrl,
   updateIncident,
@@ -21,6 +23,8 @@ export default function IncidentDetail() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [confirming, setConfirming] = useState(false);
+  const photoFileRef = useRef<HTMLInputElement>(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
   const { data: item, error: queryError, isLoading } = useQuery({
     queryKey: ['incident', id],
     queryFn: () => getIncident(id!),
@@ -87,6 +91,33 @@ export default function IncidentDetail() {
     },
     onError: (e) => setActionError(e instanceof Error ? e.message : String(e)),
   });
+
+  async function handlePhotoUpload(files: FileList | null) {
+    if (!files || !item) return;
+    setPhotoUploading(true);
+    setActionError(null);
+    try {
+      for (const file of Array.from(files)) {
+        await addIncidentPhoto(item, file);
+      }
+      qc.invalidateQueries({ queryKey: ['incident', id] });
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setPhotoUploading(false);
+      if (photoFileRef.current) photoFileRef.current.value = '';
+    }
+  }
+
+  async function handlePhotoRemove(path: string) {
+    if (!item) return;
+    try {
+      await removeIncidentPhoto(item, path);
+      qc.invalidateQueries({ queryKey: ['incident', id] });
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : String(e));
+    }
+  }
 
   const error = actionError ?? (queryError instanceof Error ? queryError.message : queryError ? String(queryError) : null);
 
@@ -293,13 +324,71 @@ export default function IncidentDetail() {
         </CardContent>
       </Card>
 
-      {item.photos.length > 0 && (
+      {(item.photos.length > 0 || item.status === 'draft') && (
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">ფოტოები ({item.photos.length})</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-base">
+              ფოტოები
+              {item.photos.length > 0 && (
+                <span className="ml-2 text-sm font-normal text-neutral-400">({item.photos.length})</span>
+              )}
+            </CardTitle>
+            {item.status === 'draft' && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => photoFileRef.current?.click()}
+                  disabled={photoUploading}
+                  className="flex items-center gap-1 rounded-md border border-dashed border-neutral-300 px-2 py-1 text-xs text-neutral-500 hover:border-brand-400 hover:text-brand-600 disabled:opacity-50"
+                >
+                  <Camera size={12} />
+                  {photoUploading ? 'იტვირთება…' : 'ფოტოს დამატება'}
+                </button>
+                <input
+                  ref={photoFileRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => handlePhotoUpload(e.target.files)}
+                />
+              </>
+            )}
           </CardHeader>
           <CardContent>
-            <PhotoGallery urls={photoUrls} />
+            {item.photos.length === 0 ? (
+              <p className="text-sm text-neutral-500">ფოტოები არ არის.</p>
+            ) : item.status === 'draft' ? (
+              <div className="flex flex-wrap gap-2">
+                {item.photos.map((path, i) => (
+                  <div key={path} className="relative">
+                    <button
+                      type="button"
+                      className="h-20 w-20 overflow-hidden rounded-md border border-neutral-200"
+                      onClick={() => {
+                        const url = photoUrls[i];
+                        if (url) window.open(url, '_blank');
+                      }}
+                    >
+                      {photoUrls[i] ? (
+                        <img src={photoUrls[i]} alt={`ფოტო ${i + 1}`} className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="h-full w-full bg-neutral-100" />
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handlePhotoRemove(path)}
+                      className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white hover:bg-red-600"
+                    >
+                      <X size={10} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <PhotoGallery urls={photoUrls} />
+            )}
           </CardContent>
         </Card>
       )}

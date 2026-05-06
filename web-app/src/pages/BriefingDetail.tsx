@@ -1,25 +1,41 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileText, Pencil, Trash2 } from 'lucide-react';
+import { FileText, Plus, Trash2, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { deleteBriefing, getBriefing, topicLabel, updateBriefing } from '@/lib/data/briefings';
+import {
+  deleteBriefing,
+  getBriefing,
+  TOPIC_KEYS,
+  TOPIC_LABELS,
+  topicLabel,
+  updateBriefing,
+  type BriefingParticipant,
+} from '@/lib/data/briefings';
 
 export default function BriefingDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [confirming, setConfirming] = useState(false);
-  const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState({ inspectorName: '', dateTime: '' });
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const { data: b, error, isLoading } = useQuery({
     queryKey: ['briefing', id],
     queryFn: () => getBriefing(id!),
     enabled: !!id,
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: (patch: Parameters<typeof updateBriefing>[1]) => updateBriefing(id!, patch),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['briefing', id] });
+      qc.invalidateQueries({ queryKey: ['briefings'] });
+    },
+    onError: (e) => setActionError(e instanceof Error ? e.message : String(e)),
   });
 
   const delMutation = useMutation({
@@ -28,29 +44,8 @@ export default function BriefingDetail() {
       qc.invalidateQueries({ queryKey: ['briefings'] });
       navigate('/briefings');
     },
+    onError: (e) => setActionError(e instanceof Error ? e.message : String(e)),
   });
-
-  const editMutation = useMutation({
-    mutationFn: () =>
-      updateBriefing(id!, {
-        inspectorName: form.inspectorName.trim(),
-        dateTime: new Date(form.dateTime).toISOString(),
-      }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['briefing', id] });
-      qc.invalidateQueries({ queryKey: ['briefings'] });
-      setEditing(false);
-    },
-  });
-
-  function startEdit() {
-    if (!b) return;
-    setForm({
-      inspectorName: b.inspectorName,
-      dateTime: new Date(b.dateTime).toISOString().slice(0, 16),
-    });
-    setEditing(true);
-  }
 
   if (isLoading) return <p className="text-sm text-neutral-500">იტვირთება…</p>;
   if (error)
@@ -60,6 +55,29 @@ export default function BriefingDetail() {
       </div>
     );
   if (!b) return <p className="text-sm text-neutral-500">ბრიფინგი ვერ მოიძებნა.</p>;
+
+  const isDraft = b.status === 'draft';
+
+  function toggleTopic(key: string) {
+    const current = b!.topics;
+    const next = current.includes(key)
+      ? current.filter((t) => t !== key)
+      : [...current, key];
+    updateMutation.mutate({ topics: next });
+  }
+
+  function patchParticipant(idx: number, patch: Partial<BriefingParticipant>) {
+    const participants = b!.participants.map((p, i) => (i === idx ? { ...p, ...patch } : p));
+    updateMutation.mutate({ participants });
+  }
+
+  function addParticipant() {
+    updateMutation.mutate({ participants: [...b!.participants, { fullName: '', position: '' }] });
+  }
+
+  function removeParticipant(idx: number) {
+    updateMutation.mutate({ participants: b!.participants.filter((_, i) => i !== idx) });
+  }
 
   return (
     <div className="space-y-6">
@@ -82,12 +100,6 @@ export default function BriefingDetail() {
             <FileText size={14} className="mr-1" />
             PDF
           </Button>
-          {!editing && b.status === 'draft' && (
-            <Button variant="outline" size="sm" onClick={startEdit}>
-              <Pencil size={14} className="mr-1" />
-              რედაქტირება
-            </Button>
-          )}
           {confirming ? (
             <div className="flex items-center gap-2">
               <span className="text-sm text-neutral-700">დარწმუნებული ხართ?</span>
@@ -100,7 +112,12 @@ export default function BriefingDetail() {
               >
                 {delMutation.isPending ? 'იშლება…' : 'წაშლა'}
               </Button>
-              <Button variant="outline" size="sm" onClick={() => setConfirming(false)} disabled={delMutation.isPending}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setConfirming(false)}
+                disabled={delMutation.isPending}
+              >
                 გაუქმება
               </Button>
             </div>
@@ -118,88 +135,82 @@ export default function BriefingDetail() {
         </div>
       </header>
 
-      {editing && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">რედაქტირება</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form
-              className="space-y-3"
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (!editMutation.isPending) editMutation.mutate();
-              }}
-            >
-              <div className="space-y-1">
-                <Label>ინსპექტორი</Label>
-                <Input
-                  value={form.inspectorName}
-                  onChange={(e) => setForm((f) => ({ ...f, inspectorName: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label>თარიღი და დრო</Label>
-                <Input
-                  type="datetime-local"
-                  value={form.dateTime}
-                  onChange={(e) => setForm((f) => ({ ...f, dateTime: e.target.value }))}
-                />
-              </div>
-              {editMutation.error && (
-                <p className="text-sm text-danger">
-                  {editMutation.error instanceof Error
-                    ? editMutation.error.message
-                    : String(editMutation.error)}
-                </p>
-              )}
-              <div className="flex gap-2">
-                <Button type="submit" size="sm" disabled={editMutation.isPending}>
-                  {editMutation.isPending ? 'ინახება…' : 'შენახვა'}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setEditing(false)}
-                  disabled={editMutation.isPending}
-                >
-                  გაუქმება
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      )}
-      {delMutation.error && (
+      {actionError && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          {delMutation.error instanceof Error ? delMutation.error.message : String(delMutation.error)}
+          {actionError}
         </div>
       )}
 
+      {/* General info */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">მონაცემები</CardTitle>
+          <CardTitle className="text-base">ზოგადი ინფორმაცია</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-1 text-sm text-neutral-700">
-          <div>ინსპექტორი: {b.inspectorName || '—'}</div>
+        <CardContent className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+          <div className="space-y-1">
+            <Label>ინსპექტორი</Label>
+            <Input
+              disabled={!isDraft}
+              defaultValue={b.inspectorName}
+              onBlur={(e) => {
+                const v = e.target.value.trim();
+                if (v !== b.inspectorName) updateMutation.mutate({ inspectorName: v });
+              }}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label>თარიღი და დრო</Label>
+            <Input
+              type="datetime-local"
+              disabled={!isDraft}
+              defaultValue={new Date(b.dateTime).toISOString().slice(0, 16)}
+              onBlur={(e) => {
+                const v = e.target.value;
+                if (v && new Date(v).toISOString() !== new Date(b.dateTime).toISOString()) {
+                  updateMutation.mutate({ dateTime: new Date(v).toISOString() });
+                }
+              }}
+            />
+          </div>
         </CardContent>
       </Card>
 
+      {/* Topics */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">თემები</CardTitle>
+          <CardTitle className="text-base">
+            თემები
+            <span className="ml-2 text-sm font-normal text-neutral-400">({b.topics.length})</span>
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          {b.topics.length === 0 ? (
+          {isDraft ? (
+            <div className="flex flex-wrap gap-2">
+              {TOPIC_KEYS.map((key) => {
+                const selected = b.topics.includes(key);
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => toggleTopic(key)}
+                    disabled={updateMutation.isPending}
+                    className={`rounded-full border px-3 py-1 text-xs font-semibold transition disabled:opacity-60 ${
+                      selected
+                        ? 'border-brand-600 bg-brand-600 text-white'
+                        : 'border-neutral-300 bg-white text-neutral-700 hover:border-brand-400'
+                    }`}
+                  >
+                    {TOPIC_LABELS[key as keyof typeof TOPIC_LABELS] ?? key}
+                  </button>
+                );
+              })}
+            </div>
+          ) : b.topics.length === 0 ? (
             <p className="text-sm text-neutral-500">თემები არ არის.</p>
           ) : (
             <div className="flex flex-wrap gap-2">
               {b.topics.map((t) => (
-                <span
-                  key={t}
-                  className="rounded-full bg-brand-50 px-3 py-1 text-sm text-brand-700"
-                >
+                <span key={t} className="rounded-full bg-brand-50 px-3 py-1 text-sm text-brand-700">
                   {topicLabel(t)}
                 </span>
               ))}
@@ -208,25 +219,87 @@ export default function BriefingDetail() {
         </CardContent>
       </Card>
 
+      {/* Participants */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">მონაწილეები ({b.participants.length})</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <CardTitle className="text-base">
+            მონაწილეები
+            <span className="ml-2 text-sm font-normal text-neutral-400">({b.participants.length})</span>
+          </CardTitle>
+          {isDraft && (
+            <Button variant="outline" size="sm" onClick={addParticipant}>
+              <Plus size={14} className="mr-1" />
+              დამატება
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           {b.participants.length === 0 ? (
             <p className="text-sm text-neutral-500">მონაწილეები არ არიან.</p>
           ) : (
-            <ul className="divide-y divide-neutral-200">
+            <ul className="space-y-2">
               {b.participants.map((p, i) => (
-                <li key={i} className="py-2 text-sm">
-                  <div className="font-medium text-neutral-900">{p.fullName}</div>
-                  {p.position && <div className="text-xs text-neutral-500">{p.position}</div>}
+                <li key={i} className="flex items-start gap-2 rounded-lg border border-neutral-200 p-3">
+                  {isDraft ? (
+                    <>
+                      <div className="grid flex-1 grid-cols-1 gap-2 sm:grid-cols-2">
+                        <Input
+                          defaultValue={p.fullName}
+                          onBlur={(e) => {
+                            if (e.target.value !== p.fullName)
+                              patchParticipant(i, { fullName: e.target.value });
+                          }}
+                          placeholder="სახელი გვარი"
+                          className="text-sm"
+                        />
+                        <Input
+                          defaultValue={p.position ?? ''}
+                          onBlur={(e) => {
+                            if (e.target.value !== (p.position ?? ''))
+                              patchParticipant(i, { position: e.target.value });
+                          }}
+                          placeholder="თანამდებობა"
+                          className="text-sm"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeParticipant(i)}
+                        className="mt-1 text-neutral-400 hover:text-red-500"
+                      >
+                        <X size={16} />
+                      </button>
+                    </>
+                  ) : (
+                    <div className="text-sm">
+                      <div className="font-medium text-neutral-900">{p.fullName || '—'}</div>
+                      {p.position && <div className="text-xs text-neutral-500">{p.position}</div>}
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>
           )}
         </CardContent>
       </Card>
+
+      {/* Complete */}
+      {isDraft && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">დასრულება</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Button
+              size="sm"
+              onClick={() => updateMutation.mutate({ status: 'completed' })}
+              disabled={updateMutation.isPending}
+            >
+              ბრიფინგის დასრულება
+            </Button>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
