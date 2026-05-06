@@ -15,6 +15,7 @@ import {
   CreditCard,
   LayoutTemplate,
   ScrollText,
+  Building2,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { cn } from '@/lib/utils';
@@ -30,6 +31,7 @@ const items = [
   { to: '/qualifications', label: 'ჩემი კვალიფიკაცია', icon: GraduationCap },
   { to: '/calendar', label: 'კალენდარი', icon: Calendar },
   { to: '/regulations', label: 'რეგულაციები', icon: BookOpen },
+  { to: '/safety', label: '3D უსაფრთხოების გზამკვლევი', icon: Building2 },
   { to: '/templates', label: 'შაბლონები', icon: LayoutTemplate },
   { to: '/terms', label: 'წესები და პირობები', icon: ScrollText },
 ];
