@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import PhotoGallery from '@/components/PhotoGallery';
 import {
   getReport,
   signedReportPdfUrl,
@@ -81,36 +82,45 @@ export default function ReportDetail() {
       {slides.length === 0 ? (
         <p className="text-sm text-neutral-500">სლაიდები არ არის.</p>
       ) : (
-        <div className="space-y-4">
-          {slides.map((s, idx) => {
-            const path = s.annotated_image_path || s.image_path;
-            const url = path ? imageUrls[path] : null;
-            return (
+        <>
+          {/* slide metadata cards */}
+          <div className="space-y-4">
+            {slides.map((s, idx) => (
               <Card key={s.id}>
                 <CardHeader>
                   <CardTitle className="text-base">
                     {idx + 1}. {s.title || 'სლაიდი'}
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  {url && (
-                    <a href={url} target="_blank" rel="noopener noreferrer">
-                      <img
-                        src={url}
-                        alt={s.title || `Slide ${idx + 1}`}
-                        className="w-full rounded-lg object-cover"
-                        loading="lazy"
-                      />
-                    </a>
-                  )}
-                  {s.description && (
+                {s.description && (
+                  <CardContent>
                     <p className="text-sm text-neutral-700">{s.description}</p>
-                  )}
+                  </CardContent>
+                )}
+              </Card>
+            ))}
+          </div>
+
+          {/* unified photo gallery */}
+          {(() => {
+            const galleryUrls = slides.map((s) => {
+              const path = s.annotated_image_path || s.image_path;
+              return path ? (imageUrls[path] ?? '') : '';
+            });
+            const captions = slides.map((s, idx) => s.title || `სლაიდი ${idx + 1}`);
+            const hasAny = galleryUrls.some(Boolean);
+            return hasAny ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">ფოტოები ({galleryUrls.filter(Boolean).length})</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <PhotoGallery urls={galleryUrls} captions={captions} />
                 </CardContent>
               </Card>
-            );
-          })}
-        </div>
+            ) : null;
+          })()}
+        </>
       )}
     </div>
   );
