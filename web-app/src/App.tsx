@@ -28,6 +28,10 @@ const ExcavatorInspectionDetail = lazy(() => import('@/pages/ExcavatorInspection
 const IncidentPrint = lazy(() => import('@/pages/print/IncidentPrint'));
 const BriefingPrint = lazy(() => import('@/pages/print/BriefingPrint'));
 const ReportPrint = lazy(() => import('@/pages/print/ReportPrint'));
+const InspectionPrint = lazy(() => import('@/pages/print/InspectionPrint'));
+const BobcatPrint = lazy(() => import('@/pages/print/BobcatPrint'));
+const GeneralEquipmentPrint = lazy(() => import('@/pages/print/GeneralEquipmentPrint'));
+const ExcavatorPrint = lazy(() => import('@/pages/print/ExcavatorPrint'));
 
 // Lazy: everything else. Smaller initial bundle = faster first paint.
 const Subscribe = lazy(() => import('@/pages/Subscribe'));
@@ -156,6 +160,46 @@ export default function App() {
                 <ProtectedRoute>
                   <Suspense fallback={<PageFallback />}>
                     <ReportPrint />
+                  </Suspense>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/inspections/:id/print"
+              element={
+                <ProtectedRoute>
+                  <Suspense fallback={<PageFallback />}>
+                    <InspectionPrint />
+                  </Suspense>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/bobcat/:id/print"
+              element={
+                <ProtectedRoute>
+                  <Suspense fallback={<PageFallback />}>
+                    <BobcatPrint />
+                  </Suspense>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/general-equipment/:id/print"
+              element={
+                <ProtectedRoute>
+                  <Suspense fallback={<PageFallback />}>
+                    <GeneralEquipmentPrint />
+                  </Suspense>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/excavator/:id/print"
+              element={
+                <ProtectedRoute>
+                  <Suspense fallback={<PageFallback />}>
+                    <ExcavatorPrint />
                   </Suspense>
                 </ProtectedRoute>
               }

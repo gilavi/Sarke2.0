@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Trash2, X } from 'lucide-react';
+import { FileText, Plus, Trash2, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -92,38 +92,48 @@ export default function GeneralEquipmentInspectionDetail() {
           </h1>
           <p className="mt-1 text-sm text-neutral-500">სტატუსი: {item.status}</p>
         </div>
-        {confirmingDelete ? (
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-neutral-700">დარწმუნებული ხართ?</span>
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-red-300 text-red-700 hover:bg-red-50"
-              onClick={() => delMutation.mutate()}
-              disabled={delMutation.isPending}
-            >
-              {delMutation.isPending ? 'იშლება…' : 'წაშლა'}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setConfirmingDelete(false)}
-              disabled={delMutation.isPending}
-            >
-              გაუქმება
-            </Button>
-          </div>
-        ) : (
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
             size="sm"
-            className="text-red-600 hover:border-red-300 hover:bg-red-50"
-            onClick={() => setConfirmingDelete(true)}
+            onClick={() => window.open(`#/general-equipment/${item.id}/print`, '_blank')}
           >
-            <Trash2 size={14} className="mr-1" />
-            წაშლა
+            <FileText size={14} className="mr-1" />
+            PDF
           </Button>
-        )}
+          {confirmingDelete ? (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-neutral-700">დარწმუნებული ხართ?</span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-red-300 text-red-700 hover:bg-red-50"
+                onClick={() => delMutation.mutate()}
+                disabled={delMutation.isPending}
+              >
+                {delMutation.isPending ? 'იშლება…' : 'წაშლა'}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setConfirmingDelete(false)}
+                disabled={delMutation.isPending}
+              >
+                გაუქმება
+              </Button>
+            </div>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-red-600 hover:border-red-300 hover:bg-red-50"
+              onClick={() => setConfirmingDelete(true)}
+            >
+              <Trash2 size={14} className="mr-1" />
+              წაშლა
+            </Button>
+          )}
+        </div>
       </header>
 
       {actionError && (
