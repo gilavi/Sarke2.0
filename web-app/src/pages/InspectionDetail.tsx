@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Camera, FileText, Trash2, X } from 'lucide-react';
+import SignatureCanvas from '@/components/SignatureCanvas';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,6 +62,7 @@ export default function InspectionDetail() {
   const [justCompleted, setJustCompleted] = useState(false);
   const [conclusionDraft, setConclusionDraft] = useState<string | null>(null);
   const [safeDraft, setSafeDraft] = useState<boolean | null | undefined>(undefined);
+  const [signingOpen, setSigningOpen] = useState(false);
 
   const pdfs = pdfsQ.data ?? [];
   const questions = questionsQ.data ?? [];
@@ -306,6 +308,42 @@ export default function InspectionDetail() {
                   })}
                 </div>
               </div>
+              <div className="space-y-1">
+                <Label>ინსპექტორის ხელმოწერა</Label>
+                {inspection.inspector_signature ? (
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={`data:image/png;base64,${inspection.inspector_signature}`}
+                      alt="ხელმოწერა"
+                      className="h-16 rounded border border-neutral-200 bg-white p-1"
+                    />
+                    <button
+                      className="text-xs text-neutral-500 hover:text-red-600"
+                      onClick={() => updateInspection(id!, { inspector_signature: null }).then(() => qc.invalidateQueries({ queryKey: ['inspection', id] }))}
+                    >
+                      წაშლა
+                    </button>
+                  </div>
+                ) : signingOpen ? (
+                  <SignatureCanvas
+                    onCancel={() => setSigningOpen(false)}
+                    onSave={(dataUrl) => {
+                      const base64 = dataUrl.replace(/^data:image\/png;base64,/, '');
+                      updateInspection(id!, { inspector_signature: base64 }).then(() => {
+                        qc.invalidateQueries({ queryKey: ['inspection', id] });
+                        setSigningOpen(false);
+                      });
+                    }}
+                  />
+                ) : (
+                  <button
+                    className="rounded-md border border-dashed border-neutral-300 px-4 py-2 text-sm text-neutral-500 hover:border-brand-400 hover:text-brand-600"
+                    onClick={() => setSigningOpen(true)}
+                  >
+                    + ხელმოწერის დამატება
+                  </button>
+                )}
+              </div>
               <div className="flex flex-wrap gap-2 pt-2">
                 <Button
                   variant="outline"
@@ -328,7 +366,7 @@ export default function InspectionDetail() {
               </div>
             </>
           ) : (
-            <div className="space-y-1 text-sm text-neutral-700">
+            <div className="space-y-2 text-sm text-neutral-700">
               <div>{inspection.conclusion_text || '—'}</div>
               <div>
                 გამოყენებისთვის უსაფრთხო:{' '}
@@ -338,6 +376,16 @@ export default function InspectionDetail() {
                     ? 'კი'
                     : 'არა'}
               </div>
+              {inspection.inspector_signature && (
+                <div>
+                  <p className="text-xs text-neutral-500 mb-1">ინსპექტორის ხელმოწერა</p>
+                  <img
+                    src={`data:image/png;base64,${inspection.inspector_signature}`}
+                    alt="ხელმოწერა"
+                    className="h-16 rounded border border-neutral-200 bg-white p-1"
+                  />
+                </div>
+              )}
             </div>
           )}
         </CardContent>
