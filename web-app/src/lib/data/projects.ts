@@ -48,6 +48,11 @@ export async function addProjectSigner(args: {
   return data as ProjectSigner;
 }
 
+export async function setProjectCrew(projectId: string, crew: CrewMember[]): Promise<void> {
+  const { error } = await supabase.from('projects').update({ crew }).eq('id', projectId);
+  if (error) throw error;
+}
+
 export async function deleteProjectSigner(id: string): Promise<void> {
   const { error } = await supabase.from('project_signers').delete().eq('id', id);
   if (error) throw error;

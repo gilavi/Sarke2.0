@@ -13,6 +13,7 @@ import {
   updateProject,
   deleteProject,
   listProjectSigners,
+  setProjectCrew,
   type CrewMember,
   type Project,
   type ProjectSigner,
@@ -164,6 +165,46 @@ export default function ProjectDetail() {
   const [signerForm, setSignerForm] = useState({ full_name: '', position: '', phone: '' });
   const [signerBusy, setSignerBusy] = useState(false);
   const [removingSignerId, setRemovingSignerId] = useState<string | null>(null);
+
+  const [addingCrew, setAddingCrew] = useState(false);
+  const [crewForm, setCrewForm] = useState({ name: '', roleKey: 'expert' });
+  const [crewBusy, setCrewBusy] = useState(false);
+
+  async function saveCrewMember() {
+    if (!id || !project || !crewForm.name.trim()) return;
+    setCrewBusy(true);
+    try {
+      const next: CrewMember = {
+        id: Math.random().toString(36).slice(2) + Date.now().toString(36),
+        roleKey: crewForm.roleKey,
+        role: CREW_ROLE_LABEL[crewForm.roleKey] ?? crewForm.roleKey,
+        name: crewForm.name.trim(),
+        signature: null,
+      };
+      const updated = [...(project.crew ?? []), next];
+      await setProjectCrew(id, updated);
+      qc.setQueryData(['project', id], { ...project, crew: updated });
+      void qc.invalidateQueries({ queryKey: ['projects'] });
+      setCrewForm({ name: '', roleKey: 'expert' });
+      setAddingCrew(false);
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setCrewBusy(false);
+    }
+  }
+
+  async function removeCrewMember(memberId: string) {
+    if (!id || !project) return;
+    try {
+      const updated = (project.crew ?? []).filter((m) => m.id !== memberId);
+      await setProjectCrew(id, updated);
+      qc.setQueryData(['project', id], { ...project, crew: updated });
+      void qc.invalidateQueries({ queryKey: ['projects'] });
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : String(e));
+    }
+  }
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -383,28 +424,88 @@ export default function ProjectDetail() {
       </Card>
 
       {/* Crew */}
-      {crew.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">
-              გუნდი
-              <span className="ml-2 text-sm font-normal text-neutral-400">({crew.length})</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <CardTitle className="text-base">
+            გუნდი
+            <span className="ml-2 text-sm font-normal text-neutral-400">({crew.length})</span>
+          </CardTitle>
+          {!addingCrew && (
+            <Button variant="outline" size="sm" onClick={() => setAddingCrew(true)}>
+              <Plus size={14} className="mr-1" />
+              დამატება
+            </Button>
+          )}
+        </CardHeader>
+        <CardContent>
+          {addingCrew && (
+            <div className="mb-3 space-y-2 rounded-md border border-brand-200 bg-brand-50/40 p-3">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <Input
+                  placeholder="სახელი, გვარი"
+                  value={crewForm.name}
+                  onChange={(e) => setCrewForm((f) => ({ ...f, name: e.target.value }))}
+                />
+                <select
+                  value={crewForm.roleKey}
+                  onChange={(e) => setCrewForm((f) => ({ ...f, roleKey: e.target.value }))}
+                  className="rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm"
+                >
+                  {Object.entries(CREW_ROLE_LABEL).map(([k, v]) => (
+                    <option key={k} value={k}>
+                      {v}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => void saveCrewMember()}
+                  disabled={crewBusy || !crewForm.name.trim()}
+                >
+                  {crewBusy ? 'ემატება…' : 'შენახვა'}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setAddingCrew(false);
+                    setCrewForm({ name: '', roleKey: 'expert' });
+                  }}
+                  disabled={crewBusy}
+                >
+                  გაუქმება
+                </Button>
+              </div>
+            </div>
+          )}
+          {crew.length === 0 ? (
+            <p className="text-sm text-neutral-500">გუნდის წევრები ჯერ არ არიან.</p>
+          ) : (
             <ul className="divide-y divide-neutral-200">
               {crew.map((m) => (
-                <li key={m.id} className="py-2 text-sm">
-                  <div className="font-medium text-neutral-900">{m.name}</div>
-                  <div className="text-xs text-neutral-500">
-                    {CREW_ROLE_LABEL[m.roleKey] ?? m.role}
+                <li key={m.id} className="flex items-start justify-between gap-3 py-2 text-sm">
+                  <div>
+                    <div className="font-medium text-neutral-900">{m.name}</div>
+                    <div className="text-xs text-neutral-500">
+                      {CREW_ROLE_LABEL[m.roleKey] ?? m.role}
+                    </div>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => void removeCrewMember(m.id)}
+                    className="text-neutral-400 hover:text-red-500"
+                    title="წაშლა"
+                  >
+                    <Trash2 size={14} />
+                  </button>
                 </li>
               ))}
             </ul>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
 
       {/* Signers */}
       <Card>
