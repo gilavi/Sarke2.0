@@ -30,6 +30,7 @@ export default function GeneralEquipmentInspectionDetail() {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [signingOpen, setSigningOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [justCompleted, setJustCompleted] = useState(false);
 
   const { data: item, error, isLoading } = useQuery({
     queryKey: ['generalEquipmentInspection', id],
@@ -40,9 +41,10 @@ export default function GeneralEquipmentInspectionDetail() {
   const updateMutation = useMutation({
     mutationFn: (patch: Parameters<typeof updateGeneralEquipmentInspection>[1]) =>
       updateGeneralEquipmentInspection(id!, patch),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: ['generalEquipmentInspection', id] });
       qc.invalidateQueries({ queryKey: ['generalEquipmentInspections'] });
+      if (variables.status === 'completed') setJustCompleted(true);
     },
     onError: (e) => setActionError(e instanceof Error ? e.message : String(e)),
   });
@@ -85,6 +87,25 @@ export default function GeneralEquipmentInspectionDetail() {
 
   return (
     <div className="space-y-6">
+      {justCompleted && (
+        <div className="rounded-lg bg-green-50 border border-green-200 px-5 py-4 flex items-center justify-between gap-4">
+          <div>
+            <p className="font-semibold text-green-800">შემოწმების აქტი დასრულებულია ✓</p>
+            <p className="text-sm text-green-700 mt-0.5">შეგიძლიათ PDF ვერსია გახსნათ ან სიაში დაბრუნდეთ.</p>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <button
+              onClick={() => window.open(`#/general-equipment/${item.id}/print`, '_blank')}
+              className="rounded-md bg-green-700 px-4 py-2 text-sm font-medium text-white hover:bg-green-800"
+            >
+              PDF ნახვა
+            </button>
+            <Link to="/inspections" className="rounded-md border border-green-300 px-4 py-2 text-sm font-medium text-green-800 hover:bg-green-100">
+              სიაში დაბრუნება
+            </Link>
+          </div>
+        </div>
+      )}
       <header className="flex items-start justify-between gap-4">
         <div>
           <Link to="/inspections" className="text-sm text-brand-600 hover:underline">
