@@ -92,6 +92,24 @@ export async function deleteBriefing(id: string): Promise<void> {
   if (error) throw error;
 }
 
+export async function updateBriefing(
+  id: string,
+  patch: {
+    dateTime?: string;
+    inspectorName?: string;
+    topics?: string[];
+    participants?: BriefingParticipant[];
+  },
+): Promise<void> {
+  const updates: Record<string, unknown> = {};
+  if (patch.dateTime !== undefined) updates.date_time = patch.dateTime;
+  if (patch.inspectorName !== undefined) updates.inspector_name = patch.inspectorName;
+  if (patch.topics !== undefined) updates.topics = patch.topics;
+  if (patch.participants !== undefined) updates.participants = patch.participants;
+  const { error } = await supabase.from('briefings').update(updates).eq('id', id);
+  if (error) throw error;
+}
+
 export async function createBriefing(input: CreateBriefingInput): Promise<Briefing> {
   const { data: userData, error: userErr } = await supabase.auth.getUser();
   if (userErr || !userData.user) throw userErr ?? new Error('არაავტორიზებული');

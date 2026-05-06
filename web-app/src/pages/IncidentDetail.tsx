@@ -1,15 +1,18 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Trash2 } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import PhotoGallery from '@/components/PhotoGallery';
 import {
   deleteIncident,
   getIncident,
   signedIncidentPdfUrl,
   signedIncidentPhotoUrl,
+  updateIncident,
   INCIDENT_TYPE_LABEL,
 } from '@/lib/data/incidents';
 
@@ -32,6 +35,46 @@ export default function IncidentDetail() {
 
   const [actionError, setActionError] = useState<string | null>(null);
   const [opening, setOpening] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState({
+    description: '',
+    cause: '',
+    actions_taken: '',
+    location: '',
+    injured_name: '',
+    injured_role: '',
+  });
+
+  function startEdit() {
+    if (!item) return;
+    setForm({
+      description: item.description,
+      cause: item.cause,
+      actions_taken: item.actions_taken,
+      location: item.location ?? '',
+      injured_name: item.injured_name ?? '',
+      injured_role: item.injured_role ?? '',
+    });
+    setEditing(true);
+  }
+
+  const editMutation = useMutation({
+    mutationFn: () =>
+      updateIncident(id!, {
+        description: form.description.trim(),
+        cause: form.cause.trim(),
+        actions_taken: form.actions_taken.trim(),
+        location: form.location.trim() || null,
+        injured_name: form.injured_name.trim() || null,
+        injured_role: form.injured_role.trim() || null,
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['incident', id] });
+      qc.invalidateQueries({ queryKey: ['incidents'] });
+      setEditing(false);
+    },
+    onError: (e) => setActionError(e instanceof Error ? e.message : String(e)),
+  });
 
   const delMutation = useMutation({
     mutationFn: () => {
@@ -83,35 +126,125 @@ export default function IncidentDetail() {
             {new Date(item.date_time).toLocaleString('ka-GE')} · {item.location || '—'}
           </p>
         </div>
-        {confirming ? (
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-neutral-700">დარწმუნებული ხართ?</span>
+        <div className="flex items-center gap-2">
+          {!editing && item.status === 'draft' && (
+            <Button variant="outline" size="sm" onClick={startEdit}>
+              <Pencil size={14} className="mr-1" />
+              რედაქტირება
+            </Button>
+          )}
+          {confirming ? (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-neutral-700">დარწმუნებული ხართ?</span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-red-300 text-red-700 hover:bg-red-50"
+                onClick={() => delMutation.mutate()}
+                disabled={delMutation.isPending}
+              >
+                {delMutation.isPending ? 'იშლება…' : 'წაშლა'}
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setConfirming(false)} disabled={delMutation.isPending}>
+                გაუქმება
+              </Button>
+            </div>
+          ) : (
             <Button
               variant="outline"
               size="sm"
-              className="border-red-300 text-red-700 hover:bg-red-50"
-              onClick={() => delMutation.mutate()}
-              disabled={delMutation.isPending}
+              className="text-red-600 hover:border-red-300 hover:bg-red-50"
+              onClick={() => setConfirming(true)}
             >
-              {delMutation.isPending ? 'იშლება…' : 'წაშლა'}
+              <Trash2 size={14} className="mr-1" />
+              წაშლა
             </Button>
-            <Button variant="outline" size="sm" onClick={() => setConfirming(false)} disabled={delMutation.isPending}>
-              გაუქმება
-            </Button>
-          </div>
-        ) : (
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-red-600 hover:border-red-300 hover:bg-red-50"
-            onClick={() => setConfirming(true)}
-          >
-            <Trash2 size={14} className="mr-1" />
-            წაშლა
-          </Button>
-        )}
+          )}
+        </div>
       </header>
 
+      {editing ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">რედაქტირება</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form
+              className="space-y-3"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!editMutation.isPending) editMutation.mutate();
+              }}
+            >
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label>დაზარალებულის სახელი</Label>
+                  <Input
+                    value={form.injured_name}
+                    onChange={(e) => setForm((f) => ({ ...f, injured_name: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>თანამდებობა</Label>
+                  <Input
+                    value={form.injured_role}
+                    onChange={(e) => setForm((f) => ({ ...f, injured_role: e.target.value }))}
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label>ადგილი</Label>
+                <Input
+                  value={form.location}
+                  onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>აღწერა</Label>
+                <textarea
+                  rows={3}
+                  value={form.description}
+                  onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                  className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>მიზეზი</Label>
+                <textarea
+                  rows={2}
+                  value={form.cause}
+                  onChange={(e) => setForm((f) => ({ ...f, cause: e.target.value }))}
+                  className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>გატარებული ღონისძიებები</Label>
+                <textarea
+                  rows={2}
+                  value={form.actions_taken}
+                  onChange={(e) => setForm((f) => ({ ...f, actions_taken: e.target.value }))}
+                  className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button type="submit" size="sm" disabled={editMutation.isPending}>
+                  {editMutation.isPending ? 'ინახება…' : 'შენახვა'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setEditing(false)}
+                  disabled={editMutation.isPending}
+                >
+                  გაუქმება
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
       <Card>
         <CardHeader>
           <CardTitle className="text-base">დაშავებული</CardTitle>
@@ -167,6 +300,8 @@ export default function IncidentDetail() {
         <Button type="button" onClick={() => void openPdf()} disabled={opening}>
           {opening ? 'იხსნება…' : 'PDF რეპორტი'}
         </Button>
+      )}
+        </>
       )}
     </div>
   );

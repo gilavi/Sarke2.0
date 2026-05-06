@@ -1,16 +1,20 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Trash2 } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { deleteBriefing, getBriefing, topicLabel } from '@/lib/data/briefings';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { deleteBriefing, getBriefing, topicLabel, updateBriefing } from '@/lib/data/briefings';
 
 export default function BriefingDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [confirming, setConfirming] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState({ inspectorName: '', dateTime: '' });
 
   const { data: b, error, isLoading } = useQuery({
     queryKey: ['briefing', id],
@@ -25,6 +29,28 @@ export default function BriefingDetail() {
       navigate('/briefings');
     },
   });
+
+  const editMutation = useMutation({
+    mutationFn: () =>
+      updateBriefing(id!, {
+        inspectorName: form.inspectorName.trim(),
+        dateTime: new Date(form.dateTime).toISOString(),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['briefing', id] });
+      qc.invalidateQueries({ queryKey: ['briefings'] });
+      setEditing(false);
+    },
+  });
+
+  function startEdit() {
+    if (!b) return;
+    setForm({
+      inspectorName: b.inspectorName,
+      dateTime: new Date(b.dateTime).toISOString().slice(0, 16),
+    });
+    setEditing(true);
+  }
 
   if (isLoading) return <p className="text-sm text-neutral-500">იტვირთება…</p>;
   if (error)
@@ -47,34 +73,96 @@ export default function BriefingDetail() {
           </h1>
           <p className="mt-1 text-sm text-neutral-500">სტატუსი: {b.status}</p>
         </div>
-        {confirming ? (
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-neutral-700">დარწმუნებული ხართ?</span>
+        <div className="flex items-center gap-2">
+          {!editing && b.status === 'draft' && (
+            <Button variant="outline" size="sm" onClick={startEdit}>
+              <Pencil size={14} className="mr-1" />
+              რედაქტირება
+            </Button>
+          )}
+          {confirming ? (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-neutral-700">დარწმუნებული ხართ?</span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-red-300 text-red-700 hover:bg-red-50"
+                onClick={() => delMutation.mutate()}
+                disabled={delMutation.isPending}
+              >
+                {delMutation.isPending ? 'იშლება…' : 'წაშლა'}
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setConfirming(false)} disabled={delMutation.isPending}>
+                გაუქმება
+              </Button>
+            </div>
+          ) : (
             <Button
               variant="outline"
               size="sm"
-              className="border-red-300 text-red-700 hover:bg-red-50"
-              onClick={() => delMutation.mutate()}
-              disabled={delMutation.isPending}
+              className="text-red-600 hover:border-red-300 hover:bg-red-50"
+              onClick={() => setConfirming(true)}
             >
-              {delMutation.isPending ? 'იშლება…' : 'წაშლა'}
+              <Trash2 size={14} className="mr-1" />
+              წაშლა
             </Button>
-            <Button variant="outline" size="sm" onClick={() => setConfirming(false)} disabled={delMutation.isPending}>
-              გაუქმება
-            </Button>
-          </div>
-        ) : (
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-red-600 hover:border-red-300 hover:bg-red-50"
-            onClick={() => setConfirming(true)}
-          >
-            <Trash2 size={14} className="mr-1" />
-            წაშლა
-          </Button>
-        )}
+          )}
+        </div>
       </header>
+
+      {editing && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">რედაქტირება</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form
+              className="space-y-3"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!editMutation.isPending) editMutation.mutate();
+              }}
+            >
+              <div className="space-y-1">
+                <Label>ინსპექტორი</Label>
+                <Input
+                  value={form.inspectorName}
+                  onChange={(e) => setForm((f) => ({ ...f, inspectorName: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>თარიღი და დრო</Label>
+                <Input
+                  type="datetime-local"
+                  value={form.dateTime}
+                  onChange={(e) => setForm((f) => ({ ...f, dateTime: e.target.value }))}
+                />
+              </div>
+              {editMutation.error && (
+                <p className="text-sm text-danger">
+                  {editMutation.error instanceof Error
+                    ? editMutation.error.message
+                    : String(editMutation.error)}
+                </p>
+              )}
+              <div className="flex gap-2">
+                <Button type="submit" size="sm" disabled={editMutation.isPending}>
+                  {editMutation.isPending ? 'ინახება…' : 'შენახვა'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setEditing(false)}
+                  disabled={editMutation.isPending}
+                >
+                  გაუქმება
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
       {delMutation.error && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {delMutation.error instanceof Error ? delMutation.error.message : String(delMutation.error)}

@@ -64,6 +64,21 @@ export async function signedIncidentPhotoUrl(path: string): Promise<string> {
   return data.signedUrl;
 }
 
+export async function updateIncident(
+  id: string,
+  patch: Partial<{
+    description: string;
+    cause: string;
+    actions_taken: string;
+    location: string | null;
+    injured_name: string | null;
+    injured_role: string | null;
+  }>,
+): Promise<void> {
+  const { error } = await supabase.from('incidents').update(patch).eq('id', id);
+  if (error) throw error;
+}
+
 export async function deleteIncident(item: Incident): Promise<void> {
   if (item.photos.length > 0) {
     await supabase.storage.from('incident-photos').remove(item.photos);
