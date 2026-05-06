@@ -1,8 +1,14 @@
 import { useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { listInspections } from '@/lib/data/inspections';
 import { listBobcatInspections } from '@/lib/data/bobcat';
 import { listGeneralEquipmentInspections } from '@/lib/data/generalEquipment';
@@ -10,6 +16,7 @@ import { listExcavatorInspections } from '@/lib/data/excavator';
 import { listProjects } from '@/lib/data/projects';
 
 export default function Inspections() {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const projectParam = searchParams.get('project') ?? '';
 
@@ -54,20 +61,25 @@ export default function Inspections() {
           <h1 className="font-display text-3xl font-bold text-neutral-900">შემოწმების აქტები</h1>
           <p className="mt-1 text-sm text-neutral-500">ყველა აქტი თქვენი ანგარიშიდან.</p>
         </div>
-        <div className="flex flex-col items-end gap-2 sm:flex-row">
-          <Link to={`/inspections/new${filter ? `?project=${filter}` : ''}`}>
-            <Button variant="outline">+ შაბლონით</Button>
-          </Link>
-          <Link to={`/bobcat/new${filter ? `?project=${filter}` : ''}`}>
-            <Button variant="outline">+ ციცხვიანი</Button>
-          </Link>
-          <Link to={`/general-equipment/new${filter ? `?project=${filter}` : ''}`}>
-            <Button variant="outline">+ ტექ. აღჭურვილობა</Button>
-          </Link>
-          <Link to={`/excavator/new${filter ? `?project=${filter}` : ''}`}>
-            <Button>+ ექსკავატორი</Button>
-          </Link>
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button>+ ახალი შემოწმება</Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onSelect={() => navigate(`/inspections/new${filter ? `?project=${filter}` : ''}`)}>
+              შაბლონით
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => navigate(`/bobcat/new${filter ? `?project=${filter}` : ''}`)}>
+              ციცხვიანი / დიდი ჩამტვირთი
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => navigate(`/general-equipment/new${filter ? `?project=${filter}` : ''}`)}>
+              ტექნიკური აღჭურვილობა
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => navigate(`/excavator/new${filter ? `?project=${filter}` : ''}`)}>
+              ექსკავატორი
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </header>
 
       {error && (
