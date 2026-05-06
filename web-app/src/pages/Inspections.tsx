@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { listInspections } from '@/lib/data/inspections';
+import { listBobcatInspections } from '@/lib/data/bobcat';
 import { listProjects } from '@/lib/data/projects';
 
 export default function Inspections() {
@@ -13,6 +14,10 @@ export default function Inspections() {
   const { data: items, error: itemsError } = useQuery({
     queryKey: ['inspections'],
     queryFn: () => listInspections(),
+  });
+  const { data: bobcats } = useQuery({
+    queryKey: ['bobcatInspections'],
+    queryFn: () => listBobcatInspections(),
   });
   const { data: projectList } = useQuery({
     queryKey: ['projects'],
@@ -39,9 +44,14 @@ export default function Inspections() {
           <h1 className="font-display text-3xl font-bold text-neutral-900">შემოწმების აქტები</h1>
           <p className="mt-1 text-sm text-neutral-500">ყველა აქტი თქვენი ანგარიშიდან.</p>
         </div>
-        <Link to={`/inspections/new${filter ? `?project=${filter}` : ''}`}>
-          <Button>+ ახალი აქტი</Button>
-        </Link>
+        <div className="flex flex-col items-end gap-2 sm:flex-row">
+          <Link to={`/inspections/new${filter ? `?project=${filter}` : ''}`}>
+            <Button variant="outline">+ შაბლონით</Button>
+          </Link>
+          <Link to={`/bobcat/new${filter ? `?project=${filter}` : ''}`}>
+            <Button>+ ციცხვიანი დამტვირთველი</Button>
+          </Link>
+        </div>
       </header>
 
       {error && (
@@ -72,6 +82,33 @@ export default function Inspections() {
 
       {filtered && filtered.length === 0 && (
         <p className="text-sm text-neutral-500">აქტები ვერ მოიძებნა.</p>
+      )}
+
+      {bobcats && bobcats.length > 0 && (
+        <section>
+          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-neutral-500">
+            ციცხვიანი / დიდი დამტვირთველი
+          </h2>
+          <div className="grid gap-3">
+            {bobcats
+              .filter((b) => !filter || b.projectId === filter)
+              .map((b) => (
+                <Link key={b.id} to={`/bobcat/${b.id}`}>
+                  <Card className="transition hover:border-brand-300 hover:shadow-sm">
+                    <CardHeader>
+                      <CardTitle className="text-base">
+                        {b.equipmentModel || b.company || `აქტი #${b.id.slice(0, 8)}`}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex items-center justify-between text-sm text-neutral-600">
+                      <span>{projects[b.projectId]?.name ?? '—'}</span>
+                      <span className="text-xs text-neutral-500">{b.status}</span>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+          </div>
+        </section>
       )}
 
       {filtered && filtered.length > 0 && (

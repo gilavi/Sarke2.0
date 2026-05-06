@@ -19,6 +19,8 @@ const NewIncident = lazy(() => import('@/pages/NewIncident'));
 const NewBriefing = lazy(() => import('@/pages/NewBriefing'));
 const NewReport = lazy(() => import('@/pages/NewReport'));
 const NewInspection = lazy(() => import('@/pages/NewInspection'));
+const NewBobcatInspection = lazy(() => import('@/pages/NewBobcatInspection'));
+const BobcatInspectionDetail = lazy(() => import('@/pages/BobcatInspectionDetail'));
 
 // Lazy: everything else. Smaller initial bundle = faster first paint.
 const Subscribe = lazy(() => import('@/pages/Subscribe'));
@@ -115,6 +117,8 @@ export default function App() {
             <Route path="/inspections" element={<Shell><Inspections /></Shell>} />
             <Route path="/inspections/new" element={<Shell><NewInspection /></Shell>} />
             <Route path="/inspections/:id" element={<Shell><InspectionDetail /></Shell>} />
+            <Route path="/bobcat/new" element={<Shell><NewBobcatInspection /></Shell>} />
+            <Route path="/bobcat/:id" element={<Shell><BobcatInspectionDetail /></Shell>} />
             <Route path="/certificates" element={<Shell><Certificates /></Shell>} />
             <Route path="/calendar" element={<Shell><Calendar /></Shell>} />
             <Route path="/regulations" element={<Shell><Regulations /></Shell>} />
