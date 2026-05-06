@@ -55,3 +55,101 @@ export async function signedReportPhotoUrl(path: string): Promise<string> {
   if (error) throw error;
   return data.signedUrl;
 }
+
+export async function createReport(args: {
+  projectId: string;
+  title: string;
+}): Promise<Report> {
+  const { data: userData, error: userErr } = await supabase.auth.getUser();
+  if (userErr || !userData.user) throw userErr ?? new Error('არაავტორიზებული');
+
+  const { data, error } = await supabase
+    .from('reports')
+    .insert({
+      project_id: args.projectId,
+      user_id: userData.user.id,
+      title: args.title,
+      status: 'draft',
+      slides: [],
+    })
+    .select(COLS)
+    .single();
+  if (error) throw error;
+  return data as Report;
+}
+
+function randomId(): string {
+  return Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
+export async function addReportSlide(args: {
+  report: Report;
+  title: string;
+  description: string;
+  photo?: File | null;
+}): Promise<Report> {
+  let imagePath: string | null = null;
+  if (args.photo) {
+    const ext = args.photo.name.split('.').pop() ?? 'bin';
+    imagePath = `${args.report.project_id}/${args.report.id}/${Date.now()}_${randomId()}.${ext}`;
+    const { error: upErr } = await supabase.storage
+      .from('report-photos')
+      .upload(imagePath, args.photo);
+    if (upErr) throw upErr;
+  }
+
+  const existing = args.report.slides ?? [];
+  const nextSlide: ReportSlide = {
+    id: randomId(),
+    order: existing.length,
+    title: args.title,
+    description: args.description,
+    image_path: imagePath,
+    annotated_image_path: null,
+  };
+
+  const updated = [...existing, nextSlide];
+  const { data, error } = await supabase
+    .from('reports')
+    .update({ slides: updated })
+    .eq('id', args.report.id)
+    .select(COLS)
+    .single();
+  if (error) throw error;
+  return data as Report;
+}
+
+export async function removeReportSlide(report: Report, slideId: string): Promise<Report> {
+  const existing = report.slides ?? [];
+  const target = existing.find((s) => s.id === slideId);
+  if (target) {
+    const paths = [target.image_path, target.annotated_image_path].filter(
+      (p): p is string => !!p,
+    );
+    if (paths.length) {
+      await supabase.storage.from('report-photos').remove(paths);
+    }
+  }
+  const updated = existing
+    .filter((s) => s.id !== slideId)
+    .map((s, i) => ({ ...s, order: i }));
+  const { data, error } = await supabase
+    .from('reports')
+    .update({ slides: updated })
+    .eq('id', report.id)
+    .select(COLS)
+    .single();
+  if (error) throw error;
+  return data as Report;
+}
+
+export async function deleteReport(report: Report): Promise<void> {
+  const paths = (report.slides ?? [])
+    .flatMap((s) => [s.image_path, s.annotated_image_path])
+    .filter((p): p is string => !!p);
+  if (paths.length) {
+    await supabase.storage.from('report-photos').remove(paths);
+  }
+  const { error } = await supabase.from('reports').delete().eq('id', report.id);
+  if (error) throw error;
+}

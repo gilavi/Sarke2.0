@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { listReports } from '@/lib/data/reports';
 import { listProjects } from '@/lib/data/projects';
 
@@ -19,9 +20,14 @@ export default function Reports() {
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="font-display text-3xl font-bold text-neutral-900">რეპორტები</h1>
-        <p className="mt-1 text-sm text-neutral-500">სლაიდებიანი ფოტო-რეპორტები პროექტებზე.</p>
+      <header className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-display text-3xl font-bold text-neutral-900">რეპორტები</h1>
+          <p className="mt-1 text-sm text-neutral-500">სლაიდებიანი ფოტო-რეპორტები პროექტებზე.</p>
+        </div>
+        <Link to="/reports/new">
+          <Button>+ ახალი რეპორტი</Button>
+        </Link>
       </header>
 
       {error && (

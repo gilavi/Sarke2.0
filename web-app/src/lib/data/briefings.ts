@@ -87,6 +87,11 @@ export interface CreateBriefingInput {
   inspectorName: string;
 }
 
+export async function deleteBriefing(id: string): Promise<void> {
+  const { error } = await supabase.from('briefings').delete().eq('id', id);
+  if (error) throw error;
+}
+
 export async function createBriefing(input: CreateBriefingInput): Promise<Briefing> {
   const { data: userData, error: userErr } = await supabase.auth.getUser();
   if (userErr || !userData.user) throw userErr ?? new Error('არაავტორიზებული');

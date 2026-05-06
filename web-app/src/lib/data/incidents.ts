@@ -64,6 +64,14 @@ export async function signedIncidentPhotoUrl(path: string): Promise<string> {
   return data.signedUrl;
 }
 
+export async function deleteIncident(item: Incident): Promise<void> {
+  if (item.photos.length > 0) {
+    await supabase.storage.from('incident-photos').remove(item.photos);
+  }
+  const { error } = await supabase.from('incidents').delete().eq('id', item.id);
+  if (error) throw error;
+}
+
 export interface CreateIncidentInput {
   projectId: string;
   type: IncidentType;
