@@ -23,6 +23,7 @@ export default function NewExcavatorInspection() {
   const [inventoryNumber, setInventoryNumber] = useState('');
   const [department, setDepartment] = useState('');
   const [inspectorName, setInspectorName] = useState('');
+  const [inspectionDate, setInspectionDate] = useState('');
 
   const projectName =
     projects?.find((p) => p.id === projectId)?.name ?? null;
@@ -36,6 +37,7 @@ export default function NewExcavatorInspection() {
         projectName,
         department: department.trim() || null,
         inspectorName: inspectorName.trim() || null,
+        inspectionDate: inspectionDate || null,
       }),
     onSuccess: (created: ExcavatorInspection) => {
       qc.invalidateQueries({ queryKey: ['excavatorInspections'] });
@@ -125,6 +127,16 @@ export default function NewExcavatorInspection() {
                 value={inspectorName}
                 onChange={(e) => setInspectorName(e.target.value)}
                 placeholder="სახელი, გვარი"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="inspectionDate">შემოწმების თარიღი</Label>
+              <Input
+                id="inspectionDate"
+                type="date"
+                value={inspectionDate}
+                onChange={(e) => setInspectionDate(e.target.value)}
               />
             </div>
 

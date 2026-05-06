@@ -2,6 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { listInspections, type Inspection } from '@/lib/data/inspections';
+import { listBobcatInspections, type BobcatInspection } from '@/lib/data/bobcat';
+import { listExcavatorInspections, type ExcavatorInspection } from '@/lib/data/excavator';
+import { listGeneralEquipmentInspections, type GeneralEquipmentInspection } from '@/lib/data/generalEquipment';
 import { listBriefings, type Briefing } from '@/lib/data/briefings';
 import { listIncidents, INCIDENT_TYPE_LABEL, type Incident } from '@/lib/data/incidents';
 import { listProjects, type Project } from '@/lib/data/projects';
@@ -45,6 +48,9 @@ function startOfDay(d: Date): Date {
 
 function buildItems(
   inspections: Inspection[],
+  bobcats: BobcatInspection[],
+  excavators: ExcavatorInspection[],
+  generalEq: GeneralEquipmentInspection[],
   briefings: Briefing[],
   incidents: Incident[],
   projects: Map<string, Project>,
@@ -72,6 +78,48 @@ function buildItems(
       href: `/inspections/${i.id}`,
       title: i.harness_name || `აქტი #${i.id.slice(0, 8)}`,
       projectName: projects.get(i.project_id)?.name ?? '—',
+      date,
+      kind: 'inspection',
+      status: 'completed',
+    });
+  }
+  for (const i of bobcats) {
+    if (i.status !== 'completed' || !i.completedAt) continue;
+    const date = new Date(i.completedAt);
+    if (Number.isNaN(date.getTime())) continue;
+    out.push({
+      id: `bobcat-${i.id}`,
+      href: `/bobcat/${i.id}`,
+      title: i.equipmentModel || i.company || `ციცხვიანი #${i.id.slice(0, 8)}`,
+      projectName: projects.get(i.projectId)?.name ?? '—',
+      date,
+      kind: 'inspection',
+      status: 'completed',
+    });
+  }
+  for (const i of excavators) {
+    if (i.status !== 'completed' || !i.completedAt) continue;
+    const date = new Date(i.completedAt);
+    if (Number.isNaN(date.getTime())) continue;
+    out.push({
+      id: `excavator-${i.id}`,
+      href: `/excavator/${i.id}`,
+      title: `ექსკავატორი${i.serialNumber ? ` — ${i.serialNumber}` : ''}`,
+      projectName: projects.get(i.projectId)?.name ?? '—',
+      date,
+      kind: 'inspection',
+      status: 'completed',
+    });
+  }
+  for (const i of generalEq) {
+    if (i.status !== 'completed' || !i.completedAt) continue;
+    const date = new Date(i.completedAt);
+    if (Number.isNaN(date.getTime())) continue;
+    out.push({
+      id: `ge-${i.id}`,
+      href: `/general-equipment/${i.id}`,
+      title: i.objectName || `ტექ. #${i.id.slice(0, 8)}`,
+      projectName: projects.get(i.projectId)?.name ?? '—',
       date,
       kind: 'inspection',
       status: 'completed',
@@ -157,15 +205,29 @@ function StatTile({
 
 export default function Calendar() {
   const [inspections, setInspections] = useState<Inspection[] | null>(null);
+  const [bobcats, setBobcats] = useState<BobcatInspection[]>([]);
+  const [excavators, setExcavators] = useState<ExcavatorInspection[]>([]);
+  const [generalEq, setGeneralEq] = useState<GeneralEquipmentInspection[]>([]);
   const [briefings, setBriefings] = useState<Briefing[]>([]);
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([listInspections(), listBriefings(), listIncidents(), listProjects()])
-      .then(([ins, bs, ics, ps]) => {
+    Promise.all([
+      listInspections(),
+      listBobcatInspections(),
+      listExcavatorInspections(),
+      listGeneralEquipmentInspections(),
+      listBriefings(),
+      listIncidents(),
+      listProjects(),
+    ])
+      .then(([ins, bobs, excs, ges, bs, ics, ps]) => {
         setInspections(ins);
+        setBobcats(bobs);
+        setExcavators(excs);
+        setGeneralEq(ges);
         setBriefings(bs);
         setIncidents(ics);
         setProjects(ps);
@@ -175,8 +237,12 @@ export default function Calendar() {
 
   const items = useMemo(() => {
     if (!inspections) return null;
-    return buildItems(inspections, briefings, incidents, new Map(projects.map((p) => [p.id, p])));
-  }, [inspections, briefings, incidents, projects]);
+    return buildItems(
+      inspections, bobcats, excavators, generalEq,
+      briefings, incidents,
+      new Map(projects.map((p) => [p.id, p])),
+    );
+  }, [inspections, bobcats, excavators, generalEq, briefings, incidents, projects]);
 
   const buckets = useMemo(() => (items ? bucketByMonth(items) : null), [items]);
   const summary = useMemo(() => (items ? summarize(items) : null), [items]);

@@ -129,6 +129,7 @@ export async function createGeneralEquipmentInspection(args: {
   department?: string | null;
   inspectorName?: string | null;
   actNumber?: string | null;
+  inspectionDate?: string | null;
 }): Promise<GeneralEquipmentInspection> {
   const { data: userData, error: userErr } = await supabase.auth.getUser();
   if (userErr || !userData.user) throw userErr ?? new Error('არაავტორიზებული');
@@ -145,6 +146,7 @@ export async function createGeneralEquipmentInspection(args: {
       department: args.department ?? null,
       inspector_name: args.inspectorName ?? null,
       act_number: args.actNumber ?? null,
+      ...(args.inspectionDate ? { inspection_date: args.inspectionDate } : {}),
       equipment: [],
     })
     .select(COLS)

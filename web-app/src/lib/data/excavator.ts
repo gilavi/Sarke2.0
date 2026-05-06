@@ -141,6 +141,7 @@ export async function createExcavatorInspection(args: {
   projectName?: string | null;
   department?: string | null;
   inspectorName?: string | null;
+  inspectionDate?: string | null;
 }): Promise<ExcavatorInspection> {
   const { data: userData, error: userErr } = await supabase.auth.getUser();
   if (userErr || !userData.user) throw userErr ?? new Error('არაავტორიზებული');
@@ -157,6 +158,7 @@ export async function createExcavatorInspection(args: {
       project_name: args.projectName ?? null,
       department: args.department ?? null,
       inspector_name: args.inspectorName ?? null,
+      ...(args.inspectionDate ? { inspection_date: args.inspectionDate } : {}),
       engine_items: emptyChecklist(ENGINE_ITEMS),
       undercarriage_items: emptyChecklist(UNDERCARRIAGE_ITEMS),
       cabin_items: emptyChecklist(CABIN_ITEMS),
