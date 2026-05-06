@@ -9,6 +9,7 @@ import Forgot from '@/pages/auth/Forgot';
 import Reset from '@/pages/auth/Reset';
 import Home from '@/pages/Home';
 import Account from '@/pages/Account';
+import Regulations from '@/pages/Regulations';
 import Subscribe from '@/pages/Subscribe';
 import SubscribeSuccess from '@/pages/SubscribeSuccess';
 import SubscribeFail from '@/pages/SubscribeFail';
@@ -40,6 +41,16 @@ export default function App() {
                 <ProtectedRoute>
                   <AppShell>
                     <Home />
+                  </AppShell>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/regulations"
+              element={
+                <ProtectedRoute>
+                  <AppShell>
+                    <Regulations />
                   </AppShell>
                 </ProtectedRoute>
               }

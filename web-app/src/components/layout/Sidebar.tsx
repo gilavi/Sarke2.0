@@ -26,7 +26,7 @@ const items: NavItem[] = [
   { to: '/inspections', label: 'შემოწმების აქტები', icon: ClipboardCheck, enabled: false },
   { to: '/certificates', label: 'სერტიფიკატები', icon: Award, enabled: false },
   { to: '/calendar', label: 'კალენდარი', icon: Calendar, enabled: false },
-  { to: '/regulations', label: 'რეგულაციები', icon: BookOpen, enabled: false },
+  { to: '/regulations', label: 'რეგულაციები', icon: BookOpen, enabled: true },
   { to: '/account', label: 'ანგარიში', icon: CreditCard, enabled: true },
 ];
 
