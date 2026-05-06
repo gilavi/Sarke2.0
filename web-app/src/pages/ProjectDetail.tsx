@@ -11,6 +11,7 @@ import {
   deleteProjectSigner,
   getProject,
   updateProject,
+  updateProjectLogo,
   deleteProject,
   listProjectSigners,
   setProjectCrew,
@@ -192,6 +193,31 @@ export default function ProjectDetail() {
   const [addingCrew, setAddingCrew] = useState(false);
   const [crewForm, setCrewForm] = useState({ name: '', roleKey: 'expert' });
   const [crewBusy, setCrewBusy] = useState(false);
+
+  const [logoUploading, setLogoUploading] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !id) return;
+    setLogoUploading(true);
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      await updateProjectLogo(id, dataUrl);
+      qc.setQueryData(['project', id], { ...project, logo: dataUrl });
+      void qc.invalidateQueries({ queryKey: ['projects'] });
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLogoUploading(false);
+      if (logoInputRef.current) logoInputRef.current.value = '';
+    }
+  }
 
   async function saveCrewMember() {
     if (!id || !project || !crewForm.name.trim()) return;
@@ -381,9 +407,37 @@ export default function ProjectDetail() {
           ← პროექტები
         </Link>
         <div className="mt-2 flex items-start justify-between gap-4">
-          <div>
-            <h1 className="font-display text-3xl font-bold text-neutral-900">{project.name}</h1>
-            <p className="mt-1 text-sm text-neutral-500">{project.company_name}</p>
+          <div className="flex items-center gap-4">
+            {/* Logo avatar */}
+            <button
+              type="button"
+              title="ლოგოს შეცვლა"
+              disabled={logoUploading}
+              onClick={() => logoInputRef.current?.click()}
+              className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100 transition hover:border-brand-400 disabled:opacity-60"
+            >
+              {project.logo ? (
+                <img src={project.logo} alt="logo" className="h-full w-full object-cover" />
+              ) : (
+                <span className="flex h-full w-full items-center justify-center text-lg font-bold text-neutral-400">
+                  {project.name.charAt(0).toUpperCase()}
+                </span>
+              )}
+              <span className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 transition hover:opacity-100">
+                <Upload size={16} className="text-white" />
+              </span>
+            </button>
+            <input
+              ref={logoInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => void handleLogoChange(e)}
+            />
+            <div>
+              <h1 className="font-display text-3xl font-bold text-neutral-900">{project.name}</h1>
+              <p className="mt-1 text-sm text-neutral-500">{project.company_name}</p>
+            </div>
           </div>
           {!editing && (
             <Button variant="outline" size="sm" onClick={startEditing} className="mt-1 shrink-0">
