@@ -30,8 +30,8 @@ export default function Register() {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
       });
-      setInfo('შემოწმეთ ელ-ფოსტა — გამოვაგზავნეთ დადასტურების ბმული.');
-      setTimeout(() => navigate('/login'), 2500);
+      setInfo('შემოწმეთ ელ-ფოსტა — გამოვაგზავნეთ დადასტურების კოდი.');
+      navigate(`/verify-email?email=${encodeURIComponent(email.trim())}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'რეგისტრაცია ვერ მოხერხდა');
     } finally {
