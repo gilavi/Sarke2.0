@@ -12,15 +12,15 @@ export {
   type BobcatVerdict,
   type BobcatItemState,
   type BobcatInspection,
-} from '../../../../types/bobcat';
+} from '@/lib/types/bobcat';
 
 import type {
   BobcatInspection,
   BobcatInspectionType,
   BobcatItemState,
   BobcatVerdict,
-} from '../../../../types/bobcat';
-import { BOBCAT_ITEMS } from '../../../../types/bobcat';
+} from '@/lib/types/bobcat';
+import { BOBCAT_ITEMS } from '@/lib/types/bobcat';
 
 interface DbRow {
   id: string;

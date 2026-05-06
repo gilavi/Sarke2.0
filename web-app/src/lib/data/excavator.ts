@@ -18,7 +18,7 @@ export {
   type ExcavatorVerdict,
   type ExcavatorInspection,
   type Section as ExcavatorSection,
-} from '../../../../types/excavator';
+} from '@/lib/types/excavator';
 
 import type {
   ExcavatorChecklistItemState,
@@ -26,7 +26,7 @@ import type {
   ExcavatorMachineSpecs,
   ExcavatorMaintenanceItemState,
   ExcavatorVerdict,
-} from '../../../../types/excavator';
+} from '@/lib/types/excavator';
 import {
   CABIN_ITEMS,
   ENGINE_ITEMS,
@@ -35,7 +35,7 @@ import {
   MAINTENANCE_ITEMS,
   SAFETY_ITEMS,
   UNDERCARRIAGE_ITEMS,
-} from '../../../../types/excavator';
+} from '@/lib/types/excavator';
 
 interface DbRow {
   id: string;
