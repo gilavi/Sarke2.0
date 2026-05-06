@@ -1,22 +1,21 @@
-import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { listReports, type Report } from '@/lib/data/reports';
-import { listProjects, type Project } from '@/lib/data/projects';
+import { listReports } from '@/lib/data/reports';
+import { listProjects } from '@/lib/data/projects';
 
 export default function Reports() {
-  const [items, setItems] = useState<Report[] | null>(null);
-  const [projects, setProjects] = useState<Record<string, Project>>({});
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    Promise.all([listReports(), listProjects()])
-      .then(([rs, ps]) => {
-        setItems(rs);
-        setProjects(Object.fromEntries(ps.map((p) => [p.id, p])));
-      })
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)));
-  }, []);
+  const { data: items, error } = useQuery({
+    queryKey: ['reports'],
+    queryFn: () => listReports(),
+  });
+  const { data: projectList } = useQuery({
+    queryKey: ['projects'],
+    queryFn: listProjects,
+  });
+  const projects = projectList
+    ? Object.fromEntries(projectList.map((p) => [p.id, p]))
+    : {};
 
   return (
     <div className="space-y-6">
@@ -27,7 +26,7 @@ export default function Reports() {
 
       {error && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
+          {error instanceof Error ? error.message : String(error)}
         </div>
       )}
       {!items && !error && <p className="text-sm text-neutral-500">იტვირთება…</p>}

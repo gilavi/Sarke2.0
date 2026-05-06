@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -7,31 +8,25 @@ import {
   signedIncidentPdfUrl,
   signedIncidentPhotoUrl,
   INCIDENT_TYPE_LABEL,
-  type Incident,
 } from '@/lib/data/incidents';
 
 export default function IncidentDetail() {
   const { id } = useParams();
-  const [item, setItem] = useState<Incident | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
+  const { data: item, error: queryError, isLoading } = useQuery({
+    queryKey: ['incident', id],
+    queryFn: () => getIncident(id!),
+    enabled: !!id,
+  });
+  const { data: photoUrls = [] } = useQuery({
+    queryKey: ['incidentPhotos', id, item?.photos],
+    queryFn: async () =>
+      Promise.all((item?.photos ?? []).map((p) => signedIncidentPhotoUrl(p).catch(() => ''))),
+    enabled: !!item && item.photos.length > 0,
+  });
+
+  const [actionError, setActionError] = useState<string | null>(null);
   const [opening, setOpening] = useState(false);
-
-  useEffect(() => {
-    if (!id) return;
-    getIncident(id)
-      .then(setItem)
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
-      .finally(() => setLoading(false));
-  }, [id]);
-
-  useEffect(() => {
-    if (!item || item.photos.length === 0) return;
-    Promise.all(item.photos.map((p) => signedIncidentPhotoUrl(p).catch(() => '')))
-      .then(setPhotoUrls)
-      .catch(() => setPhotoUrls([]));
-  }, [item]);
+  const error = actionError ?? (queryError instanceof Error ? queryError.message : queryError ? String(queryError) : null);
 
   async function openPdf() {
     if (!item?.pdf_url) return;
@@ -40,13 +35,13 @@ export default function IncidentDetail() {
       const url = await signedIncidentPdfUrl(item.pdf_url);
       window.open(url, '_blank', 'noopener,noreferrer');
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setActionError(e instanceof Error ? e.message : String(e));
     } finally {
       setOpening(false);
     }
   }
 
-  if (loading) return <p className="text-sm text-neutral-500">იტვირთება…</p>;
+  if (isLoading) return <p className="text-sm text-neutral-500">იტვირთება…</p>;
   if (error)
     return (
       <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">

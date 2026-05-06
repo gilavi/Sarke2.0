@@ -1,27 +1,28 @@
-import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { listBriefings, topicLabel, type Briefing } from '@/lib/data/briefings';
-import { listProjects, type Project } from '@/lib/data/projects';
+import { listBriefings, topicLabel } from '@/lib/data/briefings';
+import { listProjects } from '@/lib/data/projects';
 
 export default function Briefings() {
   const [searchParams] = useSearchParams();
   const projectParam = searchParams.get('project') ?? '';
 
-  const [items, setItems] = useState<Briefing[] | null>(null);
-  const [projects, setProjects] = useState<Record<string, Project>>({});
-  const [error, setError] = useState<string | null>(null);
+  const { data: items, error } = useQuery({
+    queryKey: ['briefings'],
+    queryFn: () => listBriefings(),
+  });
+  const { data: projectList } = useQuery({
+    queryKey: ['projects'],
+    queryFn: listProjects,
+  });
 
-  const filtered = projectParam ? (items?.filter((b) => b.projectId === projectParam) ?? null) : items;
-
-  useEffect(() => {
-    Promise.all([listBriefings(), listProjects()])
-      .then(([bs, ps]) => {
-        setItems(bs);
-        setProjects(Object.fromEntries(ps.map((p) => [p.id, p])));
-      })
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)));
-  }, []);
+  const projects = projectList
+    ? Object.fromEntries(projectList.map((p) => [p.id, p]))
+    : {};
+  const filtered = projectParam
+    ? (items?.filter((b) => b.projectId === projectParam) ?? null)
+    : (items ?? null);
 
   return (
     <div className="space-y-6">
@@ -37,7 +38,7 @@ export default function Briefings() {
 
       {error && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
+          {error instanceof Error ? error.message : String(error)}
         </div>
       )}
 

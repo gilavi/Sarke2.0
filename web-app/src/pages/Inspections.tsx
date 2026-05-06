@@ -1,28 +1,30 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { listInspections, type Inspection } from '@/lib/data/inspections';
-import { listProjects, type Project } from '@/lib/data/projects';
+import { listInspections } from '@/lib/data/inspections';
+import { listProjects } from '@/lib/data/projects';
 
 export default function Inspections() {
   const [searchParams] = useSearchParams();
   const projectParam = searchParams.get('project') ?? '';
 
-  const [items, setItems] = useState<Inspection[] | null>(null);
-  const [projects, setProjects] = useState<Record<string, Project>>({});
-  const [filter, setFilter] = useState<string>(projectParam);
-  const [error, setError] = useState<string | null>(null);
+  const { data: items, error: itemsError } = useQuery({
+    queryKey: ['inspections'],
+    queryFn: () => listInspections(),
+  });
+  const { data: projectList } = useQuery({
+    queryKey: ['projects'],
+    queryFn: listProjects,
+  });
 
-  useEffect(() => {
-    Promise.all([listInspections(), listProjects()])
-      .then(([ins, projs]) => {
-        setItems(ins);
-        setProjects(Object.fromEntries(projs.map((p) => [p.id, p])));
-      })
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)));
-  }, []);
+  const projects = projectList
+    ? Object.fromEntries(projectList.map((p) => [p.id, p]))
+    : {};
+  const [filter, setFilter] = useState<string>(projectParam);
 
   const filtered = items?.filter((i) => !filter || i.project_id === filter) ?? null;
+  const error = itemsError;
 
   return (
     <div className="space-y-6">
@@ -38,7 +40,7 @@ export default function Inspections() {
 
       {error && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
+          {error instanceof Error ? error.message : String(error)}
         </div>
       )}
 

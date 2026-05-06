@@ -1,12 +1,8 @@
-import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  listIncidents,
-  INCIDENT_TYPE_LABEL,
-  type Incident,
-} from '@/lib/data/incidents';
-import { listProjects, type Project } from '@/lib/data/projects';
+import { listIncidents, INCIDENT_TYPE_LABEL } from '@/lib/data/incidents';
+import { listProjects } from '@/lib/data/projects';
 
 const TYPE_TONE: Record<string, string> = {
   fatal: 'bg-red-100 text-red-800',
@@ -17,18 +13,17 @@ const TYPE_TONE: Record<string, string> = {
 };
 
 export default function Incidents() {
-  const [items, setItems] = useState<Incident[] | null>(null);
-  const [projects, setProjects] = useState<Record<string, Project>>({});
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    Promise.all([listIncidents(), listProjects()])
-      .then(([is, ps]) => {
-        setItems(is);
-        setProjects(Object.fromEntries(ps.map((p) => [p.id, p])));
-      })
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)));
-  }, []);
+  const { data: items, error } = useQuery({
+    queryKey: ['incidents'],
+    queryFn: () => listIncidents(),
+  });
+  const { data: projectList } = useQuery({
+    queryKey: ['projects'],
+    queryFn: listProjects,
+  });
+  const projects = projectList
+    ? Object.fromEntries(projectList.map((p) => [p.id, p]))
+    : {};
 
   return (
     <div className="space-y-6">
@@ -39,7 +34,7 @@ export default function Incidents() {
 
       {error && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
+          {error instanceof Error ? error.message : String(error)}
         </div>
       )}
 

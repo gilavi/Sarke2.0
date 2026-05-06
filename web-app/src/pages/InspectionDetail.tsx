@@ -1,38 +1,34 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
   getInspection,
   listInspectionPdfs,
   signedPdfUrl,
-  type Inspection,
 } from '@/lib/data/inspections';
-
-interface PdfItem {
-  id: string;
-  pdf_url: string;
-  generated_at: string;
-}
 
 export default function InspectionDetail() {
   const { id } = useParams();
-  const [inspection, setInspection] = useState<Inspection | null>(null);
-  const [pdfs, setPdfs] = useState<PdfItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const inspectionQ = useQuery({
+    queryKey: ['inspection', id],
+    queryFn: () => getInspection(id!),
+    enabled: !!id,
+  });
+  const pdfsQ = useQuery({
+    queryKey: ['inspectionPdfs', id],
+    queryFn: () => listInspectionPdfs(id!),
+    enabled: !!id,
+  });
+
+  const [actionError, setActionError] = useState<string | null>(null);
   const [opening, setOpening] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!id) return;
-    Promise.all([getInspection(id), listInspectionPdfs(id)])
-      .then(([ins, ps]) => {
-        setInspection(ins);
-        setPdfs(ps);
-      })
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
-      .finally(() => setLoading(false));
-  }, [id]);
+  const inspection = inspectionQ.data ?? null;
+  const pdfs = pdfsQ.data ?? [];
+  const queryError = inspectionQ.error ?? pdfsQ.error;
+  const error = actionError ?? (queryError instanceof Error ? queryError.message : queryError ? String(queryError) : null);
 
   async function openPdf(path: string, key: string) {
     try {
@@ -40,13 +36,13 @@ export default function InspectionDetail() {
       const url = await signedPdfUrl(path);
       window.open(url, '_blank', 'noopener,noreferrer');
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setActionError(e instanceof Error ? e.message : String(e));
     } finally {
       setOpening(null);
     }
   }
 
-  if (loading) return <p className="text-sm text-neutral-500">იტვირთება…</p>;
+  if (inspectionQ.isLoading) return <p className="text-sm text-neutral-500">იტვირთება…</p>;
   if (error)
     return (
       <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">

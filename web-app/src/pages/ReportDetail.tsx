@@ -1,43 +1,40 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
   getReport,
   signedReportPdfUrl,
   signedReportPhotoUrl,
-  type Report,
 } from '@/lib/data/reports';
 
 export default function ReportDetail() {
   const { id } = useParams();
-  const [item, setItem] = useState<Report | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [imageUrls, setImageUrls] = useState<Record<string, string>>({});
+  const { data: item, error: queryError, isLoading } = useQuery({
+    queryKey: ['report', id],
+    queryFn: () => getReport(id!),
+    enabled: !!id,
+  });
+  const { data: imageUrls = {} } = useQuery({
+    queryKey: ['reportPhotos', id, item?.slides],
+    queryFn: async () => {
+      const paths: string[] = [];
+      for (const s of item?.slides ?? []) {
+        const p = s.annotated_image_path || s.image_path;
+        if (p) paths.push(p);
+      }
+      const entries = await Promise.all(
+        paths.map((p) => signedReportPhotoUrl(p).then((u) => [p, u] as const).catch(() => [p, ''] as const)),
+      );
+      return Object.fromEntries(entries) as Record<string, string>;
+    },
+    enabled: !!item?.slides && item.slides.length > 0,
+  });
+
+  const [actionError, setActionError] = useState<string | null>(null);
   const [opening, setOpening] = useState(false);
-
-  useEffect(() => {
-    if (!id) return;
-    getReport(id)
-      .then(setItem)
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
-      .finally(() => setLoading(false));
-  }, [id]);
-
-  useEffect(() => {
-    if (!item?.slides) return;
-    const paths: string[] = [];
-    for (const s of item.slides) {
-      const p = s.annotated_image_path || s.image_path;
-      if (p) paths.push(p);
-    }
-    Promise.all(
-      paths.map((p) => signedReportPhotoUrl(p).then((u) => [p, u] as const).catch(() => [p, ''] as const)),
-    ).then((entries) => {
-      setImageUrls(Object.fromEntries(entries));
-    });
-  }, [item]);
+  const error = actionError ?? (queryError instanceof Error ? queryError.message : queryError ? String(queryError) : null);
 
   async function openPdf() {
     if (!item?.pdf_url) return;
@@ -46,13 +43,13 @@ export default function ReportDetail() {
       const url = await signedReportPdfUrl(item.pdf_url);
       window.open(url, '_blank', 'noopener,noreferrer');
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setActionError(e instanceof Error ? e.message : String(e));
     } finally {
       setOpening(false);
     }
   }
 
-  if (loading) return <p className="text-sm text-neutral-500">იტვირთება…</p>;
+  if (isLoading) return <p className="text-sm text-neutral-500">იტვირთება…</p>;
   if (error)
     return (
       <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">

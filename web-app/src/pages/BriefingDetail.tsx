@@ -1,27 +1,21 @@
-import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { getBriefing, topicLabel, type Briefing } from '@/lib/data/briefings';
+import { getBriefing, topicLabel } from '@/lib/data/briefings';
 
 export default function BriefingDetail() {
   const { id } = useParams();
-  const [b, setB] = useState<Briefing | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: b, error, isLoading } = useQuery({
+    queryKey: ['briefing', id],
+    queryFn: () => getBriefing(id!),
+    enabled: !!id,
+  });
 
-  useEffect(() => {
-    if (!id) return;
-    getBriefing(id)
-      .then(setB)
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
-      .finally(() => setLoading(false));
-  }, [id]);
-
-  if (loading) return <p className="text-sm text-neutral-500">იტვირთება…</p>;
+  if (isLoading) return <p className="text-sm text-neutral-500">იტვირთება…</p>;
   if (error)
     return (
       <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-        {error}
+        {error instanceof Error ? error.message : String(error)}
       </div>
     );
   if (!b) return <p className="text-sm text-neutral-500">ბრიფინგი ვერ მოიძებნა.</p>;

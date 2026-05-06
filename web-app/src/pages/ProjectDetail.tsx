@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Download, Upload, Pencil, Check, X, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,14 +10,12 @@ import {
   getProject,
   updateProject,
   listProjectSigners,
-  type Project,
   type CrewMember,
-  type ProjectSigner,
 } from '@/lib/data/projects';
-import { listIncidents, INCIDENT_TYPE_LABEL, type Incident, type IncidentType } from '@/lib/data/incidents';
-import { listReports, type Report } from '@/lib/data/reports';
-import { listInspections, type Inspection } from '@/lib/data/inspections';
-import { listBriefings, topicLabel, type Briefing } from '@/lib/data/briefings';
+import { listIncidents, INCIDENT_TYPE_LABEL, type IncidentType } from '@/lib/data/incidents';
+import { listReports } from '@/lib/data/reports';
+import { listInspections } from '@/lib/data/inspections';
+import { listBriefings, topicLabel } from '@/lib/data/briefings';
 import {
   listProjectFiles,
   signedFileUrl,
@@ -91,16 +90,59 @@ function EmptyState({ text }: { text: string }) {
 export default function ProjectDetail() {
   const { id } = useParams();
   const { user } = useAuth();
+  const qc = useQueryClient();
 
-  const [project, setProject] = useState<Project | null>(null);
-  const [inspections, setInspections] = useState<Inspection[]>([]);
-  const [briefings, setBriefings] = useState<Briefing[]>([]);
-  const [files, setFiles] = useState<ProjectFile[]>([]);
-  const [signers, setSigners] = useState<ProjectSigner[]>([]);
-  const [incidents, setIncidents] = useState<Incident[]>([]);
-  const [reports, setReports] = useState<Report[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const projectQ = useQuery({
+    queryKey: ['project', id],
+    queryFn: () => getProject(id!),
+    enabled: !!id,
+  });
+  const inspectionsQ = useQuery({
+    queryKey: ['inspections', id],
+    queryFn: () => listInspections(id!),
+    enabled: !!id,
+  });
+  const briefingsQ = useQuery({
+    queryKey: ['briefings', id],
+    queryFn: () => listBriefings(id!),
+    enabled: !!id,
+  });
+  const filesQ = useQuery({
+    queryKey: ['projectFiles', id],
+    queryFn: () => listProjectFiles(id!),
+    enabled: !!id,
+  });
+  const signersQ = useQuery({
+    queryKey: ['projectSigners', id],
+    queryFn: () => listProjectSigners(id!),
+    enabled: !!id,
+  });
+  const incidentsQ = useQuery({
+    queryKey: ['incidents', id],
+    queryFn: () => listIncidents(id!),
+    enabled: !!id,
+  });
+  const reportsQ = useQuery({
+    queryKey: ['reports', id],
+    queryFn: () => listReports(id!),
+    enabled: !!id,
+  });
+
+  const project = projectQ.data ?? null;
+  const inspections = inspectionsQ.data ?? [];
+  const briefings = briefingsQ.data ?? [];
+  const files = filesQ.data ?? [];
+  const signers = signersQ.data ?? [];
+  const incidents = incidentsQ.data ?? [];
+  const reports = reportsQ.data ?? [];
+
+  const queryError =
+    projectQ.error ?? inspectionsQ.error ?? briefingsQ.error ?? filesQ.error ??
+    signersQ.error ?? incidentsQ.error ?? reportsQ.error;
+
+  const [actionError, setActionError] = useState<string | null>(null);
+  const error = actionError ?? (queryError instanceof Error ? queryError.message : queryError ? String(queryError) : null);
+
   const [opening, setOpening] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -110,30 +152,6 @@ export default function ProjectDetail() {
   const [saving, setSaving] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (!id) return;
-    Promise.all([
-      getProject(id),
-      listInspections(id),
-      listBriefings(id),
-      listProjectFiles(id),
-      listProjectSigners(id),
-      listIncidents(id),
-      listReports(id),
-    ])
-      .then(([p, ins, bs, fs, sg, inc, rp]) => {
-        setProject(p);
-        setInspections(ins);
-        setBriefings(bs);
-        setFiles(fs);
-        setSigners(sg);
-        setIncidents(inc);
-        setReports(rp);
-      })
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
-      .finally(() => setLoading(false));
-  }, [id]);
 
   function startEditing() {
     if (!project) return;
@@ -155,10 +173,11 @@ export default function ProjectDetail() {
         contact_phone: editForm.contact_phone.trim() || null,
       };
       await updateProject(id, patch);
-      setProject({ ...project, ...patch });
+      qc.setQueryData(['project', id], { ...project, ...patch });
+      void qc.invalidateQueries({ queryKey: ['projects'] });
       setEditing(false);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setActionError(e instanceof Error ? e.message : String(e));
     } finally {
       setSaving(false);
     }
@@ -170,7 +189,7 @@ export default function ProjectDetail() {
       const url = await signedFileUrl(f.storage_path);
       window.open(url, '_blank', 'noopener,noreferrer');
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setActionError(e instanceof Error ? e.message : String(e));
     } finally {
       setOpening(null);
     }
@@ -180,9 +199,11 @@ export default function ProjectDetail() {
     setDeleting(f.id);
     try {
       await deleteProjectFile(f);
-      setFiles((prev) => prev.filter((x) => x.id !== f.id));
+      qc.setQueryData<ProjectFile[]>(['projectFiles', id], (prev) =>
+        (prev ?? []).filter((x) => x.id !== f.id),
+      );
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setActionError(e instanceof Error ? e.message : String(e));
     } finally {
       setDeleting(null);
     }
@@ -194,16 +215,18 @@ export default function ProjectDetail() {
     setUploading(true);
     try {
       const uploaded = await uploadProjectFile(id, user.id, file);
-      setFiles((prev) => [uploaded, ...prev]);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      qc.setQueryData<ProjectFile[]>(['projectFiles', id], (prev) =>
+        [uploaded, ...(prev ?? [])],
+      );
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : String(err));
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   }
 
-  if (loading) return <p className="text-sm text-neutral-500">იტვირთება…</p>;
+  if (projectQ.isLoading) return <p className="text-sm text-neutral-500">იტვირთება…</p>;
   if (error)
     return (
       <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">

@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -7,19 +8,15 @@ import {
   signedQualificationFileUrl,
   isExpired,
   isExpiringSoon,
-  type Qualification,
 } from '@/lib/data/qualifications';
 
 export default function Qualifications() {
-  const [items, setItems] = useState<Qualification[] | null>(null);
+  const { data: items, error: queryError } = useQuery({
+    queryKey: ['qualifications'],
+    queryFn: listQualifications,
+  });
   const [error, setError] = useState<string | null>(null);
   const [opening, setOpening] = useState<string | null>(null);
-
-  useEffect(() => {
-    listQualifications()
-      .then(setItems)
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)));
-  }, []);
 
   async function openFile(path: string, id: string) {
     try {
@@ -33,6 +30,8 @@ export default function Qualifications() {
     }
   }
 
+  const displayError = error ?? (queryError instanceof Error ? queryError.message : queryError ? String(queryError) : null);
+
   return (
     <div className="space-y-6">
       <header>
@@ -44,12 +43,12 @@ export default function Qualifications() {
         </p>
       </header>
 
-      {error && (
+      {displayError && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
+          {displayError}
         </div>
       )}
-      {!items && !error && <p className="text-sm text-neutral-500">იტვირთება…</p>}
+      {!items && !displayError && <p className="text-sm text-neutral-500">იტვირთება…</p>}
       {items && items.length === 0 && (
         <p className="text-sm text-neutral-500">სერტიფიკატები არ არის ატვირთული.</p>
       )}

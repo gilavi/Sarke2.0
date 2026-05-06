@@ -1,22 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import {
-  listCertificates,
-  signedCertificatePdfUrl,
-  type Certificate,
-} from '@/lib/data/certificates';
+import { listCertificates, signedCertificatePdfUrl } from '@/lib/data/certificates';
 
 export default function Certificates() {
-  const [items, setItems] = useState<Certificate[] | null>(null);
+  const { data: items, error: queryError } = useQuery({
+    queryKey: ['certificates'],
+    queryFn: listCertificates,
+  });
   const [error, setError] = useState<string | null>(null);
   const [opening, setOpening] = useState<string | null>(null);
-
-  useEffect(() => {
-    listCertificates()
-      .then(setItems)
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)));
-  }, []);
 
   async function openPdf(path: string, id: string) {
     try {
@@ -30,6 +24,8 @@ export default function Certificates() {
     }
   }
 
+  const displayError = error ?? (queryError instanceof Error ? queryError.message : queryError ? String(queryError) : null);
+
   return (
     <div className="space-y-6">
       <header>
@@ -37,13 +33,13 @@ export default function Certificates() {
         <p className="mt-1 text-sm text-neutral-500">გენერირებული PDF სერტიფიკატები.</p>
       </header>
 
-      {error && (
+      {displayError && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
+          {displayError}
         </div>
       )}
 
-      {!items && !error && <p className="text-sm text-neutral-500">იტვირთება…</p>}
+      {!items && !displayError && <p className="text-sm text-neutral-500">იტვირთება…</p>}
 
       {items && items.length === 0 && (
         <p className="text-sm text-neutral-500">სერტიფიკატები ვერ მოიძებნა.</p>
