@@ -1,4 +1,6 @@
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import type { ReactNode } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '@/lib/auth';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { AppShell } from '@/components/layout/AppShell';
@@ -10,13 +12,41 @@ import Home from '@/pages/Home';
 import Subscribe from '@/pages/Subscribe';
 import SubscribeSuccess from '@/pages/SubscribeSuccess';
 import SubscribeFail from '@/pages/SubscribeFail';
+import Projects from '@/pages/Projects';
+import ProjectDetail from '@/pages/ProjectDetail';
+import Inspections from '@/pages/Inspections';
+import InspectionDetail from '@/pages/InspectionDetail';
+import Certificates from '@/pages/Certificates';
+import Calendar from '@/pages/Calendar';
+import Regulations from '@/pages/Regulations';
+import Account from '@/pages/Account';
+import Briefings from '@/pages/Briefings';
+import BriefingDetail from '@/pages/BriefingDetail';
+import Incidents from '@/pages/Incidents';
+import IncidentDetail from '@/pages/IncidentDetail';
+import Reports from '@/pages/Reports';
+import ReportDetail from '@/pages/ReportDetail';
+import Qualifications from '@/pages/Qualifications';
 
 // HashRouter — GitHub Pages only honors 404.html at the site root, not in
 // subdirectories like /Sarke2.0/app/, so deep BrowserRouter links 404 in
 // production. Hash routing sidesteps this entirely (everything after `#` is
 // client-side). Same pattern as web/sarke-sign.
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
+});
+
+function Shell({ children }: { children: ReactNode }) {
+  return (
+    <ProtectedRoute>
+      <AppShell>{children}</AppShell>
+    </ProtectedRoute>
+  );
+}
+
 export default function App() {
   return (
+    <QueryClientProvider client={queryClient}>
     <HashRouter>
       <AuthProvider>
         <Routes>
@@ -27,19 +57,26 @@ export default function App() {
           <Route path="/subscribe" element={<Subscribe />} />
           <Route path="/subscribe/success" element={<SubscribeSuccess />} />
           <Route path="/subscribe/fail" element={<SubscribeFail />} />
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <AppShell>
-                  <Home />
-                </AppShell>
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/" element={<Shell><Home /></Shell>} />
+          <Route path="/projects" element={<Shell><Projects /></Shell>} />
+          <Route path="/projects/:id" element={<Shell><ProjectDetail /></Shell>} />
+          <Route path="/inspections" element={<Shell><Inspections /></Shell>} />
+          <Route path="/inspections/:id" element={<Shell><InspectionDetail /></Shell>} />
+          <Route path="/certificates" element={<Shell><Certificates /></Shell>} />
+          <Route path="/calendar" element={<Shell><Calendar /></Shell>} />
+          <Route path="/regulations" element={<Shell><Regulations /></Shell>} />
+          <Route path="/account" element={<Shell><Account /></Shell>} />
+          <Route path="/briefings" element={<Shell><Briefings /></Shell>} />
+          <Route path="/briefings/:id" element={<Shell><BriefingDetail /></Shell>} />
+          <Route path="/incidents" element={<Shell><Incidents /></Shell>} />
+          <Route path="/incidents/:id" element={<Shell><IncidentDetail /></Shell>} />
+          <Route path="/reports" element={<Shell><Reports /></Shell>} />
+          <Route path="/reports/:id" element={<Shell><ReportDetail /></Shell>} />
+          <Route path="/qualifications" element={<Shell><Qualifications /></Shell>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>
     </HashRouter>
+    </QueryClientProvider>
   );
 }
