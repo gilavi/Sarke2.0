@@ -59,6 +59,18 @@ One file: [lib/pdfShared.ts](../lib/pdfShared.ts). The bobcat / excavator / gene
 
 **Don't** copy these helpers into a new PDF generator — fix the canonical owner if you need different behavior. **Don't** call `pdfPhotoEmbed` directly in a loop; `embedInspectionPhotos` already wraps it with deduplication and bucket selection.
 
+## Web dashboard photo upload (answer-photos bucket)
+
+One file: [`web-app/src/lib/photoUpload.ts`](../web-app/src/lib/photoUpload.ts). Handles uploading, signed-URL generation, and deletion of photos stored in the `answer-photos` Supabase Storage bucket from the web dashboard.
+
+| Use case | Function |
+|---|---|
+| Upload a photo file for an inspection item | `uploadInspectionPhoto(prefix, inspectionId, itemId, file)` → storage path |
+| Get a short-lived signed URL for viewing | `signedInspectionPhotoUrl(path)` → URL |
+| Remove a photo blob (best-effort) | `deleteInspectionPhoto(path)` |
+
+For UI, use [`web-app/src/components/PhotoUploadWidget.tsx`](../web-app/src/components/PhotoUploadWidget.tsx) — handles thumbnails, upload button, lightbox, and delete. Don't build a second upload widget component.
+
 ## Inspection wizard shared UI
 
 Shared step-flow chrome lives in [`components/wizard/`](../components/wizard/). The full header + back + progress bar comes from `FlowHeader`; don't roll a custom per-screen header.

@@ -20,6 +20,7 @@ export default function NewInspection() {
   const [projectId, setProjectId] = useState(params.get('project') ?? '');
   const [templateId, setTemplateId] = useState('');
   const [harnessName, setHarnessName] = useState('');
+  const [inspectorName, setInspectorName] = useState('');
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -27,6 +28,7 @@ export default function NewInspection() {
         projectId,
         templateId,
         harnessName: harnessName.trim() || null,
+        inspectorName: inspectorName.trim() || null,
       }),
     onSuccess: (created: Inspection) => {
       qc.invalidateQueries({ queryKey: ['inspections'] });
@@ -103,6 +105,16 @@ export default function NewInspection() {
                 value={harnessName}
                 onChange={(e) => setHarnessName(e.target.value)}
                 placeholder="მაგ: ხარაჩო A"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="inspector">ინსპექტორის სახელი</Label>
+              <Input
+                id="inspector"
+                value={inspectorName}
+                onChange={(e) => setInspectorName(e.target.value)}
+                placeholder="სახელი გვარი"
               />
             </div>
 

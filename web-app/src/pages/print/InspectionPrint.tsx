@@ -84,6 +84,7 @@ export default function InspectionPrint() {
         <h2>1. პროექტი</h2>
         <div className="field"><span className="field-label">დასახელება:</span> {p?.name || '—'}</div>
         <div className="field"><span className="field-label">კომპანია:</span> {p?.company_name || '—'}</div>
+        <div className="field"><span className="field-label">ინსპექტორი:</span> {item.inspector_name || '—'}</div>
 
         {sections.map((s) => (
           <section key={s} style={{ pageBreakInside: 'avoid' }}>
@@ -122,7 +123,13 @@ export default function InspectionPrint() {
         <div className="field">{item.conclusion_text || '—'}</div>
 
         <div className="signature-block">
-          <div>ხელმოწერა / თარიღი:</div>
+          <div>
+            ინსპექტორი: {item.inspector_name || '—'}
+            <br />
+            {item.inspector_signature
+              ? <img src={`data:image/png;base64,${item.inspector_signature}`} alt="ხელმოწერა" style={{ height: 56, marginTop: 4 }} />
+              : <span>ხელმოწერა / თარიღი: ___________</span>}
+          </div>
         </div>
       </div>
     </>
