@@ -15,7 +15,7 @@ const PaywallModal = lazy(() =>
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
-  return d.toLocaleDateString('ka-GE', { day: '2-digit', month: 'short', year: 'numeric' });
+  return d.toLocaleDateString('ka-GE', { day: '2-digit', month: 'long', year: 'numeric' });
 }
 
 export function SubscriptionCard() {
