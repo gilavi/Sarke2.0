@@ -132,15 +132,9 @@ export default function BobcatPrint() {
           <div>
             ინსპექტორი: {item.inspectorName || '—'}
             <br />
-            {item.inspectorSignature ? (
-              <img
-                src={item.inspectorSignature.startsWith('data:') ? item.inspectorSignature : `data:image/png;base64,${item.inspectorSignature}`}
-                alt="ხელმოწერა"
-                style={{ height: 48, objectFit: 'contain' }}
-              />
-            ) : (
-              <span>ხელმოწერა / თარიღი: _______________</span>
-            )}
+            {item.inspectorSignature
+              ? <img src={`data:image/png;base64,${item.inspectorSignature}`} alt="ხელმოწერა" style={{ height: 56, marginTop: 4 }} />
+              : <span>ხელმოწერა / თარიღი: ___________</span>}
           </div>
         </div>
       </div>

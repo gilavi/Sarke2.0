@@ -122,7 +122,11 @@ export default function InspectionPrint() {
         <div className="field">{item.conclusion_text || '—'}</div>
 
         <div className="signature-block">
-          <div>ხელმოწერა / თარიღი:</div>
+          <div>
+            {item.inspector_signature
+              ? <img src={`data:image/png;base64,${item.inspector_signature}`} alt="ხელმოწერა" style={{ height: 56, marginTop: 4 }} />
+              : <span>ხელმოწერა / თარიღი: ___________</span>}
+          </div>
         </div>
       </div>
     </>
