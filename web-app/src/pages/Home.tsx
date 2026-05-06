@@ -32,14 +32,15 @@ export default function Home() {
   const { data: incidents } = useQuery({ queryKey: ['incidents'], queryFn: () => listIncidents() });
   const { data: briefings } = useQuery({ queryKey: ['briefings'], queryFn: () => listBriefings() });
 
-  const allInspections = [
+  const allInspectionsUnsliced = [
     ...(inspections ?? []).map((i) => ({ id: i.id, label: i.harness_name || 'შემოწმების აქტი', date: i.created_at ?? '', status: i.status, href: `/inspections/${i.id}` })),
     ...(bobcats ?? []).map((i) => ({ id: i.id, label: i.equipmentModel || 'ციცხვიანი', date: i.createdAt, status: i.status, href: `/bobcat/${i.id}` })),
     ...(generalEq ?? []).map((i) => ({ id: i.id, label: i.objectName || 'ტექ. აღჭურვილობა', date: i.createdAt, status: i.status, href: `/general-equipment/${i.id}` })),
     ...(excavators ?? []).map((i) => ({ id: i.id, label: i.serialNumber || 'ექსკავატორი', date: i.createdAt, status: i.status, href: `/excavator/${i.id}` })),
-  ].sort((a, b) => (b.date > a.date ? 1 : -1)).slice(0, 5);
+  ].sort((a, b) => b.date.localeCompare(a.date));
 
-  const drafts = allInspections.filter((i) => i.status === 'draft');
+  const allInspections = allInspectionsUnsliced.slice(0, 5);
+  const draftCount = allInspectionsUnsliced.filter((i) => i.status === 'draft').length;
   const totalInspections = (inspections?.length ?? 0) + (bobcats?.length ?? 0) + (generalEq?.length ?? 0) + (excavators?.length ?? 0);
 
   return (
@@ -92,8 +93,8 @@ export default function Home() {
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-bold">{totalInspections}</p>
-              {drafts.length > 0 && (
-                <p className="text-xs text-amber-600 mt-1">{drafts.length} დრაფტი</p>
+              {draftCount > 0 && (
+                <p className="text-xs text-amber-600 mt-1">{draftCount} დრაფტი</p>
               )}
             </CardContent>
           </Card>
