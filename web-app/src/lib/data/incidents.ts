@@ -63,3 +63,54 @@ export async function signedIncidentPhotoUrl(path: string): Promise<string> {
   if (error) throw error;
   return data.signedUrl;
 }
+
+export interface CreateIncidentInput {
+  projectId: string;
+  type: IncidentType;
+  dateTime: string;
+  description: string;
+  cause: string;
+  actionsTaken: string;
+  witnesses: string[];
+  injuredName?: string;
+  injuredRole?: string;
+  location?: string;
+  attachments?: File[];
+}
+
+export async function createIncident(input: CreateIncidentInput): Promise<Incident> {
+  const photos: string[] = [];
+
+  if (input.attachments && input.attachments.length > 0) {
+    for (const file of input.attachments) {
+      const ext = file.name.split('.').pop() ?? 'bin';
+      const path = `${input.projectId}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from('incident-photos')
+        .upload(path, file);
+      if (upErr) throw upErr;
+      photos.push(path);
+    }
+  }
+
+  const { data, error } = await supabase
+    .from('incidents')
+    .insert({
+      project_id: input.projectId,
+      type: input.type,
+      date_time: input.dateTime,
+      description: input.description,
+      cause: input.cause,
+      actions_taken: input.actionsTaken,
+      witnesses: input.witnesses,
+      injured_name: input.injuredName ?? null,
+      injured_role: input.injuredRole ?? null,
+      location: input.location ?? null,
+      photos,
+      status: 'draft',
+    })
+    .select(COLS)
+    .single();
+  if (error) throw error;
+  return data as Incident;
+}

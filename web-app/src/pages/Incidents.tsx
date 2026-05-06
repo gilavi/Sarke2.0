@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { listIncidents, INCIDENT_TYPE_LABEL } from '@/lib/data/incidents';
 import { listProjects } from '@/lib/data/projects';
 
@@ -27,9 +28,14 @@ export default function Incidents() {
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="font-display text-3xl font-bold text-neutral-900">ინციდენტები</h1>
-        <p className="mt-1 text-sm text-neutral-500">უბედური და საშიში შემთხვევების ჩანაწერები.</p>
+      <header className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-display text-3xl font-bold text-neutral-900">ინციდენტები</h1>
+          <p className="mt-1 text-sm text-neutral-500">უბედური და საშიში შემთხვევების ჩანაწერები.</p>
+        </div>
+        <Link to="/incidents/new">
+          <Button>+ ახალი ინციდენტი</Button>
+        </Link>
       </header>
 
       {error && (
