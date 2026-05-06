@@ -1,23 +1,28 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileText, Trash2 } from 'lucide-react';
+import { Camera, FileText, Trash2, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
+  addAnswerPhoto,
   deleteInspection,
   getInspection,
+  listAnswerPhotos,
   listAnswers,
   listInspectionPdfs,
   listQuestions,
+  removeAnswerPhoto,
   signedPdfUrl,
   updateInspection,
   upsertAnswer,
   type Answer,
+  type AnswerPhoto,
   type Question,
 } from '@/lib/data/inspections';
+// photoUpload imported dynamically inside QuestionRow to keep top-level bundle lean
 
 function answerFor(answers: Answer[], qid: string): Answer | undefined {
   return answers.find((a) => a.question_id === qid);
@@ -216,6 +221,7 @@ export default function InspectionDetail() {
                           q={q}
                           ans={answerFor(answers, q.id)}
                           disabled={!isDraft || answerMutation.isPending}
+                          inspectionId={id!}
                           onChange={(patch) =>
                             answerMutation.mutate({
                               inspectionId: id!,
@@ -350,11 +356,13 @@ function QuestionRow({
   q,
   ans,
   disabled,
+  inspectionId,
   onChange,
 }: {
   q: Question;
   ans: Answer | undefined;
   disabled: boolean;
+  inspectionId: string;
   onChange: (patch: {
     valueBool?: boolean | null;
     valueNum?: number | null;
@@ -363,6 +371,100 @@ function QuestionRow({
   }) => void;
 }) {
   const [comment, setComment] = useState(ans?.comment ?? '');
+  const qc = useQueryClient();
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  // Photos — only loaded for photo_upload questions where an answer exists
+  const photosQ = useQuery<AnswerPhoto[]>({
+    queryKey: ['answerPhotos', ans?.id],
+    queryFn: () => listAnswerPhotos(ans!.id),
+    enabled: !!ans?.id && q.type === 'photo_upload',
+    staleTime: 0,
+  });
+  const photos = photosQ.data ?? [];
+
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [photoSignedUrls, setPhotoSignedUrls] = useState<Record<string, string>>({});
+  const [lightbox, setLightbox] = useState<number | null>(null);
+
+  // Resolve signed URLs
+  const photoIds = photos.map((p) => p.id).join(',');
+  useEffect(() => {
+    if (!photoIds) return;
+    const missing = photos.filter((p) => !photoSignedUrls[p.id]);
+    if (missing.length === 0) return;
+    let cancelled = false;
+    Promise.all(
+      missing.map(async (p) => {
+        try {
+          const { signedInspectionPhotoUrl } = await import('@/lib/photoUpload');
+          const url = await signedInspectionPhotoUrl(p.storage_path);
+          return [p.id, url] as const;
+        } catch {
+          return [p.id, ''] as const;
+        }
+      }),
+    ).then((pairs) => {
+      if (cancelled) return;
+      setPhotoSignedUrls((prev) => {
+        const next = { ...prev };
+        for (const [id, url] of pairs) next[id] = url;
+        return next;
+      });
+    });
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [photoIds]);
+
+  // Lightbox keyboard nav
+  useEffect(() => {
+    if (lightbox === null) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setLightbox(null);
+      if (e.key === 'ArrowRight') setLightbox((i) => i !== null ? Math.min(i + 1, photos.length - 1) : null);
+      if (e.key === 'ArrowLeft') setLightbox((i) => i !== null ? Math.max(i - 1, 0) : null);
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [lightbox, photos.length]);
+
+  async function handlePhotoFiles(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    setPhotoUploading(true);
+    setPhotoError(null);
+    try {
+      const { uploadInspectionPhoto: upload } = await import('@/lib/photoUpload');
+      // Ensure an answer row exists first
+      let answerId = ans?.id;
+      if (!answerId) {
+        const saved = await import('@/lib/data/inspections').then((m) =>
+          m.upsertAnswer({ inspectionId, questionId: q.id }),
+        );
+        answerId = saved.id;
+        qc.invalidateQueries({ queryKey: ['answers', inspectionId] });
+      }
+      for (const file of Array.from(files)) {
+        const path = await upload('inspections', inspectionId, q.id, file);
+        await addAnswerPhoto(answerId, path);
+      }
+      qc.invalidateQueries({ queryKey: ['answerPhotos', answerId] });
+    } catch (e) {
+      setPhotoError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setPhotoUploading(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  }
+
+  async function handlePhotoRemove(photo: AnswerPhoto) {
+    try {
+      await removeAnswerPhoto(photo.id, photo.storage_path);
+    } catch {
+      // best-effort
+    }
+    qc.invalidateQueries({ queryKey: ['answerPhotos', ans?.id] });
+  }
 
   return (
     <div className="space-y-2">
@@ -426,9 +528,107 @@ function QuestionRow({
         />
       )}
 
-      {(q.type === 'photo_upload' || q.type === 'component_grid') && (
+      {q.type === 'photo_upload' && (
+        <div>
+          {/* Thumbnail strip */}
+          {photos.length > 0 && (
+            <div className="mb-2 flex flex-wrap gap-2">
+              {photos.map((p, i) => (
+                <div key={p.id} className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setLightbox(i)}
+                    className="h-16 w-16 overflow-hidden rounded-md border border-neutral-200"
+                  >
+                    {photoSignedUrls[p.id] ? (
+                      <img src={photoSignedUrls[p.id]} alt={`ფოტო ${i + 1}`} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="h-full w-full bg-neutral-100" />
+                    )}
+                  </button>
+                  {!disabled && (
+                    <button
+                      type="button"
+                      onClick={() => handlePhotoRemove(p)}
+                      className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white hover:bg-red-600"
+                    >
+                      <X size={10} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {!disabled && (
+            <>
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                disabled={photoUploading}
+                className="flex items-center gap-1 rounded-md border border-dashed border-neutral-300 px-2 py-1 text-xs text-neutral-500 hover:border-brand-400 hover:text-brand-600 disabled:opacity-50"
+              >
+                <Camera size={12} />
+                {photoUploading ? 'იტვირთება…' : 'ფოტოს დამატება'}
+              </button>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={(e) => handlePhotoFiles(e.target.files)}
+              />
+            </>
+          )}
+
+          {photoError && <p className="mt-1 text-xs text-red-600">{photoError}</p>}
+
+          {/* Lightbox */}
+          {lightbox !== null && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
+              onClick={() => setLightbox(null)}
+            >
+              {lightbox > 0 && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setLightbox(lightbox - 1); }}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-3 text-2xl text-white"
+                >‹</button>
+              )}
+              <div className="flex max-h-screen max-w-5xl flex-col items-center px-16" onClick={(e) => e.stopPropagation()}>
+                {photoSignedUrls[photos[lightbox]?.id] ? (
+                  <img
+                    src={photoSignedUrls[photos[lightbox].id]}
+                    alt={`ფოტო ${lightbox + 1}`}
+                    className="max-h-[80vh] max-w-full rounded-lg object-contain shadow-2xl"
+                  />
+                ) : (
+                  <div className="h-64 w-96 rounded-lg bg-neutral-800" />
+                )}
+                <div className="mt-3 text-sm text-white/60">{lightbox + 1} / {photos.length}</div>
+              </div>
+              {lightbox < photos.length - 1 && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setLightbox(lightbox + 1); }}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-3 text-2xl text-white"
+                >›</button>
+              )}
+              <button
+                type="button"
+                onClick={() => setLightbox(null)}
+                className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white"
+              >✕</button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {q.type === 'component_grid' && (
         <p className="text-xs italic text-neutral-500">
-          ამ ტიპის კითხვა ფასდება მობილურ აპში.
+          კომპონენტების ბადე ფასდება მობილურ აპში.
         </p>
       )}
 

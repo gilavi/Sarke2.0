@@ -171,6 +171,46 @@ export async function upsertAnswer(input: {
   return data as Answer;
 }
 
+// -------- Answer Photos --------
+
+export interface AnswerPhoto {
+  id: string;
+  answer_id: string;
+  storage_path: string;
+  caption: string | null;
+  created_at: string;
+}
+
+export async function listAnswerPhotos(answerId: string): Promise<AnswerPhoto[]> {
+  const { data, error } = await supabase
+    .from('answer_photos')
+    .select('id, answer_id, storage_path, caption, created_at')
+    .eq('answer_id', answerId);
+  if (error) throw error;
+  return (data ?? []) as AnswerPhoto[];
+}
+
+export async function addAnswerPhoto(
+  answerId: string,
+  storagePath: string,
+  caption?: string | null,
+): Promise<AnswerPhoto> {
+  const { data, error } = await supabase
+    .from('answer_photos')
+    .insert({ answer_id: answerId, storage_path: storagePath, caption: caption ?? null })
+    .select('id, answer_id, storage_path, caption, created_at')
+    .single();
+  if (error) throw error;
+  return data as AnswerPhoto;
+}
+
+export async function removeAnswerPhoto(photoId: string, storagePath: string): Promise<void> {
+  const { error } = await supabase.from('answer_photos').delete().eq('id', photoId);
+  if (error) throw error;
+  // Best-effort blob removal
+  await supabase.storage.from('answer-photos').remove([storagePath]);
+}
+
 export async function updateInspection(
   id: string,
   patch: {

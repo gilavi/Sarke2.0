@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import PhotoUploadWidget from '@/components/PhotoUploadWidget';
 import {
   BOBCAT_ITEMS,
   BOBCAT_TEMPLATE_ID,
@@ -257,6 +258,23 @@ export default function BobcatInspectionDetail() {
                       }}
                       placeholder="კომენტარი"
                       className="mt-2 text-xs"
+                    />
+                    <PhotoUploadWidget
+                      paths={state.photo_paths ?? []}
+                      disabled={!isDraft}
+                      prefix="bobcat"
+                      inspectionId={item.id}
+                      itemId={entry.id}
+                      onAdd={(path) =>
+                        patchItem(entry.id, {
+                          photo_paths: [...(state.photo_paths ?? []), path],
+                        })
+                      }
+                      onRemove={(path) =>
+                        patchItem(entry.id, {
+                          photo_paths: (state.photo_paths ?? []).filter((p) => p !== path),
+                        })
+                      }
                     />
                   </li>
                 );

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileText, Trash2 } from 'lucide-react';
+import PhotoUploadWidget from '@/components/PhotoUploadWidget';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -287,6 +288,23 @@ export default function ExcavatorInspectionDetail() {
                         }}
                         placeholder="კომენტარი"
                         className="mt-2 text-xs"
+                      />
+                      <PhotoUploadWidget
+                        paths={st.photo_paths ?? []}
+                        disabled={!isDraft}
+                        prefix="excavator"
+                        inspectionId={item.id}
+                        itemId={entry.id}
+                        onAdd={(path) =>
+                          patchSection(s.field, entry.id, {
+                            photo_paths: [...(st.photo_paths ?? []), path],
+                          })
+                        }
+                        onRemove={(path) =>
+                          patchSection(s.field, entry.id, {
+                            photo_paths: (st.photo_paths ?? []).filter((p) => p !== path),
+                          })
+                        }
                       />
                     </li>
                   );

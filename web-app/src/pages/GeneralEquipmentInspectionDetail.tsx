@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileText, Plus, Trash2, X } from 'lucide-react';
+import PhotoUploadWidget from '@/components/PhotoUploadWidget';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -252,6 +253,23 @@ export default function GeneralEquipmentInspectionDetail() {
                     }}
                     placeholder="შენიშვნა"
                     className="mt-2 text-xs"
+                  />
+                  <PhotoUploadWidget
+                    paths={row.photo_paths ?? []}
+                    disabled={!isDraft}
+                    prefix="general-equipment"
+                    inspectionId={item.id}
+                    itemId={row.id}
+                    onAdd={(path) =>
+                      patchRow(row.id, {
+                        photo_paths: [...(row.photo_paths ?? []), path],
+                      })
+                    }
+                    onRemove={(path) =>
+                      patchRow(row.id, {
+                        photo_paths: (row.photo_paths ?? []).filter((p) => p !== path),
+                      })
+                    }
                   />
                 </li>
               ))}
