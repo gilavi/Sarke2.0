@@ -8,7 +8,7 @@ import {
   maybeRefreshRegulations,
   markRegulationSeen,
   getLastFetchAt,
-} from '@/lib/regulations';
+} from '@/lib/data/regulations';
 
 function formatLastFetch(iso: string | null): string {
   if (!iso) return 'არასდროს';
