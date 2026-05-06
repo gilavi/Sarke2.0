@@ -52,6 +52,7 @@ const ReportDetail = lazy(() => import('@/pages/ReportDetail'));
 const Qualifications = lazy(() => import('@/pages/Qualifications'));
 const Templates = lazy(() => import('@/pages/Templates'));
 const Terms = lazy(() => import('@/pages/Terms'));
+const SafetyGuidePage = lazy(() => import('@/pages/SafetyGuidePage'));
 
 // HashRouter — GitHub Pages only honors 404.html at the site root, not in
 // subdirectories like /Sarke2.0/app/, so deep BrowserRouter links 404 in
@@ -220,6 +221,16 @@ export default function App() {
             <Route path="/qualifications" element={<Shell><Qualifications /></Shell>} />
             <Route path="/templates" element={<Shell><Templates /></Shell>} />
             <Route path="/terms" element={<Shell><Terms /></Shell>} />
+            <Route
+              path="/safety"
+              element={
+                <ProtectedRoute>
+                  <Suspense fallback={<PageFallback />}>
+                    <SafetyGuidePage />
+                  </Suspense>
+                </ProtectedRoute>
+              }
+            />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </AuthProvider>
