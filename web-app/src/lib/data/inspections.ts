@@ -9,6 +9,7 @@ export interface Inspection {
   template_id: string;
   status: InspectionStatus;
   harness_name: string | null;
+  inspector_name: string | null;
   conclusion_text: string | null;
   is_safe_for_use: boolean | null;
   inspector_signature: string | null;
@@ -20,7 +21,7 @@ export async function listInspections(projectId?: string): Promise<Inspection[]>
   let q = supabase
     .from('inspections')
     .select(
-      'id, project_id, user_id, template_id, status, harness_name, conclusion_text, is_safe_for_use, inspector_signature, created_at, completed_at',
+      'id, project_id, user_id, template_id, status, harness_name, inspector_name, conclusion_text, is_safe_for_use, inspector_signature, created_at, completed_at',
     )
     .order('created_at', { ascending: false });
   if (projectId) q = q.eq('project_id', projectId);
@@ -41,7 +42,7 @@ export async function getInspection(id: string): Promise<Inspection | null> {
   const { data, error } = await supabase
     .from('inspections')
     .select(
-      'id, project_id, user_id, template_id, status, harness_name, conclusion_text, is_safe_for_use, inspector_signature, created_at, completed_at',
+      'id, project_id, user_id, template_id, status, harness_name, inspector_name, conclusion_text, is_safe_for_use, inspector_signature, created_at, completed_at',
     )
     .eq('id', id)
     .maybeSingle();
@@ -75,6 +76,7 @@ export interface CreateInspectionInput {
   projectId: string;
   templateId: string;
   harnessName?: string | null;
+  inspectorName?: string | null;
 }
 
 export async function createInspection(input: CreateInspectionInput): Promise<Inspection> {
@@ -88,10 +90,11 @@ export async function createInspection(input: CreateInspectionInput): Promise<In
       template_id: input.templateId,
       user_id: userData.user.id,
       harness_name: input.harnessName ?? null,
+      inspector_name: input.inspectorName ?? null,
       status: 'draft',
     })
     .select(
-      'id, project_id, user_id, template_id, status, harness_name, conclusion_text, is_safe_for_use, inspector_signature, created_at, completed_at',
+      'id, project_id, user_id, template_id, status, harness_name, inspector_name, conclusion_text, is_safe_for_use, inspector_signature, created_at, completed_at',
     )
     .single();
   if (error) throw error;
@@ -216,6 +219,7 @@ export async function updateInspection(
   id: string,
   patch: {
     harness_name?: string | null;
+    inspector_name?: string | null;
     conclusion_text?: string | null;
     is_safe_for_use?: boolean | null;
     inspector_signature?: string | null;

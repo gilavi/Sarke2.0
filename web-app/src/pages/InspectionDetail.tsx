@@ -226,6 +226,33 @@ export default function InspectionDetail() {
         </div>
       </header>
 
+      {/* Inspector info */}
+      <Card>
+        <CardHeader><CardTitle className="text-base">ზოგადი ინფორმაცია</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-1">
+            <Label>ინსპექტორის სახელი</Label>
+            {isDraft ? (
+              <input
+                key={inspection.inspector_name ?? ''}
+                defaultValue={inspection.inspector_name ?? ''}
+                onBlur={(e) => {
+                  const v = e.target.value.trim() || null;
+                  if (v !== inspection.inspector_name)
+                    updateInspection(id!, { inspector_name: v }).then(() =>
+                      qc.invalidateQueries({ queryKey: ['inspection', id] })
+                    );
+                }}
+                className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                placeholder="სახელი გვარი"
+              />
+            ) : (
+              <p className="text-sm text-neutral-700">{inspection.inspector_name || '—'}</p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Questions */}
       {questions.length > 0 && (
         <section className="space-y-4">
