@@ -306,7 +306,7 @@ export default function Calendar() {
                         <span className="text-xs font-normal text-neutral-500">
                           {it.date.toLocaleDateString('ka-GE', {
                             day: '2-digit',
-                            month: 'short',
+                            month: 'long',
                           })}
                         </span>
                       </CardTitle>

@@ -65,7 +65,7 @@ export default function Briefings() {
                       <span>
                         {new Date(b.dateTime).toLocaleDateString('ka-GE', {
                           day: '2-digit',
-                          month: 'short',
+                          month: 'long',
                           year: 'numeric',
                         })}
                       </span>
