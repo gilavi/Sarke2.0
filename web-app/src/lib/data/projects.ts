@@ -72,3 +72,25 @@ export async function updateProject(
   const { error } = await supabase.from('projects').update(patch).eq('id', id);
   if (error) throw error;
 }
+
+export async function createProject(args: {
+  userId: string;
+  name: string;
+  companyName: string;
+  address: string | null;
+  contactPhone: string | null;
+}): Promise<Project> {
+  const { data, error } = await supabase
+    .from('projects')
+    .insert({
+      user_id: args.userId,
+      name: args.name,
+      company_name: args.companyName,
+      address: args.address,
+      contact_phone: args.contactPhone,
+    })
+    .select('id, user_id, name, company_name, address, contact_phone, logo, crew, created_at')
+    .single();
+  if (error) throw error;
+  return data as Project;
+}

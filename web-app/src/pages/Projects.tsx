@@ -1,35 +1,43 @@
-import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { Plus } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { listProjects, type Project } from '@/lib/data/projects';
+import { Button } from '@/components/ui/button';
+import { listProjects } from '@/lib/data/projects';
 
 export default function Projects() {
-  const [items, setItems] = useState<Project[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    listProjects()
-      .then(setItems)
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)));
-  }, []);
+  const { data: items, error } = useQuery({
+    queryKey: ['projects'],
+    queryFn: listProjects,
+  });
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="font-display text-3xl font-bold text-neutral-900">პროექტები</h1>
-        <p className="mt-1 text-sm text-neutral-500">თქვენი ყველა პროექტი ერთ ადგილას.</p>
+      <header className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-display text-3xl font-bold text-neutral-900">პროექტები</h1>
+          <p className="mt-1 text-sm text-neutral-500">თქვენი ყველა პროექტი ერთ ადგილას.</p>
+        </div>
+        <Link to="/projects/new">
+          <Button className="shrink-0">
+            <Plus size={16} className="mr-1" />
+            ახალი
+          </Button>
+        </Link>
       </header>
 
       {error && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
+          {error instanceof Error ? error.message : String(error)}
         </div>
       )}
 
       {!items && !error && <p className="text-sm text-neutral-500">იტვირთება…</p>}
 
       {items && items.length === 0 && (
-        <p className="text-sm text-neutral-500">პროექტები ჯერ არ არის — შექმენით მობილურ აპში.</p>
+        <p className="text-sm text-neutral-500">
+          პროექტები ჯერ არ არის. დააჭირეთ „ახალი" — ახალი პროექტის შესაქმნელად.
+        </p>
       )}
 
       {items && items.length > 0 && (
