@@ -15,7 +15,8 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
-import { PlateInput } from '../../../components/inputs/PlateInput';
+import { PlateInput, type PlateInputHandle } from '../../../components/inputs/PlateInput';
+import { SerialKeypad } from '../../../components/inputs/SerialKeypad';
 import { Button } from '../../../components/ui';
 import { ExcavatorMaintenanceItem } from '../../../components/excavator/ExcavatorMaintenanceItem';
 
@@ -125,6 +126,10 @@ export default function ExcavatorInspectionScreen() {
 
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
+  // Plate-input step state (reuses SerialKeypad like bobcat)
+  const plateRef = useRef<PlateInputHandle>(null);
+  const [activeSlotKind, setActiveSlotKind] = useState<'letter' | 'digit'>('letter');
+
   // Step state
   const [step, setStep] = useState(0);
   const prevStepRef = useRef(0);
@@ -133,11 +138,13 @@ export default function ExcavatorInspectionScreen() {
   const animateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => { inspectionRef.current = inspection; }, [inspection]);
 
-  const INFO_STEP = 0;
-  const CHECKLIST_STEP = 1;
-  const CONCLUSION_STEP = 2;
-  const DONE_STEP = 3;
-  const TOTAL_STEPS = 3;
+  const INFO_STEP       = 0;
+  const PLATE_STEP      = 1;
+  const SERIAL_STEP     = 2;
+  const CHECKLIST_STEP  = 3;
+  const CONCLUSION_STEP = 4;
+  const DONE_STEP       = 5;
+  const TOTAL_STEPS     = 5;
 
   const persistKey = useMemo(() => `excavator-wizard:${id}:step`, [id]);
   const summaryPhotosKey = useMemo(() => `excavator-wizard:${id}:summaryPhotos`, [id]);
@@ -184,7 +191,7 @@ export default function ExcavatorInspectionScreen() {
         const saved = await AsyncStorage.getItem(persistKey);
         if (saved && !cancelled) {
           const s = parseInt(saved, 10);
-          if (!isNaN(s) && s >= 0 && s <= CONCLUSION_STEP) {
+          if (!isNaN(s) && s >= 0 && s <= CONCLUSION_STEP && s !== DONE_STEP) {
             setStep(s);
           }
         }
@@ -587,11 +594,13 @@ export default function ExcavatorInspectionScreen() {
 
   const canGoNext = useMemo(() => {
     if (!inspection) return false;
-    if (step === INFO_STEP) return !!inspection.serialNumber?.trim();
-    if (step === CHECKLIST_STEP) return flatState.every(s => s.result !== null);
+    if (step === INFO_STEP)       return true;
+    if (step === PLATE_STEP)      return true;
+    if (step === SERIAL_STEP)     return !!inspection.serialNumber?.trim();
+    if (step === CHECKLIST_STEP)  return flatState.every(s => s.result !== null);
     if (step === CONCLUSION_STEP) return !!inspection.verdict && !completing;
     return false;
-  }, [step, inspection, flatState, completing, CONCLUSION_STEP]);
+  }, [step, inspection, flatState, completing, PLATE_STEP, SERIAL_STEP, CONCLUSION_STEP]);
 
   const handleNext = useCallback(async () => {
     if (step === CONCLUSION_STEP) {
@@ -697,8 +706,51 @@ export default function ExcavatorInspectionScreen() {
           direction={direction}
           animate={animateSteps}
         >
-          {/* ── Step 0: Document Info ───────────────────────────────────── */}
-          {step === 0 && (
+          {/* ── Step 0: Machine specs (read-only) ──────────────────────── */}
+          {step === INFO_STEP && (
+            <KeyboardAwareScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 12 }}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              <MachineSpecsCard insp={inspection} styles={styles} />
+            </KeyboardAwareScrollView>
+          )}
+
+          {/* ── Step 1: Plate / registration number (custom keypad) ─────── */}
+          {step === PLATE_STEP && (
+            <View style={{ flex: 1 }}>
+              <View style={{ paddingHorizontal: 20, paddingTop: 32, gap: 20, alignItems: 'center' }}>
+                <PlateInput
+                  ref={plateRef}
+                  label="სახელმწიფო / ს.ნ ნომERი"
+                  value={inspection.registrationNumber ?? ''}
+                  onChangeText={v => {
+                    update('registrationNumber', v || null);
+                    if (v.trim()) registrationNumberHistory.addToHistory(v.trim());
+                  }}
+                  customKeyboard
+                  onActiveSlotKindChange={k => setActiveSlotKind(k ?? 'letter')}
+                />
+                {registrationNumberHistory.suggestions.length > 0 && (
+                  <SuggestionPills
+                    suggestions={registrationNumberHistory.suggestions}
+                    onSelect={v => update('registrationNumber', v)}
+                    visible
+                  />
+                )}
+              </View>
+              <View style={{ flex: 1 }} />
+              <SerialKeypad
+                slotKind={activeSlotKind}
+                onKey={k => plateRef.current?.pressKey(k)}
+              />
+            </View>
+          )}
+
+          {/* ── Step 2: Serial number ───────────────────────────────────── */}
+          {step === SERIAL_STEP && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
               contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 12 }}
@@ -707,23 +759,8 @@ export default function ExcavatorInspectionScreen() {
               showsVerticalScrollIndicator={false}
               bottomOffset={120}
             >
-              <MachineSpecsCard insp={inspection} styles={styles} />
-
-              <PlateInput
-                label="სახელმწიფო / ს.ნ ნომერი"
-                value={inspection.registrationNumber ?? ''}
-                onChangeText={v => {
-                  update('registrationNumber', v || null);
-                  if (v.trim()) registrationNumberHistory.addToHistory(v.trim());
-                }}
-              />
-              <SuggestionPills
-                suggestions={registrationNumberHistory.suggestions}
-                onSelect={v => update('registrationNumber', v)}
-              />
-
               <FloatingLabelInput
-                label="სერიული ნომერი *"
+                label="სERIული ნომERი *"
                 value={inspection.serialNumber ?? ''}
                 onChangeText={v => update('serialNumber', v || null)}
                 onFocus={() => setFocusedField('serialNumber')}
@@ -734,6 +771,7 @@ export default function ExcavatorInspectionScreen() {
                   }
                 }}
                 required
+                autoFocus
               />
               <SuggestionPills
                 suggestions={serialNumberHistory.suggestions}
