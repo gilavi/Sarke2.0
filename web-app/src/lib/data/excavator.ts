@@ -61,13 +61,14 @@ interface DbRow {
   notes: string | null;
   inspector_position: string | null;
   inspector_signature: string | null;
+  summary_photos: string[] | null;
   completed_at: string | null;
   created_at: string;
   updated_at: string;
 }
 
 const COLS =
-  'id, project_id, template_id, user_id, status, machine_specs, serial_number, inventory_number, project_name, department, inspection_date, moto_hours, inspector_name, last_inspection_date, engine_items, undercarriage_items, cabin_items, safety_items, maintenance_items, verdict, notes, inspector_position, inspector_signature, completed_at, created_at, updated_at';
+  'id, project_id, template_id, user_id, status, machine_specs, serial_number, inventory_number, project_name, department, inspection_date, moto_hours, inspector_name, last_inspection_date, engine_items, undercarriage_items, cabin_items, safety_items, maintenance_items, verdict, notes, inspector_position, inspector_signature, summary_photos, completed_at, created_at, updated_at';
 
 function emptyChecklist(catalog: { id: number }[]): ExcavatorChecklistItemState[] {
   return catalog.map((c) => ({ id: c.id, result: null, comment: null, photo_paths: [] }));
@@ -103,6 +104,7 @@ function toModel(r: DbRow): ExcavatorInspection {
     notes: r.notes,
     inspectorPosition: r.inspector_position,
     inspectorSignature: r.inspector_signature,
+    summaryPhotos: r.summary_photos ?? [],
     completedAt: r.completed_at,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
@@ -191,6 +193,7 @@ export async function updateExcavatorInspection(
     notes: string | null;
     inspectorPosition: string | null;
     inspectorSignature: string | null;
+    summaryPhotos: string[];
     status: 'draft' | 'completed';
   }>,
 ): Promise<void> {
@@ -212,6 +215,7 @@ export async function updateExcavatorInspection(
   if (patch.notes !== undefined) u.notes = patch.notes;
   if (patch.inspectorPosition !== undefined) u.inspector_position = patch.inspectorPosition;
   if (patch.inspectorSignature !== undefined) u.inspector_signature = patch.inspectorSignature;
+  if (patch.summaryPhotos !== undefined) u.summary_photos = patch.summaryPhotos;
   if (patch.status !== undefined) {
     u.status = patch.status;
     if (patch.status === 'completed') u.completed_at = new Date().toISOString();
