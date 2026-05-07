@@ -163,6 +163,7 @@ export async function updateGeneralEquipmentInspection(
     activityType: string | null;
     actNumber: string | null;
     inspectionType: GEInspectionType | null;
+    inspectionDate: string | null;
     department: string | null;
     inspectorName: string | null;
     equipment: GEEquipmentRow[];
@@ -180,6 +181,7 @@ export async function updateGeneralEquipmentInspection(
   if (patch.activityType !== undefined) updates.activity_type = patch.activityType;
   if (patch.actNumber !== undefined) updates.act_number = patch.actNumber;
   if (patch.inspectionType !== undefined) updates.inspection_type = patch.inspectionType;
+  if (patch.inspectionDate !== undefined) updates.inspection_date = patch.inspectionDate;
   if (patch.department !== undefined) updates.department = patch.department;
   if (patch.inspectorName !== undefined) updates.inspector_name = patch.inspectorName;
   if (patch.equipment !== undefined) updates.equipment = patch.equipment;

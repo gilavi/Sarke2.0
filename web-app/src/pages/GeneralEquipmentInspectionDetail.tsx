@@ -15,6 +15,8 @@ import {
   updateGeneralEquipmentInspection,
   type GECondition,
   type GEEquipmentRow,
+  type GEInspectionType,
+  type GESignerRole,
 } from '@/lib/data/generalEquipment';
 
 const COND_LABEL: Record<GECondition, string> = {
@@ -173,10 +175,49 @@ export default function GeneralEquipmentInspectionDetail() {
         <CardContent className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
           <Field label="ობიექტი" value={item.objectName} disabled={!isDraft}
             onSave={(v) => updateMutation.mutate({ objectName: v })} />
+          <Field label="მისამართი" value={item.address} disabled={!isDraft}
+            onSave={(v) => updateMutation.mutate({ address: v })} />
           <Field label="საქმიანობის ტიპი" value={item.activityType} disabled={!isDraft}
             onSave={(v) => updateMutation.mutate({ activityType: v })} />
           <Field label="აქტის ნომერი" value={item.actNumber} disabled={!isDraft}
             onSave={(v) => updateMutation.mutate({ actNumber: v })} />
+          <div className="space-y-1">
+            <Label>შემოწმების თარიღი</Label>
+            <Input
+              type="date"
+              disabled={!isDraft}
+              defaultValue={item.inspectionDate ? item.inspectionDate.slice(0, 10) : ''}
+              onBlur={(e) => {
+                const v = e.target.value || null;
+                if (v !== (item.inspectionDate ? item.inspectionDate.slice(0, 10) : null))
+                  updateMutation.mutate({ inspectionDate: v });
+              }}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label>შემოწმების სახეობა</Label>
+            <div className="flex flex-wrap gap-2">
+              {([
+                ['initial', 'პირველადი'],
+                ['repeat', 'განმეორებითი'],
+                ['scheduled', 'დაგეგმილი'],
+              ] as [GEInspectionType, string][]).map(([val, label]) => (
+                <button
+                  key={val}
+                  type="button"
+                  disabled={!isDraft}
+                  onClick={() => updateMutation.mutate({ inspectionType: item.inspectionType === val ? null : val })}
+                  className={`rounded-full border px-3 py-1 text-xs font-semibold transition disabled:opacity-60 ${
+                    item.inspectionType === val
+                      ? 'border-brand-600 bg-brand-600 text-white'
+                      : 'border-neutral-300 bg-white text-neutral-700 hover:border-brand-400'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
           <Field label="დეპარტამენტი" value={item.department} disabled={!isDraft}
             onSave={(v) => updateMutation.mutate({ department: v })} />
           <Field label="ინსპექტორი" value={item.inspectorName} disabled={!isDraft}
@@ -338,6 +379,48 @@ export default function GeneralEquipmentInspectionDetail() {
             )
           ) : (
             <p className="text-sm text-neutral-500">ხელმოწერა არ არის.</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Signer */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">ხელმომწერი</CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+          <Field label="სახელი, გვარი" value={item.signerName} disabled={!isDraft}
+            onSave={(v) => updateMutation.mutate({ signerName: v })} />
+          <div className="space-y-1">
+            <Label>როლი</Label>
+            <div className="flex flex-wrap gap-2">
+              {([
+                ['electrician', 'ელექტრიკოსი'],
+                ['technician', 'ტექნიკოსი'],
+                ['safety_specialist', 'უსაფრთხ. სპეც.'],
+                ['other', 'სხვა'],
+              ] as [GESignerRole, string][]).map(([val, label]) => (
+                <button
+                  key={val}
+                  type="button"
+                  disabled={!isDraft}
+                  onClick={() => updateMutation.mutate({ signerRole: item.signerRole === val ? null : val })}
+                  className={`rounded-full border px-3 py-1 text-xs font-semibold transition disabled:opacity-60 ${
+                    item.signerRole === val
+                      ? 'border-brand-600 bg-brand-600 text-white'
+                      : 'border-neutral-300 bg-white text-neutral-700 hover:border-brand-400'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          {item.signerRole === 'other' && (
+            <div className="sm:col-span-2">
+              <Field label="სხვა როლი" value={item.signerRoleCustom} disabled={!isDraft}
+                onSave={(v) => updateMutation.mutate({ signerRoleCustom: v })} />
+            </div>
           )}
         </CardContent>
       </Card>
