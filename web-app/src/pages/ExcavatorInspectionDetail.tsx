@@ -234,6 +234,32 @@ export default function ExcavatorInspectionDetail() {
             onSave={(v) => updateMutation.mutate({ inspectorPosition: v })}
           />
           <div className="space-y-1">
+            <Label>შემოწმების თარიღი</Label>
+            <Input
+              type="date"
+              disabled={!isDraft}
+              defaultValue={item.inspectionDate ? item.inspectionDate.slice(0, 10) : ''}
+              onBlur={(e) => {
+                const v = e.target.value || null;
+                if (v !== (item.inspectionDate ? item.inspectionDate.slice(0, 10) : null))
+                  updateMutation.mutate({ inspectionDate: v });
+              }}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label>წინა შემოწმების თარიღი</Label>
+            <Input
+              type="date"
+              disabled={!isDraft}
+              defaultValue={item.lastInspectionDate ? item.lastInspectionDate.slice(0, 10) : ''}
+              onBlur={(e) => {
+                const v = e.target.value || null;
+                if (v !== (item.lastInspectionDate ? item.lastInspectionDate.slice(0, 10) : null))
+                  updateMutation.mutate({ lastInspectionDate: v });
+              }}
+            />
+          </div>
+          <div className="space-y-1">
             <Label>მუშა საათები</Label>
             <Input
               type="number"

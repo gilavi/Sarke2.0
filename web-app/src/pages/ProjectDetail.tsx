@@ -675,6 +675,14 @@ export default function ProjectDetail() {
           title="შემოწმების აქტები"
           count={allProjectInspections.length}
           viewAllTo={`/inspections?project=${id}`}
+          action={
+            <Link to={`/inspections/new?project=${id}`}>
+              <Button variant="outline" size="sm">
+                <Plus size={14} className="mr-1" />
+                ახალი
+              </Button>
+            </Link>
+          }
         />
         {allProjectInspections.length === 0 ? (
           <EmptyState text="აქტები ჯერ არ არის." />
@@ -697,7 +705,18 @@ export default function ProjectDetail() {
 
       {/* Incidents */}
       <section>
-        <SectionHeader title="ინციდენტები" count={incidents.length} />
+        <SectionHeader
+          title="ინციდენტები"
+          count={incidents.length}
+          action={
+            <Link to={`/incidents/new?project=${id}`}>
+              <Button variant="outline" size="sm">
+                <Plus size={14} className="mr-1" />
+                ახალი
+              </Button>
+            </Link>
+          }
+        />
         {incidents.length === 0 ? (
           <EmptyState text="ინციდენტები ჯერ არ არის." />
         ) : (
@@ -739,6 +758,14 @@ export default function ProjectDetail() {
           title="ბრიფინგები"
           count={briefings.length}
           viewAllTo={`/briefings?project=${id}`}
+          action={
+            <Link to={`/briefings/new?project=${id}`}>
+              <Button variant="outline" size="sm">
+                <Plus size={14} className="mr-1" />
+                ახალი
+              </Button>
+            </Link>
+          }
         />
         {briefings.length === 0 ? (
           <EmptyState text="ბრიფინგები ჯერ არ არის." />
@@ -774,7 +801,18 @@ export default function ProjectDetail() {
 
       {/* Reports */}
       <section>
-        <SectionHeader title="რეპორტები" count={reports.length} />
+        <SectionHeader
+          title="რეპორტები"
+          count={reports.length}
+          action={
+            <Link to={`/reports/new?project=${id}`}>
+              <Button variant="outline" size="sm">
+                <Plus size={14} className="mr-1" />
+                ახალი
+              </Button>
+            </Link>
+          }
+        />
         {reports.length === 0 ? (
           <EmptyState text="რეპორტები ჯერ არ არის." />
         ) : (
