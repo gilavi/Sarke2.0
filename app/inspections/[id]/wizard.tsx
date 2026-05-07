@@ -8,7 +8,6 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Button, Card, Screen } from '../../../components/ui';
 import { FlowHeader } from '../../../components/FlowHeader';
@@ -35,7 +34,7 @@ import {
 import { imageForDisplay, pdfPhotoEmbed } from '../../../lib/imageUrl';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import { haptic } from '../../../lib/haptics';
-import { setPhotoPickerCallback, setPhotoAnnotateCallback, cancelPhotoPicker, cancelPhotoAnnotate, getLastPhotoLocation } from '../../../lib/photoPickerBus';
+import { usePhotoWithLocation } from '../../../hooks/usePhotoWithLocation';
 import { getCurrentLocation, reverseGeocode } from '../../../utils/location';
 import type { PhotoLocation } from '../../../utils/location';
 import { showPhotoLocationAlert } from '../../../lib/photoLocationAlert';
@@ -58,12 +57,6 @@ import type {
   Question,
   Template,
 } from '../../../types/models';
-
-const PICKER_OPTS: ImagePicker.ImagePickerOptions = {
-  mediaTypes: ImagePicker.MediaTypeOptions.Images,
-  quality: 0.7,
-  base64: false,
-};
 
 const stepKey = (qid: string) => `wizard:${qid}:step`;
 const harnessCountKey = (qid: string) => `wizard:${qid}:harnessCount`;
@@ -182,6 +175,7 @@ export default function QuestionnaireWizard() {
   const toast = useToast();
   const offline = useOffline();
   const insets = useSafeAreaInsets();
+  const { pickPhotoWithAnnotation } = usePhotoWithLocation();
 
   const queryClient = useQueryClient();
   const [questionnaire, setQuestionnaire] = useState<Inspection | null>(null);
@@ -198,15 +192,6 @@ export default function QuestionnaireWizard() {
   // Measured WizardHeader height — used as keyboardVerticalOffset so the
   // keyboard avoidance lines up exactly with the rendered header above KAV.
   const [headerH, setHeaderH] = useState(0);
-  const pendingPhotoContext = useRef<{
-    questionId: string;
-    rowKey?: string;
-    mime: string;
-    ext: string;
-    path: string;
-  } | null>(null);
-  const pickerTokenRef = useRef<number | null>(null);
-  const annotateTokenRef = useRef<number | null>(null);
   const [photoUploadCount, setPhotoUploadCount] = useState(0);
   const [conclusion, setConclusion] = useState('');
   const [isSafe, setIsSafe] = useState<boolean | null>(null);
@@ -250,14 +235,6 @@ export default function QuestionnaireWizard() {
   const dismissTour = useCallback(() => {
     setShowTour(false);
     AsyncStorage.setItem(TOUR_SEEN_KEY, '1').catch(() => {});
-  }, []);
-
-  // Cancel any dangling photo-picker bus tokens on unmount
-  useEffect(() => {
-    return () => {
-      if (pickerTokenRef.current !== null) cancelPhotoPicker(pickerTokenRef.current);
-      if (annotateTokenRef.current !== null) cancelPhotoAnnotate(annotateTokenRef.current);
-    };
   }, []);
 
   // Step transition direction. Forward navigation slides the new step in
@@ -645,107 +622,16 @@ export default function QuestionnaireWizard() {
     }
   };
 
-  const launchPicker = async (
-    source: 'camera' | 'library',
-    question: Question,
-    rowKey?: string,
-  ) => {
-    if (!questionnaire) return;
-    haptic.medium();
-    const perm =
-      source === 'camera'
-        ? await ImagePicker.requestCameraPermissionsAsync()
-        : await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      toast.error(source === 'camera' ? 'კამერაზე წვდომა საჭიროა' : 'გალერეაზე წვდომა საჭიროა');
-      return;
-    }
-    let result: Awaited<ReturnType<typeof ImagePicker.launchCameraAsync>>;
-    let location: PhotoLocation | null = null;
-    if (source === 'camera') {
-      // Capture location concurrently with the photo for camera mode.
-      const [res, loc] = await Promise.all([
-        ImagePicker.launchCameraAsync(PICKER_OPTS),
-        getCurrentLocation(),
-      ]);
-      result = res;
-      location = loc;
-    } else {
-      result = await ImagePicker.launchImageLibraryAsync(PICKER_OPTS);
-      location = await getCurrentLocation();
-    }
-    if (result.canceled || result.assets.length === 0) return;
-    const asset = result.assets[0];
-    const mime = asset.mimeType ?? 'image/jpeg';
-    const ext = mime.split('/')[1] ?? 'jpg';
-    const path = `${questionnaire.id}/${question.id}/${Date.now()}.${ext}`;
-    const capturedLocation = location;
-    pendingPhotoContext.current = { questionId: question.id, rowKey, mime, ext, path };
-    // Cancel any stale annotate token before registering new one
-    if (annotateTokenRef.current !== null) cancelPhotoAnnotate(annotateTokenRef.current);
-
-    annotateTokenRef.current = setPhotoAnnotateCallback((annotatedUri) => {
-      if (!annotatedUri) {
-        pendingPhotoContext.current = null;
-        annotateTokenRef.current = null;
-        return;
-      }
-      const ctx = pendingPhotoContext.current;
-      if (!ctx) return;
-      const q = questions.find(q => q.id === ctx.questionId);
-      if (q) doUpload(annotatedUri, q, ctx.rowKey, ctx.mime, ctx.ext, ctx.path, capturedLocation);
-      pendingPhotoContext.current = null;
-      annotateTokenRef.current = null;
-    });
-    router.push(
-      `/photo-annotate?uri=${encodeURIComponent(asset.uri)}` as any,
-    );
-  };
-
-  const pickPhoto = (question: Question, rowKey?: string) => {
+  const pickPhoto = async (question: Question, rowKey?: string) => {
     if (!questionnaire) return;
     haptic.light();
+    const result = await pickPhotoWithAnnotation();
+    if (!result) return;
     const mime = 'image/jpeg';
     const ext = 'jpg';
     const path = `${questionnaire.id}/${question.id}/${Date.now()}.${ext}`;
-    pendingPhotoContext.current = { questionId: question.id, rowKey, mime, ext, path };
-    // Cancel any stale picker/annotate tokens before registering new ones
-    if (pickerTokenRef.current !== null) cancelPhotoPicker(pickerTokenRef.current);
-    if (annotateTokenRef.current !== null) cancelPhotoAnnotate(annotateTokenRef.current);
-
-    pickerTokenRef.current = setPhotoPickerCallback((uri) => {
-      if (!uri) {
-        pendingPhotoContext.current = null;
-        pickerTokenRef.current = null;
-        return;
-      }
-      // Read location captured by photo-picker.tsx (stored in bus side-channel).
-      const location = getLastPhotoLocation();
-      annotateTokenRef.current = setPhotoAnnotateCallback((annotatedUri) => {
-        if (!annotatedUri) {
-          pendingPhotoContext.current = null;
-          annotateTokenRef.current = null;
-          return;
-        }
-        const ctx = pendingPhotoContext.current;
-        if (!ctx) return;
-        const q = questions.find(q => q.id === ctx.questionId);
-        if (q) doUpload(annotatedUri, q, ctx.rowKey, ctx.mime, ctx.ext, ctx.path, location);
-        pendingPhotoContext.current = null;
-        annotateTokenRef.current = null;
-      });
-      // Replace the picker with the annotator so the user returns straight
-      // to the wizard on annotate-back, instead of being dropped back onto
-      // the picker (which would force a second close).
-      router.replace(
-        `/photo-annotate?uri=${encodeURIComponent(uri)}` as any,
-      );
-      pickerTokenRef.current = null;
-    });
-    router.push('/photo-picker' as any);
+    doUpload(result.uri, question, rowKey, mime, ext, path, result.location);
   };
-
-  // Annotated photo is now handled via setPhotoAnnotateCallback in pickPhoto/launchPicker.
 
   const deletePhoto = async (photo: AnswerPhoto) => {
     haptic.medium();

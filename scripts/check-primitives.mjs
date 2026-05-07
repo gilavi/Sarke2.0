@@ -11,7 +11,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
-const ROOT = new URL('..', import.meta.url).pathname;
+const ROOT = decodeURIComponent(new URL('..', import.meta.url).pathname);
 const SCAN_DIRS = ['app', 'components', 'lib', 'shims'];
 const SKIP_DIRS = new Set(['node_modules', '.git', 'ios', 'android', '.expo', 'dist', 'build']);
 const EXTS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs']);
@@ -82,6 +82,7 @@ for (const dir of SCAN_DIRS) {
     if (
       rel === 'lib/imageUrl.ts' ||
       rel === 'lib/pdfLanguagePref.ts' ||
+      rel === 'lib/projectLogo.ts' ||
       rel === 'hooks/usePhotoWithLocation.ts' ||
       rel === 'app/photo-picker.tsx'
     ) continue;
