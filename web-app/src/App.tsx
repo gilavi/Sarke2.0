@@ -6,12 +6,13 @@ import { AuthProvider } from '@/lib/auth';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { AppShell } from '@/components/layout/AppShell';
 
-// Eager: auth + home + the two highest-traffic pages.
+// Eager: auth + landing + home + the two highest-traffic pages.
 import Login from '@/pages/auth/Login';
 import Register from '@/pages/auth/Register';
 import Forgot from '@/pages/auth/Forgot';
 import Reset from '@/pages/auth/Reset';
 import VerifyEmail from '@/pages/auth/VerifyEmail';
+import Landing from '@/pages/Landing';
 import Home from '@/pages/Home';
 import Projects from '@/pages/Projects';
 import ProjectDetail from '@/pages/ProjectDetail';
@@ -124,7 +125,8 @@ export default function App() {
                 </Suspense>
               }
             />
-            <Route path="/" element={<Shell><Home /></Shell>} />
+            <Route path="/" element={<Landing />} />
+            <Route path="/home" element={<Shell><Home /></Shell>} />
             <Route path="/projects" element={<Shell><Projects /></Shell>} />
             <Route path="/projects/new" element={<Shell><NewProject /></Shell>} />
             <Route path="/projects/:id" element={<Shell><ProjectDetail /></Shell>} />

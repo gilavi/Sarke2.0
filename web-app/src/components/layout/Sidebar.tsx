@@ -22,7 +22,7 @@ import { useAuth } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 
 const items = [
-  { to: '/', label: 'მთავარი', icon: Home },
+  { to: '/home', label: 'მთავარი', icon: Home },
   { to: '/projects', label: 'პროექტები', icon: Folder },
   { to: '/inspections', label: 'შემოწმების აქტები', icon: ClipboardCheck },
   { to: '/briefings', label: 'ბრიფინგები', icon: Megaphone },
