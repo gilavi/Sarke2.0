@@ -119,6 +119,24 @@ export async function addReportSlide(args: {
   return data as Report;
 }
 
+export async function updateReportSlide(
+  report: Report,
+  slideId: string,
+  patch: Partial<Pick<ReportSlide, 'title' | 'description'>>,
+): Promise<Report> {
+  const updated = (report.slides ?? []).map((s) =>
+    s.id === slideId ? { ...s, ...patch } : s,
+  );
+  const { data, error } = await supabase
+    .from('reports')
+    .update({ slides: updated })
+    .eq('id', report.id)
+    .select(COLS)
+    .single();
+  if (error) throw error;
+  return data as Report;
+}
+
 export async function removeReportSlide(report: Report, slideId: string): Promise<Report> {
   const existing = report.slides ?? [];
   const target = existing.find((s) => s.id === slideId);
