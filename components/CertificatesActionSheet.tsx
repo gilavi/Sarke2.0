@@ -17,8 +17,6 @@ import {
 } from 'react-native';
 import { FloatingLabelInput } from './inputs/FloatingLabelInput';
 import { Image } from 'expo-image';
-import * as ImagePicker from 'expo-image-picker';
-import { getCurrentLocation } from '../utils/location';
 import { Ionicons } from '@expo/vector-icons';
 import { A11yText as Text } from './primitives/A11yText';
 import { Button } from './ui';
@@ -27,6 +25,7 @@ import { inspectionAttachmentsApi } from '../lib/services';
 import { ATTACHMENT_TYPE_PRESETS, type InspectionAttachment } from '../types/models';
 import { useTheme } from '../lib/theme';
 import { useToast } from '../lib/toast';
+import { usePhotoWithLocation } from '../hooks/usePhotoWithLocation';
 import { friendlyError } from '../lib/errorMap';
 import { haptic } from '../lib/haptics';
 import { imageForDisplay } from '../lib/imageUrl';
@@ -180,6 +179,7 @@ function CertEditView({
 }) {
   const { theme } = useTheme();
   const toast = useToast();
+  const { pickPhotoWithAnnotation } = usePhotoWithLocation();
   const [type, setType] = useState<string>(existing?.cert_type ?? ATTACHMENT_TYPE_PRESETS[0]);
   const [customType, setCustomType] = useState<string>(
     existing && !ATTACHMENT_TYPE_PRESETS.includes(existing.cert_type as any)
@@ -217,22 +217,10 @@ function CertEditView({
   }, [photoPath, photoUri]);
 
   const pickPhoto = useCallback(async () => {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      toast.error('გალერეაზე წვდომა სავალდებულოა');
-      return;
-    }
-    const res = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.9,
-      allowsEditing: true,
-      aspect: [16, 9],
-    });
-    if (res.canceled || !res.assets?.[0]) return;
-    setPhotoUri(res.assets[0].uri);
-    // Capture location in the background — non-blocking, no alert needed here.
-    getCurrentLocation().catch(() => {});
-  }, [toast]);
+    const result = await pickPhotoWithAnnotation({ skipAnnotate: true });
+    if (!result) return;
+    setPhotoUri(result.uri);
+  }, [pickPhotoWithAnnotation]);
 
   const save = useCallback(async () => {
     const finalType = isCustom ? customType.trim() : type;

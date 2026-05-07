@@ -11,7 +11,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
-const ROOT = new URL('..', import.meta.url).pathname;
+const ROOT = decodeURIComponent(new URL('..', import.meta.url).pathname);
 const SCAN_DIRS = ['app', 'components', 'lib', 'shims'];
 const SKIP_DIRS = new Set(['node_modules', '.git', 'ios', 'android', '.expo', 'dist', 'build']);
 const EXTS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs']);
@@ -34,6 +34,14 @@ const RULES = [
     pattern: /AsyncStorage\.(set|get|remove)Item\(\s*['"]pdf_language['"]/,
     message:
       'Use lib/pdfLanguagePref.ts (savePdfLanguage / loadStoredPdfLanguage) instead of touching the AsyncStorage key directly.',
+  },
+  {
+    name: 'direct-image-picker',
+    pattern: /ImagePicker\.(launchCameraAsync|launchImageLibraryAsync)\s*\(/,
+    message:
+      'Call usePhotoWithLocation().pickPhotoWithAnnotation() instead of invoking ImagePicker directly. ' +
+      'Only hooks/usePhotoWithLocation.ts and app/photo-picker.tsx may call ImagePicker directly. ' +
+      'See docs/primitives.md → "Mobile photo picker + annotation".',
   },
 ];
 
@@ -71,7 +79,13 @@ for (const dir of SCAN_DIRS) {
     // The canonical owner is allowed to mention the legacy names in comments
     // or as soft-deprecation aliases; skip lib/imageUrl.ts and pdfLanguagePref.ts.
     const rel = relative(ROOT, file);
-    if (rel === 'lib/imageUrl.ts' || rel === 'lib/pdfLanguagePref.ts') continue;
+    if (
+      rel === 'lib/imageUrl.ts' ||
+      rel === 'lib/pdfLanguagePref.ts' ||
+      rel === 'lib/projectLogo.ts' ||
+      rel === 'hooks/usePhotoWithLocation.ts' ||
+      rel === 'app/photo-picker.tsx'
+    ) continue;
 
     let body;
     try {

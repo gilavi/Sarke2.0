@@ -9,7 +9,6 @@ import {
   View,
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
-import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -42,6 +41,7 @@ import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SuggestionPills } from '../../../components/SuggestionPills';
 import { useFieldHistory } from '../../../hooks/useFieldHistory';
+import { usePhotoWithLocation } from '../../../hooks/usePhotoWithLocation';
 import {
   buildDefaultEquipmentRow,
   INSPECTION_TYPE_LABEL,
@@ -60,6 +60,7 @@ export default function GeneralEquipmentScreen() {
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
   const insets = useSafeAreaInsets();
+  const { pickPhotoWithAnnotation } = usePhotoWithLocation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const toast = useToast();
@@ -236,36 +237,13 @@ export default function GeneralEquipmentScreen() {
 
   // ── Photo handling — summary ─────────────────────────────────────────────────
 
-  const handleAddSummaryPhoto = useCallback(() => {
-    Alert.alert('ფოტოს წყარო', undefined, [
-      {
-        text: 'კამერა',
-        onPress: async () => {
-          const perm = await ImagePicker.requestCameraPermissionsAsync();
-          if (!perm.granted) { toast.error('კამერაზე წვდომა დაუშვებულია'); return; }
-          const res = await ImagePicker.launchCameraAsync({ quality: 0.8 });
-          if (!res.canceled && res.assets[0]) await uploadSummaryPhoto(res.assets[0].uri);
-        },
-      },
-      {
-        text: 'გალერეა',
-        onPress: async () => {
-          const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-          if (!perm.granted) { toast.error('გალერეაზე წვდომა დაუშვებულია'); return; }
-          const res = await ImagePicker.launchImageLibraryAsync({ quality: 0.8 });
-          if (!res.canceled && res.assets[0]) await uploadSummaryPhoto(res.assets[0].uri);
-        },
-      },
-      { text: 'გაუქმება', style: 'cancel' },
-    ]);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const uploadSummaryPhoto = async (uri: string) => {
+  const handleAddSummaryPhoto = useCallback(async () => {
+    const result = await pickPhotoWithAnnotation();
+    if (!result) return;
     const insp = inspectionRef.current;
     if (!insp) return;
     try {
-      const path = await generalEquipmentApi.uploadPhoto(insp.id, 'summary', 'summary', uri);
+      const path = await generalEquipmentApi.uploadPhoto(insp.id, 'summary', 'summary', result.uri);
       setInspection(prev => {
         if (!prev) return prev;
         const next = { ...prev, summaryPhotos: [...prev.summaryPhotos, path] };
@@ -275,7 +253,7 @@ export default function GeneralEquipmentScreen() {
     } catch (e) {
       toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
     }
-  };
+  }, [pickPhotoWithAnnotation, scheduleSave, toast]);
 
   const handleDeleteSummaryPhoto = useCallback(async (path: string) => {
     try {
@@ -746,6 +724,14 @@ export default function GeneralEquipmentScreen() {
                 suggestions={conclusionHistory.suggestions}
                 onSelect={v => update('conclusion', v)}
                 visible={focusedField === 'conclusion' || (!inspection.conclusion?.trim() && conclusionHistory.suggestions.length > 0)}
+              />
+
+              <Text style={styles.fieldLabel}>ფოტოები (სურვ.)</Text>
+              <SummaryPhotoStrip
+                paths={inspection.summaryPhotos}
+                onAdd={handleAddSummaryPhoto}
+                onDelete={handleDeleteSummaryPhoto}
+                styles={styles}
               />
 
               {completing && (

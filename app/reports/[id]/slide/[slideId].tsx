@@ -22,7 +22,7 @@ import { friendlyError } from '../../../../lib/errorMap';
 import { reportsApi, storageApi } from '../../../../lib/services';
 import { STORAGE_BUCKETS } from '../../../../lib/supabase';
 import { imageForDisplay } from '../../../../lib/imageUrl';
-import { setPhotoAnnotateCallback, setPhotoPickerCallback } from '../../../../lib/photoPickerBus';
+import { usePhotoWithLocation } from '../../../../hooks/usePhotoWithLocation';
 import type { Report, ReportSlide } from '../../../../types/models';
 
 export default function ReportSlideEditor() {
@@ -33,6 +33,7 @@ export default function ReportSlideEditor() {
   const toast = useToast();
   const showSheet = useBottomSheet();
   const { id, slideId } = useLocalSearchParams<{ id: string; slideId: string }>();
+  const { pickPhotoWithAnnotation, pickPhotoWithAnnotationFromUri } = usePhotoWithLocation();
 
   const [report, setReport] = useState<Report | null>(null);
   const [slide, setSlide] = useState<ReportSlide | null>(null);
@@ -109,33 +110,13 @@ export default function ReportSlideEditor() {
     }
   };
 
-  // Mirror the questionnaire flow: push /photo-picker (live camera + library
-  // strip), and when the user picks a URI, replace with /photo-annotate so
-  // returning from annotate lands back on this screen. Then upload + persist.
-  const pickPhoto = () => {
-    setPhotoPickerCallback(localUri => {
-      if (!localUri) return;
-      setPhotoAnnotateCallback(async annotatedLocalUri => {
-        // User cancelled annotation → fall back to raw photo upload.
-        const sourceUri = annotatedLocalUri ?? localUri;
-        const kind: 'raw' | 'annotated' = annotatedLocalUri ? 'annotated' : 'raw';
-        setImageUploading(true);
-        const newPath = await uploadLocalUri(sourceUri, kind);
-        if (newPath) {
-          if (kind === 'raw') {
-            setImagePath(newPath);
-            setAnnotatedPath(null);
-          } else {
-            // We don't keep the raw if user only sees annotated; safe simplification.
-            setImagePath(newPath);
-            setAnnotatedPath(null);
-          }
-        }
-        setImageUploading(false);
-      });
-      router.replace(`/photo-annotate?uri=${encodeURIComponent(localUri)}` as any);
-    });
-    router.push('/photo-picker' as any);
+  const pickPhoto = async () => {
+    const result = await pickPhotoWithAnnotation();
+    if (!result) return;
+    setImageUploading(true);
+    const newPath = await uploadLocalUri(result.uri, 'annotated');
+    if (newPath) setImagePath(newPath);
+    setImageUploading(false);
   };
 
   const reAnnotateExisting = async () => {
@@ -144,19 +125,14 @@ export default function ReportSlideEditor() {
     setImageUploading(true);
     try {
       const signed = await imageForDisplay(STORAGE_BUCKETS.reportPhotos, path);
-      setPhotoAnnotateCallback(async annotatedLocalUri => {
-        if (annotatedLocalUri) {
-          const newPath = await uploadLocalUri(annotatedLocalUri, 'annotated');
-          if (newPath) {
-            setImagePath(newPath);
-            setAnnotatedPath(null);
-          }
-        }
-        setImageUploading(false);
-      });
-      router.push(`/photo-annotate?uri=${encodeURIComponent(signed)}` as any);
+      const annotatedUri = await pickPhotoWithAnnotationFromUri(signed, null);
+      if (annotatedUri) {
+        const newPath = await uploadLocalUri(annotatedUri, 'annotated');
+        if (newPath) setImagePath(newPath);
+      }
     } catch (e) {
       toast.error(friendlyError(e, 'ხატვის გახსნა ვერ მოხერხდა'));
+    } finally {
       setImageUploading(false);
     }
   };

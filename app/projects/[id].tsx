@@ -86,9 +86,10 @@ import { useSession } from '../../lib/session';
 import { a11y } from '../../lib/accessibility';
 import { TourGuide, type TourStep } from '../../components/TourGuide';
 import { useTranslation } from 'react-i18next';
-import { setPhotoPickerCallback, setPhotoAnnotateCallback } from '../../lib/photoPickerBus';
+import { usePhotoWithLocation } from '../../hooks/usePhotoWithLocation';
 import { QuickActions, type QuickAction } from '../../components/QuickActions';
 import { InspectionTypeAvatar } from '../../components/InspectionTypeAvatar';
+import { RecordTypePill } from '../../components/RecordTypePill';
 import { TemplatePickerModal } from '../../components/TemplatePickerModal';
 
 const SCREEN_W = Dimensions.get('window').width;
@@ -106,6 +107,7 @@ export default function ProjectDetail() {
   const showActionSheetWithOptions = useBottomSheet();
   const toast = useToast();
   const session = useSession();
+  const { pickPhotoWithAnnotation } = usePhotoWithLocation();
   const insets = useSafeAreaInsets();
 
   const [project, setProject] = useState<Project | null>(null);
@@ -462,21 +464,15 @@ export default function ProjectDetail() {
     else toast.error(t('errors.uploadFailed'));
   };
 
-  const pickPhotoWithPicker = () => {
-    setPhotoPickerCallback(localUri => {
-      if (!localUri) return;
-      setPhotoAnnotateCallback(async annotatedUri => {
-        const sourceUri = annotatedUri ?? localUri;
-        await uploadAssets([{
-          uri: sourceUri,
-          name: `photo-${Date.now()}.jpg`,
-          mimeType: 'image/jpeg',
-          sizeBytes: null,
-        }]);
-      });
-      router.replace(`/photo-annotate?uri=${encodeURIComponent(localUri)}` as any);
-    });
-    router.push('/photo-picker' as any);
+  const pickPhotoWithPicker = async () => {
+    const result = await pickPhotoWithAnnotation();
+    if (!result) return;
+    await uploadAssets([{
+      uri: result.uri,
+      name: `photo-${Date.now()}.jpg`,
+      mimeType: 'image/jpeg',
+      sizeBytes: null,
+    }]);
   };
 
   const pickDocuments = async () => {
@@ -847,6 +843,7 @@ export default function ProjectDetail() {
                           status={isCompleted ? 'completed' : 'draft'}
                         />
                         <View style={{ flex: 1 }}>
+                          <RecordTypePill recordType="inspection" />
                           <Text style={styles.listRowTitle}>{tpl?.name ?? t('common.inspection')}</Text>
                           <Text style={styles.listRowSubtitle}>
                             {formatShortDateTime(item.created_at)}
@@ -935,7 +932,7 @@ export default function ProjectDetail() {
                     >
                       <View style={[styles.statusIcon, { backgroundColor: isCompleted ? theme.colors.semantic.successSoft : theme.colors.semantic.warningSoft }]}>
                         <Ionicons
-                          name={isCompleted ? 'shield-checkmark' : 'pencil'}
+                          name={isCompleted ? 'shield-checkmark' : 'hourglass-outline'}
                           size={14}
                           color={isCompleted ? theme.colors.primary[700] : '#92400E'}
                         />
@@ -1001,7 +998,7 @@ export default function ProjectDetail() {
                     >
                       <View style={[styles.statusIcon, { backgroundColor: isCompleted ? theme.colors.semantic.successSoft : theme.colors.semantic.warningSoft }]}>
                         <Ionicons
-                          name={isCompleted ? 'document-text' : 'pencil'}
+                          name={isCompleted ? 'document-text' : 'hourglass-outline'}
                           size={14}
                           color={isCompleted ? theme.colors.primary[700] : '#92400E'}
                         />

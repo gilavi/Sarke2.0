@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -10,7 +10,6 @@ import {
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as ImagePicker from 'expo-image-picker';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
@@ -30,7 +29,7 @@ import { useToast } from '../../../lib/toast';
 import { useBottomSheet } from '../../../components/BottomSheet';
 import { excavatorApi } from '../../../lib/excavatorService';
 import { projectsApi, signaturesApi, inspectionAttachmentsApi } from '../../../lib/services';
-import { signatureAsDataUrl } from '../../../lib/imageUrl';
+import { signatureAsDataUrl, imageForDisplay } from '../../../lib/imageUrl';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import type { SignatureRecord } from '../../../types/models';
 import { buildExcavatorPdfHtml } from '../../../lib/excavatorPdf';
@@ -45,6 +44,7 @@ import { a11y } from '../../../lib/accessibility';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SuggestionPills } from '../../../components/SuggestionPills';
 import { useFieldHistory } from '../../../hooks/useFieldHistory';
+import { usePhotoWithLocation } from '../../../hooks/usePhotoWithLocation';
 import {
   ENGINE_ITEMS,
   UNDERCARRIAGE_ITEMS,
@@ -97,6 +97,7 @@ function getFlatState(insp: ExcavatorInspection): ExcavatorChecklistItemState[] 
 export default function ExcavatorInspectionScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+  const { pickPhotoWithAnnotation } = usePhotoWithLocation();
   const styles = useMemo(() => getstyles(theme), [theme]);
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -311,36 +312,13 @@ export default function ExcavatorInspectionScreen() {
 
   // ── Photo handling ─────────────────────────────────────────────────────────
 
-  const handleAddPhoto = useCallback((section: Section, itemId: number) => {
-    Alert.alert('ფოტოს წყარო', undefined, [
-      {
-        text: 'კამერა',
-        onPress: async () => {
-          const perm = await ImagePicker.requestCameraPermissionsAsync();
-          if (!perm.granted) { toast.error('კამერაზე წვდომა დახურულია'); return; }
-          const res = await ImagePicker.launchCameraAsync({ quality: 0.8 });
-          if (!res.canceled && res.assets[0]) await uploadPhoto(section, itemId, res.assets[0].uri);
-        },
-      },
-      {
-        text: 'გალერეა',
-        onPress: async () => {
-          const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-          if (!perm.granted) { toast.error('გალერეაზე წვდომა დახურულია'); return; }
-          const res = await ImagePicker.launchImageLibraryAsync({ quality: 0.8 });
-          if (!res.canceled && res.assets[0]) await uploadPhoto(section, itemId, res.assets[0].uri);
-        },
-      },
-      { text: 'გაუქმება', style: 'cancel' },
-    ]);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const uploadPhoto = async (section: Section, itemId: number, uri: string) => {
+  const handleAddPhoto = useCallback(async (section: Section, itemId: number) => {
+    const result = await pickPhotoWithAnnotation();
+    if (!result) return;
     const insp = inspectionRef.current;
     if (!insp) return;
     try {
-      const path = await excavatorApi.uploadPhoto(insp.id, section, itemId, uri);
+      const path = await excavatorApi.uploadPhoto(insp.id, section, itemId, result.uri);
       setInspection(prev => {
         if (!prev) return prev;
         const key = sectionKey(section);
@@ -354,7 +332,7 @@ export default function ExcavatorInspectionScreen() {
     } catch (e) {
       toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
     }
-  };
+  }, [pickPhotoWithAnnotation, scheduleSave, toast]);
 
   const handleDeletePhoto = useCallback(async (section: Section, itemId: number, path: string) => {
     try {
@@ -467,36 +445,13 @@ export default function ExcavatorInspectionScreen() {
 
   // ── Summary Photos ─────────────────────────────────────────────────────────
 
-  const handleAddSummaryPhoto = useCallback(() => {
-    Alert.alert('ფოტოს წყარო', undefined, [
-      {
-        text: 'კამერა',
-        onPress: async () => {
-          const perm = await ImagePicker.requestCameraPermissionsAsync();
-          if (!perm.granted) { toast.error('კამერაზე წვდომა დაუშვებულია'); return; }
-          const res = await ImagePicker.launchCameraAsync({ quality: 0.8 });
-          if (!res.canceled && res.assets[0]) await uploadSummaryPhoto(res.assets[0].uri);
-        },
-      },
-      {
-        text: 'გალერეა',
-        onPress: async () => {
-          const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-          if (!perm.granted) { toast.error('გალერეაზე წვდომა დაუშვებულია'); return; }
-          const res = await ImagePicker.launchImageLibraryAsync({ quality: 0.8 });
-          if (!res.canceled && res.assets[0]) await uploadSummaryPhoto(res.assets[0].uri);
-        },
-      },
-      { text: 'გაუქმება', style: 'cancel' },
-    ]);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const uploadSummaryPhoto = async (uri: string) => {
+  const handleAddSummaryPhoto = useCallback(async () => {
+    const result = await pickPhotoWithAnnotation();
+    if (!result) return;
     const insp = inspectionRef.current;
     if (!insp) return;
     try {
-      const path = await excavatorApi.uploadSummaryPhoto(insp.id, uri);
+      const path = await excavatorApi.uploadSummaryPhoto(insp.id, result.uri);
       setInspection(prev => {
         if (!prev) return prev;
         const next = { ...prev, summaryPhotos: [...(prev.summaryPhotos ?? []), path] };
@@ -506,7 +461,7 @@ export default function ExcavatorInspectionScreen() {
     } catch (e) {
       toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
     }
-  };
+  }, [pickPhotoWithAnnotation, toast]);
 
   const handleDeleteSummaryPhoto = useCallback(async (path: string) => {
     try {
@@ -913,6 +868,14 @@ export default function ExcavatorInspectionScreen() {
                 numberOfLines={4}
               />
 
+              <Text style={styles.fieldLabel}>ფოტოები (სურვ.)</Text>
+              <SummaryPhotoStrip
+                paths={inspection.summaryPhotos ?? []}
+                onAdd={handleAddSummaryPhoto}
+                onDelete={handleDeleteSummaryPhoto}
+                styles={styles}
+              />
+
               {completing && (
                 <View style={styles.completingRow}>
                   <ActivityIndicator size="small" color={theme.colors.accent} />
@@ -1088,6 +1051,67 @@ function MachineSpecsCard({ insp, styles }: { insp: ExcavatorInspection; styles:
   );
 }
 
+function SummaryPhotoStrip({
+  paths,
+  onAdd,
+  onDelete,
+  styles,
+}: {
+  paths: string[];
+  onAdd: () => void;
+  onDelete: (path: string) => void;
+  styles: ReturnType<typeof getstyles>;
+}) {
+  const { theme } = useTheme();
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.photoStrip}
+    >
+      {paths.map(path => (
+        <SummaryThumb key={path} path={path} onDelete={() => onDelete(path)} styles={styles} />
+      ))}
+      <Pressable
+        style={styles.addPhoto}
+        onPress={onAdd}
+        accessible accessibilityLabel="ფოტოს დამატება" accessibilityRole="button"
+      >
+        <Ionicons name="camera-outline" size={20} color={theme.colors.inkSoft} />
+        <Text style={styles.addPhotoLabel}>+ ფოტო</Text>
+      </Pressable>
+    </ScrollView>
+  );
+}
+
+const SummaryThumb = memo(function SummaryThumb({
+  path,
+  onDelete,
+  styles,
+}: {
+  path: string;
+  onDelete: () => void;
+  styles: ReturnType<typeof getstyles>;
+}) {
+  const { theme } = useTheme();
+  const [uri, setUri] = useState('');
+  useEffect(() => {
+    let cancelled = false;
+    imageForDisplay(STORAGE_BUCKETS.answerPhotos, path)
+      .then(url => { if (!cancelled) setUri(url); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [path]);
+  return (
+    <View style={styles.thumb}>
+      <Image source={{ uri }} style={styles.thumbImg} resizeMode="cover" />
+      <Pressable style={styles.thumbDelete} onPress={onDelete} hitSlop={8} accessible accessibilityLabel="ფოტოს წაშლა" accessibilityRole="button">
+        <Ionicons name="close-circle" size={18} color={theme.colors.white} />
+      </Pressable>
+    </View>
+  );
+});
+
 // ── Styles ───────────────────────────────────────────────────────────────────
 
 function getstyles(theme: Theme) {
@@ -1231,6 +1255,17 @@ function getstyles(theme: Theme) {
     sigRowClear: {
       fontSize: 13, color: theme.colors.accent,
     },
+    photoStrip: { gap: 8, paddingVertical: 4 },
+    addPhoto: {
+      width: 64, height: 64, borderRadius: 8,
+      borderWidth: 1.5, borderStyle: 'dashed', borderColor: theme.colors.hairline,
+      alignItems: 'center', justifyContent: 'center', gap: 2,
+    },
+    addPhotoLabel: { fontSize: 11, color: theme.colors.inkSoft },
+    thumb:       { width: 64, height: 64, borderRadius: 8, overflow: 'hidden' },
+    thumbImg:    { width: 64, height: 64 },
+    thumbDelete: { position: 'absolute', top: 2, right: 2 },
+
     completingRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 16 },
     completingText:   { fontSize: 13, color: theme.colors.inkSoft },
 

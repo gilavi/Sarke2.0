@@ -11,14 +11,13 @@ import {
 import { A11yText as Text } from '../primitives/A11yText';
 import { SheetLayout } from '../SheetLayout';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import * as ImagePicker from 'expo-image-picker';
-import { getCurrentLocation } from '../../utils/location';
 import { Ionicons } from '@expo/vector-icons';
 import { Button, Field } from '../ui';
 import { FloatingLabelInput } from '../inputs/FloatingLabelInput';
 import { qualificationsApi, storageApi } from '../../lib/services';
 import { STORAGE_BUCKETS, supabase } from '../../lib/supabase';
 import { useTheme } from '../../lib/theme';
+import { usePhotoWithLocation } from '../../hooks/usePhotoWithLocation';
 
 import { toErrorMessage } from '../../lib/logError';
 import { a11y } from '../../lib/accessibility';
@@ -49,6 +48,7 @@ export default function AddQualificationSheet({
 }) {
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
+  const { pickPhotoWithAnnotation } = usePhotoWithLocation();
 
   const [type, setType] = useState(initialType ?? 'xaracho_inspector');
   const [number, setNumber] = useState('');
@@ -77,14 +77,9 @@ export default function AddQualificationSheet({
   }, [visible, initialType]);
 
   const pickPhoto = async () => {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) return;
-    const res = await ImagePicker.launchImageLibraryAsync({ quality: 0.7 });
-    if (!res.canceled && res.assets.length) {
-      setPhotoUri(res.assets[0].uri);
-      // Capture location in the background — non-blocking, no alert needed here.
-      getCurrentLocation().catch(() => {});
-    }
+    const result = await pickPhotoWithAnnotation({ skipAnnotate: true });
+    if (!result) return;
+    setPhotoUri(result.uri);
   };
 
   const save = async () => {
