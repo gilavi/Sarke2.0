@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileText, Trash2 } from 'lucide-react';
 import PhotoUploadWidget from '@/components/PhotoUploadWidget';
 import SignatureCanvas from '@/components/SignatureCanvas';
+import WizardSteps, { WizardNav } from '@/components/WizardSteps';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -57,6 +58,7 @@ export default function ExcavatorInspectionDetail() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [signingOpen, setSigningOpen] = useState(false);
   const [justCompleted, setJustCompleted] = useState(false);
+  const [step, setStep] = useState(0);
 
   const { data: item, error, isLoading } = useQuery({
     queryKey: ['excavatorInspection', id],
@@ -184,335 +186,356 @@ export default function ExcavatorInspectionDetail() {
         </div>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">ტექნიკის მახასიათებლები</CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-2 gap-2 text-sm text-neutral-700">
-          <div>წონა: {item.machineSpecs.weight}</div>
-          <div>ძრავი: {item.machineSpecs.engine}</div>
-          <div>სიმძლავრე: {item.machineSpecs.power}</div>
-          <div>ჩაღრმავება: {item.machineSpecs.depth}</div>
-          <div>გადაადგილება: {item.machineSpecs.travel}</div>
-          <div>მაქს. წვდომა: {item.machineSpecs.maxReach}</div>
-        </CardContent>
-      </Card>
+      <WizardSteps
+        steps={[{ label: 'ინფო' }, { label: 'შემოწმება' }, { label: 'დასკვნა' }]}
+        current={step}
+        onStep={setStep}
+      />
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">ზოგადი ინფორმაცია</CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
-          <Field
-            label="სერ. ნომერი"
-            value={item.serialNumber}
-            disabled={!isDraft}
-            onSave={(v) => updateMutation.mutate({ serialNumber: v })}
-          />
-          <Field
-            label="ინვ. ნომერი"
-            value={item.inventoryNumber}
-            disabled={!isDraft}
-            onSave={(v) => updateMutation.mutate({ inventoryNumber: v })}
-          />
-          <Field
-            label="დეპარტამენტი"
-            value={item.department}
-            disabled={!isDraft}
-            onSave={(v) => updateMutation.mutate({ department: v })}
-          />
-          <Field
-            label="ინსპექტორი"
-            value={item.inspectorName}
-            disabled={!isDraft}
-            onSave={(v) => updateMutation.mutate({ inspectorName: v })}
-          />
-          <Field
-            label="თანამდებობა"
-            value={item.inspectorPosition}
-            disabled={!isDraft}
-            onSave={(v) => updateMutation.mutate({ inspectorPosition: v })}
-          />
-          <div className="space-y-1">
-            <Label>შემოწმების თარიღი</Label>
-            <Input
-              type="date"
-              disabled={!isDraft}
-              defaultValue={item.inspectionDate ? item.inspectionDate.slice(0, 10) : ''}
-              onBlur={(e) => {
-                const v = e.target.value || null;
-                if (v !== (item.inspectionDate ? item.inspectionDate.slice(0, 10) : null))
-                  updateMutation.mutate({ inspectionDate: v });
-              }}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label>წინა შემოწმების თარიღი</Label>
-            <Input
-              type="date"
-              disabled={!isDraft}
-              defaultValue={item.lastInspectionDate ? item.lastInspectionDate.slice(0, 10) : ''}
-              onBlur={(e) => {
-                const v = e.target.value || null;
-                if (v !== (item.lastInspectionDate ? item.lastInspectionDate.slice(0, 10) : null))
-                  updateMutation.mutate({ lastInspectionDate: v });
-              }}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label>მუშა საათები</Label>
-            <Input
-              type="number"
-              disabled={!isDraft}
-              defaultValue={item.motoHours ?? ''}
-              onBlur={(e) => {
-                const v = e.target.value === '' ? null : Number(e.target.value);
-                if (v !== item.motoHours) updateMutation.mutate({ motoHours: v });
-              }}
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Checklist sections */}
-      {SECTIONS.map((s) => {
-        const stateList = item[s.field] as ExcavatorChecklistItemState[];
-        const stateById = new Map(stateList.map((it) => [it.id, it]));
-        return (
-          <Card key={s.key}>
+      {/* Step 0 — Info */}
+      {step === 0 && (
+        <>
+          <Card>
             <CardHeader>
-              <CardTitle className="text-base">{s.title}</CardTitle>
+              <CardTitle className="text-base">ტექნიკის მახასიათებლები</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 gap-2 text-sm text-neutral-700">
+              <div>წონა: {item.machineSpecs.weight}</div>
+              <div>ძრავი: {item.machineSpecs.engine}</div>
+              <div>სიმძლავრე: {item.machineSpecs.power}</div>
+              <div>ჩაღრმავება: {item.machineSpecs.depth}</div>
+              <div>გადაადგილება: {item.machineSpecs.travel}</div>
+              <div>მაქს. წვდომა: {item.machineSpecs.maxReach}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">ზოგადი ინფორმაცია</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+              <Field
+                label="სერ. ნომერი"
+                value={item.serialNumber}
+                disabled={!isDraft}
+                onSave={(v) => updateMutation.mutate({ serialNumber: v })}
+              />
+              <Field
+                label="ინვ. ნომერი"
+                value={item.inventoryNumber}
+                disabled={!isDraft}
+                onSave={(v) => updateMutation.mutate({ inventoryNumber: v })}
+              />
+              <Field
+                label="დეპარტამენტი"
+                value={item.department}
+                disabled={!isDraft}
+                onSave={(v) => updateMutation.mutate({ department: v })}
+              />
+              <Field
+                label="ინსპექტორი"
+                value={item.inspectorName}
+                disabled={!isDraft}
+                onSave={(v) => updateMutation.mutate({ inspectorName: v })}
+              />
+              <Field
+                label="თანამდებობა"
+                value={item.inspectorPosition}
+                disabled={!isDraft}
+                onSave={(v) => updateMutation.mutate({ inspectorPosition: v })}
+              />
+              <div className="space-y-1">
+                <Label>შემოწმების თარიღი</Label>
+                <Input
+                  type="date"
+                  disabled={!isDraft}
+                  defaultValue={item.inspectionDate ? item.inspectionDate.slice(0, 10) : ''}
+                  onBlur={(e) => {
+                    const v = e.target.value || null;
+                    if (v !== (item.inspectionDate ? item.inspectionDate.slice(0, 10) : null))
+                      updateMutation.mutate({ inspectionDate: v });
+                  }}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>წინა შემოწმების თარიღი</Label>
+                <Input
+                  type="date"
+                  disabled={!isDraft}
+                  defaultValue={item.lastInspectionDate ? item.lastInspectionDate.slice(0, 10) : ''}
+                  onBlur={(e) => {
+                    const v = e.target.value || null;
+                    if (v !== (item.lastInspectionDate ? item.lastInspectionDate.slice(0, 10) : null))
+                      updateMutation.mutate({ lastInspectionDate: v });
+                  }}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>მუშა საათები</Label>
+                <Input
+                  type="number"
+                  disabled={!isDraft}
+                  defaultValue={item.motoHours ?? ''}
+                  onBlur={(e) => {
+                    const v = e.target.value === '' ? null : Number(e.target.value);
+                    if (v !== item.motoHours) updateMutation.mutate({ motoHours: v });
+                  }}
+                />
+              </div>
+            </CardContent>
+          </Card>
+          <WizardNav current={step} total={3} onPrev={() => setStep(s => s - 1)} onNext={() => setStep(s => s + 1)} />
+        </>
+      )}
+
+      {/* Step 1 — Checklist */}
+      {step === 1 && (
+        <>
+          {SECTIONS.map((s) => {
+            const stateList = item[s.field] as ExcavatorChecklistItemState[];
+            const stateById = new Map(stateList.map((it) => [it.id, it]));
+            return (
+              <Card key={s.key}>
+                <CardHeader>
+                  <CardTitle className="text-base">{s.title}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ul className="divide-y divide-neutral-200">
+                    {s.items.map((entry) => {
+                      const st = stateById.get(entry.id) ?? {
+                        id: entry.id,
+                        result: null,
+                        comment: null,
+                        photo_paths: [],
+                      };
+                      return (
+                        <li key={entry.id} className="py-3">
+                          <div className="text-sm font-medium text-neutral-900">
+                            {entry.id}. {entry.label}
+                          </div>
+                          <div className="text-xs text-neutral-600">{entry.description}</div>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {(['good', 'deficient', 'unusable'] as const).map((r) => {
+                              const selected = st.result === r;
+                              return (
+                                <button
+                                  key={r}
+                                  type="button"
+                                  disabled={!isDraft}
+                                  onClick={() =>
+                                    patchSection(s.field, entry.id, {
+                                      result: selected ? null : r,
+                                    })
+                                  }
+                                  className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                                    selected
+                                      ? r === 'good'
+                                        ? 'border-emerald-600 bg-emerald-600 text-white'
+                                        : r === 'deficient'
+                                          ? 'border-amber-600 bg-amber-600 text-white'
+                                          : 'border-red-600 bg-red-600 text-white'
+                                      : 'border-neutral-300 bg-white text-neutral-700 hover:border-brand-400'
+                                  } disabled:cursor-not-allowed disabled:opacity-60`}
+                                >
+                                  {RESULT_LABEL[r]}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <Input
+                            disabled={!isDraft}
+                            defaultValue={st.comment ?? ''}
+                            onBlur={(e) => {
+                              const v = e.target.value || null;
+                              if (v !== (st.comment ?? null)) {
+                                patchSection(s.field, entry.id, { comment: v });
+                              }
+                            }}
+                            placeholder="კომენტარი"
+                            className="mt-2 text-xs"
+                          />
+                          <PhotoUploadWidget
+                            paths={st.photo_paths ?? []}
+                            disabled={!isDraft}
+                            prefix="excavator"
+                            inspectionId={item.id}
+                            itemId={entry.id}
+                            onAdd={(path) =>
+                              patchSection(s.field, entry.id, {
+                                photo_paths: [...(st.photo_paths ?? []), path],
+                              })
+                            }
+                            onRemove={(path) =>
+                              patchSection(s.field, entry.id, {
+                                photo_paths: (st.photo_paths ?? []).filter((p) => p !== path),
+                              })
+                            }
+                          />
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </CardContent>
+              </Card>
+            );
+          })}
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">ტექ. მომსახურება</CardTitle>
             </CardHeader>
             <CardContent>
               <ul className="divide-y divide-neutral-200">
-                {s.items.map((entry) => {
-                  const st = stateById.get(entry.id) ?? {
-                    id: entry.id,
-                    result: null,
-                    comment: null,
-                    photo_paths: [],
-                  };
+                {MAINTENANCE_ITEMS.map((m) => {
+                  const st =
+                    item.maintenanceItems.find((x) => x.id === m.id) ??
+                    ({ id: m.id, answer: null, date: null } as ExcavatorMaintenanceItemState);
                   return (
-                    <li key={entry.id} className="py-3">
-                      <div className="text-sm font-medium text-neutral-900">
-                        {entry.id}. {entry.label}
-                      </div>
-                      <div className="text-xs text-neutral-600">{entry.description}</div>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {(['good', 'deficient', 'unusable'] as const).map((r) => {
-                          const selected = st.result === r;
+                    <li key={m.id} className="space-y-2 py-3">
+                      <div className="text-sm text-neutral-900">{m.label}</div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {(['yes', 'no'] as const).map((a) => {
+                          const selected = st.answer === a;
                           return (
                             <button
-                              key={r}
+                              key={a}
                               type="button"
                               disabled={!isDraft}
-                              onClick={() =>
-                                patchSection(s.field, entry.id, {
-                                  result: selected ? null : r,
-                                })
-                              }
+                              onClick={() => patchMaintenance(m.id, { answer: selected ? null : a })}
                               className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
                                 selected
-                                  ? r === 'good'
+                                  ? a === 'yes'
                                     ? 'border-emerald-600 bg-emerald-600 text-white'
-                                    : r === 'deficient'
-                                      ? 'border-amber-600 bg-amber-600 text-white'
-                                      : 'border-red-600 bg-red-600 text-white'
+                                    : 'border-red-600 bg-red-600 text-white'
                                   : 'border-neutral-300 bg-white text-neutral-700 hover:border-brand-400'
                               } disabled:cursor-not-allowed disabled:opacity-60`}
                             >
-                              {RESULT_LABEL[r]}
+                              {a === 'yes' ? 'კი' : 'არა'}
                             </button>
                           );
                         })}
+                        <Input
+                          type="date"
+                          disabled={!isDraft}
+                          defaultValue={st.date ?? ''}
+                          onBlur={(e) => {
+                            const v = e.target.value || null;
+                            if (v !== (st.date ?? null)) patchMaintenance(m.id, { date: v });
+                          }}
+                          className="max-w-[180px]"
+                        />
                       </div>
-                      <Input
-                        disabled={!isDraft}
-                        defaultValue={st.comment ?? ''}
-                        onBlur={(e) => {
-                          const v = e.target.value || null;
-                          if (v !== (st.comment ?? null)) {
-                            patchSection(s.field, entry.id, { comment: v });
-                          }
-                        }}
-                        placeholder="კომენტარი"
-                        className="mt-2 text-xs"
-                      />
-                      <PhotoUploadWidget
-                        paths={st.photo_paths ?? []}
-                        disabled={!isDraft}
-                        prefix="excavator"
-                        inspectionId={item.id}
-                        itemId={entry.id}
-                        onAdd={(path) =>
-                          patchSection(s.field, entry.id, {
-                            photo_paths: [...(st.photo_paths ?? []), path],
-                          })
-                        }
-                        onRemove={(path) =>
-                          patchSection(s.field, entry.id, {
-                            photo_paths: (st.photo_paths ?? []).filter((p) => p !== path),
-                          })
-                        }
-                      />
                     </li>
                   );
                 })}
               </ul>
             </CardContent>
           </Card>
-        );
-      })}
+          <WizardNav current={step} total={3} onPrev={() => setStep(s => s - 1)} onNext={() => setStep(s => s + 1)} />
+        </>
+      )}
 
-      {/* Maintenance */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">ტექ. მომსახურება</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ul className="divide-y divide-neutral-200">
-            {MAINTENANCE_ITEMS.map((m) => {
-              const st =
-                item.maintenanceItems.find((x) => x.id === m.id) ??
-                ({ id: m.id, answer: null, date: null } as ExcavatorMaintenanceItemState);
-              return (
-                <li key={m.id} className="space-y-2 py-3">
-                  <div className="text-sm text-neutral-900">{m.label}</div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {(['yes', 'no'] as const).map((a) => {
-                      const selected = st.answer === a;
-                      return (
-                        <button
-                          key={a}
-                          type="button"
-                          disabled={!isDraft}
-                          onClick={() => patchMaintenance(m.id, { answer: selected ? null : a })}
-                          className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
-                            selected
-                              ? a === 'yes'
-                                ? 'border-emerald-600 bg-emerald-600 text-white'
-                                : 'border-red-600 bg-red-600 text-white'
-                              : 'border-neutral-300 bg-white text-neutral-700 hover:border-brand-400'
-                          } disabled:cursor-not-allowed disabled:opacity-60`}
-                        >
-                          {a === 'yes' ? 'კი' : 'არა'}
-                        </button>
-                      );
-                    })}
-                    <Input
-                      type="date"
-                      disabled={!isDraft}
-                      defaultValue={st.date ?? ''}
+      {/* Step 2 — Signature + Verdict */}
+      {step === 2 && (
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">ინსპექტორის ხელმოწერა</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {item.inspectorSignature ? (
+                <div className="space-y-2">
+                  <img
+                    src={item.inspectorSignature.startsWith('data:') ? item.inspectorSignature : `data:image/png;base64,${item.inspectorSignature}`}
+                    alt="ხელმოწერა"
+                    className="h-20 rounded border border-neutral-200 bg-white object-contain p-1"
+                  />
+                  {isDraft && !signingOpen && (
+                    <Button variant="outline" size="sm" onClick={() => setSigningOpen(true)}>განახლება</Button>
+                  )}
+                  {isDraft && signingOpen && (
+                    <SignatureCanvas
+                      existing={item.inspectorSignature.startsWith('data:') ? item.inspectorSignature : `data:image/png;base64,${item.inspectorSignature}`}
+                      onSave={(dataUrl) => { updateMutation.mutate({ inspectorSignature: dataUrl }); setSigningOpen(false); }}
+                      onCancel={() => setSigningOpen(false)}
+                    />
+                  )}
+                </div>
+              ) : isDraft ? (
+                signingOpen ? (
+                  <SignatureCanvas
+                    onSave={(dataUrl) => { updateMutation.mutate({ inspectorSignature: dataUrl }); setSigningOpen(false); }}
+                    onCancel={() => setSigningOpen(false)}
+                  />
+                ) : (
+                  <Button variant="outline" size="sm" onClick={() => setSigningOpen(true)}>ხელმოწერა</Button>
+                )
+              ) : (
+                <p className="text-sm text-neutral-500">ხელმოწერა არ არის.</p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">დასკვნა</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {isDraft ? (
+                <>
+                  <div className="space-y-1">
+                    <Label>დასკვნა</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {(Object.keys(EXCAVATOR_VERDICT_LABEL) as ExcavatorVerdict[]).map((v) => {
+                        const selected = item.verdict === v;
+                        return (
+                          <button
+                            key={v}
+                            type="button"
+                            onClick={() => updateMutation.mutate({ verdict: selected ? null : v })}
+                            className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                              selected
+                                ? 'border-brand-600 bg-brand-600 text-white'
+                                : 'border-neutral-300 bg-white text-neutral-700 hover:border-brand-400'
+                            }`}
+                          >
+                            {EXCAVATOR_VERDICT_LABEL[v]}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label>შენიშვნები</Label>
+                    <textarea
+                      rows={3}
+                      defaultValue={item.notes ?? ''}
                       onBlur={(e) => {
                         const v = e.target.value || null;
-                        if (v !== (st.date ?? null)) patchMaintenance(m.id, { date: v });
+                        if (v !== item.notes) updateMutation.mutate({ notes: v });
                       }}
-                      className="max-w-[180px]"
+                      className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
                     />
                   </div>
-                </li>
-              );
-            })}
-          </ul>
-        </CardContent>
-      </Card>
-
-      {/* Signature */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">ინსპექტორის ხელმოწერა</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {item.inspectorSignature ? (
-            <div className="space-y-2">
-              <img
-                src={item.inspectorSignature.startsWith('data:') ? item.inspectorSignature : `data:image/png;base64,${item.inspectorSignature}`}
-                alt="ხელმოწერა"
-                className="h-20 rounded border border-neutral-200 bg-white object-contain p-1"
-              />
-              {isDraft && !signingOpen && (
-                <Button variant="outline" size="sm" onClick={() => setSigningOpen(true)}>განახლება</Button>
-              )}
-              {isDraft && signingOpen && (
-                <SignatureCanvas
-                  existing={item.inspectorSignature.startsWith('data:') ? item.inspectorSignature : `data:image/png;base64,${item.inspectorSignature}`}
-                  onSave={(dataUrl) => { updateMutation.mutate({ inspectorSignature: dataUrl }); setSigningOpen(false); }}
-                  onCancel={() => setSigningOpen(false)}
-                />
-              )}
-            </div>
-          ) : isDraft ? (
-            signingOpen ? (
-              <SignatureCanvas
-                onSave={(dataUrl) => { updateMutation.mutate({ inspectorSignature: dataUrl }); setSigningOpen(false); }}
-                onCancel={() => setSigningOpen(false)}
-              />
-            ) : (
-              <Button variant="outline" size="sm" onClick={() => setSigningOpen(true)}>ხელმოწერა</Button>
-            )
-          ) : (
-            <p className="text-sm text-neutral-500">ხელმოწერა არ არის.</p>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">დასკვნა</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {isDraft ? (
-            <>
-              <div className="space-y-1">
-                <Label>დასკვნა</Label>
-                <div className="flex flex-wrap gap-2">
-                  {(Object.keys(EXCAVATOR_VERDICT_LABEL) as ExcavatorVerdict[]).map((v) => {
-                    const selected = item.verdict === v;
-                    return (
-                      <button
-                        key={v}
-                        type="button"
-                        onClick={() => updateMutation.mutate({ verdict: selected ? null : v })}
-                        className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
-                          selected
-                            ? 'border-brand-600 bg-brand-600 text-white'
-                            : 'border-neutral-300 bg-white text-neutral-700 hover:border-brand-400'
-                        }`}
-                      >
-                        {EXCAVATOR_VERDICT_LABEL[v]}
-                      </button>
-                    );
-                  })}
+                  <Button
+                    size="sm"
+                    onClick={() => updateMutation.mutate({ status: 'completed' })}
+                    disabled={updateMutation.isPending}
+                  >
+                    დასრულება
+                  </Button>
+                </>
+              ) : (
+                <div className="space-y-1 text-sm text-neutral-700">
+                  <div>დასკვნა: {item.verdict ? EXCAVATOR_VERDICT_LABEL[item.verdict] : '—'}</div>
+                  <div>შენიშვნები: {item.notes || '—'}</div>
                 </div>
-              </div>
-              <div className="space-y-1">
-                <Label>შენიშვნები</Label>
-                <textarea
-                  rows={3}
-                  defaultValue={item.notes ?? ''}
-                  onBlur={(e) => {
-                    const v = e.target.value || null;
-                    if (v !== item.notes) updateMutation.mutate({ notes: v });
-                  }}
-                  className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
-                />
-              </div>
-              <Button
-                size="sm"
-                onClick={() => updateMutation.mutate({ status: 'completed' })}
-                disabled={updateMutation.isPending}
-              >
-                დასრულება
-              </Button>
-            </>
-          ) : (
-            <div className="space-y-1 text-sm text-neutral-700">
-              <div>დასკვნა: {item.verdict ? EXCAVATOR_VERDICT_LABEL[item.verdict] : '—'}</div>
-              <div>შენიშვნები: {item.notes || '—'}</div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              )}
+            </CardContent>
+          </Card>
+          <WizardNav current={step} total={3} onPrev={() => setStep(s => s - 1)} onNext={() => setStep(s => s + 1)} />
+        </>
+      )}
     </div>
   );
 }
