@@ -181,7 +181,7 @@ export default function ProjectDetail() {
   const [uploading, setUploading] = useState(false);
 
   const [editing, setEditing] = useState(false);
-  const [editForm, setEditForm] = useState({ name: '', address: '', contact_phone: '' });
+  const [editForm, setEditForm] = useState({ name: '', address: '', contact_phone: '', latitude: '' as string, longitude: '' as string });
   const [saving, setSaving] = useState(false);
   const [deletingProject, setDeletingProject] = useState(false);
 
@@ -300,6 +300,8 @@ export default function ProjectDetail() {
       name: project.name,
       address: project.address ?? '',
       contact_phone: project.contact_phone ?? '',
+      latitude: project.latitude != null ? String(project.latitude) : '',
+      longitude: project.longitude != null ? String(project.longitude) : '',
     });
     setEditing(true);
   }
@@ -308,10 +310,14 @@ export default function ProjectDetail() {
     if (!id || !project) return;
     setSaving(true);
     try {
+      const latNum = editForm.latitude.trim() === '' ? null : Number(editForm.latitude);
+      const lngNum = editForm.longitude.trim() === '' ? null : Number(editForm.longitude);
       const patch = {
         name: editForm.name.trim() || project.name,
         address: editForm.address.trim() || null,
         contact_phone: editForm.contact_phone.trim() || null,
+        latitude: latNum !== null && !isNaN(latNum) ? latNum : null,
+        longitude: lngNum !== null && !isNaN(lngNum) ? lngNum : null,
       };
       await updateProject(id, patch);
       qc.setQueryData(['project', id], { ...project, ...patch });
@@ -480,6 +486,48 @@ export default function ProjectDetail() {
                   onChange={(e) => setEditForm((f) => ({ ...f, contact_phone: e.target.value }))}
                 />
               </div>
+              <div className="space-y-1">
+                <Label>GPS კოორდინატები</Label>
+                <div className="flex flex-wrap gap-2">
+                  <Input
+                    id="edit-lat"
+                    type="number"
+                    step="any"
+                    placeholder="გრძედი (Latitude)"
+                    value={editForm.latitude}
+                    onChange={(e) => setEditForm((f) => ({ ...f, latitude: e.target.value }))}
+                    className="flex-1 min-w-[140px]"
+                  />
+                  <Input
+                    id="edit-lng"
+                    type="number"
+                    step="any"
+                    placeholder="გრძელი (Longitude)"
+                    value={editForm.longitude}
+                    onChange={(e) => setEditForm((f) => ({ ...f, longitude: e.target.value }))}
+                    className="flex-1 min-w-[140px]"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      navigator.geolocation.getCurrentPosition(
+                        (pos) => {
+                          setEditForm((f) => ({
+                            ...f,
+                            latitude: String(pos.coords.latitude),
+                            longitude: String(pos.coords.longitude),
+                          }));
+                        },
+                        () => setActionError('GPS მდებარეობა ვერ მოიძებნა.'),
+                      );
+                    }}
+                  >
+                    ჩემი GPS
+                  </Button>
+                </div>
+              </div>
               <div className="flex gap-2">
                 <Button size="sm" onClick={() => void saveEdit()} disabled={saving}>
                   <Check size={14} className="mr-1" />
@@ -495,6 +543,24 @@ export default function ProjectDetail() {
             <div className="space-y-1 text-sm text-neutral-700">
               <div>მისამართი: {project.address || '—'}</div>
               <div>ტელეფონი: {project.contact_phone || '—'}</div>
+              <div>
+                GPS:{' '}
+                {project.latitude != null && project.longitude != null ? (
+                  <>
+                    {project.latitude.toFixed(6)} / {project.longitude.toFixed(6)}{' '}
+                    <a
+                      href={`https://maps.google.com/?q=${project.latitude},${project.longitude}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-brand-600 hover:underline"
+                    >
+                      Google Maps-ზე გახსნა →
+                    </a>
+                  </>
+                ) : (
+                  '—'
+                )}
+              </div>
             </div>
           )}
         </CardContent>

@@ -40,13 +40,14 @@ interface DbRow {
   verdict: BobcatVerdict | null;
   notes: string | null;
   inspector_signature: string | null;
+  summary_photos: string[] | null;
   completed_at: string | null;
   created_at: string;
   updated_at: string;
 }
 
 const COLS =
-  'id, project_id, template_id, user_id, status, company, address, equipment_model, registration_number, inspection_date, inspection_type, department, inspector_name, items, verdict, notes, inspector_signature, completed_at, created_at, updated_at';
+  'id, project_id, template_id, user_id, status, company, address, equipment_model, registration_number, inspection_date, inspection_type, department, inspector_name, items, verdict, notes, inspector_signature, summary_photos, completed_at, created_at, updated_at';
 
 function toModel(r: DbRow): BobcatInspection {
   return {
@@ -67,6 +68,7 @@ function toModel(r: DbRow): BobcatInspection {
     verdict: r.verdict,
     notes: r.notes,
     inspectorSignature: r.inspector_signature,
+    summaryPhotos: r.summary_photos ?? [],
     completedAt: r.completed_at,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
@@ -153,6 +155,7 @@ export async function updateBobcatInspection(
     verdict: BobcatVerdict | null;
     notes: string | null;
     inspectorSignature: string | null;
+    summaryPhotos: string[];
     status: 'draft' | 'completed';
   }>,
 ): Promise<void> {
@@ -169,6 +172,7 @@ export async function updateBobcatInspection(
   if (patch.verdict !== undefined) updates.verdict = patch.verdict;
   if (patch.notes !== undefined) updates.notes = patch.notes;
   if (patch.inspectorSignature !== undefined) updates.inspector_signature = patch.inspectorSignature;
+  if (patch.summaryPhotos !== undefined) updates.summary_photos = patch.summaryPhotos;
   if (patch.status !== undefined) {
     updates.status = patch.status;
     if (patch.status === 'completed') updates.completed_at = new Date().toISOString();

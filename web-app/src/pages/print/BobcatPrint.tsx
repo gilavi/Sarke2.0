@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   BOBCAT_ITEMS,
@@ -11,6 +11,7 @@ import {
 } from '@/lib/data/bobcat';
 import { getProject } from '@/lib/data/projects';
 import { A4_PRINT_STYLES, printAfterRender } from '@/lib/printable';
+import { signedInspectionPhotoUrl } from '@/lib/photoUpload';
 
 const RESULT_LABEL: Record<BobcatItemResult, string> = {
   good: 'ნორმაში',
@@ -33,6 +34,8 @@ const CATEGORY_LABEL: Record<string, string> = {
 
 export default function BobcatPrint() {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const isPreview = searchParams.get('preview') === '1';
 
   const inspectionQ = useQuery({
     queryKey: ['bobcatInspection', id],
@@ -47,8 +50,17 @@ export default function BobcatPrint() {
 
   const ready = inspectionQ.isSuccess && projectQ.isSuccess;
   useEffect(() => {
-    if (ready) printAfterRender(500);
-  }, [ready]);
+    if (ready && !isPreview) printAfterRender(500);
+  }, [ready, isPreview]);
+
+  const [signedSummaryPhotos, setSignedSummaryPhotos] = useState<string[]>([]);
+  useEffect(() => {
+    const paths = inspectionQ.data?.summaryPhotos ?? [];
+    if (!paths.length) return;
+    Promise.all(paths.map(signedInspectionPhotoUrl))
+      .then(setSignedSummaryPhotos)
+      .catch(() => {});
+  }, [inspectionQ.data?.summaryPhotos]);
 
   if (!inspectionQ.data) {
     return <p style={{ padding: 24 }}>{inspectionQ.isLoading ? 'იტვირთება…' : 'ვერ მოიძებნა.'}</p>;
@@ -89,6 +101,22 @@ export default function BobcatPrint() {
         <div className="field"><span className="field-label">სარეგ. ნომერი:</span> {item.registrationNumber || '—'}</div>
         <div className="field"><span className="field-label">დეპარტამენტი:</span> {item.department || '—'}</div>
         <div className="field"><span className="field-label">ინსპექტორი:</span> {item.inspectorName || '—'}</div>
+
+        {signedSummaryPhotos.length > 0 && (
+          <section style={{ pageBreakInside: 'avoid' }}>
+            <h2>სარეზიუმო ფოტოები</h2>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8pt' }}>
+              {signedSummaryPhotos.map((url, i) => (
+                <img
+                  key={i}
+                  src={url}
+                  alt={`photo-${i + 1}`}
+                  style={{ width: '80mm', height: '60mm', objectFit: 'cover', borderRadius: '2pt', border: '1pt solid #ccc' }}
+                />
+              ))}
+            </div>
+          </section>
+        )}
 
         <h2>III. შემოწმების სია</h2>
         {Object.entries(grouped).map(([cat, entries]) => (

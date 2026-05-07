@@ -36,6 +36,7 @@ export interface GeneralEquipmentInspection {
   signerRole: GESignerRole | null;
   signerRoleCustom: string | null;
   inspectorSignature: string | null;
+  summaryPhotos: string[];
   completedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -61,13 +62,14 @@ interface DbRow {
   signer_role: GESignerRole | null;
   signer_role_custom: string | null;
   inspector_signature: string | null;
+  summary_photos: string[] | null;
   completed_at: string | null;
   created_at: string;
   updated_at: string;
 }
 
 const COLS =
-  'id, project_id, template_id, user_id, status, object_name, address, activity_type, inspection_date, act_number, inspection_type, department, inspector_name, equipment, conclusion, signer_name, signer_role, signer_role_custom, inspector_signature, completed_at, created_at, updated_at';
+  'id, project_id, template_id, user_id, status, object_name, address, activity_type, inspection_date, act_number, inspection_type, department, inspector_name, equipment, conclusion, signer_name, signer_role, signer_role_custom, inspector_signature, summary_photos, completed_at, created_at, updated_at';
 
 function toModel(r: DbRow): GeneralEquipmentInspection {
   return {
@@ -90,6 +92,7 @@ function toModel(r: DbRow): GeneralEquipmentInspection {
     signerRole: r.signer_role,
     signerRoleCustom: r.signer_role_custom,
     inspectorSignature: r.inspector_signature,
+    summaryPhotos: r.summary_photos ?? [],
     completedAt: r.completed_at,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
@@ -172,6 +175,7 @@ export async function updateGeneralEquipmentInspection(
     signerRole: GESignerRole | null;
     signerRoleCustom: string | null;
     inspectorSignature: string | null;
+    summaryPhotos: string[];
     status: 'draft' | 'completed';
   }>,
 ): Promise<void> {
@@ -190,6 +194,7 @@ export async function updateGeneralEquipmentInspection(
   if (patch.signerRole !== undefined) updates.signer_role = patch.signerRole;
   if (patch.signerRoleCustom !== undefined) updates.signer_role_custom = patch.signerRoleCustom;
   if (patch.inspectorSignature !== undefined) updates.inspector_signature = patch.inspectorSignature;
+  if (patch.summaryPhotos !== undefined) updates.summary_photos = patch.summaryPhotos;
   if (patch.status !== undefined) {
     updates.status = patch.status;
     if (patch.status === 'completed') updates.completed_at = new Date().toISOString();

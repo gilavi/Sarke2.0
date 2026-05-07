@@ -17,6 +17,8 @@ export interface Project {
   contact_phone: string | null;
   logo: string | null;
   crew: CrewMember[] | null;
+  latitude: number | null;
+  longitude: number | null;
   created_at: string;
 }
 
@@ -71,7 +73,7 @@ export async function listProjectSigners(projectId: string): Promise<ProjectSign
 export async function listProjects(): Promise<Project[]> {
   const { data, error } = await supabase
     .from('projects')
-    .select('id, user_id, name, company_name, address, contact_phone, logo, crew, created_at')
+    .select('id, user_id, name, company_name, address, contact_phone, logo, crew, latitude, longitude, created_at')
     .order('created_at', { ascending: false });
   if (error) throw error;
   return (data ?? []) as Project[];
@@ -88,7 +90,7 @@ export async function countProjects(): Promise<number> {
 export async function getProject(id: string): Promise<Project | null> {
   const { data, error } = await supabase
     .from('projects')
-    .select('id, user_id, name, company_name, address, contact_phone, logo, crew, created_at')
+    .select('id, user_id, name, company_name, address, contact_phone, logo, crew, latitude, longitude, created_at')
     .eq('id', id)
     .maybeSingle();
   if (error) throw error;
@@ -102,7 +104,13 @@ export async function updateProjectLogo(id: string, logoDataUrl: string | null):
 
 export async function updateProject(
   id: string,
-  patch: { name?: string; address?: string | null; contact_phone?: string | null },
+  patch: {
+    name?: string;
+    address?: string | null;
+    contact_phone?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+  },
 ): Promise<void> {
   const { error } = await supabase.from('projects').update(patch).eq('id', id);
   if (error) throw error;
@@ -142,7 +150,7 @@ export async function createProject(args: {
       address: args.address,
       contact_phone: args.contactPhone,
     })
-    .select('id, user_id, name, company_name, address, contact_phone, logo, crew, created_at')
+    .select('id, user_id, name, company_name, address, contact_phone, logo, crew, latitude, longitude, created_at')
     .single();
   if (error) throw error;
   return data as Project;

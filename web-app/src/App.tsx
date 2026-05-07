@@ -224,9 +224,11 @@ export default function App() {
             <Route
               path="/safety"
               element={
-                <Suspense fallback={<PageFallback />}>
-                  <SafetyGuidePage />
-                </Suspense>
+                <ProtectedRoute>
+                  <Suspense fallback={<PageFallback />}>
+                    <SafetyGuidePage />
+                  </Suspense>
+                </ProtectedRoute>
               }
             />
             <Route path="*" element={<Navigate to="/" replace />} />

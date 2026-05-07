@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileText, Trash2 } from 'lucide-react';
@@ -61,6 +61,8 @@ export default function BobcatInspectionDetail() {
   const [signingOpen, setSigningOpen] = useState(false);
   const [justCompleted, setJustCompleted] = useState(false);
   const [step, setStep] = useState(0);
+  const [pdfOpen, setPdfOpen] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const updateMutation = useMutation({
     mutationFn: (patch: Parameters<typeof updateBobcatInspection>[1]) =>
@@ -119,7 +121,7 @@ export default function BobcatInspectionDetail() {
           </div>
           <div className="flex gap-2 shrink-0">
             <button
-              onClick={() => window.open(`#/bobcat/${id}/print`, '_blank')}
+              onClick={() => setPdfOpen(true)}
               className="rounded-md bg-green-700 px-4 py-2 text-sm font-medium text-white hover:bg-green-800"
             >
               PDF ნახვა
@@ -144,7 +146,7 @@ export default function BobcatInspectionDetail() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => window.open(`#/bobcat/${item.id}/print`, '_blank')}
+            onClick={() => setPdfOpen(true)}
           >
             <FileText size={14} className="mr-1" />
             PDF
@@ -243,6 +245,29 @@ export default function BobcatInspectionDetail() {
       {/* Step 1 — Checklist */}
       {step === 1 && (
         <>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">სარეზიუმო ფოტოები</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <PhotoUploadWidget
+                paths={item.summaryPhotos ?? []}
+                disabled={!isDraft}
+                prefix="bobcat"
+                inspectionId={item.id}
+                itemId="summary"
+                onAdd={(path) =>
+                  updateMutation.mutate({ summaryPhotos: [...(item.summaryPhotos ?? []), path] })
+                }
+                onRemove={(path) =>
+                  updateMutation.mutate({
+                    summaryPhotos: (item.summaryPhotos ?? []).filter((p) => p !== path),
+                  })
+                }
+              />
+            </CardContent>
+          </Card>
+
           {Object.entries(grouped).map(([cat, entries]) => (
             <Card key={cat}>
               <CardHeader>
@@ -429,6 +454,31 @@ export default function BobcatInspectionDetail() {
           </Card>
           <WizardNav current={step} total={3} onPrev={() => setStep(s => s - 1)} onNext={() => setStep(s => s + 1)} />
         </>
+      )}
+
+      {pdfOpen && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-black/60">
+          <div className="flex items-center justify-between bg-white px-4 py-2 shadow">
+            <button
+              className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-50"
+              onClick={() => setPdfOpen(false)}
+            >
+              ✕ დახურვა
+            </button>
+            <button
+              className="rounded-md bg-brand-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-brand-700"
+              onClick={() => iframeRef.current?.contentWindow?.print()}
+            >
+              ბეჭდვა
+            </button>
+          </div>
+          <iframe
+            ref={iframeRef}
+            src={`#/bobcat/${item.id}/print?preview=1`}
+            className="flex-1 w-full border-0 bg-white"
+            title="PDF გადახედვა"
+          />
+        </div>
       )}
     </div>
   );
