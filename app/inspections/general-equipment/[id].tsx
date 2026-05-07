@@ -726,6 +726,14 @@ export default function GeneralEquipmentScreen() {
                 visible={focusedField === 'conclusion' || (!inspection.conclusion?.trim() && conclusionHistory.suggestions.length > 0)}
               />
 
+              <Text style={styles.fieldLabel}>ფოტოები (სურვ.)</Text>
+              <SummaryPhotoStrip
+                paths={inspection.summaryPhotos}
+                onAdd={handleAddSummaryPhoto}
+                onDelete={handleDeleteSummaryPhoto}
+                styles={styles}
+              />
+
               {completing && (
                 <View style={styles.completingRow}>
                   <ActivityIndicator size="small" color={theme.colors.accent} />
