@@ -56,6 +56,13 @@ There are **two** web codebases in this repo, both static sites deployed to GitH
 | `web/` (sarke-sign) | Tokenized signing page that recipients open from an SMS link | `https://gilavi.github.io/Sarke2.0/` |
 | `web-app/` (new dashboard) | Public dashboard webapp — same Supabase project as mobile | `https://gilavi.github.io/Sarke2.0/app/` |
 
+Dashboard notable routes:
+
+| Route | Description |
+|---|---|
+| `/#/` | Home (subscription card + quick links) |
+| `/#/safety` | **3D Interactive Construction Safety Guide** (Three.js / React Three Fiber) — 6 clickable building parts with safety checklists, regulations, and hazard info. Responsive: side-by-side on desktop, stacked on mobile. |
+
 Both are Vite + React (no Expo, no React Native). They share Supabase but **no code** with the mobile app — features are reimplemented in real HTML/CSS so desktop UX isn't fighting React Native Web. Mobile parity is not a goal.
 
 Local dev for the dashboard:
