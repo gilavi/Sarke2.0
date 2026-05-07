@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import PhotoUploadWidget from '@/components/PhotoUploadWidget';
 import SignatureCanvas from '@/components/SignatureCanvas';
+import WizardSteps, { WizardNav } from '@/components/WizardSteps';
 import {
   BOBCAT_ITEMS,
   BOBCAT_TEMPLATE_ID,
@@ -59,6 +60,7 @@ export default function BobcatInspectionDetail() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [signingOpen, setSigningOpen] = useState(false);
   const [justCompleted, setJustCompleted] = useState(false);
+  const [step, setStep] = useState(0);
 
   const updateMutation = useMutation({
     mutationFn: (patch: Parameters<typeof updateBobcatInspection>[1]) =>
@@ -188,226 +190,246 @@ export default function BobcatInspectionDetail() {
         </div>
       )}
 
-      {/* General info */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">ზოგადი ინფორმაცია</CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
-          <Field
-            label="კომპანია"
-            value={item.company}
-            disabled={!isDraft}
-            onSave={(v) => updateMutation.mutate({ company: v })}
-          />
-          <Field
-            label="მოდელი"
-            value={item.equipmentModel}
-            disabled={!isDraft}
-            onSave={(v) => updateMutation.mutate({ equipmentModel: v })}
-          />
-          <Field
-            label="სარეგ. ნომერი"
-            value={item.registrationNumber}
-            disabled={!isDraft}
-            onSave={(v) => updateMutation.mutate({ registrationNumber: v })}
-          />
-          <Field
-            label="დეპარტამენტი"
-            value={item.department}
-            disabled={!isDraft}
-            onSave={(v) => updateMutation.mutate({ department: v })}
-          />
-          <Field
-            label="ინსპექტორი"
-            value={item.inspectorName}
-            disabled={!isDraft}
-            onSave={(v) => updateMutation.mutate({ inspectorName: v })}
-          />
-        </CardContent>
-      </Card>
+      <WizardSteps
+        steps={[{ label: 'ინფო' }, { label: 'შემოწმება' }, { label: 'დასკვნა' }]}
+        current={step}
+        onStep={setStep}
+      />
 
-      {/* Checklist */}
-      {Object.entries(grouped).map(([cat, entries]) => (
-        <Card key={cat}>
-          <CardHeader>
-            <CardTitle className="text-base">{CATEGORY_LABEL[cat] ?? cat}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="divide-y divide-neutral-200">
-              {entries.map((entry) => {
-                const state = itemsById.get(entry.id) ?? {
-                  id: entry.id,
-                  result: null,
-                  comment: null,
-                  photo_paths: [],
-                };
-                return (
-                  <li key={entry.id} className="py-3">
-                    <div className="text-sm font-medium text-neutral-900">
-                      {entry.id}. {entry.label}
-                    </div>
-                    <div className="text-xs text-neutral-600">{entry.description}</div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {(['good', 'deficient', 'unusable'] as const).map((r) => {
-                        const selected = state.result === r;
+      {/* Step 0 — General info */}
+      {step === 0 && (
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">ზოგადი ინფორმაცია</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+              <Field
+                label="კომპანია"
+                value={item.company}
+                disabled={!isDraft}
+                onSave={(v) => updateMutation.mutate({ company: v })}
+              />
+              <Field
+                label="მოდელი"
+                value={item.equipmentModel}
+                disabled={!isDraft}
+                onSave={(v) => updateMutation.mutate({ equipmentModel: v })}
+              />
+              <Field
+                label="სარეგ. ნომერი"
+                value={item.registrationNumber}
+                disabled={!isDraft}
+                onSave={(v) => updateMutation.mutate({ registrationNumber: v })}
+              />
+              <Field
+                label="დეპარტამენტი"
+                value={item.department}
+                disabled={!isDraft}
+                onSave={(v) => updateMutation.mutate({ department: v })}
+              />
+              <Field
+                label="ინსპექტორი"
+                value={item.inspectorName}
+                disabled={!isDraft}
+                onSave={(v) => updateMutation.mutate({ inspectorName: v })}
+              />
+            </CardContent>
+          </Card>
+          <WizardNav current={step} total={3} onPrev={() => setStep(s => s - 1)} onNext={() => setStep(s => s + 1)} />
+        </>
+      )}
+
+      {/* Step 1 — Checklist */}
+      {step === 1 && (
+        <>
+          {Object.entries(grouped).map(([cat, entries]) => (
+            <Card key={cat}>
+              <CardHeader>
+                <CardTitle className="text-base">{CATEGORY_LABEL[cat] ?? cat}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="divide-y divide-neutral-200">
+                  {entries.map((entry) => {
+                    const state = itemsById.get(entry.id) ?? {
+                      id: entry.id,
+                      result: null,
+                      comment: null,
+                      photo_paths: [],
+                    };
+                    return (
+                      <li key={entry.id} className="py-3">
+                        <div className="text-sm font-medium text-neutral-900">
+                          {entry.id}. {entry.label}
+                        </div>
+                        <div className="text-xs text-neutral-600">{entry.description}</div>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {(['good', 'deficient', 'unusable'] as const).map((r) => {
+                            const selected = state.result === r;
+                            return (
+                              <button
+                                key={r}
+                                type="button"
+                                disabled={!isDraft}
+                                onClick={() =>
+                                  patchItem(entry.id, { result: selected ? null : r })
+                                }
+                                className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                                  selected
+                                    ? r === 'good'
+                                      ? 'border-emerald-600 bg-emerald-600 text-white'
+                                      : r === 'deficient'
+                                        ? 'border-amber-600 bg-amber-600 text-white'
+                                        : 'border-red-600 bg-red-600 text-white'
+                                    : 'border-neutral-300 bg-white text-neutral-700 hover:border-brand-400'
+                                } disabled:cursor-not-allowed disabled:opacity-60`}
+                              >
+                                {r === 'unusable' && entry.unusableLabel
+                                  ? entry.unusableLabel
+                                  : RESULT_LABEL[r]}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <Input
+                          disabled={!isDraft}
+                          defaultValue={state.comment ?? ''}
+                          onBlur={(e) => {
+                            const v = e.target.value || null;
+                            if (v !== (state.comment ?? null)) {
+                              patchItem(entry.id, { comment: v });
+                            }
+                          }}
+                          placeholder="კომენტარი"
+                          className="mt-2 text-xs"
+                        />
+                        <PhotoUploadWidget
+                          paths={state.photo_paths ?? []}
+                          disabled={!isDraft}
+                          prefix="bobcat"
+                          inspectionId={item.id}
+                          itemId={entry.id}
+                          onAdd={(path) =>
+                            patchItem(entry.id, {
+                              photo_paths: [...(state.photo_paths ?? []), path],
+                            })
+                          }
+                          onRemove={(path) =>
+                            patchItem(entry.id, {
+                              photo_paths: (state.photo_paths ?? []).filter((p) => p !== path),
+                            })
+                          }
+                        />
+                      </li>
+                    );
+                  })}
+                </ul>
+              </CardContent>
+            </Card>
+          ))}
+          <WizardNav current={step} total={3} onPrev={() => setStep(s => s - 1)} onNext={() => setStep(s => s + 1)} />
+        </>
+      )}
+
+      {/* Step 2 — Signature + Summary */}
+      {step === 2 && (
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">ინსპექტორის ხელმოწერა</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {signingOpen && isDraft ? (
+                <SignatureCanvas
+                  existing={item.inspectorSignature
+                    ? (item.inspectorSignature.startsWith('data:') ? item.inspectorSignature : `data:image/png;base64,${item.inspectorSignature}`)
+                    : undefined}
+                  onSave={(dataUrl) => { updateMutation.mutate({ inspectorSignature: dataUrl }); setSigningOpen(false); }}
+                  onCancel={() => setSigningOpen(false)}
+                />
+              ) : item.inspectorSignature ? (
+                <div className="space-y-2">
+                  <img
+                    src={item.inspectorSignature.startsWith('data:') ? item.inspectorSignature : `data:image/png;base64,${item.inspectorSignature}`}
+                    alt="ხელმოწერა"
+                    className="h-20 rounded border border-neutral-200 bg-white object-contain p-1"
+                  />
+                  {isDraft && (
+                    <Button variant="outline" size="sm" onClick={() => setSigningOpen(true)}>განახლება</Button>
+                  )}
+                </div>
+              ) : isDraft ? (
+                <Button variant="outline" size="sm" onClick={() => setSigningOpen(true)}>ხელმოწერა</Button>
+              ) : (
+                <p className="text-sm text-neutral-500">ხელმოწერა არ არის.</p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">დასკვნა</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {isDraft ? (
+                <>
+                  <div className="space-y-1">
+                    <Label>დასკვნა</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {(Object.keys(VERDICT_LABEL) as BobcatVerdict[]).map((v) => {
+                        const selected = item.verdict === v;
                         return (
                           <button
-                            key={r}
+                            key={v}
                             type="button"
-                            disabled={!isDraft}
                             onClick={() =>
-                              patchItem(entry.id, { result: selected ? null : r })
+                              updateMutation.mutate({ verdict: selected ? null : v })
                             }
                             className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
                               selected
-                                ? r === 'good'
-                                  ? 'border-emerald-600 bg-emerald-600 text-white'
-                                  : r === 'deficient'
-                                    ? 'border-amber-600 bg-amber-600 text-white'
-                                    : 'border-red-600 bg-red-600 text-white'
+                                ? 'border-brand-600 bg-brand-600 text-white'
                                 : 'border-neutral-300 bg-white text-neutral-700 hover:border-brand-400'
-                            } disabled:cursor-not-allowed disabled:opacity-60`}
+                            }`}
                           >
-                            {r === 'unusable' && entry.unusableLabel
-                              ? entry.unusableLabel
-                              : RESULT_LABEL[r]}
+                            {VERDICT_LABEL[v]}
                           </button>
                         );
                       })}
                     </div>
-                    <Input
-                      disabled={!isDraft}
-                      defaultValue={state.comment ?? ''}
+                  </div>
+                  <div className="space-y-1">
+                    <Label>შენიშვნები</Label>
+                    <textarea
+                      rows={3}
+                      defaultValue={item.notes ?? ''}
                       onBlur={(e) => {
                         const v = e.target.value || null;
-                        if (v !== (state.comment ?? null)) {
-                          patchItem(entry.id, { comment: v });
-                        }
+                        if (v !== item.notes) updateMutation.mutate({ notes: v });
                       }}
-                      placeholder="კომენტარი"
-                      className="mt-2 text-xs"
+                      className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
                     />
-                    <PhotoUploadWidget
-                      paths={state.photo_paths ?? []}
-                      disabled={!isDraft}
-                      prefix="bobcat"
-                      inspectionId={item.id}
-                      itemId={entry.id}
-                      onAdd={(path) =>
-                        patchItem(entry.id, {
-                          photo_paths: [...(state.photo_paths ?? []), path],
-                        })
-                      }
-                      onRemove={(path) =>
-                        patchItem(entry.id, {
-                          photo_paths: (state.photo_paths ?? []).filter((p) => p !== path),
-                        })
-                      }
-                    />
-                  </li>
-                );
-              })}
-            </ul>
-          </CardContent>
-        </Card>
-      ))}
-
-      {/* Signature */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">ინსპექტორის ხელმოწერა</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {signingOpen && isDraft ? (
-            <SignatureCanvas
-              existing={item.inspectorSignature
-                ? (item.inspectorSignature.startsWith('data:') ? item.inspectorSignature : `data:image/png;base64,${item.inspectorSignature}`)
-                : undefined}
-              onSave={(dataUrl) => { updateMutation.mutate({ inspectorSignature: dataUrl }); setSigningOpen(false); }}
-              onCancel={() => setSigningOpen(false)}
-            />
-          ) : item.inspectorSignature ? (
-            <div className="space-y-2">
-              <img
-                src={item.inspectorSignature.startsWith('data:') ? item.inspectorSignature : `data:image/png;base64,${item.inspectorSignature}`}
-                alt="ხელმოწერა"
-                className="h-20 rounded border border-neutral-200 bg-white object-contain p-1"
-              />
-              {isDraft && (
-                <Button variant="outline" size="sm" onClick={() => setSigningOpen(true)}>განახლება</Button>
-              )}
-            </div>
-          ) : isDraft ? (
-            <Button variant="outline" size="sm" onClick={() => setSigningOpen(true)}>ხელმოწერა</Button>
-          ) : (
-            <p className="text-sm text-neutral-500">ხელმოწერა არ არის.</p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Summary */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">დასკვნა</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {isDraft ? (
-            <>
-              <div className="space-y-1">
-                <Label>დასკვნა</Label>
-                <div className="flex flex-wrap gap-2">
-                  {(Object.keys(VERDICT_LABEL) as BobcatVerdict[]).map((v) => {
-                    const selected = item.verdict === v;
-                    return (
-                      <button
-                        key={v}
-                        type="button"
-                        onClick={() =>
-                          updateMutation.mutate({ verdict: selected ? null : v })
-                        }
-                        className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
-                          selected
-                            ? 'border-brand-600 bg-brand-600 text-white'
-                            : 'border-neutral-300 bg-white text-neutral-700 hover:border-brand-400'
-                        }`}
-                      >
-                        {VERDICT_LABEL[v]}
-                      </button>
-                    );
-                  })}
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => updateMutation.mutate({ status: 'completed' })}
+                    disabled={updateMutation.isPending}
+                  >
+                    დასრულება
+                  </Button>
+                </>
+              ) : (
+                <div className="space-y-1 text-sm text-neutral-700">
+                  <div>
+                    დასკვნა: {item.verdict ? VERDICT_LABEL[item.verdict] : '—'}
+                  </div>
+                  <div>შენიშვნები: {item.notes || '—'}</div>
                 </div>
-              </div>
-              <div className="space-y-1">
-                <Label>შენიშვნები</Label>
-                <textarea
-                  rows={3}
-                  defaultValue={item.notes ?? ''}
-                  onBlur={(e) => {
-                    const v = e.target.value || null;
-                    if (v !== item.notes) updateMutation.mutate({ notes: v });
-                  }}
-                  className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
-                />
-              </div>
-              <Button
-                size="sm"
-                onClick={() => updateMutation.mutate({ status: 'completed' })}
-                disabled={updateMutation.isPending}
-              >
-                დასრულება
-              </Button>
-            </>
-          ) : (
-            <div className="space-y-1 text-sm text-neutral-700">
-              <div>
-                დასკვნა: {item.verdict ? VERDICT_LABEL[item.verdict] : '—'}
-              </div>
-              <div>შენიშვნები: {item.notes || '—'}</div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              )}
+            </CardContent>
+          </Card>
+          <WizardNav current={step} total={3} onPrev={() => setStep(s => s - 1)} onNext={() => setStep(s => s + 1)} />
+        </>
+      )}
     </div>
   );
 }
