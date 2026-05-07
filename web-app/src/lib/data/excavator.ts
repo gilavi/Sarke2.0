@@ -179,6 +179,7 @@ export async function updateExcavatorInspection(
     projectName: string | null;
     department: string | null;
     motoHours: number | null;
+    inspectionDate: string | null;
     inspectorName: string | null;
     lastInspectionDate: string | null;
     engineItems: ExcavatorChecklistItemState[];
@@ -199,6 +200,7 @@ export async function updateExcavatorInspection(
   if (patch.projectName !== undefined) u.project_name = patch.projectName;
   if (patch.department !== undefined) u.department = patch.department;
   if (patch.motoHours !== undefined) u.moto_hours = patch.motoHours;
+  if (patch.inspectionDate !== undefined) u.inspection_date = patch.inspectionDate;
   if (patch.inspectorName !== undefined) u.inspector_name = patch.inspectorName;
   if (patch.lastInspectionDate !== undefined) u.last_inspection_date = patch.lastInspectionDate;
   if (patch.engineItems !== undefined) u.engine_items = patch.engineItems;
