@@ -1,7 +1,9 @@
 import { useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileText, Plus, Trash2, X } from 'lucide-react';
+import { FileText, Plus, X } from 'lucide-react';
+import { toast } from 'sonner';
+import DeleteButton from '@/components/DeleteButton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -48,9 +50,7 @@ export default function ReportDetail() {
     enabled: !!item?.slides && item.slides.length > 0,
   });
 
-  const [actionError, setActionError] = useState<string | null>(null);
   const [opening, setOpening] = useState(false);
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const [addingSlide, setAddingSlide] = useState(false);
   const [slideTitle, setSlideTitle] = useState('');
@@ -77,7 +77,7 @@ export default function ReportDetail() {
       if (photoInputRef.current) photoInputRef.current.value = '';
       setAddingSlide(false);
     },
-    onError: (e) => setActionError(e instanceof Error ? e.message : String(e)),
+    onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
   });
 
   const removeSlideMutation = useMutation({
@@ -89,7 +89,7 @@ export default function ReportDetail() {
       qc.setQueryData(['report', id], next);
       qc.invalidateQueries({ queryKey: ['reports'] });
     },
-    onError: (e) => setActionError(e instanceof Error ? e.message : String(e)),
+    onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
   });
 
   const updateSlideMutation = useMutation({
@@ -100,7 +100,7 @@ export default function ReportDetail() {
     onSuccess: (next: Report) => {
       qc.setQueryData(['report', id], next);
     },
-    onError: (e) => setActionError(e instanceof Error ? e.message : String(e)),
+    onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
   });
 
   const deleteMutation = useMutation({
@@ -112,11 +112,10 @@ export default function ReportDetail() {
       qc.invalidateQueries({ queryKey: ['reports'] });
       navigate('/reports');
     },
-    onError: (e) => setActionError(e instanceof Error ? e.message : String(e)),
+    onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
   });
 
-  const error =
-    actionError ?? (queryError instanceof Error ? queryError.message : queryError ? String(queryError) : null);
+  const error = queryError instanceof Error ? queryError.message : queryError ? String(queryError) : null;
 
   async function openPdf() {
     if (!item?.pdf_url) return;
@@ -125,7 +124,7 @@ export default function ReportDetail() {
       const url = await signedReportPdfUrl(item.pdf_url);
       window.open(url, '_blank', 'noopener,noreferrer');
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : String(e));
+      toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       setOpening(false);
     }
@@ -161,38 +160,7 @@ export default function ReportDetail() {
             <FileText size={14} className="mr-1" />
             PDF
           </Button>
-          {confirmingDelete ? (
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-neutral-700">დარწმუნებული ხართ?</span>
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-red-300 text-red-700 hover:bg-red-50"
-                onClick={() => deleteMutation.mutate()}
-                disabled={deleteMutation.isPending}
-              >
-                {deleteMutation.isPending ? 'იშლება…' : 'წაშლა'}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setConfirmingDelete(false)}
-                disabled={deleteMutation.isPending}
-              >
-                გაუქმება
-              </Button>
-            </div>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-red-600 hover:border-red-300 hover:bg-red-50"
-              onClick={() => setConfirmingDelete(true)}
-            >
-              <Trash2 size={14} className="mr-1" />
-              წაშლა
-            </Button>
-          )}
+          <DeleteButton onDelete={() => deleteMutation.mutate()} isPending={deleteMutation.isPending} />
         </div>
       </header>
 

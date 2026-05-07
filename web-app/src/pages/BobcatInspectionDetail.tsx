@@ -1,13 +1,16 @@
 import { useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileText, Trash2 } from 'lucide-react';
+import { FileText } from 'lucide-react';
+import { toast } from 'sonner';
+import DeleteButton from '@/components/DeleteButton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import PhotoUploadWidget from '@/components/PhotoUploadWidget';
 import SignatureCanvas from '@/components/SignatureCanvas';
+import FieldInput from '@/components/FieldInput';
 import WizardSteps, { WizardNav } from '@/components/WizardSteps';
 import {
   BOBCAT_ITEMS,
@@ -56,8 +59,6 @@ export default function BobcatInspectionDetail() {
     enabled: !!id,
   });
 
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const [actionError, setActionError] = useState<string | null>(null);
   const [signingOpen, setSigningOpen] = useState(false);
   const [justCompleted, setJustCompleted] = useState(false);
   const [step, setStep] = useState(0);
@@ -72,7 +73,7 @@ export default function BobcatInspectionDetail() {
       qc.invalidateQueries({ queryKey: ['bobcatInspections'] });
       if (variables.status === 'completed') setJustCompleted(true);
     },
-    onError: (e) => setActionError(e instanceof Error ? e.message : String(e)),
+    onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
   });
 
   const delMutation = useMutation({
@@ -81,7 +82,7 @@ export default function BobcatInspectionDetail() {
       qc.invalidateQueries({ queryKey: ['bobcatInspections'] });
       navigate('/inspections');
     },
-    onError: (e) => setActionError(e instanceof Error ? e.message : String(e)),
+    onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
   });
 
   function patchItem(itemId: number, patch: Partial<BobcatItemState>) {
@@ -151,46 +152,9 @@ export default function BobcatInspectionDetail() {
             <FileText size={14} className="mr-1" />
             PDF
           </Button>
-          {confirmingDelete ? (
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-neutral-700">დარწმუნებული ხართ?</span>
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-red-300 text-red-700 hover:bg-red-50"
-                onClick={() => delMutation.mutate()}
-                disabled={delMutation.isPending}
-              >
-                {delMutation.isPending ? 'იშლება…' : 'წაშლა'}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setConfirmingDelete(false)}
-                disabled={delMutation.isPending}
-              >
-                გაუქმება
-              </Button>
-            </div>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-red-600 hover:border-red-300 hover:bg-red-50"
-              onClick={() => setConfirmingDelete(true)}
-            >
-              <Trash2 size={14} className="mr-1" />
-              წაშლა
-            </Button>
-          )}
+          <DeleteButton onDelete={() => delMutation.mutate()} isPending={delMutation.isPending} />
         </div>
       </header>
-
-      {actionError && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          {actionError}
-        </div>
-      )}
 
       <WizardSteps
         steps={[{ label: 'ინფო' }, { label: 'შემოწმება' }, { label: 'დასკვნა' }]}
@@ -206,31 +170,31 @@ export default function BobcatInspectionDetail() {
               <CardTitle className="text-base">ზოგადი ინფორმაცია</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
-              <Field
+              <FieldInput
                 label="კომპანია"
                 value={item.company}
                 disabled={!isDraft}
                 onSave={(v) => updateMutation.mutate({ company: v })}
               />
-              <Field
+              <FieldInput
                 label="მოდელი"
                 value={item.equipmentModel}
                 disabled={!isDraft}
                 onSave={(v) => updateMutation.mutate({ equipmentModel: v })}
               />
-              <Field
+              <FieldInput
                 label="სარეგ. ნომერი"
                 value={item.registrationNumber}
                 disabled={!isDraft}
                 onSave={(v) => updateMutation.mutate({ registrationNumber: v })}
               />
-              <Field
+              <FieldInput
                 label="დეპარტამენტი"
                 value={item.department}
                 disabled={!isDraft}
                 onSave={(v) => updateMutation.mutate({ department: v })}
               />
-              <Field
+              <FieldInput
                 label="ინსპექტორი"
                 value={item.inspectorName}
                 disabled={!isDraft}
@@ -245,29 +209,6 @@ export default function BobcatInspectionDetail() {
       {/* Step 1 — Checklist */}
       {step === 1 && (
         <>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">სარეზიუმო ფოტოები</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <PhotoUploadWidget
-                paths={item.summaryPhotos ?? []}
-                disabled={!isDraft}
-                prefix="bobcat"
-                inspectionId={item.id}
-                itemId="summary"
-                onAdd={(path) =>
-                  updateMutation.mutate({ summaryPhotos: [...(item.summaryPhotos ?? []), path] })
-                }
-                onRemove={(path) =>
-                  updateMutation.mutate({
-                    summaryPhotos: (item.summaryPhotos ?? []).filter((p) => p !== path),
-                  })
-                }
-              />
-            </CardContent>
-          </Card>
-
           {Object.entries(grouped).map(([cat, entries]) => (
             <Card key={cat}>
               <CardHeader>
@@ -484,28 +425,3 @@ export default function BobcatInspectionDetail() {
   );
 }
 
-function Field({
-  label,
-  value,
-  disabled,
-  onSave,
-}: {
-  label: string;
-  value: string | null;
-  disabled: boolean;
-  onSave: (v: string | null) => void;
-}) {
-  return (
-    <div className="space-y-1">
-      <Label>{label}</Label>
-      <Input
-        disabled={disabled}
-        defaultValue={value ?? ''}
-        onBlur={(e) => {
-          const v = e.target.value.trim() || null;
-          if (v !== (value ?? null)) onSave(v);
-        }}
-      />
-    </div>
-  );
-}

@@ -137,10 +137,10 @@ export default function PhotoUploadWidget({
                 <button
                   type="button"
                   onClick={() => handleRemove(p)}
-                  className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white hover:bg-red-600"
+                  className="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white hover:bg-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-1"
                   aria-label="ფოტოს წაშლა"
                 >
-                  <X size={10} />
+                  <X size={12} />
                 </button>
               )}
             </div>

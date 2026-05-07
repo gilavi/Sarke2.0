@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Camera, FileText, Trash2, X } from 'lucide-react';
+import { Camera, FileText, X } from 'lucide-react';
+import { toast } from 'sonner';
+import DeleteButton from '@/components/DeleteButton';
 import SignatureCanvas from '@/components/SignatureCanvas';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -56,9 +58,7 @@ export default function InspectionDetail() {
     enabled: !!id,
   });
 
-  const [actionError, setActionError] = useState<string | null>(null);
   const [opening, setOpening] = useState<string | null>(null);
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [justCompleted, setJustCompleted] = useState(false);
   const [conclusionDraft, setConclusionDraft] = useState<string | null>(null);
   const [safeDraft, setSafeDraft] = useState<boolean | null | undefined>(undefined);
@@ -70,9 +70,7 @@ export default function InspectionDetail() {
   const isDraft = inspection?.status === 'draft';
 
   const queryError = inspectionQ.error ?? pdfsQ.error ?? questionsQ.error ?? answersQ.error;
-  const error =
-    actionError ??
-    (queryError instanceof Error ? queryError.message : queryError ? String(queryError) : null);
+  const error = queryError instanceof Error ? queryError.message : queryError ? String(queryError) : null;
 
   const answerMutation = useMutation({
     mutationFn: upsertAnswer,
@@ -86,7 +84,7 @@ export default function InspectionDetail() {
         return copy;
       });
     },
-    onError: (e) => setActionError(e instanceof Error ? e.message : String(e)),
+    onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
   });
 
   const completeMutation = useMutation({
@@ -101,7 +99,7 @@ export default function InspectionDetail() {
       qc.invalidateQueries({ queryKey: ['inspections'] });
       setJustCompleted(true);
     },
-    onError: (e) => setActionError(e instanceof Error ? e.message : String(e)),
+    onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
   });
 
   const conclusionMutation = useMutation({
@@ -115,7 +113,7 @@ export default function InspectionDetail() {
       setConclusionDraft(null);
       setSafeDraft(undefined);
     },
-    onError: (e) => setActionError(e instanceof Error ? e.message : String(e)),
+    onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
   });
 
   const deleteMutation = useMutation({
@@ -124,7 +122,7 @@ export default function InspectionDetail() {
       qc.invalidateQueries({ queryKey: ['inspections'] });
       navigate('/inspections');
     },
-    onError: (e) => setActionError(e instanceof Error ? e.message : String(e)),
+    onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
   });
 
   async function openPdf(path: string, key: string) {
@@ -133,7 +131,7 @@ export default function InspectionDetail() {
       const url = await signedPdfUrl(path);
       window.open(url, '_blank', 'noopener,noreferrer');
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : String(e));
+      toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       setOpening(null);
     }
@@ -191,38 +189,7 @@ export default function InspectionDetail() {
             <FileText size={14} className="mr-1" />
             PDF
           </Button>
-          {confirmingDelete ? (
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-neutral-700">დარწმუნებული ხართ?</span>
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-red-300 text-red-700 hover:bg-red-50"
-                onClick={() => deleteMutation.mutate()}
-                disabled={deleteMutation.isPending}
-              >
-                {deleteMutation.isPending ? 'იშლება…' : 'წაშლა'}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setConfirmingDelete(false)}
-                disabled={deleteMutation.isPending}
-              >
-                გაუქმება
-              </Button>
-            </div>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-red-600 hover:border-red-300 hover:bg-red-50"
-              onClick={() => setConfirmingDelete(true)}
-            >
-              <Trash2 size={14} className="mr-1" />
-              წაშლა
-            </Button>
-          )}
+          <DeleteButton onDelete={() => deleteMutation.mutate()} isPending={deleteMutation.isPending} />
         </div>
       </header>
 

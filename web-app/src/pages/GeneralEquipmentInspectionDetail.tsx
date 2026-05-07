@@ -1,9 +1,12 @@
 import { useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileText, Plus, Trash2, X } from 'lucide-react';
+import { FileText, Plus, X } from 'lucide-react';
+import { toast } from 'sonner';
+import DeleteButton from '@/components/DeleteButton';
 import PhotoUploadWidget from '@/components/PhotoUploadWidget';
 import SignatureCanvas from '@/components/SignatureCanvas';
+import FieldInput from '@/components/FieldInput';
 import WizardSteps, { WizardNav } from '@/components/WizardSteps';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -30,9 +33,7 @@ export default function GeneralEquipmentInspectionDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [signingOpen, setSigningOpen] = useState(false);
-  const [actionError, setActionError] = useState<string | null>(null);
   const [justCompleted, setJustCompleted] = useState(false);
   const [step, setStep] = useState(0);
   const [pdfOpen, setPdfOpen] = useState(false);
@@ -52,7 +53,7 @@ export default function GeneralEquipmentInspectionDetail() {
       qc.invalidateQueries({ queryKey: ['generalEquipmentInspections'] });
       if (variables.status === 'completed') setJustCompleted(true);
     },
-    onError: (e) => setActionError(e instanceof Error ? e.message : String(e)),
+    onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
   });
 
   const delMutation = useMutation({
@@ -61,7 +62,7 @@ export default function GeneralEquipmentInspectionDetail() {
       qc.invalidateQueries({ queryKey: ['generalEquipmentInspections'] });
       navigate('/inspections');
     },
-    onError: (e) => setActionError(e instanceof Error ? e.message : String(e)),
+    onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
   });
 
   if (isLoading) return <p className="text-sm text-neutral-500">იტვირთება…</p>;
@@ -131,46 +132,9 @@ export default function GeneralEquipmentInspectionDetail() {
             <FileText size={14} className="mr-1" />
             PDF
           </Button>
-          {confirmingDelete ? (
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-neutral-700">დარწმუნებული ხართ?</span>
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-red-300 text-red-700 hover:bg-red-50"
-                onClick={() => delMutation.mutate()}
-                disabled={delMutation.isPending}
-              >
-                {delMutation.isPending ? 'იშლება…' : 'წაშლა'}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setConfirmingDelete(false)}
-                disabled={delMutation.isPending}
-              >
-                გაუქმება
-              </Button>
-            </div>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-red-600 hover:border-red-300 hover:bg-red-50"
-              onClick={() => setConfirmingDelete(true)}
-            >
-              <Trash2 size={14} className="mr-1" />
-              წაშლა
-            </Button>
-          )}
+          <DeleteButton onDelete={() => delMutation.mutate()} isPending={delMutation.isPending} />
         </div>
       </header>
-
-      {actionError && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          {actionError}
-        </div>
-      )}
 
       <WizardSteps
         steps={[{ label: 'ინფო' }, { label: 'შემოწმება' }, { label: 'დასკვნა' }]}
@@ -186,13 +150,13 @@ export default function GeneralEquipmentInspectionDetail() {
               <CardTitle className="text-base">ზოგადი ინფორმაცია</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
-              <Field label="ობიექტი" value={item.objectName} disabled={!isDraft}
+              <FieldInput label="ობიექტი" value={item.objectName} disabled={!isDraft}
                 onSave={(v) => updateMutation.mutate({ objectName: v })} />
-              <Field label="მისამართი" value={item.address} disabled={!isDraft}
+              <FieldInput label="მისამართი" value={item.address} disabled={!isDraft}
                 onSave={(v) => updateMutation.mutate({ address: v })} />
-              <Field label="საქმიანობის ტიპი" value={item.activityType} disabled={!isDraft}
+              <FieldInput label="საქმიანობის ტიპი" value={item.activityType} disabled={!isDraft}
                 onSave={(v) => updateMutation.mutate({ activityType: v })} />
-              <Field label="აქტის ნომერი" value={item.actNumber} disabled={!isDraft}
+              <FieldInput label="აქტის ნომერი" value={item.actNumber} disabled={!isDraft}
                 onSave={(v) => updateMutation.mutate({ actNumber: v })} />
               <div className="space-y-1">
                 <Label>შემოწმების თარიღი</Label>
@@ -231,9 +195,9 @@ export default function GeneralEquipmentInspectionDetail() {
                   ))}
                 </div>
               </div>
-              <Field label="დეპარტამენტი" value={item.department} disabled={!isDraft}
+              <FieldInput label="დეპარტამენტი" value={item.department} disabled={!isDraft}
                 onSave={(v) => updateMutation.mutate({ department: v })} />
-              <Field label="ინსპექტორი" value={item.inspectorName} disabled={!isDraft}
+              <FieldInput label="ინსპექტორი" value={item.inspectorName} disabled={!isDraft}
                 onSave={(v) => updateMutation.mutate({ inspectorName: v })} />
             </CardContent>
           </Card>
@@ -244,29 +208,6 @@ export default function GeneralEquipmentInspectionDetail() {
       {/* Step 1 — Equipment list */}
       {step === 1 && (
         <>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">სარეზიუმო ფოტოები</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <PhotoUploadWidget
-                paths={item.summaryPhotos ?? []}
-                disabled={!isDraft}
-                prefix="general-equipment"
-                inspectionId={item.id}
-                itemId="summary"
-                onAdd={(path) =>
-                  updateMutation.mutate({ summaryPhotos: [...(item.summaryPhotos ?? []), path] })
-                }
-                onRemove={(path) =>
-                  updateMutation.mutate({
-                    summaryPhotos: (item.summaryPhotos ?? []).filter((p) => p !== path),
-                  })
-                }
-              />
-            </CardContent>
-          </Card>
-
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <CardTitle className="text-base">
@@ -434,7 +375,7 @@ export default function GeneralEquipmentInspectionDetail() {
               <CardTitle className="text-base">ხელმომწერი</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
-              <Field label="სახელი, გვარი" value={item.signerName} disabled={!isDraft}
+              <FieldInput label="სახელი, გვარი" value={item.signerName} disabled={!isDraft}
                 onSave={(v) => updateMutation.mutate({ signerName: v })} />
               <div className="space-y-1">
                 <Label>როლი</Label>
@@ -463,7 +404,7 @@ export default function GeneralEquipmentInspectionDetail() {
               </div>
               {item.signerRole === 'other' && (
                 <div className="sm:col-span-2">
-                  <Field label="სხვა როლი" value={item.signerRoleCustom} disabled={!isDraft}
+                  <FieldInput label="სხვა როლი" value={item.signerRoleCustom} disabled={!isDraft}
                     onSave={(v) => updateMutation.mutate({ signerRoleCustom: v })} />
                 </div>
               )}
@@ -532,28 +473,3 @@ export default function GeneralEquipmentInspectionDetail() {
   );
 }
 
-function Field({
-  label,
-  value,
-  disabled,
-  onSave,
-}: {
-  label: string;
-  value: string | null;
-  disabled: boolean;
-  onSave: (v: string | null) => void;
-}) {
-  return (
-    <div className="space-y-1">
-      <Label>{label}</Label>
-      <Input
-        disabled={disabled}
-        defaultValue={value ?? ''}
-        onBlur={(e) => {
-          const v = e.target.value.trim() || null;
-          if (v !== (value ?? null)) onSave(v);
-        }}
-      />
-    </div>
-  );
-}

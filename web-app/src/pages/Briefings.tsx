@@ -1,7 +1,8 @@
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { SkeletonList } from '@/components/SkeletonCard';
 import { listBriefings, topicLabel } from '@/lib/data/briefings';
 import { listProjects } from '@/lib/data/projects';
 import { fmtDateKa } from '@/lib/utils';
@@ -49,9 +50,12 @@ export default function Briefings() {
         </div>
       )}
 
-      {!filtered && !error && <p className="text-sm text-neutral-500">იტვირთება…</p>}
+      {!filtered && !error && <SkeletonList />}
       {filtered && filtered.length === 0 && (
-        <p className="text-sm text-neutral-500">ბრიფინგები ვერ მოიძებნა.</p>
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-neutral-200 bg-white py-16 text-center">
+          <p className="text-sm text-neutral-500">ბრიფინგები ჯერ არ გაქვთ.</p>
+          <Link to="/briefings/new" className={buttonVariants({ size: 'sm' })}>+ ახალი ბრიფინგი</Link>
+        </div>
       )}
 
       {filtered && filtered.length > 0 && (
