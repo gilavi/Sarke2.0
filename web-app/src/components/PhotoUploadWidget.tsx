@@ -1,18 +1,22 @@
 /**
- * PhotoUploadWidget — upload, view, and delete photos for a single inspection item.
+ * PhotoUploadWidget — upload, view, and delete photos for a single item.
  *
  * Renders a compact thumbnail row with an "add photo" button. Each thumbnail
- * is clickable (opens a lightbox via PhotoGallery). The ✕ on each thumbnail
- * removes the photo and calls `onRemove(path)`.
+ * is clickable (opens a lightbox). The ✕ on each thumbnail removes the photo
+ * and calls `onRemove(path)`.
  *
  * Props:
- *   - paths       Current `photo_paths` array (storage paths, not signed URLs)
- *   - disabled    When true, hides upload/delete controls (completed inspection)
- *   - prefix      Storage prefix e.g. "bobcat", "excavator"
- *   - inspectionId UUID of the parent inspection
- *   - itemId      Item identifier (used in storage path)
- *   - onAdd(path) Called after a successful upload with the new storage path
+ *   - paths         Current photo_paths array (storage paths, not signed URLs)
+ *   - disabled      When true, hides upload/delete controls
+ *   - prefix        Storage prefix e.g. "bobcat" (unused when uploadFn is set)
+ *   - inspectionId  UUID of the parent inspection (unused when uploadFn is set)
+ *   - itemId        Item identifier (unused when uploadFn is set)
+ *   - onAdd(path)   Called after a successful upload with the new storage path
  *   - onRemove(path) Called when the user confirms removal
+ *   - uploadFn      Override default upload (answer-photos bucket). Receives File,
+ *                   returns storage path. Use for other buckets (incidents, etc.).
+ *   - signedUrlFn   Override default signed-URL resolver.
+ *   - deleteFn      Override default delete (best-effort).
  */
 import { useEffect, useRef, useState } from 'react';
 import { Camera, X } from 'lucide-react';
@@ -26,6 +30,9 @@ interface Props {
   itemId: string | number;
   onAdd: (path: string) => void;
   onRemove: (path: string) => void;
+  uploadFn?: (file: File) => Promise<string>;
+  signedUrlFn?: (path: string) => Promise<string>;
+  deleteFn?: (path: string) => Promise<void>;
 }
 
 export default function PhotoUploadWidget({
@@ -36,12 +43,17 @@ export default function PhotoUploadWidget({
   itemId,
   onAdd,
   onRemove,
+  uploadFn,
+  signedUrlFn,
+  deleteFn,
 }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const [lightbox, setLightbox] = useState<number | null>(null);
+
+  const resolveUrl = signedUrlFn ?? signedInspectionPhotoUrl;
 
   // Resolve signed URLs for all paths
   useEffect(() => {
@@ -52,7 +64,7 @@ export default function PhotoUploadWidget({
     Promise.all(
       missing.map(async (p) => {
         try {
-          const url = await signedInspectionPhotoUrl(p);
+          const url = await resolveUrl(p);
           return [p, url] as const;
         } catch {
           return [p, ''] as const;
@@ -69,7 +81,7 @@ export default function PhotoUploadWidget({
 
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paths.join(',')]);
+  }, [paths.join(','), resolveUrl]);
 
   // Lightbox keyboard nav
   useEffect(() => {
@@ -83,13 +95,15 @@ export default function PhotoUploadWidget({
     return () => window.removeEventListener('keydown', onKey);
   }, [lightbox, paths.length]);
 
+  const doUpload = uploadFn ?? ((file: File) => uploadInspectionPhoto(prefix, inspectionId, itemId, file));
+
   async function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
     setUploading(true);
     setUploadError(null);
     try {
       for (const file of Array.from(files)) {
-        const path = await uploadInspectionPhoto(prefix, inspectionId, itemId, file);
+        const path = await doUpload(file);
         onAdd(path);
       }
     } catch (e) {
@@ -100,9 +114,11 @@ export default function PhotoUploadWidget({
     }
   }
 
+  const doDelete = deleteFn ?? deleteInspectionPhoto;
+
   async function handleRemove(path: string) {
     try {
-      await deleteInspectionPhoto(path);
+      await doDelete(path);
     } catch {
       // best-effort — row is removed regardless
     }

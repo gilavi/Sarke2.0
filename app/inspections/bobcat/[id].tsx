@@ -7,7 +7,6 @@ import {
   View,
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
-import * as ImagePicker from 'expo-image-picker';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
@@ -42,6 +41,7 @@ import { a11y } from '../../../lib/accessibility';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SuggestionPills } from '../../../components/SuggestionPills';
 import { useFieldHistory } from '../../../hooks/useFieldHistory';
+import { usePhotoWithLocation } from '../../../hooks/usePhotoWithLocation';
 import {
   BOBCAT_ITEMS,
   BOBCAT_CATEGORY_LABELS,
@@ -66,6 +66,7 @@ export default function BobcatInspectionScreen() {
   const toast = useToast();
   const session = useSession();
   const insets = useSafeAreaInsets();
+  const { pickPhotoWithAnnotation } = usePhotoWithLocation();
 
   const [paywallVisible, setPaywallVisible] = useState(false);
   const { data: pdfUsage } = usePdfUsage();
@@ -287,38 +288,13 @@ export default function BobcatInspectionScreen() {
 
   // ── Photo handling ─────────────────────────────────────────────────────────
 
-  const pendingPhotoItemId = useRef<number | null>(null);
-
-  const handleAddPhoto = useCallback((itemId: number) => {
-    pendingPhotoItemId.current = itemId;
-    Alert.alert('ფოტოს წყარო', undefined, [
-      {
-        text: 'კამერა',
-        onPress: async () => {
-          const perm = await ImagePicker.requestCameraPermissionsAsync();
-          if (!perm.granted) { toast.error('კამერაზე წვდომა დახურულია'); return; }
-          const res = await ImagePicker.launchCameraAsync({ quality: 0.8 });
-          if (!res.canceled && res.assets[0]) await uploadPhoto(itemId, res.assets[0].uri);
-        },
-      },
-      {
-        text: 'გალერეა',
-        onPress: async () => {
-          const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-          if (!perm.granted) { toast.error('გალერეაზე წვდომა დახურულია'); return; }
-          const res = await ImagePicker.launchImageLibraryAsync({ quality: 0.8 });
-          if (!res.canceled && res.assets[0]) await uploadPhoto(itemId, res.assets[0].uri);
-        },
-      },
-      { text: 'გაუქმება', style: 'cancel' },
-    ]);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const uploadPhoto = async (itemId: number, uri: string) => {
+  const handleAddPhoto = useCallback(async (itemId: number) => {
+    const result = await pickPhotoWithAnnotation();
+    if (!result) return;
     const insp = inspectionRef.current;
     if (!insp) return;
     try {
-      const path = await bobcatApi.uploadPhoto(insp.id, itemId, uri);
+      const path = await bobcatApi.uploadPhoto(insp.id, itemId, result.uri);
       setInspection(prev => {
         if (!prev) return prev;
         const items = prev.items.map(i =>
@@ -331,7 +307,7 @@ export default function BobcatInspectionScreen() {
     } catch (e) {
       toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
     }
-  };
+  }, [pickPhotoWithAnnotation, scheduleSave, toast]);
 
   const handleDeletePhoto = useCallback(async (itemId: number, path: string) => {
     try {
@@ -437,36 +413,13 @@ export default function BobcatInspectionScreen() {
 
   // ── Summary Photos ─────────────────────────────────────────────────────────
 
-  const handleAddSummaryPhoto = useCallback(() => {
-    Alert.alert('ფოტოს წყარო', undefined, [
-      {
-        text: 'კამერა',
-        onPress: async () => {
-          const perm = await ImagePicker.requestCameraPermissionsAsync();
-          if (!perm.granted) { toast.error('კამერაზე წვდომა დაუშვებულია'); return; }
-          const res = await ImagePicker.launchCameraAsync({ quality: 0.8 });
-          if (!res.canceled && res.assets[0]) await uploadSummaryPhoto(res.assets[0].uri);
-        },
-      },
-      {
-        text: 'გალერეა',
-        onPress: async () => {
-          const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-          if (!perm.granted) { toast.error('გალერეაზე წვდომა დაუშვებულია'); return; }
-          const res = await ImagePicker.launchImageLibraryAsync({ quality: 0.8 });
-          if (!res.canceled && res.assets[0]) await uploadSummaryPhoto(res.assets[0].uri);
-        },
-      },
-      { text: 'გაუქმება', style: 'cancel' },
-    ]);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const uploadSummaryPhoto = async (uri: string) => {
+  const handleAddSummaryPhoto = useCallback(async () => {
+    const result = await pickPhotoWithAnnotation();
+    if (!result) return;
     const insp = inspectionRef.current;
     if (!insp) return;
     try {
-      const path = await bobcatApi.uploadSummaryPhoto(insp.id, uri);
+      const path = await bobcatApi.uploadSummaryPhoto(insp.id, result.uri);
       setInspection(prev => {
         if (!prev) return prev;
         const next = { ...prev, summaryPhotos: [...(prev.summaryPhotos ?? []), path] };
@@ -476,7 +429,7 @@ export default function BobcatInspectionScreen() {
     } catch (e) {
       toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
     }
-  };
+  }, [pickPhotoWithAnnotation, toast]);
 
   const handleDeleteSummaryPhoto = useCallback(async (path: string) => {
     try {

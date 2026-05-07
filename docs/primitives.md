@@ -59,6 +59,17 @@ One file: [lib/pdfShared.ts](../lib/pdfShared.ts). The bobcat / excavator / gene
 
 **Don't** copy these helpers into a new PDF generator — fix the canonical owner if you need different behavior. **Don't** call `pdfPhotoEmbed` directly in a loop; `embedInspectionPhotos` already wraps it with deduplication and bucket selection.
 
+## Mobile photo picker + annotation
+
+One file: [`hooks/usePhotoWithLocation.ts`](../hooks/usePhotoWithLocation.ts). The canonical entry point for all mobile photo-upload flows.
+
+| Use case | Export |
+|---|---|
+| Open picker → optional annotate → return URI + location | `pickPhotoWithAnnotation(opts?)` — use everywhere. Pass `{ skipAnnotate: true }` only for non-markup contexts (incidents, certificates, qualifications). |
+| Re-annotate an already-uploaded photo URI | `pickPhotoWithAnnotationFromUri(sourceUri, location)` |
+
+The picker opens `/photo-picker` (live camera + gallery + GPS via `photoPickerBus`). The annotator opens `/photo-annotate` — the user may save without drawing. Never call `ImagePicker.launchCameraAsync` or `ImagePicker.launchImageLibraryAsync` directly outside this hook or `app/photo-picker.tsx` — the lint check blocks it.
+
 ## Web dashboard photo upload (answer-photos bucket)
 
 One file: [`web-app/src/lib/photoUpload.ts`](../web-app/src/lib/photoUpload.ts). Handles uploading, signed-URL generation, and deletion of photos stored in the `answer-photos` Supabase Storage bucket from the web dashboard.
@@ -69,7 +80,7 @@ One file: [`web-app/src/lib/photoUpload.ts`](../web-app/src/lib/photoUpload.ts).
 | Get a short-lived signed URL for viewing | `signedInspectionPhotoUrl(path)` → URL |
 | Remove a photo blob (best-effort) | `deleteInspectionPhoto(path)` |
 
-For UI, use [`web-app/src/components/PhotoUploadWidget.tsx`](../web-app/src/components/PhotoUploadWidget.tsx) — handles thumbnails, upload button, lightbox, and delete. Don't build a second upload widget component.
+For UI, use [`web-app/src/components/PhotoUploadWidget.tsx`](../web-app/src/components/PhotoUploadWidget.tsx) — handles thumbnails, upload button, lightbox, and delete. Don't build a second upload widget component. For non-`answer-photos` buckets, pass optional `uploadFn`, `signedUrlFn`, and `deleteFn` props to override the default helpers.
 
 ## Inspection wizard shared UI
 

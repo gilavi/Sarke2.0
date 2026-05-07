@@ -35,6 +35,14 @@ const RULES = [
     message:
       'Use lib/pdfLanguagePref.ts (savePdfLanguage / loadStoredPdfLanguage) instead of touching the AsyncStorage key directly.',
   },
+  {
+    name: 'direct-image-picker',
+    pattern: /ImagePicker\.(launchCameraAsync|launchImageLibraryAsync)\s*\(/,
+    message:
+      'Call usePhotoWithLocation().pickPhotoWithAnnotation() instead of invoking ImagePicker directly. ' +
+      'Only hooks/usePhotoWithLocation.ts and app/photo-picker.tsx may call ImagePicker directly. ' +
+      'See docs/primitives.md → "Mobile photo picker + annotation".',
+  },
 ];
 
 function* walk(dir) {
@@ -71,7 +79,12 @@ for (const dir of SCAN_DIRS) {
     // The canonical owner is allowed to mention the legacy names in comments
     // or as soft-deprecation aliases; skip lib/imageUrl.ts and pdfLanguagePref.ts.
     const rel = relative(ROOT, file);
-    if (rel === 'lib/imageUrl.ts' || rel === 'lib/pdfLanguagePref.ts') continue;
+    if (
+      rel === 'lib/imageUrl.ts' ||
+      rel === 'lib/pdfLanguagePref.ts' ||
+      rel === 'hooks/usePhotoWithLocation.ts' ||
+      rel === 'app/photo-picker.tsx'
+    ) continue;
 
     let body;
     try {

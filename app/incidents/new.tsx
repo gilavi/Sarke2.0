@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert,
   Pressable,
   StyleSheet,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { usePhotoWithLocation } from '../../hooks/usePhotoWithLocation';
 import * as Crypto from 'expo-crypto';
-import * as ImagePicker from 'expo-image-picker';
 import { getCurrentLocation, reverseGeocode } from '../../utils/location';
 import type { PhotoLocation } from '../../utils/location';
 import { showPhotoLocationAlert } from '../../lib/photoLocationAlert';
@@ -103,6 +102,7 @@ function getTypeBadge(theme: any): Record<IncidentType, { bg: string; text: stri
 
 export default function NewIncident() {
   const insets = useSafeAreaInsets();
+  const { pickPhotoWithAnnotation } = usePhotoWithLocation();
   const { theme } = useTheme();
   const s = useMemo(() => makeStyles(theme), [theme]);
   const router = useRouter();
@@ -180,50 +180,13 @@ export default function NewIncident() {
   // ── photo handling ──────────────────────────────────────────────────────────
 
   const addPhoto = async () => {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (perm.status !== 'granted') {
-      const camPerm = await ImagePicker.requestCameraPermissionsAsync();
-      if (camPerm.status !== 'granted') {
-        toast.error('ფოტოს დასამატებლად გახსენით წვდომა');
-        return;
-      }
+    const result = await pickPhotoWithAnnotation({ skipAnnotate: true });
+    if (!result) return;
+    const photo: IncidentPhoto = { uri: result.uri, location: result.location };
+    setForm(f => ({ ...f, photos: [...f.photos, photo] }));
+    if (project) {
+      showPhotoLocationAlert(project, result.location, setProject).catch(() => {});
     }
-    Alert.alert('ფოტოს წყარო', undefined, [
-      {
-        text: 'კამერა',
-        onPress: async () => {
-          const [res, location] = await Promise.all([
-            ImagePicker.launchCameraAsync({ quality: 0.8 }),
-            getCurrentLocation(),
-          ]);
-          if (!res.canceled && res.assets[0]) {
-            const photo: IncidentPhoto = { uri: res.assets[0].uri, location };
-            setForm(f => ({ ...f, photos: [...f.photos, photo] }));
-            if (project) {
-              showPhotoLocationAlert(project, location, setProject).catch(() => {});
-            }
-          }
-        },
-      },
-      {
-        text: 'გალერეა',
-        onPress: async () => {
-          const res = await ImagePicker.launchImageLibraryAsync({
-            allowsMultipleSelection: true,
-            quality: 0.8,
-          });
-          if (!res.canceled && res.assets.length > 0) {
-            const location = await getCurrentLocation();
-            const newPhotos: IncidentPhoto[] = res.assets.map(a => ({ uri: a.uri, location }));
-            setForm(f => ({ ...f, photos: [...f.photos, ...newPhotos] }));
-            if (project) {
-              showPhotoLocationAlert(project, location, setProject).catch(() => {});
-            }
-          }
-        },
-      },
-      { text: 'გაუქმება', style: 'cancel' },
-    ]);
   };
 
   const removePhoto = (idx: number) => {
