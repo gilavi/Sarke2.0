@@ -6,6 +6,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Crypto from 'expo-crypto';
@@ -25,6 +26,7 @@ import { setPhotoAnnotateCallback, setPhotoPickerCallback } from '../../../../li
 import type { Report, ReportSlide } from '../../../../types/models';
 
 export default function ReportSlideEditor() {
+  const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const router = useRouter();
@@ -234,6 +236,7 @@ export default function ReportSlideEditor() {
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Stack.Screen
         options={{
+          headerShown: true,
           title: `სლაიდი ${slideIndex + 1}`,
           headerBackVisible: false,
           headerLeft: () => <HeaderBackPill onPress={() => router.back()} />,
@@ -243,7 +246,7 @@ export default function ReportSlideEditor() {
         }}
       />
 
-      <KeyboardSafeArea headerHeight={44} contentStyle={{ padding: 16, gap: 16 }}>
+      <KeyboardSafeArea headerHeight={44} contentStyle={{ padding: 16, gap: 12 }}>
         {/* Image section */}
         <Pressable onPress={onImageTap} style={styles.imageWrap}>
           {thumbUri ? (
@@ -277,12 +280,11 @@ export default function ReportSlideEditor() {
           onChangeText={setDescription}
           multiline
         />
-
-        <View style={{ flex: 1 }} />
-        <View style={styles.footer}>
-          <Button title="შენახვა" onPress={onSave} disabled={!canSave} loading={busy} />
-        </View>
       </KeyboardSafeArea>
+
+      <View style={[styles.footer, { paddingBottom: insets.bottom + 8 }]}>
+        <Button title="შენახვა" onPress={onSave} disabled={!canSave} loading={busy} />
+      </View>
     </View>
   );
 }
@@ -319,6 +321,8 @@ function makeStyles(theme: any) {
       borderTopWidth: 1,
       borderTopColor: theme.colors.hairline,
       backgroundColor: theme.colors.background,
+      paddingHorizontal: 16,
+      paddingTop: 12,
     },
   });
 }

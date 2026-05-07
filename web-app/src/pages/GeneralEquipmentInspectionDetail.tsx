@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { usePendingCreate } from '@/lib/usePendingCreate';
 import { FileText, Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import DeleteButton from '@/components/DeleteButton';
@@ -13,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
+  createGeneralEquipmentInspection,
   deleteGeneralEquipmentInspection,
   getGeneralEquipmentInspection,
   newEquipmentRow,
@@ -21,6 +23,7 @@ import {
   type GEEquipmentRow,
   type GEInspectionType,
   type GESignerRole,
+  type GeneralEquipmentInspection,
 } from '@/lib/data/generalEquipment';
 
 const COND_LABEL: Record<GECondition, string> = {
@@ -29,10 +32,15 @@ const COND_LABEL: Record<GECondition, string> = {
   unusable: 'გამოუსადეგ.',
 };
 
+type PendingGE = Parameters<typeof createGeneralEquipmentInspection>[0];
+
 export default function GeneralEquipmentInspectionDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const { pendingCreate, lazyCreate } = usePendingCreate<PendingGE>();
+  const isPending = id === 'draft';
+
   const [signingOpen, setSigningOpen] = useState(false);
   const [justCompleted, setJustCompleted] = useState(false);
   const [step, setStep] = useState(0);
@@ -42,7 +50,7 @@ export default function GeneralEquipmentInspectionDetail() {
   const { data: item, error, isLoading } = useQuery({
     queryKey: ['generalEquipmentInspection', id],
     queryFn: () => getGeneralEquipmentInspection(id!),
-    enabled: !!id,
+    enabled: !!id && !isPending,
   });
 
   const updateMutation = useMutation({
@@ -72,24 +80,68 @@ export default function GeneralEquipmentInspectionDetail() {
         {error instanceof Error ? error.message : String(error)}
       </div>
     );
-  if (!item) return <p className="text-sm text-neutral-500">აქტი ვერ მოიძებნა.</p>;
+  if (!item && !isPending) return <p className="text-sm text-neutral-500">აქტი ვერ მოიძებნა.</p>;
 
-  const isDraft = item.status === 'draft';
+  const effectiveItem: GeneralEquipmentInspection = item ?? {
+    id: 'draft',
+    status: 'draft',
+    projectId: pendingCreate?.projectId ?? '',
+    templateId: null,
+    userId: '',
+    objectName: pendingCreate?.objectName ?? null,
+    address: null,
+    activityType: pendingCreate?.activityType ?? null,
+    actNumber: pendingCreate?.actNumber ?? null,
+    department: pendingCreate?.department ?? null,
+    inspectorName: pendingCreate?.inspectorName ?? null,
+    inspectionDate: pendingCreate?.inspectionDate ?? new Date().toISOString().slice(0, 10),
+    inspectionType: pendingCreate?.inspectionType ?? null,
+    equipment: [],
+    inspectorSignature: null,
+    signerName: null,
+    signerRole: null,
+    signerRoleCustom: null,
+    summaryPhotos: [],
+    conclusion: null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    completedAt: null,
+  };
+
+  const isDraft = effectiveItem.status === 'draft';
+
+  function save(patch: Parameters<typeof updateGeneralEquipmentInspection>[1]) {
+    if (isPending) return;
+    updateMutation.mutate(patch);
+  }
 
   function patchRow(rowId: string, patch: Partial<GEEquipmentRow>) {
     if (!item) return;
-    const equipment = item.equipment.map((r) => (r.id === rowId ? { ...r, ...patch } : r));
+    const equipment = effectiveItem.equipment.map((r) => (r.id === rowId ? { ...r, ...patch } : r));
     updateMutation.mutate({ equipment });
   }
 
-  function addRow() {
+  async function addRow() {
+    if (isPending && pendingCreate) {
+      try {
+        const realId = await lazyCreate(createGeneralEquipmentInspection);
+        if (!realId) return;
+        const newRow = newEquipmentRow();
+        await updateGeneralEquipmentInspection(realId, { equipment: [newRow] });
+        qc.invalidateQueries({ queryKey: ['generalEquipmentInspections'] });
+        navigate(`/general-equipment/${realId}`, { replace: true, state: {} });
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : String(e));
+      }
+      return;
+    }
     if (!item) return;
-    updateMutation.mutate({ equipment: [...item.equipment, newEquipmentRow()] });
+    updateMutation.mutate({ equipment: [...effectiveItem.equipment, newEquipmentRow()] });
   }
 
   function removeRow(rowId: string) {
     if (!item) return;
-    updateMutation.mutate({ equipment: item.equipment.filter((r) => r.id !== rowId) });
+    updateMutation.mutate({ equipment: effectiveItem.equipment.filter((r) => r.id !== rowId) });
   }
 
   return (
@@ -119,20 +171,20 @@ export default function GeneralEquipmentInspectionDetail() {
             ← აქტები
           </Link>
           <h1 className="mt-2 font-display text-3xl font-bold text-neutral-900">
-            {item.objectName || `ტექ. აქტი #${item.id.slice(0, 8)}`}
+            {effectiveItem.objectName || (isPending ? 'ახალი ტექ. აქტი' : `ტექ. აქტი #${effectiveItem.id.slice(0, 8)}`)}
           </h1>
-          <p className="mt-1 text-sm text-neutral-500">სტატუსი: {item.status === 'completed' ? 'დასრულებული' : 'დრაფტი'}</p>
+          <p className="mt-1 text-sm text-neutral-500">სტატუსი: {effectiveItem.status === 'completed' ? 'დასრულებული' : 'დრაფტი'}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPdfOpen(true)}
-          >
-            <FileText size={14} className="mr-1" />
-            PDF
-          </Button>
-          <DeleteButton onDelete={() => delMutation.mutate()} isPending={delMutation.isPending} />
+          {!isPending && (
+            <Button variant="outline" size="sm" onClick={() => setPdfOpen(true)}>
+              <FileText size={14} className="mr-1" />
+              PDF
+            </Button>
+          )}
+          {!isPending && (
+            <DeleteButton onDelete={() => delMutation.mutate()} isPending={delMutation.isPending} />
+          )}
         </div>
       </header>
 
@@ -150,24 +202,24 @@ export default function GeneralEquipmentInspectionDetail() {
               <CardTitle className="text-base">ზოგადი ინფორმაცია</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
-              <FieldInput label="ობიექტი" value={item.objectName} disabled={!isDraft}
-                onSave={(v) => updateMutation.mutate({ objectName: v })} />
-              <FieldInput label="მისამართი" value={item.address} disabled={!isDraft}
-                onSave={(v) => updateMutation.mutate({ address: v })} />
-              <FieldInput label="საქმიანობის ტიპი" value={item.activityType} disabled={!isDraft}
-                onSave={(v) => updateMutation.mutate({ activityType: v })} />
-              <FieldInput label="აქტის ნომერი" value={item.actNumber} disabled={!isDraft}
-                onSave={(v) => updateMutation.mutate({ actNumber: v })} />
+              <FieldInput label="ობიექტი" value={effectiveItem.objectName} disabled={!isDraft}
+                onSave={(v) => save({ objectName: v })} />
+              <FieldInput label="მისამართი" value={effectiveItem.address} disabled={!isDraft}
+                onSave={(v) => save({ address: v })} />
+              <FieldInput label="საქმიანობის ტიპი" value={effectiveItem.activityType} disabled={!isDraft}
+                onSave={(v) => save({ activityType: v })} />
+              <FieldInput label="აქტის ნომერი" value={effectiveItem.actNumber} disabled={!isDraft}
+                onSave={(v) => save({ actNumber: v })} />
               <div className="space-y-1">
                 <Label>შემოწმების თარიღი</Label>
                 <Input
                   type="date"
                   disabled={!isDraft}
-                  defaultValue={item.inspectionDate ? item.inspectionDate.slice(0, 10) : ''}
+                  defaultValue={effectiveItem.inspectionDate ? effectiveItem.inspectionDate.slice(0, 10) : ''}
                   onBlur={(e) => {
                     const v = e.target.value || null;
-                    if (v !== (item.inspectionDate ? item.inspectionDate.slice(0, 10) : null))
-                      updateMutation.mutate({ inspectionDate: v });
+                    if (v !== (effectiveItem.inspectionDate ? effectiveItem.inspectionDate.slice(0, 10) : null))
+                      save({ inspectionDate: v });
                   }}
                 />
               </div>
@@ -183,9 +235,9 @@ export default function GeneralEquipmentInspectionDetail() {
                       key={val}
                       type="button"
                       disabled={!isDraft}
-                      onClick={() => updateMutation.mutate({ inspectionType: item.inspectionType === val ? null : val })}
+                      onClick={() => save({ inspectionType: effectiveItem.inspectionType === val ? null : val })}
                       className={`rounded-full border px-3 py-1 text-xs font-semibold transition disabled:opacity-60 ${
-                        item.inspectionType === val
+                        effectiveItem.inspectionType === val
                           ? 'border-brand-600 bg-brand-600 text-white'
                           : 'border-neutral-300 bg-white text-neutral-700 hover:border-brand-400'
                       }`}
@@ -195,10 +247,10 @@ export default function GeneralEquipmentInspectionDetail() {
                   ))}
                 </div>
               </div>
-              <FieldInput label="დეპარტამენტი" value={item.department} disabled={!isDraft}
-                onSave={(v) => updateMutation.mutate({ department: v })} />
-              <FieldInput label="ინსპექტორი" value={item.inspectorName} disabled={!isDraft}
-                onSave={(v) => updateMutation.mutate({ inspectorName: v })} />
+              <FieldInput label="დეპარტამენტი" value={effectiveItem.department} disabled={!isDraft}
+                onSave={(v) => save({ department: v })} />
+              <FieldInput label="ინსპექტორი" value={effectiveItem.inspectorName} disabled={!isDraft}
+                onSave={(v) => save({ inspectorName: v })} />
             </CardContent>
           </Card>
           <WizardNav current={step} total={3} onPrev={() => setStep(s => s - 1)} onNext={() => setStep(s => s + 1)} />
@@ -212,7 +264,7 @@ export default function GeneralEquipmentInspectionDetail() {
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <CardTitle className="text-base">
                 აღჭურვილობა
-                <span className="ml-2 text-sm font-normal text-neutral-400">({item.equipment.length})</span>
+                <span className="ml-2 text-sm font-normal text-neutral-400">({effectiveItem.equipment.length})</span>
               </CardTitle>
               {isDraft && (
                 <Button variant="outline" size="sm" onClick={addRow}>
@@ -222,11 +274,11 @@ export default function GeneralEquipmentInspectionDetail() {
               )}
             </CardHeader>
             <CardContent>
-              {item.equipment.length === 0 ? (
+              {effectiveItem.equipment.length === 0 ? (
                 <p className="text-sm text-neutral-500">სტრიქონები არ არის.</p>
               ) : (
                 <ul className="space-y-3">
-                  {item.equipment.map((row, idx) => (
+                  {effectiveItem.equipment.map((row, idx) => (
                     <li key={row.id} className="rounded-lg border border-neutral-200 p-3">
                       <div className="mb-2 flex items-center justify-between">
                         <span className="text-xs font-semibold text-neutral-500">#{idx + 1}</span>
@@ -306,7 +358,7 @@ export default function GeneralEquipmentInspectionDetail() {
                         paths={row.photo_paths ?? []}
                         disabled={!isDraft}
                         prefix="general-equipment"
-                        inspectionId={item.id}
+                        inspectionId={effectiveItem.id}
                         itemId={row.id}
                         onAdd={(path) =>
                           patchRow(row.id, {
@@ -337,10 +389,10 @@ export default function GeneralEquipmentInspectionDetail() {
               <CardTitle className="text-base">ინსპექტორის ხელმოწერა</CardTitle>
             </CardHeader>
             <CardContent>
-              {item.inspectorSignature ? (
+              {effectiveItem.inspectorSignature ? (
                 <div className="space-y-2">
                   <img
-                    src={item.inspectorSignature.startsWith('data:') ? item.inspectorSignature : `data:image/png;base64,${item.inspectorSignature}`}
+                    src={effectiveItem.inspectorSignature.startsWith('data:') ? effectiveItem.inspectorSignature : `data:image/png;base64,${effectiveItem.inspectorSignature}`}
                     alt="ხელმოწერა"
                     className="h-20 rounded border border-neutral-200 bg-white object-contain p-1"
                   />
@@ -349,8 +401,8 @@ export default function GeneralEquipmentInspectionDetail() {
                   )}
                   {isDraft && signingOpen && (
                     <SignatureCanvas
-                      existing={item.inspectorSignature.startsWith('data:') ? item.inspectorSignature : `data:image/png;base64,${item.inspectorSignature}`}
-                      onSave={(dataUrl) => { updateMutation.mutate({ inspectorSignature: dataUrl }); setSigningOpen(false); }}
+                      existing={effectiveItem.inspectorSignature.startsWith('data:') ? effectiveItem.inspectorSignature : `data:image/png;base64,${effectiveItem.inspectorSignature}`}
+                      onSave={(dataUrl) => { save({ inspectorSignature: dataUrl }); setSigningOpen(false); }}
                       onCancel={() => setSigningOpen(false)}
                     />
                   )}
@@ -358,7 +410,7 @@ export default function GeneralEquipmentInspectionDetail() {
               ) : isDraft ? (
                 signingOpen ? (
                   <SignatureCanvas
-                    onSave={(dataUrl) => { updateMutation.mutate({ inspectorSignature: dataUrl }); setSigningOpen(false); }}
+                    onSave={(dataUrl) => { save({ inspectorSignature: dataUrl }); setSigningOpen(false); }}
                     onCancel={() => setSigningOpen(false)}
                   />
                 ) : (
@@ -375,8 +427,8 @@ export default function GeneralEquipmentInspectionDetail() {
               <CardTitle className="text-base">ხელმომწერი</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
-              <FieldInput label="სახელი, გვარი" value={item.signerName} disabled={!isDraft}
-                onSave={(v) => updateMutation.mutate({ signerName: v })} />
+              <FieldInput label="სახელი, გვარი" value={effectiveItem.signerName} disabled={!isDraft}
+                onSave={(v) => save({ signerName: v })} />
               <div className="space-y-1">
                 <Label>როლი</Label>
                 <div className="flex flex-wrap gap-2">
@@ -390,9 +442,9 @@ export default function GeneralEquipmentInspectionDetail() {
                       key={val}
                       type="button"
                       disabled={!isDraft}
-                      onClick={() => updateMutation.mutate({ signerRole: item.signerRole === val ? null : val })}
+                      onClick={() => save({ signerRole: effectiveItem.signerRole === val ? null : val })}
                       className={`rounded-full border px-3 py-1 text-xs font-semibold transition disabled:opacity-60 ${
-                        item.signerRole === val
+                        effectiveItem.signerRole === val
                           ? 'border-brand-600 bg-brand-600 text-white'
                           : 'border-neutral-300 bg-white text-neutral-700 hover:border-brand-400'
                       }`}
@@ -402,10 +454,10 @@ export default function GeneralEquipmentInspectionDetail() {
                   ))}
                 </div>
               </div>
-              {item.signerRole === 'other' && (
+              {effectiveItem.signerRole === 'other' && (
                 <div className="sm:col-span-2">
-                  <FieldInput label="სხვა როლი" value={item.signerRoleCustom} disabled={!isDraft}
-                    onSave={(v) => updateMutation.mutate({ signerRoleCustom: v })} />
+                  <FieldInput label="სხვა როლი" value={effectiveItem.signerRoleCustom} disabled={!isDraft}
+                    onSave={(v) => save({ signerRoleCustom: v })} />
                 </div>
               )}
             </CardContent>
@@ -420,10 +472,10 @@ export default function GeneralEquipmentInspectionDetail() {
                 <>
                   <textarea
                     rows={3}
-                    defaultValue={item.conclusion ?? ''}
+                    defaultValue={effectiveItem.conclusion ?? ''}
                     onBlur={(e) => {
                       const v = e.target.value || null;
-                      if (v !== item.conclusion) updateMutation.mutate({ conclusion: v });
+                      if (v !== effectiveItem.conclusion) save({ conclusion: v });
                     }}
                     className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
                     placeholder="დასკვნის ტექსტი"
@@ -431,13 +483,13 @@ export default function GeneralEquipmentInspectionDetail() {
                   <Button
                     size="sm"
                     onClick={() => updateMutation.mutate({ status: 'completed' })}
-                    disabled={updateMutation.isPending}
+                    disabled={isPending || updateMutation.isPending}
                   >
                     დასრულება
                   </Button>
                 </>
               ) : (
-                <p className="text-sm text-neutral-700">{item.conclusion || '—'}</p>
+                <p className="text-sm text-neutral-700">{effectiveItem.conclusion || '—'}</p>
               )}
             </CardContent>
           </Card>
@@ -463,7 +515,7 @@ export default function GeneralEquipmentInspectionDetail() {
           </div>
           <iframe
             ref={iframeRef}
-            src={`#/general-equipment/${item.id}/print?preview=1`}
+            src={`#/general-equipment/${effectiveItem.id}/print?preview=1`}
             className="flex-1 w-full border-0 bg-white"
             title="PDF გადახედვა"
           />

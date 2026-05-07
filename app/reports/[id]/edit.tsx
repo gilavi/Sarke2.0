@@ -162,6 +162,7 @@ export default function ReportSlidesEditor() {
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Stack.Screen
         options={{
+          headerShown: true,
           title: report.title || 'რეპორტი',
           headerBackVisible: false,
           headerLeft: () => <HeaderBackPill onPress={() => router.back()} />,

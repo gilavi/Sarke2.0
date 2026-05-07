@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import ProjectMap from '@/components/ProjectMap';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Download, Upload, Pencil, Check, X, Trash2, Plus } from 'lucide-react';
@@ -561,6 +562,19 @@ export default function ProjectDetail() {
                   '—'
                 )}
               </div>
+              {project.latitude != null && project.longitude != null && (
+                <ProjectMap
+                  pins={[{
+                    id: project.id,
+                    name: project.name,
+                    address: project.address,
+                    latitude: project.latitude,
+                    longitude: project.longitude,
+                  }]}
+                  singlePin
+                  className="mt-3 h-52 w-full rounded-lg"
+                />
+              )}
             </div>
           )}
         </CardContent>

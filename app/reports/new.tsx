@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { KeyboardSafeArea } from '../../components/layout/KeyboardSafeArea';
 import { Button } from '../../components/ui';
@@ -12,6 +13,7 @@ import { projectsApi, reportsApi } from '../../lib/services';
 import type { Project } from '../../types/models';
 
 export default function NewReportTitleScreen() {
+  const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const router = useRouter();
   const toast = useToast();
@@ -66,14 +68,17 @@ export default function NewReportTitleScreen() {
           returnKeyType="done"
           onSubmitEditing={onNext}
         />
-        <View style={{ flex: 1 }} />
+      </KeyboardSafeArea>
+
+      <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: insets.bottom + 8, borderTopWidth: 1, borderTopColor: theme.colors.hairline }}>
         <Button
           title="შემდეგი →"
           onPress={onNext}
           disabled={!canStart}
           loading={busy}
         />
-      </KeyboardSafeArea>
+      </View>
     </View>
   );
 }
+

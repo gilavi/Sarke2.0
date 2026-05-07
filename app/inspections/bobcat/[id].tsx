@@ -12,7 +12,8 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
-import { PlateInput } from '../../../components/inputs/PlateInput';
+import { PlateInput, type PlateInputHandle } from '../../../components/inputs/PlateInput';
+import { SerialKeypad } from '../../../components/inputs/SerialKeypad';
 import { Button } from '../../../components/ui';
 import { WizardStepTransition } from '../../../components/wizard/WizardStepTransition';
 
@@ -77,11 +78,12 @@ export default function BobcatInspectionScreen() {
   const registrationNumberHistory = useFieldHistory(userId, 'bobcat:registrationNumber');
 
   const INFO_STEP = 0;
-  const CHECKLIST_STEP = 1;
-  const CONCLUSION_STEP = 2;
-  const DONE_STEP = 3;
-  const TOTAL_STEPS = 3;
-  const STEP_LABELS = ['ინფო', 'შემოწმება', 'დასკვნა'];
+  const SERIAL_STEP = 1;
+  const CHECKLIST_STEP = 2;
+  const CONCLUSION_STEP = 3;
+  const DONE_STEP = 4;
+  const TOTAL_STEPS = 4;
+  const STEP_LABELS = ['ინფო', 'ს/ნ', 'შემოწმება', 'დასკვნა'];
 
   const [inspection, setInspection] = useState<BobcatInspection | null>(null);
   const [projectName, setProjectName] = useState('');
@@ -96,7 +98,11 @@ export default function BobcatInspectionScreen() {
 
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
-  // Step state: 0=info, 1=checklist list, 2=conclusion
+  // Serial number step state
+  const plateRef = useRef<PlateInputHandle>(null);
+  const [activeSlotKind, setActiveSlotKind] = useState<'letter' | 'digit'>('letter');
+
+  // Step state: 0=info, 1=serial, 2=checklist, 3=conclusion
   const [step, setStep] = useState(INFO_STEP);
   const prevStepRef = useRef(INFO_STEP);
   const [animateSteps, setAnimateSteps] = useState(false);
@@ -526,7 +532,10 @@ export default function BobcatInspectionScreen() {
   const canGoNext = useMemo(() => {
     if (!inspection) return false;
     if (step === INFO_STEP) {
-      return !!inspection.equipmentModel?.trim() && !!inspection.registrationNumber?.trim();
+      return !!inspection.equipmentModel?.trim();
+    }
+    if (step === SERIAL_STEP) {
+      return !!inspection.registrationNumber?.trim();
     }
     if (step === CONCLUSION_STEP) return !!inspection.verdict && !completing;
     return true;
@@ -707,7 +716,7 @@ export default function BobcatInspectionScreen() {
           animate={animateSteps}
         >
           {/* ── Step 0: General Info ────────────────────────────────────── */}
-          {step === 0 && (
+          {step === INFO_STEP && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
               contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 12 }}
@@ -739,33 +748,45 @@ export default function BobcatInspectionScreen() {
                   visible={focusedField === 'equipmentModel' || (!inspection.equipmentModel?.trim() && equipmentModelHistory.suggestions.length > 0)}
                 />
               )}
-
-              <PlateInput
-                label="სახელმწიფო / ს.ნ ნომერი"
-                value={inspection.registrationNumber ?? ''}
-                onChangeText={v => {
-                  update('registrationNumber', v);
-                  if (v.trim()) registrationNumberHistory.addToHistory(v.trim());
-                }}
-                required
-              />
-              {equipmentModelHistory.suggestions.length > 0 && (
-                <SuggestionPills
-                  suggestions={equipmentModelHistory.suggestions}
-                  onSelect={v => {
-                    update('equipmentModel', v);
-                    setFocusedField(null);
-                  }}
-                  visible={focusedField === 'equipmentModel' || (!inspection.equipmentModel?.trim() && equipmentModelHistory.suggestions.length > 0)}
-                />
-              )}
             </KeyboardAwareScrollView>
           )}
 
-          {/* ── Step 1: Checklist list ──────────────────────────────────── */}
+          {/* ── Step 1: Serial Number (custom on-screen keypad) ─────────── */}
+          {step === SERIAL_STEP && (
+            <View style={{ flex: 1 }}>
+              <View style={{ paddingHorizontal: 20, paddingTop: 32, gap: 20, alignItems: 'center' }}>
+                <PlateInput
+                  ref={plateRef}
+                  label="სახელმწიფო / ს.ნ ნომერი"
+                  value={inspection.registrationNumber ?? ''}
+                  onChangeText={v => {
+                    update('registrationNumber', v);
+                    if (v.trim()) registrationNumberHistory.addToHistory(v.trim());
+                  }}
+                  customKeyboard
+                  onActiveSlotKindChange={k => setActiveSlotKind(k ?? 'letter')}
+                  required
+                />
+                {registrationNumberHistory.suggestions.length > 0 && (
+                  <SuggestionPills
+                    suggestions={registrationNumberHistory.suggestions}
+                    onSelect={v => update('registrationNumber', v)}
+                    visible
+                  />
+                )}
+              </View>
+              <View style={{ flex: 1 }} />
+              <SerialKeypad
+                slotKind={activeSlotKind}
+                onKey={k => plateRef.current?.pressKey(k)}
+              />
+            </View>
+          )}
+
+          {/* ── Step 2: Checklist list ──────────────────────────────────── */}
           {step === CHECKLIST_STEP && renderChecklistList()}
 
-          {/* ── Step 2: Conclusion (summary + verdict + notes + signature) ─ */}
+          {/* ── Step 3: Conclusion (summary + verdict + notes + signature) ─ */}
           {step === CONCLUSION_STEP && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}

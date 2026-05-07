@@ -1,16 +1,12 @@
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { listProjects } from '@/lib/data/projects';
-import {
-  createGeneralEquipmentInspection,
-  type GEInspectionType,
-  type GeneralEquipmentInspection,
-} from '@/lib/data/generalEquipment';
+import { type GEInspectionType } from '@/lib/data/generalEquipment';
 
 const TYPE_LABELS: Record<GEInspectionType, string> = {
   initial: 'პირველადი',
@@ -20,7 +16,6 @@ const TYPE_LABELS: Record<GEInspectionType, string> = {
 
 export default function NewGeneralEquipmentInspection() {
   const navigate = useNavigate();
-  const qc = useQueryClient();
   const [params] = useSearchParams();
 
   const { data: projects } = useQuery({ queryKey: ['projects'], queryFn: listProjects });
@@ -34,25 +29,25 @@ export default function NewGeneralEquipmentInspection() {
   const [inspectionDate, setInspectionDate] = useState('');
   const [inspectionType, setInspectionType] = useState<GEInspectionType>('initial');
 
-  const mutation = useMutation({
-    mutationFn: () =>
-      createGeneralEquipmentInspection({
-        projectId,
-        objectName: objectName.trim() || null,
-        activityType: activityType.trim() || null,
-        actNumber: actNumber.trim() || null,
-        department: department.trim() || null,
-        inspectorName: inspectorName.trim() || null,
-        inspectionDate: inspectionDate || null,
-        inspectionType,
-      }),
-    onSuccess: (created: GeneralEquipmentInspection) => {
-      qc.invalidateQueries({ queryKey: ['generalEquipmentInspections'] });
-      navigate(`/general-equipment/${created.id}`);
-    },
-  });
+  const canSubmit = !!projectId;
 
-  const canSubmit = !!projectId && !mutation.isPending;
+  function handleSubmit() {
+    if (!canSubmit) return;
+    navigate('/general-equipment/draft', {
+      state: {
+        pendingCreate: {
+          projectId,
+          objectName: objectName.trim() || null,
+          activityType: activityType.trim() || null,
+          actNumber: actNumber.trim() || null,
+          department: department.trim() || null,
+          inspectorName: inspectorName.trim() || null,
+          inspectionDate: inspectionDate || null,
+          inspectionType,
+        },
+      },
+    });
+  }
 
   return (
     <div className="mx-auto max-w-xl space-y-6">
@@ -77,7 +72,7 @@ export default function NewGeneralEquipmentInspection() {
             className="space-y-4"
             onSubmit={(e) => {
               e.preventDefault();
-              if (canSubmit) mutation.mutate();
+              handleSubmit();
             }}
           >
             <div className="space-y-1">
@@ -178,23 +173,14 @@ export default function NewGeneralEquipmentInspection() {
               />
             </div>
 
-            {mutation.error && (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                {mutation.error instanceof Error
-                  ? mutation.error.message
-                  : String(mutation.error)}
-              </div>
-            )}
-
             <div className="flex gap-2 pt-2">
               <Button type="submit" disabled={!canSubmit}>
-                {mutation.isPending ? 'იქმნება…' : 'შექმნა'}
+                შექმნა
               </Button>
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => navigate('/inspections')}
-                disabled={mutation.isPending}
               >
                 გაუქმება
               </Button>

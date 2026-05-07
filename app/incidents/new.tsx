@@ -5,6 +5,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Crypto from 'expo-crypto';
 import * as ImagePicker from 'expo-image-picker';
 import { getCurrentLocation, reverseGeocode } from '../../utils/location';
@@ -101,6 +102,7 @@ function getTypeBadge(theme: any): Record<IncidentType, { bg: string; text: stri
 // ─── main component ───────────────────────────────────────────────────────────
 
 export default function NewIncident() {
+  const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const s = useMemo(() => makeStyles(theme), [theme]);
   const router = useRouter();
@@ -483,36 +485,36 @@ export default function NewIncident() {
           />
         )}
 
-        <View style={{ flex: 1 }} />
-        <View style={s.bottomBar}>
-          {step < 4 ? (
+      </KeyboardSafeArea>
+
+      <View style={[s.bottomBar, { paddingBottom: insets.bottom + 8 }]}>
+        {step < 4 ? (
+          <Button
+            title="შემდეგი"
+            rightIcon="arrow-forward"
+            onPress={goNext}
+            disabled={!canAdvance}
+            style={{ width: '100%' }}
+          />
+        ) : (
+          <View style={{ gap: 10 }}>
             <Button
-              title="შემდეგი"
-              rightIcon="arrow-forward"
-              onPress={goNext}
-              disabled={!canAdvance}
+              title={pdfUsage?.isLocked ? '🔒 PDF გენერირება' : 'PDF გენერირება'}
+              leftIcon="document-text"
+              loading={saving}
+              onPress={saveAndGeneratePdf}
               style={{ width: '100%' }}
             />
-          ) : (
-            <View style={{ gap: 10 }}>
-              <Button
-                title={pdfUsage?.isLocked ? '🔒 PDF გენერირება' : 'PDF გენერირება'}
-                leftIcon="document-text"
-                loading={saving}
-                onPress={saveAndGeneratePdf}
-                style={{ width: '100%' }}
-              />
-              <Button
-                title="შენახვა ხელმოწერის გარეშე"
-                variant="link"
-                disabled={saving}
-                onPress={saveDraft}
-                style={{ width: '100%' }}
-              />
-            </View>
-          )}
-        </View>
-      </KeyboardSafeArea>
+            <Button
+              title="შენახვა ხელმოწერის გარეშე"
+              variant="link"
+              disabled={saving}
+              onPress={saveDraft}
+              style={{ width: '100%' }}
+            />
+          </View>
+        )}
+      </View>
       <PaywallModal visible={paywallVisible} onClose={() => setPaywallVisible(false)} />
     </View>
   );
@@ -1129,6 +1131,8 @@ function makeStyles(theme: any) {
       backgroundColor: theme.colors.surface,
       borderTopWidth: 1,
       borderTopColor: theme.colors.border,
+      paddingTop: 12,
+      paddingHorizontal: 16,
     },
 
   });

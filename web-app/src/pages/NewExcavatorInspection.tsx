@@ -1,19 +1,14 @@
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { listProjects } from '@/lib/data/projects';
-import {
-  createExcavatorInspection,
-  type ExcavatorInspection,
-} from '@/lib/data/excavator';
 
 export default function NewExcavatorInspection() {
   const navigate = useNavigate();
-  const qc = useQueryClient();
   const [params] = useSearchParams();
 
   const { data: projects } = useQuery({ queryKey: ['projects'], queryFn: listProjects });
@@ -25,27 +20,26 @@ export default function NewExcavatorInspection() {
   const [inspectorName, setInspectorName] = useState('');
   const [inspectionDate, setInspectionDate] = useState('');
 
-  const projectName =
-    projects?.find((p) => p.id === projectId)?.name ?? null;
+  const projectName = projects?.find((p) => p.id === projectId)?.name ?? null;
 
-  const mutation = useMutation({
-    mutationFn: () =>
-      createExcavatorInspection({
-        projectId,
-        serialNumber: serialNumber.trim() || null,
-        inventoryNumber: inventoryNumber.trim() || null,
-        projectName,
-        department: department.trim() || null,
-        inspectorName: inspectorName.trim() || null,
-        inspectionDate: inspectionDate || null,
-      }),
-    onSuccess: (created: ExcavatorInspection) => {
-      qc.invalidateQueries({ queryKey: ['excavatorInspections'] });
-      navigate(`/excavator/${created.id}`);
-    },
-  });
+  const canSubmit = !!projectId;
 
-  const canSubmit = !!projectId && !mutation.isPending;
+  function handleSubmit() {
+    if (!canSubmit) return;
+    navigate('/excavator/draft', {
+      state: {
+        pendingCreate: {
+          projectId,
+          serialNumber: serialNumber.trim() || null,
+          inventoryNumber: inventoryNumber.trim() || null,
+          projectName,
+          department: department.trim() || null,
+          inspectorName: inspectorName.trim() || null,
+          inspectionDate: inspectionDate || null,
+        },
+      },
+    });
+  }
 
   return (
     <div className="mx-auto max-w-xl space-y-6">
@@ -70,7 +64,7 @@ export default function NewExcavatorInspection() {
             className="space-y-4"
             onSubmit={(e) => {
               e.preventDefault();
-              if (canSubmit) mutation.mutate();
+              handleSubmit();
             }}
           >
             <div className="space-y-1">
@@ -140,23 +134,14 @@ export default function NewExcavatorInspection() {
               />
             </div>
 
-            {mutation.error && (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                {mutation.error instanceof Error
-                  ? mutation.error.message
-                  : String(mutation.error)}
-              </div>
-            )}
-
             <div className="flex gap-2 pt-2">
               <Button type="submit" disabled={!canSubmit}>
-                {mutation.isPending ? 'იქმნება…' : 'შექმნა'}
+                შექმნა
               </Button>
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => navigate('/inspections')}
-                disabled={mutation.isPending}
               >
                 გაუქმება
               </Button>

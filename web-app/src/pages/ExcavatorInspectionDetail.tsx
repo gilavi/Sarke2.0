@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { usePendingCreate } from '@/lib/usePendingCreate';
 import { FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import DeleteButton from '@/components/DeleteButton';
@@ -19,12 +20,14 @@ import {
   MAINTENANCE_ITEMS,
   SAFETY_ITEMS,
   UNDERCARRIAGE_ITEMS,
+  createExcavatorInspection,
   deleteExcavatorInspection,
   getExcavatorInspection,
   updateExcavatorInspection,
   type ExcavatorChecklistEntry,
   type ExcavatorChecklistItemState,
   type ExcavatorChecklistResult,
+  type ExcavatorInspection,
   type ExcavatorMaintenanceItemState,
   type ExcavatorVerdict,
 } from '@/lib/data/excavator';
@@ -53,10 +56,17 @@ const SECTIONS: SectionDef[] = [
   { key: 'safety', title: 'უსაფრთხოება', items: SAFETY_ITEMS, field: 'safetyItems' },
 ];
 
+type PendingExcavator = Parameters<typeof createExcavatorInspection>[0];
+
+const EMPTY_SPECS = { weight: '—', engine: '—', power: '—', depth: '—', travel: '—', maxReach: '—' };
+
 export default function ExcavatorInspectionDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const { pendingCreate, lazyCreate } = usePendingCreate<PendingExcavator>();
+  const isPending = id === 'draft';
+
   const [signingOpen, setSigningOpen] = useState(false);
   const [justCompleted, setJustCompleted] = useState(false);
   const [step, setStep] = useState(0);
@@ -66,7 +76,7 @@ export default function ExcavatorInspectionDetail() {
   const { data: item, error, isLoading } = useQuery({
     queryKey: ['excavatorInspection', id],
     queryFn: () => getExcavatorInspection(id!),
-    enabled: !!id,
+    enabled: !!id && !isPending,
   });
 
   const updateMutation = useMutation({
@@ -96,18 +106,85 @@ export default function ExcavatorInspectionDetail() {
         {error instanceof Error ? error.message : String(error)}
       </div>
     );
-  if (!item) return <p className="text-sm text-neutral-500">აქტი ვერ მოიძებნა.</p>;
+  if (!item && !isPending) return <p className="text-sm text-neutral-500">აქტი ვერ მოიძებნა.</p>;
 
-  const isDraft = item.status === 'draft';
+  const effectiveItem: ExcavatorInspection = item ?? {
+    id: 'draft',
+    status: 'draft',
+    projectId: pendingCreate?.projectId ?? '',
+    templateId: '',
+    userId: '',
+    serialNumber: pendingCreate?.serialNumber ?? null,
+    registrationNumber: null,
+    inventoryNumber: pendingCreate?.inventoryNumber ?? null,
+    projectName: null,
+    department: pendingCreate?.department ?? null,
+    inspectorName: pendingCreate?.inspectorName ?? null,
+    inspectorPosition: null,
+    inspectionDate: pendingCreate?.inspectionDate ?? new Date().toISOString().slice(0, 10),
+    lastInspectionDate: null,
+    motoHours: null,
+    machineSpecs: EMPTY_SPECS,
+    engineItems: [],
+    undercarriageItems: [],
+    cabinItems: [],
+    safetyItems: [],
+    maintenanceItems: [],
+    inspectorSignature: null,
+    verdict: null,
+    notes: null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    completedAt: null,
+  };
 
-  function patchSection(field: SectionDef['field'], itemId: number, patch: Partial<ExcavatorChecklistItemState>) {
+  const isDraft = effectiveItem.status === 'draft';
+
+  // Step 0 field saves are no-ops when pending (data lives in pendingCreate)
+  function save(patch: Parameters<typeof updateExcavatorInspection>[1]) {
+    if (isPending) return;
+    updateMutation.mutate(patch);
+  }
+
+  async function patchSection(field: SectionDef['field'], itemId: number, patch: Partial<ExcavatorChecklistItemState>) {
+    if (isPending && pendingCreate) {
+      try {
+        const realId = await lazyCreate(createExcavatorInspection);
+        if (!realId) return;
+        const sectionDef = SECTIONS.find((s) => s.field === field)!;
+        const initial: ExcavatorChecklistItemState[] = sectionDef.items.map((e) => ({
+          id: e.id, result: null, comment: null, photo_paths: [],
+        }));
+        const patched = initial.map((it) => it.id === itemId ? { ...it, ...patch } : it);
+        await updateExcavatorInspection(realId, { [field]: patched } as Parameters<typeof updateExcavatorInspection>[1]);
+        qc.invalidateQueries({ queryKey: ['excavatorInspections'] });
+        navigate(`/excavator/${realId}`, { replace: true, state: {} });
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : String(e));
+      }
+      return;
+    }
     if (!item) return;
     const list = item[field] as ExcavatorChecklistItemState[];
     const next = list.map((it) => (it.id === itemId ? { ...it, ...patch } : it));
     updateMutation.mutate({ [field]: next } as Parameters<typeof updateExcavatorInspection>[1]);
   }
 
-  function patchMaintenance(itemId: number, patch: Partial<ExcavatorMaintenanceItemState>) {
+  async function patchMaintenance(itemId: number, patch: Partial<ExcavatorMaintenanceItemState>) {
+    if (isPending && pendingCreate) {
+      try {
+        const realId = await lazyCreate(createExcavatorInspection);
+        if (!realId) return;
+        const initial = MAINTENANCE_ITEMS.map((m) => ({ id: m.id, answer: null as null, date: null as null }));
+        const next = initial.map((m) => m.id === itemId ? { ...m, ...patch } : m);
+        await updateExcavatorInspection(realId, { maintenanceItems: next });
+        qc.invalidateQueries({ queryKey: ['excavatorInspections'] });
+        navigate(`/excavator/${realId}`, { replace: true, state: {} });
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : String(e));
+      }
+      return;
+    }
     if (!item) return;
     const next = item.maintenanceItems.map((m) => (m.id === itemId ? { ...m, ...patch } : m));
     updateMutation.mutate({ maintenanceItems: next });
@@ -140,20 +217,20 @@ export default function ExcavatorInspectionDetail() {
             ← აქტები
           </Link>
           <h1 className="mt-2 font-display text-3xl font-bold text-neutral-900">
-            ექსკავატორი — {item.serialNumber || `#${item.id.slice(0, 8)}`}
+            ექსკავატორი — {effectiveItem.serialNumber || (isPending ? 'ახალი' : `#${effectiveItem.id.slice(0, 8)}`)}
           </h1>
-          <p className="mt-1 text-sm text-neutral-500">სტატუსი: {item.status === 'completed' ? 'დასრულებული' : 'დრაფტი'}</p>
+          <p className="mt-1 text-sm text-neutral-500">სტატუსი: {effectiveItem.status === 'completed' ? 'დასრულებული' : 'დრაფტი'}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPdfOpen(true)}
-          >
-            <FileText size={14} className="mr-1" />
-            PDF
-          </Button>
-          <DeleteButton onDelete={() => delMutation.mutate()} isPending={delMutation.isPending} />
+          {!isPending && (
+            <Button variant="outline" size="sm" onClick={() => setPdfOpen(true)}>
+              <FileText size={14} className="mr-1" />
+              PDF
+            </Button>
+          )}
+          {!isPending && (
+            <DeleteButton onDelete={() => delMutation.mutate()} isPending={delMutation.isPending} />
+          )}
         </div>
       </header>
 
@@ -171,12 +248,12 @@ export default function ExcavatorInspectionDetail() {
               <CardTitle className="text-base">ტექნიკის მახასიათებლები</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-2 gap-2 text-sm text-neutral-700">
-              <div>წონა: {item.machineSpecs.weight}</div>
-              <div>ძრავი: {item.machineSpecs.engine}</div>
-              <div>სიმძლავრე: {item.machineSpecs.power}</div>
-              <div>ჩაღრმავება: {item.machineSpecs.depth}</div>
-              <div>გადაადგილება: {item.machineSpecs.travel}</div>
-              <div>მაქს. წვდომა: {item.machineSpecs.maxReach}</div>
+              <div>წონა: {effectiveItem.machineSpecs.weight}</div>
+              <div>ძრავი: {effectiveItem.machineSpecs.engine}</div>
+              <div>სიმძლავრე: {effectiveItem.machineSpecs.power}</div>
+              <div>ჩაღრმავება: {effectiveItem.machineSpecs.depth}</div>
+              <div>გადაადგილება: {effectiveItem.machineSpecs.travel}</div>
+              <div>მაქს. წვდომა: {effectiveItem.machineSpecs.maxReach}</div>
             </CardContent>
           </Card>
 
@@ -187,44 +264,44 @@ export default function ExcavatorInspectionDetail() {
             <CardContent className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
               <FieldInput
                 label="სერ. ნომერი"
-                value={item.serialNumber}
+                value={effectiveItem.serialNumber}
                 disabled={!isDraft}
-                onSave={(v) => updateMutation.mutate({ serialNumber: v })}
+                onSave={(v) => save({ serialNumber: v })}
               />
               <FieldInput
                 label="ინვ. ნომერი"
-                value={item.inventoryNumber}
+                value={effectiveItem.inventoryNumber}
                 disabled={!isDraft}
-                onSave={(v) => updateMutation.mutate({ inventoryNumber: v })}
+                onSave={(v) => save({ inventoryNumber: v })}
               />
               <FieldInput
                 label="დეპარტამენტი"
-                value={item.department}
+                value={effectiveItem.department}
                 disabled={!isDraft}
-                onSave={(v) => updateMutation.mutate({ department: v })}
+                onSave={(v) => save({ department: v })}
               />
               <FieldInput
                 label="ინსპექტორი"
-                value={item.inspectorName}
+                value={effectiveItem.inspectorName}
                 disabled={!isDraft}
-                onSave={(v) => updateMutation.mutate({ inspectorName: v })}
+                onSave={(v) => save({ inspectorName: v })}
               />
               <FieldInput
                 label="თანამდებობა"
-                value={item.inspectorPosition}
+                value={effectiveItem.inspectorPosition}
                 disabled={!isDraft}
-                onSave={(v) => updateMutation.mutate({ inspectorPosition: v })}
+                onSave={(v) => save({ inspectorPosition: v })}
               />
               <div className="space-y-1">
                 <Label>შემოწმების თარიღი</Label>
                 <Input
                   type="date"
                   disabled={!isDraft}
-                  defaultValue={item.inspectionDate ? item.inspectionDate.slice(0, 10) : ''}
+                  defaultValue={effectiveItem.inspectionDate ? effectiveItem.inspectionDate.slice(0, 10) : ''}
                   onBlur={(e) => {
                     const v = e.target.value || null;
-                    if (v !== (item.inspectionDate ? item.inspectionDate.slice(0, 10) : null))
-                      updateMutation.mutate({ inspectionDate: v });
+                    if (v !== (effectiveItem.inspectionDate ? effectiveItem.inspectionDate.slice(0, 10) : null))
+                      save({ inspectionDate: v });
                   }}
                 />
               </div>
@@ -233,11 +310,11 @@ export default function ExcavatorInspectionDetail() {
                 <Input
                   type="date"
                   disabled={!isDraft}
-                  defaultValue={item.lastInspectionDate ? item.lastInspectionDate.slice(0, 10) : ''}
+                  defaultValue={effectiveItem.lastInspectionDate ? effectiveItem.lastInspectionDate.slice(0, 10) : ''}
                   onBlur={(e) => {
                     const v = e.target.value || null;
-                    if (v !== (item.lastInspectionDate ? item.lastInspectionDate.slice(0, 10) : null))
-                      updateMutation.mutate({ lastInspectionDate: v });
+                    if (v !== (effectiveItem.lastInspectionDate ? effectiveItem.lastInspectionDate.slice(0, 10) : null))
+                      save({ lastInspectionDate: v });
                   }}
                 />
               </div>
@@ -246,10 +323,10 @@ export default function ExcavatorInspectionDetail() {
                 <Input
                   type="number"
                   disabled={!isDraft}
-                  defaultValue={item.motoHours ?? ''}
+                  defaultValue={effectiveItem.motoHours ?? ''}
                   onBlur={(e) => {
                     const v = e.target.value === '' ? null : Number(e.target.value);
-                    if (v !== item.motoHours) updateMutation.mutate({ motoHours: v });
+                    if (v !== effectiveItem.motoHours) save({ motoHours: v });
                   }}
                 />
               </div>
@@ -263,7 +340,7 @@ export default function ExcavatorInspectionDetail() {
       {step === 1 && (
         <>
           {SECTIONS.map((s) => {
-            const stateList = item[s.field] as ExcavatorChecklistItemState[];
+            const stateList = effectiveItem[s.field] as ExcavatorChecklistItemState[];
             const stateById = new Map(stateList.map((it) => [it.id, it]));
             return (
               <Card key={s.key}>
@@ -329,7 +406,7 @@ export default function ExcavatorInspectionDetail() {
                             paths={st.photo_paths ?? []}
                             disabled={!isDraft}
                             prefix="excavator"
-                            inspectionId={item.id}
+                            inspectionId={effectiveItem.id}
                             itemId={entry.id}
                             onAdd={(path) =>
                               patchSection(s.field, entry.id, {
@@ -359,7 +436,7 @@ export default function ExcavatorInspectionDetail() {
               <ul className="divide-y divide-neutral-200">
                 {MAINTENANCE_ITEMS.map((m) => {
                   const st =
-                    item.maintenanceItems.find((x) => x.id === m.id) ??
+                    effectiveItem.maintenanceItems.find((x) => x.id === m.id) ??
                     ({ id: m.id, answer: null, date: null } as ExcavatorMaintenanceItemState);
                   return (
                     <li key={m.id} className="space-y-2 py-3">
@@ -414,10 +491,10 @@ export default function ExcavatorInspectionDetail() {
               <CardTitle className="text-base">ინსპექტორის ხელმოწერა</CardTitle>
             </CardHeader>
             <CardContent>
-              {item.inspectorSignature ? (
+              {effectiveItem.inspectorSignature ? (
                 <div className="space-y-2">
                   <img
-                    src={item.inspectorSignature.startsWith('data:') ? item.inspectorSignature : `data:image/png;base64,${item.inspectorSignature}`}
+                    src={effectiveItem.inspectorSignature.startsWith('data:') ? effectiveItem.inspectorSignature : `data:image/png;base64,${effectiveItem.inspectorSignature}`}
                     alt="ხელმოწერა"
                     className="h-20 rounded border border-neutral-200 bg-white object-contain p-1"
                   />
@@ -426,8 +503,8 @@ export default function ExcavatorInspectionDetail() {
                   )}
                   {isDraft && signingOpen && (
                     <SignatureCanvas
-                      existing={item.inspectorSignature.startsWith('data:') ? item.inspectorSignature : `data:image/png;base64,${item.inspectorSignature}`}
-                      onSave={(dataUrl) => { updateMutation.mutate({ inspectorSignature: dataUrl }); setSigningOpen(false); }}
+                      existing={effectiveItem.inspectorSignature.startsWith('data:') ? effectiveItem.inspectorSignature : `data:image/png;base64,${effectiveItem.inspectorSignature}`}
+                      onSave={(dataUrl) => { save({ inspectorSignature: dataUrl }); setSigningOpen(false); }}
                       onCancel={() => setSigningOpen(false)}
                     />
                   )}
@@ -435,7 +512,7 @@ export default function ExcavatorInspectionDetail() {
               ) : isDraft ? (
                 signingOpen ? (
                   <SignatureCanvas
-                    onSave={(dataUrl) => { updateMutation.mutate({ inspectorSignature: dataUrl }); setSigningOpen(false); }}
+                    onSave={(dataUrl) => { save({ inspectorSignature: dataUrl }); setSigningOpen(false); }}
                     onCancel={() => setSigningOpen(false)}
                   />
                 ) : (
@@ -458,12 +535,12 @@ export default function ExcavatorInspectionDetail() {
                     <Label>დასკვნა</Label>
                     <div className="flex flex-wrap gap-2">
                       {(Object.keys(EXCAVATOR_VERDICT_LABEL) as ExcavatorVerdict[]).map((v) => {
-                        const selected = item.verdict === v;
+                        const selected = effectiveItem.verdict === v;
                         return (
                           <button
                             key={v}
                             type="button"
-                            onClick={() => updateMutation.mutate({ verdict: selected ? null : v })}
+                            onClick={() => save({ verdict: selected ? null : v })}
                             className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
                               selected
                                 ? 'border-brand-600 bg-brand-600 text-white'
@@ -480,26 +557,26 @@ export default function ExcavatorInspectionDetail() {
                     <Label>შენიშვნები</Label>
                     <textarea
                       rows={3}
-                      defaultValue={item.notes ?? ''}
+                      defaultValue={effectiveItem.notes ?? ''}
                       onBlur={(e) => {
                         const v = e.target.value || null;
-                        if (v !== item.notes) updateMutation.mutate({ notes: v });
+                        if (v !== effectiveItem.notes) save({ notes: v });
                       }}
                       className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
                     />
                   </div>
                   <Button
                     size="sm"
-                    onClick={() => updateMutation.mutate({ status: 'completed' })}
-                    disabled={updateMutation.isPending}
+                    onClick={() => save({ status: 'completed' })}
+                    disabled={updateMutation.isPending || isPending}
                   >
                     დასრულება
                   </Button>
                 </>
               ) : (
                 <div className="space-y-1 text-sm text-neutral-700">
-                  <div>დასკვნა: {item.verdict ? EXCAVATOR_VERDICT_LABEL[item.verdict] : '—'}</div>
-                  <div>შენიშვნები: {item.notes || '—'}</div>
+                  <div>დასკვნა: {effectiveItem.verdict ? EXCAVATOR_VERDICT_LABEL[effectiveItem.verdict] : '—'}</div>
+                  <div>შენიშვნები: {effectiveItem.notes || '—'}</div>
                 </div>
               )}
             </CardContent>
@@ -526,7 +603,7 @@ export default function ExcavatorInspectionDetail() {
           </div>
           <iframe
             ref={iframeRef}
-            src={`#/excavator/${item.id}/print?preview=1`}
+            src={`#/excavator/${effectiveItem.id}/print?preview=1`}
             className="flex-1 w-full border-0 bg-white"
             title="PDF გადახედვა"
           />

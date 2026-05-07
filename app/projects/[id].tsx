@@ -118,6 +118,8 @@ export default function ProjectDetail() {
   const [filesBusy, setFilesBusy] = useState(false);
   const [editing, setEditing] = useState(false);
   const [mapModalVisible, setMapModalVisible] = useState(false);
+  const [mapSelected, setMapSelected] = useState<Project | null>(null);
+  const mapCardAnim = useRef(new Animated.Value(240)).current;
   const [templatePickerVisible, setTemplatePickerVisible] = useState(false);
   const [templatePickerOptions, setTemplatePickerOptions] = useState<Template[]>([]);
   const [allProjects, setAllProjects] = useState<Project[]>([]);
@@ -555,6 +557,17 @@ export default function ProjectDetail() {
       setAllProjects(list);
     }
   };
+
+  const openMapCard = useCallback((p: Project) => {
+    setMapSelected(p);
+    Animated.spring(mapCardAnim, { toValue: 0, useNativeDriver: true, tension: 70, friction: 12 }).start();
+  }, [mapCardAnim]);
+
+  const closeMapCard = useCallback(() => {
+    Animated.timing(mapCardAnim, { toValue: 240, duration: 200, useNativeDriver: true }).start(() =>
+      setMapSelected(null),
+    );
+  }, [mapCardAnim]);
 
   const quickActions: QuickAction[] = useMemo(
     () => [
@@ -1143,24 +1156,110 @@ export default function ProjectDetail() {
                 latitudeDelta: 0.5,
                 longitudeDelta: 0.5,
               }}
+              onPress={closeMapCard}
             >
-              {mapMarkers.map(p => (
-                <Marker
-                  key={p.id}
-                  coordinate={{ latitude: p.latitude!, longitude: p.longitude! }}
-                  pinColor={p.id === id ? theme.colors.accent : undefined}
-                  title={p.company_name || p.name}
-                />
-              ))}
+              {mapMarkers.map(p => {
+                const isActive = p.id === id;
+                const pinBg = isActive ? theme.colors.accent : '#E07B3A';
+                return (
+                  <Marker
+                    key={p.id}
+                    coordinate={{ latitude: p.latitude!, longitude: p.longitude! }}
+                    tracksViewChanges={false}
+                    onPress={() => openMapCard(p)}
+                  >
+                    <View style={{ alignItems: 'center' }}>
+                      <View style={{
+                        backgroundColor: pinBg,
+                        borderRadius: 20,
+                        width: 32,
+                        height: 32,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.28,
+                        shadowRadius: 4,
+                        elevation: 5,
+                      }}>
+                        <Ionicons name="business" size={15} color="#fff" />
+                      </View>
+                      <View style={{
+                        width: 0, height: 0,
+                        borderLeftWidth: 5, borderRightWidth: 5, borderTopWidth: 7,
+                        borderLeftColor: 'transparent', borderRightColor: 'transparent',
+                        borderTopColor: pinBg,
+                        marginTop: -1,
+                      }} />
+                    </View>
+                  </Marker>
+                );
+              })}
             </MapView>
+
             {allProjects.filter(p => p.latitude != null && p.longitude != null).length > 20 && (
-              <View style={{ position: 'absolute', bottom: insets.bottom + 16, left: 16, right: 16, alignItems: 'center' }}>
+              <View style={{ position: 'absolute', bottom: insets.bottom + 100, left: 16, right: 16, alignItems: 'center' }}>
                 <View style={{ backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 }}>
                   <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>
                     ნაჩვენებია პირველი 20 პროექტი
                   </Text>
                 </View>
               </View>
+            )}
+
+            {/* Slide-up project card */}
+            {mapSelected && (
+              <Animated.View style={{
+                position: 'absolute', bottom: 0, left: 0, right: 0,
+                transform: [{ translateY: mapCardAnim }],
+              }}>
+                <View style={{
+                  backgroundColor: theme.colors.surface,
+                  borderTopLeftRadius: 22,
+                  borderTopRightRadius: 22,
+                  paddingHorizontal: 16,
+                  paddingTop: 10,
+                  paddingBottom: insets.bottom + 20,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: -4 },
+                  shadowOpacity: 0.12,
+                  shadowRadius: 16,
+                  elevation: 12,
+                }}>
+                  <Pressable onPress={closeMapCard} hitSlop={12} style={{ alignItems: 'center', paddingBottom: 10 }}>
+                    <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: theme.colors.hairline }} />
+                  </Pressable>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <ProjectAvatar project={mapSelected} size={44} />
+                    <View style={{ flex: 1 }}>
+                      <Text size="base" weight="bold" numberOfLines={1}>
+                        {mapSelected.company_name || mapSelected.name}
+                      </Text>
+                      {mapSelected.address ? (
+                        <Text size="xs" color={theme.colors.inkSoft} numberOfLines={1} style={{ marginTop: 2 }}>
+                          {mapSelected.address}
+                        </Text>
+                      ) : null}
+                    </View>
+                    <Pressable
+                      onPress={() => {
+                        closeMapCard();
+                        setMapModalVisible(false);
+                        router.push(`/projects/${mapSelected.id}` as any);
+                      }}
+                      hitSlop={8}
+                      style={{
+                        backgroundColor: theme.colors.accent,
+                        borderRadius: 10,
+                        paddingHorizontal: 14,
+                        paddingVertical: 9,
+                      }}
+                    >
+                      <Text size="sm" weight="semibold" color="#fff">გახსნა →</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              </Animated.View>
             )}
           </View>
         </View>

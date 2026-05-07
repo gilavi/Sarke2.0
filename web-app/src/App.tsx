@@ -130,12 +130,16 @@ export default function App() {
             <Route path="/projects/:id" element={<Shell><ProjectDetail /></Shell>} />
             <Route path="/inspections" element={<Shell><Inspections /></Shell>} />
             <Route path="/inspections/new" element={<Shell><NewInspection /></Shell>} />
+            <Route path="/inspections/draft" element={<Shell><InspectionDetail /></Shell>} />
             <Route path="/inspections/:id" element={<Shell><InspectionDetail /></Shell>} />
             <Route path="/bobcat/new" element={<Shell><NewBobcatInspection /></Shell>} />
+            <Route path="/bobcat/draft" element={<Shell><BobcatInspectionDetail /></Shell>} />
             <Route path="/bobcat/:id" element={<Shell><BobcatInspectionDetail /></Shell>} />
             <Route path="/general-equipment/new" element={<Shell><NewGeneralEquipmentInspection /></Shell>} />
+            <Route path="/general-equipment/draft" element={<Shell><GeneralEquipmentInspectionDetail /></Shell>} />
             <Route path="/general-equipment/:id" element={<Shell><GeneralEquipmentInspectionDetail /></Shell>} />
             <Route path="/excavator/new" element={<Shell><NewExcavatorInspection /></Shell>} />
+            <Route path="/excavator/draft" element={<Shell><ExcavatorInspectionDetail /></Shell>} />
             <Route path="/excavator/:id" element={<Shell><ExcavatorInspectionDetail /></Shell>} />
             <Route
               path="/incidents/:id/print"

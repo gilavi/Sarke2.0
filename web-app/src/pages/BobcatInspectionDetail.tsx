@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { usePendingCreate } from '@/lib/usePendingCreate';
 import { FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import DeleteButton from '@/components/DeleteButton';
@@ -16,10 +17,13 @@ import {
   BOBCAT_ITEMS,
   BOBCAT_TEMPLATE_ID,
   LARGE_LOADER_ITEMS,
+  createBobcatInspection,
   deleteBobcatInspection,
   getBobcatInspection,
   updateBobcatInspection,
   type BobcatChecklistEntry,
+  type BobcatInspection,
+  type BobcatInspectionType,
   type BobcatItemResult,
   type BobcatItemState,
   type BobcatVerdict,
@@ -48,15 +52,19 @@ function catalogFor(templateId: string | null): BobcatChecklistEntry[] {
   return templateId === BOBCAT_TEMPLATE_ID ? BOBCAT_ITEMS : LARGE_LOADER_ITEMS;
 }
 
+type PendingBobcat = Parameters<typeof createBobcatInspection>[0];
+
 export default function BobcatInspectionDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const { pendingCreate, lazyCreate } = usePendingCreate<PendingBobcat>();
+  const isPending = id === 'draft';
 
   const { data: item, error, isLoading } = useQuery({
     queryKey: ['bobcatInspection', id],
     queryFn: () => getBobcatInspection(id!),
-    enabled: !!id,
+    enabled: !!id && !isPending,
   });
 
   const [signingOpen, setSigningOpen] = useState(false);
@@ -85,11 +93,33 @@ export default function BobcatInspectionDetail() {
     onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
   });
 
-  function patchItem(itemId: number, patch: Partial<BobcatItemState>) {
+  // When not yet saved, Step 0 field saves are no-ops (data lives in pendingCreate)
+  function save(patch: Parameters<typeof updateBobcatInspection>[1]) {
+    if (isPending) return;
+    updateMutation.mutate(patch);
+  }
+
+  async function patchItem(itemId: number, patch: Partial<BobcatItemState>) {
+    if (isPending && pendingCreate) {
+      try {
+        const realId = await lazyCreate(createBobcatInspection);
+        if (!realId) return;
+        const templateId = pendingCreate.templateId ?? BOBCAT_TEMPLATE_ID;
+        const catalog = catalogFor(templateId);
+        const initialItems: BobcatItemState[] = catalog.map((e) => ({
+          id: e.id, result: null, comment: null, photo_paths: [],
+        }));
+        const patched = initialItems.map((it) => it.id === itemId ? { ...it, ...patch } : it);
+        await updateBobcatInspection(realId, { items: patched });
+        qc.invalidateQueries({ queryKey: ['bobcatInspections'] });
+        navigate(`/bobcat/${realId}`, { replace: true, state: {} });
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : String(e));
+      }
+      return;
+    }
     if (!item) return;
-    const items = item.items.map((it) =>
-      it.id === itemId ? { ...it, ...patch } : it,
-    );
+    const items = item.items.map((it) => it.id === itemId ? { ...it, ...patch } : it);
     updateMutation.mutate({ items });
   }
 
@@ -100,11 +130,34 @@ export default function BobcatInspectionDetail() {
         {error instanceof Error ? error.message : String(error)}
       </div>
     );
-  if (!item) return <p className="text-sm text-neutral-500">აქტი ვერ მოიძებნა.</p>;
+  if (!item && !isPending) return <p className="text-sm text-neutral-500">აქტი ვერ მოიძებნა.</p>;
 
-  const isDraft = item.status === 'draft';
-  const catalog = catalogFor(item.templateId);
-  const itemsById = new Map<number, BobcatItemState>(item.items.map((i) => [i.id, i]));
+  const effectiveItem: BobcatInspection = item ?? {
+    id: 'draft',
+    projectId: pendingCreate?.projectId ?? '',
+    templateId: pendingCreate?.templateId ?? BOBCAT_TEMPLATE_ID,
+    userId: '',
+    status: 'draft',
+    company: pendingCreate?.company ?? null,
+    address: null,
+    equipmentModel: pendingCreate?.equipmentModel ?? null,
+    registrationNumber: pendingCreate?.registrationNumber ?? null,
+    department: pendingCreate?.department ?? null,
+    inspectorName: pendingCreate?.inspectorName ?? null,
+    inspectionDate: pendingCreate?.inspectionDate ?? new Date().toISOString().slice(0, 10),
+    inspectionType: (pendingCreate?.inspectionType ?? 'pre_work') as BobcatInspectionType,
+    items: [],
+    verdict: null,
+    notes: null,
+    inspectorSignature: null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    completedAt: null,
+  };
+
+  const isDraft = effectiveItem.status === 'draft';
+  const catalog = catalogFor(effectiveItem.templateId);
+  const itemsById = new Map<number, BobcatItemState>(effectiveItem.items.map((i) => [i.id, i]));
 
   const grouped = catalog.reduce<Record<string, BobcatChecklistEntry[]>>((acc, entry) => {
     if (!acc[entry.category]) acc[entry.category] = [];
@@ -139,20 +192,20 @@ export default function BobcatInspectionDetail() {
             ← აქტები
           </Link>
           <h1 className="mt-2 font-display text-3xl font-bold text-neutral-900">
-            {item.equipmentModel || item.company || 'ციცხვიანი დამტვირთველის აქტი'}
+            {effectiveItem.equipmentModel || effectiveItem.company || 'ციცხვიანი დამტვირთველის აქტი'}
           </h1>
-          <p className="mt-1 text-sm text-neutral-500">სტატუსი: {item.status === 'completed' ? 'დასრულებული' : 'დრაფტი'}</p>
+          <p className="mt-1 text-sm text-neutral-500">სტატუსი: {effectiveItem.status === 'completed' ? 'დასრულებული' : 'დრაფტი'}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPdfOpen(true)}
-          >
-            <FileText size={14} className="mr-1" />
-            PDF
-          </Button>
-          <DeleteButton onDelete={() => delMutation.mutate()} isPending={delMutation.isPending} />
+          {!isPending && (
+            <Button variant="outline" size="sm" onClick={() => setPdfOpen(true)}>
+              <FileText size={14} className="mr-1" />
+              PDF
+            </Button>
+          )}
+          {!isPending && (
+            <DeleteButton onDelete={() => delMutation.mutate()} isPending={delMutation.isPending} />
+          )}
         </div>
       </header>
 
@@ -172,33 +225,33 @@ export default function BobcatInspectionDetail() {
             <CardContent className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
               <FieldInput
                 label="კომპანია"
-                value={item.company}
+                value={effectiveItem.company}
                 disabled={!isDraft}
-                onSave={(v) => updateMutation.mutate({ company: v })}
+                onSave={(v) => save({ company: v })}
               />
               <FieldInput
                 label="მოდელი"
-                value={item.equipmentModel}
+                value={effectiveItem.equipmentModel}
                 disabled={!isDraft}
-                onSave={(v) => updateMutation.mutate({ equipmentModel: v })}
+                onSave={(v) => save({ equipmentModel: v })}
               />
               <FieldInput
                 label="სარეგ. ნომერი"
-                value={item.registrationNumber}
+                value={effectiveItem.registrationNumber}
                 disabled={!isDraft}
-                onSave={(v) => updateMutation.mutate({ registrationNumber: v })}
+                onSave={(v) => save({ registrationNumber: v })}
               />
               <FieldInput
                 label="დეპარტამენტი"
-                value={item.department}
+                value={effectiveItem.department}
                 disabled={!isDraft}
-                onSave={(v) => updateMutation.mutate({ department: v })}
+                onSave={(v) => save({ department: v })}
               />
               <FieldInput
                 label="ინსპექტორი"
-                value={item.inspectorName}
+                value={effectiveItem.inspectorName}
                 disabled={!isDraft}
-                onSave={(v) => updateMutation.mutate({ inspectorName: v })}
+                onSave={(v) => save({ inspectorName: v })}
               />
             </CardContent>
           </Card>
@@ -273,7 +326,7 @@ export default function BobcatInspectionDetail() {
                           paths={state.photo_paths ?? []}
                           disabled={!isDraft}
                           prefix="bobcat"
-                          inspectionId={item.id}
+                          inspectionId={effectiveItem.id}
                           itemId={entry.id}
                           onAdd={(path) =>
                             patchItem(entry.id, {
@@ -307,16 +360,16 @@ export default function BobcatInspectionDetail() {
             <CardContent>
               {signingOpen && isDraft ? (
                 <SignatureCanvas
-                  existing={item.inspectorSignature
-                    ? (item.inspectorSignature.startsWith('data:') ? item.inspectorSignature : `data:image/png;base64,${item.inspectorSignature}`)
+                  existing={effectiveItem.inspectorSignature
+                    ? (effectiveItem.inspectorSignature.startsWith('data:') ? effectiveItem.inspectorSignature : `data:image/png;base64,${effectiveItem.inspectorSignature}`)
                     : undefined}
-                  onSave={(dataUrl) => { updateMutation.mutate({ inspectorSignature: dataUrl }); setSigningOpen(false); }}
+                  onSave={(dataUrl) => { save({ inspectorSignature: dataUrl }); setSigningOpen(false); }}
                   onCancel={() => setSigningOpen(false)}
                 />
-              ) : item.inspectorSignature ? (
+              ) : effectiveItem.inspectorSignature ? (
                 <div className="space-y-2">
                   <img
-                    src={item.inspectorSignature.startsWith('data:') ? item.inspectorSignature : `data:image/png;base64,${item.inspectorSignature}`}
+                    src={effectiveItem.inspectorSignature.startsWith('data:') ? effectiveItem.inspectorSignature : `data:image/png;base64,${effectiveItem.inspectorSignature}`}
                     alt="ხელმოწერა"
                     className="h-20 rounded border border-neutral-200 bg-white object-contain p-1"
                   />
@@ -343,14 +396,12 @@ export default function BobcatInspectionDetail() {
                     <Label>დასკვნა</Label>
                     <div className="flex flex-wrap gap-2">
                       {(Object.keys(VERDICT_LABEL) as BobcatVerdict[]).map((v) => {
-                        const selected = item.verdict === v;
+                        const selected = effectiveItem.verdict === v;
                         return (
                           <button
                             key={v}
                             type="button"
-                            onClick={() =>
-                              updateMutation.mutate({ verdict: selected ? null : v })
-                            }
+                            onClick={() => save({ verdict: selected ? null : v })}
                             className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
                               selected
                                 ? 'border-brand-600 bg-brand-600 text-white'
@@ -367,18 +418,18 @@ export default function BobcatInspectionDetail() {
                     <Label>შენიშვნები</Label>
                     <textarea
                       rows={3}
-                      defaultValue={item.notes ?? ''}
+                      defaultValue={effectiveItem.notes ?? ''}
                       onBlur={(e) => {
                         const v = e.target.value || null;
-                        if (v !== item.notes) updateMutation.mutate({ notes: v });
+                        if (v !== effectiveItem.notes) save({ notes: v });
                       }}
                       className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
                     />
                   </div>
                   <Button
                     size="sm"
-                    onClick={() => updateMutation.mutate({ status: 'completed' })}
-                    disabled={updateMutation.isPending}
+                    onClick={() => save({ status: 'completed' })}
+                    disabled={updateMutation.isPending || isPending}
                   >
                     დასრულება
                   </Button>
@@ -386,9 +437,9 @@ export default function BobcatInspectionDetail() {
               ) : (
                 <div className="space-y-1 text-sm text-neutral-700">
                   <div>
-                    დასკვნა: {item.verdict ? VERDICT_LABEL[item.verdict] : '—'}
+                    დასკვნა: {effectiveItem.verdict ? VERDICT_LABEL[effectiveItem.verdict] : '—'}
                   </div>
-                  <div>შენიშვნები: {item.notes || '—'}</div>
+                  <div>შენიშვნები: {effectiveItem.notes || '—'}</div>
                 </div>
               )}
             </CardContent>
@@ -415,7 +466,7 @@ export default function BobcatInspectionDetail() {
           </div>
           <iframe
             ref={iframeRef}
-            src={`#/bobcat/${item.id}/print?preview=1`}
+            src={`#/bobcat/${effectiveItem.id}/print?preview=1`}
             className="flex-1 w-full border-0 bg-white"
             title="PDF გადახედვა"
           />

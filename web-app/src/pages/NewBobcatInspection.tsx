@@ -1,16 +1,14 @@
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { listProjects } from '@/lib/data/projects';
 import {
-  createBobcatInspection,
   BOBCAT_TEMPLATE_ID,
   LARGE_LOADER_TEMPLATE_ID,
-  type BobcatInspection,
   type BobcatInspectionType,
 } from '@/lib/data/bobcat';
 
@@ -22,7 +20,6 @@ const TYPE_LABELS: Record<BobcatInspectionType, string> = {
 
 export default function NewBobcatInspection() {
   const navigate = useNavigate();
-  const qc = useQueryClient();
   const [params] = useSearchParams();
 
   const { data: projects } = useQuery({ queryKey: ['projects'], queryFn: listProjects });
@@ -37,26 +34,26 @@ export default function NewBobcatInspection() {
   const [inspectionDate, setInspectionDate] = useState('');
   const [inspectionType, setInspectionType] = useState<BobcatInspectionType>('pre_work');
 
-  const mutation = useMutation({
-    mutationFn: () =>
-      createBobcatInspection({
-        projectId,
-        templateId: variant === 'bobcat' ? BOBCAT_TEMPLATE_ID : LARGE_LOADER_TEMPLATE_ID,
-        company: company.trim() || null,
-        equipmentModel: equipmentModel.trim() || null,
-        registrationNumber: registrationNumber.trim() || null,
-        department: department.trim() || null,
-        inspectorName: inspectorName.trim() || null,
-        inspectionDate: inspectionDate || null,
-        inspectionType,
-      }),
-    onSuccess: (created: BobcatInspection) => {
-      qc.invalidateQueries({ queryKey: ['bobcatInspections'] });
-      navigate(`/bobcat/${created.id}`);
-    },
-  });
+  const canSubmit = !!projectId;
 
-  const canSubmit = !!projectId && !mutation.isPending;
+  function handleSubmit() {
+    if (!canSubmit) return;
+    navigate('/bobcat/draft', {
+      state: {
+        pendingCreate: {
+          projectId,
+          templateId: variant === 'bobcat' ? BOBCAT_TEMPLATE_ID : LARGE_LOADER_TEMPLATE_ID,
+          company: company.trim() || null,
+          equipmentModel: equipmentModel.trim() || null,
+          registrationNumber: registrationNumber.trim() || null,
+          department: department.trim() || null,
+          inspectorName: inspectorName.trim() || null,
+          inspectionDate: inspectionDate || null,
+          inspectionType,
+        },
+      },
+    });
+  }
 
   return (
     <div className="mx-auto max-w-xl space-y-6">
@@ -81,7 +78,7 @@ export default function NewBobcatInspection() {
             className="space-y-4"
             onSubmit={(e) => {
               e.preventDefault();
-              if (canSubmit) mutation.mutate();
+              handleSubmit();
             }}
           >
             <div className="space-y-1">
@@ -207,23 +204,14 @@ export default function NewBobcatInspection() {
               />
             </div>
 
-            {mutation.error && (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                {mutation.error instanceof Error
-                  ? mutation.error.message
-                  : String(mutation.error)}
-              </div>
-            )}
-
             <div className="flex gap-2 pt-2">
               <Button type="submit" disabled={!canSubmit}>
-                {mutation.isPending ? 'იქმნება…' : 'შექმნა'}
+                შექმნა
               </Button>
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => navigate('/inspections')}
-                disabled={mutation.isPending}
               >
                 გაუქმება
               </Button>

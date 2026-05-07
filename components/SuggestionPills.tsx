@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { A11yText as Text } from '../components/primitives/A11yText';
 import { useTheme } from '../lib/theme';
 
@@ -24,11 +24,7 @@ export const SuggestionPills: React.FC<SuggestionPillsProps> = ({
 
   return (
     <View style={styles.wrapper}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
+      <View style={styles.row}>
         {items.map((value, index) => (
           <Pressable
             key={`${value}-${index}`}
@@ -50,7 +46,7 @@ export const SuggestionPills: React.FC<SuggestionPillsProps> = ({
             </Text>
           </Pressable>
         ))}
-      </ScrollView>
+      </View>
     </View>
   );
 };
@@ -59,18 +55,19 @@ const styles = StyleSheet.create({
   wrapper: {
     marginTop: 4,
     marginBottom: 8,
+    alignSelf: 'flex-start',
   },
-  scrollContent: {
+  row: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
-    paddingRight: 8,
   },
   chip: {
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 6,
     borderRadius: 8,
     borderWidth: 1,
-    maxWidth: 220,
+    maxWidth: 160,
   },
   chipText: {
     fontSize: 13,

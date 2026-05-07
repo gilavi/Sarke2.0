@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Camera, FileText, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { usePendingCreate } from '@/lib/usePendingCreate';
 import DeleteButton from '@/components/DeleteButton';
 import SignatureCanvas from '@/components/SignatureCanvas';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   addAnswerPhoto,
+  createInspection,
   deleteInspection,
   getInspection,
   listAnswerPhotos,
@@ -23,8 +25,11 @@ import {
   upsertAnswer,
   type Answer,
   type AnswerPhoto,
+  type Inspection,
   type Question,
 } from '@/lib/data/inspections';
+
+type PendingInspection = Parameters<typeof createInspection>[0];
 // photoUpload imported dynamically inside QuestionRow to keep top-level bundle lean
 
 function answerFor(answers: Answer[], qid: string): Answer | undefined {
@@ -35,27 +40,44 @@ export default function InspectionDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const { pendingCreate, lazyCreate } = usePendingCreate<PendingInspection>();
+  const isPending = id === 'draft';
 
   const inspectionQ = useQuery({
     queryKey: ['inspection', id],
     queryFn: () => getInspection(id!),
-    enabled: !!id,
+    enabled: !!id && !isPending,
   });
   const pdfsQ = useQuery({
     queryKey: ['inspectionPdfs', id],
     queryFn: () => listInspectionPdfs(id!),
-    enabled: !!id,
+    enabled: !!id && !isPending,
   });
-  const inspection = inspectionQ.data ?? null;
+  const inspection: Inspection | null = inspectionQ.data ?? (isPending && pendingCreate ? {
+    id: 'draft',
+    project_id: pendingCreate.projectId,
+    user_id: '',
+    template_id: pendingCreate.templateId,
+    status: 'draft',
+    harness_name: pendingCreate.harnessName ?? null,
+    department: pendingCreate.department ?? null,
+    inspector_name: pendingCreate.inspectorName ?? null,
+    conclusion_text: null,
+    is_safe_for_use: null,
+    inspector_signature: null,
+    created_at: new Date().toISOString(),
+    completed_at: null,
+  } : null);
+  const templateId = isPending ? pendingCreate?.templateId : inspection?.template_id;
   const questionsQ = useQuery({
-    queryKey: ['questions', inspection?.template_id],
-    queryFn: () => listQuestions(inspection!.template_id),
-    enabled: !!inspection?.template_id,
+    queryKey: ['questions', templateId],
+    queryFn: () => listQuestions(templateId!),
+    enabled: !!templateId,
   });
   const answersQ = useQuery({
     queryKey: ['answers', id],
     queryFn: () => listAnswers(id!),
-    enabled: !!id,
+    enabled: !!id && !isPending,
   });
 
   const [opening, setOpening] = useState<string | null>(null);
@@ -137,6 +159,28 @@ export default function InspectionDetail() {
     }
   }
 
+  async function handleAnswer(patch: {
+    questionId: string;
+    valueBool?: boolean | null;
+    valueNum?: number | null;
+    valueText?: string | null;
+    comment?: string | null;
+  }) {
+    let realId = isPending ? null : id!;
+    if (isPending) {
+      try {
+        realId = await lazyCreate(createInspection);
+        if (!realId) return;
+        qc.invalidateQueries({ queryKey: ['inspections'] });
+        navigate(`/inspections/${realId}`, { replace: true, state: {} });
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : String(e));
+        return;
+      }
+    }
+    answerMutation.mutate({ inspectionId: realId!, ...patch });
+  }
+
   if (inspectionQ.isLoading) return <p className="text-sm text-neutral-500">იტვირთება…</p>;
   if (error)
     return (
@@ -180,17 +224,19 @@ export default function InspectionDetail() {
           </h1>
           <p className="mt-1 text-sm text-neutral-500">სტატუსი: {inspection.status === 'completed' ? 'დასრულებული' : 'დრაფტი'}</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => window.open(`#/inspections/${inspection.id}/print`, '_blank')}
-          >
-            <FileText size={14} className="mr-1" />
-            PDF
-          </Button>
-          <DeleteButton onDelete={() => deleteMutation.mutate()} isPending={deleteMutation.isPending} />
-        </div>
+        {!isPending && (
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.open(`#/inspections/${inspection.id}/print`, '_blank')}
+            >
+              <FileText size={14} className="mr-1" />
+              PDF
+            </Button>
+            <DeleteButton onDelete={() => deleteMutation.mutate()} isPending={deleteMutation.isPending} />
+          </div>
+        )}
       </header>
 
       {/* Inspector info */}
@@ -204,6 +250,7 @@ export default function InspectionDetail() {
                 key={inspection.department ?? ''}
                 defaultValue={inspection.department ?? ''}
                 onBlur={(e) => {
+                  if (isPending) return;
                   const v = e.target.value.trim() || null;
                   if (v !== inspection.department)
                     updateInspection(id!, { department: v }).then(() =>
@@ -224,6 +271,7 @@ export default function InspectionDetail() {
                 key={inspection.inspector_name ?? ''}
                 defaultValue={inspection.inspector_name ?? ''}
                 onBlur={(e) => {
+                  if (isPending) return;
                   const v = e.target.value.trim() || null;
                   if (v !== inspection.inspector_name)
                     updateInspection(id!, { inspector_name: v }).then(() =>
@@ -258,13 +306,10 @@ export default function InspectionDetail() {
                           q={q}
                           ans={answerFor(answers, q.id)}
                           disabled={!isDraft || answerMutation.isPending}
+                          pendingMode={isPending}
                           inspectionId={id!}
                           onChange={(patch) =>
-                            answerMutation.mutate({
-                              inspectionId: id!,
-                              questionId: q.id,
-                              ...patch,
-                            })
+                            void handleAnswer({ questionId: q.id, ...patch })
                           }
                         />
                       </li>
@@ -333,7 +378,7 @@ export default function InspectionDetail() {
                     />
                     <button
                       className="text-xs text-neutral-500 hover:text-red-600"
-                      onClick={() => updateInspection(id!, { inspector_signature: null }).then(() => qc.invalidateQueries({ queryKey: ['inspection', id] }))}
+                      onClick={() => { if (!isPending) updateInspection(id!, { inspector_signature: null }).then(() => qc.invalidateQueries({ queryKey: ['inspection', id] })); }}
                     >
                       წაშლა
                     </button>
@@ -342,6 +387,7 @@ export default function InspectionDetail() {
                   <SignatureCanvas
                     onCancel={() => setSigningOpen(false)}
                     onSave={(dataUrl) => {
+                      if (isPending) { setSigningOpen(false); return; }
                       const base64 = dataUrl.replace(/^data:image\/png;base64,/, '');
                       updateInspection(id!, { inspector_signature: base64 }).then(() => {
                         qc.invalidateQueries({ queryKey: ['inspection', id] });
@@ -364,6 +410,7 @@ export default function InspectionDetail() {
                   size="sm"
                   onClick={() => conclusionMutation.mutate()}
                   disabled={
+                    isPending ||
                     conclusionMutation.isPending ||
                     (conclusionDraft === null && safeDraft === undefined)
                   }
@@ -373,7 +420,7 @@ export default function InspectionDetail() {
                 <Button
                   size="sm"
                   onClick={() => completeMutation.mutate()}
-                  disabled={completeMutation.isPending}
+                  disabled={isPending || completeMutation.isPending}
                 >
                   {completeMutation.isPending ? 'სრულდება…' : 'დასრულება'}
                 </Button>
@@ -439,12 +486,14 @@ function QuestionRow({
   q,
   ans,
   disabled,
+  pendingMode,
   inspectionId,
   onChange,
 }: {
   q: Question;
   ans: Answer | undefined;
   disabled: boolean;
+  pendingMode: boolean;
   inspectionId: string;
   onChange: (patch: {
     valueBool?: boolean | null;
@@ -652,7 +701,7 @@ function QuestionRow({
             </div>
           )}
 
-          {!disabled && (
+          {!disabled && !pendingMode && (
             <>
               <button
                 type="button"
