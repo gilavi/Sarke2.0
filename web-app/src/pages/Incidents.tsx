@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { SkeletonList } from '@/components/SkeletonCard';
 import { listIncidents, INCIDENT_TYPE_LABEL } from '@/lib/data/incidents';
 import { listProjects } from '@/lib/data/projects';
 
@@ -44,9 +45,12 @@ export default function Incidents() {
         </div>
       )}
 
-      {!items && !error && <p className="text-sm text-neutral-500">იტვირთება…</p>}
+      {!items && !error && <SkeletonList />}
       {items && items.length === 0 && (
-        <p className="text-sm text-neutral-500">ინციდენტები ვერ მოიძებნა.</p>
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-neutral-200 bg-white py-16 text-center">
+          <p className="text-sm text-neutral-500">ინციდენტები ჯერ არ გაქვთ.</p>
+          <Link to="/incidents/new" className={buttonVariants({ size: 'sm' })}>+ ახალი ინციდენტი</Link>
+        </div>
       )}
 
       {items && items.length > 0 && (

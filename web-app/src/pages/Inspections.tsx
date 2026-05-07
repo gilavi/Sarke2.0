@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { SkeletonList } from '@/components/SkeletonCard';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -133,12 +134,17 @@ export default function Inspections() {
         </div>
       )}
 
-      {isLoading && <p className="text-sm text-neutral-500">იტვირთება…</p>}
+      {isLoading && <SkeletonList />}
 
       {!isLoading && allRows.length === 0 && (
-        <p className="text-sm text-neutral-500">
-          {filter ? 'ამ პროექტში აქტები ვერ მოიძებნა.' : 'აქტები ვერ მოიძებნა.'}
-        </p>
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-neutral-200 bg-white py-16 text-center">
+          <p className="text-sm text-neutral-500">
+            {filter ? 'ამ პროექტში აქტები ვერ მოიძებნა.' : 'შემოწმების აქტები ჯერ არ გაქვთ.'}
+          </p>
+          {!filter && (
+            <Link to="/inspections/new" className={buttonVariants({ size: 'sm' })}>+ ახალი აქტი</Link>
+          )}
+        </div>
       )}
 
       {allRows.length > 0 && (

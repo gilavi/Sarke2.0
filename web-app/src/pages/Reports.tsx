@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { SkeletonList } from '@/components/SkeletonCard';
 import { listReports } from '@/lib/data/reports';
 import { listProjects } from '@/lib/data/projects';
 
@@ -35,9 +36,12 @@ export default function Reports() {
           {error instanceof Error ? error.message : String(error)}
         </div>
       )}
-      {!items && !error && <p className="text-sm text-neutral-500">იტვირთება…</p>}
+      {!items && !error && <SkeletonList />}
       {items && items.length === 0 && (
-        <p className="text-sm text-neutral-500">რეპორტები ვერ მოიძებნა.</p>
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-neutral-200 bg-white py-16 text-center">
+          <p className="text-sm text-neutral-500">რეპორტები ჯერ არ გაქვთ.</p>
+          <Link to="/reports/new" className={buttonVariants({ size: 'sm' })}>+ ახალი რეპორტი</Link>
+        </div>
       )}
 
       {items && items.length > 0 && (
