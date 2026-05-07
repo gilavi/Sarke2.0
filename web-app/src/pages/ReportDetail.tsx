@@ -12,6 +12,7 @@ import {
   deleteReport,
   getReport,
   removeReportSlide,
+  updateReportSlide,
   signedReportPdfUrl,
   signedReportPhotoUrl,
   type Report,
@@ -87,6 +88,17 @@ export default function ReportDetail() {
     onSuccess: (next: Report) => {
       qc.setQueryData(['report', id], next);
       qc.invalidateQueries({ queryKey: ['reports'] });
+    },
+    onError: (e) => setActionError(e instanceof Error ? e.message : String(e)),
+  });
+
+  const updateSlideMutation = useMutation({
+    mutationFn: ({ slideId, patch }: { slideId: string; patch: { title?: string; description?: string } }) => {
+      if (!item) throw new Error('not loaded');
+      return updateReportSlide(item, slideId, patch);
+    },
+    onSuccess: (next: Report) => {
+      qc.setQueryData(['report', id], next);
     },
     onError: (e) => setActionError(e instanceof Error ? e.message : String(e)),
   });
@@ -289,27 +301,54 @@ export default function ReportDetail() {
           <div className="space-y-3">
             {slides.map((s, idx) => (
               <Card key={s.id}>
-                <CardHeader className="flex flex-row items-start justify-between space-y-0">
-                  <CardTitle className="text-base">
-                    {idx + 1}. {s.title || 'სლაიდი'}
-                  </CardTitle>
+                <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                  <div className="flex-1 pr-2">
+                    {item.status === 'draft' ? (
+                      <Input
+                        defaultValue={s.title}
+                        placeholder={`სლაიდი ${idx + 1}`}
+                        className="font-semibold"
+                        onBlur={(e) => {
+                          const v = e.target.value.trim();
+                          if (v !== s.title)
+                            updateSlideMutation.mutate({ slideId: s.id, patch: { title: v } });
+                        }}
+                      />
+                    ) : (
+                      <CardTitle className="text-base">
+                        {idx + 1}. {s.title || 'სლაიდი'}
+                      </CardTitle>
+                    )}
+                  </div>
                   {item.status === 'draft' && (
                     <button
                       type="button"
                       onClick={() => removeSlideMutation.mutate(s.id)}
                       disabled={removeSlideMutation.isPending}
-                      className="text-neutral-400 hover:text-red-500 disabled:opacity-50"
+                      className="mt-1 shrink-0 text-neutral-400 hover:text-red-500 disabled:opacity-50"
                       title="სლაიდის წაშლა"
                     >
                       <X size={16} />
                     </button>
                   )}
                 </CardHeader>
-                {s.description && (
-                  <CardContent>
-                    <p className="text-sm text-neutral-700">{s.description}</p>
-                  </CardContent>
-                )}
+                <CardContent>
+                  {item.status === 'draft' ? (
+                    <textarea
+                      rows={2}
+                      defaultValue={s.description}
+                      placeholder="აღწერა"
+                      className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                      onBlur={(e) => {
+                        const v = e.target.value;
+                        if (v !== s.description)
+                          updateSlideMutation.mutate({ slideId: s.id, patch: { description: v } });
+                      }}
+                    />
+                  ) : (
+                    s.description && <p className="text-sm text-neutral-700">{s.description}</p>
+                  )}
+                </CardContent>
               </Card>
             ))}
           </div>
