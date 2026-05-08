@@ -49,7 +49,12 @@ export default function BriefingDoneScreen() {
       const html = buildBriefingPdfHtml(briefing, project);
       const pdfName = generatePdfName(project.company_name || project.name, 'ინსტრუქტაჟი', new Date(briefing.dateTime), briefing.id);
       const userId = session.state.status === 'signedIn' ? session.state.session.user.id : undefined;
-      await generateAndSharePdf(html, pdfName, undefined, userId);
+      await generateAndSharePdf(html, pdfName, undefined, userId, {
+        title: 'ინსტრუქტაჟი',
+        author: briefing.inspectorName || undefined,
+        documentId: briefing.id,
+        subject: 'შრომის უსაფრთხოების ინსტრუქტაჟი',
+      });
       invalidatePdfUsage();
     } catch (e) {
       if (e instanceof PdfLimitReachedError) { setPaywallVisible(true); return; }

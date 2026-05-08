@@ -737,6 +737,7 @@ export const certificatesApi = {
     isSafeForUse: boolean | null;
     conclusionText: string | null;
     params?: Record<string, unknown>;
+    pdf_hash?: string;
   }): Promise<Certificate> => {
     const user = (await supabase.auth.getUser()).data.user;
     if (!user) throw new Error('Not signed in');
@@ -751,6 +752,7 @@ export const certificatesApi = {
           is_safe_for_use: args.isSafeForUse,
           conclusion_text: args.conclusionText,
           params: args.params ?? {},
+          ...(args.pdf_hash ? { pdf_hash: args.pdf_hash } : {}),
         })
         .select()
         .single(),
@@ -1212,7 +1214,7 @@ export const reportsApi = {
 
   update: async (
     id: string,
-    patch: Partial<Pick<Report, 'title' | 'status' | 'slides' | 'pdf_url'>>,
+    patch: Partial<Pick<Report, 'title' | 'status' | 'slides' | 'pdf_url' | 'pdf_hash'>>,
   ): Promise<Report> => {
     return throwIfError<Report>(
       await supabase.from('reports').update(patch).eq('id', id).select().single(),

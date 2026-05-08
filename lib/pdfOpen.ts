@@ -3,8 +3,10 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 import { checkAndIncrementPdfCount } from './pdfGate';
+import { injectSecurityMarkup, lockPdf, type PdfSecurityOptions } from './pdfSecurity';
 
 export { PdfLimitReachedError } from './pdfGate';
+export type { PdfSecurityOptions } from './pdfSecurity';
 
 /**
  * Generate a PDF from HTML and open/share it on the current platform.
@@ -27,6 +29,7 @@ export async function generateAndSharePdf(
   suggestedName?: string,
   keepCopy?: boolean,
   userId?: string,
+  securityOpts?: PdfSecurityOptions,
 ): Promise<string | null> {
   if (Platform.OS === 'web') {
     const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
@@ -43,11 +46,18 @@ export async function generateAndSharePdf(
   // Wrap expo-print in a hard timeout so a stuck WebView can't freeze
   // the UI forever. Observed hangs on iOS when the HTML contains complex
   // Paged Media CSS (e.g. @bottom-center with counter()).
-  const printPromise = Print.printToFileAsync({ html });
+  const htmlToRender = securityOpts ? injectSecurityMarkup(html, securityOpts) : html;
+  const printPromise = Print.printToFileAsync({ html: htmlToRender });
   const timeoutPromise = new Promise<never>((_, reject) =>
     setTimeout(() => reject(new Error('PDF generation timed out')), 30_000),
   );
   const { uri } = await Promise.race([printPromise, timeoutPromise]);
+
+  // Stamp pdf-lib metadata (title, author, subject, producer, dates).
+  // Overwrites the temp file in place before the pretty-name copy is made.
+  if (securityOpts) {
+    await lockPdf(uri, securityOpts);
+  }
 
   let shareUri = uri;
   let prettyUri: string | undefined;

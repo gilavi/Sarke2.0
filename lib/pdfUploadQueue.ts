@@ -49,12 +49,14 @@ export interface CertificateDbPayload {
   isSafeForUse: boolean | null;
   conclusionText: string | null;
   params?: Record<string, unknown>;
+  pdf_hash?: string;
 }
 
 export interface IncidentUpdateDbPayload {
   incidentId: string;
   pdf_url: string;
   status?: string;
+  pdf_hash?: string;
 }
 
 export interface PendingPdfUpload {
@@ -149,6 +151,7 @@ export async function flushPendingPdfUploads(): Promise<void> {
             isSafeForUse: p.isSafeForUse,
             conclusionText: p.conclusionText,
             params: p.params,
+            pdf_hash: p.pdf_hash,
           });
         }
       } else if (item.dbOp.kind === 'incident_update') {
@@ -156,6 +159,7 @@ export async function flushPendingPdfUploads(): Promise<void> {
         await incidentsApi.update(p.incidentId, {
           pdf_url: p.pdf_url,
           status: p.status as IncidentStatus | undefined,
+          ...(p.pdf_hash ? { pdf_hash: p.pdf_hash } : {}),
         });
       }
 

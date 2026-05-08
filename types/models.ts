@@ -318,6 +318,8 @@ export interface Certificate {
   /** Template parameters snapshotted at generation time. */
   params: CertificateParams;
   generated_at: string;
+  /** SHA-256 hash of the locked PDF. Set after generation for tamper detection. */
+  pdf_hash?: string | null;
 }
 
 /**
@@ -389,6 +391,8 @@ export interface Incident {
   status: IncidentStatus;
   /** Storage path in the `pdfs` bucket. null until generated. */
   pdf_url: string | null;
+  /** SHA-256 hash of the locked PDF. Set after generation for tamper detection. */
+  pdf_hash?: string | null;
   created_at: string;
   updated_at?: string;
 }
@@ -472,6 +476,62 @@ export interface Report {
   status: ReportStatus;
   slides: ReportSlide[];
   pdf_url: string | null;
+  /** SHA-256 hash of the locked PDF. Set after generation for tamper detection. */
+  pdf_hash?: string | null;
   created_at: string;
   updated_at?: string;
 }
+
+// ─── Orders ───────────────────────────────────────────────────────────────────
+
+export interface LaborSafetyOrderFormData {
+  orderNumber: string;
+  city: string;
+  orderDate: string;
+  companyName: string;
+  identificationCode: string;
+  legalAddress: string;
+  directorName: string;
+  facilityName: string;
+  specialistName: string;
+  specialistPersonalId: string;
+  certificateNumber: string;
+  certificateDate: string;
+}
+
+export interface AlcoholControlOrderFormData {
+  orderNumber: string;
+  city: string;
+  orderDate: string;
+  companyName: string;
+  identificationCode: string;
+  legalAddress: string;
+  directorName: string;
+  facilityName: string;
+  responsiblePersonName: string;
+  responsiblePersonPosition: string;
+  responsiblePersonPersonalId: string;
+}
+
+export type OrderFormData = LaborSafetyOrderFormData | AlcoholControlOrderFormData;
+
+export type OrderDocumentType = 'labor_safety_specialist' | 'alcohol_control';
+
+export interface Order {
+  id: string;
+  projectId: string;
+  userId: string;
+  documentType: OrderDocumentType;
+  formData: OrderFormData;
+  status: 'draft' | 'completed';
+  pdfUrl: string | null;
+  /** SHA-256 hash of the locked PDF. Set after generation for tamper detection. */
+  pdfHash?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const ORDER_DOCUMENT_TYPE_LABEL: Record<OrderDocumentType, string> = {
+  labor_safety_specialist: 'შრომის უსაფრთხოების სპეციალისტის დანიშვნა',
+  alcohol_control: 'ალკოჰოლური და ნარკოტიკული თრობის კონტროლი',
+};

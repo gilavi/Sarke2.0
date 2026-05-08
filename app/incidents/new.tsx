@@ -11,6 +11,7 @@ import { getCurrentLocation, reverseGeocode } from '../../utils/location';
 import type { PhotoLocation } from '../../utils/location';
 import { showPhotoLocationAlert } from '../../lib/photoLocationAlert';
 import { generateAndSharePdf, PdfLimitReachedError } from '../../lib/pdfOpen';
+import { hashPdf } from '../../lib/pdfSecurity';
 import { PaywallModal } from '../../components/PaywallModal';
 import { usePdfUsage, useInvalidatePdfUsage } from '../../lib/usePdfUsage';
 import { Image } from 'expo-image';
@@ -353,19 +354,27 @@ export default function NewIncident() {
       const pdfName = generatePdfName(project.company_name || project.name, docType, form.dateTime, savedId);
       const pdfPath = `incidents/${pdfName}`;
       const userId = session.state.status === 'signedIn' ? session.state.session.user.id : undefined;
-      const localUri = await generateAndSharePdf(html, pdfName, true, userId);
+      const localUri = await generateAndSharePdf(html, pdfName, true, userId, {
+        title: INCIDENT_TYPE_FULL_LABEL[form.type],
+        author: inspector.name || undefined,
+        documentId: savedId,
+        subject: 'შრომის უსაფრთხოების ინციდენტის ანგარიში',
+      });
+      const pdfHash = localUri ? await hashPdf(localUri).catch(() => undefined) : undefined;
       invalidatePdfUsage();
       if (localUri) {
 
-        toast.success('ოქმი შექმნილია');
-        router.replace(`/incidents/${savedId}` as any);
+        router.replace(`/incidents/${savedId}/success` as any);
 
         // Background: upload PDF + update incident row.
         // If this fails, queue for retry so the user isn't blocked.
         (async () => {
           try {
             await storageApi.uploadFromUri(STORAGE_BUCKETS.pdfs, pdfPath, localUri, 'application/pdf');
-            await incidentsApi.update(savedId, { pdf_url: pdfPath });
+            await incidentsApi.update(savedId, {
+              pdf_url: pdfPath,
+              ...(pdfHash ? { pdf_hash: pdfHash } : {}),
+            });
             // Clean up the temp copy after successful upload
             FileSystem.deleteAsync(localUri, { idempotent: true }).catch(() => {});
           } catch (e) {
@@ -378,15 +387,14 @@ export default function NewIncident() {
               contentType: 'application/pdf',
               dbOp: {
                 kind: 'incident_update',
-                payload: { incidentId: savedId, pdf_url: pdfPath },
+                payload: { incidentId: savedId, pdf_url: pdfPath, pdf_hash: pdfHash },
               },
             });
             toast.info('PDF შენახულია ლოკალურად; სინქრონიზაცია მოხდება ქსელზე დაბრუნებისას');
           }
         })();
       } else {
-        toast.success('ოქმი შექმნილია');
-        router.replace(`/incidents/${savedId}` as any);
+        router.replace(`/incidents/${savedId}/success` as any);
       }
     } catch (e) {
       if (e instanceof PdfLimitReachedError) { setPaywallVisible(true); return; }

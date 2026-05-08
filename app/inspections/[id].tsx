@@ -417,9 +417,17 @@ export default function InspectionResultScreen() {
         inspection.id,
       );
       const userId = session.state.status === 'signedIn' ? session.state.session.user.id : undefined;
+      const authorName = session.state.status === 'signedIn'
+        ? `${session.state.user?.first_name ?? ''} ${session.state.user?.last_name ?? ''}`.trim()
+        : '';
       // pdfOpen wraps expo-print in its own 30s timeout, but keep an outer
       // race here too as belt-and-braces against UI freezes.
-      const pdfPromise = generateAndSharePdf(html, filename, false, userId);
+      const pdfPromise = generateAndSharePdf(html, filename, false, userId, {
+        title: template.name,
+        author: authorName || undefined,
+        documentId: inspection.id,
+        subject: 'შრომის უსაფრთხოების შემოწმება',
+      });
       const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('PDF გენერირება ძალიან დიდხანს გრძელდება — სცადე თავიდან')), 30_000),
       );

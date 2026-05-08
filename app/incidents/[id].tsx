@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { generateAndSharePdf, PdfLimitReachedError } from '../../lib/pdfOpen';
+import { hashPdf } from '../../lib/pdfSecurity';
 import { PaywallModal } from '../../components/PaywallModal';
 import { usePdfUsage, useInvalidatePdfUsage } from '../../lib/usePdfUsage';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
@@ -169,7 +170,13 @@ export default function IncidentDetail() {
       const pdfName = generatePdfName(project.company_name || project.name, docType, new Date(incident.date_time), incident.id);
       const pdfPath = `incidents/${pdfName}`;
       const userId = session.state.status === 'signedIn' ? session.state.session.user.id : undefined;
-      const localUri = await generateAndSharePdf(html, pdfName, true, userId);
+      const localUri = await generateAndSharePdf(html, pdfName, true, userId, {
+        title: incidentTypeLabel,
+        author: inspector.name || undefined,
+        documentId: incident.id,
+        subject: 'შრომის უსაფრთხოების ინციდენტის ანგარიში',
+      });
+      const pdfHash = localUri ? await hashPdf(localUri).catch(() => undefined) : undefined;
       invalidatePdfUsage();
       if (localUri) {
 
@@ -184,6 +191,7 @@ export default function IncidentDetail() {
             const updated = await incidentsApi.update(incident.id, {
               pdf_url: pdfPath,
               status: 'completed',
+              ...(pdfHash ? { pdf_hash: pdfHash } : {}),
             });
             setIncident(updated);
             // Clean up the temp copy after successful upload
@@ -198,7 +206,7 @@ export default function IncidentDetail() {
               contentType: 'application/pdf',
               dbOp: {
                 kind: 'incident_update',
-                payload: { incidentId: incident.id, pdf_url: pdfPath, status: 'completed' },
+                payload: { incidentId: incident.id, pdf_url: pdfPath, status: 'completed', pdf_hash: pdfHash },
               },
             });
             toast.info('PDF შენახულია ლოკალურად; სინქრონიზაცია მოხდება ქსელზე დაბრუნებისას');

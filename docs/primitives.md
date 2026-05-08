@@ -95,6 +95,21 @@ Shared step-flow chrome lives in [`components/wizard/`](../components/wizard/). 
 
 **Don't** define a local `StepBar` or `StepSectionLabel` inline in a screen file — that's exactly the duplication pattern that was cleaned up (two copy-pasted `StepBar` + `slStyles` blocks in bobcat and excavator). **Don't** hardcode `'#10B981'` or `'#1D9E75'` for inspection green — use `theme.colors.semantic.success` and `theme.colors.semantic.successSoft`.
 
+## PDF security / integrity
+
+One file: [lib/pdfSecurity.ts](../lib/pdfSecurity.ts). Exports `injectSecurityMarkup`, `lockPdf`, `hashPdf`, `verifyPdf`, and `PdfSecurityOptions`.
+
+Pass `PdfSecurityOptions` as the 5th argument to `generateAndSharePdf` (from `lib/pdfOpen.ts`). The function will automatically inject the security CSS + footer watermark into the HTML before rendering and stamp pdf-lib metadata into the output file. Callers that upload the PDF to Supabase should also call `hashPdf(localUri)` on the returned URI and store the result in the corresponding DB table's `pdf_hash` column for tamper detection.
+
+**Don't** call `pdf-lib`'s `PDFDocument` directly outside this file — it belongs in one place. **Don't** call `expo-crypto`'s `digestStringAsync` directly for PDF hashing — use `hashPdf`.
+
+| Export | Purpose |
+|---|---|
+| `injectSecurityMarkup(html, opts)` | Adds meta tags, `user-select:none` CSS, and fixed-position footer watermark to HTML before `printToFileAsync` |
+| `lockPdf(uri, opts)` | Stamps pdf-lib metadata (title, author, subject, producer, dates) into the PDF at `uri` in place |
+| `hashPdf(uri)` | SHA-256 digest of the PDF Base64 — deterministic for the same bytes |
+| `verifyPdf(uri, storedHash)` | Compares current hash to a previously stored value; returns `false` if the file was modified |
+
 ## PDF usage gate
 
 One file: [lib/pdfGate.ts](../lib/pdfGate.ts). Exports `checkAndIncrementPdfCount` and `PdfLimitReachedError`.
@@ -117,6 +132,20 @@ One file: [`components/RecordTypePill.tsx`](../components/RecordTypePill.tsx). S
 | `RecordTypePill` | Label component. Props: `recordType` (`'inspection' \| 'incident' \| 'briefing' \| 'report'`), optional `label` override. Renders a small muted overline text (e.g. "შემოწმება", "ინციდენტი") above the item title so users can distinguish document types at a glance. |
 
 Always shows the top-level document type — never the inspection subtype (that's already visible from the avatar emoji and template name). Don't add inline type labels elsewhere; use this component.
+
+## Order (ბრძანება) PDF builder
+
+One file: [`lib/orderPdf.ts`](../lib/orderPdf.ts). Exports `buildLaborSafetyOrderHtml(args: OrderPdfArgs): string`.
+
+Generates a plain, document-style HTML string (A4 / serif / black on white) matching the official Georgian template for appointing a labor safety specialist. The legal basis bullets and all 7 duty sub-points in §2 are **static** — only the form data fields injected via `OrderPdfArgs.formData` vary.
+
+**Don't** copy the `escHtml` helper or the `fmtDate` helper out of this file — if you need them for a different order type, add a shared module. **Don't** style this HTML with colors or cards; keep it document-like to match the original template.
+
+Usage (mirrors `buildIncidentPdfHtml` pattern):
+```ts
+const html = buildLaborSafetyOrderHtml({ formData, projectName });
+const localUri = await generateAndSharePdf(html, pdfName, true, userId);
+```
 
 ## Adding a new primitive
 

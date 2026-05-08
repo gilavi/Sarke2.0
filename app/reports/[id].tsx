@@ -88,7 +88,12 @@ export default function ReportDetailScreen() {
         report.id,
       );
       const userId = session.state.status === 'signedIn' ? session.state.session.user.id : undefined;
-      await generateAndSharePdf(html, pdfName, undefined, userId);
+      await generateAndSharePdf(html, pdfName, undefined, userId, {
+        title: report.title,
+        author: inspectorName || undefined,
+        documentId: report.id,
+        subject: 'შრომის უსაფრთხოების რეპორტი',
+      });
       invalidatePdfUsage();
     } catch (e) {
       if (e instanceof PdfLimitReachedError) { setPaywallVisible(true); return; }

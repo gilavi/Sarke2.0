@@ -1,7 +1,8 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { AnimatedSuccessIcon, CelebrationBurst } from '../../../components/animations';
+import { haptic } from '../../../lib/haptics';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { Button } from '../../../components/ui';
@@ -36,6 +37,11 @@ export default function ReportSuccessScreen() {
   const [paywallVisible, setPaywallVisible] = useState(false);
   const { data: pdfUsage } = usePdfUsage();
   const invalidatePdfUsage = useInvalidatePdfUsage();
+
+  useEffect(() => {
+    const t = setTimeout(() => haptic.inspectionComplete(), 400);
+    return () => clearTimeout(t);
+  }, []);
 
   const inspectorName = useMemo(() => {
     if (session.state.status !== 'signedIn') return '';
@@ -72,7 +78,12 @@ export default function ReportSuccessScreen() {
         report.id,
       );
       const userId = session.state.status === 'signedIn' ? session.state.session.user.id : undefined;
-      await generateAndSharePdf(html, pdfName, undefined, userId);
+      await generateAndSharePdf(html, pdfName, undefined, userId, {
+        title: report.title,
+        author: inspectorName || undefined,
+        documentId: report.id,
+        subject: 'შრომის უსაფრთხოების რეპორტი',
+      });
       invalidatePdfUsage();
     } catch (e) {
       if (e instanceof PdfLimitReachedError) { setPaywallVisible(true); return; }
@@ -92,13 +103,12 @@ export default function ReportSuccessScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <Stack.Screen options={{ headerShown: false }} />
+      <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
+      <CelebrationBurst />
 
       <View style={[styles.body, { paddingTop: insets.top + 40 }]}>
-        <View style={styles.checkCircle}>
-          <Ionicons name="checkmark" size={56} color={theme.colors.white} />
-        </View>
-        <Text style={styles.title}>რეპორტი მზადაა ✓</Text>
+        <AnimatedSuccessIcon />
+        <Text style={styles.title}>რეპორტი მზადაა!</Text>
         <Text style={styles.subtitle}>
           {report.slides.length} სლაიდი · {report.title}
         </Text>
@@ -129,15 +139,6 @@ function makeStyles(theme: any) {
   return StyleSheet.create({
     centered: { alignItems: 'center', justifyContent: 'center' },
     body: { flex: 1, alignItems: 'center', paddingHorizontal: 24, gap: 16 },
-    checkCircle: {
-      width: 96,
-      height: 96,
-      borderRadius: 48,
-      backgroundColor: theme.colors.accent,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: 12,
-    },
     title: {
       fontSize: 22,
       fontWeight: '800',

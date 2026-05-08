@@ -403,7 +403,12 @@ export default function BobcatInspectionScreen() {
         inspection.id,
       );
       const userId = session.state.status === 'signedIn' ? session.state.session.user.id : undefined;
-      await generateAndSharePdf(html, pdfName, undefined, userId);
+      await generateAndSharePdf(html, pdfName, undefined, userId, {
+        title: isLargeLoader ? 'დიდი ციცხვიანი' : 'ბობკატის შემოწმება',
+        author: inspection.inspectorName || undefined,
+        documentId: inspection.id,
+        subject: 'შრომის უსაფრთხოების შემოწმება',
+      });
       invalidatePdfUsage();
     } catch (e) {
       if (e instanceof PdfLimitReachedError) { setPaywallVisible(true); return; }
