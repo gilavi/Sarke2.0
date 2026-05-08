@@ -105,7 +105,7 @@ export default function ProjectReportsList() {
                         ]}
                       >
                         <Ionicons
-                          name={isCompleted ? 'document-text' : 'pencil'}
+                          name={isCompleted ? 'document-text' : 'hourglass-outline'}
                           size={14}
                           color={isCompleted ? theme.colors.primary[700] : '#92400E'}
                         />

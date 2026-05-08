@@ -86,7 +86,7 @@ export default function ProjectBriefingsList() {
                         ]}
                       >
                         <Ionicons
-                          name={isCompleted ? 'shield-checkmark' : 'pencil'}
+                          name={isCompleted ? 'shield-checkmark' : 'hourglass-outline'}
                           size={14}
                           color={isCompleted ? theme.colors.primary[700] : '#92400E'}
                         />

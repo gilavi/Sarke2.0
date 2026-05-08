@@ -108,6 +108,16 @@ Usage pattern in any screen that calls `generateAndSharePdf`:
 
 **Don't** call `supabase.rpc('increment_pdf_count', ...)` from the client without going through `generateAndSharePdf`; the check is atomic — it only increments if the user is allowed, so a direct call would consume a use without generating anything.
 
+## Record type pill / type badge
+
+One file: [`components/RecordTypePill.tsx`](../components/RecordTypePill.tsx). Shows a small colored pill (icon + Georgian label) identifying an item's record type. Use it in any list row that could contain mixed record types, or anywhere an inspection subtype needs a text label.
+
+| Export | Purpose |
+|---|---|
+| `RecordTypePill` | Label component. Props: `recordType` (`'inspection' \| 'incident' \| 'briefing' \| 'report'`), optional `label` override. Renders a small muted overline text (e.g. "შემოწმება", "ინციდენტი") above the item title so users can distinguish document types at a glance. |
+
+Always shows the top-level document type — never the inspection subtype (that's already visible from the avatar emoji and template name). Don't add inline type labels elsewhere; use this component.
+
 ## Adding a new primitive
 
 If you're about to add a util in `lib/` or a wrapper in `components/`:

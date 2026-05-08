@@ -296,7 +296,7 @@ export default function IncidentDetail() {
           </Text>
           {incident.status === 'draft' && (
             <View style={s.draftChip}>
-              <Ionicons name="pencil" size={12} color="#92400E" />
+              <Ionicons name="hourglass-outline" size={12} color="#92400E" />
               <Text style={s.draftChipText}>დრაფტი</Text>
             </View>
           )}

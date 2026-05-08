@@ -54,6 +54,7 @@ import { bobcatApi } from '../../lib/bobcatService';
 import { excavatorApi } from '../../lib/excavatorService';
 import { generalEquipmentApi } from '../../lib/generalEquipmentService';
 import { InspectionTypeAvatar } from '../../components/InspectionTypeAvatar';
+import { RecordTypePill } from '../../components/RecordTypePill';
 import { TemplatePickerModal } from '../../components/TemplatePickerModal';
 
 const staticStyles = StyleSheet.create({
@@ -274,7 +275,7 @@ export default function HomeScreen() {
                   style={styles.resumeCard}
                 >
                     <View style={styles.resumeIcon}>
-                      <Ionicons name="pencil" size={16} color={theme.colors.warn} />
+                      <Ionicons name="hourglass-outline" size={16} color={theme.colors.warn} />
                     </View>
                     <View style={staticStyles.flex}>
                       <Text style={styles.resumeEyebrow}>{t('home.resumeDraft')}</Text>
@@ -510,6 +511,7 @@ export default function HomeScreen() {
                             style={{ marginRight: 14 }}
                           />
                           <View style={staticStyles.flex}>
+                            <RecordTypePill recordType="inspection" />
                             <Text style={styles.recentTitle} numberOfLines={1}>
                               {templateName(q.template_id)}
                             </Text>

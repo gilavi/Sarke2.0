@@ -34,7 +34,7 @@ export const STATUS_BADGE_ICON: Record<
   import('react-native').ViewStyle extends never ? string : string
 > = {
   completed: 'checkmark',
-  draft:     'pencil',
+  draft:     'hourglass-outline',
   overdue:   'alert',
   due_today: 'time',
   due_soon:  'time',
