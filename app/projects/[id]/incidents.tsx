@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -13,7 +13,7 @@ import { useTheme } from '../../../lib/theme';
 import { formatShortDateTime } from '../../../lib/formatDate';
 import { useProject, useIncidentsByProject } from '../../../lib/apiHooks';
 import { INCIDENT_TYPE_LABEL } from '../../../types/models';
-import type { Incident, IncidentType } from '../../../types/models';
+import type { Incident, IncidentStatus, IncidentType } from '../../../types/models';
 
 const INCIDENT_BADGE_COLORS: Record<
   IncidentType,
@@ -44,10 +44,25 @@ export default function ProjectIncidentsList() {
 
   const { data: project } = useProject(id);
   const { data: items = [], isLoading: loading } = useIncidentsByProject(id);
+  const [filter, setFilter] = useState<'all' | IncidentStatus>('all');
+
+  const counts = useMemo(
+    () => ({
+      all: items.length,
+      draft: items.filter(i => i.status === 'draft').length,
+      completed: items.filter(i => i.status === 'completed').length,
+    }),
+    [items],
+  );
+
+  const filtered = useMemo(
+    () => (filter === 'all' ? items : items.filter(i => i.status === filter)),
+    [items, filter],
+  );
 
   const grouped = useMemo(
-    () => groupByDateDesc(items, inc => inc.date_time),
-    [items],
+    () => groupByDateDesc(filtered, inc => inc.date_time),
+    [filtered],
   );
 
   return (
@@ -65,11 +80,17 @@ export default function ProjectIncidentsList() {
           ) : null}
         </View>
 
+        <View style={styles.filterRow}>
+          <FilterChip label={`ყველა · ${counts.all}`} active={filter === 'all'} onPress={() => setFilter('all')} theme={theme} />
+          <FilterChip label={`დრაფტი · ${counts.draft}`} active={filter === 'draft'} onPress={() => setFilter('draft')} theme={theme} />
+          <FilterChip label={`დასრულებული · ${counts.completed}`} active={filter === 'completed'} onPress={() => setFilter('completed')} theme={theme} />
+        </View>
+
         {loading ? (
           <View style={styles.centered}>
             <ActivityIndicator color={theme.colors.accent} />
           </View>
-        ) : items.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <View style={styles.emptyState}>
             <Ionicons name="document-text-outline" size={40} color={theme.colors.borderStrong} />
             <Text style={styles.emptyStateText}>ჩანაწერები არ არის</Text>
@@ -81,6 +102,7 @@ export default function ProjectIncidentsList() {
               <View style={{ gap: 10 }}>
                 {group.items.map(inc => {
                   const badge = INCIDENT_BADGE_COLORS[inc.type] ?? INCIDENT_BADGE_COLORS.minor;
+                  const isCompleted = inc.status === 'completed';
                   return (
                     <Pressable
                       key={inc.id}
@@ -89,15 +111,33 @@ export default function ProjectIncidentsList() {
                     >
                       <View
                         style={[
-                          styles.badge,
-                          { backgroundColor: badge.bg, borderColor: badge.border },
+                          styles.statusIcon,
+                          {
+                            backgroundColor: isCompleted
+                              ? theme.colors.semantic.successSoft
+                              : theme.colors.semantic.warningSoft,
+                          },
                         ]}
                       >
-                        <Text style={[styles.badgeText, { color: badge.text }]}>
-                          {INCIDENT_TYPE_LABEL[inc.type] ?? inc.type}
-                        </Text>
+                        <Ionicons
+                          name={isCompleted ? 'document-text' : 'hourglass-outline'}
+                          size={14}
+                          color={isCompleted ? theme.colors.primary[700] : '#92400E'}
+                        />
                       </View>
                       <View style={{ flex: 1 }}>
+                        <View style={styles.rowTitleRow}>
+                          <View
+                            style={[
+                              styles.badge,
+                              { backgroundColor: badge.bg, borderColor: badge.border },
+                            ]}
+                          >
+                            <Text style={[styles.badgeText, { color: badge.text }]}>
+                              {INCIDENT_TYPE_LABEL[inc.type] ?? inc.type}
+                            </Text>
+                          </View>
+                        </View>
                         <Text style={styles.listRowTitle} numberOfLines={1}>
                           {inc.description || inc.location || '—'}
                         </Text>
@@ -115,6 +155,37 @@ export default function ProjectIncidentsList() {
         )}
       </ScrollView>
     </View>
+  );
+}
+
+function FilterChip({
+  label,
+  active,
+  onPress,
+  theme,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+  theme: any;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        {
+          paddingHorizontal: 12,
+          paddingVertical: 12,
+          borderRadius: 999,
+          backgroundColor: active ? theme.colors.accent : theme.colors.subtleSurface,
+        },
+        pressed && { opacity: 0.7 },
+      ]}
+    >
+      <Text style={{ fontSize: 12, fontWeight: '600', color: active ? theme.colors.white : theme.colors.inkSoft }}>
+        {label}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -141,8 +212,9 @@ function groupByDateDesc<T>(
 function makeStyles(theme: any) {
   return StyleSheet.create({
     pageHeader: {
-      marginBottom: 24,
+      marginBottom: 16,
     },
+    filterRow: { flexDirection: 'row', gap: 8, marginBottom: 12, flexWrap: 'wrap' },
     pageTitle: {
       fontSize: 26,
       fontWeight: '700',
@@ -165,6 +237,13 @@ function makeStyles(theme: any) {
       color: theme.colors.inkFaint,
       fontWeight: '500',
     },
+    statusIcon: {
+      width: 32,
+      height: 32,
+      borderRadius: 9,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
     listRow: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -178,6 +257,7 @@ function makeStyles(theme: any) {
       shadowRadius: 4,
       elevation: 1,
     },
+    rowTitleRow: { flexDirection: 'row', marginBottom: 3 },
     listRowTitle: { fontSize: 14, fontWeight: '600', color: theme.colors.ink },
     listRowSubtitle: { fontSize: 12, color: theme.colors.inkSoft, marginTop: 2 },
     badge: {

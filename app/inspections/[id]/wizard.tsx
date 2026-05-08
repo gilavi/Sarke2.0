@@ -1568,7 +1568,6 @@ const GridRowStep = memo(function GridRowStep({
   // Scaffold (non-harness): full-height flex layout with big status buttons
   if (!isHarness) {
     const statusCols = cols.filter(c => c !== 'კომენტარი');
-    const hasComment = cols.includes('კომენტარი');
     // Determine which status col is selected (exclusive)
     const selectedStatus = statusCols.find(c => values[c] !== undefined) ?? null;
 
@@ -1613,7 +1612,7 @@ const GridRowStep = memo(function GridRowStep({
               </ScrollView>
             ) : null}
 
-            {hasComment && showCommentField ? (
+            {showCommentField ? (
               <FloatingLabelInput
                 label="კომენტარი"
                 value={commentValue}
@@ -1625,7 +1624,7 @@ const GridRowStep = memo(function GridRowStep({
               />
             ) : null}
 
-            {!hasPhotos || (hasComment && !showCommentField) ? (
+            {!hasPhotos || !showCommentField ? (
               <View style={styles.chipRow}>
                 {!hasPhotos ? (
                   <Pressable onPress={onPickPhoto} style={styles.assistChip} {...a11y('ფოტოს დამატება', 'შეეხეთ ახალი ფოტოს ასატვირთად', 'button')}>
@@ -1633,7 +1632,7 @@ const GridRowStep = memo(function GridRowStep({
                     <Text style={styles.assistChipText}>ფოტო</Text>
                   </Pressable>
                 ) : null}
-                {hasComment && !showCommentField ? (
+                {!showCommentField ? (
                   <Pressable
                     onPress={() => setCommentOpen(true)}
                     style={styles.assistChip}

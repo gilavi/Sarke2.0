@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Animated,
   Dimensions,
@@ -76,9 +77,10 @@ import { INCIDENT_COLORS, STATUS_DOT_COLOR } from '../../lib/statusColors';
 import { toErrorMessage } from '../../lib/logError';
 import { friendlyError } from '../../lib/errorMap';
 import { formatShortDateTime } from '../../lib/formatDate';
-import type { Briefing, CrewMember, Incident, IncidentType, Project, ProjectFile, Questionnaire, Report, Template } from '../../types/models';
-import { INCIDENT_TYPE_LABEL } from '../../types/models';
+import type { Briefing, CrewMember, Incident, IncidentType, Order, Project, ProjectFile, Questionnaire, Report, Template } from '../../types/models';
+import { INCIDENT_TYPE_LABEL, ORDER_DOCUMENT_TYPE_LABEL } from '../../types/models';
 import { briefingsApi } from '../../lib/briefingsApi';
+import { ordersApi } from '../../lib/ordersApi';
 import { RoleSlotList } from '../../components/RoleSlotList';
 import { ProjectAvatar } from '../../components/ProjectAvatar';
 import { pickProjectLogo } from '../../lib/projectLogo';
@@ -140,11 +142,17 @@ export default function ProjectDetail() {
   const incidentsQ = useIncidentsByProject(id);
   const briefingsQ = useBriefingsByProject(id);
   const reportsQ = useReportsByProject(id);
+  const ordersQ = useQuery<Order[]>({
+    queryKey: ['orders', 'byProject', id],
+    queryFn: () => id ? ordersApi.listByProject(id) : Promise.resolve([]),
+    enabled: !!id,
+  });
 
   // Read-only data consumed directly from the query cache (no local state needed)
   const incidents = incidentsQ.data ?? [];
   const briefings = briefingsQ.data ?? [];
   const reports = reportsQ.data ?? [];
+  const orders = ordersQ.data ?? [];
 
   useEffect(() => {
     if (projectQ.data !== undefined) setProject(projectQ.data);
@@ -1030,19 +1038,56 @@ export default function ProjectDetail() {
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <Ionicons name="cloud-upload-outline" size={16} color={theme.colors.inkSoft} />
                 <Text style={styles.sectionTitle}>დოკუმენტები</Text>
-                <Text style={styles.sectionCount}>{files.length}</Text>
+                <Text style={styles.sectionCount}>{files.length + orders.length}</Text>
               </View>
-              <Pressable onPress={uploadFile} disabled={filesBusy} hitSlop={16}>
-                <Text style={[styles.sectionAddLink, filesBusy && { opacity: 0.5 }]}>
-                  {filesBusy ? 'იტვირთება…' : '+ ატვირთვა'}
-                </Text>
-              </Pressable>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <Pressable
+                  onPress={() => router.push(`/orders/new?projectId=${id}` as any)}
+                  hitSlop={16}
+                  {...a11y('ბრძანების შექმნა', 'ახალი ბრძანების შექმნა', 'button')}
+                >
+                  <Text style={styles.sectionAddLink}>+ ბრძანება</Text>
+                </Pressable>
+                <Pressable onPress={uploadFile} disabled={filesBusy} hitSlop={16}>
+                  <Text style={[styles.sectionAddLink, filesBusy && { opacity: 0.5 }]}>
+                    {filesBusy ? 'იტვირთება…' : '+ ატვირთვა'}
+                  </Text>
+                </Pressable>
+              </View>
             </View>
 
-            {files.length === 0 ? (
-              <SectionEmptyState type="documents" />
-            ) : (
+            {/* Generated orders (ბრძანებები) */}
+            {orders.length > 0 ? (
               <View style={{ gap: 8, marginTop: 10 }}>
+                {orders.map(order => (
+                  <View key={order.id} style={styles.listRow}>
+                    <View style={{
+                      width: 32, height: 32, borderRadius: 8,
+                      backgroundColor: theme.colors.accentSoft,
+                      alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <Ionicons name="document-text-outline" size={17} color={theme.colors.accent} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.listRowTitle} numberOfLines={1}>
+                        {ORDER_DOCUMENT_TYPE_LABEL[order.documentType] ?? order.documentType}
+                      </Text>
+                      <Text style={styles.listRowSubtitle}>
+                        {formatShortDateTime(order.createdAt)}
+                        {order.status === 'draft' ? ' · მონახაზი' : ''}
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color={theme.colors.borderStrong} />
+                  </View>
+                ))}
+              </View>
+            ) : null}
+
+            {/* Uploaded files */}
+            {files.length === 0 && orders.length === 0 ? (
+              <SectionEmptyState type="documents" />
+            ) : files.length === 0 ? null : (
+              <View style={{ gap: 8, marginTop: orders.length > 0 ? 8 : 10 }}>
                 {filesPreview.map(f => (
                   <Swipeable
                     key={f.id}

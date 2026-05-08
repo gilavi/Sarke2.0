@@ -295,7 +295,7 @@ function RegisterForm({
 
   return (
     <View style={{ gap: 12 }}>
-      <View style={{ flexDirection: 'row', gap: 10 }}>
+      <View style={{ flexDirection: 'row', gap: 12 }}>
         <View style={{ flex: 1 }}>
           <FloatingLabelInput label={t('auth.firstName')} value={firstName} onChangeText={setFirstName} />
         </View>
