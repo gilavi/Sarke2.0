@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AuthLayout } from './auth/AuthLayout';
@@ -82,21 +85,19 @@ export default function Subscribe() {
         sessionToken = session.access_token;
       }
 
-      const { data, error } = await supabase.functions.invoke<{
-        order_id: string;
-        redirect_url: string;
-        error?: string;
-      }>('create-bog-order', {
-        body: { success_url: SUCCESS_URL, fail_url: FAIL_URL },
-        headers: { Authorization: `Bearer ${sessionToken}` },
+      // Use raw fetch instead of supabase.functions.invoke to guarantee the
+      // Authorization header is not overwritten by client internals.
+      const fnRes = await fetch(`${SUPABASE_URL}/functions/v1/create-bog-order`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${sessionToken}`,
+          'apikey': SUPABASE_ANON_KEY,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ success_url: SUCCESS_URL, fail_url: FAIL_URL }),
       });
-      if (error) {
-        // Extract the actual body from FunctionsHttpError for better diagnostics
-        const body = await (error as unknown as { context?: Response }).context
-          ?.json()
-          .catch(() => null);
-        throw new Error(body ? JSON.stringify(body) : error.message);
-      }
+      const data = await fnRes.json() as { order_id?: string; redirect_url?: string; error?: string };
+      if (!fnRes.ok) throw new Error(JSON.stringify(data));
       if (!data?.redirect_url) throw new Error('No redirect URL');
 
       setPayStatus('redirecting');
