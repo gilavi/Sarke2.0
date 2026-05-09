@@ -62,12 +62,33 @@ export default function Subscribe() {
     setPayStatus('creating');
     setPayError(null);
     try {
+      // Re-establish the session right before payment. The token set via URL
+      // params can be silently cleared by a background auto-refresh failure,
+      // causing functions.invoke to fall back to the anon key (now
+      // sb_publishable_ format, not a JWT) and fail with INVALID_JWT_FORMAT.
+      const at = params.get('at');
+      const rt = params.get('rt');
+      let sessionToken: string;
+      if (at && rt) {
+        const { data: { session }, error: sessErr } = await supabase.auth.setSession({
+          access_token: at,
+          refresh_token: rt,
+        });
+        if (sessErr || !session) throw new Error(`სესია ვადაგასულია — გთხოვთ, სცადოთ ხელახლა. (${sessErr?.message ?? 'no session'})`);
+        sessionToken = session.access_token;
+      } else {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) throw new Error('გთხოვთ, შეხვიდეთ სისტემაში.');
+        sessionToken = session.access_token;
+      }
+
       const { data, error } = await supabase.functions.invoke<{
         order_id: string;
         redirect_url: string;
         error?: string;
       }>('create-bog-order', {
         body: { success_url: SUCCESS_URL, fail_url: FAIL_URL },
+        headers: { Authorization: `Bearer ${sessionToken}` },
       });
       if (error) {
         // Extract the actual body from FunctionsHttpError for better diagnostics
