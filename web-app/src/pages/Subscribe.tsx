@@ -97,7 +97,7 @@ export default function Subscribe() {
         body: JSON.stringify({ success_url: SUCCESS_URL, fail_url: FAIL_URL }),
       });
       const data = await fnRes.json() as { order_id?: string; redirect_url?: string; error?: string };
-      if (!fnRes.ok) throw new Error(JSON.stringify(data));
+      if (!fnRes.ok) throw new Error(data.error ?? `HTTP ${fnRes.status}`);
       if (!data?.redirect_url) throw new Error('No redirect URL');
 
       setPayStatus('redirecting');
