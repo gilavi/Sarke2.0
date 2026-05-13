@@ -30,7 +30,7 @@ export default function Safety3DScreen() {
       />
       <View style={styles.container}>
         <WebView
-          source={{ uri: 'https://gilavi.github.io/Sarke2.0/#/safety' }}
+          source={{ uri: 'https://gilavi.github.io/Sarke2.0/app/#/safety-standalone' }}
           style={styles.webview}
           javaScriptEnabled
           domStorageEnabled

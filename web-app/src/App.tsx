@@ -239,6 +239,14 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/safety-standalone"
+              element={
+                <Suspense fallback={<PageFallback />}>
+                  <SafetyGuidePage standalone />
+                </Suspense>
+              }
+            />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </AuthProvider>
