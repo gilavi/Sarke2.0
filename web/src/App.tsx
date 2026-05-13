@@ -46,8 +46,8 @@ export function App() {
     return (
       <Suspense
         fallback={
-          <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div className="spinner" />
+          <div style={{ height: '100vh', width: '100vw', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#3d6875' }}>
+            <div className="sg-spinner" />
           </div>
         }
       >

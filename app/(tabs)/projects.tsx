@@ -61,6 +61,7 @@ export default function ProjectsScreen() {
   const [creating, setCreating] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'grid' | 'map'>('list');
   const openSwipeRefs = useRef(new Map<string, { close: () => void }>());
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     AsyncStorage.getItem('projects_view_pref').then(v => {
@@ -287,6 +288,7 @@ export default function ProjectsScreen() {
         onPress={() => setCreating(true)}
         a11yLabel="ახალი პროექტი"
         a11yHint="შეეხეთ ახალი პროექტის შესაქმნელად"
+        style={{ bottom: insets.bottom + 56 + 16 }}
       />
 
       <CreateProjectSheet
