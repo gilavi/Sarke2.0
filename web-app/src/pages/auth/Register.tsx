@@ -7,6 +7,26 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AuthLayout } from './AuthLayout';
 
+const getPasswordStrength = (password: string): { score: number; label: string; color: string } => {
+  let score = 0;
+  if (password.length >= 8) score++;
+  if (password.length >= 12) score++;
+  if (/[A-Z]/.test(password)) score++;
+  if (/[a-z]/.test(password)) score++;
+  if (/[0-9]/.test(password)) score++;
+  if (/[^A-Za-z0-9]/.test(password)) score++;
+
+  const levels = [
+    { label: 'Too weak', color: 'text-red-500' },
+    { label: 'Weak', color: 'text-orange-500' },
+    { label: 'Fair', color: 'text-yellow-500' },
+    { label: 'Good', color: 'text-blue-500' },
+    { label: 'Strong', color: 'text-green-500' },
+    { label: 'Very strong', color: 'text-green-600' },
+  ];
+  return { score, ...levels[score] };
+};
+
 export default function Register() {
   const { signUp } = useAuth();
   const navigate = useNavigate();
@@ -90,6 +110,22 @@ export default function Register() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
+              {password && (() => {
+                const strength = getPasswordStrength(password);
+                return (
+                  <div className="flex items-center gap-2 text-xs">
+                    <div className="flex gap-0.5">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <div
+                          key={i}
+                          className={`h-1.5 w-6 rounded-full ${i < strength.score ? strength.color.replace('text-', 'bg-') : 'bg-neutral-200'}`}
+                        />
+                      ))}
+                    </div>
+                    <span className={strength.color}>{strength.label}</span>
+                  </div>
+                );
+              })()}
             </div>
             {error ? <p className="text-sm text-danger">{error}</p> : null}
             {info ? <p className="text-sm text-brand-600">{info}</p> : null}

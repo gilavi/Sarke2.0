@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Plus, List, Map } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { listProjects } from '@/lib/data/projects';
-import ProjectMap from '@/components/ProjectMap';
+
+const ProjectMap = lazy(() => import('@/components/ProjectMap'));
 
 export default function Projects() {
   const { data: items, error } = useQuery({
@@ -70,16 +71,18 @@ export default function Projects() {
       {!items && !error && <p className="text-sm text-neutral-500">იტვირთება…</p>}
 
       {items && view === 'map' && (
-        <ProjectMap
-          pins={pinsWithGPS.map((p) => ({
-            id: p.id,
-            name: p.name,
-            address: p.address,
-            latitude: p.latitude,
-            longitude: p.longitude,
-          }))}
-          className="h-[60vh] w-full rounded-xl"
-        />
+        <Suspense fallback={<div className="h-[300px] flex items-center justify-center text-muted-foreground">Loading map...</div>}>
+          <ProjectMap
+            pins={pinsWithGPS.map((p) => ({
+              id: p.id,
+              name: p.name,
+              address: p.address,
+              latitude: p.latitude,
+              longitude: p.longitude,
+            }))}
+            className="h-[60vh] w-full rounded-xl"
+          />
+        </Suspense>
       )}
 
       {items && view === 'list' && items.length === 0 && (

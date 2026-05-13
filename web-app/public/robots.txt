@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /app/
+Disallow: /app/#/login
+Disallow: /app/#/register
+
+Sitemap: https://gilavi.github.io/Sarke2.0/sitemap.xml

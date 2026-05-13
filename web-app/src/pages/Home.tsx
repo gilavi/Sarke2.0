@@ -1,5 +1,6 @@
 import { useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { ClipboardCheck, AlertTriangle, Megaphone, FileText, FolderOpen, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -32,16 +33,16 @@ export default function Home() {
   const { data: incidents } = useQuery({ queryKey: ['incidents'], queryFn: () => listIncidents() });
   const { data: briefings } = useQuery({ queryKey: ['briefings'], queryFn: () => listBriefings() });
 
-  const allInspectionsUnsliced = [
+  const allInspectionsUnsliced = useMemo(() => [
     ...(inspections ?? []).map((i) => ({ id: i.id, label: i.harness_name || 'შემოწმების აქტი', date: i.created_at ?? '', status: i.status, href: `/inspections/${i.id}` })),
     ...(bobcats ?? []).map((i) => ({ id: i.id, label: i.equipmentModel || 'ციცხვიანი', date: i.createdAt, status: i.status, href: `/bobcat/${i.id}` })),
     ...(generalEq ?? []).map((i) => ({ id: i.id, label: i.objectName || 'ტექ. აღჭურვილობა', date: i.createdAt, status: i.status, href: `/general-equipment/${i.id}` })),
     ...(excavators ?? []).map((i) => ({ id: i.id, label: i.serialNumber || 'ექსკავატორი', date: i.createdAt, status: i.status, href: `/excavator/${i.id}` })),
-  ].sort((a, b) => b.date.localeCompare(a.date));
+  ].sort((a, b) => b.date.localeCompare(a.date)), [inspections, bobcats, generalEq, excavators]);
 
-  const allInspections = allInspectionsUnsliced.slice(0, 5);
-  const draftCount = allInspectionsUnsliced.filter((i) => i.status === 'draft').length;
-  const totalInspections = (inspections?.length ?? 0) + (bobcats?.length ?? 0) + (generalEq?.length ?? 0) + (excavators?.length ?? 0);
+  const allInspections = useMemo(() => allInspectionsUnsliced.slice(0, 5), [allInspectionsUnsliced]);
+  const draftCount = useMemo(() => allInspectionsUnsliced.filter((i) => i.status === 'draft').length, [allInspectionsUnsliced]);
+  const totalInspections = useMemo(() => (inspections?.length ?? 0) + (bobcats?.length ?? 0) + (generalEq?.length ?? 0) + (excavators?.length ?? 0), [inspections, bobcats, generalEq, excavators]);
 
   return (
     <div className="space-y-6">
