@@ -1,0 +1,1 @@
+import{ax as u,r as o}from"./index-kAizOJMd.js";function i(){const{state:e}=u(),r=o.useRef(!1),t=(e==null?void 0:e.pendingCreate)??null;async function a(c){if(!t||r.current)return null;r.current=!0;try{return(await c(t)).id}catch(n){throw r.current=!1,n}}return{pendingCreate:t,lazyCreate:a}}export{i as u};
