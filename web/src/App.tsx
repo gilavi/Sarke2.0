@@ -4,9 +4,7 @@ import { SuccessPage } from './pages/SuccessPage';
 import { DeclinedPage } from './pages/DeclinedPage';
 import { Brand } from './components/Brand';
 
-/* --- Lazy-load the heavy 3D scene so it doesn't bloat the signing bundle --- */
-import { lazy, Suspense } from 'react';
-const SafetyGuidePage = lazy(() => import('./pages/SafetyGuidePage'));
+import SafetyGuidePage from './pages/SafetyGuidePage';
 
 /**
  * Hash-based routing — GitHub Pages serves a single index.html, and any path
@@ -43,17 +41,7 @@ export function App() {
 
   /* 3D Safety Guide */
   if (hash === '#/safety') {
-    return (
-      <Suspense
-        fallback={
-          <div style={{ height: '100vh', width: '100vw', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#3d6875' }}>
-            <div className="sg-spinner" />
-          </div>
-        }
-      >
-        <SafetyGuidePage />
-      </Suspense>
-    );
+    return <SafetyGuidePage />;
   }
 
   return (
