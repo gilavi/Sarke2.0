@@ -529,7 +529,7 @@ export default function InspectionResultScreen() {
         ) : null}
       </View>
 
-      <SafeAreaView edges={['bottom']} style={styles.bottomBarSafe}>
+      <View style={styles.bottomBarSafe}>
         <View style={styles.bottomBar}>
           <View style={styles.bottomBarRow}>
             <Pressable
@@ -538,7 +538,7 @@ export default function InspectionResultScreen() {
             >
               <Ionicons name="document-attach-outline" size={18} color={theme.colors.ink} />
               <Text style={styles.bottomBtnText} numberOfLines={1}>
-                სერტ. {certBadge}
+                სერტიფიკატები {certBadge}
               </Text>
             </Pressable>
             <Pressable
@@ -547,7 +547,7 @@ export default function InspectionResultScreen() {
             >
               <Ionicons name="create-outline" size={18} color={theme.colors.ink} />
               <Text style={styles.bottomBtnText} numberOfLines={1}>
-                ხელმ. {sigBadge}
+                ხელმოწერები {sigBadge}
               </Text>
             </Pressable>
           </View>
@@ -574,7 +574,7 @@ export default function InspectionResultScreen() {
             )}
           </Pressable>
         </View>
-      </SafeAreaView>
+      </View>
       <PaywallModal visible={paywallVisible} onClose={() => setPaywallVisible(false)} />
     </Screen>
   );
@@ -604,13 +604,13 @@ function createStyles(theme: any) {
     bottomBar: {
       flexDirection: 'column',
       gap: 8,
-      paddingHorizontal: 24,
-      paddingTop: 8,
-      paddingBottom: 8,
+      paddingHorizontal: 16,
+      paddingTop: 12,
+      paddingBottom: 16,
     },
     bottomBarRow: {
       flexDirection: 'row',
-      gap: 8,
+      gap: 10,
     },
     bottomBtn: {
       flex: 1,
@@ -618,8 +618,8 @@ function createStyles(theme: any) {
       alignItems: 'center',
       justifyContent: 'center',
       gap: 6,
-      height: 44,
-      borderRadius: 10,
+      height: 48,
+      borderRadius: 12,
     },
     bottomBtnGhost: {
       borderWidth: 1,
@@ -633,8 +633,8 @@ function createStyles(theme: any) {
       flex: 0,
     },
     bottomBtnText: {
-      fontSize: 13,
-      fontWeight: '700',
+      fontSize: 14,
+      fontWeight: '600',
       color: theme.colors.ink,
     },
   });

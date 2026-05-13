@@ -21,6 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { A11yText as Text } from './primitives/A11yText';
 import { Button } from './ui';
 import { SheetLayout } from './SheetLayout';
+import { BottomSheetScrollView } from './BottomSheet';
 import { inspectionAttachmentsApi } from '../lib/services';
 import { ATTACHMENT_TYPE_PRESETS, type InspectionAttachment } from '../types/models';
 import { useTheme } from '../lib/theme';
@@ -98,6 +99,8 @@ export function CertificatesActionSheet({ inspectionId, onClose, onChanged }: Pr
         />
       }
       maxHeightRatio={0.85}
+      showHandle={false}
+      ScrollComponent={BottomSheetScrollView}
     >
       {loading ? (
         <View style={styles.loadingBox}>
@@ -303,6 +306,8 @@ function CertEditView({
       header={header}
       footer={<Button title="შენახვა" onPress={save} loading={busy} disabled={busy} />}
       maxHeightRatio={0.92}
+      showHandle={false}
+      ScrollComponent={BottomSheetScrollView}
     >
       <Text style={styles.fieldLabel}>ტიპი</Text>
       <View style={styles.chipsWrap}>

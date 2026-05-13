@@ -10,6 +10,7 @@ export type InspectionSource =
   | 'bobcat'
   | 'excavator'
   | 'general_equipment'
+  | 'cargo_platform'
   | string   // generic / fallback
   | null
   | undefined;
@@ -30,5 +31,6 @@ export function routeForInspection(
   if (source === 'bobcat') return `/inspections/bobcat/${id}`;
   if (source === 'excavator') return `/inspections/excavator/${id}`;
   if (source === 'general_equipment') return `/inspections/general-equipment/${id}`;
+  if (source === 'cargo_platform') return `/inspections/cargo-platform/${id}`;
   return isCompleted ? `/inspections/${id}` : `/inspections/${id}/wizard`;
 }

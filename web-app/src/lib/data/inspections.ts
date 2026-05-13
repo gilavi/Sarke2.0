@@ -16,13 +16,14 @@ export interface Inspection {
   inspector_signature: string | null;
   created_at: string;
   completed_at: string | null;
+  template?: { category: string | null }[] | null;
 }
 
 export async function listInspections(projectId?: string): Promise<Inspection[]> {
   let q = supabase
     .from('inspections')
     .select(
-      'id, project_id, user_id, template_id, status, harness_name, department, inspector_name, conclusion_text, is_safe_for_use, inspector_signature, created_at, completed_at',
+      'id, project_id, user_id, template_id, status, harness_name, department, inspector_name, conclusion_text, is_safe_for_use, inspector_signature, created_at, completed_at, template:templates(category)',
     )
     .order('created_at', { ascending: false });
   if (projectId) q = q.eq('project_id', projectId);

@@ -3,11 +3,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { listTemplates, SIGNER_ROLE_LABEL, type Template } from '@/lib/data/templates';
 
 const CATEGORY_LABEL: Record<string, string> = {
-  harness: 'დამცავი ქამარი',
-  xaracho: 'ფასადის ხარაჩო',
-  bobcat: 'ციცხვიანი / დამტვირთველი',
-  excavator: 'ექსკავატორი',
-  general_equipment: 'ტექნიკური აღჭურვილობა',
+  harness:            'დამცავი ქამარი',
+  xaracho:            'ფასადის ხარაჩო',
+  mobile_scaffold:    'მობილური ხარაჩო',
+  mobile_scaffold_n3: 'მობილური ხარაჩო N3',
+  bobcat:             'ციცხვიანი / დამტვირთველი',
+  excavator:          'ექსკავატორი',
+  general_equipment:  'ტექნიკური აღჭურვილობა',
+  cargo_platform:     'ტვირთის პლატფორმა',
 };
 
 function categoryLabel(t: Template): string {

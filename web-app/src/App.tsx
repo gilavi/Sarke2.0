@@ -27,6 +27,9 @@ const NewGeneralEquipmentInspection = lazy(() => import('@/pages/NewGeneralEquip
 const GeneralEquipmentInspectionDetail = lazy(() => import('@/pages/GeneralEquipmentInspectionDetail'));
 const NewExcavatorInspection = lazy(() => import('@/pages/NewExcavatorInspection'));
 const ExcavatorInspectionDetail = lazy(() => import('@/pages/ExcavatorInspectionDetail'));
+const NewCargoPlatformInspection = lazy(() => import('@/pages/NewCargoPlatformInspection'));
+const CargoPlatformInspectionDetail = lazy(() => import('@/pages/CargoPlatformInspectionDetail'));
+const CargoPlatformPrint = lazy(() => import('@/pages/print/CargoPlatformPrint'));
 const IncidentPrint = lazy(() => import('@/pages/print/IncidentPrint'));
 const BriefingPrint = lazy(() => import('@/pages/print/BriefingPrint'));
 const ReportPrint = lazy(() => import('@/pages/print/ReportPrint'));
@@ -143,6 +146,9 @@ export default function App() {
             <Route path="/excavator/new" element={<Shell><NewExcavatorInspection /></Shell>} />
             <Route path="/excavator/draft" element={<Shell><ExcavatorInspectionDetail /></Shell>} />
             <Route path="/excavator/:id" element={<Shell><ExcavatorInspectionDetail /></Shell>} />
+            <Route path="/cargo-platform/new" element={<Shell><NewCargoPlatformInspection /></Shell>} />
+            <Route path="/cargo-platform/draft" element={<Shell><CargoPlatformInspectionDetail /></Shell>} />
+            <Route path="/cargo-platform/:id" element={<Shell><CargoPlatformInspectionDetail /></Shell>} />
             <Route
               path="/incidents/:id/print"
               element={
@@ -209,6 +215,16 @@ export default function App() {
                 <ProtectedRoute>
                   <Suspense fallback={<PageFallback />}>
                     <ExcavatorPrint />
+                  </Suspense>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/cargo-platform/:id/print"
+              element={
+                <ProtectedRoute>
+                  <Suspense fallback={<PageFallback />}>
+                    <CargoPlatformPrint />
                   </Suspense>
                 </ProtectedRoute>
               }

@@ -13,6 +13,7 @@ import { listInspections } from '@/lib/data/inspections';
 import { listBobcatInspections } from '@/lib/data/bobcat';
 import { listGeneralEquipmentInspections } from '@/lib/data/generalEquipment';
 import { listExcavatorInspections } from '@/lib/data/excavator';
+import { listCargoPlatformInspections } from '@/lib/data/cargoPlatform';
 import { listProjects } from '@/lib/data/projects';
 
 const STATUS_LABEL: Record<string, string> = {
@@ -22,20 +23,32 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 const TYPE_LABEL: Record<string, string> = {
-  harness: 'ხარაჩო / ქამარი',
-  bobcat: 'ციცხვიანი',
-  excavator: 'ექსკავატორი',
-  general: 'ტექ. აღჭურვილობა',
+  harness:            'დამც. ქამარი',
+  xaracho:            'ფასადის ხარაჩო',
+  mobile_scaffold:    'მობ. ხარაჩო',
+  mobile_scaffold_n3: 'მობ. ხარაჩო N3',
+  bobcat:             'ციცხვიანი',
+  excavator:          'ექსკავატორი',
+  general:            'ტექ. აღჭურვილობა',
+  cargo_platform:     'ტვირთის პლატფ.',
 };
 
 interface Row {
   id: string;
   label: string;
   projectId: string;
-  type: keyof typeof TYPE_LABEL;
+  type: string;
   status: string;
   date: string;
   href: string;
+}
+
+function genericInspectionType(template: { category: string | null }[] | null | undefined): string {
+  const category = Array.isArray(template) ? (template[0]?.category ?? null) : null;
+  if (category === 'xaracho') return 'xaracho';
+  if (category === 'mobile_scaffold') return 'mobile_scaffold';
+  if (category === 'mobile_scaffold_n3') return 'mobile_scaffold_n3';
+  return 'harness';
 }
 
 export default function Inspections() {
@@ -43,21 +56,24 @@ export default function Inspections() {
   const [searchParams] = useSearchParams();
   const projectParam = searchParams.get('project') ?? '';
 
-  const { data: harness, isLoading: l1 } = useQuery({ queryKey: ['inspections'], queryFn: () => listInspections() });
+  const { data: genericInspections, isLoading: l1 } = useQuery({ queryKey: ['inspections'], queryFn: () => listInspections() });
   const { data: bobcats, isLoading: l2 } = useQuery({ queryKey: ['bobcatInspections'], queryFn: () => listBobcatInspections() });
   const { data: generalEq, isLoading: l3 } = useQuery({ queryKey: ['generalEquipmentInspections'], queryFn: () => listGeneralEquipmentInspections() });
   const { data: excavators, isLoading: l4 } = useQuery({ queryKey: ['excavatorInspections'], queryFn: () => listExcavatorInspections() });
+  const { data: cargoPlatforms, isLoading: l5 } = useQuery({ queryKey: ['cargoPlatformInspections'], queryFn: () => listCargoPlatformInspections() });
   const { data: projectList } = useQuery({ queryKey: ['projects'], queryFn: listProjects });
 
   const projects = projectList ? Object.fromEntries(projectList.map((p) => [p.id, p])) : {};
   const [filter, setFilter] = useState<string>(projectParam);
 
-  const isLoading = l1 || l2 || l3 || l4;
+  const isLoading = l1 || l2 || l3 || l4 || l5;
 
   const allRows: Row[] = [
-    ...(harness ?? []).map((i): Row => ({
+    ...(genericInspections ?? []).map((i): Row => ({
       id: i.id, label: i.harness_name || `აქტი #${i.id.slice(0, 8)}`,
-      projectId: i.project_id, type: 'harness', status: i.status,
+      projectId: i.project_id,
+      type: genericInspectionType(i.template),
+      status: i.status,
       date: i.created_at ?? '', href: `/inspections/${i.id}`,
     })),
     ...(bobcats ?? []).map((i): Row => ({
@@ -74,6 +90,11 @@ export default function Inspections() {
       id: i.id, label: i.objectName || `ტექ. აქტი #${i.id.slice(0, 8)}`,
       projectId: i.projectId, type: 'general', status: i.status,
       date: i.createdAt, href: `/general-equipment/${i.id}`,
+    })),
+    ...(cargoPlatforms ?? []).map((i): Row => ({
+      id: i.id, label: i.company || `პლატფ. #${i.id.slice(0, 8)}`,
+      projectId: i.projectId, type: 'cargo_platform', status: i.status,
+      date: i.createdAt, href: `/cargo-platform/${i.id}`,
     })),
   ]
     .filter((r) => !filter || r.projectId === filter)
@@ -113,6 +134,9 @@ export default function Inspections() {
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => navigate(`/general-equipment/new${filter ? `?project=${filter}` : ''}`)}>
               ტექნიკური აღჭურვილობის შემოწმების აქტი
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => navigate(`/cargo-platform/new${filter ? `?project=${filter}` : ''}`)}>
+              ტვირთის მიმღები პლატფორმის შემოწმების აქტი
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -165,7 +189,7 @@ export default function Inspections() {
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600">
-                  {TYPE_LABEL[row.type]}
+                  {TYPE_LABEL[row.type] ?? row.type}
                 </span>
                 <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                   row.status === 'completed'

@@ -210,7 +210,9 @@ export default function QuestionnaireWizard() {
   const showSheet = useBottomSheet();
 
   useEffect(() => {
-    if (!template || template.category === 'harness') return;
+    // Tour shows facade scaffold component illustrations — only relevant for
+    // the xaracho template. Skip for mobile_scaffold and all other categories.
+    if (!template || template.category !== 'xaracho') return;
     let cancelled = false;
     AsyncStorage.getItem(TOUR_SEEN_KEY)
       .then(v => {
