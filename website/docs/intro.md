@@ -7,6 +7,70 @@ sidebar_position: 1
 
 **Sarke 2.0** is a safety inspection platform for Georgian construction sites. An expert opens the app, picks a project, walks through a specialized checklist on site, attaches photos, collects signatures, and generates a legally formatted PDF report.
 
+## Quick Reference
+
+### 🔗 Live links
+
+| | URL |
+|---|---|
+| **Web Dashboard** | https://gilavi.github.io/Sarke2.0/app/ |
+| **Signing Page** (SMS links go here) | https://gilavi.github.io/Sarke2.0/ |
+| **Docs** (this site) | https://gilavi.github.io/Sarke2.0/docs/ |
+| **GitHub Repo** | https://github.com/gilavi/Sarke2.0 |
+| **Supabase Dashboard** | https://supabase.com/dashboard/project/seskuthiopywrgntsgfw |
+
+### 💻 Running locally
+
+```sh
+# Mobile (Expo) — scan QR with Expo Go
+npm install --legacy-peer-deps
+npx expo start
+
+# Web Dashboard → http://localhost:5173/Sarke2.0/app/
+cd web-app && npm install && npm run dev
+
+# Signing Page → http://localhost:5173/Sarke2.0/
+cd web && npm install && npm run dev
+
+# Docs Site → http://localhost:3000/Sarke2.0/docs/
+cd website && npm install && npm start
+```
+
+### 📱 EAS builds
+
+```sh
+npx eas build --platform ios --profile preview        # TestFlight / internal
+npx eas build --platform ios --profile production     # App Store
+npx eas build --platform android --profile production # Play Store
+```
+
+Before any release bump all three version fields in `app.json`:
+`expo.version` · `expo.ios.buildNumber` · `expo.android.versionCode`
+
+### 💳 BOG test card (sandbox only)
+
+```
+Card number : 4000 0000 0000 0001
+Expiry      : any future date  (e.g. 12/26)
+CVV         : any 3 digits
+```
+
+BOG sandbox OAuth: `https://oauth2-sandbox.bog.ge`  
+BOG sandbox API: `https://api-sandbox.bog.ge/payments/v1/ecommerce/orders`  
+Edge Function secrets needed: `BOG_ENV=sandbox`, `BOG_CLIENT_ID`, `BOG_CLIENT_SECRET`
+
+### 🔑 Supabase public credentials
+
+These are the anon (public) credentials baked into `app.json`. Safe to share — Row-Level Security enforces all access control.
+
+```
+URL:            https://seskuthiopywrgntsgfw.supabase.co
+Anon key:       sb_publishable_OF_L2E27-Uv8MMw87fWfSA_znD7moYY
+EAS project ID: ab800403-36c4-4673-8dd8-dfc75b66d14b
+```
+
+---
+
 ## At a glance
 
 | | |
