@@ -69,14 +69,14 @@ export default function ProjectFilesList() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <Stack.Screen options={{ title: 'დოკუმენტები' }} />
+      <Stack.Screen options={{ title: 'ბრძანებები' }} />
 
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 }}
       >
         <View style={styles.pageHeader}>
-          <Text style={styles.pageTitle}>დოკუმენტები</Text>
+          <Text style={styles.pageTitle}>ბრძანებები</Text>
           {project ? (
             <Text style={styles.pageSubtitle}>{project.company_name || project.name}</Text>
           ) : null}

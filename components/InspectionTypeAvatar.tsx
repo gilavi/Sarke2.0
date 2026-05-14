@@ -4,20 +4,26 @@ import { StatusBadge, type InspectionStatus } from './StatusBadge';
 
 export type InspectionCategory =
   | 'xaracho'
+  | 'mobile_scaffold'
+  | 'mobile_scaffold_n3'
   | 'harness'
   | 'bobcat'
   | 'excavator'
-  | 'general_equipment';
+  | 'general_equipment'
+  | 'cargo_platform';
 
 const CATEGORY_META: Record<
   InspectionCategory,
   { emoji: string; bg: string }
 > = {
   xaracho:           { emoji: '🏗️', bg: '#F5EDD8' },
+  mobile_scaffold:    { emoji: '🏗️', bg: '#EFF5DD' },
+  mobile_scaffold_n3: { emoji: '🏗️', bg: '#EFF5DD' },
   harness:           { emoji: '🦺', bg: '#E8F0F8' },
   bobcat:            { emoji: '🚜', bg: '#FEF3C7' },
   excavator:         { emoji: '🚧', bg: '#FEE9D8' },
   general_equipment: { emoji: '⚙️', bg: '#E1F5EE' },
+  cargo_platform:    { emoji: '📦', bg: '#E8F0F8' },
 };
 
 const DEFAULT_META = { emoji: '📋', bg: '#E1F5EE' };

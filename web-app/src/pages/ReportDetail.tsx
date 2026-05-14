@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileText, Plus, X } from 'lucide-react';
+import { SkeletonDetailPage } from '@/components/SkeletonCard';
 import { toast } from 'sonner';
 import DeleteButton from '@/components/DeleteButton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -130,7 +131,7 @@ export default function ReportDetail() {
     }
   }
 
-  if (isLoading) return <p className="text-sm text-neutral-500">იტვირთება…</p>;
+  if (isLoading) return <SkeletonDetailPage />;
   if (error)
     return (
       <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>

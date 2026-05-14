@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePendingCreate } from '@/lib/usePendingCreate';
+import { SkeletonDetailPage } from '@/components/SkeletonCard';
 import { FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import DeleteButton from '@/components/DeleteButton';
@@ -123,7 +124,7 @@ export default function BobcatInspectionDetail() {
     updateMutation.mutate({ items });
   }
 
-  if (isLoading) return <p className="text-sm text-neutral-500">იტვირთება…</p>;
+  if (isLoading) return <SkeletonDetailPage />;
   if (error)
     return (
       <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">

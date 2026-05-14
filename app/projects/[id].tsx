@@ -55,6 +55,7 @@ import {
 import { bobcatApi } from '../../lib/bobcatService';
 import { excavatorApi } from '../../lib/excavatorService';
 import { generalEquipmentApi } from '../../lib/generalEquipmentService';
+import { cargoPlatformApi } from '../../lib/cargoPlatformService';
 import {
   useProject,
   useInspectionsByProject,
@@ -67,6 +68,7 @@ import {
   useBobcatInspectionsByProject,
   useExcavatorInspectionsByProject,
   useGeneralEquipmentInspectionsByProject,
+  useCargoPlatformInspectionsByProject,
 } from '../../lib/apiHooks';
 import { supabase, STORAGE_BUCKETS } from '../../lib/supabase';
 import { useToast } from '../../lib/toast';
@@ -117,6 +119,7 @@ export default function ProjectDetail() {
   const [bobcatInspections, setBobcatInspections] = useState<any[]>([]);
   const [excavatorInspections, setExcavatorInspections] = useState<any[]>([]);
   const [generalEquipmentInspections, setGeneralEquipmentInspections] = useState<any[]>([]);
+  const [cpInspections, setCpInspections] = useState<any[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [files, setFiles] = useState<ProjectFile[]>([]);
   const [filesBusy, setFilesBusy] = useState(false);
@@ -137,6 +140,7 @@ export default function ProjectDetail() {
   const bobcatQ = useBobcatInspectionsByProject(id);
   const excavatorQ = useExcavatorInspectionsByProject(id);
   const generalEquipmentQ = useGeneralEquipmentInspectionsByProject(id);
+  const cpQ = useCargoPlatformInspectionsByProject(id);
   const templatesQ = useTemplates();
   const filesQ = useProjectFiles(id);
   const incidentsQ = useIncidentsByProject(id);
@@ -170,6 +174,9 @@ export default function ProjectDetail() {
     if (generalEquipmentQ.data !== undefined) setGeneralEquipmentInspections(generalEquipmentQ.data);
   }, [generalEquipmentQ.data]);
   useEffect(() => {
+    if (cpQ.data !== undefined) setCpInspections(cpQ.data);
+  }, [cpQ.data]);
+  useEffect(() => {
     if (templatesQ.data !== undefined) setTemplates(templatesQ.data);
   }, [templatesQ.data]);
   useEffect(() => {
@@ -177,11 +184,11 @@ export default function ProjectDetail() {
   }, [filesQ.data]);
   useEffect(() => {
     const anyLoading = projectQ.isLoading || questionnairesQ.isLoading || bobcatQ.isLoading
-      || excavatorQ.isLoading || generalEquipmentQ.isLoading || templatesQ.isLoading
+      || excavatorQ.isLoading || generalEquipmentQ.isLoading || cpQ.isLoading || templatesQ.isLoading
       || filesQ.isLoading || incidentsQ.isLoading || briefingsQ.isLoading || reportsQ.isLoading;
     if (!anyLoading) setLoaded(true);
   }, [projectQ.isLoading, questionnairesQ.isLoading, bobcatQ.isLoading, excavatorQ.isLoading,
-      generalEquipmentQ.isLoading, templatesQ.isLoading, filesQ.isLoading,
+      generalEquipmentQ.isLoading, cpQ.isLoading, templatesQ.isLoading, filesQ.isLoading,
       incidentsQ.isLoading, briefingsQ.isLoading, reportsQ.isLoading]);
 
   // Project screen onboarding tour
@@ -264,7 +271,7 @@ export default function ProjectDetail() {
     template_id: string;
     status: 'draft' | 'completed';
     created_at: string;
-    source: 'generic' | 'bobcat' | 'excavator' | 'general_equipment';
+    source: 'generic' | 'bobcat' | 'excavator' | 'general_equipment' | 'cargo_platform';
   };
 
   const allInspections = useMemo<UnifiedInspection[]>(() => {
@@ -294,12 +301,19 @@ export default function ProjectDetail() {
       template_id: g.templateId,
       status: g.status,
       created_at: g.createdAt,
-      source: 'general_equipment',
+      source: 'general_equipment' as const,
     }));
-    return [...generic, ...bobcat, ...excavator, ...ge].sort(
+    const cp: UnifiedInspection[] = cpInspections.map(c => ({
+      id: c.id,
+      template_id: c.templateId,
+      status: c.status,
+      created_at: c.createdAt,
+      source: 'cargo_platform' as const,
+    }));
+    return [...generic, ...bobcat, ...excavator, ...ge, ...cp].sort(
       (a, b) => +new Date(b.created_at) - +new Date(a.created_at),
     );
-  }, [questionnaires, bobcatInspections, excavatorInspections, generalEquipmentInspections]);
+  }, [questionnaires, bobcatInspections, excavatorInspections, generalEquipmentInspections, cpInspections]);
 
   const allInspectionsSorted = allInspections;
   const allInspectionsPreview = useMemo(
@@ -383,6 +397,8 @@ export default function ProjectDetail() {
         newId = (await excavatorApi.create({ projectId, templateId: tpl.id })).id;
       } else if (tpl.category === 'general_equipment') {
         newId = (await generalEquipmentApi.create({ projectId, templateId: tpl.id })).id;
+      } else if (tpl.category === 'cargo_platform') {
+        newId = (await cargoPlatformApi.create({ projectId, templateId: tpl.id })).id;
       } else {
         newId = (await questionnairesApi.create({ projectId, templateId: tpl.id })).id;
       }
@@ -415,6 +431,10 @@ export default function ProjectDetail() {
             const { error } = await supabase.from('general_equipment_inspections').delete().eq('id', item.id);
             if (error) throw error;
             setGeneralEquipmentInspections(prev => prev.filter(x => x.id !== item.id));
+          } else if (item.source === 'cargo_platform') {
+            const { error } = await supabase.from('cargo_platform_inspections').delete().eq('id', item.id);
+            if (error) throw error;
+            setCpInspections(prev => prev.filter(x => x.id !== item.id));
           } else {
             await questionnairesApi.remove(item.id);
             setQuestionnaires(prev => prev.filter(x => x.id !== item.id));
@@ -1032,12 +1052,12 @@ export default function ProjectDetail() {
             )}
           </View>
 
-          {/* ── დოკუმენტები ── */}
+          {/* ── ბრძანებები ── */}
           <View ref={filesRef} collapsable={false} style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Ionicons name="cloud-upload-outline" size={16} color={theme.colors.inkSoft} />
-                <Text style={styles.sectionTitle}>დოკუმენტები</Text>
+                <Ionicons name="ribbon-outline" size={16} color={theme.colors.inkSoft} />
+                <Text style={styles.sectionTitle}>ბრძანებები</Text>
                 <Text style={styles.sectionCount}>{files.length + orders.length}</Text>
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>

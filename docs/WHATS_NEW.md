@@ -1,172 +1,119 @@
-# 📰 What's New — Sarke 2.0 Status & Updates
+# What's New — Sarke 2.0 Changelog
 
-**Last Updated:** 2026-04-27  
-**Status:** Active Development  
-**Branch:** `main` (stable)
+**Updated:** 2026-05-14 | Branch: `after-testflight`
 
 ---
 
-## 🔄 Latest Changes (This Session)
+## 2026-05 — `after-testflight` + session work
 
-### Commits
-- **67f461e** (2026-04-27) — `chore: update UI flows, components, and theme configuration`
-  - Updated auth flows: `forgot.tsx`, `login.tsx`, `reset.tsx`, `verify-email.tsx`
-  - Refactored home, projects, and inspection flows
-  - Added **TourGuide component** (`components/TourGuide.tsx`)
-  - Added **metro.config.js** for React Native configuration
-  - Updated theme tokens (`lib/theme.ts`) and services (`lib/services.real.ts`)
-  - Modernized component styling (AddRemoteSignerModal, CrewSection, HarnessListFlow, ScaffoldHelpSheet)
-  - Removed deprecated certificates preview route (`app/certificates/preview.tsx` ✂️)
-  - **28 files changed**, 1209 insertions(+), 727 deletions(-)
+### Cargo Platform Inspection (f80a372)
+- New specialized inspection type: ტვირთის მიმღები პლატფორმის შემოწმების აქტი
+- 6-step mobile wizard: info → platform ID → cargo table → 9-item checklist → verdict → dual signatures
+- 3-result checklist (good / fix / n/a — amber for fixable, not red)
+- Dynamic cargo table with auto-summing total weight
+- `cargo_platform_inspections` table (migration 0040), template UUID `77777777-…`
+- Web: full CRUD — `NewCargoPlatformInspection.tsx` + `CargoPlatformInspectionDetail.tsx`
+- Web: print page at `/cargo-platform/:id/print`
 
----
+### Mobile Scaffold Templates (f80a372)
+- Mobile Scaffold N1 (`mobile_scaffold` category) — migration 0041
+- Mobile Scaffold N3 (`mobile_scaffold_n3` category) — migration 0042
+- Both use generic `inspections` table + template picker routing
+- Web: category labels added to `Templates.tsx`
 
-## 📊 Recent Feature Timeline
+### Skeleton Loading System (f80a372)
+- `web-app/src/components/SkeletonCard.tsx` extended with `SkeletonStatCard`, `SkeletonGrid`, `SkeletonDetailPage`
+- All web detail pages now return skeleton on `isLoading`
+- Home stat cards pulse instead of showing `0` during load
+- Projects/Templates show grid skeleton; list pages show row skeletons
+- `PageFallback` (Suspense boundary) shows pulse instead of plain text
 
-| Date | Commit | Feature |
-|------|--------|---------|
-| 2026-04-27 | 67f461e | UI flows & theme updates, TourGuide component added |
-| 2026-04-26 | d85c322 | Web map fallbacks + accessibility hooks hardening |
-| 2026-04-25 | d264415 | UX improvements: cooldown persistence, wizard caching, color tokens |
-| 2026-04-20 | 06c4983 | DAXUIA design system integration (merged) |
-| 2026-04-15 | a091d3d | Matrix-style inspection flow (ქამარი) |
-
----
-
-## 🎯 Current Focus Areas
-
-### ✅ Completed
-1. **Accessibility** — Tour guide implementation, contextual help (9-card swipeable tour on first use)
-2. **Design System** — DAXUIA integration with color tokens and theme consistency
-3. **Inspection Flows** — Matrix-style questionnaire for harness/scaffold inspections
-4. **Component Library** — Modernized UI components with consistent styling
-5. **Network Resilience** — Improved offline handling and error recovery
-
-### 🔨 In Progress / Near-term
-1. **Web Support** — Map fallbacks and web-specific optimizations
-2. **Component Stability** — Refactoring tour guide, signer modals, and flow components
-3. **PDF Generation** — Testing and improving PDF export reliability
-
-### 🚀 Known Roadmap Items
-- Signature capture UX improvements (currently looks like seismograph output)
-- Comment sheets on wizard steps
-- Profile/settings screen (beyond sign-out)
-- Bundle Noto Sans Georgian for proper PDF rendering
-- Fix app crashes on rotation during signature capture
+### Fire Safety Order Templates (session work — uncommitted)
+- `fire_safety_order`: სახანძრო უსაფრთხოებაზე პასუხისმგებელი პირის დანიშვნა
+  - 3-clause document, 2-signatory signing flow (director → appointed)
+  - Builds full A4 PDF with embedded signatures
+- `fire_safety_order_enterprise`: საწარმოს სახანძრო უსაფრთხოებაზე პასუხისმგებელი პირის დანიშვნა
+  - Adds `appointedPosition` + `appointedIdNumber` fields
+  - 5-clause document: extended sub-clauses (№457 decree, Permit to Work, briefing journal, evacuation drills, compressed gases)
+  - 4 legal basis bullets (adds №477 construction sites decree)
+  - Same 2-signatory flow
+- Both available on mobile (`app/orders/new.tsx`) and web (`web-app/src/pages/NewOrder.tsx`, `OrderDetail.tsx`)
+- No migration needed — `document_type` is plain text, `form_data` is jsonb
 
 ---
 
-## 📂 Key Files & Recent Changes
+## 2026-05 — `main`
 
-### Components
-| File | Status | Change |
-|------|--------|--------|
-| `components/TourGuide.tsx` | ✨ NEW | Swipeable tour guide for onboarding |
-| `components/AddRemoteSignerModal.tsx` | 🔄 Updated | Modernized styling |
-| `components/CrewSection.tsx` | 🔄 Updated | UI refinements |
-| `components/HarnessListFlow.tsx` | 🔄 Updated | Flow component updates |
-| `components/ScaffoldHelpSheet.tsx` | 🔄 Updated | Help sheet improvements |
+### Orders / ბრძანებები (720b502)
+- New `orders` table (migration 0038): `document_type text`, `form_data jsonb`, `status`
+- 4 document templates: labor safety specialist, alcohol control, fire safety order, fire safety enterprise order
+- Mobile wizard (`app/orders/new.tsx`): 4–6 step flow based on document type
+- Web wizard (`NewOrder.tsx`) + detail page (`OrderDetail.tsx`)
+- Web routes: `/orders/new`, `/orders/:id`
 
-### Screens
-| File | Status | Change |
-|------|--------|--------|
-| `app/(auth)/*.tsx` | 🔄 Updated | Auth flow modernization |
-| `app/(tabs)/home.tsx` | 🔄 Updated | Home screen refresh |
-| `app/(tabs)/projects.tsx` | 🔄 Updated | Projects list improvements |
-| `app/inspections/[id]/wizard.tsx` | 🔄 Updated | Wizard component updates |
-| `app/projects/[id]/signer.tsx` | 🔄 Updated | Signer flow refinements |
-| `app/certificates/preview.tsx` | ❌ DELETED | Route removed |
+### PDF Security & Hashing (de5ee55)
+- SHA-256 hash of each PDF stored in `orders.pdf_hash` / `pdf_hash` column (migration 0039)
+- PDF metadata embedded (title, author, creation date)
+- `lib/pdfSecurity.ts`
 
-### Configuration & Theme
-| File | Status | Change |
-|------|--------|--------|
-| `lib/theme.ts` | 🔄 Updated | Color tokens refresh |
-| `lib/services.real.ts` | 🔄 Updated | Service layer updates |
-| `metro.config.js` | ✨ NEW | Metro bundler configuration |
-| `app.json` | 🔄 Updated | App configuration |
+### BOG Recurring Payments (c1e3ef0 → d19059e)
+- Georgian BOG payment processor integration — mobile + web parity
+- `create-bog-order` Edge Function + `bog-webhook` callback handler
+- Mobile: `lib/bogPayment.ts` + `useBogPayment()` hook
+- Web: `/subscribe`, `/subscribe/success`, `/subscribe/fail` routes
+- `cancel_subscription` RPC (idempotent; access continues until expiry)
+- `payment_records` table for audit history (migration 0031)
+- See `docs/payments.md` for full flow
 
----
+### 3D Interactive Safety Guide (2d3bf9a → 12ea1a7)
+- React Three Fiber 3D model of a construction site
+- 6 clickable building parts → safety checklists + regulation references
+- Loaded as WebView on mobile (`/app/safety-standalone`), native page on web dashboard (`/safety`)
+- Responsive: side-by-side desktop, stacked mobile
 
-## 📋 Active Branches
+### Project Photos + Geo-Location (68deef4)
+- Photos can be attached to projects (multi-select, `project-files` bucket)
+- Project location stored as lat/lng; photo taken >500m away triggers mismatch alert
+- `photoLocationAlert.ts` shared across wizard, incidents, and future flows
+- `answer_photos` extended with `latitude`, `longitude`, `address` (migration 0023)
 
-| Branch | Purpose | Status |
-|--------|---------|--------|
-| `main` | Production-ready code | ✅ Current & Stable |
-| `ios-legacy` | Native SwiftUI port | 🪦 Archived (RIP) |
+### Tab Bar + FAB Polish (faefeec)
+- Opaque dark-mode tab bar
+- Smooth label clipping
+- FAB positioned correctly above tab bar
 
----
-
-## 🧪 Testing Status
-
-### Dev Server
-- **Port:** 8085 (or auto-assigned if busy)
-- **Tunnel:** ✅ Connected
-- **Metro Bundler:** ✅ Ready
-- **QR Code:** Available via `npx expo start`
-
-### Known Issues (Unresolved)
-1. App crashes (reason: unknown — we're as confused as you)
-2. Phone rotation during signature capture breaks canvas alignment
-3. PDF export is slow (3-5 business days on a fast phone)
-4. `npm install` downloads internet twice
-5. Typecheck fails silently (we ignore it as a lifestyle choice)
+### Web Bundle Splitting + Error Boundary (f8b9877)
+- Vite chunk splitting for faster initial load
+- Error boundary wrapping all lazy routes
+- Security headers via `_headers` file
 
 ---
 
-## 🤖 For AI Agents
+## 2026-04 — Earlier `main` work
 
-### Quick Context
-- **Tech Stack:** Expo SDK 55 + React Native 0.81 + React 19 + Supabase
-- **Language:** Georgian (ქართული) — all UI strings are inline, no i18n file
-- **Routing:** expo-router (file-based, see `app/` directory)
-- **Key Dependencies:**
-  - `react-native-signature-canvas` (signatures)
-  - `expo-print` + `expo-sharing` (PDFs)
-  - `expo-image-picker` (photo capture)
-  - `react-native-keyboard-controller` (keyboard management)
+### Department Field (0034–0036)
+- `department` column added to `bobcat_inspections`, `general_equipment_inspections`, `inspections`
+- Shown in info step of respective wizards
 
-### Documentation to Read
-1. **[README.md](../README.md)** — Main project overview, stack, directory layout
-2. **[Copy Style Guide](../README.md#-copy-style-guide-georgian-ui)** — Georgian UI text conventions
-3. **[types/models.ts](../types/models.ts)** — Database schema + TypeScript types
-4. **[lib/services.real.ts](../lib/services.real.ts)** — Data layer + Supabase operations
-5. **[CLAUDE.md](../CLAUDE.md)** — Development workflow, documentation rules, known issues
+### Summary Photos for Bobcat + Excavator (0037)
+- `summary_photos` jsonb column added to both tables
+- Photo strip in final step of wizard
 
-### Common Tasks
-- **Run locally:** `npm install --legacy-peer-deps && npx expo start`
-- **Type check:** `npm run typecheck` (will fail, that's normal)
-- **Update docs:** Do it in the same commit as code changes (see CLAUDE.md)
-- **Mark bugs fixed:** Update `BUG_REPORT.md` instead of deleting entries
+### Inspector Name Field (0033)
+- `inspector_name` column added to `inspections` (generic) table
 
-### Recent Changes to Be Aware Of
-- **TourGuide added** — onboarding tour for new users (persisted in AsyncStorage under `haraco_tour_seen`)
-- **Certificates preview route removed** — use list view instead
-- **Theme tokens refreshed** — check `lib/theme.ts` for latest color/spacing values
-- **Metro config added** — may affect bundling behavior on different OSs
+### PDF Export Speed (2026-04-30)
+- Resize + cache pipeline: ~10× faster for multi-photo reports
 
 ---
 
-## 📞 Support & Escalation
+## Known Issues (Current)
 
-| Question | Answer |
-|----------|--------|
-| Why is my laptop fan screaming? | Expo bundler is probably bundling. It's normal. |
-| Why does typecheck fail? | We ignore it as a lifestyle choice. See CLAUDE.md. |
-| Where's the native iOS app? | Dead, on `ios-legacy` branch. RIP. |
-| How do I update documentation? | Do it in the same commit as code changes. See CLAUDE.md. |
-| Should I commit changes to `BUG_REPORT.md`? | Yes, mark issues resolved instead of deleting them. |
+1. Signature canvas breaks on phone rotation
+2. Web build (`expo start --web`) crashes at boot — worklets shim issue (see README Known Issues #6)
+3. Storage RLS gap: `certificates`, `answer-photos`, `pdfs`, `signatures` buckets allow any authenticated user to read/delete (see BUG_REPORT.md)
+4. Typecheck fails — expected; note new failures but don't block on them
 
 ---
 
-## 🗓️ Session Notes
-
-**2026-04-27 Session:**
-- Dev server restarted and running on port 8085
-- Main branch is 1 commit ahead (67f461e)
-- All changes committed and pushed to origin/main
-- Documentation updated with What's New briefing
-- Ready for next iteration
-
----
-
-_For more details, see [README.md](../README.md) or reach out to the team._
+_For detailed context: [`ONBOARDING.md`](../ONBOARDING.md) | [`AI_BRIEFING.md`](AI_BRIEFING.md)_

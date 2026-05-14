@@ -53,6 +53,7 @@ import type { Inspection, Project, Qualification, Template } from '../../types/m
 import { bobcatApi } from '../../lib/bobcatService';
 import { excavatorApi } from '../../lib/excavatorService';
 import { generalEquipmentApi } from '../../lib/generalEquipmentService';
+import { cargoPlatformApi } from '../../lib/cargoPlatformService';
 import { InspectionTypeAvatar } from '../../components/InspectionTypeAvatar';
 import { RecordTypePill } from '../../components/RecordTypePill';
 import { TemplatePickerModal } from '../../components/TemplatePickerModal';
@@ -159,6 +160,9 @@ export default function HomeScreen() {
         if (error) throw error;
       } else if (category === 'general_equipment') {
         const { error } = await supabase.from('general_equipment_inspections').delete().eq('id', id);
+        if (error) throw error;
+      } else if (category === 'cargo_platform') {
+        const { error } = await supabase.from('cargo_platform_inspections').delete().eq('id', id);
         if (error) throw error;
       } else {
         await questionnairesApi.remove(id);
@@ -710,6 +714,8 @@ function ProjectPickerSheet({
         newId = (await excavatorApi.create({ projectId, templateId })).id;
       } else if (tpl?.category === 'general_equipment') {
         newId = (await generalEquipmentApi.create({ projectId, templateId })).id;
+      } else if (tpl?.category === 'cargo_platform') {
+        newId = (await cargoPlatformApi.create({ projectId, templateId })).id;
       } else {
         newId = (await questionnairesApi.create({ projectId, templateId })).id;
       }

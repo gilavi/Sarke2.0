@@ -22,6 +22,7 @@ import SignatureScreen, { type SignatureViewRef } from 'react-native-signature-c
 import { A11yText as Text } from './primitives/A11yText';
 import { Button } from './ui';
 import { SheetLayout } from './SheetLayout';
+import { BottomSheetScrollView } from './BottomSheet';
 import { signaturesApi } from '../lib/services';
 import { uploadSignature } from '../lib/signatures';
 import type { SignatureRecord, SignerRole } from '../types/models';
@@ -119,6 +120,8 @@ export function SignaturesActionSheet({ inspectionId, requiredRoles, onClose, on
         />
       }
       maxHeightRatio={0.85}
+      showHandle={false}
+      ScrollComponent={BottomSheetScrollView}
     >
       {loading ? (
         <View style={{ padding: 24, alignItems: 'center' }}>
@@ -359,6 +362,8 @@ function SignatureEditView({
         />
       }
       maxHeightRatio={0.95}
+      showHandle={false}
+      ScrollComponent={BottomSheetScrollView}
     >
       <FloatingLabelInput
         label="სახელი"

@@ -1,6 +1,7 @@
 import { useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, memo } from 'react';
+import { SkeletonList, SkeletonStatCard } from '@/components/SkeletonCard';
 import { ClipboardCheck, AlertTriangle, Megaphone, FileText, FolderOpen, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -49,13 +50,15 @@ export default function Home() {
   const { profile, user } = useAuth();
   const firstName = profile?.first_name?.trim() || user?.email?.split('@')[0] || '';
 
-  const { data: inspections } = useQuery({ queryKey: ['inspections'], queryFn: () => listInspections(), staleTime: 1000 * 60 * 5, gcTime: 1000 * 60 * 10 });
-  const { data: bobcats } = useQuery({ queryKey: ['bobcatInspections'], queryFn: () => listBobcatInspections(), staleTime: 1000 * 60 * 5, gcTime: 1000 * 60 * 10 });
-  const { data: generalEq } = useQuery({ queryKey: ['generalEquipmentInspections'], queryFn: () => listGeneralEquipmentInspections(), staleTime: 1000 * 60 * 5, gcTime: 1000 * 60 * 10 });
-  const { data: excavators } = useQuery({ queryKey: ['excavatorInspections'], queryFn: () => listExcavatorInspections(), staleTime: 1000 * 60 * 5, gcTime: 1000 * 60 * 10 });
-  const { data: projects } = useQuery({ queryKey: ['projects'], queryFn: listProjects, staleTime: 1000 * 60 * 5, gcTime: 1000 * 60 * 10 });
-  const { data: incidents } = useQuery({ queryKey: ['incidents'], queryFn: () => listIncidents(), staleTime: 1000 * 60 * 5, gcTime: 1000 * 60 * 10 });
-  const { data: briefings } = useQuery({ queryKey: ['briefings'], queryFn: () => listBriefings(), staleTime: 1000 * 60 * 5, gcTime: 1000 * 60 * 10 });
+  const { data: inspections, isLoading: l1 } = useQuery({ queryKey: ['inspections'], queryFn: () => listInspections(), staleTime: 1000 * 60 * 5, gcTime: 1000 * 60 * 10 });
+  const { data: bobcats, isLoading: l2 } = useQuery({ queryKey: ['bobcatInspections'], queryFn: () => listBobcatInspections(), staleTime: 1000 * 60 * 5, gcTime: 1000 * 60 * 10 });
+  const { data: generalEq, isLoading: l3 } = useQuery({ queryKey: ['generalEquipmentInspections'], queryFn: () => listGeneralEquipmentInspections(), staleTime: 1000 * 60 * 5, gcTime: 1000 * 60 * 10 });
+  const { data: excavators, isLoading: l4 } = useQuery({ queryKey: ['excavatorInspections'], queryFn: () => listExcavatorInspections(), staleTime: 1000 * 60 * 5, gcTime: 1000 * 60 * 10 });
+  const { data: projects, isLoading: l5 } = useQuery({ queryKey: ['projects'], queryFn: listProjects, staleTime: 1000 * 60 * 5, gcTime: 1000 * 60 * 10 });
+  const { data: incidents, isLoading: l6 } = useQuery({ queryKey: ['incidents'], queryFn: () => listIncidents(), staleTime: 1000 * 60 * 5, gcTime: 1000 * 60 * 10 });
+  const { data: briefings, isLoading: l7 } = useQuery({ queryKey: ['briefings'], queryFn: () => listBriefings(), staleTime: 1000 * 60 * 5, gcTime: 1000 * 60 * 10 });
+
+  const isLoading = l1 || l2 || l3 || l4 || l5 || l6 || l7;
 
   const allInspectionsUnsliced = useMemo(() => [
     ...(inspections ?? []).map((i) => ({ id: i.id, label: i.harness_name || 'შემოწმების აქტი', date: i.created_at ?? '', status: i.status, href: `/inspections/${i.id}` })),
@@ -109,55 +112,61 @@ export default function Home() {
       <SubscriptionCard />
 
       {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Link to="/inspections">
-          <Card className="hover:shadow-md transition-shadow cursor-pointer">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-neutral-600">შემოწმების აქტები</CardTitle>
-              <ClipboardCheck className="h-4 w-4 text-brand-600" />
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold">{totalInspections}</p>
-              {draftCount > 0 && (
-                <p className="text-xs text-amber-600 mt-1">{draftCount} დრაფტი</p>
-              )}
-            </CardContent>
-          </Card>
-        </Link>
-        <Link to="/projects">
-          <Card className="hover:shadow-md transition-shadow cursor-pointer">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-neutral-600">პროექტები</CardTitle>
-              <FolderOpen className="h-4 w-4 text-brand-600" />
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold">{projects?.length ?? 0}</p>
-            </CardContent>
-          </Card>
-        </Link>
-        <Link to="/incidents">
-          <Card className="hover:shadow-md transition-shadow cursor-pointer">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-neutral-600">ინციდენტები</CardTitle>
-              <AlertTriangle className="h-4 w-4 text-amber-500" />
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold">{incidents?.length ?? 0}</p>
-            </CardContent>
-          </Card>
-        </Link>
-        <Link to="/briefings">
-          <Card className="hover:shadow-md transition-shadow cursor-pointer">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-neutral-600">ინსტრუქტაჟები</CardTitle>
-              <Megaphone className="h-4 w-4 text-blue-500" />
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold">{briefings?.length ?? 0}</p>
-            </CardContent>
-          </Card>
-        </Link>
-      </div>
+      {isLoading ? (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {[...Array(4)].map((_, i) => <SkeletonStatCard key={i} />)}
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <Link to="/inspections">
+            <Card className="hover:shadow-md transition-shadow cursor-pointer">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-neutral-600">შემოწმების აქტები</CardTitle>
+                <ClipboardCheck className="h-4 w-4 text-brand-600" />
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold">{totalInspections}</p>
+                {draftCount > 0 && (
+                  <p className="text-xs text-amber-600 mt-1">{draftCount} დრაფტი</p>
+                )}
+              </CardContent>
+            </Card>
+          </Link>
+          <Link to="/projects">
+            <Card className="hover:shadow-md transition-shadow cursor-pointer">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-neutral-600">პროექტები</CardTitle>
+                <FolderOpen className="h-4 w-4 text-brand-600" />
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold">{projects?.length ?? 0}</p>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link to="/incidents">
+            <Card className="hover:shadow-md transition-shadow cursor-pointer">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-neutral-600">ინციდენტები</CardTitle>
+                <AlertTriangle className="h-4 w-4 text-amber-500" />
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold">{incidents?.length ?? 0}</p>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link to="/briefings">
+            <Card className="hover:shadow-md transition-shadow cursor-pointer">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-neutral-600">ინსტრუქტაჟები</CardTitle>
+                <Megaphone className="h-4 w-4 text-blue-500" />
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold">{briefings?.length ?? 0}</p>
+              </CardContent>
+            </Card>
+          </Link>
+        </div>
+      )}
 
       {/* Recent inspections */}
       <Card>
@@ -168,7 +177,9 @@ export default function Home() {
           </Link>
         </CardHeader>
         <CardContent>
-          {allInspections.length === 0 ? (
+          {isLoading ? (
+            <SkeletonList count={5} />
+          ) : allInspections.length === 0 ? (
             <p className="text-sm text-neutral-500">შემოწმების აქტები არ არის.</p>
           ) : (
             <ul className="divide-y divide-neutral-100">

@@ -9,9 +9,10 @@ import {
   isExpired,
   isExpiringSoon,
 } from '@/lib/data/qualifications';
+import { SkeletonList } from '@/components/SkeletonCard';
 
 export default function Qualifications() {
-  const { data: items, error: queryError } = useQuery({
+  const { data: items, error: queryError, isLoading } = useQuery({
     queryKey: ['qualifications'],
     queryFn: listQualifications,
   });
@@ -48,7 +49,7 @@ export default function Qualifications() {
           {displayError}
         </div>
       )}
-      {!items && !displayError && <p className="text-sm text-neutral-500">იტვირთება…</p>}
+      {isLoading && <SkeletonList count={4} />}
       {items && items.length === 0 && (
         <p className="text-sm text-neutral-500">სერტიფიკატები არ არის ატვირთული.</p>
       )}

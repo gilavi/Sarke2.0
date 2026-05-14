@@ -31,6 +31,7 @@ import { briefingsApi } from './briefingsApi';
 import { bobcatApi } from './bobcatService';
 import { excavatorApi } from './excavatorService';
 import { generalEquipmentApi } from './generalEquipmentService';
+import { cargoPlatformApi } from './cargoPlatformService';
 import type {
   Project,
   ProjectFile,
@@ -81,6 +82,9 @@ export const qk = {
   },
   generalEquipment: {
     byProject: (projectId: string) => ['generalEquipment', 'byProject', projectId] as const,
+  },
+  cargoPlatform: {
+    byProject: (projectId: string) => ['cargoPlatform', 'byProject', projectId] as const,
   },
   qualifications: {
     list: ['qualifications', 'list'] as const,
@@ -241,6 +245,14 @@ export function useGeneralEquipmentInspectionsByProject(projectId: string | unde
   return useQuery({
     queryKey: projectId ? qk.generalEquipment.byProject(projectId) : ['generalEquipment', 'byProject', 'none'],
     queryFn: () => (projectId ? generalEquipmentApi.listByProject(projectId) : Promise.resolve([])),
+    enabled: !!projectId,
+  });
+}
+
+export function useCargoPlatformInspectionsByProject(projectId: string | undefined) {
+  return useQuery({
+    queryKey: projectId ? qk.cargoPlatform.byProject(projectId) : ['cargoPlatform', 'byProject', 'none'],
+    queryFn: () => (projectId ? cargoPlatformApi.listByProject(projectId) : Promise.resolve([])),
     enabled: !!projectId,
   });
 }

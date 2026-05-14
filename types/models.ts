@@ -513,9 +513,51 @@ export interface AlcoholControlOrderFormData {
   responsiblePersonPersonalId: string;
 }
 
-export type OrderFormData = LaborSafetyOrderFormData | AlcoholControlOrderFormData;
+export interface FireSafetyOrderFormData {
+  orderNumber: string;
+  city: string;
+  orderDate: string; // ISO
+  companyName: string;
+  identificationCode: string;
+  legalAddress: string;
+  directorName: string;
+  appointedName: string;
+  appointedPhone: string;
+  objectName: string;
+  objectAddress: string;
+  /** base64 PNG, no data: prefix */
+  directorSignature: string | null;
+  directorSignedAt: string | null;
+  /** base64 PNG, no data: prefix */
+  appointedSignature: string | null;
+  appointedSignedAt: string | null;
+}
 
-export type OrderDocumentType = 'labor_safety_specialist' | 'alcohol_control';
+export interface FireSafetyOrderEnterpriseFormData {
+  orderNumber: string;
+  city: string;
+  orderDate: string; // ISO
+  companyName: string;
+  identificationCode: string;
+  legalAddress: string;
+  directorName: string;
+  appointedName: string;
+  appointedPhone: string;
+  appointedPosition: string;
+  appointedIdNumber: string;
+  objectName: string;
+  objectAddress: string;
+  /** base64 PNG, no data: prefix */
+  directorSignature: string | null;
+  directorSignedAt: string | null;
+  /** base64 PNG, no data: prefix */
+  appointedSignature: string | null;
+  appointedSignedAt: string | null;
+}
+
+export type OrderFormData = LaborSafetyOrderFormData | AlcoholControlOrderFormData | FireSafetyOrderFormData | FireSafetyOrderEnterpriseFormData;
+
+export type OrderDocumentType = 'labor_safety_specialist' | 'alcohol_control' | 'fire_safety_order' | 'fire_safety_order_enterprise';
 
 export interface Order {
   id: string;
@@ -534,4 +576,6 @@ export interface Order {
 export const ORDER_DOCUMENT_TYPE_LABEL: Record<OrderDocumentType, string> = {
   labor_safety_specialist: 'შრომის უსაფრთხოების სპეციალისტის დანიშვნა',
   alcohol_control: 'ალკოჰოლური და ნარკოტიკული თრობის კონტროლი',
+  fire_safety_order: 'სახანძრო უსაფრთხოებაზე პასუხისმგებელი პირის დანიშვნა',
+  fire_safety_order_enterprise: 'საწარმოს სახანძრო უსაფრთხოებაზე პასუხისმგებელი პირის დანიშვნა',
 };
