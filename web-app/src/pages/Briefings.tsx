@@ -1,8 +1,10 @@
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Users } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { SkeletonList } from '@/components/SkeletonCard';
+import { ListRow, ListRowIcon } from '@/components/ListRow';
+import StatusBadge from '@/components/StatusBadge';
 import { listBriefings, topicLabel } from '@/lib/data/briefings';
 import { listProjects } from '@/lib/data/projects';
 import { fmtDateKa } from '@/lib/utils';
@@ -59,45 +61,22 @@ export default function Briefings() {
       )}
 
       {filtered && filtered.length > 0 && (
-        <div className="grid gap-3">
+        <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
           {filtered.map((b) => {
             const proj = projects[b.projectId];
+            const topicsSummary = b.topics.slice(0, 3).map(topicLabel).join(', ')
+              + (b.topics.length > 3 ? ` +${b.topics.length - 3}` : '');
+            const subtitle = [proj?.name, topicsSummary].filter(Boolean).join(' · ');
             return (
-              <Link key={b.id} to={`/briefings/${b.id}`}>
-                <Card className="transition hover:border-brand-300 hover:shadow-sm">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="flex items-center justify-between text-base">
-                      <span>
-                        {fmtDateKa(b.dateTime)}
-                      </span>
-                      <span className="text-xs font-normal text-neutral-500">{b.status === 'completed' ? 'დასრულებული' : 'დრაფტი'}</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-1 text-sm text-neutral-600">
-                    <div>{proj?.name ?? '—'}</div>
-                    {b.topics.length > 0 && (
-                      <div className="flex flex-wrap gap-1">
-                        {b.topics.slice(0, 4).map((t) => (
-                          <span
-                            key={t}
-                            className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-700"
-                          >
-                            {topicLabel(t)}
-                          </span>
-                        ))}
-                        {b.topics.length > 4 && (
-                          <span className="text-xs text-neutral-500">
-                            +{b.topics.length - 4}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                    <div className="text-xs text-neutral-500">
-                      {b.participants.length} მონაწილე
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
+              <ListRow
+                key={b.id}
+                to={`/briefings/${b.id}`}
+                icon={<ListRowIcon icon={Users} color="bg-brand-50" iconColor="text-brand-600" />}
+                title={fmtDateKa(b.dateTime)}
+                subtitle={subtitle || undefined}
+                trailing={`${b.participants.length} მონაწილე`}
+                badge={<StatusBadge status={b.status} />}
+              />
             );
           })}
         </div>

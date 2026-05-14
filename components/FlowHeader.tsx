@@ -95,7 +95,7 @@ export function FlowHeader({
             <Pressable
               hitSlop={11}
               disabled={backDisabled}
-              onPress={wrapExit(onBack)}
+              onPress={onBack}
               style={({ pressed }) => [
                 styles.backBtn,
                 backDisabled && { opacity: 0.35 },

@@ -105,6 +105,9 @@ export default function Home() {
             <DropdownMenuItem onSelect={() => navigate('/general-equipment/new')}>
               ტექნიკური აღჭურვილობის შემოწმების აქტი
             </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => navigate('/cargo-platform/new')}>
+              ტვირთის მიმღები პლატფორმის შემოწმების აქტი
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </header>

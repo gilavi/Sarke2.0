@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { ClipboardList } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { SkeletonList } from '@/components/SkeletonCard';
 import {
@@ -9,6 +10,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { ListRow, ListRowIcon } from '@/components/ListRow';
+import StatusBadge from '@/components/StatusBadge';
 import { listInspections } from '@/lib/data/inspections';
 import { listBobcatInspections } from '@/lib/data/bobcat';
 import { listGeneralEquipmentInspections } from '@/lib/data/generalEquipment';
@@ -16,11 +19,6 @@ import { listExcavatorInspections } from '@/lib/data/excavator';
 import { listCargoPlatformInspections } from '@/lib/data/cargoPlatform';
 import { listProjects } from '@/lib/data/projects';
 
-const STATUS_LABEL: Record<string, string> = {
-  draft: 'დრაფტი',
-  completed: 'დასრულებული',
-  in_progress: 'მიმდინარე',
-};
 
 const TYPE_LABEL: Record<string, string> = {
   harness:            'დამც. ქამარი',
@@ -172,35 +170,28 @@ export default function Inspections() {
       )}
 
       {allRows.length > 0 && (
-        <div className="divide-y divide-neutral-100 rounded-xl border border-neutral-200 bg-white">
-          {allRows.map((row) => (
-            <Link
-              key={row.id}
-              to={row.href}
-              className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-neutral-50 transition-colors"
-            >
-              <div className="min-w-0">
-                <p className="truncate font-medium text-neutral-900">{row.label}</p>
-                <p className="mt-0.5 text-xs text-neutral-500">
-                  {projects[row.projectId]?.name ?? '—'}
-                  {' · '}
-                  {new Date(row.date).toLocaleDateString('ka-GE')}
-                </p>
-              </div>
-              <div className="flex shrink-0 items-center gap-2">
-                <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600">
-                  {TYPE_LABEL[row.type] ?? row.type}
-                </span>
-                <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                  row.status === 'completed'
-                    ? 'bg-green-100 text-green-700'
-                    : 'bg-amber-100 text-amber-700'
-                }`}>
-                  {STATUS_LABEL[row.status] ?? row.status}
-                </span>
-              </div>
-            </Link>
-          ))}
+        <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
+          {allRows.map((row) => {
+            const dateStr = row.date ? new Date(row.date).toLocaleDateString('ka-GE') : '';
+            const subtitle = [projects[row.projectId]?.name, dateStr].filter(Boolean).join(' · ');
+            return (
+              <ListRow
+                key={row.id}
+                to={row.href}
+                icon={<ListRowIcon icon={ClipboardList} color="bg-brand-50" iconColor="text-brand-600" />}
+                title={row.label}
+                subtitle={subtitle || undefined}
+                badge={
+                  <>
+                    <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] text-neutral-600">
+                      {TYPE_LABEL[row.type] ?? row.type}
+                    </span>
+                    <StatusBadge status={row.status} showIcon={false} />
+                  </>
+                }
+              />
+            );
+          })}
         </div>
       )}
     </div>

@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { FloatingLabelInput } from '@/components/ui/floating-label-input';
+import { WizardShell } from '@/components/ui/wizard-shell';
 import { listProjects } from '@/lib/data/projects';
 import {
   createBriefing,
@@ -14,6 +15,8 @@ import {
   type BriefingParticipant,
 } from '@/lib/data/briefings';
 
+const STEPS = ['ძირითადი', 'თემები', 'მონაწილეები'];
+
 export default function NewBriefing() {
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -21,12 +24,14 @@ export default function NewBriefing() {
 
   const { data: projects } = useQuery({ queryKey: ['projects'], queryFn: listProjects });
 
-  const [projectId, setProjectId] = useState(params.get('project') ?? '');
+  const prefilledProjectId = params.get('project') ?? '';
+
+  const [step, setStep] = useState(0);
+  const [projectId, setProjectId] = useState(prefilledProjectId);
   const [dateTime, setDateTime] = useState(() => new Date().toISOString().slice(0, 16));
   const [inspectorName, setInspectorName] = useState('');
   const [topics, setTopics] = useState<string[]>([]);
   const [customTopicInput, setCustomTopicInput] = useState('');
-
   const [participantName, setParticipantName] = useState('');
   const [participantPosition, setParticipantPosition] = useState('');
   const [participants, setParticipants] = useState<BriefingParticipant[]>([]);
@@ -75,222 +80,174 @@ export default function NewBriefing() {
     setParticipants((prev) => prev.filter((_, i) => i !== idx));
   }
 
-  const canSubmit =
-    !!projectId &&
-    !!inspectorName.trim() &&
-    topics.length > 0 &&
-    participants.length > 0 &&
-    !mutation.isPending;
+  const canAdvanceStep0 = !!projectId && !!inspectorName.trim() && !!dateTime;
+  const canAdvanceStep1 = topics.length > 0;
+  const canFinish = participants.length > 0 && !mutation.isPending;
+
+  const stepNextDisabled =
+    (step === 0 && !canAdvanceStep0) ||
+    (step === 1 && !canAdvanceStep1) ||
+    (step === 2 && !canFinish);
+
+  function handleNext() {
+    if (step < STEPS.length - 1) setStep((s) => s + 1);
+  }
+
+  function handleFinish() {
+    if (canFinish) mutation.mutate();
+  }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      <header>
-        <Link to="/briefings" className="text-sm text-brand-600 hover:underline">
-          ← ბრიფინგები
-        </Link>
-        <h1 className="mt-2 font-display text-3xl font-bold text-neutral-900">ახალი ბრიფინგი</h1>
-        <p className="mt-1 text-sm text-neutral-500">
-          ხელმოწერების შეგროვება ხდება მობილურ აპში — აქ შექმნილი ბრიფინგი ინახება როგორც „დრაფტი".
-        </p>
-      </header>
+    <WizardShell
+      open
+      onClose={() => navigate('/briefings')}
+      title="ახალი ბრიფინგი"
+      steps={STEPS}
+      currentStep={step}
+      onPrev={() => setStep((s) => s - 1)}
+      onNext={handleNext}
+      onFinish={handleFinish}
+      isSubmitting={mutation.isPending}
+      nextDisabled={stepNextDisabled}
+    >
+      {/* Step 0: ძირითადი */}
+      {step === 0 && (
+        <div className="space-y-5">
+          <p className="text-sm text-neutral-500">
+            ხელმოწერების შეგროვება ხდება მობილურ აპში — აქ შექმნილი ბრიფინგი ინახება როგორც „დრაფტი".
+          </p>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">ძირითადი ინფორმაცია</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form
-            className="space-y-5"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (canSubmit) mutation.mutate();
-            }}
-          >
-            {/* Project */}
+          {prefilledProjectId ? (
+            <div className="space-y-1">
+              <Label>პროექტი</Label>
+              <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm text-neutral-700">
+                {(projects ?? []).find((p) => p.id === projectId)?.name ?? '…'}
+              </div>
+            </div>
+          ) : (
             <div className="space-y-1">
               <Label htmlFor="project">პროექტი *</Label>
               <select
                 id="project"
                 value={projectId}
                 onChange={(e) => setProjectId(e.target.value)}
-                required
-                className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               >
                 <option value="">— აირჩიეთ პროექტი —</option>
                 {(projects ?? []).map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
+                  <option key={p.id} value={p.id}>{p.name}</option>
                 ))}
               </select>
             </div>
+          )}
 
-            {/* Date */}
-            <div className="space-y-1">
-              <Label htmlFor="datetime">თარიღი და დრო *</Label>
-              <Input
-                id="datetime"
-                type="datetime-local"
-                value={dateTime}
-                onChange={(e) => setDateTime(e.target.value)}
-                required
-              />
-            </div>
+          <FloatingLabelInput
+            label="თარიღი და დრო *"
+            type="datetime-local"
+            value={dateTime}
+            onChange={(e) => setDateTime(e.target.value)}
+          />
 
-            {/* Inspector */}
-            <div className="space-y-1">
-              <Label htmlFor="inspector">ინსტრუქტორი *</Label>
-              <Input
-                id="inspector"
-                value={inspectorName}
-                onChange={(e) => setInspectorName(e.target.value)}
-                placeholder="სახელი, გვარი"
-                required
-              />
-            </div>
+          <FloatingLabelInput
+            label="ინსტრუქტორი *"
+            value={inspectorName}
+            onChange={(e) => setInspectorName(e.target.value)}
+          />
+        </div>
+      )}
 
-            {/* Topics */}
-            <div className="space-y-2">
-              <Label>თემები * (აირჩიეთ მინიმუმ ერთი)</Label>
-              <div className="flex flex-wrap gap-2">
-                {TOPIC_KEYS.map((key) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => toggleTopic(key)}
-                    className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
-                      topics.includes(key)
-                        ? 'border-brand-600 bg-brand-600 text-white'
-                        : 'border-neutral-300 bg-white text-neutral-700 hover:border-brand-400'
-                    }`}
-                  >
-                    {topicLabel(key)}
-                  </button>
-                ))}
-              </div>
-              <div className="flex gap-2 pt-1">
-                <Input
-                  value={customTopicInput}
-                  onChange={(e) => setCustomTopicInput(e.target.value)}
-                  placeholder="საკუთარი თემა"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      addCustomTopic();
-                    }
-                  }}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={addCustomTopic}
-                  disabled={!customTopicInput.trim()}
-                >
-                  დამატება
-                </Button>
-              </div>
-              {topics.filter((t) => t.startsWith('custom:')).length > 0 && (
-                <ul className="space-y-1 pt-1">
-                  {topics
-                    .filter((t) => t.startsWith('custom:'))
-                    .map((t) => (
-                      <li
-                        key={t}
-                        className="flex items-center justify-between rounded-md bg-neutral-50 px-3 py-1.5 text-sm"
-                      >
-                        <span>{topicLabel(t)}</span>
-                        <button
-                          type="button"
-                          onClick={() => toggleTopic(t)}
-                          className="text-neutral-400 hover:text-red-500"
-                        >
-                          ×
-                        </button>
-                      </li>
-                    ))}
-                </ul>
-              )}
-            </div>
+      {/* Step 1: თემები */}
+      {step === 1 && (
+        <div className="space-y-4">
+          <p className="text-sm text-neutral-500">აირჩიეთ მინიმუმ ერთი თემა.</p>
 
-            {/* Participants */}
-            <div className="space-y-2">
-              <Label>მონაწილეები * (მინიმუმ ერთი)</Label>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_auto]">
-                <Input
-                  value={participantName}
-                  onChange={(e) => setParticipantName(e.target.value)}
-                  placeholder="სახელი, გვარი"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      addParticipant();
-                    }
-                  }}
-                />
-                <Input
-                  value={participantPosition}
-                  onChange={(e) => setParticipantPosition(e.target.value)}
-                  placeholder="თანამდებობა"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={addParticipant}
-                  disabled={!participantName.trim()}
-                >
-                  დამატება
-                </Button>
-              </div>
-              {participants.length > 0 && (
-                <ul className="space-y-1 pt-1">
-                  {participants.map((p, i) => (
-                    <li
-                      key={`${p.fullName}-${i}`}
-                      className="flex items-center justify-between rounded-md bg-neutral-50 px-3 py-1.5 text-sm"
-                    >
-                      <div>
-                        <span className="font-medium">{p.fullName}</span>
-                        {p.position ? (
-                          <span className="text-neutral-500"> · {p.position}</span>
-                        ) : null}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeParticipant(i)}
-                        className="text-neutral-400 hover:text-red-500"
-                      >
-                        ×
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-
-            {mutation.error && (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                {mutation.error instanceof Error
-                  ? mutation.error.message
-                  : String(mutation.error)}
-              </div>
-            )}
-
-            <div className="flex gap-2 pt-2">
-              <Button type="submit" disabled={!canSubmit}>
-                {mutation.isPending ? 'ინახება…' : 'შენახვა'}
-              </Button>
-              <Button
+          <div className="flex flex-wrap gap-2">
+            {TOPIC_KEYS.map((key) => (
+              <button
+                key={key}
                 type="button"
-                variant="outline"
-                onClick={() => navigate('/briefings')}
-                disabled={mutation.isPending}
+                onClick={() => toggleTopic(key)}
+                className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                  topics.includes(key)
+                    ? 'border-brand-600 bg-brand-600 text-white'
+                    : 'border-neutral-300 bg-white text-neutral-700 hover:border-brand-400'
+                }`}
               >
-                გაუქმება
-              </Button>
+                {topicLabel(key)}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex gap-2">
+            <Input
+              value={customTopicInput}
+              onChange={(e) => setCustomTopicInput(e.target.value)}
+              placeholder="საკუთარი თემა"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') { e.preventDefault(); addCustomTopic(); }
+              }}
+            />
+            <Button type="button" variant="outline" onClick={addCustomTopic} disabled={!customTopicInput.trim()}>
+              დამატება
+            </Button>
+          </div>
+
+          {topics.filter((t) => t.startsWith('custom:')).length > 0 && (
+            <ul className="space-y-1">
+              {topics.filter((t) => t.startsWith('custom:')).map((t) => (
+                <li key={t} className="flex items-center justify-between rounded-md bg-neutral-50 px-3 py-1.5 text-sm">
+                  <span>{topicLabel(t)}</span>
+                  <button type="button" onClick={() => toggleTopic(t)} className="text-neutral-400 hover:text-red-500">×</button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {/* Step 2: მონაწილეები */}
+      {step === 2 && (
+        <div className="space-y-4">
+          <p className="text-sm text-neutral-500">დაამატეთ მინიმუმ ერთი მონაწილე.</p>
+
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_auto]">
+            <Input
+              value={participantName}
+              onChange={(e) => setParticipantName(e.target.value)}
+              placeholder="სახელი, გვარი"
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addParticipant(); } }}
+            />
+            <Input
+              value={participantPosition}
+              onChange={(e) => setParticipantPosition(e.target.value)}
+              placeholder="თანამდებობა"
+            />
+            <Button type="button" variant="outline" onClick={addParticipant} disabled={!participantName.trim()}>
+              დამატება
+            </Button>
+          </div>
+
+          {participants.length > 0 && (
+            <ul className="space-y-1">
+              {participants.map((p, i) => (
+                <li key={`${p.fullName}-${i}`} className="flex items-center justify-between rounded-md bg-neutral-50 px-3 py-1.5 text-sm">
+                  <div>
+                    <span className="font-medium">{p.fullName}</span>
+                    {p.position && <span className="text-neutral-500"> · {p.position}</span>}
+                  </div>
+                  <button type="button" onClick={() => removeParticipant(i)} className="text-neutral-400 hover:text-red-500">×</button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {mutation.error && (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {mutation.error instanceof Error ? mutation.error.message : String(mutation.error)}
             </div>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+          )}
+        </div>
+      )}
+    </WizardShell>
   );
 }

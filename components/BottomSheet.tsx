@@ -246,13 +246,12 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
     if (!sheet) return null;
     const { content, options, title, cancelButtonIndex, destructiveButtonIndex, selectedOptionIndex } = sheet.options;
     if (content) {
-      return (
-        <View style={styles.contentBody}>
-          {typeof content === 'function'
-            ? content({ dismiss: () => dismiss(cancelButtonIndex) })
-            : content}
-        </View>
-      );
+      // Custom content (e.g. SheetLayout) manages its own layout — render
+      // directly with no wrapper so we don't get competing maxHeight constraints,
+      // double rounded corners, or unwanted horizontal padding.
+      return typeof content === 'function'
+        ? content({ dismiss: () => dismiss(cancelButtonIndex) })
+        : content;
     }
 
     const hasSelection = selectedOptionIndex != null;

@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Receipt, User, KeyRound } from 'lucide-react';
+import { Receipt, User, KeyRound, Award, FileText, Box, ScrollText, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -199,6 +200,30 @@ export default function Account() {
           <SubscriptionCard />
           <ProfileCard />
           <PasswordCard />
+
+          {/* Tools moved from sidebar */}
+          <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
+            <div className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
+              სხვა
+            </div>
+            {[
+              { to: '/certificates',   icon: Award,      label: 'სერტიფიკატები' },
+              { to: '/qualifications', icon: Award,      label: 'კვალიფიკაციები' },
+              { to: '/templates',      icon: FileText,   label: 'შაბლონები' },
+              { to: '/safety',         icon: Box,        label: '3D უსაფრთხოება' },
+              { to: '/terms',          icon: ScrollText, label: 'წესები და პირობები' },
+            ].map(({ to, icon: Icon, label }) => (
+              <Link
+                key={to}
+                to={to}
+                className="flex items-center gap-3 border-t border-neutral-100 px-4 py-3 text-sm text-neutral-700 hover:bg-neutral-50"
+              >
+                <Icon size={15} className="shrink-0 text-neutral-400" />
+                <span className="flex-1">{label}</span>
+                <ChevronRight size={14} className="text-neutral-300" />
+              </Link>
+            ))}
+          </div>
         </div>
 
         <div className="lg:col-span-2">
