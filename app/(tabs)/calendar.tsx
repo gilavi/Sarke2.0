@@ -451,6 +451,8 @@ function EventRow({
   templateCategoryMap: Record<string, string>;
 }) {
   const router = useRouter();
+  const { theme } = useTheme();
+  const rowStyles = useMemo(() => createRowStyles(theme.colors), [theme.colors]);
 
   const category = event.type === 'inspection'
     ? (templateCategoryMap[event.templateId ?? ''] ?? null)
@@ -496,13 +498,13 @@ function EventRow({
         <Text style={rowStyles.meta} numberOfLines={1}>{event.projectName}</Text>
       </View>
       <Text style={rowStyles.time}>{timeLabel}</Text>
-      <Ionicons name="chevron-forward" size={14} color="#D3D1C7" />
+      <Ionicons name="chevron-forward" size={14} color={theme.colors.border} />
     </Pressable>
   );
 }
 
 // Matches home screen recentRow styles exactly
-const rowStyles = StyleSheet.create({
+const createRowStyles = (colors: any) => StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -511,23 +513,23 @@ const rowStyles = StyleSheet.create({
   },
   rowBorder: {
     borderBottomWidth: 0.5,
-    borderBottomColor: 'rgba(0,0,0,0.06)',
+    borderBottomColor: colors.hairline,
   },
   title: {
     fontSize: 15,
     fontWeight: '500',
-    color: '#1A1A1A',
+    color: colors.ink,
     lineHeight: 20,
     marginBottom: 3,
   },
   meta: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: colors.inkFaint,
     fontWeight: '400',
   },
   time: {
     fontSize: 12,
-    color: '#B4B2A9',
+    color: colors.inkSoft,
     marginLeft: 8,
     marginRight: 4,
   },
@@ -590,11 +592,11 @@ function getStyles(theme: any) {
     },
     dayLetterLabel: {
       fontSize: 12,
-      color: '#9CA3AF',
+      color: theme.colors.inkFaint,
       fontWeight: '500',
     },
     dayLetterSelected: {
-      color: '#1D9E75',
+      color: theme.colors.accent,
       fontWeight: '700',
     },
     dayNumWrap: {
@@ -605,13 +607,13 @@ function getStyles(theme: any) {
       justifyContent: 'center',
     },
     dayNumWrapToday: {
-      backgroundColor: '#1D9E75',
+      backgroundColor: theme.colors.accent,
     },
     // Selected (non-today): outlined ring
     dayNumWrapSelected: {
       borderWidth: 2,
-      borderColor: '#1D9E75',
-      backgroundColor: '#E8F5F0',
+      borderColor: theme.colors.accent,
+      backgroundColor: theme.colors.accentSoft,
     },
     dayNum: {
       fontSize: 18,
@@ -619,11 +621,11 @@ function getStyles(theme: any) {
       color: theme.colors.ink,
     },
     dayNumTodayText: {
-      color: '#FFFFFF',
+      color: theme.colors.white,
       fontWeight: '700',
     },
     dayNumSelected: {
-      color: '#1D9E75',
+      color: theme.colors.accent,
       fontWeight: '700',
     },
     dotRow: {
@@ -683,10 +685,10 @@ function getStyles(theme: any) {
       letterSpacing: 0.4,
     },
     sectionHeaderToday: {
-      color: '#1D9E75',
+      color: theme.colors.accent,
     },
     todayPill: {
-      backgroundColor: '#1D9E7520',
+      backgroundColor: theme.colors.accentGhost,
       borderRadius: 999,
       paddingHorizontal: 8,
       paddingVertical: 2,
@@ -694,7 +696,7 @@ function getStyles(theme: any) {
     todayPillText: {
       fontSize: 11,
       fontWeight: '700',
-      color: '#1D9E75',
+      color: theme.colors.accent,
     },
     sectionEvents: {
       // rows handle their own paddingHorizontal to match home screen
@@ -708,7 +710,7 @@ function getStyles(theme: any) {
     overdueHeaderText: {
       fontSize: 11,
       fontWeight: '600',
-      color: '#DC2626',
+      color: theme.colors.danger,
     },
   });
 }

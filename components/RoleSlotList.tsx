@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Image, Pressable, StyleSheet, View } from 'react-native';
 import { A11yText as Text } from './primitives/A11yText';
 import { Ionicons } from '@expo/vector-icons';
@@ -6,7 +6,7 @@ import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { useBottomSheet } from './BottomSheet';
 import { RoleSlotSheet, type RoleSlotDetails } from './RoleSlotSheet';
 import { SignatureCanvas } from './SignatureCanvas';
-import { theme } from '../lib/theme';
+import { useTheme } from '../lib/theme';
 import { haptic } from '../lib/haptics';
 import { a11y } from '../lib/accessibility';
 import { useToast } from '../lib/toast';
@@ -57,6 +57,8 @@ interface PendingSignature {
 export function RoleSlotList({ projectId, inspector, crew, onChange, maxVisible, onViewAll }: Props) {
   const showSheet = useBottomSheet();
   const toast = useToast();
+  const { theme } = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [pending, setPending] = useState<PendingSignature | null>(null);
   const [busy, setBusy] = useState(false);
   // Cache of resolved storage-path → data-URL for the signature thumb shown
@@ -422,79 +424,81 @@ function cryptoUuid(): string {
   return `crew_${Date.now()}_${Math.random().toString(36).slice(2, 10)}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    padding: 10,
-    backgroundColor: theme.colors.subtleSurface,
-    borderRadius: 10,
-  },
-  emptySlot: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    padding: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: theme.colors.hairline,
-    backgroundColor: theme.colors.card,
-  },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sigAvatar: {
-    backgroundColor: theme.colors.white,
-    borderWidth: 1,
-    borderColor: theme.colors.hairline,
-    overflow: 'hidden',
-  },
-  sigAvatarImg: {
-    width: 32,
-    height: 32,
-  },
-  name: { fontSize: 14, fontWeight: '600', color: theme.colors.ink },
-  role: { fontSize: 11, color: theme.colors.inkSoft, marginTop: 2 },
-  emptyLabel: { fontSize: 14, fontWeight: '600', color: theme.colors.ink },
-  emptyHint: { fontSize: 11, color: theme.colors.inkFaint, marginTop: 2 },
-  lockedChip: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: theme.colors.card,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: theme.colors.hairline,
-  },
-  signedChip: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#059669',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actionBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  swipeDelete: {
-    width: 64,
-    backgroundColor: theme.colors.danger,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderTopRightRadius: 10,
-    borderBottomRightRadius: 10,
-    marginLeft: 6,
-  },
-});
+function makeStyles(theme: any) {
+  return StyleSheet.create({
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      padding: 10,
+      backgroundColor: theme.colors.subtleSurface,
+      borderRadius: 10,
+    },
+    emptySlot: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      padding: 10,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderStyle: 'dashed',
+      borderColor: theme.colors.hairline,
+      backgroundColor: theme.colors.card,
+    },
+    avatar: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    sigAvatar: {
+      backgroundColor: theme.colors.white,
+      borderWidth: 1,
+      borderColor: theme.colors.hairline,
+      overflow: 'hidden',
+    },
+    sigAvatarImg: {
+      width: 32,
+      height: 32,
+    },
+    name: { fontSize: 14, fontWeight: '600', color: theme.colors.ink },
+    role: { fontSize: 11, color: theme.colors.inkSoft, marginTop: 2 },
+    emptyLabel: { fontSize: 14, fontWeight: '600', color: theme.colors.ink },
+    emptyHint: { fontSize: 11, color: theme.colors.inkFaint, marginTop: 2 },
+    lockedChip: {
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      backgroundColor: theme.colors.card,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: theme.colors.hairline,
+    },
+    signedChip: {
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      backgroundColor: theme.colors.accent,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    actionBtn: {
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    swipeDelete: {
+      width: 64,
+      backgroundColor: theme.colors.danger,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderTopRightRadius: 10,
+      borderBottomRightRadius: 10,
+      marginLeft: 6,
+    },
+  });
+}

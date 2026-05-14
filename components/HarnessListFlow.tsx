@@ -20,7 +20,6 @@ import { TourGuide, type TourStep } from './TourGuide';
 import { HelpIcon, useScaffoldHelpSheet } from './ScaffoldHelpSheet';
 import { FloatingLabelInput } from './inputs/FloatingLabelInput';
 
-const BRAND_GREEN = '#1D9E75';
 
 type HarnessItem = {
   question: Question;
@@ -179,7 +178,7 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
               disabled={harnessRowCount <= 1}
               style={harnessRowCount <= 1 ? { opacity: 0.35 } : undefined}
             >
-              <Ionicons name="remove-circle" size={52} color={BRAND_GREEN} />
+              <Ionicons name="remove-circle" size={52} color={theme.colors.accent} />
             </Pressable>
             <Text style={{ fontSize: 72, fontWeight: '800', color: theme.colors.ink, minWidth: 80, textAlign: 'center' }}>
               {harnessRowCount}
@@ -190,7 +189,7 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
               disabled={harnessRowCount >= 15}
               style={harnessRowCount >= 15 ? { opacity: 0.35 } : undefined}
             >
-              <Ionicons name="add-circle" size={52} color={BRAND_GREEN} />
+              <Ionicons name="add-circle" size={52} color={theme.colors.accent} />
             </Pressable>
           </View>
         </View>
@@ -529,7 +528,7 @@ function gets(theme: Theme) {
       fontWeight: '700',
       letterSpacing: 0.6,
       textTransform: 'uppercase',
-      color: BRAND_GREEN,
+      color: theme.colors.accent,
     },
     title: { fontSize: 18, fontWeight: '800', color: theme.colors.ink, marginTop: 2 },
     closeBtn: {
@@ -646,7 +645,7 @@ function gets(theme: Theme) {
     },
     bigCta: {
       minHeight: 64,
-      backgroundColor: BRAND_GREEN,
+      backgroundColor: theme.colors.accent,
       borderRadius: 14,
       alignItems: 'center',
       justifyContent: 'center',

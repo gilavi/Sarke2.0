@@ -1001,3 +1001,7 @@ export const incidentsApi = {
     throw new Error('mock incidentsApi.remove not implemented');
   },
 };
+
+export const paymentRecordsApi = {
+  list: async () => [],
+};

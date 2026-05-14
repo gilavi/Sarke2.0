@@ -42,9 +42,6 @@ export interface FloatingLabelInputProps {
   style?: any;
 }
 
-const BRAND_GREEN = '#1D9E75';
-const LABEL_GRAY = '#9CA3AF';
-const FLOAT_GRAY = '#6B7280';
 const FLOAT_TOP = 6;
 const SINK_TOP = 16;
 const FLOAT_SIZE = 11;
@@ -125,15 +122,15 @@ export const FloatingLabelInput = React.forwardRef<TextInput, FloatingLabelInput
     const labelColor = error
       ? theme.colors.semantic.danger
       : isFocused
-      ? BRAND_GREEN
+      ? theme.colors.accent
       : value
-      ? FLOAT_GRAY
-      : LABEL_GRAY;
+      ? theme.colors.inkSoft
+      : theme.colors.inkFaint;
 
     const borderColor = error
       ? theme.colors.semantic.danger
       : isFocused
-      ? BRAND_GREEN
+      ? theme.colors.accent
       : theme.colors.border;
 
     const borderWidth = isFocused || !!error ? 1.5 : 1;
@@ -145,7 +142,7 @@ export const FloatingLabelInput = React.forwardRef<TextInput, FloatingLabelInput
         borderColor,
         borderWidth,
         borderRadius: 10,
-        backgroundColor: isDisabled ? '#F9F9F9' : theme.colors.surface,
+        backgroundColor: isDisabled ? theme.colors.surfaceSecondary : theme.colors.surface,
         minHeight: multiline ? 100 : 56,
         height: multiline ? undefined : 56,
         maxHeight: multiline ? 200 : undefined,
@@ -175,7 +172,7 @@ export const FloatingLabelInput = React.forwardRef<TextInput, FloatingLabelInput
             numberOfLines={1}
           >
             {label}
-            {required ? <Text style={styles.asterisk}> *</Text> : null}
+            {required ? <Text style={[styles.asterisk, { color: theme.colors.danger }]}> *</Text> : null}
           </Animated.Text>
 
           <TextInput
@@ -251,7 +248,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
   },
   asterisk: {
-    color: '#EF4444',
+    // danger color applied inline via theme in render
   },
   input: {
     flex: 1,

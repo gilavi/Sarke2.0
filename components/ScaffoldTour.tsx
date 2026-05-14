@@ -16,8 +16,6 @@ import { QuestionAvatar } from './QuestionAvatar';
 import { SCAFFOLD_HELP, ScaffoldHelpEntry } from '../lib/scaffoldHelp';
 import { useTheme } from '../lib/theme';
 
-const BRAND = '#1D9E75';
-const BRAND_DARK = '#0F6E56';
 const { width: SCREEN_W } = Dimensions.get('window');
 
 export function ScaffoldTour({ visible, onClose }: { visible: boolean; onClose: () => void }) {
@@ -107,7 +105,7 @@ export function ScaffoldTour({ visible, onClose }: { visible: boolean; onClose: 
           >
             <Text style={styles.btnText}>{isLast ? 'დაწყება' : 'შემდეგი'}</Text>
             {!isLast ? (
-              <Ionicons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 6 }} />
+              <Ionicons name="arrow-forward" size={18} color={theme.colors.white} style={{ marginLeft: 6 }} />
             ) : null}
           </Pressable>
         </View>
@@ -133,7 +131,7 @@ function makeStyles(theme: any) {
     stepCounter: {
       fontSize: 13,
       fontWeight: '700',
-      color: BRAND,
+      color: theme.colors.accent,
     },
     skipBtn: {
       paddingVertical: 4,
@@ -147,7 +145,7 @@ function makeStyles(theme: any) {
     },
     intro: {
       fontSize: 13,
-      color: BRAND_DARK,
+      color: theme.colors.accent,
       textAlign: 'center',
       paddingHorizontal: 24,
       paddingTop: 6,
@@ -184,7 +182,7 @@ function makeStyles(theme: any) {
       width: 40,
       height: 3,
       borderRadius: 2,
-      backgroundColor: BRAND,
+      backgroundColor: theme.colors.accent,
       opacity: 0.4,
     },
     copy: {
@@ -209,7 +207,7 @@ function makeStyles(theme: any) {
     },
     dotActive: {
       width: 22,
-      backgroundColor: BRAND,
+      backgroundColor: theme.colors.accent,
     },
     footer: {
       paddingHorizontal: 20,
@@ -218,19 +216,19 @@ function makeStyles(theme: any) {
     },
     btn: {
       flexDirection: 'row',
-      backgroundColor: BRAND,
+      backgroundColor: theme.colors.accent,
       paddingVertical: 16,
       borderRadius: 14,
       alignItems: 'center',
       justifyContent: 'center',
-      shadowColor: BRAND_DARK,
+      shadowColor: theme.colors.accent,
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.25,
       shadowRadius: 10,
       elevation: 4,
     },
     btnText: {
-      color: '#FFFFFF',
+      color: theme.colors.white,
       fontSize: 16,
       fontWeight: '700',
     },

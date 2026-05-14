@@ -1,8 +1,9 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { A11yText } from './primitives/A11yText';
 import { ActionSheetItem, type ActionSheetItemVariant } from './primitives/ActionSheetItem';
+import { useTheme } from '../lib/theme';
 
 export interface ActionSheetItemConfig {
   label: string;
@@ -25,6 +26,8 @@ export function ActionSheet({
   onClose,
 }: ActionSheetProps) {
   const insets = useSafeAreaInsets();
+  const { theme } = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
 
   const handleItemPress = useCallback((item: ActionSheetItemConfig) => {
     item.onPress();
@@ -36,7 +39,7 @@ export function ActionSheet({
       <A11yText
         size="sm"
         weight="bold"
-        color="#64748B"
+        color={theme.colors.inkFaint}
         style={styles.title}
       >
         {title}
@@ -68,28 +71,30 @@ export function ActionSheet({
   return content;
 }
 
-const styles = StyleSheet.create({
-  content: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 0,
-    paddingTop: 0,
-  },
-  title: {
-    fontSize: 13,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    textAlign: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-  },
-  itemsContainer: {
-    marginBottom: 8,
-  },
-  cancelBtn: {
-    marginHorizontal: 16,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: '#E5E7EB',
-    overflow: 'hidden',
-  },
-});
+function makeStyles(theme: any) {
+  return StyleSheet.create({
+    content: {
+      backgroundColor: theme.colors.surface,
+      paddingHorizontal: 0,
+      paddingTop: 0,
+    },
+    title: {
+      fontSize: 13,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+      textAlign: 'center',
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+    },
+    itemsContainer: {
+      marginBottom: 8,
+    },
+    cancelBtn: {
+      marginHorizontal: 16,
+      borderRadius: 14,
+      borderWidth: 1.5,
+      borderColor: theme.colors.border,
+      overflow: 'hidden',
+    },
+  });
+}

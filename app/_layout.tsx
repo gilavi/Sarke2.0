@@ -44,6 +44,23 @@ function ThemedStatusBar() {
   return <StatusBar style={isDark ? 'light' : 'dark'} />;
 }
 
+function FontsLoadingFallback() {
+  const { theme } = useTheme();
+  return (
+    <View style={{ flex: 1, backgroundColor: theme.colors.background, paddingHorizontal: 20, paddingTop: 80, gap: 20 }}>
+      <Skeleton width={140} height={13} />
+      <Skeleton width={'75%'} height={30} />
+      <View style={{ height: 12 }} />
+      <Skeleton width={'100%'} height={72} radius={14} />
+      <Skeleton width={100} height={10} style={{ marginTop: 20 }} />
+      <View style={{ flexDirection: 'row', gap: 12 }}>
+        <Skeleton width={'48%'} height={120} radius={16} />
+        <Skeleton width={'48%'} height={120} radius={16} />
+      </View>
+    </View>
+  );
+}
+
 function AuthGate() {
   const { state } = useSession();
   const segments = useSegments();
@@ -107,8 +124,11 @@ function AuthGate() {
     if (state.status === 'signedOut' && !inAuth) {
       router.replace('/(auth)/login');
     } else if (state.status === 'signedIn') {
+      // Only redirect to terms when the user profile is loaded. If user is null
+      // (profile fetch failed or still in-flight), leave navigation alone.
       const needsTerms =
-        !state.user?.tc_accepted_version || state.user.tc_accepted_version !== TERMS_VERSION;
+        !!state.user &&
+        (!state.user.tc_accepted_version || state.user.tc_accepted_version !== TERMS_VERSION);
       if (needsTerms && !inTerms) {
         router.replace('/terms');
       } else if (!needsTerms && (inAuth || (inTerms && !isTermsViewMode))) {
@@ -183,17 +203,7 @@ export default function RootLayout() {
   if (!fontsLoaded) {
     return (
       <ThemeProvider>
-        <View style={{ flex: 1, backgroundColor: '#FAFAF8', paddingHorizontal: 20, paddingTop: 80, gap: 20 }}>
-          <Skeleton width={140} height={13} />
-          <Skeleton width={'75%'} height={30} />
-          <View style={{ height: 12 }} />
-          <Skeleton width={'100%'} height={72} radius={14} />
-          <Skeleton width={100} height={10} style={{ marginTop: 20 }} />
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            <Skeleton width={'48%'} height={120} radius={16} />
-            <Skeleton width={'48%'} height={120} radius={16} />
-          </View>
-        </View>
+        <FontsLoadingFallback />
       </ThemeProvider>
     );
   }

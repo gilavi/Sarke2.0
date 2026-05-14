@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { A11yText as Text } from '../primitives/A11yText';
@@ -18,6 +19,7 @@ interface StepBarProps {
  */
 export function StepBar({ step, stepLabels }: StepBarProps) {
   const { theme } = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const successColor = theme.colors.semantic.success;
 
   return (
@@ -43,7 +45,7 @@ export function StepBar({ step, stepLabels }: StepBarProps) {
             ]}
           >
             {i < step ? (
-              <Ionicons name="checkmark" size={10} color="#fff" />
+              <Ionicons name="checkmark" size={10} color={theme.colors.white} />
             ) : (
               <Text style={[styles.dotNum, i === step && styles.dotNumActive]}>{i + 1}</Text>
             )}
@@ -63,42 +65,44 @@ export function StepBar({ step, stepLabels }: StepBarProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  bar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  stepItem: {
-    alignItems: 'center',
-    gap: 4,
-  },
-  connector: {
-    flex: 1,
-    height: 1.5,
-    marginBottom: 16,
-  },
-  dot: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dotNum: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#9CA3AF',
-  },
-  dotNumActive: {
-    color: '#fff',
-  },
-  stepLabel: {
-    fontSize: 10,
-    color: '#9CA3AF',
-  },
-});
+function makeStyles(theme: any) {
+  return StyleSheet.create({
+    bar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 20,
+      paddingVertical: 10,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+    },
+    stepItem: {
+      alignItems: 'center',
+      gap: 4,
+    },
+    connector: {
+      flex: 1,
+      height: 1.5,
+      marginBottom: 16,
+    },
+    dot: {
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      borderWidth: 1.5,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    dotNum: {
+      fontSize: 10,
+      fontWeight: '700',
+      color: theme.colors.inkFaint,
+    },
+    dotNumActive: {
+      color: theme.colors.white,
+    },
+    stepLabel: {
+      fontSize: 10,
+      color: theme.colors.inkFaint,
+    },
+  });
+}

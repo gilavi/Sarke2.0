@@ -563,11 +563,11 @@ export default function InspectionResultScreen() {
             ]}
           >
             {downloading ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={theme.colors.white} />
             ) : (
               <>
-                <Ionicons name={pdfUsage?.isLocked ? 'lock-closed-outline' : 'share-outline'} size={18} color="#fff" />
-                <Text style={[styles.bottomBtnText, { color: '#fff' }]} numberOfLines={1}>
+                <Ionicons name={pdfUsage?.isLocked ? 'lock-closed-outline' : 'share-outline'} size={18} color={theme.colors.white} />
+                <Text style={[styles.bottomBtnText, { color: theme.colors.white }]} numberOfLines={1}>
                   {pdfUsage?.isLocked ? '🔒 გადმოწერა' : 'გადმოწერა'}
                 </Text>
               </>

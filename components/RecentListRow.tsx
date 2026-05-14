@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { ReactNode, useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { A11yText as Text } from './primitives/A11yText';
@@ -27,6 +27,7 @@ export function RecentListRow({
   onPress,
 }: RecentListRowProps) {
   const { theme } = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   return (
     <Pressable
       onPress={onPress}
@@ -40,40 +41,42 @@ export function RecentListRow({
         ) : null}
       </View>
       {trailing ? <Text style={styles.trailing}>{trailing}</Text> : null}
-      <Ionicons name="chevron-forward" size={14} color={theme.colors.borderStrong ?? '#D3D1C7'} />
+      <Ionicons name="chevron-forward" size={14} color={theme.colors.borderStrong} />
     </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-  },
-  rowBorder: {
-    borderBottomWidth: 0.5,
-    borderBottomColor: 'rgba(0,0,0,0.06)',
-  },
-  leading: { marginRight: 14 },
-  body: { flex: 1 },
-  title: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#1A1A1A',
-    lineHeight: 20,
-    marginBottom: 3,
-  },
-  subtitle: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    fontWeight: '400',
-  },
-  trailing: {
-    fontSize: 12,
-    color: '#B4B2A9',
-    marginLeft: 8,
-    marginRight: 4,
-  },
-});
+function makeStyles(theme: any) {
+  return StyleSheet.create({
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 24,
+      paddingVertical: 14,
+    },
+    rowBorder: {
+      borderBottomWidth: 0.5,
+      borderBottomColor: theme.colors.hairline,
+    },
+    leading: { marginRight: 14 },
+    body: { flex: 1 },
+    title: {
+      fontSize: 15,
+      fontWeight: '500',
+      color: theme.colors.ink,
+      lineHeight: 20,
+      marginBottom: 3,
+    },
+    subtitle: {
+      fontSize: 12,
+      color: theme.colors.inkFaint,
+      fontWeight: '400',
+    },
+    trailing: {
+      fontSize: 12,
+      color: theme.colors.inkSoft,
+      marginLeft: 8,
+      marginRight: 4,
+    },
+  });
+}

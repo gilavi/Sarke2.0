@@ -3,8 +3,8 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { A11yText } from './A11yText';
 import { haptic } from '../../lib/haptics';
-
 import { a11y } from '../../lib/accessibility';
+import { useTheme } from '../../lib/theme';
 
 export type ActionSheetItemVariant = 'default' | 'destructive' | 'highlight';
 
@@ -25,21 +25,24 @@ export function ActionSheetItem({
   isSelected = false,
   isLast = false,
 }: ActionSheetItemProps) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme.colors), [theme.colors]);
+
   const handlePress = () => {
     haptic.light();
     onPress();
   };
 
   const textColor = {
-    default: '#1F2937',
-    destructive: '#DC2626',
-    highlight: '#059669',
+    default: theme.colors.ink,
+    destructive: theme.colors.danger,
+    highlight: theme.colors.accent,
   }[variant];
 
   const iconColor = {
-    default: '#6B7280',
-    destructive: '#DC2626',
-    highlight: '#059669',
+    default: theme.colors.inkFaint,
+    destructive: theme.colors.danger,
+    highlight: theme.colors.accent,
   }[variant];
 
   return (
@@ -75,7 +78,7 @@ export function ActionSheetItem({
           {label}
         </A11yText>
         {isSelected && (
-          <Ionicons name="checkmark" size={20} color="#059669" />
+          <Ionicons name="checkmark" size={20} color={theme.colors.accent} />
         )}
       </Pressable>
       {!isLast && <View style={styles.separator} />}
@@ -83,49 +86,49 @@ export function ActionSheetItem({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
     height: 56,
     paddingHorizontal: 16,
     gap: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
   selected: {
-    backgroundColor: '#ECFDF5',
+    backgroundColor: colors.accentSoft,
     borderLeftWidth: 3,
-    borderLeftColor: '#059669',
+    borderLeftColor: colors.accent,
   },
   pressed: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: colors.surfaceSecondary,
   },
   selectionCircle: {
     width: 22,
     height: 22,
     borderRadius: 11,
     borderWidth: 2,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
   selectionCircleActive: {
-    borderColor: '#059669',
-    backgroundColor: '#ECFDF5',
+    borderColor: colors.accent,
+    backgroundColor: colors.accentSoft,
   },
   selectionCircleInner: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#059669',
+    backgroundColor: colors.accent,
   },
   icon: {
     marginLeft: -4,
   },
   separator: {
     height: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: colors.hairline,
     marginLeft: 16,
   },
 });

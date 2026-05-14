@@ -32,7 +32,7 @@ export const SuggestionPills: React.FC<SuggestionPillsProps> = ({
             style={({ pressed }) => [
               styles.chip,
               {
-                backgroundColor: theme.colors.subtleSurface ?? '#F1F1EE',
+                backgroundColor: theme.colors.subtleSurface,
                 borderColor: theme.colors.hairline,
               },
               pressed && { opacity: 0.7 },

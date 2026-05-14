@@ -66,7 +66,7 @@ function IllustrationProjects() {
       />
       <Rect x={72} y={62} width={16} height={4} rx={2} fill={theme.colors.accent} opacity={0.6} />
       {/* Clipboard */}
-      <Rect x={52} y={72} width={56} height={68} rx={8} fill="#fff" stroke={theme.colors.accent} strokeWidth={2} />
+      <Rect x={52} y={72} width={56} height={68} rx={8} fill={theme.colors.surface} stroke={theme.colors.accent} strokeWidth={2} />
       <Rect x={74} y={66} width={12} height={10} rx={3} fill={theme.colors.accent} />
       {/* Dashed lines on clipboard */}
       <Rect x={62} y={90} width={36} height={3} rx={1.5} fill={theme.colors.hairline} />
@@ -93,7 +93,7 @@ function IllustrationCertificates() {
         <Rect x={25} y={25} width={110} height={110} rx={14} fill={theme.colors.certTint} />
       </G>
       {/* Document */}
-      <Rect x={45} y={38} width={70} height={90} rx={8} fill="#fff" stroke={theme.colors.certTint} strokeWidth={2} />
+      <Rect x={45} y={38} width={70} height={90} rx={8} fill={theme.colors.surface} stroke={theme.colors.certTint} strokeWidth={2} />
       {/* Folded corner */}
       <Path d="M95 38h20v20l-20-20z" fill={theme.colors.certSoft} />
       <Path d="M95 38l20 20" stroke={theme.colors.certTint} strokeWidth={1.5} />
@@ -127,7 +127,7 @@ function IllustrationHistory() {
         <Circle cx={80} cy={80} r={55} fill={theme.colors.accent} />
       </G>
       {/* Clock face */}
-      <Circle cx={80} cy={80} r={44} fill="#fff" stroke={theme.colors.accent} strokeWidth={2.5} />
+      <Circle cx={80} cy={80} r={44} fill={theme.colors.surface} stroke={theme.colors.accent} strokeWidth={2.5} />
       <Circle cx={80} cy={80} r={3} fill={theme.colors.accent} />
       {/* Hour markers */}
       {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map((deg, i) => {
@@ -180,7 +180,7 @@ function IllustrationQualifications() {
         <Rect x={20} y={20} width={120} height={120} rx={14} fill={theme.colors.certTint} />
       </G>
       {/* Certificate frame */}
-      <Rect x={45} y={35} width={70} height={90} rx={6} fill="#fff" stroke={theme.colors.certTint} strokeWidth={2.5} />
+      <Rect x={45} y={35} width={70} height={90} rx={6} fill={theme.colors.surface} stroke={theme.colors.certTint} strokeWidth={2.5} />
       {/* Inner decorative border */}
       <Rect x={51} y={41} width={58} height={78} rx={4} fill="none" stroke={theme.colors.certSoft} strokeWidth={1} strokeDasharray="4 3" />
       {/* Question mark */}
@@ -214,7 +214,7 @@ function IllustrationTemplates() {
         <Rect x={20} y={20} width={120} height={120} rx={14} fill={theme.colors.templatesTint} />
       </G>
       {/* Blueprint */}
-      <Rect x={38} y={38} width={84} height={84} rx={6} fill="#fff" stroke={theme.colors.templatesTint} strokeWidth={2} />
+      <Rect x={38} y={38} width={84} height={84} rx={6} fill={theme.colors.surface} stroke={theme.colors.templatesTint} strokeWidth={2} />
       {/* Grid lines */}
       <Line x1={38} y1={60} x2={122} y2={60} stroke={theme.colors.templatesSoft} strokeWidth={1} />
       <Line x1={38} y1={82} x2={122} y2={82} stroke={theme.colors.templatesSoft} strokeWidth={1} />
@@ -393,14 +393,18 @@ export default function EmptyState({
 
 type SectionType = 'incidents' | 'briefings' | 'reports' | 'documents';
 
-const SC = {
-  fill: '#E8F5F0',
-  primary: 'rgba(29,158,117,0.25)',
-  stroke: 'rgba(29,158,117,0.4)',
-  sw: 1.5 as number,
-};
+function useSC() {
+  const { theme } = useTheme();
+  return {
+    fill: theme.colors.accentSoft,
+    primary: theme.colors.accentGhost,
+    stroke: theme.colors.accent,
+    sw: 1.5 as number,
+  };
+}
 
 function IncidentsIllustration() {
+  const SC = useSC();
   return (
     <Svg width={52} height={48} viewBox="0 0 52 48" fill="none">
       {/* Hard hat brim */}
@@ -412,12 +416,13 @@ function IncidentsIllustration() {
       {/* Shield */}
       <Path d="M36 12 L44 15 L44 23 Q44 29 36 32 Q28 29 28 23 L28 15 Z" fill={SC.fill} stroke={SC.stroke} strokeWidth={SC.sw} />
       {/* Checkmark */}
-      <Polyline points="31,22 34,26 41,18" stroke="rgba(29,158,117,0.8)" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+      <Polyline points="31,22 34,26 41,18" stroke={SC.stroke} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
     </Svg>
   );
 }
 
 function BriefingsIllustration() {
+  const SC = useSC();
   return (
     <Svg width={52} height={48} viewBox="0 0 52 48" fill="none">
       {/* Instructor figure head */}
@@ -440,6 +445,7 @@ function BriefingsIllustration() {
 }
 
 function ReportsIllustration() {
+  const SC = useSC();
   return (
     <Svg width={52} height={48} viewBox="0 0 52 48" fill="none">
       {/* Document body */}
@@ -460,6 +466,7 @@ function ReportsIllustration() {
 }
 
 function DocumentsIllustration() {
+  const SC = useSC();
   return (
     <Svg width={52} height={48} viewBox="0 0 52 48" fill="none">
       {/* Folder back */}
@@ -490,6 +497,7 @@ const SECTION_SUBTITLES: Record<SectionType, string> = {
 };
 
 export function SectionEmptyState({ type, subtitle }: { type: SectionType; subtitle?: string }) {
+  const { theme } = useTheme();
   const Illustration = SECTION_ILLUSTRATIONS[type];
   const text = subtitle ?? SECTION_SUBTITLES[type];
   return (
@@ -497,7 +505,7 @@ export function SectionEmptyState({ type, subtitle }: { type: SectionType; subti
       <View style={sectionStyles.illustration}>
         <Illustration />
       </View>
-      <Text style={sectionStyles.subtitle}>{text}</Text>
+      <Text style={[sectionStyles.subtitle, { color: theme.colors.inkFaint }]}>{text}</Text>
     </View>
   );
 }
@@ -514,7 +522,6 @@ const sectionStyles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 13,
-    color: '#9CA3AF',
     fontWeight: '500',
     textAlign: 'center',
   },

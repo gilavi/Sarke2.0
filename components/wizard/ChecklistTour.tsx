@@ -135,7 +135,7 @@ export function ChecklistTour({ visible, onClose }: Props) {
           >
             <Text style={styles.btnText}>{isLast ? 'დაწყება' : 'შემდეგი'}</Text>
             {!isLast ? (
-              <Ionicons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 6 }} />
+              <Ionicons name="arrow-forward" size={18} color={theme.colors.white} style={{ marginLeft: 6 }} />
             ) : null}
           </Pressable>
         </View>

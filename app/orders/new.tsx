@@ -924,8 +924,8 @@ function StepSignDirector({
           padding: 12,
           gap: 8,
         }}>
-          <Ionicons name="checkmark-circle" size={28} color="#16a34a" />
-          <Text style={{ fontSize: 13, color: '#16a34a', fontWeight: '600' }}>ხელმოწერა დადებულია</Text>
+          <Ionicons name="checkmark-circle" size={28} color={theme.colors.semantic.success} />
+          <Text style={{ fontSize: 13, color: theme.colors.semantic.success, fontWeight: '600' }}>ხელმოწერა დადებულია</Text>
           <Pressable onPress={() => setForm(f => ({ ...f, directorSignature: null, directorSignedAt: null }))}>
             <Text style={{ fontSize: 12, color: theme.colors.inkSoft, textDecorationLine: 'underline' }}>ხელახლა ხელმოწერა</Text>
           </Pressable>
@@ -980,8 +980,8 @@ function StepSignAppointed({
           padding: 12,
           gap: 8,
         }}>
-          <Ionicons name="checkmark-circle" size={28} color="#16a34a" />
-          <Text style={{ fontSize: 13, color: '#16a34a', fontWeight: '600' }}>ხელმოწერა დადებულია</Text>
+          <Ionicons name="checkmark-circle" size={28} color={theme.colors.semantic.success} />
+          <Text style={{ fontSize: 13, color: theme.colors.semantic.success, fontWeight: '600' }}>ხელმოწერა დადებულია</Text>
           <Pressable onPress={() => setForm(f => ({ ...f, appointedSignature: null, appointedSignedAt: null }))}>
             <Text style={{ fontSize: 12, color: theme.colors.inkSoft, textDecorationLine: 'underline' }}>ხელახლა ხელმოწერა</Text>
           </Pressable>

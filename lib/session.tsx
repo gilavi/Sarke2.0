@@ -136,10 +136,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           queryKey: ['projects', 'list'],
           queryFn: () => projectsApi.list(),
         }).catch(() => undefined);
-        queryClient.prefetchQuery({
-          queryKey: ['projects', 'stats'],
-          queryFn: () => projectsApi.stats(),
-        }).catch(() => undefined);
       } catch (e) {
         if (cancelled || myEpoch !== epoch) return;
         logError(e, 'session.loadUser');

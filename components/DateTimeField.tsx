@@ -67,7 +67,7 @@ export function DateTimeField({
   maxDate,
   disabled,
 }: Props) {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
   const styles = makeStyles(theme);
@@ -219,7 +219,7 @@ export function DateTimeField({
                 display={display}
                 accentColor={theme.colors.accent}
                 textColor={theme.colors.ink}
-                themeVariant={theme.colors.surface === '#FFFFFF' ? 'light' : 'dark'}
+                themeVariant={isDark ? 'dark' : 'light'}
                 minimumDate={minDate}
                 maximumDate={maxDate}
                 locale="ka-GE"

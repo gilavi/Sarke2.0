@@ -169,7 +169,7 @@ export const ChecklistItemStep = memo(function ChecklistItemStep({
           <Ionicons
             name="checkmark"
             size={24}
-            color={goodActive ? '#fff' : theme.colors.semantic.success}
+            color={goodActive ? theme.colors.white : theme.colors.semantic.success}
           />
           <Text style={[styles.choiceText, goodActive && styles.choiceTextActive]}>
             გამართულია
@@ -184,7 +184,7 @@ export const ChecklistItemStep = memo(function ChecklistItemStep({
           <Ionicons
             name="warning"
             size={24}
-            color={defActive ? '#fff' : theme.colors.warn}
+            color={defActive ? theme.colors.white : theme.colors.warn}
           />
           <Text style={[styles.choiceText, defActive && styles.choiceTextActive]}>
             ხარვეზია
@@ -208,7 +208,7 @@ export const ChecklistItemStep = memo(function ChecklistItemStep({
             size={18}
             color={
               unusableActive
-                ? '#fff'
+                ? theme.colors.white
                 : unusableIsNeutral
                 ? theme.colors.inkSoft
                 : theme.colors.danger
@@ -474,7 +474,7 @@ function getstyles(theme: Theme) {
       textAlign: 'center',
     },
     choiceTextActive: {
-      color: '#fff',
+      color: theme.colors.white,
     },
     unusableBtn: {
       flexDirection: 'row',
@@ -509,7 +509,7 @@ function getstyles(theme: Theme) {
       fontWeight: '600',
     },
     unusableTextActive: {
-      color: '#fff',
+      color: theme.colors.white,
     },
     commentWrap: {
       marginTop: 4,

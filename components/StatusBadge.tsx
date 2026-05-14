@@ -18,7 +18,7 @@ export function StatusBadge({ status }: { status: CalendarStatus }) {
         { backgroundColor: bg, borderColor: theme.colors.surface },
       ]}
     >
-      <Ionicons name={icon as any} size={9} color="#FFFFFF" />
+      <Ionicons name={icon as any} size={9} color={theme.colors.white} />
     </View>
   );
 }

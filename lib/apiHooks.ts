@@ -26,6 +26,7 @@ import {
   reportsApi,
   signaturesApi,
   remoteSigningApi,
+  paymentRecordsApi,
 } from './services';
 import { briefingsApi } from './briefingsApi';
 import { bobcatApi } from './bobcatService';
@@ -43,6 +44,7 @@ import type {
   ProjectItem,
   ScheduleWithItem,
   Incident,
+  PaymentRecord,
   Report,
   Briefing,
 } from '../types/models';
@@ -453,4 +455,11 @@ export function useCalendarEvents(): CalendarEvent[] {
 export function useOverdueCount(): number {
   const events = useCalendarEvents();
   return useMemo(() => getOverdueCount(events), [events]);
+}
+
+export function usePaymentHistory() {
+  return useQuery<PaymentRecord[]>({
+    queryKey: ['paymentRecords', 'list'] as const,
+    queryFn: () => paymentRecordsApi.list(),
+  });
 }

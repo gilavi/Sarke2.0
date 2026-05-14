@@ -160,7 +160,7 @@ export function PaywallModal({ visible, onClose }: Props) {
             accessibilityLabel="გამოწერის გააქტიურება"
           >
             {subscribing ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <ActivityIndicator color={theme.colors.white} />
             ) : (
               <Text style={s.btnPrimaryText}>გამოწერის გააქტიურება</Text>
             )}
@@ -226,7 +226,7 @@ const makeStyles = (theme: ReturnType<typeof useTheme>['theme']) =>
       borderColor: theme.colors.background,
     },
     proBadgeText: {
-      color: '#FFFFFF',
+      color: theme.colors.white,
       fontSize: 11,
       fontWeight: '700',
       letterSpacing: 0.5,
@@ -294,7 +294,7 @@ const makeStyles = (theme: ReturnType<typeof useTheme>['theme']) =>
       alignItems: 'center',
     },
     btnPrimaryText: {
-      color: '#FFFFFF',
+      color: theme.colors.white,
       fontSize: 16,
       fontWeight: '700',
     },

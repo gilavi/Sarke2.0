@@ -186,11 +186,11 @@ export function InspectionResultView(props: Props) {
             ]}
           >
             {downloading ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={theme.colors.white} />
             ) : (
               <>
-                <Ionicons name={pdfLocked ? 'lock-closed-outline' : 'share-outline'} size={18} color="#fff" />
-                <Text style={[styles.bottomBtnText, { color: '#fff' }]} numberOfLines={1}>
+                <Ionicons name={pdfLocked ? 'lock-closed-outline' : 'share-outline'} size={18} color={theme.colors.white} />
+                <Text style={[styles.bottomBtnText, { color: theme.colors.white }]} numberOfLines={1}>
                   {pdfLocked ? '🔒 გადმოწერა' : 'გადმოწერა'}
                 </Text>
               </>

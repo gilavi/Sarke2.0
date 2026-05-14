@@ -258,7 +258,7 @@ function getstyles(theme: any) {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(255,255,255,0.92)',
+    backgroundColor: theme.colors.surface,
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 7,

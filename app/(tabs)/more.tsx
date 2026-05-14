@@ -19,6 +19,7 @@ import { useSession } from '../../lib/session';
 import { isExpiringSoon } from '../../lib/services';
 import {
   useInspectionCounts,
+  usePaymentHistory,
   useProjects,
   useQualifications,
   useTemplates,
@@ -35,7 +36,7 @@ import { a11y } from '../../lib/accessibility';
 import { useTranslation } from 'react-i18next';
 import { saveLanguage } from '../../lib/i18n';
 import i18n from '../../lib/i18n';
-import type { Project, Qualification, Template } from '../../types/models';
+import type { PaymentRecord, Project, Qualification, Template } from '../../types/models';
 
 export default function MoreScreen() {
   const { theme, isDark, mode, setMode } = useTheme();
@@ -54,6 +55,7 @@ export default function MoreScreen() {
   const certsQ = useQualifications();
   const templatesQ = useTemplates();
   const projectsQ = useProjects();
+  const paymentHistoryQ = usePaymentHistory();
 
   const counts = countsQ.data ?? { total: 0, drafts: 0, completed: 0, latestCreatedAt: null };
   const certs = certsQ.data ?? [];
@@ -118,7 +120,7 @@ export default function MoreScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top']}>
-      <ScrollView contentContainerStyle={{ paddingVertical: 16, gap: 18 }}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingVertical: 16, paddingBottom: 32, gap: 18 }}>
         <Text style={{ fontSize: 22, fontWeight: '700', fontFamily: theme.typography.fontFamily.heading, paddingHorizontal: 20, color: theme.colors.ink }}>
           {t('more.title')}
         </Text>
@@ -142,15 +144,8 @@ export default function MoreScreen() {
           onOpenPaywall={() => setPaywallVisible(true)}
         />
 
-        {/* Payment history — scaffold */}
-        <Card style={{ marginHorizontal: 16 }}>
-          <Text style={styles.sectionHeader}>გადახდის ისტორია</Text>
-          {/* TODO: fetch payment history from Supabase once BOG webhook stores transaction records */}
-          <View style={styles.emptyScaffold}>
-            <Ionicons name="receipt-outline" size={28} color={theme.colors.inkFaint} />
-            <Text style={styles.emptyScaffoldText}>ჩანაწერები არ არის</Text>
-          </View>
-        </Card>
+        {/* Payment history */}
+        <PaymentHistoryCard records={paymentHistoryQ.data ?? []} loading={paymentHistoryQ.isLoading} />
 
         {/* Invoices — scaffold */}
         <Card style={{ marginHorizontal: 16 }}>
@@ -263,6 +258,76 @@ export default function MoreScreen() {
       </ScrollView>
       <PaywallModal visible={paywallVisible} onClose={() => setPaywallVisible(false)} />
     </SafeAreaView>
+  );
+}
+
+// ───────── PAYMENT HISTORY ─────────
+
+const STATUS_COLOR: Record<PaymentRecord['status'], string> = {
+  success: '#34C759',
+  pending: '#FF9500',
+  failed: '#FF3B30',
+  refunded: '#8E8E93',
+};
+const STATUS_LABEL: Record<PaymentRecord['status'], string> = {
+  success: 'გადახდილია',
+  pending: 'მუშავდება',
+  failed: 'წარუმატებელი',
+  refunded: 'დაბრუნებულია',
+};
+
+function PaymentHistoryCard({
+  records,
+  loading,
+}: {
+  records: PaymentRecord[];
+  loading: boolean;
+}) {
+  const { theme } = useTheme();
+  const s = useMemo(() => getStyles(theme), [theme]);
+  return (
+    <Card style={{ marginHorizontal: 16 }}>
+      <Text style={s.sectionHeader}>გადახდის ისტორია</Text>
+      {loading ? (
+        <View style={{ gap: 10, paddingTop: 4 }}>
+          <Skeleton width="100%" height={20} />
+          <Skeleton width="80%" height={20} />
+        </View>
+      ) : records.length === 0 ? (
+        <View style={s.emptyScaffold}>
+          <Ionicons name="receipt-outline" size={28} color={theme.colors.inkFaint} />
+          <Text style={s.emptyScaffoldText}>ჩანაწერები არ არის</Text>
+        </View>
+      ) : (
+        <View style={{ gap: 0 }}>
+          {records.map((rec, idx) => (
+            <View key={rec.id}>
+              {idx > 0 && <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: theme.colors.hairline, marginLeft: 0 }} />}
+              <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '500', color: theme.colors.ink }}>
+                    {rec.amount != null ? `${rec.amount} ${rec.currency ?? ''}` : '—'}
+                  </Text>
+                  <Text style={{ fontSize: 12, color: theme.colors.inkSoft, marginTop: 2 }}>
+                    {formatShortDate(rec.created_at)}
+                  </Text>
+                </View>
+                <View style={{
+                  backgroundColor: `${STATUS_COLOR[rec.status]}20`,
+                  borderRadius: 6,
+                  paddingHorizontal: 8,
+                  paddingVertical: 3,
+                }}>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: STATUS_COLOR[rec.status] }}>
+                    {STATUS_LABEL[rec.status]}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
+    </Card>
   );
 }
 
@@ -632,7 +697,7 @@ function getStyles(theme: Theme) {
       alignItems: 'center' as const,
     },
     proBtnText: {
-      color: '#FFFFFF',
+      color: theme.colors.white,
       fontSize: 15,
       fontWeight: '700',
     },

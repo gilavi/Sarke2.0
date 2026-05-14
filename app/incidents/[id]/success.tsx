@@ -11,8 +11,7 @@ import { useIncident, useProject } from '../../../lib/apiHooks';
 import { INCIDENT_TYPE_FULL_LABEL } from '../../../types/models';
 import { formatShortDateTime } from '../../../lib/formatDate';
 
-function getTypeBadge(theme: any): Record<string, { bg: string; text: string; border: string }> {
-  const isDark = theme.colors.semantic.dangerSoft === '#3A1F1F';
+function getTypeBadge(theme: any, isDark: boolean): Record<string, { bg: string; text: string; border: string }> {
   if (isDark) {
     return {
       minor:    { bg: '#3F2E0F', text: '#FCD34D', border: '#F59E0B' },
@@ -32,7 +31,7 @@ function getTypeBadge(theme: any): Record<string, { bg: string; text: string; bo
 }
 
 export default function IncidentSuccessScreen() {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -45,7 +44,7 @@ export default function IncidentSuccessScreen() {
     return () => clearTimeout(t);
   }, []);
 
-  const badge = incident ? getTypeBadge(theme)[incident.type] : null;
+  const badge = incident ? getTypeBadge(theme, isDark)[incident.type] : null;
 
   return (
     <Screen edgeToEdge>

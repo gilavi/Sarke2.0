@@ -35,7 +35,6 @@ type Props = {
 
 type Rect = { x: number; y: number; width: number; height: number };
 
-const BRAND = '#1D9E75';
 const PADDING = 8;
 const TOOLTIP_GAP = 12;
 const TOOLTIP_WIDTH = 280;
@@ -317,13 +316,13 @@ function makeStyles(theme: any) {
       fontWeight: '500',
     },
     cta: {
-      backgroundColor: BRAND,
+      backgroundColor: theme.colors.accent,
       paddingVertical: 8,
       paddingHorizontal: 14,
       borderRadius: 10,
     },
     ctaText: {
-      color: '#FFFFFF',
+      color: theme.colors.white,
       fontSize: 13,
       fontWeight: '600',
     },

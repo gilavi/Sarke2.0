@@ -93,7 +93,7 @@ export function WizardNav({ isLast, canGoNext, canGoPrev, onNext, onPrev }: Wiza
             {isLast ? '✓ დასრულება' : 'შემდეგი'}
           </Text>
           {!isLast && (
-            <Ionicons name="arrow-forward" size={18} color="#fff" style={{ marginLeft: 6 }} />
+            <Ionicons name="arrow-forward" size={18} color={theme.colors.white} style={{ marginLeft: 6 }} />
           )}
         </Pressable>
       </Animated.View>

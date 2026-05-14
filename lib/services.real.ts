@@ -17,6 +17,7 @@ import type {
   InspectionAttachment,
   Qualification,
   Question,
+  PaymentRecord,
   RemoteSigningRequest,
   Report,
   Schedule,
@@ -151,7 +152,7 @@ export const projectsApi = {
     logo?: string | null;
     contactPhone?: string | null;
   }): Promise<Project> => {
-    const user = (await supabase.auth.getUser()).data.user;
+    const user = (await supabase.auth.getSession()).data.session?.user ?? null;
     if (!user) throw new Error('Not signed in');
     assertLogoSize(args.logo);
     return throwIfError<Project>(
@@ -253,15 +254,11 @@ export const projectsApi = {
     if (error) throw error;
   },
   stats: async (): Promise<Record<string, { drafts: number; completed: number }>> => {
-    const { data, error } = await supabase
-      .from('inspections')
-      .select('project_id,status');
+    const { data, error } = await supabase.rpc('get_inspection_stats');
     if (error) throw error;
     const map: Record<string, { drafts: number; completed: number }> = {};
-    for (const row of (data ?? []) as Array<{ project_id: string; status: string }>) {
-      const s = (map[row.project_id] ??= { drafts: 0, completed: 0 });
-      if (row.status === 'completed') s.completed += 1;
-      else s.drafts += 1;
+    for (const row of (data ?? []) as Array<{ project_id: string; drafts: number; completed: number }>) {
+      map[row.project_id] = { drafts: Number(row.drafts), completed: Number(row.completed) };
     }
     return map;
   },
@@ -286,12 +283,12 @@ export const projectFilesApi = {
     mimeType: string | null;
     sizeBytes: number | null;
   }): Promise<ProjectFile> => {
-    const user = (await supabase.auth.getUser()).data.user;
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user ?? null;
     if (!user) throw new Error('Not signed in');
     const fileId = Crypto.randomUUID();
     const safeName = args.name.replace(/[^\w.\-]+/g, '_').replace(/\.{2,}/g, '.').slice(0, 120) || 'file';
     const storagePath = `${args.projectId}/${fileId}-${safeName}`;
-    const { data: { session } } = await supabase.auth.getSession();
     const headers: Record<string, string> = {
       'Content-Type': args.mimeType || 'application/octet-stream',
       'x-upsert': 'true',
@@ -429,7 +426,7 @@ export const inspectionsApi = {
     harnessName?: string;
     projectItemId?: string | null;
   }): Promise<Inspection> => {
-    const user = (await supabase.auth.getUser()).data.user;
+    const user = (await supabase.auth.getSession()).data.session?.user ?? null;
     if (!user) throw new Error('Not signed in');
     return throwIfError<Inspection>(
       await supabase
@@ -472,19 +469,23 @@ export const inspectionsApi = {
     completed: number;
     latestCreatedAt: string | null;
   }> => {
-    const { data, error } = await supabase
-      .from('inspections')
-      .select('status,created_at')
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    let drafts = 0;
-    let completed = 0;
-    for (const row of (data ?? []) as Array<{ status: string }>) {
-      if (row.status === 'completed') completed += 1;
-      else drafts += 1;
-    }
-    const latestCreatedAt = (data?.[0] as { created_at?: string } | undefined)?.created_at ?? null;
-    return { total: (data?.length ?? 0), drafts, completed, latestCreatedAt };
+    // Three parallel COUNT-only requests — no rows are transferred to the client.
+    const [draftRes, completedRes, latestRes] = await Promise.all([
+      supabase.from('inspections').select('*', { count: 'exact', head: true }).eq('status', 'draft'),
+      supabase.from('inspections').select('*', { count: 'exact', head: true }).eq('status', 'completed'),
+      supabase.from('inspections').select('created_at').order('created_at', { ascending: false }).limit(1).maybeSingle(),
+    ]);
+    if (draftRes.error) throw draftRes.error;
+    if (completedRes.error) throw completedRes.error;
+    if (latestRes.error) throw latestRes.error;
+    const drafts = draftRes.count ?? 0;
+    const completed = completedRes.count ?? 0;
+    return {
+      total: drafts + completed,
+      drafts,
+      completed,
+      latestCreatedAt: (latestRes.data as { created_at?: string } | null)?.created_at ?? null,
+    };
   },
   listByTemplateIds: async (templateIds: string[]): Promise<Inspection[]> => {
     if (templateIds.length === 0) return [];
@@ -653,7 +654,7 @@ export const qualificationsApi = {
     // placeholder user_ids — RLS would reject anyway, but overriding here
     // turns a silent 403 into a predictable insert. created_at is handled
     // by the table default when omitted.
-    const user = (await supabase.auth.getUser()).data.user;
+    const user = (await supabase.auth.getSession()).data.session?.user ?? null;
     if (!user) throw new Error('Not signed in');
     return throwIfError<Qualification>(
       await supabase
@@ -739,7 +740,7 @@ export const certificatesApi = {
     params?: Record<string, unknown>;
     pdf_hash?: string;
   }): Promise<Certificate> => {
-    const user = (await supabase.auth.getUser()).data.user;
+    const user = (await supabase.auth.getSession()).data.session?.user ?? null;
     if (!user) throw new Error('Not signed in');
     return throwIfError<Certificate>(
       await supabase
@@ -802,7 +803,7 @@ export const inspectionAttachmentsApi = {
     certNumber?: string | null;
     photoPath?: string | null;
   }): Promise<InspectionAttachment> => {
-    const user = (await supabase.auth.getUser()).data.user;
+    const user = (await supabase.auth.getSession()).data.session?.user ?? null;
     if (!user) throw new Error('Not signed in');
     return throwIfError<InspectionAttachment>(
       await supabase
@@ -865,7 +866,7 @@ export const inspectionAttachmentsApi = {
     inspectionId: string;
     fileUri: string;
   }): Promise<string> => {
-    const user = (await supabase.auth.getUser()).data.user;
+    const user = (await supabase.auth.getSession()).data.session?.user ?? null;
     if (!user) throw new Error('Not signed in');
     const path = `${user.id}/${args.inspectionId}/${Crypto.randomUUID()}.jpg`;
     return storageApi.uploadFromUri(
@@ -1017,8 +1018,8 @@ export const remoteSigningApi = {
     signerPhone: string;
     signerRole: SignerRole;
   }): Promise<RemoteSigningRequest> => {
-    const { data: userData, error: userErr } = await supabase.auth.getUser();
-    if (userErr || !userData?.user) throw new Error('not authenticated');
+    const user = (await supabase.auth.getSession()).data.session?.user ?? null;
+    if (!user) throw new Error('not authenticated');
 
     // Latest cert PDF for the inspection (may be null if no cert yet).
     const { data: certs } = await supabase
@@ -1044,7 +1045,7 @@ export const remoteSigningApi = {
       .insert({
         token,
         inspection_id: args.inspectionId,
-        expert_user_id: userData.user.id,
+        expert_user_id: user.id,
         signer_name: args.signerName,
         signer_phone: args.signerPhone,
         signer_role: args.signerRole,
@@ -1195,7 +1196,7 @@ export const reportsApi = {
   },
 
   create: async (args: { projectId: string; title: string }): Promise<Report> => {
-    const user = (await supabase.auth.getUser()).data.user;
+    const user = (await supabase.auth.getSession()).data.session?.user ?? null;
     if (!user) throw new Error('Not signed in');
     return throwIfError<Report>(
       await supabase
@@ -1249,7 +1250,7 @@ export const incidentsApi = {
   },
 
   create: async (args: Omit<Incident, 'user_id' | 'created_at'>): Promise<Incident> => {
-    const user = (await supabase.auth.getUser()).data.user;
+    const user = (await supabase.auth.getSession()).data.session?.user ?? null;
     if (!user) throw new Error('Not signed in');
     return throwIfError<Incident>(
       await supabase
@@ -1272,6 +1273,19 @@ export const incidentsApi = {
   remove: async (id: string): Promise<void> => {
     const { error } = await supabase.from('incidents').delete().eq('id', id);
     if (error) throw error;
+  },
+};
+
+// -------- Payment Records --------
+
+export const paymentRecordsApi = {
+  list: async (): Promise<PaymentRecord[]> => {
+    const { data, error } = await supabase
+      .from('payment_records')
+      .select('id, user_id, bog_order_id, amount, currency, status, created_at')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data ?? []) as PaymentRecord[];
   },
 };
 

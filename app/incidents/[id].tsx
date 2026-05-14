@@ -45,8 +45,7 @@ import {
   INCIDENT_TYPE_LABEL,
 } from '../../types/models';
 
-function getTypeBadge(theme: any): Record<string, { bg: string; text: string; border: string }> {
-  const isDark = theme.colors.semantic.dangerSoft === '#3A1F1F';
+function getTypeBadge(theme: any, isDark: boolean): Record<string, { bg: string; text: string; border: string }> {
   if (isDark) {
     return {
       minor:    { bg: '#3F2E0F', text: '#FCD34D', border: '#F59E0B' },
@@ -66,7 +65,7 @@ function getTypeBadge(theme: any): Record<string, { bg: string; text: string; bo
 }
 
 export default function IncidentDetail() {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const s = useMemo(() => makeStyles(theme), [theme]);
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -122,7 +121,7 @@ export default function IncidentDetail() {
     return () => { cancelled = true; };
   }, [incident?.id]);
 
-  const badge = incident ? getTypeBadge(theme)[incident.type] : null;
+  const badge = incident ? getTypeBadge(theme, isDark)[incident.type] : null;
   const isNearMiss = incident?.type === 'nearmiss';
 
   // ── share / generate PDF ─────────────────────────────────────────────────
@@ -304,7 +303,7 @@ export default function IncidentDetail() {
           </Text>
           {incident.status === 'draft' && (
             <View style={s.draftChip}>
-              <Ionicons name="hourglass-outline" size={12} color="#92400E" />
+              <Ionicons name="hourglass-outline" size={12} color={theme.colors.certTint} />
               <Text style={s.draftChipText}>დრაფტი</Text>
             </View>
           )}
@@ -417,7 +416,7 @@ export default function IncidentDetail() {
         {/* Labour inspection notice */}
         {(incident.type === 'severe' || incident.type === 'fatal') && (
           <View style={s.warningBanner}>
-            <Ionicons name="warning" size={18} color="#991B1B" />
+            <Ionicons name="warning" size={18} color={theme.colors.danger} />
             <Text style={s.warningText}>
               შრომის შემოწმების აქტის სამსახური უნდა ეცნობოს 24 საათის
               განმავლობაში:{'\n'}
@@ -532,7 +531,7 @@ function makeStyles(theme: any) {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 4,
-      backgroundColor: '#FEF3C7',
+      backgroundColor: theme.colors.warnSoft,
       borderRadius: 16,
       paddingHorizontal: 8,
       paddingVertical: 3,
@@ -540,7 +539,7 @@ function makeStyles(theme: any) {
     draftChipText: {
       fontSize: 11,
       fontWeight: '700',
-      color: '#92400E',
+      color: theme.colors.certTint,
     },
 
     sectionCard: {
@@ -613,16 +612,16 @@ function makeStyles(theme: any) {
       flexDirection: 'row',
       alignItems: 'flex-start',
       gap: 10,
-      backgroundColor: '#FEF2F2',
+      backgroundColor: theme.colors.dangerSoft,
       borderRadius: 10,
       borderWidth: 1,
-      borderColor: '#FCA5A5',
+      borderColor: theme.colors.dangerBorder,
       padding: 12,
     },
     warningText: {
       flex: 1,
       fontSize: 13,
-      color: '#991B1B',
+      color: theme.colors.danger,
       lineHeight: 20,
     },
 
