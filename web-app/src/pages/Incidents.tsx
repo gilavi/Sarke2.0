@@ -1,17 +1,25 @@
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { AlertTriangle } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { SkeletonList } from '@/components/SkeletonCard';
+import { ListRow, ListRowIcon } from '@/components/ListRow';
 import { listIncidents, INCIDENT_TYPE_LABEL } from '@/lib/data/incidents';
 import { listProjects } from '@/lib/data/projects';
 
-const TYPE_TONE: Record<string, string> = {
-  fatal: 'bg-red-100 text-red-800',
-  severe: 'bg-orange-100 text-orange-800',
-  mass: 'bg-red-100 text-red-800',
-  minor: 'bg-yellow-100 text-yellow-800',
-  nearmiss: 'bg-neutral-100 text-neutral-700',
+const TYPE_ICON_COLOR: Record<string, string> = {
+  fatal:    'bg-red-100',
+  severe:   'bg-orange-100',
+  mass:     'bg-red-100',
+  minor:    'bg-yellow-100',
+  nearmiss: 'bg-neutral-100',
+};
+const TYPE_TEXT_COLOR: Record<string, string> = {
+  fatal:    'text-red-700',
+  severe:   'text-orange-700',
+  mass:     'text-red-700',
+  minor:    'text-yellow-700',
+  nearmiss: 'text-neutral-600',
 };
 
 export default function Incidents() {
@@ -54,35 +62,36 @@ export default function Incidents() {
       )}
 
       {items && items.length > 0 && (
-        <div className="grid gap-3">
+        <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
           {items.map((i) => {
             const proj = projects[i.project_id];
+            const title = i.injured_name || (i.type === 'nearmiss' ? 'საშიში შემთხვევა' : '—');
+            const dateStr = new Date(i.date_time).toLocaleDateString('ka-GE');
+            const subtitle = [proj?.name, i.location, dateStr].filter(Boolean).join(' · ');
+            const typeLabel = INCIDENT_TYPE_LABEL[i.type] ?? i.type;
             return (
-              <Link key={i.id} to={`/incidents/${i.id}`}>
-                <Card className="transition hover:border-brand-300 hover:shadow-sm">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="flex items-center justify-between text-base">
-                      <span className="flex items-center gap-2">
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
-                            TYPE_TONE[i.type] ?? 'bg-neutral-100 text-neutral-700'
-                          }`}
-                        >
-                          {INCIDENT_TYPE_LABEL[i.type] ?? i.type}
-                        </span>
-                        <span>{i.injured_name || (i.type === 'nearmiss' ? 'საშიში შემთხვევა' : '—')}</span>
-                      </span>
-                      <span className="text-xs font-normal text-neutral-500">
-                        {new Date(i.date_time).toLocaleDateString('ka-GE')}
-                      </span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-1 text-sm text-neutral-600">
-                    <div>{proj?.name ?? '—'}</div>
-                    {i.location && <div className="text-xs text-neutral-500">{i.location}</div>}
-                  </CardContent>
-                </Card>
-              </Link>
+              <ListRow
+                key={i.id}
+                to={`/incidents/${i.id}`}
+                icon={
+                  <ListRowIcon
+                    icon={AlertTriangle}
+                    color={TYPE_ICON_COLOR[i.type] ?? 'bg-neutral-100'}
+                    iconColor={TYPE_TEXT_COLOR[i.type] ?? 'text-neutral-600'}
+                  />
+                }
+                title={title}
+                subtitle={subtitle || undefined}
+                badge={
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
+                      TYPE_ICON_COLOR[i.type] ?? 'bg-neutral-100'
+                    } ${TYPE_TEXT_COLOR[i.type] ?? 'text-neutral-600'}`}
+                  >
+                    {typeLabel}
+                  </span>
+                }
+              />
             );
           })}
         </div>

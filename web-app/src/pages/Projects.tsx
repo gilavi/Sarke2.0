@@ -2,10 +2,11 @@ import { useState, lazy, Suspense, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Plus, List, Map } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { ListRow } from '@/components/ListRow';
+import { ProjectAvatar } from '@/components/ProjectAvatar';
 import { listProjects } from '@/lib/data/projects';
-import { SkeletonGrid } from '@/components/SkeletonCard';
+import { SkeletonList } from '@/components/SkeletonCard';
 
 const ProjectMap = lazy(() => import('@/components/ProjectMap'));
 
@@ -71,7 +72,7 @@ export default function Projects() {
         </div>
       )}
 
-      {isLoading && <SkeletonGrid count={6} />}
+      {isLoading && <SkeletonList />}
 
       {items && view === 'map' && (
         <Suspense fallback={<div className="h-[300px] flex items-center justify-center text-muted-foreground">Loading map...</div>}>
@@ -95,19 +96,16 @@ export default function Projects() {
       )}
 
       {items && view === 'list' && items.length > 0 && (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
           {items.map((p) => (
-            <Link key={p.id} to={`/projects/${p.id}`} className="block">
-              <Card className="h-full transition hover:border-brand-300 hover:shadow-sm">
-                <CardHeader>
-                  <CardTitle className="text-lg">{p.name}</CardTitle>
-                  <CardDescription>{p.company_name}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-neutral-600">{p.address || '—'}</p>
-                </CardContent>
-              </Card>
-            </Link>
+            <ListRow
+              key={p.id}
+              to={`/projects/${p.id}`}
+              icon={<ProjectAvatar project={p} size="sm" />}
+              title={p.company_name || p.name}
+              subtitle={p.address ?? undefined}
+              trailing={new Date(p.created_at).toLocaleDateString('ka-GE')}
+            />
           ))}
         </div>
       )}

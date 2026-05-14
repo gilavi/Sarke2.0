@@ -1,5 +1,7 @@
 import { useRef, useState } from 'react';
+import StatusBadge from '@/components/StatusBadge';
 import ProjectMap from '@/components/ProjectMap';
+import { EditableProjectAvatar } from '@/components/ProjectAvatar';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Download, Upload, Pencil, Check, X, Trash2, Plus } from 'lucide-react';
@@ -27,6 +29,7 @@ import { listInspections } from '@/lib/data/inspections';
 import { listBobcatInspections } from '@/lib/data/bobcat';
 import { listExcavatorInspections } from '@/lib/data/excavator';
 import { listGeneralEquipmentInspections } from '@/lib/data/generalEquipment';
+import { listCargoPlatformInspections } from '@/lib/data/cargoPlatform';
 import { listBriefings, topicLabel } from '@/lib/data/briefings';
 import { listOrdersByProject, ORDER_DOCUMENT_TYPE_LABEL, type Order } from '@/lib/data/orders';
 import {
@@ -54,18 +57,6 @@ const CREW_ROLE_LABEL: Record<string, string> = {
   other: 'სხვა',
 };
 
-function StatusBadge({ status }: { status: string }) {
-  const isCompleted = status === 'completed';
-  return (
-    <span
-      className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-        isCompleted ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'
-      }`}
-    >
-      {isCompleted ? 'დასრულებული' : 'მუშავდება'}
-    </span>
-  );
-}
 
 function SectionHeader({
   title,
@@ -133,6 +124,11 @@ export default function ProjectDetail() {
     queryFn: () => listGeneralEquipmentInspections(id!),
     enabled: !!id,
   });
+  const cargoPlatformQ = useQuery({
+    queryKey: ['cargoPlatformInspections', id],
+    queryFn: () => listCargoPlatformInspections(id!),
+    enabled: !!id,
+  });
   const briefingsQ = useQuery({
     queryKey: ['briefings', id],
     queryFn: () => listBriefings(id!),
@@ -170,6 +166,7 @@ export default function ProjectDetail() {
     ...(bobcatsQ.data ?? []).map((i) => ({ id: i.id, label: i.equipmentModel || i.company || `ციცხვიანი #${i.id.slice(0, 8)}`, status: i.status, href: `/bobcat/${i.id}`, date: i.createdAt })),
     ...(excavatorsQ.data ?? []).map((i) => ({ id: i.id, label: `ექსკავატორი${i.serialNumber ? ` — ${i.serialNumber}` : ''}`, status: i.status, href: `/excavator/${i.id}`, date: i.createdAt })),
     ...(generalEqQ.data ?? []).map((i) => ({ id: i.id, label: i.objectName || `ტექ. #${i.id.slice(0, 8)}`, status: i.status, href: `/general-equipment/${i.id}`, date: i.createdAt })),
+    ...(cargoPlatformQ.data ?? []).map((i) => ({ id: i.id, label: i.company || `პლატფ. #${i.id.slice(0, 8)}`, status: i.status, href: `/cargo-platform/${i.id}`, date: i.createdAt })),
   ].sort((a, b) => b.date.localeCompare(a.date));
   const briefings = briefingsQ.data ?? [];
   const files = filesQ.data ?? [];
@@ -204,7 +201,6 @@ export default function ProjectDetail() {
   const [crewBusy, setCrewBusy] = useState(false);
 
   const [logoUploading, setLogoUploading] = useState(false);
-  const logoInputRef = useRef<HTMLInputElement>(null);
 
   async function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -224,7 +220,6 @@ export default function ProjectDetail() {
       setActionError(e instanceof Error ? e.message : String(e));
     } finally {
       setLogoUploading(false);
-      if (logoInputRef.current) logoInputRef.current.value = '';
     }
   }
 
@@ -424,30 +419,11 @@ export default function ProjectDetail() {
         <div className="mt-2 flex items-start justify-between gap-4">
           <div className="flex items-center gap-4">
             {/* Logo avatar */}
-            <button
-              type="button"
-              title="ლოგოს შეცვლა"
+            <EditableProjectAvatar
+              project={project}
+              size="lg"
+              onFileInputChange={(e) => void handleLogoChange(e)}
               disabled={logoUploading}
-              onClick={() => logoInputRef.current?.click()}
-              className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100 transition hover:border-brand-400 disabled:opacity-60"
-            >
-              {project.logo ? (
-                <img src={project.logo} alt="logo" className="h-full w-full object-cover" />
-              ) : (
-                <span className="flex h-full w-full items-center justify-center text-lg font-bold text-neutral-400">
-                  {project.name.charAt(0).toUpperCase()}
-                </span>
-              )}
-              <span className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 transition hover:opacity-100">
-                <Upload size={16} className="text-white" />
-              </span>
-            </button>
-            <input
-              ref={logoInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => void handleLogoChange(e)}
             />
             <div>
               <h1 className="font-display text-3xl font-bold text-neutral-900">{project.name}</h1>
@@ -502,7 +478,7 @@ export default function ProjectDetail() {
                     id="edit-lat"
                     type="number"
                     step="any"
-                    placeholder="გრძედი (Latitude)"
+                    placeholder="განედი (Latitude)"
                     value={editForm.latitude}
                     onChange={(e) => setEditForm((f) => ({ ...f, latitude: e.target.value }))}
                     className="flex-1 min-w-[140px]"
@@ -511,7 +487,7 @@ export default function ProjectDetail() {
                     id="edit-lng"
                     type="number"
                     step="any"
-                    placeholder="გრძელი (Longitude)"
+                    placeholder="გრძივი (Longitude)"
                     value={editForm.longitude}
                     onChange={(e) => setEditForm((f) => ({ ...f, longitude: e.target.value }))}
                     className="flex-1 min-w-[140px]"
