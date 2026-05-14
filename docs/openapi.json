@@ -1,9 +1,9 @@
 {
   "openapi": "3.0.0",
   "info": {
-    "title": "Sarke 2.0 — Supabase REST",
-    "version": "1.0.0",
-    "description": "Placeholder. Run `node website/scripts/fetch-openapi.mjs` with a Supabase secret key to populate this file with the live PostgREST schema. The endpoints below are illustrative; see /database/schema for the authoritative schema."
+    "title": "Sarke 2.0 — Supabase REST API",
+    "version": "2.0.0",
+    "description": "PostgREST auto-generated API for the Sarke 2.0 Supabase project. All endpoints are RLS-scoped to the authenticated user. To refresh this spec from the live database run:\n\n```\nSUPABASE_SERVICE_ROLE_KEY=<key> node website/scripts/fetch-openapi.mjs\n```\n\nThe service role key is in your Supabase dashboard under Settings → API. **Never commit it.**\n\nLast manually updated: 2026-05-14 (migrations 0001–0042 applied)."
   },
   "servers": [
     {
@@ -16,12 +16,215 @@
       "apikey": {
         "type": "apiKey",
         "in": "header",
-        "name": "apikey"
+        "name": "apikey",
+        "description": "Supabase anon key — always required"
       },
       "bearer": {
         "type": "http",
         "scheme": "bearer",
-        "bearerFormat": "JWT"
+        "bearerFormat": "JWT",
+        "description": "Supabase user JWT from auth.getSession(). Required for all RLS-protected tables."
+      }
+    },
+    "schemas": {
+      "Project": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "user_id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "company_name": { "type": "string" },
+          "logo": { "type": "string", "description": "Base64 data URL for project avatar" },
+          "latitude": { "type": "number" },
+          "longitude": { "type": "number" },
+          "crew": { "type": "array", "description": "JSON array of CrewMember objects" },
+          "contact_phone": { "type": "string" },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Inspection": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "project_id": { "type": "string", "format": "uuid" },
+          "template_id": { "type": "string", "format": "uuid" },
+          "user_id": { "type": "string", "format": "uuid" },
+          "status": { "type": "string", "enum": ["draft", "completed"] },
+          "inspector_name": { "type": "string" },
+          "department": { "type": "string" },
+          "signature": { "type": "string", "description": "Inspector signature base64 PNG" },
+          "completed_at": { "type": "string", "format": "date-time" },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Template": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "owner_id": { "type": "string", "format": "uuid", "nullable": true, "description": "null for system templates" },
+          "name": { "type": "string" },
+          "category": { "type": "string", "enum": ["facade", "harness", "bobcat", "excavator", "general_equipment", "cargo_platform", "mobile_scaffold", "mobile_scaffold_n3"] },
+          "is_system": { "type": "boolean" },
+          "required_qualifications": { "type": "array", "items": { "type": "string" } },
+          "required_signer_roles": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "BobcatInspection": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "project_id": { "type": "string", "format": "uuid" },
+          "template_id": { "type": "string", "format": "uuid" },
+          "user_id": { "type": "string", "format": "uuid" },
+          "status": { "type": "string", "enum": ["draft", "completed"] },
+          "company": { "type": "string" },
+          "address": { "type": "string" },
+          "inspector_name": { "type": "string" },
+          "department": { "type": "string" },
+          "equipment_model": { "type": "string" },
+          "serial_number": { "type": "string" },
+          "items": { "type": "array", "description": "Checklist items [{id, result, comment, photo_paths}]" },
+          "verdict": { "type": "string", "enum": ["approved", "conditional", "rejected"], "nullable": true },
+          "summary_photos": { "type": "array", "items": { "type": "string" } },
+          "signatures": { "type": "array", "description": "Signatory objects [{name, position, signature, date}]" },
+          "completed_at": { "type": "string", "format": "date-time", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ExcavatorInspection": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "project_id": { "type": "string", "format": "uuid" },
+          "user_id": { "type": "string", "format": "uuid" },
+          "status": { "type": "string", "enum": ["draft", "completed"] },
+          "company": { "type": "string" },
+          "address": { "type": "string" },
+          "inspector_name": { "type": "string" },
+          "registration_number": { "type": "string" },
+          "sections": { "type": "object", "description": "6-section inspection data per ISO 9457" },
+          "verdict": { "type": "string", "enum": ["approved", "conditional", "rejected"], "nullable": true },
+          "summary_photos": { "type": "array", "items": { "type": "string" } },
+          "signatures": { "type": "array" },
+          "completed_at": { "type": "string", "format": "date-time", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "GeneralEquipmentInspection": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "project_id": { "type": "string", "format": "uuid" },
+          "user_id": { "type": "string", "format": "uuid" },
+          "status": { "type": "string", "enum": ["draft", "completed"] },
+          "company": { "type": "string" },
+          "address": { "type": "string" },
+          "inspector_name": { "type": "string" },
+          "department": { "type": "string" },
+          "object_name": { "type": "string" },
+          "equipment": { "type": "array", "description": "User-built equipment list [{name, model, serial, condition, note, photos}]" },
+          "verdict": { "type": "string", "enum": ["approved", "conditional", "rejected"], "nullable": true },
+          "summary_photos": { "type": "array", "items": { "type": "string" } },
+          "signatures": { "type": "array" },
+          "completed_at": { "type": "string", "format": "date-time", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "CargoPlatformInspection": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "project_id": { "type": "string", "format": "uuid" },
+          "user_id": { "type": "string", "format": "uuid" },
+          "status": { "type": "string", "enum": ["draft", "completed"] },
+          "company": { "type": "string" },
+          "address": { "type": "string" },
+          "inspector_name": { "type": "string" },
+          "floor_zone": { "type": "string" },
+          "inspection_date": { "type": "string", "format": "date" },
+          "platform_type_model": { "type": "string" },
+          "platform_length_m": { "type": "number", "nullable": true },
+          "platform_width_m": { "type": "number", "nullable": true },
+          "platform_color_desc": { "type": "string" },
+          "side_guardrail": { "type": "string", "enum": ["none", "complete"], "nullable": true },
+          "front_guardrail": { "type": "string", "enum": ["none", "complete"], "nullable": true },
+          "guardrail_height": { "type": "string", "enum": ["non_standard", "standard"], "nullable": true },
+          "cargo": { "type": "array", "description": "Cargo rows [{id, name, unit_weight_kg, total_weight_kg, note}]" },
+          "items": { "type": "array", "description": "9-item checklist [{id, result, comment, photo_paths}]; result: good|fix|na" },
+          "verdict": { "type": "string", "enum": ["approved", "conditional", "rejected"], "nullable": true },
+          "verdict_comment": { "type": "string" },
+          "summary_photos": { "type": "array", "items": { "type": "string" } },
+          "signatures": { "type": "array", "description": "2 signatories: inspector + supervisor" },
+          "completed_at": { "type": "string", "format": "date-time", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Order": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "project_id": { "type": "string", "format": "uuid" },
+          "user_id": { "type": "string", "format": "uuid" },
+          "document_type": {
+            "type": "string",
+            "enum": ["labor_safety_specialist", "alcohol_control", "fire_safety_order", "fire_safety_order_enterprise"],
+            "description": "Plain text — no CHECK constraint. New types can be added without migration."
+          },
+          "form_data": {
+            "type": "object",
+            "description": "All document-type-specific fields. Shape varies by document_type. Fire safety variants include directorSignature/appointedSignature (base64 PNG)."
+          },
+          "status": { "type": "string", "enum": ["draft", "completed"] },
+          "pdf_url": { "type": "string", "nullable": true },
+          "pdf_hash": { "type": "string", "nullable": true, "description": "SHA-256 of the generated PDF" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Incident": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "project_id": { "type": "string", "format": "uuid" },
+          "user_id": { "type": "string", "format": "uuid" },
+          "description": { "type": "string" },
+          "photos": { "type": "array", "items": { "type": "string" } },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Briefing": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "project_id": { "type": "string", "format": "uuid" },
+          "user_id": { "type": "string", "format": "uuid" },
+          "topic": { "type": "string" },
+          "participants": { "type": "array", "description": "BriefingParticipant[] with name, signed, skipped, signature" },
+          "completed_at": { "type": "string", "format": "date-time", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Report": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "project_id": { "type": "string", "format": "uuid" },
+          "user_id": { "type": "string", "format": "uuid" },
+          "content": { "type": "string" },
+          "photos": { "type": "array", "items": { "type": "string" } },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "PaymentRecord": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "user_id": { "type": "string", "format": "uuid" },
+          "bog_order_id": { "type": "string" },
+          "status": { "type": "string", "description": "BOG payment status (pending/success/failed)" },
+          "amount": { "type": "number" },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
       }
     }
   },
@@ -29,58 +232,229 @@
   "paths": {
     "/projects": {
       "get": {
-        "summary": "List projects (RLS-scoped to authed user)",
+        "summary": "List projects (RLS: owner only)",
         "tags": ["projects"],
-        "responses": {"200": {"description": "Array of Project rows"}}
+        "responses": { "200": { "description": "Array of Project rows", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Project" } } } } } }
       },
       "post": {
         "summary": "Create a project",
         "tags": ["projects"],
-        "responses": {"201": {"description": "Created"}}
+        "requestBody": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Project" } } } },
+        "responses": { "201": { "description": "Created" } }
+      }
+    },
+    "/projects/{id}": {
+      "patch": {
+        "summary": "Update a project",
+        "tags": ["projects"],
+        "parameters": [{ "name": "id", "in": "query", "schema": { "type": "string" }, "description": "Filter: ?id=eq.<uuid>" }],
+        "responses": { "200": { "description": "Updated" } }
+      },
+      "delete": {
+        "summary": "Delete a project (cascades to all child rows)",
+        "tags": ["projects"],
+        "responses": { "204": { "description": "Deleted" } }
       }
     },
     "/inspections": {
       "get": {
-        "summary": "List inspections",
+        "summary": "List generic inspections (facade, harness, scaffold types)",
         "tags": ["inspections"],
-        "responses": {"200": {"description": "Array of Inspection rows"}}
+        "responses": { "200": { "description": "Array of Inspection rows", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Inspection" } } } } } }
+      },
+      "post": {
+        "summary": "Create an inspection draft",
+        "tags": ["inspections"],
+        "responses": { "201": { "description": "Created" } }
+      }
+    },
+    "/bobcat_inspections": {
+      "get": {
+        "summary": "List Bobcat / Large Loader inspections",
+        "description": "Template UUIDs: Bobcat=33333333-…, Large Loader=44444444-…",
+        "tags": ["specialized-inspections"],
+        "responses": { "200": { "description": "Array", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/BobcatInspection" } } } } } }
+      },
+      "post": {
+        "summary": "Create a Bobcat inspection",
+        "tags": ["specialized-inspections"],
+        "responses": { "201": { "description": "Created" } }
+      }
+    },
+    "/excavator_inspections": {
+      "get": {
+        "summary": "List Excavator inspections",
+        "description": "Template UUID: 55555555-…",
+        "tags": ["specialized-inspections"],
+        "responses": { "200": { "description": "Array", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/ExcavatorInspection" } } } } } }
+      },
+      "post": {
+        "summary": "Create an Excavator inspection",
+        "tags": ["specialized-inspections"],
+        "responses": { "201": { "description": "Created" } }
+      }
+    },
+    "/general_equipment_inspections": {
+      "get": {
+        "summary": "List General Equipment inspections",
+        "description": "Template UUID: 66666666-…",
+        "tags": ["specialized-inspections"],
+        "responses": { "200": { "description": "Array", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/GeneralEquipmentInspection" } } } } } }
+      },
+      "post": {
+        "summary": "Create a General Equipment inspection",
+        "tags": ["specialized-inspections"],
+        "responses": { "201": { "description": "Created" } }
+      }
+    },
+    "/cargo_platform_inspections": {
+      "get": {
+        "summary": "List Cargo Platform inspections",
+        "description": "Template UUID: 77777777-…. Added in migration 0040.",
+        "tags": ["specialized-inspections"],
+        "responses": { "200": { "description": "Array", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/CargoPlatformInspection" } } } } } }
+      },
+      "post": {
+        "summary": "Create a Cargo Platform inspection",
+        "tags": ["specialized-inspections"],
+        "responses": { "201": { "description": "Created" } }
+      }
+    },
+    "/orders": {
+      "get": {
+        "summary": "List orders / ბრძანებები (RLS: owner only)",
+        "description": "Safety appointment orders. document_type is plain text — query with ?document_type=eq.fire_safety_order etc. Added in migration 0038.",
+        "tags": ["orders"],
+        "parameters": [
+          { "name": "document_type", "in": "query", "schema": { "type": "string" }, "description": "e.g. eq.fire_safety_order" },
+          { "name": "project_id", "in": "query", "schema": { "type": "string" }, "description": "e.g. eq.<uuid>" },
+          { "name": "status", "in": "query", "schema": { "type": "string" }, "description": "e.g. eq.completed" }
+        ],
+        "responses": { "200": { "description": "Array of Order rows", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Order" } } } } } }
+      },
+      "post": {
+        "summary": "Create an order",
+        "tags": ["orders"],
+        "requestBody": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Order" } } } },
+        "responses": { "201": { "description": "Created" } }
+      }
+    },
+    "/incidents": {
+      "get": {
+        "summary": "List workplace incidents (RLS: owner only)",
+        "tags": ["safety-records"],
+        "responses": { "200": { "description": "Array", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Incident" } } } } } }
+      },
+      "post": {
+        "summary": "Create an incident",
+        "tags": ["safety-records"],
+        "responses": { "201": { "description": "Created" } }
+      }
+    },
+    "/briefings": {
+      "get": {
+        "summary": "List safety briefings (RLS: owner only)",
+        "tags": ["safety-records"],
+        "responses": { "200": { "description": "Array", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Briefing" } } } } } }
+      },
+      "post": {
+        "summary": "Create a briefing",
+        "tags": ["safety-records"],
+        "responses": { "201": { "description": "Created" } }
+      }
+    },
+    "/reports": {
+      "get": {
+        "summary": "List site reports (RLS: owner only)",
+        "tags": ["safety-records"],
+        "responses": { "200": { "description": "Array", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Report" } } } } } }
+      },
+      "post": {
+        "summary": "Create a report",
+        "tags": ["safety-records"],
+        "responses": { "201": { "description": "Created" } }
       }
     },
     "/templates": {
       "get": {
-        "summary": "List templates (system + owned)",
+        "summary": "List templates — system templates are public; user templates are owner-scoped",
+        "description": "Filter system templates with ?is_system=eq.true. Categories: facade, harness, bobcat, excavator, general_equipment, cargo_platform, mobile_scaffold, mobile_scaffold_n3",
         "tags": ["templates"],
-        "responses": {"200": {"description": "Array of Template rows"}}
+        "responses": { "200": { "description": "Array of Template rows", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Template" } } } } } }
       }
     },
     "/certificates": {
       "get": {
-        "summary": "List generated certificates",
+        "summary": "List generated PDF certificates (RLS: owner only)",
         "tags": ["certificates"],
-        "responses": {"200": {"description": "Array of Certificate rows"}}
+        "responses": { "200": { "description": "Array of Certificate rows" } }
       }
     },
     "/qualifications": {
       "get": {
-        "summary": "List qualifications for the authed user",
+        "summary": "List qualifications / expert credentials (RLS: owner only)",
         "tags": ["qualifications"],
-        "responses": {"200": {"description": "Array of Qualification rows"}}
+        "responses": { "200": { "description": "Array of Qualification rows" } }
+      },
+      "post": {
+        "summary": "Add a qualification",
+        "tags": ["qualifications"],
+        "responses": { "201": { "description": "Created" } }
+      }
+    },
+    "/payment_records": {
+      "get": {
+        "summary": "List BOG payment records (RLS: owner only)",
+        "description": "One row per BOG webhook callback. Added in migration 0031.",
+        "tags": ["payments"],
+        "responses": { "200": { "description": "Array of PaymentRecord rows", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/PaymentRecord" } } } } } }
       }
     },
     "/remote_signing_requests": {
       "get": {
         "summary": "List async signer invitations",
-        "tags": ["remote-signing"],
-        "responses": {"200": {"description": "Array of RemoteSigningRequest rows"}}
+        "tags": ["signing"],
+        "responses": { "200": { "description": "Array of RemoteSigningRequest rows" } }
+      }
+    },
+    "/answer_photos": {
+      "get": {
+        "summary": "List answer photos with optional geo-location",
+        "description": "Has latitude/longitude/address columns from migration 0023.",
+        "tags": ["inspections"],
+        "responses": { "200": { "description": "Array of AnswerPhoto rows" } }
+      }
+    },
+    "/rpc/increment_pdf_count": {
+      "post": {
+        "summary": "Increment PDF count and enforce free-tier cap",
+        "description": "Returns error if free-tier limit (30) is reached and user has no active subscription. Unlimited for active BOG subscribers. Defined in migrations 0028 + 0029.",
+        "tags": ["payments"],
+        "responses": {
+          "200": { "description": "OK — PDF generation allowed" },
+          "402": { "description": "PDF limit reached — subscription required" }
+        }
+      }
+    },
+    "/rpc/cancel_subscription": {
+      "post": {
+        "summary": "Cancel BOG subscription (idempotent)",
+        "description": "Sets subscription_cancelled_at. Access continues until subscription_expires_at. Defined in migration 0031.",
+        "tags": ["payments"],
+        "responses": { "200": { "description": "OK" } }
       }
     }
   },
   "tags": [
-    {"name": "projects"},
-    {"name": "inspections"},
-    {"name": "templates"},
-    {"name": "certificates"},
-    {"name": "qualifications"},
-    {"name": "remote-signing"}
+    { "name": "projects", "description": "Projects — the top-level grouping for all inspections" },
+    { "name": "inspections", "description": "Generic template-driven inspections (facade, harness, mobile scaffold)" },
+    { "name": "specialized-inspections", "description": "Specialized inspections with own tables: Bobcat, Excavator, General Equipment, Cargo Platform" },
+    { "name": "orders", "description": "Appointment orders / ბრძანებები — 4 document types, flexible form_data jsonb" },
+    { "name": "safety-records", "description": "Incidents, briefings, and site reports" },
+    { "name": "templates", "description": "Inspection form definitions — system + user-owned" },
+    { "name": "certificates", "description": "Generated PDF certificates derived from completed inspections" },
+    { "name": "qualifications", "description": "Expert credentials (inspector certs, harness certs, etc.)" },
+    { "name": "signing", "description": "Remote signing flow — token-based async invitations" },
+    { "name": "payments", "description": "BOG recurring subscriptions — payment records + PDF usage RPCs" }
   ]
 }
