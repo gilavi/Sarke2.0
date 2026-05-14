@@ -34,7 +34,7 @@ const COLS =
   'id, project_id, type, injured_name, injured_role, date_time, location, description, cause, actions_taken, witnesses, photos, status, pdf_url, inspector_signature, created_at';
 
 export async function listIncidents(projectId?: string): Promise<Incident[]> {
-  let q = supabase.from('incidents').select(COLS).order('date_time', { ascending: false });
+  let q = supabase.from('incidents').select(COLS).order('date_time', { ascending: false }).limit(50);
   if (projectId) q = q.eq('project_id', projectId);
   const { data, error } = await q;
   if (error) throw error;

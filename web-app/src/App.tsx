@@ -1,8 +1,9 @@
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { lazy, Suspense, type ReactNode } from 'react';
+import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { lazy, Suspense, type ReactNode, useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import { AuthProvider } from '@/lib/auth';
+import { listProjects } from '@/lib/data/projects';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { AppShell } from '@/components/layout/AppShell';
 
@@ -63,14 +64,25 @@ const SafetyGuidePage = lazy(() => import('@/pages/SafetyGuidePage'));
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 1,
+      staleTime: 1000 * 60 * 2, // 2 minutes default
+      gcTime: 1000 * 60 * 5,    // 5 minutes
       refetchOnWindowFocus: false,
-      staleTime: 5 * 60 * 1000,
-      gcTime: 30 * 60 * 1000,
-      placeholderData: (prev: unknown) => prev,
+      retry: 1,
     },
   },
 });
+
+function RoutePrefetcher() {
+  useLocation(); // ensures we're inside a Router
+  useEffect(() => {
+    // Prefetch common routes after a short delay on mount
+    const timer = setTimeout(() => {
+      queryClient.prefetchQuery({ queryKey: ['projects'], queryFn: listProjects, staleTime: 5 * 60 * 1000 });
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, []);
+  return null;
+}
 
 function PageFallback() {
   return <p className="text-sm text-neutral-500">იტვირთება…</p>;
@@ -91,6 +103,7 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <Toaster position="bottom-right" richColors />
       <HashRouter>
+        <RoutePrefetcher />
         <AuthProvider>
           <Routes>
             <Route path="/login" element={<Login />} />

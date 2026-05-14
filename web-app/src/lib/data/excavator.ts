@@ -117,7 +117,8 @@ export async function listExcavatorInspections(
   let q = supabase
     .from('excavator_inspections')
     .select(COLS)
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .limit(50);
   if (projectId) q = q.eq('project_id', projectId);
   const { data, error } = await q;
   if (error) throw error;

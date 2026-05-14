@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense } from 'react';
+import { useState, lazy, Suspense, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Plus, List, Map } from 'lucide-react';
@@ -15,6 +15,8 @@ export default function Projects() {
   });
 
   const [view, setView] = useState<'list' | 'map'>('list');
+  const handleSetList = useCallback(() => setView('list'), []);
+  const handleSetMap = useCallback(() => setView('map'), []);
 
   const pinsWithGPS = (items ?? []).filter(
     (p): p is typeof p & { latitude: number; longitude: number } =>
@@ -31,7 +33,7 @@ export default function Projects() {
         <div className="flex shrink-0 items-center gap-2">
           <div className="flex rounded-lg border border-neutral-200 bg-neutral-50 p-0.5">
             <button
-              onClick={() => setView('list')}
+              onClick={handleSetList}
               className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition ${
                 view === 'list'
                   ? 'bg-white text-neutral-900 shadow-sm'
@@ -42,7 +44,7 @@ export default function Projects() {
               სია
             </button>
             <button
-              onClick={() => setView('map')}
+              onClick={handleSetMap}
               className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition ${
                 view === 'map'
                   ? 'bg-white text-neutral-900 shadow-sm'

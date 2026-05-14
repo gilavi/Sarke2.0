@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, memo, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { Menu, ShieldCheck } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 
-export function AppShell({ children }: { children: ReactNode }) {
+export const AppShell = memo(function AppShell({ children }: { children: ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const handleOpenSidebar = useCallback(() => setSidebarOpen(true), []);
+  const handleCloseSidebar = useCallback(() => setSidebarOpen(false), []);
   const location = useLocation();
 
   // Focus main content on route change for keyboard/screen-reader users
@@ -21,19 +23,19 @@ export function AppShell({ children }: { children: ReactNode }) {
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-30 bg-black/40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
+          onClick={handleCloseSidebar}
           aria-hidden="true"
         />
       )}
 
-      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar open={sidebarOpen} onClose={handleCloseSidebar} />
 
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Mobile top bar */}
         <header className="flex items-center gap-3 border-b border-neutral-200 bg-white px-4 py-3 lg:hidden">
           <button
             type="button"
-            onClick={() => setSidebarOpen(true)}
+            onClick={handleOpenSidebar}
             className="flex h-9 w-9 items-center justify-center rounded-lg text-neutral-600 hover:bg-neutral-100"
             aria-label="მენიუს გახსნა"
           >
@@ -61,4 +63,4 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
     </div>
   );
-}
+});

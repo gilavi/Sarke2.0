@@ -74,7 +74,8 @@ export async function listProjects(): Promise<Project[]> {
   const { data, error } = await supabase
     .from('projects')
     .select('id, user_id, name, company_name, address, contact_phone, logo, crew, latitude, longitude, created_at')
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .limit(50);
   if (error) throw error;
   return (data ?? []) as Project[];
 }

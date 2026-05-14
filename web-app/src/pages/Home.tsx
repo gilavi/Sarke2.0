@@ -1,6 +1,6 @@
 import { useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { useMemo } from 'react';
+import { useMemo, memo } from 'react';
 import { ClipboardCheck, AlertTriangle, Megaphone, FileText, FolderOpen, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,18 +20,42 @@ import { listProjects } from '@/lib/data/projects';
 import { listIncidents } from '@/lib/data/incidents';
 import { listBriefings } from '@/lib/data/briefings';
 
+const InspectionCard = memo(function InspectionCard({
+  item,
+}: {
+  item: { id: string; label: string; date: string; status: string; href: string };
+}) {
+  return (
+    <Link
+      to={item.href}
+      className="group flex items-center gap-3 rounded-xl border border-neutral-200 bg-white p-3 transition hover:border-brand-300 hover:shadow-sm"
+    >
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+        <ClipboardCheck size={18} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-neutral-900">{item.label}</p>
+        <p className="text-xs text-neutral-500">
+          {item.date ? new Date(item.date).toLocaleDateString('ka-GE') : ''}
+        </p>
+      </div>
+      <ChevronRight size={16} className="shrink-0 text-neutral-400" />
+    </Link>
+  );
+});
+
 export default function Home() {
   const navigate = useNavigate();
   const { profile, user } = useAuth();
   const firstName = profile?.first_name?.trim() || user?.email?.split('@')[0] || '';
 
-  const { data: inspections } = useQuery({ queryKey: ['inspections'], queryFn: () => listInspections() });
-  const { data: bobcats } = useQuery({ queryKey: ['bobcatInspections'], queryFn: () => listBobcatInspections() });
-  const { data: generalEq } = useQuery({ queryKey: ['generalEquipmentInspections'], queryFn: () => listGeneralEquipmentInspections() });
-  const { data: excavators } = useQuery({ queryKey: ['excavatorInspections'], queryFn: () => listExcavatorInspections() });
-  const { data: projects } = useQuery({ queryKey: ['projects'], queryFn: listProjects });
-  const { data: incidents } = useQuery({ queryKey: ['incidents'], queryFn: () => listIncidents() });
-  const { data: briefings } = useQuery({ queryKey: ['briefings'], queryFn: () => listBriefings() });
+  const { data: inspections } = useQuery({ queryKey: ['inspections'], queryFn: () => listInspections(), staleTime: 1000 * 60 * 5, gcTime: 1000 * 60 * 10 });
+  const { data: bobcats } = useQuery({ queryKey: ['bobcatInspections'], queryFn: () => listBobcatInspections(), staleTime: 1000 * 60 * 5, gcTime: 1000 * 60 * 10 });
+  const { data: generalEq } = useQuery({ queryKey: ['generalEquipmentInspections'], queryFn: () => listGeneralEquipmentInspections(), staleTime: 1000 * 60 * 5, gcTime: 1000 * 60 * 10 });
+  const { data: excavators } = useQuery({ queryKey: ['excavatorInspections'], queryFn: () => listExcavatorInspections(), staleTime: 1000 * 60 * 5, gcTime: 1000 * 60 * 10 });
+  const { data: projects } = useQuery({ queryKey: ['projects'], queryFn: listProjects, staleTime: 1000 * 60 * 5, gcTime: 1000 * 60 * 10 });
+  const { data: incidents } = useQuery({ queryKey: ['incidents'], queryFn: () => listIncidents(), staleTime: 1000 * 60 * 5, gcTime: 1000 * 60 * 10 });
+  const { data: briefings } = useQuery({ queryKey: ['briefings'], queryFn: () => listBriefings(), staleTime: 1000 * 60 * 5, gcTime: 1000 * 60 * 10 });
 
   const allInspectionsUnsliced = useMemo(() => [
     ...(inspections ?? []).map((i) => ({ id: i.id, label: i.harness_name || 'შემოწმების აქტი', date: i.created_at ?? '', status: i.status, href: `/inspections/${i.id}` })),
@@ -149,14 +173,7 @@ export default function Home() {
           ) : (
             <ul className="divide-y divide-neutral-100">
               {allInspections.map((item) => (
-                <li key={item.id}>
-                  <Link to={item.href} className="flex items-center justify-between py-3 hover:text-brand-600">
-                    <span className="text-sm font-medium truncate max-w-xs">{item.label}</span>
-                    <span className={`ml-3 shrink-0 text-xs px-2 py-0.5 rounded-full ${item.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                      {item.status === 'completed' ? 'დასრულებული' : 'დრაფტი'}
-                    </span>
-                  </Link>
-                </li>
+                <InspectionCard key={item.id} item={item} />
               ))}
             </ul>
           )}

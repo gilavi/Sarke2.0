@@ -39,7 +39,7 @@ Unique index on `(bog_order_id, status)` deduplicates webhook retries.
 
 ### Edge Functions
 
-- **`create-bog-order`** ([source](../supabase/functions/create-bog-order/index.ts)) — auth'd. Validates redirect URLs (allows `sarke://` and `https://gilavi.github.io/Sarke2.0/app/...`). Calls BOG, returns `{ order_id, redirect_url }`.
+- **`create-bog-order`** ([source](../supabase/functions/create-bog-order/index.ts)) — auth'd. Validates redirect URLs (allows `sarke2://` and `https://gilavi.github.io/Sarke2.0/app/...`). Calls BOG, returns `{ order_id, redirect_url }`.
 - **`bog-payment-callback`** ([source](../supabase/functions/bog-payment-callback/index.ts)) — public webhook (BOG calls it). Re-verifies status server-side, upserts a `payment_records` row, and on `completed` flips the user to `active` for 30 days, clearing `subscription_cancelled_at`.
 
 ## Flow
@@ -63,7 +63,7 @@ mobile More tab           web /account
                 ┌─────────────────────────┴────────────────────────┐
                 ▼                                                  ▼
    /subscribe/success                                  /subscribe/fail
-   (deep links sarke://payment/success                 (deep links sarke://payment/fail
+   (deep links sarke2://payment/success                 (deep links sarke2://payment/fail
     on mobile; invalidates pdf-usage                    on mobile; web shows retry CTA)
     + payment-history caches on web)
                 │

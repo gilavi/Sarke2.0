@@ -58,13 +58,13 @@ export function PaywallModal({ visible, onClose }: Props) {
         `?at=${encodeURIComponent(session.access_token)}` +
         `&rt=${encodeURIComponent(session.refresh_token)}`;
 
-      // In Expo Go the `sarke://` scheme is not registered, so the auth
+      // In Expo Go the `sarke2://` scheme is not registered, so the auth
       // session never fires its redirect handler. Use a runtime-correct
-      // redirect URL: exp://… in Expo Go, sarke:// in standalone builds.
+      // redirect URL: exp://… in Expo Go, sarke2:// in standalone builds.
       const isExpoGo = Constants.appOwnership === 'expo';
       const redirectUrl = isExpoGo
         ? Linking.createURL('payment')
-        : 'sarke://payment';
+        : 'sarke2://payment';
       console.log('[Paywall] expoGo:', isExpoGo, 'redirect:', redirectUrl);
       console.log('[Paywall] opening:', url.slice(0, 80) + '…');
 

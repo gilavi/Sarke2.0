@@ -27,7 +27,7 @@ vi.mock('expo-image', () => ({
 }));
 
 vi.mock('expo-linking', () => ({
-  createURL: vi.fn((path: string) => `sarke://${path}`),
+  createURL: vi.fn((path: string) => `sarke2://${path}`),
   getInitialURL: vi.fn(() => Promise.resolve(null)),
   addEventListener: vi.fn(() => ({ remove: vi.fn() })),
 }));

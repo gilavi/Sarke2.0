@@ -1,12 +1,12 @@
 {
   "expo": {
-    "name": "Sarke",
+    "name": "Sarke 2.0",
     "slug": "sarke2",
     "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
-    "scheme": "sarke",
+    "scheme": "sarke2",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -19,7 +19,7 @@
     "ios": {
       "supportsTablet": false,
       "requireFullScreen": true,
-      "bundleIdentifier": "ge.sarke.app",
+      "bundleIdentifier": "ge.sarke2.app",
       "buildNumber": "1",
       "infoPlist": {
         "NSCameraUsageDescription": "კამერა გამოიყენება ხარაჩოს და ქამრების ფოტოების ატვირთვისთვის.",
@@ -36,7 +36,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#F6F2EA"
       },
-      "package": "ge.sarke.app",
+      "package": "ge.sarke2.app",
       "versionCode": 1,
       "edgeToEdgeEnabled": true,
       "softwareKeyboardLayoutMode": "resize",

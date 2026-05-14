@@ -47,7 +47,8 @@ export async function listBriefings(projectId?: string): Promise<Briefing[]> {
   let q = supabase
     .from('briefings')
     .select('id, project_id, date_time, topics, participants, inspector_name, status, created_at')
-    .order('date_time', { ascending: false });
+    .order('date_time', { ascending: false })
+    .limit(50);
   if (projectId) q = q.eq('project_id', projectId);
   const { data, error } = await q;
   if (error) throw error;

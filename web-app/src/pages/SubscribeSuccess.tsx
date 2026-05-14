@@ -19,7 +19,7 @@ export default function SubscribeSuccess() {
     // For mobile: triggers SFAuthenticationSession to close and hand control back
     // to the app. The mobile app's _layout.tsx also listens for this URL on cold
     // start. On desktop browsers this is a no-op (unknown scheme).
-    window.location.href = 'sarke://payment/success';
+    window.location.href = 'sarke2://payment/success';
   }, [qc]);
 
   return (

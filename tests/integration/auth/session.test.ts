@@ -67,7 +67,7 @@ describe('auth session logic', () => {
 
     it('can mock password reset', async () => {
       const mockReset = vi.fn().mockResolvedValue({ data: null, error: null });
-      const result = await mockReset('test@example.com', { redirectTo: 'sarke://reset' });
+      const result = await mockReset('test@example.com', { redirectTo: 'sarke2://reset' });
       expect(result.error).toBeNull();
     });
 

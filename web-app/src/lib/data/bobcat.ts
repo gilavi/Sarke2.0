@@ -79,7 +79,8 @@ export async function listBobcatInspections(projectId?: string): Promise<BobcatI
   let q = supabase
     .from('bobcat_inspections')
     .select(COLS)
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .limit(50);
   if (projectId) q = q.eq('project_id', projectId);
   const { data, error } = await q;
   if (error) throw error;

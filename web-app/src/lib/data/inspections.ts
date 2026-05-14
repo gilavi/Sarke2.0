@@ -24,7 +24,8 @@ export async function listInspections(projectId?: string): Promise<Inspection[]>
     .select(
       'id, project_id, user_id, template_id, status, harness_name, department, inspector_name, conclusion_text, is_safe_for_use, inspector_signature, created_at, completed_at',
     )
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .limit(50);
   if (projectId) q = q.eq('project_id', projectId);
   const { data, error } = await q;
   if (error) throw error;

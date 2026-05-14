@@ -1,4 +1,5 @@
 import { Link, Navigate } from 'react-router-dom';
+import { memo } from 'react';
 import {
   ShieldCheck,
   ClipboardCheck,
@@ -33,7 +34,7 @@ const features = [
   },
 ];
 
-export default function Landing() {
+export default memo(function Landing() {
   const { session } = useAuth();
 
   if (session) {
@@ -117,4 +118,4 @@ export default function Landing() {
       </footer>
     </div>
   );
-}
+});

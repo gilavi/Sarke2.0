@@ -58,8 +58,8 @@ function AuthGate() {
   // redirecting to home, breaking the photo flow.
 
   // Handle deep links:
-  //   sarke://reset?code=...        — password-recovery PKCE exchange
-  //   sarke://payment/success       — BOG payment success cold-start fallback
+  //   sarke2://reset?code=...       — password-recovery PKCE exchange
+  //   sarke2://payment/success      — BOG payment success cold-start fallback
   //                                   (warm case is handled by WebBrowser.openAuthSessionAsync)
   useEffect(() => {
     const handle = async (url: string | null) => {

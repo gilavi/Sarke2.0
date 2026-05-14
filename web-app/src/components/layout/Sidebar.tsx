@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom';
+import { memo, useMemo } from 'react';
 import {
   Home,
   Folder,
@@ -42,12 +43,12 @@ interface SidebarProps {
   onClose?: () => void;
 }
 
-export function Sidebar({ open = true, onClose }: SidebarProps) {
+export const Sidebar = memo(function Sidebar({ open = true, onClose }: SidebarProps) {
   const { profile, user, signOut } = useAuth();
-  const displayName =
-    [profile?.first_name, profile?.last_name].filter(Boolean).join(' ').trim() ||
-    user?.email ||
-    'მომხმარებელი';
+  const displayName = useMemo(
+    () => [profile?.first_name, profile?.last_name].filter(Boolean).join(' ').trim() || user?.email || 'მომხმარებელი',
+    [profile?.first_name, profile?.last_name, user?.email]
+  );
 
   const inner = (
     <aside className="flex h-full w-64 shrink-0 flex-col border-r border-neutral-200 bg-white">
@@ -137,4 +138,4 @@ export function Sidebar({ open = true, onClose }: SidebarProps) {
       )}
     </>
   );
-}
+});

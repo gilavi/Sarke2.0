@@ -17,6 +17,16 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Prevent invisible text during Google Fonts load */
+@font-face {
+  font-family: 'Inter';
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Space Grotesk';
+  font-display: swap;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, ::before, ::after {
     animation-duration: 0.01ms !important;
@@ -24,4 +34,15 @@ body {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* GPU acceleration for animated elements */
+.sidebar-transition {
+  will-change: transform;
+}
+.modal-overlay {
+  will-change: opacity;
+}
+.card-hover {
+  will-change: transform, box-shadow;
 }

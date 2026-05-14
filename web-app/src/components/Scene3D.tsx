@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, memo } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, ContactShadows, PerspectiveCamera } from '@react-three/drei';
 import * as THREE from 'three';
@@ -32,13 +32,13 @@ function CameraController() {
   return null;
 }
 
-function Lighting() {
+const Lighting = memo(function Lighting() {
   return (
     <>
       <ambientLight intensity={0.35} color="#7aacbe" />
       <hemisphereLight color="#6b9bb0" groundColor="#4a3d32" intensity={0.4} />
       <directionalLight position={[10, 18, 8]} intensity={1.4} color="#ffe8cc" castShadow
-        shadow-mapSize={[2048, 2048]} shadow-camera-far={50}
+        shadow-mapSize={[1024, 1024]} shadow-camera-far={50}
         shadow-camera-left={-18} shadow-camera-right={18}
         shadow-camera-top={18} shadow-camera-bottom={-18}
         shadow-bias={-0.0005} shadow-normalBias={0.02} />
@@ -46,12 +46,12 @@ function Lighting() {
       <directionalLight position={[-4, 3, 10]} intensity={0.15} color="#ffddaa" />
     </>
   );
-}
+});
 
 export default function Scene3D() {
   return (
     <div className="sg-scene">
-      <Canvas shadows dpr={[1, 2]}
+      <Canvas shadows dpr={Math.min(window.devicePixelRatio, 1.5)}
         gl={{ antialias: true, alpha: false, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.15 }}>
         <color attach="background" args={['#3d6875']} />
         <fog attach="fog" args={['#3d6875', 25, 55]} />

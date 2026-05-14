@@ -62,15 +62,15 @@ Deno.serve(async (req) => {
     if (authError || !user) return json({ error: 'unauthorized' }, 401);
 
     // Optional client-supplied redirect URLs (web flow). Mobile callers send no
-    // body and fall back to the sarke:// deep links below.
+    // body and fall back to the sarke2:// deep links below.
     let body: { success_url?: string; fail_url?: string } = {};
     try { body = await req.json(); } catch { /* no body — mobile path */ }
 
-    const ALLOWED_PREFIXES = ['sarke://', 'https://gilavi.github.io/Sarke2.0/'];
+    const ALLOWED_PREFIXES = ['sarke2://', 'https://gilavi.github.io/Sarke2.0/'];
     const isAllowed = (u: string) => ALLOWED_PREFIXES.some((p) => u.startsWith(p));
 
-    const successUrl = body.success_url ?? 'sarke://payment/success';
-    const failUrl = body.fail_url ?? 'sarke://payment/fail';
+    const successUrl = body.success_url ?? 'sarke2://payment/success';
+    const failUrl = body.fail_url ?? 'sarke2://payment/fail';
     if (!isAllowed(successUrl) || !isAllowed(failUrl)) {
       return json({ error: 'invalid redirect url' }, 400);
     }
