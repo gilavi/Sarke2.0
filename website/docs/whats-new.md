@@ -2,134 +2,122 @@
 sidebar_position: 2
 ---
 
-# 📰 What's New
+# What's New
 
-**Last updated:** April 27, 2026  
-**Status:** Active Development — TestFlight 1.1.0 in flight  
-
----
-
-## Latest Release — v1.1.0 (April 27, 2026)
-
-Marketing version bumped `1.0.0 → 1.1.0` for TestFlight. Five commits shipped together.
-
-#### ქამარი (harness) inspection subflow — `d8457ba`
-- New `components/wizard/kamari/KamariFlow.tsx`: count screen → traffic-light overview grid → per-belt detail modal with accordion problem reporting.
-- Persists into the existing `component_grid` `Answer.grid_values` shape, so reports/PDFs keep working unchanged.
-- Exit-modal & wizard polish, project + templates screen tweaks.
-
-#### Regulations data layer + UI refresh — `018dc40`
-- Content extracted from the screen into `lib/regulations.ts` so it can be reused/tested.
-- Tab UI rebuilt on top of it.
-
-#### Qualifications: bottom-sheet add flow — `485f51b`
-- Removed `app/qualifications/new.tsx`. Adding a qualification no longer pushes a route — uses `AddQualificationSheet` in place.
-- Required-types catalogue lives in `app/qualifications/requiredTypes.ts`.
-
-#### Inspection results redesign — `c6fa3ec`
-- Problems-first layout, hero status badge, modal preview before export.
-
-#### A11yText typography pass — `f782037`
-- Consistent text component across all screens for accessibility & sizing.
+**Last updated:** May 14, 2026  
+**Current branch:** `main`
 
 ---
 
-## Recent Features (Last 5 Commits)
+## May 2026 — Cargo Platform, Orders, Enterprise Fire Safety, Skeleton Loading
 
-| Date | Feature | Status |
-|------|---------|--------|
-| Apr 27 | v1.1.0: ქამარი subflow, regulations refactor, qualifications sheet, results redesign, A11y typography | ✅ Merged |
-| Apr 27 | UI flows & theme updates, TourGuide component | ✅ Merged |
-| Apr 26 | Web map fallbacks + accessibility hooks | ✅ Merged |
-| Apr 25 | UX improvements: cooldown persistence, wizard caching, color tokens | ✅ Merged |
-| Apr 20 | DAXUIA design system integration | ✅ Merged |
+### Cargo Platform Inspection
 
----
+New specialized inspection type: **ტვირთის მიმღები პლატფორმის შემოწმების აქტი**.
 
-## Current Development Focus
+- 6-step mobile wizard: info → platform ID → cargo table → 9-item checklist → verdict → dual signatures
+- 3-result checklist: ✓ good / ✗ fix / N/A (amber for fixable, not red)
+- Dynamic cargo table with auto-summed total weight
+- `cargo_platform_inspections` table (migration `0040`), template UUID `77777777-…`
+- Full web support: `NewCargoPlatformInspection`, `CargoPlatformInspectionDetail`, print page
+- Category: `cargo_platform` → routes to `app/inspections/cargo-platform/[id].tsx`
 
-### ✅ Completed This Quarter
-1. **Accessibility** — Tour guide, contextual help, A11yText typography pass across all screens
-2. **Design System** — DAXUIA integration with color tokens
-3. **Inspection Flows** — ქამარი (harness) subflow promoted; results screen redesigned (problems-first)
-4. **Qualifications** — Standalone /new page replaced with in-place bottom-sheet add flow
-5. **Regulations** — Data extracted to `lib/regulations.ts`, UI refreshed
-6. **Component Library** — Modernized UI with consistent styling
-7. **Network Resilience** — Improved offline handling
+### Mobile Scaffold Templates
 
-### 🔨 In Progress
-1. **Web Support** — Map fallbacks, responsive optimizations
-2. **Component Stability** — Tour guide, signer modals, flow refinements
-3. **PDF Reliability** — Testing and performance improvements
+- **N1** — `mobile_scaffold` category (migration `0041`)
+- **N3** — `mobile_scaffold_n3` category (migration `0042`)
+- Both use the generic `inspections` table and template picker
 
-### 🚀 Planned
-- Signature capture UX improvements (cleaner canvas output)
-- Comment sheets on wizard steps
-- Profile/settings screen (beyond sign-out)
-- Noto Sans Georgian bundling for PDFs
-- Rotation handling during signature capture
+### Orders / ბრძანებები System
 
----
+New module for generating legally formatted appointment orders.
 
-## Known Issues Being Tracked
+- Migration `0038`: single `orders` table with `document_type text` and `form_data jsonb`
+- No per-type tables or CHECK constraints — flexible by design
 
-| Issue | Status | Impact |
-|-------|--------|--------|
-| App crashes (cause unknown) | 🔍 Investigating | High |
-| Phone rotation breaks signature canvas | 🔄 Roadmap | Medium |
-| PDF export is slow | 🔄 Investigating | Medium |
-| Typecheck failures | 🔄 Accepted (lifestyle choice) | Low |
-| npm install downloads internet twice | 🤷 Peer deps | Low |
+| Document type | Label | Signing flow |
+|---|---|---|
+| `labor_safety_specialist` | შრომის უსაფრთხოების სპეციალისტის დანიშვნა | None |
+| `alcohol_control` | ალკოჰოლური და ნარკოტიკული თრობის კონტროლი | None |
+| `fire_safety_order` | სახანძრო უსაფრთხოებაზე პასუხისმგებელი პირის დანიშვნა | Director → appointed (2-sig) |
+| `fire_safety_order_enterprise` | საწარმოს სახანძრო უსაფრთხოებაზე… | 2-sig + `appointedPosition` + `appointedIdNumber`; 5-clause document |
 
-See [BUG_REPORT.md](https://github.com/gilavi/Sarke2.0/blob/main/BUG_REPORT.md) for full list.
+Mobile: `app/orders/new.tsx` (4–6 step wizard) + `app/orders/[id].tsx` (success screen)  
+Web: `NewOrder.tsx` + `OrderDetail.tsx` at `/orders/new` and `/orders/:id`  
+Signatures stored as base64 PNG inside `form_data` (not in the `signatures` table)
+
+See [Orders](./orders) for the full reference.
+
+### Web Skeleton Loading
+
+- `SkeletonCard.tsx` extended with `SkeletonStatCard`, `SkeletonGrid`, `SkeletonDetailPage`
+- Home stat cards pulse on load instead of showing `0`
+- All detail and list pages return correct skeleton variants while `isLoading`
 
 ---
 
-## Development Roadmap
+## May 2026 — TestFlight Build + Web Performance — Luka
 
-```
-Q2 2026
-├─ ✅ Accessibility improvements
-├─ ✅ Design system integration
-├─ 🔄 Web support & responsiveness
-├─ 🔄 Component refinements
-└─ 🚀 PDF & signature UX
+**Build fixes for TestFlight:**
+- Disable Sentry auto-upload to fix Xcode cloud build (`4e0e17e`)
+- Regenerate `package-lock.json` for EAS sync (`4c812e8`)
+- Update `projectId`, remove stale owner, add `RECORD_AUDIO` permission (`468242f`)
 
-Q3 2026
-├─ 🚀 Settings/profile screen
-├─ 🚀 Comment sheets
-├─ 🚀 Signature canvas improvements
-└─ 🚀 Georgian font bundling
-```
-
----
-
-## How to Get Started
-
-### For Developers
-1. Read [Getting Started](./getting-started.md)
-2. Install: `npm install --legacy-peer-deps`
-3. Run: `npx expo start`
-4. Scan QR code with Expo Go on your phone
-
-### For AI Agents
-1. Check the [GitHub repo briefing](https://github.com/gilavi/Sarke2.0/blob/main/docs/AI_BRIEFING.md)
-2. Review this site's [architecture](./architecture.md) guide
-3. See [contributing](./contributing.md) for workflow rules
+**Web dashboard performance (`2f812f3`):**
+- Vite `manualChunks` — threejs, leaflet, radix-ui, supabase, icons split into separate JS chunks
+- `staleTime` / `gcTime` on all React Query hooks; `.limit(50)` on all list queries
+- `VirtualList.tsx` using `react-window` + `react-virtualized-auto-sizer` for long lists
+- Memoized `AppShell`, `Sidebar`, `Landing`, `InspectionCard` via `React.memo()`
+- `RoutePrefetcher` for early data loading
+- `Scene3D`: DPR capped at 1.5, shadow map 1024, memoized lighting
+- Fine-grained Zustand selectors in `useSafetySelectors.ts`
 
 ---
 
-## Resources
+## April 2026 — BOG Payments, 3D Safety Guide, PDF Security, Specialized Inspections
 
-- **GitHub Repository**: [gilavi/Sarke2.0](https://github.com/gilavi/Sarke2.0)
-- **Main Branch**: [branch/main](https://github.com/gilavi/Sarke2.0/tree/main)
-- **Docs Branch**: [branch/docs/site](https://github.com/gilavi/Sarke2.0/tree/docs/site)
-- **Issue Tracker**: [GitHub Issues](https://github.com/gilavi/Sarke2.0/issues)
+### BOG Recurring Payments
+
+Georgian payment processor — mobile + web parity.
+
+- Edge functions: `create-bog-order` + `bog-webhook`
+- `payment_records` table (migration `0031`); subscription fields on `users` (migration `0028`)
+- Free tier: 30 PDFs; unlimited for active subscribers
+- Web: `/subscribe`, `/subscribe/success`, `/subscribe/fail`, `SubscriptionCard` on home
+
+See [`docs/payments.md`](https://github.com/gilavi/Sarke2.0/blob/main/docs/payments.md).
+
+### 3D Interactive Safety Guide
+
+React Three Fiber 3D model of a construction site — 6 clickable parts with safety checklists and regulation references. Loaded as WebView on mobile; native `/safety` route in the web dashboard.
+
+### PDF Security
+
+- SHA-256 hash of each generated PDF stored in `pdf_hash` column (migration `0039`)
+- PDF metadata embedded: title, author, creation date
+
+### Specialized Inspection Types
+
+| Type | Category | Table | Migration |
+|---|---|---|---|
+| Bobcat | `bobcat` | `bobcat_inspections` | `0024` |
+| Large Loader | `bobcat` | `bobcat_inspections` | `0025` |
+| Excavator | `excavator` | `excavator_inspections` | `0026` |
+| General equipment | `general_equipment` | `general_equipment_inspections` | `0027` |
+
+### Project Photos + Geo
+
+- Photos attachable to projects (`project-files` bucket)
+- Photo taken >500 m from project location triggers mismatch alert
+- `answer_photos.latitude/longitude/address` — migration `0023`
 
 ---
 
-## Questions?
+## Known Issues
 
-- See the relevant section in this docs site
-- Check [BUG_REPORT.md](https://github.com/gilavi/Sarke2.0/blob/main/BUG_REPORT.md) for known issues
-- Review [CLAUDE.md](https://github.com/gilavi/Sarke2.0/blob/main/CLAUDE.md) for development workflow
+| Issue | Status |
+|---|---|
+| Signature canvas breaks on phone rotation | 🔄 Roadmap |
+| Web build (`expo start --web`) crashes at boot | ⚠️ Worklets shim — use native only |
+| Storage RLS gap on 4 core buckets | 🔍 Open — see `BUG_REPORT.md` |
+| TypeScript typecheck failures | ✅ Accepted — note new failures, don't add |

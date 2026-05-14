@@ -29,6 +29,7 @@ const sidebars: SidebarsConfig = {
       collapsed: false,
       items: ['database/schema', 'database/migrations', 'database/api'],
     },
+    'orders',
     'pdf-generation',
     'offline-sync',
     'signing-flow',
