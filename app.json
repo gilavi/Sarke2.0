@@ -41,8 +41,9 @@
       "edgeToEdgeEnabled": true,
       "softwareKeyboardLayoutMode": "resize",
       "permissions": [
-        "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
@@ -79,12 +80,11 @@
       "useMockData": false,
       "router": {},
       "eas": {
-        "projectId": "c50f3e11-27fb-4477-ba82-13df9179134f"
+        "projectId": "ab800403-36c4-4673-8dd8-dfc75b66d14b"
       }
     },
     "experiments": {
       "typedRoutes": false
-    },
-    "owner": "gilavi2000"
+    }
   }
 }
