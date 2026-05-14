@@ -119,7 +119,7 @@ export function SignaturesActionSheet({ inspectionId, requiredRoles, onClose, on
           onPress={() => setView({ kind: 'edit' })}
         />
       }
-      maxHeightRatio={0.85}
+      maxHeightRatio={0.92}
       showHandle={false}
       ScrollComponent={BottomSheetScrollView}
     >
@@ -361,7 +361,7 @@ function SignatureEditView({
           disabled={busy || !name.trim()}
         />
       }
-      maxHeightRatio={0.95}
+      maxHeightRatio={0.92}
       showHandle={false}
       ScrollComponent={BottomSheetScrollView}
     >
@@ -419,6 +419,7 @@ function SignatureEditView({
             descriptionText=""
             penColor="#000"
             backgroundColor="#fff"
+            style={{ width: '100%', height: 220 }}
             webStyle={`
               .m-signature-pad { box-shadow: none; border: none; height: 220px; }
               .m-signature-pad--body { border: none; }
