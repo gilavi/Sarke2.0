@@ -1052,12 +1052,12 @@ export default function ProjectDetail() {
             )}
           </View>
 
-          {/* ── დოკუმენტები ── */}
+          {/* ── ბრძანებები ── */}
           <View ref={filesRef} collapsable={false} style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Ionicons name="cloud-upload-outline" size={16} color={theme.colors.inkSoft} />
-                <Text style={styles.sectionTitle}>დოკუმენტები</Text>
+                <Ionicons name="ribbon-outline" size={16} color={theme.colors.inkSoft} />
+                <Text style={styles.sectionTitle}>ბრძანებები</Text>
                 <Text style={styles.sectionCount}>{files.length + orders.length}</Text>
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>

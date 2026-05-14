@@ -23,7 +23,8 @@ import { queuePdfUpload, stagePdfForQueue } from '../../lib/pdfUploadQueue';
 import { logError } from '../../lib/logError';
 import { friendlyError } from '../../lib/errorMap';
 import { ordersApi } from '../../lib/ordersApi';
-import { buildLaborSafetyOrderHtml, buildAlcoholControlOrderHtml } from '../../lib/orderPdf';
+import { buildLaborSafetyOrderHtml, buildAlcoholControlOrderHtml, buildFireSafetyOrderHtml, buildFireSafetyOrderEnterpriseHtml } from '../../lib/orderPdf';
+import { SignatureCanvas } from '../../components/SignatureCanvas';
 import { storageApi, projectsApi } from '../../lib/services';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -32,15 +33,26 @@ import type {
   OrderDocumentType,
   LaborSafetyOrderFormData,
   AlcoholControlOrderFormData,
+  FireSafetyOrderFormData,
+  FireSafetyOrderEnterpriseFormData,
   Project,
 } from '../../types/models';
 import { ORDER_DOCUMENT_TYPE_LABEL } from '../../types/models';
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
-type Step = 1 | 2 | 3 | 4;
+type Step = 1 | 2 | 3 | 4 | 5 | 6;
 
-// Combined form — all fields from both document types; unused ones stay ''
+function getTotalSteps(docType: OrderDocumentType | null): number {
+  if (docType === 'fire_safety_order' || docType === 'fire_safety_order_enterprise') return 6;
+  return 4;
+}
+
+function isFireSafetyVariant(docType: OrderDocumentType | null): boolean {
+  return docType === 'fire_safety_order' || docType === 'fire_safety_order_enterprise';
+}
+
+// Combined form — all fields across all document types; unused ones stay ''
 interface CombinedForm {
   orderNumber: string;
   city: string;
@@ -59,6 +71,18 @@ interface CombinedForm {
   responsiblePersonName: string;
   responsiblePersonPosition: string;
   responsiblePersonPersonalId: string;
+  // fire_safety_order
+  appointedName: string;
+  appointedPhone: string;
+  objectName: string;
+  objectAddress: string;
+  // fire_safety_order_enterprise extras
+  appointedPosition: string;
+  appointedIdNumber: string;
+  directorSignature: string | null;
+  directorSignedAt: string | null;
+  appointedSignature: string | null;
+  appointedSignedAt: string | null;
 }
 
 const INITIAL_FORM: CombinedForm = {
@@ -77,11 +101,23 @@ const INITIAL_FORM: CombinedForm = {
   responsiblePersonName: '',
   responsiblePersonPosition: '',
   responsiblePersonPersonalId: '',
+  appointedName: '',
+  appointedPhone: '',
+  objectName: '',
+  objectAddress: '',
+  appointedPosition: '',
+  appointedIdNumber: '',
+  directorSignature: null,
+  directorSignedAt: null,
+  appointedSignature: null,
+  appointedSignedAt: null,
 };
 
 const DOC_TYPES: { type: OrderDocumentType; icon: keyof typeof Ionicons.glyphMap }[] = [
-  { type: 'labor_safety_specialist', icon: 'shield-checkmark-outline' },
-  { type: 'alcohol_control',          icon: 'ban-outline' },
+  { type: 'labor_safety_specialist',      icon: 'shield-checkmark-outline' },
+  { type: 'alcohol_control',              icon: 'ban-outline' },
+  { type: 'fire_safety_order',            icon: 'flame-outline' },
+  { type: 'fire_safety_order_enterprise', icon: 'flame-outline' },
 ];
 
 // ─── main component ───────────────────────────────────────────────────────────
@@ -120,6 +156,8 @@ export default function NewOrderScreen() {
         companyName: p.company_name || p.name,
         legalAddress: p.address ?? '',
         facilityName: p.company_name || p.name,
+        objectName: p.name,
+        objectAddress: p.address ?? '',
       }));
     }).catch(() => null);
   }, [projectId]);
@@ -163,7 +201,25 @@ export default function NewOrderScreen() {
           form.responsiblePersonPersonalId.trim().length === 11
         );
       }
+      if (docType === 'fire_safety_order') {
+        return (
+          form.appointedName.trim().length > 0 &&
+          form.appointedPhone.trim().length > 0 &&
+          form.objectName.trim().length > 0
+        );
+      }
+      if (docType === 'fire_safety_order_enterprise') {
+        return (
+          form.appointedName.trim().length > 0 &&
+          form.appointedPhone.trim().length > 0 &&
+          form.appointedPosition.trim().length > 0 &&
+          form.appointedIdNumber.trim().length > 0 &&
+          form.objectName.trim().length > 0
+        );
+      }
     }
+    if (step === 4 && isFireSafetyVariant(docType)) return !!form.directorSignature;
+    if (step === 5 && isFireSafetyVariant(docType)) return !!form.appointedSignature;
     return true;
   }, [step, form, docType]);
 
@@ -174,7 +230,7 @@ export default function NewOrderScreen() {
 
   // ── build typed form data for the chosen document type ──────────────────────
 
-  const buildFormData = (): LaborSafetyOrderFormData | AlcoholControlOrderFormData => {
+  const buildFormData = (): LaborSafetyOrderFormData | AlcoholControlOrderFormData | FireSafetyOrderFormData | FireSafetyOrderEnterpriseFormData => {
     const base = {
       orderNumber: form.orderNumber,
       city: form.city,
@@ -193,6 +249,46 @@ export default function NewOrderScreen() {
         responsiblePersonPersonalId: form.responsiblePersonPersonalId,
       };
     }
+    if (docType === 'fire_safety_order') {
+      return {
+        orderNumber: form.orderNumber,
+        city: form.city,
+        orderDate: form.orderDate,
+        companyName: form.companyName,
+        identificationCode: form.identificationCode,
+        legalAddress: form.legalAddress,
+        directorName: form.directorName,
+        appointedName: form.appointedName,
+        appointedPhone: form.appointedPhone,
+        objectName: form.objectName,
+        objectAddress: form.objectAddress,
+        directorSignature: form.directorSignature,
+        directorSignedAt: form.directorSignedAt,
+        appointedSignature: form.appointedSignature,
+        appointedSignedAt: form.appointedSignedAt,
+      };
+    }
+    if (docType === 'fire_safety_order_enterprise') {
+      return {
+        orderNumber: form.orderNumber,
+        city: form.city,
+        orderDate: form.orderDate,
+        companyName: form.companyName,
+        identificationCode: form.identificationCode,
+        legalAddress: form.legalAddress,
+        directorName: form.directorName,
+        appointedName: form.appointedName,
+        appointedPhone: form.appointedPhone,
+        appointedPosition: form.appointedPosition,
+        appointedIdNumber: form.appointedIdNumber,
+        objectName: form.objectName,
+        objectAddress: form.objectAddress,
+        directorSignature: form.directorSignature,
+        directorSignedAt: form.directorSignedAt,
+        appointedSignature: form.appointedSignature,
+        appointedSignedAt: form.appointedSignedAt,
+      };
+    }
     return {
       ...base,
       specialistName: form.specialistName,
@@ -205,20 +301,23 @@ export default function NewOrderScreen() {
   const buildHtml = (projectName: string): string => {
     const fd = buildFormData();
     if (docType === 'alcohol_control') {
-      return buildAlcoholControlOrderHtml({
-        formData: fd as AlcoholControlOrderFormData,
-        projectName,
-      });
+      return buildAlcoholControlOrderHtml({ formData: fd as AlcoholControlOrderFormData, projectName });
     }
-    return buildLaborSafetyOrderHtml({
-      formData: fd as LaborSafetyOrderFormData,
-      projectName,
-    });
+    if (docType === 'fire_safety_order') {
+      return buildFireSafetyOrderHtml({ formData: fd as FireSafetyOrderFormData, projectName });
+    }
+    if (docType === 'fire_safety_order_enterprise') {
+      return buildFireSafetyOrderEnterpriseHtml({ formData: fd as FireSafetyOrderEnterpriseFormData, projectName });
+    }
+    return buildLaborSafetyOrderHtml({ formData: fd as LaborSafetyOrderFormData, projectName });
   };
 
-  const docSlug = () => docType === 'alcohol_control'
-    ? 'brdzaneba_alkoholi'
-    : 'brdzaneba_shus_danishvna';
+  const docSlug = () => {
+    if (docType === 'alcohol_control') return 'brdzaneba_alkoholi';
+    if (docType === 'fire_safety_order') return 'brdzaneba_saxandzro';
+    if (docType === 'fire_safety_order_enterprise') return 'brdzaneba_saxandzro_sawarmoo';
+    return 'brdzaneba_shus_danishvna';
+  };
 
   // ── save draft ──────────────────────────────────────────────────────────────
 
@@ -266,10 +365,15 @@ export default function NewOrderScreen() {
       const pdfName = generatePdfName(projectName, docSlug(), new Date(form.orderDate), savedId);
       const pdfPath = `orders/${pdfName}`;
 
-      const orderAuthor = docType === 'alcohol_control' ? form.responsiblePersonName : form.specialistName;
-      const orderTitle = docType === 'alcohol_control'
-        ? 'ალკოჰოლური და ნარკოტიკული თრობის კონტროლი'
-        : 'შრომის უსაფრთხოების სპეციალისტის დანიშვნა';
+      const orderAuthor =
+        docType === 'alcohol_control' ? form.responsiblePersonName :
+        isFireSafetyVariant(docType) ? form.appointedName :
+        form.specialistName;
+      const orderTitle =
+        docType === 'alcohol_control' ? 'ალკოჰოლური და ნარკოტიკული თრობის კონტროლი' :
+        docType === 'fire_safety_order' ? 'სახანძრო უსაფრთხოებაზე პასუხისმგებელი პირის დანიშვნა' :
+        docType === 'fire_safety_order_enterprise' ? 'საწარმოს სახანძრო უსაფრთხოებაზე პასუხისმგებელი პირის დანიშვნა' :
+        'შრომის უსაფრთხოების სპეციალისტის დანიშვნა';
       const localUri = await generateAndSharePdf(html, pdfName, true, userId, {
         title: orderTitle,
         author: orderAuthor || undefined,
@@ -320,7 +424,7 @@ export default function NewOrderScreen() {
         flowTitle="ბრძანება"
         project={project}
         step={step}
-        totalSteps={4}
+        totalSteps={getTotalSteps(docType)}
         onBack={goBack}
         confirmExit={step === 1 && isFormDirty}
       />
@@ -336,13 +440,26 @@ export default function NewOrderScreen() {
         {step === 3 && docType === 'alcohol_control' && (
           <Step3AlcoholControl form={form} setForm={setForm} theme={theme} s={s} />
         )}
-        {step === 4 && (
+        {step === 3 && docType === 'fire_safety_order' && (
+          <Step3FireSafety form={form} setForm={setForm} theme={theme} s={s} />
+        )}
+        {step === 3 && docType === 'fire_safety_order_enterprise' && (
+          <Step3FireSafetyEnterprise form={form} setForm={setForm} theme={theme} s={s} />
+        )}
+        {step === 4 && isFireSafetyVariant(docType) && (
+          <StepSignDirector form={form} setForm={setForm} theme={theme} s={s} />
+        )}
+        {step === 5 && isFireSafetyVariant(docType) && (
+          <StepSignAppointed form={form} setForm={setForm} theme={theme} s={s} />
+        )}
+        {/* Summary: step 4 for standard types, step 6 for fire safety variants */}
+        {((step === 4 && !isFireSafetyVariant(docType)) || step === 6) && (
           <Step4Summary form={form} docType={docType} project={project} theme={theme} s={s} />
         )}
       </KeyboardSafeArea>
 
       <View style={[s.bottomBar, { paddingBottom: insets.bottom + 8 }]}>
-        {step < 4 ? (
+        {step < getTotalSteps(docType) ? (
           <Button
             title="შემდეგი"
             rightIcon="arrow-forward"
@@ -633,6 +750,24 @@ function Step4Summary({
             <SummaryRow label="პ/ნ" value={form.specialistPersonalId || '—'} s={s} />
             <SummaryRow label="სერტიფიკატი №" value={form.certificateNumber || '—'} s={s} />
           </>
+        ) : docType === 'fire_safety_order' ? (
+          <>
+            <SummaryRow label="დანიშნული პირი" value={form.appointedName || '—'} s={s} />
+            <SummaryRow label="ტელეფონი" value={form.appointedPhone || '—'} s={s} />
+            <SummaryRow label="ობიექტი" value={form.objectName || '—'} s={s} />
+            <SummaryRow label="დირექტორი ✓" value={form.directorSignature ? 'ხელმოწერილია' : '—'} s={s} />
+            <SummaryRow label="პასუხისმ. ✓" value={form.appointedSignature ? 'ხელმოწერილია' : '—'} s={s} />
+          </>
+        ) : docType === 'fire_safety_order_enterprise' ? (
+          <>
+            <SummaryRow label="დანიშნული პირი" value={form.appointedName || '—'} s={s} />
+            <SummaryRow label="თანამდებობა" value={form.appointedPosition || '—'} s={s} />
+            <SummaryRow label="პ/ნ" value={form.appointedIdNumber || '—'} s={s} />
+            <SummaryRow label="ტელეფონი" value={form.appointedPhone || '—'} s={s} />
+            <SummaryRow label="ობიექტი" value={form.objectName || '—'} s={s} />
+            <SummaryRow label="დირექტორი ✓" value={form.directorSignature ? 'ხელმოწერილია' : '—'} s={s} />
+            <SummaryRow label="პასუხისმ. ✓" value={form.appointedSignature ? 'ხელმოწერილია' : '—'} s={s} />
+          </>
         ) : (
           <>
             <SummaryRow label="პასუხისმგებელი" value={form.responsiblePersonName || '—'} s={s} />
@@ -654,6 +789,222 @@ function SummaryRow({ label, value, s }: { label: string; value: string; s: Retu
     <View style={s.summaryRow}>
       <Text style={s.summaryLabel}>{label}</Text>
       <Text style={s.summaryValue} numberOfLines={2}>{value}</Text>
+    </View>
+  );
+}
+
+// ─── Step 3c — fire safety order: appointed person ────────────────────────────
+
+function Step3FireSafety({
+  form, setForm, theme: _theme, s,
+}: {
+  form: CombinedForm;
+  setForm: React.Dispatch<React.SetStateAction<CombinedForm>>;
+  theme: any;
+  s: ReturnType<typeof makeStyles>;
+}) {
+  return (
+    <View style={{ gap: 12 }}>
+      <Text style={s.stepTitle}>დანიშნული პირი</Text>
+
+      <FloatingLabelInput
+        label="სახელი, გვარი"
+        required
+        value={form.appointedName}
+        onChangeText={v => setForm(f => ({ ...f, appointedName: v }))}
+      />
+      <FloatingLabelInput
+        label="ტელეფონის ნომერი"
+        required
+        value={form.appointedPhone}
+        onChangeText={v => setForm(f => ({ ...f, appointedPhone: v }))}
+        keyboardType="phone-pad"
+      />
+
+      <Text style={s.sectionLabel}>ობიექტი</Text>
+
+      <FloatingLabelInput
+        label="ობიექტის დასახელება"
+        required
+        value={form.objectName}
+        onChangeText={v => setForm(f => ({ ...f, objectName: v }))}
+      />
+      <FloatingLabelInput
+        label="ობიექტის მისამართი"
+        value={form.objectAddress}
+        onChangeText={v => setForm(f => ({ ...f, objectAddress: v }))}
+      />
+    </View>
+  );
+}
+
+// ─── Step 3d — fire safety enterprise: appointed person + extras ──────────────
+
+function Step3FireSafetyEnterprise({
+  form, setForm, theme: _theme, s,
+}: {
+  form: CombinedForm;
+  setForm: React.Dispatch<React.SetStateAction<CombinedForm>>;
+  theme: any;
+  s: ReturnType<typeof makeStyles>;
+}) {
+  return (
+    <View style={{ gap: 12 }}>
+      <Text style={s.stepTitle}>დანიშნული პირი</Text>
+
+      <FloatingLabelInput
+        label="სახელი, გვარი"
+        required
+        value={form.appointedName}
+        onChangeText={v => setForm(f => ({ ...f, appointedName: v }))}
+      />
+      <FloatingLabelInput
+        label="თანამდებობა"
+        required
+        value={form.appointedPosition}
+        onChangeText={v => setForm(f => ({ ...f, appointedPosition: v }))}
+      />
+      <FloatingLabelInput
+        label="პირადი ნომერი"
+        required
+        value={form.appointedIdNumber}
+        onChangeText={v => setForm(f => ({ ...f, appointedIdNumber: v }))}
+        keyboardType="numeric"
+        maxLength={11}
+      />
+      <FloatingLabelInput
+        label="ტელეფონის ნომერი"
+        required
+        value={form.appointedPhone}
+        onChangeText={v => setForm(f => ({ ...f, appointedPhone: v }))}
+        keyboardType="phone-pad"
+      />
+
+      <Text style={s.sectionLabel}>ობიექტი</Text>
+
+      <FloatingLabelInput
+        label="ობიექტის დასახელება"
+        required
+        value={form.objectName}
+        onChangeText={v => setForm(f => ({ ...f, objectName: v }))}
+      />
+      <FloatingLabelInput
+        label="ობიექტის მისამართი"
+        value={form.objectAddress}
+        onChangeText={v => setForm(f => ({ ...f, objectAddress: v }))}
+      />
+    </View>
+  );
+}
+
+// ─── Step 4 (fire_safety) — director signature ────────────────────────────────
+
+function StepSignDirector({
+  form, setForm, theme, s,
+}: {
+  form: CombinedForm;
+  setForm: React.Dispatch<React.SetStateAction<CombinedForm>>;
+  theme: any;
+  s: ReturnType<typeof makeStyles>;
+}) {
+  const [canvasOpen, setCanvasOpen] = useState(false);
+
+  return (
+    <View style={{ gap: 16 }}>
+      <Text style={s.stepTitle}>დირექტორის ხელმოწერა</Text>
+      <Text style={[s.summaryLabel, { width: 'auto' }]}>{form.directorName || 'დირექტორი'}</Text>
+
+      {form.directorSignature ? (
+        <View style={{
+          backgroundColor: theme.colors.surface,
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: theme.colors.borderGreen ?? theme.colors.border,
+          alignItems: 'center',
+          padding: 12,
+          gap: 8,
+        }}>
+          <Ionicons name="checkmark-circle" size={28} color="#16a34a" />
+          <Text style={{ fontSize: 13, color: '#16a34a', fontWeight: '600' }}>ხელმოწერა დადებულია</Text>
+          <Pressable onPress={() => setForm(f => ({ ...f, directorSignature: null, directorSignedAt: null }))}>
+            <Text style={{ fontSize: 12, color: theme.colors.inkSoft, textDecorationLine: 'underline' }}>ხელახლა ხელმოწერა</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <Pressable
+          onPress={() => setCanvasOpen(true)}
+          style={[s.typeCard, { justifyContent: 'center', alignItems: 'center', gap: 8, paddingVertical: 20 }]}
+        >
+          <Ionicons name="pencil-outline" size={22} color={theme.colors.accent} />
+          <Text style={[s.typeLabel, { textAlign: 'center', color: theme.colors.accent }]}>+ ხელმოწერა</Text>
+        </Pressable>
+      )}
+
+      <SignatureCanvas
+        visible={canvasOpen}
+        personName={form.directorName || 'დირექტორი'}
+        onCancel={() => setCanvasOpen(false)}
+        onConfirm={(b64) => {
+          setForm(f => ({ ...f, directorSignature: b64, directorSignedAt: new Date().toISOString() }));
+          setCanvasOpen(false);
+        }}
+      />
+    </View>
+  );
+}
+
+// ─── Step 5 (fire_safety) — appointed person signature ────────────────────────
+
+function StepSignAppointed({
+  form, setForm, theme, s,
+}: {
+  form: CombinedForm;
+  setForm: React.Dispatch<React.SetStateAction<CombinedForm>>;
+  theme: any;
+  s: ReturnType<typeof makeStyles>;
+}) {
+  const [canvasOpen, setCanvasOpen] = useState(false);
+
+  return (
+    <View style={{ gap: 16 }}>
+      <Text style={s.stepTitle}>პასუხისმგებელი პირის ხელმოწერა</Text>
+      <Text style={[s.summaryLabel, { width: 'auto' }]}>{form.appointedName || 'დანიშნული პირი'}</Text>
+
+      {form.appointedSignature ? (
+        <View style={{
+          backgroundColor: theme.colors.surface,
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: theme.colors.borderGreen ?? theme.colors.border,
+          alignItems: 'center',
+          padding: 12,
+          gap: 8,
+        }}>
+          <Ionicons name="checkmark-circle" size={28} color="#16a34a" />
+          <Text style={{ fontSize: 13, color: '#16a34a', fontWeight: '600' }}>ხელმოწერა დადებულია</Text>
+          <Pressable onPress={() => setForm(f => ({ ...f, appointedSignature: null, appointedSignedAt: null }))}>
+            <Text style={{ fontSize: 12, color: theme.colors.inkSoft, textDecorationLine: 'underline' }}>ხელახლა ხელმოწერა</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <Pressable
+          onPress={() => setCanvasOpen(true)}
+          style={[s.typeCard, { justifyContent: 'center', alignItems: 'center', gap: 8, paddingVertical: 20 }]}
+        >
+          <Ionicons name="pencil-outline" size={22} color={theme.colors.accent} />
+          <Text style={[s.typeLabel, { textAlign: 'center', color: theme.colors.accent }]}>+ ხელმოწერა</Text>
+        </Pressable>
+      )}
+
+      <SignatureCanvas
+        visible={canvasOpen}
+        personName={form.appointedName || 'დანიშნული პირი'}
+        onCancel={() => setCanvasOpen(false)}
+        onConfirm={(b64) => {
+          setForm(f => ({ ...f, appointedSignature: b64, appointedSignedAt: new Date().toISOString() }));
+          setCanvasOpen(false);
+        }}
+      />
     </View>
   );
 }

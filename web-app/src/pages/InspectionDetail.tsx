@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Camera, FileText, X } from 'lucide-react';
+import { SkeletonDetailPage } from '@/components/SkeletonCard';
 import { toast } from 'sonner';
 import { usePendingCreate } from '@/lib/usePendingCreate';
 import DeleteButton from '@/components/DeleteButton';
@@ -181,7 +182,7 @@ export default function InspectionDetail() {
     answerMutation.mutate({ inspectionId: realId!, ...patch });
   }
 
-  if (inspectionQ.isLoading) return <p className="text-sm text-neutral-500">იტვირთება…</p>;
+  if (inspectionQ.isLoading) return <SkeletonDetailPage />;
   if (error)
     return (
       <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">

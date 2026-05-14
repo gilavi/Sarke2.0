@@ -3,9 +3,10 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { listCertificates, signedCertificatePdfUrl } from '@/lib/data/certificates';
+import { SkeletonList } from '@/components/SkeletonCard';
 
 export default function Certificates() {
-  const { data: items, error: queryError } = useQuery({
+  const { data: items, error: queryError, isLoading } = useQuery({
     queryKey: ['certificates'],
     queryFn: listCertificates,
   });
@@ -39,7 +40,7 @@ export default function Certificates() {
         </div>
       )}
 
-      {!items && !displayError && <p className="text-sm text-neutral-500">იტვირთება…</p>}
+      {isLoading && <SkeletonList count={4} />}
 
       {items && items.length === 0 && (
         <p className="text-sm text-neutral-500">სერტიფიკატები ვერ მოიძებნა.</p>

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { listTemplates, SIGNER_ROLE_LABEL, type Template } from '@/lib/data/templates';
+import { SkeletonGrid } from '@/components/SkeletonCard';
 
 const CATEGORY_LABEL: Record<string, string> = {
   harness:            'დამცავი ქამარი',
@@ -36,7 +37,7 @@ export default function Templates() {
       </header>
 
       {q.isLoading ? (
-        <p className="text-sm text-neutral-500">იტვირთება…</p>
+        <SkeletonGrid count={6} />
       ) : q.error ? (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {q.error instanceof Error ? q.error.message : String(q.error)}

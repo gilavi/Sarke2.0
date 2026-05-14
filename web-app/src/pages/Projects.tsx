@@ -5,11 +5,12 @@ import { Plus, List, Map } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { listProjects } from '@/lib/data/projects';
+import { SkeletonGrid } from '@/components/SkeletonCard';
 
 const ProjectMap = lazy(() => import('@/components/ProjectMap'));
 
 export default function Projects() {
-  const { data: items, error } = useQuery({
+  const { data: items, error, isLoading } = useQuery({
     queryKey: ['projects'],
     queryFn: listProjects,
   });
@@ -68,7 +69,7 @@ export default function Projects() {
         </div>
       )}
 
-      {!items && !error && <p className="text-sm text-neutral-500">იტვირთება…</p>}
+      {isLoading && <SkeletonGrid count={6} />}
 
       {items && view === 'map' && (
         <Suspense fallback={<div className="h-[300px] flex items-center justify-center text-muted-foreground">Loading map...</div>}>

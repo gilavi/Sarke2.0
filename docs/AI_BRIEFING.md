@@ -1,17 +1,17 @@
-# 🤖 AI Agent Briefing — Sarke 2.0 Project Context
+# AI Agent Briefing — Sarke 2.0
 
 **Purpose:** Quick reference for AI agents working on this codebase  
-**Updated:** 2026-04-27  
-**Format:** Structured for machine parsing + human readability
+**Updated:** 2026-05-14 | Branch: `after-testflight` (1 commit ahead of `main`)  
+**Full context:** See [`ONBOARDING.md`](../ONBOARDING.md) in the repo root for the complete guide.
 
 ---
 
 ## Core Facts
 
-**Project Type:** Expo (React Native) mobile inspection app  
-**Primary Language:** Georgian (ქართული) UI + English codebase  
-**Target Users:** Safety experts conducting scaffolding/harness inspections  
-**Backend:** Supabase (Postgres + Auth + Storage)  
+**Project Type:** Expo (React Native) mobile inspection app + two web codebases  
+**Primary Language:** Georgian (ქართული) UI — all strings inline, no i18n file  
+**Target Users:** Safety experts conducting equipment/scaffolding inspections on Georgian construction sites  
+**Backend:** Supabase (Postgres + Auth + Storage) — single project shared by all three frontends  
 **Source:** https://github.com/gilavi/Sarke2.0
 
 ---
@@ -19,30 +19,34 @@
 ## Technology Stack
 
 ```
-Frontend:
-├─ Expo SDK 55
-├─ React Native 0.81
-├─ React 19
+Mobile:
+├─ Expo SDK 55 + React Native 0.81 + React 19
 ├─ expo-router (file-based routing)
 ├─ TypeScript
-└─ Supabase client
-
-Core Libraries:
-├─ react-native-signature-canvas (signature capture)
-├─ expo-image-picker (photo capture)
+├─ react-native-signature-canvas (signatures)
 ├─ expo-print + expo-sharing (PDF export)
-├─ react-native-keyboard-controller (keyboard management)
-└─ @react-native-camera-roll/camera-roll
+├─ expo-image-picker (photo capture)
+└─ react-native-keyboard-controller (keyboard management)
 
-Storage:
-├─ Supabase Postgres (relational data)
-├─ Supabase Auth (user authentication)
-└─ Supabase Storage buckets:
-   ├─ certificates
-   ├─ answer-photos
-   ├─ pdfs
-   └─ signatures
+Web-App (dashboard):
+├─ Vite + React 18 + TypeScript + Tailwind CSS
+├─ shadcn/ui, React Query, React Router v6 HashRouter
+└─ Supabase JS client
+
+Web (signing page):
+├─ Vite + React + TypeScript
+└─ Hash routing — do NOT change base path (breaks SMS links)
 ```
+
+---
+
+## Branch State
+
+| Branch | HEAD | Content |
+|---|---|---|
+| `main` | be46348 | BOG payments, 3D SafetyGuide, PDF security/hashing, project geo+photos, orders (4 templates), tab bar polish, web bundle splitting |
+| `after-testflight` | f80a372 | All of main + cargo platform inspection (mobile + web), mobile scaffold N1/N3, skeleton loading system |
+| **Session work** (uncommitted, on after-testflight) | — | fire_safety_order + fire_safety_order_enterprise templates; web orders wizard + detail extended for enterprise type |
 
 ---
 
@@ -50,258 +54,140 @@ Storage:
 
 ```
 Sarke 2.0/
-├── app/                              # expo-router routes
-│   ├── (auth)/                       # Auth screens (login, register, password reset)
-│   │   ├── forgot.tsx
-│   │   ├── login.tsx
-│   │   ├── reset.tsx
-│   │   └── verify-email.tsx
-│   ├── (tabs)/                       # Main app tabs
-│   │   ├── home.tsx
-│   │   ├── projects.tsx
-│   │   └── ...
-│   ├── projects/[id]/                # Project detail + signer
-│   ├── inspections/[id]/             # Inspection wizard
-│   ├── template/[id]/start.tsx       # Template quick-start
-│   ├── certificates/                 # Qualification certificates list
-│   ├── history.tsx                   # Inspection history
-│   └── _layout.tsx                   # Root layout + providers
+├── app/                              # expo-router routes (mobile)
+│   ├── (auth)/                       # login, register, forgot, reset
+│   ├── (tabs)/                       # home, projects, regulations, more
+│   ├── projects/[id]/                # project detail + signer
+│   ├── inspections/
+│   │   ├── [id].tsx                  # Inspection result screen (WebView PDF)
+│   │   ├── bobcat/[id].tsx           # Bobcat/Large Loader wizard
+│   │   ├── excavator/[id].tsx        # Excavator wizard
+│   │   ├── general-equipment/[id].tsx
+│   │   └── cargo-platform/[id].tsx   # Cargo platform wizard (after-testflight)
+│   ├── orders/
+│   │   ├── new.tsx                   # Order creation wizard (4 document types)
+│   │   └── [id].tsx                  # Order success screen
+│   ├── briefings/, incidents/, reports/
+│   └── _layout.tsx
 │
-├── components/                       # Reusable UI + feature components
-│   ├── TourGuide.tsx                 # NEW: Onboarding tour
-│   ├── AddRemoteSignerModal.tsx      # Signer modal
-│   ├── CrewSection.tsx               # Crew display
-│   ├── HarnessListFlow.tsx           # Harness inspection list
-│   ├── ScaffoldHelpSheet.tsx         # Help sheet
-│   └── ui.tsx                        # Button, Card, Input, Chip, Screen
-│
-├── lib/                              # Core services & utilities
-│   ├── supabase.ts                   # Supabase client init
-│   ├── session.tsx                   # Auth context provider
-│   ├── services.real.ts              # Data layer (queries, mutations)
-│   ├── theme.ts                      # Design tokens + colors
-│   ├── pdf.ts                        # PDF generation
-│   ├── offline.tsx                   # Offline support utilities
-│   └── hooks/                        # Custom React hooks
+├── components/                       # Shared UI + feature components
+├── lib/                              # Services, PDF builders, utilities
+│   ├── bobcatService.ts / bobcatPdf.ts
+│   ├── excavatorService.ts / excavatorPdf.ts
+│   ├── generalEquipmentService.ts / generalEquipmentPdf.ts
+│   ├── cargoPlatformService.ts / cargoPlatformPdf.ts
+│   ├── orderPdf.ts                   # 4 order PDF builders
+│   ├── pdfShared.ts                  # embedInspectionPhotos, escHtml, fmtDate
+│   ├── pdfSecurity.ts / pdfGate.ts
+│   ├── bogPayment.ts
+│   └── inspectionRouting.ts
 │
 ├── types/
-│   └── models.ts                     # Database schema types
+│   ├── models.ts                     # All DB types + OrderDocumentType + OrderFormData
+│   └── cargoPlatform.ts              # CP_ITEMS, CPResult, CargoPlatformInspection
 │
-├── supabase/                         # Database configuration
-│   ├── migrations/0001_init.sql      # Schema + RLS
-│   └── seed/01_system_templates.sql  # Seed data
+├── supabase/migrations/              # 42 migrations (0001–0042)
 │
-├── docs/                             # Documentation
-│   ├── WHATS_NEW.md                  # Latest updates (for all)
-│   ├── AI_BRIEFING.md                # This file
-│   └── prompts/                      # Feature-specific docs
+├── web-app/                          # Dashboard (Vite + React)
+│   └── src/
+│       ├── pages/                    # 35+ page components
+│       ├── lib/data/                 # Data layer (one file per entity)
+│       └── components/              # UI components incl. SkeletonCard.tsx
 │
-├── CLAUDE.md                         # Development workflow rules
+├── web/                              # Signing page (Vite + React)
+│
+├── ONBOARDING.md                     # Full AI guide (read this first)
+├── CLAUDE.md                         # Dev workflow rules
 ├── README.md                         # Project overview
 ├── BUG_REPORT.md                     # Known issues + resolutions
-├── app.json                          # Expo config
-├── metro.config.js                   # Metro bundler config
-└── package.json                      # Dependencies
+└── docs/
+    ├── AI_BRIEFING.md                # This file
+    ├── WHATS_NEW.md                  # Changelog
+    ├── primitives.md                 # Canonical helpers — read before adding new ones
+    └── payments.md                   # BOG payment end-to-end flow
 ```
+
+---
+
+## Orders / ბრძანებები System
+
+Single `orders` table (`document_type text`, `form_data jsonb` — no per-type tables, no CHECK constraint on type).
+
+| Type key | Label | Signing |
+|---|---|---|
+| `labor_safety_specialist` | შრომის უსაფრთხოების სპეციალისტის დანიშვნა | none |
+| `alcohol_control` | ალკოჰოლური და ნარკოტიკული თრობის კონტროლი | none |
+| `fire_safety_order` | სახანძრო უსაფრთხოებაზე პასუხისმგებელი პირის დანიშვნა | 2-sig (director → appointed) |
+| `fire_safety_order_enterprise` | საწარმოს სახანძრო უსაფრთხოებაზე... | 2-sig + position + ID number |
+
+---
+
+## Key Inspection Types
+
+| Category | DB Table | UUIDs | Wizard |
+|---|---|---|---|
+| Generic (facade, harness, scaffold) | `inspections` | system templates seeded | `app/inspections/[id].tsx` |
+| `bobcat` | `bobcat_inspections` | 33333333 / 44444444 | `app/inspections/bobcat/[id].tsx` |
+| `excavator` | `excavator_inspections` | 55555555 | `app/inspections/excavator/[id].tsx` |
+| `general_equipment` | `general_equipment_inspections` | 66666666 | `app/inspections/general-equipment/[id].tsx` |
+| `cargo_platform` | `cargo_platform_inspections` | 77777777 | `app/inspections/cargo-platform/[id].tsx` |
 
 ---
 
 ## Workflow Rules (from CLAUDE.md)
 
-### Documentation
-- **Always update docs in the same commit as code changes**
-- Update `README.md` if you: add/remove top-level folders, change dev command, bump major deps, introduce/remove Known Issues
-- Update `docs/` if you touch a documented flow
-- Mark bugs in `BUG_REPORT.md` as resolved (with date + commit ref) instead of deleting
-- Add short JSDoc for exported functions in `lib/` and `components/`
-- Update Supabase schema notes in README if you add a migration
-
-### Code
-- Run `npm run typecheck` before committing (may fail per known issues — note new failures)
-- Don't add error handling for scenarios that can't happen (trust internal guarantees)
-- Default to no comments; only add if WHY is non-obvious
-- Delete unused code completely; no `_` renames or "removed" comments
-- Test UI changes in the browser before reporting done
-- Avoid backwards-compatibility hacks
-
-### Commits
-- Commit code + docs together
-- Use descriptive messages: `feat(scope): description` or `fix: description`
-- Include `Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>` if AI-generated
-
----
-
-## Current State (2026-04-27)
-
-### Last Commit
-**67f461e** — `chore: update UI flows, components, and theme configuration`
-- 28 files changed, 1209 insertions(+), 727 deletions(-)
-- Auth flows, inspections, components, and theme tokens updated
-- TourGuide component added
-- Certificates preview route removed
-
-### Active Development Areas
-1. ✅ **Accessibility** — Tour guides, contextual help
-2. ✅ **Design System** — DAXUIA integration, color tokens
-3. 🔄 **UI Flows** — Auth, inspections, project management
-4. 🔄 **Web Support** — Map fallbacks, responsive design
-5. 📋 **Component Stability** — Ongoing refactoring
-
-### Briefing Signing Flow
-
-The in-person "phone-passing" flow lives at [app/briefings/[id]/sign.tsx](../app/briefings/[id]/sign.tsx). One device is handed to each worker in turn, then the inspector.
-
-- **Roster pill** in the header shows live counts (✓ signed · ◯ pending · ⊘ skipped) and opens a bottom-sheet roster — tap any participant to jump to them.
-- **Back / Skip / Confirm** in the footer let the supervisor revisit a previous signer or mark an absent worker. Skip is persisted via `BriefingParticipant.skipped` (jsonb, no migration).
-- **Resume**: on reopen, the screen jumps to the first participant who is neither signed nor skipped.
-- **Skip review interstitial**: if any workers are skipped after all pending are handled, an interstitial offers "შეხედე სიას" (open roster) or "გააგრძელე →" (proceed to inspector). The briefing can complete with skipped workers left unsigned — the data preserves who was absent.
-
-### Known Issues (Unresolved)
-- App crashes (reason unknown)
-- Phone rotation breaks signature canvas
-- PDF export is slow
-- Typecheck fails (ignored)
+- Always update docs in the **same commit** as code changes
+- Run `npm run lint` before committing (tsc + check-primitives.mjs)
+- Read `docs/primitives.md` before adding any new `lib/` file or component wrapper
+- Fix the canonical primitive instead of adding a sibling
+- Mark bugs resolved in `BUG_REPORT.md` — never delete entries
 
 ---
 
 ## Georgian Localization Rules
 
-**⚠️ CRITICAL:** All UI strings are in Georgian, inline (no i18n file). Do not translate.
+**All UI strings are inline Georgian. Do not translate.**
 
-### Key Conventions
-| Term | Georgian | Never Use |
-|------|----------|-----------|
-| Inspection (noun, artifact) | შემოწმების აქტი | შემოწმება, ინსპექტირება |
-| To inspect (verb) | შემოწმება | n/a |
-| Email | ელ-ფოსტა | იმეილი |
-| PDF artifact | PDF რეპორტი | PDF ანგარიში |
-| Qualification | კვალიფიკაციის სერტიფიკატი | (short: სერტიფიკატი) |
-| Project | პროექტი | |
-| Template | შაბლონი | |
-| Signature | ხელმოწერა | |
-| Scaffold | ხარაჩო | |
-| Harness | ქამარი | |
-| You-form (polite) | თქვენ (თქვენ + verb suffix თ) | Never informal: შეიყვანე |
+Polite form always: `შეიყვანეთ`, `აირჩიეთ`, `დააჭირეთ`, `დაამატეთ`, `შეამოწმეთ`
 
-### Grammar Rule
-Always use polite form: `შეიყვანეთ`, `აირჩიეთ`, `დააჭირეთ`, `დაამატეთ`, `შეამოწმეთ`  
-Never: `შეიყვანე`, `აირჩიე`, `დააჭირე`, `დაამატე`, `შეამოწმე`
-
----
-
-## Key Data Types & Models
-
-**See `types/models.ts` for full schema.**
-
-### User
-- Authentication via Supabase Auth
-- Role-based: expert (creates inspections) or worker (signs)
-
-### Inspection (შემოწმების აქტი)
-- Tied to a Template
-- Contains questionnaire answers (matrix-style)
-- Can have multiple signers
-- Generates PDF report
-
-### Template (შაბლონი)
-- Seeded system templates:
-  1. ფასადის ხარაჩოს შემოწმების აქტი (facade scaffolding)
-  2. დამცავი ქამრების შემოწმების აქტი (harness inspection)
-- Defines the questionnaire structure
-
-### Project (პროექტი)
-- Groups inspections
-- Has metadata (location, crew, etc.)
-
-### Signatures (ხელმოწერა)
-- Canvas-based signature capture
-- Stored as image in Supabase Storage bucket: `signatures`
+| Term | Georgian |
+|---|---|
+| Inspection artifact | შემოწმების აქტი |
+| Email | ელ-ფოსტა |
+| PDF artifact | PDF რეპორტი |
+| Scaffold | ხარაჩო |
+| Harness | ქამარი |
 
 ---
 
 ## Development Commands
 
 ```bash
-# Install (required: --legacy-peer-deps for Radix/React 19)
+# Mobile
 npm install --legacy-peer-deps
-
-# Run dev server
 npx expo start
 
-# Type checking (will fail, that's normal)
-npm run typecheck
+# Web dashboard
+cd web-app && npm install && npm run dev   # localhost:5173/Sarke2.0/app/
 
-# Push to production
-git push origin main
-
-# View logs
-expo logs
+# Lint
+npm run lint        # tsc --noEmit + check-primitives.mjs
 ```
-
----
-
-## Common Workflows
-
-### Adding a New Screen
-1. Create file in `app/` matching the routing convention
-2. Import components from `components/`
-3. Use data via `lib/services.real.ts`
-4. If user-facing string: use Georgian
-5. Update `README.md` directory layout if top-level
-
-### Adding a Component
-1. Create in `components/`
-2. Add JSDoc for exported props/functions
-3. Import theme tokens from `lib/theme.ts` for styling
-4. Test in isolation + full app flow
-
-### Fixing a Bug
-1. Update `BUG_REPORT.md` with resolution (date + commit ref)
-2. Don't delete the bug entry
-3. Run `npm run typecheck` before commit
-4. Update any related docs in same commit
-
-### Updating Documentation
-1. Make code change
-2. Update docs in same commit:
-   - `README.md` for structure/stack changes
-   - `docs/WHATS_NEW.md` for user-facing updates
-   - JSDoc for exported functions
-3. Stage both code + docs together
 
 ---
 
 ## Common Pitfalls
 
 | Pitfall | Solution |
-|---------|----------|
-| "Why is my phone crashing?" | Try rotating it. If that doesn't work, restart. Then restart your life. |
-| "Typecheck is failing" | That's normal. See CLAUDE.md. |
-| "My English string is showing instead of Georgian" | Check `components/` and `app/` for hardcoded English. All UI must be Georgian. |
-| "The PDF looks like hieroglyphics" | Missing Noto Sans Georgian bundle. On roadmap. |
-| "I want to add i18n" | Don't. All strings are inline Georgian. If you need to change copy, edit the source. |
-| "Should I update BUG_REPORT.md?" | Yes, always. Mark issues resolved instead of deleting. |
-| "Where's the web version?" | Native Expo app only. Web support is experimental. |
+|---|---|
+| Adding a new `KeyboardAvoidingView` | Import from `react-native-keyboard-controller`, not `react-native`. Use `KeyboardSafeArea` wrapper. |
+| Adding a new image helper | Read `docs/primitives.md`. Fix the canonical owner. |
+| Hardcoding a storage bucket name | Use `STORAGE_BUCKETS` constant |
+| Adding a new order type | No migration needed — `document_type` is plain text, `form_data` is jsonb |
+| Forgetting signature base64 prefix | Order signatures strip `data:image/png;base64,` before storing; re-add it for `<img src>` |
+| Typecheck failing | Expected. See CLAUDE.md. Note new failures but don't block on them. |
 
 ---
 
-## Escalation Points
-
-- **App crashes:** Unknown cause. Debug via `expo logs`. Add to BUG_REPORT.md if new.
-- **Signature canvas breaks on rotation:** Known issue. Roadmap fix pending.
-- **PDF export slow:** Known issue. Likely Noto Sans bundling.
-- **Typecheck failing:** Expected. See CLAUDE.md.
-- **Can't connect Supabase:** Check `app.json` for credentials (baked in, not ideal but intentional).
-
----
-
-## Resources
-
-- **GitHub:** https://github.com/gilavi/Sarke2.0
-- **Expo Docs:** https://docs.expo.dev
-- **Supabase Docs:** https://supabase.com/docs
-- **React Native Docs:** https://reactnative.dev
-
----
-
-**Last sync:** 2026-04-27 | **Status:** ✅ Ready for development
+**Full context → [`ONBOARDING.md`](../ONBOARDING.md)**  
+**Last sync:** 2026-05-14

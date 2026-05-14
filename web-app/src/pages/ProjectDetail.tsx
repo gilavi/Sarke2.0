@@ -3,6 +3,7 @@ import ProjectMap from '@/components/ProjectMap';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Download, Upload, Pencil, Check, X, Trash2, Plus } from 'lucide-react';
+import { SkeletonDetailPage } from '@/components/SkeletonCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +28,7 @@ import { listBobcatInspections } from '@/lib/data/bobcat';
 import { listExcavatorInspections } from '@/lib/data/excavator';
 import { listGeneralEquipmentInspections } from '@/lib/data/generalEquipment';
 import { listBriefings, topicLabel } from '@/lib/data/briefings';
+import { listOrdersByProject, ORDER_DOCUMENT_TYPE_LABEL, type Order } from '@/lib/data/orders';
 import {
   listProjectFiles,
   signedFileUrl,
@@ -156,6 +158,11 @@ export default function ProjectDetail() {
     queryFn: () => listReports(id!),
     enabled: !!id,
   });
+  const ordersQ = useQuery({
+    queryKey: ['orders', id],
+    queryFn: () => listOrdersByProject(id!),
+    enabled: !!id,
+  });
 
   const project = projectQ.data ?? null;
   const allProjectInspections = [
@@ -169,6 +176,7 @@ export default function ProjectDetail() {
   const signers = signersQ.data ?? [];
   const incidents = incidentsQ.data ?? [];
   const reports = reportsQ.data ?? [];
+  const orders = ordersQ.data ?? [];
 
   const queryError =
     projectQ.error ?? inspectionsQ.error ?? briefingsQ.error ?? filesQ.error ??
@@ -400,7 +408,7 @@ export default function ProjectDetail() {
       </div>
     );
   if (!project) {
-    if (projectQ.isLoading) return <p className="text-sm text-neutral-500">იტვირთება…</p>;
+    if (projectQ.isLoading) return <SkeletonDetailPage />;
     return <p className="text-sm text-neutral-500">პროექტი ვერ მოიძებნა.</p>;
   }
 
@@ -913,6 +921,52 @@ export default function ProjectDetail() {
                     </span>
                   </div>
                   <StatusBadge status={r.status} />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* ბრძანებები */}
+      <section>
+        <SectionHeader
+          title="ბრძანებები"
+          count={orders.length}
+          action={
+            <Link to={`/orders/new?project=${id}`}>
+              <Button variant="outline" size="sm">+ ახალი ბრძანება</Button>
+            </Link>
+          }
+        />
+        {ordersQ.isLoading ? (
+          <div className="space-y-2">
+            {[1, 2].map(i => (
+              <div key={i} className="animate-pulse h-14 rounded-lg border border-neutral-200 bg-white" />
+            ))}
+          </div>
+        ) : orders.length === 0 ? (
+          <EmptyState text="ბრძანებები ჯერ არ არის." />
+        ) : (
+          <ul className="divide-y divide-neutral-200 rounded-lg border border-neutral-200 bg-white">
+            {orders.map((o: Order) => (
+              <li key={o.id}>
+                <Link
+                  to={`/orders/${o.id}`}
+                  className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-neutral-50 transition-colors"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-neutral-900">
+                      {ORDER_DOCUMENT_TYPE_LABEL[o.documentType] ?? o.documentType}
+                    </p>
+                    <p className="text-xs text-neutral-500">
+                      {new Date(o.createdAt).toLocaleDateString('ka-GE')}
+                      {' · '}
+                      <span className={o.status === 'completed' ? 'text-green-700' : 'text-amber-700'}>
+                        {o.status === 'completed' ? 'დასრულებული' : 'მონახაზი'}
+                      </span>
+                    </p>
+                  </div>
                 </Link>
               </li>
             ))}

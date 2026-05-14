@@ -5,6 +5,7 @@ import { Toaster } from 'sonner';
 import { AuthProvider } from '@/lib/auth';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { AppShell } from '@/components/layout/AppShell';
+import { SkeletonList } from '@/components/SkeletonCard';
 
 // Eager: auth + landing + home + the two highest-traffic pages.
 import Login from '@/pages/auth/Login';
@@ -30,6 +31,8 @@ const ExcavatorInspectionDetail = lazy(() => import('@/pages/ExcavatorInspection
 const NewCargoPlatformInspection = lazy(() => import('@/pages/NewCargoPlatformInspection'));
 const CargoPlatformInspectionDetail = lazy(() => import('@/pages/CargoPlatformInspectionDetail'));
 const CargoPlatformPrint = lazy(() => import('@/pages/print/CargoPlatformPrint'));
+const NewOrder = lazy(() => import('@/pages/NewOrder'));
+const OrderDetail = lazy(() => import('@/pages/OrderDetail'));
 const IncidentPrint = lazy(() => import('@/pages/print/IncidentPrint'));
 const BriefingPrint = lazy(() => import('@/pages/print/BriefingPrint'));
 const ReportPrint = lazy(() => import('@/pages/print/ReportPrint'));
@@ -76,7 +79,12 @@ const queryClient = new QueryClient({
 });
 
 function PageFallback() {
-  return <p className="text-sm text-neutral-500">იტვირთება…</p>;
+  return (
+    <div className="space-y-6">
+      <div className="animate-pulse h-8 w-48 rounded bg-neutral-200" />
+      <SkeletonList count={3} />
+    </div>
+  );
 }
 
 function Shell({ children }: { children: ReactNode }) {
@@ -149,6 +157,8 @@ export default function App() {
             <Route path="/cargo-platform/new" element={<Shell><NewCargoPlatformInspection /></Shell>} />
             <Route path="/cargo-platform/draft" element={<Shell><CargoPlatformInspectionDetail /></Shell>} />
             <Route path="/cargo-platform/:id" element={<Shell><CargoPlatformInspectionDetail /></Shell>} />
+            <Route path="/orders/new" element={<Shell><NewOrder /></Shell>} />
+            <Route path="/orders/:id" element={<Shell><OrderDetail /></Shell>} />
             <Route
               path="/incidents/:id/print"
               element={
