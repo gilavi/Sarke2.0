@@ -1,5 +1,5 @@
 // Domain types mirrored from the Supabase schema.
-// See migrations 0001..0006 for the authoritative source.
+// See migrations 0001..0043 for the authoritative source.
 
 export type SignerRole = 'expert' | 'xaracho_supervisor' | 'xaracho_assembler' | 'other';
 
@@ -579,3 +579,15 @@ export const ORDER_DOCUMENT_TYPE_LABEL: Record<OrderDocumentType, string> = {
   fire_safety_order: 'სახანძრო უსაფრთხოებაზე პასუხისმგებელი პირის დანიშვნა',
   fire_safety_order_enterprise: 'საწარმოს სახანძრო უსაფრთხოებაზე პასუხისმგებელი პირის დანიშვნა',
 };
+
+/** A BOG payment callback row. Added in migration 0031. */
+export interface PaymentRecord {
+  id: string;
+  user_id: string;
+  bog_order_id: string;
+  amount: number | null;
+  currency: string | null;
+  status: 'pending' | 'success' | 'failed' | 'refunded';
+  created_at: string;
+}
+

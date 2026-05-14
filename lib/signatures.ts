@@ -110,8 +110,8 @@ export async function flushPendingSignatures(): Promise<void> {
  * otherwise thumbnails 404 and PDFs render an empty signature block.
  */
 export async function saveExpertSignature(base64: string): Promise<string> {
-  const { data: userData } = await supabase.auth.getUser();
-  const userId = userData.user?.id;
+  const { data: { session } } = await supabase.auth.getSession();
+  const userId = session?.user?.id;
   if (!userId) throw new Error('არ ხართ შესული');
   const path = `expert/${userId}.png`;
   const { pending } = await uploadSignature(path, base64);

@@ -1041,8 +1041,8 @@ const QuestionStep = memo(function QuestionStep({
 
   return (
     <View style={[staticStyles.gap16, staticStyles.padTop16]}>
+      {illoKey ? <QuestionAvatar illustrationKey={illoKey} variant="banner" /> : null}
       <View style={staticStyles.centerGap14}>
-        {illoKey ? <QuestionAvatar illustrationKey={illoKey} /> : null}
         <Text style={[styles.questionTitle, { textAlign: 'center' }]}>{question.title}</Text>
       </View>
 

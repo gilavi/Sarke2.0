@@ -706,7 +706,7 @@ export default function ProjectDetail() {
         style={[styles.floatingBtn, { position: 'absolute', top: insets.top + 8, left: 16, zIndex: 30 }]}
         {...a11y('უკან', 'წინა გვერდზე დაბრუნება', 'button')}
       >
-        <Ionicons name="chevron-back" size={20} color="#444441" />
+        <Ionicons name="chevron-back" size={20} color={theme.colors.ink} />
       </Pressable>
       <Pressable
         onPress={() => setEditing(true)}
@@ -714,7 +714,7 @@ export default function ProjectDetail() {
         style={[styles.floatingBtn, { position: 'absolute', top: insets.top + 8, right: 16, zIndex: 30 }]}
         {...a11y('რედაქტირება', 'პროექტის დეტალების შეცვლა', 'button')}
       >
-        <Ionicons name="pencil-outline" size={18} color="#444441" />
+        <Ionicons name="pencil-outline" size={18} color={theme.colors.ink} />
       </Pressable>
 
       {/* ── Single full-page scroll ── */}
@@ -793,7 +793,7 @@ export default function ProjectDetail() {
                 )}
               </View>
               <View style={styles.logoBadge} pointerEvents="none">
-                <Ionicons name="add" size={13} color="#fff" />
+                <Ionicons name="add" size={13} color={theme.colors.white} />
               </View>
             </Pressable>
           </Reanimated.View>
@@ -962,7 +962,7 @@ export default function ProjectDetail() {
                         <Ionicons
                           name={isCompleted ? 'shield-checkmark' : 'hourglass-outline'}
                           size={14}
-                          color={isCompleted ? theme.colors.primary[700] : '#92400E'}
+                          color={isCompleted ? theme.colors.primary[700] : theme.colors.certTint}
                         />
                       </View>
                       <View style={{ flex: 1 }}>
@@ -1028,7 +1028,7 @@ export default function ProjectDetail() {
                         <Ionicons
                           name={isCompleted ? 'document-text' : 'hourglass-outline'}
                           size={14}
-                          color={isCompleted ? theme.colors.primary[700] : '#92400E'}
+                          color={isCompleted ? theme.colors.primary[700] : theme.colors.certTint}
                         />
                       </View>
                       <View style={{ flex: 1 }}>
@@ -1222,7 +1222,7 @@ export default function ProjectDetail() {
             >
               {mapMarkers.map(p => {
                 const isActive = p.id === id;
-                const pinBg = isActive ? theme.colors.accent : '#E07B3A';
+                const pinBg = isActive ? theme.colors.accent : theme.colors.certTint;
                 return (
                   <Marker
                     key={p.id}
@@ -1244,7 +1244,7 @@ export default function ProjectDetail() {
                         shadowRadius: 4,
                         elevation: 5,
                       }}>
-                        <Ionicons name="business" size={15} color="#fff" />
+                        <Ionicons name="business" size={15} color={theme.colors.white} />
                       </View>
                       <View style={{
                         width: 0, height: 0,
@@ -1262,7 +1262,7 @@ export default function ProjectDetail() {
             {allProjects.filter(p => p.latitude != null && p.longitude != null).length > 20 && (
               <View style={{ position: 'absolute', bottom: insets.bottom + 100, left: 16, right: 16, alignItems: 'center' }}>
                 <View style={{ backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 }}>
-                  <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>
+                  <Text style={{ color: theme.colors.white, fontSize: 12, fontWeight: '600' }}>
                     ნაჩვენებია პირველი 20 პროექტი
                   </Text>
                 </View>
@@ -1317,7 +1317,7 @@ export default function ProjectDetail() {
                         paddingVertical: 9,
                       }}
                     >
-                      <Text size="sm" weight="semibold" color="#fff">გახსნა →</Text>
+                      <Text size="sm" weight="semibold" color={theme.colors.white}>გახსნა →</Text>
                     </Pressable>
                   </View>
                 </View>
@@ -1447,9 +1447,9 @@ function ViewMoreRow({
                 width: 32,
                 height: 32,
                 borderRadius: 16,
-                backgroundColor: '#FFFFFF',
+                backgroundColor: theme.colors.surface,
                 borderWidth: 1.5,
-                borderColor: '#F5F3EE',
+                borderColor: theme.colors.border,
                 alignItems: 'center',
                 justifyContent: 'center',
                 marginLeft: idx === 0 ? 0 : -10,
@@ -1564,7 +1564,7 @@ function EditProjectSheet({
       <View style={{ flex: 1, justifyContent: 'flex-end' }}>
         {/* Backdrop */}
         <Pressable
-          style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.45)' }]}
+          style={[StyleSheet.absoluteFillObject, { backgroundColor: theme.colors.overlay }]}
           onPress={() => mapVisible ? setMapVisible(false) : onClose()}
           {...a11y(t('common.close'), 'შეეხეთ ფონის დასახურად', 'button')}
         />
@@ -1697,13 +1697,13 @@ function IncidentRow({
           {incident.status === 'draft' && (
             <View
               style={{
-                backgroundColor: '#FEF3C7',
+                backgroundColor: theme.colors.warnSoft,
                 borderRadius: 4,
                 paddingHorizontal: 5,
                 paddingVertical: 2,
               }}
             >
-              <Text style={{ fontSize: 10, fontWeight: '700', color: '#92400E' }}>
+              <Text style={{ fontSize: 10, fontWeight: '700', color: theme.colors.certTint }}>
                 დრაფტი
               </Text>
             </View>
@@ -1821,7 +1821,7 @@ function getStyles(theme: any) {
     borderRadius: 40,
     backgroundColor: theme.colors.accent,
     borderWidth: 3,
-    borderColor: '#FFFFFF',
+    borderColor: theme.colors.background,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -1839,7 +1839,7 @@ function getStyles(theme: any) {
   logoInitials: {
     fontSize: 24,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: theme.colors.white,
   },
   logoBadge: {
     position: 'absolute',
@@ -1860,7 +1860,7 @@ function getStyles(theme: any) {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 20,

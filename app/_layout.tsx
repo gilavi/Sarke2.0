@@ -107,8 +107,11 @@ function AuthGate() {
     if (state.status === 'signedOut' && !inAuth) {
       router.replace('/(auth)/login');
     } else if (state.status === 'signedIn') {
+      // Only redirect to terms when the user profile is loaded. If user is null
+      // (profile fetch failed or still in-flight), leave navigation alone.
       const needsTerms =
-        !state.user?.tc_accepted_version || state.user.tc_accepted_version !== TERMS_VERSION;
+        !!state.user &&
+        (!state.user.tc_accepted_version || state.user.tc_accepted_version !== TERMS_VERSION);
       if (needsTerms && !inTerms) {
         router.replace('/terms');
       } else if (!needsTerms && (inAuth || (inTerms && !isTermsViewMode))) {

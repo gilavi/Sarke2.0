@@ -307,7 +307,7 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
 
                   {/* Checkmark */}
                   {isSelected && (
-                    <Ionicons name="checkmark" size={20} color="#059669" />
+                    <Ionicons name="checkmark" size={20} color={theme.colors.accent} />
                   )}
                 </Pressable>
                 {!isLast && <View style={styles.divider} />}
@@ -374,7 +374,7 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
                       <View style={styles.handle} />
                     </View>
                     {renderBody()}
-                    <View style={[staticStyles.sheetSpacer, { height: insets.bottom + 8 }]} />
+                    <View style={{ backgroundColor: theme.colors.surface, height: insets.bottom + 8 }} />
                   </View>
                 </GestureDetector>
               </Animated.View>
@@ -417,10 +417,6 @@ export function BottomSheetScrollView({
     </GestureDetector>
   );
 }
-
-const staticStyles = StyleSheet.create({
-  sheetSpacer: { backgroundColor: '#FFFFFF' },
-});
 
 const createStyles = (colors: any) => StyleSheet.create({
   backdrop: {
@@ -478,32 +474,32 @@ const createStyles = (colors: any) => StyleSheet.create({
     gap: 12,
   },
   optionRowSelected: {
-    backgroundColor: '#ECFDF5',
+    backgroundColor: colors.accentSoft,
     borderLeftWidth: 3,
-    borderLeftColor: '#059669',
+    borderLeftColor: colors.accent,
   },
   optionRowPressed: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: colors.surfaceSecondary,
   },
   selectionCircle: {
     width: 22,
     height: 22,
     borderRadius: 11,
     borderWidth: 2,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
   selectionCircleActive: {
-    borderColor: '#059669',
-    backgroundColor: '#ECFDF5',
+    borderColor: colors.accent,
+    backgroundColor: colors.accentSoft,
   },
   selectionCircleInner: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#059669',
+    backgroundColor: colors.accent,
   },
   optionText: {
     fontSize: 16,
@@ -513,15 +509,15 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   cancelText: {
     fontWeight: '600',
-    color: '#6B7280',
+    color: colors.inkFaint,
   },
   destructiveText: {
-    color: '#DC2626',
+    color: colors.danger,
     fontWeight: '600',
   },
   divider: {
     height: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: colors.hairline,
     marginLeft: 16,
   },
   cancelBtn: {
@@ -529,16 +525,16 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginTop: 6,
     height: 52,
     borderRadius: 14,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderWidth: 1.5,
-    borderColor: '#E5E7EB',
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
   cancelBtnText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#6B7280',
+    color: colors.inkFaint,
   },
   contentBody: {
     backgroundColor: colors.surface,

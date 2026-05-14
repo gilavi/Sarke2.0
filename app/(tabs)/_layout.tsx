@@ -26,16 +26,17 @@ const TAB_CONFIG: Record<string, TabConfig> = {
 // ─── Animated Tab Icon ──────────────────────────────────────────
 function TabIcon({
   focused,
+  isDark,
   config,
   theme,
 }: {
   focused: boolean;
+  isDark: boolean;
   config: TabConfig;
   theme: ReturnType<typeof useTheme>['theme'];
 }) {
-  const isDark = theme.colors.background === '#0F0F0F' || theme.colors.background === '#050A05';
-  const activeColor = isDark ? '#00E676' : theme.colors.accent;
-  const inactiveColor = isDark ? 'rgba(255,255,255,0.3)' : theme.colors.inkSoft;
+  const activeColor = theme.colors.accent;
+  const inactiveColor = theme.colors.inkSoft;
 
   return (
     <View style={styles.iconContainer}>
@@ -44,7 +45,7 @@ function TabIcon({
         <View
           style={[
             styles.activeGlow,
-            { backgroundColor: isDark ? 'rgba(0,230,118,0.15)' : withOpacity(theme.colors.accent, 0.1) },
+            { backgroundColor: withOpacity(theme.colors.accent, isDark ? 0.15 : 0.1) },
           ]}
         />
       )}
@@ -61,17 +62,18 @@ function TabIcon({
 // ─── Tab Label ──────────────────────────────────────────────────
 function TabLabel({
   focused,
+  isDark: _isDark,
   titleKey,
   theme,
 }: {
   focused: boolean;
+  isDark: boolean;
   titleKey: string;
   theme: ReturnType<typeof useTheme>['theme'];
 }) {
   const { t } = useTranslation();
-  const isDark = theme.colors.background === '#0F0F0F' || theme.colors.background === '#050A05';
-  const activeColor = isDark ? '#00E676' : theme.colors.accent;
-  const inactiveColor = isDark ? 'rgba(255,255,255,0.35)' : theme.colors.inkSoft;
+  const activeColor = theme.colors.accent;
+  const inactiveColor = theme.colors.inkSoft;
 
   return (
     <Text
@@ -95,13 +97,11 @@ function TabLabel({
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
   const bottomInset = Math.max(insets.bottom, 8);
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const overdueCount = useOverdueCount();
   const appState = useRef(AppState.currentState);
-
-  const isDark = theme.colors.background === '#0F0F0F' || theme.colors.background === '#050A05';
 
   // Recompute overdue badge whenever the app returns to foreground.
   useEffect(() => {
@@ -122,8 +122,8 @@ export default function TabsLayout() {
         const config = TAB_CONFIG[route.name as keyof typeof TAB_CONFIG];
         return {
           headerShown: false,
-          tabBarActiveTintColor: isDark ? '#00E676' : theme.colors.accent,
-          tabBarInactiveTintColor: isDark ? 'rgba(255,255,255,0.3)' : theme.colors.inkSoft,
+          tabBarActiveTintColor: theme.colors.accent,
+          tabBarInactiveTintColor: theme.colors.inkSoft,
           tabBarStyle: {
             position: 'absolute',
             bottom: 0,
@@ -132,8 +132,8 @@ export default function TabsLayout() {
             height: 56 + bottomInset,
             paddingBottom: bottomInset,
             paddingTop: 6,
-            backgroundColor: isDark ? '#0F0F0F' : theme.colors.card,
-            borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : theme.colors.hairline,
+            backgroundColor: theme.colors.background,
+            borderTopColor: theme.colors.hairline,
             borderTopWidth: StyleSheet.hairlineWidth,
             borderRadius: 0,
             marginHorizontal: 0,
@@ -149,10 +149,10 @@ export default function TabsLayout() {
             fontWeight: '500',
           },
           tabBarIcon: config
-            ? ({ focused }) => <TabIcon focused={focused} config={config} theme={theme} />
+            ? ({ focused }) => <TabIcon focused={focused} isDark={isDark} config={config} theme={theme} />
             : undefined,
           tabBarLabel: config
-            ? ({ focused }) => <TabLabel focused={focused} titleKey={config.name} theme={theme} />
+            ? ({ focused }) => <TabLabel focused={focused} isDark={isDark} titleKey={config.name} theme={theme} />
             : undefined,
         };
       }}
@@ -185,7 +185,7 @@ export default function TabsLayout() {
           tabBarAccessibilityLabel: t('tabs.calendarA11y'),
           tabBarBadge: overdueCount > 0 ? overdueCount : undefined,
           tabBarBadgeStyle: {
-            backgroundColor: '#DC2626',
+            backgroundColor: theme.colors.danger,
             fontSize: 10,
             fontWeight: '700',
             minWidth: 18,

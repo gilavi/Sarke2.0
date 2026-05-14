@@ -39,4 +39,5 @@ export const storageApi = src.storageApi;
 export const remoteSigningApi = src.remoteSigningApi;
 export const incidentsApi = src.incidentsApi;
 export const reportsApi = src.reportsApi;
+export const paymentRecordsApi = src.paymentRecordsApi;
 export const isExpiringSoon = src.isExpiringSoon;

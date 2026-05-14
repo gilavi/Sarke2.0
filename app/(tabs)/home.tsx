@@ -3,6 +3,7 @@ import { Swipeable } from 'react-native-gesture-handler';
 import {
   Alert,
   Animated as RNAnimated,
+  AppState,
   Keyboard,
   Modal,
   Pressable,
@@ -12,6 +13,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated from 'react-native-reanimated';
 import { useSheetKeyboardMargin } from '../../lib/useSheetKeyboardMargin';
 import { A11yText as Text } from '../../components/primitives/A11yText';
@@ -57,6 +59,19 @@ import { cargoPlatformApi } from '../../lib/cargoPlatformService';
 import { InspectionTypeAvatar } from '../../components/InspectionTypeAvatar';
 import { RecordTypePill } from '../../components/RecordTypePill';
 import { TemplatePickerModal } from '../../components/TemplatePickerModal';
+
+function stepKeyFor(category: string | null | undefined, id: string): string {
+  const map: Record<string, string> = {
+    xaracho: 'wizard', mobile_scaffold: 'wizard',
+    bobcat: 'bobcat-wizard', excavator: 'excavator-wizard',
+    general_equipment: 'ge-wizard', cargo_platform: 'cargo-platform-wizard',
+  };
+  return `${map[category ?? ''] ?? 'wizard'}:${id}:step`;
+}
+
+const STEP_TOTALS: Record<string, number> = {
+  bobcat: 4, excavator: 5, general_equipment: 3, cargo_platform: 6,
+};
 
 const staticStyles = StyleSheet.create({
   scrollContent: { paddingBottom: 100 },
@@ -119,7 +134,22 @@ export default function HomeScreen() {
   const firstName = user?.first_name ?? '';
   const greeting = greetingFor(firstName, t);
   const expiringCount = useMemo(() => certs.filter(isExpiringSoon).length, [certs]);
-  const latestDraft = useMemo(() => recent.find(q => q.status === 'draft'), [recent]);
+  const allDrafts = useMemo(() => recent.filter(q => q.status === 'draft'), [recent]);
+  const [draftSteps, setDraftSteps] = useState<Record<string, number>>({});
+
+  const loadDraftSteps = useCallback(async () => {
+    const drafts = recent.filter(r => r.status === 'draft');
+    if (!drafts.length) return;
+    const pairs = await Promise.all(
+      drafts.map(async d => {
+        const tpl = templates.find(t => t.id === d.template_id);
+        const raw = await AsyncStorage.getItem(stepKeyFor(tpl?.category, d.id));
+        const n = raw ? parseInt(raw, 10) : 0;
+        return [d.id, n] as [string, number];
+      })
+    );
+    setDraftSteps(Object.fromEntries(pairs));
+  }, [recent, templates]);
   const showCertBanner = certs.length === 0 || expiringCount > 0;
   const tip = tipOfTheDay(t);
 
@@ -187,6 +217,14 @@ export default function HomeScreen() {
 
   const templateName = useCallback((id: string) => templates.find((tpl) => tpl.id === id)?.name ?? t('common.inspection'), [templates, t]);
 
+  useEffect(() => { void loadDraftSteps(); }, [loadDraftSteps]);
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', s => {
+      if (s === 'active') void loadDraftSteps();
+    });
+    return () => sub.remove();
+  }, [loadDraftSteps]);
+
   const insets = useSafeAreaInsets();
   const HEADER_HERO_BODY = 96;   // visible hero content height below status bar
   const HEADER_COMPACT_BODY = 48; // visible compact bar height below status bar
@@ -214,7 +252,7 @@ export default function HomeScreen() {
           area; content is offset by insets.top so it never crashes into the clock. */}
       <Animated.View style={[styles.scrollHeader, containerStyle]} pointerEvents="box-none">
         <Animated.View style={[StyleSheet.absoluteFillObject, backdropStyle]} pointerEvents="none">
-          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(255,255,255,0.92)' }]} />
+          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: theme.colors.surface, opacity: 0.92 }]} />
           <View style={styles.scrollHeaderHairline} />
         </Animated.View>
         <Animated.View
@@ -248,53 +286,108 @@ export default function HomeScreen() {
           </View>
         ) : null}
 
-        {/* ───────── CONTINUE DRAFT ───────── */}
-        {latestDraft ? (
-          <RNAnimated.View style={{
-            opacity: deleteOpacity,
-            transform: [{ scale: deleteScale }],
-          }}>
-            <Swipeable
-              ref={swipeableRef}
-              friction={2}
-              rightThreshold={40}
-              overshootRight={false}
-              renderRightActions={() => (
-                <Pressable
-                  onPress={() => handleDraftDelete(latestDraft.id)}
-                  style={styles.deleteAction}
-                >
-                  <Ionicons name="trash-outline" size={22} color="#fff" />
-                  <Text style={styles.deleteActionText}>წაშლა</Text>
-                </Pressable>
-              )}
-            >
-              <View style={{ paddingHorizontal: 20 }}>
+        {/* ───────── CONTINUE DRAFTS ───────── */}
+        {allDrafts.length > 0 ? (
+          <View style={{ paddingHorizontal: 20, paddingBottom: 4 }}>
+            <View style={styles.draftSectionRow}>
+              <Text style={styles.draftSectionTitle}>გაგრძელება</Text>
+              {allDrafts.length > 1 ? (
+                <View style={styles.draftBadge}>
+                  <Text style={styles.draftBadgeText}>{allDrafts.length}</Text>
+                </View>
+              ) : null}
+            </View>
+            {allDrafts.slice(0, 3).map((draft, index) => {
+              const tpl = templates.find(t => t.id === draft.template_id);
+              const step = draftSteps[draft.id] ?? 0;
+              const totalSteps = STEP_TOTALS[tpl?.category ?? ''] ?? 0;
+              const showProgress = totalSteps > 0 && step > 0;
+
+              if (index === 0) {
+                return (
+                  <RNAnimated.View
+                    key={draft.id}
+                    style={{ opacity: deleteOpacity, transform: [{ scale: deleteScale }] }}
+                  >
+                    <Swipeable
+                      ref={swipeableRef}
+                      friction={2}
+                      rightThreshold={40}
+                      overshootRight={false}
+                      renderRightActions={() => (
+                        <Pressable
+                          onPress={() => handleDraftDelete(draft.id)}
+                          style={styles.deleteAction}
+                        >
+                          <Ionicons name="trash-outline" size={22} color={theme.colors.white} />
+                          <Text style={styles.deleteActionText}>წაშლა</Text>
+                        </Pressable>
+                      )}
+                    >
+                      <Card
+                        onPress={() => router.push(routeForInspection(tpl?.category, draft.id, false) as any)}
+                        a11y={a11y('შევსების გაგრძელება', 'შეეხეთ მონახაზის გასაგრძელებლად', 'button')}
+                        style={styles.resumeCard}
+                      >
+                        <View style={styles.resumeIcon}>
+                          <Ionicons name="hourglass-outline" size={16} color={theme.colors.warn} />
+                        </View>
+                        <View style={staticStyles.flex}>
+                          <Text style={styles.resumeEyebrow}>{t('home.resumeDraft')}</Text>
+                          <Text style={styles.resumeTitle} numberOfLines={1}>
+                            {templateName(draft.template_id)}
+                          </Text>
+                          {step > 0 ? (
+                            <Text style={styles.resumeStepLabel}>ნაბიჯი {step}</Text>
+                          ) : null}
+                          {showProgress ? (
+                            <View style={styles.progressTrack}>
+                              <View style={[styles.progressFill, { width: `${Math.min((step / totalSteps) * 100, 100)}%` as any }]} />
+                            </View>
+                          ) : null}
+                          <Text style={styles.resumeMeta} numberOfLines={1}>
+                            {relativeTime(draft.created_at, t, i18n.language)}
+                          </Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={18} color={theme.colors.inkFaint} />
+                      </Card>
+                    </Swipeable>
+                  </RNAnimated.View>
+                );
+              }
+
+              return (
                 <Card
-                  onPress={() => {
-                    const tpl = templates.find(t => t.id === latestDraft.template_id);
-                    router.push(routeForInspection(tpl?.category, latestDraft.id, false) as any);
-                  }}
+                  key={draft.id}
+                  onPress={() => router.push(routeForInspection(tpl?.category, draft.id, false) as any)}
                   a11y={a11y('შევსების გაგრძელება', 'შეეხეთ მონახაზის გასაგრძელებლად', 'button')}
-                  style={styles.resumeCard}
+                  style={[styles.resumeCard, { marginTop: 8 }]}
                 >
-                    <View style={styles.resumeIcon}>
-                      <Ionicons name="hourglass-outline" size={16} color={theme.colors.warn} />
-                    </View>
-                    <View style={staticStyles.flex}>
-                      <Text style={styles.resumeEyebrow}>{t('home.resumeDraft')}</Text>
-                      <Text style={styles.resumeTitle} numberOfLines={1}>
-                        {templateName(latestDraft.template_id)}
-                      </Text>
-                      <Text style={styles.resumeMeta} numberOfLines={1}>
-                        {relativeTime(latestDraft.created_at, t, i18n.language)}
-                      </Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={18} color={theme.colors.inkFaint} />
+                  <View style={styles.resumeIcon}>
+                    <Ionicons name="hourglass-outline" size={16} color={theme.colors.warn} />
+                  </View>
+                  <View style={staticStyles.flex}>
+                    <Text style={styles.resumeEyebrow}>{t('home.resumeDraft')}</Text>
+                    <Text style={styles.resumeTitle} numberOfLines={1}>
+                      {templateName(draft.template_id)}
+                    </Text>
+                    {step > 0 ? (
+                      <Text style={styles.resumeStepLabel}>ნაბიჯი {step}</Text>
+                    ) : null}
+                    {showProgress ? (
+                      <View style={styles.progressTrack}>
+                        <View style={[styles.progressFill, { width: `${Math.min((step / totalSteps) * 100, 100)}%` as any }]} />
+                      </View>
+                    ) : null}
+                    <Text style={styles.resumeMeta} numberOfLines={1}>
+                      {relativeTime(draft.created_at, t, i18n.language)}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={theme.colors.inkFaint} />
                 </Card>
-              </View>
-            </Swipeable>
-          </RNAnimated.View>
+              );
+            })}
+          </View>
         ) : null}
 
         {/* ───────── CERT BANNER (warn only) ───────── */}
@@ -524,7 +617,7 @@ export default function HomeScreen() {
                             </Text>
                           </View>
                           <Text style={styles.recentTime}>{relativeTime(q.created_at, t, i18n.language)}</Text>
-                          <Ionicons name="chevron-forward" size={14} color="#D3D1C7" />
+                          <Ionicons name="chevron-forward" size={14} color={theme.colors.border} />
                         </Pressable>
                       );
                       return q.status === 'draft' ? (
@@ -538,7 +631,7 @@ export default function HomeScreen() {
                               onPress={() => deleteRecentDraft(q.id, tpl?.category ?? undefined)}
                               style={styles.deleteAction}
                             >
-                              <Ionicons name="trash-outline" size={22} color="#fff" />
+                              <Ionicons name="trash-outline" size={22} color={theme.colors.white} />
                               <Text style={styles.deleteActionText}>წაშლა</Text>
                             </Pressable>
                           )}
@@ -1002,7 +1095,7 @@ const ProjectCard = memo(function ProjectCard({
             <View style={styles.projectCardMapOverlay} />
           </>
         ) : (
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: '#fff' }]} pointerEvents="none" />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.colors.surface }]} pointerEvents="none" />
         )}
         <View style={{ width: 44, height: 44, borderRadius: 22, overflow: 'hidden' }}>
           <ProjectAvatar project={project} size={44} />
@@ -1189,7 +1282,7 @@ function getStyles(theme: Theme) {
     flex: 1,
     fontSize: 13,
     fontWeight: '600',
-    color: '#6B7280',
+    color: theme.colors.inkFaint,
     textTransform: 'uppercase',
     letterSpacing: 0.05,
   },
@@ -1235,6 +1328,51 @@ function getStyles(theme: Theme) {
     color: theme.colors.inkSoft,
     fontSize: 12,
     marginTop: 2,
+  },
+  resumeStepLabel: {
+    color: theme.colors.warn,
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 3,
+  },
+  progressTrack: {
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: theme.colors.hairline,
+    marginTop: 5,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: theme.colors.warn,
+  },
+  draftSectionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  draftSectionTitle: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '700',
+    color: theme.colors.inkFaint,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  draftBadge: {
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: theme.colors.warn,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+  },
+  draftBadgeText: {
+    color: theme.colors.white,
+    fontSize: 11,
+    fontWeight: '700',
   },
 
   // START CARD (when no draft)
@@ -1386,23 +1524,23 @@ function getStyles(theme: Theme) {
   },
   recentRowBorder: {
     borderBottomWidth: 0.5,
-    borderBottomColor: 'rgba(0,0,0,0.06)',
+    borderBottomColor: theme.colors.hairline,
   },
   recentTitle: {
     fontSize: 15,
     fontWeight: '500',
-    color: '#1A1A1A',
+    color: theme.colors.ink,
     lineHeight: 20,
     marginBottom: 3,
   },
   recentMeta: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: theme.colors.inkFaint,
     fontWeight: '400',
   },
   recentTime: {
     fontSize: 12,
-    color: '#B4B2A9',
+    color: theme.colors.inkSoft,
     marginLeft: 8,
     marginRight: 4,
   },
@@ -1414,14 +1552,14 @@ function getStyles(theme: Theme) {
   dateSeparatorText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#9CA3AF',
+    color: theme.colors.inkFaint,
     textTransform: 'uppercase',
     letterSpacing: 0.08,
   },
 
   // DRAFT DELETE ACTION
   deleteAction: {
-    backgroundColor: '#EF4444',
+    backgroundColor: theme.colors.danger,
     justifyContent: 'center',
     alignItems: 'center',
     width: 72,
@@ -1432,7 +1570,7 @@ function getStyles(theme: Theme) {
     gap: 4,
   },
   deleteActionText: {
-    color: '#fff',
+    color: theme.colors.white,
     fontSize: 11,
     fontWeight: '700',
   },

@@ -751,10 +751,11 @@ function pinColor(
   project: Project,
   stats: Stats,
   overdueByProject: Record<string, number>,
+  colors: any,
 ): string {
-  if ((overdueByProject[project.id] ?? 0) > 0) return '#EF4444';
-  if ((stats[project.id]?.drafts ?? 0) > 0) return '#F59E0B';
-  return '#1D9E75';
+  if ((overdueByProject[project.id] ?? 0) > 0) return colors.danger;
+  if ((stats[project.id]?.drafts ?? 0) > 0) return colors.warn;
+  return colors.accent;
 }
 
 function ProjectsMapView({
@@ -820,7 +821,7 @@ function ProjectsMapView({
         onPress={closeCard}
       >
         {mappedProjects.map(project => {
-          const color = pinColor(project, stats, overdueByProject);
+          const color = pinColor(project, stats, overdueByProject, theme.colors);
           return (
             <Marker
               key={project.id}
@@ -844,7 +845,7 @@ function ProjectsMapView({
                     elevation: 5,
                   }}
                 >
-                  <Ionicons name="business" size={15} color="#fff" />
+                  <Ionicons name="business" size={15} color={theme.colors.white} />
                 </View>
                 {/* Pin tail */}
                 <View
@@ -1007,7 +1008,7 @@ function ProjectMapCard({
           }}
           {...a11y('გახსნა', 'პროექტის გახსნა', 'button')}
         >
-          <A11yText size="sm" weight="semibold" color="#fff">
+          <A11yText size="sm" weight="semibold" color={theme.colors.white}>
             გახსნა →
           </A11yText>
         </Pressable>
