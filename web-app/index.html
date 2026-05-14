@@ -24,7 +24,18 @@
     </noscript>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><p id="_dbg" style="color:gray;font-family:monospace;padding:20px;font-size:12px">Loading…</p></div>
+    <script>
+    (function(){
+      function show(msg){
+        var el=document.getElementById('_dbg');
+        if(el){el.style.color='red';el.textContent=msg;}
+        else{var d=document.createElement('pre');d.style.cssText='color:red;padding:20px;font-size:12px;font-family:monospace';d.textContent=msg;document.body.appendChild(d);}
+      }
+      window.addEventListener('error',function(e){show('JS Error: '+e.message+'\n'+e.filename+':'+e.lineno+':'+e.colno);});
+      window.addEventListener('unhandledrejection',function(e){show('Promise Error: '+(e.reason&&e.reason.message||e.reason));});
+    })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
