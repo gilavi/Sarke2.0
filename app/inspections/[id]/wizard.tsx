@@ -835,7 +835,7 @@ export default function QuestionnaireWizard() {
         <View pointerEvents="none" style={uploadPillStyles.wrap}>
           <View style={uploadPillStyles.pill}>
             <ActivityIndicator size="small" color={theme.colors.surface} />
-            <Text style={uploadPillStyles.text}>
+            <Text style={[uploadPillStyles.text, { color: theme.colors.white }]}>
               {photoUploadCount > 1 ? `ფოტოები იტვირთება (${photoUploadCount})…` : 'ფოტო იტვირთება…'}
             </Text>
           </View>
@@ -2294,7 +2294,7 @@ function getstyles(theme: any) {
   },
   confirmBackdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: theme.colors.overlay,
   },
   confirmCard: {
     backgroundColor: theme.colors.card,

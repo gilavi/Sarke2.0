@@ -79,8 +79,7 @@ const INITIAL_FORM: FormData = {
   photos: [],
 };
 
-function getTypeBadge(theme: any): Record<IncidentType, { bg: string; text: string; border: string }> {
-  const isDark = theme.colors.semantic.dangerSoft === '#3A1F1F';
+function getTypeBadge(theme: any, isDark: boolean): Record<IncidentType, { bg: string; text: string; border: string }> {
   if (isDark) {
     return {
       minor:    { bg: '#3F2E0F', text: '#FCD34D', border: '#F59E0B' },
@@ -104,7 +103,7 @@ function getTypeBadge(theme: any): Record<IncidentType, { bg: string; text: stri
 export default function NewIncident() {
   const insets = useSafeAreaInsets();
   const { pickPhotoWithAnnotation } = usePhotoWithLocation();
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const s = useMemo(() => makeStyles(theme), [theme]);
   const router = useRouter();
   const toast = useToast();
@@ -422,7 +421,7 @@ export default function NewIncident() {
       />
 
       <KeyboardSafeArea headerHeight={44} contentStyle={{ padding: 16 }}>
-        {step === 1 && <Step1 form={form} setForm={setForm} theme={theme} s={s} />}
+        {step === 1 && <Step1 form={form} setForm={setForm} theme={theme} isDark={isDark} s={s} />}
         {step === 2 && (
           <Step2
             form={form}
@@ -452,6 +451,7 @@ export default function NewIncident() {
             sigPath={inspector.sigPath}
             project={project}
             theme={theme}
+            isDark={isDark}
             s={s}
           />
         )}
@@ -494,11 +494,12 @@ export default function NewIncident() {
 // ─── Step 1 — type selection ──────────────────────────────────────────────────
 
 function Step1({
-  form, setForm, theme, s,
+  form, setForm, theme, isDark, s,
 }: {
   form: FormData;
   setForm: React.Dispatch<React.SetStateAction<FormData>>;
   theme: any;
+  isDark: boolean;
   s: ReturnType<typeof makeStyles>;
 }) {
   const types: IncidentType[] = ['minor', 'severe', 'fatal', 'mass', 'nearmiss'];
@@ -509,7 +510,7 @@ function Step1({
       <Text style={s.stepTitle}>რა სახის შემთხვევა?</Text>
 
       {types.map(t => {
-        const badge = getTypeBadge(theme)[t];
+        const badge = getTypeBadge(theme, isDark)[t];
         const selected = form.type === t;
         return (
           <Pressable
@@ -550,7 +551,7 @@ function Step1({
 
       {needsNotice && (
         <View style={s.warningBanner}>
-          <Ionicons name="warning" size={18} color="#991B1B" />
+          <Ionicons name="warning" size={18} color={theme.colors.danger} />
           <Text style={s.warningBannerText}>
             კანონის მოთხოვნით შრომის შემოწმების აქტი უნდა ეცნობოს 24 საათის
             განმავლობაში
@@ -711,7 +712,7 @@ function Step3({
                   style={s.photoRemoveBtn}
                   hitSlop={12}
                 >
-                  <Ionicons name="close-circle" size={20} color="#fff" />
+                  <Ionicons name="close-circle" size={20} color={theme.colors.white} />
                 </Pressable>
               </View>
             ))}
@@ -729,13 +730,14 @@ function Step3({
 // ─── Step 4 — summary + sign ──────────────────────────────────────────────────
 
 function Step4({
-  form, inspectorName, sigPath, project, theme, s,
+  form, inspectorName, sigPath, project, theme, isDark, s,
 }: {
   form: FormData;
   inspectorName: string;
   sigPath: string | null;
   project: Project | null;
   theme: any;
+  isDark: boolean;
   s: ReturnType<typeof makeStyles>;
 }) {
   const [sigDisplayUrl, setSigDisplayUrl] = useState<string | null>(null);
@@ -747,7 +749,7 @@ function Step4({
       .catch(() => null);
   }, [sigPath]);
 
-  const badge = form.type ? getTypeBadge(theme)[form.type] : null;
+  const badge = form.type ? getTypeBadge(theme, isDark)[form.type] : null;
 
   return (
     <View style={{ gap: 12 }}>
@@ -830,14 +832,14 @@ function Step4({
           <Text style={s.inspectorRole}>შრომის უსაფრთხოების სპეციალისტი</Text>
         </View>
         <View style={s.signedChip}>
-          <Ionicons name="checkmark" size={13} color="#065F46" />
+          <Ionicons name="checkmark" size={13} color={theme.colors.semantic.success} />
           <Text style={s.signedChipText}>ხელმოწერილია ✓</Text>
         </View>
       </View>
 
       {(form.type === 'severe' || form.type === 'fatal') && (
         <View style={s.warningBanner}>
-          <Ionicons name="warning" size={18} color="#991B1B" />
+          <Ionicons name="warning" size={18} color={theme.colors.danger} />
           <Text style={s.warningBannerText}>
             კანონის მოთხოვნით შრომის შემოწმების აქტი უნდა ეცნობოს 24 საათის
             განმავლობაში

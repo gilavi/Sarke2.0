@@ -58,7 +58,7 @@ const makeStyles = (theme: ReturnType<typeof useTheme>['theme']) =>
     btnText: {
       fontSize: 12,
       fontWeight: '700',
-      color: '#FFFFFF',
+      color: theme.colors.white,
     },
     pressed: {
       opacity: 0.75,

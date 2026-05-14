@@ -15,15 +15,26 @@ import { useProject, useIncidentsByProject } from '../../../lib/apiHooks';
 import { INCIDENT_TYPE_LABEL } from '../../../types/models';
 import type { Incident, IncidentStatus, IncidentType } from '../../../types/models';
 
-const INCIDENT_BADGE_COLORS: Record<
+const INCIDENT_BADGE_COLORS_LIGHT: Record<
   IncidentType,
   { bg: string; text: string; border: string }
 > = {
-  minor: { bg: '#FEF3C7', text: '#92400E', border: '#F59E0B' },
-  severe: { bg: '#FFEDD5', text: '#9A3412', border: '#F97316' },
-  fatal: { bg: '#FEE2E2', text: '#991B1B', border: '#EF4444' },
-  mass: { bg: '#FEE2E2', text: '#991B1B', border: '#EF4444' },
+  minor:    { bg: '#FEF3C7', text: '#92400E', border: '#F59E0B' },
+  severe:   { bg: '#FFEDD5', text: '#9A3412', border: '#F97316' },
+  fatal:    { bg: '#FEE2E2', text: '#991B1B', border: '#EF4444' },
+  mass:     { bg: '#FEE2E2', text: '#991B1B', border: '#EF4444' },
   nearmiss: { bg: '#EDE9FE', text: '#5B21B6', border: '#8B5CF6' },
+};
+
+const INCIDENT_BADGE_COLORS_DARK: Record<
+  IncidentType,
+  { bg: string; text: string; border: string }
+> = {
+  minor:    { bg: '#3F2E0F', text: '#FCD34D', border: '#F59E0B' },
+  severe:   { bg: '#3D1F08', text: '#FCA673', border: '#F97316' },
+  fatal:    { bg: '#3A1F1F', text: '#FCA5A5', border: '#EF4444' },
+  mass:     { bg: '#3A1F1F', text: '#FCA5A5', border: '#EF4444' },
+  nearmiss: { bg: '#2D1F4F', text: '#C4B5FD', border: '#8B5CF6' },
 };
 
 function formatGeorgianDate(isoDate: string): string {
@@ -37,8 +48,9 @@ function toDateKey(isoDatetime: string): string {
 }
 
 export default function ProjectIncidentsList() {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  const INCIDENT_BADGE_COLORS = isDark ? INCIDENT_BADGE_COLORS_DARK : INCIDENT_BADGE_COLORS_LIGHT;
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
 
@@ -122,7 +134,7 @@ export default function ProjectIncidentsList() {
                         <Ionicons
                           name={isCompleted ? 'document-text' : 'hourglass-outline'}
                           size={14}
-                          color={isCompleted ? theme.colors.primary[700] : '#92400E'}
+                          color={isCompleted ? theme.colors.semantic.success : theme.colors.certTint}
                         />
                       </View>
                       <View style={{ flex: 1 }}>

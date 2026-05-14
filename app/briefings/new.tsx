@@ -324,7 +324,7 @@ function getstyles(theme: any) {
     countBadgeText: {
       fontSize: 12,
       fontWeight: '700',
-      color: theme.colors.primary[700],
+      color: theme.colors.semantic.success,
     },
     topicList: {
       gap: 8,

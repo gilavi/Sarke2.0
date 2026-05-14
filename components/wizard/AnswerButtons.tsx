@@ -75,12 +75,12 @@ export function AnswerButtons({ value, onChange }: AnswerButtonsProps) {
         <Ionicons
           name="checkmark"
           size={20}
-          color={value === true ? '#fff' : theme.colors.ink}
+          color={value === true ? theme.colors.white : theme.colors.ink}
           style={{ marginBottom: 4 }}
         />
         <Text
           style={{
-            color: value === true ? '#fff' : theme.colors.ink,
+            color: value === true ? theme.colors.white : theme.colors.ink,
             fontWeight: '700',
             fontSize: 15,
           }}
@@ -102,12 +102,12 @@ export function AnswerButtons({ value, onChange }: AnswerButtonsProps) {
         <Ionicons
           name="close"
           size={20}
-          color={value === false ? '#fff' : theme.colors.ink}
+          color={value === false ? theme.colors.white : theme.colors.ink}
           style={{ marginBottom: 4 }}
         />
         <Text
           style={{
-            color: value === false ? '#fff' : theme.colors.ink,
+            color: value === false ? theme.colors.white : theme.colors.ink,
             fontWeight: '700',
             fontSize: 15,
           }}

@@ -88,7 +88,7 @@ export default function ProjectBriefingsList() {
                         <Ionicons
                           name={isCompleted ? 'shield-checkmark' : 'hourglass-outline'}
                           size={14}
-                          color={isCompleted ? theme.colors.primary[700] : '#92400E'}
+                          color={isCompleted ? theme.colors.semantic.success : theme.colors.certTint}
                         />
                       </View>
                       <View style={{ flex: 1 }}>

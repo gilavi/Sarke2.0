@@ -962,7 +962,7 @@ export default function ProjectDetail() {
                         <Ionicons
                           name={isCompleted ? 'shield-checkmark' : 'hourglass-outline'}
                           size={14}
-                          color={isCompleted ? theme.colors.primary[700] : theme.colors.certTint}
+                          color={isCompleted ? theme.colors.semantic.success : theme.colors.certTint}
                         />
                       </View>
                       <View style={{ flex: 1 }}>
@@ -1028,7 +1028,7 @@ export default function ProjectDetail() {
                         <Ionicons
                           name={isCompleted ? 'document-text' : 'hourglass-outline'}
                           size={14}
-                          color={isCompleted ? theme.colors.primary[700] : theme.colors.certTint}
+                          color={isCompleted ? theme.colors.semantic.success : theme.colors.certTint}
                         />
                       </View>
                       <View style={{ flex: 1 }}>
@@ -1945,7 +1945,7 @@ function getStyles(theme: any) {
   badgeGreenText: {
     fontSize: 12,
     fontWeight: '700',
-    color: theme.colors.primary[700],
+    color: theme.colors.semantic.success,
   },
   sectionDivider: {
     height: 1,

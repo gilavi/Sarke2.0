@@ -140,9 +140,9 @@ export default function BriefingDetailScreen() {
           {...a11y('PDF გაზიარება', 'ინსტრუქტაჟის PDF ფაილის გაზიარება', 'button')}
         >
           {sharing ? (
-            <ActivityIndicator size="small" color="#fff" />
+            <ActivityIndicator size="small" color={theme.colors.white} />
           ) : (
-            <Ionicons name="share-outline" size={20} color="#fff" />
+            <Ionicons name="share-outline" size={20} color={theme.colors.white} />
           )}
           <Text style={styles.shareBtnText}>
             {sharing ? 'PDF მზადდება...' : pdfUsage?.isLocked ? '🔒 PDF გაზიარება' : 'PDF გაზიარება'}

@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import { StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import { StatusBadge, type InspectionStatus } from './StatusBadge';
+import { useTheme } from '../lib/theme';
 
 export type InspectionCategory =
   | 'xaracho'
@@ -12,7 +13,7 @@ export type InspectionCategory =
   | 'general_equipment'
   | 'cargo_platform';
 
-const CATEGORY_META: Record<
+const CATEGORY_META_LIGHT: Record<
   InspectionCategory,
   { emoji: string; bg: string }
 > = {
@@ -26,7 +27,19 @@ const CATEGORY_META: Record<
   cargo_platform:    { emoji: '📦', bg: '#E8F0F8' },
 };
 
-const DEFAULT_META = { emoji: '📋', bg: '#E1F5EE' };
+const CATEGORY_META_DARK: Record<
+  InspectionCategory,
+  { emoji: string; bg: string }
+> = {
+  xaracho:           { emoji: '🏗️', bg: '#2E2418' },
+  mobile_scaffold:    { emoji: '🏗️', bg: '#1E2818' },
+  mobile_scaffold_n3: { emoji: '🏗️', bg: '#1E2818' },
+  harness:           { emoji: '🦺', bg: '#18202E' },
+  bobcat:            { emoji: '🚜', bg: '#2E2410' },
+  excavator:         { emoji: '🚧', bg: '#2E1E10' },
+  general_equipment: { emoji: '⚙️', bg: '#102418' },
+  cargo_platform:    { emoji: '📦', bg: '#18202E' },
+};
 
 interface Props {
   category: string | null | undefined;
@@ -42,6 +55,9 @@ export const InspectionTypeAvatar = memo(function InspectionTypeAvatar({
   status,
   style,
 }: Props) {
+  const { isDark } = useTheme();
+  const CATEGORY_META = isDark ? CATEGORY_META_DARK : CATEGORY_META_LIGHT;
+  const DEFAULT_META = { emoji: '📋', bg: isDark ? '#102418' : '#E1F5EE' };
   const meta =
     category && category in CATEGORY_META
       ? CATEGORY_META[category as InspectionCategory]

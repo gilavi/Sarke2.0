@@ -6,8 +6,6 @@ import { helpForRow } from '../lib/scaffoldHelp';
 import { TourGuide, type TourStep } from './TourGuide';
 import { useTheme } from '../lib/theme';
 
-const BRAND = '#1D9E75';
-
 export function useScaffoldHelpSheet() {
   const show = useBottomSheet();
   return useCallback(
@@ -89,7 +87,7 @@ function makeStyles(theme: any) {
     title: {
       fontSize: 20,
       fontWeight: '800',
-      color: BRAND,
+      color: theme.colors.accent,
       textAlign: 'center',
     },
     illustration: {
@@ -109,21 +107,21 @@ function makeStyles(theme: any) {
       paddingVertical: 14,
       borderRadius: 12,
       borderWidth: 1.5,
-      borderColor: BRAND,
+      borderColor: theme.colors.accent,
       alignItems: 'center',
       justifyContent: 'center',
     },
     btnText: {
       fontSize: 15,
       fontWeight: '700',
-      color: BRAND,
+      color: theme.colors.accent,
     },
     icon: {
       width: 28,
       height: 28,
       borderRadius: 14,
       borderWidth: 1.5,
-      borderColor: BRAND,
+      borderColor: theme.colors.accent,
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: theme.colors.surface,
@@ -131,7 +129,7 @@ function makeStyles(theme: any) {
     iconText: {
       fontSize: 15,
       fontWeight: '800',
-      color: BRAND,
+      color: theme.colors.accent,
       lineHeight: 18,
     },
   });
