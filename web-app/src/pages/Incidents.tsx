@@ -62,11 +62,11 @@ export default function Incidents() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <header className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl font-bold text-neutral-900">ინციდენტები</h1>
-          <p className="mt-1 text-sm text-neutral-500">უბედური და საშიში შემთხვევების ჩანაწერები.</p>
+          <h1 className="font-display text-heading-1 text-neutral-900 dark:text-neutral-100">ინციდენტები</h1>
+          <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">უბედური და საშიში შემთხვევების ჩანაწერები.</p>
         </div>
         <Link to="/incidents/new">
           <Button>+ ახალი ინციდენტი</Button>
@@ -81,22 +81,22 @@ export default function Incidents() {
 
       {!items && !error && <SkeletonList />}
       {items && items.length === 0 && (
-        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-neutral-200 bg-white py-16 text-center">
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-neutral-200 bg-white py-16 text-center dark:border-neutral-700 dark:bg-neutral-900">
           <p className="text-sm text-neutral-500">ინციდენტები ჯერ არ გაქვთ.</p>
           <Link to="/incidents/new" className={buttonVariants({ size: 'sm' })}>+ ახალი ინციდენტი</Link>
         </div>
       )}
 
       {items && items.length > 0 && (
-        <motion.div initial="hidden" animate="visible" variants={containerVariants} className="grid gap-4">
+        <motion.div initial="hidden" animate="visible" variants={containerVariants} className="grid gap-6">
           {items.map((i) => {
             const proj = projects[i.project_id];
             return (
               <motion.div key={i.id} variants={itemVariants}>
-                <Card className="group relative transition hover:border-brand-300 hover:shadow-sm">
+                <Card className="group relative transition hover:border-brand-300 hover:shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
                 <Link to={`/incidents/${i.id}`} className="block">
                   <CardHeader className="pb-2">
-                    <CardTitle className="flex items-center justify-between text-base">
+                    <CardTitle className="flex items-center justify-between text-heading-3">
                       <span className="flex items-center gap-2">
                         <span
                           className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
@@ -107,12 +107,12 @@ export default function Incidents() {
                         </span>
                         <span>{i.injured_name || (i.type === 'nearmiss' ? 'საშიში შემთხვევა' : '—')}</span>
                       </span>
-                      <span className="text-xs font-normal text-neutral-500">
+                      <span className="font-mono text-xs tabular-nums text-neutral-400 dark:text-neutral-500">
                         {new Date(i.date_time).toLocaleDateString('ka-GE')}
                       </span>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-1 text-sm text-neutral-600">
+                  <CardContent className="space-y-1 text-sm text-neutral-600 dark:text-neutral-400">
                     <div>{proj?.name ?? '—'}</div>
                     {i.location && <div className="text-xs text-neutral-500">{i.location}</div>}
                   </CardContent>

@@ -34,12 +34,12 @@ export default function Qualifications() {
   const displayError = error ?? (queryError instanceof Error ? queryError.message : queryError ? String(queryError) : null);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <header>
-        <h1 className="font-display text-3xl font-bold text-neutral-900">
+        <h1 className="font-display text-heading-1 text-neutral-900 dark:text-neutral-100">
           ჩემი კვალიფიკაცია
         </h1>
-        <p className="mt-1 text-sm text-neutral-500">
+        <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
           პროფესიული სერტიფიკატები (ხარაჩოს / ღვედის ინსპექტორი).
         </p>
       </header>
@@ -51,18 +51,18 @@ export default function Qualifications() {
       )}
       {isLoading && <SkeletonList count={4} />}
       {items && items.length === 0 && (
-        <p className="text-sm text-neutral-500">სერტიფიკატები არ არის ატვირთული.</p>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">სერტიფიკატები არ არის ატვირთული.</p>
       )}
 
       {items && items.length > 0 && (
-        <div className="grid gap-3">
+        <div className="grid gap-6">
           {items.map((q) => {
             const expired = isExpired(q.expires_at);
             const expiringSoon = !expired && isExpiringSoon(q.expires_at);
             return (
               <Card key={q.id}>
                 <CardHeader>
-                  <CardTitle className="flex items-center justify-between text-base">
+                  <CardTitle className="flex items-center justify-between text-heading-3 text-neutral-900 dark:text-neutral-100">
                     <span>{qualificationLabel(q.type)}</span>
                     {expired && (
                       <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-red-800">
@@ -76,7 +76,7 @@ export default function Qualifications() {
                     )}
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-2 text-sm text-neutral-700">
+                <CardContent className="space-y-2 text-sm text-neutral-700 dark:text-neutral-300">
                   <div>ნომერი: {q.number || '—'}</div>
                   <div>
                     გაცემა: {q.issued_at ? new Date(q.issued_at).toLocaleDateString('ka-GE') : '—'}

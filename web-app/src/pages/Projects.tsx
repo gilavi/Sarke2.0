@@ -51,10 +51,10 @@ export default function Projects() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <header className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl font-bold text-neutral-900">პროექტები</h1>
+          <h1 className="font-display text-heading-1 text-neutral-900 dark:text-neutral-100">პროექტები</h1>
           <p className="mt-1 text-sm text-neutral-500">თქვენი ყველა პროექტი ერთ ადგილას.</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -121,17 +121,17 @@ export default function Projects() {
       )}
 
       {items && view === 'list' && items.length > 0 && (
-        <motion.div initial="hidden" animate="visible" variants={containerVariants} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <motion.div initial="hidden" animate="visible" variants={containerVariants} className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((p) => (
             <motion.div key={p.id} variants={itemVariants}>
-              <Card className="group relative h-full transition hover:border-brand-300 hover:shadow-sm">
+              <Card className="group relative h-full transition hover:border-brand-300 hover:shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
               <Link to={`/projects/${p.id}`} className="block h-full">
                 <CardHeader>
-                  <CardTitle className="text-lg">{p.name}</CardTitle>
-                  <CardDescription>{p.company_name}</CardDescription>
+                  <CardTitle className="text-heading-3 text-neutral-900 dark:text-neutral-100">{p.name}</CardTitle>
+                  <CardDescription className="dark:text-neutral-400">{p.company_name}</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-neutral-600">{p.address || '—'}</p>
+                  <p className="text-sm text-neutral-600 dark:text-neutral-400">{p.address || '—'}</p>
                 </CardContent>
               </Link>
               <div className="absolute right-3 top-3 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">

@@ -28,10 +28,10 @@ export default function Certificates() {
   const displayError = error ?? (queryError instanceof Error ? queryError.message : queryError ? String(queryError) : null);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <header>
-        <h1 className="font-display text-3xl font-bold text-neutral-900">სერტიფიკატები</h1>
-        <p className="mt-1 text-sm text-neutral-500">გენერირებული PDF სერტიფიკატები.</p>
+        <h1 className="font-display text-heading-1 text-neutral-900 dark:text-neutral-100">სერტიფიკატები</h1>
+        <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">გენერირებული PDF სერტიფიკატები.</p>
       </header>
 
       {displayError && (
@@ -43,19 +43,19 @@ export default function Certificates() {
       {isLoading && <SkeletonList count={4} />}
 
       {items && items.length === 0 && (
-        <p className="text-sm text-neutral-500">სერტიფიკატები ვერ მოიძებნა.</p>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">სერტიფიკატები ვერ მოიძებნა.</p>
       )}
 
       {items && items.length > 0 && (
-        <div className="grid gap-3">
+        <div className="grid gap-6">
           {items.map((c) => (
             <Card key={c.id}>
               <CardHeader>
-                <CardTitle className="text-base">
+                <CardTitle className="text-heading-3 text-neutral-900 dark:text-neutral-100">
                   {c.conclusion_text?.slice(0, 60) || `სერტიფიკატი #${c.id.slice(0, 8)}`}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="flex items-center justify-between text-sm text-neutral-600">
+              <CardContent className="flex items-center justify-between text-sm text-neutral-600 dark:text-neutral-400">
                 <span>{new Date(c.generated_at).toLocaleString('ka-GE')}</span>
                 <Button
                   type="button"

@@ -7,6 +7,8 @@ import { listProjects } from '@/lib/data/projects';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { AppShell } from '@/components/layout/AppShell';
 import { SkeletonList } from '@/components/SkeletonCard';
+import { CommandPalette } from '@/components/cmdk';
+import { WelcomeModal } from '@/components/onboarding/WelcomeModal';
 
 // Eager: auth + landing + home + the two highest-traffic pages.
 import Login from '@/pages/auth/Login';
@@ -117,6 +119,8 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <Toaster position="bottom-right" richColors />
       <HashRouter>
+        <CommandPalette />
+        <WelcomeModal />
         <RoutePrefetcher />
         <AuthProvider>
           <Routes>

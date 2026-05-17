@@ -55,7 +55,7 @@ export default function Briefings() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <header className="flex items-start justify-between gap-4">
         <div>
           {projectParam && projects[projectParam] && (
@@ -63,8 +63,8 @@ export default function Briefings() {
               ← {projects[projectParam].name}
             </Link>
           )}
-          <h1 className="font-display text-3xl font-bold text-neutral-900">ბრიფინგები</h1>
-          <p className="mt-1 text-sm text-neutral-500">უსაფრთხოების ბრიფინგების ისტორია.</p>
+          <h1 className="font-display text-heading-1 text-neutral-900 dark:text-neutral-100">ბრიფინგები</h1>
+          <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">უსაფრთხოების ბრიფინგების ისტორია.</p>
         </div>
         <Link to={`/briefings/new${projectParam ? `?project=${projectParam}` : ''}`}>
           <Button>+ ახალი ბრიფინგი</Button>
@@ -79,29 +79,29 @@ export default function Briefings() {
 
       {!filtered && !error && <SkeletonList />}
       {filtered && filtered.length === 0 && (
-        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-neutral-200 bg-white py-16 text-center">
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-neutral-200 bg-white py-16 text-center dark:border-neutral-700 dark:bg-neutral-900">
           <p className="text-sm text-neutral-500">ბრიფინგები ჯერ არ გაქვთ.</p>
           <Link to="/briefings/new" className={buttonVariants({ size: 'sm' })}>+ ახალი ბრიფინგი</Link>
         </div>
       )}
 
       {filtered && filtered.length > 0 && (
-        <motion.div initial="hidden" animate="visible" variants={containerVariants} className="grid gap-4">
+        <motion.div initial="hidden" animate="visible" variants={containerVariants} className="grid gap-6">
           {filtered.map((b) => {
             const proj = projects[b.projectId];
             return (
               <motion.div key={b.id} variants={itemVariants}>
-                <Card className="group relative transition hover:border-brand-300 hover:shadow-sm">
+                <Card className="group relative transition hover:border-brand-300 hover:shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
                 <Link to={`/briefings/${b.id}`} className="block">
                   <CardHeader className="pb-2">
-                    <CardTitle className="flex items-center justify-between text-base">
+                    <CardTitle className="flex items-center justify-between text-heading-3">
                       <span>
                         {fmtDateKa(b.dateTime)}
                       </span>
-                      <span className="text-xs font-normal text-neutral-500">{b.status === 'completed' ? 'დასრულებული' : 'დრაფტი'}</span>
+                      <span className="font-mono text-xs tabular-nums text-neutral-400 dark:text-neutral-500">{b.status === 'completed' ? 'დასრულებული' : 'დრაფტი'}</span>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-1 text-sm text-neutral-600">
+                  <CardContent className="space-y-1 text-sm text-neutral-600 dark:text-neutral-400">
                     <div>{proj?.name ?? '—'}</div>
                     {b.topics.length > 0 && (
                       <div className="flex flex-wrap gap-1">
