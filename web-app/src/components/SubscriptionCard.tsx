@@ -1,4 +1,5 @@
 import { lazy, Suspense, useState } from 'react';
+import { cn } from '@/lib/utils';
 import { CalendarDays, Infinity as InfinityIcon, AlertTriangle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -64,9 +65,9 @@ export function SubscriptionCard() {
 
   return (
     <>
-      <Card>
+      <Card className={status === 'active' ? 'border-amber-200 bg-amber-50' : ''}>
         <CardContent>
-          <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+          <div className={cn('mb-3 text-xs font-semibold uppercase tracking-wide', status === 'active' ? 'text-amber-600' : 'text-neutral-500')}>
             გამოწერა
           </div>
 
@@ -79,12 +80,12 @@ export function SubscriptionCard() {
                 <span className="text-sm font-semibold text-neutral-900">Sarke Pro</span>
               </div>
               {expiresAt && (
-                <div className="flex items-center gap-1.5 text-sm text-neutral-600">
+                <div className="flex items-center gap-1.5 text-sm text-neutral-700">
                   <CalendarDays size={15} />
                   <span>მოქმედია: {formatDate(expiresAt)}-მდე</span>
                 </div>
               )}
-              <div className="flex items-center gap-1.5 text-sm text-neutral-600">
+              <div className="flex items-center gap-1.5 text-sm text-neutral-700">
                 <InfinityIcon size={15} />
                 <span>შეუზღუდავი PDF გენერაცია</span>
               </div>

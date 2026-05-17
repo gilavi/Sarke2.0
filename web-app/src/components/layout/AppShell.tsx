@@ -22,6 +22,13 @@ export const AppShell = memo(function AppShell({ children }: { children: ReactNo
 
   return (
     <div className="flex h-full min-h-screen bg-neutral-50 dark:bg-neutral-950">
+      {/* Ambient mesh background — desktop only */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden hidden sm:block">
+        <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-brand-500/5 blur-3xl animate-mesh-1" />
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 rounded-full bg-brand-400/5 blur-3xl animate-mesh-2" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full bg-brand-300/3 blur-3xl animate-mesh-3" />
+      </div>
+
       {/* Mobile backdrop */}
       {sidebarOpen && (
         <div
@@ -45,8 +52,8 @@ export const AppShell = memo(function AppShell({ children }: { children: ReactNo
             >
               <Menu size={20} />
             </button>
-            <Link to="/home" className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-500 text-white">
+            <Link to="/home" className="flex items-center gap-2 lg:hidden">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-500 text-white shadow-sm dark:shadow-[0_0_12px_rgba(71,175,135,0.3)]">
                 <ShieldCheck size={15} />
               </div>
               <span className="font-display text-base font-bold text-neutral-900 dark:text-neutral-100">Sarke</span>

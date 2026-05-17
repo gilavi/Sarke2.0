@@ -1,190 +1,444 @@
-import { NavLink, Link } from 'react-router-dom';
-import { memo, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { NavLink, useLocation } from 'react-router-dom';
+import { memo, useState, useCallback, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Home,
-  Folder,
+  FolderOpen,
+  ClipboardCheck,
+  AlertTriangle,
+  Megaphone,
+  FileText,
+  Package,
   Calendar,
   BookOpen,
+  LayoutTemplate,
+  Award,
+  User,
   LogOut,
   ShieldCheck,
-  User,
   Clock,
-  X,
   ChevronRight,
+
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { cn } from '@/lib/utils';
-import { listProjects } from '@/lib/data/projects';
-import { ProjectAvatar } from '@/components/ProjectAvatar';
 
-const coreItems = [
-  { to: '/home',        label: 'მთავარი',    icon: Home     },
-  { to: '/history',     label: 'ისტორია',    icon: Clock    },
-  { to: '/calendar',    label: 'კალენდარი',  icon: Calendar },
-  { to: '/regulations', label: 'რეგულაციები', icon: BookOpen },
+/* ── Nav Item Definition ────────────────────────────── */
+
+interface NavItemDef {
+  to: string;
+  label: string;
+  icon: React.ElementType;
+  shortcut?: string; // keyboard shortcut hint shown in tooltip
+}
+
+/** All primary nav items — single source of truth */
+const navItems: NavItemDef[] = [
+  { to: '/home',        label: 'მთავარი',       icon: Home,           shortcut: 'G H' },
+  { to: '/projects',    label: 'პროექტები',     icon: FolderOpen,     shortcut: 'G P' },
+  { to: '/inspections', label: 'შემოწმებები',   icon: ClipboardCheck, shortcut: 'G I' },
+  { to: '/incidents',   label: 'ინციდენტები',   icon: AlertTriangle,  shortcut: 'G M' },
+  { to: '/briefings',   label: 'ინსტრუქტაჟები', icon: Megaphone,      shortcut: 'G B' },
+  { to: '/reports',     label: 'რეპორტები',     icon: FileText,       shortcut: 'G R' },
+  { to: '/orders',      label: 'ბრძანებები',    icon: Package,        shortcut: 'G O' },
+  { to: '/calendar',    label: 'კალენდარი',     icon: Calendar,       shortcut: 'G C' },
+  { to: '/regulations', label: 'რეგულაციები',   icon: BookOpen,       shortcut: 'G L' },
+  { to: '/templates',   label: 'შაბლონები',     icon: LayoutTemplate, shortcut: 'G T' },
+  { to: '/certificates',label: 'სერთიფიკატები', icon: Award,          shortcut: 'G F' },
+  { to: '/history',     label: 'ისტორია',       icon: Clock,          shortcut: 'G Y' },
 ];
+
+
+
+/* ── Tooltip Component ──────────────────────────────── */
+
+/** Simple CSS-only tooltip positioned to the right of the rail */
+function Tooltip({
+  children,
+  label,
+  shortcut,
+  visible,
+}: {
+  children: React.ReactNode;
+  label: string;
+  shortcut?: string;
+  visible: boolean;
+}) {
+  return (
+    <div className="group/tooltip relative flex items-center justify-center">
+      {children}
+      {/* Tooltip — only visible when rail is collapsed AND hovered */}
+      <AnimatePresence>
+        {visible && (
+          <motion.div
+            initial={{ opacity: 0, x: -4, scale: 0.96 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: -4, scale: 0.96 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className="pointer-events-none absolute left-full z-50 ml-2 whitespace-nowrap rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 shadow-lg dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+          >
+            <div className="flex items-center gap-2">
+              <span>{label}</span>
+              {shortcut && (
+                <kbd className="rounded border border-neutral-200 bg-neutral-100 px-1 py-0.5 text-[10px] text-neutral-500 dark:border-neutral-600 dark:bg-neutral-700 dark:text-neutral-400">
+                  {shortcut}
+                </kbd>
+              )}
+            </div>
+            {/* Arrow */}
+            <div className="absolute -left-1 top-1/2 h-2 w-2 -translate-y-1/2 rotate-45 border-b border-l border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-800" />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/* ── Rail Nav Item ──────────────────────────────────── */
+
+function RailNavItem({
+  item,
+  isExpanded,
+  showTooltip,
+  onNavigate,
+}: {
+  item: NavItemDef;
+  isExpanded: boolean;
+  showTooltip: boolean;
+  onNavigate?: () => void;
+}) {
+  const location = useLocation();
+  const isActive = location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
+
+  return (
+    <Tooltip label={item.label} shortcut={item.shortcut} visible={showTooltip && !isActive}>
+      <NavLink
+        to={item.to}
+        onClick={onNavigate}
+        className={({ isActive: navActive }) =>
+          cn(
+            'relative flex items-center rounded-lg transition-all duration-200',
+            'mx-1.5 h-10',
+            isExpanded ? 'w-[168px] px-3 gap-3' : 'w-[44px] justify-center px-0',
+            navActive
+              ? cn(
+                  'bg-brand-500 text-white shadow-sm',
+                  'dark:bg-brand-600 dark:shadow-[0_0_12px_rgba(71,175,135,0.3)]',
+                )
+              : cn(
+                  'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800',
+                  'dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200',
+                ),
+          )
+        }
+        aria-label={item.label}
+      >
+        {/* Icon — always visible */}
+        <item.icon size={20} className="shrink-0" />
+
+        {/* Label — only visible when expanded */}
+        <AnimatePresence initial={false}>
+          {isExpanded && (
+            <motion.span
+              initial={{ opacity: 0, width: 0 }}
+              animate={{ opacity: 1, width: 'auto' }}
+              exit={{ opacity: 0, width: 0 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="whitespace-nowrap text-[13px] font-medium overflow-hidden"
+            >
+              {item.label}
+            </motion.span>
+          )}
+        </AnimatePresence>
+      </NavLink>
+    </Tooltip>
+  );
+}
+
+/* ── Main Sidebar Component ─────────────────────────── */
 
 interface SidebarProps {
   open?: boolean;
   onClose?: () => void;
 }
 
-export const Sidebar = memo(function Sidebar({ open = true, onClose }: SidebarProps) {
-  const { profile, user, signOut } = useAuth();
-  const displayName = useMemo(
-    () => [profile?.first_name, profile?.last_name].filter(Boolean).join(' ').trim() || user?.email || 'მომხმარებელი',
-    [profile?.first_name, profile?.last_name, user?.email],
-  );
+export const Sidebar = memo(function Sidebar({ open = false, onClose }: SidebarProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [showTooltips, setShowTooltips] = useState(false);
+  const expandTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const tooltipTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { user, signOut } = useAuth();
 
-  const { data: projects } = useQuery({
-    queryKey: ['projects'],
-    queryFn: listProjects,
-  });
+  /* Hover expand logic — 150ms delay to prevent accidental triggers */
+  const handleMouseEnter = useCallback(() => {
+    if (expandTimeout.current) clearTimeout(expandTimeout.current);
+    expandTimeout.current = setTimeout(() => setIsExpanded(true), 150);
 
-  const inner = (
-    <aside className="flex h-full w-64 shrink-0 flex-col border-r border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
-      {/* Logo */}
-      <div className="flex items-center gap-2 px-6 py-5">
-        <Link to="/home" className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-500 text-white">
-            <ShieldCheck size={20} />
+    if (tooltipTimeout.current) clearTimeout(tooltipTimeout.current);
+    tooltipTimeout.current = setTimeout(() => setShowTooltips(true), 300);
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    if (expandTimeout.current) {
+      clearTimeout(expandTimeout.current);
+      expandTimeout.current = null;
+    }
+    if (tooltipTimeout.current) {
+      clearTimeout(tooltipTimeout.current);
+      tooltipTimeout.current = null;
+    }
+    setIsExpanded(false);
+    setShowTooltips(false);
+  }, []);
+
+  /* Cleanup timeouts on unmount */
+  useEffect(() => {
+    return () => {
+      if (expandTimeout.current) clearTimeout(expandTimeout.current);
+      if (tooltipTimeout.current) clearTimeout(tooltipTimeout.current);
+    };
+  }, []);
+
+  const handleNavigate = useCallback(() => {
+    onClose?.();
+  }, [onClose]);
+
+  /* ── Rail Content ───────────────────────────────── */
+
+  const rail = (
+    <motion.aside
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      animate={{ width: isExpanded ? 180 : 56 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 0.8 }}
+      className={cn(
+        'relative flex h-full shrink-0 flex-col border-r border-neutral-200 bg-white/95 backdrop-blur-md',
+        'dark:border-neutral-800 dark:bg-neutral-900/90',
+        'z-40',
+      )}
+    >
+      {/* ── Logo ── */}
+      <div className={cn(
+        'flex items-center border-b border-neutral-200 dark:border-neutral-800',
+        isExpanded ? 'h-14 px-4 gap-3' : 'h-14 justify-center',
+      )}>
+        <NavLink to="/home" className="flex items-center gap-2" aria-label="მთავარი">
+          {/* Logo icon — always visible */}
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-500 text-white shadow-sm dark:shadow-[0_0_12px_rgba(71,175,135,0.35)]">
+            <ShieldCheck size={16} />
           </div>
-          <span className="font-display text-lg font-bold text-neutral-900 dark:text-neutral-100">Sarke</span>
-        </Link>
-        {onClose && (
-          <button
-            type="button"
-            onClick={onClose}
-            className="ml-auto rounded-lg p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-300 lg:hidden"
-            aria-label="მენიუს დახურვა"
-          >
-            <X size={18} />
-          </button>
-        )}
+
+          {/* Logo text — only when expanded */}
+          <AnimatePresence initial={false}>
+            {isExpanded && (
+              <motion.span
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="font-display text-base font-bold text-neutral-900 dark:text-neutral-100 whitespace-nowrap"
+              >
+                Sarke
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </NavLink>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-3 pb-3">
-        {/* Core nav items */}
+      {/* ── Primary Nav ── */}
+      <nav className="flex-1 overflow-y-auto overflow-x-hidden py-2">
         <ul className="space-y-0.5">
-          {coreItems.map(({ to, label, icon: Icon }) => (
-            <li key={to}>
-              <NavLink
-                to={to}
-                onClick={onClose}
-                className={({ isActive }) =>
-                  cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                    isActive ? 'bg-brand-50 text-brand-700 dark:bg-brand-950/30 dark:text-brand-400' : 'text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800',
-                  )
-                }
-              >
-                <Icon size={18} />
-                {label}
-              </NavLink>
+          {navItems.map((item) => (
+            <li key={item.to}>
+              <RailNavItem
+                item={item}
+                isExpanded={isExpanded}
+                showTooltip={showTooltips && !isExpanded}
+                onNavigate={handleNavigate}
+              />
             </li>
           ))}
         </ul>
-
-        {/* Projects section with inline list */}
-        <div className="mt-4">
-          <div className="mb-1 flex items-center justify-between px-3">
-            <NavLink
-              to="/projects"
-              onClick={onClose}
-              className={({ isActive }) =>
-                cn(
-                  'flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider transition-colors',
-                  isActive ? 'text-brand-600 dark:text-brand-400' : 'text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300',
-                )
-              }
-            >
-              <Folder size={13} />
-              პროექტები
-            </NavLink>
-            <Link
-              to="/projects/new"
-              onClick={onClose}
-              className="rounded p-0.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600 dark:hover:bg-neutral-800 dark:hover:text-neutral-300"
-              aria-label="ახალი პროექტი"
-            >
-              <span className="text-[16px] leading-none">+</span>
-            </Link>
-          </div>
-
-          {/* Project list */}
-          {projects && projects.length > 0 ? (
-            <ul className="space-y-0.5">
-              {projects.map((p) => (
-                <li key={p.id}>
-                  <NavLink
-                    to={`/projects/${p.id}`}
-                    onClick={onClose}
-                    className={({ isActive }) =>
-                      cn(
-                        'flex items-center gap-2 rounded-lg py-1.5 pl-4 pr-2 text-sm transition-colors',
-                        isActive
-                          ? 'bg-brand-50 font-medium text-brand-700'
-                          : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900',
-                      )
-                    }
-                  >
-                    <ProjectAvatar project={p} size="xs" />
-                    <span className="min-w-0 flex-1 truncate text-[13px]">
-                      {p.company_name || p.name}
-                    </span>
-                    <ChevronRight size={12} className="shrink-0 text-neutral-300 dark:text-neutral-600" />
-                  </NavLink>
-                </li>
-              ))}
-            </ul>
-          ) : projects && projects.length === 0 ? (
-            <p className="px-4 py-1 text-[12px] text-neutral-400 dark:text-neutral-500">პროექტები არ არის</p>
-          ) : null}
-        </div>
       </nav>
 
-      {/* Footer — Account */}
-      <div className="border-t border-neutral-200 p-3 dark:border-neutral-800">
-        <NavLink
-          to="/account"
-          onClick={onClose}
-          className={({ isActive }) =>
-            cn(
-              'flex items-center gap-3 rounded-lg px-3 py-2 transition-colors',
-              isActive ? 'bg-brand-50 dark:bg-brand-950/30' : 'hover:bg-neutral-100 dark:hover:bg-neutral-800',
-            )
-          }
-        >
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-neutral-200 dark:bg-neutral-700">
-            <User size={14} className="text-neutral-600 dark:text-neutral-300" />
-          </div>
-          <div className="min-w-0">
-            <div className="truncate text-sm font-medium text-neutral-900 dark:text-neutral-100">{displayName}</div>
-            <div className="truncate text-[11px] text-neutral-400 dark:text-neutral-500">{user?.email}</div>
-          </div>
-        </NavLink>
-        <button
-          onClick={() => void signOut()}
-          className="mt-0.5 flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
-        >
-          <LogOut size={16} />
-          გასვლა
-        </button>
+      {/* ── Divider ── */}
+      <div className="mx-3 border-t border-neutral-200 dark:border-neutral-800" />
+
+      {/* ── Bottom Section: Account + Sign Out ── */}
+      <div className="py-2 space-y-0.5">
+        {/* Account */}
+        <Tooltip label="პროფილი" visible={showTooltips && !isExpanded}>
+          <NavLink
+            to="/account"
+            onClick={handleNavigate}
+            className={({ isActive }) =>
+              cn(
+                'relative flex items-center rounded-lg transition-all duration-200 mx-1.5',
+                isExpanded ? 'h-10 w-[168px] px-3 gap-3' : 'h-10 w-[44px] justify-center px-0',
+                isActive
+                  ? 'bg-brand-500 text-white shadow-sm dark:bg-brand-600'
+                  : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200',
+              )
+            }
+            aria-label="პროფილი"
+          >
+            {/* Avatar or default icon */}
+            {user?.user_metadata?.avatar_url ? (
+              <img
+                src={user.user_metadata.avatar_url}
+                alt=""
+                className="h-6 w-6 rounded-full object-cover shrink-0"
+              />
+            ) : (
+              <User size={20} className="shrink-0" />
+            )}
+
+            <AnimatePresence initial={false}>
+              {isExpanded && (
+                <motion.div
+                  initial={{ opacity: 0, width: 0 }}
+                  animate={{ opacity: 1, width: 'auto' }}
+                  exit={{ opacity: 0, width: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="min-w-0 overflow-hidden"
+                >
+                  <div className="truncate text-[13px] font-medium">პროფილი</div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </NavLink>
+        </Tooltip>
+
+        {/* Sign Out */}
+        <Tooltip label="გასვლა" visible={showTooltips && !isExpanded}>
+          <button
+            type="button"
+            onClick={() => void signOut()}
+            className={cn(
+              'relative flex items-center rounded-lg transition-all duration-200 mx-1.5',
+              isExpanded ? 'h-10 w-[168px] px-3 gap-3' : 'h-10 w-[44px] justify-center px-0',
+              'text-neutral-500 hover:bg-red-50 hover:text-red-600',
+              'dark:text-neutral-400 dark:hover:bg-red-950/30 dark:hover:text-red-400',
+            )}
+            aria-label="გასვლა"
+          >
+            <LogOut size={20} className="shrink-0" />
+            <AnimatePresence initial={false}>
+              {isExpanded && (
+                <motion.span
+                  initial={{ opacity: 0, width: 0 }}
+                  animate={{ opacity: 1, width: 'auto' }}
+                  exit={{ opacity: 0, width: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="whitespace-nowrap text-[13px] font-medium overflow-hidden"
+                >
+                  გასვლა
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </button>
+        </Tooltip>
       </div>
-    </aside>
+    </motion.aside>
   );
 
   return (
     <>
-      {/* Desktop: always visible */}
-      <div className="hidden lg:flex lg:h-full lg:shrink-0">{inner}</div>
+      {/* Desktop: icon rail — always visible */}
+      <div className="hidden lg:flex lg:h-full lg:shrink-0">{rail}</div>
 
-      {/* Mobile: drawer overlay */}
+      {/* Mobile: drawer overlay (expanded version for usability) */}
       {open && (
         <div className="fixed inset-0 z-40 flex lg:hidden">
-          <div className="flex h-full">{inner}</div>
-          <div className="flex-1 bg-black/30" onClick={onClose} />
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={onClose}
+            aria-hidden="true"
+          />
+          {/* Mobile drawer — always expanded */}
+          <div className="relative z-10 flex h-full">
+            <motion.aside
+              initial={{ x: -180 }}
+              animate={{ x: 0 }}
+              exit={{ x: -180 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+              className="relative flex h-full w-[180px] shrink-0 flex-col border-r border-neutral-200 bg-white/95 backdrop-blur-md dark:border-neutral-800 dark:bg-neutral-900/90"
+            >
+              {/* Logo */}
+              <div className="flex h-14 items-center gap-3 border-b border-neutral-200 px-4 dark:border-neutral-800">
+                <NavLink to="/home" className="flex items-center gap-2" onClick={onClose}>
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-500 text-white shadow-sm">
+                    <ShieldCheck size={16} />
+                  </div>
+                  <span className="font-display text-base font-bold text-neutral-900 dark:text-neutral-100">
+                    Sarke
+                  </span>
+                </NavLink>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="ml-auto rounded-lg p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-300"
+                  aria-label="დახურვა"
+                >
+                  <ChevronRight size={18} />
+                </button>
+              </div>
+
+              {/* Nav — always expanded in mobile */}
+              <nav className="flex-1 overflow-y-auto py-2">
+                <ul className="space-y-0.5">
+                  {navItems.map((item) => (
+                    <li key={item.to}>
+                      <NavLink
+                        to={item.to}
+                        onClick={onClose}
+                        className={({ isActive }) =>
+                          cn(
+                            'mx-1.5 flex h-10 items-center gap-3 rounded-lg px-3 text-[13px] font-medium transition-all duration-200',
+                            isActive
+                              ? 'bg-brand-500 text-white shadow-sm dark:bg-brand-600'
+                              : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200',
+                          )
+                        }
+                      >
+                        <item.icon size={20} />
+                        <span>{item.label}</span>
+                      </NavLink>
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+
+              {/* Divider + Bottom */}
+              <div className="mx-3 border-t border-neutral-200 dark:border-neutral-800" />
+              <div className="py-2 space-y-0.5">
+                <NavLink
+                  to="/account"
+                  onClick={onClose}
+                  className={({ isActive }) =>
+                    cn(
+                      'mx-1.5 flex h-10 items-center gap-3 rounded-lg px-3 text-[13px] font-medium transition-all duration-200',
+                      isActive
+                        ? 'bg-brand-500 text-white'
+                        : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-800',
+                    )
+                  }
+                >
+                  <User size={20} />
+                  <span>პროფილი</span>
+                </NavLink>
+                <button
+                  type="button"
+                  onClick={() => void signOut()}
+                  className="mx-1.5 flex h-10 w-[168px] items-center gap-3 rounded-lg px-3 text-[13px] font-medium text-neutral-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:text-neutral-400 dark:hover:bg-red-950/30 dark:hover:text-red-400"
+                >
+                  <LogOut size={20} />
+                  <span>გასვლა</span>
+                </button>
+              </div>
+            </motion.aside>
+          </div>
         </div>
       )}
     </>

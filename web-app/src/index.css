@@ -2,6 +2,45 @@
 @tailwind components;
 @tailwind utilities;
 
+@keyframes mesh-1 { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(-20px, 20px) scale(1.1); } }
+@keyframes mesh-2 { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(20px, -20px) scale(1.05); } }
+@keyframes mesh-3 { 0%, 100% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-50%, -50%) scale(1.15); } }
+
+.animate-mesh-1 { animation: mesh-1 20s ease-in-out infinite; }
+.animate-mesh-2 { animation: mesh-2 25s ease-in-out infinite; }
+.animate-mesh-3 { animation: mesh-3 30s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-mesh-1, .animate-mesh-2, .animate-mesh-3 { animation: none; }
+}
+
+.dark .btn-primary-glow {
+  box-shadow: 0 0 0 1px rgba(71, 175, 135, 0.2), 0 0 16px rgba(71, 175, 135, 0.15);
+}
+.dark .btn-primary-glow:hover {
+  box-shadow: 0 0 0 1px rgba(71, 175, 135, 0.3), 0 0 24px rgba(71, 175, 135, 0.25), 0 0 48px rgba(71, 175, 135, 0.1);
+}
+.dark .border-glow {
+  border-color: rgba(71, 175, 135, 0.2);
+  box-shadow: inset 0 0 0 1px rgba(71, 175, 135, 0.05);
+}
+.nav-active {
+  position: relative;
+  background: linear-gradient(90deg, rgba(20,122,79,0.08), transparent);
+  font-weight: 600;
+}
+.nav-active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 20px;
+  background: linear-gradient(180deg, #47AF87, #75C3A5);
+  border-radius: 0 2px 2px 0;
+}
+
 html,
 body,
 #root {
@@ -26,18 +65,33 @@ body,
 }
 
 .dark {
-  --bg-body: #0C0A09;
-  --bg-card: #1C1917;
-  --bg-hover: #292524;
-  --bg-active: #44403C;
-  --text-primary: #FAFAF9;
-  --text-secondary: #D6D3D1;
-  --text-muted: #A8A29E;
-  --border-color: #44403C;
+  /* Surfaces — 7 elevation levels */
+  --bg-body: #0A0A0A;
+  --bg-sidebar: #0F0F0F;
+  --bg-card: #141414;
+  --bg-hover: #1A1A1A;
+  --bg-active: #1F1F1F;
+  --bg-elevated: #242424;
+  --bg-overlay: #2A2A2A;
+
+  /* Text — optimized for reduced eye strain */
+  --text-primary: #EDEDED;
+  --text-secondary: #A1A1A1;
+  --text-muted: #7A7A7A;
+  --text-disabled: #4A4A4A;
+
+  /* Borders — white opacity layers */
+  --border-subtle: rgba(255,255,255,0.05);
+  --border-default: rgba(255,255,255,0.08);
+  --border-hover: rgba(255,255,255,0.12);
+  --border-active: rgba(255,255,255,0.15);
+
+  /* Brand — more vibrant in dark */
   --brand-50: #143828;
   --brand-500: #47AF87;
-  --brand-600: #75C3A5;
+  --brand-600: #5EC49E;
   --brand-700: #A3D7C3;
+  --brand-glow: rgba(71,175,135,0.15);
   --danger: #EF4444;
   --danger-bg: #450A0A;
 }
@@ -122,3 +176,34 @@ body {
 
 .wizard-fullpage[data-state='open']   { animation: wizard-page-in  220ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 .wizard-fullpage[data-state='closed'] { animation: wizard-page-out 180ms ease-in forwards; }
+
+/* ── Icon Rail Scrollbar ── */
+/* Very thin scrollbar for the rail nav */
+aside nav::-webkit-scrollbar {
+  width: 3px;
+}
+aside nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+aside nav::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 10px;
+}
+aside nav:hover::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.08);
+}
+.dark aside nav:hover::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.08);
+}
+
+/* Firefox scrollbar */
+aside nav {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+aside nav:hover {
+  scrollbar-color: rgba(0,0,0,0.08) transparent;
+}
+.dark aside nav:hover {
+  scrollbar-color: rgba(255,255,255,0.08) transparent;
+}
