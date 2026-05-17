@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePendingCreate } from '@/lib/usePendingCreate';
@@ -61,6 +61,12 @@ export default function BobcatInspectionDetail() {
   const qc = useQueryClient();
   const { pendingCreate, lazyCreate } = usePendingCreate<PendingBobcat>();
   const isPending = id === 'draft';
+
+  useEffect(() => {
+    if (isPending && !pendingCreate) {
+      navigate('/inspections', { replace: true });
+    }
+  }, [isPending, pendingCreate, navigate]);
 
   const { data: item, error, isLoading } = useQuery({
     queryKey: ['bobcatInspection', id],

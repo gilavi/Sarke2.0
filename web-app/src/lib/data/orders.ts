@@ -123,6 +123,15 @@ function toModel(row: DbRow): Order {
   };
 }
 
+export async function listOrders(): Promise<Order[]> {
+  const { data, error } = await supabase
+    .from('orders')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as DbRow[]).map(toModel);
+}
+
 export async function listOrdersByProject(projectId: string): Promise<Order[]> {
   const { data, error } = await supabase
     .from('orders')

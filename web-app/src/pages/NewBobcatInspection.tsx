@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +10,7 @@ import { listProjects } from '@/lib/data/projects';
 import {
   BOBCAT_TEMPLATE_ID,
   LARGE_LOADER_TEMPLATE_ID,
+  createBobcatInspection,
   type BobcatInspectionType,
 } from '@/lib/data/bobcat';
 
@@ -36,23 +38,28 @@ export default function NewBobcatInspection() {
 
   const canSubmit = !!projectId;
 
-  function handleSubmit() {
-    if (!canSubmit) return;
-    navigate('/bobcat/draft', {
-      state: {
-        pendingCreate: {
-          projectId,
-          templateId: variant === 'bobcat' ? BOBCAT_TEMPLATE_ID : LARGE_LOADER_TEMPLATE_ID,
-          company: company.trim() || null,
-          equipmentModel: equipmentModel.trim() || null,
-          registrationNumber: registrationNumber.trim() || null,
-          department: department.trim() || null,
-          inspectorName: inspectorName.trim() || null,
-          inspectionDate: inspectionDate || null,
-          inspectionType,
-        },
-      },
-    });
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleSubmit() {
+    if (!canSubmit || submitting) return;
+    setSubmitting(true);
+    try {
+      const created = await createBobcatInspection({
+        projectId,
+        templateId: variant === 'bobcat' ? BOBCAT_TEMPLATE_ID : LARGE_LOADER_TEMPLATE_ID,
+        company: company.trim() || null,
+        equipmentModel: equipmentModel.trim() || null,
+        registrationNumber: registrationNumber.trim() || null,
+        department: department.trim() || null,
+        inspectorName: inspectorName.trim() || null,
+        inspectionDate: inspectionDate || null,
+        inspectionType,
+      });
+      navigate(`/bobcat/${created.id}`, { replace: true });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -205,8 +212,8 @@ export default function NewBobcatInspection() {
             </div>
 
             <div className="flex gap-2 pt-2">
-              <Button type="submit" disabled={!canSubmit}>
-                შექმნა
+              <Button type="submit" disabled={!canSubmit || submitting}>
+                {submitting ? 'იქმნება…' : 'შექმნა'}
               </Button>
               <Button
                 type="button"

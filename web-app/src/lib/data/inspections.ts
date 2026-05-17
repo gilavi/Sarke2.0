@@ -49,7 +49,13 @@ export async function getInspection(id: string): Promise<Inspection | null> {
     )
     .eq('id', id)
     .maybeSingle();
-  if (error) throw error;
+  if (error) {
+    console.error('[getInspection] error for id', id, error);
+    throw error;
+  }
+  if (!data) {
+    console.warn('[getInspection] no row found for id', id);
+  }
   return (data as Inspection | null) ?? null;
 }
 
@@ -121,12 +127,14 @@ export interface Question {
   min_val: number | null;
   max_val: number | null;
   unit: string | null;
+  grid_rows: string[] | null;
+  grid_cols: string[] | null;
 }
 
 export async function listQuestions(templateId: string): Promise<Question[]> {
   const { data, error } = await supabase
     .from('questions')
-    .select('id, template_id, section, "order", type, title, min_val, max_val, unit')
+    .select('id, template_id, section, "order", type, title, min_val, max_val, unit, grid_rows, grid_cols')
     .eq('template_id', templateId)
     .order('section', { ascending: true })
     .order('"order"', { ascending: true });
@@ -136,19 +144,20 @@ export async function listQuestions(templateId: string): Promise<Question[]> {
 
 export interface Answer {
   id: string;
-  questionnaire_id: string;
+  inspection_id: string;
   question_id: string;
   value_bool: boolean | null;
   value_num: number | null;
   value_text: string | null;
+  grid_values: Record<string, Record<string, string>> | null;
   comment: string | null;
 }
 
 export async function listAnswers(inspectionId: string): Promise<Answer[]> {
   const { data, error } = await supabase
     .from('answers')
-    .select('id, questionnaire_id, question_id, value_bool, value_num, value_text, comment')
-    .eq('questionnaire_id', inspectionId);
+    .select('id, inspection_id, question_id, value_bool, value_num, value_text, comment')
+    .eq('inspection_id', inspectionId);
   if (error) throw error;
   return (data ?? []) as Answer[];
 }
@@ -159,22 +168,24 @@ export async function upsertAnswer(input: {
   valueBool?: boolean | null;
   valueNum?: number | null;
   valueText?: string | null;
+  gridValues?: Record<string, Record<string, string>> | null;
   comment?: string | null;
 }): Promise<Answer> {
   const { data, error } = await supabase
     .from('answers')
     .upsert(
       {
-        questionnaire_id: input.inspectionId,
+        inspection_id: input.inspectionId,
         question_id: input.questionId,
         value_bool: input.valueBool ?? null,
         value_num: input.valueNum ?? null,
         value_text: input.valueText ?? null,
+        grid_values: input.gridValues ?? null,
         comment: input.comment ?? null,
       },
-      { onConflict: 'questionnaire_id,question_id' },
+      { onConflict: 'inspection_id,question_id' },
     )
-    .select('id, questionnaire_id, question_id, value_bool, value_num, value_text, comment')
+    .select('id, inspection_id, question_id, value_bool, value_num, value_text, grid_values, comment')
     .single();
   if (error) throw error;
   return data as Answer;

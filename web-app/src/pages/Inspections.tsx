@@ -1,8 +1,9 @@
+import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { ClipboardList } from 'lucide-react';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
+import { Pencil, Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { SkeletonList } from '@/components/SkeletonCard';
 import {
   DropdownMenu,
@@ -10,15 +11,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ListRow, ListRowIcon } from '@/components/ListRow';
-import StatusBadge from '@/components/StatusBadge';
-import { listInspections } from '@/lib/data/inspections';
-import { listBobcatInspections } from '@/lib/data/bobcat';
-import { listGeneralEquipmentInspections } from '@/lib/data/generalEquipment';
-import { listExcavatorInspections } from '@/lib/data/excavator';
+import { listInspections, deleteInspection } from '@/lib/data/inspections';
+import { listBobcatInspections, deleteBobcatInspection } from '@/lib/data/bobcat';
+import { listGeneralEquipmentInspections, deleteGeneralEquipmentInspection } from '@/lib/data/generalEquipment';
+import { listExcavatorInspections, deleteExcavatorInspection } from '@/lib/data/excavator';
 import { listCargoPlatformInspections } from '@/lib/data/cargoPlatform';
 import { listProjects } from '@/lib/data/projects';
-
+import InspectionWizard from '@/components/InspectionWizard';
 
 const TYPE_LABEL: Record<string, string> = {
   harness:            'დამც. ქამარი',
@@ -29,6 +28,25 @@ const TYPE_LABEL: Record<string, string> = {
   excavator:          'ექსკავატორი',
   general:            'ტექ. აღჭურვილობა',
   cargo_platform:     'ტვირთის პლატფ.',
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  draft: 'დრაფტი',
+  completed: 'დასრულებული',
+  in_progress: 'მიმდინარე',
+};
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.04 },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 10 },
+  visible: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 400, damping: 25 } },
 };
 
 interface Row {
@@ -51,8 +69,11 @@ function genericInspectionType(template: { category: string | null }[] | null | 
 
 export default function Inspections() {
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const [searchParams] = useSearchParams();
   const projectParam = searchParams.get('project') ?? '';
+  const [newInspectionOpen, setNewInspectionOpen] = useState(false);
+  const [newInspectionCategory, setNewInspectionCategory] = useState<string>('');
 
   const { data: genericInspections, isLoading: l1 } = useQuery({ queryKey: ['inspections'], queryFn: () => listInspections() });
   const { data: bobcats, isLoading: l2 } = useQuery({ queryKey: ['bobcatInspections'], queryFn: () => listBobcatInspections() });
@@ -65,6 +86,22 @@ export default function Inspections() {
   const [filter, setFilter] = useState<string>(projectParam);
 
   const isLoading = l1 || l2 || l3 || l4 || l5;
+
+  const delInspection = useMutation({ mutationFn: deleteInspection, onSuccess: () => qc.invalidateQueries({ queryKey: ['inspections'] }) });
+  const delBobcat = useMutation({ mutationFn: deleteBobcatInspection, onSuccess: () => qc.invalidateQueries({ queryKey: ['bobcatInspections'] }) });
+  const delExcavator = useMutation({ mutationFn: deleteExcavatorInspection, onSuccess: () => qc.invalidateQueries({ queryKey: ['excavatorInspections'] }) });
+  const delGeneral = useMutation({ mutationFn: deleteGeneralEquipmentInspection, onSuccess: () => qc.invalidateQueries({ queryKey: ['generalEquipmentInspections'] }) });
+
+  function handleDelete(row: Row) {
+    const ok = window.confirm('წავშალოთ ეს ჩანაწერი?');
+    if (!ok) return;
+    switch (row.type) {
+      case 'harness': delInspection.mutate(row.id); break;
+      case 'bobcat': delBobcat.mutate(row.id); break;
+      case 'excavator': delExcavator.mutate(row.id); break;
+      case 'general': delGeneral.mutate(row.id); break;
+    }
+  }
 
   const allRows: Row[] = [
     ...(genericInspections ?? []).map((i): Row => ({
@@ -107,18 +144,18 @@ export default function Inspections() {
               ← {projects[filter].name}
             </Link>
           )}
-          <h1 className="font-display text-3xl font-bold text-neutral-900">შემოწმების აქტები</h1>
-          <p className="mt-1 text-sm text-neutral-500">ყველა აქტი თქვენი ანგარიშიდან.</p>
+          <h1 className="font-display text-3xl font-bold text-neutral-900 dark:text-neutral-100">შემოწმების აქტები</h1>
+          <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">ყველა აქტი თქვენი ანგარიშიდან.</p>
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button>+ ახალი შემოწმება</Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onSelect={() => navigate(`/inspections/new${filter ? `?project=${filter}` : ''}`)}>
+            <DropdownMenuItem onSelect={() => { setNewInspectionCategory('xaracho'); setNewInspectionOpen(true); }}>
               ფასადის ხარაჩოს შემოწმების აქტი
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => navigate(`/inspections/new${filter ? `?project=${filter}` : ''}`)}>
+            <DropdownMenuItem onSelect={() => { setNewInspectionCategory('harness'); setNewInspectionOpen(true); }}>
               დამცავი ქამრების შემოწმების აქტი
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => navigate(`/bobcat/new${filter ? `?project=${filter}` : ''}`)}>
@@ -142,7 +179,7 @@ export default function Inspections() {
 
       {Object.keys(projects).length > 0 && (
         <div className="flex items-center gap-2">
-          <label className="text-sm text-neutral-600">პროექტი:</label>
+          <label className="text-sm text-neutral-600 dark:text-neutral-400">პროექტი:</label>
           <select
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
@@ -159,40 +196,62 @@ export default function Inspections() {
       {isLoading && <SkeletonList />}
 
       {!isLoading && allRows.length === 0 && (
-        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-neutral-200 bg-white py-16 text-center">
-          <p className="text-sm text-neutral-500">
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-neutral-200 bg-white py-16 text-center dark:border-neutral-700 dark:bg-neutral-900">
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">
             {filter ? 'ამ პროექტში აქტები ვერ მოიძებნა.' : 'შემოწმების აქტები ჯერ არ გაქვთ.'}
           </p>
           {!filter && (
-            <Link to="/inspections/new" className={buttonVariants({ size: 'sm' })}>+ ახალი აქტი</Link>
+            <Button size="sm" onClick={() => setNewInspectionOpen(true)}>+ ახალი აქტი</Button>
           )}
         </div>
       )}
 
+      <InspectionWizard open={newInspectionOpen} onClose={() => { setNewInspectionOpen(false); setNewInspectionCategory(''); }} defaultProjectId={filter} defaultCategory={newInspectionCategory} />
+
       {allRows.length > 0 && (
-        <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
-          {allRows.map((row) => {
-            const dateStr = row.date ? new Date(row.date).toLocaleDateString('ka-GE') : '';
-            const subtitle = [projects[row.projectId]?.name, dateStr].filter(Boolean).join(' · ');
-            return (
-              <ListRow
-                key={row.id}
-                to={row.href}
-                icon={<ListRowIcon icon={ClipboardList} color="bg-brand-50" iconColor="text-brand-600" />}
-                title={row.label}
-                subtitle={subtitle || undefined}
-                badge={
-                  <>
-                    <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] text-neutral-600">
-                      {TYPE_LABEL[row.type] ?? row.type}
-                    </span>
-                    <StatusBadge status={row.status} showIcon={false} />
-                  </>
-                }
-              />
-            );
-          })}
-        </div>
+        <motion.div initial="hidden" animate="visible" variants={containerVariants} className="divide-y divide-neutral-100 rounded-xl border border-neutral-200 bg-white dark:divide-neutral-800 dark:border-neutral-700 dark:bg-neutral-900">
+          {allRows.map((row) => (
+            <motion.div
+              key={row.id}
+              variants={itemVariants}
+              className="group flex items-center justify-between gap-3 px-4 py-3 hover:bg-neutral-50 transition-colors dark:hover:bg-neutral-800/60"
+            >
+              <Link to={row.href} className="flex flex-1 items-center gap-3 min-w-0">
+                <div className="min-w-0">
+                  <p className="truncate font-medium text-neutral-900 dark:text-neutral-100">{row.label}</p>
+                  <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
+                    {projects[row.projectId]?.name ?? '—'}
+                    {' · '}
+                    {new Date(row.date).toLocaleDateString('ka-GE')}
+                  </p>
+                </div>
+              </Link>
+              <div className="flex shrink-0 items-center gap-2">
+                <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300">
+                  {TYPE_LABEL[row.type]}
+                </span>
+                <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                  row.status === 'completed'
+                    ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400'
+                    : 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400'
+                }`}>
+                  {STATUS_LABEL[row.status] ?? row.status}
+                </span>
+                <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                  <Link to={row.href} className="rounded p-1 text-neutral-400 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-950/30">
+                    <Pencil size={14} />
+                  </Link>
+                  <button
+                    onClick={() => handleDelete(row)}
+                    className="rounded p-1 text-neutral-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </motion.div>
       )}
     </div>
   );

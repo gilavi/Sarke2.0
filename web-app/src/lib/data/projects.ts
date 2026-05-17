@@ -107,6 +107,7 @@ export async function updateProject(
   id: string,
   patch: {
     name?: string;
+    company_name?: string | null;
     address?: string | null;
     contact_phone?: string | null;
     latitude?: number | null;

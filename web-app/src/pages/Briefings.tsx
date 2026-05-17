@@ -1,15 +1,29 @@
+import { motion } from 'framer-motion';
 import { Link, useSearchParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { Users } from 'lucide-react';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
+import { Pencil, Trash2 } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { SkeletonList } from '@/components/SkeletonCard';
-import { ListRow, ListRowIcon } from '@/components/ListRow';
-import StatusBadge from '@/components/StatusBadge';
-import { listBriefings, topicLabel } from '@/lib/data/briefings';
+import { listBriefings, deleteBriefing, topicLabel } from '@/lib/data/briefings';
 import { listProjects } from '@/lib/data/projects';
 import { fmtDateKa } from '@/lib/utils';
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.04 },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 10 },
+  visible: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 400, damping: 25 } },
+};
+
 export default function Briefings() {
+  const qc = useQueryClient();
   const [searchParams] = useSearchParams();
   const projectParam = searchParams.get('project') ?? '';
 
@@ -28,6 +42,17 @@ export default function Briefings() {
   const filtered = projectParam
     ? (items?.filter((b) => b.projectId === projectParam) ?? null)
     : (items ?? null);
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteBriefing,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['briefings'] }),
+  });
+
+  function handleDelete(id: string) {
+    const ok = window.confirm('წავშალოთ ეს ბრიფინგი?');
+    if (!ok) return;
+    deleteMutation.mutate(id);
+  }
 
   return (
     <div className="space-y-6">
@@ -61,25 +86,61 @@ export default function Briefings() {
       )}
 
       {filtered && filtered.length > 0 && (
-        <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
+        <motion.div initial="hidden" animate="visible" variants={containerVariants} className="grid gap-4">
           {filtered.map((b) => {
             const proj = projects[b.projectId];
-            const topicsSummary = b.topics.slice(0, 3).map(topicLabel).join(', ')
-              + (b.topics.length > 3 ? ` +${b.topics.length - 3}` : '');
-            const subtitle = [proj?.name, topicsSummary].filter(Boolean).join(' · ');
             return (
-              <ListRow
-                key={b.id}
-                to={`/briefings/${b.id}`}
-                icon={<ListRowIcon icon={Users} color="bg-brand-50" iconColor="text-brand-600" />}
-                title={fmtDateKa(b.dateTime)}
-                subtitle={subtitle || undefined}
-                trailing={`${b.participants.length} მონაწილე`}
-                badge={<StatusBadge status={b.status} />}
-              />
+              <motion.div key={b.id} variants={itemVariants}>
+                <Card className="group relative transition hover:border-brand-300 hover:shadow-sm">
+                <Link to={`/briefings/${b.id}`} className="block">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center justify-between text-base">
+                      <span>
+                        {fmtDateKa(b.dateTime)}
+                      </span>
+                      <span className="text-xs font-normal text-neutral-500">{b.status === 'completed' ? 'დასრულებული' : 'დრაფტი'}</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-1 text-sm text-neutral-600">
+                    <div>{proj?.name ?? '—'}</div>
+                    {b.topics.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {b.topics.slice(0, 4).map((t) => (
+                          <span
+                            key={t}
+                            className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-700"
+                          >
+                            {topicLabel(t)}
+                          </span>
+                        ))}
+                        {b.topics.length > 4 && (
+                          <span className="text-xs text-neutral-500">
+                            +{b.topics.length - 4}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    <div className="text-xs text-neutral-500">
+                      {b.participants.length} მონაწილე
+                    </div>
+                  </CardContent>
+                </Link>
+                <div className="absolute right-3 top-3 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                  <Link to={`/briefings/${b.id}`} className="rounded p-1 text-neutral-400 hover:text-brand-600 hover:bg-brand-50">
+                    <Pencil size={14} />
+                  </Link>
+                  <button
+                    onClick={() => handleDelete(b.id)}
+                    className="rounded p-1 text-neutral-400 hover:text-red-600 hover:bg-red-50"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </Card>
+              </motion.div>
             );
           })}
-        </div>
+        </motion.div>
       )}
     </div>
   );

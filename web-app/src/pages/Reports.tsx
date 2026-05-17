@@ -1,14 +1,28 @@
+import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { FileText } from 'lucide-react';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
+import { Pencil, Trash2 } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { SkeletonList } from '@/components/SkeletonCard';
-import { ListRow, ListRowIcon } from '@/components/ListRow';
-import StatusBadge from '@/components/StatusBadge';
-import { listReports } from '@/lib/data/reports';
+import { listReports, deleteReport, type Report } from '@/lib/data/reports';
 import { listProjects } from '@/lib/data/projects';
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.04 },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 10 },
+  visible: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 400, damping: 25 } },
+};
+
 export default function Reports() {
+  const qc = useQueryClient();
   const { data: items, error } = useQuery({
     queryKey: ['reports'],
     queryFn: () => listReports(),
@@ -20,6 +34,17 @@ export default function Reports() {
   const projects = projectList
     ? Object.fromEntries(projectList.map((p) => [p.id, p]))
     : {};
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteReport,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['reports'] }),
+  });
+
+  function handleDelete(item: Report) {
+    const ok = window.confirm('წავშალოთ ეს რეპორტი?');
+    if (!ok) return;
+    deleteMutation.mutate(item);
+  }
 
   return (
     <div className="space-y-6">
@@ -47,24 +72,44 @@ export default function Reports() {
       )}
 
       {items && items.length > 0 && (
-        <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
+        <motion.div initial="hidden" animate="visible" variants={containerVariants} className="grid gap-4">
           {items.map((r) => {
             const proj = projects[r.project_id];
             const slideCount = r.slides?.length ?? 0;
-            const dateStr = new Date(r.created_at).toLocaleDateString('ka-GE');
-            const subtitle = [proj?.name, `${slideCount} სლაიდი`, dateStr].filter(Boolean).join(' · ');
             return (
-              <ListRow
-                key={r.id}
-                to={`/reports/${r.id}`}
-                icon={<ListRowIcon icon={FileText} color="bg-neutral-100" iconColor="text-neutral-600" />}
-                title={r.title || `რეპორტი #${r.id.slice(0, 8)}`}
-                subtitle={subtitle}
-                badge={<StatusBadge status={r.status} />}
-              />
+              <motion.div key={r.id} variants={itemVariants}>
+                <Card className="group relative transition hover:border-brand-300 hover:shadow-sm">
+                <Link to={`/reports/${r.id}`} className="block">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center justify-between text-base">
+                      <span>{r.title || `რეპორტი #${r.id.slice(0, 8)}`}</span>
+                      <span className="text-xs font-normal text-neutral-500">{r.status === 'completed' ? 'დასრულებული' : 'დრაფტი'}</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-sm text-neutral-600">
+                    <div>{proj?.name ?? '—'}</div>
+                    <div className="text-xs text-neutral-500">
+                      {slideCount} სლაიდი ·{' '}
+                      {new Date(r.created_at).toLocaleDateString('ka-GE')}
+                    </div>
+                  </CardContent>
+                </Link>
+                <div className="absolute right-3 top-3 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                  <Link to={`/reports/${r.id}`} className="rounded p-1 text-neutral-400 hover:text-brand-600 hover:bg-brand-50">
+                    <Pencil size={14} />
+                  </Link>
+                  <button
+                    onClick={() => handleDelete(r)}
+                    className="rounded p-1 text-neutral-400 hover:text-red-600 hover:bg-red-50"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </Card>
+              </motion.div>
             );
           })}
-        </div>
+        </motion.div>
       )}
     </div>
   );

@@ -1,11 +1,14 @@
 import { useEffect, useState, memo, useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import type { ReactNode } from 'react';
-import { Menu, ShieldCheck } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Menu, ShieldCheck, Settings } from 'lucide-react';
 import { Sidebar } from './Sidebar';
+import SettingsModal from '@/components/SettingsModal';
 
 export const AppShell = memo(function AppShell({ children }: { children: ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const handleOpenSidebar = useCallback(() => setSidebarOpen(true), []);
   const handleCloseSidebar = useCallback(() => setSidebarOpen(false), []);
   const location = useLocation();
@@ -18,7 +21,7 @@ export const AppShell = memo(function AppShell({ children }: { children: ReactNo
   }, [location.pathname]);
 
   return (
-    <div className="flex h-full min-h-screen bg-neutral-50">
+    <div className="flex h-full min-h-screen bg-neutral-50 dark:bg-neutral-950">
       {/* Mobile backdrop */}
       {sidebarOpen && (
         <div
@@ -32,21 +35,31 @@ export const AppShell = memo(function AppShell({ children }: { children: ReactNo
 
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Mobile top bar */}
-        <header className="flex items-center gap-3 border-b border-neutral-200 bg-white px-4 py-3 lg:hidden">
+        <header className="flex items-center justify-between gap-3 border-b border-neutral-200 bg-white px-4 py-3 dark:border-neutral-800 dark:bg-neutral-900 lg:hidden">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleOpenSidebar}
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-neutral-600 hover:bg-neutral-100"
+              aria-label="მენიუს გახსნა"
+            >
+              <Menu size={20} />
+            </button>
+            <Link to="/home" className="flex items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-500 text-white">
+                <ShieldCheck size={15} />
+              </div>
+              <span className="font-display text-base font-bold text-neutral-900 dark:text-neutral-100">Sarke</span>
+            </Link>
+          </div>
           <button
             type="button"
-            onClick={handleOpenSidebar}
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-neutral-600 hover:bg-neutral-100"
-            aria-label="მენიუს გახსნა"
+            onClick={() => setSettingsOpen(true)}
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
+            aria-label="პარამეტრები"
           >
-            <Menu size={20} />
+            <Settings size={18} />
           </button>
-          <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-500 text-white">
-              <ShieldCheck size={15} />
-            </div>
-            <span className="font-display text-base font-bold text-neutral-900">Sarke</span>
-          </div>
         </header>
 
         {/* Skip-to-content link */}
@@ -57,10 +70,22 @@ export const AppShell = memo(function AppShell({ children }: { children: ReactNo
           კონტენტზე გადასვლა
         </a>
 
-        <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto outline-none">
-          <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-8 sm:py-8">{children}</div>
+        <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto bg-neutral-50 outline-none dark:bg-neutral-950">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={location.pathname}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
+              className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-8 sm:py-8 dark:text-neutral-100"
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
         </main>
       </div>
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 });

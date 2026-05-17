@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePendingCreate } from '@/lib/usePendingCreate';
@@ -67,6 +67,12 @@ export default function ExcavatorInspectionDetail() {
   const qc = useQueryClient();
   const { pendingCreate, lazyCreate } = usePendingCreate<PendingExcavator>();
   const isPending = id === 'draft';
+
+  useEffect(() => {
+    if (isPending && !pendingCreate) {
+      navigate('/inspections', { replace: true });
+    }
+  }, [isPending, pendingCreate, navigate]);
 
   const [signingOpen, setSigningOpen] = useState(false);
   const [justCompleted, setJustCompleted] = useState(false);

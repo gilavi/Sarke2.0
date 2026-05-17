@@ -19,10 +19,10 @@ import Home from '@/pages/Home';
 import Projects from '@/pages/Projects';
 import ProjectDetail from '@/pages/ProjectDetail';
 const NewProject = lazy(() => import('@/pages/NewProject'));
+const EditProject = lazy(() => import('@/pages/EditProject'));
 const NewIncident = lazy(() => import('@/pages/NewIncident'));
 const NewBriefing = lazy(() => import('@/pages/NewBriefing'));
 const NewReport = lazy(() => import('@/pages/NewReport'));
-const NewInspection = lazy(() => import('@/pages/NewInspection'));
 const NewBobcatInspection = lazy(() => import('@/pages/NewBobcatInspection'));
 const BobcatInspectionDetail = lazy(() => import('@/pages/BobcatInspectionDetail'));
 const NewGeneralEquipmentInspection = lazy(() => import('@/pages/NewGeneralEquipmentInspection'));
@@ -62,6 +62,9 @@ const Qualifications = lazy(() => import('@/pages/Qualifications'));
 const Templates = lazy(() => import('@/pages/Templates'));
 const Terms = lazy(() => import('@/pages/Terms'));
 const SafetyGuidePage = lazy(() => import('@/pages/SafetyGuidePage'));
+const History = lazy(() => import('@/pages/History'));
+const Orders = lazy(() => import('@/pages/Orders'));
+const ProjectFiles = lazy(() => import('@/pages/ProjectFiles'));
 
 // HashRouter — GitHub Pages only honors 404.html at the site root, not in
 // subdirectories like /Sarke2.0/app/, so deep BrowserRouter links 404 in
@@ -153,22 +156,23 @@ export default function App() {
             <Route path="/home" element={<Shell><Home /></Shell>} />
             <Route path="/projects" element={<Shell><Projects /></Shell>} />
             <Route path="/projects/new" element={<Shell><NewProject /></Shell>} />
+            <Route path="/projects/:id/edit" element={<Shell><EditProject /></Shell>} />
             <Route path="/projects/:id" element={<Shell><ProjectDetail /></Shell>} />
             <Route path="/inspections" element={<Shell><Inspections /></Shell>} />
-            <Route path="/inspections/new" element={<Shell><NewInspection /></Shell>} />
-            <Route path="/inspections/draft" element={<Shell><InspectionDetail /></Shell>} />
+            <Route path="/inspections/new" element={<Navigate to="/inspections" replace />} />
+            <Route path="/inspections/draft" element={<Navigate to="/inspections" replace />} />
             <Route path="/inspections/:id" element={<Shell><InspectionDetail /></Shell>} />
             <Route path="/bobcat/new" element={<Shell><NewBobcatInspection /></Shell>} />
-            <Route path="/bobcat/draft" element={<Shell><BobcatInspectionDetail /></Shell>} />
+            <Route path="/bobcat/draft" element={<Navigate to="/inspections" replace />} />
             <Route path="/bobcat/:id" element={<Shell><BobcatInspectionDetail /></Shell>} />
             <Route path="/general-equipment/new" element={<Shell><NewGeneralEquipmentInspection /></Shell>} />
-            <Route path="/general-equipment/draft" element={<Shell><GeneralEquipmentInspectionDetail /></Shell>} />
+            <Route path="/general-equipment/draft" element={<Navigate to="/inspections" replace />} />
             <Route path="/general-equipment/:id" element={<Shell><GeneralEquipmentInspectionDetail /></Shell>} />
             <Route path="/excavator/new" element={<Shell><NewExcavatorInspection /></Shell>} />
-            <Route path="/excavator/draft" element={<Shell><ExcavatorInspectionDetail /></Shell>} />
+            <Route path="/excavator/draft" element={<Navigate to="/inspections" replace />} />
             <Route path="/excavator/:id" element={<Shell><ExcavatorInspectionDetail /></Shell>} />
             <Route path="/cargo-platform/new" element={<Shell><NewCargoPlatformInspection /></Shell>} />
-            <Route path="/cargo-platform/draft" element={<Shell><CargoPlatformInspectionDetail /></Shell>} />
+            <Route path="/cargo-platform/draft" element={<Navigate to="/inspections" replace />} />
             <Route path="/cargo-platform/:id" element={<Shell><CargoPlatformInspectionDetail /></Shell>} />
             <Route path="/orders/new" element={<Shell><NewOrder /></Shell>} />
             <Route path="/orders/:id" element={<Shell><OrderDetail /></Shell>} />
@@ -268,6 +272,11 @@ export default function App() {
             <Route path="/qualifications" element={<Shell><Qualifications /></Shell>} />
             <Route path="/templates" element={<Shell><Templates /></Shell>} />
             <Route path="/terms" element={<Shell><Terms /></Shell>} />
+            <Route path="/history" element={<Shell><History /></Shell>} />
+            <Route path="/orders" element={<Shell><Orders /></Shell>} />
+            <Route path="/orders/new" element={<Shell><NewOrder /></Shell>} />
+            <Route path="/orders/:id" element={<Shell><OrderDetail /></Shell>} />
+            <Route path="/project-files/:id" element={<Shell><ProjectFiles /></Shell>} />
             <Route
               path="/safety"
               element={

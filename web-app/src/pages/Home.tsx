@@ -1,6 +1,6 @@
 import { useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { useMemo, memo } from 'react';
+import { useMemo, memo, useState } from 'react';
 import { SkeletonList, SkeletonStatCard } from '@/components/SkeletonCard';
 import { ClipboardCheck, AlertTriangle, Megaphone, FileText, FolderOpen, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,6 +20,7 @@ import { listExcavatorInspections } from '@/lib/data/excavator';
 import { listProjects } from '@/lib/data/projects';
 import { listIncidents } from '@/lib/data/incidents';
 import { listBriefings } from '@/lib/data/briefings';
+import InspectionWizard from '@/components/InspectionWizard';
 
 const InspectionCard = memo(function InspectionCard({
   item,
@@ -70,6 +71,7 @@ export default function Home() {
   const allInspections = useMemo(() => allInspectionsUnsliced.slice(0, 5), [allInspectionsUnsliced]);
   const draftCount = useMemo(() => allInspectionsUnsliced.filter((i) => i.status === 'draft').length, [allInspectionsUnsliced]);
   const totalInspections = useMemo(() => (inspections?.length ?? 0) + (bobcats?.length ?? 0) + (generalEq?.length ?? 0) + (excavators?.length ?? 0), [inspections, bobcats, generalEq, excavators]);
+  const [newInspectionOpen, setNewInspectionOpen] = useState(false);
 
   return (
     <div className="space-y-6">
@@ -87,10 +89,10 @@ export default function Home() {
             <Button>+ ახალი შემოწმება</Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onSelect={() => navigate('/inspections/new')}>
+            <DropdownMenuItem onSelect={() => setNewInspectionOpen(true)}>
               ფასადის ხარაჩოს შემოწმების აქტი
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => navigate('/inspections/new')}>
+            <DropdownMenuItem onSelect={() => setNewInspectionOpen(true)}>
               დამცავი ქამრების შემოწმების აქტი
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => navigate('/bobcat/new')}>
@@ -110,6 +112,7 @@ export default function Home() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        <InspectionWizard open={newInspectionOpen} onClose={() => setNewInspectionOpen(false)} />
       </header>
 
       <SubscriptionCard />

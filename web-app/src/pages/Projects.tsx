@@ -1,16 +1,30 @@
+import { motion } from 'framer-motion';
 import { useState, lazy, Suspense, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { Plus, List, Map } from 'lucide-react';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
+import { Plus, List, Map, Pencil, Trash2 } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ListRow } from '@/components/ListRow';
-import { ProjectAvatar } from '@/components/ProjectAvatar';
-import { listProjects } from '@/lib/data/projects';
+import { listProjects, deleteProject } from '@/lib/data/projects';
 import { SkeletonList } from '@/components/SkeletonCard';
 
 const ProjectMap = lazy(() => import('@/components/ProjectMap'));
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.04 },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 10 },
+  visible: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 400, damping: 25 } },
+};
+
 export default function Projects() {
+  const qc = useQueryClient();
   const { data: items, error, isLoading } = useQuery({
     queryKey: ['projects'],
     queryFn: listProjects,
@@ -19,6 +33,17 @@ export default function Projects() {
   const [view, setView] = useState<'list' | 'map'>('list');
   const handleSetList = useCallback(() => setView('list'), []);
   const handleSetMap = useCallback(() => setView('map'), []);
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteProject,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['projects'] }),
+  });
+
+  function handleDelete(id: string) {
+    const ok = window.confirm('წავშალოთ ეს პროექტი? ყველა დაკავშირებული ჩანაწერი წაიშლება.');
+    if (!ok) return;
+    deleteMutation.mutate(id);
+  }
 
   const pinsWithGPS = (items ?? []).filter(
     (p): p is typeof p & { latitude: number; longitude: number } =>
@@ -96,18 +121,34 @@ export default function Projects() {
       )}
 
       {items && view === 'list' && items.length > 0 && (
-        <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
+        <motion.div initial="hidden" animate="visible" variants={containerVariants} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((p) => (
-            <ListRow
-              key={p.id}
-              to={`/projects/${p.id}`}
-              icon={<ProjectAvatar project={p} size="sm" />}
-              title={p.company_name || p.name}
-              subtitle={p.address ?? undefined}
-              trailing={new Date(p.created_at).toLocaleDateString('ka-GE')}
-            />
+            <motion.div key={p.id} variants={itemVariants}>
+              <Card className="group relative h-full transition hover:border-brand-300 hover:shadow-sm">
+              <Link to={`/projects/${p.id}`} className="block h-full">
+                <CardHeader>
+                  <CardTitle className="text-lg">{p.name}</CardTitle>
+                  <CardDescription>{p.company_name}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-neutral-600">{p.address || '—'}</p>
+                </CardContent>
+              </Link>
+              <div className="absolute right-3 top-3 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                <Link to={`/projects/${p.id}/edit`} className="rounded p-1 text-neutral-400 hover:text-brand-600 hover:bg-brand-50">
+                  <Pencil size={14} />
+                </Link>
+                <button
+                  onClick={() => handleDelete(p.id)}
+                  className="rounded p-1 text-neutral-400 hover:text-red-600 hover:bg-red-50"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            </Card>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       )}
     </div>
   );

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Camera, FileText, X } from 'lucide-react';
+import InspectionWizard from '@/components/InspectionWizard';
 import { SkeletonDetailPage } from '@/components/SkeletonCard';
 import { toast } from 'sonner';
 import { usePendingCreate } from '@/lib/usePendingCreate';
@@ -44,6 +45,12 @@ export default function InspectionDetail() {
   const { pendingCreate, lazyCreate } = usePendingCreate<PendingInspection>();
   const isPending = id === 'draft';
 
+  useEffect(() => {
+    if (isPending && !pendingCreate) {
+      navigate('/inspections', { replace: true });
+    }
+  }, [isPending, pendingCreate, navigate]);
+
   const inspectionQ = useQuery({
     queryKey: ['inspection', id],
     queryFn: () => getInspection(id!),
@@ -54,7 +61,9 @@ export default function InspectionDetail() {
     queryFn: () => listInspectionPdfs(id!),
     enabled: !!id && !isPending,
   });
-  const inspection: Inspection | null = inspectionQ.data ?? (isPending && pendingCreate ? {
+  const listCache = qc.getQueryData<Inspection[]>(['inspections']);
+  const cachedInspection = listCache?.find((i) => i.id === id) ?? null;
+  const inspection: Inspection | null = inspectionQ.data ?? cachedInspection ?? (isPending && pendingCreate ? {
     id: 'draft',
     project_id: pendingCreate.projectId,
     user_id: '',
@@ -86,14 +95,37 @@ export default function InspectionDetail() {
   const [conclusionDraft, setConclusionDraft] = useState<string | null>(null);
   const [safeDraft, setSafeDraft] = useState<boolean | null | undefined>(undefined);
   const [signingOpen, setSigningOpen] = useState(false);
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const userClosedWizard = useRef(false);
+
+  /* Auto-open wizard for draft inspections */
+  useEffect(() => {
+    if (inspection?.status === 'draft' && !wizardOpen && !justCompleted && !userClosedWizard.current) {
+      setWizardOpen(true);
+    }
+  }, [inspection?.status, wizardOpen, justCompleted]);
 
   const pdfs = pdfsQ.data ?? [];
   const questions = questionsQ.data ?? [];
   const answers = answersQ.data ?? [];
   const isDraft = inspection?.status === 'draft';
 
+  const handleWizardClose = () => {
+    userClosedWizard.current = true;
+    setWizardOpen(false);
+    if (isDraft) {
+      navigate('/inspections');
+    }
+  };
+
   const queryError = inspectionQ.error ?? pdfsQ.error ?? questionsQ.error ?? answersQ.error;
-  const error = queryError instanceof Error ? queryError.message : queryError ? String(queryError) : null;
+  const error = queryError instanceof Error
+    ? queryError.message
+    : queryError && typeof queryError === 'object' && 'message' in queryError
+    ? String((queryError as any).message)
+    : queryError
+    ? JSON.stringify(queryError)
+    : null;
 
   const answerMutation = useMutation({
     mutationFn: upsertAnswer,
@@ -189,7 +221,16 @@ export default function InspectionDetail() {
         {error}
       </div>
     );
-  if (!inspection) return <p className="text-sm text-neutral-500">აქტი ვერ მოიძებნა.</p>;
+  if (!inspection) {
+    return (
+      <div className="space-y-3">
+        <p className="text-sm text-neutral-500">აქტი ვერ მოიძებნა (ID: {id}).</p>
+        <Link to="/inspections" className="inline-flex items-center rounded-md bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700">
+          ← აქტების სია
+        </Link>
+      </div>
+    );
+  }
 
   // Group questions by section for nicer rendering
   const sections = [...new Set(questions.map((q) => q.section))].sort((a, b) => a - b);
@@ -215,6 +256,19 @@ export default function InspectionDetail() {
           </div>
         </div>
       )}
+      <InspectionWizard
+        open={wizardOpen}
+        onClose={handleWizardClose}
+        inspection={inspection}
+        initialQuestions={questions}
+        initialAnswers={answers}
+        onComplete={() => {
+          setJustCompleted(true);
+          setWizardOpen(false);
+          qc.invalidateQueries({ queryKey: ['inspection', id] });
+        }}
+      />
+
       <header className="flex items-start justify-between gap-4">
         <div>
           <Link to="/inspections" className="text-sm text-brand-600 hover:underline">
@@ -769,9 +823,7 @@ function QuestionRow({
       )}
 
       {q.type === 'component_grid' && (
-        <p className="text-xs italic text-neutral-500">
-          კომპონენტების ბადე ფასდება მობილურ აპში.
-        </p>
+        <ComponentGridReadOnly question={q} answer={ans} />
       )}
 
       <Input
@@ -791,6 +843,61 @@ function QuestionRow({
         placeholder="კომენტარი (არასავალდებულო)"
         className="text-xs"
       />
+    </div>
+  );
+}
+
+
+/* ─── Component Grid (read-only) ─── */
+
+function ComponentGridReadOnly({ question, answer }: { question: Question; answer?: Answer }) {
+  const rows = question.grid_rows ?? [];
+  const cols = question.grid_cols ?? [];
+  const statusCols = cols.filter((c) => c !== 'კომენტარი');
+  const hasCommentCol = cols.includes('კომენტარი');
+  const values = answer?.grid_values ?? {};
+
+  if (rows.length === 0 || cols.length === 0) {
+    return <p className="text-xs text-neutral-500">ბადის მონაცემები ვერ მოიძებნა.</p>;
+  }
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-neutral-200">
+      <table className="w-full text-xs">
+        <thead className="bg-neutral-50">
+          <tr>
+            <th className="px-3 py-2 text-left font-semibold text-neutral-600">რიგი</th>
+            {statusCols.map((col) => (
+              <th key={col} className="px-3 py-2 text-center font-semibold text-neutral-600">{col}</th>
+            ))}
+            {hasCommentCol && <th className="px-3 py-2 text-left font-semibold text-neutral-600">კომენტარი</th>}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-neutral-100">
+          {rows.map((row) => (
+            <tr key={row} className="bg-white">
+              <td className="px-3 py-2 font-medium text-neutral-800">{row}</td>
+              {statusCols.map((col) => (
+                <td key={col} className="px-3 py-2 text-center">
+                  <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                    values[row]?.[col] === 'კი' ? 'bg-emerald-100 text-emerald-700' :
+                    values[row]?.[col] === 'არა' ? 'bg-red-100 text-red-700' :
+                    values[row]?.[col] ? 'bg-neutral-100 text-neutral-600' :
+                    'text-neutral-300'
+                  }`}>
+                    {values[row]?.[col] || '—'}
+                  </span>
+                </td>
+              ))}
+              {hasCommentCol && (
+                <td className="px-3 py-2 text-neutral-500">
+                  {values[row]?.['კომენტარი'] || '—'}
+                </td>
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

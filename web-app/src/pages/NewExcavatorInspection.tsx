@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { listProjects } from '@/lib/data/projects';
+import { createExcavatorInspection } from '@/lib/data/excavator';
 
 export default function NewExcavatorInspection() {
   const navigate = useNavigate();
@@ -24,21 +26,26 @@ export default function NewExcavatorInspection() {
 
   const canSubmit = !!projectId;
 
-  function handleSubmit() {
-    if (!canSubmit) return;
-    navigate('/excavator/draft', {
-      state: {
-        pendingCreate: {
-          projectId,
-          serialNumber: serialNumber.trim() || null,
-          inventoryNumber: inventoryNumber.trim() || null,
-          projectName,
-          department: department.trim() || null,
-          inspectorName: inspectorName.trim() || null,
-          inspectionDate: inspectionDate || null,
-        },
-      },
-    });
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleSubmit() {
+    if (!canSubmit || submitting) return;
+    setSubmitting(true);
+    try {
+      const created = await createExcavatorInspection({
+        projectId,
+        serialNumber: serialNumber.trim() || null,
+        inventoryNumber: inventoryNumber.trim() || null,
+        projectName,
+        department: department.trim() || null,
+        inspectorName: inspectorName.trim() || null,
+        inspectionDate: inspectionDate || null,
+      });
+      navigate(`/excavator/${created.id}`, { replace: true });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -135,8 +142,8 @@ export default function NewExcavatorInspection() {
             </div>
 
             <div className="flex gap-2 pt-2">
-              <Button type="submit" disabled={!canSubmit}>
-                შექმნა
+              <Button type="submit" disabled={!canSubmit || submitting}>
+                {submitting ? 'იქმნება…' : 'შექმნა'}
               </Button>
               <Button
                 type="button"

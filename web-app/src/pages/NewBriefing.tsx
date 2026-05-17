@@ -114,7 +114,7 @@ export default function NewBriefing() {
       {step === 0 && (
         <div className="space-y-5">
           <p className="text-sm text-neutral-500">
-            ხელმოწერების შეგროვება ხდება მობილურ აპში — აქ შექმნილი ბრიფინგი ინახება როგორც „დრაფტი".
+            შეავსეთ ბრიფინგის ინფორმაცია. ხელმოწერების შეგროვება შესაძლებელია ბრიფინგის დეტალურ გვერდზე.
           </p>
 
           {prefilledProjectId ? (

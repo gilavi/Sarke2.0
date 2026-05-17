@@ -10,7 +10,7 @@ import {
 import { getProject } from '@/lib/data/projects';
 import { A4_PRINT_STYLES, printAfterRender } from '@/lib/printable';
 
-function answerLabel(q: { type: string }, a?: Answer): string {
+function answerLabel(q: { type: string; grid_rows?: string[] | null; grid_cols?: string[] | null }, a?: Answer): string {
   if (!a) return '—';
   if (q.type === 'yesno') {
     if (a.value_bool === true) return 'კი';
@@ -19,6 +19,17 @@ function answerLabel(q: { type: string }, a?: Answer): string {
   }
   if (q.type === 'measure') return a.value_num != null ? String(a.value_num) : '—';
   if (q.type === 'freetext') return a.value_text || '—';
+  if (q.type === 'component_grid') {
+    if (!a.grid_values || !q.grid_rows || !q.grid_cols) return '—';
+    const rows = q.grid_rows;
+    const cols = q.grid_cols.filter((c) => c !== 'კომენტარი');
+    return rows
+      .map((row) => {
+        const rowVals = cols.map((col) => `${col}: ${a.grid_values?.[row]?.[col] || '—'}`).join(', ');
+        return `${row}: ${rowVals}`;
+      })
+      .join('; ');
+  }
   return '—';
 }
 
@@ -50,11 +61,14 @@ export default function InspectionPrint() {
     inspectionQ.isSuccess && projectQ.isSuccess && questionsQ.isSuccess && answersQ.isSuccess;
 
   useEffect(() => {
-    if (ready) printAfterRender(500);
+    if (ready) printAfterRender(2000);
   }, [ready]);
 
+  if (inspectionQ.isLoading) {
+    return <p style={{ padding: 24 }}>იტვირთება…</p>;
+  }
   if (!inspectionQ.data) {
-    return <p style={{ padding: 24 }}>{inspectionQ.isLoading ? 'იტვირთება…' : 'ვერ მოიძებნა.'}</p>;
+    return <p style={{ padding: 24 }}>აქტი ვერ მოიძებნა.</p>;
   }
 
   const item = inspectionQ.data;

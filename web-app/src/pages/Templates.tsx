@@ -32,7 +32,7 @@ export default function Templates() {
       <header>
         <h1 className="font-display text-3xl font-bold text-neutral-900">შაბლონები</h1>
         <p className="mt-1 text-sm text-neutral-500">
-          სისტემური და თქვენ მიერ შექმნილი შემოწმების შაბლონები. ახალი შაბლონი იქმნება მობილურ აპში.
+          სისტემური და თქვენ მიერ შექმნილი შემოწმების შაბლონები.
         </p>
       </header>
 

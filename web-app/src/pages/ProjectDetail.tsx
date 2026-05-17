@@ -1,11 +1,8 @@
 import { useRef, useState } from 'react';
-import StatusBadge from '@/components/StatusBadge';
 import ProjectMap from '@/components/ProjectMap';
-import { EditableProjectAvatar } from '@/components/ProjectAvatar';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Download, Upload, Pencil, Check, X, Trash2, Plus } from 'lucide-react';
-import { SkeletonDetailPage } from '@/components/SkeletonCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,9 +26,8 @@ import { listInspections } from '@/lib/data/inspections';
 import { listBobcatInspections } from '@/lib/data/bobcat';
 import { listExcavatorInspections } from '@/lib/data/excavator';
 import { listGeneralEquipmentInspections } from '@/lib/data/generalEquipment';
-import { listCargoPlatformInspections } from '@/lib/data/cargoPlatform';
 import { listBriefings, topicLabel } from '@/lib/data/briefings';
-import { listOrdersByProject, ORDER_DOCUMENT_TYPE_LABEL, type Order } from '@/lib/data/orders';
+import InspectionWizard from '@/components/InspectionWizard';
 import {
   listProjectFiles,
   signedFileUrl,
@@ -40,6 +36,7 @@ import {
   formatSize,
   type ProjectFile,
 } from '@/lib/data/projectFiles';
+import { listOrdersByProject } from '@/lib/data/orders';
 import { useAuth } from '@/lib/auth';
 
 const INCIDENT_TYPE_COLOR: Record<IncidentType, string> = {
@@ -57,6 +54,18 @@ const CREW_ROLE_LABEL: Record<string, string> = {
   other: 'სხვა',
 };
 
+function StatusBadge({ status }: { status: string }) {
+  const isCompleted = status === 'completed';
+  return (
+    <span
+      className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+        isCompleted ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'
+      }`}
+    >
+      {isCompleted ? 'დასრულებული' : 'მუშავდება'}
+    </span>
+  );
+}
 
 function SectionHeader({
   title,
@@ -96,6 +105,7 @@ export default function ProjectDetail() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const qc = useQueryClient();
+  const [newInspectionOpen, setNewInspectionOpen] = useState(false);
 
   const projectQ = useQuery({
     queryKey: ['project', id],
@@ -122,11 +132,6 @@ export default function ProjectDetail() {
   const generalEqQ = useQuery({
     queryKey: ['generalEquipmentInspections', id],
     queryFn: () => listGeneralEquipmentInspections(id!),
-    enabled: !!id,
-  });
-  const cargoPlatformQ = useQuery({
-    queryKey: ['cargoPlatformInspections', id],
-    queryFn: () => listCargoPlatformInspections(id!),
     enabled: !!id,
   });
   const briefingsQ = useQuery({
@@ -166,7 +171,6 @@ export default function ProjectDetail() {
     ...(bobcatsQ.data ?? []).map((i) => ({ id: i.id, label: i.equipmentModel || i.company || `ციცხვიანი #${i.id.slice(0, 8)}`, status: i.status, href: `/bobcat/${i.id}`, date: i.createdAt })),
     ...(excavatorsQ.data ?? []).map((i) => ({ id: i.id, label: `ექსკავატორი${i.serialNumber ? ` — ${i.serialNumber}` : ''}`, status: i.status, href: `/excavator/${i.id}`, date: i.createdAt })),
     ...(generalEqQ.data ?? []).map((i) => ({ id: i.id, label: i.objectName || `ტექ. #${i.id.slice(0, 8)}`, status: i.status, href: `/general-equipment/${i.id}`, date: i.createdAt })),
-    ...(cargoPlatformQ.data ?? []).map((i) => ({ id: i.id, label: i.company || `პლატფ. #${i.id.slice(0, 8)}`, status: i.status, href: `/cargo-platform/${i.id}`, date: i.createdAt })),
   ].sort((a, b) => b.date.localeCompare(a.date));
   const briefings = briefingsQ.data ?? [];
   const files = filesQ.data ?? [];
@@ -177,7 +181,7 @@ export default function ProjectDetail() {
 
   const queryError =
     projectQ.error ?? inspectionsQ.error ?? briefingsQ.error ?? filesQ.error ??
-    signersQ.error ?? incidentsQ.error ?? reportsQ.error;
+    signersQ.error ?? incidentsQ.error ?? reportsQ.error ?? ordersQ.error;
 
   const [actionError, setActionError] = useState<string | null>(null);
   const error = actionError ?? (queryError instanceof Error ? queryError.message : queryError ? String(queryError) : null);
@@ -201,6 +205,7 @@ export default function ProjectDetail() {
   const [crewBusy, setCrewBusy] = useState(false);
 
   const [logoUploading, setLogoUploading] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   async function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -220,6 +225,7 @@ export default function ProjectDetail() {
       setActionError(e instanceof Error ? e.message : String(e));
     } finally {
       setLogoUploading(false);
+      if (logoInputRef.current) logoInputRef.current.value = '';
     }
   }
 
@@ -403,7 +409,7 @@ export default function ProjectDetail() {
       </div>
     );
   if (!project) {
-    if (projectQ.isLoading) return <SkeletonDetailPage />;
+    if (projectQ.isLoading) return <p className="text-sm text-neutral-500">იტვირთება…</p>;
     return <p className="text-sm text-neutral-500">პროექტი ვერ მოიძებნა.</p>;
   }
 
@@ -419,11 +425,30 @@ export default function ProjectDetail() {
         <div className="mt-2 flex items-start justify-between gap-4">
           <div className="flex items-center gap-4">
             {/* Logo avatar */}
-            <EditableProjectAvatar
-              project={project}
-              size="lg"
-              onFileInputChange={(e) => void handleLogoChange(e)}
+            <button
+              type="button"
+              title="ლოგოს შეცვლა"
               disabled={logoUploading}
+              onClick={() => logoInputRef.current?.click()}
+              className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100 transition hover:border-brand-400 disabled:opacity-60"
+            >
+              {project.logo ? (
+                <img src={project.logo} alt="logo" className="h-full w-full object-cover" />
+              ) : (
+                <span className="flex h-full w-full items-center justify-center text-lg font-bold text-neutral-400">
+                  {project.name.charAt(0).toUpperCase()}
+                </span>
+              )}
+              <span className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 transition hover:opacity-100">
+                <Upload size={16} className="text-white" />
+              </span>
+            </button>
+            <input
+              ref={logoInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => void handleLogoChange(e)}
             />
             <div>
               <h1 className="font-display text-3xl font-bold text-neutral-900">{project.name}</h1>
@@ -478,7 +503,7 @@ export default function ProjectDetail() {
                     id="edit-lat"
                     type="number"
                     step="any"
-                    placeholder="განედი (Latitude)"
+                    placeholder="გრძედი (Latitude)"
                     value={editForm.latitude}
                     onChange={(e) => setEditForm((f) => ({ ...f, latitude: e.target.value }))}
                     className="flex-1 min-w-[140px]"
@@ -487,7 +512,7 @@ export default function ProjectDetail() {
                     id="edit-lng"
                     type="number"
                     step="any"
-                    placeholder="გრძივი (Longitude)"
+                    placeholder="გრძელი (Longitude)"
                     value={editForm.longitude}
                     onChange={(e) => setEditForm((f) => ({ ...f, longitude: e.target.value }))}
                     className="flex-1 min-w-[140px]"
@@ -738,21 +763,19 @@ export default function ProjectDetail() {
         <SectionHeader
           title="შემოწმების აქტები"
           count={allProjectInspections.length}
-          viewAllTo={`/inspections?project=${id}`}
+          viewAllTo={allProjectInspections.length > 5 ? `/inspections?project=${id}` : undefined}
           action={
-            <Link to={`/inspections/new?project=${id}`}>
-              <Button variant="outline" size="sm">
-                <Plus size={14} className="mr-1" />
-                ახალი
-              </Button>
-            </Link>
+            <Button variant="outline" size="sm" onClick={() => setNewInspectionOpen(true)}>
+              <Plus size={14} className="mr-1" />
+              ახალი
+            </Button>
           }
         />
         {allProjectInspections.length === 0 ? (
           <EmptyState text="აქტები ჯერ არ არის." />
         ) : (
           <ul className="divide-y divide-neutral-200 rounded-lg border border-neutral-200 bg-white">
-            {allProjectInspections.map((i) => (
+            {allProjectInspections.slice(0, 5).map((i) => (
               <li key={i.id}>
                 <Link
                   to={i.href}
@@ -772,6 +795,7 @@ export default function ProjectDetail() {
         <SectionHeader
           title="ინციდენტები"
           count={incidents.length}
+          viewAllTo={incidents.length > 5 ? `/incidents?project=${id}` : undefined}
           action={
             <Link to={`/incidents/new?project=${id}`}>
               <Button variant="outline" size="sm">
@@ -785,7 +809,7 @@ export default function ProjectDetail() {
           <EmptyState text="ინციდენტები ჯერ არ არის." />
         ) : (
           <ul className="divide-y divide-neutral-200 rounded-lg border border-neutral-200 bg-white">
-            {incidents.map((i) => (
+            {incidents.slice(0, 5).map((i) => (
               <li key={i.id}>
                 <Link
                   to={`/incidents/${i.id}`}
@@ -821,7 +845,7 @@ export default function ProjectDetail() {
         <SectionHeader
           title="ბრიფინგები"
           count={briefings.length}
-          viewAllTo={`/briefings?project=${id}`}
+          viewAllTo={briefings.length > 5 ? `/briefings?project=${id}` : undefined}
           action={
             <Link to={`/briefings/new?project=${id}`}>
               <Button variant="outline" size="sm">
@@ -835,7 +859,7 @@ export default function ProjectDetail() {
           <EmptyState text="ბრიფინგები ჯერ არ არის." />
         ) : (
           <ul className="divide-y divide-neutral-200 rounded-lg border border-neutral-200 bg-white">
-            {briefings.map((b) => (
+            {briefings.slice(0, 5).map((b) => (
               <li key={b.id}>
                 <Link
                   to={`/briefings/${b.id}`}
@@ -868,6 +892,7 @@ export default function ProjectDetail() {
         <SectionHeader
           title="რეპორტები"
           count={reports.length}
+          viewAllTo={reports.length > 5 ? `/reports?project=${id}` : undefined}
           action={
             <Link to={`/reports/new?project=${id}`}>
               <Button variant="outline" size="sm">
@@ -881,7 +906,7 @@ export default function ProjectDetail() {
           <EmptyState text="რეპორტები ჯერ არ არის." />
         ) : (
           <ul className="divide-y divide-neutral-200 rounded-lg border border-neutral-200 bg-white">
-            {reports.map((r) => (
+            {reports.slice(0, 5).map((r) => (
               <li key={r.id}>
                 <Link
                   to={`/reports/${r.id}`}
@@ -904,52 +929,6 @@ export default function ProjectDetail() {
         )}
       </section>
 
-      {/* ბრძანებები */}
-      <section>
-        <SectionHeader
-          title="ბრძანებები"
-          count={orders.length}
-          action={
-            <Link to={`/orders/new?project=${id}`}>
-              <Button variant="outline" size="sm">+ ახალი ბრძანება</Button>
-            </Link>
-          }
-        />
-        {ordersQ.isLoading ? (
-          <div className="space-y-2">
-            {[1, 2].map(i => (
-              <div key={i} className="animate-pulse h-14 rounded-lg border border-neutral-200 bg-white" />
-            ))}
-          </div>
-        ) : orders.length === 0 ? (
-          <EmptyState text="ბრძანებები ჯერ არ არის." />
-        ) : (
-          <ul className="divide-y divide-neutral-200 rounded-lg border border-neutral-200 bg-white">
-            {orders.map((o: Order) => (
-              <li key={o.id}>
-                <Link
-                  to={`/orders/${o.id}`}
-                  className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-neutral-50 transition-colors"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-neutral-900">
-                      {ORDER_DOCUMENT_TYPE_LABEL[o.documentType] ?? o.documentType}
-                    </p>
-                    <p className="text-xs text-neutral-500">
-                      {new Date(o.createdAt).toLocaleDateString('ka-GE')}
-                      {' · '}
-                      <span className={o.status === 'completed' ? 'text-green-700' : 'text-amber-700'}>
-                        {o.status === 'completed' ? 'დასრულებული' : 'მონახაზი'}
-                      </span>
-                    </p>
-                  </div>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
       {/* Files */}
       <section>
         <input
@@ -961,6 +940,7 @@ export default function ProjectDetail() {
         <SectionHeader
           title="ფაილები"
           count={files.length}
+          viewAllTo={files.length > 5 ? `/project-files/${id}` : undefined}
           action={
             <Button
               variant="outline"
@@ -977,7 +957,7 @@ export default function ProjectDetail() {
           <EmptyState text="ფაილები ჯერ არ არის." />
         ) : (
           <ul className="divide-y divide-neutral-200 rounded-lg border border-neutral-200 bg-white">
-            {files.map((f) => (
+            {files.slice(0, 5).map((f) => (
               <li key={f.id} className="flex items-center justify-between gap-3 px-4 py-3">
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm text-neutral-800">{f.name}</div>
@@ -1014,6 +994,49 @@ export default function ProjectDetail() {
         )}
       </section>
 
+      {/* Orders */}
+      <section>
+        <SectionHeader
+          title="ბრძანებები"
+          count={orders.length}
+          viewAllTo={orders.length > 5 ? `/orders?project=${id}` : undefined}
+          action={
+            <Link to={`/orders/new?project=${id}`}>
+              <Button variant="outline" size="sm">
+                <Plus size={14} className="mr-1" />
+                ახალი
+              </Button>
+            </Link>
+          }
+        />
+        {orders.length === 0 ? (
+          <EmptyState text="ბრძანებები ჯერ არ არის." />
+        ) : (
+          <ul className="divide-y divide-neutral-200 rounded-lg border border-neutral-200 bg-white">
+            {orders.slice(0, 5).map((o) => (
+              <li key={o.id}>
+                <Link
+                  to={`/orders/${o.id}`}
+                  className="flex items-center justify-between px-4 py-3 hover:bg-neutral-50"
+                >
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-sm text-neutral-800">
+                      {o.documentType === 'labor_safety_specialist'
+                        ? 'შრომის უსაფრთხოების სპეციალისტის დანიშვნა'
+                        : 'ალკოჰოლური და ნარკოტიკული თრობის კონტროლი'}
+                    </span>
+                    <span className="text-xs text-neutral-500">
+                      {new Date(o.createdAt).toLocaleDateString('ka-GE')}
+                    </span>
+                  </div>
+                  <StatusBadge status={o.status} />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
       {/* Danger zone */}
       <section className="pt-4">
         <div className="rounded-lg border border-red-200 bg-red-50 p-4">
@@ -1038,6 +1061,8 @@ export default function ProjectDetail() {
           </div>
         </div>
       </section>
+
+      <InspectionWizard open={newInspectionOpen} onClose={() => setNewInspectionOpen(false)} defaultProjectId={id ?? ''} />
     </div>
   );
 }

@@ -1,11 +1,12 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Receipt, User, KeyRound, Award, FileText, Box, ScrollText, ChevronRight } from 'lucide-react';
+import { Receipt, User, KeyRound, Award, FileText, Box, ScrollText, ChevronRight, Settings } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import SettingsModal from '@/components/SettingsModal';
 import { SubscriptionCard } from '@/components/SubscriptionCard';
 import { useAuth } from '@/lib/auth';
 import { updateUserName } from '@/lib/data/account';
@@ -185,6 +186,7 @@ function PasswordCard() {
 
 export default function Account() {
   const { data: history, isLoading } = usePaymentHistory();
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   return (
     <div className="space-y-6">
@@ -229,6 +231,21 @@ export default function Account() {
         <div className="lg:col-span-2">
           <Card>
             <CardContent>
+              <div className="divide-y divide-neutral-100">
+                <button
+                  onClick={() => setSettingsOpen(true)}
+                  className="flex w-full items-center gap-3 px-4 py-3 text-sm text-neutral-700 hover:bg-neutral-50"
+                >
+                  <Settings size={15} className="text-neutral-400" />
+                  <span className="flex-1 text-left">პარამეტრები / Settings</span>
+                  <ChevronRight size={14} className="text-neutral-300" />
+                </button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="mt-6">
+            <CardContent>
               <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-neutral-500">
                 გადახდის ისტორია
               </div>
@@ -267,6 +284,7 @@ export default function Account() {
           </Card>
         </div>
       </div>
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }

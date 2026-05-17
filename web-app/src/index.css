@@ -8,11 +8,45 @@ body,
   height: 100%;
 }
 
+:root {
+  --bg-body: #FAFAF8;
+  --bg-card: #FFFFFF;
+  --bg-hover: #F5F5F4;
+  --bg-active: #E7E5E4;
+  --text-primary: #0E0C08;
+  --text-secondary: #57534E;
+  --text-muted: #A8A29E;
+  --border-color: #E7E5E4;
+  --brand-50: #E8F5F0;
+  --brand-500: #147A4F;
+  --brand-600: #106240;
+  --brand-700: #0C4930;
+  --danger: #DC2626;
+  --danger-bg: #FEF2F2;
+}
+
+.dark {
+  --bg-body: #0C0A09;
+  --bg-card: #1C1917;
+  --bg-hover: #292524;
+  --bg-active: #44403C;
+  --text-primary: #FAFAF9;
+  --text-secondary: #D6D3D1;
+  --text-muted: #A8A29E;
+  --border-color: #44403C;
+  --brand-50: #143828;
+  --brand-500: #47AF87;
+  --brand-600: #75C3A5;
+  --brand-700: #A3D7C3;
+  --danger: #EF4444;
+  --danger-bg: #450A0A;
+}
+
 body {
   margin: 0;
   font-family: 'Inter', system-ui, sans-serif;
-  background: #FAFAF8;
-  color: #0E0C08;
+  background: var(--bg-body);
+  color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -34,6 +68,35 @@ body {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Dark mode overrides for third-party components and native inputs */
+.dark .leaflet-container {
+  filter: brightness(0.75) contrast(1.1);
+}
+.dark select {
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+  border-color: var(--border-color);
+}
+.dark select option {
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+}
+.dark input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+}
+.dark canvas {
+  background-color: var(--bg-card);
+}
+.dark [role="dialog"] {
+  color: var(--text-primary);
+}
+.dark [data-radix-popper-content-wrapper] {
+  --radix-popover-trigger-width: auto;
+}
+.dark [data-state="open"] {
+  background-color: var(--bg-card);
 }
 
 /* GPU acceleration for animated elements */

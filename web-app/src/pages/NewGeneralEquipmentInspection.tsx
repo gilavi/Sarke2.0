@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { listProjects } from '@/lib/data/projects';
-import { type GEInspectionType } from '@/lib/data/generalEquipment';
+import { createGeneralEquipmentInspection, type GEInspectionType } from '@/lib/data/generalEquipment';
 
 const TYPE_LABELS: Record<GEInspectionType, string> = {
   initial: 'პირველადი',
@@ -31,22 +32,27 @@ export default function NewGeneralEquipmentInspection() {
 
   const canSubmit = !!projectId;
 
-  function handleSubmit() {
-    if (!canSubmit) return;
-    navigate('/general-equipment/draft', {
-      state: {
-        pendingCreate: {
-          projectId,
-          objectName: objectName.trim() || null,
-          activityType: activityType.trim() || null,
-          actNumber: actNumber.trim() || null,
-          department: department.trim() || null,
-          inspectorName: inspectorName.trim() || null,
-          inspectionDate: inspectionDate || null,
-          inspectionType,
-        },
-      },
-    });
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleSubmit() {
+    if (!canSubmit || submitting) return;
+    setSubmitting(true);
+    try {
+      const created = await createGeneralEquipmentInspection({
+        projectId,
+        objectName: objectName.trim() || null,
+        activityType: activityType.trim() || null,
+        inspectionType,
+        department: department.trim() || null,
+        inspectorName: inspectorName.trim() || null,
+        actNumber: actNumber.trim() || null,
+        inspectionDate: inspectionDate || null,
+      });
+      navigate(`/general-equipment/${created.id}`, { replace: true });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -174,8 +180,8 @@ export default function NewGeneralEquipmentInspection() {
             </div>
 
             <div className="flex gap-2 pt-2">
-              <Button type="submit" disabled={!canSubmit}>
-                შექმნა
+              <Button type="submit" disabled={!canSubmit || submitting}>
+                {submitting ? 'იქმნება…' : 'შექმნა'}
               </Button>
               <Button
                 type="button"
