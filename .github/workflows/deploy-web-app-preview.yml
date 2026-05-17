@@ -1,0 +1,58 @@
+name: Deploy web-app preview (WEBversion2)
+
+# Builds the web-app from the WEBversion2 branch and deploys it to
+# /app/preview/ on gh-pages so the production /app/ stays untouched.
+
+on:
+  push:
+    branches: [WEBversion2]
+    paths:
+      - 'web-app/**'
+      - '.github/workflows/deploy-web-app-preview.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gh-pages-deploy-preview
+  cancel-in-progress: false
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web-app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: WEBversion2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: web-app/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci --legacy-peer-deps
+          else
+            npm install --legacy-peer-deps --no-audit --no-fund
+          fi
+
+      - name: Build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://seskuthiopywrgntsgfw.supabase.co' }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'sb_publishable_OF_L2E27-Uv8MMw87fWfSA_znD7moYY' }}
+        run: npm run build
+
+      - name: Deploy to gh-pages /app/preview/
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./web-app/dist
+          destination_dir: app/preview
+          keep_files: true
