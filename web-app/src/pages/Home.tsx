@@ -160,11 +160,11 @@ export default function Home() {
         {/* Left: 4 stat cards in a 2×2 grid */}
         <motion.div variants={fadeUpItem()} className="xl:col-span-2">
           {isLoading ? (
-            <div className="grid h-full gap-4 sm:grid-cols-2">
-              {[...Array(4)].map((_, i) => <SkeletonStatCard key={i} className="h-full" />)}
+            <div className="grid gap-3 sm:grid-cols-2">
+              {[...Array(4)].map((_, i) => <SkeletonStatCard key={i} />)}
             </div>
           ) : (
-            <div className="grid h-full gap-4 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-2">
               <StatCard
                 title="შემოწმების აქტები"
                 value={totalInspections}
@@ -175,7 +175,6 @@ export default function Home() {
                 trendPrevious={Math.max(1, totalInspections - 2)}
                 trendLabel="წინა თვესთან"
                 staggerIndex={0}
-                className="h-full"
               />
               <StatCard
                 title="პროექტები"
@@ -184,7 +183,6 @@ export default function Home() {
                 href="/projects"
                 sparklineData={[1, 2, 2, 3, 4, projects?.length ?? 0]}
                 staggerIndex={1}
-                className="h-full"
               />
               <StatCard
                 title="ინციდენტები"
@@ -193,7 +191,6 @@ export default function Home() {
                 href="/incidents"
                 sparklineData={[0, 1, 0, 2, 1, incidents?.length ?? 0]}
                 staggerIndex={2}
-                className="h-full"
               />
               <StatCard
                 title="ინსტრუქტაჟები"
@@ -202,7 +199,6 @@ export default function Home() {
                 href="/briefings"
                 sparklineData={[1, 3, 2, 4, 3, briefings?.length ?? 0]}
                 staggerIndex={3}
-                className="h-full"
               />
             </div>
           )}

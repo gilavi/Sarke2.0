@@ -28,10 +28,10 @@ export default function Templates() {
   const items = q.data ?? [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <header>
-        <h1 className="font-display text-3xl font-bold text-neutral-900">შაბლონები</h1>
-        <p className="mt-1 text-sm text-neutral-500">
+        <h1 className="font-display text-heading-1 text-neutral-900 dark:text-neutral-100">შაბლონები</h1>
+        <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
           სისტემური და თქვენ მიერ შექმნილი შემოწმების შაბლონები.
         </p>
       </header>
@@ -43,19 +43,19 @@ export default function Templates() {
           {q.error instanceof Error ? q.error.message : String(q.error)}
         </div>
       ) : items.length === 0 ? (
-        <p className="text-sm text-neutral-500">შაბლონები ჯერ არ არის.</p>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">შაბლონები ჯერ არ არის.</p>
       ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((t) => (
             <Card key={t.id}>
               <CardHeader>
-                <CardTitle className="text-base">{t.name}</CardTitle>
-                <p className="text-xs text-neutral-500">
+                <CardTitle className="text-heading-3 text-neutral-900 dark:text-neutral-100">{t.name}</CardTitle>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400">
                   {categoryLabel(t)} · {(t.category && CATEGORY_LABEL[t.category]) ?? t.category ?? '—'}
                 </p>
               </CardHeader>
               <CardContent>
-                <div className="text-xs text-neutral-600">
+                <div className="text-xs text-neutral-600 dark:text-neutral-400">
                   <span className="font-medium text-neutral-700">საჭირო ხელმომწერები:</span>{' '}
                   {t.required_signer_roles.length === 0
                     ? '—'

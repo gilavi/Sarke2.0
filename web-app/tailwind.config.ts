@@ -33,9 +33,23 @@ export default {
         },
         danger: '#EF4444',
       },
+      fontSize: {
+        'heading-1': ['28px', { lineHeight: '1.2', fontWeight: '700' }],
+        'heading-2': ['20px', { lineHeight: '1.3', fontWeight: '600' }],
+        'heading-3': ['16px', { lineHeight: '1.4', fontWeight: '600' }],
+      },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
         display: ['"Space Grotesk"', 'Inter', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'monospace'],
+      },
+      boxShadow: {
+        'glow-sm': '0 0 0 1px rgba(20,122,79,0.06), 0 1px 2px rgba(20,122,79,0.04)',
+        'glow-md': '0 0 0 1px rgba(20,122,79,0.08), 0 2px 8px rgba(20,122,79,0.06), 0 4px 16px rgba(20,122,79,0.03)',
+        'glow-lg': '0 0 0 1px rgba(20,122,79,0.10), 0 4px 12px rgba(20,122,79,0.08), 0 8px 24px rgba(20,122,79,0.04)',
+        'glow-dark-sm': '0 0 0 1px rgba(71,175,135,0.10), 0 0 8px rgba(71,175,135,0.06)',
+        'glow-dark-md': '0 0 0 1px rgba(71,175,135,0.15), 0 0 16px rgba(71,175,135,0.12), 0 0 32px rgba(71,175,135,0.06)',
+        'glow-dark-lg': '0 0 0 1px rgba(71,175,135,0.20), 0 0 24px rgba(71,175,135,0.18), 0 0 48px rgba(71,175,135,0.10)',
       },
       borderRadius: {
         lg: '12px',

@@ -29,7 +29,7 @@ export function StatCard({ title, value, icon: Icon, sparklineData, trendCurrent
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: 'spring', ...SPRING.cardEntrance, delay: staggerIndex * 0.08 }}
       className={cn(
-        'rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm transition hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900',
+        'rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm transition hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900',
         href && 'cursor-pointer',
         className,
       )}
@@ -43,7 +43,7 @@ export function StatCard({ title, value, icon: Icon, sparklineData, trendCurrent
           <Icon size={20} />
         </div>
       </div>
-      <div className="mt-3 flex items-center justify-between">
+      <div className="mt-2 flex items-center justify-between">
         {trendCurrent !== undefined && trendPrevious !== undefined && trendLabel && (
           <TrendIndicator current={trendCurrent} previous={trendPrevious} label={trendLabel} />
         )}

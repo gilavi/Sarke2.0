@@ -47,11 +47,11 @@ export default function Reports() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <header className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl font-bold text-neutral-900">რეპორტები</h1>
-          <p className="mt-1 text-sm text-neutral-500">სლაიდებიანი ფოტო-რეპორტები პროექტებზე.</p>
+          <h1 className="font-display text-heading-1 text-neutral-900 dark:text-neutral-100">რეპორტები</h1>
+          <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">სლაიდებიანი ფოტო-რეპორტები პროექტებზე.</p>
         </div>
         <Link to="/reports/new">
           <Button>+ ახალი რეპორტი</Button>
@@ -65,28 +65,28 @@ export default function Reports() {
       )}
       {!items && !error && <SkeletonList />}
       {items && items.length === 0 && (
-        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-neutral-200 bg-white py-16 text-center">
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-neutral-200 bg-white py-16 text-center dark:border-neutral-700 dark:bg-neutral-900">
           <p className="text-sm text-neutral-500">რეპორტები ჯერ არ გაქვთ.</p>
           <Link to="/reports/new" className={buttonVariants({ size: 'sm' })}>+ ახალი რეპორტი</Link>
         </div>
       )}
 
       {items && items.length > 0 && (
-        <motion.div initial="hidden" animate="visible" variants={containerVariants} className="grid gap-4">
+        <motion.div initial="hidden" animate="visible" variants={containerVariants} className="grid gap-6">
           {items.map((r) => {
             const proj = projects[r.project_id];
             const slideCount = r.slides?.length ?? 0;
             return (
               <motion.div key={r.id} variants={itemVariants}>
-                <Card className="group relative transition hover:border-brand-300 hover:shadow-sm">
+                <Card className="group relative transition hover:border-brand-300 hover:shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
                 <Link to={`/reports/${r.id}`} className="block">
                   <CardHeader className="pb-2">
-                    <CardTitle className="flex items-center justify-between text-base">
+                    <CardTitle className="flex items-center justify-between text-heading-3">
                       <span>{r.title || `რეპორტი #${r.id.slice(0, 8)}`}</span>
-                      <span className="text-xs font-normal text-neutral-500">{r.status === 'completed' ? 'დასრულებული' : 'დრაფტი'}</span>
+                      <span className="font-mono text-xs tabular-nums text-neutral-400 dark:text-neutral-500">{r.status === 'completed' ? 'დასრულებული' : 'დრაფტი'}</span>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="text-sm text-neutral-600">
+                  <CardContent className="text-sm text-neutral-600 dark:text-neutral-400">
                     <div>{proj?.name ?? '—'}</div>
                     <div className="text-xs text-neutral-500">
                       {slideCount} სლაიდი ·{' '}

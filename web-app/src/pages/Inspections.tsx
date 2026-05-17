@@ -136,7 +136,7 @@ export default function Inspections() {
     .sort((a, b) => b.date.localeCompare(a.date));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <header className="flex items-start justify-between gap-4">
         <div>
           {filter && projects[filter] && (
@@ -144,7 +144,7 @@ export default function Inspections() {
               ← {projects[filter].name}
             </Link>
           )}
-          <h1 className="font-display text-3xl font-bold text-neutral-900 dark:text-neutral-100">შემოწმების აქტები</h1>
+          <h1 className="font-display text-heading-1 text-neutral-900 dark:text-neutral-100">შემოწმების აქტები</h1>
           <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">ყველა აქტი თქვენი ანგარიშიდან.</p>
         </div>
         <DropdownMenu>
@@ -214,7 +214,7 @@ export default function Inspections() {
             <motion.div
               key={row.id}
               variants={itemVariants}
-              className="group flex items-center justify-between gap-3 px-4 py-3 hover:bg-neutral-50 transition-colors dark:hover:bg-neutral-800/60"
+              className="group flex items-center justify-between gap-3 px-6 py-4 hover:bg-neutral-50 transition-colors dark:hover:bg-neutral-800/60"
             >
               <Link to={row.href} className="flex flex-1 items-center gap-3 min-w-0">
                 <div className="min-w-0">
@@ -222,7 +222,7 @@ export default function Inspections() {
                   <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
                     {projects[row.projectId]?.name ?? '—'}
                     {' · '}
-                    {new Date(row.date).toLocaleDateString('ka-GE')}
+                    <span className="font-mono text-xs tabular-nums text-neutral-400 dark:text-neutral-500">{new Date(row.date).toLocaleDateString('ka-GE')}</span>
                   </p>
                 </div>
               </Link>

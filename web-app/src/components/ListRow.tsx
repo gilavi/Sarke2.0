@@ -18,18 +18,18 @@ export function ListRow({ to, icon, title, subtitle, trailing, badge, className 
     <Link
       to={to}
       className={cn(
-        'flex items-center gap-3 px-6 py-3.5',
+        'flex items-center gap-3 px-6 py-4',
         'border-b border-neutral-100 last:border-0',
-        'transition-colors hover:bg-neutral-50',
+        'transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/60',
         className,
       )}
     >
       {icon && <div className="shrink-0">{icon}</div>}
 
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[15px] font-medium text-neutral-900">{title}</p>
+        <p className="truncate text-[15px] font-medium text-neutral-900 dark:text-neutral-100">{title}</p>
         {subtitle && (
-          <p className="mt-0.5 truncate text-[12px] text-neutral-500">{subtitle}</p>
+          <p className="mt-0.5 truncate text-[12px] text-neutral-500 dark:text-neutral-400">{subtitle}</p>
         )}
       </div>
 
