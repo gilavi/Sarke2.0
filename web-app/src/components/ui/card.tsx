@@ -10,7 +10,7 @@ export const Card = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement> & 
     return (
       <motion.div
         ref={ref}
-        className={cn('rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900', className)}
+        className={cn('rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900', className)}
         {...(!disableHover ? { whileHover: isDark ? hoverLiftDark : hoverLift } : {})}
         {...(props as any)}
       />
