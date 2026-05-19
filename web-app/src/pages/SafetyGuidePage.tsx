@@ -9,7 +9,7 @@ function LoadingScreen() {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', gap: 12 }}>
       <div className="sg-spinner" />
-      <span style={{ fontSize: 13, color: '#4a4a4a' }}>Loading 3D Scene...</span>
+      <span className="text-[13px] text-neutral-600 dark:text-neutral-400">Loading 3D Scene...</span>
     </div>
   );
 }

@@ -26,7 +26,7 @@ import {
 } from '../../lib/apiHooks';
 import { useToast } from '../../lib/toast';
 import { useTheme, type Theme } from '../../lib/theme';
-import { useBottomSheet } from '../../components/BottomSheet';
+import { CustomDropdown } from '../../components/ui/CustomDropdown';
 import { usePdfUsage, useInvalidatePdfUsage, type PdfUsage } from '../../lib/usePdfUsage';
 import { PaywallModal } from '../../components/PaywallModal';
 import { formatShortDate } from '../../lib/formatDate';
@@ -46,7 +46,7 @@ export default function MoreScreen() {
   const { state, signOut } = useSession();
   const router = useRouter();
   const toast = useToast();
-  const showActionSheet = useBottomSheet();
+  const [langPickerOpen, setLangPickerOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [paywallVisible, setPaywallVisible] = useState(false);
   const signingOutGuard = useRef(false);
@@ -105,18 +105,6 @@ export default function MoreScreen() {
     ]);
   };
 
-  const openLanguagePicker = () => {
-    const currentLang = i18n.language;
-    const options = ['ქართული', 'English', 'გაუქმება'];
-    const selectedOptionIndex = currentLang === 'en' ? 1 : 0;
-    showActionSheet(
-      { title: 'ენა / LANGUAGE', options, cancelButtonIndex: 2, selectedOptionIndex },
-      idx => {
-        if (idx === 0) onChangeLang('ka');
-        if (idx === 1) onChangeLang('en');
-      },
-    );
-  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top']}>
@@ -214,12 +202,23 @@ export default function MoreScreen() {
           </View>
           <View style={styles.divider} />
 
-          <Pressable onPress={openLanguagePicker} style={styles.settingsRow} {...a11y(t('more.language'), undefined, 'button')}>
+          <Pressable onPress={() => setLangPickerOpen(true)} style={styles.settingsRow} {...a11y(t('more.language'), undefined, 'button')}>
             <Ionicons name="language-outline" size={18} color={theme.colors.inkSoft} />
             <Text style={styles.settingsLabel}>{t('more.language')}</Text>
             <Text style={{ fontSize: 13, color: theme.colors.inkSoft }}>{i18n.language === 'ka' ? 'ქართული' : 'English'}</Text>
             <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
           </Pressable>
+          <CustomDropdown
+            label="ენა / LANGUAGE"
+            options={[
+              { label: 'ქართული', value: 'ka' },
+              { label: 'English', value: 'en' },
+            ]}
+            value={i18n.language}
+            onChange={(lang) => onChangeLang(lang as 'ka' | 'en')}
+            open={langPickerOpen}
+            onOpenChange={setLangPickerOpen}
+          />
           <View style={styles.divider} />
 
           <Pressable onPress={() => router.push('/terms?mode=view')} style={styles.settingsRow} {...a11y(t('more.terms'), undefined, 'button')}>

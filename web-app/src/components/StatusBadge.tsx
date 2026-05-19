@@ -17,12 +17,12 @@ type StatusConfig = {
 };
 
 const STATUS_CONFIG: Record<string, StatusConfig> = {
-  completed:   { label: 'დასრულებული', className: 'bg-green-100 text-green-700',    Icon: CheckCircle2 },
+  completed:   { label: 'დასრულდა',    className: 'bg-green-100 text-green-700',    Icon: CheckCircle2 },
   draft:       { label: 'დრაფტი',      className: 'bg-amber-100 text-amber-700',    Icon: Hourglass    },
   in_progress: { label: 'მიმდინარე',   className: 'bg-blue-100 text-blue-700',     Icon: Clock        },
-  overdue:     { label: 'ვადა გადის',  className: 'bg-red-100 text-red-700',       Icon: AlertCircle  },
-  due_today:   { label: 'დღეს ვადა',   className: 'bg-orange-100 text-orange-700', Icon: Clock        },
-  upcoming:    { label: 'მოახლოებული', className: 'bg-neutral-100 text-neutral-500', Icon: Clock      },
+  overdue:     { label: 'ვადაგასული',  className: 'bg-red-100 text-red-700',       Icon: AlertCircle  },
+  due_today:   { label: 'დღეს',        className: 'bg-orange-100 text-orange-700', Icon: Clock        },
+  upcoming:    { label: 'დაგეგმილი',   className: 'bg-neutral-100 text-neutral-500', Icon: Clock      },
 };
 
 interface Props {

@@ -84,7 +84,7 @@ export default function Orders() {
                   <CardHeader className="pb-2">
                     <CardTitle className="flex items-center justify-between text-heading-3">
                       <span>{label}</span>
-                      <span className="font-mono text-xs tabular-nums text-neutral-400 dark:text-neutral-500">{o.status === 'completed' ? 'დასრულებული' : 'დრაფტი'}</span>
+                      <span className="font-mono text-xs tabular-nums text-neutral-400 dark:text-neutral-500">{o.status === 'completed' ? 'დასრულდა' : 'მონახაზი'}</span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-1 text-sm text-neutral-600 dark:text-neutral-400">

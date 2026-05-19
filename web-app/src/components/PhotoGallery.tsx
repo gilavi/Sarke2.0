@@ -27,7 +27,7 @@ export default function PhotoGallery({ urls, captions = [] }: PhotoGalleryProps)
         {urls.map((url, i) =>
           url ? (
             <button
-              key={i}
+              key={url}
               type="button"
               onClick={() => setOpen(i)}
               className="aspect-square w-full overflow-hidden rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
@@ -40,7 +40,7 @@ export default function PhotoGallery({ urls, captions = [] }: PhotoGalleryProps)
               />
             </button>
           ) : (
-            <div key={i} className="aspect-square w-full rounded-lg bg-neutral-100" />
+            <div key={`placeholder-${i}`} className="aspect-square w-full rounded-lg bg-neutral-100" />
           ),
         )}
       </div>

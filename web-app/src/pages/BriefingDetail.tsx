@@ -56,7 +56,7 @@ export default function BriefingDetail() {
         {error instanceof Error ? error.message : String(error)}
       </div>
     );
-  if (!b) return <p className="text-sm text-neutral-500">ბრიფინგი ვერ მოიძებნა.</p>;
+  if (!b) return <p className="text-sm text-neutral-500">ინსტრუქტაჟი ვერ მოიძებნა.</p>;
 
   const isDraft = b.status === 'draft';
 
@@ -86,12 +86,12 @@ export default function BriefingDetail() {
       <header className="flex items-start justify-between gap-4">
         <div>
           <Link to="/briefings" className="text-sm text-brand-600 hover:underline">
-            ← ბრიფინგები
+            ← ინსტრუქტაჟები
           </Link>
           <h1 className="mt-2 font-display text-3xl font-bold text-neutral-900">
-            ბრიფინგი — {fmtDateKa(b.dateTime)}
+            ინსტრუქტაჟი — {fmtDateKa(b.dateTime)}
           </h1>
-          <p className="mt-1 text-sm text-neutral-500">სტატუსი: {b.status === 'completed' ? 'დასრულებული' : 'დრაფტი'}</p>
+          <p className="mt-1 text-sm text-neutral-500">სტატუსი: {b.status === 'completed' ? 'დასრულდა' : 'დრაფტი'}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button
@@ -297,7 +297,7 @@ export default function BriefingDetail() {
               onClick={() => updateMutation.mutate({ status: 'completed' })}
               disabled={updateMutation.isPending}
             >
-              ბრიფინგის დასრულება
+              ინსტრუქტაჟის დასრულება
             </Button>
           </CardContent>
         </Card>

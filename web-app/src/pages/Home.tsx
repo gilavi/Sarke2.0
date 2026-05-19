@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   ClipboardCheck, AlertTriangle, Megaphone, FileText, FolderOpen,
-  Flame, TrendingUp, Zap
+  Flame, TrendingUp, Zap, ChevronDown
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,6 +25,16 @@ import { listIncidents } from '@/lib/data/incidents';
 import { listBriefings } from '@/lib/data/briefings';
 import InspectionWizard from '@/components/InspectionWizard';
 import { staggerContainer, fadeUpItem, STAGGER } from '@/lib/animations';
+import {
+  inspectionKeys,
+  bobcatKeys,
+  generalEquipmentKeys,
+  excavatorKeys,
+  projectKeys,
+  incidentKeys,
+  briefingKeys,
+} from '@/app/queryKeys';
+import { routes } from '@/app/routes';
 
 /* ─── Quick action tile ─── */
 function QuickActionTile({ to, icon: Icon, label, color, darkColor }: {
@@ -51,21 +61,21 @@ export default function Home() {
   const { profile, user } = useAuth();
   const firstName = profile?.first_name?.trim() || user?.email?.split('@')[0] || '';
 
-  const { data: inspections, isLoading: l1 } = useQuery({ queryKey: ['inspections'], queryFn: () => listInspections(), staleTime: 1000 * 60 * 5 });
-  const { data: bobcats, isLoading: l2 } = useQuery({ queryKey: ['bobcatInspections'], queryFn: () => listBobcatInspections(), staleTime: 1000 * 60 * 5 });
-  const { data: generalEq, isLoading: l3 } = useQuery({ queryKey: ['generalEquipmentInspections'], queryFn: () => listGeneralEquipmentInspections(), staleTime: 1000 * 60 * 5 });
-  const { data: excavators, isLoading: l4 } = useQuery({ queryKey: ['excavatorInspections'], queryFn: () => listExcavatorInspections(), staleTime: 1000 * 60 * 5 });
-  const { data: projects, isLoading: l5 } = useQuery({ queryKey: ['projects'], queryFn: listProjects, staleTime: 1000 * 60 * 5 });
-  const { data: incidents, isLoading: l6 } = useQuery({ queryKey: ['incidents'], queryFn: () => listIncidents(), staleTime: 1000 * 60 * 5 });
-  const { data: briefings, isLoading: l7 } = useQuery({ queryKey: ['briefings'], queryFn: () => listBriefings(), staleTime: 1000 * 60 * 5 });
+  const { data: inspections, isLoading: l1 } = useQuery({ queryKey: inspectionKeys.lists(), queryFn: () => listInspections(), staleTime: 1000 * 60 * 5 });
+  const { data: bobcats, isLoading: l2 } = useQuery({ queryKey: bobcatKeys.lists(), queryFn: () => listBobcatInspections(), staleTime: 1000 * 60 * 5 });
+  const { data: generalEq, isLoading: l3 } = useQuery({ queryKey: generalEquipmentKeys.lists(), queryFn: () => listGeneralEquipmentInspections(), staleTime: 1000 * 60 * 5 });
+  const { data: excavators, isLoading: l4 } = useQuery({ queryKey: excavatorKeys.lists(), queryFn: () => listExcavatorInspections(), staleTime: 1000 * 60 * 5 });
+  const { data: projects, isLoading: l5 } = useQuery({ queryKey: projectKeys.lists(), queryFn: listProjects, staleTime: 1000 * 60 * 5 });
+  const { data: incidents, isLoading: l6 } = useQuery({ queryKey: incidentKeys.lists(), queryFn: () => listIncidents(), staleTime: 1000 * 60 * 5 });
+  const { data: briefings, isLoading: l7 } = useQuery({ queryKey: briefingKeys.lists(), queryFn: () => listBriefings(), staleTime: 1000 * 60 * 5 });
 
   const isLoading = l1 || l2 || l3 || l4 || l5 || l6 || l7;
 
   const allInspectionsUnsliced = useMemo(() => [
-    ...(inspections ?? []).map((i) => ({ id: i.id, label: i.harness_name || 'შემოწმების აქტი', date: i.created_at ?? '', status: i.status, href: `/inspections/${i.id}` })),
-    ...(bobcats ?? []).map((i) => ({ id: i.id, label: i.equipmentModel || 'ციცხვიანი', date: i.createdAt, status: i.status, href: `/bobcat/${i.id}` })),
-    ...(generalEq ?? []).map((i) => ({ id: i.id, label: i.objectName || 'ტექ. აღჭურვილობა', date: i.createdAt, status: i.status, href: `/general-equipment/${i.id}` })),
-    ...(excavators ?? []).map((i) => ({ id: i.id, label: i.serialNumber || 'ექსკავატორი', date: i.createdAt, status: i.status, href: `/excavator/${i.id}` })),
+    ...(inspections ?? []).map((i) => ({ id: i.id, label: i.harness_name || 'შემოწმების აქტი', date: i.created_at ?? '', status: i.status, href: routes.inspections.detail(i.id) })),
+    ...(bobcats ?? []).map((i) => ({ id: i.id, label: i.equipmentModel || 'ციცხვიანი', date: i.createdAt, status: i.status, href: routes.bobcat.detail(i.id) })),
+    ...(generalEq ?? []).map((i) => ({ id: i.id, label: i.objectName || 'ტექ. აღჭურვილობა', date: i.createdAt, status: i.status, href: routes.generalEquipment.detail(i.id) })),
+    ...(excavators ?? []).map((i) => ({ id: i.id, label: i.serialNumber || 'ექსკავატორი', date: i.createdAt, status: i.status, href: routes.excavator.detail(i.id) })),
   ].sort((a, b) => b.date.localeCompare(a.date)), [inspections, bobcats, generalEq, excavators]);
 
   const allInspections = useMemo(() => allInspectionsUnsliced.slice(0, 5), [allInspectionsUnsliced]);
@@ -104,15 +114,16 @@ export default function Home() {
             <Button className="shrink-0 gap-1.5">
               <Zap size={15} />
               ახალი აქტი
+              <ChevronDown size={13} />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-64">
             <DropdownMenuItem onSelect={() => setNewInspectionOpen(true)}>ფასადის ხარაჩოს შემოწმება</DropdownMenuItem>
             <DropdownMenuItem onSelect={() => setNewInspectionOpen(true)}>დამცავი ქამრების შემოწმება</DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => navigate('/bobcat/new')}>ციცხვიანი დამტვირთველი</DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => navigate('/excavator/new')}>ექსკავატორის შემოწმება</DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => navigate('/general-equipment/new')}>ტექ. აღჭურვილობა</DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => navigate('/cargo-platform/new')}>ტვირთის პლატფორმა</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => navigate(routes.bobcat.new)}>ციცხვიანი დამტვირთველი</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => navigate(routes.excavator.new)}>ექსკავატორის შემოწმება</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => navigate(routes.generalEquipment.new)}>ტექ. აღჭურვილობა</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => navigate(routes.cargoPlatform.new)}>ტვირთის პლატფორმა</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
         <InspectionWizard open={newInspectionOpen} onClose={() => setNewInspectionOpen(false)} />
@@ -123,12 +134,44 @@ export default function Home() {
         <SubscriptionCard />
       </motion.div>
 
-      {/* ═════ Row 3: Stats + Heatmap combined ═════ */}
+      {/* ═════ Row 3: Quick Actions ═════ */}
+      <motion.div variants={fadeUpItem()} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <QuickActionTile
+          to={routes.incidents.new()}
+          icon={AlertTriangle}
+          label="ინციდენტის დამატება"
+          color="bg-amber-50 text-amber-600"
+          darkColor="dark:bg-amber-950/30 dark:text-amber-400"
+        />
+        <QuickActionTile
+          to={routes.briefings.new()}
+          icon={Megaphone}
+          label="ინსტრუქტაჟის ჩატარება"
+          color="bg-blue-50 text-blue-600"
+          darkColor="dark:bg-blue-950/30 dark:text-blue-400"
+        />
+        <QuickActionTile
+          to={routes.reports.new()}
+          icon={FileText}
+          label="ახალი რეპორტი"
+          color="bg-red-50 text-red-600"
+          darkColor="dark:bg-red-950/30 dark:text-red-400"
+        />
+        <QuickActionTile
+          to={routes.orders.new()}
+          icon={Flame}
+          label="ბრძანების შექმნა"
+          color="bg-red-50 text-red-600"
+          darkColor="dark:bg-red-950/30 dark:text-red-400"
+        />
+      </motion.div>
+
+      {/* ═════ Row 4: Stats + Heatmap combined ═════ */}
       <motion.div variants={fadeUpItem()}>
         <Card disableHover className="overflow-hidden">
-          <div className="grid grid-cols-1 lg:grid-cols-5">
+          <div className="grid grid-cols-1 lg:grid-cols-2">
             {/* Left: 2×2 stat grid */}
-            <div className="lg:col-span-2 border-b border-neutral-100 dark:border-neutral-800 lg:border-b-0 lg:border-r">
+            <div className="border-b border-neutral-100 dark:border-neutral-800 lg:border-b-0 lg:border-r">
               {isLoading ? (
                 <div className="grid grid-cols-2 divide-x divide-y divide-neutral-100 dark:divide-neutral-800">
                   {[...Array(4)].map((_, i) => (
@@ -141,18 +184,13 @@ export default function Home() {
               ) : (
                 <div className="grid grid-cols-2 divide-x divide-y divide-neutral-100 dark:divide-neutral-800">
                   {[
-                    { title: 'შემოწმებები', value: totalInspections, icon: ClipboardCheck, href: '/inspections', sparklineData: [2,5,3,8,6,totalInspections] },
-                    { title: 'პროექტები',   value: projects?.length ?? 0, icon: FolderOpen,     href: '/projects',    sparklineData: [1,2,2,3,4,projects?.length ?? 0] },
-                    { title: 'ინციდენტები', value: incidents?.length ?? 0, icon: AlertTriangle,  href: '/incidents',   sparklineData: [0,1,0,2,1,incidents?.length ?? 0] },
-                    { title: 'ინსტრუქტ.',  value: briefings?.length ?? 0, icon: Megaphone,      href: '/briefings',   sparklineData: [1,3,2,4,3,briefings?.length ?? 0] },
-                  ].map(({ title, value, icon: Icon, href, sparklineData }) => (
+                    { title: 'შემოწმებები', value: totalInspections, href: routes.inspections.list(), sparklineData: [2,5,3,8,6,totalInspections] },
+                    { title: 'პროექტები',   value: projects?.length ?? 0, href: routes.projects.list,   sparklineData: [1,2,2,3,4,projects?.length ?? 0] },
+                    { title: 'ინციდენტები', value: incidents?.length ?? 0, href: routes.incidents.list(), sparklineData: [0,1,0,2,1,incidents?.length ?? 0] },
+                    { title: 'ინსტრუქტ.',  value: briefings?.length ?? 0, href: routes.briefings.list(), sparklineData: [1,3,2,4,3,briefings?.length ?? 0] },
+                  ].map(({ title, value, href, sparklineData }) => (
                     <Link key={href} to={href} className="group flex flex-col justify-between p-5 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/40">
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">{title}</p>
-                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600 dark:bg-brand-950/30 dark:text-brand-400">
-                          <Icon size={14} />
-                        </div>
-                      </div>
+                      <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">{title}</p>
                       <p className="mt-2 text-3xl font-bold text-neutral-900 dark:text-neutral-100">{value}</p>
                       <Sparkline data={sparklineData} />
                     </Link>
@@ -162,11 +200,11 @@ export default function Home() {
             </div>
 
             {/* Right: heatmap */}
-            <div className="lg:col-span-3 p-5">
+            <div className="flex flex-col p-5">
               <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
-                აქტივობა · {completedThisWeek} დასრულებული · {allInspectionsUnsliced.filter(i => i.status === 'draft').length} დრაფტი
+                აქტივობა
               </p>
-              <HeatmapCalendar data={heatmapData} color="#147A4F" />
+              <HeatmapCalendar data={heatmapData} />
             </div>
           </div>
         </Card>
@@ -200,37 +238,6 @@ export default function Home() {
         </div>
       </motion.div>
 
-      {/* ═════ Row 3: Quick Actions ═════ */}
-      <motion.div variants={fadeUpItem()} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <QuickActionTile
-          to="/incidents/new"
-          icon={AlertTriangle}
-          label="ინციდენტის დამატება"
-          color="bg-amber-50 text-amber-600"
-          darkColor="dark:bg-amber-950/30 dark:text-amber-400"
-        />
-        <QuickActionTile
-          to="/briefings/new"
-          icon={Megaphone}
-          label="ინსტრუქტაჟის ჩატარება"
-          color="bg-blue-50 text-blue-600"
-          darkColor="dark:bg-blue-950/30 dark:text-blue-400"
-        />
-        <QuickActionTile
-          to="/reports/new"
-          icon={FileText}
-          label="ახალი რეპორტი"
-          color="bg-neutral-100 text-neutral-600"
-          darkColor="dark:bg-neutral-800 dark:text-neutral-300"
-        />
-        <QuickActionTile
-          to="/orders/new"
-          icon={Flame}
-          label="ბრძანების შექმნა"
-          color="bg-red-50 text-red-600"
-          darkColor="dark:bg-red-950/30 dark:text-red-400"
-        />
-      </motion.div>
     </motion.div>
   );
 }

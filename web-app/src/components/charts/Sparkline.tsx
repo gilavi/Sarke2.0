@@ -1,6 +1,6 @@
 import { LineChart, Line, ResponsiveContainer } from 'recharts';
 interface SparklineProps { data: number[]; color?: string; }
-export function Sparkline({ data, color = '#147A4F' }: SparklineProps) {
+export function Sparkline({ data, color = 'var(--brand-500)' }: SparklineProps) {
   const chartData = data.map((v, i) => ({ i, v }));
   return (
     <div className="h-10 w-24">

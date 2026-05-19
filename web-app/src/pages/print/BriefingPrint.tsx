@@ -43,7 +43,7 @@ export default function BriefingPrint() {
         </button>
       </div>
       <div className="doc">
-        <h1>უსაფრთხოების ბრიფინგი</h1>
+        <h1>უსაფრთხოების ინსტრუქტაჟი</h1>
         <p className="muted" style={{ textAlign: 'center' }}>
           {new Date(b.dateTime).toLocaleString('ka-GE')}
         </p>

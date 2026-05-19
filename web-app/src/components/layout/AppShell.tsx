@@ -79,16 +79,29 @@ export const AppShell = memo(function AppShell({ children }: { children: ReactNo
 
         <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto bg-neutral-50 outline-none dark:bg-neutral-950">
           <AnimatePresence mode="wait">
-            <motion.div
-              key={location.pathname}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.25, ease: 'easeOut' }}
-              className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-8 sm:py-8 dark:text-neutral-100"
-            >
-              {children}
-            </motion.div>
+            {location.pathname === '/safety' ? (
+              <motion.div
+                key={location.pathname}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="h-full w-full"
+              >
+                {children}
+              </motion.div>
+            ) : (
+              <motion.div
+                key={location.pathname}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.25, ease: 'easeOut' }}
+                className="mx-auto w-full max-w-screen-2xl px-4 py-6 sm:px-12 lg:px-24 sm:py-8 dark:text-neutral-100"
+              >
+                {children}
+              </motion.div>
+            )}
           </AnimatePresence>
         </main>
       </div>

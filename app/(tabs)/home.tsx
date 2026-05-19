@@ -58,7 +58,7 @@ import { generalEquipmentApi } from '../../lib/generalEquipmentService';
 import { cargoPlatformApi } from '../../lib/cargoPlatformService';
 import { InspectionTypeAvatar } from '../../components/InspectionTypeAvatar';
 import { RecordTypePill } from '../../components/RecordTypePill';
-import { TemplatePickerModal } from '../../components/TemplatePickerModal';
+import { CustomDropdown } from '../../components/ui/CustomDropdown';
 
 function stepKeyFor(category: string | null | undefined, id: string): string {
   const map: Record<string, string> = {
@@ -663,16 +663,23 @@ export default function HomeScreen() {
         </View>
       </Animated.ScrollView>
 
-      <TemplatePickerModal
-        visible={tplPickerVisible}
-        templates={tplPickerTemplates}
-        title={t('home.chooseTemplate')}
-        onSelect={(tpl) => {
-          setTplPickerVisible(false);
-          setPickerPreselectedTemplateId(tpl.id);
-          setPickerVisible(true);
+      <CustomDropdown
+        label={t('home.chooseTemplate')}
+        options={tplPickerTemplates.map(tpl => ({
+          label: tpl.name,
+          value: tpl.id,
+          icon: <InspectionTypeAvatar category={tpl.category} size={36} />,
+        }))}
+        value={null}
+        onChange={(id) => {
+          const tpl = tplPickerTemplates.find(t => t.id === String(id));
+          if (tpl) {
+            setPickerPreselectedTemplateId(tpl.id);
+            setPickerVisible(true);
+          }
         }}
-        onClose={() => setTplPickerVisible(false)}
+        open={tplPickerVisible}
+        onOpenChange={setTplPickerVisible}
       />
 
       <ProjectPickerSheet

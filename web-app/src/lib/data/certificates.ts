@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import type { User } from '@supabase/supabase-js';
 
 export interface Certificate {
   id: string;
@@ -32,4 +33,26 @@ export async function signedCertificatePdfUrl(path: string): Promise<string> {
   const { data, error } = await supabase.storage.from('pdfs').createSignedUrl(path, 60 * 10);
   if (error) throw error;
   return data.signedUrl;
+}
+
+/** Upload a PDF file and insert a certificate record. */
+export async function uploadCertificate(file: File, user: User): Promise<Certificate> {
+  const ext = file.name.split('.').pop() ?? 'pdf';
+  const path = `certificates/${user.id}/${Date.now()}.${ext}`;
+  const { error: uploadError } = await supabase.storage
+    .from('pdfs')
+    .upload(path, file, { contentType: file.type || 'application/pdf' });
+  if (uploadError) throw uploadError;
+
+  const { data, error } = await supabase
+    .from('certificates')
+    .insert({
+      user_id: user.id,
+      pdf_url: path,
+      conclusion_text: file.name.replace(/\.pdf$/i, ''),
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return data as Certificate;
 }

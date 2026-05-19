@@ -16,7 +16,7 @@ export default function WizardSteps({ steps, current, onStep }: Props) {
     <div className="flex items-center gap-1 overflow-x-auto rounded-lg border border-neutral-200 bg-neutral-50 p-1">
       {steps.map((step, i) => (
         <button
-          key={i}
+          key={step.label}
           type="button"
           onClick={() => onStep(i)}
           className={`flex-1 whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium transition ${

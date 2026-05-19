@@ -111,7 +111,16 @@ All three deploy to the same `gh-pages` branch under different `destination_dir`
 
 | Route | Description |
 |---|---|
-| `/#/` | Home — `<SubscriptionCard>` (free / active / expired with PDF usage bar) + quick links |
+| `/#/` | Home — greeting, subscription banner, quick-action tiles, combined stats+heatmap widget, per-project activity widgets |
+| `/#/projects` | Project list (grid or map view). Cards show OSM map tile background + logo badge. |
+| `/#/projects/:id` | Project detail — 11-section layout (crew, signers, inspections, incidents, briefings, reports, files, orders, danger zone). Composed from `pages/ProjectDetail/` modules. |
+| `/#/inspections` | All scaffold/harness inspections list |
+| `/#/incidents` | Incidents list + new incident |
+| `/#/briefings` | Briefings list + new briefing |
+| `/#/reports` | Reports list + new report |
+| `/#/orders` | Orders (ბრძანებები) list |
+| `/#/calendar` | Calendar view of activity |
+| `/#/history` | Activity history |
 | `/#/account` | Subscription management + payment history |
 | `/#/subscribe` | Initiates a BOG order via the shared `create-bog-order` Edge Function |
 | `/#/subscribe/success` / `/#/subscribe/fail` | BOG redirect targets; success invalidates `pdf-usage` cache |

@@ -101,7 +101,7 @@ export default function NewBriefing() {
     <WizardShell
       open
       onClose={() => navigate('/briefings')}
-      title="ახალი ბრიფინგი"
+      title="ახალი ინსტრუქტაჟი"
       steps={STEPS}
       currentStep={step}
       onPrev={() => setStep((s) => s - 1)}
@@ -114,7 +114,7 @@ export default function NewBriefing() {
       {step === 0 && (
         <div className="space-y-5">
           <p className="text-sm text-neutral-500">
-            შეავსეთ ბრიფინგის ინფორმაცია. ხელმოწერების შეგროვება შესაძლებელია ბრიფინგის დეტალურ გვერდზე.
+            შეავსეთ ინსტრუქტაჟის ინფორმაცია. ხელმოწერების შეგროვება შესაძლებელია ინსტრუქტაჟის დეტალურ გვერდზე.
           </p>
 
           {prefilledProjectId ? (

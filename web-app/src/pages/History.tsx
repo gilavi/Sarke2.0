@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { ClipboardList, Trash2, ShieldCheck, Truck, Pickaxe, Wrench, Package } from 'lucide-react';
+import { ClipboardList, Trash2 } from 'lucide-react';
 import { listInspections, deleteInspection } from '@/lib/data/inspections';
 import { listBobcatInspections, deleteBobcatInspection } from '@/lib/data/bobcat';
 import { listExcavatorInspections, deleteExcavatorInspection } from '@/lib/data/excavator';
@@ -12,32 +12,30 @@ import { SkeletonList } from '@/components/SkeletonCard';
 
 const STATUS_LABEL: Record<string, string> = {
   draft: 'დრაფტი',
-  completed: 'დასრულებული',
+  completed: 'დასრულდა',
   in_progress: 'მიმდინარე',
 };
 
 const TYPE_LABEL: Record<string, string> = {
-  harness: 'ხარაჩო / ქამარი',
-  bobcat: 'ციცხვიანი',
-  excavator: 'ექსკავატორი',
-  general: 'ტექ. აღჭურვილობა',
-  cargo_platform: 'კარგო პლატფორმა',
+  harness:            '🦺 დამც. ქამარი',
+  xaracho:            '🏗️ ფასადის ხარაჩო',
+  mobile_scaffold:    '🏗️ მობ. ხარაჩო',
+  mobile_scaffold_n3: '🏗️ მობ. ხარაჩო N3',
+  bobcat:             '🚜 ციცხვიანი',
+  excavator:          '🚧 ექსკავატორი',
+  general:            '⚙️ ტექ. აღჭურვილობა',
+  cargo_platform:     '📦 ტვირთის პლატფ.',
 };
 
-const TYPE_ICON: Record<string, React.ElementType> = {
-  harness: ShieldCheck,
-  bobcat: Truck,
-  excavator: Pickaxe,
-  general: Wrench,
-  cargo_platform: Package,
-};
-
-const TYPE_ICON_BG: Record<string, string> = {
-  harness: 'bg-blue-100 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400',
-  bobcat: 'bg-amber-100 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400',
-  excavator: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400',
-  general: 'bg-violet-100 text-violet-600 dark:bg-violet-950/40 dark:text-violet-400',
-  cargo_platform: 'bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400',
+const TYPE_AVATAR: Record<string, { emoji: string; bg: string }> = {
+  harness:            { emoji: '🦺', bg: 'bg-blue-50 dark:bg-blue-950/20' },
+  xaracho:            { emoji: '🏗️', bg: 'bg-yellow-50 dark:bg-yellow-950/20' },
+  mobile_scaffold:    { emoji: '🏗️', bg: 'bg-yellow-50 dark:bg-yellow-950/20' },
+  mobile_scaffold_n3: { emoji: '🏗️', bg: 'bg-yellow-50 dark:bg-yellow-950/20' },
+  bobcat:             { emoji: '🚜', bg: 'bg-amber-50 dark:bg-amber-950/20' },
+  excavator:          { emoji: '🚧', bg: 'bg-orange-50 dark:bg-orange-950/20' },
+  general:            { emoji: '⚙️', bg: 'bg-emerald-50 dark:bg-emerald-950/20' },
+  cargo_platform:     { emoji: '📦', bg: 'bg-sky-50 dark:bg-sky-950/20' },
 };
 
 interface Row {
@@ -210,14 +208,9 @@ export default function History() {
                   className="group flex items-center justify-between gap-3 px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-700/50"
                 >
                   <Link to={row.href} className="flex flex-1 items-center gap-3 min-w-0">
-                    {(() => {
-                      const Icon = TYPE_ICON[row.type] ?? ClipboardList;
-                      return (
-                        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${TYPE_ICON_BG[row.type] ?? 'bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400'}`}>
-                          <Icon size={18} />
-                        </div>
-                      );
-                    })()}
+                    <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${TYPE_AVATAR[row.type]?.bg ?? 'bg-neutral-100 dark:bg-neutral-800'}`}>
+                      <span className="text-base leading-none">{TYPE_AVATAR[row.type]?.emoji ?? '📋'}</span>
+                    </div>
                     <div className="min-w-0">
                       <p className="truncate font-medium text-neutral-900 dark:text-neutral-100">{row.label}</p>
                       <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">

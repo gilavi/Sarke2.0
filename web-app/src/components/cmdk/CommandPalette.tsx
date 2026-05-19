@@ -14,7 +14,7 @@ const STATIC_COMMANDS = [
   { id: 'nav-projects', title: 'პროექტები', icon: 'FolderOpen', path: '/projects' },
   { id: 'nav-inspections', title: 'შემოწმებები', icon: 'ClipboardCheck', path: '/inspections' },
   { id: 'nav-incidents', title: 'ინციდენტები', icon: 'AlertTriangle', path: '/incidents' },
-  { id: 'nav-briefings', title: 'ბრიფინგები', icon: 'Megaphone', path: '/briefings' },
+  { id: 'nav-briefings', title: 'ინსტრუქტაჟები', icon: 'Megaphone', path: '/briefings' },
   { id: 'nav-reports', title: 'რეპორტები', icon: 'FileText', path: '/reports' },
   { id: 'nav-calendar', title: 'კალენდარი', icon: 'Calendar', path: '/calendar' },
   { id: 'nav-settings', title: 'პარამეტრები', icon: 'Settings', path: '/account' },

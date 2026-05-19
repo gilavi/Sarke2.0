@@ -1,18 +1,13 @@
 import { forwardRef, type HTMLAttributes } from 'react';
-import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { useTheme } from '@/lib/theme';
-import { hoverLift, hoverLiftDark } from '@/lib/animations';
 
 export const Card = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement> & { disableHover?: boolean }>(
-  ({ className, disableHover, ...props }, ref) => {
-    const { isDark } = useTheme();
+  ({ className, disableHover: _disableHover, ...props }, ref) => {
     return (
-      <motion.div
+      <div
         ref={ref}
         className={cn('rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900', className)}
-        {...(!disableHover ? { whileHover: isDark ? hoverLiftDark : hoverLift } : {})}
-        {...(props as any)}
+        {...props}
       />
     );
   },

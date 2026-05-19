@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { getProject, updateProject, updateProjectLogo } from '@/lib/data/projects';
+import { AddressInput } from '@/components/AddressInput';
 
 export default function EditProject() {
   const { id } = useParams();
@@ -144,21 +145,21 @@ export default function EditProject() {
             </div>
             <div className="space-y-1">
               <Label htmlFor="address">მისამართი</Label>
-              <Input id="address" value={address} onChange={(e) => setAddress(e.target.value)} />
+              <AddressInput
+                id="address"
+                value={address}
+                onChange={setAddress}
+                onCoords={(lat, lng) => {
+                  setLatitude(lat != null ? String(lat) : '');
+                  setLongitude(lng != null ? String(lng) : '');
+                }}
+                initialLat={project.latitude}
+                initialLng={project.longitude}
+              />
             </div>
             <div className="space-y-1">
               <Label htmlFor="phone">ტელეფონი</Label>
               <Input id="phone" type="tel" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label htmlFor="lat">გრძედი (Latitude)</Label>
-                <Input id="lat" type="number" step="any" value={latitude} onChange={(e) => setLatitude(e.target.value)} placeholder="მაგ: 41.7151" />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="lng">გრძელი (Longitude)</Label>
-                <Input id="lng" type="number" step="any" value={longitude} onChange={(e) => setLongitude(e.target.value)} placeholder="მაგ: 44.8271" />
-              </div>
             </div>
 
             {mutation.error && (

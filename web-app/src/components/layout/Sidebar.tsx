@@ -17,8 +17,11 @@ import {
   LogOut,
   ShieldCheck,
   Clock,
+  Box,
   ChevronRight,
   ChevronLeft,
+  ChevronDown,
+  MoreHorizontal,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { cn } from '@/lib/utils';
@@ -29,23 +32,26 @@ interface NavItemDef {
   to: string;
   label: string;
   icon: React.ElementType;
-  shortcut?: string; // keyboard shortcut hint shown in tooltip
+  shortcut?: string;
 }
 
-/** All primary nav items — single source of truth */
-const navItems: NavItemDef[] = [
-  { to: '/home',        label: 'მთავარი',       icon: Home,           shortcut: 'G H' },
-  { to: '/projects',    label: 'პროექტები',     icon: FolderOpen,     shortcut: 'G P' },
+const topNavItems: NavItemDef[] = [
+  { to: '/home',         label: 'მთავარი',       icon: Home,       shortcut: 'G H' },
+  { to: '/projects',     label: 'პროექტები',     icon: FolderOpen, shortcut: 'G P' },
+  { to: '/calendar',     label: 'კალენდარი',     icon: Calendar,   shortcut: 'G C' },
+  { to: '/regulations',  label: 'რეგულაციები',   icon: BookOpen,   shortcut: 'G L' },
+  { to: '/certificates', label: 'სერთიფიკატები', icon: Award,      shortcut: 'G F' },
+  { to: '/history',      label: 'ისტორია',       icon: Clock,      shortcut: 'G Y' },
+];
+
+const moreNavItems: NavItemDef[] = [
   { to: '/inspections', label: 'შემოწმებები',   icon: ClipboardCheck, shortcut: 'G I' },
   { to: '/incidents',   label: 'ინციდენტები',   icon: AlertTriangle,  shortcut: 'G M' },
   { to: '/briefings',   label: 'ინსტრუქტაჟები', icon: Megaphone,      shortcut: 'G B' },
   { to: '/reports',     label: 'რეპორტები',     icon: FileText,       shortcut: 'G R' },
   { to: '/orders',      label: 'ბრძანებები',    icon: Package,        shortcut: 'G O' },
-  { to: '/calendar',    label: 'კალენდარი',     icon: Calendar,       shortcut: 'G C' },
-  { to: '/regulations', label: 'რეგულაციები',   icon: BookOpen,       shortcut: 'G L' },
   { to: '/templates',   label: 'შაბლონები',     icon: LayoutTemplate, shortcut: 'G T' },
-  { to: '/certificates',label: 'სერთიფიკატები', icon: Award,          shortcut: 'G F' },
-  { to: '/history',     label: 'ისტორია',       icon: Clock,          shortcut: 'G Y' },
+  { to: '/safety',      label: '3D უსაფრთხოება', icon: Box },
 ];
 
 
@@ -119,22 +125,20 @@ function RailNavItem({
           cn(
             'relative flex items-center rounded-lg transition-all duration-200',
             'mx-1.5 h-10',
-            isExpanded ? 'w-[168px] px-3 gap-3' : 'w-[44px] justify-center px-0',
+            isExpanded ? 'w-[208px] px-3 gap-3' : 'w-[44px] justify-center px-0',
             navActive
-              ? cn(
-                  'bg-brand-500 text-white shadow-sm',
-                  'dark:bg-brand-600 dark:shadow-[0_0_12px_rgba(71,175,135,0.3)]',
-                )
-              : cn(
-                  'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800',
-                  'dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200',
-                ),
+              ? 'bg-brand-100 text-brand-700 dark:bg-brand-900/50 dark:text-brand-300'
+              : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200',
           )
         }
         aria-label={item.label}
       >
-        {/* Icon — always visible */}
-        <item.icon size={20} className="shrink-0" />
+        {/* Icon — filled when active */}
+        <item.icon
+          size={20}
+          className="shrink-0"
+          {...(isActive ? { style: { fill: 'currentColor', strokeWidth: 0 } } : {})}
+        />
 
         {/* Label — only visible when expanded */}
         <AnimatePresence initial={false}>
@@ -152,6 +156,85 @@ function RailNavItem({
         </AnimatePresence>
       </NavLink>
     </Tooltip>
+  );
+}
+
+/* ── More Group (collapsible) ───────────────────────── */
+
+function MoreGroup({
+  items,
+  isExpanded,
+  onNavigate,
+}: {
+  items: NavItemDef[];
+  isExpanded: boolean;
+  onNavigate?: () => void;
+}) {
+  const location = useLocation();
+  const hasActive = items.some(
+    (i) => location.pathname === i.to || location.pathname.startsWith(`${i.to}/`),
+  );
+  const [open, setOpen] = useState(true);
+
+  return (
+    <div>
+      {/* Trigger button */}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={cn(
+          'relative flex items-center rounded-lg transition-all duration-200',
+          'mx-1.5 h-10 w-full',
+          isExpanded ? 'px-3 gap-3' : 'w-[44px] justify-center px-0',
+          hasActive && !open
+            ? 'text-brand-500 dark:text-brand-400'
+            : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200',
+        )}
+      >
+        <MoreHorizontal size={20} className="shrink-0" />
+        <AnimatePresence initial={false}>
+          {isExpanded && (
+            <motion.div
+              initial={{ opacity: 0, width: 0 }}
+              animate={{ opacity: 1, width: 'auto' }}
+              exit={{ opacity: 0, width: 0 }}
+              transition={{ duration: 0.2 }}
+              className="flex flex-1 items-center gap-1 overflow-hidden"
+            >
+              <span className="whitespace-nowrap text-[13px] font-medium">მეტი</span>
+              <ChevronDown
+                size={14}
+                className={cn('ml-auto transition-transform', open && 'rotate-180')}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </button>
+
+      {/* Sub-items */}
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.ul
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
+            className="overflow-hidden space-y-0.5"
+          >
+            {items.map((item) => (
+              <li key={item.to} className={cn(isExpanded && 'pl-3')}>
+                <RailNavItem
+                  item={item}
+                  isExpanded={isExpanded}
+                  showTooltip={false}
+                  onNavigate={onNavigate}
+                />
+              </li>
+            ))}
+          </motion.ul>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 
@@ -188,7 +271,7 @@ export const Sidebar = memo(function Sidebar({ open = false, onClose }: SidebarP
     <motion.aside
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      animate={{ width: isOpen ? 180 : 56 }}
+      animate={{ width: isOpen ? 220 : 56 }}
       transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 0.8 }}
       className={cn(
         'relative flex h-full shrink-0 flex-col border-r border-neutral-200 bg-white/95 backdrop-blur-md',
@@ -247,7 +330,7 @@ export const Sidebar = memo(function Sidebar({ open = false, onClose }: SidebarP
       {/* ── Primary Nav ── */}
       <nav className="flex-1 overflow-y-auto overflow-x-hidden py-2">
         <ul className="space-y-0.5">
-          {navItems.map((item) => (
+          {topNavItems.map((item) => (
             <li key={item.to}>
               <RailNavItem
                 item={item}
@@ -257,6 +340,13 @@ export const Sidebar = memo(function Sidebar({ open = false, onClose }: SidebarP
               />
             </li>
           ))}
+          <li>
+            <MoreGroup
+              items={moreNavItems}
+              isExpanded={isOpen}
+              onNavigate={handleNavigate}
+            />
+          </li>
         </ul>
       </nav>
 
@@ -272,9 +362,9 @@ export const Sidebar = memo(function Sidebar({ open = false, onClose }: SidebarP
           className={({ isActive }) =>
             cn(
               'relative flex items-center rounded-lg transition-all duration-200 mx-1.5',
-              isOpen ? 'h-10 w-[168px] px-3 gap-3' : 'h-10 w-[44px] justify-center px-0',
+              isOpen ? 'h-10 w-[208px] px-3 gap-3' : 'h-10 w-[44px] justify-center px-0',
               isActive
-                ? 'bg-brand-500 text-white shadow-sm dark:bg-brand-600'
+                ? 'bg-brand-100 text-brand-700 dark:bg-brand-900/50 dark:text-brand-300'
                 : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200',
             )
           }
@@ -306,7 +396,7 @@ export const Sidebar = memo(function Sidebar({ open = false, onClose }: SidebarP
           onClick={() => void signOut()}
           className={cn(
             'relative flex items-center rounded-lg transition-all duration-200 mx-1.5',
-            isOpen ? 'h-10 w-[168px] px-3 gap-3' : 'h-10 w-[44px] justify-center px-0',
+            isOpen ? 'h-10 w-[208px] px-3 gap-3' : 'h-10 w-[44px] justify-center px-0',
             'text-neutral-500 hover:bg-red-50 hover:text-red-600',
             'dark:text-neutral-400 dark:hover:bg-red-950/30 dark:hover:text-red-400',
           )}
@@ -348,11 +438,11 @@ export const Sidebar = memo(function Sidebar({ open = false, onClose }: SidebarP
           {/* Mobile drawer — always expanded */}
           <div className="relative z-10 flex h-full">
             <motion.aside
-              initial={{ x: -180 }}
+              initial={{ x: -220 }}
               animate={{ x: 0 }}
-              exit={{ x: -180 }}
+              exit={{ x: -220 }}
               transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-              className="relative flex h-full w-[180px] shrink-0 flex-col border-r border-neutral-200 bg-white/95 backdrop-blur-md dark:border-neutral-800 dark:bg-neutral-900/90"
+              className="relative flex h-full w-[220px] shrink-0 flex-col border-r border-neutral-200 bg-white/95 backdrop-blur-md dark:border-neutral-800 dark:bg-neutral-900/90"
             >
               {/* Logo */}
               <div className="flex h-14 items-center gap-3 border-b border-neutral-200 px-4 dark:border-neutral-800">
@@ -377,7 +467,7 @@ export const Sidebar = memo(function Sidebar({ open = false, onClose }: SidebarP
               {/* Nav — always expanded in mobile */}
               <nav className="flex-1 overflow-y-auto py-2">
                 <ul className="space-y-0.5">
-                  {navItems.map((item) => (
+                  {topNavItems.map((item) => (
                     <li key={item.to}>
                       <NavLink
                         to={item.to}
@@ -386,16 +476,23 @@ export const Sidebar = memo(function Sidebar({ open = false, onClose }: SidebarP
                           cn(
                             'mx-1.5 flex h-10 items-center gap-3 rounded-lg px-3 text-[13px] font-medium transition-all duration-200',
                             isActive
-                              ? 'bg-brand-500 text-white shadow-sm dark:bg-brand-600'
+                              ? 'bg-brand-100 text-brand-700 dark:bg-brand-900/50 dark:text-brand-300'
                               : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200',
                           )
                         }
                       >
-                        <item.icon size={20} />
-                        <span>{item.label}</span>
+                        {({ isActive }) => (
+                          <>
+                            <item.icon size={20} {...(isActive ? { style: { fill: 'currentColor', strokeWidth: 0 } } : {})} />
+                            <span>{item.label}</span>
+                          </>
+                        )}
                       </NavLink>
                     </li>
                   ))}
+                  <li>
+                    <MoreGroup items={moreNavItems} isExpanded={true} onNavigate={onClose} />
+                  </li>
                 </ul>
               </nav>
 
@@ -409,18 +506,22 @@ export const Sidebar = memo(function Sidebar({ open = false, onClose }: SidebarP
                     cn(
                       'mx-1.5 flex h-10 items-center gap-3 rounded-lg px-3 text-[13px] font-medium transition-all duration-200',
                       isActive
-                        ? 'bg-brand-500 text-white'
+                        ? 'bg-brand-100 text-brand-700 dark:bg-brand-900/50 dark:text-brand-300'
                         : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-800',
                     )
                   }
                 >
-                  <User size={20} />
-                  <span>პროფილი</span>
+                  {({ isActive }) => (
+                    <>
+                      <User size={20} {...(isActive ? { style: { fill: 'currentColor', strokeWidth: 0 } } : {})} />
+                      <span>პროფილი</span>
+                    </>
+                  )}
                 </NavLink>
                 <button
                   type="button"
                   onClick={() => void signOut()}
-                  className="mx-1.5 flex h-10 w-[168px] items-center gap-3 rounded-lg px-3 text-[13px] font-medium text-neutral-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:text-neutral-400 dark:hover:bg-red-950/30 dark:hover:text-red-400"
+                  className="mx-1.5 flex h-10 w-[208px] items-center gap-3 rounded-lg px-3 text-[13px] font-medium text-neutral-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:text-neutral-400 dark:hover:bg-red-950/30 dark:hover:text-red-400"
                 >
                   <LogOut size={20} />
                   <span>გასვლა</span>

@@ -1,6 +1,44 @@
 # What's New — Sarke 2.0 Changelog
 
-**Updated:** 2026-05-14 | Branch: `after-testflight`
+**Updated:** 2026-05-19 | Branch: `gio/web-2.0-ux`
+
+---
+
+## 2026-05-19 — `gio/web-2.0-ux` — Web dashboard UX 2.0
+
+### Home page overhaul
+- New layout: greeting + button row → subscription banner → 4 quick-action tiles → combined stats+heatmap widget → project activity widgets
+- Stats + heatmap merged into one full-width `Card` (2-column grid on desktop, stacked on mobile)
+- Quick-action tiles link to new incident / briefing / report / order creation flows
+- Per-project activity widget replaces the generic recent-activity list (shows last 3 acts + project summary)
+
+### Sidebar redesign
+- Collapsed icon-rail by default; hover expands with labels (tooltip on hover, full labels when open)
+- Click pins/unpins the expanded state — persisted in `localStorage`
+- Framer Motion spring animations for expand/collapse
+
+### Project cards (Projects page)
+- OSM map tile as card background (auto-fetched from lat/lng if coordinates stored)
+- Logo badge overlaid on gradient at card foot; initials fallback using `var(--brand-50/500)` tokens
+- Hover-reveal edit/delete buttons
+
+### Project detail refactor
+- `ProjectDetail.tsx` (1 068 lines) split into `pages/ProjectDetail/` with 11 focused section files: `ProjectHeader`, `ProjectDetailsCard`, `CrewSection`, `SignersSection`, `InspectionsSection`, `IncidentsSection`, `BriefingsSection`, `ReportsSection`, `FilesSection`, `OrdersSection`, `DangerZoneSection`
+- Each section owns its own data fetches and mutations — no prop-drilling of refetch callbacks
+
+### New components
+- `ProjectModal` — unified create/edit modal for projects (replaces `NewProject` + `EditProject` route pair)
+- `AddressInput` — geocoding-backed address field used in `ProjectModal`
+
+### Design system / dark mode fixes
+- `Sparkline`, `ProgressRing` default colors changed from `#147A4F` → `var(--brand-500)` (auto-adapts: `#47AF87` in dark mode)
+- Project avatar `backgroundColor`/`color` changed from hardcoded hex → `var(--brand-50)` / `var(--brand-500)`
+- `SafetyGuidePage` loading label changed from `color: #4a4a4a` → Tailwind `text-neutral-600 dark:text-neutral-400`
+- Unused `color` prop removed from `HeatmapCalendar` interface
+
+### React key fixes
+- `WizardSteps` — `key={i}` → `key={step.label}`
+- `PhotoGallery` — `key={i}` → `key={url}` / `key={\`placeholder-\${i}\`}`
 
 ---
 

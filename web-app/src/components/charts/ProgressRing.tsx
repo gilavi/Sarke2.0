@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 interface ProgressRingProps { value: number; max: number; size?: number; stroke?: string; }
-export function ProgressRing({ value, max, size = 40, stroke = '#147A4F' }: ProgressRingProps) {
+export function ProgressRing({ value, max, size = 40, stroke = 'var(--brand-500)' }: ProgressRingProps) {
   const pct = max === 0 ? 0 : (value / max) * 100;
   const r = (size - 4) / 2;
   const c = 2 * Math.PI * r;

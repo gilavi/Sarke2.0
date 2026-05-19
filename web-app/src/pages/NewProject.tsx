@@ -8,6 +8,7 @@ import { FloatingLabelInput } from '@/components/ui/floating-label-input';
 import { EditableProjectAvatar } from '@/components/ProjectAvatar';
 import { useAuth } from '@/lib/auth';
 import { createProject, updateProjectLogo, type Project } from '@/lib/data/projects';
+import { AddressInput } from '@/components/AddressInput';
 
 export default function NewProject() {
   const { user } = useAuth();
@@ -18,6 +19,8 @@ export default function NewProject() {
   const [companyName, setCompanyName] = useState('');
   const [address, setAddress] = useState('');
   const [contactPhone, setContactPhone] = useState('');
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
   const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null);
 
   function handleLogoSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -37,6 +40,8 @@ export default function NewProject() {
         companyName: companyName.trim() || name.trim(),
         address: address.trim() || null,
         contactPhone: contactPhone.trim() || null,
+        latitude,
+        longitude,
       });
       if (logoDataUrl) {
         await updateProjectLogo(created.id, logoDataUrl);
@@ -106,12 +111,15 @@ export default function NewProject() {
               value={companyName}
               onChange={(e) => setCompanyName(e.target.value)}
             />
-            <FloatingLabelInput
-              id="address"
-              label="მისამართი"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-            />
+            <div className="space-y-1">
+              <Label htmlFor="address">მისამართი</Label>
+              <AddressInput
+                id="address"
+                value={address}
+                onChange={setAddress}
+                onCoords={(lat, lng) => { setLatitude(lat); setLongitude(lng); }}
+              />
+            </div>
             <FloatingLabelInput
               id="phone"
               label="ტელეფონი"

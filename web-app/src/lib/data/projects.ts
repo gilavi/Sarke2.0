@@ -142,6 +142,8 @@ export async function createProject(args: {
   companyName: string;
   address: string | null;
   contactPhone: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 }): Promise<Project> {
   const { data, error } = await supabase
     .from('projects')
@@ -151,6 +153,8 @@ export async function createProject(args: {
       company_name: args.companyName,
       address: args.address,
       contact_phone: args.contactPhone,
+      latitude: args.latitude ?? null,
+      longitude: args.longitude ?? null,
     })
     .select('id, user_id, name, company_name, address, contact_phone, logo, crew, latitude, longitude, created_at')
     .single();

@@ -20,19 +20,30 @@ import { listProjects } from '@/lib/data/projects';
 import InspectionWizard from '@/components/InspectionWizard';
 
 const TYPE_LABEL: Record<string, string> = {
-  harness:            'დამც. ქამარი',
-  xaracho:            'ფასადის ხარაჩო',
-  mobile_scaffold:    'მობ. ხარაჩო',
-  mobile_scaffold_n3: 'მობ. ხარაჩო N3',
-  bobcat:             'ციცხვიანი',
-  excavator:          'ექსკავატორი',
-  general:            'ტექ. აღჭურვილობა',
-  cargo_platform:     'ტვირთის პლატფ.',
+  harness:            '🦺 დამც. ქამარი',
+  xaracho:            '🏗️ ფასადის ხარაჩო',
+  mobile_scaffold:    '🏗️ მობ. ხარაჩო',
+  mobile_scaffold_n3: '🏗️ მობ. ხარაჩო N3',
+  bobcat:             '🚜 ციცხვიანი',
+  excavator:          '🚧 ექსკავატორი',
+  general:            '⚙️ ტექ. აღჭურვილობა',
+  cargo_platform:     '📦 ტვირთის პლატფ.',
+};
+
+const TYPE_AVATAR: Record<string, { emoji: string; bg: string }> = {
+  xaracho:            { emoji: '🏗️', bg: 'bg-yellow-50 dark:bg-yellow-950/20' },
+  mobile_scaffold:    { emoji: '🏗️', bg: 'bg-yellow-50 dark:bg-yellow-950/20' },
+  mobile_scaffold_n3: { emoji: '🏗️', bg: 'bg-yellow-50 dark:bg-yellow-950/20' },
+  harness:            { emoji: '🦺', bg: 'bg-blue-50 dark:bg-blue-950/20' },
+  bobcat:             { emoji: '🚜', bg: 'bg-amber-50 dark:bg-amber-950/20' },
+  excavator:          { emoji: '🚧', bg: 'bg-orange-50 dark:bg-orange-950/20' },
+  general:            { emoji: '⚙️', bg: 'bg-emerald-50 dark:bg-emerald-950/20' },
+  cargo_platform:     { emoji: '📦', bg: 'bg-sky-50 dark:bg-sky-950/20' },
 };
 
 const STATUS_LABEL: Record<string, string> = {
   draft: 'დრაფტი',
-  completed: 'დასრულებული',
+  completed: 'დასრულდა',
   in_progress: 'მიმდინარე',
 };
 
@@ -217,6 +228,9 @@ export default function Inspections() {
               className="group flex items-center justify-between gap-3 px-6 py-4 hover:bg-neutral-50 transition-colors dark:hover:bg-neutral-800/60"
             >
               <Link to={row.href} className="flex flex-1 items-center gap-3 min-w-0">
+                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${TYPE_AVATAR[row.type]?.bg ?? 'bg-neutral-100 dark:bg-neutral-800'}`}>
+                  <span className="text-xl leading-none">{TYPE_AVATAR[row.type]?.emoji ?? '📋'}</span>
+                </div>
                 <div className="min-w-0">
                   <p className="truncate font-medium text-neutral-900 dark:text-neutral-100">{row.label}</p>
                   <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">

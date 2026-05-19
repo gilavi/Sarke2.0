@@ -226,7 +226,7 @@ export default function ExcavatorInspectionDetail() {
           <h1 className="mt-2 font-display text-3xl font-bold text-neutral-900">
             ექსკავატორი — {effectiveItem.serialNumber || (isPending ? 'ახალი' : `#${effectiveItem.id.slice(0, 8)}`)}
           </h1>
-          <p className="mt-1 text-sm text-neutral-500">სტატუსი: {effectiveItem.status === 'completed' ? 'დასრულებული' : 'დრაფტი'}</p>
+          <p className="mt-1 text-sm text-neutral-500">სტატუსი: {effectiveItem.status === 'completed' ? 'დასრულდა' : 'დრაფტი'}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {!isPending && (

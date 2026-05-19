@@ -60,30 +60,37 @@ export function SubscriptionCard() {
     return (
       <>
         <div className="flex items-center gap-4 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 dark:border-amber-800/40 dark:bg-amber-950/20">
-          {/* Badge */}
-          <span className="shrink-0 rounded-md bg-amber-500 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-white">
-            PRO ✓
+          {/* Badge — grayed out when cancelled */}
+          <span className={cn(
+            'shrink-0 rounded-md px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide',
+            cancelled
+              ? 'bg-neutral-300 text-neutral-500 dark:bg-neutral-700 dark:text-neutral-400'
+              : 'bg-amber-500 text-white',
+          )}>
+            PRO{!cancelled && ' ✓'}
           </span>
 
-          {/* Info */}
-          <div className="flex flex-1 flex-wrap items-center gap-x-5 gap-y-1 min-w-0">
+          {/* Info — stacked vertically */}
+          <div className="flex flex-1 flex-col gap-0.5 min-w-0">
             <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Sarke Pro</span>
-            {expiresAt && (
-              <span className="flex items-center gap-1.5 text-sm text-neutral-600 dark:text-neutral-400">
-                <CalendarDays size={14} className="shrink-0" />
-                მოქმედია {formatDate(expiresAt)}-მდე
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5">
+              {expiresAt && (
+                <span className="flex items-center gap-1 text-xs text-neutral-500 dark:text-neutral-400">
+                  <CalendarDays size={12} className="shrink-0" />
+                  მოქმედია {formatDate(expiresAt)}-მდე
+                </span>
+              )}
+              <span className="flex items-center gap-1 text-xs text-neutral-500 dark:text-neutral-400">
+                <InfinityIcon size={12} className="shrink-0" />
+                შეუზღუდავი PDF
               </span>
-            )}
-            <span className="flex items-center gap-1.5 text-sm text-neutral-600 dark:text-neutral-400">
-              <InfinityIcon size={14} className="shrink-0" />
-              შეუზღუდავი PDF
-            </span>
-            {cancelled && (
-              <span className="text-xs text-neutral-500 dark:text-neutral-400">
-                ავტომატური განახლება გამორთულია
-              </span>
-            )}
-            {cancelMsg && <span className="text-xs text-neutral-500">{cancelMsg}</span>}
+              {cancelled && (
+                <span className="text-xs text-neutral-400 dark:text-neutral-500">
+                  ავტომატური განახლება გამორთულია
+                </span>
+              )}
+            </div>
+            {cancelMsg && <span className="text-xs text-neutral-400">{cancelMsg}</span>}
           </div>
 
           {/* Action */}
@@ -99,9 +106,12 @@ export function SubscriptionCard() {
               {cancelling ? 'მუშავდება…' : 'გაუქმება'}
             </button>
           ) : (
-            <Button onClick={() => navigate('/subscribe')} size="sm" className="shrink-0 gap-1.5">
-              განახლება <ArrowRight size={14} />
-            </Button>
+            <button
+              onClick={() => navigate('/subscribe')}
+              className="shrink-0 flex items-center gap-1 text-sm font-medium text-neutral-600 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
+            >
+              განახლება <ArrowRight size={13} />
+            </button>
           )}
         </div>
 
@@ -128,9 +138,12 @@ export function SubscriptionCard() {
             <PdfUsageBar value={count} max={limit} locked />
           </div>
         </div>
-        <Button onClick={() => navigate('/subscribe')} size="sm" className="shrink-0 gap-1.5">
-          განახლება ₾19/თვე <ArrowRight size={14} />
-        </Button>
+        <button
+          onClick={() => navigate('/subscribe')}
+          className="shrink-0 flex items-center gap-1 text-sm font-medium text-neutral-600 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
+        >
+          განახლება ₾19/თვე <ArrowRight size={13} />
+        </button>
       </div>
     );
   }

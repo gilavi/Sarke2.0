@@ -3,49 +3,45 @@ import { motion } from 'framer-motion';
 
 interface HeatmapCalendarProps {
   data: { date: string; count: number }[];
-  color?: string;
 }
 
 const DAY_LABELS = ['ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ', 'კვი'];
 const MONTH_NAMES = ['იან', 'თებ', 'მარ', 'აპრ', 'მაი', 'ივნ', 'ივლ', 'აგვ', 'სექ', 'ოქტ', 'ნოე', 'დეკ'];
 
-const WEEKS = 10; // fewer weeks → bigger cells that breathe
+const WEEKS = 5; // ~one calendar month
 
 export function HeatmapCalendar({ data }: HeatmapCalendarProps) {
   const [hovered, setHovered] = useState<{ date: string; count: number; x: number; y: number } | null>(null);
 
-  const { weeks, monthLabels, maxCount, counts } = useMemo(() => {
+  // rows = weeks (oldest top, newest bottom); cols = days (Mon→Sun left→right)
+  const { rows, maxCount, counts } = useMemo(() => {
     const counts = new Map<string, number>();
     for (const d of data) {
       const key = d.date.slice(0, 10);
       counts.set(key, (counts.get(key) || 0) + d.count);
     }
 
-    const endDate = new Date();
-    endDate.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    // align to end of current week (Sunday)
+    const dayOfWeek = today.getDay(); // 0=Sun, 1=Mon…
+    const endSunday = new Date(today);
+    endSunday.setDate(today.getDate() + (7 - dayOfWeek) % 7);
 
-    const weeks: { date: string; dayIndex: number }[][] = [];
-    const monthLabels: { label: string; weekIndex: number }[] = [];
-    let lastMonth = -1;
-
+    // build WEEKS rows, each with 7 day cells (Mon-Sun), newest week first
+    const rows: { date: string; dayIndex: number }[][] = [];
     for (let w = 0; w < WEEKS; w++) {
-      const weekDays: { date: string; dayIndex: number }[] = [];
+      const weekRow: { date: string; dayIndex: number }[] = [];
       for (let d = 0; d < 7; d++) {
-        const dt = new Date(endDate);
-        dt.setDate(dt.getDate() - ((WEEKS - 1 - w) * 7 + (6 - d)));
-        const iso = dt.toISOString().slice(0, 10);
-        weekDays.push({ date: iso, dayIndex: d });
-
-        if (dt.getDate() <= 7 && dt.getMonth() !== lastMonth) {
-          monthLabels.push({ label: MONTH_NAMES[dt.getMonth()], weekIndex: w });
-          lastMonth = dt.getMonth();
-        }
+        const dt = new Date(endSunday);
+        dt.setDate(endSunday.getDate() - w * 7 - (6 - d));
+        weekRow.push({ date: dt.toISOString().slice(0, 10), dayIndex: d });
       }
-      weeks.push(weekDays);
+      rows.push(weekRow);
     }
 
     const maxCount = Math.max(1, ...Array.from(counts.values()));
-    return { weeks, monthLabels, maxCount, counts };
+    return { rows, maxCount, counts };
   }, [data]);
 
   const getColor = (count: number) => {
@@ -57,57 +53,22 @@ export function HeatmapCalendar({ data }: HeatmapCalendarProps) {
     return 'bg-brand-500 dark:bg-brand-500/70';
   };
 
-  const totalActive = useMemo(() => Array.from(counts.values()).filter((c) => c > 0).length, [counts]);
-  const streak = useMemo(() => {
-    let s = 0;
-    for (let i = 0; i < 30; i++) {
-      const d = new Date(); d.setDate(d.getDate() - i);
-      if (counts.get(d.toISOString().slice(0, 10)) || i === 0) s++;
-      else if (i > 0) break;
-    }
-    return s;
-  }, [counts]);
-
   return (
-    <div className="flex flex-col gap-2">
-      {/* Stats row */}
-      <div className="flex gap-6">
-        <div>
-          <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{totalActive}</p>
-          <p className="text-xs text-neutral-500 dark:text-neutral-400">აქტიური დღე</p>
-        </div>
-        <div>
-          <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{streak}</p>
-          <p className="text-xs text-neutral-500 dark:text-neutral-400">დღე სერიაში</p>
-        </div>
+    <div className="flex flex-1 flex-col gap-2">
+
+      {/* Day-of-week labels (top header) */}
+      <div className="flex gap-1">
+        {DAY_LABELS.map((d) => (
+          <div key={d} className="flex-1 text-center text-[10px] font-medium text-neutral-400 dark:text-neutral-500">
+            {d}
+          </div>
+        ))}
       </div>
 
-      {/* Month labels */}
-      <div className="flex pl-9 gap-1">
-        {weeks.map((_, wi) => {
-          const label = monthLabels.find((m) => m.weekIndex === wi);
-          return (
-            <div key={wi} className="flex-1 text-[10px] font-medium text-neutral-400 dark:text-neutral-500 truncate">
-              {label?.label ?? ''}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Grid — explicit height so cells fill evenly */}
-      <div className="flex gap-1" style={{ height: 148 }}>
-        {/* Day labels */}
-        <div className="flex flex-col justify-around w-8 shrink-0">
-          {DAY_LABELS.map((d, i) => (
-            <span key={i} className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500 leading-none">
-              {d}
-            </span>
-          ))}
-        </div>
-
-        {/* Week columns */}
-        {weeks.map((week, wi) => (
-          <div key={wi} className="flex flex-1 flex-col gap-1 h-full">
+      {/* Grid — rows = weeks, cols = days */}
+      <div className="flex flex-1 flex-col gap-1">
+        {rows.map((week, wi) => (
+          <div key={wi} className="flex flex-1 gap-1">
             {week.map((day, di) => {
               const c = counts.get(day.date) || 0;
               return (

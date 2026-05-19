@@ -6,8 +6,18 @@ import { Plus, List, Map, Pencil, Trash2, Building2, MapPin } from 'lucide-react
 import { Button } from '@/components/ui/button';
 import { listProjects, deleteProject, type Project } from '@/lib/data/projects';
 import { SkeletonList } from '@/components/SkeletonCard';
+import { ProjectModal } from '@/components/ProjectModal';
+import { projectKeys } from '@/app/queryKeys';
+import { routes } from '@/app/routes';
 
-/* Convert lat/lng to OSM tile x/y at given zoom */
+
+function projectInitials(name: string | null | undefined): string {
+  if (!name) return '—';
+  const trimmed = name.trim();
+  if (!trimmed) return '—';
+  return Array.from(trimmed).slice(0, 2).join('').toLocaleUpperCase('ka-GE');
+}
+
 function latLngToTile(lat: number, lng: number, zoom: number) {
   const x = Math.floor(((lng + 180) / 360) * 2 ** zoom);
   const y = Math.floor(
@@ -16,7 +26,8 @@ function latLngToTile(lat: number, lng: number, zoom: number) {
   return `https://tile.openstreetmap.org/${zoom}/${x}/${y}.png`;
 }
 
-function ProjectCard({ p, onDelete }: { p: Project; onDelete: (id: string) => void }) {
+function ProjectCard({ p, onDelete, onEdit }: { p: Project; onDelete: (id: string) => void; onEdit: (id: string) => void }) {
+  const title = p.company_name || p.name;
   const hasTile = p.latitude != null && p.longitude != null;
   const tileUrl = hasTile ? latLngToTile(p.latitude!, p.longitude!, 14) : null;
 
@@ -25,8 +36,8 @@ function ProjectCard({ p, onDelete }: { p: Project; onDelete: (id: string) => vo
       variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 400, damping: 25 } } }}
       className="group relative overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900"
     >
-      {/* Map tile background */}
-      <Link to={`/projects/${p.id}`} className="block">
+      <Link to={routes.projects.detail(p.id)} className="block">
+        {/* Map tile background */}
         <div className="relative h-36 overflow-hidden bg-neutral-100 dark:bg-neutral-800">
           {tileUrl ? (
             <>
@@ -34,10 +45,8 @@ function ProjectCard({ p, onDelete }: { p: Project; onDelete: (id: string) => vo
                 src={tileUrl}
                 alt=""
                 className="h-full w-full object-cover opacity-80 dark:opacity-50"
-                style={{ imageRendering: 'auto' }}
                 draggable={false}
               />
-              {/* centre dot */}
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 ring-2 ring-white">
                   <MapPin size={12} className="text-white" fill="white" />
@@ -49,38 +58,41 @@ function ProjectCard({ p, onDelete }: { p: Project; onDelete: (id: string) => vo
               <Building2 size={28} className="text-neutral-300 dark:text-neutral-600" />
             </div>
           )}
-
-          {/* Gradient overlay */}
           <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/50 to-transparent" />
         </div>
 
         {/* Card body */}
         <div className="flex items-center gap-3 px-4 py-3">
-          {/* Logo / placeholder */}
-          <div className="h-9 w-9 shrink-0 overflow-hidden rounded-lg border border-neutral-200 bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800">
+          <div
+            className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full"
+            style={{ backgroundColor: 'var(--brand-50)' }}
+          >
             {p.logo ? (
-              <img src={p.logo} alt={p.name} className="h-full w-full object-cover" />
+              <img src={p.logo} alt={title} className="h-full w-full object-cover" />
             ) : (
-              <div className="flex h-full w-full items-center justify-center">
-                <Building2 size={15} className="text-neutral-400" />
-              </div>
+              <span style={{ color: 'var(--brand-500)', fontWeight: 600, fontSize: 13 }}>
+                {projectInitials(title)}
+              </span>
             )}
           </div>
           <div className="min-w-0">
-            <p className="font-semibold text-neutral-900 dark:text-neutral-100 truncate">{p.name}</p>
-            <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate">{p.company_name || p.address || '—'}</p>
+            <p className="truncate font-semibold text-neutral-900 dark:text-neutral-100">{title}</p>
+            {p.address ? (
+              <p className="mt-0.5 truncate text-xs text-neutral-500 dark:text-neutral-400">{p.address}</p>
+            ) : null}
           </div>
         </div>
       </Link>
 
       {/* Action buttons — appear on hover */}
       <div className="absolute right-2 top-2 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-        <Link
-          to={`/projects/${p.id}/edit`}
+        <button
+          type="button"
+          onClick={(e) => { e.preventDefault(); onEdit(p.id); }}
           className="rounded-lg bg-white/90 p-1.5 text-neutral-500 backdrop-blur-sm transition-colors hover:text-brand-600 dark:bg-neutral-900/90 dark:text-neutral-400"
         >
           <Pencil size={13} />
-        </Link>
+        </button>
         <button
           onClick={() => onDelete(p.id)}
           className="rounded-lg bg-white/90 p-1.5 text-neutral-500 backdrop-blur-sm transition-colors hover:text-red-600 dark:bg-neutral-900/90 dark:text-neutral-400"
@@ -106,7 +118,7 @@ const containerVariants = {
 export default function Projects() {
   const qc = useQueryClient();
   const { data: items, error, isLoading } = useQuery({
-    queryKey: ['projects'],
+    queryKey: projectKeys.lists(),
     queryFn: listProjects,
   });
 
@@ -114,9 +126,16 @@ export default function Projects() {
   const handleSetList = useCallback(() => setView('list'), []);
   const handleSetMap = useCallback(() => setView('map'), []);
 
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | undefined>();
+
+  const openNew = useCallback(() => { setEditingId(undefined); setModalOpen(true); }, []);
+  const openEdit = useCallback((id: string) => { setEditingId(id); setModalOpen(true); }, []);
+  const closeModal = useCallback(() => setModalOpen(false), []);
+
   const deleteMutation = useMutation({
     mutationFn: deleteProject,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['projects'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: projectKeys.lists() }),
   });
 
   function handleDelete(id: string) {
@@ -162,12 +181,10 @@ export default function Projects() {
               რუკა
             </button>
           </div>
-          <Link to="/projects/new">
-            <Button className="shrink-0">
-              <Plus size={16} className="mr-1" />
-              ახალი
-            </Button>
-          </Link>
+          <Button className="shrink-0" onClick={openNew}>
+            <Plus size={16} className="mr-1" />
+            ახალი
+          </Button>
         </div>
       </header>
 
@@ -203,10 +220,12 @@ export default function Projects() {
       {items && view === 'list' && items.length > 0 && (
         <motion.div initial="hidden" animate="visible" variants={containerVariants} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((p) => (
-            <ProjectCard key={p.id} p={p} onDelete={handleDelete} />
+            <ProjectCard key={p.id} p={p} onDelete={handleDelete} onEdit={openEdit} />
           ))}
         </motion.div>
       )}
+
+      <ProjectModal open={modalOpen} onClose={closeModal} projectId={editingId} />
     </div>
   );
 }

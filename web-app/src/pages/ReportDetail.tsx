@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileText, Plus, X } from 'lucide-react';
@@ -54,6 +54,13 @@ export default function ReportDetail() {
   const [opening, setOpening] = useState(false);
 
   const [addingSlide, setAddingSlide] = useState(false);
+
+  // Auto-open the add-slide form when a fresh draft has no slides yet (mirrors mobile UX)
+  useEffect(() => {
+    if (item && item.slides.length === 0 && item.status === 'draft') {
+      setAddingSlide(true);
+    }
+  }, [item]);
   const [slideTitle, setSlideTitle] = useState('');
   const [slideDescription, setSlideDescription] = useState('');
   const [slidePhoto, setSlidePhoto] = useState<File | null>(null);
@@ -150,7 +157,7 @@ export default function ReportDetail() {
           <h1 className="mt-2 font-display text-3xl font-bold text-neutral-900">
             {item.title || `რეპორტი #${item.id.slice(0, 8)}`}
           </h1>
-          <p className="mt-1 text-sm text-neutral-500">სტატუსი: {item.status === 'completed' ? 'დასრულებული' : 'დრაფტი'}</p>
+          <p className="mt-1 text-sm text-neutral-500">სტატუსი: {item.status === 'completed' ? 'დასრულდა' : 'დრაფტი'}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button

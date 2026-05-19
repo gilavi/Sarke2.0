@@ -143,7 +143,7 @@ export default function CargoPlatformInspectionDetail() {
             {item.company || `პლატფ. #${item.id.slice(0, 8)}`}
           </h1>
           <p className="mt-1 text-sm text-neutral-500">
-            სტატუსი: {item.status === 'completed' ? 'დასრულებული' : 'დრაფტი'}
+            სტატუსი: {item.status === 'completed' ? 'დასრულდა' : 'დრაფტი'}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">

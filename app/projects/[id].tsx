@@ -94,7 +94,7 @@ import { usePhotoWithLocation } from '../../hooks/usePhotoWithLocation';
 import { QuickActions, type QuickAction } from '../../components/QuickActions';
 import { InspectionTypeAvatar } from '../../components/InspectionTypeAvatar';
 import { RecordTypePill } from '../../components/RecordTypePill';
-import { TemplatePickerModal } from '../../components/TemplatePickerModal';
+import { CustomDropdown } from '../../components/ui/CustomDropdown';
 
 const SCREEN_W = Dimensions.get('window').width;
 const SVG_H = 80;      // total SVG element height
@@ -1185,15 +1185,20 @@ export default function ProjectDetail() {
         }}
       />
 
-      <TemplatePickerModal
-        visible={templatePickerVisible}
-        templates={templatePickerOptions}
-        title={t('projects.chooseTemplateTitle')}
-        onSelect={async tpl => {
-          setTemplatePickerVisible(false);
-          if (id) await createInspectionForTemplate(id, tpl);
+      <CustomDropdown
+        label={t('projects.chooseTemplateTitle')}
+        options={templatePickerOptions.map(tpl => ({
+          label: tpl.name,
+          value: tpl.id,
+          icon: <InspectionTypeAvatar category={tpl.category} size={36} />,
+        }))}
+        value={null}
+        onChange={async (id) => {
+          const tpl = templatePickerOptions.find(t => t.id === String(id));
+          if (tpl && id) await createInspectionForTemplate(String(id), tpl);
         }}
-        onClose={() => setTemplatePickerVisible(false)}
+        open={templatePickerVisible}
+        onOpenChange={setTemplatePickerVisible}
       />
 
       {/* Full-screen map with all projects */}

@@ -49,10 +49,10 @@ const KIND_STYLES = {
     border: 'border-brand-200 dark:border-brand-900',
   },
   briefing: {
-    label: 'ბრიფინგი',
+    label: 'ინსტრუქტაჟი',
     icon: Megaphone,
-    bg: 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300',
-    border: 'border-amber-200 dark:border-amber-900',
+    bg: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300',
+    border: 'border-blue-200 dark:border-blue-900',
   },
   incident: {
     label: 'ინციდენტი',
@@ -173,7 +173,7 @@ function buildItems(
     out.push({
       id: `brief-${b.id}`,
       href: `/briefings/${b.id}`,
-      title: b.topics?.[0] || 'ბრიფინგი',
+      title: b.topics?.[0] || 'ინსტრუქტაჟი',
       projectName: projectMap.get(b.projectId)?.name ?? '—',
       date,
       kind: 'briefing',
@@ -305,7 +305,7 @@ export default function Calendar() {
         <div>
           <h1 className="font-display text-3xl font-bold text-neutral-900 dark:text-neutral-100">კალენდარი</h1>
           <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-            {monthEventsCount > 0 ? `${monthEventsCount} ჩანაწერი ამ თვეში` : 'შემოწმებები, ბრიფინგები და ინციდენტები'}
+            {monthEventsCount > 0 ? `${monthEventsCount} ჩანაწერი ამ თვეში` : 'შემოწმებები, ინსტრუქტაჟები და ინციდენტები'}
           </p>
         </div>
         <div className="flex items-center gap-2">

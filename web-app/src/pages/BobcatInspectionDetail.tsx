@@ -201,7 +201,7 @@ export default function BobcatInspectionDetail() {
           <h1 className="mt-2 font-display text-3xl font-bold text-neutral-900">
             {effectiveItem.equipmentModel || effectiveItem.company || 'ციცხვიანი დამტვირთველის აქტი'}
           </h1>
-          <p className="mt-1 text-sm text-neutral-500">სტატუსი: {effectiveItem.status === 'completed' ? 'დასრულებული' : 'დრაფტი'}</p>
+          <p className="mt-1 text-sm text-neutral-500">სტატუსი: {effectiveItem.status === 'completed' ? 'დასრულდა' : 'დრაფტი'}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {!isPending && (

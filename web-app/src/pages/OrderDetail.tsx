@@ -165,7 +165,7 @@ export default function OrderDetail() {
             {new Date(order.createdAt).toLocaleDateString('ka-GE')}
             {' · '}
             <span className={`font-medium ${order.status === 'completed' ? 'text-green-700' : 'text-amber-700'}`}>
-              {order.status === 'completed' ? 'დასრულებული' : 'მონახაზი'}
+              {order.status === 'completed' ? 'დასრულდა' : 'მონახაზი'}
             </span>
           </p>
         </div>

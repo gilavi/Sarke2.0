@@ -277,7 +277,7 @@ export default function InspectionDetail() {
           <h1 className="mt-2 font-display text-3xl font-bold text-neutral-900">
             {inspection.harness_name || `აქტი #${inspection.id.slice(0, 8)}`}
           </h1>
-          <p className="mt-1 text-sm text-neutral-500">სტატუსი: {inspection.status === 'completed' ? 'დასრულებული' : 'დრაფტი'}</p>
+          <p className="mt-1 text-sm text-neutral-500">სტატუსი: {inspection.status === 'completed' ? 'დასრულდა' : 'დრაფტი'}</p>
         </div>
         {!isPending && (
           <div className="flex flex-wrap items-center gap-2">
