@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { Modal, ActionIcon } from '@mantine/core';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface PhotoGalleryProps {
   /** signed URLs — empty strings are rendered as placeholder tiles */
@@ -13,7 +15,6 @@ export default function PhotoGallery({ urls, captions = [] }: PhotoGalleryProps)
   useEffect(() => {
     if (open === null) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(null);
       if (e.key === 'ArrowRight') setOpen((i) => (i !== null ? Math.min(i + 1, urls.length - 1) : null));
       if (e.key === 'ArrowLeft') setOpen((i) => (i !== null ? Math.max(i - 1, 0) : null));
     }
@@ -45,63 +46,57 @@ export default function PhotoGallery({ urls, captions = [] }: PhotoGalleryProps)
         )}
       </div>
 
-      {open !== null && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
-          onClick={() => setOpen(null)}
-        >
-          {/* prev */}
-          {open > 0 && (
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); setOpen(open - 1); }}
-              className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-3 text-white hover:bg-white/25"
-              aria-label="წინა"
-            >
-              ‹
-            </button>
-          )}
-
-          <div
-            className="flex max-h-screen max-w-5xl flex-col items-center px-16"
-            onClick={(e) => e.stopPropagation()}
-          >
+      <Modal
+        opened={open !== null}
+        onClose={() => setOpen(null)}
+        size="xl"
+        centered
+        withCloseButton
+        radius="md"
+        styles={{ body: { padding: 0 }, content: { background: '#000' } }}
+      >
+        {open !== null && (
+          <div className="relative flex items-center justify-center" style={{ minHeight: 400 }}>
             <img
               src={urls[open]}
               alt={captions[open] ?? `Photo ${open + 1}`}
-              className="max-h-[80vh] max-w-full rounded-lg object-contain shadow-2xl"
+              className="max-h-[70vh] max-w-full rounded-md object-contain"
             />
-            <div className="mt-3 text-sm text-white/70">
+            <div className="mt-3 absolute bottom-3 left-1/2 -translate-x-1/2 text-sm text-white/70">
               {captions[open] ?? `${open + 1} / ${urls.length}`}
               {captions[open] && (
                 <span className="ml-2 text-white/40">{open + 1} / {urls.length}</span>
               )}
             </div>
+            {open > 0 && (
+              <ActionIcon
+                variant="filled"
+                color="dark"
+                radius="xl"
+                className="absolute left-3"
+                style={{ top: '50%', transform: 'translateY(-50%)' }}
+                onClick={() => setOpen(i => Math.max((i ?? 0) - 1, 0))}
+                aria-label="წინა"
+              >
+                <ChevronLeft size={16} />
+              </ActionIcon>
+            )}
+            {open < urls.length - 1 && (
+              <ActionIcon
+                variant="filled"
+                color="dark"
+                radius="xl"
+                className="absolute right-3"
+                style={{ top: '50%', transform: 'translateY(-50%)' }}
+                onClick={() => setOpen(i => Math.min((i ?? 0) + 1, urls.length - 1))}
+                aria-label="შემდეგი"
+              >
+                <ChevronRight size={16} />
+              </ActionIcon>
+            )}
           </div>
-
-          {/* next */}
-          {open < urls.length - 1 && (
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); setOpen(open + 1); }}
-              className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-3 text-white hover:bg-white/25"
-              aria-label="შემდეგი"
-            >
-              ›
-            </button>
-          )}
-
-          {/* close */}
-          <button
-            type="button"
-            onClick={() => setOpen(null)}
-            className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/25"
-            aria-label="დახურვა"
-          >
-            ✕
-          </button>
-        </div>
-      )}
+        )}
+      </Modal>
     </>
   );
 }
