@@ -2,11 +2,90 @@ import { motion } from 'framer-motion';
 import { useState, lazy, Suspense, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { Plus, List, Map, Pencil, Trash2 } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Plus, List, Map, Pencil, Trash2, Building2, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { listProjects, deleteProject } from '@/lib/data/projects';
+import { listProjects, deleteProject, type Project } from '@/lib/data/projects';
 import { SkeletonList } from '@/components/SkeletonCard';
+
+/* Convert lat/lng to OSM tile x/y at given zoom */
+function latLngToTile(lat: number, lng: number, zoom: number) {
+  const x = Math.floor(((lng + 180) / 360) * 2 ** zoom);
+  const y = Math.floor(
+    ((1 - Math.log(Math.tan((lat * Math.PI) / 180) + 1 / Math.cos((lat * Math.PI) / 180)) / Math.PI) / 2) * 2 ** zoom,
+  );
+  return `https://tile.openstreetmap.org/${zoom}/${x}/${y}.png`;
+}
+
+function ProjectCard({ p, onDelete }: { p: Project; onDelete: (id: string) => void }) {
+  const hasTile = p.latitude != null && p.longitude != null;
+  const tileUrl = hasTile ? latLngToTile(p.latitude!, p.longitude!, 14) : null;
+
+  return (
+    <motion.div
+      variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 400, damping: 25 } } }}
+      className="group relative overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900"
+    >
+      {/* Map tile background */}
+      <Link to={`/projects/${p.id}`} className="block">
+        <div className="relative h-36 overflow-hidden bg-neutral-100 dark:bg-neutral-800">
+          {tileUrl ? (
+            <>
+              <img
+                src={tileUrl}
+                alt=""
+                className="h-full w-full object-cover opacity-80 dark:opacity-50"
+                style={{ imageRendering: 'auto' }}
+                draggable={false}
+              />
+              {/* centre dot */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 ring-2 ring-white">
+                  <MapPin size={12} className="text-white" fill="white" />
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="flex h-full items-center justify-center">
+              <Building2 size={28} className="text-neutral-300 dark:text-neutral-600" />
+            </div>
+          )}
+
+          {/* Logo badge */}
+          {p.logo && (
+            <div className="absolute left-3 top-3 h-10 w-10 overflow-hidden rounded-xl border-2 border-white bg-white dark:border-neutral-800">
+              <img src={p.logo} alt={p.name} className="h-full w-full object-cover" />
+            </div>
+          )}
+
+          {/* Gradient overlay for text legibility */}
+          <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/50 to-transparent" />
+        </div>
+
+        {/* Card body */}
+        <div className="px-4 py-3">
+          <p className="font-semibold text-neutral-900 dark:text-neutral-100 truncate">{p.name}</p>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate mt-0.5">{p.company_name || p.address || '—'}</p>
+        </div>
+      </Link>
+
+      {/* Action buttons — appear on hover */}
+      <div className="absolute right-2 top-2 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+        <Link
+          to={`/projects/${p.id}/edit`}
+          className="rounded-lg bg-white/90 p-1.5 text-neutral-500 backdrop-blur-sm transition-colors hover:text-brand-600 dark:bg-neutral-900/90 dark:text-neutral-400"
+        >
+          <Pencil size={13} />
+        </Link>
+        <button
+          onClick={() => onDelete(p.id)}
+          className="rounded-lg bg-white/90 p-1.5 text-neutral-500 backdrop-blur-sm transition-colors hover:text-red-600 dark:bg-neutral-900/90 dark:text-neutral-400"
+        >
+          <Trash2 size={13} />
+        </button>
+      </div>
+    </motion.div>
+  );
+}
 
 const ProjectMap = lazy(() => import('@/components/ProjectMap'));
 
@@ -18,10 +97,6 @@ const containerVariants = {
   },
 };
 
-const itemVariants = {
-  hidden: { opacity: 0, y: 10 },
-  visible: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 400, damping: 25 } },
-};
 
 export default function Projects() {
   const qc = useQueryClient();
@@ -121,32 +196,9 @@ export default function Projects() {
       )}
 
       {items && view === 'list' && items.length > 0 && (
-        <motion.div initial="hidden" animate="visible" variants={containerVariants} className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <motion.div initial="hidden" animate="visible" variants={containerVariants} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((p) => (
-            <motion.div key={p.id} variants={itemVariants}>
-              <Card className="group relative h-full transition hover:border-brand-300 hover:shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-              <Link to={`/projects/${p.id}`} className="block h-full">
-                <CardHeader>
-                  <CardTitle className="text-heading-3 text-neutral-900 dark:text-neutral-100">{p.name}</CardTitle>
-                  <CardDescription className="dark:text-neutral-400">{p.company_name}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-neutral-600 dark:text-neutral-400">{p.address || '—'}</p>
-                </CardContent>
-              </Link>
-              <div className="absolute right-3 top-3 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                <Link to={`/projects/${p.id}/edit`} className="rounded p-1 text-neutral-400 hover:text-brand-600 hover:bg-brand-50">
-                  <Pencil size={14} />
-                </Link>
-                <button
-                  onClick={() => handleDelete(p.id)}
-                  className="rounded p-1 text-neutral-400 hover:text-red-600 hover:bg-red-50"
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            </Card>
-            </motion.div>
+            <ProjectCard key={p.id} p={p} onDelete={handleDelete} />
           ))}
         </motion.div>
       )}
