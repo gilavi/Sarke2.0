@@ -2,7 +2,6 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { SkeletonStatCard } from '@/components/SkeletonCard';
 import {
   ClipboardCheck, AlertTriangle, Megaphone, FileText, FolderOpen,
   Flame, TrendingUp, Zap
@@ -13,7 +12,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { SubscriptionCard } from '@/components/SubscriptionCard';
-import { StatCard } from '@/components/charts/StatCard';
+import { Sparkline } from '@/components/charts/Sparkline';
 import { HeatmapCalendar } from '@/components/charts/HeatmapCalendar';
 import { ProjectActivityWidget } from '@/components/ProjectActivityWidget';
 import { useAuth } from '@/lib/auth';
@@ -124,77 +123,58 @@ export default function Home() {
         <SubscriptionCard />
       </motion.div>
 
-      {/* ═════ Row 3: 4 Stat Cards ═════ */}
+      {/* ═════ Row 3: Stats + Heatmap combined ═════ */}
       <motion.div variants={fadeUpItem()}>
-        {isLoading ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {[...Array(4)].map((_, i) => <SkeletonStatCard key={i} />)}
+        <Card disableHover className="overflow-hidden">
+          <div className="grid grid-cols-1 lg:grid-cols-5">
+            {/* Left: 2×2 stat grid */}
+            <div className="lg:col-span-2 border-b border-neutral-100 dark:border-neutral-800 lg:border-b-0 lg:border-r">
+              {isLoading ? (
+                <div className="grid grid-cols-2 divide-x divide-y divide-neutral-100 dark:divide-neutral-800">
+                  {[...Array(4)].map((_, i) => (
+                    <div key={i} className="p-5">
+                      <div className="h-4 w-16 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800 mb-2" />
+                      <div className="h-8 w-10 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 divide-x divide-y divide-neutral-100 dark:divide-neutral-800">
+                  {[
+                    { title: 'შემოწმებები', value: totalInspections, icon: ClipboardCheck, href: '/inspections', sparklineData: [2,5,3,8,6,totalInspections] },
+                    { title: 'პროექტები',   value: projects?.length ?? 0, icon: FolderOpen,     href: '/projects',    sparklineData: [1,2,2,3,4,projects?.length ?? 0] },
+                    { title: 'ინციდენტები', value: incidents?.length ?? 0, icon: AlertTriangle,  href: '/incidents',   sparklineData: [0,1,0,2,1,incidents?.length ?? 0] },
+                    { title: 'ინსტრუქტ.',  value: briefings?.length ?? 0, icon: Megaphone,      href: '/briefings',   sparklineData: [1,3,2,4,3,briefings?.length ?? 0] },
+                  ].map(({ title, value, icon: Icon, href, sparklineData }) => (
+                    <Link key={href} to={href} className="group flex flex-col justify-between p-5 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/40">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">{title}</p>
+                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600 dark:bg-brand-950/30 dark:text-brand-400">
+                          <Icon size={14} />
+                        </div>
+                      </div>
+                      <p className="mt-2 text-3xl font-bold text-neutral-900 dark:text-neutral-100">{value}</p>
+                      <Sparkline data={sparklineData} />
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Right: heatmap */}
+            <div className="lg:col-span-3 p-5">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+                აქტივობა · {completedThisWeek} დასრულებული · {allInspectionsUnsliced.filter(i => i.status === 'draft').length} დრაფტი
+              </p>
+              <HeatmapCalendar data={heatmapData} color="#147A4F" />
+            </div>
           </div>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard
-              title="შემოწმების აქტები"
-              value={totalInspections}
-              icon={ClipboardCheck}
-              href="/inspections"
-              sparklineData={[2, 5, 3, 8, 6, totalInspections]}
-              trendCurrent={totalInspections}
-              trendPrevious={Math.max(1, totalInspections - 2)}
-              trendLabel="წინა თვესთან"
-              staggerIndex={0}
-            />
-            <StatCard
-              title="პროექტები"
-              value={projects?.length ?? 0}
-              icon={FolderOpen}
-              href="/projects"
-              sparklineData={[1, 2, 2, 3, 4, projects?.length ?? 0]}
-              staggerIndex={1}
-            />
-            <StatCard
-              title="ინციდენტები"
-              value={incidents?.length ?? 0}
-              icon={AlertTriangle}
-              href="/incidents"
-              sparklineData={[0, 1, 0, 2, 1, incidents?.length ?? 0]}
-              staggerIndex={2}
-            />
-            <StatCard
-              title="ინსტრუქტაჟები"
-              value={briefings?.length ?? 0}
-              icon={Megaphone}
-              href="/briefings"
-              sparklineData={[1, 3, 2, 4, 3, briefings?.length ?? 0]}
-              staggerIndex={3}
-            />
-          </div>
-        )}
+        </Card>
       </motion.div>
 
-      {/* ═════ Row 2: Activity heatmap + Project widgets ═════ */}
-      <motion.div variants={fadeUpItem()} className="grid grid-cols-1 gap-6 xl:grid-cols-5">
-        {/* Heatmap — left 2 cols */}
-        <Card disableHover className="overflow-hidden xl:col-span-2">
-          <CardHeader className="border-b border-neutral-100 pb-4 dark:border-neutral-800">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-50 text-brand-600 dark:bg-brand-950/30 dark:text-brand-400">
-                <TrendingUp size={18} />
-              </div>
-              <div>
-                <CardTitle className="text-heading-3">აქტივობა</CardTitle>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                  {completedThisWeek} დასრულებული · {allInspectionsUnsliced.filter(i => i.status === 'draft').length} დრაფტი
-                </p>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="p-5">
-            <HeatmapCalendar data={heatmapData} color="#147A4F" />
-          </CardContent>
-        </Card>
-
-        {/* Project widgets — right 3 cols */}
-        <div className="xl:col-span-3">
+      {/* ═════ Row 4: Project widgets ═════ */}
+      <motion.div variants={fadeUpItem()}>
+        <div>
           {isLoading ? (
             <div className="grid gap-4 sm:grid-cols-2">
               {[...Array(2)].map((_, i) => (
