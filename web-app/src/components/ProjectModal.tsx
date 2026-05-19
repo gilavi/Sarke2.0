@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query';
-import { X } from 'lucide-react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { Modal } from '@mantine/core';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -135,121 +134,91 @@ export function ProjectModal({ open, onClose, projectId }: Props) {
   }
 
   return (
-    <AnimatePresence>
-      {open && (
-        <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center p-4">
-          {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={onClose}
+    <Modal
+      opened={open}
+      onClose={onClose}
+      title={isEdit ? 'პროექტის რედაქტირება' : 'ახალი პროექტი'}
+      size="lg"
+      radius="md"
+      centered
+    >
+      {/* Form */}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Logo */}
+        <div className="flex items-center gap-3">
+          <EditableProjectAvatar
+            project={{ name: name || '?', company_name: companyName, logo: logoDataUrl }}
+            size="lg"
+            onFileInputChange={handleLogoSelect}
           />
-
-          {/* Sheet */}
-          <motion.div
-            initial={{ opacity: 0, y: 24, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 24, scale: 0.97 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-            className="relative z-10 w-full max-w-lg rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 overflow-hidden"
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-neutral-100 px-5 py-4 dark:border-neutral-800">
-              <h2 className="font-display text-base font-semibold text-neutral-900 dark:text-neutral-100">
-                {isEdit ? 'პროექტის რედაქტირება' : 'ახალი პროექტი'}
-              </h2>
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800"
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-4 p-5">
-              {/* Logo */}
-              <div className="flex items-center gap-3">
-                <EditableProjectAvatar
-                  project={{ name: name || '?', company_name: companyName, logo: logoDataUrl }}
-                  size="lg"
-                  onFileInputChange={handleLogoSelect}
-                />
-                <span className="text-sm text-neutral-500 dark:text-neutral-400">
-                  {logoDataUrl ? 'ლოგო არჩეულია' : 'დააჭირეთ ლოგოს ასარჩევად'}
-                </span>
-              </div>
-
-              {/* Name */}
-              <div className="space-y-1">
-                <Label htmlFor="pm-name">პროექტის სახელი *</Label>
-                <Input
-                  id="pm-name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  autoFocus
-                  className={errors.name ? 'border-red-400 focus-visible:ring-red-300' : ''}
-                />
-                {errors.name && <p className="text-xs text-red-600">{errors.name}</p>}
-              </div>
-
-              {/* Company */}
-              <div className="space-y-1">
-                <Label htmlFor="pm-company">კომპანია</Label>
-                <Input id="pm-company" value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
-              </div>
-
-              {/* Address */}
-              <div className="space-y-1">
-                <Label htmlFor="pm-address">მისამართი</Label>
-                <AddressInput
-                  id="pm-address"
-                  value={address}
-                  onChange={setAddress}
-                  onCoords={(lat, lng) => { setLatitude(lat); setLongitude(lng); }}
-                  initialLat={latitude}
-                  initialLng={longitude}
-                />
-              </div>
-
-              {/* Phone */}
-              <div className="space-y-1">
-                <Label htmlFor="pm-phone">ტელეფონი</Label>
-                <Input
-                  id="pm-phone"
-                  type="tel"
-                  inputMode="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(normalizePhone(e.target.value))}
-                  placeholder="+995 5XX XXX XXX"
-                  className={errors.phone ? 'border-red-400 focus-visible:ring-red-300' : ''}
-                />
-                {errors.phone && <p className="text-xs text-red-600">{errors.phone}</p>}
-              </div>
-
-              {mutation.error && (
-                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                  {mutation.error instanceof Error ? mutation.error.message : String(mutation.error)}
-                </div>
-              )}
-
-              {/* Actions */}
-              <div className="flex justify-end gap-2 pt-1">
-                <Button type="button" variant="outline" onClick={onClose} disabled={mutation.isPending}>
-                  გაუქმება
-                </Button>
-                <Button type="submit" disabled={mutation.isPending}>
-                  {mutation.isPending ? (isEdit ? 'ინახება…' : 'იქმნება…') : (isEdit ? 'შენახვა' : 'შექმნა')}
-                </Button>
-              </div>
-            </form>
-          </motion.div>
+          <span className="text-sm text-neutral-500 dark:text-neutral-400">
+            {logoDataUrl ? 'ლოგო არჩეულია' : 'დააჭირეთ ლოგოს ასარჩევად'}
+          </span>
         </div>
-      )}
-    </AnimatePresence>
+
+        {/* Name */}
+        <div className="space-y-1">
+          <Label htmlFor="pm-name">პროექტის სახელი *</Label>
+          <Input
+            id="pm-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            autoFocus
+            className={errors.name ? 'border-red-400 focus-visible:ring-red-300' : ''}
+          />
+          {errors.name && <p className="text-xs text-red-600">{errors.name}</p>}
+        </div>
+
+        {/* Company */}
+        <div className="space-y-1">
+          <Label htmlFor="pm-company">კომპანია</Label>
+          <Input id="pm-company" value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
+        </div>
+
+        {/* Address */}
+        <div className="space-y-1">
+          <Label htmlFor="pm-address">მისამართი</Label>
+          <AddressInput
+            id="pm-address"
+            value={address}
+            onChange={setAddress}
+            onCoords={(lat, lng) => { setLatitude(lat); setLongitude(lng); }}
+            initialLat={latitude}
+            initialLng={longitude}
+          />
+        </div>
+
+        {/* Phone */}
+        <div className="space-y-1">
+          <Label htmlFor="pm-phone">ტელეფონი</Label>
+          <Input
+            id="pm-phone"
+            type="tel"
+            inputMode="tel"
+            value={phone}
+            onChange={(e) => setPhone(normalizePhone(e.target.value))}
+            placeholder="+995 5XX XXX XXX"
+            className={errors.phone ? 'border-red-400 focus-visible:ring-red-300' : ''}
+          />
+          {errors.phone && <p className="text-xs text-red-600">{errors.phone}</p>}
+        </div>
+
+        {mutation.error && (
+          <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {mutation.error instanceof Error ? mutation.error.message : String(mutation.error)}
+          </div>
+        )}
+
+        {/* Actions */}
+        <div className="flex justify-end gap-2 pt-1">
+          <Button type="button" variant="outline" onClick={onClose} disabled={mutation.isPending}>
+            გაუქმება
+          </Button>
+          <Button type="submit" disabled={mutation.isPending}>
+            {mutation.isPending ? (isEdit ? 'ინახება…' : 'იქმნება…') : (isEdit ? 'შენახვა' : 'შექმნა')}
+          </Button>
+        </div>
+      </form>
+    </Modal>
   );
 }

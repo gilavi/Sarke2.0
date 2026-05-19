@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Plus, ChevronRight, Building2 } from 'lucide-react';
+import { ActionIcon, Button } from '@mantine/core';
 import { cn } from '@/lib/utils';
 import { type Project } from '@/lib/data/projects';
 import { listInspections } from '@/lib/data/inspections';
@@ -71,14 +72,16 @@ export function ProjectActivityWidget({ project, onNewAct }: Props) {
             <p className="truncate text-[11px] text-neutral-400 dark:text-neutral-500">{project.company_name}</p>
           )}
         </div>
-        <button
-          type="button"
+        <ActionIcon
+          variant="subtle"
+          color="gray"
+          radius="xl"
+          size="sm"
           onClick={onNewAct}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-neutral-400 transition-all hover:text-neutral-600 hover:ring-1 hover:ring-neutral-300 dark:text-neutral-500 dark:hover:text-neutral-300 dark:hover:ring-neutral-600"
           aria-label="ახალი აქტი"
         >
           <Plus size={15} />
-        </button>
+        </ActionIcon>
         <Link
           to={`/projects/${project.id}`}
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700 dark:text-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-neutral-300"
@@ -128,21 +131,17 @@ export function ProjectActivityWidget({ project, onNewAct }: Props) {
 
       {/* ── View more ── */}
       {!expanded && remaining > 0 && (
-        <li className="list-none border-t border-neutral-100 dark:border-neutral-800">
-          <button
-            type="button"
+        <div className="border-t border-neutral-100 dark:border-neutral-800 px-4 py-2">
+          <Button
+            variant="subtle"
+            size="xs"
+            color="gray"
+            fullWidth
             onClick={() => setExpanded(true)}
-            className="group flex w-full items-center gap-3 px-4 py-2.5 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/50"
           >
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-neutral-100 dark:bg-neutral-800">
-              <span className="text-[11px] font-bold text-neutral-400 dark:text-neutral-500">+{remaining}</span>
-            </div>
-            <p className="flex-1 text-left text-[13px] font-medium text-neutral-500 dark:text-neutral-400">
-              კიდევ {remaining} ჩანაწერი
-            </p>
-            <ChevronRight size={13} className="shrink-0 text-neutral-300 dark:text-neutral-600" />
-          </button>
-        </li>
+            კიდევ {remaining} ჩანაწერი
+          </Button>
+        </div>
       )}
     </div>
   );

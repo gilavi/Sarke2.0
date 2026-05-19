@@ -19,7 +19,8 @@
  *   - deleteFn      Override default delete (best-effort).
  */
 import { useEffect, useRef, useState } from 'react';
-import { Camera, X } from 'lucide-react';
+import { Camera, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ActionIcon, Modal } from '@mantine/core';
 import { signedInspectionPhotoUrl, uploadInspectionPhoto, deleteInspectionPhoto } from '@/lib/photoUpload';
 
 interface Props {
@@ -87,7 +88,6 @@ export default function PhotoUploadWidget({
   useEffect(() => {
     if (lightbox === null) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setLightbox(null);
       if (e.key === 'ArrowRight') setLightbox((i) => i !== null ? Math.min(i + 1, paths.length - 1) : null);
       if (e.key === 'ArrowLeft') setLightbox((i) => i !== null ? Math.max(i - 1, 0) : null);
     }
@@ -150,14 +150,17 @@ export default function PhotoUploadWidget({
                 )}
               </button>
               {!disabled && (
-                <button
-                  type="button"
+                <ActionIcon
+                  variant="filled"
+                  color="dark"
+                  size="xs"
+                  radius="xl"
                   onClick={() => handleRemove(p)}
-                  className="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white hover:bg-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-1"
                   aria-label="ფოტოს წაშლა"
+                  style={{ position: 'absolute', top: -6, right: -6 }}
                 >
-                  <X size={12} />
-                </button>
+                  <X size={10} />
+                </ActionIcon>
               )}
             </div>
           ))}
@@ -167,15 +170,17 @@ export default function PhotoUploadWidget({
       {/* Upload button */}
       {!disabled && (
         <>
-          <button
-            type="button"
+          <ActionIcon
+            variant="light"
+            color="brand"
+            radius="xl"
+            size="lg"
             onClick={() => fileRef.current?.click()}
             disabled={uploading}
-            className="flex items-center gap-1 rounded-md border border-dashed border-neutral-300 px-2 py-1 text-xs text-neutral-500 hover:border-brand-400 hover:text-brand-600 disabled:opacity-50"
+            aria-label="ფოტოს დამატება"
           >
-            <Camera size={12} />
-            {uploading ? 'იტვირთება…' : 'ფოტოს დამატება'}
-          </button>
+            <Camera size={16} />
+          </ActionIcon>
           <input
             ref={fileRef}
             type="file"
@@ -192,55 +197,58 @@ export default function PhotoUploadWidget({
       )}
 
       {/* Lightbox */}
-      {lightbox !== null && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
-          onClick={() => setLightbox(null)}
-        >
-          {lightbox > 0 && (
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); setLightbox(lightbox - 1); }}
-              className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-3 text-2xl text-white hover:bg-white/25"
-            >
-              ‹
-            </button>
-          )}
-          <div
-            className="flex max-h-screen max-w-5xl flex-col items-center px-16"
-            onClick={(e) => e.stopPropagation()}
-          >
+      <Modal
+        opened={lightbox !== null}
+        onClose={() => setLightbox(null)}
+        size="xl"
+        centered
+        withCloseButton
+        radius="md"
+        styles={{ body: { padding: 0 }, content: { background: '#000' } }}
+      >
+        {lightbox !== null && (
+          <div className="relative flex items-center justify-center" style={{ minHeight: 400 }}>
             {signedUrls[paths[lightbox]] ? (
               <img
                 src={signedUrls[paths[lightbox]]}
                 alt={`ფოტო ${lightbox + 1}`}
-                className="max-h-[80vh] max-w-full rounded-lg object-contain shadow-2xl"
+                className="max-h-[70vh] max-w-full rounded-md object-contain"
               />
             ) : (
               <div className="h-64 w-96 rounded-lg bg-neutral-800" />
             )}
-            <div className="mt-3 text-sm text-white/60">
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 text-sm text-white/60">
               {lightbox + 1} / {paths.length}
             </div>
+            {lightbox > 0 && (
+              <ActionIcon
+                variant="filled"
+                color="dark"
+                radius="xl"
+                className="absolute left-3"
+                style={{ top: '50%', transform: 'translateY(-50%)' }}
+                onClick={() => setLightbox(i => Math.max((i ?? 0) - 1, 0))}
+                aria-label="წინა"
+              >
+                <ChevronLeft size={16} />
+              </ActionIcon>
+            )}
+            {lightbox < paths.length - 1 && (
+              <ActionIcon
+                variant="filled"
+                color="dark"
+                radius="xl"
+                className="absolute right-3"
+                style={{ top: '50%', transform: 'translateY(-50%)' }}
+                onClick={() => setLightbox(i => Math.min((i ?? 0) + 1, paths.length - 1))}
+                aria-label="შემდეგი"
+              >
+                <ChevronRight size={16} />
+              </ActionIcon>
+            )}
           </div>
-          {lightbox < paths.length - 1 && (
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); setLightbox(lightbox + 1); }}
-              className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-3 text-2xl text-white hover:bg-white/25"
-            >
-              ›
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => setLightbox(null)}
-            className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/25"
-          >
-            ✕
-          </button>
-        </div>
-      )}
+        )}
+      </Modal>
     </div>
   );
 }
