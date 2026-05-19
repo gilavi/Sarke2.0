@@ -1,12 +1,11 @@
 import { useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { useMemo, memo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { SkeletonList, SkeletonStatCard } from '@/components/SkeletonCard';
+import { SkeletonStatCard } from '@/components/SkeletonCard';
 import {
   ClipboardCheck, AlertTriangle, Megaphone, FileText, FolderOpen,
-  ChevronRight, Truck, Pickaxe, Wrench, ShieldCheck, Flame,
-  TrendingUp, Clock, Zap
+  Flame, TrendingUp, Zap
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,6 +15,7 @@ import {
 import { SubscriptionCard } from '@/components/SubscriptionCard';
 import { StatCard } from '@/components/charts/StatCard';
 import { HeatmapCalendar } from '@/components/charts/HeatmapCalendar';
+import { ProjectActivityWidget } from '@/components/ProjectActivityWidget';
 import { useAuth } from '@/lib/auth';
 import { listInspections } from '@/lib/data/inspections';
 import { listBobcatInspections } from '@/lib/data/bobcat';
@@ -27,87 +27,22 @@ import { listBriefings } from '@/lib/data/briefings';
 import InspectionWizard from '@/components/InspectionWizard';
 import { staggerContainer, fadeUpItem, STAGGER } from '@/lib/animations';
 
-/* ─── Type icons per inspection type ─── */
-const TYPE_CONFIG: Record<string, { icon: React.ElementType; color: string; bg: string; darkBg: string; label: string }> = {
-  harness:       { icon: ShieldCheck, color: 'text-brand-600',      bg: 'bg-brand-50',      darkBg: 'dark:bg-brand-950/30',      label: 'ქამარი' },
-  xaracho:       { icon: ShieldCheck, color: 'text-brand-600',      bg: 'bg-brand-50',      darkBg: 'dark:bg-brand-950/30',      label: 'ხარაჩო' },
-  bobcat:        { icon: Truck,       color: 'text-amber-600',      bg: 'bg-amber-50',      darkBg: 'dark:bg-amber-950/30',      label: 'ციცხვიანი' },
-  excavator:     { icon: Pickaxe,     color: 'text-blue-600',       bg: 'bg-blue-50',       darkBg: 'dark:bg-blue-950/30',       label: 'ექსკავატორი' },
-  general:       { icon: Wrench,      color: 'text-purple-600',     bg: 'bg-purple-50',     darkBg: 'dark:bg-purple-950/30',     label: 'ტექ. აღჭურვ.' },
-  cargo_platform:{ icon: ShieldCheck, color: 'text-teal-600',       bg: 'bg-teal-50',        darkBg: 'dark:bg-teal-950/30',        label: 'პლატფორმა' },
-  default:       { icon: ClipboardCheck, color: 'text-brand-600', bg: 'bg-brand-50',      darkBg: 'dark:bg-brand-950/30',      label: 'აქტი' },
-};
-
-function getTypeConfig(href: string) {
-  if (href.includes('bobcat')) return TYPE_CONFIG.bobcat;
-  if (href.includes('excavator')) return TYPE_CONFIG.excavator;
-  if (href.includes('general-equipment')) return TYPE_CONFIG.general;
-  if (href.includes('cargo-platform')) return TYPE_CONFIG.cargo_platform;
-  return TYPE_CONFIG.default;
-}
-
-/* ─── Recent item row ─── */
-const RecentItemRow = memo(function RecentItemRow({
-  item,
-}: {
-  item: { id: string; label: string; date: string; status: string; href: string };
-}) {
-  const config = getTypeConfig(item.href);
-  const Icon = config.icon;
-  const isCompleted = item.status === 'completed';
-
-  return (
-    <Link
-      to={item.href}
-      className="group flex items-center gap-3 rounded-xl border border-neutral-200/80 bg-white p-3 transition-all hover:border-brand-300 hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900 dark:hover:border-brand-700"
-    >
-      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${config.bg} ${config.darkBg} ${config.color}`}>
-        <Icon size={18} />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-neutral-900 dark:text-neutral-100">{item.label}</p>
-        <div className="flex items-center gap-2 mt-0.5">
-          <span className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500">{config.label}</span>
-          <span className="text-[10px] text-neutral-300 dark:text-neutral-600">•</span>
-          <span className="font-mono text-[11px] tabular-nums text-neutral-400 dark:text-neutral-500">
-            {item.date ? new Date(item.date).toLocaleDateString('ka-GE') : ''}
-          </span>
-        </div>
-      </div>
-      <div className="flex shrink-0 items-center gap-2">
-        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-          isCompleted
-            ? 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400'
-            : 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
-        }`}>
-          {isCompleted ? 'დასრულებული' : 'დრაფტი'}
-        </span>
-        <ChevronRight size={14} className="text-neutral-300 transition-transform group-hover:translate-x-0.5 dark:text-neutral-600" />
-      </div>
-    </Link>
-  );
-});
-
 /* ─── Quick action tile ─── */
 function QuickActionTile({ to, icon: Icon, label, color, darkColor }: {
   to: string; icon: React.ElementType; label: string; color: string; darkColor: string;
 }) {
   return (
-    <Link to={to}>
-      <motion.div
-        whileHover={{ y: -2, scale: 1.01 }}
-        whileTap={{ scale: 0.98 }}
-        className="flex items-center gap-3 rounded-2xl border border-neutral-200/80 bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900"
-      >
-        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${color} ${darkColor}`}>
-          <Icon size={20} />
-        </div>
-        <div>
-          <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{label}</p>
-          <p className="text-[11px] text-neutral-400 dark:text-neutral-500">ახლავე დაიწყეთ</p>
-        </div>
-        <ChevronRight size={16} className="ml-auto text-neutral-300 dark:text-neutral-600" />
-      </motion.div>
+    <Link
+      to={to}
+      className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white p-4 transition-colors hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:bg-neutral-800/60"
+    >
+      <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${color} ${darkColor}`}>
+        <Icon size={20} />
+      </div>
+      <div>
+        <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{label}</p>
+        <p className="text-[11px] text-neutral-400 dark:text-neutral-500">ახლავე დაიწყეთ</p>
+      </div>
     </Link>
   );
 }
@@ -236,57 +171,53 @@ export default function Home() {
         )}
       </motion.div>
 
-      {/* ═════ Row 2: Full-Width Activity + Recent ═════ */}
-      <motion.div variants={fadeUpItem()}>
-        <Card disableHover className="overflow-hidden">
-          <CardHeader className="flex flex-row items-center justify-between border-b border-neutral-100 pb-4 dark:border-neutral-800">
+      {/* ═════ Row 2: Activity heatmap + Project widgets ═════ */}
+      <motion.div variants={fadeUpItem()} className="grid grid-cols-1 gap-6 xl:grid-cols-5">
+        {/* Heatmap — left 2 cols */}
+        <Card disableHover className="overflow-hidden xl:col-span-2">
+          <CardHeader className="border-b border-neutral-100 pb-4 dark:border-neutral-800">
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-50 text-brand-600 dark:bg-brand-950/30 dark:text-brand-400">
                 <TrendingUp size={18} />
               </div>
               <div>
-                <CardTitle className="text-heading-3">აქტივობა და ბოლო ჩანაწერები</CardTitle>
+                <CardTitle className="text-heading-3">აქტივობა</CardTitle>
                 <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                  {completedThisWeek} დასრულებული • {allInspectionsUnsliced.filter(i => i.status === 'draft').length} დრაფტი
+                  {completedThisWeek} დასრულებული · {allInspectionsUnsliced.filter(i => i.status === 'draft').length} დრაფტი
                 </p>
               </div>
             </div>
-            <Link to="/inspections" className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-medium text-brand-600 transition hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-brand-950/20">
-              ყველა <ChevronRight className="h-3 w-3" />
-            </Link>
           </CardHeader>
-          <CardContent className="p-0">
-            <div className="grid grid-cols-1 xl:grid-cols-5">
-              {/* Heatmap — takes left 3 cols */}
-              <div className="col-span-1 xl:col-span-3 border-b border-neutral-100 p-5 dark:border-neutral-800 xl:border-b-0 xl:border-r h-[280px] flex flex-col">
-                <HeatmapCalendar data={heatmapData} color="#147A4F" />
-              </div>
-
-              {/* Recent list — takes right 2 cols */}
-              <div className="col-span-1 xl:col-span-2 p-5">
-                <div className="mb-3 flex items-center gap-2">
-                  <Clock size={14} className="text-neutral-400" />
-                  <span className="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">ბოლო 5 ჩანაწერი</span>
-                </div>
-                {isLoading ? (
-                  <SkeletonList count={5} />
-                ) : allInspections.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-8 text-center">
-                    <ClipboardCheck size={24} className="mb-2 text-neutral-300 dark:text-neutral-700" />
-                    <p className="text-sm text-neutral-500 dark:text-neutral-400">ჯერ არაფერია დაფიქსირებული</p>
-                    <p className="mt-1 text-xs text-neutral-400 dark:text-neutral-500">დაიწყეთ პირველი შემოწმებით</p>
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-2">
-                    {allInspections.map((item) => (
-                      <RecentItemRow key={item.id} item={item} />
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+          <CardContent className="h-[280px] flex flex-col p-5">
+            <HeatmapCalendar data={heatmapData} color="#147A4F" />
           </CardContent>
         </Card>
+
+        {/* Project widgets — right 3 cols */}
+        <div className="xl:col-span-3">
+          {isLoading ? (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {[...Array(2)].map((_, i) => (
+                <div key={i} className="h-48 animate-pulse rounded-2xl bg-neutral-100 dark:bg-neutral-800" />
+              ))}
+            </div>
+          ) : (projects?.length ?? 0) === 0 ? (
+            <div className="flex h-full flex-col items-center justify-center rounded-2xl border border-dashed border-neutral-200 py-12 text-center dark:border-neutral-800">
+              <FolderOpen size={24} className="mb-2 text-neutral-300 dark:text-neutral-600" />
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">პროექტი არ არის</p>
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {(projects ?? []).slice(0, 4).map((project) => (
+                <ProjectActivityWidget
+                  key={project.id}
+                  project={project}
+                  onNewAct={() => setNewInspectionOpen(true)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </motion.div>
 
       {/* ═════ Row 3: Quick Actions ═════ */}
