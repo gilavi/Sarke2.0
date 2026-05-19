@@ -187,30 +187,36 @@ export default function NewOrder() {
     if (step === 3 && isFireSafetyVariant(docType)) return !!form.directorSignature;
     if (step === 4 && isFireSafetyVariant(docType)) return !!form.appointedSignature;
     return true;
-  }, [step, form, docType]);
+  }, [step, form, docType, projectId]);
 
   // ── save & PDF ───────────────────────────────────────────────────────────────
 
+  interface SaveVars {
+    asDraft: boolean;
+    pid: string;
+    dt: OrderDocumentType;
+    formData: ReturnType<typeof buildFormData>;
+    html: string;
+    destProjectId: string;
+  }
+
   const saveMutation = useMutation({
-    mutationFn: async (asDraft: boolean) => {
-      if (!docType || !projectId) throw new Error('Missing docType or project');
-      const formData = buildFormData();
+    mutationFn: async ({ asDraft, pid, dt, formData }: SaveVars) => {
       await createOrder({
-        projectId,
-        documentType: docType,
+        projectId: pid,
+        documentType: dt,
         formData,
         status: asDraft ? 'draft' : 'completed',
       });
     },
-    onSuccess: (_v, asDraft) => {
+    onSuccess: (_v, { asDraft, html, destProjectId }) => {
       if (!asDraft && pdfWinRef.current) {
-        const html = buildHtml();
         pdfWinRef.current.document.write(html);
         pdfWinRef.current.document.close();
         pdfWinRef.current = null;
       }
       toast.success(asDraft ? 'ბრძანება შენახულია' : 'ბრძანება შექმნილია');
-      navigate(projectId ? `/projects/${projectId}` : '/');
+      navigate(destProjectId ? `/projects/${destProjectId}` : '/');
     },
     onError: (e) => {
       pdfWinRef.current?.close();
@@ -293,14 +299,31 @@ export default function NewOrder() {
 
   const isFinal = step === totalSteps - 1;
 
+  function makeVars(asDraft: boolean): SaveVars | null {
+    if (!docType || !projectId) return null;
+    const formData = buildFormData();
+    return {
+      asDraft,
+      pid: projectId,
+      dt: docType,
+      formData,
+      html: buildHtml(),
+      destProjectId: projectId,
+    };
+  }
+
   function handleFinish() {
+    const vars = makeVars(false);
+    if (!vars) { toast.error('პროექტი ან ბრძანების ტიპი არ არის მითითებული'); return; }
     // Open window synchronously (user gesture) before going async
     pdfWinRef.current = window.open('', '_blank', 'noopener,noreferrer');
-    saveMutation.mutate(false);
+    saveMutation.mutate(vars);
   }
 
   function handleSaveDraft() {
-    saveMutation.mutate(true);
+    const vars = makeVars(true);
+    if (!vars) { toast.error('პროექტი ან ბრძანების ტიპი არ არის მითითებული'); return; }
+    saveMutation.mutate(vars);
   }
 
   return (
