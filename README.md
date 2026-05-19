@@ -1,71 +1,127 @@
-# Sarke 2.0 — Now With 47% More Bugs™
+# Sarke 2.0
 
-> *"შრომის უსაფრთხოების ექსპერტები ეძებენ აპს. ჩვენ კი აპს ვეძებთ ექსპერტებს."*
+Expo (React Native) app for occupational safety experts in Georgia. An expert creates a project, fills a checklist-style inspection on their phone, collects worker signatures, and generates a PDF report. All UI copy is in Georgian (ქართული).
 
-Expo (React Native) app for people who climb scaffolding and pretend it's safe. Lets an expert create a project, fill a checklist-style questionnaire on their phone, collect signatures from terrified workers, and generate a PDF report that nobody reads.
+There is also a public web dashboard ([`web-app/`](web-app/)) and a tokenized signing page ([`web/`](web/)) sharing the same Supabase backend.
 
-**📰 [What's New](docs/WHATS_NEW.md)** — Latest updates, recent commits, and current focus areas. _Read this first to get up to speed._
-
----
-
-## 🏗️ MVP Scope (a.k.a. "What Actually Works")
-
-Five seeded templates, all in ქართული, because Google Translate doesn't know what a ხარაჩო is:
-
-- **ფასადის ხარაჩოს შემოწმების აქტი** — faÇade scaffolding inspection (yes, the Ç is intentional, we fancy now)
-- **დამცავი ქამრების შემოწმების აქტი** — fall-protection harness inspection. If this fails, you're already dead.
-- **ციცხვიანი დამტვირთველის შემოწმების აქტი** — Bobcat / Skid-Steer Loader inspection. 30-item checklist (3-option: good / deficient / unusable), general info section, auto-calculated summary table with verdict auto-suggestion, inspector signature, and dedicated PDF. Stored in `bobcat_inspections` table (migration 0024). Routed via `category: 'bobcat'` — selection from the same template picker routes to `app/inspections/bobcat/[id].tsx` instead of the generic wizard.
-- **დიდი ციცხვიანი დამტვირთველის შემოწმება** — Large Loader inspection. 33-item variant of the Bobcat template (item IDs 1-32 + #40). Shares the same screen, DB table, and PDF generator. New items: #10 (Z-bar mechanism), #32 (steering wheel), #40 (reverse camera — neutral 3rd option "არ გААჩნია" that does not trigger rejection verdict). Template UUID `44444444-4444-4444-4444-444444444444`, inserted by migration 0025 with `category: 'bobcat'`.
-- **ექსკავატორის ტექნიკური შემოწმების აქტი** — Excavator technical inspection. 6-step wizard (info → engine → undercarriage → cabin+safety → maintenance+verdict → signature). Pre-filled item lists per ISO 9457 section grouping; verdict auto-suggestion from checklist results; dedicated PDF with section tables and verdict block. Stored in `excavator_inspections` table (migration 0026). Routed via `category: 'excavator'` → `app/inspections/excavator/[id].tsx`.
-- **ტექნიკური აღჭურვილობის შემოწმების აქტი** — Flexible general-equipment inspection. User builds their own equipment list row-by-row (name, model, serial, 3-state condition with accordion for note + photos). 4-step wizard (info → equipment → summary → signature). No predefined checklist items. Stored in `general_equipment_inspections` table (migration 0027). Routed via `category: 'general_equipment'` → `app/inspections/general-equipment/[id].tsx`.
-
-**Contextual help (ხარაჩო tour):** the first time a user starts a scaffold questionnaire they see a 9‑card swipeable tour explaining each component. Dismissal is persisted in `AsyncStorage` under `haraco_tour_seen`. Every Section 2 row also shows a "?" icon that opens a bottom sheet with the component illustration + one‑line guidance.
+**See also:** [docs/AI_BRIEFING.md](docs/AI_BRIEFING.md) for a working overview, [docs/WHATS_NEW.md](docs/WHATS_NEW.md) for recent changes, [docs/primitives.md](docs/primitives.md) for cross-cutting helpers, [docs/payments.md](docs/payments.md) for BOG payment flow, [CLAUDE.md](CLAUDE.md) for AI-session rules.
 
 ---
 
-## 🧪 Stack (a.k.a. "Why Is My Laptop Fan Crying?")
+## Stack
 
-- **Expo SDK 54** + expo-router (file-based routing, because config files are for cowards)
-- **React Native 0.81**, React 19 — the bleeding edge where we all bleed
-- **Supabase** (Postgres + Auth + Storage) — same backend as v1, because why fix what barely works?
-- `expo-image-picker` for photos of broken things — multi-select enabled in the project documents flow
-- `expo-document-picker` for non-image uploads (PDF, docs) in the project documents flow
-- `expo-print` + `expo-sharing` for PDFs that sit in Downloads folders forever
-- `qrcode` for the inspection QR embedded in the PDF header (SVG data URL, no Canvas needed)
-- `react-native-signature-canvas` for signatures that look like a seismograph during an earthquake
-- `react-native-keyboard-controller` for keyboard avoidance that actually works — wired in at the root via `<KeyboardProvider>`. Import `KeyboardAvoidingView` (and `KeyboardAwareScrollView` for screens with multiline inputs) from `react-native-keyboard-controller`, not from `react-native`.
+- **Expo SDK 54** + expo-router (`~6.0.23`) — file-based routing.
+- **React Native 0.81**, **React 19**.
+- **Supabase** (`@supabase/supabase-js ^2.58.0`) — Postgres + Auth + Storage. URL and anon key are baked into `app.json` → `expo.extra`.
+- **`react-native-keyboard-controller`** — wired at the root via `<KeyboardProvider>`. Always import `KeyboardAvoidingView` / `KeyboardAwareScrollView` from this package, not from `react-native`.
+- **`expo-image-picker`**, **`expo-document-picker`**, **`expo-print`**, **`expo-sharing`** — media + PDF generation.
+- **`react-native-signature-canvas`** — signature capture.
+- **`qrcode`** — inspection QR embedded in the PDF header (SVG data URL).
+- **Sentry** — crash reporting via [lib/crashReporting.ts](lib/crashReporting.ts). Set `EXPO_PUBLIC_SENTRY_DSN` to enable; otherwise crashes log to console.
 
-The native SwiftUI port lives on the [`ios-legacy`](https://github.com/gilavi/Sarke2.0/tree/ios-legacy) branch, where it rots in peace. RIP.
+The native SwiftUI port lives on the [`ios-legacy`](https://github.com/gilavi/Sarke2.0/tree/ios-legacy) branch and is not maintained from `main`.
 
-### ⌨️ Keyboard handling — the three patterns
+---
 
-There is exactly one way to handle the keyboard for each surface type. Don't invent a fourth.
+## Running Locally
 
-1. **Regular screens** — wrap content in `<KeyboardSafeArea headerHeight={N}>`. The wrapper uses the library's KAV under the hood, sets `contentContainerStyle: { flexGrow: 1 }` on the inner ScrollView, and dismisses the keyboard on tap. Put the primary action button as the **last child** (with a `<View style={{ flex: 1 }} />` spacer above it if you want it pinned to the bottom of the visible area). Pass the height of any custom header rendered above the wrapper (e.g. `<FlowHeader>` is `44`); leave it `0` if there is none. For screens using a stock stack header, `useHeaderHeight()` from `@react-navigation/elements` is the right value (see [signer.tsx](app/projects/%5Bid%5D/signer.tsx)).
+```sh
+npm install --legacy-peer-deps   # peer conflicts around Radix/React 19
+npx expo start                   # Expo dev server
+```
 
-2. **Custom bottom sheets** (Modal-based) — apply `marginBottom` from `useSheetKeyboardMargin()` (see [lib/useSheetKeyboardMargin.ts](lib/useSheetKeyboardMargin.ts)) to the sheet card's wrapping `Animated.View`. The hook listens to `keyboardWillShow`/`keyboardWillHide` and animates with the iOS keyboard's own `e.duration` and `Easing.bezier(0.17, 0.59, 0.4, 0.77)` so the card rides the keyboard 1:1. **Do not wrap a Modal-based sheet in `KeyboardAvoidingView`** — that double-lifts on top of `SheetLayout`'s internal `KeyboardAwareScrollView` and overshoots.
+Scan the QR with **Expo Go**. Supabase credentials are in `app.json`.
 
-3. **Inside `BottomSheetProvider`** — nothing to do. The provider's sheet card already uses the same hook, so `<SheetLayout>` content rides the keyboard automatically.
+### Lint + typecheck
 
-### 🌐 Web
+```sh
+npm run lint        # tsc --noEmit && scripts/check-primitives.mjs
+npm run typecheck   # tsc only
+```
 
-There are **two** web codebases in this repo, both static sites deployed to GitHub Pages off the `gh-pages` branch:
+`scripts/check-primitives.mjs` blocks grep-detectable misuses (bare `KeyboardAvoidingView` from `react-native`, legacy image helper names, direct `AsyncStorage` access to `pdf_language`). When adding a cross-cutting helper, read [docs/primitives.md](docs/primitives.md) first.
 
-| Path | Purpose | URL |
-|---|---|---|
-| `web/` (sarke-sign) | Tokenized signing page that recipients open from an SMS link | `https://gilavi.github.io/Sarke2.0/` |
-| `web-app/` (new dashboard) | Public dashboard webapp — same Supabase project as mobile | `https://gilavi.github.io/Sarke2.0/app/` |
+---
 
-Dashboard notable routes:
+## Repository Layout
+
+Top-level folders, one line each.
+
+| Path | Purpose |
+|---|---|
+| `app/` | expo-router routes for the mobile app. Subfolders: `(auth)/`, `(tabs)/`, `projects/`, `questionnaire/`, `template/`, `inspections/` (per-category screens: bobcat, excavator, cargo-platform, general-equipment, plus generic `[id].tsx`). |
+| `components/` | Shared RN components — `ui.tsx` primitives (Button, Card, Input, Chip, Screen, FormField, ButtonGroup, SectionHeader, ActionSheet, SheetLayout), `ProjectAvatar`, `BackButton`, `QuickActions` row, `wizard/kamari/` harness flow. |
+| `lib/` | Supabase client, session/auth provider, data services, theme, PDF template (`pdf.ts`), offline queue, `pdfGate.ts`, `pdfSecurity.ts`, `crashReporting.ts`, `photoLocationAlert.ts`, `sms.ts`, canonical keyboard hooks. |
+| `hooks/` | React hooks (e.g. `usePhotoWithLocation` for direct ImagePicker flows). |
+| `utils/` | Stateless helpers (`location.ts` GPS + reverseGeocode, etc.). |
+| `types/` | Shared TypeScript models (`models.ts`). |
+| `assets/` | Fonts, images, icons bundled with the app. |
+| `locales/` | UI strings (Georgian baseline). |
+| `shims/` | Web stubs (worklets, keyboard-controller) loaded via `metro.config.js` aliases. |
+| `scripts/` | Repo scripts including `check-primitives.mjs` (lint guard). |
+| `supabase/` | `migrations/` SQL files (0001–0043), `seed/` system templates, `functions/` Edge Functions, `.temp/` local CLI cache. |
+| `docs/` | Project documentation — `AI_BRIEFING.md`, `WHATS_NEW.md`, `primitives.md`, `payments.md`, `design-system-audit-*.md`, `prompts/`. |
+| `web/` | `sarke-sign` tokenized signing page (Vite + React). Deployed to `https://gilavi.github.io/Sarke2.0/`. |
+| `web-app/` | Public dashboard (Vite + React + TS + Tailwind). Deployed to `https://gilavi.github.io/Sarke2.0/app/`. |
+| `website/` | Docusaurus documentation site. Deployed via `.github/workflows/docs.yml`. |
+| `public/` | Static assets for the web bundles. |
+| `tests/` , `__tests__/` | Vitest unit tests (config in `vitest.config.ts`). |
+| `e2e/` | Playwright end-to-end tests (config in `playwright.config.ts`). |
+| `src/` | Misc shared sources used by the web bundles. |
+| `ios/` | Native iOS scaffold (legacy reference; primary native port is on `ios-legacy` branch). |
+
+GitHub Actions in `.github/workflows/`: `deploy-web.yml`, `deploy-web-app.yml`, `deploy-web-app-preview.yml`, `docs.yml`, `test.yml`.
+
+---
+
+## Inspection Templates
+
+All seeded by `supabase/seed/01_system_templates.sql` and individual migrations.
+
+| Template | Category | DB table | Route | Notes |
+|---|---|---|---|---|
+| ფასადის ხარაჩოს შემოწმების აქტი (facade scaffolding) | (generic) | `inspections` + `answers` | `app/questionnaire/[id].tsx` (wizard) → `app/inspections/[id].tsx` (result) | Original template. Includes the 9-card ხარაჩო tour persisted in AsyncStorage under `haraco_tour_seen`. |
+| დამცავი ქამრების შემოწმების აქტი (fall-protection harness) | (generic, kamari flow) | `inspections` + `answers` | wizard + `components/wizard/kamari/` | Count screen, overview grid, per-belt accordion. |
+| ციცხვიანი დამტვირთველის შემოწმების აქტი (Bobcat / Skid-Steer) | `bobcat` | `bobcat_inspections` | `app/inspections/bobcat/[id].tsx` | 30-item 3-state checklist, summary table, verdict auto-suggestion. Migration 0024. |
+| დიდი ციცხვიანი დამტვირთველის შემოწმება (Large Loader) | `bobcat` | `bobcat_inspections` | same as Bobcat | 33-item variant (template UUID `44444444-…`). Item #40 (reverse camera) has a neutral "არ გააჩნია" option. Migration 0025. |
+| ექსკავატორის ტექნიკური შემოწმების აქტი (Excavator) | `excavator` | `excavator_inspections` | `app/inspections/excavator/[id].tsx` | 6-step wizard (info → engine → undercarriage → cabin+safety → maintenance+verdict → signature). Migration 0026, registration number added in 0030. |
+| ტექნიკური აღჭურვილობის შემოწმების აქტი (general equipment) | `general_equipment` | `general_equipment_inspections` | `app/inspections/general-equipment/[id].tsx` | User builds the equipment list row-by-row. Migration 0027. |
+| ტვირთის მიმღები პლატფორმის შემოწმების აქტი (cargo receiving platform) | `cargo_platform` | `cargo_platform_inspections` | `app/inspections/cargo-platform/` | 7-section template: general info, platform ID, cargo list, 9-item checklist, verdict, summary photos, two signatories. Migration 0040. |
+| მობილური ხარაჩოს შემოწმების აქტი (mobile scaffold) | (generic) | `inspections` + `answers` | generic wizard | Reuses the generic wizard — no new table. Template UUID `33333333-…`. Migrations 0041, 0042 (N3 variant). |
+
+Photo flows write GPS + reverse-geocoded address to `answer_photos` (migration 0023). `lib/photoLocationAlert.ts` auto-sets project coords on first photo and warns on >500 m mismatch.
+
+---
+
+## Web codebases
+
+Two static bundles in this repo plus a Docusaurus site. None share code with the Expo mobile app — only Supabase.
+
+| Path | Purpose | URL | Deploy workflow |
+|---|---|---|---|
+| `web/` (sarke-sign) | Tokenized signing page recipients open from an SMS link | `https://gilavi.github.io/Sarke2.0/` | `deploy-web.yml` |
+| `web-app/` (dashboard) | Public dashboard with full BOG payment parity | `https://gilavi.github.io/Sarke2.0/app/` | `deploy-web-app.yml` (+ `-preview.yml` for PR previews under `/app/preview/`) |
+| `website/` (Docusaurus) | Documentation site | published via `docs.yml` | `docs.yml` |
+
+All three deploy to the same `gh-pages` branch under different `destination_dir` values; `keep_files: true` preserves the other trees.
+
+**Don't change the base path of `web/`** — in-flight SMS links from `lib/sms.ts` + `supabase/functions/send-signing-sms/` would break.
+
+### Dashboard routes
 
 | Route | Description |
 |---|---|
-| `/#/` | Home (subscription card + quick links) |
-| `/#/safety` | **3D Interactive Construction Safety Guide** (Three.js / React Three Fiber) — 6 clickable building parts with safety checklists, regulations, and hazard info. Responsive: side-by-side on desktop, stacked on mobile. |
+| `/#/` | Home — `<SubscriptionCard>` (free / active / expired with PDF usage bar) + quick links |
+| `/#/account` | Subscription management + payment history |
+| `/#/subscribe` | Initiates a BOG order via the shared `create-bog-order` Edge Function |
+| `/#/subscribe/success` / `/#/subscribe/fail` | BOG redirect targets; success invalidates `pdf-usage` cache |
+| `/#/safety` | 3D Interactive Construction Safety Guide (Three.js / React Three Fiber). Responsive: side-by-side on desktop, stacked on mobile. |
 
-Both are Vite + React (no Expo, no React Native). They share Supabase but **no code** with the mobile app — features are reimplemented in real HTML/CSS so desktop UX isn't fighting React Native Web. Mobile parity is not a goal.
+`PaywallModal` wraps `/subscribe` for in-flow upsell; gate calls via `checkAndIncrementPdfCount(userId)` from `web-app/src/lib/pdfGate.ts` (mirrors mobile [lib/pdfGate.ts](lib/pdfGate.ts)). Cancel uses the `cancel_subscription` RPC — idempotent; access continues until `subscription_expires_at`.
 
-Local dev for the dashboard:
+See [docs/payments.md](docs/payments.md) for the end-to-end BOG flow.
+
+### Dashboard local dev
 
 ```sh
 cd web-app
@@ -74,198 +130,87 @@ cp .env.example .env   # already has the public anon credentials
 npm run dev            # http://localhost:5173/Sarke2.0/app/
 ```
 
-#### Payments on the dashboard
+---
 
-The dashboard has full BOG payment parity with the mobile app:
+## Keyboard Handling — the three patterns
 
-- **`/`** — home shows a `<SubscriptionCard>` at the top (free / active / expired states with PDF usage bar)
-- **`/account`** — full subscription management + payment history
-- **`/subscribe`** — initiates a BOG order via the shared `create-bog-order` Edge Function
-- **`/subscribe/success` / `/subscribe/fail`** — BOG redirect targets; success invalidates `pdf-usage` cache
-- **`PaywallModal`** — wraps `/subscribe` for in-flow upsell when web PDF generation lands; gate calls via `checkAndIncrementPdfCount(userId)` from `web-app/src/lib/pdfGate.ts` (mirrors mobile [lib/pdfGate.ts](lib/pdfGate.ts))
-- **Cancel** — calls the `cancel_subscription` RPC (idempotent; access continues until `subscription_expires_at`)
+There is one way to handle the keyboard for each surface type. Don't invent a fourth.
 
-See [docs/payments.md](docs/payments.md) for the end-to-end flow.
+1. **Regular screens** — wrap content in `<KeyboardSafeArea headerHeight={N}>`. The wrapper uses the library's KAV under the hood, sets `contentContainerStyle: { flexGrow: 1 }` on the inner ScrollView, and dismisses the keyboard on tap. Put the primary action button as the **last child** (with a `<View style={{ flex: 1 }} />` spacer above it if you want it pinned to the bottom of the visible area). Pass the height of any custom header rendered above the wrapper (`<FlowHeader>` is `44`); `0` if none. For stock stack headers, `useHeaderHeight()` from `@react-navigation/elements` is the right value (see [signer.tsx](app/projects/%5Bid%5D/signer.tsx)).
+
+2. **Custom bottom sheets** (Modal-based) — apply `marginBottom` from `useSheetKeyboardMargin()` (see [lib/useSheetKeyboardMargin.ts](lib/useSheetKeyboardMargin.ts)) to the sheet card's wrapping `Animated.View`. The hook listens to `keyboardWillShow` / `keyboardWillHide` and animates with the iOS keyboard's own `e.duration` and `Easing.bezier(0.17, 0.59, 0.4, 0.77)`. **Do not wrap a Modal-based sheet in `KeyboardAvoidingView`** — that double-lifts on top of `SheetLayout`'s internal `KeyboardAwareScrollView` and overshoots.
+
+3. **Inside `BottomSheetProvider`** — nothing to do. The provider's sheet card uses the same hook; `<SheetLayout>` content rides the keyboard automatically.
 
 ---
 
-## 🚀 Running Locally
+## Supabase
 
-```sh
-npm install --legacy-peer-deps   # peer conflicts around Radix/React 19
-                                 # (yes, we know. no, we won't fix it.)
-npx expo start                   # opens dev server, your RAM weeps
-```
+Schema + seed already applied to the hosted project. Migrations are preserved for reference.
 
-Scan the QR in the terminal with **Expo Go** on your phone. If it crashes, restart your phone. Then your life. Then try again.
+### Migrations (`supabase/migrations/`)
 
-The Supabase URL and anon key are baked into `app.json` → `expo.extra`. Security through obscurity, baby.
+| File | Purpose |
+|---|---|
+| `0001_init.sql` | Tables + initial RLS |
+| `0002_terms_acceptance.sql` | Terms-of-service acceptance tracking |
+| `0003_feature_additions.sql` | Misc feature columns |
+| `0004_signatures_v2.sql` | Signatures schema v2 |
+| `0005_schedules_automation.sql` | Schedules + automation hooks |
+| `0006_inspections_certificates.sql` | Inspections + certificates tables |
+| `0007_rename_required_qualifications.sql` | Qualification column rename |
+| `0008_freeze_completed_inspections.sql` | Freeze-on-complete guard |
+| `0009_notes_column.sql` | Adds notes column |
+| `0010_freeze_completed_at.sql` | `completed_at` freeze timestamp |
+| `0011_remote_signing.sql` | Tokenized remote signing |
+| `0012_project_location.sql` | Project lat/lng/address |
+| `0013_project_crew.sql` | Project crew members |
+| `0014_project_files.sql` | Project file attachments |
+| `0015_project_logo.sql` | Optional `projects.logo` (base64 data URL) |
+| `0016_signer_role_other.sql` | Adds `'other'` to `signer_role` enum |
+| `0017_incidents.sql` | Incidents table |
+| `0018_briefings.sql` | Briefings table |
+| `0019_reports.sql` | Reports table |
+| `0020_storage_rls_and_timestamps.sql` | Tightens `incident-photos` / `report-photos` storage RLS to row owner; adds `updated_at` + audit trigger; adds composite indexes |
+| `0021_inspection_attachments.sql` | `inspection_attachments` table for equipment certificates (type chip + №number + 16:9 photo) |
+| `0022_project_contact_phone.sql` | Project contact phone column |
+| `0023_photo_location.sql` | Adds `latitude`, `longitude`, `address` to `answer_photos`; backfills from legacy `addr:` caption prefix |
+| `0024_bobcat_inspections.sql` | `bobcat_inspections` table + Bobcat and Large Loader templates (`category: 'bobcat'`) |
+| `0025_large_loader_template.sql` | Large Loader template variant (UUID `44444444-…`) |
+| `0026_excavator_template.sql` | `excavator_inspections` table + template (`category: 'excavator'`) |
+| `0027_general_equipment_inspection.sql` | `general_equipment_inspections` table (JSONB `equipment`, `summary_photos`) + template (UUID `66666666-…`) |
+| `0028_pdf_usage_tracking.sql` | Adds `pdf_count`, `subscription_status`, `subscription_expires_at`, `bog_card_token` to `users`; `increment_pdf_count` RPC enforces the free-tier cap |
+| `0029_subscription_unlimited.sql` | Auto-expires lapsed subscriptions; grants unlimited PDFs to active subscribers |
+| `0030_excavator_registration_number.sql` | Adds registration number to excavator inspections |
+| `0031_subscription_cancel_and_history.sql` | `users.subscription_cancelled_at`, `cancel_subscription` RPC, `payment_records` table |
+| `0032_inspections_add_signature.sql` | Inspector signature column on generic inspections |
+| `0033_inspections_add_inspector_name.sql` | Inspector name column on generic inspections |
+| `0034_bobcat_add_department.sql` | Department column on bobcat inspections |
+| `0035_general_equipment_add_department.sql` | Department column on general-equipment inspections |
+| `0036_inspections_add_department.sql` | Department column on generic inspections |
+| `0037_summary_photos_bobcat_excavator.sql` | Adds JSONB `summary_photos` to bobcat + excavator |
+| `0038_orders.sql` | `orders` table (e.g. labor-safety-specialist document orders) |
+| `0039_pdf_hash.sql` | Adds `pdf_hash` to all tables storing generated PDF URLs; populated by `lib/pdfSecurity.ts` `hashPdf()`, verified by `verifyPdf()` |
+| `0040_cargo_platform_inspection.sql` | `cargo_platform_inspections` self-contained table (7 sections, two signatories) |
+| `0041_mobile_scaffold_template.sql` | Mobile scaffold template (UUID `33333333-…`) reusing the generic wizard |
+| `0042_mobile_scaffold_n3_template.sql` | Mobile scaffold N3 variant |
+| `0043_inspection_stats_rpc.sql` | Stats RPC for the dashboard home page |
 
-### Typecheck + lint
+> Migration `0028_pdf_usage_tracking.sql` and the free-tier limit are noted in memory — the function currently allows 30 free PDFs (soft-launch). Tighten when BOG payment is fully wired.
 
-```sh
-npm run lint        # tsc --noEmit && scripts/check-primitives.mjs
-npm run typecheck   # just tsc
-```
+### Storage buckets
 
-`check-primitives.mjs` blocks a small set of grep-detectable misuses (bare `KeyboardAvoidingView` from `react-native`, legacy image helper names, direct `AsyncStorage` access to `pdf_language`). When adding a new cross-cutting helper, see [docs/primitives.md](docs/primitives.md).
-
----
-
-## 🐘 Supabase
-
-Schema + seed already applied to the hosted project. Relevant files preserved here for reference, mostly so we can blame the DB when things break:
-
-- `supabase/migrations/0001_init.sql` — tables + RLS
-- `supabase/migrations/0015_project_logo.sql` — optional `projects.logo` (base64 data URL)
-- `supabase/migrations/0016_signer_role_other.sql` — adds `'other'` to the `signer_role` enum so freeform crew members flow into `signatures`
-- `supabase/migrations/0020_storage_rls_and_timestamps.sql` — tightens `incident-photos` and `report-photos` storage RLS to the row owner; adds `updated_at` + audit trigger to mutable user-data tables; adds composite indexes for project-signer lookup and certificate pagination
-- `supabase/migrations/0021_inspection_attachments.sql` — `inspection_attachments` table for equipment certificates uploaded against an inspection (type chip + №number + 16:9 photo). Distinct from `qualifications` (expert credentials) and `certificates` (generated PDFs). Photos live in the existing `certificates` bucket.
-- `supabase/migrations/0023_photo_location.sql` — adds `latitude double precision`, `longitude double precision`, `address text` to `answer_photos`; backfills from legacy `addr:` caption prefix.
-- `supabase/migrations/0024_bobcat_inspections.sql` — `bobcat_inspections` table, RLS, updated_at trigger, and system template rows for Bobcat and Large Loader (`category: 'bobcat'`).
-- `supabase/migrations/0025_large_loader_template.sql` — inserts the Large Loader system template variant (`44444444-…`).
-- `supabase/migrations/0026_excavator_template.sql` — `excavator_inspections` table, RLS, updated_at trigger, and system template row (`category: 'excavator'`).
-- `supabase/migrations/0027_general_equipment_inspection.sql` — `general_equipment_inspections` table (JSONB `equipment` array, JSONB `summary_photos`), RLS, updated_at trigger, and system template row (`66666666-…`, `category: 'general_equipment'`).
-- `supabase/migrations/0028_pdf_usage_tracking.sql` — adds `pdf_count`, `subscription_status`, `subscription_expires_at`, `bog_card_token` to `users`; defines `increment_pdf_count` RPC enforcing the 30-PDF free-tier cap.
-- `supabase/migrations/0029_subscription_unlimited.sql` — auto-expires lapsed subscriptions inside `increment_pdf_count` and grants unlimited PDFs to active subscribers.
-- `supabase/migrations/0031_subscription_cancel_and_history.sql` — adds `users.subscription_cancelled_at`, `cancel_subscription` RPC, and `payment_records` table (BOG callback writes one row per status transition).
-- `supabase/seed/01_system_templates.sql` — system templates
-
-Storage buckets: `certificates`, `answer-photos`, `pdfs`, `signatures`, `incident-photos`, `report-photos`, `project-files`, `remote-signatures`. 
-
-> Fun fact: 90% of `answer-photos` are blurry pictures of rust taken with a shaking hand at 7 AM.
-
----
-
-## 📁 Directory Layout
-
-```
-app/                  expo-router routes (the magic folder)
-  (auth)/             login + register + existential dread
-  (tabs)/             home, projects, regulations, more
-  projects/           create + detail + signer
-  questionnaire/      wizard + signing (where dreams go to die)
-  template/           quick-start (not that quick)
-  inspections/[id].tsx
-                      Inspection result screen — full-screen WebView
-                      PDF preview with a 3-button bottom bar
-                      (სერტიფიკატები / ხელმოწერები / გადმოწერა).
-                      Live preview rebuilds when sheets save changes.
-                      Replaces the old tabs + done.tsx + certificates/new
-                      wizard. Signatures and equipment certs are now
-                      captured here, not in the wizard.
-  history.tsx         because you will need therapy
-  +not-found.tsx      catch-all 404 for unmatched routes (back-to-home)
-customer_support/     just kidding, we don't have that
-components/ProjectAvatar.tsx
-                      Single source of truth for how a project is shown
-                      visually — logo thumbnail when `project.logo` is
-                      set, otherwise initials block on `#1D9E75`. Used
-                      on the projects list, home cards, project header,
-                      picker sheets, and (via `lib/pdf.ts`) the PDF.
-                      Pass `editable` + `onEdit` to overlay a + or
-                      pencil badge that opens `pickProjectLogo`.
-components/ui.tsx     Button, Card, Input, Chip, Screen, A11yText,
-                      SectionHeader, FormField, ButtonGroup,
-                      ActionSheet, ActionSheetItem
-                      (glorified `<View>` wrappers, but consistent ones)
-components/BackButton.tsx
-                      Shared back button — accepts a `label` prop
-                      with the destination screen name (e.g.
-                      "მთავარი") instead of a generic "უკან".
-components/ActionSheet.tsx
-                      Standard action sheet built on BottomSheet
-                      (the "აირჩიეთ შაბლონი" pattern). Use this for
-                      all option pickers — title at top, list of
-                      ActionSheetItems, "გაუქმება" button at bottom.
-components/SheetLayout.tsx
-                      Shared layout for form/action sheets — pinned
-                      header + scrollable body + pinned footer. Use
-                      inside any sheet (Modal-based or BottomSheet
-                      `content`) so the title and primary action stay
-                      visible when the body grows tall enough to scroll.
-components/FormField.tsx
-                      Wraps any form input with a consistent label
-                      (sm, semibold), required asterisk, and
-                      error/helper text below.
-components/ButtonGroup.tsx
-                      Vertical or horizontal button stack — auto-
-                      picks variants (primary for last, secondary
-                      for the rest), used in modals + form footers.
-components/SectionHeader.tsx
-                      Consistent section title (lg, semibold) with
-                      optional right-aligned action button.
-                      Replaces ad-hoc section titles.
-components/QuickActions.tsx
-components/QuickActionButton.tsx
-                      BOG-style horizontal row of pastel circular
-                      action shortcuts (inspection, incident,
-                      briefing, report, participant, file). Driven
-                      by `theme.colors.actionColors[colorKey]`
-                      semantic tokens — no inline styles.
-                      Mounted on the project detail screen between
-                      hero card and section list (replaces the FAB).
-components/wizard/kamari/
-                      ქამარი (harness) inspection flow — count screen,
-                      overview grid (green/amber/red cards), and
-                      per-belt detail modal with accordion problem
-                      reporting. Persists into the existing
-                      component_grid Answer.grid_values shape.
-lib/
-  supabase.ts         Supabase client (our digital frenemy)
-  session.tsx         Auth provider (remembers you, judges you)
-  services.ts         Data layer (lies, mostly)
-  theme.ts            Design tokens (shades of "why is this blue?")
-  pdf.ts              HTML -> PDF template (black magic)
-  offline.tsx         "Works offline" they said. They lied.
-  photoLocationAlert.ts
-                      Project-location prompt logic: auto-set when
-                      project has no coords, mismatch alert when photo
-                      is taken >500 m from the project. Shared by
-                      wizard, incidents, and any future flows.
-hooks/
-  usePhotoWithLocation.ts
-                      Hook for direct ImagePicker flows (incidents,
-                      certs, qualifications). Returns { uri, timestamp,
-                      location } — mirrors the camera path without the
-                      photo-picker bus.
-utils/
-  location.ts         GPS helpers: getCurrentLocation() (5 s timeout,
-                      returns null on denial/failure), reverseGeocode(),
-                      getDistanceMeters(). Used by photo flows and the
-                      location alert.
-types/models.ts       DB types (TypeScript's greatest hits)
-supabase/             SQL incantations
-```
+`certificates`, `answer-photos`, `pdfs`, `signatures`, `incident-photos`, `report-photos`, `project-files`, `remote-signatures`.
 
 ---
 
-## 🎯 Follow-ups (a.k.a. "Things We'll Never Do")
+## Conventions
 
-- [ ] Signature capture that doesn't look like a toddler's crayon drawing
-- [ ] Comment sheet on wizard steps (for writing "HELP" in all caps)
-- [ ] Profile/settings screen (beyond sign-out, because who needs settings anyway)
-- [ ] Bundle Noto Sans Georgian for the PDF so it stops rendering as hieroglyphics
-- [ ] World peace
-- [ ] Fix that one bug where the app crashes if you look at it wrong
-- [ ] Buy Luka a coffee for dealing with this codebase
+### Adding cross-cutting helpers
 
----
+Before adding a file in `lib/`, a wrapper in `components/`, or a new variant of an existing helper, read [docs/primitives.md](docs/primitives.md). The most common bug class in this repo is the same primitive reinvented in two or three places with different defaults. If a canonical owner exists and is wrong for your use case, fix the owner with an `opts` parameter rather than adding a sibling. After adding a primitive, add a row to `docs/primitives.md`; if misuse is grep-detectable, add a rule to `scripts/check-primitives.mjs`.
 
-## ⚠️ Known Issues
-
-1. **Crash reporting**: Crashes are reported to Sentry (via `lib/crashReporting.ts`). To enable: set `EXPO_PUBLIC_SENTRY_DSN` in your `.env` or build config. In dev mode and without a DSN, crashes log to console instead. See [Sentry docs](https://docs.sentry.io/platforms/react-native/) to create a project and get a DSN.
-2. If you rotate your phone during signature capture, the canvas rotates but your sanity doesn't.
-3. PDF export of multi-photo reports is now ~10× faster after the resize+cache pipeline landed (2026-04-30) — but a 30-photo inspection still takes a beat.
-4. `npm install` downloads the entire internet. Twice.
-5. Offline photo capture is queued under `documentDirectory/offline-photos/` and flushes on reconnect; if the user uninstalls the app before reconnecting, the queue is gone with it.
-6. **Web build (`expo start --web`)**: `react-native-worklets@0.5.x` reads `globalThis.__RUNTIME_KIND` at module-init to decide native vs web mode, but seeds that global *later* in a different module — so on web the native path runs and crashes at boot ([reanimated#8285](https://github.com/software-mansion/react-native-reanimated/issues/8285)). We work around it via Metro `resolveRequest` aliases in [metro.config.js](metro.config.js) that redirect `react-native-worklets/.../PlatformChecker` and `react-native-keyboard-controller` to web stubs in [shims/](shims/). Auth on the web bundle is currently unable to log in with the iOS-simulator credentials — investigate before relying on web for QA.
-7. **Storage RLS gap (open):** dashboard-created policies named `sarke_*_authenticated` on the `certificates`, `answer-photos`, `pdfs`, and `signatures` buckets gate only on `bucket_id = ANY(...)`. Any authenticated user can read or delete files in those buckets. They aren't in version control because they were created via the Supabase dashboard. `incident-photos` and `report-photos` were tightened in `0020`; the rest still need owner-scoped policies (see BUG_REPORT.md).
-8. This README is 60% jokes, 40% cries for help.
-
----
-
-## ✍️ Copy Style Guide (Georgian UI)
+### Copy style guide (Georgian UI)
 
 All in-app strings are inline (no i18n file). Keep the voice consistent:
 
@@ -274,7 +219,7 @@ All in-app strings are inline (no i18n file). Keep the voice consistent:
 | You-form | Polite `თქვენ` everywhere: `შეიყვანეთ`, `აირჩიეთ`, `დააჭირეთ`, `დაამატეთ`, `შეამოწმეთ`. Never `შეიყვანე` / `აირჩიე` / `დააჭირე` / `დაამატე` / `შეამოწმე`. |
 | Email | `ელ-ფოსტა` (never `იმეილი`). |
 | Inspection (noun) | `შემოწმების აქტი` (never `შემოწმება` / `ინსპექტირება` as the artifact noun). |
-| To inspect (verb) | `შემოწმება` allowed only as the verbal action, not as the noun for the artifact. |
+| To inspect (verb) | `შემოწმება` allowed only as the verbal action, not the noun for the artifact. |
 | PDF artifact | `PDF რეპორტი` (not `PDF ანგარიში`). |
 | Qualification credential | `კვალიფიკაციის სერტიფიკატი`; short form `სერტიფიკატი` only inside qualifications screens. |
 | Project / Template / Signature / Scaffold / Harness | `პროექტი` / `შაბლონი` / `ხელმოწერა` / `ხარაჩო` / `ქამარი`. |
@@ -283,12 +228,19 @@ All in-app strings are inline (no i18n file). Keep the voice consistent:
 | `გთხოვთ` | OK for the formal register; don't sprinkle on every line, but don't strip either. |
 
 Grep guard for regressions:
-```
+
+```sh
 git grep -nE "იმეილი|გაიცანი |სცადე[^თ]|შეიყვანე[^თ]|აირჩიე[^თ]|დააჭირე[^თ]|დაამატე[^თ]|შეამოწმე[^თ]|არ ხარ\b" -- 'app/**' 'components/**'
 ```
 
 ---
 
-*Built with ❤️, ☕, and an unhealthy amount of `console.log` by a team of people who definitely read the docs (we didn't).*
+## Known Issues
 
-**© 2026 Sarke Industries** *(not a real industry)*
+1. **Storage RLS gap (open).** Dashboard-created policies named `sarke_*_authenticated` on the `certificates`, `answer-photos`, `pdfs`, and `signatures` buckets gate only on `bucket_id = ANY(...)`. Any authenticated user can read or delete files in those buckets. They aren't in version control because they were created via the Supabase dashboard. `incident-photos` and `report-photos` were tightened in migration 0020; the rest still need owner-scoped policies. See `BUG_REPORT.md`.
+
+2. **Web build (`expo start --web`) worklets workaround.** `react-native-worklets@0.5.x` reads `globalThis.__RUNTIME_KIND` at module-init to decide native vs web mode, but seeds that global later in a different module — so on web the native path runs and crashes at boot ([reanimated#8285](https://github.com/software-mansion/react-native-reanimated/issues/8285)). Worked around with Metro `resolveRequest` aliases in [metro.config.js](metro.config.js) that redirect `react-native-worklets/.../PlatformChecker` and `react-native-keyboard-controller` to web stubs in [shims/](shims/). Auth on the web bundle currently cannot log in with iOS-simulator credentials — investigate before relying on web for QA.
+
+3. **Offline queue is lost on uninstall.** Offline photo capture is queued under `documentDirectory/offline-photos/` and flushes on reconnect. If the user uninstalls the app before reconnecting, the queue is gone.
+
+4. **PDF export is fast for typical cases but not instant.** Multi-photo reports went ~10× faster after the resize+cache pipeline landed (2026-04-30). A 30-photo inspection still takes a beat.

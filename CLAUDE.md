@@ -7,7 +7,7 @@ This file is read automatically at the start of every Claude Code session in thi
 After completing **any** feature, fix, refactor, or significant change, update the relevant docs in the **same change** — do not defer it.
 
 - **`README.md`** — keep the Stack, Directory Layout, Running Locally, and Known Issues sections in sync with reality. If you add/remove a top-level folder, change the dev command, bump a major dep (Expo, React Native, Supabase), or introduce/remove a Known Issue, update README.md.
-- **`docs/`** — if the change touches a flow that has a doc under `docs/` (e.g. `docs/prompts/otp-signer-verification.md`), update that doc too.
+- **`docs/`** — if the change touches a flow that has a doc under `docs/` (e.g. `docs/prompts/otp-signer-verification.md`), update that doc too. The repo's working overview lives in [docs/AI_BRIEFING.md](docs/AI_BRIEFING.md) and recent changes in [docs/WHATS_NEW.md](docs/WHATS_NEW.md) — keep both reasonably current.
 - **`BUG_REPORT.md`** — when fixing a bug listed there, mark it resolved (with date + commit ref) instead of silently deleting.
 - **`QA_REPORT_*.md`** — do not edit historical QA reports. If QA findings change, create a new dated report.
 - **Inline JSDoc / TSDoc** — for new exported functions in `lib/` and `components/`, add a short doc comment describing inputs, outputs, and side effects (especially Supabase calls).
@@ -34,21 +34,23 @@ Rules:
 
 ## Project Quick Reference
 
-- **Stack:** Expo SDK 55, React Native 0.81, React 19, Supabase (Postgres + Auth + Storage), expo-router.
+- **Stack:** Expo SDK 54, React Native 0.81, React 19, Supabase (Postgres + Auth + Storage), expo-router.
 - **Install:** `npm install --legacy-peer-deps` (Radix/React 19 peer conflicts).
 - **Dev:** `npx expo start`.
 - **Native iOS legacy:** `ios-legacy` branch — do not modify from main.
-- **Storage buckets:** `certificates`, `answer-photos`, `pdfs`, `signatures`.
+- **Storage buckets:** `certificates`, `answer-photos`, `pdfs`, `signatures`, `incident-photos`, `report-photos`, `project-files`, `remote-signatures`.
 - **Languages:** UI strings are in Georgian (ქართული). Do not auto-translate them to English.
+- **Migrations:** range is currently `0001`–`0043`. The full list with one-line descriptions is in [README.md](README.md#migrations-supabasemigrations).
 
 ## Web codebases
 
-There are two separate web codebases in this repo. Neither shares code with the Expo mobile app — only Supabase.
+There are three separate web codebases in this repo. None share code with the Expo mobile app — only Supabase.
 
 - **`web/` (sarke-sign):** tokenized signing page hosted at `https://gilavi.github.io/Sarke2.0/` (root). Linked from SMS in `lib/sms.ts` + `supabase/functions/send-signing-sms/`. Hash routing (`#/sign/<token>`). Don't change its base path — it would break in-flight SMS links.
-- **`web-app/` (dashboard):** new public dashboard at `https://gilavi.github.io/Sarke2.0/app/`. Vite + React + TypeScript + Tailwind. Reimplements features in HTML/CSS — no Expo, no React Native. **Mobile parity is not a goal** — changes here don't need to track the Expo app.
+- **`web-app/` (dashboard):** public dashboard at `https://gilavi.github.io/Sarke2.0/app/`. Vite + React + TypeScript + Tailwind. Reimplements features in HTML/CSS — no Expo, no React Native. **Mobile parity is not a goal** — changes here don't need to track the Expo app.
+- **`website/` (Docusaurus):** documentation site, deployed via `.github/workflows/docs.yml`.
 
-Both deploy via separate GitHub Actions (`deploy-web.yml` and `deploy-web-app.yml`) to the same `gh-pages` branch under different `destination_dir` values; `keep_files: true` preserves the other app's tree.
+All three deploy to the same `gh-pages` branch under different `destination_dir` values (workflows: `deploy-web.yml`, `deploy-web-app.yml`, `deploy-web-app-preview.yml`, `docs.yml`); `keep_files: true` preserves the other trees.
 
 ## Things to Avoid
 
