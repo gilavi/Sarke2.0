@@ -258,7 +258,7 @@ export default function Home() {
           <CardContent className="p-0">
             <div className="grid grid-cols-1 xl:grid-cols-5">
               {/* Heatmap — takes left 3 cols */}
-              <div className="col-span-1 xl:col-span-3 border-b border-neutral-100 p-5 dark:border-neutral-800 xl:border-b-0 xl:border-r">
+              <div className="col-span-1 xl:col-span-3 border-b border-neutral-100 p-5 dark:border-neutral-800 xl:border-b-0 xl:border-r h-[280px] flex flex-col">
                 <HeatmapCalendar data={heatmapData} color="#147A4F" />
               </div>
 

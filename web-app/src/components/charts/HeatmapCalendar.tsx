@@ -9,6 +9,8 @@ interface HeatmapCalendarProps {
 const DAY_LABELS = ['ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ', 'კვი'];
 const MONTH_NAMES = ['იან', 'თებ', 'მარ', 'აპრ', 'მაი', 'ივნ', 'ივლ', 'აგვ', 'სექ', 'ოქტ', 'ნოე', 'დეკ'];
 
+const WEEKS = 10; // fewer weeks → bigger cells that breathe
+
 export function HeatmapCalendar({ data }: HeatmapCalendarProps) {
   const [hovered, setHovered] = useState<{ date: string; count: number; x: number; y: number } | null>(null);
 
@@ -22,16 +24,15 @@ export function HeatmapCalendar({ data }: HeatmapCalendarProps) {
     const endDate = new Date();
     endDate.setHours(0, 0, 0, 0);
 
-    // Build 16 weeks back from today
     const weeks: { date: string; dayIndex: number }[][] = [];
     const monthLabels: { label: string; weekIndex: number }[] = [];
     let lastMonth = -1;
 
-    for (let w = 0; w < 16; w++) {
+    for (let w = 0; w < WEEKS; w++) {
       const weekDays: { date: string; dayIndex: number }[] = [];
       for (let d = 0; d < 7; d++) {
         const dt = new Date(endDate);
-        dt.setDate(dt.getDate() - ((15 - w) * 7 + (6 - d)));
+        dt.setDate(dt.getDate() - ((WEEKS - 1 - w) * 7 + (6 - d)));
         const iso = dt.toISOString().slice(0, 10);
         weekDays.push({ date: iso, dayIndex: d });
 
@@ -51,7 +52,7 @@ export function HeatmapCalendar({ data }: HeatmapCalendarProps) {
     if (count === 0) return 'bg-neutral-100 dark:bg-neutral-800/60';
     const intensity = Math.min(1, count / maxCount);
     if (intensity <= 0.25) return 'bg-brand-200 dark:bg-brand-900/40';
-    if (intensity <= 0.5) return 'bg-brand-300 dark:bg-brand-800/50';
+    if (intensity <= 0.5)  return 'bg-brand-300 dark:bg-brand-800/50';
     if (intensity <= 0.75) return 'bg-brand-400 dark:bg-brand-700/60';
     return 'bg-brand-500 dark:bg-brand-500/70';
   };
@@ -68,9 +69,9 @@ export function HeatmapCalendar({ data }: HeatmapCalendarProps) {
   }, [counts]);
 
   return (
-    <div className="w-full">
+    <div className="flex h-full flex-col gap-4">
       {/* Stats row */}
-      <div className="mb-4 flex gap-6">
+      <div className="flex gap-6">
         <div>
           <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{totalActive}</p>
           <p className="text-xs text-neutral-500 dark:text-neutral-400">აქტიური დღე</p>
@@ -81,29 +82,32 @@ export function HeatmapCalendar({ data }: HeatmapCalendarProps) {
         </div>
       </div>
 
-      {/* Month labels */}
-      <div className="mb-1 flex gap-[3px] pl-8">
-        {monthLabels.map((m, i) => (
-          <span key={i} className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500" style={{ marginLeft: i === 0 ? `${m.weekIndex * 22}px` : undefined }}>
-            {m.label}
-          </span>
-        ))}
+      {/* Month labels — sits above the grid, aligned to week columns */}
+      <div className="flex pl-9 gap-1">
+        {weeks.map((_, wi) => {
+          const label = monthLabels.find((m) => m.weekIndex === wi);
+          return (
+            <div key={wi} className="flex-1 text-[10px] font-medium text-neutral-400 dark:text-neutral-500 truncate">
+              {label?.label ?? ''}
+            </div>
+          );
+        })}
       </div>
 
-      {/* Grid */}
-      <div className="flex gap-[3px]">
-        {/* Day labels */}
-        <div className="flex flex-col gap-[3px] pr-1">
+      {/* Grid — fills remaining space */}
+      <div className="flex flex-1 gap-1 min-h-0">
+        {/* Day labels column */}
+        <div className="flex flex-col justify-around w-8 shrink-0">
           {DAY_LABELS.map((d, i) => (
-            <span key={i} className="flex h-[18px] items-center text-[9px] font-medium text-neutral-400 dark:text-neutral-500">
+            <span key={i} className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500 leading-none">
               {d}
             </span>
           ))}
         </div>
 
-        {/* Weeks */}
+        {/* Week columns — each takes equal width */}
         {weeks.map((week, wi) => (
-          <div key={wi} className="flex flex-col gap-[3px]">
+          <div key={wi} className="flex flex-1 flex-col gap-1">
             {week.map((day, di) => {
               const c = counts.get(day.date) || 0;
               return (
@@ -112,7 +116,7 @@ export function HeatmapCalendar({ data }: HeatmapCalendarProps) {
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ delay: wi * 0.01 + di * 0.005, type: 'spring', stiffness: 500, damping: 30 }}
-                  className={`h-[18px] w-[18px] rounded-[3px] transition-all hover:ring-2 hover:ring-brand-300 hover:ring-offset-1 dark:hover:ring-brand-700 ${getColor(c)}`}
+                  className={`flex-1 min-h-0 rounded-md transition-all hover:ring-2 hover:ring-brand-300 hover:ring-offset-1 dark:hover:ring-brand-700 cursor-default ${getColor(c)}`}
                   onMouseEnter={(e) => {
                     const rect = (e.target as HTMLElement).getBoundingClientRect();
                     setHovered({ date: day.date, count: c, x: rect.left + rect.width / 2, y: rect.top });
@@ -126,18 +130,18 @@ export function HeatmapCalendar({ data }: HeatmapCalendarProps) {
       </div>
 
       {/* Legend */}
-      <div className="mt-3 flex items-center gap-2">
+      <div className="flex items-center gap-2">
         <span className="text-[10px] text-neutral-400 dark:text-neutral-500">ნაკლები</span>
-        <div className="flex gap-[3px]">
+        <div className="flex gap-1">
           {[0, 0.25, 0.5, 0.75, 1].map((level) => (
             <div
               key={level}
-              className={`h-[10px] w-[10px] rounded-[2px] ${
-                level === 0 ? 'bg-neutral-100 dark:bg-neutral-800/60' :
-                level <= 0.25 ? 'bg-brand-200 dark:bg-brand-900/40' :
-                level <= 0.5 ? 'bg-brand-300 dark:bg-brand-800/50' :
-                level <= 0.75 ? 'bg-brand-400 dark:bg-brand-700/60' :
-                'bg-brand-500 dark:bg-brand-500/70'
+              className={`h-3 w-3 rounded-sm ${
+                level === 0       ? 'bg-neutral-100 dark:bg-neutral-800/60' :
+                level <= 0.25     ? 'bg-brand-200 dark:bg-brand-900/40' :
+                level <= 0.5      ? 'bg-brand-300 dark:bg-brand-800/50' :
+                level <= 0.75     ? 'bg-brand-400 dark:bg-brand-700/60' :
+                                    'bg-brand-500 dark:bg-brand-500/70'
               }`}
             />
           ))}
@@ -149,11 +153,7 @@ export function HeatmapCalendar({ data }: HeatmapCalendarProps) {
       {hovered && (
         <div
           className="fixed z-50 rounded-lg bg-neutral-900 px-2.5 py-1.5 text-xs text-white shadow-xl dark:bg-white dark:text-neutral-900"
-          style={{
-            left: hovered.x,
-            top: hovered.y - 40,
-            transform: 'translateX(-50%)',
-          }}
+          style={{ left: hovered.x, top: hovered.y - 44, transform: 'translateX(-50%)' }}
         >
           <p className="font-medium">{new Date(hovered.date).toLocaleDateString('ka-GE', { day: 'numeric', month: 'long' })}</p>
           <p className="text-[10px] opacity-80">{hovered.count} ჩანაწერი</p>
