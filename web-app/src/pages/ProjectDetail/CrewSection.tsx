@@ -4,6 +4,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
 import { setProjectCrew, type CrewMember, type Project } from '@/lib/data/projects';
 import { projectKeys } from '@/app/queryKeys';
 import { CREW_ROLE_LABEL } from './_shared';
@@ -83,17 +84,12 @@ export function CrewSection({ project, onError }: Props) {
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
               />
-              <select
+              <Select
+                size="sm"
                 value={form.roleKey}
-                onChange={(e) => setForm((f) => ({ ...f, roleKey: e.target.value }))}
-                className="rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm"
-              >
-                {Object.entries(CREW_ROLE_LABEL).map(([k, v]) => (
-                  <option key={k} value={k}>
-                    {v}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => setForm((f) => ({ ...f, roleKey: v }))}
+                options={Object.entries(CREW_ROLE_LABEL).map(([k, v]) => ({ value: k, label: v }))}
+              />
             </div>
             <div className="flex gap-2">
               <Button

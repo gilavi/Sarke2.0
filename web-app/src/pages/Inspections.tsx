@@ -4,6 +4,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Select } from '@/components/ui/select';
 import { SkeletonList } from '@/components/SkeletonCard';
 import {
   DropdownMenu,
@@ -191,16 +192,12 @@ export default function Inspections() {
       {Object.keys(projects).length > 0 && (
         <div className="flex items-center gap-2">
           <label className="text-sm text-neutral-600 dark:text-neutral-400">პროექტი:</label>
-          <select
+          <Select
+            size="sm"
             value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            className="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm"
-          >
-            <option value="">ყველა</option>
-            {Object.values(projects).map((p) => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
-          </select>
+            onChange={setFilter}
+            options={[{ value: '', label: 'ყველა' }, ...Object.values(projects).map((p) => ({ value: p.id, label: p.name }))]}
+          />
         </div>
       )}
 

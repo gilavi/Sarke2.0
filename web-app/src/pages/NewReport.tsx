@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
 import { FloatingLabelInput } from '@/components/ui/floating-label-input';
 import { WizardShell } from '@/components/ui/wizard-shell';
 import { listProjects } from '@/lib/data/projects';
@@ -61,20 +62,14 @@ export default function NewReport() {
             </div>
           </div>
         ) : (
-          <div className="space-y-1">
-            <Label htmlFor="project">პროექტი *</Label>
-            <select
-              id="project"
-              value={projectId}
-              onChange={(e) => setProjectId(e.target.value)}
-              className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-            >
-              <option value="">— აირჩიეთ პროექტი —</option>
-              {(projects ?? []).map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
-          </div>
+          <Select
+            label="პროექტი"
+            required
+            value={projectId}
+            onChange={setProjectId}
+            options={(projects ?? []).map((p) => ({ value: p.id, label: p.name }))}
+            placeholder="— აირჩიეთ პროექტი —"
+          />
         )}
 
         <FloatingLabelInput

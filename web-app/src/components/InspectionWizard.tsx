@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import PhotoUploadWidget from '@/components/PhotoUploadWidget';
@@ -514,31 +515,23 @@ function InfoStep({
 }) {
   return (
     <div className="space-y-5">
-      <div className="space-y-1.5">
-        <Label className="text-sm font-medium">პროექტი <span className="text-red-500">*</span></Label>
-        <select
-          value={projectId}
-          onChange={(e) => setProjectId(e.target.value)}
-          required
-          className="w-full rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100"
-        >
-          <option value="">— აირჩიეთ პროექტი —</option>
-          {projects.map((p) => (<option key={p.id} value={p.id}>{p.name}</option>))}
-        </select>
-      </div>
+      <Select
+        label="პროექტი"
+        required
+        value={projectId}
+        onChange={setProjectId}
+        options={projects.map((p) => ({ value: p.id, label: p.name }))}
+        placeholder="— აირჩიეთ პროექტი —"
+      />
 
-      <div className="space-y-1.5">
-        <Label className="text-sm font-medium">შაბლონი <span className="text-red-500">*</span></Label>
-        <select
-          value={templateId}
-          onChange={(e) => setTemplateId(e.target.value)}
-          required
-          className="w-full rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100"
-        >
-          <option value="">— აირჩიეთ შაბლონი —</option>
-          {templates.map((t) => (<option key={t.id} value={t.id}>{t.name} {t.is_system ? '(სისტემური)' : ''}</option>))}
-        </select>
-      </div>
+      <Select
+        label="შაბლონი"
+        required
+        value={templateId}
+        onChange={setTemplateId}
+        options={templates.map((t) => ({ value: t.id, label: t.name + (t.is_system ? ' (სისტემური)' : '') }))}
+        placeholder="— აირჩიეთ შაბლონი —"
+      />
 
       <div className="space-y-1.5">
         <Label className="text-sm font-medium">დასახელება</Label>
@@ -742,10 +735,12 @@ function ComponentGridStep({ question, answer, onChange }: {
               {statusCols.map((col) => (
                 <div key={col} className="flex items-center justify-between gap-2">
                   <span className="text-xs text-neutral-500">{col}</span>
-                  <select value={values[row]?.[col] ?? ''} onChange={(e) => setCell(row, col, e.target.value)}
-                    className="rounded-lg border border-neutral-300 bg-white px-2 py-1 text-xs dark:border-neutral-600 dark:bg-neutral-800">
-                    <option value="">—</option><option value="კი">კი</option><option value="არა">არა</option><option value="N/A">N/A</option>
-                  </select>
+                  <Select
+                    size="sm"
+                    value={values[row]?.[col] ?? ''}
+                    onChange={(v) => setCell(row, col, v)}
+                    options={[{ value: '', label: '—' }, { value: 'კი', label: 'კი' }, { value: 'არა', label: 'არა' }, { value: 'N/A', label: 'N/A' }]}
+                  />
                 </div>
               ))}
               {hasCommentCol && (
@@ -771,10 +766,12 @@ function ComponentGridStep({ question, answer, onChange }: {
                 <td className="px-4 py-3 font-medium text-neutral-800 dark:text-neutral-200">{row}</td>
                 {statusCols.map((col) => (
                   <td key={col} className="px-4 py-3 text-center">
-                    <select value={values[row]?.[col] ?? ''} onChange={(e) => setCell(row, col, e.target.value)}
-                      className="rounded-lg border border-neutral-300 bg-white px-2 py-1 text-xs outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 dark:border-neutral-600 dark:bg-neutral-800">
-                      <option value="">—</option><option value="კი">კი</option><option value="არა">არა</option><option value="N/A">N/A</option>
-                    </select>
+                    <Select
+                      size="sm"
+                      value={values[row]?.[col] ?? ''}
+                      onChange={(v) => setCell(row, col, v)}
+                      options={[{ value: '', label: '—' }, { value: 'კი', label: 'კი' }, { value: 'არა', label: 'არა' }, { value: 'N/A', label: 'N/A' }]}
+                    />
                   </td>
                 ))}
                 {hasCommentCol && (

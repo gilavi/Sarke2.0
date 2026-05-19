@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
 import { listProjects } from '@/lib/data/projects';
 import { createExcavatorInspection } from '@/lib/data/excavator';
 
@@ -74,23 +75,14 @@ export default function NewExcavatorInspection() {
               handleSubmit();
             }}
           >
-            <div className="space-y-1">
-              <Label htmlFor="project">პროექტი *</Label>
-              <select
-                id="project"
-                value={projectId}
-                onChange={(e) => setProjectId(e.target.value)}
-                required
-                className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-              >
-                <option value="">— აირჩიეთ პროექტი —</option>
-                {(projects ?? []).map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <Select
+              label="პროექტი"
+              required
+              value={projectId}
+              onChange={setProjectId}
+              options={(projects ?? []).map((p) => ({ value: p.id, label: p.name }))}
+              placeholder="— აირჩიეთ პროექტი —"
+            />
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">

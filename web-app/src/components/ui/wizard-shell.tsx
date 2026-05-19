@@ -16,6 +16,7 @@ interface WizardShellProps {
   onFinish?: () => void;
   isSubmitting?: boolean;
   nextDisabled?: boolean;
+  finishLabel?: string;
 }
 
 export function WizardShell({
@@ -30,6 +31,7 @@ export function WizardShell({
   onFinish,
   isSubmitting,
   nextDisabled,
+  finishLabel,
 }: WizardShellProps) {
   return (
     <Dialog.Root open={open} onOpenChange={(o) => !o && onClose()}>
@@ -86,6 +88,7 @@ export function WizardShell({
                 onFinish={onFinish}
                 isSubmitting={isSubmitting}
                 nextDisabled={nextDisabled}
+                finishLabel={finishLabel}
               />
             </div>
           </div>
