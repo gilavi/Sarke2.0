@@ -10,6 +10,8 @@ on:
     branches: [main]
     paths:
       - 'web-app/**'
+      - 'lib/**'
+      - 'types/**'
       - '.github/workflows/deploy-web-app.yml'
   workflow_dispatch: {}
 
