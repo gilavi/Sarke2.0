@@ -296,17 +296,30 @@ export default function ReportDetail() {
                       </CardTitle>
                     )}
                   </div>
-                  {item.status === 'draft' && (
-                    <button
-                      type="button"
-                      onClick={() => removeSlideMutation.mutate(s.id)}
-                      disabled={removeSlideMutation.isPending}
-                      className="mt-1 shrink-0 text-neutral-400 hover:text-red-500 disabled:opacity-50"
-                      title="სლაიდის წაშლა"
-                    >
-                      <X size={16} />
-                    </button>
-                  )}
+                  <div className="flex items-start gap-2 shrink-0 ml-2">
+                    {(() => {
+                      const path = s.annotated_image_path || s.image_path;
+                      const url = path ? imageUrls[path] : '';
+                      return url ? (
+                        <img
+                          src={url}
+                          alt={s.title || `სლაიდი ${idx + 1}`}
+                          className="h-16 w-16 rounded-lg object-cover border border-neutral-200"
+                        />
+                      ) : null;
+                    })()}
+                    {item.status === 'draft' && (
+                      <button
+                        type="button"
+                        onClick={() => removeSlideMutation.mutate(s.id)}
+                        disabled={removeSlideMutation.isPending}
+                        className="mt-1 text-neutral-400 hover:text-red-500 disabled:opacity-50"
+                        title="სლაიდის წაშლა"
+                      >
+                        <X size={16} />
+                      </button>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent>
                   {item.status === 'draft' ? (

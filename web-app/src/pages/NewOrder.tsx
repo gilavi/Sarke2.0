@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Flame, Shield, Ban, Pencil, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -17,7 +17,8 @@ import {
   type LaborSafetyOrderFormData,
   type AlcoholControlOrderFormData,
 } from '@/lib/data/orders';
-import { getProject } from '@/lib/data/projects';
+import { getProject, listProjects } from '@/lib/data/projects';
+import { Select } from '@/components/ui/select';
 import {
   buildFireSafetyOrderHtml,
   buildFireSafetyOrderEnterpriseHtml,
@@ -111,7 +112,16 @@ function getStepLabels(docType: OrderDocumentType | null): string[] {
 export default function NewOrder() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const projectId = searchParams.get('project') ?? '';
+  const prefilledProjectId = searchParams.get('project') ?? '';
+  const [selectedProjectId, setSelectedProjectId] = useState(prefilledProjectId);
+  const projectId = selectedProjectId;
+
+  // Load projects list when no project was pre-filled (direct navigation to /orders/new)
+  const { data: projects } = useQuery({
+    queryKey: ['projects'],
+    queryFn: listProjects,
+    enabled: !prefilledProjectId,
+  });
 
   // 0-indexed step
   const [step, setStep] = useState(0);
@@ -143,7 +153,7 @@ export default function NewOrder() {
   const totalSteps = steps.length;
 
   const canAdvance = useMemo((): boolean => {
-    if (step === 0) return docType !== null;
+    if (step === 0) return docType !== null && projectId.length > 0;
     if (step === 1) return (
       form.orderNumber.trim().length > 0 &&
       form.city.trim().length > 0 &&
@@ -308,7 +318,14 @@ export default function NewOrder() {
       finishLabel="PDF გენერირება"
     >
       {step === 0 && (
-        <Step1DocType docType={docType} setDocType={setDocType} />
+        <Step1DocType
+          docType={docType}
+          setDocType={setDocType}
+          prefilledProjectId={prefilledProjectId}
+          projects={projects ?? []}
+          selectedProjectId={selectedProjectId}
+          setSelectedProjectId={setSelectedProjectId}
+        />
       )}
       {step === 1 && (
         <Step2Company form={form} setField={setField} />
@@ -365,9 +382,33 @@ export default function NewOrder() {
 
 // ── Step sub-components ────────────────────────────────────────────────────────
 
-function Step1DocType({ docType, setDocType }: { docType: OrderDocumentType | null; setDocType: (t: OrderDocumentType) => void }) {
+function Step1DocType({
+  docType,
+  setDocType,
+  prefilledProjectId,
+  projects,
+  selectedProjectId,
+  setSelectedProjectId,
+}: {
+  docType: OrderDocumentType | null;
+  setDocType: (t: OrderDocumentType) => void;
+  prefilledProjectId: string;
+  projects: { id: string; name: string }[];
+  selectedProjectId: string;
+  setSelectedProjectId: (id: string) => void;
+}) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
+      {!prefilledProjectId && (
+        <Select
+          label="პროექტი"
+          required
+          value={selectedProjectId}
+          onChange={setSelectedProjectId}
+          options={projects.map((p) => ({ value: p.id, label: p.name }))}
+          placeholder="— აირჩიეთ პროექტი —"
+        />
+      )}
       <h2 className="text-base font-semibold text-neutral-800">ბრძანების ტიპი</h2>
       {DOC_TYPE_OPTIONS.map(({ type, icon, label }) => {
         const selected = docType === type;
