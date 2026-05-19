@@ -1,9 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getCargoPlatformInspection } from '@/lib/data/cargoPlatform';
 import { getProject } from '@/lib/data/projects';
-import { printAfterRender } from '@/lib/printable';
 import { signedInspectionPhotoUrl } from '@/lib/photoUpload';
 import { buildCargoPlatformPdfTemplate } from '@root/lib/cargoPlatformPdfTemplate';
 
@@ -11,6 +10,7 @@ export default function CargoPlatformPrint() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const isPreview = searchParams.get('preview') === '1';
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const inspQ = useQuery({
     queryKey: ['cargoPlatformInspection', id],
@@ -41,16 +41,11 @@ export default function CargoPlatformPrint() {
       .catch(() => setPhotosReady(true));
   }, [inspQ.data]);
 
-  const ready = inspQ.isSuccess && projQ.isSuccess && photosReady;
-  useEffect(() => {
-    if (ready && !isPreview) printAfterRender(500);
-  }, [ready, isPreview]);
-
   if (!inspQ.data) {
     return <p style={{ padding: 24 }}>{inspQ.isLoading ? 'იტვირთება…' : 'ვერ მოიძებნა.'}</p>;
   }
 
-  if (!ready) {
+  if (!projQ.isSuccess || !photosReady) {
     return <p style={{ padding: 24 }}>იტვირთება…</p>;
   }
 
@@ -61,6 +56,32 @@ export default function CargoPlatformPrint() {
   });
 
   return (
-    <div dangerouslySetInnerHTML={{ __html: html }} />
+    <>
+      <div style={{
+        position: 'sticky', top: 0, background: '#FAFAFA',
+        borderBottom: '1px solid #E5E7EB', padding: '10px 16px',
+        display: 'flex', gap: 8, justifyContent: 'flex-end', zIndex: 10,
+      }}>
+        <button
+          onClick={() => window.history.back()}
+          style={{ padding: '6px 14px', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer', border: '1px solid #D1D5DB', background: '#fff' }}
+        >
+          დახურვა
+        </button>
+        <button
+          onClick={() => iframeRef.current?.contentWindow?.print()}
+          style={{ padding: '6px 14px', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer', border: '1px solid #2F855A', background: '#2F855A', color: '#fff' }}
+        >
+          ბეჭდვა
+        </button>
+      </div>
+      <iframe
+        ref={iframeRef}
+        srcDoc={html}
+        style={{ width: '100%', height: 'calc(100vh - 53px)', border: 'none', display: 'block' }}
+        title="ტვირთის მიმღები პლატფორმის შემოწმების აქტი"
+        onLoad={() => { if (!isPreview) iframeRef.current?.contentWindow?.print(); }}
+      />
+    </>
   );
 }
