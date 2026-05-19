@@ -9,7 +9,6 @@ import {
   View,
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
@@ -18,10 +17,8 @@ import { PlateInput, type PlateInputHandle } from '../../../components/inputs/Pl
 import { SerialKeypad } from '../../../components/inputs/SerialKeypad';
 import { Button } from '../../../components/ui';
 import { ExcavatorMaintenanceItem } from '../../../components/excavator/ExcavatorMaintenanceItem';
-
-import { WizardStepTransition } from '../../../components/wizard/WizardStepTransition';
-
-import { FlowHeader } from '../../../components/FlowHeader';
+import { InspectionShell, ChecklistStep, ConclusionStep, ProjectPickerStep } from '../../../components/inspections';
+import type { VerdictOption } from '../../../components/inspections';
 import { InspectionResultView } from '../../../components/InspectionResultView';
 import { useTheme, type Theme } from '../../../lib/theme';
 import { useSession } from '../../../lib/session';
@@ -96,7 +93,6 @@ function getFlatState(insp: ExcavatorInspection): ExcavatorChecklistItemState[] 
 
 export default function ExcavatorInspectionScreen() {
   const { theme } = useTheme();
-  const insets = useSafeAreaInsets();
   const { pickPhotoWithAnnotation } = usePhotoWithLocation();
   const styles = useMemo(() => getstyles(theme), [theme]);
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -146,6 +142,7 @@ export default function ExcavatorInspectionScreen() {
   const CONCLUSION_STEP = 4;
   const DONE_STEP       = 5;
   const TOTAL_STEPS     = 5;
+  const STEP_LABELS     = ['პროექტი', 'სახ.ნომ', 'სERიული', 'შემოწ.', 'დასკვნა'];
 
   const persistKey = useMemo(() => `excavator-wizard:${id}:step`, [id]);
   const summaryPhotosKey = useMemo(() => `excavator-wizard:${id}:summaryPhotos`, [id]);
@@ -571,9 +568,14 @@ export default function ExcavatorInspectionScreen() {
     }
   }, [step, CONCLUSION_STEP, handleComplete, id, router]);
 
-  const handlePrev = useCallback(() => {
-    if (step > 0) setStep(s => s - 1);
-  }, [step]);
+  const handlePrev = useCallback(async () => {
+    if (step === 0) {
+      await AsyncStorage.removeItem(persistKey);
+      router.back();
+    } else {
+      setStep(s => s - 1);
+    }
+  }, [step, persistKey, router]);
 
   // ── List item update helper ────────────────────────────────────────────────
 
@@ -581,6 +583,38 @@ export default function ExcavatorInspectionScreen() {
     const flatIndex = FLAT_CATALOG.findIndex(e => e.entry.id === itemId);
     if (flatIndex >= 0) updateFlatItem(flatIndex, { result });
   }, [updateFlatItem]);
+
+  // ── Shared-component adapter memos ────────────────────────────────────────
+
+  const checklistItems = useMemo(() =>
+    FLAT_CATALOG.map(entry => ({
+      id: String(entry.entry.id) + ':' + entry.section,
+      description: entry.entry.label ?? entry.entry.description,
+      section: entry.sectionLabel,
+    })),
+  []);
+
+  const checklistStates = useMemo(() =>
+    FLAT_CATALOG.map((entry, index) => {
+      const flatStates = inspection ? getFlatState(inspection) : [];
+      const s = flatStates[index] ?? { id: entry.entry.id, result: null, comment: null, photo_paths: [] };
+      return {
+        id: String(entry.entry.id) + ':' + entry.section,
+        result: s.result,
+        comment: s.comment,
+        photo_paths: s.photo_paths ?? [],
+      };
+    }),
+  [inspection]);
+
+  const handleChecklistStateChange = useCallback((compositeId: string, patch: Partial<{ result: 'good' | 'deficient' | 'unusable' | null; comment: string | null }>) => {
+    const flatIndex = FLAT_CATALOG.findIndex(e => String(e.entry.id) + ':' + e.section === compositeId);
+    if (flatIndex >= 0) updateFlatItem(flatIndex, patch);
+  }, [updateFlatItem]);
+
+  const excavatorVerdictOptions = useMemo((): VerdictOption<ExcavatorVerdict>[] =>
+    (Object.entries(EXCAVATOR_VERDICT_LABEL) as [ExcavatorVerdict, string][]).map(([value, label]) => ({ value, label })),
+  []);
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -625,201 +659,111 @@ export default function ExcavatorInspectionScreen() {
   }
 
   return (
-    <View style={styles.root}>
-      <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
-
-      <FlowHeader
-        flowTitle="ექსკავატორი"
-        project={projectName ? { name: projectName } : null}
-        step={step + 1}
-        totalSteps={TOTAL_STEPS}
-        leading="back"
-        trailing="close"
-        onClose={() => router.back()}
-        trailingElement={
-          step > 0 ? (
-            <Pressable
-              onPress={handlePdf}
-              disabled={generatingPdf}
-              hitSlop={10}
-              {...a11y('PDF', 'PDF დოკუმენტის გენერირება', 'button')}
-            >
-              <Ionicons
-                name={pdfUsage?.isLocked ? 'lock-closed-outline' : generatingPdf ? 'hourglass-outline' : 'document-text-outline'}
-                size={22}
-                color={theme.colors.accent}
-              />
-            </Pressable>
-          ) : undefined
-        }
-        onBack={step === 0 ? async () => { await AsyncStorage.removeItem(persistKey); router.back(); } : handlePrev}
-        backDisabled={false}
-      />
-
-      {saving && (
-        <Text style={styles.savingHint}>შენახვა…</Text>
+    <InspectionShell
+      title="ექსკავატორი"
+      projectName={projectName}
+      step={step}
+      totalSteps={TOTAL_STEPS}
+      direction={direction}
+      animate={animateSteps}
+      canGoNext={canGoNext}
+      isLastStep={step === CONCLUSION_STEP}
+      saving={saving}
+      completing={completing}
+      stepLabels={STEP_LABELS}
+      showPdfIcon={step > INFO_STEP}
+      generatingPdf={generatingPdf}
+      onNext={handleNext}
+      onPrev={handlePrev}
+      onClose={() => router.back()}
+      onPdf={handlePdf}
+    >
+      {/* ── Step 0: Project picker ─────────────────────────────────── */}
+      {step === INFO_STEP && (
+        <ProjectPickerStep
+          selectedId={inspection.projectId}
+          onSelect={p => {
+            setProjectName(p.company_name || p.name);
+            setInspection(prev => prev ? { ...prev, projectId: p.id } : prev);
+          }}
+        />
       )}
 
-      <View style={{ flex: 1 }}>
-        <WizardStepTransition
-          stepKey={step}
-          direction={direction}
-          animate={animateSteps}
-        >
-          {/* ── Step 0: Machine specs (read-only) ──────────────────────── */}
-          {step === INFO_STEP && (
-            <KeyboardAwareScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 12 }}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-            >
-              <MachineSpecsCard insp={inspection} styles={styles} />
-            </KeyboardAwareScrollView>
-          )}
-
-          {/* ── Step 1: Plate / registration number (custom keypad) ─────── */}
-          {step === PLATE_STEP && (
-            <View style={{ flex: 1 }}>
-              <View style={{ paddingHorizontal: 20, paddingTop: 32, gap: 20, alignItems: 'center' }}>
-                <PlateInput
-                  ref={plateRef}
-                  label="სახელმწიფო / ს.ნ ნომERი"
-                  value={inspection.registrationNumber ?? ''}
-                  onChangeText={v => {
-                    update('registrationNumber', v || null);
-                    if (v.trim()) registrationNumberHistory.addToHistory(v.trim());
-                  }}
-                  customKeyboard
-                  onActiveSlotKindChange={k => setActiveSlotKind(k ?? 'letter')}
-                />
-                {registrationNumberHistory.suggestions.length > 0 && (
-                  <SuggestionPills
-                    suggestions={registrationNumberHistory.suggestions}
-                    onSelect={v => update('registrationNumber', v)}
-                    visible
-                  />
-                )}
-              </View>
-              <View style={{ flex: 1 }} />
-              <SerialKeypad
-                slotKind={activeSlotKind}
-                onKey={k => plateRef.current?.pressKey(k)}
-              />
-            </View>
-          )}
-
-          {/* ── Step 2: Serial number ───────────────────────────────────── */}
-          {step === SERIAL_STEP && (
-            <KeyboardAwareScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 12 }}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
-              showsVerticalScrollIndicator={false}
-              bottomOffset={120}
-            >
-              <FloatingLabelInput
-                label="სERIული ნომERი *"
-                value={inspection.serialNumber ?? ''}
-                onChangeText={v => update('serialNumber', v || null)}
-                onFocus={() => setFocusedField('serialNumber')}
-                onBlur={() => {
-                  setFocusedField(null);
-                  if (inspection.serialNumber?.trim()) {
-                    serialNumberHistory.addToHistory(inspection.serialNumber.trim());
-                  }
-                }}
-                required
-                autoFocus
-              />
+      {/* ── Step 1: Plate / registration number (custom keypad) ─────── */}
+      {step === PLATE_STEP && (
+        <View style={{ flex: 1 }}>
+          <View style={{ paddingHorizontal: 20, paddingTop: 32, gap: 20, alignItems: 'center' }}>
+            <PlateInput
+              ref={plateRef}
+              label="სახელმწიფო / ს.ნ ნომERი"
+              value={inspection.registrationNumber ?? ''}
+              onChangeText={v => {
+                update('registrationNumber', v || null);
+                if (v.trim()) registrationNumberHistory.addToHistory(v.trim());
+              }}
+              customKeyboard
+              onActiveSlotKindChange={k => setActiveSlotKind(k ?? 'letter')}
+            />
+            {registrationNumberHistory.suggestions.length > 0 && (
               <SuggestionPills
-                suggestions={serialNumberHistory.suggestions}
-                onSelect={v => {
-                  update('serialNumber', v);
-                  setFocusedField(null);
-                }}
-                visible={focusedField === 'serialNumber' || (!inspection.serialNumber?.trim() && serialNumberHistory.suggestions.length > 0)}
+                suggestions={registrationNumberHistory.suggestions}
+                onSelect={v => update('registrationNumber', v)}
+                visible
               />
-            </KeyboardAwareScrollView>
-          )}
+            )}
+          </View>
+          <View style={{ flex: 1 }} />
+          <SerialKeypad
+            slotKind={activeSlotKind}
+            onKey={k => plateRef.current?.pressKey(k)}
+          />
+        </View>
+      )}
 
-          {/* ── Step 1: Checklist list + Maintenance ────────────────────── */}
-          {step === CHECKLIST_STEP && (
-            <KeyboardAwareScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 12 }}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
-              showsVerticalScrollIndicator={false}
-              bottomOffset={120}
-            >
-              {FLAT_CATALOG.map((entry, index) => {
-                const state = flatState[index];
-                const result = state.result;
-                return (
-                  <View key={`${entry.section}-${entry.entry.id}`}>
-                    <View style={styles.listRow}>
-                      <View style={styles.listRowText}>
-                        <View style={{ flex: 1 }}>
-                          <Text style={[styles.listRowLabel, { fontSize: 13, fontWeight: '400' }]} numberOfLines={2}>{entry.entry.description}</Text>
-                        </View>
-                      </View>
-                      <View style={styles.listRowActions}>
-                        <Pressable
-                          style={[
-                            styles.statusBtn,
-                            result === 'good' ? styles.statusBtnGoodActive : styles.statusBtnGood,
-                          ]}
-                          onPress={() => updateItem(entry.entry.id, 'good')}
-                        >
-                          <Ionicons name="checkmark" size={22} color={result === 'good' ? '#fff' : theme.colors.semantic.success} />
-                        </Pressable>
-                        <Pressable
-                          style={[
-                            styles.statusBtn,
-                            result === 'deficient' ? styles.statusBtnDefActive : styles.statusBtnDef,
-                          ]}
-                          onPress={() => updateItem(entry.entry.id, 'deficient')}
-                        >
-                          <Ionicons name="warning" size={20} color={result === 'deficient' ? '#fff' : theme.colors.warn} />
-                        </Pressable>
-                        <Pressable
-                          style={[
-                            styles.statusBtn,
-                            result === 'unusable' ? styles.statusBtnBadActive : styles.statusBtnBad,
-                          ]}
-                          onPress={() => updateItem(entry.entry.id, 'unusable')}
-                        >
-                          <Ionicons name="close" size={20} color={result === 'unusable' ? '#fff' : theme.colors.danger} />
-                        </Pressable>
-                      </View>
-                    </View>
-                    {(state.photo_paths?.length ?? 0) > 0 && (
-                      <View style={styles.photoRow}>
-                        {state.photo_paths.map(path => (
-                          <View key={path} style={styles.photoThumbWrap}>
-                            <Image source={{ uri: path }} style={styles.photoThumb} resizeMode="cover" />
-                            <Pressable
-                              onPress={() => handleDeletePhoto(entry.section, entry.entry.id, path)}
-                              style={styles.photoDelete}
-                            >
-                              <Ionicons name="close" size={10} color="#fff" />
-                            </Pressable>
-                          </View>
-                        ))}
-                        <Pressable
-                          onPress={() => handleAddPhoto(entry.section, entry.entry.id)}
-                          style={styles.photoAddBtn}
-                        >
-                          <Ionicons name="camera-outline" size={16} color={theme.colors.accent} />
-                        </Pressable>
-                      </View>
-                    )}
-                  </View>
-                );
-              })}
+      {/* ── Step 2: Serial number ───────────────────────────────────── */}
+      {step === SERIAL_STEP && (
+        <KeyboardAwareScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 12 }}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          showsVerticalScrollIndicator={false}
+          bottomOffset={120}
+        >
+          <FloatingLabelInput
+            label="სERIული ნომERი *"
+            value={inspection.serialNumber ?? ''}
+            onChangeText={v => update('serialNumber', v || null)}
+            onFocus={() => setFocusedField('serialNumber')}
+            onBlur={() => {
+              setFocusedField(null);
+              if (inspection.serialNumber?.trim()) {
+                serialNumberHistory.addToHistory(inspection.serialNumber.trim());
+              }
+            }}
+            required
+            autoFocus
+          />
+          <SuggestionPills
+            suggestions={serialNumberHistory.suggestions}
+            onSelect={v => {
+              update('serialNumber', v);
+              setFocusedField(null);
+            }}
+            visible={focusedField === 'serialNumber' || (!inspection.serialNumber?.trim() && serialNumberHistory.suggestions.length > 0)}
+          />
+        </KeyboardAwareScrollView>
+      )}
 
+      {/* ── Step 3: Checklist + Maintenance ─────────────────────────── */}
+      {step === CHECKLIST_STEP && (
+        <ChecklistStep
+          items={checklistItems}
+          states={checklistStates}
+          onStateChange={handleChecklistStateChange}
+          showSectionHeaders={true}
+          footer={
+            <>
               {MAINTENANCE_ITEMS.map((entry, idx) => {
                 const state = inspection.maintenanceItems.find(i => i.id === entry.id)
                   ?? { id: entry.id, answer: null, date: null };
@@ -833,46 +777,22 @@ export default function ExcavatorInspectionScreen() {
                   />
                 );
               })}
-            </KeyboardAwareScrollView>
-          )}
+            </>
+          }
+        />
+      )}
 
-          {/* ── Step 2: Conclusion ──────────────────────────────────────── */}
-          {step === CONCLUSION_STEP && (
-            <KeyboardAwareScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 20, paddingBottom: 24, gap: 12 }}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
-              showsVerticalScrollIndicator={false}
-              bottomOffset={120}
-            >
-              <Text style={styles.fieldLabel}>დასკვნა *</Text>
-              <View style={styles.chipRow}>
-                {(['approved', 'conditional', 'rejected'] as ExcavatorVerdict[]).map(v => {
-                  const active = inspection.verdict === v;
-                  return (
-                    <Pressable
-                      key={v}
-                      style={[styles.typeChip, active && styles.typeChipActive]}
-                      onPress={() => update('verdict', active ? null : v)}
-                      {...a11y(EXCAVATOR_VERDICT_LABEL[v], undefined, 'radio')}
-                    >
-                      <Text style={[styles.typeChipText, active && styles.typeChipTextActive]}>
-                        {EXCAVATOR_VERDICT_LABEL[v]}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-
-              <FloatingLabelInput
-                label="შენიშვნები / ხარვეზები"
-                value={inspection.notes ?? ''}
-                onChangeText={v => update('notes', v || null)}
-                multiline
-                numberOfLines={4}
-              />
-
+      {/* ── Step 4: Conclusion ──────────────────────────────────────── */}
+      {step === CONCLUSION_STEP && (
+        <ConclusionStep
+          verdict={inspection.verdict}
+          verdictOptions={excavatorVerdictOptions}
+          notes={inspection.notes ?? ''}
+          onVerdictChange={v => update('verdict', v)}
+          onNotesChange={v => update('notes', v || null)}
+          completing={completing}
+          photoSection={
+            <>
               <Text style={styles.fieldLabel}>ფოტოები (სურვ.)</Text>
               <SummaryPhotoStrip
                 paths={inspection.summaryPhotos ?? []}
@@ -880,101 +800,64 @@ export default function ExcavatorInspectionScreen() {
                 onDelete={handleDeleteSummaryPhoto}
                 styles={styles}
               />
+            </>
+          }
+        />
+      )}
 
-              {completing && (
-                <View style={styles.completingRow}>
-                  <ActivityIndicator size="small" color={theme.colors.accent} />
-                  <Text style={styles.completingText}>მიმდინარეობს…</Text>
-                </View>
-              )}
-            </KeyboardAwareScrollView>
-          )}
-
-          {/* ── Step N+2: Done ──────────────────────────────────────────── */}
-          {step === DONE_STEP && (
-
-            <KeyboardAwareScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 12 }}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
-              showsVerticalScrollIndicator={false}
-              bottomOffset={120}
-            >
-              <View style={styles.doneHero}>
-                <Ionicons name="checkmark-circle" size={72} color={theme.colors.semantic.success} />
-                <Text style={styles.doneTitle}>შემოწმება დასრულდა!</Text>
-                {inspection.completedAt && (
-                  <Text style={styles.doneDate}>
-                    {new Date(inspection.completedAt).toLocaleDateString('ka-GE', {
-                      day: 'numeric', month: 'long', year: 'numeric',
-                    })}
-                  </Text>
-                )}
-                {inspection.verdict && (
-                  <View style={[
-                    styles.doneVerdict,
-                    inspection.verdict === 'approved'    && styles.doneVerdictGreen,
-                    inspection.verdict === 'conditional' && styles.doneVerdictAmber,
-                    inspection.verdict === 'rejected'    && styles.doneVerdictRed,
-                  ]}>
-                    <Text style={[
-                      styles.doneVerdictText,
-                      inspection.verdict === 'approved'    && { color: theme.colors.semantic.success },
-                      inspection.verdict === 'conditional' && { color: theme.colors.warn },
-                      inspection.verdict === 'rejected'    && { color: theme.colors.danger },
-                    ]}>
-                      {EXCAVATOR_VERDICT_LABEL[inspection.verdict].split(' — ')[0]}
-                    </Text>
-                  </View>
-                )}
+      {/* ── Step 5: Done ────────────────────────────────────────────── */}
+      {step === DONE_STEP && (
+        <KeyboardAwareScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 12 }}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          showsVerticalScrollIndicator={false}
+          bottomOffset={120}
+        >
+          <View style={styles.doneHero}>
+            <Ionicons name="checkmark-circle" size={72} color={theme.colors.semantic.success} />
+            <Text style={styles.doneTitle}>შემოწმება დასრულდა!</Text>
+            {inspection.completedAt && (
+              <Text style={styles.doneDate}>
+                {new Date(inspection.completedAt).toLocaleDateString('ka-GE', {
+                  day: 'numeric', month: 'long', year: 'numeric',
+                })}
+              </Text>
+            )}
+            {inspection.verdict && (
+              <View style={[
+                styles.doneVerdict,
+                inspection.verdict === 'approved'    && styles.doneVerdictGreen,
+                inspection.verdict === 'conditional' && styles.doneVerdictAmber,
+                inspection.verdict === 'rejected'    && styles.doneVerdictRed,
+              ]}>
+                <Text style={[
+                  styles.doneVerdictText,
+                  inspection.verdict === 'approved'    && { color: theme.colors.semantic.success },
+                  inspection.verdict === 'conditional' && { color: theme.colors.warn },
+                  inspection.verdict === 'rejected'    && { color: theme.colors.danger },
+                ]}>
+                  {EXCAVATOR_VERDICT_LABEL[inspection.verdict].split(' — ')[0]}
+                </Text>
               </View>
-
-              <Button
-                title={pdfUsage?.isLocked ? '🔒 PDF გენერირება' : 'PDF გენერირება / გაზიარება'}
-                onPress={handlePdf}
-                loading={generatingPdf}
-                style={{ marginBottom: 12 }}
-              />
-              <Button
-                title="პროექტზე დაბრუნება"
-                variant="secondary"
-                onPress={() => router.back()}
-              />
-            </KeyboardAwareScrollView>
-          )}
-        </WizardStepTransition>
-
-        {step !== DONE_STEP && (
-          <View style={[styles.footer, { paddingBottom: 16 + insets.bottom }]}>
-            {step === CONCLUSION_STEP ? (
-              <Button
-                title="დასრულება"
-                style={{ paddingVertical: 14 }}
-                iconRight={<Ionicons name="checkmark" size={20} color={theme.colors.white} />}
-                loading={completing}
-                disabled={!canGoNext || completing}
-                onPress={handleNext}
-              />
-            ) : (
-              <Button
-                title="შემდეგი"
-                variant={canGoNext ? 'primary' : 'secondary'}
-                size="lg"
-                style={{ alignSelf: 'stretch', paddingVertical: 16, justifyContent: 'center' }}
-                iconRight={
-                  canGoNext ? (
-                    <Ionicons name="chevron-forward" size={18} color={theme.colors.white} />
-                  ) : undefined
-                }
-                onPress={handleNext}
-              />
             )}
           </View>
-        )}
-      </View>
 
-    </View>
+          <Button
+            title={pdfUsage?.isLocked ? '🔒 PDF გენერირება' : 'PDF გენერირება / გაზიარება'}
+            onPress={handlePdf}
+            loading={generatingPdf}
+            style={{ marginBottom: 12 }}
+          />
+          <Button
+            title="პროექტზე დაბრუნება"
+            variant="secondary"
+            onPress={() => router.back()}
+          />
+        </KeyboardAwareScrollView>
+      )}
+    </InspectionShell>
   );
 }
 

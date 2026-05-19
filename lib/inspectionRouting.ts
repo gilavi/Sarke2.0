@@ -32,5 +32,6 @@ export function routeForInspection(
   if (source === 'excavator') return `/inspections/excavator/${id}`;
   if (source === 'general_equipment') return `/inspections/general-equipment/${id}`;
   if (source === 'cargo_platform') return `/inspections/cargo-platform/${id}`;
+  if (source === 'harness') return isCompleted ? `/inspections/${id}` : `/inspections/harness/${id}`;
   return isCompleted ? `/inspections/${id}` : `/inspections/${id}/wizard`;
 }

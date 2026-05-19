@@ -141,6 +141,8 @@ export default function InspectionResultScreen() {
           tpl?.category === 'bobcat' ? `bobcat/${insp.id}` :
           tpl?.category === 'excavator' ? `excavator/${insp.id}` :
           tpl?.category === 'general_equipment' ? `general-equipment/${insp.id}` :
+          tpl?.category === 'cargo_platform' ? `cargo-platform/${insp.id}` :
+          tpl?.category === 'harness' ? `harness/${insp.id}` :
           `${insp.id}/wizard`;
         if (isOscillating('detail', target)) {
           if (mountedRef.current) setRedirectBlocked(true);

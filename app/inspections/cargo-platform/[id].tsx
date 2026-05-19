@@ -16,6 +16,7 @@ import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
 import { Button } from '../../../components/ui';
 import { DateTimeField } from '../../../components/DateTimeField';
+import { ProjectPickerStep } from '../../../components/inspections';
 import { WizardStepTransition } from '../../../components/wizard/WizardStepTransition';
 import { FlowHeader } from '../../../components/FlowHeader';
 import { InspectionResultView } from '../../../components/InspectionResultView';
@@ -40,8 +41,6 @@ import { friendlyError } from '../../../lib/errorMap';
 import { a11y } from '../../../lib/accessibility';
 import { haptic } from '../../../lib/haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFieldHistory } from '../../../hooks/useFieldHistory';
-import { SuggestionPills } from '../../../components/SuggestionPills';
 import { usePhotoWithLocation } from '../../../hooks/usePhotoWithLocation';
 import {
   CP_ITEMS,
@@ -66,7 +65,7 @@ const CHECKLIST_STEP  = 3;
 const CONCLUSION_STEP = 4;
 const SIGNATURES_STEP = 5;
 const TOTAL_STEPS     = 6;
-const STEP_LABELS     = ['ინფო', 'პლატფ.', 'ტვირთი', 'შემოწ.', 'დასკვნა', 'ხელმ.'];
+const STEP_LABELS     = ['პროექტი', 'პლატფ.', 'ტვირთი', 'შემოწ.', 'დასკვნა', 'ხელმ.'];
 
 // ── Signature canvas styles (same as briefings) ───────────────────────────────
 const WEB_STYLE = `
@@ -130,8 +129,6 @@ export default function CargoPlatformInspectionScreen() {
 
   const userId = session?.state?.status === 'signedIn' ? session.state.session.user.id : null;
 
-  const companyHistory = useFieldHistory(userId, 'cp:company');
-  const addressHistory = useFieldHistory(userId, 'cp:address');
 
   const [inspection, setInspection] = useState<CargoPlatformInspection | null>(null);
   const [projectName, setProjectName] = useState('');
@@ -141,7 +138,6 @@ export default function CargoPlatformInspectionScreen() {
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewBusy, setPreviewBusy] = useState(false);
-  const [focusedField, setFocusedField] = useState<string | null>(null);
 
   // Step state
   const [step, setStep] = useState(INFO_STEP);
@@ -532,8 +528,6 @@ export default function CargoPlatformInspectionScreen() {
   const handleComplete = useCallback(async () => {
     if (!inspection) return;
     const missing: string[] = [];
-    if (!inspection.company?.trim())        missing.push('კომპანიის დასახელება');
-    if (!inspection.address?.trim())        missing.push('მდებარეობა / მისამართი');
     if (!inspection.verdict)                missing.push('დასკვნა');
     if (!inspection.verdictComment?.trim()) missing.push('კომენტარი');
     if (!bothSigned)                        missing.push('ორივე ხელმომწერის ხელმოწერა');
@@ -576,8 +570,10 @@ export default function CargoPlatformInspectionScreen() {
       setInspection(prev => prev ? { ...prev, status: 'completed', completedAt } : prev);
       await AsyncStorage.removeItem(persistKey);
       toast.success('შემოწმება დასრულდა');
+      return true;
     } catch (e) {
       toast.error(friendlyError(e, 'შეცდომა'));
+      return false;
     } finally {
       setCompleting(false);
     }
@@ -587,7 +583,7 @@ export default function CargoPlatformInspectionScreen() {
 
   const canGoNext = useMemo(() => {
     if (!inspection) return false;
-    if (step === INFO_STEP) return !!(inspection.company?.trim() && inspection.address?.trim());
+    if (step === INFO_STEP) return true;
     if (step === CONCLUSION_STEP) return !!inspection.verdict && !!inspection.verdictComment?.trim();
     if (step === SIGNATURES_STEP) return bothSigned && !completing;
     return true;
@@ -667,11 +663,12 @@ export default function CargoPlatformInspectionScreen() {
         project={projectName ? { name: projectName } : null}
         step={step + 1}
         totalSteps={TOTAL_STEPS}
+        stepLabels={STEP_LABELS}
         leading="back"
         trailing="close"
         onClose={() => router.back()}
         trailingElement={
-          step > 0 ? (
+          step > INFO_STEP ? (
             <Pressable
               onPress={handlePdf}
               disabled={generatingPdf}
@@ -697,69 +694,20 @@ export default function CargoPlatformInspectionScreen() {
       <View style={{ flex: 1 }}>
         <WizardStepTransition stepKey={step} direction={direction} animate={animateSteps}>
 
-          {/* ── Step 0: General Info ─────────────────────────────────────────── */}
+          {/* ── Step 0: Project picker ───────────────────────────────────────── */}
           {step === INFO_STEP && (
-            <KeyboardAwareScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={styles.stepBody}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
-              showsVerticalScrollIndicator={false}
-              bottomOffset={120}
-            >
-              <FloatingLabelInput
-                label="კომპანიის დასახელება *"
-                value={inspection.company}
-                onChangeText={v => update('company', v)}
-                onFocus={() => setFocusedField('company')}
-                onBlur={() => {
-                  setFocusedField(null);
-                  if (inspection.company?.trim()) companyHistory.addToHistory(inspection.company.trim());
-                }}
-                required
-              />
-              <SuggestionPills
-                suggestions={companyHistory.suggestions}
-                onSelect={v => { update('company', v); setFocusedField(null); }}
-                visible={focusedField === 'company' || (!inspection.company?.trim() && companyHistory.suggestions.length > 0)}
-              />
-
-              <FloatingLabelInput
-                label="მდებარეობა / მისამართი *"
-                value={inspection.address}
-                onChangeText={v => update('address', v)}
-                onFocus={() => setFocusedField('address')}
-                onBlur={() => {
-                  setFocusedField(null);
-                  if (inspection.address?.trim()) addressHistory.addToHistory(inspection.address.trim());
-                }}
-                required
-              />
-              <SuggestionPills
-                suggestions={addressHistory.suggestions}
-                onSelect={v => { update('address', v); setFocusedField(null); }}
-                visible={focusedField === 'address' || (!inspection.address?.trim() && addressHistory.suggestions.length > 0)}
-              />
-
-              <FloatingLabelInput
-                label="შემოწმების ჩამტარებელი"
-                value={inspection.inspectorName}
-                onChangeText={v => update('inspectorName', v)}
-              />
-
-              <FloatingLabelInput
-                label="სართული / ზონა"
-                value={inspection.floorZone}
-                onChangeText={v => update('floorZone', v)}
-              />
-
-              <DateTimeField
-                label="შემოწმების თარიღი *"
-                value={new Date(inspection.inspectionDate)}
-                onChange={d => update('inspectionDate', d.toISOString().slice(0, 10))}
-                mode="date"
-              />
-            </KeyboardAwareScrollView>
+            <ProjectPickerStep
+              selectedId={inspection.projectId}
+              onSelect={p => {
+                setProjectName(p.company_name || p.name);
+                setInspection(prev => prev ? {
+                  ...prev,
+                  projectId: p.id,
+                  company: p.company_name || p.name,
+                  address: p.address ?? prev.address,
+                } : prev);
+              }}
+            />
           )}
 
           {/* ── Step 1: Platform ID ──────────────────────────────────────────── */}
@@ -772,6 +720,19 @@ export default function CargoPlatformInspectionScreen() {
               showsVerticalScrollIndicator={false}
               bottomOffset={120}
             >
+              <FloatingLabelInput
+                label="სართული / ზონა"
+                value={inspection.floorZone}
+                onChangeText={v => update('floorZone', v)}
+              />
+
+              <DateTimeField
+                label="შემოწმების თარიღი"
+                value={new Date(inspection.inspectionDate)}
+                onChange={d => update('inspectionDate', d.toISOString().slice(0, 10))}
+                mode="date"
+              />
+
               <FloatingLabelInput
                 label="პლატფორმის ტიპი / მოდელი"
                 value={inspection.platformTypeModel}

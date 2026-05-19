@@ -63,6 +63,7 @@ import { CustomDropdown } from '../../components/ui/CustomDropdown';
 function stepKeyFor(category: string | null | undefined, id: string): string {
   const map: Record<string, string> = {
     xaracho: 'wizard', mobile_scaffold: 'wizard',
+    harness: 'harness-wizard',
     bobcat: 'bobcat-wizard', excavator: 'excavator-wizard',
     general_equipment: 'ge-wizard', cargo_platform: 'cargo-platform-wizard',
   };
@@ -70,7 +71,7 @@ function stepKeyFor(category: string | null | undefined, id: string): string {
 }
 
 const STEP_TOTALS: Record<string, number> = {
-  bobcat: 4, excavator: 5, general_equipment: 3, cargo_platform: 6,
+  harness: 3, bobcat: 4, excavator: 5, general_equipment: 3, cargo_platform: 6,
 };
 
 const staticStyles = StyleSheet.create({

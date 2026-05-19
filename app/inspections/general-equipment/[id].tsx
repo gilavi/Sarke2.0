@@ -1,7 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-  ActivityIndicator,
   Alert,
   Pressable,
   ScrollView,
@@ -15,11 +13,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
 import { DateTimeField } from '../../../components/DateTimeField';
-import { Button } from '../../../components/ui';
-import { KeyboardSafeArea } from '../../../components/layout/KeyboardSafeArea';
-import { WizardStepTransition } from '../../../components/wizard/WizardStepTransition';
-
-import { FlowHeader } from '../../../components/FlowHeader';
+import { InspectionShell, ChecklistStep, ConclusionStep, ProjectPickerStep } from '../../../components/inspections';
+import type { VerdictOption, ChecklistResult } from '../../../components/inspections';
 import { InspectionResultView } from '../../../components/InspectionResultView';
 import { useTheme, type Theme } from '../../../lib/theme';
 import { useSession } from '../../../lib/session';
@@ -50,16 +45,17 @@ import {
   type GEInspectionType,
 } from '../../../types/generalEquipment';
 
-const INFO_STEP = 0;
-const CHECKLIST_STEP = 1;
-const CONCLUSION_STEP = 2;
-const DONE_STEP = 3;
-const TOTAL_STEPS = 3;
+const INFO_STEP       = 0;
+const DETAILS_STEP    = 1;
+const CHECKLIST_STEP  = 2;
+const CONCLUSION_STEP = 3;
+const DONE_STEP       = 4;
+const TOTAL_STEPS     = 4;
+const STEP_LABELS     = ['პროექტი', 'ინფო', 'შემოწ.', 'დასკვნა'];
 
 export default function GeneralEquipmentScreen() {
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
-  const insets = useSafeAreaInsets();
   const { pickPhotoWithAnnotation } = usePhotoWithLocation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -70,10 +66,8 @@ export default function GeneralEquipmentScreen() {
 
   // ── Field suggestion histories ────────────────────────────────────────────
   const objectNameHistory = useFieldHistory(userId, 'ge:objectName');
-  const addressHistory = useFieldHistory(userId, 'ge:address');
   const activityTypeHistory = useFieldHistory(userId, 'ge:activityType');
   const actNumberHistory = useFieldHistory(userId, 'ge:actNumber');
-  const inspectorNameHistory = useFieldHistory(userId, 'ge:inspectorName');
   const conclusionHistory = useFieldHistory(userId, 'ge:conclusion');
   const signerNameHistory = useFieldHistory(userId, 'ge:signerName');
 
@@ -130,7 +124,7 @@ export default function GeneralEquipmentScreen() {
         const saved = await AsyncStorage.getItem(persistKey);
         if (saved && !cancelled) {
           const s = parseInt(saved, 10);
-          if (!isNaN(s) && s >= 0 && s <= 2) setStep(s);
+          if (!isNaN(s) && s >= INFO_STEP && s <= CONCLUSION_STEP) setStep(s);
         }
 
         projectsApi.getById(insp.projectId).then(p => {
@@ -407,13 +401,14 @@ export default function GeneralEquipmentScreen() {
 
   const canGoNext = useMemo(() => {
     if (!inspection || step >= TOTAL_STEPS) return false;
-    if (step === INFO_STEP) return !!inspection.objectName?.trim();
+    if (step === INFO_STEP) return true;
+    if (step === DETAILS_STEP) return !!inspection.objectName?.trim();
     if (step === CHECKLIST_STEP) {
       return inspection.equipment.length > 0 && inspection.equipment.every(r => !!r.condition);
     }
     if (step === CONCLUSION_STEP) return !!inspection.conclusion?.trim() && !completing;
     return true;
-  }, [step, inspection, completing, CONCLUSION_STEP]);
+  }, [step, inspection, completing, DETAILS_STEP, CONCLUSION_STEP]);
 
   const handleNext = useCallback(async () => {
     if (step === CONCLUSION_STEP) {
@@ -431,6 +426,45 @@ export default function GeneralEquipmentScreen() {
       router.back();
     }
   }, [step, router]);
+
+  // ── Shared component data ────────────────────────────────────────────────────
+
+  const checklistItems = useMemo(() =>
+    (inspection?.equipment ?? []).map(item => ({
+      id: item.id,
+      description: [item.name, item.model, item.serialNumber].filter(Boolean).join(' · ') || '—',
+    })),
+  [inspection?.equipment]);
+
+  const checklistStates = useMemo(() =>
+    (inspection?.equipment ?? []).map(item => ({
+      id: item.id,
+      result: (item.condition === 'needs_service' ? 'deficient' : item.condition) as ChecklistResult,
+      comment: item.note,
+      photo_paths: item.photo_paths,
+    })),
+  [inspection?.equipment]);
+
+  const verdictOptions = useMemo<VerdictOption[]>(() => [], []);
+
+  const handleChecklistStateChange = useCallback((id: string, patch: { result?: ChecklistResult }) => {
+    if (patch.result === undefined) return;
+    const conditionMap: Record<string, EquipmentItem['condition']> = {
+      good: 'good',
+      deficient: 'needs_service',
+      unusable: 'unusable',
+    };
+    const newCondition = patch.result !== null ? (conditionMap[patch.result] ?? null) : null;
+    setInspection(prev => {
+      if (!prev) return prev;
+      const equipment = prev.equipment.map(r =>
+        r.id === id ? { ...r, condition: newCondition } : r,
+      );
+      const next = { ...prev, equipment };
+      scheduleSave(next);
+      return next;
+    });
+  }, [scheduleSave]);
 
   // ── Render helpers ───────────────────────────────────────────────────────────
 
@@ -480,208 +514,147 @@ export default function GeneralEquipmentScreen() {
   }
 
   return (
-    <View style={styles.root}>
-      <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
-
-      <FlowHeader
-        flowTitle="ტექ. აღჭ."
-        project={projectName ? { name: projectName } : null}
-        step={step + 1}
-        totalSteps={TOTAL_STEPS}
-        leading="back"
-        trailing="close"
-        onClose={() => router.back()}
-        trailingElement={
-          step > 0 ? (
-            <Pressable
-              onPress={handlePdf}
-              disabled={generatingPdf}
-              hitSlop={10}
-              {...a11y('PDF', 'PDF დოკუმენტის გენერირება', 'button')}
-            >
-              <Ionicons
-                name={pdfUsage?.isLocked ? 'lock-closed-outline' : generatingPdf ? 'hourglass-outline' : 'document-text-outline'}
-                size={22}
-                color={theme.colors.accent}
-              />
-            </Pressable>
-          ) : null
-        }
-        onBack={step === INFO_STEP ? async () => { await AsyncStorage.removeItem(persistKey); router.back(); } : handlePrev}
-        backDisabled={false}
-      />
-
-      {saving && (
-        <Text style={styles.savingHint}>შენახვა…</Text>
+    <InspectionShell
+      title="ტექ. აღჭ."
+      projectName={projectName}
+      step={step}
+      totalSteps={TOTAL_STEPS}
+      direction={direction}
+      animate={animateSteps}
+      canGoNext={canGoNext}
+      isLastStep={step === CONCLUSION_STEP}
+      saving={saving}
+      completing={completing}
+      stepLabels={STEP_LABELS}
+      showPdfIcon={step > INFO_STEP}
+      generatingPdf={generatingPdf}
+      onNext={handleNext}
+      onPrev={step === INFO_STEP ? async () => { await AsyncStorage.removeItem(persistKey); router.back(); } : handlePrev}
+      onClose={() => router.back()}
+      onPdf={handlePdf}
+    >
+      {/* ── Step 0: Project picker ─────────────────────────────────────── */}
+      {step === INFO_STEP && (
+        <ProjectPickerStep
+          selectedId={inspection.projectId}
+          onSelect={p => {
+            setProjectName(p.company_name || p.name);
+            setInspection(prev => prev ? {
+              ...prev,
+              projectId: p.id,
+              address: p.address ?? prev.address,
+            } : prev);
+          }}
+        />
       )}
 
-      <KeyboardSafeArea>
-        <WizardStepTransition
-          stepKey={step}
-          direction={direction}
-          animate={animateSteps}
+      {/* ── Step 1: Inspection details ─────────────────────────────────── */}
+      {step === DETAILS_STEP && (
+        <KeyboardAwareScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24, gap: 12 }}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          showsVerticalScrollIndicator={false}
+          bottomOffset={120}
         >
-          {/* ── Step 0: General info ───────────────────────────────────────── */}
-          {step === INFO_STEP && (
-            <KeyboardAwareScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 8, paddingTop: 16, paddingBottom: 24, gap: 12 }}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
-              showsVerticalScrollIndicator={false}
-              bottomOffset={120}
-            >
-              <FloatingLabelInput
-                label="ობიექტის დასახელება *"
-                value={inspection.objectName ?? ''}
-                onChangeText={v => update('objectName', v || null)}
-                onFocus={() => setFocusedField('objectName')}
-                onBlur={() => {
-                  setFocusedField(null);
-                  if (inspection.objectName?.trim()) objectNameHistory.addToHistory(inspection.objectName.trim());
-                }}
-                required
-              />
-              <SuggestionPills
-                suggestions={objectNameHistory.suggestions}
-                onSelect={v => update('objectName', v)}
-                visible={focusedField === 'objectName' || (!inspection.objectName?.trim() && objectNameHistory.suggestions.length > 0)}
-              />
+          <FloatingLabelInput
+            label="ობიექტის დასახელება *"
+            value={inspection.objectName ?? ''}
+            onChangeText={v => update('objectName', v || null)}
+            onFocus={() => setFocusedField('objectName')}
+            onBlur={() => {
+              setFocusedField(null);
+              if (inspection.objectName?.trim()) objectNameHistory.addToHistory(inspection.objectName.trim());
+            }}
+            required
+          />
+          <SuggestionPills
+            suggestions={objectNameHistory.suggestions}
+            onSelect={v => update('objectName', v)}
+            visible={focusedField === 'objectName' || (!inspection.objectName?.trim() && objectNameHistory.suggestions.length > 0)}
+          />
 
-              <FloatingLabelInput
-                label="მისამართი"
-                value={inspection.address ?? ''}
-                onChangeText={v => update('address', v || null)}
-                onFocus={() => setFocusedField('address')}
-                onBlur={() => {
-                  setFocusedField(null);
-                  if (inspection.address?.trim()) addressHistory.addToHistory(inspection.address.trim());
-                }}
-              />
-              <SuggestionPills
-                suggestions={addressHistory.suggestions}
-                onSelect={v => update('address', v)}
-                visible={focusedField === 'address' || (!inspection.address?.trim() && addressHistory.suggestions.length > 0)}
-              />
+          <FloatingLabelInput
+            label="საქმიანობის სახე"
+            value={inspection.activityType ?? ''}
+            onChangeText={v => update('activityType', v || null)}
+            onFocus={() => setFocusedField('activityType')}
+            onBlur={() => {
+              setFocusedField(null);
+              if (inspection.activityType?.trim()) activityTypeHistory.addToHistory(inspection.activityType.trim());
+            }}
+          />
+          <SuggestionPills
+            suggestions={activityTypeHistory.suggestions}
+            onSelect={v => update('activityType', v)}
+            visible={focusedField === 'activityType' || (!inspection.activityType?.trim() && activityTypeHistory.suggestions.length > 0)}
+          />
 
-              <FloatingLabelInput
-                label="საქმიანობის სახე"
-                value={inspection.activityType ?? ''}
-                onChangeText={v => update('activityType', v || null)}
-                onFocus={() => setFocusedField('activityType')}
-                onBlur={() => {
-                  setFocusedField(null);
-                  if (inspection.activityType?.trim()) activityTypeHistory.addToHistory(inspection.activityType.trim());
-                }}
-              />
-              <SuggestionPills
-                suggestions={activityTypeHistory.suggestions}
-                onSelect={v => update('activityType', v)}
-                visible={focusedField === 'activityType' || (!inspection.activityType?.trim() && activityTypeHistory.suggestions.length > 0)}
-              />
+          <View style={styles.fieldRow}>
+            <Text style={styles.fieldLabel}>შემოწმების თარიღი</Text>
+            <DateTimeField
+              mode="date"
+              value={new Date(inspection.inspectionDate)}
+              onChange={d => update('inspectionDate', d.toLocaleDateString('en-CA'))}
+              maxDate={new Date()}
+            />
+          </View>
 
-              <View style={styles.fieldRow}>
-                <Text style={styles.fieldLabel}>შემოწმების თარიღი</Text>
-                <DateTimeField
-                  mode="date"
-                  value={new Date(inspection.inspectionDate)}
-                  onChange={d => update('inspectionDate', d.toLocaleDateString('en-CA'))}
-                  maxDate={new Date()}
-                />
-              </View>
+          <FloatingLabelInput
+            label="აქტის №"
+            value={inspection.actNumber ?? ''}
+            onChangeText={v => update('actNumber', v || null)}
+            onFocus={() => setFocusedField('actNumber')}
+            onBlur={() => {
+              setFocusedField(null);
+              if (inspection.actNumber?.trim()) actNumberHistory.addToHistory(inspection.actNumber.trim());
+            }}
+          />
+          <SuggestionPills
+            suggestions={actNumberHistory.suggestions}
+            onSelect={v => update('actNumber', v)}
+            visible={focusedField === 'actNumber' || (!inspection.actNumber?.trim() && actNumberHistory.suggestions.length > 0)}
+          />
 
-              <FloatingLabelInput
-                label="აქტის №"
-                value={inspection.actNumber ?? ''}
-                onChangeText={v => update('actNumber', v || null)}
-                onFocus={() => setFocusedField('actNumber')}
-                onBlur={() => {
-                  setFocusedField(null);
-                  if (inspection.actNumber?.trim()) actNumberHistory.addToHistory(inspection.actNumber.trim());
-                }}
-              />
-              <SuggestionPills
-                suggestions={actNumberHistory.suggestions}
-                onSelect={v => update('actNumber', v)}
-                visible={focusedField === 'actNumber' || (!inspection.actNumber?.trim() && actNumberHistory.suggestions.length > 0)}
-              />
+          <Text style={styles.fieldLabel}>შემოწმების სახე</Text>
+          <View style={styles.typeChips}>
+            {(['initial', 'repeat', 'scheduled'] as GEInspectionType[]).map(t => {
+              const active = inspection.inspectionType === t;
+              return (
+                <Pressable
+                  key={t}
+                  style={[styles.typeChip, active && styles.typeChipActive]}
+                  onPress={() => update('inspectionType', active ? null : t)}
+                  {...a11y(INSPECTION_TYPE_LABEL[t], undefined, 'radio')}
+                >
+                  <Text style={[styles.typeChipText, active && styles.typeChipTextActive]}>
+                    {INSPECTION_TYPE_LABEL[t]}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </KeyboardAwareScrollView>
+      )}
 
-              <Text style={styles.fieldLabel}>შემოწმების სახე</Text>
-              <View style={styles.typeChips}>
-                {(['initial', 'repeat', 'scheduled'] as GEInspectionType[]).map(t => {
-                  const active = inspection.inspectionType === t;
-                  return (
-                    <Pressable
-                      key={t}
-                      style={[styles.typeChip, active && styles.typeChipActive]}
-                      onPress={() => update('inspectionType', active ? null : t)}
-                      {...a11y(INSPECTION_TYPE_LABEL[t], undefined, 'radio')}
-                    >
-                      <Text style={[styles.typeChipText, active && styles.typeChipTextActive]}>
-                        {INSPECTION_TYPE_LABEL[t]}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-
-              <FloatingLabelInput
-                label="შემომწმებელი"
-                value={inspection.inspectorName ?? ''}
-                onChangeText={v => update('inspectorName', v || null)}
-                onFocus={() => setFocusedField('inspectorName')}
-                onBlur={() => {
-                  setFocusedField(null);
-                  if (inspection.inspectorName?.trim()) inspectorNameHistory.addToHistory(inspection.inspectorName.trim());
-                }}
-              />
-              <SuggestionPills
-                suggestions={inspectorNameHistory.suggestions}
-                onSelect={v => update('inspectorName', v)}
-                visible={focusedField === 'inspectorName' || (!inspection.inspectorName?.trim() && inspectorNameHistory.suggestions.length > 0)}
-              />
-            </KeyboardAwareScrollView>
-          )}
-
-          {/* ── Step 1: Equipment list ─────────────────────────────────────── */}
-          {step === CHECKLIST_STEP && (
-            <KeyboardAwareScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 4, paddingTop: 16, paddingBottom: 24, gap: 12 }}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
-              showsVerticalScrollIndicator={false}
-              bottomOffset={120}
-            >
-              <View style={{ alignItems: 'flex-end', marginBottom: 4 }}>
+      {/* ── Step 2: Equipment list ─────────────────────────────────────── */}
+      {step === CHECKLIST_STEP && (
+        <ChecklistStep
+          items={checklistItems}
+          states={checklistStates}
+          onStateChange={handleChecklistStateChange}
+          showSectionHeaders={false}
+          showCommentButton={false}
+          footer={
+            <View style={{ paddingHorizontal: 8, paddingTop: 4 }}>
+              <View style={{ alignItems: 'flex-end', marginBottom: 8 }}>
                 <View style={styles.progressPill}>
                   <Text style={styles.progressPillText}>
                     შევსებულია {filledCount} / {totalCount}
                   </Text>
                 </View>
               </View>
-
-              {inspection.equipment.map((item, index) => (
-                <View key={item.id} style={styles.listRow}>
-                  <View style={styles.listRowText}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.listRowLabel, { fontSize: 13, fontWeight: '400' }]} numberOfLines={2}>{item.model} · {item.serialNumber}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.listRowActions}>
-                    <Pressable style={[styles.statusBtn, item.condition==='good' ? styles.statusBtnGoodActive : styles.statusBtnGood]} onPress={() => updateCondition(index, 'good')}>
-                      <Ionicons name="checkmark" size={22} color={item.condition==='good' ? '#fff' : theme.colors.semantic.success} />
-                    </Pressable>
-                    <Pressable style={[styles.statusBtn, item.condition==='needs_service' ? styles.statusBtnDefActive : styles.statusBtnDef]} onPress={() => updateCondition(index, 'needs_service')}>
-                      <Ionicons name="warning" size={20} color={item.condition==='needs_service' ? '#fff' : theme.colors.warn} />
-                    </Pressable>
-                    <Pressable style={[styles.statusBtn, item.condition==='unusable' ? styles.statusBtnBadActive : styles.statusBtnBad]} onPress={() => updateCondition(index, 'unusable')}>
-                      <Ionicons name="close" size={20} color={item.condition==='unusable' ? '#fff' : theme.colors.danger} />
-                    </Pressable>
-                  </View>
-                </View>
-              ))}
-
               <Pressable
                 style={styles.addRowBtn}
                 onPress={addEquipmentRow}
@@ -690,7 +663,6 @@ export default function GeneralEquipmentScreen() {
                 <Ionicons name="add-circle-outline" size={18} color={theme.colors.accent} />
                 <Text style={styles.addRowText}>+ აღჭურვილობის დამატება</Text>
               </Pressable>
-
               {filledCount === 0 && (
                 <View style={styles.emptyHint}>
                   <Ionicons name="information-circle-outline" size={18} color={theme.colors.inkFaint} />
@@ -699,38 +671,26 @@ export default function GeneralEquipmentScreen() {
                   </Text>
                 </View>
               )}
-            </KeyboardAwareScrollView>
-          )}
+            </View>
+          }
+        />
+      )}
 
-          {/* ── Step 2: Conclusion ─────────────────────────────────────────── */}
-          {step === CONCLUSION_STEP && (
-            <KeyboardAwareScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 4, paddingTop: 16, paddingBottom: 24, gap: 12 }}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
-              showsVerticalScrollIndicator={false}
-              bottomOffset={120}
-            >
-              <FloatingLabelInput
-                label="დასკვნა *"
-                value={inspection.conclusion ?? ''}
-                onChangeText={v => update('conclusion', v || null)}
-                onFocus={() => setFocusedField('conclusion')}
-                onBlur={() => {
-                  setFocusedField(null);
-                  if (inspection.conclusion?.trim()) conclusionHistory.addToHistory(inspection.conclusion.trim());
-                }}
-                multiline
-                numberOfLines={4}
-                required
-              />
-              <SuggestionPills
-                suggestions={conclusionHistory.suggestions}
-                onSelect={v => update('conclusion', v)}
-                visible={focusedField === 'conclusion' || (!inspection.conclusion?.trim() && conclusionHistory.suggestions.length > 0)}
-              />
-
+      {/* ── Step 2: Conclusion ─────────────────────────────────────────── */}
+      {step === CONCLUSION_STEP && (
+        <ConclusionStep
+          verdict={null}
+          verdictOptions={verdictOptions}
+          onVerdictChange={() => {}}
+          notes={inspection.conclusion ?? ''}
+          onNotesChange={v => {
+            update('conclusion', v || null);
+            if (v.trim()) conclusionHistory.addToHistory(v.trim());
+          }}
+          conclusionHistory={conclusionHistory.suggestions}
+          onConclusionChange={v => update('conclusion', v || null)}
+          photoSection={
+            <View>
               <Text style={styles.fieldLabel}>ფოტოები (სურვ.)</Text>
               <SummaryPhotoStrip
                 paths={inspection.summaryPhotos}
@@ -738,48 +698,12 @@ export default function GeneralEquipmentScreen() {
                 onDelete={handleDeleteSummaryPhoto}
                 styles={styles}
               />
-
-              {completing && (
-                <View style={styles.completingRow}>
-                  <ActivityIndicator size="small" color={theme.colors.accent} />
-                  <Text style={styles.completingText}>მიმდინარეობს…</Text>
-                </View>
-              )}
-            </KeyboardAwareScrollView>
-          )}
-
-        </WizardStepTransition>
-
-        {step !== DONE_STEP && (
-          <View style={[styles.footer, { paddingBottom: 16 + insets.bottom }]}>
-            {step === CONCLUSION_STEP ? (
-              <Button
-                title="დასრულება"
-                style={{ paddingVertical: 14 }}
-                iconRight={<Ionicons name="checkmark" size={20} color={theme.colors.white} />}
-                loading={completing}
-                disabled={!canGoNext || completing}
-                onPress={handleNext}
-              />
-            ) : (
-              <Button
-                title={canGoNext ? 'შემდეგი' : 'გაგრძელება'}
-                variant={canGoNext ? 'primary' : 'secondary'}
-                size="lg"
-                style={{ alignSelf: 'stretch', paddingVertical: 16, justifyContent: 'center' }}
-                iconRight={
-                  canGoNext ? (
-                    <Ionicons name="chevron-forward" size={18} color={theme.colors.white} />
-                  ) : undefined
-                }
-                onPress={handleNext}
-              />
-            )}
-          </View>
-        )}
-      </KeyboardSafeArea>
-
-    </View>
+            </View>
+          }
+          completing={completing}
+        />
+      )}
+    </InspectionShell>
   );
 }
 

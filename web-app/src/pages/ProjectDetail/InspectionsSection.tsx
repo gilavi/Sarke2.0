@@ -17,6 +17,17 @@ import {
 } from '@/app/queryKeys';
 import { routes } from '@/app/routes';
 
+const TYPE_AVATAR: Record<string, { emoji: string; bg: string }> = {
+  xaracho:            { emoji: '🏗️', bg: 'bg-yellow-50 dark:bg-yellow-950/20' },
+  mobile_scaffold:    { emoji: '🏗️', bg: 'bg-yellow-50 dark:bg-yellow-950/20' },
+  mobile_scaffold_n3: { emoji: '🏗️', bg: 'bg-yellow-50 dark:bg-yellow-950/20' },
+  harness:            { emoji: '🦺', bg: 'bg-blue-50 dark:bg-blue-950/20' },
+  bobcat:             { emoji: '🚜', bg: 'bg-amber-50 dark:bg-amber-950/20' },
+  excavator:          { emoji: '🚧', bg: 'bg-orange-50 dark:bg-orange-950/20' },
+  general:            { emoji: '⚙️', bg: 'bg-emerald-50 dark:bg-emerald-950/20' },
+  cargo_platform:     { emoji: '📦', bg: 'bg-sky-50 dark:bg-sky-950/20' },
+};
+
 interface Props {
   projectId: string;
   onNew: () => void;
@@ -42,15 +53,21 @@ export function InspectionsSection({ projectId, onNew }: Props) {
 
   const items = useMemo(() => {
     const merged = [
-      ...(inspectionsQ.data ?? []).map((i) => ({
-        id: i.id,
-        label: i.harness_name || `#${i.id.slice(0, 8)}`,
-        status: i.status,
-        href: routes.inspections.detail(i.id),
-        date: i.created_at ?? '',
-      })),
+      ...(inspectionsQ.data ?? []).map((i) => {
+        const cat = Array.isArray(i.template) ? (i.template[0]?.category ?? null) : null;
+        const type = cat === 'xaracho' || cat === 'mobile_scaffold' || cat === 'mobile_scaffold_n3' ? cat : 'harness';
+        return {
+          id: i.id,
+          type,
+          label: i.harness_name || `#${i.id.slice(0, 8)}`,
+          status: i.status,
+          href: routes.inspections.detail(i.id),
+          date: i.created_at ?? '',
+        };
+      }),
       ...(bobcatsQ.data ?? []).map((i) => ({
         id: i.id,
+        type: 'bobcat',
         label: i.equipmentModel || i.company || `ციცხვიანი #${i.id.slice(0, 8)}`,
         status: i.status,
         href: routes.bobcat.detail(i.id),
@@ -58,6 +75,7 @@ export function InspectionsSection({ projectId, onNew }: Props) {
       })),
       ...(excavatorsQ.data ?? []).map((i) => ({
         id: i.id,
+        type: 'excavator',
         label: `ექსკავატორი${i.serialNumber ? ` — ${i.serialNumber}` : ''}`,
         status: i.status,
         href: routes.excavator.detail(i.id),
@@ -65,6 +83,7 @@ export function InspectionsSection({ projectId, onNew }: Props) {
       })),
       ...(generalQ.data ?? []).map((i) => ({
         id: i.id,
+        type: 'general',
         label: i.objectName || `ტექ. #${i.id.slice(0, 8)}`,
         status: i.status,
         href: routes.generalEquipment.detail(i.id),
@@ -98,17 +117,23 @@ export function InspectionsSection({ projectId, onNew }: Props) {
           <p className="px-6 pb-6 text-sm text-neutral-500 dark:text-neutral-400">აქტები ჯერ არ არის.</p>
         ) : (
           <ul className="divide-y divide-neutral-100 dark:divide-neutral-800">
-            {items.slice(0, 5).map((i) => (
-              <li key={i.id}>
-                <Link
-                  to={i.href}
-                  className="flex items-center justify-between px-6 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-800/40"
-                >
-                  <span className="text-sm text-neutral-800 dark:text-neutral-200">{i.label}</span>
-                  <StatusBadge status={i.status} showIcon={false} />
-                </Link>
-              </li>
-            ))}
+            {items.slice(0, 5).map((i) => {
+              const avatar = TYPE_AVATAR[i.type] ?? TYPE_AVATAR['harness'];
+              return (
+                <li key={i.id}>
+                  <Link
+                    to={i.href}
+                    className="flex items-center gap-3 px-6 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-800/40"
+                  >
+                    <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${avatar.bg}`}>
+                      <span className="text-lg leading-none">{avatar.emoji}</span>
+                    </div>
+                    <span className="min-w-0 flex-1 truncate text-sm text-neutral-800 dark:text-neutral-200">{i.label}</span>
+                    <StatusBadge status={i.status} showIcon={false} />
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         )}
       </CardContent>

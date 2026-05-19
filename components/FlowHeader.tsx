@@ -17,6 +17,8 @@ interface FlowHeaderProps {
   /** 1-based. Omit (with `totalSteps`) to hide the progress bar — used by the post-completion result view. */
   step?: number;
   totalSteps?: number;
+  /** When provided, renders segmented stepper with labels instead of a plain progress bar. */
+  stepLabels?: string[];
   /**
    * `back` (default) — pill "< უკან" on the left.
    * `none` — no leading control (used by კითხვარი which has X-close on the right).
@@ -49,6 +51,7 @@ export function FlowHeader({
   project,
   step,
   totalSteps,
+  stepLabels,
   leading = 'back',
   trailing = 'help',
   onBack,
@@ -172,7 +175,17 @@ export function FlowHeader({
         </View>
       </View>
 
-      {showProgress ? (
+      {showProgress && stepLabels?.length ? (
+        <SegmentedStepper
+          step={step!}
+          totalSteps={totalSteps!}
+          labels={stepLabels}
+          successColor={theme.colors.semantic.success}
+          inkColor={theme.colors.ink}
+          inkFaintColor={theme.colors.inkFaint}
+          trackColor={theme.colors.subtleSurface}
+        />
+      ) : showProgress ? (
         <View style={[styles.progressTrack, { backgroundColor: theme.colors.subtleSurface }]}>
           <View
             style={[
@@ -200,6 +213,59 @@ export function FlowHeader({
   );
 }
 
+function SegmentedStepper({
+  step,
+  totalSteps,
+  labels,
+  successColor,
+  inkColor,
+  inkFaintColor,
+  trackColor,
+}: {
+  step: number;
+  totalSteps: number;
+  labels: string[];
+  successColor: string;
+  inkColor: string;
+  inkFaintColor: string;
+  trackColor: string;
+}) {
+  return (
+    <View>
+      <View style={{ flexDirection: 'row' }}>
+        {Array.from({ length: totalSteps }, (_, i) => (
+          <View
+            key={i}
+            style={{
+              flex: 1,
+              height: 3,
+              marginLeft: i > 0 ? 1.5 : 0,
+              backgroundColor: i < step ? successColor : trackColor,
+            }}
+          />
+        ))}
+      </View>
+      <View style={{ flexDirection: 'row', paddingTop: 4, paddingBottom: 6 }}>
+        {labels.slice(0, totalSteps).map((label, i) => (
+          <Text
+            key={i}
+            style={{
+              flex: 1,
+              textAlign: 'center',
+              fontSize: 9,
+              color: i < step ? successColor : i === step - 1 ? inkColor : inkFaintColor,
+              fontWeight: i === step - 1 ? '600' : '400',
+            }}
+            numberOfLines={1}
+          >
+            {label}
+          </Text>
+        ))}
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   wrap: {
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -208,8 +274,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     minHeight: 38,
-    paddingLeft: 8,
-    paddingRight: 8,
+    paddingLeft: 12,
+    paddingRight: 12,
     paddingBottom: 4,
     gap: 8,
   },

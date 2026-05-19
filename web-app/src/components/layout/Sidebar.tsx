@@ -123,9 +123,8 @@ function RailNavItem({
         onClick={onNavigate}
         className={({ isActive: navActive }) =>
           cn(
-            'relative flex items-center rounded-lg transition-all duration-200',
-            'mx-1.5 h-10',
-            isExpanded ? 'w-[208px] px-3 gap-3' : 'w-[44px] justify-center px-0',
+            'relative flex items-center rounded-lg transition-colors duration-200',
+            'mx-1.5 h-10 w-full px-3 gap-3',
             navActive
               ? 'bg-brand-100 text-brand-700 dark:bg-brand-900/50 dark:text-brand-300'
               : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200',
@@ -133,22 +132,21 @@ function RailNavItem({
         }
         aria-label={item.label}
       >
-        {/* Icon — filled when active */}
         <item.icon
           size={20}
           className="shrink-0"
-          {...(isActive ? { style: { fill: 'currentColor', strokeWidth: 0 } } : {})}
+          strokeWidth={isActive ? 2.5 : 1.75}
         />
 
         {/* Label — only visible when expanded */}
         <AnimatePresence initial={false}>
           {isExpanded && (
             <motion.span
-              initial={{ opacity: 0, width: 0 }}
-              animate={{ opacity: 1, width: 'auto' }}
-              exit={{ opacity: 0, width: 0 }}
-              transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="whitespace-nowrap text-[13px] font-medium overflow-hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
+              className="whitespace-nowrap text-[13px] font-medium"
             >
               {item.label}
             </motion.span>
@@ -183,9 +181,8 @@ function MoreGroup({
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          'relative flex items-center rounded-lg transition-all duration-200',
-          'mx-1.5 h-10 w-full',
-          isExpanded ? 'px-3 gap-3' : 'w-[44px] justify-center px-0',
+          'relative flex items-center rounded-lg transition-colors duration-200',
+          'mx-1.5 h-10 w-full px-3 gap-3',
           hasActive && !open
             ? 'text-brand-500 dark:text-brand-400'
             : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200',
@@ -195,16 +192,16 @@ function MoreGroup({
         <AnimatePresence initial={false}>
           {isExpanded && (
             <motion.div
-              initial={{ opacity: 0, width: 0 }}
-              animate={{ opacity: 1, width: 'auto' }}
-              exit={{ opacity: 0, width: 0 }}
-              transition={{ duration: 0.2 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
               className="flex flex-1 items-center gap-1 overflow-hidden"
             >
               <span className="whitespace-nowrap text-[13px] font-medium">მეტი</span>
               <ChevronDown
                 size={14}
-                className={cn('ml-auto transition-transform', open && 'rotate-180')}
+                className={cn('ml-auto transition-transform duration-200', open && 'rotate-180')}
               />
             </motion.div>
           )}
@@ -218,7 +215,7 @@ function MoreGroup({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: 'easeInOut' }}
+            transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
             className="overflow-hidden space-y-0.5"
           >
             {items.map((item) => (
@@ -272,30 +269,27 @@ export const Sidebar = memo(function Sidebar({ open = false, onClose }: SidebarP
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       animate={{ width: isOpen ? 220 : 56 }}
-      transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 0.8 }}
+      transition={{ type: 'spring', stiffness: 280, damping: 26, mass: 0.8 }}
       className={cn(
-        'relative flex h-full shrink-0 flex-col border-r border-neutral-200 bg-white/95 backdrop-blur-md',
+        'relative flex h-full shrink-0 flex-col overflow-hidden border-r border-neutral-200 bg-white/95 backdrop-blur-md',
         'dark:border-neutral-800 dark:bg-neutral-900/90',
         'z-40',
       )}
     >
       {/* ── Logo + Pin Toggle ── */}
-      <div className={cn(
-        'flex items-center border-b border-neutral-200 dark:border-neutral-800 h-14',
-        isOpen ? 'px-3 gap-2' : 'justify-center',
-      )}>
-        <NavLink to="/home" className={cn('flex items-center gap-2', isOpen ? 'flex-1 min-w-0' : '')} aria-label="მთავარი">
+      <div className="flex items-center h-14 overflow-hidden border-b border-neutral-200 dark:border-neutral-800 px-3 gap-2">
+        <NavLink to="/home" className="flex flex-1 min-w-0 items-center gap-2 overflow-hidden" aria-label="მთავარი">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-500 text-white shadow-sm dark:shadow-[0_0_12px_rgba(71,175,135,0.35)]">
             <ShieldCheck size={16} />
           </div>
           <AnimatePresence initial={false}>
             {isOpen && (
               <motion.span
-                initial={{ opacity: 0, width: 0 }}
-                animate={{ opacity: 1, width: 'auto' }}
-                exit={{ opacity: 0, width: 0 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
                 transition={{ duration: 0.15 }}
-                className="font-display text-base font-bold text-neutral-900 dark:text-neutral-100 whitespace-nowrap overflow-hidden"
+                className="font-display text-base font-bold text-neutral-900 dark:text-neutral-100 whitespace-nowrap"
               >
                 Sarke
               </motion.span>
@@ -361,8 +355,8 @@ export const Sidebar = memo(function Sidebar({ open = false, onClose }: SidebarP
           onClick={handleNavigate}
           className={({ isActive }) =>
             cn(
-              'relative flex items-center rounded-lg transition-all duration-200 mx-1.5',
-              isOpen ? 'h-10 w-[208px] px-3 gap-3' : 'h-10 w-[44px] justify-center px-0',
+              'relative flex items-center rounded-lg transition-colors duration-200 mx-1.5',
+              'h-10 w-full px-3 gap-3',
               isActive
                 ? 'bg-brand-100 text-brand-700 dark:bg-brand-900/50 dark:text-brand-300'
                 : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200',
@@ -378,10 +372,10 @@ export const Sidebar = memo(function Sidebar({ open = false, onClose }: SidebarP
           <AnimatePresence initial={false}>
             {isOpen && (
               <motion.div
-                initial={{ opacity: 0, width: 0 }}
-                animate={{ opacity: 1, width: 'auto' }}
-                exit={{ opacity: 0, width: 0 }}
-                transition={{ duration: 0.2 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
                 className="min-w-0 overflow-hidden"
               >
                 <div className="truncate text-[13px] font-medium">პროფილი</div>
@@ -395,8 +389,8 @@ export const Sidebar = memo(function Sidebar({ open = false, onClose }: SidebarP
           type="button"
           onClick={() => void signOut()}
           className={cn(
-            'relative flex items-center rounded-lg transition-all duration-200 mx-1.5',
-            isOpen ? 'h-10 w-[208px] px-3 gap-3' : 'h-10 w-[44px] justify-center px-0',
+            'relative flex items-center rounded-lg transition-colors duration-200 mx-1.5',
+            'h-10 w-full px-3 gap-3',
             'text-neutral-500 hover:bg-red-50 hover:text-red-600',
             'dark:text-neutral-400 dark:hover:bg-red-950/30 dark:hover:text-red-400',
           )}
@@ -406,11 +400,11 @@ export const Sidebar = memo(function Sidebar({ open = false, onClose }: SidebarP
           <AnimatePresence initial={false}>
             {isOpen && (
               <motion.span
-                initial={{ opacity: 0, width: 0 }}
-                animate={{ opacity: 1, width: 'auto' }}
-                exit={{ opacity: 0, width: 0 }}
-                transition={{ duration: 0.2 }}
-                className="whitespace-nowrap text-[13px] font-medium overflow-hidden"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="whitespace-nowrap text-[13px] font-medium"
               >
                 გასვლა
               </motion.span>
@@ -483,7 +477,7 @@ export const Sidebar = memo(function Sidebar({ open = false, onClose }: SidebarP
                       >
                         {({ isActive }) => (
                           <>
-                            <item.icon size={20} {...(isActive ? { style: { fill: 'currentColor', strokeWidth: 0 } } : {})} />
+                            <item.icon size={20} strokeWidth={isActive ? 2.5 : 1.75} />
                             <span>{item.label}</span>
                           </>
                         )}
@@ -513,7 +507,7 @@ export const Sidebar = memo(function Sidebar({ open = false, onClose }: SidebarP
                 >
                   {({ isActive }) => (
                     <>
-                      <User size={20} {...(isActive ? { style: { fill: 'currentColor', strokeWidth: 0 } } : {})} />
+                      <User size={20} strokeWidth={isActive ? 2.5 : 1.75} />
                       <span>პროფილი</span>
                     </>
                   )}

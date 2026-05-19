@@ -1,3 +1,5 @@
+import { supabase } from '@/lib/supabase';
+
 export interface Regulation {
   id: string;
   title: string;
@@ -49,32 +51,15 @@ export interface RegulationState {
   isUpdated: boolean;
 }
 
-function parseAmendmentDate(html: string): string | null {
-  const marker = html.indexOf('ბოლო ცვლილება');
-  if (marker !== -1) {
-    const window = html.slice(marker, marker + 400);
-    const slash = window.match(/(\d{2})\/(\d{2})\/(\d{4})/);
-    if (slash) return `${slash[1]}/${slash[2]}/${slash[3]}`;
-  }
-  const all = html.match(/\b(\d{2})\/(\d{2})\/(\d{4})\b/g);
-  if (all && all.length) {
-    const sorted = [...all].sort((a, b) => {
-      const [da, ma, ya] = a.split('/').map(Number);
-      const [db, mb, yb] = b.split('/').map(Number);
-      return new Date(yb, mb - 1, db).getTime() - new Date(ya, ma - 1, da).getTime();
-    });
-    return sorted[0];
-  }
-  return null;
-}
-
-async function fetchOne(reg: Regulation, signal: AbortSignal): Promise<string | null> {
+async function fetchAllDates(regs: Regulation[]): Promise<(string | null)[]> {
   try {
-    const res = await fetch(reg.url, { signal });
-    if (!res.ok) return null;
-    return parseAmendmentDate(await res.text());
+    const { data, error } = await supabase.functions.invoke('fetch-regulation-dates', {
+      body: { urls: regs.map((r) => r.url) },
+    });
+    if (error || !Array.isArray(data?.dates)) return regs.map(() => null);
+    return data.dates as (string | null)[];
   } catch {
-    return null;
+    return regs.map(() => null);
   }
 }
 
@@ -102,31 +87,22 @@ export async function maybeRefreshRegulations(
     return { states: loadRegulationStates(), lastFetch: lastFetchRaw };
   }
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10_000);
+  const dates = await fetchAllDates(REGULATIONS);
 
-  try {
-    const results = await Promise.allSettled(
-      REGULATIONS.map((r) => fetchOne(r, controller.signal)),
-    );
-
-    let anySuccess = false;
-    results.forEach((res, i) => {
-      if (res.status === 'fulfilled' && res.value) {
-        anySuccess = true;
-        localStorage.setItem(DOC_DATE_KEY(REGULATIONS[i].id), res.value);
-      }
-    });
-
-    if (anySuccess) {
-      const stamp = new Date().toISOString();
-      localStorage.setItem(LAST_FETCH_KEY, stamp);
+  let anySuccess = false;
+  dates.forEach((date, i) => {
+    if (date) {
+      anySuccess = true;
+      localStorage.setItem(DOC_DATE_KEY(REGULATIONS[i].id), date);
     }
+  });
 
-    return { states: loadRegulationStates(), lastFetch: localStorage.getItem(LAST_FETCH_KEY) };
-  } finally {
-    clearTimeout(timeout);
+  if (anySuccess) {
+    const stamp = new Date().toISOString();
+    localStorage.setItem(LAST_FETCH_KEY, stamp);
   }
+
+  return { states: loadRegulationStates(), lastFetch: localStorage.getItem(LAST_FETCH_KEY) };
 }
 
 export function markRegulationSeen(id: string): void {

@@ -1,6 +1,27 @@
 # What's New — Sarke 2.0 Changelog
 
-**Updated:** 2026-05-19 | Branch: `gio/web-2.0-ux`
+**Updated:** 2026-05-20 | Branch: `main`
+
+---
+
+## 2026-05-20 — `main` — Web regulations tab fixes
+
+### Regulations tab (web-app)
+- **Amendment dates now load on web:** matsne.gov.ge has no CORS headers, so the browser was silently dropping every fetch and showing the list with no dates. Added a `fetch-regulation-dates` Supabase Edge Function that proxies the requests server-side; the web dashboard now calls this instead of fetching matsne.gov.ge directly.
+- **Auto-refresh on tab return:** added a `visibilitychange` listener (mirror of mobile's `useFocusEffect`) so the page re-checks for updates when the user returns from reading a regulation in a new tab.
+- Removed dead duplicate `web-app/src/lib/regulations.ts` (nothing imported it; canonical copy is `web-app/src/lib/data/regulations.ts`).
+- **Deploy note:** run `supabase functions deploy fetch-regulation-dates` to activate the proxy.
+
+---
+
+## 2026-05-20 — Dedicated harness (ქამრები) inspection screen
+
+- **New screen** `app/inspections/harness/[id].tsx` — replaces the generic wizard for harness-category inspections.
+  - Step 0 (ინფო): harness name/ID field. No inspection-type selector — type is already determined from the home-page dropdown.
+  - Step 1 (ქამრები): `HarnessListFlow` (count picker → per-harness component grid with photos).
+  - Step 2 (დასკვნა): shared `ConclusionStep` with "უსაფრთხოა" / "არ არის უსაფრთხო" verdict chips.
+- **Routing** — `lib/inspectionRouting.ts` now routes harness drafts to `/inspections/harness/:id`; completed harness still opens the PDF result screen.
+- **Shared components** — `InspectionShell`, `ConclusionStep` (from `components/inspections/`) and `HarnessListFlow` are reused unchanged, matching the bobcat/excavator/general-equipment pattern.
 
 ---
 

@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Button, Card, Screen } from '../../../components/ui';
 import { FlowHeader } from '../../../components/FlowHeader';
+import { ErrorState } from '../../../components/ErrorState';
 import { QuestionAvatar, illustrationKeyFor } from '../../../components/QuestionAvatar';
 import { Skeleton, SkeletonWizard } from '../../../components/Skeleton';
 import { ScaffoldTour } from '../../../components/ScaffoldTour';
@@ -88,7 +89,8 @@ type FlatStep =
   | { kind: 'question'; question: Question }
   | { kind: 'gridRow'; question: Question; row: string }
   | { kind: 'harnessFlow'; question: Question }
-  | { kind: 'conclusion' };
+  | { kind: 'conclusion' }
+  | { kind: 'empty' };
 
 function buildSteps(
   questions: Question[],
@@ -116,6 +118,9 @@ function buildSteps(
     } else {
       steps.push({ kind: 'question', question: q });
     }
+  }
+  if (steps.length === 0 && questions.length === 0) {
+    return [{ kind: 'empty' }];
   }
   steps.push({ kind: 'conclusion' });
   return steps;
@@ -153,6 +158,7 @@ function hasAnswer(
   }
   // harnessFlow manages its own completion internally — always considered answered.
   if (step.kind === 'harnessFlow') return true;
+  if (step.kind === 'empty') return false;
   const a = answers[step.question.id];
   if (step.kind === 'gridRow') {
     const row = (a?.grid_values ?? {})[step.row];
@@ -794,6 +800,31 @@ export default function QuestionnaireWizard() {
   const isLast = stepIndex === steps.length - 1;
   const isScaffoldRow = step.kind === 'gridRow' && (step.question.grid_rows?.[0] ?? '') !== 'N1';
 
+
+  if (step.kind === 'empty') {
+    return (
+      <Screen edgeToEdge edges={['top']} style={{ backgroundColor: theme.colors.card }}>
+        <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
+        <FlowHeader
+          flowTitle=""
+          project={null}
+          step={1}
+          totalSteps={1}
+          leading="back"
+          trailing="none"
+          onBack={() => router.back()}
+          backDisabled={false}
+        />
+        <View style={{ flex: 1, justifyContent: 'center' }}>
+          <ErrorState
+            title="შაბლონს კითხვები არ აქვს"
+            message="ამ შაბლონზე კითხვები არ არის კონფიგურირებული. გთხოვთ მიმართოთ ადმინისტრატორს."
+            icon="document-text-outline"
+          />
+        </View>
+      </Screen>
+    );
+  }
 
   // HarnessListFlow: full-screen takeover for harness templates.
   // Render it directly without Screen wrapper — HarnessListFlow owns its own

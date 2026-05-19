@@ -51,6 +51,14 @@ export default function Regulations() {
     refresh(false);
   }, [refresh]);
 
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') refresh(false);
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [refresh]);
+
   const stateById = (id: string) => states.find((s) => s.id === id);
 
   const handleOpen = (id: string, url: string) => {

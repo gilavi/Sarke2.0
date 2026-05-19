@@ -15,17 +15,13 @@ import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
 import { PlateInput, type PlateInputHandle } from '../../../components/inputs/PlateInput';
 import { SerialKeypad } from '../../../components/inputs/SerialKeypad';
-import { Button } from '../../../components/ui';
-import { WizardStepTransition } from '../../../components/wizard/WizardStepTransition';
-
-// checklist list render is inline below
-import { FlowHeader } from '../../../components/FlowHeader';
+import { InspectionShell, ChecklistStep, ConclusionStep, ProjectPickerStep } from '../../../components/inspections';
+import type { VerdictOption } from '../../../components/inspections';
 import { InspectionResultView } from '../../../components/InspectionResultView';
 import { useTheme, type Theme } from '../../../lib/theme';
 import { useSession } from '../../../lib/session';
 import { useToast } from '../../../lib/toast';
 
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { bobcatApi } from '../../../lib/bobcatService';
 import { projectsApi, signaturesApi, inspectionAttachmentsApi } from '../../../lib/services';
 import { signatureAsDataUrl, imageForDisplay } from '../../../lib/imageUrl';
@@ -67,7 +63,7 @@ export default function BobcatInspectionScreen() {
   const router = useRouter();
   const toast = useToast();
   const session = useSession();
-  const insets = useSafeAreaInsets();
+
   const { pickPhotoWithAnnotation } = usePhotoWithLocation();
 
   const [paywallVisible, setPaywallVisible] = useState(false);
@@ -80,13 +76,14 @@ export default function BobcatInspectionScreen() {
   const equipmentModelHistory = useFieldHistory(userId, 'bobcat:equipmentModel');
   const registrationNumberHistory = useFieldHistory(userId, 'bobcat:registrationNumber');
 
-  const INFO_STEP = 0;
-  const SERIAL_STEP = 1;
-  const CHECKLIST_STEP = 2;
-  const CONCLUSION_STEP = 3;
-  const DONE_STEP = 4;
-  const TOTAL_STEPS = 4;
-  const STEP_LABELS = ['ინფო', 'ს/ნ', 'შემოწმება', 'დასკვნა'];
+  const PROJECT_STEP    = 0;
+  const INFO_STEP       = 1;
+  const SERIAL_STEP     = 2;
+  const CHECKLIST_STEP  = 3;
+  const CONCLUSION_STEP = 4;
+  const DONE_STEP       = 5;
+  const TOTAL_STEPS     = 5;
+  const STEP_LABELS     = ['პროექტი', 'მოდელი', 'ს/ნ', 'შემოწ.', 'დასკვნა'];
 
   const [inspection, setInspection] = useState<BobcatInspection | null>(null);
   const [projectName, setProjectName] = useState('');
@@ -491,15 +488,12 @@ export default function BobcatInspectionScreen() {
 
   const canGoNext = useMemo(() => {
     if (!inspection) return false;
-    if (step === INFO_STEP) {
-      return !!inspection.equipmentModel?.trim();
-    }
-    if (step === SERIAL_STEP) {
-      return !!inspection.registrationNumber?.trim();
-    }
+    if (step === PROJECT_STEP) return true;
+    if (step === INFO_STEP) return !!inspection.equipmentModel?.trim();
+    if (step === SERIAL_STEP) return !!inspection.registrationNumber?.trim();
     if (step === CONCLUSION_STEP) return !!inspection.verdict && !completing;
     return true;
-  }, [step, inspection, completing, CONCLUSION_STEP]);
+  }, [step, inspection, completing, PROJECT_STEP, INFO_STEP, SERIAL_STEP, CONCLUSION_STEP]);
 
   const handleNext = useCallback(async () => {
     if (step === CONCLUSION_STEP) {
@@ -511,84 +505,40 @@ export default function BobcatInspectionScreen() {
   }, [step, CONCLUSION_STEP, handleComplete, id, router]);
 
   const handlePrev = useCallback(() => {
-    if (step === INFO_STEP) {
+    if (step === PROJECT_STEP) {
       router.back();
-    } else if (step > INFO_STEP) {
+    } else {
       setStep(s => s - 1);
     }
-  }, [step, router]);
+  }, [step, PROJECT_STEP, router]);
 
-  // ── Render helpers ─────────────────────────────────────────────────────────
+  // ── Derived data for shared components ────────────────────────────────────
 
-  const renderChecklistList = () => {
-    if (!inspection) return null;
-    return (
-      <KeyboardAwareScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 8 }}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        showsVerticalScrollIndicator={false}
-        bottomOffset={120}
-      >
-        {catalog.map((entry, idx) => {
-          const state = inspection.items.find(i => i.id === entry.id)
-            ?? { id: entry.id, result: null, comment: null, photo_paths: [] };
-          const active = state.result;
-          return (
-            <View key={entry.id} style={styles.listRow}>
-              <View style={styles.listRowInfo}>
-                <Text style={[styles.listRowLabel, { fontSize: 13, fontWeight: '400', color: theme.colors.ink }]} numberOfLines={2}>
-                  {entry.description}
-                </Text>
-              </View>
-              <View style={styles.listRowActions}>
-                <Pressable
-                  style={[
-                    styles.statusBtn,
-                    active === 'good' ? styles.statusBtnGoodActive : styles.statusBtnGood,
-                  ]}
-                  onPress={() => updateItem(entry.id, { result: active === 'good' ? null : 'good' })}
-                  hitSlop={6}
-                >
-                  <Text style={[
-                    styles.statusBtnText,
-                    active === 'good' ? styles.statusBtnTextActive : styles.statusBtnTextGood,
-                  ]}>✓</Text>
-                </Pressable>
-                <Pressable
-                  style={[
-                    styles.statusBtn,
-                    active === 'deficient' ? styles.statusBtnWarnActive : styles.statusBtnWarn,
-                  ]}
-                  onPress={() => updateItem(entry.id, { result: active === 'deficient' ? null : 'deficient' })}
-                  hitSlop={6}
-                >
-                  <Text style={[
-                    styles.statusBtnText,
-                    active === 'deficient' ? styles.statusBtnTextActive : styles.statusBtnTextWarn,
-                  ]}>⚠</Text>
-                </Pressable>
-                <Pressable
-                  style={[
-                    styles.statusBtn,
-                    active === 'unusable' ? styles.statusBtnBadActive : styles.statusBtnBad,
-                  ]}
-                  onPress={() => updateItem(entry.id, { result: active === 'unusable' ? null : 'unusable' })}
-                  hitSlop={6}
-                >
-                  <Text style={[
-                    styles.statusBtnText,
-                    active === 'unusable' ? styles.statusBtnTextActive : styles.statusBtnTextBad,
-                  ]}>✗</Text>
-                </Pressable>
-              </View>
-            </View>
-          );
-        })}
-      </KeyboardAwareScrollView>
-    );
-  };
+  const checklistItems = useMemo(
+    () => catalog.map(e => ({ id: String(e.id), description: e.description })),
+    [catalog],
+  );
+
+  const checklistStates = useMemo(
+    () => catalog.map(e => {
+      const s = inspection?.items.find(i => i.id === e.id);
+      return {
+        id: String(e.id),
+        result: (s?.result ?? null) as import('../../../components/inspections').ChecklistResult,
+        comment: s?.comment ?? null,
+        photo_paths: s?.photo_paths ?? [],
+      };
+    }),
+    [catalog, inspection?.items],
+  );
+
+  const bobcatVerdictOptions = useMemo<VerdictOption<BobcatVerdict>[]>(
+    () => (['approved', 'limited', 'rejected'] as BobcatVerdict[]).map(v => ({
+      value: v,
+      label: VERDICT_LABEL[v],
+    })),
+    [],
+  );
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -633,49 +583,39 @@ export default function BobcatInspectionScreen() {
   }
 
   return (
-    <View style={styles.root}>
-      <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
+    <InspectionShell
+      title={screenTitle}
+      projectName={projectName}
+      step={step}
+      totalSteps={TOTAL_STEPS}
+      direction={direction}
+      animate={animateSteps}
+      canGoNext={canGoNext}
+      isLastStep={step === CONCLUSION_STEP}
+      saving={saving}
+      completing={completing}
+      stepLabels={STEP_LABELS}
+      showPdfIcon={step > PROJECT_STEP}
+      generatingPdf={generatingPdf}
+      onNext={handleNext}
+      onPrev={step === PROJECT_STEP
+        ? async () => { await AsyncStorage.removeItem(persistKey); router.back(); }
+        : handlePrev}
+      onClose={() => router.back()}
+      onPdf={handlePdf}
+    >
+          {/* ── Step 0: Project picker ──────────────────────────────────── */}
+          {step === PROJECT_STEP && (
+            <ProjectPickerStep
+              selectedId={inspection.projectId}
+              onSelect={p => {
+                setProjectName(p.company_name || p.name);
+                setInspection(prev => prev ? { ...prev, projectId: p.id } : prev);
+              }}
+            />
+          )}
 
-      <FlowHeader
-        flowTitle={screenTitle}
-        project={projectName ? { name: projectName } : null}
-        step={step + 1}
-        totalSteps={TOTAL_STEPS}
-        leading="back"
-        trailing="close"
-        onClose={() => router.back()}
-        trailingElement={
-          step > 0 ? (
-            <Pressable
-              onPress={handlePdf}
-              disabled={generatingPdf}
-              hitSlop={10}
-              {...a11y('PDF', 'PDF დოკუმენტის გენერირება', 'button')}
-            >
-              <Ionicons
-                name={generatingPdf ? 'hourglass-outline' : 'document-text-outline'}
-                size={22}
-                color={theme.colors.accent}
-              />
-            </Pressable>
-          ) : null
-        }
-        onBack={step === 0 ? async () => { await AsyncStorage.removeItem(persistKey); router.back(); } : handlePrev}
-        backDisabled={false}
-      />
-
-
-      {saving && (
-        <Text style={styles.savingHint}>შენახვა…</Text>
-      )}
-
-      <View style={{ flex: 1 }}>
-        <WizardStepTransition
-          stepKey={step}
-          direction={direction}
-          animate={animateSteps}
-        >
-          {/* ── Step 0: General Info ────────────────────────────────────── */}
+          {/* ── Step 1: Equipment model ─────────────────────────────────── */}
           {step === INFO_STEP && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
@@ -711,7 +651,7 @@ export default function BobcatInspectionScreen() {
             </KeyboardAwareScrollView>
           )}
 
-          {/* ── Step 1: Serial Number (custom on-screen keypad) ─────────── */}
+          {/* ── Step 2: Serial Number (custom on-screen keypad) ─────────── */}
           {step === SERIAL_STEP && (
             <View style={{ flex: 1 }}>
               <View style={{ paddingHorizontal: 20, paddingTop: 32, gap: 20, alignItems: 'center' }}>
@@ -743,94 +683,39 @@ export default function BobcatInspectionScreen() {
             </View>
           )}
 
-          {/* ── Step 2: Checklist list ──────────────────────────────────── */}
-          {step === CHECKLIST_STEP && renderChecklistList()}
-
-          {/* ── Step 3: Conclusion (summary + verdict + notes + signature) ─ */}
-          {step === CONCLUSION_STEP && (
-            <KeyboardAwareScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 12 }}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
-              showsVerticalScrollIndicator={false}
-              bottomOffset={120}
-            >
-              <Text style={styles.fieldLabel}>დასკვნა *</Text>
-              <View style={styles.chipRow}>
-                {(['approved', 'limited', 'rejected'] as BobcatVerdict[]).map(v => {
-                  const active = inspection.verdict === v;
-                  return (
-                    <Pressable
-                      key={v}
-                      style={[styles.typeChip, active && styles.typeChipActive]}
-                      onPress={() => update('verdict', active ? null : v)}
-                      {...a11y(VERDICT_LABEL[v], undefined, 'radio')}
-                    >
-                      <Text style={[styles.typeChipText, active && styles.typeChipTextActive]}>
-                        {VERDICT_LABEL[v]}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-
-              <FloatingLabelInput
-                label="შენიშვნები / ხარვეზები"
-                value={inspection.notes ?? ''}
-                onChangeText={v => update('notes', v || null)}
-                multiline
-                numberOfLines={4}
-              />
-
-              <Text style={styles.fieldLabel}>ფოტოები (სურვ.)</Text>
-              <SummaryPhotoStrip
-                paths={inspection.summaryPhotos ?? []}
-                onAdd={handleAddSummaryPhoto}
-                onDelete={handleDeleteSummaryPhoto}
-                styles={styles}
-              />
-
-              {completing && (
-                <View style={styles.completingRow}>
-                  <ActivityIndicator size="small" color={theme.colors.accent} />
-                  <Text style={styles.completingText}>მიმდინარეობს…</Text>
-                </View>
-              )}
-            </KeyboardAwareScrollView>
+          {/* ── Step 2: Checklist ──────────────────────────────────────── */}
+          {step === CHECKLIST_STEP && (
+            <ChecklistStep
+              items={checklistItems}
+              states={checklistStates}
+              onStateChange={(sid, patch) => updateItem(Number(sid), patch as any)}
+              showCommentButton={false}
+            />
           )}
-        </WizardStepTransition>
 
-        {step !== DONE_STEP && (
-          <View style={[styles.footer, { paddingBottom: 16 + insets.bottom }]}>
-            {step === CONCLUSION_STEP ? (
-              <Button
-                title="შენახვა და დასრულება"
-                style={{ paddingVertical: 14 }}
-                iconRight={<Ionicons name="checkmark" size={20} color={theme.colors.white} />}
-                loading={completing}
-                disabled={!canGoNext || completing}
-                onPress={handleNext}
-              />
-            ) : (
-              <Button
-                title={canGoNext ? 'შემდეგი' : 'გაგრძელება'}
-                variant={canGoNext ? 'primary' : 'secondary'}
-                size="lg"
-                style={{ alignSelf: 'stretch', paddingVertical: 16, justifyContent: 'center' }}
-                iconRight={
-                  canGoNext ? (
-                    <Ionicons name="chevron-forward" size={18} color={theme.colors.white} />
-                  ) : undefined
-                }
-                onPress={handleNext}
-              />
-            )}
-          </View>
-        )}
-      </View>
-
-    </View>
+          {/* ── Step 3: Conclusion ─────────────────────────────────────── */}
+          {step === CONCLUSION_STEP && (
+            <ConclusionStep
+              verdict={inspection.verdict}
+              verdictOptions={bobcatVerdictOptions}
+              notes={inspection.notes ?? ''}
+              onVerdictChange={v => update('verdict', v)}
+              onNotesChange={v => update('notes', v || null)}
+              completing={completing}
+              photoSection={
+                <>
+                  <Text style={[styles.fieldLabel, { color: theme.colors.ink }]}>ფოტოები (სურვ.)</Text>
+                  <SummaryPhotoStrip
+                    paths={inspection.summaryPhotos ?? []}
+                    onAdd={handleAddSummaryPhoto}
+                    onDelete={handleDeleteSummaryPhoto}
+                    styles={styles}
+                  />
+                </>
+              }
+            />
+          )}
+    </InspectionShell>
   );
 }
 
