@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, X, FileText, FolderOpen, AlertTriangle, Megaphone, ClipboardCheck, Calendar, Settings, Home } from 'lucide-react';
+import { ActionIcon } from '@mantine/core';
 import { useCommandStore } from '@/store/commandStore';
 import { DURATION, EASE } from '@/lib/animations';
 
@@ -75,9 +76,9 @@ export function CommandPalette() {
                 placeholder="მოძებნეთ..."
                 className="flex-1 bg-transparent text-sm text-neutral-900 outline-none placeholder:text-neutral-400 dark:text-neutral-100"
               />
-              <button onClick={close} className="rounded p-1 text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800">
+              <ActionIcon onClick={close} variant="subtle" color="gray" size="sm" aria-label="დახურვა">
                 <X size={14} />
-              </button>
+              </ActionIcon>
             </div>
             <div className="max-h-[50vh] overflow-y-auto p-2">
               {filtered.length === 0 ? (

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import StatusBadge from '@/components/StatusBadge';
 import { listInspections } from '@/lib/data/inspections';
 import { listBobcatInspections } from '@/lib/data/bobcat';
@@ -15,7 +16,6 @@ import {
   generalEquipmentKeys,
 } from '@/app/queryKeys';
 import { routes } from '@/app/routes';
-import { EmptyState, SectionHeader, listShellClass, rowClass } from './_shared';
 
 interface Props {
   projectId: string;
@@ -75,32 +75,43 @@ export function InspectionsSection({ projectId, onNew }: Props) {
   }, [inspectionsQ.data, bobcatsQ.data, excavatorsQ.data, generalQ.data]);
 
   return (
-    <section>
-      <SectionHeader
-        title="შემოწმების აქტები"
-        count={items.length}
-        viewAllTo={items.length > 5 ? routes.inspections.list(projectId) : undefined}
-        action={
+    <Card className="overflow-hidden">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0">
+        <CardTitle className="text-base">
+          შემოწმების აქტები
+          <span className="ml-2 text-sm font-normal text-neutral-400">({items.length})</span>
+        </CardTitle>
+        <div className="flex items-center gap-3">
           <Button variant="outline" size="sm" onClick={onNew}>
             <Plus size={14} className="mr-1" />
             ახალი
           </Button>
-        }
-      />
-      {items.length === 0 ? (
-        <EmptyState text="აქტები ჯერ არ არის." />
-      ) : (
-        <ul className={listShellClass}>
-          {items.slice(0, 5).map((i) => (
-            <li key={i.id}>
-              <Link to={i.href} className={rowClass}>
-                <span className="text-sm text-neutral-800">{i.label}</span>
-                <StatusBadge status={i.status} showIcon={false} />
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
+          {items.length > 5 && (
+            <Link to={routes.inspections.list(projectId)} className="text-sm text-brand-600 hover:underline">
+              ყველა →
+            </Link>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="p-0">
+        {items.length === 0 ? (
+          <p className="px-6 pb-6 text-sm text-neutral-500 dark:text-neutral-400">აქტები ჯერ არ არის.</p>
+        ) : (
+          <ul className="divide-y divide-neutral-100 dark:divide-neutral-800">
+            {items.slice(0, 5).map((i) => (
+              <li key={i.id}>
+                <Link
+                  to={i.href}
+                  className="flex items-center justify-between px-6 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-800/40"
+                >
+                  <span className="text-sm text-neutral-800 dark:text-neutral-200">{i.label}</span>
+                  <StatusBadge status={i.status} showIcon={false} />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
   );
 }
