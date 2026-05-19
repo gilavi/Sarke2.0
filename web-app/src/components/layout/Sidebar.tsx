@@ -19,7 +19,6 @@ import {
   Clock,
   ChevronRight,
   ChevronLeft,
-  PanelLeftOpen,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { cn } from '@/lib/utils';
@@ -164,18 +163,18 @@ interface SidebarProps {
 }
 
 export const Sidebar = memo(function Sidebar({ open = false, onClose }: SidebarProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isPinned, setIsPinned] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const { user, signOut } = useAuth();
 
-  const toggleExpanded = useCallback(() => setIsExpanded(v => !v), []);
+  /* Visually expanded when pinned OR when hovering the collapsed rail */
+  const isOpen = isPinned || isHovered;
+
+  const togglePin = useCallback(() => setIsPinned(v => !v), []);
 
   const handleNavigate = useCallback(() => {
     onClose?.();
   }, [onClose]);
-
-  /* Tooltips show on hover only when the rail is collapsed */
-  const showTooltips = !isExpanded && isHovered;
 
   /* ── Rail Content ───────────────────────────────── */
 
@@ -183,7 +182,7 @@ export const Sidebar = memo(function Sidebar({ open = false, onClose }: SidebarP
     <motion.aside
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      animate={{ width: isExpanded ? 180 : 56 }}
+      animate={{ width: isOpen ? 180 : 56 }}
       transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 0.8 }}
       className={cn(
         'relative flex h-full shrink-0 flex-col border-r border-neutral-200 bg-white/95 backdrop-blur-md',
@@ -191,48 +190,52 @@ export const Sidebar = memo(function Sidebar({ open = false, onClose }: SidebarP
         'z-40',
       )}
     >
-      {/* ── Logo + Toggle ── */}
+      {/* ── Logo + Pin Toggle ── */}
       <div className={cn(
         'flex items-center border-b border-neutral-200 dark:border-neutral-800 h-14',
-        isExpanded ? 'px-3 gap-2' : 'justify-center',
+        isOpen ? 'px-3 gap-2' : 'justify-center',
       )}>
-        {isExpanded ? (
-          <>
-            <NavLink to="/home" className="flex items-center gap-2 flex-1 min-w-0" aria-label="მთავარი">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-500 text-white shadow-sm dark:shadow-[0_0_12px_rgba(71,175,135,0.35)]">
-                <ShieldCheck size={16} />
-              </div>
+        <NavLink to="/home" className={cn('flex items-center gap-2', isOpen ? 'flex-1 min-w-0' : '')} aria-label="მთავარი">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-500 text-white shadow-sm dark:shadow-[0_0_12px_rgba(71,175,135,0.35)]">
+            <ShieldCheck size={16} />
+          </div>
+          <AnimatePresence initial={false}>
+            {isOpen && (
               <motion.span
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
+                initial={{ opacity: 0, width: 0 }}
+                animate={{ opacity: 1, width: 'auto' }}
+                exit={{ opacity: 0, width: 0 }}
                 transition={{ duration: 0.15 }}
-                className="font-display text-base font-bold text-neutral-900 dark:text-neutral-100 whitespace-nowrap"
+                className="font-display text-base font-bold text-neutral-900 dark:text-neutral-100 whitespace-nowrap overflow-hidden"
               >
                 Sarke
               </motion.span>
-            </NavLink>
-            <button
+            )}
+          </AnimatePresence>
+        </NavLink>
+
+        {/* Pin button — only visible when open */}
+        <AnimatePresence initial={false}>
+          {isOpen && (
+            <motion.button
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.1 }}
               type="button"
-              onClick={toggleExpanded}
-              className="ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-300 transition-colors"
-              aria-label="საიდბარის დახურვა"
+              onClick={togglePin}
+              className={cn(
+                'ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors',
+                isPinned
+                  ? 'text-brand-500 hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-brand-950/30'
+                  : 'text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-300',
+              )}
+              aria-label={isPinned ? 'საიდბარის დახურვა' : 'საიდბარის დამაგრება'}
             >
-              <ChevronLeft size={16} />
-            </button>
-          </>
-        ) : (
-          <Tooltip label="გახსნა" visible={isHovered}>
-            <button
-              type="button"
-              onClick={toggleExpanded}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-300 transition-colors"
-              aria-label="საიდბარის გახსნა"
-            >
-              <PanelLeftOpen size={16} />
-            </button>
-          </Tooltip>
-        )}
+              {isPinned ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+            </motion.button>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* ── Primary Nav ── */}
@@ -242,8 +245,8 @@ export const Sidebar = memo(function Sidebar({ open = false, onClose }: SidebarP
             <li key={item.to}>
               <RailNavItem
                 item={item}
-                isExpanded={isExpanded}
-                showTooltip={showTooltips}
+                isExpanded={isOpen}
+                showTooltip={false}
                 onNavigate={handleNavigate}
               />
             </li>
@@ -257,77 +260,67 @@ export const Sidebar = memo(function Sidebar({ open = false, onClose }: SidebarP
       {/* ── Bottom Section: Account + Sign Out ── */}
       <div className="py-2 space-y-0.5">
         {/* Account */}
-        <Tooltip label="პროფილი" visible={showTooltips}>
-          <NavLink
-            to="/account"
-            onClick={handleNavigate}
-            className={({ isActive }) =>
-              cn(
-                'relative flex items-center rounded-lg transition-all duration-200 mx-1.5',
-                isExpanded ? 'h-10 w-[168px] px-3 gap-3' : 'h-10 w-[44px] justify-center px-0',
-                isActive
-                  ? 'bg-brand-500 text-white shadow-sm dark:bg-brand-600'
-                  : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200',
-              )
-            }
-            aria-label="პროფილი"
-          >
-            {/* Avatar or default icon */}
-            {user?.user_metadata?.avatar_url ? (
-              <img
-                src={user.user_metadata.avatar_url}
-                alt=""
-                className="h-6 w-6 rounded-full object-cover shrink-0"
-              />
-            ) : (
-              <User size={20} className="shrink-0" />
+        <NavLink
+          to="/account"
+          onClick={handleNavigate}
+          className={({ isActive }) =>
+            cn(
+              'relative flex items-center rounded-lg transition-all duration-200 mx-1.5',
+              isOpen ? 'h-10 w-[168px] px-3 gap-3' : 'h-10 w-[44px] justify-center px-0',
+              isActive
+                ? 'bg-brand-500 text-white shadow-sm dark:bg-brand-600'
+                : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200',
+            )
+          }
+          aria-label="პროფილი"
+        >
+          {user?.user_metadata?.avatar_url ? (
+            <img src={user.user_metadata.avatar_url} alt="" className="h-6 w-6 rounded-full object-cover shrink-0" />
+          ) : (
+            <User size={20} className="shrink-0" />
+          )}
+          <AnimatePresence initial={false}>
+            {isOpen && (
+              <motion.div
+                initial={{ opacity: 0, width: 0 }}
+                animate={{ opacity: 1, width: 'auto' }}
+                exit={{ opacity: 0, width: 0 }}
+                transition={{ duration: 0.2 }}
+                className="min-w-0 overflow-hidden"
+              >
+                <div className="truncate text-[13px] font-medium">პროფილი</div>
+              </motion.div>
             )}
-
-            <AnimatePresence initial={false}>
-              {isExpanded && (
-                <motion.div
-                  initial={{ opacity: 0, width: 0 }}
-                  animate={{ opacity: 1, width: 'auto' }}
-                  exit={{ opacity: 0, width: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="min-w-0 overflow-hidden"
-                >
-                  <div className="truncate text-[13px] font-medium">პროფილი</div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </NavLink>
-        </Tooltip>
+          </AnimatePresence>
+        </NavLink>
 
         {/* Sign Out */}
-        <Tooltip label="გასვლა" visible={showTooltips}>
-          <button
-            type="button"
-            onClick={() => void signOut()}
-            className={cn(
-              'relative flex items-center rounded-lg transition-all duration-200 mx-1.5',
-              isExpanded ? 'h-10 w-[168px] px-3 gap-3' : 'h-10 w-[44px] justify-center px-0',
-              'text-neutral-500 hover:bg-red-50 hover:text-red-600',
-              'dark:text-neutral-400 dark:hover:bg-red-950/30 dark:hover:text-red-400',
+        <button
+          type="button"
+          onClick={() => void signOut()}
+          className={cn(
+            'relative flex items-center rounded-lg transition-all duration-200 mx-1.5',
+            isOpen ? 'h-10 w-[168px] px-3 gap-3' : 'h-10 w-[44px] justify-center px-0',
+            'text-neutral-500 hover:bg-red-50 hover:text-red-600',
+            'dark:text-neutral-400 dark:hover:bg-red-950/30 dark:hover:text-red-400',
+          )}
+          aria-label="გასვლა"
+        >
+          <LogOut size={20} className="shrink-0" />
+          <AnimatePresence initial={false}>
+            {isOpen && (
+              <motion.span
+                initial={{ opacity: 0, width: 0 }}
+                animate={{ opacity: 1, width: 'auto' }}
+                exit={{ opacity: 0, width: 0 }}
+                transition={{ duration: 0.2 }}
+                className="whitespace-nowrap text-[13px] font-medium overflow-hidden"
+              >
+                გასვლა
+              </motion.span>
             )}
-            aria-label="გასვლა"
-          >
-            <LogOut size={20} className="shrink-0" />
-            <AnimatePresence initial={false}>
-              {isExpanded && (
-                <motion.span
-                  initial={{ opacity: 0, width: 0 }}
-                  animate={{ opacity: 1, width: 'auto' }}
-                  exit={{ opacity: 0, width: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="whitespace-nowrap text-[13px] font-medium overflow-hidden"
-                >
-                  გასვლა
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </button>
-        </Tooltip>
+          </AnimatePresence>
+        </button>
       </div>
     </motion.aside>
   );
