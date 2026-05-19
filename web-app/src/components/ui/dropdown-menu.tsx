@@ -1,67 +1,79 @@
-import * as React from 'react';
-import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
-import { cn } from '@/lib/utils';
+import { Menu, type MenuProps } from '@mantine/core';
+import { type ReactNode, type MouseEventHandler } from 'react';
 
-const DropdownMenu = DropdownMenuPrimitive.Root;
-const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
-const DropdownMenuPortal = DropdownMenuPrimitive.Portal;
+// DropdownMenu = Menu root
+export const DropdownMenu = ({ children, ...props }: MenuProps) => (
+  <Menu shadow="md" radius="md" {...props}>{children}</Menu>
+);
 
-const DropdownMenuContent = React.forwardRef<
-  React.ElementRef<typeof DropdownMenuPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
->(({ className, sideOffset = 4, ...props }, ref) => (
-  <DropdownMenuPortal>
-    <DropdownMenuPrimitive.Content
-      ref={ref}
-      sideOffset={sideOffset}
-      className={cn(
-        'z-50 min-w-[10rem] overflow-hidden rounded-md border border-neutral-200 bg-white p-1 shadow-md',
-        'data-[state=open]:animate-in data-[state=closed]:animate-out',
-        'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
-        'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
-        'data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2',
-        className,
-      )}
-      {...props}
-    />
-  </DropdownMenuPortal>
-));
-DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName;
+// DropdownMenuTrigger — supports `asChild` (ignored; Menu.Target wraps children as trigger)
+export const DropdownMenuTrigger = ({
+  children,
+  asChild: _asChild,
+  ...props
+}: {
+  children: ReactNode;
+  asChild?: boolean;
+  [key: string]: any;
+}) => <Menu.Target {...props}>{children}</Menu.Target>;
 
-const DropdownMenuItem = React.forwardRef<
-  React.ElementRef<typeof DropdownMenuPrimitive.Item>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item>
->(({ className, ...props }, ref) => (
-  <DropdownMenuPrimitive.Item
-    ref={ref}
-    className={cn(
-      'relative flex cursor-pointer select-none items-center rounded-sm px-3 py-2 text-sm text-neutral-700 outline-none',
-      'hover:bg-neutral-100 focus:bg-neutral-100',
-      'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
-      className,
-    )}
+// DropdownMenuContent — maps Radix `align` prop (ignored by Mantine; positioning handled by Menu)
+export const DropdownMenuContent = ({
+  children,
+  align: _align,
+  className,
+  sideOffset: _sideOffset,
+  ...props
+}: {
+  children: ReactNode;
+  align?: 'start' | 'center' | 'end';
+  sideOffset?: number;
+  className?: string;
+  [key: string]: any;
+}) => (
+  <Menu.Dropdown className={className} {...props}>
+    {children}
+  </Menu.Dropdown>
+);
+
+// DropdownMenuItem — maps Radix `onSelect` to Mantine `onClick`
+export const DropdownMenuItem = ({
+  children,
+  onSelect,
+  onClick,
+  className,
+  disabled,
+  ...props
+}: {
+  children?: ReactNode;
+  onSelect?: (event: Event) => void;
+  onClick?: MouseEventHandler<HTMLButtonElement>;
+  className?: string;
+  disabled?: boolean;
+  [key: string]: any;
+}) => (
+  <Menu.Item
+    onClick={onSelect ? () => onSelect(new Event('select')) : onClick}
+    disabled={disabled}
+    className={className}
     {...props}
-  />
-));
-DropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName;
+  >
+    {children}
+  </Menu.Item>
+);
 
-const DropdownMenuSeparator = React.forwardRef<
-  React.ElementRef<typeof DropdownMenuPrimitive.Separator>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Separator>
->(({ className, ...props }, ref) => (
-  <DropdownMenuPrimitive.Separator
-    ref={ref}
-    className={cn('-mx-1 my-1 h-px bg-neutral-100', className)}
-    {...props}
-  />
-));
-DropdownMenuSeparator.displayName = DropdownMenuPrimitive.Separator.displayName;
+export const DropdownMenuSeparator = Menu.Divider;
+export const DropdownMenuLabel = Menu.Label;
 
-export {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuPortal,
-};
+// Stub exports for Radix-specific parts that some files may import
+export const DropdownMenuGroup = ({ children }: { children: ReactNode }) => <>{children}</>;
+export const DropdownMenuPortal = ({ children }: { children: ReactNode }) => <>{children}</>;
+export const DropdownMenuSub = ({ children }: { children: ReactNode }) => <>{children}</>;
+export const DropdownMenuSubContent = ({ children }: { children: ReactNode }) => <>{children}</>;
+export const DropdownMenuSubTrigger = ({ children }: { children: ReactNode }) => <>{children}</>;
+export const DropdownMenuRadioGroup = ({ children }: { children: ReactNode }) => <>{children}</>;
+export const DropdownMenuCheckboxItem = Menu.Item;
+export const DropdownMenuRadioItem = Menu.Item;
+export const DropdownMenuShortcut = ({ children }: { children: ReactNode }) => (
+  <span className="ml-auto text-xs opacity-60">{children}</span>
+);
