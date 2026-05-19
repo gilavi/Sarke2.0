@@ -1,17 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Alert,
-  Pressable,
-  StyleSheet,
-  View,
-} from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
-import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
 import { Button } from '../../../components/ui';
-import { DateTimeField } from '../../../components/DateTimeField';
 import { WizardStepTransition } from '../../../components/wizard/WizardStepTransition';
 import { FlowHeader } from '../../../components/FlowHeader';
 import { InspectionResultView } from '../../../components/InspectionResultView';
@@ -21,14 +14,16 @@ import {
   SignatureBlock,
   VerdictSelector,
   PhotoSection,
+  IdentificationGrid,
+  QualDoc,
 } from '../../../components/inspection';
 import { useTheme, type Theme } from '../../../lib/theme';
 import { useSession } from '../../../lib/session';
 import { useToast } from '../../../lib/toast';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { cargoPlatformApi } from '../../../lib/cargoPlatformService';
+import { safetyNetApi } from '../../../lib/safetyNetService';
 import { projectsApi } from '../../../lib/services';
-import { buildCargoPlatformPdfHtml } from '../../../lib/cargoPlatformPdf';
+import { buildSafetyNetPdfHtml } from '../../../lib/safetyNetPdf';
 import { generateAndSharePdf, PdfLimitReachedError } from '../../../lib/pdfOpen';
 import { PaywallModal } from '../../../components/PaywallModal';
 import { PdfLockedBanner } from '../../../components/PdfLockedBanner';
@@ -40,73 +35,34 @@ import { a11y } from '../../../lib/accessibility';
 import { haptic } from '../../../lib/haptics';
 import { CelebrationBurst } from '../../../components/animations';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFieldHistory } from '../../../hooks/useFieldHistory';
-import { SuggestionPills } from '../../../components/SuggestionPills';
 import { usePhotoWithLocation } from '../../../hooks/usePhotoWithLocation';
 import {
-  CP_ITEMS,
-  CP_SECTION_LABELS,
-  CP_VERDICT_LABEL,
-  CARGO_PLATFORM_TEMPLATE_ID,
-  buildDefaultCargoRow,
-  computeCPVerdictSuggestion,
-  cpTotalWeight,
-  type CargoPlatformInspection,
-  type CPVerdict,
-  type CPResult,
-  type CPItemState,
-  type CPSignatory,
-  type CPSection,
-} from '../../../types/cargoPlatform';
+  SN_VISUAL_ITEMS,
+  SN_POST_TEST_ITEMS,
+  SN_VERDICT_LABEL,
+  SAFETY_NET_TEMPLATE_ID,
+  buildDefaultSNLoadTestRow,
+  computeSNVerdictSuggestion,
+  snTotalWeight,
+  type SafetyNetInspection,
+  type SNVerdict,
+  type SNResult,
+  type SNPostResult,
+  type SNSignatory,
+} from '../../../types/safetyNet';
 
 // ── Step constants ────────────────────────────────────────────────────────────
-const INFO_STEP       = 0;
-const PLATFORM_STEP   = 1;
-const CARGO_STEP      = 2;
-const CHECKLIST_STEP  = 3;
-const CONCLUSION_STEP = 4;
+const NET_ID_STEP     = 1;
+const INSPECTION_STEP = 2;
+const CONCLUSION_STEP = 3;
+const DOCS_STEP       = 4;
 const SIGNATURES_STEP = 5;
-const TOTAL_STEPS     = 6;
-const STEP_LABELS     = ['ინფო', 'პლატფ.', 'ტვირთი', 'შემოწ.', 'დასკვნა', 'ხელმ.'];
-
-// ── Binary pill selector ──────────────────────────────────────────────────────
-function BinaryPills<T extends string>({
-  value,
-  options,
-  onSelect,
-  styles,
-  theme,
-}: {
-  value: T | null;
-  options: { value: T; label: string }[];
-  onSelect: (v: T | null) => void;
-  styles: ReturnType<typeof getstyles>;
-  theme: ReturnType<typeof useTheme>['theme'];
-}) {
-  return (
-    <View style={styles.pillRow}>
-      {options.map(opt => {
-        const active = value === opt.value;
-        return (
-          <Pressable
-            key={opt.value}
-            style={[styles.pill, active && styles.pillActive]}
-            onPress={() => {
-              haptic.light();
-              onSelect(active ? null : opt.value);
-            }}
-          >
-            <Text style={[styles.pillText, active && styles.pillTextActive]}>{opt.label}</Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
+const TOTAL_STEPS     = 5;
+const STEP_LABELS     = ['ბადე', 'შემოწ.', 'დასკვნა', 'დოკ.', 'ხელმ.'];
 
 // ── Main screen ───────────────────────────────────────────────────────────────
 
-export default function CargoPlatformInspectionScreen() {
+export default function SafetyNetInspectionScreen() {
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -120,12 +76,7 @@ export default function CargoPlatformInspectionScreen() {
   const { data: pdfUsage } = usePdfUsage();
   const invalidatePdfUsage = useInvalidatePdfUsage();
 
-  const userId = session?.state?.status === 'signedIn' ? session.state.session.user.id : null;
-
-  const companyHistory = useFieldHistory(userId, 'cp:company');
-  const addressHistory = useFieldHistory(userId, 'cp:address');
-
-  const [inspection, setInspection] = useState<CargoPlatformInspection | null>(null);
+  const [inspection, setInspection] = useState<SafetyNetInspection | null>(null);
   const [projectName, setProjectName] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -135,17 +86,15 @@ export default function CargoPlatformInspectionScreen() {
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewBusy, setPreviewBusy] = useState(false);
-  const [focusedField, setFocusedField] = useState<string | null>(null);
 
-  // Step state
-  const [step, setStep] = useState(INFO_STEP);
-  const prevStepRef = useRef(INFO_STEP);
+  const [step, setStep] = useState(NET_ID_STEP);
+  const prevStepRef = useRef(NET_ID_STEP);
   const [animateSteps, setAnimateSteps] = useState(false);
-  const inspectionRef = useRef<CargoPlatformInspection | null>(null);
+  const inspectionRef = useRef<SafetyNetInspection | null>(null);
   const animateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => { inspectionRef.current = inspection; }, [inspection]);
 
-  const persistKey = useMemo(() => `cargo-platform-wizard:${id}:step`, [id]);
+  const persistKey = useMemo(() => `safety-net-wizard:${id}:step`, [id]);
 
   const direction: 'next' | 'prev' = step >= prevStepRef.current ? 'next' : 'prev';
   useEffect(() => { prevStepRef.current = step; }, [step]);
@@ -157,7 +106,7 @@ export default function CargoPlatformInspectionScreen() {
     let cancelled = false;
     (async () => {
       try {
-        const insp = await cargoPlatformApi.getById(id);
+        const insp = await safetyNetApi.getById(id);
         if (cancelled) return;
         if (!insp) { router.back(); return; }
 
@@ -167,14 +116,13 @@ export default function CargoPlatformInspectionScreen() {
           const name = `${u?.first_name ?? ''} ${u?.last_name ?? ''}`.trim();
           if (name) {
             patched = { ...patched, inspectorName: name };
-            // Patch first signatory name too if empty
-            const sigs = [...patched.signatures] as [CPSignatory, CPSignatory];
+            const sigs = [...patched.signatures] as [SNSignatory, SNSignatory];
             if (!sigs[0].name) sigs[0] = { ...sigs[0], name };
             patched = { ...patched, signatures: sigs };
           }
         }
         if (patched.inspectorName !== insp.inspectorName) {
-          cargoPlatformApi.patch(patched.id, {
+          safetyNetApi.patch(patched.id, {
             inspectorName: patched.inspectorName,
             signatures: patched.signatures,
           }).catch(() => {});
@@ -184,7 +132,7 @@ export default function CargoPlatformInspectionScreen() {
           const saved = await AsyncStorage.getItem(persistKey);
           if (saved && !cancelled) {
             const s = parseInt(saved, 10);
-            if (!isNaN(s) && s >= INFO_STEP && s <= SIGNATURES_STEP) setStep(s);
+            if (!isNaN(s) && s >= NET_ID_STEP && s <= SIGNATURES_STEP) setStep(s);
           }
         }
 
@@ -200,7 +148,7 @@ export default function CargoPlatformInspectionScreen() {
                 ...(companyFill ? { company: companyFill } : {}),
                 ...(addressFill ? { address: addressFill } : {}),
               };
-              cargoPlatformApi.patch(patched.id, {
+              safetyNetApi.patch(patched.id, {
                 ...(companyFill ? { company: patched.company } : {}),
                 ...(addressFill ? { address: patched.address } : {}),
               }).catch(() => {});
@@ -231,7 +179,7 @@ export default function CargoPlatformInspectionScreen() {
   }, [id]);
 
   useEffect(() => {
-    if (step >= INFO_STEP && step <= SIGNATURES_STEP) {
+    if (step >= NET_ID_STEP && step <= SIGNATURES_STEP) {
       AsyncStorage.setItem(persistKey, String(step)).catch(() => {});
     }
   }, [step, persistKey]);
@@ -244,38 +192,42 @@ export default function CargoPlatformInspectionScreen() {
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const scheduleSave = useCallback((insp: CargoPlatformInspection) => {
+  const scheduleSave = useCallback((insp: SafetyNetInspection) => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
       setSaving(true);
-      cargoPlatformApi.patch(insp.id, {
+      safetyNetApi.patch(insp.id, {
         company: insp.company,
         address: insp.address,
         inspectorName: insp.inspectorName,
-        floorZone: insp.floorZone,
         inspectionDate: insp.inspectionDate,
-        platformTypeModel: insp.platformTypeModel,
-        platformLength: insp.platformLength,
-        platformWidth: insp.platformWidth,
-        platformColorDesc: insp.platformColorDesc,
-        sideGuardrail: insp.sideGuardrail,
-        frontGuardrail: insp.frontGuardrail,
-        guardrailHeight: insp.guardrailHeight,
-        cargo: insp.cargo,
+        manufacturer: insp.manufacturer,
+        netSize: insp.netSize,
+        postSize: insp.postSize,
+        postCount: insp.postCount,
+        postAnchorCount: insp.postAnchorCount,
+        anchorPointCount: insp.anchorPointCount,
+        edgeRopeCount: insp.edgeRopeCount,
+        cellSide: insp.cellSide,
+        workingDistance: insp.workingDistance,
+        certificate: insp.certificate,
         items: insp.items,
+        loadTestRows: insp.loadTestRows,
+        postTestItems: insp.postTestItems,
         verdict: insp.verdict,
         verdictComment: insp.verdictComment,
-        summaryPhotos: insp.summaryPhotos,
         signatures: insp.signatures,
+        qualDocPath: insp.qualDocPath,
+        summaryPhotos: insp.summaryPhotos,
       }).catch(e => {
         toast.error(friendlyError(e, 'შენახვა ვერ მოხერხდა'));
       }).finally(() => setSaving(false));
     }, 700);
   }, [toast]);
 
-  const update = useCallback(<K extends keyof CargoPlatformInspection>(
+  const update = useCallback(<K extends keyof SafetyNetInspection>(
     key: K,
-    value: CargoPlatformInspection[K],
+    value: SafetyNetInspection[K],
   ) => {
     setInspection(prev => {
       if (!prev) return prev;
@@ -285,27 +237,40 @@ export default function CargoPlatformInspectionScreen() {
     });
   }, [scheduleSave]);
 
-  // ── Cargo rows ─────────────────────────────────────────────────────────────
+  // ── Items ───────────────────────────────────────────────────────────────────
 
-  const handleCargoChange = useCallback((rows: Record<string, any>[]) => {
+  const updateItem = useCallback((id: number, patch: { result?: SNResult | null; comment?: string | null }) => {
     setInspection(prev => {
       if (!prev) return prev;
-      const next = { ...prev, cargo: rows as typeof prev.cargo };
+      const items = prev.items.map(i => i.id === id ? { ...i, ...patch } : i);
+      const next = { ...prev, items };
       scheduleSave(next);
       return next;
     });
   }, [scheduleSave]);
 
-  // ── Checklist items ─────────────────────────────────────────────────────────
-
-  const updateItem = useCallback((
-    itemId: number,
-    patch: Partial<Pick<CPItemState, 'result' | 'comment'>>,
-  ) => {
+  const updatePostTestItem = useCallback((id: number, result: SNPostResult | null) => {
     setInspection(prev => {
       if (!prev) return prev;
-      const items = prev.items.map(i => i.id === itemId ? { ...i, ...patch } : i);
-      const next = { ...prev, items };
+      const postTestItems = prev.postTestItems.map(i => i.id === id ? { ...i, result } : i);
+      const next = { ...prev, postTestItems };
+      scheduleSave(next);
+      return next;
+    });
+  }, [scheduleSave]);
+
+  // ── Load test rows ──────────────────────────────────────────────────────────
+
+  const handleLoadTestChange = useCallback((rows: Record<string, any>[]) => {
+    setInspection(prev => {
+      if (!prev) return prev;
+      const loadTestRows = rows.map(r => ({
+        ...r,
+        totalWeightKg: (r.unitWeightKg != null && r.quantity != null)
+          ? r.unitWeightKg * r.quantity
+          : null,
+      })) as typeof prev.loadTestRows;
+      const next = { ...prev, loadTestRows };
       scheduleSave(next);
       return next;
     });
@@ -319,7 +284,7 @@ export default function CargoPlatformInspectionScreen() {
     const insp = inspectionRef.current;
     if (!insp) return;
     try {
-      const path = await cargoPlatformApi.uploadPhoto(insp.id, itemId, result.uri);
+      const path = await safetyNetApi.uploadPhoto(insp.id, itemId, result.uri);
       setInspection(prev => {
         if (!prev) return prev;
         const items = prev.items.map(i =>
@@ -336,7 +301,7 @@ export default function CargoPlatformInspectionScreen() {
 
   const handleDeleteItemPhoto = useCallback(async (itemId: number, path: string) => {
     try {
-      await cargoPlatformApi.deletePhoto(path);
+      await safetyNetApi.deletePhoto(path);
     } catch (e) {
       toast.error(friendlyError(e, 'ფოტოს წაშლა ვერ მოხერხდა'));
       return;
@@ -352,13 +317,47 @@ export default function CargoPlatformInspectionScreen() {
     });
   }, [scheduleSave, toast]);
 
+  const handleAddQualDoc = useCallback(async () => {
+    const result = await pickPhotoWithAnnotation();
+    if (!result) return;
+    const insp = inspectionRef.current;
+    if (!insp) return;
+    try {
+      const path = await safetyNetApi.uploadPhoto(insp.id, 'qual-doc', result.uri);
+      setInspection(prev => {
+        if (!prev) return prev;
+        const next = { ...prev, qualDocPath: path };
+        scheduleSave(next);
+        return next;
+      });
+    } catch (e) {
+      toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
+    }
+  }, [pickPhotoWithAnnotation, scheduleSave, toast]);
+
+  const handleDeleteQualDoc = useCallback(async () => {
+    const insp = inspectionRef.current;
+    if (!insp?.qualDocPath) return;
+    try {
+      await safetyNetApi.deletePhoto(insp.qualDocPath);
+    } catch {
+      // best-effort
+    }
+    setInspection(prev => {
+      if (!prev) return prev;
+      const next = { ...prev, qualDocPath: null };
+      scheduleSave(next);
+      return next;
+    });
+  }, [scheduleSave]);
+
   const handleAddSummaryPhoto = useCallback(async () => {
     const result = await pickPhotoWithAnnotation();
     if (!result) return;
     const insp = inspectionRef.current;
     if (!insp) return;
     try {
-      const path = await cargoPlatformApi.uploadPhoto(insp.id, 'summary', result.uri);
+      const path = await safetyNetApi.uploadPhoto(insp.id, 'summary', result.uri);
       setInspection(prev => {
         if (!prev) return prev;
         const next = { ...prev, summaryPhotos: [...prev.summaryPhotos, path] };
@@ -372,7 +371,7 @@ export default function CargoPlatformInspectionScreen() {
 
   const handleDeleteSummaryPhoto = useCallback(async (path: string) => {
     try {
-      await cargoPlatformApi.deletePhoto(path);
+      await safetyNetApi.deletePhoto(path);
     } catch (e) {
       toast.error(friendlyError(e, 'ფოტოს წაშლა ვერ მოხერხდა'));
       return;
@@ -390,7 +389,7 @@ export default function CargoPlatformInspectionScreen() {
   const handleSignatoryChange = useCallback((idx: number, field: string, value: string) => {
     setInspection(prev => {
       if (!prev) return prev;
-      const sigs = [...prev.signatures] as [CPSignatory, CPSignatory];
+      const sigs = [...prev.signatures] as [SNSignatory, SNSignatory];
       sigs[idx] = { ...sigs[idx], [field]: field === 'signature' ? (value || null) : value };
       const next = { ...prev, signatures: sigs };
       scheduleSave(next);
@@ -401,12 +400,12 @@ export default function CargoPlatformInspectionScreen() {
   const handleSignatorySign = useCallback(async (idx: number, base64Png: string) => {
     const insp = inspectionRef.current;
     if (!insp) return;
-    const sigs = [...insp.signatures] as [CPSignatory, CPSignatory];
+    const sigs = [...insp.signatures] as [SNSignatory, SNSignatory];
     sigs[idx] = { ...sigs[idx], signature: base64Png, date: new Date().toISOString() };
     const next = { ...insp, signatures: sigs };
     setInspection(next);
     try {
-      await cargoPlatformApi.patch(insp.id, { signatures: sigs });
+      await safetyNetApi.patch(insp.id, { signatures: sigs });
     } catch (e) {
       toast.error(friendlyError(e, 'ხელმოწერა ვერ შეინახა'));
     }
@@ -415,8 +414,8 @@ export default function CargoPlatformInspectionScreen() {
   // ── Verdict auto-suggest ────────────────────────────────────────────────────
 
   const suggestedVerdict = useMemo(
-    () => inspection ? computeCPVerdictSuggestion(inspection.items) : null,
-    [inspection?.items],
+    () => inspection ? computeSNVerdictSuggestion(inspection.items, inspection.postTestItems) : null,
+    [inspection?.items, inspection?.postTestItems],
   );
 
   // ── PDF ─────────────────────────────────────────────────────────────────────
@@ -426,16 +425,16 @@ export default function CargoPlatformInspectionScreen() {
     if (pdfUsage?.isLocked) { setPaywallVisible(true); return; }
     setGeneratingPdf(true);
     try {
-      const html = await buildCargoPlatformPdfHtml({ inspection, projectName: projectName || 'პროექტი' });
+      const html = await buildSafetyNetPdfHtml({ inspection, projectName: projectName || 'პროექტი' });
       const pdfName = generatePdfName(
         projectName || 'project',
-        'CargoPlatformInspection',
+        'SafetyNetInspection',
         new Date(inspection.inspectionDate),
         inspection.id,
       );
       const uid = session.state.status === 'signedIn' ? session.state.session.user.id : undefined;
       await generateAndSharePdf(html, pdfName, undefined, uid, {
-        title: 'ტვირთის მიმღები პლატფორმის შემოწმება',
+        title: 'უსაფრთხოების ბადის შემოწმების აქტი',
         author: inspection.inspectorName || undefined,
         documentId: inspection.id,
         subject: 'შრომის უსაფრთხოება',
@@ -455,7 +454,7 @@ export default function CargoPlatformInspectionScreen() {
     if (!inspection) return;
     setPreviewBusy(true);
     try {
-      const html = await buildCargoPlatformPdfHtml({ inspection, projectName: projectName || 'პროექტი' });
+      const html = await buildSafetyNetPdfHtml({ inspection, projectName: projectName || 'პროექტი' });
       setPreviewHtml(html);
     } catch (e) {
       toast.error(friendlyError(e, 'PDF ვერ შეიქმნა'));
@@ -475,11 +474,8 @@ export default function CargoPlatformInspectionScreen() {
   const handleComplete = useCallback(async () => {
     if (!inspection) return;
     const missing: string[] = [];
-    if (!inspection.company?.trim())        missing.push('კომპანიის დასახელება');
-    if (!inspection.address?.trim())        missing.push('მდებარეობა / მისამართი');
-    if (!inspection.verdict)                missing.push('დასკვნა');
-    if (!inspection.verdictComment?.trim()) missing.push('კომენტარი');
-    if (!bothSigned)                        missing.push('ორივე ხელმომწერის ხელმოწერა');
+    if (!inspection.verdict)          missing.push('დასკვნა');
+    if (!bothSigned)                  missing.push('ორივე ხელმომწერის ხელმოწერა');
 
     if (missing.length > 0) {
       Alert.alert('შეავსეთ სავალდებულო ველები', missing.map(m => `• ${m}`).join('\n'));
@@ -488,33 +484,37 @@ export default function CargoPlatformInspectionScreen() {
 
     setCompleting(true);
     try {
-      await cargoPlatformApi.patch(inspection.id, {
+      await safetyNetApi.patch(inspection.id, {
         company: inspection.company,
         address: inspection.address,
         inspectorName: inspection.inspectorName,
-        floorZone: inspection.floorZone,
         inspectionDate: inspection.inspectionDate,
-        platformTypeModel: inspection.platformTypeModel,
-        platformLength: inspection.platformLength,
-        platformWidth: inspection.platformWidth,
-        platformColorDesc: inspection.platformColorDesc,
-        sideGuardrail: inspection.sideGuardrail,
-        frontGuardrail: inspection.frontGuardrail,
-        guardrailHeight: inspection.guardrailHeight,
-        cargo: inspection.cargo,
+        manufacturer: inspection.manufacturer,
+        netSize: inspection.netSize,
+        postSize: inspection.postSize,
+        postCount: inspection.postCount,
+        postAnchorCount: inspection.postAnchorCount,
+        anchorPointCount: inspection.anchorPointCount,
+        edgeRopeCount: inspection.edgeRopeCount,
+        cellSide: inspection.cellSide,
+        workingDistance: inspection.workingDistance,
+        certificate: inspection.certificate,
         items: inspection.items,
+        loadTestRows: inspection.loadTestRows,
+        postTestItems: inspection.postTestItems,
         verdict: inspection.verdict,
         verdictComment: inspection.verdictComment,
-        summaryPhotos: inspection.summaryPhotos,
         signatures: inspection.signatures,
+        qualDocPath: inspection.qualDocPath,
+        summaryPhotos: inspection.summaryPhotos,
       });
-      await cargoPlatformApi.complete(inspection.id);
+      await safetyNetApi.complete(inspection.id);
       const completedAt = new Date().toISOString();
       await recordCompletion(
         'inspections',
         inspection.id,
         completedAt,
-        `${inspection.projectId}:${CARGO_PLATFORM_TEMPLATE_ID}`,
+        `${inspection.projectId}:${SAFETY_NET_TEMPLATE_ID}`,
       ).catch(() => {});
       setInspection(prev => prev ? { ...prev, status: 'completed', completedAt } : prev);
       await AsyncStorage.removeItem(persistKey);
@@ -533,8 +533,7 @@ export default function CargoPlatformInspectionScreen() {
 
   const canGoNext = useMemo(() => {
     if (!inspection) return false;
-    if (step === INFO_STEP) return !!(inspection.company?.trim() && inspection.address?.trim());
-    if (step === CONCLUSION_STEP) return !!inspection.verdict && !!inspection.verdictComment?.trim();
+    if (step === CONCLUSION_STEP) return !!inspection.verdict;
     if (step === SIGNATURES_STEP) return bothSigned && !completing;
     return true;
   }, [step, inspection, bothSigned, completing]);
@@ -548,7 +547,7 @@ export default function CargoPlatformInspectionScreen() {
   }, [step, handleComplete]);
 
   const handlePrev = useCallback(async () => {
-    if (step === INFO_STEP) {
+    if (step === NET_ID_STEP) {
       await AsyncStorage.removeItem(persistKey);
       router.back();
     } else {
@@ -556,23 +555,12 @@ export default function CargoPlatformInspectionScreen() {
     }
   }, [step, persistKey, router]);
 
-  // ── Section grouping for checklist ──────────────────────────────────────────
-
-  const checklistSections = useMemo(() => {
-    const sections: CPSection[] = ['A', 'B'];
-    return sections.map(sec => ({
-      section: sec,
-      label: CP_SECTION_LABELS[sec],
-      entries: CP_ITEMS.filter(e => e.section === sec),
-    }));
-  }, []);
-
   // ── Loading & completed ─────────────────────────────────────────────────────
 
   if (loading || !inspection) {
     return (
       <View style={[styles.root, styles.centred]}>
-        <Stack.Screen options={{ headerShown: true, title: 'პლატფორმის შემოწმება' }} />
+        <Stack.Screen options={{ headerShown: true, title: 'ბადის შემოწმება' }} />
         <Text style={{ color: theme.colors.inkSoft }}>იტვირთება…</Text>
       </View>
     );
@@ -582,7 +570,7 @@ export default function CargoPlatformInspectionScreen() {
     return (
       <InspectionResultView
         inspectionId={inspection.id}
-        templateName="ტვირთის მიმღები პლატფორმა"
+        templateName="უსაფრთხოების ბადე"
         requiredSignerRoles={[]}
         previewHtml={previewHtml}
         previewBusy={previewBusy}
@@ -605,29 +593,27 @@ export default function CargoPlatformInspectionScreen() {
       <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
 
       <FlowHeader
-        flowTitle="პლატფორმის შემოწმება"
+        flowTitle="ბადის შემოწმება"
         project={projectName ? { name: projectName } : null}
-        step={step + 1}
+        step={step}
         totalSteps={TOTAL_STEPS}
         leading="back"
         trailing="close"
         onClose={() => router.back()}
-        trailingElement={
-          step > 0 ? (
-            <Pressable
-              onPress={handlePdf}
-              disabled={generatingPdf}
-              hitSlop={10}
-              {...a11y('PDF', 'PDF დოკუმენტის გენერირება', 'button')}
-            >
-              <Ionicons
-                name={generatingPdf ? 'hourglass-outline' : 'document-text-outline'}
-                size={22}
-                color={theme.colors.accent}
-              />
-            </Pressable>
-          ) : null
-        }
+        trailingElement={(
+          <Pressable
+            onPress={handlePdf}
+            disabled={generatingPdf}
+            hitSlop={10}
+            {...a11y('PDF', 'PDF დოკუმენტის გენერირება', 'button')}
+          >
+            <Ionicons
+              name={generatingPdf ? 'hourglass-outline' : 'document-text-outline'}
+              size={22}
+              color={theme.colors.accent}
+            />
+          </Pressable>
+        )}
         onBack={handlePrev}
         backDisabled={false}
       />
@@ -639,8 +625,8 @@ export default function CargoPlatformInspectionScreen() {
       <View style={{ flex: 1 }}>
         <WizardStepTransition stepKey={step} direction={direction} animate={animateSteps}>
 
-          {/* ── Step 0: General Info ─────────────────────────────────────────── */}
-          {step === INFO_STEP && (
+          {/* ── Step 1: Net ID ───────────────────────────────────────────────── */}
+          {step === NET_ID_STEP && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
               contentContainerStyle={styles.stepBody}
@@ -649,223 +635,118 @@ export default function CargoPlatformInspectionScreen() {
               showsVerticalScrollIndicator={false}
               bottomOffset={120}
             >
-              <FloatingLabelInput
-                label="კომპანიის დასახელება *"
-                value={inspection.company}
-                onChangeText={v => update('company', v)}
-                onFocus={() => setFocusedField('company')}
-                onBlur={() => {
-                  setFocusedField(null);
-                  if (inspection.company?.trim()) companyHistory.addToHistory(inspection.company.trim());
-                }}
-                required
-              />
-              <SuggestionPills
-                suggestions={companyHistory.suggestions}
-                onSelect={v => { update('company', v); setFocusedField(null); }}
-                visible={focusedField === 'company' || (!inspection.company?.trim() && companyHistory.suggestions.length > 0)}
-              />
-
-              <FloatingLabelInput
-                label="მდებარეობა / მისამართი *"
-                value={inspection.address}
-                onChangeText={v => update('address', v)}
-                onFocus={() => setFocusedField('address')}
-                onBlur={() => {
-                  setFocusedField(null);
-                  if (inspection.address?.trim()) addressHistory.addToHistory(inspection.address.trim());
-                }}
-                required
-              />
-              <SuggestionPills
-                suggestions={addressHistory.suggestions}
-                onSelect={v => { update('address', v); setFocusedField(null); }}
-                visible={focusedField === 'address' || (!inspection.address?.trim() && addressHistory.suggestions.length > 0)}
-              />
-
-              <FloatingLabelInput
-                label="შემოწმების ჩამტარებელი"
-                value={inspection.inspectorName}
-                onChangeText={v => update('inspectorName', v)}
-              />
-
-              <FloatingLabelInput
-                label="სართული / ზონა"
-                value={inspection.floorZone}
-                onChangeText={v => update('floorZone', v)}
-              />
-
-              <DateTimeField
-                label="შემოწმების თარიღი *"
-                value={new Date(inspection.inspectionDate)}
-                onChange={d => update('inspectionDate', d.toISOString().slice(0, 10))}
-                mode="date"
+              <IdentificationGrid
+                fields={[
+                  { label: 'მწარმოებელი', value: inspection.manufacturer, onChange: v => update('manufacturer', v) },
+                  { label: 'ბადის ზომა მ×მ', value: inspection.netSize, onChange: v => update('netSize', v) },
+                  { label: 'დგარის ზომა', value: inspection.postSize, onChange: v => update('postSize', v) },
+                  { label: 'დგარების რ-ბა', value: inspection.postCount != null ? String(inspection.postCount) : '', type: 'number', onChange: v => { const n = parseInt(v, 10); update('postCount', isNaN(n) ? null : n); } },
+                  { label: 'დგარის სამაგრების რ-ბა', value: inspection.postAnchorCount != null ? String(inspection.postAnchorCount) : '', type: 'number', onChange: v => { const n = parseInt(v, 10); update('postAnchorCount', isNaN(n) ? null : n); } },
+                  { label: 'სამაგრი წერტილების რ-ბა', value: inspection.anchorPointCount != null ? String(inspection.anchorPointCount) : '', type: 'number', onChange: v => { const n = parseInt(v, 10); update('anchorPointCount', isNaN(n) ? null : n); } },
+                  { label: 'კიდის ბაგირების რ-ბა', value: inspection.edgeRopeCount != null ? String(inspection.edgeRopeCount) : '', type: 'number', onChange: v => { const n = parseInt(v, 10); update('edgeRopeCount', isNaN(n) ? null : n); } },
+                  { label: 'უჯრედის მხარე', value: inspection.cellSide, onChange: v => update('cellSide', v) },
+                  { label: 'სამუშაო მანძილი', value: inspection.workingDistance, onChange: v => update('workingDistance', v) },
+                  {
+                    label: 'ბადის სერტიფიკატი',
+                    value: inspection.certificate ?? '',
+                    type: 'chips',
+                    options: ['none', 'active', 'expired'],
+                    optionLabels: ['სერტ. არ გააჩნია', 'მოქმედი სერტ.', 'ვადაგასული'],
+                    onChange: v => update('certificate', v as SafetyNetInspection['certificate']),
+                    isProblematic: inspection.certificate === 'expired' || inspection.certificate === 'none',
+                  },
+                ]}
               />
             </KeyboardAwareScrollView>
           )}
 
-          {/* ── Step 1: Platform ID ──────────────────────────────────────────── */}
-          {step === PLATFORM_STEP && (
+          {/* ── Step 2: Inspection ───────────────────────────────────────────── */}
+          {step === INSPECTION_STEP && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
-              contentContainerStyle={styles.stepBody}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 24, gap: 8 }}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="interactive"
               showsVerticalScrollIndicator={false}
               bottomOffset={120}
             >
-              <FloatingLabelInput
-                label="პლატფორმის ტიპი / მოდელი"
-                value={inspection.platformTypeModel}
-                onChangeText={v => update('platformTypeModel', v)}
+              <ChecklistSection
+                title="ვიზუალური შემოწმება"
+                items={SN_VISUAL_ITEMS.map(e => {
+                  const state = inspection.items.find(i => i.id === e.id)
+                    ?? { id: e.id, result: null, comment: null, photo_paths: [] };
+                  return {
+                    id: e.id,
+                    label: e.label,
+                    description: e.description || undefined,
+                    type: 'three_state' as const,
+                    options: { a: 'good', b: 'fix', c: 'N/A', cIsNeutral: true },
+                    value: state.result === 'na' ? 'N/A' : state.result,
+                    comment: state.comment,
+                    photoPaths: state.photo_paths ?? [],
+                  };
+                })}
+                onItemChange={(id, field, val) => {
+                  if (field === 'value') {
+                    const result: SNResult | null = val === 'N/A' ? 'na' : val as SNResult | null;
+                    updateItem(id, { result });
+                  } else {
+                    updateItem(id, { comment: val });
+                  }
+                }}
+                onAddPhoto={handleAddItemPhoto}
+                onDeletePhoto={handleDeleteItemPhoto}
               />
 
-              <View style={styles.twoCol}>
-                <View style={styles.colHalf}>
-                  <FloatingLabelInput
-                    label="სიგრძე (მ)"
-                    value={inspection.platformLength != null ? String(inspection.platformLength) : ''}
-                    onChangeText={v => {
-                      const n = parseFloat(v);
-                      update('platformLength', isNaN(n) ? null : n);
-                    }}
-                    keyboardType="decimal-pad"
-                  />
-                </View>
-                <View style={styles.colHalf}>
-                  <FloatingLabelInput
-                    label="სიგანე (მ)"
-                    value={inspection.platformWidth != null ? String(inspection.platformWidth) : ''}
-                    onChangeText={v => {
-                      const n = parseFloat(v);
-                      update('platformWidth', isNaN(n) ? null : n);
-                    }}
-                    keyboardType="decimal-pad"
-                  />
-                </View>
-              </View>
-
-              <FloatingLabelInput
-                label="ვიზუალური აღწერა / ფერი"
-                value={inspection.platformColorDesc}
-                onChangeText={v => update('platformColorDesc', v)}
-              />
-
-              <View style={styles.binaryGroup}>
-                <Text style={styles.fieldLabel}>გვერდის დამცავი მოაჯირი</Text>
-                <BinaryPills
-                  value={inspection.sideGuardrail}
-                  options={[{ value: 'none', label: 'არ გააჩნია' }, { value: 'complete', label: 'მოაჯირი სრულია' }]}
-                  onSelect={v => update('sideGuardrail', v)}
-                  styles={styles}
-                  theme={theme}
-                />
-              </View>
-
-              <View style={styles.binaryGroup}>
-                <Text style={styles.fieldLabel}>წინა დამცავი მოაჯირი</Text>
-                <BinaryPills
-                  value={inspection.frontGuardrail}
-                  options={[{ value: 'none', label: 'არ გააჩნია' }, { value: 'complete', label: 'მოაჯირი სრულია' }]}
-                  onSelect={v => update('frontGuardrail', v)}
-                  styles={styles}
-                  theme={theme}
-                />
-              </View>
-
-              <View style={styles.binaryGroup}>
-                <Text style={styles.fieldLabel}>მოაჯირის სიმაღლე (სტანდ. 90–120 სმ)</Text>
-                <BinaryPills
-                  value={inspection.guardrailHeight}
-                  options={[
-                    { value: 'non_standard', label: 'ვერ აკმ. სტანდარტს' },
-                    { value: 'standard', label: 'სტანდარტს აკმ.' },
-                  ]}
-                  onSelect={v => update('guardrailHeight', v)}
-                  styles={styles}
-                  theme={theme}
-                />
-              </View>
-            </KeyboardAwareScrollView>
-          )}
-
-          {/* ── Step 2: Cargo table ──────────────────────────────────────────── */}
-          {step === CARGO_STEP && (
-            <KeyboardAwareScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={[styles.stepBody, { paddingHorizontal: 16 }]}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
-              showsVerticalScrollIndicator={false}
-              bottomOffset={120}
-            >
-              <Text style={styles.sectionHint}>
-                ყველა ტვირთი, რომელიც განთავსდება პლატფორმაზე, ექვემდებარება იდენტიფიკაციას და წინასწარ წონის დადასტურებას
+              <Text style={styles.loadInstruction}>
+                180კგ-ის სიმძიმე 1მ სიმაღლიდან — №477 დადგენილება
               </Text>
 
               <DynamicTable
                 columns={[
-                  { key: 'name', label: 'ტვირთის დასახელება', type: 'text' },
-                  { key: 'total_weight_kg', label: 'სრული წონა (კგ)', type: 'number', keyboardType: 'decimal-pad' },
+                  { key: 'name', label: 'დასახელება', type: 'text' },
+                  { key: 'unitWeightKg', label: 'ერთ.წ.(კგ)', type: 'number', keyboardType: 'decimal-pad' },
+                  { key: 'quantity', label: 'რ-ბა', type: 'number', keyboardType: 'numeric' },
+                  { key: 'totalWeightKg', label: 'სულ(კგ)', type: 'readonly' },
+                  { key: 'comment', label: 'კომ.', type: 'text' },
                 ]}
-                rows={inspection.cargo}
-                onChange={handleCargoChange}
-                onBuildDefaultRow={buildDefaultCargoRow}
+                rows={inspection.loadTestRows}
+                onChange={handleLoadTestChange}
+                onBuildDefaultRow={buildDefaultSNLoadTestRow}
                 minRows={0}
                 footer={
                   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                     <Text style={styles.totalLabel}>სულ:</Text>
-                    <Text style={styles.totalValue}>{cpTotalWeight(inspection.cargo)} კგ</Text>
+                    <Text style={styles.totalValue}>{snTotalWeight(inspection.loadTestRows)} კგ</Text>
                   </View>
                 }
+              />
+
+              <ChecklistSection
+                title="ტვირთის ჩაგდების შემდეგ შემოწმება"
+                items={SN_POST_TEST_ITEMS.map(e => {
+                  const state = inspection.postTestItems.find(i => i.id === e.id)
+                    ?? { id: e.id, result: null };
+                  return {
+                    id: e.id,
+                    label: e.label,
+                    type: 'binary' as const,
+                    options: { a: 'pass', b: 'fail' },
+                    value: state.result,
+                  };
+                })}
+                onItemChange={(id, field, val) => {
+                  if (field === 'value') {
+                    updatePostTestItem(id, val as SNPostResult | null);
+                  }
+                }}
+                onAddPhoto={() => {}}
+                onDeletePhoto={() => {}}
               />
             </KeyboardAwareScrollView>
           )}
 
-          {/* ── Step 3: Checklist ────────────────────────────────────────────── */}
-          {step === CHECKLIST_STEP && (
-            <KeyboardAwareScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 24, gap: 4 }}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
-              showsVerticalScrollIndicator={false}
-              bottomOffset={120}
-            >
-              {checklistSections.map(({ section, label, entries }) => (
-                <ChecklistSection
-                  key={section}
-                  title={label}
-                  items={entries.map(e => {
-                    const state = inspection.items.find(i => i.id === e.id)
-                      ?? { id: e.id, result: null, comment: null, photo_paths: [] };
-                    return {
-                      id: e.id,
-                      label: e.label,
-                      description: e.description,
-                      type: 'three_state' as const,
-                      options: { a: 'good', b: 'fix', c: 'N/A', cIsNeutral: true },
-                      value: state.result === 'na' ? 'N/A' : state.result,
-                      comment: state.comment,
-                      photoPaths: state.photo_paths ?? [],
-                    };
-                  })}
-                  onItemChange={(id, field, val) => {
-                    if (field === 'value') {
-                      const result: CPResult | null = val === 'N/A' ? 'na' : val as CPResult | null;
-                      updateItem(id, { result });
-                    } else {
-                      updateItem(id, { comment: val });
-                    }
-                  }}
-                  onAddPhoto={handleAddItemPhoto}
-                  onDeletePhoto={handleDeleteItemPhoto}
-                />
-              ))}
-            </KeyboardAwareScrollView>
-          )}
-
-          {/* ── Step 4: Conclusion ───────────────────────────────────────────── */}
+          {/* ── Step 3: Conclusion ───────────────────────────────────────────── */}
           {step === CONCLUSION_STEP && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
@@ -882,7 +763,7 @@ export default function CargoPlatformInspectionScreen() {
                 >
                   <Ionicons name="bulb-outline" size={16} color={theme.colors.warn} />
                   <Text style={styles.suggestText}>
-                    შემოთავაზება: {CP_VERDICT_LABEL[suggestedVerdict]}
+                    შემოთავაზება: {SN_VERDICT_LABEL[suggestedVerdict]}
                   </Text>
                 </Pressable>
               )}
@@ -890,27 +771,19 @@ export default function CargoPlatformInspectionScreen() {
               <Text style={styles.fieldLabel}>დასკვნა *</Text>
               <VerdictSelector
                 options={[
-                  { value: 'approved', label: CP_VERDICT_LABEL.approved, type: 'success' },
-                  { value: 'conditional', label: CP_VERDICT_LABEL.conditional, type: 'warning' },
-                  { value: 'rejected', label: CP_VERDICT_LABEL.rejected, type: 'danger' },
+                  { value: 'pass', label: SN_VERDICT_LABEL.pass, type: 'success' },
+                  { value: 'fail', label: SN_VERDICT_LABEL.fail, type: 'danger' },
                 ]}
                 value={inspection.verdict}
-                onChange={v => update('verdict', v as CPVerdict)}
+                onChange={v => update('verdict', v as SNVerdict)}
                 note={inspection.verdictComment}
                 onNoteChange={v => update('verdictComment', v)}
-                notePlaceholder="კომენტარი *"
-              />
-
-              <Text style={styles.fieldLabel}>ფოტო / ვიდეო მასალა (სურვ.)</Text>
-              <PhotoSection
-                photoPaths={inspection.summaryPhotos}
-                onAdd={handleAddSummaryPhoto}
-                onDelete={handleDeleteSummaryPhoto}
+                notePlaceholder="კომენტარი"
               />
             </KeyboardAwareScrollView>
           )}
 
-          {/* ── Step 5: Signatures ───────────────────────────────────────────── */}
+          {/* ── Step 4: Signatures ───────────────────────────────────────────── */}
           {step === SIGNATURES_STEP && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
@@ -927,6 +800,32 @@ export default function CargoPlatformInspectionScreen() {
                 ]}
                 onChange={handleSignatoryChange}
                 onSign={handleSignatorySign}
+              />
+            </KeyboardAwareScrollView>
+          )}
+
+          {/* ── Step 5: Documents & Photos ──────────────────────────────────── */}
+          {step === DOCS_STEP && (
+            <KeyboardAwareScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={styles.stepBody}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
+              showsVerticalScrollIndicator={false}
+              bottomOffset={120}
+            >
+              <Text style={styles.fieldLabel}>კვალიფიკაციის / სერტიფიკატის დოკუმენტი</Text>
+              <QualDoc
+                photoPath={inspection.qualDocPath}
+                onAdd={handleAddQualDoc}
+                onDelete={handleDeleteQualDoc}
+              />
+
+              <Text style={styles.fieldLabel}>ფოტო / ვიდეო მასალა (სურვ.)</Text>
+              <PhotoSection
+                photoPaths={inspection.summaryPhotos}
+                onAdd={handleAddSummaryPhoto}
+                onDelete={handleDeleteSummaryPhoto}
               />
             </KeyboardAwareScrollView>
           )}
@@ -981,29 +880,18 @@ function getstyles(theme: Theme) {
     stepBody: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 12 },
     footer: { gap: 10, paddingHorizontal: 24, paddingTop: 8, paddingBottom: 16, backgroundColor: theme.colors.card },
 
-    twoCol: { flexDirection: 'row', gap: 8 },
-    colHalf: { flex: 1 },
-
     fieldLabel: { fontSize: 12, fontWeight: '600', color: theme.colors.inkSoft },
-    sectionHint: { fontSize: 12, color: theme.colors.inkSoft, fontStyle: 'italic', lineHeight: 18 },
 
-    // Binary pills (platform guardrail selectors)
-    binaryGroup: { gap: 6 },
-    pillRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-    pill: {
-      paddingHorizontal: 16, paddingVertical: 10,
-      borderRadius: 20, borderWidth: 1.5,
-      borderColor: theme.colors.hairline, backgroundColor: theme.colors.card,
+    loadInstruction: {
+      fontSize: 11, color: theme.colors.inkSoft, fontStyle: 'italic',
+      backgroundColor: theme.colors.warnSoft,
+      paddingHorizontal: 10, paddingVertical: 6,
+      borderRadius: 6, borderLeftWidth: 3, borderLeftColor: theme.colors.warn,
     },
-    pillActive: { borderColor: theme.colors.accent, backgroundColor: theme.colors.accentSoft },
-    pillText: { fontSize: 13, color: theme.colors.inkSoft },
-    pillTextActive: { color: theme.colors.accent, fontWeight: '700' },
 
-    // Cargo total
     totalLabel: { fontSize: 14, fontWeight: '700', color: theme.colors.ink },
     totalValue: { fontSize: 18, fontWeight: '800', color: theme.colors.accent },
 
-    // Verdict suggestion banner
     suggestBanner: {
       flexDirection: 'row', alignItems: 'center', gap: 6,
       backgroundColor: theme.colors.warnSoft,

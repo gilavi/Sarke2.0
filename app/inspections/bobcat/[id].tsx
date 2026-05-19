@@ -1,13 +1,12 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Pressable,
-  ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
-import { Image } from 'expo-image';
+
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,7 +17,6 @@ import { SerialKeypad } from '../../../components/inputs/SerialKeypad';
 import { Button } from '../../../components/ui';
 import { WizardStepTransition } from '../../../components/wizard/WizardStepTransition';
 
-// checklist list render is inline below
 import { FlowHeader } from '../../../components/FlowHeader';
 import { InspectionResultView } from '../../../components/InspectionResultView';
 import { useTheme, type Theme } from '../../../lib/theme';
@@ -28,7 +26,13 @@ import { useToast } from '../../../lib/toast';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { bobcatApi } from '../../../lib/bobcatService';
 import { projectsApi, signaturesApi, inspectionAttachmentsApi } from '../../../lib/services';
-import { signatureAsDataUrl, imageForDisplay } from '../../../lib/imageUrl';
+import { signatureAsDataUrl } from '../../../lib/imageUrl';
+import {
+  ChecklistSection,
+  PhotoSection,
+  VerdictSelector,
+  type VerdictOption,
+} from '../../../components/inspection';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import type { SignatureRecord } from '../../../types/models';
 import { buildBobcatPdfHtml } from '../../../lib/bobcatPdf';
@@ -520,75 +524,6 @@ export default function BobcatInspectionScreen() {
 
   // ── Render helpers ─────────────────────────────────────────────────────────
 
-  const renderChecklistList = () => {
-    if (!inspection) return null;
-    return (
-      <KeyboardAwareScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 8 }}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        showsVerticalScrollIndicator={false}
-        bottomOffset={120}
-      >
-        {catalog.map((entry, idx) => {
-          const state = inspection.items.find(i => i.id === entry.id)
-            ?? { id: entry.id, result: null, comment: null, photo_paths: [] };
-          const active = state.result;
-          return (
-            <View key={entry.id} style={styles.listRow}>
-              <View style={styles.listRowInfo}>
-                <Text style={[styles.listRowLabel, { fontSize: 13, fontWeight: '400', color: theme.colors.ink }]} numberOfLines={2}>
-                  {entry.description}
-                </Text>
-              </View>
-              <View style={styles.listRowActions}>
-                <Pressable
-                  style={[
-                    styles.statusBtn,
-                    active === 'good' ? styles.statusBtnGoodActive : styles.statusBtnGood,
-                  ]}
-                  onPress={() => updateItem(entry.id, { result: active === 'good' ? null : 'good' })}
-                  hitSlop={6}
-                >
-                  <Text style={[
-                    styles.statusBtnText,
-                    active === 'good' ? styles.statusBtnTextActive : styles.statusBtnTextGood,
-                  ]}>✓</Text>
-                </Pressable>
-                <Pressable
-                  style={[
-                    styles.statusBtn,
-                    active === 'deficient' ? styles.statusBtnWarnActive : styles.statusBtnWarn,
-                  ]}
-                  onPress={() => updateItem(entry.id, { result: active === 'deficient' ? null : 'deficient' })}
-                  hitSlop={6}
-                >
-                  <Text style={[
-                    styles.statusBtnText,
-                    active === 'deficient' ? styles.statusBtnTextActive : styles.statusBtnTextWarn,
-                  ]}>⚠</Text>
-                </Pressable>
-                <Pressable
-                  style={[
-                    styles.statusBtn,
-                    active === 'unusable' ? styles.statusBtnBadActive : styles.statusBtnBad,
-                  ]}
-                  onPress={() => updateItem(entry.id, { result: active === 'unusable' ? null : 'unusable' })}
-                  hitSlop={6}
-                >
-                  <Text style={[
-                    styles.statusBtnText,
-                    active === 'unusable' ? styles.statusBtnTextActive : styles.statusBtnTextBad,
-                  ]}>✗</Text>
-                </Pressable>
-              </View>
-            </View>
-          );
-        })}
-      </KeyboardAwareScrollView>
-    );
-  };
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -743,8 +678,43 @@ export default function BobcatInspectionScreen() {
             </View>
           )}
 
-          {/* ── Step 2: Checklist list ──────────────────────────────────── */}
-          {step === CHECKLIST_STEP && renderChecklistList()}
+          {/* ── Step 2: Checklist ──────────────────────────────────────── */}
+          {step === CHECKLIST_STEP && (
+            <KeyboardAwareScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 24, gap: 8 }}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
+              showsVerticalScrollIndicator={false}
+              bottomOffset={120}
+            >
+              <ChecklistSection
+                title=""
+                items={catalog.map(entry => {
+                  const state = inspection.items.find(i => i.id === entry.id)
+                    ?? { id: entry.id, result: null, comment: null, photo_paths: [] };
+                  return {
+                    id: entry.id,
+                    label: entry.description,
+                    type: 'three_state' as const,
+                    options: { a: 'good', b: 'deficient', c: 'unusable' },
+                    value: state.result,
+                    comment: state.comment,
+                    photoPaths: state.photo_paths ?? [],
+                  };
+                })}
+                onItemChange={(itemId, field, val) => {
+                  if (field === 'value') {
+                    updateItem(itemId, { result: val as BobcatItemState['result'] });
+                  } else {
+                    updateItem(itemId, { comment: val });
+                  }
+                }}
+                onAddPhoto={itemId => void handleAddPhoto(itemId)}
+                onDeletePhoto={(itemId, path) => void handleDeletePhoto(itemId, path)}
+              />
+            </KeyboardAwareScrollView>
+          )}
 
           {/* ── Step 3: Conclusion (summary + verdict + notes + signature) ─ */}
           {step === CONCLUSION_STEP && (
@@ -757,23 +727,15 @@ export default function BobcatInspectionScreen() {
               bottomOffset={120}
             >
               <Text style={styles.fieldLabel}>დასკვნა *</Text>
-              <View style={styles.chipRow}>
-                {(['approved', 'limited', 'rejected'] as BobcatVerdict[]).map(v => {
-                  const active = inspection.verdict === v;
-                  return (
-                    <Pressable
-                      key={v}
-                      style={[styles.typeChip, active && styles.typeChipActive]}
-                      onPress={() => update('verdict', active ? null : v)}
-                      {...a11y(VERDICT_LABEL[v], undefined, 'radio')}
-                    >
-                      <Text style={[styles.typeChipText, active && styles.typeChipTextActive]}>
-                        {VERDICT_LABEL[v]}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
+              <VerdictSelector
+                options={([
+                  { value: 'approved', label: VERDICT_LABEL.approved, type: 'success' },
+                  { value: 'limited',  label: VERDICT_LABEL.limited,  type: 'warning' },
+                  { value: 'rejected', label: VERDICT_LABEL.rejected, type: 'danger'  },
+                ] as VerdictOption[])}
+                value={inspection.verdict}
+                onChange={v => update('verdict', v as BobcatVerdict)}
+              />
 
               <FloatingLabelInput
                 label="შენიშვნები / ხარვეზები"
@@ -784,11 +746,10 @@ export default function BobcatInspectionScreen() {
               />
 
               <Text style={styles.fieldLabel}>ფოტოები (სურვ.)</Text>
-              <SummaryPhotoStrip
-                paths={inspection.summaryPhotos ?? []}
+              <PhotoSection
+                photoPaths={inspection.summaryPhotos ?? []}
                 onAdd={handleAddSummaryPhoto}
                 onDelete={handleDeleteSummaryPhoto}
-                styles={styles}
               />
 
               {completing && (
@@ -834,69 +795,6 @@ export default function BobcatInspectionScreen() {
   );
 }
 
-// ── Sub-components ───────────────────────────────────────────────────────────
-
-function SummaryPhotoStrip({
-  paths,
-  onAdd,
-  onDelete,
-  styles,
-}: {
-  paths: string[];
-  onAdd: () => void;
-  onDelete: (path: string) => void;
-  styles: ReturnType<typeof getstyles>;
-}) {
-  const { theme } = useTheme();
-  return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.photoStrip}
-    >
-      {paths.map(path => (
-        <SummaryThumb key={path} path={path} onDelete={() => onDelete(path)} styles={styles} />
-      ))}
-      <Pressable
-        style={styles.addPhoto}
-        onPress={onAdd}
-        {...a11y('ფოტოს დამატება', 'ფოტოს გადაღება ან ბიბლიოთეკიდან', 'button')}
-      >
-        <Ionicons name="camera-outline" size={20} color={theme.colors.inkSoft} />
-        <Text style={styles.addPhotoLabel}>+ ფოტო</Text>
-      </Pressable>
-    </ScrollView>
-  );
-}
-
-const SummaryThumb = memo(function SummaryThumb({
-  path,
-  onDelete,
-  styles,
-}: {
-  path: string;
-  onDelete: () => void;
-  styles: ReturnType<typeof getstyles>;
-}) {
-  const { theme } = useTheme();
-  const [uri, setUri] = useState('');
-  useEffect(() => {
-    let cancelled = false;
-    imageForDisplay(STORAGE_BUCKETS.answerPhotos, path)
-      .then(url => { if (!cancelled) setUri(url); })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [path]);
-  return (
-    <View style={styles.thumb}>
-      <Image source={{ uri }} style={styles.thumbImg} contentFit="cover" />
-      <Pressable style={styles.thumbDelete} onPress={onDelete} hitSlop={8} {...a11y('ფოტოს წაშლა', undefined, 'button')}>
-        <Ionicons name="close-circle" size={18} color={theme.colors.white} />
-      </Pressable>
-    </View>
-  );
-});
-
 // ── Screen styles ────────────────────────────────────────────────────────────
 
 function getstyles(theme: Theme) {
@@ -915,19 +813,6 @@ function getstyles(theme: Theme) {
 
     fieldRow: { marginBottom: 4, gap: 6 },
     fieldLabel: { fontSize: 12, fontWeight: '600', color: theme.colors.inkSoft },
-    chipRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-    typeChip: {
-      paddingHorizontal: 14, paddingVertical: 16,
-      borderRadius: 20, borderWidth: 1.5,
-      borderColor: theme.colors.hairline,
-      backgroundColor: theme.colors.card,
-    },
-    typeChipActive: {
-      borderColor: theme.colors.accent,
-      backgroundColor: theme.colors.accentSoft,
-    },
-    typeChipText: { fontSize: 13, color: theme.colors.inkSoft },
-    typeChipTextActive: { color: theme.colors.accent, fontWeight: '700' },
 
     sumTable: {
       marginBottom: 12,
@@ -985,17 +870,6 @@ function getstyles(theme: Theme) {
     sigRowClear: {
       fontSize: 13, color: theme.colors.accent,
     },
-
-    photoStrip: { gap: 8, paddingVertical: 4 },
-    addPhoto: {
-      width: 64, height: 64, borderRadius: 8,
-      borderWidth: 1.5, borderStyle: 'dashed', borderColor: theme.colors.hairline,
-      alignItems: 'center', justifyContent: 'center', gap: 2,
-    },
-    addPhotoLabel: { fontSize: 11, color: theme.colors.inkSoft },
-    thumb:       { width: 64, height: 64, borderRadius: 8, overflow: 'hidden' },
-    thumbImg:    { width: 64, height: 64 },
-    thumbDelete: { position: 'absolute', top: 2, right: 2 },
 
     completingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 16 },
     completingText: { fontSize: 13, color: theme.colors.inkSoft },

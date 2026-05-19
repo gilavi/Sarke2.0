@@ -56,6 +56,11 @@ import { bobcatApi } from '../../lib/bobcatService';
 import { excavatorApi } from '../../lib/excavatorService';
 import { generalEquipmentApi } from '../../lib/generalEquipmentService';
 import { cargoPlatformApi } from '../../lib/cargoPlatformService';
+import { safetyNetApi } from '../../lib/safetyNetService';
+import { mobileLadderApi } from '../../lib/mobileLadderService';
+import { fallProtectionApi } from '../../lib/fallProtectionService';
+import { liftingAccessoriesApi } from '../../lib/liftingAccessoriesService';
+import { forkliftApi } from '../../lib/forkliftService';
 import {
   useProject,
   useInspectionsByProject,
@@ -69,7 +74,15 @@ import {
   useExcavatorInspectionsByProject,
   useGeneralEquipmentInspectionsByProject,
   useCargoPlatformInspectionsByProject,
+  useSafetyNetInspectionsByProject,
+  useMobileLadderInspectionsByProject,
+  useFallProtectionInspectionsByProject,
+  useLiftingAccessoriesInspectionsByProject,
+  useForkliftInspectionsByProject,
+  useBreathalizerLogsByProject,
 } from '../../lib/apiHooks';
+import { formatBlDate, BL_RESULT_COLORS, countsByStatus } from '../../types/breathalyzerLog';
+import type { BreathalizerLog } from '../../types/breathalyzerLog';
 import { supabase, STORAGE_BUCKETS } from '../../lib/supabase';
 import { useToast } from '../../lib/toast';
 import { imageForDisplay } from '../../lib/imageUrl';
@@ -120,6 +133,11 @@ export default function ProjectDetail() {
   const [excavatorInspections, setExcavatorInspections] = useState<any[]>([]);
   const [generalEquipmentInspections, setGeneralEquipmentInspections] = useState<any[]>([]);
   const [cpInspections, setCpInspections] = useState<any[]>([]);
+  const [snInspections, setSnInspections] = useState<any[]>([]);
+  const [mlInspections, setMlInspections] = useState<any[]>([]);
+  const [fpInspections, setFpInspections] = useState<any[]>([]);
+  const [laInspections, setLaInspections] = useState<any[]>([]);
+  const [fkInspections, setFkInspections] = useState<any[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [files, setFiles] = useState<ProjectFile[]>([]);
   const [filesBusy, setFilesBusy] = useState(false);
@@ -141,6 +159,11 @@ export default function ProjectDetail() {
   const excavatorQ = useExcavatorInspectionsByProject(id);
   const generalEquipmentQ = useGeneralEquipmentInspectionsByProject(id);
   const cpQ = useCargoPlatformInspectionsByProject(id);
+  const snQ = useSafetyNetInspectionsByProject(id);
+  const mlQ = useMobileLadderInspectionsByProject(id);
+  const fpQ = useFallProtectionInspectionsByProject(id);
+  const laQ = useLiftingAccessoriesInspectionsByProject(id);
+  const fkQ = useForkliftInspectionsByProject(id);
   const templatesQ = useTemplates();
   const filesQ = useProjectFiles(id);
   const incidentsQ = useIncidentsByProject(id);
@@ -152,11 +175,14 @@ export default function ProjectDetail() {
     enabled: !!id,
   });
 
+  const breathalyzerLogsQ = useBreathalizerLogsByProject(id);
+
   // Read-only data consumed directly from the query cache (no local state needed)
   const incidents = incidentsQ.data ?? [];
   const briefings = briefingsQ.data ?? [];
   const reports = reportsQ.data ?? [];
   const orders = ordersQ.data ?? [];
+  const breathalyzerLogs = breathalyzerLogsQ.data ?? [];
 
   useEffect(() => {
     if (projectQ.data !== undefined) setProject(projectQ.data);
@@ -176,6 +202,21 @@ export default function ProjectDetail() {
   useEffect(() => {
     if (cpQ.data !== undefined) setCpInspections(cpQ.data);
   }, [cpQ.data]);
+  useEffect(() => {
+    if (snQ.data !== undefined) setSnInspections(snQ.data);
+  }, [snQ.data]);
+  useEffect(() => {
+    if (mlQ.data !== undefined) setMlInspections(mlQ.data);
+  }, [mlQ.data]);
+  useEffect(() => {
+    if (fpQ.data !== undefined) setFpInspections(fpQ.data);
+  }, [fpQ.data]);
+  useEffect(() => {
+    if (laQ.data !== undefined) setLaInspections(laQ.data);
+  }, [laQ.data]);
+  useEffect(() => {
+    if (fkQ.data !== undefined) setFkInspections(fkQ.data);
+  }, [fkQ.data]);
   useEffect(() => {
     if (templatesQ.data !== undefined) setTemplates(templatesQ.data);
   }, [templatesQ.data]);
@@ -271,7 +312,7 @@ export default function ProjectDetail() {
     template_id: string;
     status: 'draft' | 'completed';
     created_at: string;
-    source: 'generic' | 'bobcat' | 'excavator' | 'general_equipment' | 'cargo_platform';
+    source: 'generic' | 'bobcat' | 'excavator' | 'general_equipment' | 'cargo_platform' | 'safety_net_inspection' | 'mobile_ladder_inspection' | 'fall_protection_inspection' | 'lifting_accessories_inspection' | 'forklift_inspection';
   };
 
   const allInspections = useMemo<UnifiedInspection[]>(() => {
@@ -310,10 +351,45 @@ export default function ProjectDetail() {
       created_at: c.createdAt,
       source: 'cargo_platform' as const,
     }));
-    return [...generic, ...bobcat, ...excavator, ...ge, ...cp].sort(
+    const sn: UnifiedInspection[] = snInspections.map(s => ({
+      id: s.id,
+      template_id: s.templateId,
+      status: s.status,
+      created_at: s.createdAt,
+      source: 'safety_net_inspection' as const,
+    }));
+    const ml: UnifiedInspection[] = mlInspections.map(m => ({
+      id: m.id,
+      template_id: m.templateId,
+      status: m.status,
+      created_at: m.createdAt,
+      source: 'mobile_ladder_inspection' as const,
+    }));
+    const fp: UnifiedInspection[] = fpInspections.map(f => ({
+      id: f.id,
+      template_id: f.templateId,
+      status: f.status,
+      created_at: f.createdAt,
+      source: 'fall_protection_inspection' as const,
+    }));
+    const la: UnifiedInspection[] = laInspections.map(l => ({
+      id: l.id,
+      template_id: l.templateId,
+      status: l.status,
+      created_at: l.createdAt,
+      source: 'lifting_accessories_inspection' as const,
+    }));
+    const fk: UnifiedInspection[] = fkInspections.map(f => ({
+      id: f.id,
+      template_id: f.templateId,
+      status: f.status,
+      created_at: f.createdAt,
+      source: 'forklift_inspection' as const,
+    }));
+    return [...generic, ...bobcat, ...excavator, ...ge, ...cp, ...sn, ...ml, ...fp, ...la, ...fk].sort(
       (a, b) => +new Date(b.created_at) - +new Date(a.created_at),
     );
-  }, [questionnaires, bobcatInspections, excavatorInspections, generalEquipmentInspections, cpInspections]);
+  }, [questionnaires, bobcatInspections, excavatorInspections, generalEquipmentInspections, cpInspections, snInspections, mlInspections, fpInspections, laInspections, fkInspections]);
 
   const allInspectionsSorted = allInspections;
   const allInspectionsPreview = useMemo(
@@ -399,6 +475,16 @@ export default function ProjectDetail() {
         newId = (await generalEquipmentApi.create({ projectId, templateId: tpl.id })).id;
       } else if (tpl.category === 'cargo_platform') {
         newId = (await cargoPlatformApi.create({ projectId, templateId: tpl.id })).id;
+      } else if (tpl.category === 'safety_net_inspection') {
+        newId = (await safetyNetApi.create({ projectId, templateId: tpl.id })).id;
+      } else if (tpl.category === 'mobile_ladder_inspection') {
+        newId = (await mobileLadderApi.create({ projectId, templateId: tpl.id })).id;
+      } else if (tpl.category === 'fall_protection_inspection') {
+        newId = (await fallProtectionApi.create({ projectId, templateId: tpl.id })).id;
+      } else if (tpl.category === 'lifting_accessories_inspection') {
+        newId = (await liftingAccessoriesApi.create({ projectId, templateId: tpl.id })).id;
+      } else if (tpl.category === 'forklift_inspection') {
+        newId = (await forkliftApi.create({ projectId, templateId: tpl.id })).id;
       } else {
         newId = (await questionnairesApi.create({ projectId, templateId: tpl.id })).id;
       }
@@ -435,6 +521,26 @@ export default function ProjectDetail() {
             const { error } = await supabase.from('cargo_platform_inspections').delete().eq('id', item.id);
             if (error) throw error;
             setCpInspections(prev => prev.filter(x => x.id !== item.id));
+          } else if (item.source === 'safety_net_inspection') {
+            const { error } = await supabase.from('safety_net_inspections').delete().eq('id', item.id);
+            if (error) throw error;
+            setSnInspections(prev => prev.filter(x => x.id !== item.id));
+          } else if (item.source === 'mobile_ladder_inspection') {
+            const { error } = await supabase.from('mobile_ladder_inspections').delete().eq('id', item.id);
+            if (error) throw error;
+            setMlInspections(prev => prev.filter(x => x.id !== item.id));
+          } else if (item.source === 'fall_protection_inspection') {
+            const { error } = await supabase.from('fall_protection_inspections').delete().eq('id', item.id);
+            if (error) throw error;
+            setFpInspections(prev => prev.filter(x => x.id !== item.id));
+          } else if (item.source === 'lifting_accessories_inspection') {
+            const { error } = await supabase.from('lifting_accessories_inspections').delete().eq('id', item.id);
+            if (error) throw error;
+            setLaInspections(prev => prev.filter(x => x.id !== item.id));
+          } else if (item.source === 'forklift_inspection') {
+            const { error } = await supabase.from('forklift_inspections').delete().eq('id', item.id);
+            if (error) throw error;
+            setFkInspections(prev => prev.filter(x => x.id !== item.id));
           } else {
             await questionnairesApi.remove(item.id);
             setQuestionnaires(prev => prev.filter(x => x.id !== item.id));
@@ -1146,6 +1252,94 @@ export default function ProjectDetail() {
 
           </View>
 
+          {/* ── ჟურნალები ── */}
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons name="journal-outline" size={16} color={theme.colors.inkSoft} />
+                <Text style={styles.sectionTitle}>ჟურნალები</Text>
+                <Text style={styles.sectionCount}>{breathalyzerLogs.length}</Text>
+              </View>
+              <Pressable
+                onPress={() => id && router.push(`/projects/${id}/logs/breathalyzer` as any)}
+                hitSlop={16}
+                {...a11y('ალკოტესტი', 'ალკოტესტის ჟურნალის გახსნა', 'button')}
+              >
+                <Text style={styles.sectionAddLink}>+ ალკოტესტი</Text>
+              </Pressable>
+            </View>
+
+            {breathalyzerLogs.length === 0 ? (
+              <SectionEmptyState type="documents" />
+            ) : (
+              <View style={{ gap: 8, marginTop: 10 }}>
+                {breathalyzerLogs.slice(0, 3).map(log => {
+                  const logCounts = countsByStatus(log.entries);
+                  const hasFail = logCounts.fail > 0;
+                  return (
+                    <Pressable
+                      key={log.id}
+                      onPress={() =>
+                        router.push(`/projects/${id}/logs/breathalyzer?logId=${log.id}` as any)
+                      }
+                      style={styles.listRow}
+                      {...a11y('ალკოტესტის ჟურნალი', 'დეტალების სანახავად დააჭირეთ', 'button')}
+                    >
+                      <View style={[styles.statusIcon, {
+                        backgroundColor: log.status === 'closed'
+                          ? theme.colors.semantic.successSoft
+                          : theme.colors.semantic.warningSoft,
+                      }]}>
+                        <Ionicons
+                          name={log.status === 'closed' ? 'journal' : 'journal-outline'}
+                          size={14}
+                          color={log.status === 'closed'
+                            ? theme.colors.semantic.success
+                            : theme.colors.certTint}
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.listRowTitle}>
+                          {formatBlDate(log.date)}
+                        </Text>
+                        <Text style={styles.listRowSubtitle}>
+                          {log.entries.length} პირი ტესტირებული
+                          {log.status === 'closed' ? ' · დასრულებული' : ' · მიმდინარე'}
+                        </Text>
+                      </View>
+                      {hasFail ? (
+                        <View style={{
+                          backgroundColor: BL_RESULT_COLORS.fail.bg,
+                          borderRadius: 8,
+                          paddingHorizontal: 6,
+                          paddingVertical: 2,
+                          borderWidth: 1,
+                          borderColor: BL_RESULT_COLORS.fail.border,
+                        }}>
+                          <Text style={{
+                            fontSize: 11,
+                            fontWeight: '700',
+                            color: BL_RESULT_COLORS.fail.text,
+                          }}>
+                            ⚠ {logCounts.fail} FAIL
+                          </Text>
+                        </View>
+                      ) : null}
+                      <Ionicons name="chevron-forward" size={18} color={theme.colors.borderStrong} />
+                    </Pressable>
+                  );
+                })}
+                {breathalyzerLogs.length > 3 ? (
+                  <ViewMoreRow
+                    items={breathalyzerLogs.slice(3).map(() => ({ ionicon: 'journal-outline' }))}
+                    total={breathalyzerLogs.length - 3}
+                    onPress={() => router.push(`/projects/${id}/logs/breathalyzer` as any)}
+                  />
+                ) : null}
+              </View>
+            )}
+          </View>
+
           {/* ── მონაწილეები (merged: inspector + crew) ── */}
           <View ref={participantsRef} collapsable={false} style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
@@ -1738,6 +1932,8 @@ function UpcomingSection({ projectId }: { projectId: string | undefined }) {
       .slice(0, 3);
   }, [events, projectId]);
 
+  const styles = useMemo(() => getStyles(theme), [theme]);
+
   if (upcoming.length === 0) return null;
 
   const today = new Date();
@@ -1751,8 +1947,6 @@ function UpcomingSection({ projectId }: { projectId: string | undefined }) {
     if (diff > 0) return t('calendar.inDays', { count: diff, defaultValue: `${diff} დღეში` });
     return t('calendar.overdueDays', { count: Math.abs(diff), defaultValue: `${Math.abs(diff)} დღე გადაცილდა` });
   }
-
-  const styles = useMemo(() => getStyles(theme), [theme]);
 
   return (
     <View style={[styles.sectionCard, { marginHorizontal: 16, marginTop: 12 }]}>

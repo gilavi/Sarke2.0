@@ -56,6 +56,11 @@ import { bobcatApi } from '../../lib/bobcatService';
 import { excavatorApi } from '../../lib/excavatorService';
 import { generalEquipmentApi } from '../../lib/generalEquipmentService';
 import { cargoPlatformApi } from '../../lib/cargoPlatformService';
+import { safetyNetApi } from '../../lib/safetyNetService';
+import { mobileLadderApi } from '../../lib/mobileLadderService';
+import { fallProtectionApi } from '../../lib/fallProtectionService';
+import { liftingAccessoriesApi } from '../../lib/liftingAccessoriesService';
+import { forkliftApi } from '../../lib/forkliftService';
 import { InspectionTypeAvatar } from '../../components/InspectionTypeAvatar';
 import { RecordTypePill } from '../../components/RecordTypePill';
 import { TemplatePickerModal } from '../../components/TemplatePickerModal';
@@ -65,12 +70,17 @@ function stepKeyFor(category: string | null | undefined, id: string): string {
     xaracho: 'wizard', mobile_scaffold: 'wizard',
     bobcat: 'bobcat-wizard', excavator: 'excavator-wizard',
     general_equipment: 'ge-wizard', cargo_platform: 'cargo-platform-wizard',
+    safety_net_inspection: 'safety-net-wizard',
+    mobile_ladder_inspection:       'mobile-ladder-wizard',
+    fall_protection_inspection:     'fall-protection-wizard',
+    lifting_accessories_inspection: 'lifting-accessories-wizard',
+    forklift_inspection:            'forklift-wizard',
   };
   return `${map[category ?? ''] ?? 'wizard'}:${id}:step`;
 }
 
 const STEP_TOTALS: Record<string, number> = {
-  bobcat: 4, excavator: 5, general_equipment: 3, cargo_platform: 6,
+  bobcat: 4, excavator: 5, general_equipment: 3, cargo_platform: 6, safety_net_inspection: 6, mobile_ladder_inspection: 5, fall_protection_inspection: 2, lifting_accessories_inspection: 6, forklift_inspection: 3,
 };
 
 const staticStyles = StyleSheet.create({
@@ -193,6 +203,21 @@ export default function HomeScreen() {
         if (error) throw error;
       } else if (category === 'cargo_platform') {
         const { error } = await supabase.from('cargo_platform_inspections').delete().eq('id', id);
+        if (error) throw error;
+      } else if (category === 'safety_net_inspection') {
+        const { error } = await supabase.from('safety_net_inspections').delete().eq('id', id);
+        if (error) throw error;
+      } else if (category === 'mobile_ladder_inspection') {
+        const { error } = await supabase.from('mobile_ladder_inspections').delete().eq('id', id);
+        if (error) throw error;
+      } else if (category === 'fall_protection_inspection') {
+        const { error } = await supabase.from('fall_protection_inspections').delete().eq('id', id);
+        if (error) throw error;
+      } else if (category === 'lifting_accessories_inspection') {
+        const { error } = await supabase.from('lifting_accessories_inspections').delete().eq('id', id);
+        if (error) throw error;
+      } else if (category === 'forklift_inspection') {
+        const { error } = await supabase.from('forklift_inspections').delete().eq('id', id);
         if (error) throw error;
       } else {
         await questionnairesApi.remove(id);
@@ -809,6 +834,16 @@ function ProjectPickerSheet({
         newId = (await generalEquipmentApi.create({ projectId, templateId })).id;
       } else if (tpl?.category === 'cargo_platform') {
         newId = (await cargoPlatformApi.create({ projectId, templateId })).id;
+      } else if (tpl?.category === 'safety_net_inspection') {
+        newId = (await safetyNetApi.create({ projectId, templateId })).id;
+      } else if (tpl?.category === 'mobile_ladder_inspection') {
+        newId = (await mobileLadderApi.create({ projectId, templateId })).id;
+      } else if (tpl?.category === 'fall_protection_inspection') {
+        newId = (await fallProtectionApi.create({ projectId, templateId })).id;
+      } else if (tpl?.category === 'lifting_accessories_inspection') {
+        newId = (await liftingAccessoriesApi.create({ projectId, templateId })).id;
+      } else if (tpl?.category === 'forklift_inspection') {
+        newId = (await forkliftApi.create({ projectId, templateId })).id;
       } else {
         newId = (await questionnairesApi.create({ projectId, templateId })).id;
       }

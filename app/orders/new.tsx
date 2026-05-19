@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as Crypto from 'expo-crypto';
 
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { FlowHeader } from '../../components/FlowHeader';
@@ -23,10 +24,12 @@ import { queuePdfUpload, stagePdfForQueue } from '../../lib/pdfUploadQueue';
 import { logError } from '../../lib/logError';
 import { friendlyError } from '../../lib/errorMap';
 import { ordersApi } from '../../lib/ordersApi';
-import { buildLaborSafetyOrderHtml, buildAlcoholControlOrderHtml, buildFireSafetyOrderHtml, buildFireSafetyOrderEnterpriseHtml } from '../../lib/orderPdf';
+import { buildLaborSafetyOrderHtml, buildAlcoholControlOrderHtml, buildFireSafetyOrderHtml, buildFireSafetyOrderEnterpriseHtml, buildCraneOperatorOrderHtml, buildCraneTechnicalOrderHtml } from '../../lib/orderPdf';
 import { SignatureCanvas } from '../../components/SignatureCanvas';
+import { QualDoc } from '../../components/inspection';
 import { storageApi, projectsApi } from '../../lib/services';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
+import { usePhotoWithLocation } from '../../hooks/usePhotoWithLocation';
 import * as FileSystem from 'expo-file-system/legacy';
 
 import type {
@@ -35,15 +38,18 @@ import type {
   AlcoholControlOrderFormData,
   FireSafetyOrderFormData,
   FireSafetyOrderEnterpriseFormData,
+  CraneOperatorOrderFormData,
+  CraneTechnicalOrderFormData,
   Project,
 } from '../../types/models';
 import { ORDER_DOCUMENT_TYPE_LABEL } from '../../types/models';
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
-type Step = 1 | 2 | 3 | 4 | 5 | 6;
+type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 function getTotalSteps(docType: OrderDocumentType | null): number {
+  if (docType === 'crane_operator_order' || docType === 'crane_technical_order') return 7;
   if (docType === 'fire_safety_order' || docType === 'fire_safety_order_enterprise') return 6;
   return 4;
 }
@@ -51,6 +57,13 @@ function getTotalSteps(docType: OrderDocumentType | null): number {
 function isFireSafetyVariant(docType: OrderDocumentType | null): boolean {
   return docType === 'fire_safety_order' || docType === 'fire_safety_order_enterprise';
 }
+
+function isCraneVariant(docType: OrderDocumentType | null): boolean {
+  return docType === 'crane_operator_order' || docType === 'crane_technical_order';
+}
+
+/** @deprecated Use isCraneVariant */
+const isCraneOperatorVariant = isCraneVariant;
 
 // Combined form — all fields across all document types; unused ones stay ''
 interface CombinedForm {
@@ -83,6 +96,21 @@ interface CombinedForm {
   directorSignedAt: string | null;
   appointedSignature: string | null;
   appointedSignedAt: string | null;
+  // crane_operator_order / crane_technical_order
+  craneOperatorName: string;
+  craneOperatorPersonalId: string;
+  craneOperatorPosition: string;       // crane_operator_order
+  craneOperatorQualification: string;  // crane_technical_order
+  craneOperatorCertNumber: string;
+  craneOperatorCertExpiry: string;
+  craneOperatorPhone: string;
+  craneOperatorCertPhoto: string | null;
+  craneModel: string;
+  craneNumber: string;
+  craneMaxLoad: string;
+  craneInspCertPhoto: string | null;
+  operatorSignature: string | null;
+  operatorSignedAt: string | null;
 }
 
 const INITIAL_FORM: CombinedForm = {
@@ -111,6 +139,20 @@ const INITIAL_FORM: CombinedForm = {
   directorSignedAt: null,
   appointedSignature: null,
   appointedSignedAt: null,
+  craneOperatorName: '',
+  craneOperatorPersonalId: '',
+  craneOperatorPosition: '',
+  craneOperatorQualification: '',
+  craneOperatorCertNumber: '',
+  craneOperatorCertExpiry: new Date().toISOString(),
+  craneOperatorPhone: '',
+  craneOperatorCertPhoto: null,
+  craneModel: '',
+  craneNumber: '',
+  craneMaxLoad: '',
+  craneInspCertPhoto: null,
+  operatorSignature: null,
+  operatorSignedAt: null,
 };
 
 const DOC_TYPES: { type: OrderDocumentType; icon: keyof typeof Ionicons.glyphMap }[] = [
@@ -118,6 +160,8 @@ const DOC_TYPES: { type: OrderDocumentType; icon: keyof typeof Ionicons.glyphMap
   { type: 'alcohol_control',              icon: 'ban-outline' },
   { type: 'fire_safety_order',            icon: 'flame-outline' },
   { type: 'fire_safety_order_enterprise', icon: 'flame-outline' },
+  { type: 'crane_operator_order',         icon: 'construct-outline' },
+  { type: 'crane_technical_order',        icon: 'construct-outline' },
 ];
 
 // ─── main component ───────────────────────────────────────────────────────────
@@ -137,6 +181,8 @@ export default function NewOrderScreen() {
   const [project, setProject] = useState<Project | null>(null);
   const [saving, setSaving] = useState(false);
   const [paywallVisible, setPaywallVisible] = useState(false);
+  const [photoSessionId] = useState(() => Crypto.randomUUID());
+  const { pickPhotoWithAnnotation } = usePhotoWithLocation();
 
   const { data: pdfUsage } = usePdfUsage();
   const invalidatePdfUsage = useInvalidatePdfUsage();
@@ -162,6 +208,38 @@ export default function NewOrderScreen() {
     }).catch(() => null);
   }, [projectId]);
 
+  // Auto-generate order number when a crane order is selected
+  useEffect(() => {
+    if (isCraneVariant(docType) && form.orderNumber === '') {
+      const year = new Date().getFullYear();
+      const seq = String(Math.floor(Math.random() * 900) + 100);
+      setForm(f => ({ ...f, orderNumber: `KR-${year}/${seq}` }));
+    }
+  }, [docType]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── photo handlers (crane_operator_order) ──────────────────────────────────
+
+  const handlePickPhoto = useCallback(async (field: 'craneOperatorCertPhoto' | 'craneInspCertPhoto') => {
+    const result = await pickPhotoWithAnnotation({ skipAnnotate: true });
+    if (!result) return;
+    try {
+      const uuid = Crypto.randomUUID();
+      const subfolder = field === 'craneOperatorCertPhoto' ? 'operator-cert' : 'crane-insp';
+      const path = `orders/${photoSessionId}/${subfolder}/${uuid}.jpg`;
+      await storageApi.uploadFromUri(STORAGE_BUCKETS.answerPhotos, path, result.uri, 'image/jpeg', 'certificate');
+      setForm(f => ({ ...f, [field]: path }));
+    } catch {
+      toast.error('ფოტო ვერ აიტვირთა');
+    }
+  }, [pickPhotoWithAnnotation, photoSessionId, toast]);
+
+  const handleDeletePhoto = useCallback(async (field: 'craneOperatorCertPhoto' | 'craneInspCertPhoto') => {
+    const path = form[field];
+    if (!path) return;
+    storageApi.remove(STORAGE_BUCKETS.answerPhotos, path).catch(() => {});
+    setForm(f => ({ ...f, [field]: null }));
+  }, [form]);
+
   // ── navigation ──────────────────────────────────────────────────────────────
 
   const isFormDirty = useMemo(() => (
@@ -178,12 +256,21 @@ export default function NewOrderScreen() {
 
   const canAdvance = useMemo((): boolean => {
     if (step === 1) return docType !== null;
-    if (step === 2) return (
-      form.orderNumber.trim().length > 0 &&
-      form.city.trim().length > 0 &&
-      form.companyName.trim().length > 0 &&
-      form.directorName.trim().length > 0
-    );
+    if (step === 2) {
+      if (isCraneOperatorVariant(docType)) {
+        return (
+          form.orderNumber.trim().length > 0 &&
+          form.companyName.trim().length > 0 &&
+          form.directorName.trim().length > 0
+        );
+      }
+      return (
+        form.orderNumber.trim().length > 0 &&
+        form.city.trim().length > 0 &&
+        form.companyName.trim().length > 0 &&
+        form.directorName.trim().length > 0
+      );
+    }
     if (step === 3) {
       if (docType === 'labor_safety_specialist') {
         return (
@@ -217,9 +304,20 @@ export default function NewOrderScreen() {
           form.objectName.trim().length > 0
         );
       }
+      if (docType === 'crane_operator_order' || docType === 'crane_technical_order') {
+        return (
+          form.craneOperatorName.trim().length > 0 &&
+          form.craneOperatorPersonalId.trim().length === 11 &&
+          form.craneOperatorCertNumber.trim().length > 0
+        );
+      }
     }
+    // step 4 crane: crane specs — no required fields, always can advance
     if (step === 4 && isFireSafetyVariant(docType)) return !!form.directorSignature;
     if (step === 5 && isFireSafetyVariant(docType)) return !!form.appointedSignature;
+    // crane operator signing steps
+    if (step === 5 && isCraneOperatorVariant(docType)) return !!form.directorSignature;
+    if (step === 6 && isCraneOperatorVariant(docType)) return !!form.operatorSignature;
     return true;
   }, [step, form, docType]);
 
@@ -230,7 +328,7 @@ export default function NewOrderScreen() {
 
   // ── build typed form data for the chosen document type ──────────────────────
 
-  const buildFormData = (): LaborSafetyOrderFormData | AlcoholControlOrderFormData | FireSafetyOrderFormData | FireSafetyOrderEnterpriseFormData => {
+  const buildFormData = (): LaborSafetyOrderFormData | AlcoholControlOrderFormData | FireSafetyOrderFormData | FireSafetyOrderEnterpriseFormData | CraneOperatorOrderFormData | CraneTechnicalOrderFormData => {
     const base = {
       orderNumber: form.orderNumber,
       city: form.city,
@@ -289,6 +387,54 @@ export default function NewOrderScreen() {
         appointedSignedAt: form.appointedSignedAt,
       };
     }
+    if (docType === 'crane_operator_order') {
+      return {
+        orderNumber: form.orderNumber,
+        orderDate: form.orderDate,
+        companyName: form.companyName,
+        objectAddress: form.objectAddress,
+        directorName: form.directorName,
+        craneOperatorName: form.craneOperatorName,
+        craneOperatorPersonalId: form.craneOperatorPersonalId,
+        craneOperatorPosition: form.craneOperatorPosition,
+        craneOperatorCertNumber: form.craneOperatorCertNumber,
+        craneOperatorCertExpiry: form.craneOperatorCertExpiry,
+        craneOperatorPhone: form.craneOperatorPhone,
+        craneOperatorCertPhoto: form.craneOperatorCertPhoto,
+        craneModel: form.craneModel,
+        craneNumber: form.craneNumber,
+        craneMaxLoad: form.craneMaxLoad,
+        craneInspCertPhoto: form.craneInspCertPhoto,
+        directorSignature: form.directorSignature,
+        directorSignedAt: form.directorSignedAt,
+        operatorSignature: form.operatorSignature,
+        operatorSignedAt: form.operatorSignedAt,
+      };
+    }
+    if (docType === 'crane_technical_order') {
+      return {
+        orderNumber: form.orderNumber,
+        orderDate: form.orderDate,
+        companyName: form.companyName,
+        objectAddress: form.objectAddress,
+        directorName: form.directorName,
+        craneOperatorName: form.craneOperatorName,
+        craneOperatorPersonalId: form.craneOperatorPersonalId,
+        craneOperatorQualification: form.craneOperatorQualification,
+        craneOperatorCertNumber: form.craneOperatorCertNumber,
+        craneOperatorCertExpiry: form.craneOperatorCertExpiry,
+        craneOperatorPhone: form.craneOperatorPhone,
+        craneOperatorCertPhoto: form.craneOperatorCertPhoto,
+        craneModel: form.craneModel,
+        craneNumber: form.craneNumber,
+        craneMaxLoad: form.craneMaxLoad,
+        craneInspCertPhoto: form.craneInspCertPhoto,
+        directorSignature: form.directorSignature,
+        directorSignedAt: form.directorSignedAt,
+        operatorSignature: form.operatorSignature,
+        operatorSignedAt: form.operatorSignedAt,
+      };
+    }
     return {
       ...base,
       specialistName: form.specialistName,
@@ -309,6 +455,12 @@ export default function NewOrderScreen() {
     if (docType === 'fire_safety_order_enterprise') {
       return buildFireSafetyOrderEnterpriseHtml({ formData: fd as FireSafetyOrderEnterpriseFormData, projectName });
     }
+    if (docType === 'crane_operator_order') {
+      return buildCraneOperatorOrderHtml({ formData: fd as CraneOperatorOrderFormData, projectName });
+    }
+    if (docType === 'crane_technical_order') {
+      return buildCraneTechnicalOrderHtml({ formData: fd as CraneTechnicalOrderFormData, projectName });
+    }
     return buildLaborSafetyOrderHtml({ formData: fd as LaborSafetyOrderFormData, projectName });
   };
 
@@ -316,6 +468,8 @@ export default function NewOrderScreen() {
     if (docType === 'alcohol_control') return 'brdzaneba_alkoholi';
     if (docType === 'fire_safety_order') return 'brdzaneba_saxandzro';
     if (docType === 'fire_safety_order_enterprise') return 'brdzaneba_saxandzro_sawarmoo';
+    if (docType === 'crane_operator_order') return 'brdzaneba_amwis_operatori';
+    if (docType === 'crane_technical_order') return 'brdzaneba_amwis_teqnikuri';
     return 'brdzaneba_shus_danishvna';
   };
 
@@ -368,12 +522,9 @@ export default function NewOrderScreen() {
       const orderAuthor =
         docType === 'alcohol_control' ? form.responsiblePersonName :
         isFireSafetyVariant(docType) ? form.appointedName :
+        isCraneVariant(docType) ? form.craneOperatorName :
         form.specialistName;
-      const orderTitle =
-        docType === 'alcohol_control' ? 'ალკოჰოლური და ნარკოტიკული თრობის კონტროლი' :
-        docType === 'fire_safety_order' ? 'სახანძრო უსაფრთხოებაზე პასუხისმგებელი პირის დანიშვნა' :
-        docType === 'fire_safety_order_enterprise' ? 'საწარმოს სახანძრო უსაფრთხოებაზე პასუხისმგებელი პირის დანიშვნა' :
-        'შრომის უსაფრთხოების სპეციალისტის დანიშვნა';
+      const orderTitle = docType ? ORDER_DOCUMENT_TYPE_LABEL[docType] : 'ბრძანება';
       const localUri = await generateAndSharePdf(html, pdfName, true, userId, {
         title: orderTitle,
         author: orderAuthor || undefined,
@@ -433,7 +584,12 @@ export default function NewOrderScreen() {
         {step === 1 && (
           <Step1DocType docType={docType} setDocType={setDocType} theme={theme} s={s} />
         )}
-        {step === 2 && <Step2Company form={form} setForm={setForm} theme={theme} s={s} />}
+        {step === 2 && !isCraneOperatorVariant(docType) && (
+          <Step2Company form={form} setForm={setForm} theme={theme} s={s} />
+        )}
+        {step === 2 && isCraneOperatorVariant(docType) && (
+          <Step2CraneCompany form={form} setForm={setForm} theme={theme} s={s} />
+        )}
         {step === 3 && docType === 'labor_safety_specialist' && (
           <Step3LaborSafety form={form} setForm={setForm} theme={theme} s={s} />
         )}
@@ -446,14 +602,56 @@ export default function NewOrderScreen() {
         {step === 3 && docType === 'fire_safety_order_enterprise' && (
           <Step3FireSafetyEnterprise form={form} setForm={setForm} theme={theme} s={s} />
         )}
+        {step === 3 && docType === 'crane_operator_order' && (
+          <Step3CraneOperator
+            form={form} setForm={setForm} theme={theme} s={s}
+            onPickPhoto={() => handlePickPhoto('craneOperatorCertPhoto')}
+            onDeletePhoto={() => handleDeletePhoto('craneOperatorCertPhoto')}
+          />
+        )}
+        {step === 3 && docType === 'crane_technical_order' && (
+          <Step3CraneOperator
+            form={form} setForm={setForm} theme={theme} s={s}
+            onPickPhoto={() => handlePickPhoto('craneOperatorCertPhoto')}
+            onDeletePhoto={() => handleDeletePhoto('craneOperatorCertPhoto')}
+            positionLabel="კვალიფიკაცია / სპეციალობა"
+            positionField="craneOperatorQualification"
+            stepTitle="ტექ. პასუხისმგებელი"
+          />
+        )}
+        {step === 4 && isCraneOperatorVariant(docType) && (
+          <Step4CraneSpecs
+            form={form} setForm={setForm} theme={theme} s={s}
+            onPickPhoto={() => handlePickPhoto('craneInspCertPhoto')}
+            onDeletePhoto={() => handleDeletePhoto('craneInspCertPhoto')}
+          />
+        )}
         {step === 4 && isFireSafetyVariant(docType) && (
           <StepSignDirector form={form} setForm={setForm} theme={theme} s={s} />
         )}
         {step === 5 && isFireSafetyVariant(docType) && (
           <StepSignAppointed form={form} setForm={setForm} theme={theme} s={s} />
         )}
-        {/* Summary: step 4 for standard types, step 6 for fire safety variants */}
-        {((step === 4 && !isFireSafetyVariant(docType)) || step === 6) && (
+        {/* Crane operator signing */}
+        {step === 5 && isCraneOperatorVariant(docType) && (
+          <StepSignDirector form={form} setForm={setForm} theme={theme} s={s} />
+        )}
+        {step === 6 && docType === 'crane_operator_order' && (
+          <StepSignCraneOperator form={form} setForm={setForm} theme={theme} s={s} />
+        )}
+        {step === 6 && docType === 'crane_technical_order' && (
+          <StepSignCraneOperator
+            form={form} setForm={setForm} theme={theme} s={s}
+            stepTitle="სპეციალისტის ხელმოწერა"
+            personLabel="ტექ. პასუხისმგებელი"
+          />
+        )}
+        {/* Summary: step 4 for standard types, step 6 for fire safety, step 7 for crane */}
+        {(
+          (step === 4 && !isFireSafetyVariant(docType) && !isCraneVariant(docType)) ||
+          (step === 6 && !isCraneVariant(docType)) ||
+          (step === 7 && isCraneVariant(docType))
+        ) && (
           <Step4Summary form={form} docType={docType} project={project} theme={theme} s={s} />
         )}
       </KeyboardSafeArea>
@@ -768,6 +966,26 @@ function Step4Summary({
             <SummaryRow label="დირექტორი ✓" value={form.directorSignature ? 'ხელმოწერილია' : '—'} s={s} />
             <SummaryRow label="პასუხისმ. ✓" value={form.appointedSignature ? 'ხელმოწერილია' : '—'} s={s} />
           </>
+        ) : docType === 'crane_operator_order' ? (
+          <>
+            <SummaryRow label="ოპერატორი" value={form.craneOperatorName || '—'} s={s} />
+            <SummaryRow label="პ/ნ" value={form.craneOperatorPersonalId || '—'} s={s} />
+            <SummaryRow label="სერტ. №" value={form.craneOperatorCertNumber || '—'} s={s} />
+            <SummaryRow label="ამწე" value={form.craneModel || '—'} s={s} />
+            {form.craneMaxLoad ? <SummaryRow label="ტვირთი" value={`${form.craneMaxLoad} ტ.`} s={s} /> : null}
+            <SummaryRow label="დირექტორი ✓" value={form.directorSignature ? 'ხელმოწერილია' : '—'} s={s} />
+            <SummaryRow label="ოპერატორი ✓" value={form.operatorSignature ? 'ხელმოწერილია' : '—'} s={s} />
+          </>
+        ) : docType === 'crane_technical_order' ? (
+          <>
+            <SummaryRow label="სპეციალისტი" value={form.craneOperatorName || '—'} s={s} />
+            <SummaryRow label="პ/ნ" value={form.craneOperatorPersonalId || '—'} s={s} />
+            <SummaryRow label="სერტ. №" value={form.craneOperatorCertNumber || '—'} s={s} />
+            <SummaryRow label="ამწე" value={form.craneModel || '—'} s={s} />
+            {form.craneMaxLoad ? <SummaryRow label="ტვირთი" value={`${form.craneMaxLoad} ტ.`} s={s} /> : null}
+            <SummaryRow label="დირექტორი ✓" value={form.directorSignature ? 'ხელმოწერილია' : '—'} s={s} />
+            <SummaryRow label="სპეციალისტი ✓" value={form.operatorSignature ? 'ხელმოწერილია' : '—'} s={s} />
+          </>
         ) : (
           <>
             <SummaryRow label="პასუხისმგებელი" value={form.responsiblePersonName || '—'} s={s} />
@@ -1002,6 +1220,239 @@ function StepSignAppointed({
         onCancel={() => setCanvasOpen(false)}
         onConfirm={(b64) => {
           setForm(f => ({ ...f, appointedSignature: b64, appointedSignedAt: new Date().toISOString() }));
+          setCanvasOpen(false);
+        }}
+      />
+    </View>
+  );
+}
+
+// ─── Step 2 (crane) — company info ────────────────────────────────────────────
+
+function Step2CraneCompany({
+  form, setForm, theme: _theme, s,
+}: {
+  form: CombinedForm;
+  setForm: React.Dispatch<React.SetStateAction<CombinedForm>>;
+  theme: any;
+  s: ReturnType<typeof makeStyles>;
+}) {
+  return (
+    <View style={{ gap: 12 }}>
+      <Text style={s.stepTitle}>კომპანიის ინფო</Text>
+
+      <FloatingLabelInput
+        label="ბრძანების ნომერი"
+        required
+        value={form.orderNumber}
+        onChangeText={v => setForm(f => ({ ...f, orderNumber: v }))}
+      />
+
+      <DateTimeField
+        label="ბრძანების თარიღი"
+        value={new Date(form.orderDate)}
+        onChange={d => setForm(f => ({ ...f, orderDate: d.toISOString() }))}
+        mode="date"
+      />
+
+      <FloatingLabelInput
+        label="კომპანიის დასახელება"
+        required
+        value={form.companyName}
+        onChangeText={v => setForm(f => ({ ...f, companyName: v }))}
+      />
+
+      <FloatingLabelInput
+        label="ობიექტის მისამართი"
+        value={form.objectAddress}
+        onChangeText={v => setForm(f => ({ ...f, objectAddress: v }))}
+      />
+
+      <FloatingLabelInput
+        label="დირექტორი (სახელი გვარი)"
+        required
+        value={form.directorName}
+        onChangeText={v => setForm(f => ({ ...f, directorName: v }))}
+      />
+    </View>
+  );
+}
+
+// ─── Step 3 (crane) — appointed operator ──────────────────────────────────────
+
+function Step3CraneOperator({
+  form, setForm, theme: _theme, s, onPickPhoto, onDeletePhoto,
+  positionLabel = 'სამუშაო პოზიცია',
+  positionField = 'craneOperatorPosition',
+  stepTitle = 'ოპერატორი',
+}: {
+  form: CombinedForm;
+  setForm: React.Dispatch<React.SetStateAction<CombinedForm>>;
+  theme: any;
+  s: ReturnType<typeof makeStyles>;
+  onPickPhoto: () => void;
+  onDeletePhoto: () => void;
+  positionLabel?: string;
+  positionField?: 'craneOperatorPosition' | 'craneOperatorQualification';
+  stepTitle?: string;
+}) {
+  return (
+    <View style={{ gap: 12 }}>
+      <Text style={s.stepTitle}>{stepTitle}</Text>
+
+      <FloatingLabelInput
+        label="სახელი, გვარი"
+        required
+        value={form.craneOperatorName}
+        onChangeText={v => setForm(f => ({ ...f, craneOperatorName: v }))}
+      />
+
+      <FloatingLabelInput
+        label="პირადობის ნომერი (11 ციფრი)"
+        required
+        value={form.craneOperatorPersonalId}
+        onChangeText={v => setForm(f => ({ ...f, craneOperatorPersonalId: v }))}
+        keyboardType="numeric"
+        maxLength={11}
+      />
+
+      <FloatingLabelInput
+        label={positionLabel}
+        value={form[positionField]}
+        onChangeText={v => setForm(f => ({ ...f, [positionField]: v }))}
+      />
+
+      <FloatingLabelInput
+        label="სერტიფიკატის ნომერი"
+        required
+        value={form.craneOperatorCertNumber}
+        onChangeText={v => setForm(f => ({ ...f, craneOperatorCertNumber: v }))}
+      />
+
+      <DateTimeField
+        label="სერტ. მოქმედების ვადა"
+        value={new Date(form.craneOperatorCertExpiry)}
+        onChange={d => setForm(f => ({ ...f, craneOperatorCertExpiry: d.toISOString() }))}
+        mode="date"
+      />
+
+      <FloatingLabelInput
+        label="საკ. ტელეფონი"
+        value={form.craneOperatorPhone}
+        onChangeText={v => setForm(f => ({ ...f, craneOperatorPhone: v }))}
+        keyboardType="phone-pad"
+      />
+
+      <Text style={s.sectionLabel}>სერტიფიკატის ფოტო</Text>
+      <QualDoc
+        photoPath={form.craneOperatorCertPhoto}
+        onAdd={onPickPhoto}
+        onDelete={onDeletePhoto}
+        label="სერტიფიკატის ფოტო"
+      />
+    </View>
+  );
+}
+
+// ─── Step 4 (crane) — crane specs ─────────────────────────────────────────────
+
+function Step4CraneSpecs({
+  form, setForm, theme: _theme, s, onPickPhoto, onDeletePhoto,
+}: {
+  form: CombinedForm;
+  setForm: React.Dispatch<React.SetStateAction<CombinedForm>>;
+  theme: any;
+  s: ReturnType<typeof makeStyles>;
+  onPickPhoto: () => void;
+  onDeletePhoto: () => void;
+}) {
+  return (
+    <View style={{ gap: 12 }}>
+      <Text style={s.stepTitle}>ამწის მონაცემები</Text>
+
+      <FloatingLabelInput
+        label="მოდელი / ტიპი"
+        value={form.craneModel}
+        onChangeText={v => setForm(f => ({ ...f, craneModel: v }))}
+      />
+
+      <FloatingLabelInput
+        label="ამწის ნომერი"
+        value={form.craneNumber}
+        onChangeText={v => setForm(f => ({ ...f, craneNumber: v }))}
+      />
+
+      <FloatingLabelInput
+        label="მაქს. ასაწევი ტვირთი (ტ.)"
+        value={form.craneMaxLoad}
+        onChangeText={v => setForm(f => ({ ...f, craneMaxLoad: v }))}
+        keyboardType="decimal-pad"
+      />
+
+      <Text style={s.sectionLabel}>ამწის ინსპ. სერთიფ.</Text>
+      <QualDoc
+        photoPath={form.craneInspCertPhoto}
+        onAdd={onPickPhoto}
+        onDelete={onDeletePhoto}
+        label="ამწის ინსპექციის სერთიფიკატი"
+      />
+    </View>
+  );
+}
+
+// ─── Step 6 (crane) — operator signature ─────────────────────────────────────
+
+function StepSignCraneOperator({
+  form, setForm, theme, s,
+  stepTitle = 'ოპერატორის ხელმოწერა',
+  personLabel = 'ამწის ოპერატორი',
+}: {
+  form: CombinedForm;
+  setForm: React.Dispatch<React.SetStateAction<CombinedForm>>;
+  theme: any;
+  s: ReturnType<typeof makeStyles>;
+  stepTitle?: string;
+  personLabel?: string;
+}) {
+  const [canvasOpen, setCanvasOpen] = useState(false);
+
+  return (
+    <View style={{ gap: 16 }}>
+      <Text style={s.stepTitle}>{stepTitle}</Text>
+      <Text style={[s.summaryLabel, { width: 'auto' }]}>{form.craneOperatorName || personLabel}</Text>
+
+      {form.operatorSignature ? (
+        <View style={{
+          backgroundColor: theme.colors.surface,
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: theme.colors.borderGreen ?? theme.colors.border,
+          alignItems: 'center',
+          padding: 12,
+          gap: 8,
+        }}>
+          <Ionicons name="checkmark-circle" size={28} color={theme.colors.semantic.success} />
+          <Text style={{ fontSize: 13, color: theme.colors.semantic.success, fontWeight: '600' }}>ხელმოწერა დადებულია</Text>
+          <Pressable onPress={() => setForm(f => ({ ...f, operatorSignature: null, operatorSignedAt: null }))}>
+            <Text style={{ fontSize: 12, color: theme.colors.inkSoft, textDecorationLine: 'underline' }}>ხელახლა ხელმოწერა</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <Pressable
+          onPress={() => setCanvasOpen(true)}
+          style={[s.typeCard, { justifyContent: 'center', alignItems: 'center', gap: 8, paddingVertical: 20 }]}
+        >
+          <Ionicons name="pencil-outline" size={22} color={theme.colors.accent} />
+          <Text style={[s.typeLabel, { textAlign: 'center', color: theme.colors.accent }]}>+ ხელმოწერა</Text>
+        </Pressable>
+      )}
+
+      <SignatureCanvas
+        visible={canvasOpen}
+        personName={form.craneOperatorName || personLabel}
+        onCancel={() => setCanvasOpen(false)}
+        onConfirm={(b64) => {
+          setForm(f => ({ ...f, operatorSignature: b64, operatorSignedAt: new Date().toISOString() }));
           setCanvasOpen(false);
         }}
       />
