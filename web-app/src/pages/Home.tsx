@@ -150,92 +150,91 @@ export default function Home() {
 
   return (
     <motion.div
-      className="space-y-8"
+      className="space-y-6"
       variants={staggerContainer(STAGGER.grid)}
       initial="hidden"
       animate="visible"
     >
-      {/* ═════ Top Row: Left (stats) | Right (greeting + sub) ═════ */}
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-4">
-        {/* Left: 4 stat cards in a 2×2 grid */}
-        <motion.div variants={fadeUpItem()} className="xl:col-span-2">
-          {isLoading ? (
-            <div className="grid gap-3 sm:grid-cols-2">
-              {[...Array(4)].map((_, i) => <SkeletonStatCard key={i} />)}
-            </div>
-          ) : (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <StatCard
-                title="შემოწმების აქტები"
-                value={totalInspections}
-                icon={ClipboardCheck}
-                href="/inspections"
-                sparklineData={[2, 5, 3, 8, 6, totalInspections]}
-                trendCurrent={totalInspections}
-                trendPrevious={Math.max(1, totalInspections - 2)}
-                trendLabel="წინა თვესთან"
-                staggerIndex={0}
-              />
-              <StatCard
-                title="პროექტები"
-                value={projects?.length ?? 0}
-                icon={FolderOpen}
-                href="/projects"
-                sparklineData={[1, 2, 2, 3, 4, projects?.length ?? 0]}
-                staggerIndex={1}
-              />
-              <StatCard
-                title="ინციდენტები"
-                value={incidents?.length ?? 0}
-                icon={AlertTriangle}
-                href="/incidents"
-                sparklineData={[0, 1, 0, 2, 1, incidents?.length ?? 0]}
-                staggerIndex={2}
-              />
-              <StatCard
-                title="ინსტრუქტაჟები"
-                value={briefings?.length ?? 0}
-                icon={Megaphone}
-                href="/briefings"
-                sparklineData={[1, 3, 2, 4, 3, briefings?.length ?? 0]}
-                staggerIndex={3}
-              />
-            </div>
-          )}
-        </motion.div>
+      {/* ═════ Row 1: Title + Button ═════ */}
+      <motion.header variants={fadeUpItem()} className="flex items-center justify-between gap-4">
+        <div>
+          <h1 className="font-display text-heading-1 text-neutral-900 dark:text-neutral-100">
+            მოგესალმებით{firstName ? `, ${firstName}` : ''}
+          </h1>
+          <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
+            Sarke — თქვენი შრომის უსაფრთხოების ცენტრი.
+          </p>
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button className="shrink-0 gap-1.5">
+              <Zap size={15} />
+              ახალი აქტი
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-64">
+            <DropdownMenuItem onSelect={() => setNewInspectionOpen(true)}>ფასადის ხარაჩოს შემოწმება</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setNewInspectionOpen(true)}>დამცავი ქამრების შემოწმება</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => navigate('/bobcat/new')}>ციცხვიანი დამტვირთველი</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => navigate('/excavator/new')}>ექსკავატორის შემოწმება</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => navigate('/general-equipment/new')}>ტექ. აღჭურვილობა</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => navigate('/cargo-platform/new')}>ტვირთის პლატფორმა</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <InspectionWizard open={newInspectionOpen} onClose={() => setNewInspectionOpen(false)} />
+      </motion.header>
 
-        {/* Right: greeting + button + subscription */}
-        <motion.div variants={fadeUpItem()} className="xl:col-span-2 space-y-5">
-          <header className="flex items-start justify-between gap-4">
-            <div>
-              <h1 className="font-display text-heading-1 text-neutral-900 dark:text-neutral-100">
-                მოგესალმებით{firstName ? `, ${firstName}` : ''}
-              </h1>
-              <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-                Sarke — თქვენი შრომის უსაფრთხოების ცენტრი.
-              </p>
-            </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button className="shrink-0 gap-1.5">
-                  <Zap size={15} />
-                  ახალი აქტი
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-64">
-                <DropdownMenuItem onSelect={() => setNewInspectionOpen(true)}>ფასადის ხარაჩოს შემოწმება</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => setNewInspectionOpen(true)}>დამცავი ქამრების შემოწმება</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => navigate('/bobcat/new')}>ციცხვიანი დამტვირთველი</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => navigate('/excavator/new')}>ექსკავატორის შემოწმება</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => navigate('/general-equipment/new')}>ტექ. აღჭურვილობა</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => navigate('/cargo-platform/new')}>ტვირთის პლატფორმა</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <InspectionWizard open={newInspectionOpen} onClose={() => setNewInspectionOpen(false)} />
-          </header>
-          <SubscriptionCard />
-        </motion.div>
-      </div>
+      {/* ═════ Row 2: Subscription Banner (full width) ═════ */}
+      <motion.div variants={fadeUpItem()}>
+        <SubscriptionCard />
+      </motion.div>
+
+      {/* ═════ Row 3: 4 Stat Cards ═════ */}
+      <motion.div variants={fadeUpItem()}>
+        {isLoading ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {[...Array(4)].map((_, i) => <SkeletonStatCard key={i} />)}
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard
+              title="შემოწმების აქტები"
+              value={totalInspections}
+              icon={ClipboardCheck}
+              href="/inspections"
+              sparklineData={[2, 5, 3, 8, 6, totalInspections]}
+              trendCurrent={totalInspections}
+              trendPrevious={Math.max(1, totalInspections - 2)}
+              trendLabel="წინა თვესთან"
+              staggerIndex={0}
+            />
+            <StatCard
+              title="პროექტები"
+              value={projects?.length ?? 0}
+              icon={FolderOpen}
+              href="/projects"
+              sparklineData={[1, 2, 2, 3, 4, projects?.length ?? 0]}
+              staggerIndex={1}
+            />
+            <StatCard
+              title="ინციდენტები"
+              value={incidents?.length ?? 0}
+              icon={AlertTriangle}
+              href="/incidents"
+              sparklineData={[0, 1, 0, 2, 1, incidents?.length ?? 0]}
+              staggerIndex={2}
+            />
+            <StatCard
+              title="ინსტრუქტაჟები"
+              value={briefings?.length ?? 0}
+              icon={Megaphone}
+              href="/briefings"
+              sparklineData={[1, 3, 2, 4, 3, briefings?.length ?? 0]}
+              staggerIndex={3}
+            />
+          </div>
+        )}
+      </motion.div>
 
       {/* ═════ Row 2: Full-Width Activity + Recent ═════ */}
       <motion.div variants={fadeUpItem()}>
