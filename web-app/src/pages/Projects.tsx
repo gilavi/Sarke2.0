@@ -52,23 +52,24 @@ function ProjectCard({ p, onDelete }: { p: Project; onDelete: (id: string) => vo
 
           {/* Gradient overlay */}
           <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/50 to-transparent" />
-
-          {/* Logo badge — always on top */}
-          {p.logo ? (
-            <div className="absolute left-3 top-3 z-10 h-10 w-10 overflow-hidden rounded-xl border-2 border-white bg-white dark:border-neutral-800">
-              <img src={p.logo} alt={p.name} className="h-full w-full object-cover" />
-            </div>
-          ) : (
-            <div className="absolute left-3 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-xl border-2 border-white bg-white dark:border-neutral-800 dark:bg-neutral-700">
-              <Building2 size={16} className="text-neutral-400" />
-            </div>
-          )}
         </div>
 
         {/* Card body */}
-        <div className="px-4 py-3">
-          <p className="font-semibold text-neutral-900 dark:text-neutral-100 truncate">{p.name}</p>
-          <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate mt-0.5">{p.company_name || p.address || '—'}</p>
+        <div className="flex items-center gap-3 px-4 py-3">
+          {/* Logo / placeholder */}
+          <div className="h-9 w-9 shrink-0 overflow-hidden rounded-lg border border-neutral-200 bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800">
+            {p.logo ? (
+              <img src={p.logo} alt={p.name} className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center">
+                <Building2 size={15} className="text-neutral-400" />
+              </div>
+            )}
+          </div>
+          <div className="min-w-0">
+            <p className="font-semibold text-neutral-900 dark:text-neutral-100 truncate">{p.name}</p>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate">{p.company_name || p.address || '—'}</p>
+          </div>
         </div>
       </Link>
 
