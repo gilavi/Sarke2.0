@@ -3,10 +3,10 @@ import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  ClipboardCheck, AlertTriangle, Megaphone, FileText, FolderOpen,
-  Flame, TrendingUp, Zap, ChevronDown
+  AlertTriangle, Megaphone, FileText, FolderOpen,
+  Flame, Zap, ChevronDown
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -78,9 +78,7 @@ export default function Home() {
     ...(excavators ?? []).map((i) => ({ id: i.id, label: i.serialNumber || 'ექსკავატორი', date: i.createdAt, status: i.status, href: routes.excavator.detail(i.id) })),
   ].sort((a, b) => b.date.localeCompare(a.date)), [inspections, bobcats, generalEq, excavators]);
 
-  const allInspections = useMemo(() => allInspectionsUnsliced.slice(0, 5), [allInspectionsUnsliced]);
   const totalInspections = useMemo(() => (inspections?.length ?? 0) + (bobcats?.length ?? 0) + (generalEq?.length ?? 0) + (excavators?.length ?? 0), [inspections, bobcats, generalEq, excavators]);
-  const completedThisWeek = useMemo(() => allInspectionsUnsliced.filter((i) => i.status === 'completed').length, [allInspectionsUnsliced]);
 
   const [newInspectionOpen, setNewInspectionOpen] = useState(false);
 

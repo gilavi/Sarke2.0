@@ -57,7 +57,7 @@ export default function ReportDetail() {
 
   // Auto-open the add-slide form when a fresh draft has no slides yet (mirrors mobile UX)
   useEffect(() => {
-    if (item && item.slides.length === 0 && item.status === 'draft') {
+    if (item && (item.slides ?? []).length === 0 && item.status === 'draft') {
       setAddingSlide(true);
     }
   }, [item]);
