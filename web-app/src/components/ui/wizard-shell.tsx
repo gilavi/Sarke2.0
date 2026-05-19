@@ -47,7 +47,7 @@ export function WizardShell({
         >
           {/* Header */}
           <div className="border-b border-neutral-200 bg-white">
-            <div className="mx-auto flex max-w-2xl items-center justify-between px-6 py-4">
+            <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
               <Dialog.Title className="font-display text-lg font-semibold text-neutral-900">
                 {title}
               </Dialog.Title>
@@ -64,7 +64,7 @@ export function WizardShell({
           {/* Step bar */}
           {steps.length > 1 && (
             <div className="border-b border-neutral-100 bg-white">
-              <div className="mx-auto max-w-2xl px-6 py-3">
+              <div className="mx-auto max-w-5xl px-6 py-3">
                 <StepBar steps={steps} current={currentStep} />
               </div>
             </div>
@@ -79,7 +79,7 @@ export function WizardShell({
 
           {/* Footer nav */}
           <div className="border-t border-neutral-200 bg-white">
-            <div className="mx-auto max-w-2xl">
+            <div className="mx-auto max-w-5xl">
               <WizardNav
                 current={currentStep}
                 total={steps.length}

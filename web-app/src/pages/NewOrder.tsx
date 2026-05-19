@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
-import { Flame, Shield, Ban, ChevronRight, ChevronLeft, Pencil, RotateCcw } from 'lucide-react';
+import { Flame, Shield, Ban, Pencil, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { WizardShell } from '@/components/ui/wizard-shell';
 import SignatureCanvas from '@/components/SignatureCanvas';
 import {
   createOrder,
@@ -22,7 +23,6 @@ import {
   buildFireSafetyOrderEnterpriseHtml,
   buildLaborSafetyOrderHtml,
   buildAlcoholControlOrderHtml,
-  openOrderPdfPreview,
 } from '@/lib/orderPdf';
 
 // ── form state ─────────────────────────────────────────────────────────────────
@@ -96,13 +96,14 @@ const DOC_TYPE_OPTIONS: { type: OrderDocumentType; icon: React.ReactNode; label:
   { type: 'fire_safety_order_enterprise', icon: <Flame size={20} />,  label: ORDER_DOCUMENT_TYPE_LABEL.fire_safety_order_enterprise },
 ];
 
-function getTotalSteps(docType: OrderDocumentType | null): number {
-  if (docType === 'fire_safety_order' || docType === 'fire_safety_order_enterprise') return 6;
-  return 4;
-}
-
 function isFireSafetyVariant(docType: OrderDocumentType | null): boolean {
   return docType === 'fire_safety_order' || docType === 'fire_safety_order_enterprise';
+}
+
+function getStepLabels(docType: OrderDocumentType | null): string[] {
+  const base = ['ტიპი', 'კომპანია', 'სპეციფიკა'];
+  if (isFireSafetyVariant(docType)) return [...base, 'დირექტ. ხელმ.', 'პასუხ. ხელმ.', 'შეჯამება'];
+  return [...base, 'შეჯამება'];
 }
 
 // ── component ──────────────────────────────────────────────────────────────────
@@ -112,11 +113,15 @@ export default function NewOrder() {
   const [searchParams] = useSearchParams();
   const projectId = searchParams.get('project') ?? '';
 
-  const [step, setStep] = useState(1);
+  // 0-indexed step
+  const [step, setStep] = useState(0);
   const [docType, setDocType] = useState<OrderDocumentType | null>(null);
   const [form, setForm] = useState<Form>(INITIAL_FORM);
   const [signingDirector, setSigningDirector] = useState(false);
   const [signingAppointed, setSigningAppointed] = useState(false);
+
+  // Pre-opened window ref — opened synchronously on user click to avoid popup blocker
+  const pdfWinRef = useRef<Window | null>(null);
 
   // Auto-fill from project
   useEffect(() => {
@@ -134,17 +139,18 @@ export default function NewOrder() {
     }).catch(() => null);
   }, [projectId]);
 
-  const totalSteps = getTotalSteps(docType);
+  const steps = getStepLabels(docType);
+  const totalSteps = steps.length;
 
   const canAdvance = useMemo((): boolean => {
-    if (step === 1) return docType !== null;
-    if (step === 2) return (
+    if (step === 0) return docType !== null;
+    if (step === 1) return (
       form.orderNumber.trim().length > 0 &&
       form.city.trim().length > 0 &&
       form.companyName.trim().length > 0 &&
       form.directorName.trim().length > 0
     );
-    if (step === 3) {
+    if (step === 2) {
       if (docType === 'labor_safety_specialist') return (
         form.facilityName.trim().length > 0 &&
         form.specialistName.trim().length > 0 &&
@@ -168,8 +174,8 @@ export default function NewOrder() {
         form.objectName.trim().length > 0
       );
     }
-    if (step === 4 && isFireSafetyVariant(docType)) return !!form.directorSignature;
-    if (step === 5 && isFireSafetyVariant(docType)) return !!form.appointedSignature;
+    if (step === 3 && isFireSafetyVariant(docType)) return !!form.directorSignature;
+    if (step === 4 && isFireSafetyVariant(docType)) return !!form.appointedSignature;
     return true;
   }, [step, form, docType]);
 
@@ -185,16 +191,22 @@ export default function NewOrder() {
         formData,
         status: asDraft ? 'draft' : 'completed',
       });
-      if (!asDraft) {
-        const html = buildHtml();
-        openOrderPdfPreview(html);
-      }
     },
     onSuccess: (_v, asDraft) => {
+      if (!asDraft && pdfWinRef.current) {
+        const html = buildHtml();
+        pdfWinRef.current.document.write(html);
+        pdfWinRef.current.document.close();
+        pdfWinRef.current = null;
+      }
       toast.success(asDraft ? 'ბრძანება შენახულია' : 'ბრძანება შექმნილია');
       navigate(projectId ? `/projects/${projectId}` : '/');
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'შეცდომა'),
+    onError: (e) => {
+      pdfWinRef.current?.close();
+      pdfWinRef.current = null;
+      toast.error(e instanceof Error ? e.message : 'შეცდომა');
+    },
   });
 
   // ── form builders ────────────────────────────────────────────────────────────
@@ -269,113 +281,85 @@ export default function NewOrder() {
     setForm(f => ({ ...f, [key]: value }));
   }
 
-  const isFinal = step === totalSteps;
+  const isFinal = step === totalSteps - 1;
+
+  function handleFinish() {
+    // Open window synchronously (user gesture) before going async
+    pdfWinRef.current = window.open('', '_blank', 'noopener,noreferrer');
+    saveMutation.mutate(false);
+  }
+
+  function handleSaveDraft() {
+    saveMutation.mutate(true);
+  }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="font-display text-2xl font-bold text-neutral-900">ახალი ბრძანება</h1>
-        <p className="mt-1 text-sm text-neutral-500">
-          ნაბიჯი {step} / {totalSteps}
-          {docType ? ` · ${ORDER_DOCUMENT_TYPE_LABEL[docType]}` : ''}
-        </p>
-      </div>
-
-      {/* Progress bar */}
-      <div className="h-1.5 w-full rounded-full bg-neutral-200">
-        <div
-          className="h-1.5 rounded-full bg-brand-600 transition-all"
-          style={{ width: `${(step / totalSteps) * 100}%` }}
+    <WizardShell
+      open
+      onClose={() => navigate(projectId ? `/projects/${projectId}` : '/')}
+      title="ახალი ბრძანება"
+      steps={steps}
+      currentStep={step}
+      onPrev={() => setStep(s => s - 1)}
+      onNext={() => setStep(s => s + 1)}
+      onFinish={handleFinish}
+      isSubmitting={saveMutation.isPending}
+      nextDisabled={!canAdvance}
+      finishLabel="PDF გენერირება"
+    >
+      {step === 0 && (
+        <Step1DocType docType={docType} setDocType={setDocType} />
+      )}
+      {step === 1 && (
+        <Step2Company form={form} setField={setField} />
+      )}
+      {step === 2 && docType === 'labor_safety_specialist' && (
+        <Step3LaborSafety form={form} setField={setField} />
+      )}
+      {step === 2 && docType === 'alcohol_control' && (
+        <Step3AlcoholControl form={form} setField={setField} />
+      )}
+      {step === 2 && docType === 'fire_safety_order' && (
+        <Step3FireSafety form={form} setField={setField} />
+      )}
+      {step === 2 && docType === 'fire_safety_order_enterprise' && (
+        <Step3FireSafetyEnterprise form={form} setField={setField} />
+      )}
+      {step === 3 && isFireSafetyVariant(docType) && (
+        <StepSignDirector
+          form={form}
+          signingOpen={signingDirector}
+          setSigningOpen={setSigningDirector}
+          onSave={(dataUrl) => {
+            const b64 = dataUrl.replace(/^data:image\/png;base64,/, '');
+            setForm(f => ({ ...f, directorSignature: b64, directorSignedAt: new Date().toISOString() }));
+            setSigningDirector(false);
+          }}
+          onClear={() => setForm(f => ({ ...f, directorSignature: null, directorSignedAt: null }))}
         />
-      </div>
-
-      {/* Step content */}
-      <div className="rounded-xl border border-neutral-200 bg-white p-6 space-y-4">
-        {step === 1 && (
-          <Step1DocType docType={docType} setDocType={setDocType} />
-        )}
-        {step === 2 && (
-          <Step2Company form={form} setField={setField} />
-        )}
-        {step === 3 && docType === 'labor_safety_specialist' && (
-          <Step3LaborSafety form={form} setField={setField} />
-        )}
-        {step === 3 && docType === 'alcohol_control' && (
-          <Step3AlcoholControl form={form} setField={setField} />
-        )}
-        {step === 3 && docType === 'fire_safety_order' && (
-          <Step3FireSafety form={form} setField={setField} />
-        )}
-        {step === 3 && docType === 'fire_safety_order_enterprise' && (
-          <Step3FireSafetyEnterprise form={form} setField={setField} />
-        )}
-        {step === 4 && isFireSafetyVariant(docType) && (
-          <StepSignDirector
-            form={form}
-            signingOpen={signingDirector}
-            setSigningOpen={setSigningDirector}
-            onSave={(dataUrl) => {
-              const b64 = dataUrl.replace(/^data:image\/png;base64,/, '');
-              setForm(f => ({ ...f, directorSignature: b64, directorSignedAt: new Date().toISOString() }));
-              setSigningDirector(false);
-            }}
-            onClear={() => setForm(f => ({ ...f, directorSignature: null, directorSignedAt: null }))}
-          />
-        )}
-        {step === 5 && isFireSafetyVariant(docType) && (
-          <StepSignAppointed
-            form={form}
-            signingOpen={signingAppointed}
-            setSigningOpen={setSigningAppointed}
-            onSave={(dataUrl) => {
-              const b64 = dataUrl.replace(/^data:image\/png;base64,/, '');
-              setForm(f => ({ ...f, appointedSignature: b64, appointedSignedAt: new Date().toISOString() }));
-              setSigningAppointed(false);
-            }}
-            onClear={() => setForm(f => ({ ...f, appointedSignature: null, appointedSignedAt: null }))}
-          />
-        )}
-        {(isFinal && !isFireSafetyVariant(docType)) || step === 6 ? (
-          <StepSummary form={form} docType={docType} />
-        ) : null}
-      </div>
-
-      {/* Nav buttons */}
-      <div className="flex items-center justify-between gap-3">
-        <Button
-          variant="outline"
-          onClick={() => (step === 1 ? navigate(-1) : setStep(s => s - 1))}
-          disabled={saveMutation.isPending}
-        >
-          <ChevronLeft size={16} className="mr-1" />
-          {step === 1 ? 'გაუქმება' : 'უკან'}
-        </Button>
-
-        {!isFinal ? (
-          <Button onClick={() => setStep(s => s + 1)} disabled={!canAdvance}>
-            შემდეგი
-            <ChevronRight size={16} className="ml-1" />
-          </Button>
-        ) : (
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => saveMutation.mutate(true)}
-              disabled={saveMutation.isPending}
-            >
-              შენახვა (PDF-ის გარეშე)
-            </Button>
-            <Button
-              onClick={() => saveMutation.mutate(false)}
-              disabled={saveMutation.isPending || !canAdvance}
-            >
-              {saveMutation.isPending ? 'ინახება…' : 'PDF გენერირება'}
-            </Button>
-          </div>
-        )}
-      </div>
-    </div>
+      )}
+      {step === 4 && isFireSafetyVariant(docType) && (
+        <StepSignAppointed
+          form={form}
+          signingOpen={signingAppointed}
+          setSigningOpen={setSigningAppointed}
+          onSave={(dataUrl) => {
+            const b64 = dataUrl.replace(/^data:image\/png;base64,/, '');
+            setForm(f => ({ ...f, appointedSignature: b64, appointedSignedAt: new Date().toISOString() }));
+            setSigningAppointed(false);
+          }}
+          onClear={() => setForm(f => ({ ...f, appointedSignature: null, appointedSignedAt: null }))}
+        />
+      )}
+      {isFinal && (
+        <StepSummary
+          form={form}
+          docType={docType}
+          onSaveDraft={handleSaveDraft}
+          isPending={saveMutation.isPending}
+        />
+      )}
+    </WizardShell>
   );
 }
 
@@ -623,7 +607,17 @@ function StepSignAppointed({
   );
 }
 
-function StepSummary({ form, docType }: { form: Form; docType: OrderDocumentType | null }) {
+function StepSummary({
+  form,
+  docType,
+  onSaveDraft,
+  isPending,
+}: {
+  form: Form;
+  docType: OrderDocumentType | null;
+  onSaveDraft: () => void;
+  isPending: boolean;
+}) {
   return (
     <div className="space-y-4">
       <h2 className="text-base font-semibold text-neutral-800">შეჯამება</h2>
@@ -665,6 +659,15 @@ function StepSummary({ form, docType }: { form: Form; docType: OrderDocumentType
       <p className="text-xs text-neutral-500">
         „PDF გენერირება" — ბრძანება შეინახება და გაიხსნება ახალ ჩანართში ბეჭდვისთვის.
       </p>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={onSaveDraft}
+        disabled={isPending}
+        className="w-full"
+      >
+        შენახვა (PDF-ის გარეშე)
+      </Button>
     </div>
   );
 }
