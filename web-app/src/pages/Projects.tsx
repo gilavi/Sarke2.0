@@ -50,15 +50,19 @@ function ProjectCard({ p, onDelete }: { p: Project; onDelete: (id: string) => vo
             </div>
           )}
 
-          {/* Logo badge */}
-          {p.logo && (
-            <div className="absolute left-3 top-3 h-10 w-10 overflow-hidden rounded-xl border-2 border-white bg-white dark:border-neutral-800">
+          {/* Gradient overlay */}
+          <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/50 to-transparent" />
+
+          {/* Logo badge — always on top */}
+          {p.logo ? (
+            <div className="absolute left-3 top-3 z-10 h-10 w-10 overflow-hidden rounded-xl border-2 border-white bg-white dark:border-neutral-800">
               <img src={p.logo} alt={p.name} className="h-full w-full object-cover" />
             </div>
+          ) : (
+            <div className="absolute left-3 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-xl border-2 border-white bg-white dark:border-neutral-800 dark:bg-neutral-700">
+              <Building2 size={16} className="text-neutral-400" />
+            </div>
           )}
-
-          {/* Gradient overlay for text legibility */}
-          <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/50 to-transparent" />
         </div>
 
         {/* Card body */}
