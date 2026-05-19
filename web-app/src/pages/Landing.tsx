@@ -1,15 +1,53 @@
 import { Link, Navigate } from 'react-router-dom';
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import {
   ShieldCheck,
   ClipboardCheck,
   AlertTriangle,
   FileText,
   Award,
+  Cookie,
+  X,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+
+function CookieBanner() {
+  const [accepted, setAccepted] = useState(() => localStorage.getItem('cookie-accepted') === 'true');
+
+  if (accepted) return null;
+
+  const accept = () => {
+    localStorage.setItem('cookie-accepted', 'true');
+    setAccepted(true);
+  };
+
+  return (
+    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-neutral-200 bg-white px-6 py-4">
+      <div className="mx-auto flex max-w-5xl items-center gap-4">
+        <Cookie size={18} className="shrink-0 text-neutral-400" />
+        <p className="flex-1 text-sm text-neutral-600">
+          ვებ-გვერდი იყენებს Cookies-ებს სერვისის გასაუმჯობესებლად.{' '}
+          <Link to="/terms" className="text-brand-600 hover:underline">დაწვრილებით</Link>
+        </p>
+        <button
+          onClick={accept}
+          className={cn(buttonVariants({ size: 'sm' }), 'shrink-0')}
+        >
+          მიღება
+        </button>
+        <button
+          onClick={accept}
+          className="shrink-0 rounded-lg p-1.5 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600"
+          aria-label="დახურვა"
+        >
+          <X size={16} />
+        </button>
+      </div>
+    </div>
+  );
+}
 
 const features = [
   {
@@ -89,7 +127,7 @@ export default memo(function Landing() {
           {features.map(({ icon: Icon, title, description }) => (
             <div
               key={title}
-              className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm"
+              className="rounded-2xl border border-neutral-200 bg-white p-5"
             >
               <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
                 <Icon size={20} />
@@ -116,6 +154,8 @@ export default memo(function Landing() {
           </div>
         </div>
       </footer>
+
+      <CookieBanner />
     </div>
   );
 });

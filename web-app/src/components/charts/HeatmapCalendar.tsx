@@ -69,7 +69,7 @@ export function HeatmapCalendar({ data }: HeatmapCalendarProps) {
   }, [counts]);
 
   return (
-    <div className="flex h-full flex-col gap-4">
+    <div className="flex flex-col gap-2">
       {/* Stats row */}
       <div className="flex gap-6">
         <div>
@@ -82,7 +82,7 @@ export function HeatmapCalendar({ data }: HeatmapCalendarProps) {
         </div>
       </div>
 
-      {/* Month labels — sits above the grid, aligned to week columns */}
+      {/* Month labels */}
       <div className="flex pl-9 gap-1">
         {weeks.map((_, wi) => {
           const label = monthLabels.find((m) => m.weekIndex === wi);
@@ -94,9 +94,9 @@ export function HeatmapCalendar({ data }: HeatmapCalendarProps) {
         })}
       </div>
 
-      {/* Grid — fills remaining space */}
-      <div className="flex flex-1 gap-1 min-h-0">
-        {/* Day labels column */}
+      {/* Grid — explicit height so cells fill evenly */}
+      <div className="flex gap-1" style={{ height: 148 }}>
+        {/* Day labels */}
         <div className="flex flex-col justify-around w-8 shrink-0">
           {DAY_LABELS.map((d, i) => (
             <span key={i} className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500 leading-none">
@@ -105,9 +105,9 @@ export function HeatmapCalendar({ data }: HeatmapCalendarProps) {
           ))}
         </div>
 
-        {/* Week columns — each takes equal width */}
+        {/* Week columns */}
         {weeks.map((week, wi) => (
-          <div key={wi} className="flex flex-1 flex-col gap-1">
+          <div key={wi} className="flex flex-1 flex-col gap-1 h-full">
             {week.map((day, di) => {
               const c = counts.get(day.date) || 0;
               return (
@@ -116,7 +116,7 @@ export function HeatmapCalendar({ data }: HeatmapCalendarProps) {
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ delay: wi * 0.01 + di * 0.005, type: 'spring', stiffness: 500, damping: 30 }}
-                  className={`flex-1 min-h-0 rounded-md transition-all hover:ring-2 hover:ring-brand-300 hover:ring-offset-1 dark:hover:ring-brand-700 cursor-default ${getColor(c)}`}
+                  className={`flex-1 rounded-md transition-all hover:ring-2 hover:ring-brand-300 hover:ring-offset-1 dark:hover:ring-brand-700 cursor-default ${getColor(c)}`}
                   onMouseEnter={(e) => {
                     const rect = (e.target as HTMLElement).getBoundingClientRect();
                     setHovered({ date: day.date, count: c, x: rect.left + rect.width / 2, y: rect.top });
@@ -137,11 +137,11 @@ export function HeatmapCalendar({ data }: HeatmapCalendarProps) {
             <div
               key={level}
               className={`h-3 w-3 rounded-sm ${
-                level === 0       ? 'bg-neutral-100 dark:bg-neutral-800/60' :
-                level <= 0.25     ? 'bg-brand-200 dark:bg-brand-900/40' :
-                level <= 0.5      ? 'bg-brand-300 dark:bg-brand-800/50' :
-                level <= 0.75     ? 'bg-brand-400 dark:bg-brand-700/60' :
-                                    'bg-brand-500 dark:bg-brand-500/70'
+                level === 0   ? 'bg-neutral-100 dark:bg-neutral-800/60' :
+                level <= 0.25 ? 'bg-brand-200 dark:bg-brand-900/40' :
+                level <= 0.5  ? 'bg-brand-300 dark:bg-brand-800/50' :
+                level <= 0.75 ? 'bg-brand-400 dark:bg-brand-700/60' :
+                                'bg-brand-500 dark:bg-brand-500/70'
               }`}
             />
           ))}

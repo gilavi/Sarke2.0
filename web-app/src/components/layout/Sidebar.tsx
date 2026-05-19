@@ -163,14 +163,20 @@ interface SidebarProps {
 }
 
 export const Sidebar = memo(function Sidebar({ open = false, onClose }: SidebarProps) {
-  const [isPinned, setIsPinned] = useState(false);
+  const [isPinned, setIsPinned] = useState(() => localStorage.getItem('sidebar-pinned') === 'true');
   const [isHovered, setIsHovered] = useState(false);
   const { user, signOut } = useAuth();
 
   /* Visually expanded when pinned OR when hovering the collapsed rail */
   const isOpen = isPinned || isHovered;
 
-  const togglePin = useCallback(() => setIsPinned(v => !v), []);
+  const togglePin = useCallback(() => {
+    setIsPinned(v => {
+      const next = !v;
+      localStorage.setItem('sidebar-pinned', String(next));
+      return next;
+    });
+  }, []);
 
   const handleNavigate = useCallback(() => {
     onClose?.();

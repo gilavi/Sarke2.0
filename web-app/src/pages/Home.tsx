@@ -188,7 +188,7 @@ export default function Home() {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="h-[280px] flex flex-col p-5">
+          <CardContent className="p-5">
             <HeatmapCalendar data={heatmapData} color="#147A4F" />
           </CardContent>
         </Card>
