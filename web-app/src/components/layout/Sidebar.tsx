@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { memo, useState, useCallback, useRef, useEffect } from 'react';
+import { memo, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Home,
@@ -18,7 +18,8 @@ import {
   ShieldCheck,
   Clock,
   ChevronRight,
-
+  ChevronLeft,
+  PanelLeftOpen,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { cn } from '@/lib/utils';
@@ -164,51 +165,24 @@ interface SidebarProps {
 
 export const Sidebar = memo(function Sidebar({ open = false, onClose }: SidebarProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [showTooltips, setShowTooltips] = useState(false);
-  const expandTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const tooltipTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [isHovered, setIsHovered] = useState(false);
   const { user, signOut } = useAuth();
 
-  /* Hover expand logic — 150ms delay to prevent accidental triggers */
-  const handleMouseEnter = useCallback(() => {
-    if (expandTimeout.current) clearTimeout(expandTimeout.current);
-    expandTimeout.current = setTimeout(() => setIsExpanded(true), 150);
-
-    if (tooltipTimeout.current) clearTimeout(tooltipTimeout.current);
-    tooltipTimeout.current = setTimeout(() => setShowTooltips(true), 300);
-  }, []);
-
-  const handleMouseLeave = useCallback(() => {
-    if (expandTimeout.current) {
-      clearTimeout(expandTimeout.current);
-      expandTimeout.current = null;
-    }
-    if (tooltipTimeout.current) {
-      clearTimeout(tooltipTimeout.current);
-      tooltipTimeout.current = null;
-    }
-    setIsExpanded(false);
-    setShowTooltips(false);
-  }, []);
-
-  /* Cleanup timeouts on unmount */
-  useEffect(() => {
-    return () => {
-      if (expandTimeout.current) clearTimeout(expandTimeout.current);
-      if (tooltipTimeout.current) clearTimeout(tooltipTimeout.current);
-    };
-  }, []);
+  const toggleExpanded = useCallback(() => setIsExpanded(v => !v), []);
 
   const handleNavigate = useCallback(() => {
     onClose?.();
   }, [onClose]);
 
+  /* Tooltips show on hover only when the rail is collapsed */
+  const showTooltips = !isExpanded && isHovered;
+
   /* ── Rail Content ───────────────────────────────── */
 
   const rail = (
     <motion.aside
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       animate={{ width: isExpanded ? 180 : 56 }}
       transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 0.8 }}
       className={cn(
@@ -217,20 +191,17 @@ export const Sidebar = memo(function Sidebar({ open = false, onClose }: SidebarP
         'z-40',
       )}
     >
-      {/* ── Logo ── */}
+      {/* ── Logo + Toggle ── */}
       <div className={cn(
-        'flex items-center border-b border-neutral-200 dark:border-neutral-800',
-        isExpanded ? 'h-14 px-4 gap-3' : 'h-14 justify-center',
+        'flex items-center border-b border-neutral-200 dark:border-neutral-800 h-14',
+        isExpanded ? 'px-3 gap-2' : 'justify-center',
       )}>
-        <NavLink to="/home" className="flex items-center gap-2" aria-label="მთავარი">
-          {/* Logo icon — always visible */}
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-500 text-white shadow-sm dark:shadow-[0_0_12px_rgba(71,175,135,0.35)]">
-            <ShieldCheck size={16} />
-          </div>
-
-          {/* Logo text — only when expanded */}
-          <AnimatePresence initial={false}>
-            {isExpanded && (
+        {isExpanded ? (
+          <>
+            <NavLink to="/home" className="flex items-center gap-2 flex-1 min-w-0" aria-label="მთავარი">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-500 text-white shadow-sm dark:shadow-[0_0_12px_rgba(71,175,135,0.35)]">
+                <ShieldCheck size={16} />
+              </div>
               <motion.span
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -240,9 +211,28 @@ export const Sidebar = memo(function Sidebar({ open = false, onClose }: SidebarP
               >
                 Sarke
               </motion.span>
-            )}
-          </AnimatePresence>
-        </NavLink>
+            </NavLink>
+            <button
+              type="button"
+              onClick={toggleExpanded}
+              className="ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-300 transition-colors"
+              aria-label="საიდბარის დახურვა"
+            >
+              <ChevronLeft size={16} />
+            </button>
+          </>
+        ) : (
+          <Tooltip label="გახსნა" visible={isHovered}>
+            <button
+              type="button"
+              onClick={toggleExpanded}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-300 transition-colors"
+              aria-label="საიდბარის გახსნა"
+            >
+              <PanelLeftOpen size={16} />
+            </button>
+          </Tooltip>
+        )}
       </div>
 
       {/* ── Primary Nav ── */}
@@ -253,7 +243,7 @@ export const Sidebar = memo(function Sidebar({ open = false, onClose }: SidebarP
               <RailNavItem
                 item={item}
                 isExpanded={isExpanded}
-                showTooltip={showTooltips && !isExpanded}
+                showTooltip={showTooltips}
                 onNavigate={handleNavigate}
               />
             </li>
@@ -267,7 +257,7 @@ export const Sidebar = memo(function Sidebar({ open = false, onClose }: SidebarP
       {/* ── Bottom Section: Account + Sign Out ── */}
       <div className="py-2 space-y-0.5">
         {/* Account */}
-        <Tooltip label="პროფილი" visible={showTooltips && !isExpanded}>
+        <Tooltip label="პროფილი" visible={showTooltips}>
           <NavLink
             to="/account"
             onClick={handleNavigate}
@@ -310,7 +300,7 @@ export const Sidebar = memo(function Sidebar({ open = false, onClose }: SidebarP
         </Tooltip>
 
         {/* Sign Out */}
-        <Tooltip label="გასვლა" visible={showTooltips && !isExpanded}>
+        <Tooltip label="გასვლა" visible={showTooltips}>
           <button
             type="button"
             onClick={() => void signOut()}
