@@ -4,6 +4,13 @@
 
 ---
 
+## 2026-05-20 — Landing page full redesign (web-app)
+
+### Visible change — pre-login marketing page
+- **`web-app/src/pages/Landing.tsx`** — complete rewrite. Replaced the minimal hero + 4-card layout with a full marketing site: sticky navbar with smooth-scroll anchors; full-viewport hero with animated SVG phone mockup (Framer Motion float); pain-point section (dark bg, 3 cards); "How It Works" 3-step section; 6-card features grid; pricing (Free / PRO ₾19 cards); FAQ accordion (6 questions); dark-green final CTA with App Store + Play Store badges; sticky mobile bar (visible after scrolling 75% of viewport); exit-intent email capture popup (desktop only). All copy is Georgian. Zero new TypeScript errors.
+
+---
+
 ## 2026-05-20 — Fix: lifting-accessories PDF result pills (mobile · visible change)
 
 ### Bug fix — changes rendered PDF
