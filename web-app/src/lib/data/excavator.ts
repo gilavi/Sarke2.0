@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { makeRepository, mapDefined } from '@/lib/db/repository';
 
 export {
   EXCAVATOR_TEMPLATE_ID,
@@ -114,33 +114,7 @@ function toModel(r: DbRow): ExcavatorInspection {
   };
 }
 
-export async function listExcavatorInspections(
-  projectId?: string,
-): Promise<ExcavatorInspection[]> {
-  let q = supabase
-    .from('excavator_inspections')
-    .select(COLS)
-    .order('created_at', { ascending: false })
-    .limit(50);
-  if (projectId) q = q.eq('project_id', projectId);
-  const { data, error } = await q;
-  if (error) throw new Error(error.message);
-  return ((data ?? []) as DbRow[]).map(toModel);
-}
-
-export async function getExcavatorInspection(
-  id: string,
-): Promise<ExcavatorInspection | null> {
-  const { data, error } = await supabase
-    .from('excavator_inspections')
-    .select(COLS)
-    .eq('id', id)
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  return data ? toModel(data as DbRow) : null;
-}
-
-export async function createExcavatorInspection(args: {
+export interface CreateExcavatorArgs {
   projectId: string;
   serialNumber?: string | null;
   inventoryNumber?: string | null;
@@ -148,89 +122,90 @@ export async function createExcavatorInspection(args: {
   department?: string | null;
   inspectorName?: string | null;
   inspectionDate?: string | null;
-}): Promise<ExcavatorInspection> {
-  const { data: userData, error: userErr } = await supabase.auth.getUser();
-  if (userErr || !userData.user) throw userErr ?? new Error('არაავტორიზებული');
-  const { data, error } = await supabase
-    .from('excavator_inspections')
-    .insert({
-      project_id: args.projectId,
-      template_id: EXCAVATOR_TEMPLATE_ID,
-      user_id: userData.user.id,
-      status: 'draft',
-      machine_specs: EXCAVATOR_MACHINE_SPECS,
-      serial_number: args.serialNumber ?? null,
-      inventory_number: args.inventoryNumber ?? null,
-      project_name: args.projectName ?? null,
-      department: args.department ?? null,
-      inspector_name: args.inspectorName ?? null,
-      ...(args.inspectionDate ? { inspection_date: args.inspectionDate } : {}),
-      engine_items: emptyChecklist(ENGINE_ITEMS),
-      undercarriage_items: emptyChecklist(UNDERCARRIAGE_ITEMS),
-      cabin_items: emptyChecklist(CABIN_ITEMS),
-      safety_items: emptyChecklist(SAFETY_ITEMS),
-      maintenance_items: emptyMaintenance(),
-    })
-    .select(COLS)
-    .single();
-  if (error) throw new Error(error.message);
-  return toModel(data as DbRow);
 }
 
-export async function updateExcavatorInspection(
-  id: string,
-  patch: Partial<{
-    serialNumber: string | null;
-    inventoryNumber: string | null;
-    projectName: string | null;
-    department: string | null;
-    motoHours: number | null;
-    inspectionDate: string | null;
-    inspectorName: string | null;
-    lastInspectionDate: string | null;
-    engineItems: ExcavatorChecklistItemState[];
-    undercarriageItems: ExcavatorChecklistItemState[];
-    cabinItems: ExcavatorChecklistItemState[];
-    safetyItems: ExcavatorChecklistItemState[];
-    maintenanceItems: ExcavatorMaintenanceItemState[];
-    verdict: ExcavatorVerdict | null;
-    notes: string | null;
-    inspectorPosition: string | null;
-    inspectorSignature: string | null;
-    signatories: SignatoryEntry[];
-    summaryPhotos: string[];
-    status: 'draft' | 'completed';
-  }>,
-): Promise<void> {
-  const u: Record<string, unknown> = {};
-  if (patch.serialNumber !== undefined) u.serial_number = patch.serialNumber;
-  if (patch.inventoryNumber !== undefined) u.inventory_number = patch.inventoryNumber;
-  if (patch.projectName !== undefined) u.project_name = patch.projectName;
-  if (patch.department !== undefined) u.department = patch.department;
-  if (patch.motoHours !== undefined) u.moto_hours = patch.motoHours;
-  if (patch.inspectionDate !== undefined) u.inspection_date = patch.inspectionDate;
-  if (patch.inspectorName !== undefined) u.inspector_name = patch.inspectorName;
-  if (patch.lastInspectionDate !== undefined) u.last_inspection_date = patch.lastInspectionDate;
-  if (patch.engineItems !== undefined) u.engine_items = patch.engineItems;
-  if (patch.undercarriageItems !== undefined) u.undercarriage_items = patch.undercarriageItems;
-  if (patch.cabinItems !== undefined) u.cabin_items = patch.cabinItems;
-  if (patch.safetyItems !== undefined) u.safety_items = patch.safetyItems;
-  if (patch.maintenanceItems !== undefined) u.maintenance_items = patch.maintenanceItems;
-  if (patch.verdict !== undefined) u.verdict = patch.verdict;
-  if (patch.notes !== undefined) u.notes = patch.notes;
-  if (patch.inspectorPosition !== undefined) u.inspector_position = patch.inspectorPosition;
-  if (patch.inspectorSignature !== undefined) u.inspector_signature = patch.inspectorSignature;
-  if (patch.signatories !== undefined) u.signatories = patch.signatories;
-  if (patch.summaryPhotos !== undefined) u.summary_photos = patch.summaryPhotos;
-  if (patch.status !== undefined) {
-    u.status = patch.status;
-    if (patch.status === 'completed') u.completed_at = new Date().toISOString();
-  }
-  const { error } = await supabase.from('excavator_inspections').update(u).eq('id', id);
-  if (error) throw new Error(error.message);
-}
+export type ExcavatorPatch = Partial<{
+  serialNumber: string | null;
+  inventoryNumber: string | null;
+  projectName: string | null;
+  department: string | null;
+  motoHours: number | null;
+  inspectionDate: string | null;
+  inspectorName: string | null;
+  lastInspectionDate: string | null;
+  engineItems: ExcavatorChecklistItemState[];
+  undercarriageItems: ExcavatorChecklistItemState[];
+  cabinItems: ExcavatorChecklistItemState[];
+  safetyItems: ExcavatorChecklistItemState[];
+  maintenanceItems: ExcavatorMaintenanceItemState[];
+  verdict: ExcavatorVerdict | null;
+  notes: string | null;
+  inspectorPosition: string | null;
+  inspectorSignature: string | null;
+  signatories: SignatoryEntry[];
+  summaryPhotos: string[];
+  status: 'draft' | 'completed';
+}>;
 
-export async function deleteExcavatorInspection(id: string): Promise<void> {
-  const { error } = await supabase.from('excavator_inspections').delete().eq('id', id);
-  if (error) throw new Error(error.message);
-}
+const repo = makeRepository<ExcavatorInspection, DbRow, CreateExcavatorArgs, ExcavatorPatch>({
+  table: 'excavator_inspections',
+  columns: COLS,
+  toModel,
+  toInsert: (args, userId) => ({
+    project_id: args.projectId,
+    template_id: EXCAVATOR_TEMPLATE_ID,
+    user_id: userId,
+    status: 'draft',
+    machine_specs: EXCAVATOR_MACHINE_SPECS,
+    serial_number: args.serialNumber ?? null,
+    inventory_number: args.inventoryNumber ?? null,
+    project_name: args.projectName ?? null,
+    department: args.department ?? null,
+    inspector_name: args.inspectorName ?? null,
+    ...(args.inspectionDate ? { inspection_date: args.inspectionDate } : {}),
+    engine_items: emptyChecklist(ENGINE_ITEMS),
+    undercarriage_items: emptyChecklist(UNDERCARRIAGE_ITEMS),
+    cabin_items: emptyChecklist(CABIN_ITEMS),
+    safety_items: emptyChecklist(SAFETY_ITEMS),
+    maintenance_items: emptyMaintenance(),
+  }),
+  toUpdate: (patch) => {
+    const row = mapDefined(patch, {
+      serialNumber: 'serial_number',
+      inventoryNumber: 'inventory_number',
+      projectName: 'project_name',
+      department: 'department',
+      motoHours: 'moto_hours',
+      inspectionDate: 'inspection_date',
+      inspectorName: 'inspector_name',
+      lastInspectionDate: 'last_inspection_date',
+      engineItems: 'engine_items',
+      undercarriageItems: 'undercarriage_items',
+      cabinItems: 'cabin_items',
+      safetyItems: 'safety_items',
+      maintenanceItems: 'maintenance_items',
+      verdict: 'verdict',
+      notes: 'notes',
+      inspectorPosition: 'inspector_position',
+      inspectorSignature: 'inspector_signature',
+      signatories: 'signatories',
+      summaryPhotos: 'summary_photos',
+    });
+    if (patch.status !== undefined) {
+      row.status = patch.status;
+      if (patch.status === 'completed') row.completed_at = new Date().toISOString();
+    }
+    return row;
+  },
+});
+
+export const listExcavatorInspections = (projectId?: string): Promise<ExcavatorInspection[]> =>
+  repo.list(projectId);
+export const getExcavatorInspection = (id: string): Promise<ExcavatorInspection | null> =>
+  repo.get(id);
+export const createExcavatorInspection = (
+  args: CreateExcavatorArgs,
+): Promise<ExcavatorInspection> => repo.create(args);
+export const updateExcavatorInspection = (id: string, patch: ExcavatorPatch): Promise<void> =>
+  repo.update(id, patch);
+export const deleteExcavatorInspection = (id: string): Promise<void> => repo.remove(id);

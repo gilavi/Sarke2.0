@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { makeRepository, mapDefined } from '@/lib/db/repository';
 import type { SignatoryEntry } from '@/lib/data/inspections';
 
 export const CARGO_PLATFORM_TEMPLATE_ID = '77777777-7777-7777-7777-777777777777';
@@ -185,113 +185,90 @@ function toModel(r: DbRow): CargoPlatformInspection {
   };
 }
 
-export async function listCargoPlatformInspections(
-  projectId?: string,
-): Promise<CargoPlatformInspection[]> {
-  let q = supabase
-    .from('cargo_platform_inspections')
-    .select(COLS)
-    .order('created_at', { ascending: false });
-  if (projectId) q = q.eq('project_id', projectId);
-  const { data, error } = await q;
-  if (error) throw new Error(error.message);
-  return ((data ?? []) as DbRow[]).map(toModel);
-}
-
-export async function getCargoPlatformInspection(
-  id: string,
-): Promise<CargoPlatformInspection | null> {
-  const { data, error } = await supabase
-    .from('cargo_platform_inspections')
-    .select(COLS)
-    .eq('id', id)
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  return data ? toModel(data as DbRow) : null;
-}
-
-export async function createCargoPlatformInspection(args: {
+export interface CreateCargoPlatformArgs {
   projectId: string;
-}): Promise<CargoPlatformInspection> {
-  const { data: userData, error: userErr } = await supabase.auth.getUser();
-  if (userErr || !userData.user) throw userErr ?? new Error('არაავტორიზებული');
-  const { data, error } = await supabase
-    .from('cargo_platform_inspections')
-    .insert({
-      project_id: args.projectId,
-      template_id: CARGO_PLATFORM_TEMPLATE_ID,
-      user_id: userData.user.id,
-      status: 'draft',
-      cargo: [],
-      items: defaultItems(),
-      signatures: [emptySignatory(), emptySignatory()],
-    })
-    .select(COLS)
-    .single();
-  if (error) throw new Error(error.message);
-  return toModel(data as DbRow);
 }
 
-export async function updateCargoPlatformInspection(
+export type CargoPlatformPatch = Partial<{
+  company: string | null;
+  address: string | null;
+  inspectorName: string | null;
+  floorZone: string | null;
+  inspectionDate: string | null;
+  platformTypeModel: string | null;
+  platformLength: number | null;
+  platformWidth: number | null;
+  platformColorDesc: string | null;
+  sideGuardrail: 'none' | 'complete' | null;
+  frontGuardrail: 'none' | 'complete' | null;
+  guardrailHeight: 'non_standard' | 'standard' | null;
+  cargo: CPCargoRow[];
+  items: CPItemState[];
+  verdict: CPVerdict | null;
+  verdictComment: string | null;
+  summaryPhotos: string[];
+  signatures: [CPSignatory, CPSignatory];
+  signatories: SignatoryEntry[];
+  status: 'draft' | 'completed';
+}>;
+
+const repo = makeRepository<CargoPlatformInspection, DbRow, CreateCargoPlatformArgs, CargoPlatformPatch>({
+  table: 'cargo_platform_inspections',
+  columns: COLS,
+  // Preserve the original behaviour: cargo-platform list is intentionally
+  // unlimited (the other equipment lists cap at 50).
+  listLimit: null,
+  toModel,
+  toInsert: (args, userId) => ({
+    project_id: args.projectId,
+    template_id: CARGO_PLATFORM_TEMPLATE_ID,
+    user_id: userId,
+    status: 'draft',
+    cargo: [],
+    items: defaultItems(),
+    signatures: [emptySignatory(), emptySignatory()],
+  }),
+  toUpdate: (patch) => {
+    const row = mapDefined(patch, {
+      company: 'company',
+      address: 'address',
+      inspectorName: 'inspector_name',
+      floorZone: 'floor_zone',
+      inspectionDate: 'inspection_date',
+      platformTypeModel: 'platform_type_model',
+      platformLength: 'platform_length_m',
+      platformWidth: 'platform_width_m',
+      platformColorDesc: 'platform_color_desc',
+      sideGuardrail: 'side_guardrail',
+      frontGuardrail: 'front_guardrail',
+      guardrailHeight: 'guardrail_height',
+      cargo: 'cargo',
+      items: 'items',
+      verdict: 'verdict',
+      verdictComment: 'verdict_comment',
+      summaryPhotos: 'summary_photos',
+      signatures: 'signatures',
+      signatories: 'signatories',
+    });
+    if (patch.status !== undefined) {
+      row.status = patch.status;
+      if (patch.status === 'completed') row.completed_at = new Date().toISOString();
+    }
+    return row;
+  },
+});
+
+export const listCargoPlatformInspections = (
+  projectId?: string,
+): Promise<CargoPlatformInspection[]> => repo.list(projectId);
+export const getCargoPlatformInspection = (
   id: string,
-  patch: Partial<{
-    company: string | null;
-    address: string | null;
-    inspectorName: string | null;
-    floorZone: string | null;
-    inspectionDate: string | null;
-    platformTypeModel: string | null;
-    platformLength: number | null;
-    platformWidth: number | null;
-    platformColorDesc: string | null;
-    sideGuardrail: 'none' | 'complete' | null;
-    frontGuardrail: 'none' | 'complete' | null;
-    guardrailHeight: 'non_standard' | 'standard' | null;
-    cargo: CPCargoRow[];
-    items: CPItemState[];
-    verdict: CPVerdict | null;
-    verdictComment: string | null;
-    summaryPhotos: string[];
-    signatures: [CPSignatory, CPSignatory];
-    signatories: SignatoryEntry[];
-    status: 'draft' | 'completed';
-  }>,
-): Promise<void> {
-  const updates: Record<string, unknown> = {};
-  if (patch.company !== undefined) updates.company = patch.company;
-  if (patch.address !== undefined) updates.address = patch.address;
-  if (patch.inspectorName !== undefined) updates.inspector_name = patch.inspectorName;
-  if (patch.floorZone !== undefined) updates.floor_zone = patch.floorZone;
-  if (patch.inspectionDate !== undefined) updates.inspection_date = patch.inspectionDate;
-  if (patch.platformTypeModel !== undefined) updates.platform_type_model = patch.platformTypeModel;
-  if (patch.platformLength !== undefined) updates.platform_length_m = patch.platformLength;
-  if (patch.platformWidth !== undefined) updates.platform_width_m = patch.platformWidth;
-  if (patch.platformColorDesc !== undefined) updates.platform_color_desc = patch.platformColorDesc;
-  if (patch.sideGuardrail !== undefined) updates.side_guardrail = patch.sideGuardrail;
-  if (patch.frontGuardrail !== undefined) updates.front_guardrail = patch.frontGuardrail;
-  if (patch.guardrailHeight !== undefined) updates.guardrail_height = patch.guardrailHeight;
-  if (patch.cargo !== undefined) updates.cargo = patch.cargo;
-  if (patch.items !== undefined) updates.items = patch.items;
-  if (patch.verdict !== undefined) updates.verdict = patch.verdict;
-  if (patch.verdictComment !== undefined) updates.verdict_comment = patch.verdictComment;
-  if (patch.summaryPhotos !== undefined) updates.summary_photos = patch.summaryPhotos;
-  if (patch.signatures !== undefined) updates.signatures = patch.signatures;
-  if (patch.signatories !== undefined) updates.signatories = patch.signatories;
-  if (patch.status !== undefined) {
-    updates.status = patch.status;
-    if (patch.status === 'completed') updates.completed_at = new Date().toISOString();
-  }
-  const { error } = await supabase
-    .from('cargo_platform_inspections')
-    .update(updates)
-    .eq('id', id);
-  if (error) throw new Error(error.message);
-}
-
-export async function deleteCargoPlatformInspection(id: string): Promise<void> {
-  const { error } = await supabase
-    .from('cargo_platform_inspections')
-    .delete()
-    .eq('id', id);
-  if (error) throw new Error(error.message);
-}
+): Promise<CargoPlatformInspection | null> => repo.get(id);
+export const createCargoPlatformInspection = (
+  args: CreateCargoPlatformArgs,
+): Promise<CargoPlatformInspection> => repo.create(args);
+export const updateCargoPlatformInspection = (
+  id: string,
+  patch: CargoPlatformPatch,
+): Promise<void> => repo.update(id, patch);
+export const deleteCargoPlatformInspection = (id: string): Promise<void> => repo.remove(id);

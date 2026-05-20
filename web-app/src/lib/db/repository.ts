@@ -43,8 +43,8 @@ export interface RepositoryConfig<TModel, TRow, TCreate, TPatch> {
   orderColumn?: string;
   /** Order direction for `list`. Default false (descending / newest first). */
   orderAscending?: boolean;
-  /** Max rows returned by `list`. Default 50. */
-  listLimit?: number;
+  /** Max rows returned by `list`. Default 50; pass `null` for no limit. */
+  listLimit?: number | null;
 }
 
 export function makeRepository<TModel, TRow, TCreate, TPatch>(
@@ -53,15 +53,15 @@ export function makeRepository<TModel, TRow, TCreate, TPatch>(
   const projectColumn = cfg.projectColumn ?? 'project_id';
   const orderColumn = cfg.orderColumn ?? 'created_at';
   const orderAscending = cfg.orderAscending ?? false;
-  const listLimit = cfg.listLimit ?? 50;
+  const listLimit = cfg.listLimit === undefined ? 50 : cfg.listLimit;
 
   return {
     async list(projectId) {
       let q = supabase
         .from(cfg.table)
         .select(cfg.columns)
-        .order(orderColumn, { ascending: orderAscending })
-        .limit(listLimit);
+        .order(orderColumn, { ascending: orderAscending });
+      if (listLimit != null) q = q.limit(listLimit);
       if (projectId) q = q.eq(projectColumn, projectId);
       const { data, error } = await q;
       if (error) throw new Error(error.message);

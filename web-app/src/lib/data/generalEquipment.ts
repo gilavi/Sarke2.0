@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { makeRepository, mapDefined } from '@/lib/db/repository';
 import type { SignatoryEntry } from '@/lib/data/inspections';
 
 export const GENERAL_EQUIPMENT_TEMPLATE_ID = '66666666-6666-6666-6666-666666666666';
@@ -103,33 +103,7 @@ function toModel(r: DbRow): GeneralEquipmentInspection {
   };
 }
 
-export async function listGeneralEquipmentInspections(
-  projectId?: string,
-): Promise<GeneralEquipmentInspection[]> {
-  let q = supabase
-    .from('general_equipment_inspections')
-    .select(COLS)
-    .order('created_at', { ascending: false })
-    .limit(50);
-  if (projectId) q = q.eq('project_id', projectId);
-  const { data, error } = await q;
-  if (error) throw new Error(error.message);
-  return ((data ?? []) as DbRow[]).map(toModel);
-}
-
-export async function getGeneralEquipmentInspection(
-  id: string,
-): Promise<GeneralEquipmentInspection | null> {
-  const { data, error } = await supabase
-    .from('general_equipment_inspections')
-    .select(COLS)
-    .eq('id', id)
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  return data ? toModel(data as DbRow) : null;
-}
-
-export async function createGeneralEquipmentInspection(args: {
+export interface CreateGeneralEquipmentArgs {
   projectId: string;
   objectName?: string | null;
   activityType?: string | null;
@@ -138,88 +112,92 @@ export async function createGeneralEquipmentInspection(args: {
   inspectorName?: string | null;
   actNumber?: string | null;
   inspectionDate?: string | null;
-}): Promise<GeneralEquipmentInspection> {
-  const { data: userData, error: userErr } = await supabase.auth.getUser();
-  if (userErr || !userData.user) throw userErr ?? new Error('არაავტორიზებული');
-  const { data, error } = await supabase
-    .from('general_equipment_inspections')
-    .insert({
-      project_id: args.projectId,
-      template_id: GENERAL_EQUIPMENT_TEMPLATE_ID,
-      user_id: userData.user.id,
-      status: 'draft',
-      object_name: args.objectName ?? null,
-      activity_type: args.activityType ?? null,
-      inspection_type: args.inspectionType ?? null,
-      department: args.department ?? null,
-      inspector_name: args.inspectorName ?? null,
-      act_number: args.actNumber ?? null,
-      ...(args.inspectionDate ? { inspection_date: args.inspectionDate } : {}),
-      equipment: [],
-    })
-    .select(COLS)
-    .single();
-  if (error) throw new Error(error.message);
-  return toModel(data as DbRow);
 }
 
-export async function updateGeneralEquipmentInspection(
+export type GeneralEquipmentPatch = Partial<{
+  objectName: string | null;
+  address: string | null;
+  activityType: string | null;
+  actNumber: string | null;
+  inspectionType: GEInspectionType | null;
+  inspectionDate: string | null;
+  department: string | null;
+  inspectorName: string | null;
+  equipment: GEEquipmentRow[];
+  conclusion: string | null;
+  signerName: string | null;
+  signerRole: GESignerRole | null;
+  signerRoleCustom: string | null;
+  inspectorSignature: string | null;
+  signatories: SignatoryEntry[];
+  summaryPhotos: string[];
+  status: 'draft' | 'completed';
+}>;
+
+const repo = makeRepository<
+  GeneralEquipmentInspection,
+  DbRow,
+  CreateGeneralEquipmentArgs,
+  GeneralEquipmentPatch
+>({
+  table: 'general_equipment_inspections',
+  columns: COLS,
+  toModel,
+  toInsert: (args, userId) => ({
+    project_id: args.projectId,
+    template_id: GENERAL_EQUIPMENT_TEMPLATE_ID,
+    user_id: userId,
+    status: 'draft',
+    object_name: args.objectName ?? null,
+    activity_type: args.activityType ?? null,
+    inspection_type: args.inspectionType ?? null,
+    department: args.department ?? null,
+    inspector_name: args.inspectorName ?? null,
+    act_number: args.actNumber ?? null,
+    ...(args.inspectionDate ? { inspection_date: args.inspectionDate } : {}),
+    equipment: [],
+  }),
+  toUpdate: (patch) => {
+    const row = mapDefined(patch, {
+      objectName: 'object_name',
+      address: 'address',
+      activityType: 'activity_type',
+      actNumber: 'act_number',
+      inspectionType: 'inspection_type',
+      inspectionDate: 'inspection_date',
+      department: 'department',
+      inspectorName: 'inspector_name',
+      equipment: 'equipment',
+      conclusion: 'conclusion',
+      signerName: 'signer_name',
+      signerRole: 'signer_role',
+      signerRoleCustom: 'signer_role_custom',
+      inspectorSignature: 'inspector_signature',
+      signatories: 'signatories',
+      summaryPhotos: 'summary_photos',
+    });
+    if (patch.status !== undefined) {
+      row.status = patch.status;
+      if (patch.status === 'completed') row.completed_at = new Date().toISOString();
+    }
+    return row;
+  },
+});
+
+export const listGeneralEquipmentInspections = (
+  projectId?: string,
+): Promise<GeneralEquipmentInspection[]> => repo.list(projectId);
+export const getGeneralEquipmentInspection = (
   id: string,
-  patch: Partial<{
-    objectName: string | null;
-    address: string | null;
-    activityType: string | null;
-    actNumber: string | null;
-    inspectionType: GEInspectionType | null;
-    inspectionDate: string | null;
-    department: string | null;
-    inspectorName: string | null;
-    equipment: GEEquipmentRow[];
-    conclusion: string | null;
-    signerName: string | null;
-    signerRole: GESignerRole | null;
-    signerRoleCustom: string | null;
-    inspectorSignature: string | null;
-    signatories: SignatoryEntry[];
-    summaryPhotos: string[];
-    status: 'draft' | 'completed';
-  }>,
-): Promise<void> {
-  const updates: Record<string, unknown> = {};
-  if (patch.objectName !== undefined) updates.object_name = patch.objectName;
-  if (patch.address !== undefined) updates.address = patch.address;
-  if (patch.activityType !== undefined) updates.activity_type = patch.activityType;
-  if (patch.actNumber !== undefined) updates.act_number = patch.actNumber;
-  if (patch.inspectionType !== undefined) updates.inspection_type = patch.inspectionType;
-  if (patch.inspectionDate !== undefined) updates.inspection_date = patch.inspectionDate;
-  if (patch.department !== undefined) updates.department = patch.department;
-  if (patch.inspectorName !== undefined) updates.inspector_name = patch.inspectorName;
-  if (patch.equipment !== undefined) updates.equipment = patch.equipment;
-  if (patch.conclusion !== undefined) updates.conclusion = patch.conclusion;
-  if (patch.signerName !== undefined) updates.signer_name = patch.signerName;
-  if (patch.signerRole !== undefined) updates.signer_role = patch.signerRole;
-  if (patch.signerRoleCustom !== undefined) updates.signer_role_custom = patch.signerRoleCustom;
-  if (patch.inspectorSignature !== undefined) updates.inspector_signature = patch.inspectorSignature;
-  if (patch.signatories !== undefined) updates.signatories = patch.signatories;
-  if (patch.summaryPhotos !== undefined) updates.summary_photos = patch.summaryPhotos;
-  if (patch.status !== undefined) {
-    updates.status = patch.status;
-    if (patch.status === 'completed') updates.completed_at = new Date().toISOString();
-  }
-  const { error } = await supabase
-    .from('general_equipment_inspections')
-    .update(updates)
-    .eq('id', id);
-  if (error) throw new Error(error.message);
-}
-
-export async function deleteGeneralEquipmentInspection(id: string): Promise<void> {
-  const { error } = await supabase
-    .from('general_equipment_inspections')
-    .delete()
-    .eq('id', id);
-  if (error) throw new Error(error.message);
-}
+): Promise<GeneralEquipmentInspection | null> => repo.get(id);
+export const createGeneralEquipmentInspection = (
+  args: CreateGeneralEquipmentArgs,
+): Promise<GeneralEquipmentInspection> => repo.create(args);
+export const updateGeneralEquipmentInspection = (
+  id: string,
+  patch: GeneralEquipmentPatch,
+): Promise<void> => repo.update(id, patch);
+export const deleteGeneralEquipmentInspection = (id: string): Promise<void> => repo.remove(id);
 
 export function newEquipmentRow(): GEEquipmentRow {
   return {

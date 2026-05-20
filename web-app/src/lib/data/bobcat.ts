@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { makeRepository, mapDefined } from '@/lib/db/repository';
 
 // Re-export the canonical mobile checklist so web stays in sync.
 export {
@@ -78,28 +78,6 @@ function toModel(r: DbRow): BobcatInspection {
   };
 }
 
-export async function listBobcatInspections(projectId?: string): Promise<BobcatInspection[]> {
-  let q = supabase
-    .from('bobcat_inspections')
-    .select(COLS)
-    .order('created_at', { ascending: false })
-    .limit(50);
-  if (projectId) q = q.eq('project_id', projectId);
-  const { data, error } = await q;
-  if (error) throw new Error(error.message);
-  return ((data ?? []) as DbRow[]).map(toModel);
-}
-
-export async function getBobcatInspection(id: string): Promise<BobcatInspection | null> {
-  const { data, error } = await supabase
-    .from('bobcat_inspections')
-    .select(COLS)
-    .eq('id', id)
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  return data ? toModel(data as DbRow) : null;
-}
-
 function emptyItems(): BobcatItemState[] {
   return BOBCAT_ITEMS.map((it) => ({
     id: it.id,
@@ -109,7 +87,7 @@ function emptyItems(): BobcatItemState[] {
   }));
 }
 
-export async function createBobcatInspection(args: {
+export interface CreateBobcatArgs {
   projectId: string;
   templateId: string;
   company?: string | null;
@@ -119,75 +97,72 @@ export async function createBobcatInspection(args: {
   department?: string | null;
   inspectorName?: string | null;
   inspectionDate?: string | null;
-}): Promise<BobcatInspection> {
-  const { data: userData, error: userErr } = await supabase.auth.getUser();
-  if (userErr || !userData.user) throw userErr ?? new Error('არაავტორიზებული');
-
-  const { data, error } = await supabase
-    .from('bobcat_inspections')
-    .insert({
-      project_id: args.projectId,
-      template_id: args.templateId,
-      user_id: userData.user.id,
-      status: 'draft',
-      company: args.company ?? null,
-      equipment_model: args.equipmentModel ?? null,
-      registration_number: args.registrationNumber ?? null,
-      inspection_type: args.inspectionType ?? null,
-      department: args.department ?? null,
-      inspector_name: args.inspectorName ?? null,
-      ...(args.inspectionDate ? { inspection_date: args.inspectionDate } : {}),
-      items: emptyItems(),
-    })
-    .select(COLS)
-    .single();
-  if (error) throw new Error(error.message);
-  return toModel(data as DbRow);
 }
 
-export async function updateBobcatInspection(
-  id: string,
-  patch: Partial<{
-    company: string | null;
-    address: string | null;
-    equipmentModel: string | null;
-    registrationNumber: string | null;
-    inspectionType: BobcatInspectionType | null;
-    department: string | null;
-    inspectorName: string | null;
-    items: BobcatItemState[];
-    verdict: BobcatVerdict | null;
-    notes: string | null;
-    inspectorSignature: string | null;
-    signatories: SignatoryEntry[];
-    summaryPhotos: string[];
-    status: 'draft' | 'completed';
-  }>,
-): Promise<void> {
-  const updates: Record<string, unknown> = {};
-  if (patch.company !== undefined) updates.company = patch.company;
-  if (patch.address !== undefined) updates.address = patch.address;
-  if (patch.equipmentModel !== undefined) updates.equipment_model = patch.equipmentModel;
-  if (patch.registrationNumber !== undefined)
-    updates.registration_number = patch.registrationNumber;
-  if (patch.inspectionType !== undefined) updates.inspection_type = patch.inspectionType;
-  if (patch.department !== undefined) updates.department = patch.department;
-  if (patch.inspectorName !== undefined) updates.inspector_name = patch.inspectorName;
-  if (patch.items !== undefined) updates.items = patch.items;
-  if (patch.verdict !== undefined) updates.verdict = patch.verdict;
-  if (patch.notes !== undefined) updates.notes = patch.notes;
-  if (patch.inspectorSignature !== undefined) updates.inspector_signature = patch.inspectorSignature;
-  if (patch.signatories !== undefined) updates.signatories = patch.signatories;
-  if (patch.summaryPhotos !== undefined) updates.summary_photos = patch.summaryPhotos;
-  if (patch.status !== undefined) {
-    updates.status = patch.status;
-    if (patch.status === 'completed') updates.completed_at = new Date().toISOString();
-  }
-  const { error } = await supabase.from('bobcat_inspections').update(updates).eq('id', id);
-  if (error) throw new Error(error.message);
-}
+export type BobcatPatch = Partial<{
+  company: string | null;
+  address: string | null;
+  equipmentModel: string | null;
+  registrationNumber: string | null;
+  inspectionType: BobcatInspectionType | null;
+  department: string | null;
+  inspectorName: string | null;
+  items: BobcatItemState[];
+  verdict: BobcatVerdict | null;
+  notes: string | null;
+  inspectorSignature: string | null;
+  signatories: SignatoryEntry[];
+  summaryPhotos: string[];
+  status: 'draft' | 'completed';
+}>;
 
-export async function deleteBobcatInspection(id: string): Promise<void> {
-  const { error } = await supabase.from('bobcat_inspections').delete().eq('id', id);
-  if (error) throw new Error(error.message);
-}
+const repo = makeRepository<BobcatInspection, DbRow, CreateBobcatArgs, BobcatPatch>({
+  table: 'bobcat_inspections',
+  columns: COLS,
+  toModel,
+  toInsert: (args, userId) => ({
+    project_id: args.projectId,
+    template_id: args.templateId,
+    user_id: userId,
+    status: 'draft',
+    company: args.company ?? null,
+    equipment_model: args.equipmentModel ?? null,
+    registration_number: args.registrationNumber ?? null,
+    inspection_type: args.inspectionType ?? null,
+    department: args.department ?? null,
+    inspector_name: args.inspectorName ?? null,
+    ...(args.inspectionDate ? { inspection_date: args.inspectionDate } : {}),
+    items: emptyItems(),
+  }),
+  toUpdate: (patch) => {
+    const row = mapDefined(patch, {
+      company: 'company',
+      address: 'address',
+      equipmentModel: 'equipment_model',
+      registrationNumber: 'registration_number',
+      inspectionType: 'inspection_type',
+      department: 'department',
+      inspectorName: 'inspector_name',
+      items: 'items',
+      verdict: 'verdict',
+      notes: 'notes',
+      inspectorSignature: 'inspector_signature',
+      signatories: 'signatories',
+      summaryPhotos: 'summary_photos',
+    });
+    if (patch.status !== undefined) {
+      row.status = patch.status;
+      if (patch.status === 'completed') row.completed_at = new Date().toISOString();
+    }
+    return row;
+  },
+});
+
+export const listBobcatInspections = (projectId?: string): Promise<BobcatInspection[]> =>
+  repo.list(projectId);
+export const getBobcatInspection = (id: string): Promise<BobcatInspection | null> => repo.get(id);
+export const createBobcatInspection = (args: CreateBobcatArgs): Promise<BobcatInspection> =>
+  repo.create(args);
+export const updateBobcatInspection = (id: string, patch: BobcatPatch): Promise<void> =>
+  repo.update(id, patch);
+export const deleteBobcatInspection = (id: string): Promise<void> => repo.remove(id);
