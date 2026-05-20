@@ -24,7 +24,8 @@ import { useToast } from '../../../lib/toast';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { liftingAccessoriesApi } from '../../../lib/liftingAccessoriesService';
 import { projectsApi } from '../../../lib/services';
-import { buildLiftingAccessoriesPdfHtml } from '../../../lib/liftingAccessoriesPdf';
+import { renderInspectionPdf } from '../../../lib/inspection/renderMobile';
+import { liftingAccessoriesSchema } from '../../../lib/inspection/schemas/liftingAccessories';
 import { generateAndSharePdf, PdfLimitReachedError } from '../../../lib/pdfOpen';
 import { PaywallModal } from '../../../components/PaywallModal';
 import { PdfLockedBanner } from '../../../components/PdfLockedBanner';
@@ -405,7 +406,7 @@ export default function LiftingAccessoriesInspectionScreen() {
     if (pdfUsage?.isLocked) { setPaywallVisible(true); return; }
     setGeneratingPdf(true);
     try {
-      const html = await buildLiftingAccessoriesPdfHtml({ inspection: insp, projectName: projectName || 'პროექტი' });
+      const html = await renderInspectionPdf(liftingAccessoriesSchema, { inspection: insp, projectName: projectName || 'პროექტი' });
       const pdfName = generatePdfName(
         projectName || 'project',
         'LiftingAccessoriesInspection',
@@ -435,7 +436,7 @@ export default function LiftingAccessoriesInspectionScreen() {
     if (!insp) return;
     setPreviewBusy(true);
     try {
-      const html = await buildLiftingAccessoriesPdfHtml({ inspection: insp, projectName: projectName || 'პროექტი' });
+      const html = await renderInspectionPdf(liftingAccessoriesSchema, { inspection: insp, projectName: projectName || 'პროექტი' });
       setPreviewHtml(html);
     } catch (e) {
       toast.error(friendlyError(e, 'PDF ვერ შეიქმნა'));

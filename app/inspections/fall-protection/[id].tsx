@@ -26,7 +26,8 @@ import { useToast } from '../../../lib/toast';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { fallProtectionApi } from '../../../lib/fallProtectionService';
 import { projectsApi } from '../../../lib/services';
-import { buildFallProtectionPdfHtml } from '../../../lib/fallProtectionPdf';
+import { renderInspectionPdf } from '../../../lib/inspection/renderMobile';
+import { fallProtectionSchema } from '../../../lib/inspection/schemas/fallProtection';
 import { generateAndSharePdf, PdfLimitReachedError } from '../../../lib/pdfOpen';
 import { PaywallModal } from '../../../components/PaywallModal';
 import { PdfLockedBanner } from '../../../components/PdfLockedBanner';
@@ -499,7 +500,7 @@ export default function FallProtectionInspectionScreen() {
     if (pdfUsage?.isLocked) { setPaywallVisible(true); return; }
     setGeneratingPdf(true);
     try {
-      const html = await buildFallProtectionPdfHtml({
+      const html = await renderInspectionPdf(fallProtectionSchema, {
         inspection: insp,
         projectName: projectName || 'პროექტი',
       });
@@ -531,7 +532,7 @@ export default function FallProtectionInspectionScreen() {
     if (!insp) return;
     setPreviewBusy(true);
     try {
-      const html = await buildFallProtectionPdfHtml({
+      const html = await renderInspectionPdf(fallProtectionSchema, {
         inspection: insp,
         projectName: projectName || 'პროექტი',
       });

@@ -30,7 +30,7 @@ Each type has its own DB table and wizard screen. Routing is determined by `temp
 |---|---|---|
 | `app/inspections/bobcat/[id].tsx` | Bobcat wizard (30/33-item checklist) | `bobcat_inspections` |
 
-Templates: Bobcat (`33333333-…`), Large Loader (`44444444-…`). 3-result checklist (good / deficient / unusable), verdict auto-suggestion, summary photos, department field. PDF: `lib/bobcatPdf.ts`.
+Templates: Bobcat (`33333333-…`), Large Loader (`44444444-…`). 3-result checklist (good / deficient / unusable), verdict auto-suggestion, summary photos, department field. PDF: shared schema engine — `lib/inspection/schemas/bobcat.ts` via `lib/inspection/renderMobile.ts`.
 
 ### Excavator — `category: 'excavator'`
 

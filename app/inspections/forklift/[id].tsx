@@ -32,7 +32,8 @@ import {
   type VerdictOption,
 } from '../../../components/inspection';
 
-import { buildForkliftPdfHtml } from '../../../lib/forkliftPdf';
+import { renderInspectionPdf } from '../../../lib/inspection/renderMobile';
+import { forkliftSchema } from '../../../lib/inspection/schemas/forklift';
 import { generateAndSharePdf, PdfLimitReachedError } from '../../../lib/pdfOpen';
 import { PaywallModal } from '../../../components/PaywallModal';
 import { PdfLockedBanner } from '../../../components/PdfLockedBanner';
@@ -419,7 +420,7 @@ export default function ForkliftInspectionScreen() {
     if (pdfUsage?.isLocked) { setPaywallVisible(true); return; }
     setGeneratingPdf(true);
     try {
-      const html = await buildForkliftPdfHtml({
+      const html = await renderInspectionPdf(forkliftSchema, {
         inspection: insp,
         projectName: projectName || 'პროექტი',
       });
@@ -452,7 +453,7 @@ export default function ForkliftInspectionScreen() {
     if (!insp) return;
     setPreviewBusy(true);
     try {
-      const html = await buildForkliftPdfHtml({
+      const html = await renderInspectionPdf(forkliftSchema, {
         inspection: insp,
         projectName: projectName || 'პროექტი',
       });

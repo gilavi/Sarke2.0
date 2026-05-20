@@ -18,9 +18,8 @@ import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInpu
 import { Skeleton } from '../../../components/Skeleton';
 import { questionnairesApi, projectsApi } from '../../../lib/services';
 import { InspectionTypeAvatar } from '../../../components/InspectionTypeAvatar';
-import { bobcatApi } from '../../../lib/bobcatService';
-import { excavatorApi } from '../../../lib/excavatorService';
-import { generalEquipmentApi } from '../../../lib/generalEquipmentService';
+import { inspectionRegistry } from '../../../lib/inspection/registry';
+import { routeForInspection } from '../../../lib/inspectionRouting';
 import { useToast } from '../../../lib/toast';
 import { useTheme } from '../../../lib/theme';
 
@@ -56,22 +55,11 @@ export default function StartTemplateScreen() {
     if (!template || !selected) return;
     setBusy(true);
     try {
-      if (template.category === 'bobcat') {
-        const b = await bobcatApi.create({ projectId: selected, templateId: template.id });
-        router.replace(`/inspections/bobcat/${b.id}` as any);
-      } else if (template.category === 'excavator') {
-        const e = await excavatorApi.create({ projectId: selected, templateId: template.id });
-        router.replace(`/inspections/excavator/${e.id}` as any);
-      } else if (template.category === 'general_equipment') {
-        const g = await generalEquipmentApi.create({ projectId: selected, templateId: template.id });
-        router.replace(`/inspections/general-equipment/${g.id}` as any);
-      } else {
-        const q = await questionnairesApi.create({
-          projectId: selected,
-          templateId: template.id,
-        });
-        router.replace(`/inspections/${q.id}/wizard` as any);
-      }
+      const entry = template.category ? inspectionRegistry[template.category] : undefined;
+      const newId = entry
+        ? (await entry.create({ projectId: selected, templateId: template.id })).id
+        : (await questionnairesApi.create({ projectId: selected, templateId: template.id })).id;
+      router.replace(routeForInspection(template.category, newId, false) as any);
     } catch (e) {
       toast.error(friendlyError(e, 'შემოწმების აქტი ვერ შეიქმნა'));
     } finally {

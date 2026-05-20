@@ -1,9 +1,6 @@
-import { supabase, STORAGE_BUCKETS } from './supabase';
-import { storageApi } from './services';
-import { logError } from './logError';
+import { makeInspectionService } from './inspection/service';
 import type { ForkliftInspection, ForkliftItemState } from '../types/forklift';
 import { buildDefaultForkliftItems } from '../types/forklift';
-import * as Crypto from 'expo-crypto';
 
 // ── DB ↔ model mapping ────────────────────────────────────────────────────────
 
@@ -65,158 +62,69 @@ function toModel(row: DbRow): ForkliftInspection {
   };
 }
 
+// Signatures are ephemeral (memory-only) — signer* fields are intentionally NOT
+// persisted via patch, matching prior behavior.
+type ForkliftPatch = Partial<{
+  company: string | null;
+  address: string | null;
+  inventoryNumber: string | null;
+  brandModel: string | null;
+  engineType: ForkliftInspection['engineType'];
+  inspectionDate: string;
+  inspectorName: string | null;
+  items: ForkliftItemState[];
+  verdict: ForkliftInspection['verdict'];
+  notes: string | null;
+  summaryPhotos: string[];
+  qualDocPath: string | null;
+  signerName: string | null;
+  signerPosition: string | null;
+  signerPhone: string | null;
+  signerSignature: string | null;
+}>;
+
+function toDb(patch: ForkliftPatch): Record<string, unknown> {
+  const db: Record<string, unknown> = {};
+  if ('company'         in patch) db.company          = patch.company;
+  if ('address'         in patch) db.address          = patch.address;
+  if ('inventoryNumber' in patch) db.inventory_number = patch.inventoryNumber;
+  if ('brandModel'      in patch) db.brand_model      = patch.brandModel;
+  if ('engineType'      in patch) db.engine_type      = patch.engineType;
+  if ('inspectionDate'  in patch) db.inspection_date  = patch.inspectionDate;
+  if ('inspectorName'   in patch) db.inspector_name   = patch.inspectorName;
+  if ('items'           in patch) db.items            = patch.items;
+  if ('verdict'         in patch) db.verdict          = patch.verdict;
+  if ('notes'           in patch) db.notes            = patch.notes;
+  if ('summaryPhotos'   in patch) db.summary_photos   = patch.summaryPhotos;
+  if ('qualDocPath'     in patch) db.qual_doc_path    = patch.qualDocPath;
+  return db;
+}
+
 // ── API ───────────────────────────────────────────────────────────────────────
 
+const base = makeInspectionService<ForkliftInspection, ForkliftPatch>({
+  table: 'forklift_inspections',
+  pathPrefix: 'forklift',
+  toModel,
+  toDb,
+  createColumns: (args) => ({
+    inspector_name: args.inspectorName ?? null,
+    items: buildDefaultForkliftItems(),
+    summary_photos: [],
+  }),
+});
+
 export const forkliftApi = {
-  create: async (args: {
-    projectId: string;
-    templateId: string;
-    inspectorName?: string;
-  }): Promise<ForkliftInspection> => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not signed in');
-
-    const { data, error } = await supabase
-      .from('forklift_inspections')
-      .insert({
-        project_id: args.projectId,
-        template_id: args.templateId,
-        user_id: user.id,
-        inspection_date: new Date().toISOString().slice(0, 10),
-        inspector_name: args.inspectorName ?? null,
-        items: buildDefaultForkliftItems(),
-        summary_photos: [],
-      })
-      .select()
-      .single();
-    if (error) throw new Error(error.message);
-    return toModel(data as DbRow);
-  },
-
-  getById: async (id: string): Promise<ForkliftInspection | null> => {
-    const { data, error } = await supabase
-      .from('forklift_inspections')
-      .select('*')
-      .eq('id', id)
-      .maybeSingle();
-    if (error) throw new Error(error.message);
-    if (!data) return null;
-    return toModel(data as DbRow);
-  },
-
-  patch: async (
-    id: string,
-    patch: Partial<{
-      company: string | null;
-      address: string | null;
-      inventoryNumber: string | null;
-      brandModel: string | null;
-      engineType: ForkliftInspection['engineType'];
-      inspectionDate: string;
-      inspectorName: string | null;
-      items: ForkliftItemState[];
-      verdict: ForkliftInspection['verdict'];
-      notes: string | null;
-      summaryPhotos: string[];
-      qualDocPath: string | null;
-      signerName: string | null;
-      signerPosition: string | null;
-      signerPhone: string | null;
-      signerSignature: string | null;
-    }>,
-  ): Promise<void> => {
-    const db: Record<string, unknown> = {};
-    if ('company'         in patch) db.company          = patch.company;
-    if ('address'         in patch) db.address          = patch.address;
-    if ('inventoryNumber' in patch) db.inventory_number = patch.inventoryNumber;
-    if ('brandModel'      in patch) db.brand_model      = patch.brandModel;
-    if ('engineType'      in patch) db.engine_type      = patch.engineType;
-    if ('inspectionDate'  in patch) db.inspection_date  = patch.inspectionDate;
-    if ('inspectorName'   in patch) db.inspector_name   = patch.inspectorName;
-    if ('items'           in patch) db.items            = patch.items;
-    if ('verdict'         in patch) db.verdict          = patch.verdict;
-    if ('notes'           in patch) db.notes            = patch.notes;
-    if ('summaryPhotos'   in patch) db.summary_photos   = patch.summaryPhotos;
-    if ('qualDocPath'     in patch) db.qual_doc_path    = patch.qualDocPath;
-    // Signatures are ephemeral (memory-only) — never persist to DB
-
-    if (Object.keys(db).length === 0) return;
-    const { error } = await supabase
-      .from('forklift_inspections')
-      .update(db)
-      .eq('id', id);
-    if (error) throw new Error(error.message);
-  },
-
-  complete: async (id: string): Promise<void> => {
-    const { error } = await supabase
-      .from('forklift_inspections')
-      .update({ status: 'completed', completed_at: new Date().toISOString() })
-      .eq('id', id);
-    if (error) throw new Error(error.message);
-  },
-
-  listByProject: async (projectId: string): Promise<ForkliftInspection[]> => {
-    const { data, error } = await supabase
-      .from('forklift_inspections')
-      .select('*')
-      .eq('project_id', projectId)
-      .order('created_at', { ascending: false });
-    if (error) throw new Error(error.message);
-    return ((data ?? []) as DbRow[]).map(toModel);
-  },
-
-  uploadPhoto: async (
-    inspectionId: string,
-    itemId: number,
-    photoUri: string,
-  ): Promise<string> => {
-    const uuid = Crypto.randomUUID();
-    const path = `forklift/${inspectionId}/${itemId}/${uuid}.jpg`;
-    await storageApi.uploadFromUri(
-      STORAGE_BUCKETS.answerPhotos,
-      path,
-      photoUri,
-      'image/jpeg',
-      'inspection',
-    );
-    return path;
-  },
-
-  uploadSummaryPhoto: async (
-    inspectionId: string,
-    photoUri: string,
-  ): Promise<string> => {
-    const uuid = Crypto.randomUUID();
-    const path = `forklift/${inspectionId}/summary/${uuid}.jpg`;
-    await storageApi.uploadFromUri(
-      STORAGE_BUCKETS.answerPhotos,
-      path,
-      photoUri,
-      'image/jpeg',
-      'inspection',
-    );
-    return path;
-  },
-
-  uploadQualDoc: async (
-    inspectionId: string,
-    photoUri: string,
-  ): Promise<string> => {
-    const uuid = Crypto.randomUUID();
-    const path = `forklift/${inspectionId}/qual-doc/${uuid}.jpg`;
-    await storageApi.uploadFromUri(
-      STORAGE_BUCKETS.answerPhotos,
-      path,
-      photoUri,
-      'image/jpeg',
-      'inspection',
-    );
-    return path;
-  },
-
-  deletePhoto: async (path: string): Promise<void> => {
-    await storageApi.remove(STORAGE_BUCKETS.answerPhotos, path)
-      .catch((e) => logError(e, 'forklift.deletePhoto'));
-  },
+  create: base.create,
+  getById: base.getById,
+  listByProject: base.listByProject,
+  patch: base.patch,
+  complete: base.complete,
+  deletePhoto: base.deletePhoto,
+  uploadPhoto: (inspectionId: string, itemId: number, photoUri: string) =>
+    base.uploadPhotoAt(`${inspectionId}/${itemId}`, photoUri),
+  uploadSummaryPhoto: (inspectionId: string, photoUri: string) =>
+    base.uploadPhotoAt(`${inspectionId}/summary`, photoUri),
+  uploadQualDoc: (inspectionId: string, photoUri: string) =>
+    base.uploadPhotoAt(`${inspectionId}/qual-doc`, photoUri),
 };

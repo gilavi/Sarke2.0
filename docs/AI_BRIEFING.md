@@ -77,10 +77,14 @@ Sarke 2.0/
 │
 ├── components/                       # Shared UI + feature components
 ├── lib/                              # Services, PDF builders, utilities
-│   ├── bobcatService.ts / bobcatPdf.ts
-│   ├── excavatorService.ts / excavatorPdf.ts
-│   ├── generalEquipmentService.ts / generalEquipmentPdf.ts
-│   ├── cargoPlatformService.ts / cargoPlatformPdf.ts
+│   ├── inspection/                   # Shared schema-driven inspection PDF engine
+│   │   ├── pdf.ts / renderMobile.ts  # synchronous renderer + mobile photo wrapper
+│   │   ├── schema.ts / pdfStyles.ts  # InspectionSchema<T> + BASE_PDF_CSS
+│   │   └── schemas/                  # per-type descriptors (excavator, forklift, generalEquipment, cargoPlatform, …)
+│   ├── bobcatService.ts
+│   ├── excavatorService.ts
+│   ├── generalEquipmentService.ts
+│   ├── cargoPlatformService.ts
 │   ├── orderPdf.ts                   # 4 order PDF builders
 │   ├── pdfShared.ts                  # embedInspectionPhotos, escHtml, fmtDate
 │   ├── pdfSecurity.ts / pdfGate.ts

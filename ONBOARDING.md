@@ -153,7 +153,7 @@ Web flow: `web-app/src/pages/NewOrder.tsx` (wizard), `web-app/src/pages/OrderDet
 ### PDF Generation Pipeline
 
 **Mobile:**
-- Specialized inspections: `lib/bobcatPdf.ts`, `lib/excavatorPdf.ts`, `lib/generalEquipmentPdf.ts`, `lib/cargoPlatformPdf.ts`
+- Specialized inspections: shared schema engine `lib/inspection/` (per-type descriptors in `lib/inspection/schemas/`, e.g. `bobcat.ts`, `excavator.ts`, `forklift.ts`); legacy per-type builders (`lib/generalEquipmentPdf.ts`, `lib/cargoPlatformPdf.ts`) for not-yet-migrated types
 - Orders: `lib/orderPdf.ts` (4 builders, one per document type)
 - Shared utilities: `lib/pdfShared.ts` (`embedInspectionPhotos`, `escHtml`, `fmtDate`)
 - Security: `lib/pdfSecurity.ts` (sha256 hash stored in DB)

@@ -30,7 +30,8 @@ import { projectsApi, inspectionAttachmentsApi } from '../../../lib/services';
 import { imageForDisplay } from '../../../lib/imageUrl';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
 
-import { buildExcavatorPdfHtml } from '../../../lib/excavatorPdf';
+import { renderInspectionPdf } from '../../../lib/inspection/renderMobile';
+import { excavatorSchema } from '../../../lib/inspection/schemas/excavator';
 import { generateAndSharePdf, PdfLimitReachedError } from '../../../lib/pdfOpen';
 import { PaywallModal } from '../../../components/PaywallModal';
 import { PdfLockedBanner } from '../../../components/PdfLockedBanner';
@@ -414,7 +415,7 @@ export default function ExcavatorInspectionScreen() {
     if (pdfUsage?.isLocked) { setPaywallVisible(true); return; }
     setGeneratingPdf(true);
     try {
-      const html = await buildExcavatorPdfHtml({
+      const html = await renderInspectionPdf(excavatorSchema, {
         inspection,
         projectName: projectName || 'პროექტი',
       });
@@ -481,7 +482,7 @@ export default function ExcavatorInspectionScreen() {
     if (!inspection) return;
     setPreviewBusy(true);
     try {
-      const html = await buildExcavatorPdfHtml({
+      const html = await renderInspectionPdf(excavatorSchema, {
         inspection,
         projectName: projectName || 'პროექტი',
       });

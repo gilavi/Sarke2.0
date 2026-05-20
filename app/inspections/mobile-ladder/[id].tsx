@@ -22,7 +22,8 @@ import { useToast } from '../../../lib/toast';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { mobileLadderApi } from '../../../lib/mobileLadderService';
 import { projectsApi } from '../../../lib/services';
-import { buildMobileLadderPdfHtml } from '../../../lib/mobileLadderPdf';
+import { renderInspectionPdf } from '../../../lib/inspection/renderMobile';
+import { mobileLadderSchema } from '../../../lib/inspection/schemas/mobileLadder';
 import { generateAndSharePdf, PdfLimitReachedError } from '../../../lib/pdfOpen';
 import { PaywallModal } from '../../../components/PaywallModal';
 import { PdfLockedBanner } from '../../../components/PdfLockedBanner';
@@ -340,7 +341,7 @@ export default function MobileLadderInspectionScreen() {
     if (pdfUsage?.isLocked) { setPaywallVisible(true); return; }
     setGeneratingPdf(true);
     try {
-      const html = await buildMobileLadderPdfHtml({ inspection: insp, projectName: projectName || 'პროექტი' });
+      const html = await renderInspectionPdf(mobileLadderSchema, { inspection: insp, projectName: projectName || 'პროექტი' });
       const pdfName = generatePdfName(
         projectName || 'project',
         'MobileLadderInspection',
@@ -370,7 +371,7 @@ export default function MobileLadderInspectionScreen() {
     if (!insp) return;
     setPreviewBusy(true);
     try {
-      const html = await buildMobileLadderPdfHtml({ inspection: insp, projectName: projectName || 'პროექტი' });
+      const html = await renderInspectionPdf(mobileLadderSchema, { inspection: insp, projectName: projectName || 'პროექტი' });
       setPreviewHtml(html);
     } catch (e) {
       toast.error(friendlyError(e, 'PDF ვერ შეიქმნა'));

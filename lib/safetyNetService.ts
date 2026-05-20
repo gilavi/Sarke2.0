@@ -1,7 +1,4 @@
-import { supabase, STORAGE_BUCKETS } from './supabase';
-import { storageApi } from './services';
-import { logError } from './logError';
-import * as Crypto from 'expo-crypto';
+import { makeInspectionService } from './inspection/service';
 import type { SafetyNetInspection, SNItemState, SNPostTestState, SNLoadTestRow, SNSignatory } from '../types/safetyNet';
 import {
   buildDefaultSNItems,
@@ -98,146 +95,86 @@ function toModel(row: DbRow): SafetyNetInspection {
   };
 }
 
+// signatures are ephemeral (memory-only) — never persisted via patch.
+type SafetyNetPatch = Partial<{
+  company: string;
+  address: string;
+  inspectorName: string;
+  inspectionDate: string;
+  manufacturer: string;
+  netSize: string;
+  postSize: string;
+  postCount: number | null;
+  postAnchorCount: number | null;
+  anchorPointCount: number | null;
+  edgeRopeCount: number | null;
+  cellSide: string;
+  workingDistance: string;
+  certificate: SafetyNetInspection['certificate'];
+  items: SNItemState[];
+  loadTestRows: SNLoadTestRow[];
+  postTestItems: SNPostTestState[];
+  verdict: SafetyNetInspection['verdict'];
+  verdictComment: string;
+  signatures: [SNSignatory, SNSignatory];
+  qualDocPath: string | null;
+  summaryPhotos: string[];
+}>;
+
+function toDb(patch: SafetyNetPatch): Record<string, unknown> {
+  const db: Record<string, unknown> = {};
+  if ('company'          in patch) db.company           = patch.company;
+  if ('address'          in patch) db.address           = patch.address;
+  if ('inspectorName'    in patch) db.inspector_name    = patch.inspectorName;
+  if ('inspectionDate'   in patch) db.inspection_date   = patch.inspectionDate;
+  if ('manufacturer'     in patch) db.manufacturer      = patch.manufacturer;
+  if ('netSize'          in patch) db.net_size          = patch.netSize;
+  if ('postSize'         in patch) db.post_size         = patch.postSize;
+  if ('postCount'        in patch) db.post_count        = patch.postCount;
+  if ('postAnchorCount'  in patch) db.post_anchor_count = patch.postAnchorCount;
+  if ('anchorPointCount' in patch) db.anchor_point_count = patch.anchorPointCount;
+  if ('edgeRopeCount'    in patch) db.edge_rope_count   = patch.edgeRopeCount;
+  if ('cellSide'         in patch) db.cell_side         = patch.cellSide;
+  if ('workingDistance'  in patch) db.working_distance  = patch.workingDistance;
+  if ('certificate'      in patch) db.certificate       = patch.certificate;
+  if ('items'            in patch) db.items             = patch.items;
+  if ('loadTestRows'     in patch) db.load_test_rows    = patch.loadTestRows;
+  if ('postTestItems'    in patch) db.post_test_items   = patch.postTestItems;
+  if ('verdict'          in patch) db.verdict           = patch.verdict;
+  if ('verdictComment'   in patch) db.verdict_comment   = patch.verdictComment;
+  if ('qualDocPath'      in patch) db.qual_doc_path     = patch.qualDocPath;
+  if ('summaryPhotos'    in patch) db.summary_photos    = patch.summaryPhotos;
+  return db;
+}
+
 // ── API ───────────────────────────────────────────────────────────────────────
 
-export const safetyNetApi = {
-  create: async (args: {
-    projectId: string;
-    templateId: string;
-    inspectorName?: string;
-  }): Promise<SafetyNetInspection> => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not signed in');
-
-    const emptySignatory = (): SNSignatory => ({
+const base = makeInspectionService<SafetyNetInspection, SafetyNetPatch>({
+  table: 'safety_net_inspections',
+  pathPrefix: 'safety-net',
+  toModel,
+  toDb,
+  createColumns: (args) => {
+    const firstSignatory: SNSignatory = {
       name: args.inspectorName ?? '', position: '', organization: '', signature: null, date: null,
-    });
-    const { data, error } = await supabase
-      .from('safety_net_inspections')
-      .insert({
-        project_id: args.projectId,
-        template_id: args.templateId,
-        user_id: user.id,
-        inspection_date: new Date().toISOString().slice(0, 10),
-        inspector_name: args.inspectorName ?? null,
-        items: buildDefaultSNItems(),
-        load_test_rows: [buildDefaultSNLoadTestRow(), buildDefaultSNLoadTestRow(), buildDefaultSNLoadTestRow()],
-        post_test_items: buildDefaultSNPostTestItems(),
-        signatures: [emptySignatory(), { name: '', position: '', organization: '', signature: null, date: null }],
-      })
-      .select()
-      .single();
-    if (error) throw new Error(error.message);
-    return toModel(data as DbRow);
+    };
+    return {
+      inspector_name: args.inspectorName ?? null,
+      items: buildDefaultSNItems(),
+      load_test_rows: [buildDefaultSNLoadTestRow(), buildDefaultSNLoadTestRow(), buildDefaultSNLoadTestRow()],
+      post_test_items: buildDefaultSNPostTestItems(),
+      signatures: [firstSignatory, { name: '', position: '', organization: '', signature: null, date: null }],
+    };
   },
+});
 
-  getById: async (id: string): Promise<SafetyNetInspection | null> => {
-    const { data, error } = await supabase
-      .from('safety_net_inspections')
-      .select('*')
-      .eq('id', id)
-      .maybeSingle();
-    if (error) throw new Error(error.message);
-    if (!data) return null;
-    return toModel(data as DbRow);
-  },
-
-  patch: async (
-    id: string,
-    patch: Partial<{
-      company: string;
-      address: string;
-      inspectorName: string;
-      inspectionDate: string;
-      manufacturer: string;
-      netSize: string;
-      postSize: string;
-      postCount: number | null;
-      postAnchorCount: number | null;
-      anchorPointCount: number | null;
-      edgeRopeCount: number | null;
-      cellSide: string;
-      workingDistance: string;
-      certificate: SafetyNetInspection['certificate'];
-      items: SNItemState[];
-      loadTestRows: SNLoadTestRow[];
-      postTestItems: SNPostTestState[];
-      verdict: SafetyNetInspection['verdict'];
-      verdictComment: string;
-      signatures: [SNSignatory, SNSignatory];
-      qualDocPath: string | null;
-      summaryPhotos: string[];
-    }>,
-  ): Promise<void> => {
-    const db: Record<string, unknown> = {};
-    if ('company'          in patch) db.company           = patch.company;
-    if ('address'          in patch) db.address           = patch.address;
-    if ('inspectorName'    in patch) db.inspector_name    = patch.inspectorName;
-    if ('inspectionDate'   in patch) db.inspection_date   = patch.inspectionDate;
-    if ('manufacturer'     in patch) db.manufacturer      = patch.manufacturer;
-    if ('netSize'          in patch) db.net_size          = patch.netSize;
-    if ('postSize'         in patch) db.post_size         = patch.postSize;
-    if ('postCount'        in patch) db.post_count        = patch.postCount;
-    if ('postAnchorCount'  in patch) db.post_anchor_count = patch.postAnchorCount;
-    if ('anchorPointCount' in patch) db.anchor_point_count = patch.anchorPointCount;
-    if ('edgeRopeCount'    in patch) db.edge_rope_count   = patch.edgeRopeCount;
-    if ('cellSide'         in patch) db.cell_side         = patch.cellSide;
-    if ('workingDistance'  in patch) db.working_distance  = patch.workingDistance;
-    if ('certificate'      in patch) db.certificate       = patch.certificate;
-    if ('items'            in patch) db.items             = patch.items;
-    if ('loadTestRows'     in patch) db.load_test_rows    = patch.loadTestRows;
-    if ('postTestItems'    in patch) db.post_test_items   = patch.postTestItems;
-    if ('verdict'          in patch) db.verdict           = patch.verdict;
-    if ('verdictComment'   in patch) db.verdict_comment   = patch.verdictComment;
-    // Signatures are ephemeral (memory-only) — never persist to DB
-    if ('qualDocPath'      in patch) db.qual_doc_path     = patch.qualDocPath;
-    if ('summaryPhotos'    in patch) db.summary_photos    = patch.summaryPhotos;
-
-    if (Object.keys(db).length === 0) return;
-    const { error } = await supabase
-      .from('safety_net_inspections')
-      .update(db)
-      .eq('id', id);
-    if (error) throw new Error(error.message);
-  },
-
-  complete: async (id: string): Promise<void> => {
-    const { error } = await supabase
-      .from('safety_net_inspections')
-      .update({ status: 'completed', completed_at: new Date().toISOString() })
-      .eq('id', id);
-    if (error) throw new Error(error.message);
-  },
-
-  listByProject: async (projectId: string): Promise<SafetyNetInspection[]> => {
-    const { data, error } = await supabase
-      .from('safety_net_inspections')
-      .select('*')
-      .eq('project_id', projectId)
-      .order('created_at', { ascending: false });
-    if (error) throw new Error(error.message);
-    return ((data ?? []) as DbRow[]).map(toModel);
-  },
-
-  uploadPhoto: async (
-    inspectionId: string,
-    itemId: number | 'qual-doc' | 'summary',
-    photoUri: string,
-  ): Promise<string> => {
-    const uuid = Crypto.randomUUID();
-    const path = `safety-net/${inspectionId}/${itemId}/${uuid}.jpg`;
-    await storageApi.uploadFromUri(
-      STORAGE_BUCKETS.answerPhotos,
-      path,
-      photoUri,
-      'image/jpeg',
-      'inspection',
-    );
-    return path;
-  },
-
-  deletePhoto: async (path: string): Promise<void> => {
-    await storageApi.remove(STORAGE_BUCKETS.answerPhotos, path)
-      .catch((e) => logError(e, 'safetyNet.deletePhoto'));
-  },
+export const safetyNetApi = {
+  create: base.create,
+  getById: base.getById,
+  listByProject: base.listByProject,
+  patch: base.patch,
+  complete: base.complete,
+  deletePhoto: base.deletePhoto,
+  uploadPhoto: (inspectionId: string, itemId: number | 'qual-doc' | 'summary', photoUri: string) =>
+    base.uploadPhotoAt(`${inspectionId}/${itemId}`, photoUri),
 };

@@ -38,15 +38,7 @@ import {
   projectFilesApi,
   questionnairesApi,
 } from '../../lib/services';
-import { bobcatApi } from '../../lib/bobcatService';
-import { excavatorApi } from '../../lib/excavatorService';
-import { generalEquipmentApi } from '../../lib/generalEquipmentService';
-import { cargoPlatformApi } from '../../lib/cargoPlatformService';
-import { safetyNetApi } from '../../lib/safetyNetService';
-import { mobileLadderApi } from '../../lib/mobileLadderService';
-import { fallProtectionApi } from '../../lib/fallProtectionService';
-import { liftingAccessoriesApi } from '../../lib/liftingAccessoriesService';
-import { forkliftApi } from '../../lib/forkliftService';
+import { inspectionRegistry } from '../../lib/inspection/registry';
 import {
   useProject,
   useInspectionsByProject,
@@ -451,28 +443,10 @@ export default function ProjectDetail() {
 
   const createInspectionForTemplate = async (projectId: string, tpl: Template) => {
     try {
-      let newId: string;
-      if (tpl.category === 'bobcat') {
-        newId = (await bobcatApi.create({ projectId, templateId: tpl.id })).id;
-      } else if (tpl.category === 'excavator') {
-        newId = (await excavatorApi.create({ projectId, templateId: tpl.id })).id;
-      } else if (tpl.category === 'general_equipment') {
-        newId = (await generalEquipmentApi.create({ projectId, templateId: tpl.id })).id;
-      } else if (tpl.category === 'cargo_platform') {
-        newId = (await cargoPlatformApi.create({ projectId, templateId: tpl.id })).id;
-      } else if (tpl.category === 'safety_net_inspection') {
-        newId = (await safetyNetApi.create({ projectId, templateId: tpl.id })).id;
-      } else if (tpl.category === 'mobile_ladder_inspection') {
-        newId = (await mobileLadderApi.create({ projectId, templateId: tpl.id })).id;
-      } else if (tpl.category === 'fall_protection_inspection') {
-        newId = (await fallProtectionApi.create({ projectId, templateId: tpl.id })).id;
-      } else if (tpl.category === 'lifting_accessories_inspection') {
-        newId = (await liftingAccessoriesApi.create({ projectId, templateId: tpl.id })).id;
-      } else if (tpl.category === 'forklift_inspection') {
-        newId = (await forkliftApi.create({ projectId, templateId: tpl.id })).id;
-      } else {
-        newId = (await questionnairesApi.create({ projectId, templateId: tpl.id })).id;
-      }
+      const entry = tpl.category ? inspectionRegistry[tpl.category] : undefined;
+      const newId = entry
+        ? (await entry.create({ projectId, templateId: tpl.id })).id
+        : (await questionnairesApi.create({ projectId, templateId: tpl.id })).id;
       router.push(routeForInspection(tpl.category, newId, false) as any);
     } catch (e) {
       toast.error(friendlyError(e, t('errors.createFailed')));

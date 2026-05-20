@@ -43,6 +43,16 @@ const RULES = [
       'Only hooks/usePhotoWithLocation.ts and app/photo-picker.tsx may call ImagePicker directly. ' +
       'See docs/primitives.md → "Mobile photo picker + annotation".',
   },
+  {
+    name: 'mobile-only-photo-embed',
+    pattern: /\bembedInspectionPhotos\b/,
+    allow: ['lib/pdfShared.ts', 'lib/breathalyzerLogPdf.ts'],
+    message:
+      'embedInspectionPhotos only resolves mobile base64, so PDF photos render blank on the web dashboard. ' +
+      'Inspection PDFs must go through the schema engine: resolveInspectionPhotos (lib/inspection/photos.ts) ' +
+      'via renderInspectionPdf (lib/inspection/renderMobile.ts), which resolves signed URLs on web and base64 on mobile. ' +
+      'See docs/primitives.md → "Inspection PDF engine".',
+  },
 ];
 
 function* walk(dir) {
@@ -96,7 +106,11 @@ for (const dir of SCAN_DIRS) {
     const lines = body.split('\n');
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
+      // Bans target code, not prose — skip comment lines.
+      const trimmed = line.trim();
+      if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')) continue;
       for (const rule of RULES) {
+        if (rule.allow && rule.allow.includes(rel)) continue;
         if (rule.pattern.test(line)) {
           console.error(`${rel}:${i + 1}  [${rule.name}] ${rule.message}`);
           console.error(`    ${line.trim()}`);

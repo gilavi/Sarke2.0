@@ -29,7 +29,8 @@ import {
 } from '../../../components/inspection';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
 
-import { buildBobcatPdfHtml } from '../../../lib/bobcatPdf';
+import { renderInspectionPdf } from '../../../lib/inspection/renderMobile';
+import { bobcatSchema } from '../../../lib/inspection/schemas/bobcat';
 import { generateAndSharePdf, PdfLimitReachedError } from '../../../lib/pdfOpen';
 import { PaywallModal } from '../../../components/PaywallModal';
 import { PdfLockedBanner } from '../../../components/PdfLockedBanner';
@@ -386,10 +387,9 @@ export default function BobcatInspectionScreen() {
     if (pdfUsage?.isLocked) { setPaywallVisible(true); return; }
     setGeneratingPdf(true);
     try {
-      const html = await buildBobcatPdfHtml({
+      const html = await renderInspectionPdf(bobcatSchema, {
         inspection,
         projectName: projectName || 'პროექტი',
-        catalog,
       });
       const pdfName = generatePdfName(
         projectName || 'project',
@@ -411,7 +411,7 @@ export default function BobcatInspectionScreen() {
     } finally {
       setGeneratingPdf(false);
     }
-  }, [inspection, projectName, catalog, isLargeLoader, session.state, invalidatePdfUsage, toast]);
+  }, [inspection, projectName, isLargeLoader, session.state, invalidatePdfUsage, toast]);
 
   // ── Summary Photos ─────────────────────────────────────────────────────────
 
@@ -454,10 +454,9 @@ export default function BobcatInspectionScreen() {
     if (!inspection) return;
     setPreviewBusy(true);
     try {
-      const html = await buildBobcatPdfHtml({
+      const html = await renderInspectionPdf(bobcatSchema, {
         inspection,
         projectName: projectName || 'პროექტი',
-        catalog,
       });
       setPreviewHtml(html);
     } catch (e) {
@@ -465,7 +464,7 @@ export default function BobcatInspectionScreen() {
     } finally {
       setPreviewBusy(false);
     }
-  }, [inspection, projectName, catalog, toast]);
+  }, [inspection, projectName, toast]);
 
   useEffect(() => {
     if (inspection?.status === 'completed') {

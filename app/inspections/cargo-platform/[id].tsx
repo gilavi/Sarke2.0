@@ -29,7 +29,8 @@ import { useToast } from '../../../lib/toast';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { cargoPlatformApi } from '../../../lib/cargoPlatformService';
 import { projectsApi } from '../../../lib/services';
-import { buildCargoPlatformPdfHtml } from '../../../lib/cargoPlatformPdf';
+import { renderInspectionPdf } from '../../../lib/inspection/renderMobile';
+import { cargoPlatformSchema } from '../../../lib/inspection/schemas/cargoPlatform';
 import { generateAndSharePdf, PdfLimitReachedError } from '../../../lib/pdfOpen';
 import { PaywallModal } from '../../../components/PaywallModal';
 import { PdfLockedBanner } from '../../../components/PdfLockedBanner';
@@ -413,7 +414,7 @@ export default function CargoPlatformInspectionScreen() {
     if (pdfUsage?.isLocked) { setPaywallVisible(true); return; }
     setGeneratingPdf(true);
     try {
-      const html = await buildCargoPlatformPdfHtml({ inspection: insp, projectName: projectName || 'პროექტი' });
+      const html = await renderInspectionPdf(cargoPlatformSchema, { inspection: insp, projectName: projectName || 'პროექტი' });
       const pdfName = generatePdfName(
         projectName || 'project',
         'CargoPlatformInspection',
@@ -443,7 +444,7 @@ export default function CargoPlatformInspectionScreen() {
     if (!insp) return;
     setPreviewBusy(true);
     try {
-      const html = await buildCargoPlatformPdfHtml({ inspection: insp, projectName: projectName || 'პროექტი' });
+      const html = await renderInspectionPdf(cargoPlatformSchema, { inspection: insp, projectName: projectName || 'პროექტი' });
       setPreviewHtml(html);
     } catch (e) {
       toast.error(friendlyError(e, 'PDF ვერ შეიქმნა'));

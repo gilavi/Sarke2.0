@@ -4,6 +4,28 @@
 
 ---
 
+## 2026-05-20 — Fix: lifting-accessories PDF result pills (mobile · visible change)
+
+### Bug fix — changes rendered PDF
+- **`lib/inspection/schemas/liftingAccessories.ts`** — the Section III (visual) and Section IV (functional) checklist result columns always rendered the null "—" pill instead of the green ✓ გამართულია / red ✗ გაუმართავია pill. `buildChecklistRows` passed the Georgian display string (`LA_RESULT_TO_CHIP[result]`) into `checklistPill`, which only matches the enum values `'ok'`/`'fail'`, so nothing ever matched. Now passes the raw `result` enum. (The failed-row red left-border already worked — it keys off `result === 'fail'`.) This was a pre-existing bug carried over verbatim during the PDF-engine migration; the fix changes the rendered output. Covered by `tests/unit/inspectionPdf.test.ts`.
+
+---
+
+## 2026-05-20 — Equipment inspection PDFs unified on a schema-driven engine (mobile)
+
+### Internal refactor — inspection PDF bodies unchanged
+All 9 equipment inspection types (excavator, forklift, bobcat, cargo-platform, safety-net, mobile-ladder, fall-protection, lifting-accessories, general-equipment) now render their PDFs through one shared, schema-driven engine instead of 9 hand-cloned `lib/<type>Pdf.ts` builders (~9.7K LOC of near-duplicated CSS + scaffolding).
+
+- **New engine — `lib/inspection/`:** `schema.ts` (the `InspectionSchema<T>` language), `pdf.ts` (one synchronous, platform-free renderer), `pdfStyles.ts` (`BASE_PDF_CSS` — the ~180 CSS lines every type used to copy), `escape.ts`, `photos.ts` (`resolveInspectionPhotos`), `renderMobile.ts` (`renderInspectionPdf`), `service.ts` (`makeInspectionService`), `registry.ts`, and `schemas/<type>.ts` per type. The 9 `lib/<type>Pdf.ts` builders were deleted.
+- **Web PDF photos fixed:** the old builders embedded photos via the mobile-only `embedInspectionPhotos`, so equipment PDFs rendered blank images on the web dashboard. The engine resolves photos by platform (signed HTTPS URLs on web, base64 on mobile) — fixing this for every type at once.
+- **Service factory:** the 9 `lib/<type>Service.ts` files now wrap `makeInspectionService(...)` (shared create/getById/patch/complete/listByProject/photo CRUD); each keeps only its column map + create defaults. Persistence is isolated behind the factory, so collapsing the per-type tables later is a config change, not a screen change.
+- **Dispatch unified:** `app/projects/[id].tsx` and `app/template/[id]/start.tsx` now dispatch through `lib/inspection/registry.ts` (keyed by each schema's `category`), replacing two hand-maintained switches — fixing a latent bug where the template-start screen silently created a generic questionnaire for 6 of the 9 types.
+- **Guardrail + test:** `scripts/check-primitives.mjs` bans `embedInspectionPhotos` outside its definition (new inspection PDFs must use the engine); `tests/unit/inspectionPdf.test.ts` renders the excavator PDF and asserts structure.
+- **Faithfulness:** inspection bodies (checklist data, verdicts, signatures, photos) are byte-faithful. Unifying header/footer relocated a few types' centered regulation badges into a body block and standardized the footer; bobcat's per-variant (large-loader) title and general-equipment's act number are preserved via schema hooks (`docTitle` function, `headerMetaLines`).
+- **Out of scope (unchanged):** `breathalyzerLog` (a log, not a checklist inspection); the non-equipment PDFs (order, incident, report, briefing); the generic harness/questionnaire path; and the per-type form *screens* (a separate, deferred phase).
+
+---
+
 ## 2026-05-20 — Signing flow on all equipment inspection detail pages (web)
 
 ### Signing flow — equipment pages (web-app)

@@ -1,13 +1,10 @@
-import { supabase, STORAGE_BUCKETS } from './supabase';
-import { storageApi } from './services';
-import { logError } from './logError';
+import { makeInspectionService } from './inspection/service';
 import type { BobcatInspection, BobcatItemState } from '../types/bobcat';
 import {
   buildDefaultItems,
   LARGE_LOADER_TEMPLATE_ID,
   LARGE_LOADER_ITEMS,
 } from '../types/bobcat';
-import * as Crypto from 'expo-crypto';
 
 // ── DB ↔ model mapping ────────────────────────────────────────────────────────
 
@@ -65,136 +62,58 @@ function toModel(row: DbRow): BobcatInspection {
   };
 }
 
+// inspectorSignature is ephemeral (memory-only) — never persisted via patch.
+type BobcatPatch = Partial<{
+  company: string | null;
+  address: string | null;
+  equipmentModel: string | null;
+  registrationNumber: string | null;
+  inspectionDate: string;
+  inspectionType: BobcatInspection['inspectionType'];
+  inspectorName: string | null;
+  items: BobcatItemState[];
+  verdict: BobcatInspection['verdict'];
+  notes: string | null;
+  inspectorSignature: string | null;
+}>;
+
+function toDb(patch: BobcatPatch): Record<string, unknown> {
+  const db: Record<string, unknown> = {};
+  if ('company'            in patch) db.company             = patch.company;
+  if ('address'            in patch) db.address             = patch.address;
+  if ('equipmentModel'     in patch) db.equipment_model     = patch.equipmentModel;
+  if ('registrationNumber' in patch) db.registration_number = patch.registrationNumber;
+  if ('inspectionDate'     in patch) db.inspection_date     = patch.inspectionDate;
+  if ('inspectionType'     in patch) db.inspection_type     = patch.inspectionType;
+  if ('inspectorName'      in patch) db.inspector_name      = patch.inspectorName;
+  if ('items'              in patch) db.items               = patch.items;
+  if ('verdict'            in patch) db.verdict             = patch.verdict;
+  if ('notes'              in patch) db.notes               = patch.notes;
+  return db;
+}
+
 // ── API ───────────────────────────────────────────────────────────────────────
 
+const base = makeInspectionService<BobcatInspection, BobcatPatch>({
+  table: 'bobcat_inspections',
+  pathPrefix: 'bobcat',
+  toModel,
+  toDb,
+  createColumns: (args) => ({
+    inspector_name: args.inspectorName ?? null,
+    items: buildDefaultItems(catalogFor(args.templateId)),
+  }),
+});
+
 export const bobcatApi = {
-  create: async (args: {
-    projectId: string;
-    templateId: string;
-    inspectorName?: string;
-  }): Promise<BobcatInspection> => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not signed in');
-
-    const catalog = catalogFor(args.templateId);
-
-    const { data, error } = await supabase
-      .from('bobcat_inspections')
-      .insert({
-        project_id: args.projectId,
-        template_id: args.templateId,
-        user_id: user.id,
-        inspection_date: new Date().toISOString().slice(0, 10),
-        inspector_name: args.inspectorName ?? null,
-        items: buildDefaultItems(catalog),
-      })
-      .select()
-      .single();
-    if (error) throw new Error(error.message);
-    return toModel(data as DbRow);
-  },
-
-  getById: async (id: string): Promise<BobcatInspection | null> => {
-    const { data, error } = await supabase
-      .from('bobcat_inspections')
-      .select('*')
-      .eq('id', id)
-      .maybeSingle();
-    if (error) throw new Error(error.message);
-    if (!data) return null;
-    return toModel(data as DbRow);
-  },
-
-  patch: async (
-    id: string,
-    patch: Partial<{
-      company: string | null;
-      address: string | null;
-      equipmentModel: string | null;
-      registrationNumber: string | null;
-      inspectionDate: string;
-      inspectionType: BobcatInspection['inspectionType'];
-      inspectorName: string | null;
-      items: BobcatItemState[];
-      verdict: BobcatInspection['verdict'];
-      notes: string | null;
-      inspectorSignature: string | null;
-    }>,
-  ): Promise<void> => {
-    const db: Record<string, unknown> = {};
-    if ('company'            in patch) db.company             = patch.company;
-    if ('address'            in patch) db.address             = patch.address;
-    if ('equipmentModel'     in patch) db.equipment_model     = patch.equipmentModel;
-    if ('registrationNumber' in patch) db.registration_number = patch.registrationNumber;
-    if ('inspectionDate'     in patch) db.inspection_date     = patch.inspectionDate;
-    if ('inspectionType'     in patch) db.inspection_type     = patch.inspectionType;
-    if ('inspectorName'      in patch) db.inspector_name      = patch.inspectorName;
-    if ('items'              in patch) db.items               = patch.items;
-    if ('verdict'            in patch) db.verdict             = patch.verdict;
-    if ('notes'              in patch) db.notes               = patch.notes;
-    // Signatures are ephemeral (memory-only) — never persist to DB
-
-    if (Object.keys(db).length === 0) return;
-    const { error } = await supabase
-      .from('bobcat_inspections')
-      .update(db)
-      .eq('id', id);
-    if (error) throw new Error(error.message);
-  },
-
-  complete: async (id: string): Promise<void> => {
-    const { error } = await supabase
-      .from('bobcat_inspections')
-      .update({ status: 'completed', completed_at: new Date().toISOString() })
-      .eq('id', id);
-    if (error) throw new Error(error.message);
-  },
-
-  listByProject: async (projectId: string): Promise<BobcatInspection[]> => {
-    const { data, error } = await supabase
-      .from('bobcat_inspections')
-      .select('*')
-      .eq('project_id', projectId)
-      .order('created_at', { ascending: false });
-    if (error) throw new Error(error.message);
-    return ((data ?? []) as DbRow[]).map(toModel);
-  },
-
-  uploadPhoto: async (
-    inspectionId: string,
-    itemId: number,
-    photoUri: string,
-  ): Promise<string> => {
-    const uuid = Crypto.randomUUID();
-    const path = `bobcat/${inspectionId}/${itemId}/${uuid}.jpg`;
-    await storageApi.uploadFromUri(
-      STORAGE_BUCKETS.answerPhotos,
-      path,
-      photoUri,
-      'image/jpeg',
-      'inspection',
-    );
-    return path;
-  },
-
-  uploadSummaryPhoto: async (
-    inspectionId: string,
-    photoUri: string,
-  ): Promise<string> => {
-    const uuid = Crypto.randomUUID();
-    const path = `bobcat/${inspectionId}/summary/${uuid}.jpg`;
-    await storageApi.uploadFromUri(
-      STORAGE_BUCKETS.answerPhotos,
-      path,
-      photoUri,
-      'image/jpeg',
-      'inspection',
-    );
-    return path;
-  },
-
-  deletePhoto: async (path: string): Promise<void> => {
-    await storageApi.remove(STORAGE_BUCKETS.answerPhotos, path)
-      .catch((e) => logError(e, 'bobcat.deletePhoto'));
-  },
+  create: base.create,
+  getById: base.getById,
+  listByProject: base.listByProject,
+  patch: base.patch,
+  complete: base.complete,
+  deletePhoto: base.deletePhoto,
+  uploadPhoto: (inspectionId: string, itemId: number, photoUri: string) =>
+    base.uploadPhotoAt(`${inspectionId}/${itemId}`, photoUri),
+  uploadSummaryPhoto: (inspectionId: string, photoUri: string) =>
+    base.uploadPhotoAt(`${inspectionId}/summary`, photoUri),
 };

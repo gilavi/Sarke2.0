@@ -24,7 +24,7 @@ Each specialized inspection type has its own PDF builder:
 
 | Type | Mobile builder | Web |
 |---|---|---|
-| Bobcat | `lib/bobcatPdf.ts` | `web-app/src/pages/print/BobcatPrint.tsx` |
+| Bobcat | `lib/inspection/schemas/bobcat.ts` (shared engine) | `web-app/src/pages/print/BobcatPrint.tsx` |
 | Excavator | `lib/excavatorPdf.ts` | `web-app/src/pages/print/ExcavatorPrint.tsx` |
 | General equipment | `lib/generalEquipmentPdf.ts` | `web-app/src/pages/print/GeneralEquipmentPrint.tsx` |
 | Cargo platform | `lib/cargoPlatformPdf.ts` | `web-app/src/pages/print/CargoPlatformPrint.tsx` |

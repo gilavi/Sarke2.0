@@ -23,7 +23,8 @@ import { generalEquipmentApi } from '../../../lib/generalEquipmentService';
 import { projectsApi, inspectionAttachmentsApi } from '../../../lib/services';
 import { imageForDisplay } from '../../../lib/imageUrl';
 import { SignatureSheet } from '../../../components/inspection/SignatureSheet';
-import { buildGeneralEquipmentPdfHtml } from '../../../lib/generalEquipmentPdf';
+import { renderInspectionPdf } from '../../../lib/inspection/renderMobile';
+import { generalEquipmentSchema } from '../../../lib/inspection/schemas/generalEquipment';
 import { generateAndSharePdf, PdfLimitReachedError } from '../../../lib/pdfOpen';
 import { PaywallModal } from '../../../components/PaywallModal';
 import { PdfLockedBanner } from '../../../components/PdfLockedBanner';
@@ -328,7 +329,7 @@ export default function GeneralEquipmentScreen() {
     if (pdfUsage?.isLocked) { setPaywallVisible(true); return; }
     setGeneratingPdf(true);
     try {
-      const html = await buildGeneralEquipmentPdfHtml({
+      const html = await renderInspectionPdf(generalEquipmentSchema, {
         inspection,
         projectName: projectName || 'პროექტი',
       });
@@ -360,7 +361,7 @@ export default function GeneralEquipmentScreen() {
     if (!inspection) return;
     setPreviewBusy(true);
     try {
-      const html = await buildGeneralEquipmentPdfHtml({
+      const html = await renderInspectionPdf(generalEquipmentSchema, {
         inspection,
         projectName: projectName || 'პროექტი',
       });

@@ -22,7 +22,8 @@ import { useToast } from '../../../lib/toast';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { safetyNetApi } from '../../../lib/safetyNetService';
 import { projectsApi } from '../../../lib/services';
-import { buildSafetyNetPdfHtml } from '../../../lib/safetyNetPdf';
+import { renderInspectionPdf } from '../../../lib/inspection/renderMobile';
+import { safetyNetSchema } from '../../../lib/inspection/schemas/safetyNet';
 import { generateAndSharePdf, PdfLimitReachedError } from '../../../lib/pdfOpen';
 import { PaywallModal } from '../../../components/PaywallModal';
 import { PdfLockedBanner } from '../../../components/PdfLockedBanner';
@@ -415,7 +416,7 @@ export default function SafetyNetInspectionScreen() {
     if (pdfUsage?.isLocked) { setPaywallVisible(true); return; }
     setGeneratingPdf(true);
     try {
-      const html = await buildSafetyNetPdfHtml({ inspection: insp, projectName: projectName || 'პროექტი' });
+      const html = await renderInspectionPdf(safetyNetSchema, { inspection: insp, projectName: projectName || 'პროექტი' });
       const pdfName = generatePdfName(
         projectName || 'project',
         'SafetyNetInspection',
@@ -445,7 +446,7 @@ export default function SafetyNetInspectionScreen() {
     if (!insp) return;
     setPreviewBusy(true);
     try {
-      const html = await buildSafetyNetPdfHtml({ inspection: insp, projectName: projectName || 'პროექტი' });
+      const html = await renderInspectionPdf(safetyNetSchema, { inspection: insp, projectName: projectName || 'პროექტი' });
       setPreviewHtml(html);
     } catch (e) {
       toast.error(friendlyError(e, 'PDF ვერ შეიქმნა'));

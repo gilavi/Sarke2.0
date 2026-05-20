@@ -51,7 +51,7 @@ Top-level folders, one line each.
 |---|---|
 | `app/` | expo-router routes for the mobile app. Subfolders: `(auth)/`, `(tabs)/`, `projects/[id]/logs/` (breathalyzer log journal), `questionnaire/`, `template/`, `inspections/` (per-category screens: bobcat, excavator, cargo-platform, general-equipment, safety-net, mobile-ladder, fall-protection, forklift, lifting-accessories, plus generic `[id].tsx`). |
 | `components/` | Shared RN components — `ui.tsx` primitives (Button, Card, Input, Chip, Screen, FormField, ButtonGroup, SectionHeader, ActionSheet, SheetLayout), `ProjectAvatar`, `BackButton`, `QuickActions` row, `wizard/kamari/` harness flow. |
-| `lib/` | Supabase client, session/auth provider, data services, theme, PDF template (`pdf.ts`), offline queue, `pdfGate.ts`, `pdfSecurity.ts`, `crashReporting.ts`, `photoLocationAlert.ts`, `sms.ts`, canonical keyboard hooks. |
+| `lib/` | Supabase client, session/auth provider, data services, theme, the schema-driven equipment-inspection PDF engine (`inspection/` — renderer, schemas, service factory, registry; see [docs/primitives.md](docs/primitives.md#inspection-pdf-engine)), generic PDF template (`pdf.ts`), offline queue, `pdfGate.ts`, `pdfSecurity.ts`, `crashReporting.ts`, `photoLocationAlert.ts`, `sms.ts`, canonical keyboard hooks. |
 | `hooks/` | React hooks (e.g. `usePhotoWithLocation` for direct ImagePicker flows). |
 | `utils/` | Stateless helpers (`location.ts` GPS + reverseGeocode, etc.). |
 | `types/` | Shared TypeScript models (`models.ts`). |
@@ -93,6 +93,8 @@ All seeded by `supabase/seed/01_system_templates.sql` and individual migrations.
 | დამჭერი მოწყობილობების შემოწმების აქტი (fall protection) | `fall_protection_inspection` | `fall_protection_inspections` | `app/inspections/fall-protection/[id].tsx` | Multi-device, 4-state checklist (✓/✗/Z/N), per-device verdict + signature. UUID `cccccccc-…`. Migration 0046. |
 | ჩანგლიანი დამტვირთველის შემოწმების აქტი (forklift) | `forklift_inspection` | `forklift_inspections` | `app/inspections/forklift/[id].tsx` | 3-step wizard; 39-item checklist (A/B/C sections), 13-row summary table, extended signature. UUID `dddddddd-…`. Migration 0047. |
 | სამაგრი მოწყობილობების შემოწმების აქტი (lifting accessories) | `lifting_accessories_inspection` | `lifting_accessories_inspections` | `app/inspections/lifting-accessories/[id].tsx` | Multi-device wizard; EN 1492/818/1677/ISO 4309 standards. UUID `aaaaaaaa-…`. Migration 0049. |
+
+All equipment types above (`bobcat` … `lifting_accessories`) generate their PDFs through the shared schema-driven engine in `lib/inspection/` — each type is a data descriptor in `lib/inspection/schemas/`, rendered by one `buildInspectionPdf` and persisted via `makeInspectionService`. The generic/harness templates still use `lib/pdf.ts`. See [docs/primitives.md → Inspection PDF engine](docs/primitives.md#inspection-pdf-engine).
 
 Photo flows write GPS + reverse-geocoded address to `answer_photos` (migration 0023). `lib/photoLocationAlert.ts` auto-sets project coords on first photo and warns on >500 m mismatch.
 
