@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, X } from 'lucide-react';
@@ -75,10 +75,13 @@ export default function HarnessInspectionModal({ open, onClose, defaultProjectId
     queryFn: () => listAnswers(inspection!.id),
     enabled: !!inspection?.id,
   });
-  if (existingAnswersQ.data && gridQuestion && !gridAnswer) {
-    const ga = existingAnswersQ.data.find((a: Answer) => a.question_id === gridQuestion.id);
-    if (ga) setGridAnswer(ga);
-  }
+  useEffect(() => {
+    if (existingAnswersQ.data && gridQuestion && !gridAnswer) {
+      const ga = existingAnswersQ.data.find((a: Answer) => a.question_id === gridQuestion.id);
+      if (ga) setGridAnswer(ga);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [existingAnswersQ.data, gridQuestion?.id]);
 
   const answerMutation = useMutation({
     mutationFn: upsertAnswer,

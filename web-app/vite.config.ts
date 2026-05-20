@@ -17,14 +17,10 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          // three.js and @react-three/fiber/@react-three/drei stay in vendor.
-          // Splitting them into a separate chunk caused two problems:
-          //  1. Vite's module-preload helper ended up in the threejs chunk, forcing
-          //     a static import from the entry → threejs at startup.
-          //  2. @react-three/fiber module-init code ran before React's vendor chunk
-          //     had set up ReactCurrentBatchConfig → blank page crash.
-          // Keeping them in vendor ensures proper initialization order.
-          // (same reason react-dom is kept in vendor — see comment below)
+          // @react-three/fiber v9 is React-19-compatible and no longer accesses
+          // __SECRET_INTERNALS at module-init time, so the threejs chunk is safe
+          // to split again. (v8 crashed with ReactCurrentBatchConfig undefined.)
+          if (id.includes('three') || id.includes('@react-three')) return 'threejs';
           if (id.includes('leaflet') || id.includes('react-leaflet')) return 'leaflet';
           if (id.includes('@radix-ui')) return 'radix-ui';
           if (id.includes('@supabase')) return 'supabase';

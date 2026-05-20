@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileText } from 'lucide-react';
@@ -46,11 +46,14 @@ export default function HarnessInspectionDetail() {
   const inspection = inspectionQ.data ?? null;
 
   // Init conclusion state from loaded inspection once
-  if (inspection && !isSafeInit) {
-    setIsSafe(inspection.is_safe_for_use ?? null);
-    setConclusionText(inspection.conclusion_text ?? '');
-    setIsSafeInit(true);
-  }
+  useEffect(() => {
+    if (inspection && !isSafeInit) {
+      setIsSafe(inspection.is_safe_for_use ?? null);
+      setConclusionText(inspection.conclusion_text ?? '');
+      setIsSafeInit(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inspection?.id]);
 
   const questionsQ = useQuery({
     queryKey: ['questions', inspection?.template_id],
