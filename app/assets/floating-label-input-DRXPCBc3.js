@@ -1,0 +1,1 @@
+import{r as m,j as p,aa as n}from"./vendor-RgCJidSG.js";import{m as d}from"./index-CLG5g_Px.js";const l=m.forwardRef(({label:a,error:s,hint:t,className:r,containerClassName:o,...e},i)=>p.jsx(n,{ref:i,label:a,error:s,description:t,radius:"md",size:"md",className:d(o,r),...e}));l.displayName="FloatingLabelInput";export{l as F};
