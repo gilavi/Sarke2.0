@@ -45,6 +45,21 @@ jobs:
             npm install --legacy-peer-deps --no-audit --no-fund
           fi
 
+      # Guard 1: catch any .ts/.tsx files that are present on disk but not
+      # tracked by git (i.e. a developer forgot to `git add` a new component).
+      # On a clean GitHub Actions checkout the working tree has no untracked
+      # files unless something went wrong, so this is a reliable signal.
+      - name: Check for untracked source files
+        run: |
+          UNTRACKED=$(git ls-files --others --exclude-standard -- 'src/*.ts' 'src/*.tsx' 'src/**/*.ts' 'src/**/*.tsx')
+          if [ -n "$UNTRACKED" ]; then
+            echo "ERROR: Untracked TypeScript source files found:"
+            echo "$UNTRACKED"
+            echo "These files are imported by the app but were never committed."
+            echo "Run 'git add <file>' and push again."
+            exit 1
+          fi
+
       - name: Build
         env:
           # Defaults match app.json — anon key is public-safe, but secrets win
@@ -52,6 +67,15 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://seskuthiopywrgntsgfw.supabase.co' }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'sb_publishable_OF_L2E27-Uv8MMw87fWfSA_znD7moYY' }}
         run: npm run build
+
+      # Guard 2: serve the built dist and verify the app mounts without
+      # uncaught JS errors. Catches runtime crashes (wrong library version,
+      # bad chunk ordering, etc.) before they reach production.
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium --with-deps
+
+      - name: Smoke test — verify app loads without JS errors
+        run: npx playwright test --config=playwright.smoke.config.ts
 
       - name: Deploy to gh-pages /app/
         uses: peaceiris/actions-gh-pages@v3
