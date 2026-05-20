@@ -265,6 +265,7 @@ export default function QuestionnaireWizard() {
   // First-render fade out of the skeleton — kicks in once data is ready.
   const enterAnim = useRef(new Animated.Value(0)).current;
   const enteredRef = useRef(false);
+  const isFirstFocusRef = useRef(true);
 
   useEffect(() => {
     if (!loading && !enteredRef.current) {
@@ -466,6 +467,12 @@ export default function QuestionnaireWizard() {
 
   useFocusEffect(
     useCallback(() => {
+      if (isFirstFocusRef.current) {
+        isFirstFocusRef.current = false;
+        return () => {
+          loadCtrlRef.current.cancelled = true;
+        };
+      }
       if (id) void load();
       return () => {
         loadCtrlRef.current.cancelled = true;
@@ -855,7 +862,7 @@ export default function QuestionnaireWizard() {
       <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
       <ScaffoldTour visible={showTour} onClose={dismissTour} />
       <SyncStatusPill />
-      {questions.length === 0 ? (
+      {questions.length === 0 && !loading ? (
         <View style={{ padding: 12, backgroundColor: theme.colors.warnSoft }}>
           <Text style={{ color: theme.colors.warn, fontSize: 13 }}>
             ⚠️ This template has no questions. You may be using the wrong wizard.

@@ -49,7 +49,7 @@ Top-level folders, one line each.
 
 | Path | Purpose |
 |---|---|
-| `app/` | expo-router routes for the mobile app. Subfolders: `(auth)/`, `(tabs)/`, `projects/`, `questionnaire/`, `template/`, `inspections/` (per-category screens: bobcat, excavator, cargo-platform, general-equipment, plus generic `[id].tsx`). |
+| `app/` | expo-router routes for the mobile app. Subfolders: `(auth)/`, `(tabs)/`, `projects/[id]/logs/` (breathalyzer log journal), `questionnaire/`, `template/`, `inspections/` (per-category screens: bobcat, excavator, cargo-platform, general-equipment, safety-net, mobile-ladder, fall-protection, forklift, lifting-accessories, plus generic `[id].tsx`). |
 | `components/` | Shared RN components — `ui.tsx` primitives (Button, Card, Input, Chip, Screen, FormField, ButtonGroup, SectionHeader, ActionSheet, SheetLayout), `ProjectAvatar`, `BackButton`, `QuickActions` row, `wizard/kamari/` harness flow. |
 | `lib/` | Supabase client, session/auth provider, data services, theme, PDF template (`pdf.ts`), offline queue, `pdfGate.ts`, `pdfSecurity.ts`, `crashReporting.ts`, `photoLocationAlert.ts`, `sms.ts`, canonical keyboard hooks. |
 | `hooks/` | React hooks (e.g. `usePhotoWithLocation` for direct ImagePicker flows). |
@@ -59,7 +59,7 @@ Top-level folders, one line each.
 | `locales/` | UI strings (Georgian baseline). |
 | `shims/` | Web stubs (worklets, keyboard-controller) loaded via `metro.config.js` aliases. |
 | `scripts/` | Repo scripts including `check-primitives.mjs` (lint guard). |
-| `supabase/` | `migrations/` SQL files (0001–0043), `seed/` system templates, `functions/` Edge Functions, `.temp/` local CLI cache. |
+| `supabase/` | `migrations/` SQL files (0001–0049), `seed/` system templates, `functions/` Edge Functions, `.temp/` local CLI cache. |
 | `docs/` | Project documentation — `AI_BRIEFING.md`, `WHATS_NEW.md`, `primitives.md`, `payments.md`, `design-system-audit-*.md`, `prompts/`. |
 | `web/` | `sarke-sign` tokenized signing page (Vite + React). Deployed to `https://gilavi.github.io/Sarke2.0/`. |
 | `web-app/` | Public dashboard (Vite + React + TS + Tailwind). Deployed to `https://gilavi.github.io/Sarke2.0/app/`. |
@@ -88,6 +88,11 @@ All seeded by `supabase/seed/01_system_templates.sql` and individual migrations.
 | ტექნიკური აღჭურვილობის შემოწმების აქტი (general equipment) | `general_equipment` | `general_equipment_inspections` | `app/inspections/general-equipment/[id].tsx` | User builds the equipment list row-by-row. Migration 0027. |
 | ტვირთის მიმღები პლატფორმის შემოწმების აქტი (cargo receiving platform) | `cargo_platform` | `cargo_platform_inspections` | `app/inspections/cargo-platform/` | 7-section template: general info, platform ID, cargo list, 9-item checklist, verdict, summary photos, two signatories. Migration 0040. |
 | მობილური ხარაჩოს შემოწმების აქტი (mobile scaffold) | (generic) | `inspections` + `answers` | generic wizard | Reuses the generic wizard — no new table. Template UUID `33333333-…`. Migrations 0041, 0042 (N3 variant). |
+| უსაფრთხოების ბადის შემოწმების აქტი (safety net) | `safety_net_inspection` | `safety_net_inspections` | `app/inspections/safety-net/[id].tsx` | Multi-device wizard; per-net identification + condition checklist. UUID `88888888-…`. Migration 0044. |
+| მობილური კიბის შემოწმების აქტი (mobile ladder) | `mobile_ladder_inspection` | `mobile_ladder_inspections` | `app/inspections/mobile-ladder/[id].tsx` | Multi-device wizard. UUID `bbbbbbbb-…`. Migration 0045. |
+| დამჭერი მოწყობილობების შემოწმების აქტი (fall protection) | `fall_protection_inspection` | `fall_protection_inspections` | `app/inspections/fall-protection/[id].tsx` | Multi-device, 4-state checklist (✓/✗/Z/N), per-device verdict + signature. UUID `cccccccc-…`. Migration 0046. |
+| ჩანგლიანი დამტვირთველის შემოწმების აქტი (forklift) | `forklift_inspection` | `forklift_inspections` | `app/inspections/forklift/[id].tsx` | 3-step wizard; 39-item checklist (A/B/C sections), 13-row summary table, extended signature. UUID `dddddddd-…`. Migration 0047. |
+| სამაგრი მოწყობილობების შემოწმების აქტი (lifting accessories) | `lifting_accessories_inspection` | `lifting_accessories_inspections` | `app/inspections/lifting-accessories/[id].tsx` | Multi-device wizard; EN 1492/818/1677/ISO 4309 standards. UUID `aaaaaaaa-…`. Migration 0049. |
 
 Photo flows write GPS + reverse-geocoded address to `answer_photos` (migration 0023). `lib/photoLocationAlert.ts` auto-sets project coords on first photo and warns on >500 m mismatch.
 
@@ -204,6 +209,12 @@ Schema + seed already applied to the hosted project. Migrations are preserved fo
 | `0041_mobile_scaffold_template.sql` | Mobile scaffold template (UUID `33333333-…`) reusing the generic wizard |
 | `0042_mobile_scaffold_n3_template.sql` | Mobile scaffold N3 variant |
 | `0043_inspection_stats_rpc.sql` | Stats RPC for the dashboard home page |
+| `0044_safety_net_inspection.sql` | `safety_net_inspections` table + template (UUID `88888888-…`, `category: 'safety_net_inspection'`) |
+| `0045_mobile_ladder_inspection.sql` | `mobile_ladder_inspections` table + template (UUID `aaaaaaaa-…`, `category: 'mobile_ladder_inspection'`) |
+| `0046_fall_protection_inspection.sql` | `fall_protection_inspections` table + template (UUID `cccccccc-…`, `category: 'fall_protection_inspection'`) — multi-device, 4-state checklist (✓/✗/Z/N), per-device verdict + signature |
+| `0047_forklift_inspection.sql` | `forklift_inspections` table + template (UUID `dddddddd-…`, `category: 'forklift_inspection'`) — 39-item checklist (A/B/C sections), extended signature, 3-step wizard |
+| `0048_breathalyzer_log.sql` | `breathalyzer_logs` table — per-shift alcohol test logs; JSONB entries array; people pool in AsyncStorage; PDF with SAFE/WARNING/FAIL color-coded table |
+| `0049_lifting_accessories_inspection.sql` | `lifting_accessories_inspections` table + template (UUID `bbbbbbbb-…`, `category: 'lifting_accessories_inspection'`) — binary checklist, multi-select equipment types, 3-verdict selector, EN 1492/818/1677/ISO 4309 |
 
 > Migration `0028_pdf_usage_tracking.sql` and the free-tier limit are noted in memory — the function currently allows 30 free PDFs (soft-launch). Tighten when BOG payment is fully wired.
 

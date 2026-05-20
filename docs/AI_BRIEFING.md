@@ -1,7 +1,7 @@
 # AI Agent Briefing — Sarke 2.0
 
 **Purpose:** Quick reference for AI agents working on this codebase  
-**Updated:** 2026-05-14 | Branch: `after-testflight` (1 commit ahead of `main`)  
+**Updated:** 2026-05-19 | Branch: `main`  
 **Full context:** See [`ONBOARDING.md`](../ONBOARDING.md) in the repo root for the complete guide.
 
 ---
@@ -63,7 +63,12 @@ Sarke 2.0/
 │   │   ├── bobcat/[id].tsx           # Bobcat/Large Loader wizard
 │   │   ├── excavator/[id].tsx        # Excavator wizard
 │   │   ├── general-equipment/[id].tsx
-│   │   └── cargo-platform/[id].tsx   # Cargo platform wizard (after-testflight)
+│   │   ├── cargo-platform/[id].tsx   # Cargo platform wizard
+│   │   ├── safety-net/[id].tsx           # Safety net wizard (multi-device)
+│   │   ├── mobile-ladder/[id].tsx        # Mobile ladder wizard (multi-device)
+│   │   ├── fall-protection/[id].tsx      # Fall protection wizard (multi-device, 4-state checklist)
+│   │   ├── forklift/[id].tsx             # Forklift wizard (3-step, 39 items, extended sig)
+│   │   └── lifting-accessories/[id].tsx  # Lifting accessories wizard (multi-device)
 │   ├── orders/
 │   │   ├── new.tsx                   # Order creation wizard (4 document types)
 │   │   └── [id].tsx                  # Order success screen
@@ -84,9 +89,14 @@ Sarke 2.0/
 │
 ├── types/
 │   ├── models.ts                     # All DB types + OrderDocumentType + OrderFormData
-│   └── cargoPlatform.ts              # CP_ITEMS, CPResult, CargoPlatformInspection
+│   ├── cargoPlatform.ts              # CP_ITEMS, CPResult, CargoPlatformInspection
+│   ├── safetyNet.ts                  # SN_ITEMS, SNResult, SafetyNetInspection
+│   ├── mobileLadder.ts               # ML_ITEMS, MLResult, MobileLadderInspection
+│   ├── fallProtection.ts             # FP_CHECKLIST_ITEMS, FPResult, FallProtectionInspection
+│   ├── forklift.ts                   # FORKLIFT_ITEMS, ForkliftResult, ForkliftInspection
+│   └── liftingAccessories.ts         # LA_ITEMS, LAResult, LiftingAccessoriesInspection
 │
-├── supabase/migrations/              # 42 migrations (0001–0042)
+├── supabase/migrations/              # 49 migrations (0001–0049)
 │
 ├── web-app/                          # Dashboard (Vite + React)
 │   └── src/
@@ -131,6 +141,11 @@ Single `orders` table (`document_type text`, `form_data jsonb` — no per-type t
 | `excavator` | `excavator_inspections` | 55555555 | `app/inspections/excavator/[id].tsx` |
 | `general_equipment` | `general_equipment_inspections` | 66666666 | `app/inspections/general-equipment/[id].tsx` |
 | `cargo_platform` | `cargo_platform_inspections` | 77777777 | `app/inspections/cargo-platform/[id].tsx` |
+| `safety_net_inspection` | `safety_net_inspections` | 88888888 | `app/inspections/safety-net/[id].tsx` |
+| `mobile_ladder_inspection` | `mobile_ladder_inspections` | bbbbbbbb | `app/inspections/mobile-ladder/[id].tsx` |
+| `fall_protection_inspection` | `fall_protection_inspections` | cccccccc | `app/inspections/fall-protection/[id].tsx` — 4-state checklist (✓/✗/Z/N) |
+| `lifting_accessories_inspection` | `lifting_accessories_inspections` | aaaaaaaa | `app/inspections/lifting-accessories/[id].tsx` |
+| `forklift_inspection` | `forklift_inspections` | dddddddd | `app/inspections/forklift/[id].tsx` — 39-item checklist, 13-row summary, extended signature |
 
 ---
 
@@ -190,4 +205,4 @@ npm run lint        # tsc --noEmit + check-primitives.mjs
 ---
 
 **Full context → [`ONBOARDING.md`](../ONBOARDING.md)**  
-**Last sync:** 2026-05-14
+**Last sync:** 2026-05-19

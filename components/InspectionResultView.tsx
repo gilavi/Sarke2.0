@@ -6,7 +6,7 @@
 // for the download action — this component only owns the UI shell, the
 // action sheets, and the paywall modal.
 
-import { createElement, useMemo } from 'react';
+import { createElement, useMemo, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Platform,
@@ -54,6 +54,15 @@ type Props = {
   onDownloadPdf: () => void;
   /** Called after either action sheet saves a change so caller can rebuild preview. */
   onSheetSaved: () => void;
+  /**
+   * Replace the default SignaturesActionSheet with a custom component.
+   * Receives `dismiss` to close the sheet and `onChanged` to notify the
+   * parent that signatures were updated (triggers preview rebuild).
+   */
+  renderSignaturesSheet?: (props: {
+    dismiss: () => void;
+    onChanged: () => void;
+  }) => ReactNode;
 };
 
 export function InspectionResultView(props: Props) {
@@ -74,6 +83,7 @@ export function InspectionResultView(props: Props) {
     onPaywallClose,
     onDownloadPdf,
     onSheetSaved,
+    renderSignaturesSheet,
   } = props;
 
   const { theme } = useTheme();
@@ -93,16 +103,23 @@ export function InspectionResultView(props: Props) {
   };
 
   const openSignaturesSheet = () => {
-    showSheet({
-      content: ({ dismiss }) => (
-        <SignaturesActionSheet
-          inspectionId={inspectionId}
-          requiredRoles={requiredSignerRoles}
-          onClose={dismiss}
-          onChanged={onSheetSaved}
-        />
-      ),
-    });
+    if (renderSignaturesSheet) {
+      showSheet({
+        content: ({ dismiss }) =>
+          renderSignaturesSheet({ dismiss, onChanged: onSheetSaved }),
+      });
+    } else {
+      showSheet({
+        content: ({ dismiss }) => (
+          <SignaturesActionSheet
+            inspectionId={inspectionId}
+            requiredRoles={requiredSignerRoles}
+            onClose={dismiss}
+            onChanged={onSheetSaved}
+          />
+        ),
+      });
+    }
   };
 
   const certBadge = attachmentCount > 0 ? `(${attachmentCount})` : '';

@@ -33,6 +33,13 @@ import { bobcatApi } from './bobcatService';
 import { excavatorApi } from './excavatorService';
 import { generalEquipmentApi } from './generalEquipmentService';
 import { cargoPlatformApi } from './cargoPlatformService';
+import { safetyNetApi } from './safetyNetService';
+import { mobileLadderApi } from './mobileLadderService';
+import { fallProtectionApi } from './fallProtectionService';
+import { liftingAccessoriesApi } from './liftingAccessoriesService';
+import { forkliftApi } from './forkliftService';
+import { breathalyzerLogApi } from './breathalyzerLogService';
+import type { BreathalizerLog } from '../types/breathalyzerLog';
 import type {
   Project,
   ProjectFile,
@@ -87,6 +94,24 @@ export const qk = {
   },
   cargoPlatform: {
     byProject: (projectId: string) => ['cargoPlatform', 'byProject', projectId] as const,
+  },
+  safetyNet: {
+    byProject: (projectId: string) => ['safetyNet', 'byProject', projectId] as const,
+  },
+  mobileLadder: {
+    byProject: (projectId: string) => ['mobileLadder', 'byProject', projectId] as const,
+  },
+  fallProtection: {
+    byProject: (projectId: string) => ['fallProtection', 'byProject', projectId] as const,
+  },
+  liftingAccessories: {
+    byProject: (projectId: string) => ['liftingAccessories', 'byProject', projectId] as const,
+  },
+  forklift: {
+    byProject: (projectId: string) => ['forklift', 'byProject', projectId] as const,
+  },
+  breathalyzerLog: {
+    byProject: (projectId: string) => ['breathalyzerLog', 'byProject', projectId] as const,
   },
   qualifications: {
     list: ['qualifications', 'list'] as const,
@@ -255,6 +280,46 @@ export function useCargoPlatformInspectionsByProject(projectId: string | undefin
   return useQuery({
     queryKey: projectId ? qk.cargoPlatform.byProject(projectId) : ['cargoPlatform', 'byProject', 'none'],
     queryFn: () => (projectId ? cargoPlatformApi.listByProject(projectId) : Promise.resolve([])),
+    enabled: !!projectId,
+  });
+}
+
+export function useSafetyNetInspectionsByProject(projectId: string | undefined) {
+  return useQuery({
+    queryKey: projectId ? qk.safetyNet.byProject(projectId) : ['safetyNet', 'byProject', 'none'],
+    queryFn: () => (projectId ? safetyNetApi.listByProject(projectId) : Promise.resolve([])),
+    enabled: !!projectId,
+  });
+}
+
+export function useMobileLadderInspectionsByProject(projectId: string | undefined) {
+  return useQuery({
+    queryKey: projectId ? qk.mobileLadder.byProject(projectId) : ['mobileLadder', 'byProject', 'none'],
+    queryFn: () => (projectId ? mobileLadderApi.listByProject(projectId) : Promise.resolve([])),
+    enabled: !!projectId,
+  });
+}
+
+export function useFallProtectionInspectionsByProject(projectId: string | undefined) {
+  return useQuery({
+    queryKey: projectId ? qk.fallProtection.byProject(projectId) : ['fallProtection', 'byProject', 'none'],
+    queryFn: () => (projectId ? fallProtectionApi.listByProject(projectId) : Promise.resolve([])),
+    enabled: !!projectId,
+  });
+}
+
+export function useLiftingAccessoriesInspectionsByProject(projectId: string | undefined) {
+  return useQuery({
+    queryKey: projectId ? qk.liftingAccessories.byProject(projectId) : ['liftingAccessories', 'byProject', 'none'],
+    queryFn: () => (projectId ? liftingAccessoriesApi.listByProject(projectId) : Promise.resolve([])),
+    enabled: !!projectId,
+  });
+}
+
+export function useForkliftInspectionsByProject(projectId: string | undefined) {
+  return useQuery({
+    queryKey: projectId ? qk.forklift.byProject(projectId) : ['forklift', 'byProject', 'none'],
+    queryFn: () => (projectId ? forkliftApi.listByProject(projectId) : Promise.resolve([])),
     enabled: !!projectId,
   });
 }
@@ -461,5 +526,20 @@ export function usePaymentHistory() {
   return useQuery<PaymentRecord[]>({
     queryKey: ['paymentRecords', 'list'] as const,
     queryFn: () => paymentRecordsApi.list(),
+  });
+}
+
+// ── Breathalyzer Logs ─────────────────────────────────────────────────────────
+
+export function useBreathalizerLogsByProject(projectId: string | undefined) {
+  return useQuery<BreathalizerLog[]>({
+    queryKey: projectId
+      ? qk.breathalyzerLog.byProject(projectId)
+      : ['breathalyzerLog', 'byProject', 'none'],
+    queryFn: () =>
+      projectId
+        ? breathalyzerLogApi.listByProject(projectId)
+        : Promise.resolve([]),
+    enabled: !!projectId,
   });
 }

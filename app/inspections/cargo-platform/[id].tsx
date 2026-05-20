@@ -1,17 +1,13 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   Pressable,
-  ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
-import { Image } from 'expo-image';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import SignatureScreen, { type SignatureViewRef } from 'react-native-signature-canvas';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
 import { Button } from '../../../components/ui';
@@ -20,16 +16,19 @@ import { ProjectPickerStep } from '../../../components/inspections';
 import { WizardStepTransition } from '../../../components/wizard/WizardStepTransition';
 import { FlowHeader } from '../../../components/FlowHeader';
 import { InspectionResultView } from '../../../components/InspectionResultView';
-import { CargoPlatformChecklistItem } from '../../../components/cargoPlatform/CargoPlatformChecklistItem';
-import { CargoRow } from '../../../components/cargoPlatform/CargoRow';
+import {
+  ChecklistSection,
+  DynamicTable,
+  SignatureSheet,
+  VerdictSelector,
+  PhotoSection,
+} from '../../../components/inspection';
 import { useTheme, type Theme } from '../../../lib/theme';
 import { useSession } from '../../../lib/session';
 import { useToast } from '../../../lib/toast';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { cargoPlatformApi } from '../../../lib/cargoPlatformService';
 import { projectsApi } from '../../../lib/services';
-import { imageForDisplay } from '../../../lib/imageUrl';
-import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import { buildCargoPlatformPdfHtml } from '../../../lib/cargoPlatformPdf';
 import { generateAndSharePdf, PdfLimitReachedError } from '../../../lib/pdfOpen';
 import { PaywallModal } from '../../../components/PaywallModal';
@@ -40,8 +39,10 @@ import { recordCompletion } from '../../../lib/calendarSchedule';
 import { friendlyError } from '../../../lib/errorMap';
 import { a11y } from '../../../lib/accessibility';
 import { haptic } from '../../../lib/haptics';
+import { CelebrationBurst } from '../../../components/animations';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { usePhotoWithLocation } from '../../../hooks/usePhotoWithLocation';
+
 import {
   CP_ITEMS,
   CP_SECTION_LABELS,
@@ -52,6 +53,7 @@ import {
   cpTotalWeight,
   type CargoPlatformInspection,
   type CPVerdict,
+  type CPResult,
   type CPItemState,
   type CPSignatory,
   type CPSection,
@@ -63,18 +65,8 @@ const PLATFORM_STEP   = 1;
 const CARGO_STEP      = 2;
 const CHECKLIST_STEP  = 3;
 const CONCLUSION_STEP = 4;
-const SIGNATURES_STEP = 5;
-const TOTAL_STEPS     = 6;
-const STEP_LABELS     = ['პროექტი', 'პლატფ.', 'ტვირთი', 'შემოწ.', 'დასკვნა', 'ხელმ.'];
-
-// ── Signature canvas styles (same as briefings) ───────────────────────────────
-const WEB_STYLE = `
-  html, body { width: 100%; height: 100%; margin: 0; padding: 0; background: #fff; overflow: hidden; }
-  .m-signature-pad { position: fixed; top: 0; left: 0; right: 0; bottom: 0; box-shadow: none; border: none; background: #fff; margin: 0; }
-  .m-signature-pad--body { border: none; height: 100%; }
-  .m-signature-pad--body canvas { width: 100% !important; height: 100% !important; background: #fff; }
-  .m-signature-pad--footer { display: none; }
-`;
+const TOTAL_STEPS     = 5;
+const STEP_LABELS     = ['ინფო', 'პლატფ.', 'ტვირთი', 'შემოწ.', 'დასკვნა'];
 
 // ── Binary pill selector ──────────────────────────────────────────────────────
 function BinaryPills<T extends string>({
@@ -135,6 +127,8 @@ export default function CargoPlatformInspectionScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const [celebrating, setCelebrating] = useState(false);
+  const celebrationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewBusy, setPreviewBusy] = useState(false);
@@ -146,12 +140,6 @@ export default function CargoPlatformInspectionScreen() {
   const inspectionRef = useRef<CargoPlatformInspection | null>(null);
   const animateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => { inspectionRef.current = inspection; }, [inspection]);
-
-  // Sequential signing state: 0 = first signatory, 1 = second
-  const [sigPhase, setSigPhase] = useState<0 | 1>(0);
-  const [hasStroke, setHasStroke] = useState(false);
-  const [sigSaving, setSigSaving] = useState(false);
-  const canvasRef = useRef<SignatureViewRef>(null);
 
   const persistKey = useMemo(() => `cargo-platform-wizard:${id}:step`, [id]);
 
@@ -184,7 +172,6 @@ export default function CargoPlatformInspectionScreen() {
         if (patched.inspectorName !== insp.inspectorName) {
           cargoPlatformApi.patch(patched.id, {
             inspectorName: patched.inspectorName,
-            signatures: patched.signatures,
           }).catch(() => {});
         }
 
@@ -192,7 +179,7 @@ export default function CargoPlatformInspectionScreen() {
           const saved = await AsyncStorage.getItem(persistKey);
           if (saved && !cancelled) {
             const s = parseInt(saved, 10);
-            if (!isNaN(s) && s >= INFO_STEP && s <= SIGNATURES_STEP) setStep(s);
+            if (!isNaN(s) && s >= INFO_STEP && s <= CONCLUSION_STEP) setStep(s);
           }
         }
 
@@ -239,10 +226,14 @@ export default function CargoPlatformInspectionScreen() {
   }, [id]);
 
   useEffect(() => {
-    if (step >= INFO_STEP && step <= SIGNATURES_STEP) {
+    if (step >= INFO_STEP && step <= CONCLUSION_STEP) {
       AsyncStorage.setItem(persistKey, String(step)).catch(() => {});
     }
   }, [step, persistKey]);
+
+  useEffect(() => {
+    return () => { if (celebrationTimer.current) clearTimeout(celebrationTimer.current); };
+  }, []);
 
   // ── Auto-save (debounced) ───────────────────────────────────────────────────
 
@@ -270,7 +261,6 @@ export default function CargoPlatformInspectionScreen() {
         verdict: insp.verdict,
         verdictComment: insp.verdictComment,
         summaryPhotos: insp.summaryPhotos,
-        signatures: insp.signatures,
       }).catch(e => {
         toast.error(friendlyError(e, 'შენახვა ვერ მოხერხდა'));
       }).finally(() => setSaving(false));
@@ -291,30 +281,10 @@ export default function CargoPlatformInspectionScreen() {
 
   // ── Cargo rows ─────────────────────────────────────────────────────────────
 
-  const addCargoRow = useCallback(() => {
+  const handleCargoChange = useCallback((rows: Record<string, any>[]) => {
     setInspection(prev => {
       if (!prev) return prev;
-      const next = { ...prev, cargo: [...prev.cargo, buildDefaultCargoRow()] };
-      scheduleSave(next);
-      return next;
-    });
-  }, [scheduleSave]);
-
-  const updateCargoRow = useCallback((index: number, patch: Parameters<typeof CargoRow>[0]['onChange'] extends (p: infer P) => void ? P : never) => {
-    setInspection(prev => {
-      if (!prev) return prev;
-      const cargo = prev.cargo.map((r, i) => i === index ? { ...r, ...patch } : r);
-      const next = { ...prev, cargo };
-      scheduleSave(next);
-      return next;
-    });
-  }, [scheduleSave]);
-
-  const removeCargoRow = useCallback((index: number) => {
-    setInspection(prev => {
-      if (!prev) return prev;
-      const cargo = prev.cargo.filter((_, i) => i !== index);
-      const next = { ...prev, cargo };
+      const next = { ...prev, cargo: rows as typeof prev.cargo };
       scheduleSave(next);
       return next;
     });
@@ -409,6 +379,25 @@ export default function CargoPlatformInspectionScreen() {
     });
   }, [scheduleSave, toast]);
 
+  // ── Signatories ─────────────────────────────────────────────────────────────
+
+  const handleSignatoryChange = useCallback((idx: number, field: string, value: string) => {
+    setInspection(prev => {
+      if (!prev) return prev;
+      const sigs = [...prev.signatures] as [CPSignatory, CPSignatory];
+      sigs[idx] = { ...sigs[idx], [field]: field === 'signature' ? (value || null) : value };
+      return { ...prev, signatures: sigs };
+    });
+  }, []);
+
+  const handleSignatorySign = useCallback((idx: number, base64Png: string) => {
+    const insp = inspectionRef.current;
+    if (!insp) return;
+    const sigs = [...insp.signatures] as [CPSignatory, CPSignatory];
+    sigs[idx] = { ...sigs[idx], signature: base64Png, date: new Date().toISOString() };
+    setInspection({ ...insp, signatures: sigs });
+  }, []);
+
   // ── Verdict auto-suggest ────────────────────────────────────────────────────
 
   const suggestedVerdict = useMemo(
@@ -419,22 +408,23 @@ export default function CargoPlatformInspectionScreen() {
   // ── PDF ─────────────────────────────────────────────────────────────────────
 
   const handlePdf = useCallback(async () => {
-    if (!inspection) return;
+    const insp = inspectionRef.current;
+    if (!insp) return;
     if (pdfUsage?.isLocked) { setPaywallVisible(true); return; }
     setGeneratingPdf(true);
     try {
-      const html = await buildCargoPlatformPdfHtml({ inspection, projectName: projectName || 'პროექტი' });
+      const html = await buildCargoPlatformPdfHtml({ inspection: insp, projectName: projectName || 'პროექტი' });
       const pdfName = generatePdfName(
         projectName || 'project',
         'CargoPlatformInspection',
-        new Date(inspection.inspectionDate),
-        inspection.id,
+        new Date(insp.inspectionDate),
+        insp.id,
       );
       const uid = session.state.status === 'signedIn' ? session.state.session.user.id : undefined;
       await generateAndSharePdf(html, pdfName, undefined, uid, {
         title: 'ტვირთის მიმღები პლატფორმის შემოწმება',
-        author: inspection.inspectorName || undefined,
-        documentId: inspection.id,
+        author: insp.inspectorName || undefined,
+        documentId: insp.id,
         subject: 'შრომის უსაფრთხოება',
       });
       invalidatePdfUsage();
@@ -444,93 +434,35 @@ export default function CargoPlatformInspectionScreen() {
     } finally {
       setGeneratingPdf(false);
     }
-  }, [inspection, projectName, session.state, invalidatePdfUsage, toast, pdfUsage]);
+  }, [projectName, session.state, invalidatePdfUsage, toast, pdfUsage]);
 
   // ── Preview (completed) ─────────────────────────────────────────────────────
 
   const buildPreview = useCallback(async () => {
-    if (!inspection) return;
+    const insp = inspectionRef.current;
+    if (!insp) return;
     setPreviewBusy(true);
     try {
-      const html = await buildCargoPlatformPdfHtml({ inspection, projectName: projectName || 'პროექტი' });
+      const html = await buildCargoPlatformPdfHtml({ inspection: insp, projectName: projectName || 'პროექტი' });
       setPreviewHtml(html);
     } catch (e) {
       toast.error(friendlyError(e, 'PDF ვერ შეიქმნა'));
     } finally {
       setPreviewBusy(false);
     }
-  }, [inspection, projectName, toast]);
+  }, [projectName, toast]);
 
   useEffect(() => {
     if (inspection?.status === 'completed') void buildPreview();
   }, [inspection?.status]);
 
-  // ── Signing (sequential) ────────────────────────────────────────────────────
-
-  // Reset canvas when phase changes
-  useEffect(() => {
-    setHasStroke(false);
-    const t = setTimeout(() => canvasRef.current?.clearSignature(), 80);
-    return () => clearTimeout(t);
-  }, [sigPhase]);
-
-  const handleSignConfirm = useCallback(() => {
-    if (!hasStroke) return;
-    canvasRef.current?.readSignature();
-  }, [hasStroke]);
-
-  const handleSignClear = useCallback(() => {
-    canvasRef.current?.clearSignature();
-    setHasStroke(false);
-  }, []);
-
-  const handleSignOK = useCallback(async (sig: string) => {
-    if (!inspection) return;
-    setSigSaving(true);
-    try {
-      const b64 = sig.replace(/^data:image\/png;base64,/, '');
-      const sigs = [...inspection.signatures] as [CPSignatory, CPSignatory];
-      sigs[sigPhase] = {
-        ...sigs[sigPhase],
-        signature: b64,
-        date: new Date().toISOString(),
-      };
-      const next = { ...inspection, signatures: sigs };
-      setInspection(next);
-      await cargoPlatformApi.patch(inspection.id, { signatures: sigs });
-
-      if (sigPhase === 0) {
-        // Move to second signatory
-        setSigPhase(1);
-      }
-      // If sigPhase === 1 — both done, Complete button will be enabled
-    } catch (e) {
-      toast.error(friendlyError(e, 'ხელმოწერა ვერ შეინახა'));
-    } finally {
-      setSigSaving(false);
-    }
-  }, [inspection, sigPhase, toast]);
-
-  const handleClearSignature = useCallback((idx: 0 | 1) => {
-    if (!inspection) return;
-    const sigs = [...inspection.signatures] as [CPSignatory, CPSignatory];
-    sigs[idx] = { ...sigs[idx], signature: null, date: null };
-    const next = { ...inspection, signatures: sigs };
-    setInspection(next);
-    cargoPlatformApi.patch(inspection.id, { signatures: sigs }).catch(() => {});
-    setSigPhase(idx);
-  }, [inspection]);
-
   // ── Complete ────────────────────────────────────────────────────────────────
-
-  const bothSigned = !!(inspection?.signatures[0].signature && inspection?.signatures[1].signature);
 
   const handleComplete = useCallback(async () => {
     if (!inspection) return;
     const missing: string[] = [];
     if (!inspection.verdict)                missing.push('დასკვნა');
     if (!inspection.verdictComment?.trim()) missing.push('კომენტარი');
-    if (!bothSigned)                        missing.push('ორივე ხელმომწერის ხელმოწერა');
 
     if (missing.length > 0) {
       Alert.alert('შეავსეთ სავალდებულო ველები', missing.map(m => `• ${m}`).join('\n'));
@@ -557,7 +489,6 @@ export default function CargoPlatformInspectionScreen() {
         verdict: inspection.verdict,
         verdictComment: inspection.verdictComment,
         summaryPhotos: inspection.summaryPhotos,
-        signatures: inspection.signatures,
       });
       await cargoPlatformApi.complete(inspection.id);
       const completedAt = new Date().toISOString();
@@ -570,27 +501,28 @@ export default function CargoPlatformInspectionScreen() {
       setInspection(prev => prev ? { ...prev, status: 'completed', completedAt } : prev);
       await AsyncStorage.removeItem(persistKey);
       toast.success('შემოწმება დასრულდა');
-      return true;
+      setCelebrating(true);
+      haptic.inspectionComplete();
+      celebrationTimer.current = setTimeout(() => setCelebrating(false), 2000);
     } catch (e) {
       toast.error(friendlyError(e, 'შეცდომა'));
       return false;
     } finally {
       setCompleting(false);
     }
-  }, [inspection, bothSigned, persistKey, toast]);
+  }, [inspection, persistKey, toast]);
 
   // ── Step navigation ──────────────────────────────────────────────────────────
 
   const canGoNext = useMemo(() => {
     if (!inspection) return false;
-    if (step === INFO_STEP) return true;
-    if (step === CONCLUSION_STEP) return !!inspection.verdict && !!inspection.verdictComment?.trim();
-    if (step === SIGNATURES_STEP) return bothSigned && !completing;
+    if (step === INFO_STEP) return !!(inspection.company?.trim() && inspection.address?.trim());
+    if (step === CONCLUSION_STEP) return !!inspection.verdict && !!inspection.verdictComment?.trim() && !completing;
     return true;
-  }, [step, inspection, bothSigned, completing]);
+  }, [step, inspection, completing]);
 
   const handleNext = useCallback(async () => {
-    if (step === SIGNATURES_STEP) {
+    if (step === CONCLUSION_STEP) {
       await handleComplete();
     } else {
       setStep(s => s + 1);
@@ -628,7 +560,7 @@ export default function CargoPlatformInspectionScreen() {
     );
   }
 
-  if (inspection.status === 'completed') {
+  if (inspection.status === 'completed' && !celebrating) {
     return (
       <InspectionResultView
         inspectionId={inspection.id}
@@ -637,8 +569,8 @@ export default function CargoPlatformInspectionScreen() {
         previewHtml={previewHtml}
         previewBusy={previewBusy}
         previewError={null}
-        signedCount={0}
-        totalSlots={0}
+        signedCount={inspection.signatures.filter(s => !!s.signature).length}
+        totalSlots={inspection.signatures.length}
         attachmentCount={0}
         pdfLocked={pdfUsage?.isLocked}
         downloading={generatingPdf}
@@ -646,13 +578,23 @@ export default function CargoPlatformInspectionScreen() {
         onPaywallClose={() => setPaywallVisible(false)}
         onDownloadPdf={() => void handlePdf()}
         onSheetSaved={() => void buildPreview()}
+        renderSignaturesSheet={({ dismiss, onChanged }) => (
+          <SignatureSheet
+            onClose={dismiss}
+            signatories={[
+              { role: 'I ხელმომწერი', ...inspection.signatures[0] },
+              { role: 'II ხელმომწერი', ...inspection.signatures[1] },
+            ]}
+            onChange={handleSignatoryChange}
+            onSign={(idx, base64) => {
+              handleSignatorySign(idx, base64);
+              onChanged();
+            }}
+          />
+        )}
       />
     );
   }
-
-  const currentSignatoryIdx = sigPhase;
-  const currentSignatory = inspection.signatures[currentSignatoryIdx];
-  const isCurrentSigned = !!currentSignatory.signature;
 
   return (
     <View style={styles.root}>
@@ -822,27 +764,22 @@ export default function CargoPlatformInspectionScreen() {
                 ყველა ტვირთი, რომელიც განთავსდება პლატფორმაზე, ექვემდებარება იდენტიფიკაციას და წინასწარ წონის დადასტურებას
               </Text>
 
-              {inspection.cargo.map((row, idx) => (
-                <CargoRow
-                  key={row.id}
-                  index={idx}
-                  row={row}
-                  canDelete={inspection.cargo.length > 0}
-                  onChange={patch => updateCargoRow(idx, patch)}
-                  onDelete={() => removeCargoRow(idx)}
-                />
-              ))}
-
-              <Pressable style={styles.addRowBtn} onPress={addCargoRow} {...a11y('ტვირთის დამატება', undefined, 'button')}>
-                <Ionicons name="add-circle-outline" size={18} color={theme.colors.accent} />
-                <Text style={styles.addRowText}>+ ტვირთის დამატება</Text>
-              </Pressable>
-
-              {/* Total weight */}
-              <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>სულ:</Text>
-                <Text style={styles.totalValue}>{cpTotalWeight(inspection.cargo)} კგ</Text>
-              </View>
+              <DynamicTable
+                columns={[
+                  { key: 'name', label: 'ტვირთის დასახელება', type: 'text' },
+                  { key: 'total_weight_kg', label: 'სრული წონა (კგ)', type: 'number', keyboardType: 'decimal-pad' },
+                ]}
+                rows={inspection.cargo}
+                onChange={handleCargoChange}
+                onBuildDefaultRow={buildDefaultCargoRow}
+                minRows={0}
+                footer={
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Text style={styles.totalLabel}>სულ:</Text>
+                    <Text style={styles.totalValue}>{cpTotalWeight(inspection.cargo)} კგ</Text>
+                  </View>
+                }
+              />
             </KeyboardAwareScrollView>
           )}
 
@@ -857,25 +794,34 @@ export default function CargoPlatformInspectionScreen() {
               bottomOffset={120}
             >
               {checklistSections.map(({ section, label, entries }) => (
-                <View key={section}>
-                  <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionHeaderText}>{label}</Text>
-                  </View>
-                  {entries.map(entry => {
-                    const state = inspection.items.find(i => i.id === entry.id)
-                      ?? { id: entry.id, result: null, comment: null, photo_paths: [] };
-                    return (
-                      <CargoPlatformChecklistItem
-                        key={entry.id}
-                        entry={entry}
-                        state={state}
-                        onChange={patch => updateItem(entry.id, patch)}
-                        onAddPhoto={() => handleAddItemPhoto(entry.id)}
-                        onDeletePhoto={path => handleDeleteItemPhoto(entry.id, path)}
-                      />
-                    );
+                <ChecklistSection
+                  key={section}
+                  title={label}
+                  items={entries.map(e => {
+                    const state = inspection.items.find(i => i.id === e.id)
+                      ?? { id: e.id, result: null, comment: null, photo_paths: [] };
+                    return {
+                      id: e.id,
+                      label: e.label,
+                      description: e.description,
+                      type: 'three_state' as const,
+                      options: { a: 'good', b: 'fix', c: 'N/A', cIsNeutral: true },
+                      value: state.result === 'na' ? 'N/A' : state.result,
+                      comment: state.comment,
+                      photoPaths: state.photo_paths ?? [],
+                    };
                   })}
-                </View>
+                  onItemChange={(id, field, val) => {
+                    if (field === 'value') {
+                      const result: CPResult | null = val === 'N/A' ? 'na' : val as CPResult | null;
+                      updateItem(id, { result });
+                    } else {
+                      updateItem(id, { comment: val });
+                    }
+                  }}
+                  onAddPhoto={handleAddItemPhoto}
+                  onDeletePhoto={handleDeleteItemPhoto}
+                />
               ))}
             </KeyboardAwareScrollView>
           )}
@@ -890,7 +836,6 @@ export default function CargoPlatformInspectionScreen() {
               showsVerticalScrollIndicator={false}
               bottomOffset={120}
             >
-              {/* Auto-suggest banner */}
               {suggestedVerdict && inspection.verdict !== suggestedVerdict && (
                 <Pressable
                   style={styles.suggestBanner}
@@ -904,144 +849,25 @@ export default function CargoPlatformInspectionScreen() {
               )}
 
               <Text style={styles.fieldLabel}>დასკვნა *</Text>
-              <View style={styles.chipRow}>
-                {(['approved', 'conditional', 'rejected'] as CPVerdict[]).map(v => {
-                  const active = inspection.verdict === v;
-                  return (
-                    <Pressable
-                      key={v}
-                      style={[styles.typeChip, active && styles.typeChipActive]}
-                      onPress={() => update('verdict', active ? null : v)}
-                      {...a11y(CP_VERDICT_LABEL[v], undefined, 'radio')}
-                    >
-                      <Text style={[styles.typeChipText, active && styles.typeChipTextActive]}>
-                        {CP_VERDICT_LABEL[v]}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-
-              <FloatingLabelInput
-                label="კომენტარი *"
-                value={inspection.verdictComment}
-                onChangeText={v => update('verdictComment', v)}
-                multiline
-                numberOfLines={4}
-                required
+              <VerdictSelector
+                options={[
+                  { value: 'approved', label: CP_VERDICT_LABEL.approved, type: 'success' },
+                  { value: 'conditional', label: CP_VERDICT_LABEL.conditional, type: 'warning' },
+                  { value: 'rejected', label: CP_VERDICT_LABEL.rejected, type: 'danger' },
+                ]}
+                value={inspection.verdict}
+                onChange={v => update('verdict', v as CPVerdict)}
+                note={inspection.verdictComment}
+                onNoteChange={v => update('verdictComment', v)}
+                notePlaceholder="კომენტარი *"
               />
 
               <Text style={styles.fieldLabel}>ფოტო / ვიდეო მასალა (სურვ.)</Text>
-              <SummaryPhotoStrip
-                paths={inspection.summaryPhotos}
+              <PhotoSection
+                photoPaths={inspection.summaryPhotos}
                 onAdd={handleAddSummaryPhoto}
                 onDelete={handleDeleteSummaryPhoto}
-                styles={styles}
               />
-            </KeyboardAwareScrollView>
-          )}
-
-          {/* ── Step 5: Signatures (sequential) ─────────────────────────────── */}
-          {step === SIGNATURES_STEP && (
-            <KeyboardAwareScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={styles.stepBody}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
-              showsVerticalScrollIndicator={false}
-              bottomOffset={120}
-            >
-              {/* Progress dots */}
-              <View style={styles.sigProgress}>
-                {([0, 1] as const).map(i => {
-                  const signed = !!inspection.signatures[i].signature;
-                  const current = !signed && i === sigPhase;
-                  return (
-                    <View key={i} style={[styles.sigDot, signed && styles.sigDotSigned, current && styles.sigDotCurrent]}>
-                      {signed && <Ionicons name="checkmark" size={12} color={theme.colors.white} />}
-                      {!signed && <Text style={styles.sigDotText}>{i + 1}</Text>}
-                    </View>
-                  );
-                })}
-                <View style={styles.sigDotLine} />
-              </View>
-
-              <Text style={styles.sigTitle}>
-                {currentSignatoryIdx === 0 ? 'I ხელმომწერი' : 'II ხელმომწერი'}
-              </Text>
-
-              {/* Signatory fields */}
-              <FloatingLabelInput
-                label="სახელი, გვარი"
-                value={currentSignatory.name}
-                onChangeText={v => {
-                  const sigs = [...inspection.signatures] as [CPSignatory, CPSignatory];
-                  sigs[currentSignatoryIdx] = { ...sigs[currentSignatoryIdx], name: v };
-                  update('signatures', sigs);
-                }}
-              />
-              <FloatingLabelInput
-                label="თანამდებობა"
-                value={currentSignatory.position}
-                onChangeText={v => {
-                  const sigs = [...inspection.signatures] as [CPSignatory, CPSignatory];
-                  sigs[currentSignatoryIdx] = { ...sigs[currentSignatoryIdx], position: v };
-                  update('signatures', sigs);
-                }}
-              />
-              <FloatingLabelInput
-                label="ორგანიზაცია"
-                value={currentSignatory.organization}
-                onChangeText={v => {
-                  const sigs = [...inspection.signatures] as [CPSignatory, CPSignatory];
-                  sigs[currentSignatoryIdx] = { ...sigs[currentSignatoryIdx], organization: v };
-                  update('signatures', sigs);
-                }}
-              />
-
-              {/* Signature canvas or signed preview */}
-              {isCurrentSigned ? (
-                <View style={styles.signedCard}>
-                  <View style={styles.signedHeader}>
-                    <Ionicons name="checkmark-circle" size={20} color={theme.colors.semantic.success} />
-                    <Text style={styles.signedLabel}>ხელმოწერილია</Text>
-                    <Pressable onPress={() => handleClearSignature(currentSignatoryIdx)} hitSlop={8}>
-                      <Text style={styles.clearSigText}>გასუფთავება</Text>
-                    </Pressable>
-                  </View>
-                  <SignedPreview sig={currentSignatory.signature!} styles={styles} />
-
-                  {currentSignatoryIdx === 0 && !inspection.signatures[1].signature && (
-                    <Pressable style={styles.nextSignerBtn} onPress={() => setSigPhase(1)}>
-                      <Text style={styles.nextSignerBtnText}>II ხელმომწერის ხელმოწერა →</Text>
-                    </Pressable>
-                  )}
-                </View>
-              ) : (
-                <>
-                  <Text style={styles.fieldLabel}>ხელმოწერა</Text>
-                  <View style={styles.canvasContainer}>
-                    <SignatureScreen
-                      ref={canvasRef}
-                      onOK={handleSignOK}
-                      onBegin={() => setHasStroke(true)}
-                      webStyle={WEB_STYLE}
-                      androidLayerType="hardware"
-                    />
-                  </View>
-                  <View style={styles.sigActions}>
-                    <Pressable style={styles.sigClearBtn} onPress={handleSignClear} disabled={!hasStroke}>
-                      <Text style={[styles.sigClearText, !hasStroke && { opacity: 0.4 }]}>გასუფთავება</Text>
-                    </Pressable>
-                    <Button
-                      title={sigSaving ? 'ინახება…' : 'დადასტურება'}
-                      loading={sigSaving}
-                      disabled={!hasStroke || sigSaving}
-                      onPress={handleSignConfirm}
-                    />
-                  </View>
-                </>
-              )}
             </KeyboardAwareScrollView>
           )}
 
@@ -1049,7 +875,7 @@ export default function CargoPlatformInspectionScreen() {
 
         {/* Footer */}
         <View style={[styles.footer, { paddingBottom: 16 + insets.bottom }]}>
-          {step === SIGNATURES_STEP ? (
+          {step === CONCLUSION_STEP ? (
             <Button
               title="შენახვა და დასრულება"
               style={{ paddingVertical: 14 }}
@@ -1076,63 +902,14 @@ export default function CargoPlatformInspectionScreen() {
       </View>
 
       <PaywallModal visible={paywallVisible} onClose={() => setPaywallVisible(false)} />
+      {celebrating && (
+        <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+          <CelebrationBurst />
+        </View>
+      )}
     </View>
   );
 }
-
-// ── Sub-components ────────────────────────────────────────────────────────────
-
-function SignedPreview({ sig, styles }: { sig: string; styles: ReturnType<typeof getstyles> }) {
-  return (
-    <View style={styles.signedImgBox}>
-      <Image
-        source={{ uri: `data:image/png;base64,${sig}` }}
-        style={styles.signedImg}
-        contentFit="contain"
-      />
-    </View>
-  );
-}
-
-function SummaryPhotoStrip({
-  paths, onAdd, onDelete, styles,
-}: {
-  paths: string[];
-  onAdd: () => void;
-  onDelete: (path: string) => void;
-  styles: ReturnType<typeof getstyles>;
-}) {
-  const { theme } = useTheme();
-  return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.photoStrip}>
-      {paths.map(path => <SummaryThumb key={path} path={path} onDelete={() => onDelete(path)} styles={styles} />)}
-      <Pressable style={styles.addPhoto} onPress={onAdd} {...a11y('ფოტოს დამატება', undefined, 'button')}>
-        <Ionicons name="camera-outline" size={20} color={theme.colors.inkSoft} />
-        <Text style={styles.addPhotoLabel}>+ ფოტო</Text>
-      </Pressable>
-    </ScrollView>
-  );
-}
-
-const SummaryThumb = memo(function SummaryThumb({
-  path, onDelete, styles,
-}: { path: string; onDelete: () => void; styles: ReturnType<typeof getstyles> }) {
-  const { theme } = useTheme();
-  const [uri, setUri] = useState('');
-  useEffect(() => {
-    let cancelled = false;
-    imageForDisplay(STORAGE_BUCKETS.answerPhotos, path).then(u => { if (!cancelled) setUri(u); }).catch(() => {});
-    return () => { cancelled = true; };
-  }, [path]);
-  return (
-    <View style={styles.thumb}>
-      <Image source={{ uri }} style={styles.thumbImg} contentFit="cover" />
-      <Pressable style={styles.thumbDelete} onPress={onDelete} hitSlop={8} {...a11y('ფოტოს წაშლა', undefined, 'button')}>
-        <Ionicons name="close-circle" size={18} color={theme.colors.white} />
-      </Pressable>
-    </View>
-  );
-});
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
@@ -1150,7 +927,7 @@ function getstyles(theme: Theme) {
     fieldLabel: { fontSize: 12, fontWeight: '600', color: theme.colors.inkSoft },
     sectionHint: { fontSize: 12, color: theme.colors.inkSoft, fontStyle: 'italic', lineHeight: 18 },
 
-    // Binary pills
+    // Binary pills (platform guardrail selectors)
     binaryGroup: { gap: 6 },
     pillRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
     pill: {
@@ -1162,96 +939,16 @@ function getstyles(theme: Theme) {
     pillText: { fontSize: 13, color: theme.colors.inkSoft },
     pillTextActive: { color: theme.colors.accent, fontWeight: '700' },
 
-    // Cargo
-    addRowBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 12 },
-    addRowText: { fontSize: 13, color: theme.colors.accent, fontWeight: '600' },
-    totalRow: {
-      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-      paddingVertical: 14, paddingHorizontal: 12,
-      backgroundColor: theme.colors.subtleSurface,
-      borderRadius: 10, marginTop: 4,
-    },
+    // Cargo total
     totalLabel: { fontSize: 14, fontWeight: '700', color: theme.colors.ink },
     totalValue: { fontSize: 18, fontWeight: '800', color: theme.colors.accent },
 
-    // Checklist sections
-    sectionHeader: {
-      paddingVertical: 8, paddingHorizontal: 12,
-      backgroundColor: theme.colors.subtleSurface,
-      borderRadius: 8, marginBottom: 4, marginTop: 8,
-    },
-    sectionHeaderText: { fontSize: 12, fontWeight: '700', color: theme.colors.inkSoft, textTransform: 'uppercase', letterSpacing: 0.5 },
-
-    // Verdict
+    // Verdict suggestion banner
     suggestBanner: {
       flexDirection: 'row', alignItems: 'center', gap: 6,
       backgroundColor: theme.colors.warnSoft,
       padding: 10, borderRadius: 8,
     },
     suggestText: { fontSize: 12, color: theme.colors.inkSoft, flex: 1 },
-    chipRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-    typeChip: {
-      paddingHorizontal: 14, paddingVertical: 10,
-      borderRadius: 20, borderWidth: 1.5,
-      borderColor: theme.colors.hairline,
-      backgroundColor: theme.colors.card,
-    },
-    typeChipActive: { borderColor: theme.colors.accent, backgroundColor: theme.colors.accentSoft },
-    typeChipText: { fontSize: 13, color: theme.colors.inkSoft },
-    typeChipTextActive: { color: theme.colors.accent, fontWeight: '700' },
-
-    // Photos
-    photoStrip: { gap: 8, paddingVertical: 4 },
-    addPhoto: {
-      width: 64, height: 64, borderRadius: 8,
-      borderWidth: 1.5, borderStyle: 'dashed', borderColor: theme.colors.hairline,
-      alignItems: 'center', justifyContent: 'center', gap: 2,
-    },
-    addPhotoLabel: { fontSize: 11, color: theme.colors.inkSoft },
-    thumb: { width: 64, height: 64, borderRadius: 8, overflow: 'hidden' },
-    thumbImg: { width: 64, height: 64 },
-    thumbDelete: { position: 'absolute', top: 2, right: 2 },
-
-    // Signatures
-    sigProgress: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16, position: 'relative' },
-    sigDotLine: {
-      position: 'absolute', left: 22, right: 22, height: 2,
-      backgroundColor: theme.colors.hairline, zIndex: -1,
-    },
-    sigDot: {
-      width: 32, height: 32, borderRadius: 16,
-      backgroundColor: theme.colors.subtleSurface,
-      borderWidth: 2, borderColor: theme.colors.hairline,
-      alignItems: 'center', justifyContent: 'center',
-    },
-    sigDotSigned: { backgroundColor: theme.colors.semantic.success, borderColor: theme.colors.semantic.success },
-    sigDotCurrent: { borderColor: theme.colors.accent },
-    sigDotText: { fontSize: 13, fontWeight: '700', color: theme.colors.inkSoft },
-    sigTitle: { fontSize: 16, fontWeight: '700', color: theme.colors.ink, marginBottom: 8 },
-    canvasContainer: {
-      height: 200, borderRadius: 10, overflow: 'hidden',
-      borderWidth: 1, borderColor: theme.colors.hairline,
-      backgroundColor: '#fff',
-    },
-    sigActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
-    sigClearBtn: { paddingVertical: 8 },
-    sigClearText: { fontSize: 14, color: theme.colors.accent },
-    signedCard: {
-      borderRadius: 10, borderWidth: 1, borderColor: theme.colors.semantic.success,
-      overflow: 'hidden', backgroundColor: theme.colors.semantic.successSoft,
-    },
-    signedHeader: {
-      flexDirection: 'row', alignItems: 'center', gap: 8,
-      padding: 12, borderBottomWidth: 1, borderBottomColor: theme.colors.semantic.success,
-    },
-    signedLabel: { flex: 1, fontSize: 14, fontWeight: '600', color: theme.colors.semantic.success },
-    clearSigText: { fontSize: 13, color: theme.colors.inkSoft },
-    signedImgBox: { height: 100, alignItems: 'center', justifyContent: 'center', padding: 8 },
-    signedImg: { width: '100%', height: '100%' },
-    nextSignerBtn: {
-      margin: 12, padding: 12, borderRadius: 8,
-      backgroundColor: theme.colors.accent, alignItems: 'center',
-    },
-    nextSignerBtnText: { fontSize: 14, fontWeight: '700', color: theme.colors.white },
   });
 }

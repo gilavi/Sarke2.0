@@ -68,8 +68,8 @@ export interface CargoPlatformInspection {
   verdictComment: string;
   // Section 6 — ფოტო / ვიდეო მასალა
   summaryPhotos: string[];
-  // Section 7 — ხელმოწერები (ორი ხელმომწერი)
-  signatures: [CPSignatory, CPSignatory];
+  // Section 7 — ხელმოწერები
+  signatures: CPSignatory[];
   completedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -196,7 +196,7 @@ export function buildDefaultCPInspection(
     verdict: null,
     verdictComment: '',
     summaryPhotos: [],
-    signatures: [buildEmptySignatory(), buildEmptySignatory()],
+    signatures: [buildEmptySignatory()],
     completedAt: null,
     createdAt: now,
     updatedAt: now,

@@ -462,6 +462,11 @@ export function buildCargoPlatformPdfTemplate(args: {
 
   // ── Section VII — ხელმოწერები ───────────────────────────────────────────────
 
+  function romanLabel(i: number): string {
+    const romans = ['I','II','III','IV','V','VI','VII','VIII','IX','X'];
+    return romans[i] ?? `${i + 1}`;
+  }
+
   function renderSignatoryBlock(sig: CargoPlatformInspection['signatures'][0], label: string): string {
     const sigImg = sig.signature
       ? `<img class="sig-img" src="data:image/png;base64,${sig.signature}" alt="ხელმოწერა" />`
@@ -486,11 +491,12 @@ export function buildCargoPlatformPdfTemplate(args: {
     `;
   }
 
+  const sigBlocks = insp.signatures.map((sig, i) => renderSignatoryBlock(sig, `${romanLabel(i)} ხელმომწერი`)).join('');
+
   const sectionVIIHtml = `
     <div class="section-title">VII — ხელმოწერები</div>
     <div class="sig-two-col">
-      ${renderSignatoryBlock(insp.signatures[0], 'I ხელმომწერი')}
-      ${renderSignatoryBlock(insp.signatures[1], 'II ხელმომწერი')}
+      ${sigBlocks}
     </div>
     <div class="legal-note">
       წინამდებარე შემოწმების აქტი წარმოადგენს სამართლებრივი ძალის მქონე დოკუმენტს.

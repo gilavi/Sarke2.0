@@ -75,9 +75,10 @@ function AuthGate() {
   // redirecting to home, breaking the photo flow.
 
   // Handle deep links:
-  //   sarke2://reset?code=...       — password-recovery PKCE exchange
-  //   sarke2://payment/success      — BOG payment success cold-start fallback
-  //                                   (warm case is handled by WebBrowser.openAuthSessionAsync)
+  //   sarke2://reset?code=...        — password-recovery PKCE exchange
+  //   sarke2://verify-email?code=... — email-verification PKCE exchange
+  //   sarke2://payment/success       — BOG payment success cold-start fallback
+  //                                    (warm case is handled by WebBrowser.openAuthSessionAsync)
   useEffect(() => {
     const handle = async (url: string | null) => {
       if (!url) return;
@@ -93,6 +94,22 @@ function AuthGate() {
       }
 
       const code = (parsed.queryParams?.code as string | undefined) ?? undefined;
+
+      const isVerifyEmail = parsed.path === 'verify-email' || parsed.hostname === 'verify-email';
+      if (isVerifyEmail && code) {
+        if (exchangedCodes.has(code)) return;
+        exchangedCodes.add(code);
+        try {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) throw error;
+          // Session is now active; AuthGate will redirect to home/terms.
+        } catch (e) {
+          logError(e, '_layout.exchangeCodeForSession.verifyEmail');
+          router.replace('/(auth)/login');
+        }
+        return;
+      }
+
       const isReset = parsed.path === 'reset' || parsed.hostname === 'reset';
       if (!isReset || !code) return;
       if (exchangedCodes.has(code)) {

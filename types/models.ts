@@ -555,9 +555,62 @@ export interface FireSafetyOrderEnterpriseFormData {
   appointedSignedAt: string | null;
 }
 
-export type OrderFormData = LaborSafetyOrderFormData | AlcoholControlOrderFormData | FireSafetyOrderFormData | FireSafetyOrderEnterpriseFormData;
+export interface CraneOperatorOrderFormData {
+  orderNumber: string;
+  orderDate: string; // ISO
+  companyName: string;
+  objectAddress: string;
+  directorName: string;
+  // Appointed operator
+  craneOperatorName: string;
+  craneOperatorPersonalId: string;
+  craneOperatorPosition: string;
+  craneOperatorCertNumber: string;
+  craneOperatorCertExpiry: string; // ISO
+  craneOperatorPhone: string;
+  /** Storage path in answer-photos bucket. Optional. */
+  craneOperatorCertPhoto: string | null;
+  // Crane specs
+  craneModel: string;
+  craneNumber: string;
+  craneMaxLoad: string;
+  /** Storage path in answer-photos bucket. Optional. */
+  craneInspCertPhoto: string | null;
+  /** base64 PNG, no data: prefix */
+  directorSignature: string | null;
+  directorSignedAt: string | null;
+  /** base64 PNG, no data: prefix */
+  operatorSignature: string | null;
+  operatorSignedAt: string | null;
+}
 
-export type OrderDocumentType = 'labor_safety_specialist' | 'alcohol_control' | 'fire_safety_order' | 'fire_safety_order_enterprise';
+export interface CraneTechnicalOrderFormData {
+  orderNumber: string;
+  orderDate: string;
+  companyName: string;
+  objectAddress: string;
+  directorName: string;
+  craneOperatorName: string;
+  craneOperatorPersonalId: string;
+  /** "კვალიფიკაცია / სპეციალობა" — differs from CraneOperatorOrderFormData's craneOperatorPosition */
+  craneOperatorQualification: string;
+  craneOperatorCertNumber: string;
+  craneOperatorCertExpiry: string;
+  craneOperatorPhone: string;
+  craneOperatorCertPhoto: string | null;
+  craneModel: string;
+  craneNumber: string;
+  craneMaxLoad: string;
+  craneInspCertPhoto: string | null;
+  directorSignature: string | null;
+  directorSignedAt: string | null;
+  operatorSignature: string | null;
+  operatorSignedAt: string | null;
+}
+
+export type OrderFormData = LaborSafetyOrderFormData | AlcoholControlOrderFormData | FireSafetyOrderFormData | FireSafetyOrderEnterpriseFormData | CraneOperatorOrderFormData | CraneTechnicalOrderFormData;
+
+export type OrderDocumentType = 'labor_safety_specialist' | 'alcohol_control' | 'fire_safety_order' | 'fire_safety_order_enterprise' | 'crane_operator_order' | 'crane_technical_order';
 
 export interface Order {
   id: string;
@@ -578,6 +631,8 @@ export const ORDER_DOCUMENT_TYPE_LABEL: Record<OrderDocumentType, string> = {
   alcohol_control: 'ალკოჰოლური და ნარკოტიკული თრობის კონტროლი',
   fire_safety_order: 'სახანძრო უსაფრთხოებაზე პასუხისმგებელი პირის დანიშვნა',
   fire_safety_order_enterprise: 'საწარმოს სახანძრო უსაფრთხოებაზე პასუხისმგებელი პირის დანიშვნა',
+  crane_operator_order: 'კოშკურა ამწის ოპერატორის დანიშვნა',
+  crane_technical_order: 'ამწის ტექ. გამართულობა',
 };
 
 /** A BOG payment callback row. Added in migration 0031. */

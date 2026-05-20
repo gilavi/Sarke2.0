@@ -11,6 +11,11 @@ export type InspectionSource =
   | 'excavator'
   | 'general_equipment'
   | 'cargo_platform'
+  | 'safety_net_inspection'
+  | 'mobile_ladder_inspection'
+  | 'fall_protection_inspection'
+  | 'lifting_accessories_inspection'
+  | 'forklift_inspection'
   | string   // generic / fallback
   | null
   | undefined;
@@ -33,5 +38,10 @@ export function routeForInspection(
   if (source === 'general_equipment') return `/inspections/general-equipment/${id}`;
   if (source === 'cargo_platform') return `/inspections/cargo-platform/${id}`;
   if (source === 'harness') return isCompleted ? `/inspections/${id}` : `/inspections/harness/${id}`;
+  if (source === 'safety_net_inspection') return `/inspections/safety-net/${id}`;
+  if (source === 'mobile_ladder_inspection') return `/inspections/mobile-ladder/${id}`;
+  if (source === 'fall_protection_inspection') return `/inspections/fall-protection/${id}`;
+  if (source === 'lifting_accessories_inspection') return `/inspections/lifting-accessories/${id}`;
+  if (source === 'forklift_inspection') return `/inspections/forklift/${id}`;
   return isCompleted ? `/inspections/${id}` : `/inspections/${id}/wizard`;
 }

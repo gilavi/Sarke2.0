@@ -1,13 +1,12 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Pressable,
-  ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
-import { Image } from 'expo-image';
+
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,10 +22,13 @@ import { useSession } from '../../../lib/session';
 import { useToast } from '../../../lib/toast';
 
 import { bobcatApi } from '../../../lib/bobcatService';
-import { projectsApi, signaturesApi, inspectionAttachmentsApi } from '../../../lib/services';
-import { signatureAsDataUrl, imageForDisplay } from '../../../lib/imageUrl';
+import { projectsApi, inspectionAttachmentsApi } from '../../../lib/services';
+import {
+  PhotoSection,
+  SignatureSheet,
+} from '../../../components/inspection';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
-import type { SignatureRecord } from '../../../types/models';
+
 import { buildBobcatPdfHtml } from '../../../lib/bobcatPdf';
 import { generateAndSharePdf, PdfLimitReachedError } from '../../../lib/pdfOpen';
 import { PaywallModal } from '../../../components/PaywallModal';
@@ -93,7 +95,6 @@ export default function BobcatInspectionScreen() {
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewBusy, setPreviewBusy] = useState(false);
-  const [signatures, setSignatures] = useState<SignatureRecord[]>([]);
   const [attachmentCount, setAttachmentCount] = useState(0);
 
   const [focusedField, setFocusedField] = useState<string | null>(null);
@@ -326,11 +327,10 @@ export default function BobcatInspectionScreen() {
     });
   }, [scheduleSave, toast]);
 
-  // ── Load signatures/attachments when completed ────────────────────────────
+  // ── Load attachments when completed ───────────────────────────────────────
 
   useEffect(() => {
     if (inspection?.status !== 'completed') return;
-    signaturesApi.list(inspection.id).then(setSignatures).catch(() => {});
     inspectionAttachmentsApi.listByInspection(inspection.id)
       .then(a => setAttachmentCount(a.length)).catch(() => {});
   }, [inspection?.status, inspection?.id]);
@@ -452,23 +452,14 @@ export default function BobcatInspectionScreen() {
 
   // ── PDF Preview ────────────────────────────────────────────────────────────
 
-  const buildPreview = useCallback(async (sigs: SignatureRecord[] = signatures) => {
+  const buildPreview = useCallback(async () => {
     if (!inspection) return;
     setPreviewBusy(true);
     try {
-      const sigsEmbedded = await Promise.all(
-        sigs.map(async sig => {
-          if (!sig.signature_png_url || sig.signature_png_url.startsWith('data:')) return sig;
-          const dataUrl = await signatureAsDataUrl(STORAGE_BUCKETS.signatures, sig.signature_png_url)
-            .catch(() => sig.signature_png_url ?? '');
-          return { ...sig, signature_png_url: dataUrl };
-        }),
-      );
       const html = await buildBobcatPdfHtml({
         inspection,
         projectName: projectName || 'პროექტი',
         catalog,
-        signatures: sigsEmbedded,
       });
       setPreviewHtml(html);
     } catch (e) {
@@ -476,7 +467,7 @@ export default function BobcatInspectionScreen() {
     } finally {
       setPreviewBusy(false);
     }
-  }, [inspection, projectName, catalog, signatures, toast]);
+  }, [inspection, projectName, catalog, toast]);
 
   useEffect(() => {
     if (inspection?.status === 'completed') {
@@ -553,7 +544,6 @@ export default function BobcatInspectionScreen() {
 
   // ── Completed inspection result view ───────────────────────────────────────
   if (inspection.status === 'completed') {
-    const signedCount = signatures.filter(s => s.status === 'signed' && !!s.signature_png_url).length;
     return (
       <InspectionResultView
         inspectionId={inspection.id}
@@ -562,8 +552,8 @@ export default function BobcatInspectionScreen() {
         previewHtml={previewHtml}
         previewBusy={previewBusy}
         previewError={null}
-        signedCount={signedCount}
-        totalSlots={signatures.length}
+        signedCount={inspection.inspectorSignature ? 1 : 0}
+        totalSlots={1}
         attachmentCount={attachmentCount}
         pdfLocked={pdfUsage?.isLocked}
         downloading={generatingPdf}
@@ -571,13 +561,36 @@ export default function BobcatInspectionScreen() {
         onPaywallClose={() => setPaywallVisible(false)}
         onDownloadPdf={() => void handlePdf()}
         onSheetSaved={() => {
-          signaturesApi.list(inspection.id).then(sigs => {
-            setSignatures(sigs);
-            void buildPreview(sigs);
-          }).catch(() => {});
           inspectionAttachmentsApi.listByInspection(inspection.id)
             .then(a => setAttachmentCount(a.length)).catch(() => {});
+          void buildPreview();
         }}
+        renderSignaturesSheet={({ dismiss, onChanged }) => (
+          <SignatureSheet
+            onClose={dismiss}
+            signatories={[
+              {
+                role: 'შემომწმებელი',
+                name: inspection.inspectorName ?? '',
+                position: '',
+                signature: inspection.inspectorSignature,
+              },
+            ]}
+            onChange={(_idx: number, field: string, value: string) => {
+              setInspection(prev => {
+                if (!prev) return prev;
+                const next = { ...prev };
+                if (field === 'name') next.inspectorName = value;
+                else if (field === 'signature') next.inspectorSignature = value || null;
+                return next;
+              });
+            }}
+            onSign={(_idx: number, base64: string) => {
+              setInspection(prev => prev ? { ...prev, inspectorSignature: base64 } : prev);
+              onChanged();
+            }}
+          />
+        )}
       />
     );
   }
@@ -705,11 +718,10 @@ export default function BobcatInspectionScreen() {
               photoSection={
                 <>
                   <Text style={[styles.fieldLabel, { color: theme.colors.ink }]}>ფოტოები (სურვ.)</Text>
-                  <SummaryPhotoStrip
-                    paths={inspection.summaryPhotos ?? []}
+                  <PhotoSection
+                    photoPaths={inspection.summaryPhotos ?? []}
                     onAdd={handleAddSummaryPhoto}
                     onDelete={handleDeleteSummaryPhoto}
-                    styles={styles}
                   />
                 </>
               }
@@ -718,69 +730,6 @@ export default function BobcatInspectionScreen() {
     </InspectionShell>
   );
 }
-
-// ── Sub-components ───────────────────────────────────────────────────────────
-
-function SummaryPhotoStrip({
-  paths,
-  onAdd,
-  onDelete,
-  styles,
-}: {
-  paths: string[];
-  onAdd: () => void;
-  onDelete: (path: string) => void;
-  styles: ReturnType<typeof getstyles>;
-}) {
-  const { theme } = useTheme();
-  return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.photoStrip}
-    >
-      {paths.map(path => (
-        <SummaryThumb key={path} path={path} onDelete={() => onDelete(path)} styles={styles} />
-      ))}
-      <Pressable
-        style={styles.addPhoto}
-        onPress={onAdd}
-        {...a11y('ფოტოს დამატება', 'ფოტოს გადაღება ან ბიბლიოთეკიდან', 'button')}
-      >
-        <Ionicons name="camera-outline" size={20} color={theme.colors.inkSoft} />
-        <Text style={styles.addPhotoLabel}>+ ფოტო</Text>
-      </Pressable>
-    </ScrollView>
-  );
-}
-
-const SummaryThumb = memo(function SummaryThumb({
-  path,
-  onDelete,
-  styles,
-}: {
-  path: string;
-  onDelete: () => void;
-  styles: ReturnType<typeof getstyles>;
-}) {
-  const { theme } = useTheme();
-  const [uri, setUri] = useState('');
-  useEffect(() => {
-    let cancelled = false;
-    imageForDisplay(STORAGE_BUCKETS.answerPhotos, path)
-      .then(url => { if (!cancelled) setUri(url); })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [path]);
-  return (
-    <View style={styles.thumb}>
-      <Image source={{ uri }} style={styles.thumbImg} contentFit="cover" />
-      <Pressable style={styles.thumbDelete} onPress={onDelete} hitSlop={8} {...a11y('ფოტოს წაშლა', undefined, 'button')}>
-        <Ionicons name="close-circle" size={18} color={theme.colors.white} />
-      </Pressable>
-    </View>
-  );
-});
 
 // ── Screen styles ────────────────────────────────────────────────────────────
 
@@ -800,19 +749,6 @@ function getstyles(theme: Theme) {
 
     fieldRow: { marginBottom: 4, gap: 6 },
     fieldLabel: { fontSize: 12, fontWeight: '600', color: theme.colors.inkSoft },
-    chipRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-    typeChip: {
-      paddingHorizontal: 14, paddingVertical: 16,
-      borderRadius: 20, borderWidth: 1.5,
-      borderColor: theme.colors.hairline,
-      backgroundColor: theme.colors.card,
-    },
-    typeChipActive: {
-      borderColor: theme.colors.accent,
-      backgroundColor: theme.colors.accentSoft,
-    },
-    typeChipText: { fontSize: 13, color: theme.colors.inkSoft },
-    typeChipTextActive: { color: theme.colors.accent, fontWeight: '700' },
 
     sumTable: {
       marginBottom: 12,
@@ -870,17 +806,6 @@ function getstyles(theme: Theme) {
     sigRowClear: {
       fontSize: 13, color: theme.colors.accent,
     },
-
-    photoStrip: { gap: 8, paddingVertical: 4 },
-    addPhoto: {
-      width: 64, height: 64, borderRadius: 8,
-      borderWidth: 1.5, borderStyle: 'dashed', borderColor: theme.colors.hairline,
-      alignItems: 'center', justifyContent: 'center', gap: 2,
-    },
-    addPhotoLabel: { fontSize: 11, color: theme.colors.inkSoft },
-    thumb:       { width: 64, height: 64, borderRadius: 8, overflow: 'hidden' },
-    thumbImg:    { width: 64, height: 64 },
-    thumbDelete: { position: 'absolute', top: 2, right: 2 },
 
     completingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 16 },
     completingText: { fontSize: 13, color: theme.colors.inkSoft },

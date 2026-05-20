@@ -63,6 +63,97 @@
 
 ---
 
+**Updated:** 2026-05-19 | Branch: `main`
+
+---
+
+## 2026-05-19 (3)
+
+### Bug fixes — new inspection flows
+
+- **Saves now work**: root cause was `canGoNext` at INFO_STEP requiring `company.trim() && address.trim()`; projects without `company_name`/`address` silently produced empty strings and permanently blocked step advancement. Eliminated by removing INFO_STEP (see below).
+- **INFO_STEP removed** from safety-net, mobile-ladder, lifting-accessories: flows now start directly at the identification step. `TOTAL_STEPS` reduced by 1 in each; `FlowHeader` step offset corrected.
+- **Forklift INFO_STEP cleaned**: removed company, address, inspector name, and inspection date from `IdentificationGrid`; only inventory #, brand/model, and engine type remain (the fields that require manual entry).
+- **Fall-protection REGISTRY_STEP cleaned**: removed company and address `FloatingLabelInput` blocks; `canGoNext` no longer requires them.
+- **Bobcat large-loader questionnaire fixed**: deleted `renderChecklistList()` (no photo/comment support); replaced with `ChecklistSection` + `KeyboardAwareScrollView` — tap ⚠/✗ on any item to expand the accordion showing comment field and photo upload button.
+
+## 2026-05-19 (2)
+
+### crane_technical_order — ამწის ტექ. გამართულობაზე პასუხისმგებელი პირის ბრძანება
+- New `crane_technical_order` document type (`CraneTechnicalOrderFormData` in `types/models.ts`).
+- `buildCraneTechnicalOrderHtml` in `lib/orderPdf.ts` — mirrors crane_operator_order layout; differs in title, single-paragraph 429-decree legal basis, and 7 Georgian-letter sub-clauses (ა–ზ) + 3 bullet duties for technical maintenance.
+- `app/orders/new.tsx`: added to `DOC_TYPES` (construct-outline icon, directly below crane_operator_order); `Step3CraneOperator` now accepts `positionLabel`/`positionField`/`stepTitle` props; `StepSignCraneOperator` accepts `stepTitle`/`personLabel`; `isCraneVariant` helper covers both crane types for all step routing.
+- No new migration — reuses existing `orders` table (migration 0038).
+
+## 2026-05-19
+
+### Breathalyzer Log — ალკოტესტერის შემოწმების ჟურნალი (migration 0048)
+- New **ჟურნალები** (Logs) section on the project screen (`app/projects/[id].tsx`), showing recent breathalyzer logs with date, test count, status, and FAIL badges.
+- Journal screen at `app/projects/[id]/logs/breathalyzer.tsx`:
+  - Header with date and editable device S/N field; green "დასრულებული" badge when closed.
+  - "Start today's log" empty state when no log exists for today.
+  - Entry list with # / Name·Position / time / result badge (SAFE/WARNING/FAIL pill) / signature icon.
+  - Indent + "↩ განმეორებითი" label for repeat-test rows.
+  - Red FAIL card prompting a 15-minute repeat test after a ≥0.20 result.
+  - "ცვლის დასრულება" outlined button → close-shift modal with summary + responsible-person signature → PDF generation.
+  - "+ ჩანაწერის დამატება" green FAB always visible.
+- **4-step Add Entry bottom sheet** (full-screen modal):
+  1. Person — autofocus search, filtered suggestions from ProjectPeoplePool + project crew, initials avatar, last-tested distance.
+  2. Test type — large chips (პირველადი / განმეორებითი); pre-selects repeat when launched from FAIL card.
+  3. Result — large centered numeric input, real-time background color (green/amber/red), SAFE/WARNING/FAIL label, FAIL warning card.
+  4. Signature — tappable placeholder → `SignatureCanvas` modal; "ხელმოწერაზე უარი" checkbox bypass.
+- **ProjectPeoplePool**: per-project, AsyncStorage key `people_pool_{projectId}`. Upserted on every entry save (most-recently-tested first). Suggestions combine pool + project crew; never crosses project boundaries.
+- PDF (`lib/breathalyzerLogPdf.ts`): company/object/S/N header, bilingual title, SAFE/WARNING/FAIL instruction row, color-coded result table with signatures, summary block, responsible-person signature block.
+- `breathalyzer_logs` table (Supabase), `types/breathalyzerLog.ts`, `lib/breathalyzerLogService.ts`, `lib/breathalyzerLogPdf.ts`, `useBreathalizerLogsByProject` hook.
+
+### Lifting Accessories Inspection (migration 0049)
+- New template: **სამაგრი მოწყობილობების შემოწმების აქტი** (`lifting_accessories_inspection`, UUID `aaaaaaaa-…`)
+- Multi-device wizard (same pattern as safety-net / mobile-ladder); `lifting_accessories_inspections` table
+- `types/liftingAccessories.ts`, `lib/liftingAccessoriesService.ts`, `lib/liftingAccessoriesPdf.ts`
+
+### Forklift Inspection (migration 0047)
+- New template: **ჩანგლიანი დამტვირთველის შემოწმების აქტი** (`forklift_inspection`, UUID `dddddddd-…`)
+- 3-step wizard (identification → checklist → conclusion); 10-day scheduling cycle
+- 39 checklist items across 3 sections (A/B/C); `type="three_state"` (კარგი ✓ / ნაკლი ⚠ / გამოუსადეგ. ✗)
+- Engine type chips (ელექტრო / ბენზინი / დიზელი / გაზი) in identification step and PDF header
+- Component diagram card (A–K labels) in checklist step
+- 13-row summary table with fine-grained subcategories before verdict
+- Extended signature: name + position + phone + signature columns
+- `forklift_inspections` table, `types/forklift.ts`, `lib/forkliftService.ts`, `lib/forkliftPdf.ts`
+
+### Fall Protection Inspection (migration 0046)
+- New template: **დამჭერი მოწყობილობების შემოწმების აქტი** (`fall_protection_inspection`, UUID `cccccccc-…`)
+- Same multi-device registry-→-tabs pattern as safety net / mobile ladder
+- **4-state ChecklistItem** (`type="four_state"`): ✓ safe (green) · ✗ critical (red) · Z minor (amber) · N not checked (gray)
+  - Extends `ChecklistItemOptions` with optional `d` chip; adds `'four_state'` type to `ChecklistItem.tsx`
+  - Auto-verdict suggestion: any ✗ → banned, any Z → minor, else safe
+- 12 standard checklist items + 1 custom (editable label per device)
+- Per-device: VerdictSelector (safe/minor/banned) + SignatureBlock (1 signatory) + PhotoSection
+- Tab state `'warning'` (amber) introduced for devices with only minor findings
+- `fall_protection_inspections` table, `types/fallProtection.ts`, `lib/fallProtectionService.ts`, `lib/fallProtectionPdf.ts`
+- PDF footer: EN 363:2008 · EN 795:2012 · EN 354:2010 · EN 355:2002 · EN 1891:2020 · EN 361:2002
+
+### Safety Net Inspection (migration 0044)
+- New template: safety net inspection (`safety_net_inspection`, UUID `88888888-…`)
+- Multi-device wizard; `safety_net_inspections` table + `types/safetyNet.ts` + `lib/safetyNetService.ts` + `lib/safetyNetPdf.ts`
+
+### Mobile Ladder Inspection (migration 0045)
+- New template: mobile ladder inspection (`mobile_ladder_inspection`, UUID `bbbbbbbb-…`)
+- Multi-device wizard; `mobile_ladder_inspections` table + `types/mobileLadder.ts` + `lib/mobileLadderService.ts` + `lib/mobileLadderPdf.ts`
+
+### Rename: "დოკუმენტები" → "ბრძანებები"
+- Tour step title/body in `locales/ka.json` and `locales/en.json` updated to reflect the section's true purpose (orders + files)
+
+### New order template: კოშკურა ამწის ოპერატორის დანიშვნა (`crane_operator_order`)
+- 7-step wizard: type → company → operator info → crane specs → director sig → operator sig → summary
+- Form fields: company (auto-fill), appointed operator (name/ID/position/cert/expiry/phone + optional cert photo), crane specs (model/number/max load + optional inspection cert photo)
+- Fixed 10-clause duties list (ა–კ) in the PDF body — not editable
+- Sequential dual-signature flow: director signs first, then operator
+- PDF: same layout as fire_safety_order (company header, order title, info tables, duties, signature block)
+- No DB migration required — stored as a new `document_type` value in the existing `orders` table
+
+---
+
 ## 2026-05 — `after-testflight` + session work
 
 ### Cargo Platform Inspection (f80a372)
