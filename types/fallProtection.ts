@@ -43,7 +43,6 @@ export interface FPDeviceData {
   customItem: FPCustomItem;
   verdict: FPVerdict | null;
   verdictComment: string;
-  signature: FPSignatory;
   photoPaths: string[];
 }
 
@@ -68,6 +67,9 @@ export interface FallProtectionInspection {
 
   // Per-device inspection data (parallel array to devices)
   deviceData: FPDeviceData[];
+
+  // Single top-level signature (ephemeral — not persisted to DB)
+  signature: FPSignatory;
 
   completedAt: string | null;
   createdAt: string;
@@ -153,7 +155,6 @@ export function buildDefaultFPDeviceData(deviceId: string): FPDeviceData {
     customItem: buildDefaultFPCustomItem(),
     verdict: null,
     verdictComment: '',
-    signature: buildDefaultFPSignatory(),
     photoPaths: [],
   };
 }
@@ -185,6 +186,7 @@ export function buildDefaultFallProtectionInspection(
     nextInspectionDate: null,
     devices: defaultDevices,
     deviceData: defaultDevices.map(d => buildDefaultFPDeviceData(d.id)),
+    signature: buildDefaultFPSignatory(),
     completedAt: null,
     createdAt: now,
     updatedAt: now,
@@ -215,8 +217,8 @@ export function computeFPTabState(data: FPDeviceData): FPTabState {
   const hasAnyAnswer =
     data.items.some(i => i.result !== null) || data.customItem.result !== null;
 
-  if (!hasAnyAnswer && !data.verdict && !data.signature.signature) return 'pending';
-  if (data.verdict && data.signature.signature) return 'done';
+  if (!hasAnyAnswer && !data.verdict) return 'pending';
+  if (data.verdict) return 'done';
 
   const hasCritical =
     data.items.some(i => i.result === 'critical') ||

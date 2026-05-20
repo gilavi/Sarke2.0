@@ -49,8 +49,8 @@ import { ORDER_DOCUMENT_TYPE_LABEL } from '../../types/models';
 type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 function getTotalSteps(docType: OrderDocumentType | null): number {
-  if (docType === 'crane_operator_order' || docType === 'crane_technical_order') return 7;
-  if (docType === 'fire_safety_order' || docType === 'fire_safety_order_enterprise') return 6;
+  if (docType === 'crane_operator_order' || docType === 'crane_technical_order') return 6;
+  if (docType === 'fire_safety_order' || docType === 'fire_safety_order_enterprise') return 5;
   return 4;
 }
 
@@ -313,11 +313,13 @@ export default function NewOrderScreen() {
       }
     }
     // step 4 crane: crane specs — no required fields, always can advance
-    if (step === 4 && isFireSafetyVariant(docType)) return !!form.directorSignature;
-    if (step === 5 && isFireSafetyVariant(docType)) return !!form.appointedSignature;
-    // crane operator signing steps
-    if (step === 5 && isCraneOperatorVariant(docType)) return !!form.directorSignature;
-    if (step === 6 && isCraneOperatorVariant(docType)) return !!form.operatorSignature;
+    // step 5 fire safety / step 6 crane: signature step — check all required signatures
+    if (step === 5 && isFireSafetyVariant(docType)) {
+      return !!form.directorSignature && !!form.appointedSignature;
+    }
+    if (step === 6 && isCraneOperatorVariant(docType)) {
+      return !!form.directorSignature && !!form.operatorSignature;
+    }
     return true;
   }, [step, form, docType]);
 
@@ -503,6 +505,16 @@ export default function NewOrderScreen() {
     }
     if (pdfUsage?.isLocked) { setPaywallVisible(true); return; }
 
+    // Validate signatures for types that require them
+    if (isFireSafetyVariant(docType) && (!form.directorSignature || !form.appointedSignature)) {
+      toast.error('გთხოვთ, დააწეროთ ორივე ხელმოწერა');
+      return;
+    }
+    if (isCraneVariant(docType) && (!form.directorSignature || !form.operatorSignature)) {
+      toast.error('გთხოვთ, დააწეროთ ორივე ხელმოწერა');
+      return;
+    }
+
     setSaving(true);
     let savedId = '';
     try {
@@ -626,33 +638,20 @@ export default function NewOrderScreen() {
             onDeletePhoto={() => handleDeletePhoto('craneInspCertPhoto')}
           />
         )}
-        {step === 4 && isFireSafetyVariant(docType) && (
-          <StepSignDirector form={form} setForm={setForm} theme={theme} s={s} />
-        )}
-        {step === 5 && isFireSafetyVariant(docType) && (
-          <StepSignAppointed form={form} setForm={setForm} theme={theme} s={s} />
-        )}
-        {/* Crane operator signing */}
-        {step === 5 && isCraneOperatorVariant(docType) && (
-          <StepSignDirector form={form} setForm={setForm} theme={theme} s={s} />
-        )}
-        {step === 6 && docType === 'crane_operator_order' && (
-          <StepSignCraneOperator form={form} setForm={setForm} theme={theme} s={s} />
-        )}
-        {step === 6 && docType === 'crane_technical_order' && (
-          <StepSignCraneOperator
-            form={form} setForm={setForm} theme={theme} s={s}
-            stepTitle="სპეციალისტის ხელმოწერა"
-            personLabel="ტექ. პასუხისმგებელი"
-          />
-        )}
-        {/* Summary: step 4 for standard types, step 6 for fire safety, step 7 for crane */}
+        {/* Summary: step 4 for standard types, step 4 for fire safety (was 6), step 5 for crane (was 7) */}
         {(
           (step === 4 && !isFireSafetyVariant(docType) && !isCraneVariant(docType)) ||
-          (step === 6 && !isCraneVariant(docType)) ||
-          (step === 7 && isCraneVariant(docType))
+          (step === 4 && isFireSafetyVariant(docType)) ||
+          (step === 5 && isCraneVariant(docType))
         ) && (
           <Step4Summary form={form} docType={docType} project={project} theme={theme} s={s} />
+        )}
+        {/* Combined signature step: step 5 for fire safety, step 6 for crane */}
+        {step === 5 && isFireSafetyVariant(docType) && (
+          <StepSignaturesFireSafety form={form} setForm={setForm} theme={theme} s={s} />
+        )}
+        {step === 6 && isCraneOperatorVariant(docType) && (
+          <StepSignaturesCrane form={form} setForm={setForm} theme={theme} s={s} docType={docType} />
         )}
       </KeyboardSafeArea>
 
@@ -671,6 +670,7 @@ export default function NewOrderScreen() {
               title={pdfUsage?.isLocked ? '🔒 PDF გენერირება' : 'PDF გენერირება'}
               leftIcon="document-text"
               loading={saving}
+              disabled={!canAdvance}
               onPress={saveAndGeneratePdf}
               style={{ width: '100%' }}
             />
@@ -1456,6 +1456,210 @@ function StepSignCraneOperator({
           setCanvasOpen(false);
         }}
       />
+    </View>
+  );
+}
+
+// ─── Combined signature step: fire safety ────────────────────────────────────
+
+function StepSignaturesFireSafety({
+  form, setForm, theme, s,
+}: {
+  form: CombinedForm;
+  setForm: React.Dispatch<React.SetStateAction<CombinedForm>>;
+  theme: any;
+  s: ReturnType<typeof makeStyles>;
+}) {
+  const [directorCanvasOpen, setDirectorCanvasOpen] = useState(false);
+  const [appointedCanvasOpen, setAppointedCanvasOpen] = useState(false);
+
+  return (
+    <View style={{ gap: 20 }}>
+      <Text style={s.stepTitle}>ხელმოწერები</Text>
+
+      {/* Director */}
+      <View style={{ gap: 8 }}>
+        <Text style={s.sectionLabel}>დირექტორი</Text>
+        <Text style={[s.summaryLabel, { width: 'auto' }]}>{form.directorName || 'დირექტორი'}</Text>
+        {form.directorSignature ? (
+          <View style={{
+            backgroundColor: theme.colors.surface,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: theme.colors.borderGreen ?? theme.colors.border,
+            alignItems: 'center',
+            padding: 12,
+            gap: 8,
+          }}>
+            <Ionicons name="checkmark-circle" size={28} color={theme.colors.semantic.success} />
+            <Text style={{ fontSize: 13, color: theme.colors.semantic.success, fontWeight: '600' }}>ხელმოწერა დადებულია</Text>
+            <Pressable onPress={() => setForm(f => ({ ...f, directorSignature: null, directorSignedAt: null }))}>
+              <Text style={{ fontSize: 12, color: theme.colors.inkSoft, textDecorationLine: 'underline' }}>ხელახლა ხელმოწერა</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <Pressable
+            onPress={() => setDirectorCanvasOpen(true)}
+            style={[s.typeCard, { justifyContent: 'center', alignItems: 'center', gap: 8, paddingVertical: 20 }]}
+          >
+            <Ionicons name="pencil-outline" size={22} color={theme.colors.accent} />
+            <Text style={[s.typeLabel, { textAlign: 'center', color: theme.colors.accent }]}>+ ხელმოწერა</Text>
+          </Pressable>
+        )}
+        <SignatureCanvas
+          visible={directorCanvasOpen}
+          personName={form.directorName || 'დირექტორი'}
+          onCancel={() => setDirectorCanvasOpen(false)}
+          onConfirm={(b64) => {
+            setForm(f => ({ ...f, directorSignature: b64, directorSignedAt: new Date().toISOString() }));
+            setDirectorCanvasOpen(false);
+          }}
+        />
+      </View>
+
+      {/* Appointed */}
+      <View style={{ gap: 8 }}>
+        <Text style={s.sectionLabel}>პასუხისმგებელი პირი</Text>
+        <Text style={[s.summaryLabel, { width: 'auto' }]}>{form.appointedName || 'დანიშნული პირი'}</Text>
+        {form.appointedSignature ? (
+          <View style={{
+            backgroundColor: theme.colors.surface,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: theme.colors.borderGreen ?? theme.colors.border,
+            alignItems: 'center',
+            padding: 12,
+            gap: 8,
+          }}>
+            <Ionicons name="checkmark-circle" size={28} color={theme.colors.semantic.success} />
+            <Text style={{ fontSize: 13, color: theme.colors.semantic.success, fontWeight: '600' }}>ხელმოწერა დადებულია</Text>
+            <Pressable onPress={() => setForm(f => ({ ...f, appointedSignature: null, appointedSignedAt: null }))}>
+              <Text style={{ fontSize: 12, color: theme.colors.inkSoft, textDecorationLine: 'underline' }}>ხელახლა ხელმოწერა</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <Pressable
+            onPress={() => setAppointedCanvasOpen(true)}
+            style={[s.typeCard, { justifyContent: 'center', alignItems: 'center', gap: 8, paddingVertical: 20 }]}
+          >
+            <Ionicons name="pencil-outline" size={22} color={theme.colors.accent} />
+            <Text style={[s.typeLabel, { textAlign: 'center', color: theme.colors.accent }]}>+ ხელმოწერა</Text>
+          </Pressable>
+        )}
+        <SignatureCanvas
+          visible={appointedCanvasOpen}
+          personName={form.appointedName || 'დანიშნული პირი'}
+          onCancel={() => setAppointedCanvasOpen(false)}
+          onConfirm={(b64) => {
+            setForm(f => ({ ...f, appointedSignature: b64, appointedSignedAt: new Date().toISOString() }));
+            setAppointedCanvasOpen(false);
+          }}
+        />
+      </View>
+    </View>
+  );
+}
+
+// ─── Combined signature step: crane ──────────────────────────────────────────
+
+function StepSignaturesCrane({
+  form, setForm, theme, s, docType,
+}: {
+  form: CombinedForm;
+  setForm: React.Dispatch<React.SetStateAction<CombinedForm>>;
+  theme: any;
+  s: ReturnType<typeof makeStyles>;
+  docType: OrderDocumentType | null;
+}) {
+  const [directorCanvasOpen, setDirectorCanvasOpen] = useState(false);
+  const [operatorCanvasOpen, setOperatorCanvasOpen] = useState(false);
+
+  const isTechnical = docType === 'crane_technical_order';
+  const operatorLabel = isTechnical ? 'ტექ. პასუხისმგებელი' : 'ამწის ოპერატორი';
+
+  return (
+    <View style={{ gap: 20 }}>
+      <Text style={s.stepTitle}>ხელმოწერები</Text>
+
+      {/* Director */}
+      <View style={{ gap: 8 }}>
+        <Text style={s.sectionLabel}>დირექტორი</Text>
+        <Text style={[s.summaryLabel, { width: 'auto' }]}>{form.directorName || 'დირექტორი'}</Text>
+        {form.directorSignature ? (
+          <View style={{
+            backgroundColor: theme.colors.surface,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: theme.colors.borderGreen ?? theme.colors.border,
+            alignItems: 'center',
+            padding: 12,
+            gap: 8,
+          }}>
+            <Ionicons name="checkmark-circle" size={28} color={theme.colors.semantic.success} />
+            <Text style={{ fontSize: 13, color: theme.colors.semantic.success, fontWeight: '600' }}>ხელმოწერა დადებულია</Text>
+            <Pressable onPress={() => setForm(f => ({ ...f, directorSignature: null, directorSignedAt: null }))}>
+              <Text style={{ fontSize: 12, color: theme.colors.inkSoft, textDecorationLine: 'underline' }}>ხელახლა ხელმოწერა</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <Pressable
+            onPress={() => setDirectorCanvasOpen(true)}
+            style={[s.typeCard, { justifyContent: 'center', alignItems: 'center', gap: 8, paddingVertical: 20 }]}
+          >
+            <Ionicons name="pencil-outline" size={22} color={theme.colors.accent} />
+            <Text style={[s.typeLabel, { textAlign: 'center', color: theme.colors.accent }]}>+ ხელმოწერა</Text>
+          </Pressable>
+        )}
+        <SignatureCanvas
+          visible={directorCanvasOpen}
+          personName={form.directorName || 'დირექტორი'}
+          onCancel={() => setDirectorCanvasOpen(false)}
+          onConfirm={(b64) => {
+            setForm(f => ({ ...f, directorSignature: b64, directorSignedAt: new Date().toISOString() }));
+            setDirectorCanvasOpen(false);
+          }}
+        />
+      </View>
+
+      {/* Operator / Specialist */}
+      <View style={{ gap: 8 }}>
+        <Text style={s.sectionLabel}>{operatorLabel}</Text>
+        <Text style={[s.summaryLabel, { width: 'auto' }]}>{form.craneOperatorName || operatorLabel}</Text>
+        {form.operatorSignature ? (
+          <View style={{
+            backgroundColor: theme.colors.surface,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: theme.colors.borderGreen ?? theme.colors.border,
+            alignItems: 'center',
+            padding: 12,
+            gap: 8,
+          }}>
+            <Ionicons name="checkmark-circle" size={28} color={theme.colors.semantic.success} />
+            <Text style={{ fontSize: 13, color: theme.colors.semantic.success, fontWeight: '600' }}>ხელმოწერა დადებულია</Text>
+            <Pressable onPress={() => setForm(f => ({ ...f, operatorSignature: null, operatorSignedAt: null }))}>
+              <Text style={{ fontSize: 12, color: theme.colors.inkSoft, textDecorationLine: 'underline' }}>ხელახლა ხელმოწერა</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <Pressable
+            onPress={() => setOperatorCanvasOpen(true)}
+            style={[s.typeCard, { justifyContent: 'center', alignItems: 'center', gap: 8, paddingVertical: 20 }]}
+          >
+            <Ionicons name="pencil-outline" size={22} color={theme.colors.accent} />
+            <Text style={[s.typeLabel, { textAlign: 'center', color: theme.colors.accent }]}>+ ხელმოწერა</Text>
+          </Pressable>
+        )}
+        <SignatureCanvas
+          visible={operatorCanvasOpen}
+          personName={form.craneOperatorName || operatorLabel}
+          onCancel={() => setOperatorCanvasOpen(false)}
+          onConfirm={(b64) => {
+            setForm(f => ({ ...f, operatorSignature: b64, operatorSignedAt: new Date().toISOString() }));
+            setOperatorCanvasOpen(false);
+          }}
+        />
+      </View>
     </View>
   );
 }

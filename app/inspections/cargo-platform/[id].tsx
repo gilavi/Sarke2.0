@@ -18,7 +18,7 @@ import { InspectionResultView } from '../../../components/InspectionResultView';
 import {
   ChecklistSection,
   DynamicTable,
-  SignatureBlock,
+  SignatureSheet,
   VerdictSelector,
   PhotoSection,
 } from '../../../components/inspection';
@@ -43,6 +43,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFieldHistory } from '../../../hooks/useFieldHistory';
 import { SuggestionPills } from '../../../components/SuggestionPills';
 import { usePhotoWithLocation } from '../../../hooks/usePhotoWithLocation';
+
 import {
   CP_ITEMS,
   CP_SECTION_LABELS,
@@ -65,9 +66,8 @@ const PLATFORM_STEP   = 1;
 const CARGO_STEP      = 2;
 const CHECKLIST_STEP  = 3;
 const CONCLUSION_STEP = 4;
-const SIGNATURES_STEP = 5;
-const TOTAL_STEPS     = 6;
-const STEP_LABELS     = ['ინფო', 'პლატფ.', 'ტვირთი', 'შემოწ.', 'დასკვნა', 'ხელმ.'];
+const TOTAL_STEPS     = 5;
+const STEP_LABELS     = ['ინფო', 'პლატფ.', 'ტვირთი', 'შემოწ.', 'დასკვნა'];
 
 // ── Binary pill selector ──────────────────────────────────────────────────────
 function BinaryPills<T extends string>({
@@ -176,7 +176,6 @@ export default function CargoPlatformInspectionScreen() {
         if (patched.inspectorName !== insp.inspectorName) {
           cargoPlatformApi.patch(patched.id, {
             inspectorName: patched.inspectorName,
-            signatures: patched.signatures,
           }).catch(() => {});
         }
 
@@ -184,7 +183,7 @@ export default function CargoPlatformInspectionScreen() {
           const saved = await AsyncStorage.getItem(persistKey);
           if (saved && !cancelled) {
             const s = parseInt(saved, 10);
-            if (!isNaN(s) && s >= INFO_STEP && s <= SIGNATURES_STEP) setStep(s);
+            if (!isNaN(s) && s >= INFO_STEP && s <= CONCLUSION_STEP) setStep(s);
           }
         }
 
@@ -231,7 +230,7 @@ export default function CargoPlatformInspectionScreen() {
   }, [id]);
 
   useEffect(() => {
-    if (step >= INFO_STEP && step <= SIGNATURES_STEP) {
+    if (step >= INFO_STEP && step <= CONCLUSION_STEP) {
       AsyncStorage.setItem(persistKey, String(step)).catch(() => {});
     }
   }, [step, persistKey]);
@@ -266,7 +265,6 @@ export default function CargoPlatformInspectionScreen() {
         verdict: insp.verdict,
         verdictComment: insp.verdictComment,
         summaryPhotos: insp.summaryPhotos,
-        signatures: insp.signatures,
       }).catch(e => {
         toast.error(friendlyError(e, 'შენახვა ვერ მოხერხდა'));
       }).finally(() => setSaving(false));
@@ -392,25 +390,17 @@ export default function CargoPlatformInspectionScreen() {
       if (!prev) return prev;
       const sigs = [...prev.signatures] as [CPSignatory, CPSignatory];
       sigs[idx] = { ...sigs[idx], [field]: field === 'signature' ? (value || null) : value };
-      const next = { ...prev, signatures: sigs };
-      scheduleSave(next);
-      return next;
+      return { ...prev, signatures: sigs };
     });
-  }, [scheduleSave]);
+  }, []);
 
-  const handleSignatorySign = useCallback(async (idx: number, base64Png: string) => {
+  const handleSignatorySign = useCallback((idx: number, base64Png: string) => {
     const insp = inspectionRef.current;
     if (!insp) return;
     const sigs = [...insp.signatures] as [CPSignatory, CPSignatory];
     sigs[idx] = { ...sigs[idx], signature: base64Png, date: new Date().toISOString() };
-    const next = { ...insp, signatures: sigs };
-    setInspection(next);
-    try {
-      await cargoPlatformApi.patch(insp.id, { signatures: sigs });
-    } catch (e) {
-      toast.error(friendlyError(e, 'ხელმოწერა ვერ შეინახა'));
-    }
-  }, [toast]);
+    setInspection({ ...insp, signatures: sigs });
+  }, []);
 
   // ── Verdict auto-suggest ────────────────────────────────────────────────────
 
@@ -422,22 +412,23 @@ export default function CargoPlatformInspectionScreen() {
   // ── PDF ─────────────────────────────────────────────────────────────────────
 
   const handlePdf = useCallback(async () => {
-    if (!inspection) return;
+    const insp = inspectionRef.current;
+    if (!insp) return;
     if (pdfUsage?.isLocked) { setPaywallVisible(true); return; }
     setGeneratingPdf(true);
     try {
-      const html = await buildCargoPlatformPdfHtml({ inspection, projectName: projectName || 'პროექტი' });
+      const html = await buildCargoPlatformPdfHtml({ inspection: insp, projectName: projectName || 'პროექტი' });
       const pdfName = generatePdfName(
         projectName || 'project',
         'CargoPlatformInspection',
-        new Date(inspection.inspectionDate),
-        inspection.id,
+        new Date(insp.inspectionDate),
+        insp.id,
       );
       const uid = session.state.status === 'signedIn' ? session.state.session.user.id : undefined;
       await generateAndSharePdf(html, pdfName, undefined, uid, {
         title: 'ტვირთის მიმღები პლატფორმის შემოწმება',
-        author: inspection.inspectorName || undefined,
-        documentId: inspection.id,
+        author: insp.inspectorName || undefined,
+        documentId: insp.id,
         subject: 'შრომის უსაფრთხოება',
       });
       invalidatePdfUsage();
@@ -447,30 +438,29 @@ export default function CargoPlatformInspectionScreen() {
     } finally {
       setGeneratingPdf(false);
     }
-  }, [inspection, projectName, session.state, invalidatePdfUsage, toast, pdfUsage]);
+  }, [projectName, session.state, invalidatePdfUsage, toast, pdfUsage]);
 
   // ── Preview (completed) ─────────────────────────────────────────────────────
 
   const buildPreview = useCallback(async () => {
-    if (!inspection) return;
+    const insp = inspectionRef.current;
+    if (!insp) return;
     setPreviewBusy(true);
     try {
-      const html = await buildCargoPlatformPdfHtml({ inspection, projectName: projectName || 'პროექტი' });
+      const html = await buildCargoPlatformPdfHtml({ inspection: insp, projectName: projectName || 'პროექტი' });
       setPreviewHtml(html);
     } catch (e) {
       toast.error(friendlyError(e, 'PDF ვერ შეიქმნა'));
     } finally {
       setPreviewBusy(false);
     }
-  }, [inspection, projectName, toast]);
+  }, [projectName, toast]);
 
   useEffect(() => {
     if (inspection?.status === 'completed') void buildPreview();
   }, [inspection?.status]);
 
   // ── Complete ────────────────────────────────────────────────────────────────
-
-  const bothSigned = !!(inspection?.signatures[0].signature && inspection?.signatures[1].signature);
 
   const handleComplete = useCallback(async () => {
     if (!inspection) return;
@@ -479,7 +469,6 @@ export default function CargoPlatformInspectionScreen() {
     if (!inspection.address?.trim())        missing.push('მდებარეობა / მისამართი');
     if (!inspection.verdict)                missing.push('დასკვნა');
     if (!inspection.verdictComment?.trim()) missing.push('კომენტარი');
-    if (!bothSigned)                        missing.push('ორივე ხელმომწერის ხელმოწერა');
 
     if (missing.length > 0) {
       Alert.alert('შეავსეთ სავალდებულო ველები', missing.map(m => `• ${m}`).join('\n'));
@@ -506,7 +495,6 @@ export default function CargoPlatformInspectionScreen() {
         verdict: inspection.verdict,
         verdictComment: inspection.verdictComment,
         summaryPhotos: inspection.summaryPhotos,
-        signatures: inspection.signatures,
       });
       await cargoPlatformApi.complete(inspection.id);
       const completedAt = new Date().toISOString();
@@ -527,20 +515,19 @@ export default function CargoPlatformInspectionScreen() {
     } finally {
       setCompleting(false);
     }
-  }, [inspection, bothSigned, persistKey, toast]);
+  }, [inspection, persistKey, toast]);
 
   // ── Step navigation ──────────────────────────────────────────────────────────
 
   const canGoNext = useMemo(() => {
     if (!inspection) return false;
     if (step === INFO_STEP) return !!(inspection.company?.trim() && inspection.address?.trim());
-    if (step === CONCLUSION_STEP) return !!inspection.verdict && !!inspection.verdictComment?.trim();
-    if (step === SIGNATURES_STEP) return bothSigned && !completing;
+    if (step === CONCLUSION_STEP) return !!inspection.verdict && !!inspection.verdictComment?.trim() && !completing;
     return true;
-  }, [step, inspection, bothSigned, completing]);
+  }, [step, inspection, completing]);
 
   const handleNext = useCallback(async () => {
-    if (step === SIGNATURES_STEP) {
+    if (step === CONCLUSION_STEP) {
       await handleComplete();
     } else {
       setStep(s => s + 1);
@@ -587,8 +574,8 @@ export default function CargoPlatformInspectionScreen() {
         previewHtml={previewHtml}
         previewBusy={previewBusy}
         previewError={null}
-        signedCount={0}
-        totalSlots={0}
+        signedCount={inspection.signatures.filter(s => !!s.signature).length}
+        totalSlots={inspection.signatures.length}
         attachmentCount={0}
         pdfLocked={pdfUsage?.isLocked}
         downloading={generatingPdf}
@@ -596,6 +583,20 @@ export default function CargoPlatformInspectionScreen() {
         onPaywallClose={() => setPaywallVisible(false)}
         onDownloadPdf={() => void handlePdf()}
         onSheetSaved={() => void buildPreview()}
+        renderSignaturesSheet={({ dismiss, onChanged }) => (
+          <SignatureSheet
+            onClose={dismiss}
+            signatories={[
+              { role: 'I ხელმომწერი', ...inspection.signatures[0] },
+              { role: 'II ხელმომწერი', ...inspection.signatures[1] },
+            ]}
+            onChange={handleSignatoryChange}
+            onSign={(idx, base64) => {
+              handleSignatorySign(idx, base64);
+              onChanged();
+            }}
+          />
+        )}
       />
     );
   }
@@ -910,32 +911,11 @@ export default function CargoPlatformInspectionScreen() {
             </KeyboardAwareScrollView>
           )}
 
-          {/* ── Step 5: Signatures ───────────────────────────────────────────── */}
-          {step === SIGNATURES_STEP && (
-            <KeyboardAwareScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={styles.stepBody}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
-              showsVerticalScrollIndicator={false}
-              bottomOffset={120}
-            >
-              <SignatureBlock
-                signatories={[
-                  { role: 'I ხელმომწერი', ...inspection.signatures[0] },
-                  { role: 'II ხელმომწერი', ...inspection.signatures[1] },
-                ]}
-                onChange={handleSignatoryChange}
-                onSign={handleSignatorySign}
-              />
-            </KeyboardAwareScrollView>
-          )}
-
         </WizardStepTransition>
 
         {/* Footer */}
         <View style={[styles.footer, { paddingBottom: 16 + insets.bottom }]}>
-          {step === SIGNATURES_STEP ? (
+          {step === CONCLUSION_STEP ? (
             <Button
               title="შენახვა და დასრულება"
               style={{ paddingVertical: 14 }}

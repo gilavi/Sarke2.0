@@ -13,7 +13,7 @@ import { InspectionResultView } from '../../../components/InspectionResultView';
 import { SectionHeader } from '../../../components/SectionHeader';
 import {
   ChecklistItem,
-  SignatureBlock,
+  SignatureSheet,
   VerdictSelector,
   DynamicTable,
   PhotoSection,
@@ -61,10 +61,10 @@ import {
 
 // ── Step constants ────────────────────────────────────────────────────────────
 
-const REGISTRY_STEP = 0;
-const DEVICES_STEP  = 1;
-const TOTAL_STEPS   = 2;
-const STEP_LABELS   = ['რეესტრი', 'მოწყობ.'];
+const REGISTRY_STEP   = 0;
+const DEVICES_STEP    = 1;
+const TOTAL_STEPS     = 2;
+const STEP_LABELS     = ['რეესტრი', 'მოწყობ.'];
 
 // ── Device registry table columns ─────────────────────────────────────────────
 
@@ -317,43 +317,22 @@ export default function FallProtectionInspectionScreen() {
     updateDeviceData(devIdx, data => ({ ...data, verdictComment: v }));
   }, [updateDeviceData]);
 
-  const handleSignChange = useCallback(
-    (devIdx: number, _sigIdx: number, field: string, value: string) => {
-      updateDeviceData(devIdx, data => ({
-        ...data,
-        signature: {
-          ...data.signature,
-          [field]: field === 'signature' ? (value || null) : value,
-        },
-      }));
-    },
-    [updateDeviceData],
-  );
+  const handleSignChange = useCallback((idx: number, field: string, value: string) => {
+    setInspection(prev => {
+      if (!prev) return prev;
+      const sig = { ...prev.signature, [field]: field === 'signature' ? (value || null) : value };
+      return { ...prev, signature: sig };
+    });
+  }, []);
 
-  const handleSign = useCallback(
-    async (devIdx: number, _sigIdx: number, base64Png: string) => {
-      const insp = inspectionRef.current;
-      if (!insp) return;
-      updateDeviceData(devIdx, data => ({
-        ...data,
-        signature: {
-          ...data.signature,
-          signature: base64Png,
-          date: new Date().toISOString(),
-        },
-      }));
-      // Immediate save for signatures
-      try {
-        const updated = inspectionRef.current;
-        if (updated) {
-          await fallProtectionApi.patch(updated.id, { deviceData: updated.deviceData });
-        }
-      } catch (e) {
-        toast.error(friendlyError(e, 'ხელმოწერა ვერ შეინახა'));
-      }
-    },
-    [updateDeviceData, toast],
-  );
+  const handleSign = useCallback((_idx: number, base64Png: string) => {
+    const insp = inspectionRef.current;
+    if (!insp) return;
+    setInspection({
+      ...insp,
+      signature: { ...insp.signature, signature: base64Png, date: new Date().toISOString() },
+    });
+  }, []);
 
   // ── Photos ──────────────────────────────────────────────────────────────────
 
@@ -458,7 +437,7 @@ export default function FallProtectionInspectionScreen() {
   const allDevicesDone = useMemo(() => {
     if (!inspection) return false;
     if (inspection.devices.length === 0) return false;
-    return inspection.deviceData.every(d => d.verdict && d.signature.signature);
+    return inspection.deviceData.every(d => !!d.verdict);
   }, [inspection]);
 
   const handleComplete = useCallback(async () => {
@@ -467,10 +446,10 @@ export default function FallProtectionInspectionScreen() {
     if (inspection.devices.length === 0) missing.push('მინიმუმ 1 მოწყობილობა');
 
     const incompleteDevices = inspection.deviceData
-      .map((d, i) => (!d.verdict || !d.signature.signature ? inspection.devices[i]?.id : null))
+      .map((d, i) => (!d.verdict ? inspection.devices[i]?.id : null))
       .filter(Boolean);
     if (incompleteDevices.length > 0) {
-      missing.push(`დასკვნა/ხელმოწ.: ${incompleteDevices.join(', ')}`);
+      missing.push(`დასკვნა: ${incompleteDevices.join(', ')}`);
     }
 
     if (missing.length > 0) {
@@ -515,26 +494,27 @@ export default function FallProtectionInspectionScreen() {
   // ── PDF ─────────────────────────────────────────────────────────────────────
 
   const handlePdf = useCallback(async () => {
-    if (!inspection) return;
+    const insp = inspectionRef.current;
+    if (!insp) return;
     if (pdfUsage?.isLocked) { setPaywallVisible(true); return; }
     setGeneratingPdf(true);
     try {
       const html = await buildFallProtectionPdfHtml({
-        inspection,
+        inspection: insp,
         projectName: projectName || 'პროექტი',
       });
       const pdfName = generatePdfName(
         projectName || 'project',
         'FallProtectionInspection',
-        new Date(inspection.inspectionDate),
-        inspection.id,
+        new Date(insp.inspectionDate),
+        insp.id,
       );
       const uid = session.state.status === 'signedIn'
         ? session.state.session.user.id
         : undefined;
       await generateAndSharePdf(html, pdfName, undefined, uid, {
         title: 'დამჭერი მოწყობილობების შემოწმების აქტი',
-        documentId: inspection.id,
+        documentId: insp.id,
         subject: 'შრომის უსაფრთხოება',
       });
       invalidatePdfUsage();
@@ -544,14 +524,15 @@ export default function FallProtectionInspectionScreen() {
     } finally {
       setGeneratingPdf(false);
     }
-  }, [inspection, projectName, session.state, invalidatePdfUsage, toast, pdfUsage]);
+  }, [projectName, session.state, invalidatePdfUsage, toast, pdfUsage]);
 
   const buildPreview = useCallback(async () => {
-    if (!inspection) return;
+    const insp = inspectionRef.current;
+    if (!insp) return;
     setPreviewBusy(true);
     try {
       const html = await buildFallProtectionPdfHtml({
-        inspection,
+        inspection: insp,
         projectName: projectName || 'პროექტი',
       });
       setPreviewHtml(html);
@@ -560,7 +541,7 @@ export default function FallProtectionInspectionScreen() {
     } finally {
       setPreviewBusy(false);
     }
-  }, [inspection, projectName, toast]);
+  }, [projectName, toast]);
 
   useEffect(() => {
     if (inspection?.status === 'completed') void buildPreview();
@@ -618,8 +599,8 @@ export default function FallProtectionInspectionScreen() {
         previewHtml={previewHtml}
         previewBusy={previewBusy}
         previewError={null}
-        signedCount={0}
-        totalSlots={0}
+        signedCount={inspection.signature?.signature ? 1 : 0}
+        totalSlots={1}
         attachmentCount={0}
         pdfLocked={pdfUsage?.isLocked}
         downloading={generatingPdf}
@@ -627,6 +608,25 @@ export default function FallProtectionInspectionScreen() {
         onPaywallClose={() => setPaywallVisible(false)}
         onDownloadPdf={() => void handlePdf()}
         onSheetSaved={() => void buildPreview()}
+        renderSignaturesSheet={({ dismiss, onChanged }) => (
+          <SignatureSheet
+            onClose={dismiss}
+            signatories={[
+              {
+                role: 'შემომწმებელი პირი',
+                name: inspection.signature.name,
+                position: inspection.signature.position,
+                signature: inspection.signature.signature,
+                date: inspection.signature.date,
+              },
+            ]}
+            onChange={handleSignChange}
+            onSign={(idx, base64) => {
+              handleSign(idx, base64);
+              onChanged();
+            }}
+          />
+        )}
       />
     );
   }
@@ -931,24 +931,6 @@ export default function FallProtectionInspectionScreen() {
                     note={currentDeviceData.verdictComment}
                     onNoteChange={v => handleVerdictCommentChange(safeDeviceIdx, v)}
                     notePlaceholder="კომენტარი"
-                  />
-
-                  {/* Signature */}
-                  <SectionHeader title="ხელმოწერა" />
-                  <SignatureBlock
-                    signatories={[{
-                      role: 'შემომწმებელი პირი',
-                      name: currentDeviceData.signature.name,
-                      position: currentDeviceData.signature.position,
-                      signature: currentDeviceData.signature.signature,
-                      date: currentDeviceData.signature.date,
-                    }]}
-                    onChange={(sigIdx, field, value) =>
-                      handleSignChange(safeDeviceIdx, sigIdx, field, value)
-                    }
-                    onSign={(sigIdx, base64Png) =>
-                      handleSign(safeDeviceIdx, sigIdx, base64Png)
-                    }
                   />
 
                   {/* Device photos */}

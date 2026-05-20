@@ -24,6 +24,8 @@ export interface SignatureBlockProps {
   signatories: SignatoryData[];
   onChange: (index: number, field: string, value: string) => void;
   onSign: (index: number, base64Png: string) => void;
+  onAddSignatory?: () => void;
+  onRemoveSignatory?: (index: number) => void;
   /** Additional labeled text fields rendered in every signatory card after the standard fields.
    *  onChange is called with field = `extra.<key>` so the parent can handle it. */
   extraFields?: { key: string; label: string }[];
@@ -33,6 +35,8 @@ export function SignatureBlock({
   signatories,
   onChange,
   onSign,
+  onAddSignatory,
+  onRemoveSignatory,
   extraFields,
 }: SignatureBlockProps) {
   const { theme } = useTheme();
@@ -51,34 +55,21 @@ export function SignatureBlock({
 
   return (
     <View style={styles.container}>
-      {/* Progress dots */}
-      {signatories.length > 1 && (
-        <View style={styles.progress}>
-          <View style={styles.dotLine} />
-          {signatories.map((sig, i) => {
-            const signed = !!sig.signature;
-            const current = !signed && signatories.slice(0, i).every(s => !!s.signature);
-            return (
-              <View
-                key={i}
-                style={[styles.dot, signed && styles.dotSigned, current && styles.dotCurrent]}
-              >
-                {signed
-                  ? <Ionicons name="checkmark" size={12} color={theme.colors.white} />
-                  : <Text style={styles.dotText}>{i + 1}</Text>
-                }
-              </View>
-            );
-          })}
-        </View>
-      )}
-
       {/* Signatory cards */}
       {signatories.map((sig, idx) => (
         <View key={idx} style={styles.card}>
-          <Text style={styles.roleLabel}>
-            {sig.role}
-          </Text>
+          <View style={styles.cardHeader}>
+            <Text style={styles.roleLabel}>{sig.role}</Text>
+            {onRemoveSignatory && signatories.length > 1 && (
+              <Pressable
+                onPress={() => onRemoveSignatory(idx)}
+                hitSlop={8}
+                {...a11y('წაშლა', 'ხელმომწერის წაშლა', 'button')}
+              >
+                <Ionicons name="trash-outline" size={18} color={theme.colors.semantic.danger} />
+              </Pressable>
+            )}
+          </View>
 
           <FloatingLabelInput
             label="სახელი, გვარი"
@@ -139,6 +130,15 @@ export function SignatureBlock({
         </View>
       ))}
 
+      {onAddSignatory && (
+        <Button
+          title="+ ხელმომწერის დამატება"
+          variant="ghost"
+          onPress={onAddSignatory}
+          {...a11y('ხელმომწერის დამატება', undefined, 'button')}
+        />
+      )}
+
       {/* Signature canvas modal */}
       <SignatureCanvas
         visible={signingIndex !== null}
@@ -155,38 +155,6 @@ export function SignatureBlock({
 function getstyles(theme: Theme) {
   return StyleSheet.create({
     container: { gap: 16 },
-    // Progress dots
-    progress: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-      marginBottom: 4,
-      position: 'relative',
-    },
-    dotLine: {
-      position: 'absolute',
-      left: 22,
-      right: 22,
-      height: 2,
-      backgroundColor: theme.colors.hairline,
-      zIndex: -1,
-    },
-    dot: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
-      backgroundColor: theme.colors.subtleSurface,
-      borderWidth: 2,
-      borderColor: theme.colors.hairline,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    dotSigned: {
-      backgroundColor: theme.colors.semantic.success,
-      borderColor: theme.colors.semantic.success,
-    },
-    dotCurrent: { borderColor: theme.colors.accent },
-    dotText: { fontSize: 13, fontWeight: '700', color: theme.colors.inkSoft },
     // Signatory card
     card: {
       gap: 10,
@@ -196,11 +164,15 @@ function getstyles(theme: Theme) {
       borderColor: theme.colors.hairline,
       backgroundColor: theme.colors.card,
     },
+    cardHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
     roleLabel: {
       fontSize: 13,
       fontWeight: '700',
       color: theme.colors.ink,
-      marginBottom: 2,
     },
     // Signed state
     signedCard: {

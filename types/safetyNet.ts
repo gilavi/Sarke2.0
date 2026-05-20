@@ -64,7 +64,7 @@ export interface SafetyNetInspection {
   verdict: SNVerdict | null;
   verdictComment: string;
   // Sections 7–9
-  signatures: [SNSignatory, SNSignatory];
+  signatures: SNSignatory[];
   qualDocPath: string | null;
   summaryPhotos: string[];
   completedAt: string | null;
@@ -167,7 +167,7 @@ export function buildDefaultSNInspection(
     postTestItems: buildDefaultSNPostTestItems(),
     verdict: null,
     verdictComment: '',
-    signatures: [emptySignatory(), emptySignatory()],
+    signatures: [emptySignatory()],
     qualDocPath: null,
     summaryPhotos: [],
     completedAt: null,

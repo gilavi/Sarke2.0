@@ -11,7 +11,7 @@ import { FlowHeader } from '../../../components/FlowHeader';
 import { InspectionResultView } from '../../../components/InspectionResultView';
 import {
   ChecklistSection,
-  SignatureBlock,
+  SignatureSheet,
   VerdictSelector,
   IdentificationGrid,
   type VerdictOption,
@@ -35,6 +35,7 @@ import { haptic } from '../../../lib/haptics';
 import { CelebrationBurst } from '../../../components/animations';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { usePhotoWithLocation } from '../../../hooks/usePhotoWithLocation';
+
 import {
   ML_CHECKLIST_ITEMS,
   ML_RESULT_TO_CHIP,
@@ -53,9 +54,8 @@ import {
 const IDENTIFICATION_STEP = 1;
 const CHECKLIST_STEP      = 2;
 const CONCLUSION_STEP     = 3;
-const SIGNATURES_STEP     = 4;
-const TOTAL_STEPS         = 4;
-const STEP_LABELS         = ['კიბე', 'შემოწ.', 'დასკვნა', 'ხელმ.'];
+const TOTAL_STEPS         = 3;
+const STEP_LABELS         = ['კიბე', 'შემოწ.', 'დასკვნა'];
 
 // ── Main screen ───────────────────────────────────────────────────────────────
 
@@ -122,7 +122,6 @@ export default function MobileLadderInspectionScreen() {
         if (patched.inspectorName !== insp.inspectorName) {
           mobileLadderApi.patch(patched.id, {
             inspectorName: patched.inspectorName,
-            signature: patched.signature,
           }).catch(() => {});
         }
 
@@ -130,7 +129,7 @@ export default function MobileLadderInspectionScreen() {
           const saved = await AsyncStorage.getItem(persistKey);
           if (saved && !cancelled) {
             const s = parseInt(saved, 10);
-            if (!isNaN(s) && s >= IDENTIFICATION_STEP && s <= SIGNATURES_STEP) setStep(s);
+            if (!isNaN(s) && s >= IDENTIFICATION_STEP && s <= CONCLUSION_STEP) setStep(s);
           }
         }
 
@@ -177,7 +176,7 @@ export default function MobileLadderInspectionScreen() {
   }, [id]);
 
   useEffect(() => {
-    if (step >= IDENTIFICATION_STEP && step <= SIGNATURES_STEP) {
+    if (step >= IDENTIFICATION_STEP && step <= CONCLUSION_STEP) {
       AsyncStorage.setItem(persistKey, String(step)).catch(() => {});
     }
   }, [step, persistKey]);
@@ -211,7 +210,6 @@ export default function MobileLadderInspectionScreen() {
         items: insp.items,
         verdict: insp.verdict,
         verdictComment: insp.verdictComment,
-        signature: insp.signature,
       }).catch(e => {
         toast.error(friendlyError(e, 'შენახვა ვერ მოხერხდა'));
       }).finally(() => setSaving(false));
@@ -315,24 +313,16 @@ export default function MobileLadderInspectionScreen() {
         ...prev.signature,
         [field]: field === 'signature' ? (value || null) : value,
       };
-      const next = { ...prev, signature };
-      scheduleSave(next);
-      return next;
+      return { ...prev, signature };
     });
-  }, [scheduleSave]);
+  }, []);
 
-  const handleSign = useCallback(async (_idx: number, base64Png: string) => {
+  const handleSign = useCallback((_idx: number, base64Png: string) => {
     const insp = inspectionRef.current;
     if (!insp) return;
     const signature = { ...insp.signature, signature: base64Png, date: new Date().toISOString() };
-    const next = { ...insp, signature };
-    setInspection(next);
-    try {
-      await mobileLadderApi.patch(insp.id, { signature });
-    } catch (e) {
-      toast.error(friendlyError(e, 'ხელმოწერა ვერ შეინახა'));
-    }
-  }, [toast]);
+    setInspection({ ...insp, signature });
+  }, []);
 
   // ── Verdict auto-suggest ────────────────────────────────────────────────────
 
@@ -345,22 +335,23 @@ export default function MobileLadderInspectionScreen() {
   // ── PDF ─────────────────────────────────────────────────────────────────────
 
   const handlePdf = useCallback(async () => {
-    if (!inspection) return;
+    const insp = inspectionRef.current;
+    if (!insp) return;
     if (pdfUsage?.isLocked) { setPaywallVisible(true); return; }
     setGeneratingPdf(true);
     try {
-      const html = await buildMobileLadderPdfHtml({ inspection, projectName: projectName || 'პროექტი' });
+      const html = await buildMobileLadderPdfHtml({ inspection: insp, projectName: projectName || 'პროექტი' });
       const pdfName = generatePdfName(
         projectName || 'project',
         'MobileLadderInspection',
-        new Date(inspection.inspectionDate),
-        inspection.id,
+        new Date(insp.inspectionDate),
+        insp.id,
       );
       const uid = session.state.status === 'signedIn' ? session.state.session.user.id : undefined;
       await generateAndSharePdf(html, pdfName, undefined, uid, {
         title: 'მობილური კიბის შემოწმების აქტი',
-        author: inspection.inspectorName || undefined,
-        documentId: inspection.id,
+        author: insp.inspectorName || undefined,
+        documentId: insp.id,
         subject: 'შრომის უსაფრთხოება',
       });
       invalidatePdfUsage();
@@ -370,22 +361,23 @@ export default function MobileLadderInspectionScreen() {
     } finally {
       setGeneratingPdf(false);
     }
-  }, [inspection, projectName, session.state, invalidatePdfUsage, toast, pdfUsage]);
+  }, [projectName, session.state, invalidatePdfUsage, toast, pdfUsage]);
 
   // ── Preview (completed) ─────────────────────────────────────────────────────
 
   const buildPreview = useCallback(async () => {
-    if (!inspection) return;
+    const insp = inspectionRef.current;
+    if (!insp) return;
     setPreviewBusy(true);
     try {
-      const html = await buildMobileLadderPdfHtml({ inspection, projectName: projectName || 'პროექტი' });
+      const html = await buildMobileLadderPdfHtml({ inspection: insp, projectName: projectName || 'პროექტი' });
       setPreviewHtml(html);
     } catch (e) {
       toast.error(friendlyError(e, 'PDF ვერ შეიქმნა'));
     } finally {
       setPreviewBusy(false);
     }
-  }, [inspection, projectName, toast]);
+  }, [projectName, toast]);
 
   useEffect(() => {
     if (inspection?.status === 'completed') void buildPreview();
@@ -399,7 +391,6 @@ export default function MobileLadderInspectionScreen() {
     if (!inspection) return;
     const missing: string[] = [];
     if (!inspection.verdict)          missing.push('დასკვნა');
-    if (!isSigned)                    missing.push('შემომწმებელი პირის ხელმოწერა');
 
     if (missing.length > 0) {
       Alert.alert('შეავსეთ სავალდებულო ველები', missing.map(m => `• ${m}`).join('\n'));
@@ -425,7 +416,6 @@ export default function MobileLadderInspectionScreen() {
         items: inspection.items,
         verdict: inspection.verdict,
         verdictComment: inspection.verdictComment,
-        signature: inspection.signature,
       });
       await mobileLadderApi.complete(inspection.id);
       const completedAt = new Date().toISOString();
@@ -446,19 +436,18 @@ export default function MobileLadderInspectionScreen() {
     } finally {
       setCompleting(false);
     }
-  }, [inspection, isSigned, persistKey, toast]);
+  }, [inspection, persistKey, toast]);
 
   // ── Step navigation ─────────────────────────────────────────────────────────
 
   const canGoNext = useMemo(() => {
     if (!inspection) return false;
-    if (step === CONCLUSION_STEP) return !!inspection.verdict;
-    if (step === SIGNATURES_STEP) return isSigned && !completing;
+    if (step === CONCLUSION_STEP) return !!inspection.verdict && !completing;
     return true;
-  }, [step, inspection, isSigned, completing]);
+  }, [step, inspection, completing]);
 
   const handleNext = useCallback(async () => {
-    if (step === SIGNATURES_STEP) {
+    if (step === CONCLUSION_STEP) {
       await handleComplete();
     } else {
       setStep(s => s + 1);
@@ -494,8 +483,8 @@ export default function MobileLadderInspectionScreen() {
         previewHtml={previewHtml}
         previewBusy={previewBusy}
         previewError={null}
-        signedCount={0}
-        totalSlots={0}
+        signedCount={inspection.signature?.signature ? 1 : 0}
+        totalSlots={1}
         attachmentCount={0}
         pdfLocked={pdfUsage?.isLocked}
         downloading={generatingPdf}
@@ -503,6 +492,19 @@ export default function MobileLadderInspectionScreen() {
         onPaywallClose={() => setPaywallVisible(false)}
         onDownloadPdf={() => void handlePdf()}
         onSheetSaved={() => void buildPreview()}
+        renderSignaturesSheet={({ dismiss, onChanged }) => (
+          <SignatureSheet
+            onClose={dismiss}
+            signatories={[
+              { role: 'ხელმომწერი', ...inspection.signature },
+            ]}
+            onChange={handleSignChange}
+            onSign={(idx, base64) => {
+              handleSign(idx, base64);
+              onChanged();
+            }}
+          />
+        )}
       />
     );
   }
@@ -709,35 +711,11 @@ export default function MobileLadderInspectionScreen() {
             </KeyboardAwareScrollView>
           )}
 
-          {/* ── Step 4: Signature ────────────────────────────────────────────── */}
-          {step === SIGNATURES_STEP && (
-            <KeyboardAwareScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={styles.stepBody}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
-              showsVerticalScrollIndicator={false}
-              bottomOffset={120}
-            >
-              <SignatureBlock
-                signatories={[{
-                  role: 'შემომწმებელი პირი',
-                  name: inspection.signature.name,
-                  position: inspection.signature.position,
-                  signature: inspection.signature.signature,
-                  date: inspection.signature.date,
-                }]}
-                onChange={handleSignChange}
-                onSign={handleSign}
-              />
-            </KeyboardAwareScrollView>
-          )}
-
         </WizardStepTransition>
 
         {/* Footer */}
         <View style={[styles.footer, { paddingBottom: 16 + insets.bottom }]}>
-          {step === SIGNATURES_STEP ? (
+          {step === CONCLUSION_STEP ? (
             <Button
               title="შენახვა და დასრულება"
               style={{ paddingVertical: 14 }}
@@ -748,7 +726,7 @@ export default function MobileLadderInspectionScreen() {
             />
           ) : (
             <Button
-              title={step === TOTAL_STEPS - 2 ? 'გაგრძელება' : 'შემდეგი'}
+              title={step === TOTAL_STEPS - 1 ? 'გაგრძელება' : 'შემდეგი'}
               style={{ paddingVertical: 14 }}
               iconRight={<Ionicons name="chevron-forward" size={20} color={theme.colors.white} />}
               disabled={!canGoNext}

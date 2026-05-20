@@ -183,7 +183,7 @@
     "resetTitle": "Reset password",
     "resetSubtitle": "Enter your email and we'll send a link to reset your password.",
     "checkEmail": "Check your email",
-    "verifyCodeSent": "A verification code was sent to {{email}}",
+    "verifyCodeSent": "A verification link was sent to {{email}}. Tap the link in the email, or enter the code below.",
     "verifyConfirm": "Confirm",
     "didntReceiveCode": "Didn't receive the code?",
     "resend": "Resend",

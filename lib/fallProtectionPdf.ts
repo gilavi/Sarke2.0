@@ -237,31 +237,6 @@ function buildDeviceSection(
       ${data.verdictComment ? `<div class="verdict-comment">${escHtml(data.verdictComment)}</div>` : ''}
     </div>`;
 
-  // Signature
-  const sig = data.signature;
-  const sigImgTag = sig.signature
-    ? `<img class="sig-img" src="data:image/png;base64,${sig.signature}" alt="ხელმოწერა" />`
-    : '<div class="unsigned"></div>';
-  const sigHtml = `
-    <div class="sig-block">
-      <div class="sig-row">
-        <div class="sig-fields">
-          <div class="info-row">
-            <span class="info-label">სახელი, გვარი</span>
-            <span class="info-value">${escHtml(sig.name) || '—'}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">სამუშაო პოზიცია</span>
-            <span class="info-value">${escHtml(sig.position) || '—'}</span>
-          </div>
-        </div>
-        <div class="sig-canvas">
-          ${sigImgTag}
-          <div class="sig-date">${sig.date ? fmtDate(sig.date) : ''}</div>
-        </div>
-      </div>
-    </div>`;
-
   // Photos — item-level photos first, then device summary photos
   const allItemPhotoPaths = [
     ...data.items.flatMap(i => i.photo_paths ?? []),
@@ -298,7 +273,6 @@ function buildDeviceSection(
         <tbody>${rows}${customRow}</tbody>
       </table>
       ${verdictHtml}
-      ${sigHtml}
       ${photosHtml}
     </div>`;
 }
@@ -341,6 +315,31 @@ export async function buildFallProtectionPdfHtml(opts: {
     const meta = [d.type, d.location, d.floor].filter(Boolean).join(' · ');
     return buildDeviceSection(data, d.id, meta, photos);
   }).join('');
+
+  // Top-level signature
+  const sig = ins.signature;
+  const sigImgTag = sig?.signature
+    ? `<img class="sig-img" src="data:image/png;base64,${sig.signature}" alt="ხელმოწერა" />`
+    : '<div class="unsigned"></div>';
+  const sigHtml = `
+    <div class="sig-block">
+      <div class="sig-row">
+        <div class="sig-fields">
+          <div class="info-row">
+            <span class="info-label">სახელი, გვარი</span>
+            <span class="info-value">${escHtml(sig?.name) || '—'}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">სამუშაო პოზიცია</span>
+            <span class="info-value">${escHtml(sig?.position) || '—'}</span>
+          </div>
+        </div>
+        <div class="sig-canvas">
+          ${sigImgTag}
+          <div class="sig-date">${sig?.date ? fmtDate(sig.date) : ''}</div>
+        </div>
+      </div>
+    </div>`;
 
   return `<!DOCTYPE html>
 <html lang="ka">
@@ -420,6 +419,9 @@ export async function buildFallProtectionPdfHtml(opts: {
 
   <!-- Per-device sections -->
   ${deviceSections}
+
+  <!-- Signature -->
+  ${sigHtml}
 
   <!-- Footer -->
   <div class="footer">

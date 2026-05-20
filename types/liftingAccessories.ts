@@ -55,7 +55,7 @@ export interface LiftingAccessoriesInspection {
   verdict: LAVerdict | null;
   verdictComment: string;
   // Section 6 — ხელმოწერები
-  signatures: [LASignatory, LASignatory];
+  signatures: LASignatory[];
   summaryPhotos: string[];
   completedAt: string | null;
   createdAt: string;
@@ -184,7 +184,7 @@ export function buildDefaultLAInspection(
     removedRows: [],
     verdict: null,
     verdictComment: '',
-    signatures: [buildDefaultLASignatory(), buildDefaultLASignatory()],
+    signatures: [buildDefaultLASignatory()],
     summaryPhotos: [],
     completedAt: null,
     createdAt: now,

@@ -10,6 +10,8 @@ export type { DynamicTableProps, DynamicTableColumn } from './DynamicTable';
 export { SignatureBlock } from './SignatureBlock';
 export type { SignatureBlockProps, SignatoryData } from './SignatureBlock';
 
+export { SignatureSheet } from './SignatureSheet';
+
 export { VerdictSelector } from './VerdictSelector';
 export type { VerdictSelectorProps, VerdictOption } from './VerdictSelector';
 

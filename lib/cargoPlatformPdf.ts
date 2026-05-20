@@ -461,17 +461,22 @@ export async function buildCargoPlatformPdfHtml(args: {
 
   // ── Section VII — ხელმოწერები ───────────────────────────────────────────────
 
-  function renderSignatoryBlock(sig: typeof insp.signatures[0], label: string): string {
-    const sigImg = sig.signature
+  function romanLabel(i: number): string {
+    const romans = ['I','II','III','IV','V','VI','VII','VIII','IX','X'];
+    return romans[i] ?? `${i + 1}`;
+  }
+
+  function renderSignatoryBlock(sig: typeof insp.signatures[number], label: string): string {
+    const sigImg = sig?.signature
       ? `<img class="sig-img" src="data:image/png;base64,${sig.signature}" alt="ხელმოწერა" />`
       : '<div class="sig-line"></div>';
     return `
       <div class="sig-block">
         <div class="sig-cell">
           <div class="sig-lbl">${escHtml(label)}</div>
-          <div class="sig-name">${escHtml(sig.name) || '—'}</div>
-          <div class="sig-role">${escHtml(sig.position) || ''}</div>
-          <div class="sig-org">${escHtml(sig.organization) || ''}</div>
+          <div class="sig-name">${escHtml(sig?.name) || '—'}</div>
+          <div class="sig-role">${escHtml(sig?.position) || ''}</div>
+          <div class="sig-org">${escHtml(sig?.organization) || ''}</div>
         </div>
         <div class="sig-cell">
           <div class="sig-lbl">ხელმოწერა</div>
@@ -479,17 +484,18 @@ export async function buildCargoPlatformPdfHtml(args: {
         </div>
         <div class="sig-cell">
           <div class="sig-lbl">თარიღი</div>
-          <div class="sig-date">${sig.date ? fmtDate(sig.date) : fmtDate(insp.completedAt ?? insp.inspectionDate)}</div>
+          <div class="sig-date">${sig?.date ? fmtDate(sig.date) : fmtDate(insp.completedAt ?? insp.inspectionDate)}</div>
         </div>
       </div>
     `;
   }
 
+  const sigBlocks = insp.signatures.map((sig, i) => renderSignatoryBlock(sig, `${romanLabel(i)} ხელმომწერი`)).join('');
+
   const sectionVIIHtml = `
     <div class="section-title">VII — ხელმოწერები</div>
     <div class="sig-two-col">
-      ${renderSignatoryBlock(insp.signatures[0], 'I ხელმომწერი')}
-      ${renderSignatoryBlock(insp.signatures[1], 'II ხელმომწერი')}
+      ${sigBlocks}
     </div>
     <div class="legal-note">
       წინამდებარე შემოწმების აქტი წარმოადგენს სამართლებრივი ძალის მქონე დოკუმენტს.

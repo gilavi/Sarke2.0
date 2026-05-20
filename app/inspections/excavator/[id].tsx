@@ -18,6 +18,7 @@ import { PlateInput, type PlateInputHandle } from '../../../components/inputs/Pl
 import { SerialKeypad } from '../../../components/inputs/SerialKeypad';
 import { Button } from '../../../components/ui';
 import { ExcavatorMaintenanceItem } from '../../../components/excavator/ExcavatorMaintenanceItem';
+import { SignatureSheet } from '../../../components/inspection/SignatureSheet';
 
 import { WizardStepTransition } from '../../../components/wizard/WizardStepTransition';
 
@@ -28,10 +29,10 @@ import { useSession } from '../../../lib/session';
 import { useToast } from '../../../lib/toast';
 import { useBottomSheet } from '../../../components/BottomSheet';
 import { excavatorApi } from '../../../lib/excavatorService';
-import { projectsApi, signaturesApi, inspectionAttachmentsApi } from '../../../lib/services';
-import { signatureAsDataUrl, imageForDisplay } from '../../../lib/imageUrl';
+import { projectsApi, inspectionAttachmentsApi } from '../../../lib/services';
+import { imageForDisplay } from '../../../lib/imageUrl';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
-import type { SignatureRecord } from '../../../types/models';
+
 import { buildExcavatorPdfHtml } from '../../../lib/excavatorPdf';
 import { generateAndSharePdf, PdfLimitReachedError } from '../../../lib/pdfOpen';
 import { PaywallModal } from '../../../components/PaywallModal';
@@ -122,7 +123,6 @@ export default function ExcavatorInspectionScreen() {
   const invalidatePdfUsage = useInvalidatePdfUsage();
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewBusy, setPreviewBusy] = useState(false);
-  const [signatures, setSignatures] = useState<SignatureRecord[]>([]);
   const [attachmentCount, setAttachmentCount] = useState(0);
 
   const [focusedField, setFocusedField] = useState<string | null>(null);
@@ -353,11 +353,10 @@ export default function ExcavatorInspectionScreen() {
     });
   }, [scheduleSave, toast]);
 
-  // ── Load signatures/attachments when completed ────────────────────────────
+  // ── Load attachments when completed ───────────────────────────────────────
 
   useEffect(() => {
     if (inspection?.status !== 'completed') return;
-    signaturesApi.list(inspection.id).then(setSignatures).catch(() => {});
     inspectionAttachmentsApi.listByInspection(inspection.id)
       .then(a => setAttachmentCount(a.length)).catch(() => {});
   }, [inspection?.status, inspection?.id]);
@@ -485,22 +484,13 @@ export default function ExcavatorInspectionScreen() {
 
   // ── PDF Preview ────────────────────────────────────────────────────────────
 
-  const buildPreview = useCallback(async (sigs: SignatureRecord[] = signatures) => {
+  const buildPreview = useCallback(async () => {
     if (!inspection) return;
     setPreviewBusy(true);
     try {
-      const sigsEmbedded = await Promise.all(
-        sigs.map(async sig => {
-          if (!sig.signature_png_url || sig.signature_png_url.startsWith('data:')) return sig;
-          const dataUrl = await signatureAsDataUrl(STORAGE_BUCKETS.signatures, sig.signature_png_url)
-            .catch(() => sig.signature_png_url ?? '');
-          return { ...sig, signature_png_url: dataUrl };
-        }),
-      );
       const html = await buildExcavatorPdfHtml({
         inspection,
         projectName: projectName || 'პროექტი',
-        signatures: sigsEmbedded,
       });
       setPreviewHtml(html);
     } catch (e) {
@@ -508,7 +498,7 @@ export default function ExcavatorInspectionScreen() {
     } finally {
       setPreviewBusy(false);
     }
-  }, [inspection, projectName, signatures, toast]);
+  }, [inspection, projectName, toast]);
 
   useEffect(() => {
     if (inspection?.status === 'completed') {
@@ -595,7 +585,6 @@ export default function ExcavatorInspectionScreen() {
 
   // ── Completed inspection result view ───────────────────────────────────────
   if (inspection.status === 'completed') {
-    const signedCount = signatures.filter(s => s.status === 'signed' && !!s.signature_png_url).length;
     return (
       <InspectionResultView
         inspectionId={inspection.id}
@@ -604,8 +593,8 @@ export default function ExcavatorInspectionScreen() {
         previewHtml={previewHtml}
         previewBusy={previewBusy}
         previewError={null}
-        signedCount={signedCount}
-        totalSlots={signatures.length}
+        signedCount={inspection.inspectorSignature ? 1 : 0}
+        totalSlots={1}
         attachmentCount={attachmentCount}
         pdfLocked={pdfUsage?.isLocked}
         downloading={generatingPdf}
@@ -613,13 +602,37 @@ export default function ExcavatorInspectionScreen() {
         onPaywallClose={() => setPaywallVisible(false)}
         onDownloadPdf={() => void handlePdf()}
         onSheetSaved={() => {
-          signaturesApi.list(inspection.id).then(sigs => {
-            setSignatures(sigs);
-            void buildPreview(sigs);
-          }).catch(() => {});
           inspectionAttachmentsApi.listByInspection(inspection.id)
             .then(a => setAttachmentCount(a.length)).catch(() => {});
+          void buildPreview();
         }}
+        renderSignaturesSheet={({ dismiss, onChanged }) => (
+          <SignatureSheet
+            onClose={dismiss}
+            signatories={[
+              {
+                role: 'შემომწმებელი',
+                name: inspection.inspectorName ?? '',
+                position: inspection.inspectorPosition ?? '',
+                signature: inspection.inspectorSignature,
+              },
+            ]}
+            onChange={(idx, field, value) => {
+              setInspection(prev => {
+                if (!prev) return prev;
+                const next = { ...prev };
+                if (field === 'name') next.inspectorName = value;
+                else if (field === 'position') next.inspectorPosition = value;
+                else if (field === 'signature') next.inspectorSignature = value || null;
+                return next;
+              });
+            }}
+            onSign={(idx, base64) => {
+              setInspection(prev => prev ? { ...prev, inspectorSignature: base64 } : prev);
+              onChanged();
+            }}
+          />
+        )}
       />
     );
   }

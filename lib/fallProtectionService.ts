@@ -64,15 +64,6 @@ function coerceDeviceData(
           : buildDefaultFPCustomItem(),
       verdict: d.verdict ?? null,
       verdictComment: d.verdictComment ?? '',
-      signature:
-        d.signature && typeof d.signature === 'object'
-          ? {
-              name: d.signature.name ?? '',
-              position: d.signature.position ?? '',
-              signature: d.signature.signature ?? null,
-              date: d.signature.date ?? null,
-            }
-          : buildDefaultFPSignatory(),
       photoPaths: Array.isArray(d.photoPaths) ? d.photoPaths : [],
     })),
   );
@@ -99,6 +90,7 @@ function toModel(row: DbRow): FallProtectionInspection {
     nextInspectionDate: row.next_inspection_date,
     devices,
     deviceData: coerceDeviceData(devices, row.device_data),
+    signature: buildDefaultFPSignatory(),
     completedAt: row.completed_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,

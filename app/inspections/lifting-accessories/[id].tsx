@@ -12,7 +12,7 @@ import { InspectionResultView } from '../../../components/InspectionResultView';
 import {
   ChecklistSection,
   DynamicTable,
-  SignatureBlock,
+  SignatureSheet,
   VerdictSelector,
   PhotoSection,
   IdentificationGrid,
@@ -37,6 +37,7 @@ import { haptic } from '../../../lib/haptics';
 import { CelebrationBurst } from '../../../components/animations';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { usePhotoWithLocation } from '../../../hooks/usePhotoWithLocation';
+
 import {
   LA_CHECKLIST_ITEMS,
   LA_RESULT_TO_CHIP,
@@ -62,9 +63,8 @@ const IDENTIFICATION_STEP = 1;
 const CHECKLIST_STEP      = 2;
 const REMOVED_STEP        = 3;
 const CONCLUSION_STEP     = 4;
-const SIGNATURES_STEP     = 5;
-const TOTAL_STEPS         = 5;
-const STEP_LABELS         = ['მოწყ.', 'შემოწ.', 'ამოღ.', 'დასკვ.', 'ხელმ.'];
+const TOTAL_STEPS         = 4;
+const STEP_LABELS         = ['მოწყ.', 'შემოწ.', 'ამოღ.', 'დასკვ.'];
 
 // ── Main screen ───────────────────────────────────────────────────────────────
 
@@ -134,7 +134,6 @@ export default function LiftingAccessoriesInspectionScreen() {
         if (patched.inspectorName !== insp.inspectorName) {
           liftingAccessoriesApi.patch(patched.id, {
             inspectorName: patched.inspectorName,
-            signatures: patched.signatures,
           }).catch(() => {});
         }
 
@@ -142,7 +141,7 @@ export default function LiftingAccessoriesInspectionScreen() {
           const saved = await AsyncStorage.getItem(persistKey);
           if (saved && !cancelled) {
             const s = parseInt(saved, 10);
-            if (!isNaN(s) && s >= IDENTIFICATION_STEP && s <= SIGNATURES_STEP) setStep(s);
+            if (!isNaN(s) && s >= IDENTIFICATION_STEP && s <= CONCLUSION_STEP) setStep(s);
           }
         }
 
@@ -189,7 +188,7 @@ export default function LiftingAccessoriesInspectionScreen() {
   }, [id]);
 
   useEffect(() => {
-    if (step >= IDENTIFICATION_STEP && step <= SIGNATURES_STEP) {
+    if (step >= IDENTIFICATION_STEP && step <= CONCLUSION_STEP) {
       AsyncStorage.setItem(persistKey, String(step)).catch(() => {});
     }
   }, [step, persistKey]);
@@ -224,7 +223,6 @@ export default function LiftingAccessoriesInspectionScreen() {
         removedRows:         insp.removedRows,
         verdict:             insp.verdict,
         verdictComment:      insp.verdictComment,
-        signatures:          insp.signatures,
         summaryPhotos:       insp.summaryPhotos,
       }).catch(e => {
         toast.error(friendlyError(e, 'შენახვა ვერ მოხერხდა'));
@@ -379,25 +377,17 @@ export default function LiftingAccessoriesInspectionScreen() {
         (sig as any)[field] = field === 'signature' ? (value || null) : value;
       }
       sigs[idx] = sig;
-      const next = { ...prev, signatures: sigs };
-      scheduleSave(next);
-      return next;
+      return { ...prev, signatures: sigs };
     });
-  }, [scheduleSave]);
+  }, []);
 
-  const handleSign = useCallback(async (idx: number, base64Png: string) => {
+  const handleSign = useCallback((idx: number, base64Png: string) => {
     const insp = inspectionRef.current;
     if (!insp) return;
     const sigs = [...insp.signatures] as [LASignatory, LASignatory];
     sigs[idx] = { ...sigs[idx], signature: base64Png, date: new Date().toISOString() };
-    const next = { ...insp, signatures: sigs };
-    setInspection(next);
-    try {
-      await liftingAccessoriesApi.patch(insp.id, { signatures: sigs });
-    } catch (e) {
-      toast.error(friendlyError(e, 'ხელმოწერა ვერ შეინახა'));
-    }
-  }, [toast]);
+    setInspection({ ...insp, signatures: sigs });
+  }, []);
 
   // ── Verdict suggestion ──────────────────────────────────────────────────────
 
@@ -410,22 +400,23 @@ export default function LiftingAccessoriesInspectionScreen() {
   // ── PDF ─────────────────────────────────────────────────────────────────────
 
   const handlePdf = useCallback(async () => {
-    if (!inspection) return;
+    const insp = inspectionRef.current;
+    if (!insp) return;
     if (pdfUsage?.isLocked) { setPaywallVisible(true); return; }
     setGeneratingPdf(true);
     try {
-      const html = await buildLiftingAccessoriesPdfHtml({ inspection, projectName: projectName || 'პროექტი' });
+      const html = await buildLiftingAccessoriesPdfHtml({ inspection: insp, projectName: projectName || 'პროექტი' });
       const pdfName = generatePdfName(
         projectName || 'project',
         'LiftingAccessoriesInspection',
-        new Date(inspection.inspectionDate),
-        inspection.id,
+        new Date(insp.inspectionDate),
+        insp.id,
       );
       const uid = session.state.status === 'signedIn' ? session.state.session.user.id : undefined;
       await generateAndSharePdf(html, pdfName, undefined, uid, {
         title: 'ამწე მოწყ. / სლინგი / ჩამჭ. შემოწმება',
-        author: inspection.inspectorName || undefined,
-        documentId: inspection.id,
+        author: insp.inspectorName || undefined,
+        documentId: insp.id,
         subject: 'შრომის უსაფრთხოება',
       });
       invalidatePdfUsage();
@@ -435,22 +426,23 @@ export default function LiftingAccessoriesInspectionScreen() {
     } finally {
       setGeneratingPdf(false);
     }
-  }, [inspection, projectName, session.state, invalidatePdfUsage, toast, pdfUsage]);
+  }, [projectName, session.state, invalidatePdfUsage, toast, pdfUsage]);
 
   // ── Preview (completed) ─────────────────────────────────────────────────────
 
   const buildPreview = useCallback(async () => {
-    if (!inspection) return;
+    const insp = inspectionRef.current;
+    if (!insp) return;
     setPreviewBusy(true);
     try {
-      const html = await buildLiftingAccessoriesPdfHtml({ inspection, projectName: projectName || 'პროექტი' });
+      const html = await buildLiftingAccessoriesPdfHtml({ inspection: insp, projectName: projectName || 'პროექტი' });
       setPreviewHtml(html);
     } catch (e) {
       toast.error(friendlyError(e, 'PDF ვერ შეიქმნა'));
     } finally {
       setPreviewBusy(false);
     }
-  }, [inspection, projectName, toast]);
+  }, [projectName, toast]);
 
   useEffect(() => {
     if (inspection?.status === 'completed') void buildPreview();
@@ -464,7 +456,6 @@ export default function LiftingAccessoriesInspectionScreen() {
     if (!inspection) return;
     const missing: string[] = [];
     if (!inspection.verdict)          missing.push('დასკვნა');
-    if (!isBothSigned)                missing.push('ორივე ხელმოწერა');
 
     if (missing.length > 0) {
       Alert.alert('შეავსეთ სავალდებულო ველები', missing.map(m => `• ${m}`).join('\n'));
@@ -491,7 +482,6 @@ export default function LiftingAccessoriesInspectionScreen() {
         removedRows:         inspection.removedRows,
         verdict:             inspection.verdict,
         verdictComment:      inspection.verdictComment,
-        signatures:          inspection.signatures,
         summaryPhotos:       inspection.summaryPhotos,
       });
       await liftingAccessoriesApi.complete(inspection.id);
@@ -513,19 +503,18 @@ export default function LiftingAccessoriesInspectionScreen() {
     } finally {
       setCompleting(false);
     }
-  }, [inspection, isBothSigned, persistKey, toast]);
+  }, [inspection, persistKey, toast]);
 
   // ── Step navigation ─────────────────────────────────────────────────────────
 
   const canGoNext = useMemo(() => {
     if (!inspection) return false;
-    if (step === CONCLUSION_STEP) return !!inspection.verdict;
-    if (step === SIGNATURES_STEP) return isBothSigned && !completing;
+    if (step === CONCLUSION_STEP) return !!inspection.verdict && !completing;
     return true;
-  }, [step, inspection, isBothSigned, completing]);
+  }, [step, inspection, completing]);
 
   const handleNext = useCallback(async () => {
-    if (step === SIGNATURES_STEP) {
+    if (step === CONCLUSION_STEP) {
       await handleComplete();
     } else {
       setStep(s => s + 1);
@@ -579,8 +568,8 @@ export default function LiftingAccessoriesInspectionScreen() {
         previewHtml={previewHtml}
         previewBusy={previewBusy}
         previewError={null}
-        signedCount={0}
-        totalSlots={0}
+        signedCount={inspection.signatures.filter(s => !!s.signature).length}
+        totalSlots={inspection.signatures.length}
         attachmentCount={0}
         pdfLocked={pdfUsage?.isLocked}
         downloading={generatingPdf}
@@ -588,6 +577,20 @@ export default function LiftingAccessoriesInspectionScreen() {
         onPaywallClose={() => setPaywallVisible(false)}
         onDownloadPdf={() => void handlePdf()}
         onSheetSaved={() => void buildPreview()}
+        renderSignaturesSheet={({ dismiss, onChanged }) => (
+          <SignatureSheet
+            onClose={dismiss}
+            signatories={[
+              { role: 'I ხელმომწერი', ...inspection.signatures[0] },
+              { role: 'II ხელმომწერი', ...inspection.signatures[1] },
+            ]}
+            onChange={handleSignatoryChange}
+            onSign={(idx, base64) => {
+              handleSign(idx, base64);
+              onChanged();
+            }}
+          />
+        )}
       />
     );
   }
@@ -813,49 +816,11 @@ export default function LiftingAccessoriesInspectionScreen() {
             </KeyboardAwareScrollView>
           )}
 
-          {/* ── Step 5: Signatures ───────────────────────────────────────────── */}
-          {step === SIGNATURES_STEP && (
-            <KeyboardAwareScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={styles.stepBody}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
-              showsVerticalScrollIndicator={false}
-              bottomOffset={120}
-            >
-              <SignatureBlock
-                signatories={[
-                  {
-                    role: 'შემომწმებელი პირი',
-                    name: inspection.signatures[0].name,
-                    position: inspection.signatures[0].position,
-                    organization: inspection.signatures[0].organization ?? '',
-                    extra: inspection.signatures[0].extra ?? {},
-                    signature: inspection.signatures[0].signature,
-                    date: inspection.signatures[0].date,
-                  },
-                  {
-                    role: 'პასუხისმგებელი პირი',
-                    name: inspection.signatures[1].name,
-                    position: inspection.signatures[1].position,
-                    organization: inspection.signatures[1].organization ?? '',
-                    extra: inspection.signatures[1].extra ?? {},
-                    signature: inspection.signatures[1].signature,
-                    date: inspection.signatures[1].date,
-                  },
-                ]}
-                extraFields={[{ key: 'qualification', label: 'კვ. / სერ. №' }]}
-                onChange={handleSignatoryChange}
-                onSign={handleSign}
-              />
-            </KeyboardAwareScrollView>
-          )}
-
         </WizardStepTransition>
 
         {/* Footer */}
         <View style={[styles.footer, { paddingBottom: 16 + insets.bottom }]}>
-          {step === SIGNATURES_STEP ? (
+          {step === CONCLUSION_STEP ? (
             <Button
               title="შენახვა და დასრულება"
               style={{ paddingVertical: 14 }}

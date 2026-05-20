@@ -232,7 +232,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
-          options: { data: { first_name: firstName, last_name: lastName } },
+          options: {
+            data: { first_name: firstName, last_name: lastName },
+            emailRedirectTo: Linking.createURL('/verify-email'),
+          },
         });
         if (error) throw error;
         if (!data.session) {
@@ -252,6 +255,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         const { error } = await supabase.auth.resend({
           type: 'signup',
           email: email.trim(),
+          options: { emailRedirectTo: Linking.createURL('/verify-email') },
         });
         if (error) throw error;
       },

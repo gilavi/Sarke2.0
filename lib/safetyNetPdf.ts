@@ -463,18 +463,23 @@ export async function buildSafetyNetPdfHtml(args: {
 
   // ── Section VII — ხელმოწერები ───────────────────────────────────────────────
 
+  function romanLabel(i: number): string {
+    const romans = ['I','II','III','IV','V','VI','VII','VIII','IX','X'];
+    return romans[i] ?? `${i + 1}`;
+  }
+
   const sigBlocks = insp.signatures.map((sig, i) => {
-    const role = i === 0 ? 'I ხელმომწერი' : 'II ხელმომწერი';
-    const imgHtml = sig.signature
+    const role = `${romanLabel(i)} ხელმომწერი`;
+    const imgHtml = sig?.signature
       ? `<img class="sig-img" src="data:image/png;base64,${sig.signature}" />`
       : `<div class="sig-line"></div>`;
     return `
       <div class="sig-block">
         <div class="sig-cell">
           <div class="sig-lbl">${escHtml(role)}</div>
-          <div class="sig-name">${escHtml(sig.name) || '—'}</div>
-          <div class="sig-role">${escHtml(sig.position) || ''}</div>
-          <div class="sig-org">${escHtml(sig.organization) || ''}</div>
+          <div class="sig-name">${escHtml(sig?.name) || '—'}</div>
+          <div class="sig-role">${escHtml(sig?.position) || ''}</div>
+          <div class="sig-org">${escHtml(sig?.organization) || ''}</div>
         </div>
         <div class="sig-cell">
           <div class="sig-lbl">ხელმოწერა</div>
@@ -482,7 +487,7 @@ export async function buildSafetyNetPdfHtml(args: {
         </div>
         <div class="sig-cell">
           <div class="sig-lbl">თარიღი</div>
-          <div class="sig-date">${fmtDate(sig.date)}</div>
+          <div class="sig-date">${fmtDate(sig?.date)}</div>
         </div>
       </div>`;
   }).join('');

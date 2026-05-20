@@ -11,7 +11,6 @@ import { InspectionResultView } from '../../../components/InspectionResultView';
 import {
   ChecklistSection,
   DynamicTable,
-  SignatureBlock,
   VerdictSelector,
   PhotoSection,
   IdentificationGrid,
@@ -36,6 +35,7 @@ import { haptic } from '../../../lib/haptics';
 import { CelebrationBurst } from '../../../components/animations';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { usePhotoWithLocation } from '../../../hooks/usePhotoWithLocation';
+import { SignatureSheet } from '../../../components/inspection/SignatureSheet';
 import {
   SN_VISUAL_ITEMS,
   SN_POST_TEST_ITEMS,
@@ -56,9 +56,8 @@ const NET_ID_STEP     = 1;
 const INSPECTION_STEP = 2;
 const CONCLUSION_STEP = 3;
 const DOCS_STEP       = 4;
-const SIGNATURES_STEP = 5;
-const TOTAL_STEPS     = 5;
-const STEP_LABELS     = ['ბადე', 'შემოწ.', 'დასკვნა', 'დოკ.', 'ხელმ.'];
+const TOTAL_STEPS     = 4;
+const STEP_LABELS     = ['ბადე', 'შემოწ.', 'დასკვნა', 'დოკ.'];
 
 // ── Main screen ───────────────────────────────────────────────────────────────
 
@@ -132,7 +131,7 @@ export default function SafetyNetInspectionScreen() {
           const saved = await AsyncStorage.getItem(persistKey);
           if (saved && !cancelled) {
             const s = parseInt(saved, 10);
-            if (!isNaN(s) && s >= NET_ID_STEP && s <= SIGNATURES_STEP) setStep(s);
+            if (!isNaN(s) && s >= NET_ID_STEP && s <= DOCS_STEP) setStep(s);
           }
         }
 
@@ -179,7 +178,7 @@ export default function SafetyNetInspectionScreen() {
   }, [id]);
 
   useEffect(() => {
-    if (step >= NET_ID_STEP && step <= SIGNATURES_STEP) {
+    if (step >= NET_ID_STEP && step <= DOCS_STEP) {
       AsyncStorage.setItem(persistKey, String(step)).catch(() => {});
     }
   }, [step, persistKey]);
@@ -216,7 +215,6 @@ export default function SafetyNetInspectionScreen() {
         postTestItems: insp.postTestItems,
         verdict: insp.verdict,
         verdictComment: insp.verdictComment,
-        signatures: insp.signatures,
         qualDocPath: insp.qualDocPath,
         summaryPhotos: insp.summaryPhotos,
       }).catch(e => {
@@ -391,25 +389,17 @@ export default function SafetyNetInspectionScreen() {
       if (!prev) return prev;
       const sigs = [...prev.signatures] as [SNSignatory, SNSignatory];
       sigs[idx] = { ...sigs[idx], [field]: field === 'signature' ? (value || null) : value };
-      const next = { ...prev, signatures: sigs };
-      scheduleSave(next);
-      return next;
+      return { ...prev, signatures: sigs };
     });
-  }, [scheduleSave]);
+  }, []);
 
-  const handleSignatorySign = useCallback(async (idx: number, base64Png: string) => {
+  const handleSignatorySign = useCallback((idx: number, base64Png: string) => {
     const insp = inspectionRef.current;
     if (!insp) return;
     const sigs = [...insp.signatures] as [SNSignatory, SNSignatory];
     sigs[idx] = { ...sigs[idx], signature: base64Png, date: new Date().toISOString() };
-    const next = { ...insp, signatures: sigs };
-    setInspection(next);
-    try {
-      await safetyNetApi.patch(insp.id, { signatures: sigs });
-    } catch (e) {
-      toast.error(friendlyError(e, 'ხელმოწერა ვერ შეინახა'));
-    }
-  }, [toast]);
+    setInspection({ ...insp, signatures: sigs });
+  }, []);
 
   // ── Verdict auto-suggest ────────────────────────────────────────────────────
 
@@ -421,22 +411,23 @@ export default function SafetyNetInspectionScreen() {
   // ── PDF ─────────────────────────────────────────────────────────────────────
 
   const handlePdf = useCallback(async () => {
-    if (!inspection) return;
+    const insp = inspectionRef.current;
+    if (!insp) return;
     if (pdfUsage?.isLocked) { setPaywallVisible(true); return; }
     setGeneratingPdf(true);
     try {
-      const html = await buildSafetyNetPdfHtml({ inspection, projectName: projectName || 'პროექტი' });
+      const html = await buildSafetyNetPdfHtml({ inspection: insp, projectName: projectName || 'პროექტი' });
       const pdfName = generatePdfName(
         projectName || 'project',
         'SafetyNetInspection',
-        new Date(inspection.inspectionDate),
-        inspection.id,
+        new Date(insp.inspectionDate),
+        insp.id,
       );
       const uid = session.state.status === 'signedIn' ? session.state.session.user.id : undefined;
       await generateAndSharePdf(html, pdfName, undefined, uid, {
         title: 'უსაფრთხოების ბადის შემოწმების აქტი',
-        author: inspection.inspectorName || undefined,
-        documentId: inspection.id,
+        author: insp.inspectorName || undefined,
+        documentId: insp.id,
         subject: 'შრომის უსაფრთხოება',
       });
       invalidatePdfUsage();
@@ -446,22 +437,23 @@ export default function SafetyNetInspectionScreen() {
     } finally {
       setGeneratingPdf(false);
     }
-  }, [inspection, projectName, session.state, invalidatePdfUsage, toast, pdfUsage]);
+  }, [projectName, session.state, invalidatePdfUsage, toast, pdfUsage]);
 
   // ── Preview (completed) ─────────────────────────────────────────────────────
 
   const buildPreview = useCallback(async () => {
-    if (!inspection) return;
+    const insp = inspectionRef.current;
+    if (!insp) return;
     setPreviewBusy(true);
     try {
-      const html = await buildSafetyNetPdfHtml({ inspection, projectName: projectName || 'პროექტი' });
+      const html = await buildSafetyNetPdfHtml({ inspection: insp, projectName: projectName || 'პროექტი' });
       setPreviewHtml(html);
     } catch (e) {
       toast.error(friendlyError(e, 'PDF ვერ შეიქმნა'));
     } finally {
       setPreviewBusy(false);
     }
-  }, [inspection, projectName, toast]);
+  }, [projectName, toast]);
 
   useEffect(() => {
     if (inspection?.status === 'completed') void buildPreview();
@@ -469,13 +461,10 @@ export default function SafetyNetInspectionScreen() {
 
   // ── Complete ────────────────────────────────────────────────────────────────
 
-  const bothSigned = !!(inspection?.signatures[0].signature && inspection?.signatures[1].signature);
-
   const handleComplete = useCallback(async () => {
     if (!inspection) return;
     const missing: string[] = [];
-    if (!inspection.verdict)          missing.push('დასკვნა');
-    if (!bothSigned)                  missing.push('ორივე ხელმომწერის ხელმოწერა');
+    if (!inspection.verdict) missing.push('დასკვნა');
 
     if (missing.length > 0) {
       Alert.alert('შეავსეთ სავალდებულო ველები', missing.map(m => `• ${m}`).join('\n'));
@@ -504,7 +493,6 @@ export default function SafetyNetInspectionScreen() {
         postTestItems: inspection.postTestItems,
         verdict: inspection.verdict,
         verdictComment: inspection.verdictComment,
-        signatures: inspection.signatures,
         qualDocPath: inspection.qualDocPath,
         summaryPhotos: inspection.summaryPhotos,
       });
@@ -527,19 +515,18 @@ export default function SafetyNetInspectionScreen() {
     } finally {
       setCompleting(false);
     }
-  }, [inspection, bothSigned, persistKey, toast]);
+  }, [inspection, persistKey, toast]);
 
   // ── Step navigation ──────────────────────────────────────────────────────────
 
   const canGoNext = useMemo(() => {
     if (!inspection) return false;
     if (step === CONCLUSION_STEP) return !!inspection.verdict;
-    if (step === SIGNATURES_STEP) return bothSigned && !completing;
     return true;
-  }, [step, inspection, bothSigned, completing]);
+  }, [step, inspection, completing]);
 
   const handleNext = useCallback(async () => {
-    if (step === SIGNATURES_STEP) {
+    if (step === DOCS_STEP) {
       await handleComplete();
     } else {
       setStep(s => s + 1);
@@ -575,8 +562,8 @@ export default function SafetyNetInspectionScreen() {
         previewHtml={previewHtml}
         previewBusy={previewBusy}
         previewError={null}
-        signedCount={0}
-        totalSlots={0}
+        signedCount={inspection.signatures.filter(s => !!s.signature).length}
+        totalSlots={inspection.signatures.length}
         attachmentCount={0}
         pdfLocked={pdfUsage?.isLocked}
         downloading={generatingPdf}
@@ -584,6 +571,20 @@ export default function SafetyNetInspectionScreen() {
         onPaywallClose={() => setPaywallVisible(false)}
         onDownloadPdf={() => void handlePdf()}
         onSheetSaved={() => void buildPreview()}
+        renderSignaturesSheet={({ dismiss, onChanged }) => (
+          <SignatureSheet
+            onClose={dismiss}
+            signatories={[
+              { role: 'I ხელმომწერი', ...inspection.signatures[0] },
+              { role: 'II ხელმომწერი', ...inspection.signatures[1] },
+            ]}
+            onChange={handleSignatoryChange}
+            onSign={(idx, base64) => {
+              handleSignatorySign(idx, base64);
+              onChanged();
+            }}
+          />
+        )}
       />
     );
   }
@@ -783,28 +784,7 @@ export default function SafetyNetInspectionScreen() {
             </KeyboardAwareScrollView>
           )}
 
-          {/* ── Step 4: Signatures ───────────────────────────────────────────── */}
-          {step === SIGNATURES_STEP && (
-            <KeyboardAwareScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={styles.stepBody}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
-              showsVerticalScrollIndicator={false}
-              bottomOffset={120}
-            >
-              <SignatureBlock
-                signatories={[
-                  { role: 'I ხელმომწერი', ...inspection.signatures[0] },
-                  { role: 'II ხელმომწერი', ...inspection.signatures[1] },
-                ]}
-                onChange={handleSignatoryChange}
-                onSign={handleSignatorySign}
-              />
-            </KeyboardAwareScrollView>
-          )}
-
-          {/* ── Step 5: Documents & Photos ──────────────────────────────────── */}
+          {/* ── Step 4: Documents & Photos ──────────────────────────────────── */}
           {step === DOCS_STEP && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
@@ -834,7 +814,7 @@ export default function SafetyNetInspectionScreen() {
 
         {/* Footer */}
         <View style={[styles.footer, { paddingBottom: 16 + insets.bottom }]}>
-          {step === SIGNATURES_STEP ? (
+          {step === DOCS_STEP ? (
             <Button
               title="შენახვა და დასრულება"
               style={{ paddingVertical: 14 }}

@@ -457,20 +457,25 @@ export async function buildLiftingAccessoriesPdfHtml(args: {
 
   // ── Section VIII — ხელმოწერები ──────────────────────────────────────────────
 
+  function romanLabel(i: number): string {
+    const romans = ['I','II','III','IV','V','VI','VII','VIII','IX','X'];
+    return romans[i] ?? `${i + 1}`;
+  }
+
   function sigBlock(sig: LiftingAccessoriesInspection['signatures'][number], role: string): string {
-    const sigImgHtml = sig.signature
+    const sigImgHtml = sig?.signature
       ? `<img class="sig-img" src="data:image/png;base64,${sig.signature}" />`
       : `<div class="sig-line"></div>`;
-    const qualHtml = sig.extra?.qualification
+    const qualHtml = sig?.extra?.qualification
       ? `<div class="sig-role">${escHtml(sig.extra.qualification)}</div>`
       : '';
     return `
       <div class="sig-block">
         <div class="sig-cell">
           <div class="sig-lbl">${escHtml(role)}</div>
-          <div class="sig-name">${escHtml(sig.name) || '—'}</div>
-          <div class="sig-role">${escHtml(sig.position) || ''}</div>
-          ${sig.organization ? `<div class="sig-role">${escHtml(sig.organization)}</div>` : ''}
+          <div class="sig-name">${escHtml(sig?.name) || '—'}</div>
+          <div class="sig-role">${escHtml(sig?.position) || ''}</div>
+          ${sig?.organization ? `<div class="sig-role">${escHtml(sig.organization)}</div>` : ''}
           ${qualHtml}
         </div>
         <div class="sig-cell">
@@ -479,17 +484,19 @@ export async function buildLiftingAccessoriesPdfHtml(args: {
         </div>
         <div class="sig-cell">
           <div class="sig-lbl">თარიღი</div>
-          <div class="sig-date">${fmtDate(sig.date)}</div>
+          <div class="sig-date">${fmtDate(sig?.date)}</div>
         </div>
       </div>`;
   }
 
-  const [sig0, sig1] = insp.signatures;
+  const sigBlocks = insp.signatures.map((sig, i) =>
+    sigBlock(sig, `${romanLabel(i)} — ${i === 0 ? 'შემომწმებელი პირი' : 'პასუხისმგებელი პირი'}`)
+  ).join('');
+
   const sectionVIIIHtml = `
     <div class="section-title">VIII — ხელმოწერები</div>
     <div class="sig-two-col">
-      ${sigBlock(sig0, 'შემომწმებელი პირი')}
-      ${sigBlock(sig1, 'პასუხისმგებელი პირი')}
+      ${sigBlocks}
     </div>
   `;
 

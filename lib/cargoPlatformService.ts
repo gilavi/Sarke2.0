@@ -30,7 +30,7 @@ type DbRow = {
   verdict: string | null;
   verdict_comment: string | null;
   summary_photos: string[];
-  signatures: [CPSignatory, CPSignatory];
+  signatures: CPSignatory[];
   completed_at: string | null;
   created_at: string;
   updated_at: string;
@@ -47,10 +47,15 @@ function toModel(row: DbRow): CargoPlatformInspection {
 
   const emptySignatory = (): CPSignatory => ({ name: '', position: '', organization: '', signature: null, date: null });
   const rawSigs = row.signatures;
-  const signatures: [CPSignatory, CPSignatory] = [
-    rawSigs?.[0] ?? emptySignatory(),
-    rawSigs?.[1] ?? emptySignatory(),
-  ];
+  const signatures: CPSignatory[] = Array.isArray(rawSigs)
+    ? rawSigs.map(s => ({
+        name: s?.name ?? '',
+        position: s?.position ?? '',
+        organization: s?.organization ?? '',
+        signature: s?.signature ?? null,
+        date: s?.date ?? null,
+      }))
+    : [emptySignatory()];
 
   return {
     id: row.id,
@@ -104,7 +109,7 @@ export const cargoPlatformApi = {
         inspector_name: args.inspectorName ?? null,
         items: buildDefaultCPItems(),
         cargo: [buildDefaultCargoRow(), buildDefaultCargoRow(), buildDefaultCargoRow()],
-        signatures: [emptySignatory(), { name: '', position: '', organization: '', signature: null, date: null }],
+        signatures: [emptySignatory()],
       })
       .select()
       .single();
@@ -143,7 +148,7 @@ export const cargoPlatformApi = {
       verdict: CargoPlatformInspection['verdict'];
       verdictComment: string;
       summaryPhotos: string[];
-      signatures: [CPSignatory, CPSignatory];
+      signatures: CPSignatory[];
     }>,
   ): Promise<void> => {
     const db: Record<string, unknown> = {};

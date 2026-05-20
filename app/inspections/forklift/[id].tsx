@@ -19,21 +19,19 @@ import { useSession } from '../../../lib/session';
 import { useToast } from '../../../lib/toast';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { forkliftApi } from '../../../lib/forkliftService';
-import { projectsApi, signaturesApi, inspectionAttachmentsApi } from '../../../lib/services';
-import { signatureAsDataUrl } from '../../../lib/imageUrl';
+import { projectsApi } from '../../../lib/services';
 import {
   ChecklistSection,
   IdentificationGrid,
   PhotoSection,
   QualDoc,
-  SignatureBlock,
+  SignatureSheet,
   VerdictSelector,
   type ChecklistItemData,
   type SignatoryData,
   type VerdictOption,
 } from '../../../components/inspection';
-import { STORAGE_BUCKETS } from '../../../lib/supabase';
-import type { SignatureRecord } from '../../../types/models';
+
 import { buildForkliftPdfHtml } from '../../../lib/forkliftPdf';
 import { generateAndSharePdf, PdfLimitReachedError } from '../../../lib/pdfOpen';
 import { PaywallModal } from '../../../components/PaywallModal';
@@ -95,8 +93,6 @@ export default function ForkliftInspectionScreen() {
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewBusy, setPreviewBusy] = useState(false);
-  const [signatures, setSignatures] = useState<SignatureRecord[]>([]);
-  const [attachmentCount, setAttachmentCount] = useState(0);
 
   const [step, setStep] = useState(INFO_STEP);
   const prevStepRef = useRef(INFO_STEP);
@@ -134,7 +130,6 @@ export default function ForkliftInspectionScreen() {
         if (patched.inspectorName !== insp.inspectorName) {
           forkliftApi.patch(patched.id, {
             inspectorName: patched.inspectorName,
-            signerName: patched.signerName,
           }).catch(() => {});
         }
 
@@ -199,10 +194,6 @@ export default function ForkliftInspectionScreen() {
         notes: insp.notes,
         summaryPhotos: insp.summaryPhotos,
         qualDocPath: insp.qualDocPath,
-        signerName: insp.signerName,
-        signerPosition: insp.signerPosition,
-        signerPhone: insp.signerPhone,
-        signerSignature: insp.signerSignature,
       }).catch(e => {
         toast.error(friendlyError(e, 'შენახვა ვერ მოხერხდა'));
       }).finally(() => setSaving(false));
@@ -370,15 +361,6 @@ export default function ForkliftInspectionScreen() {
     });
   }, [scheduleSave]);
 
-  // ── Load signatures/attachments when completed ────────────────────────────
-
-  useEffect(() => {
-    if (inspection?.status !== 'completed') return;
-    signaturesApi.list(inspection.id).then(setSignatures).catch(() => {});
-    inspectionAttachmentsApi.listByInspection(inspection.id)
-      .then(a => setAttachmentCount(a.length)).catch(() => {});
-  }, [inspection?.status, inspection?.id]);
-
   // ── Complete ───────────────────────────────────────────────────────────────
 
   const handleComplete = useCallback(async () => {
@@ -407,10 +389,6 @@ export default function ForkliftInspectionScreen() {
         notes: inspection.notes,
         summaryPhotos: inspection.summaryPhotos,
         qualDocPath: inspection.qualDocPath,
-        signerName: inspection.signerName,
-        signerPosition: inspection.signerPosition,
-        signerPhone: inspection.signerPhone,
-        signerSignature: inspection.signerSignature,
       });
       await forkliftApi.complete(inspection.id);
       const completedAt = new Date().toISOString();
@@ -421,6 +399,7 @@ export default function ForkliftInspectionScreen() {
         `${inspection.projectId}:forklift_inspection`,
       ).catch(() => {});
       setInspection(prev => prev ? { ...prev, status: 'completed', completedAt } : prev);
+
       toast.success('შემოწმება დასრულდა');
       setCelebrating(true);
       haptic.inspectionComplete();
@@ -435,25 +414,26 @@ export default function ForkliftInspectionScreen() {
   // ── PDF ────────────────────────────────────────────────────────────────────
 
   const handlePdf = useCallback(async () => {
-    if (!inspection) return;
+    const insp = inspectionRef.current;
+    if (!insp) return;
     if (pdfUsage?.isLocked) { setPaywallVisible(true); return; }
     setGeneratingPdf(true);
     try {
       const html = await buildForkliftPdfHtml({
-        inspection,
+        inspection: insp,
         projectName: projectName || 'პროექტი',
       });
       const pdfName = generatePdfName(
         projectName || 'project',
         'ForkliftInspection',
-        new Date(inspection.inspectionDate),
-        inspection.id,
+        new Date(insp.inspectionDate),
+        insp.id,
       );
       const userId = session.state.status === 'signedIn' ? session.state.session.user.id : undefined;
       await generateAndSharePdf(html, pdfName, undefined, userId, {
         title: 'ჩანგლიანი დამტვირთველი',
-        author: inspection.inspectorName || undefined,
-        documentId: inspection.id,
+        author: insp.inspectorName || undefined,
+        documentId: insp.id,
         subject: 'შრომის უსაფრთხოების შემოწმება',
       });
       invalidatePdfUsage();
@@ -463,25 +443,17 @@ export default function ForkliftInspectionScreen() {
     } finally {
       setGeneratingPdf(false);
     }
-  }, [inspection, projectName, session.state, invalidatePdfUsage, toast, pdfUsage?.isLocked]);
+  }, [projectName, session.state, invalidatePdfUsage, toast, pdfUsage?.isLocked]);
 
   // ── PDF Preview (completed) ────────────────────────────────────────────────
 
-  const buildPreview = useCallback(async (sigs: SignatureRecord[] = signatures) => {
-    if (!inspection) return;
+  const buildPreview = useCallback(async () => {
+    const insp = inspectionRef.current;
+    if (!insp) return;
     setPreviewBusy(true);
     try {
-      const sigsEmbedded = await Promise.all(
-        sigs.map(async sig => {
-          if (!sig.signature_png_url || sig.signature_png_url.startsWith('data:')) return sig;
-          const dataUrl = await signatureAsDataUrl(STORAGE_BUCKETS.signatures, sig.signature_png_url)
-            .catch(() => sig.signature_png_url ?? '');
-          return { ...sig, signature_png_url: dataUrl };
-        }),
-      );
-      void sigsEmbedded; // not used in forklift PDF (uses inline signer_signature)
       const html = await buildForkliftPdfHtml({
-        inspection,
+        inspection: insp,
         projectName: projectName || 'პროექტი',
       });
       setPreviewHtml(html);
@@ -490,11 +462,11 @@ export default function ForkliftInspectionScreen() {
     } finally {
       setPreviewBusy(false);
     }
-  }, [inspection, projectName, signatures, toast]);
+  }, [projectName, toast]);
 
   useEffect(() => {
     if (inspection?.status === 'completed') void buildPreview();
-  }, [inspection?.status, buildPreview]);
+  }, [inspection?.status]);
 
   useEffect(() => {
     return () => { if (celebrationTimer.current) clearTimeout(celebrationTimer.current); };
@@ -579,7 +551,6 @@ export default function ForkliftInspectionScreen() {
   }
 
   if (inspection.status === 'completed' && !celebrating) {
-    const signedCount = signatures.filter(s => s.status === 'signed' && !!s.signature_png_url).length;
     return (
       <InspectionResultView
         inspectionId={inspection.id}
@@ -588,22 +559,34 @@ export default function ForkliftInspectionScreen() {
         previewHtml={previewHtml}
         previewBusy={previewBusy}
         previewError={null}
-        signedCount={signedCount}
-        totalSlots={signatures.length}
-        attachmentCount={attachmentCount}
+        signedCount={inspection.signerSignature ? 1 : 0}
+        totalSlots={1}
+        attachmentCount={0}
         pdfLocked={pdfUsage?.isLocked}
         downloading={generatingPdf}
         paywallVisible={paywallVisible}
         onPaywallClose={() => setPaywallVisible(false)}
         onDownloadPdf={() => void handlePdf()}
-        onSheetSaved={() => {
-          signaturesApi.list(inspection.id).then(sigs => {
-            setSignatures(sigs);
-            void buildPreview(sigs);
-          }).catch(() => {});
-          inspectionAttachmentsApi.listByInspection(inspection.id)
-            .then(a => setAttachmentCount(a.length)).catch(() => {});
-        }}
+        onSheetSaved={() => void buildPreview()}
+        renderSignaturesSheet={({ dismiss, onChanged }) => (
+          <SignatureSheet
+            onClose={dismiss}
+            signatories={[
+              {
+                role: 'ხელმომწერი',
+                name: inspection.signerName ?? '',
+                position: inspection.signerPosition ?? '',
+                extra: { phone: inspection.signerPhone ?? '' },
+                signature: inspection.signerSignature,
+              },
+            ]}
+            onChange={handleSignerChange}
+            onSign={(idx, base64) => {
+              handleSign(idx, base64);
+              onChanged();
+            }}
+          />
+        )}
       />
     );
   }
@@ -797,15 +780,6 @@ export default function ForkliftInspectionScreen() {
                 onDelete={handleDeleteSummaryPhoto}
               />
 
-              {/* Signature */}
-              <Text style={[styles.sectionLabel, { marginTop: 16 }]}>ხელმოწერა</Text>
-              <SignatureBlock
-                signatories={signatories}
-                onChange={handleSignerChange}
-                onSign={handleSign}
-                extraFields={SIGNER_EXTRA_FIELDS}
-              />
-
               {completing && (
                 <View style={styles.completingRow}>
                   <ActivityIndicator size="small" color={theme.colors.accent} />
@@ -814,6 +788,7 @@ export default function ForkliftInspectionScreen() {
               )}
             </KeyboardAwareScrollView>
           )}
+
         </WizardStepTransition>
 
         <View style={[styles.footer, { paddingBottom: 16 + insets.bottom }]}>
