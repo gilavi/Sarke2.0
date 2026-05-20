@@ -1,7 +1,7 @@
 # AI Agent Briefing — Sarke 2.0
 
 **Purpose:** Quick reference for AI agents working on this codebase  
-**Updated:** 2026-05-19 | Branch: `main`  
+**Updated:** 2026-05-20 | Branch: `main`  
 **Full context:** See [`ONBOARDING.md`](../ONBOARDING.md) in the repo root for the complete guide.
 
 ---
@@ -20,7 +20,7 @@
 
 ```
 Mobile:
-├─ Expo SDK 55 + React Native 0.81 + React 19
+├─ Expo SDK 54 + React Native 0.81 + React 19
 ├─ expo-router (file-based routing)
 ├─ TypeScript
 ├─ react-native-signature-canvas (signatures)
@@ -29,8 +29,9 @@ Mobile:
 └─ react-native-keyboard-controller (keyboard management)
 
 Web-App (dashboard):
-├─ Vite + React 18 + TypeScript + Tailwind CSS
-├─ shadcn/ui, React Query, React Router v6 HashRouter
+├─ Vite + React 19 + TypeScript + Tailwind CSS
+├─ Mantine v9 + Radix UI (shadcn-style primitives), React Query, React Router v6 HashRouter
+├─ three.js + @react-three/fiber (3D SafetyGuide), Leaflet (maps), Recharts
 └─ Supabase JS client
 
 Web (signing page):
@@ -42,11 +43,10 @@ Web (signing page):
 
 ## Branch State
 
-| Branch | HEAD | Content |
-|---|---|---|
-| `main` | be46348 | BOG payments, 3D SafetyGuide, PDF security/hashing, project geo+photos, orders (4 templates), tab bar polish, web bundle splitting |
-| `after-testflight` | f80a372 | All of main + cargo platform inspection (mobile + web), mobile scaffold N1/N3, skeleton loading system |
-| **Session work** (uncommitted, on after-testflight) | — | fire_safety_order + fire_safety_order_enterprise templates; web orders wizard + detail extended for enterprise type |
+- **`main`** — active development branch. Web deploys (`deploy-web.yml`, `deploy-web-app.yml`, `docs.yml`) trigger on push to `main`, so **a commit here ships to production**.
+- **`ios-legacy`** — native SwiftUI iOS port. Not maintained from `main`; don't modify it from here.
+
+> Don't pin commit hashes in this doc — they rot immediately. Run `git log --oneline -20` for current state.
 
 ---
 
@@ -96,7 +96,7 @@ Sarke 2.0/
 │   ├── forklift.ts                   # FORKLIFT_ITEMS, ForkliftResult, ForkliftInspection
 │   └── liftingAccessories.ts         # LA_ITEMS, LAResult, LiftingAccessoriesInspection
 │
-├── supabase/migrations/              # 49 migrations (0001–0049)
+├── supabase/migrations/              # 0001–0052; NOTE duplicate-numbered files at 0044/0045/0046 (branch merge)
 │
 ├── web-app/                          # Dashboard (Vite + React)
 │   └── src/
@@ -205,4 +205,4 @@ npm run lint        # tsc --noEmit + check-primitives.mjs
 ---
 
 **Full context → [`ONBOARDING.md`](../ONBOARDING.md)**  
-**Last sync:** 2026-05-19
+**Last sync:** 2026-05-20

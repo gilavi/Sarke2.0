@@ -59,7 +59,7 @@ Top-level folders, one line each.
 | `locales/` | UI strings (Georgian baseline). |
 | `shims/` | Web stubs (worklets, keyboard-controller) loaded via `metro.config.js` aliases. |
 | `scripts/` | Repo scripts including `check-primitives.mjs` (lint guard). |
-| `supabase/` | `migrations/` SQL files (0001–0049), `seed/` system templates, `functions/` Edge Functions, `.temp/` local CLI cache. |
+| `supabase/` | `migrations/` SQL files (0001–0052; numbers 0044/0045/0046 are each used by two files — see Migrations note), `seed/` system templates, `functions/` Edge Functions, `.temp/` local CLI cache. |
 | `docs/` | Project documentation — `AI_BRIEFING.md`, `WHATS_NEW.md`, `primitives.md`, `payments.md`, `design-system-audit-*.md`, `prompts/`. |
 | `web/` | `sarke-sign` tokenized signing page (Vite + React). Deployed to `https://gilavi.github.io/Sarke2.0/`. |
 | `web-app/` | Public dashboard (Vite + React + TS + Tailwind). Deployed to `https://gilavi.github.io/Sarke2.0/app/`. |
@@ -164,6 +164,8 @@ Schema + seed already applied to the hosted project. Migrations are preserved fo
 
 ### Migrations (`supabase/migrations/`)
 
+> **Duplicate numbers:** `0044`, `0045`, `0046` each have **two files** — inspection tables from one branch and reports-RLS fixes from another, merged together. Both halves are applied to the hosted DB. **Do not renumber them** — it would desync the migration history. New migrations continue from `0052`.
+
 | File | Purpose |
 |---|---|
 | `0001_init.sql` | Tables + initial RLS |
@@ -209,12 +211,18 @@ Schema + seed already applied to the hosted project. Migrations are preserved fo
 | `0041_mobile_scaffold_template.sql` | Mobile scaffold template (UUID `33333333-…`) reusing the generic wizard |
 | `0042_mobile_scaffold_n3_template.sql` | Mobile scaffold N3 variant |
 | `0043_inspection_stats_rpc.sql` | Stats RPC for the dashboard home page |
+| `0044_fix_reports_insert_rls.sql` | Reports INSERT RLS fix — drops the fragile project sub-query, checks `user_id = auth.uid()` (matches orders 0038). **Shares number 0044** (branch merge). |
 | `0044_safety_net_inspection.sql` | `safety_net_inspections` table + template (UUID `88888888-…`, `category: 'safety_net_inspection'`) |
+| `0045_fix_reports_update_rls.sql` | Reports UPDATE RLS fix — same simplification as 0044 (fixes report-slide image upload). **Shares number 0045.** |
 | `0045_mobile_ladder_inspection.sql` | `mobile_ladder_inspections` table + template (UUID `aaaaaaaa-…`, `category: 'mobile_ladder_inspection'`) |
+| `0046_fix_reports_delete_rls.sql` | Reports DELETE RLS fix — same simplification as 0044/0045. **Shares number 0046.** |
 | `0046_fall_protection_inspection.sql` | `fall_protection_inspections` table + template (UUID `cccccccc-…`, `category: 'fall_protection_inspection'`) — multi-device, 4-state checklist (✓/✗/Z/N), per-device verdict + signature |
 | `0047_forklift_inspection.sql` | `forklift_inspections` table + template (UUID `dddddddd-…`, `category: 'forklift_inspection'`) — 39-item checklist (A/B/C sections), extended signature, 3-step wizard |
 | `0048_breathalyzer_log.sql` | `breathalyzer_logs` table — per-shift alcohol test logs; JSONB entries array; people pool in AsyncStorage; PDF with SAFE/WARNING/FAIL color-coded table |
 | `0049_lifting_accessories_inspection.sql` | `lifting_accessories_inspections` table + template (UUID `bbbbbbbb-…`, `category: 'lifting_accessories_inspection'`) — binary checklist, multi-select equipment types, 3-verdict selector, EN 1492/818/1677/ISO 4309 |
+| `0050_inspections_add_signatories.sql` | `signatories JSONB NOT NULL DEFAULT '[]'` column on `inspections` — stores additional signatories (name, role, base64 PNG signature, signed_at) beyond the primary inspector |
+| `0051_equipment_signatories.sql` | Same `signatories JSONB NOT NULL DEFAULT '[]'` column added to `bobcat_inspections`, `excavator_inspections`, `cargo_platform_inspections`, `general_equipment_inspections` |
+| `0052_inspection_conclusion_photos.sql` | `conclusion_photo_paths text[]` column on `inspections` — storage paths for conclusion-step photos. (Renamed from a colliding `0047_…` to `0052`.) |
 
 > Migration `0028_pdf_usage_tracking.sql` and the free-tier limit are noted in memory — the function currently allows 30 free PDFs (soft-launch). Tighten when BOG payment is fully wired.
 
