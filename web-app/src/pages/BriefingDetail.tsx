@@ -5,8 +5,7 @@ import { FileText, Plus, Trash2, X } from 'lucide-react';
 import { SkeletonDetailPage } from '@/components/SkeletonCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { TextInput } from '@mantine/core';
 import {
   deleteBriefing,
   getBriefing,
@@ -149,31 +148,29 @@ export default function BriefingDetail() {
           <CardTitle className="text-base">ზოგადი ინფორმაცია</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
-          <div className="space-y-1">
-            <Label>ინსპექტორი</Label>
-            <Input
-              disabled={!isDraft}
-              defaultValue={b.inspectorName}
-              onBlur={(e) => {
-                const v = e.target.value.trim();
-                if (v !== b.inspectorName) updateMutation.mutate({ inspectorName: v });
-              }}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label>თარიღი და დრო</Label>
-            <Input
-              type="datetime-local"
-              disabled={!isDraft}
-              defaultValue={new Date(b.dateTime).toISOString().slice(0, 16)}
-              onBlur={(e) => {
-                const v = e.target.value;
-                if (v && new Date(v).toISOString() !== new Date(b.dateTime).toISOString()) {
-                  updateMutation.mutate({ dateTime: new Date(v).toISOString() });
-                }
-              }}
-            />
-          </div>
+          <TextInput
+            label="ინსპექტორი"
+            disabled={!isDraft}
+            defaultValue={b.inspectorName}
+            onBlur={(e) => {
+              const v = e.target.value.trim();
+              if (v !== b.inspectorName) updateMutation.mutate({ inspectorName: v });
+            }}
+            radius="md"
+          />
+          <TextInput
+            label="თარიღი და დრო"
+            type="datetime-local"
+            disabled={!isDraft}
+            defaultValue={new Date(b.dateTime).toISOString().slice(0, 16)}
+            onBlur={(e) => {
+              const v = e.target.value;
+              if (v && new Date(v).toISOString() !== new Date(b.dateTime).toISOString()) {
+                updateMutation.mutate({ dateTime: new Date(v).toISOString() });
+              }
+            }}
+            radius="md"
+          />
         </CardContent>
       </Card>
 
@@ -245,23 +242,25 @@ export default function BriefingDetail() {
                   {isDraft ? (
                     <>
                       <div className="grid flex-1 grid-cols-1 gap-2 sm:grid-cols-2">
-                        <Input
+                        <TextInput
                           defaultValue={p.fullName}
                           onBlur={(e) => {
                             if (e.target.value !== p.fullName)
                               patchParticipant(i, { fullName: e.target.value });
                           }}
                           placeholder="სახელი გვარი"
-                          className="text-sm"
+                          classNames={{ input: 'text-sm' }}
+                          radius="md"
                         />
-                        <Input
+                        <TextInput
                           defaultValue={p.position ?? ''}
                           onBlur={(e) => {
                             if (e.target.value !== (p.position ?? ''))
                               patchParticipant(i, { position: e.target.value });
                           }}
                           placeholder="თანამდებობა"
-                          className="text-sm"
+                          classNames={{ input: 'text-sm' }}
+                          radius="md"
                         />
                       </div>
                       <button

@@ -3,8 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { TextInput, PasswordInput } from '@mantine/core';
 import { AuthLayout } from './AuthLayout';
 
 const getPasswordStrength = (password: string): { score: number; label: string; color: string } => {
@@ -69,46 +68,43 @@ export default function Register() {
         <CardContent>
           <form onSubmit={onSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="first">სახელი</Label>
-                <Input
-                  id="first"
-                  required
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="last">გვარი</Label>
-                <Input
-                  id="last"
-                  required
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="email">ელ-ფოსტა</Label>
-              <Input
-                id="email"
-                type="email"
-                autoComplete="email"
+              <TextInput
+                id="first"
+                label="სახელი"
                 required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                radius="md"
+              />
+              <TextInput
+                id="last"
+                label="გვარი"
+                required
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                radius="md"
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="password">პაროლი</Label>
-              <Input
+            <TextInput
+              id="email"
+              label="ელ-ფოსტა"
+              type="email"
+              autoComplete="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              radius="md"
+            />
+            <div className="space-y-1">
+              <PasswordInput
                 id="password"
-                type="password"
+                label="პაროლი"
                 autoComplete="new-password"
                 minLength={8}
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                radius="md"
               />
               {password && (() => {
                 const strength = getPasswordStrength(password);

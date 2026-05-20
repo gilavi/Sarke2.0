@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -486,19 +486,29 @@ const CellPhotoThumb = memo(function CellPhotoThumb({
   const s = useMemo(() => gets(theme), [theme]);
   const isLocal = /^(file|content|ph|asset):\/\//.test(photo.storage_path);
   const [uri, setUri] = useState<string | null>(isLocal ? photo.storage_path : null);
+  const [loadError, setLoadError] = useState(false);
 
-  useEffect(() => {
+  const fetchUri = useCallback(() => {
     if (isLocal) return;
     let cancelled = false;
+    setLoadError(false);
     imageForDisplay(STORAGE_BUCKETS.answerPhotos, photo.storage_path)
       .then(url => { if (!cancelled) setUri(url); })
-      .catch(() => {});
+      .catch(() => { if (!cancelled) setLoadError(true); });
     return () => { cancelled = true; };
   }, [photo.storage_path, isLocal]);
 
+  useEffect(() => {
+    return fetchUri();
+  }, [fetchUri]);
+
   return (
     <View style={s.thumbWrap}>
-      {uri ? (
+      {loadError ? (
+        <Pressable onPress={fetchUri} style={{ alignItems: 'center', gap: 2 }} hitSlop={6}>
+          <Ionicons name="refresh" size={18} color={theme.colors.inkFaint} />
+        </Pressable>
+      ) : uri ? (
         <Image source={{ uri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
       ) : (
         <ActivityIndicator color={theme.colors.inkSoft} />

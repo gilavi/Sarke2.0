@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query';
-import { Modal } from '@mantine/core';
+import { Modal, TextInput } from '@mantine/core';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { EditableProjectAvatar } from '@/components/ProjectAvatar';
 import { AddressInput } from '@/components/AddressInput';
 import { useAuth } from '@/lib/auth';
@@ -157,27 +155,28 @@ export function ProjectModal({ open, onClose, projectId }: Props) {
         </div>
 
         {/* Name */}
-        <div className="space-y-1">
-          <Label htmlFor="pm-name">პროექტის სახელი *</Label>
-          <Input
-            id="pm-name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            autoFocus
-            className={errors.name ? 'border-red-400 focus-visible:ring-red-300' : ''}
-          />
-          {errors.name && <p className="text-xs text-red-600">{errors.name}</p>}
-        </div>
+        <TextInput
+          id="pm-name"
+          label="პროექტის სახელი *"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          autoFocus
+          error={errors.name}
+          radius="md"
+        />
 
         {/* Company */}
-        <div className="space-y-1">
-          <Label htmlFor="pm-company">კომპანია</Label>
-          <Input id="pm-company" value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
-        </div>
+        <TextInput
+          id="pm-company"
+          label="კომპანია"
+          value={companyName}
+          onChange={(e) => setCompanyName(e.target.value)}
+          radius="md"
+        />
 
         {/* Address */}
         <div className="space-y-1">
-          <Label htmlFor="pm-address">მისამართი</Label>
+          <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">მისამართი</p>
           <AddressInput
             id="pm-address"
             value={address}
@@ -189,19 +188,17 @@ export function ProjectModal({ open, onClose, projectId }: Props) {
         </div>
 
         {/* Phone */}
-        <div className="space-y-1">
-          <Label htmlFor="pm-phone">ტელეფონი</Label>
-          <Input
-            id="pm-phone"
-            type="tel"
-            inputMode="tel"
-            value={phone}
-            onChange={(e) => setPhone(normalizePhone(e.target.value))}
-            placeholder="+995 5XX XXX XXX"
-            className={errors.phone ? 'border-red-400 focus-visible:ring-red-300' : ''}
-          />
-          {errors.phone && <p className="text-xs text-red-600">{errors.phone}</p>}
-        </div>
+        <TextInput
+          id="pm-phone"
+          label="ტელეფონი"
+          type="tel"
+          inputMode="tel"
+          value={phone}
+          onChange={(e) => setPhone(normalizePhone(e.target.value))}
+          placeholder="+995 5XX XXX XXX"
+          error={errors.phone}
+          radius="md"
+        />
 
         {mutation.error && (
           <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">

@@ -3,8 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Check, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { NumberInput, TextInput } from '@mantine/core';
 import ProjectMap from '@/components/ProjectMap';
 import { updateProject, type Project } from '@/lib/data/projects';
 import { projectKeys } from '@/app/queryKeys';
@@ -59,50 +58,51 @@ export function ProjectDetailsCard({ project, editing, onCancel, onSaved, onErro
       <CardContent>
         {editing ? (
           <div className="space-y-4">
+            <TextInput
+              id="edit-name"
+              label="სახელი"
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              radius="md"
+            />
+            <TextInput
+              id="edit-address"
+              label="მისამართი"
+              value={form.address}
+              onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
+              radius="md"
+            />
+            <TextInput
+              id="edit-phone"
+              label="ტელეფონი"
+              value={form.contact_phone}
+              onChange={(e) => setForm((f) => ({ ...f, contact_phone: e.target.value }))}
+              radius="md"
+            />
             <div className="space-y-1">
-              <Label htmlFor="edit-name">სახელი</Label>
-              <Input
-                id="edit-name"
-                value={form.name}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="edit-address">მისამართი</Label>
-              <Input
-                id="edit-address"
-                value={form.address}
-                onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="edit-phone">ტელეფონი</Label>
-              <Input
-                id="edit-phone"
-                value={form.contact_phone}
-                onChange={(e) => setForm((f) => ({ ...f, contact_phone: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label>GPS კოორდინატები</Label>
+              <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">GPS კოორდინატები</p>
               <div className="flex flex-wrap gap-2">
-                <Input
+                <NumberInput
                   id="edit-lat"
-                  type="number"
-                  step="any"
+                  step={0.000001}
+                  decimalScale={6}
                   placeholder="გრძედი (Latitude)"
                   value={form.latitude}
-                  onChange={(e) => setForm((f) => ({ ...f, latitude: e.target.value }))}
-                  className="flex-1 min-w-[140px]"
+                  onChange={(v) => setForm((f) => ({ ...f, latitude: String(v) }))}
+                  classNames={{ input: 'flex-1 min-w-[140px]' }}
+                  radius="md"
+                  hideControls
                 />
-                <Input
+                <NumberInput
                   id="edit-lng"
-                  type="number"
-                  step="any"
+                  step={0.000001}
+                  decimalScale={6}
                   placeholder="გრძელი (Longitude)"
                   value={form.longitude}
-                  onChange={(e) => setForm((f) => ({ ...f, longitude: e.target.value }))}
-                  className="flex-1 min-w-[140px]"
+                  onChange={(v) => setForm((f) => ({ ...f, longitude: String(v) }))}
+                  classNames={{ input: 'flex-1 min-w-[140px]' }}
+                  radius="md"
+                  hideControls
                 />
                 <Button
                   type="button"

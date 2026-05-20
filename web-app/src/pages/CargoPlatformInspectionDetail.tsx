@@ -9,8 +9,7 @@ import FieldInput from '@/components/FieldInput';
 import WizardSteps, { WizardNav } from '@/components/WizardSteps';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { NumberInput, Textarea, TextInput } from '@mantine/core';
 import {
   getCargoPlatformInspection,
   deleteCargoPlatformInspection,
@@ -182,19 +181,18 @@ export default function CargoPlatformInspectionDetail() {
                 onSave={(v) => save({ inspectorName: v })} />
               <FieldInput label="სართული / ზონა" value={item.floorZone || null} disabled={!isDraft}
                 onSave={(v) => save({ floorZone: v })} />
-              <div className="space-y-1">
-                <Label>შემოწმების თარიღი</Label>
-                <Input
-                  type="date"
-                  disabled={!isDraft}
-                  defaultValue={item.inspectionDate ? item.inspectionDate.slice(0, 10) : ''}
-                  onBlur={(e) => {
-                    const v = e.target.value || null;
-                    if (v !== (item.inspectionDate ? item.inspectionDate.slice(0, 10) : null))
-                      save({ inspectionDate: v });
-                  }}
-                />
-              </div>
+              <TextInput
+                label="შემოწმების თარიღი"
+                type="date"
+                disabled={!isDraft}
+                defaultValue={item.inspectionDate ? item.inspectionDate.slice(0, 10) : ''}
+                onBlur={(e) => {
+                  const v = e.target.value || null;
+                  if (v !== (item.inspectionDate ? item.inspectionDate.slice(0, 10) : null))
+                    save({ inspectionDate: v });
+                }}
+                radius="md"
+              />
             </CardContent>
           </Card>
           <WizardNav current={step} total={6} onPrev={() => setStep(s => s - 1)} onNext={() => setStep(s => s + 1)} />
@@ -211,32 +209,30 @@ export default function CargoPlatformInspectionDetail() {
                 <FieldInput label="ტიპი / მოდელი" value={item.platformTypeModel || null} disabled={!isDraft}
                   onSave={(v) => save({ platformTypeModel: v })} />
               </div>
-              <div className="space-y-1">
-                <Label>სიგრძე (მ)</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  disabled={!isDraft}
-                  defaultValue={item.platformLength ?? ''}
-                  onBlur={(e) => {
-                    const v = e.target.value ? parseFloat(e.target.value) : null;
-                    if (v !== item.platformLength) save({ platformLength: v });
-                  }}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label>სიგანე (მ)</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  disabled={!isDraft}
-                  defaultValue={item.platformWidth ?? ''}
-                  onBlur={(e) => {
-                    const v = e.target.value ? parseFloat(e.target.value) : null;
-                    if (v !== item.platformWidth) save({ platformWidth: v });
-                  }}
-                />
-              </div>
+              <NumberInput
+                label="სიგრძე (მ)"
+                step={0.01}
+                disabled={!isDraft}
+                defaultValue={item.platformLength ?? ''}
+                onBlur={(e) => {
+                  const v = e.target.value ? parseFloat(e.target.value) : null;
+                  if (v !== item.platformLength) save({ platformLength: v });
+                }}
+                radius="md"
+                hideControls
+              />
+              <NumberInput
+                label="სიგანე (მ)"
+                step={0.01}
+                disabled={!isDraft}
+                defaultValue={item.platformWidth ?? ''}
+                onBlur={(e) => {
+                  const v = e.target.value ? parseFloat(e.target.value) : null;
+                  if (v !== item.platformWidth) save({ platformWidth: v });
+                }}
+                radius="md"
+                hideControls
+              />
               <div className="sm:col-span-2">
                 <FieldInput label="ფერი / განსხვავებები" value={item.platformColorDesc || null} disabled={!isDraft}
                   onSave={(v) => save({ platformColorDesc: v })} />
@@ -300,22 +296,24 @@ export default function CargoPlatformInspectionDetail() {
                         )}
                       </div>
                       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                        <Input
+                        <TextInput
                           disabled={!isDraft}
                           defaultValue={row.name}
                           onBlur={(e) => { if (e.target.value !== row.name) patchCargoRow(row.id, { name: e.target.value }); }}
                           placeholder="ტვირთის დასახელება"
+                          radius="md"
                         />
-                        <Input
+                        <NumberInput
                           disabled={!isDraft}
-                          type="number"
-                          step="0.01"
+                          step={0.01}
                           defaultValue={row.total_weight_kg ?? ''}
                           onBlur={(e) => {
                             const v = e.target.value ? parseFloat(e.target.value) : null;
                             if (v !== row.total_weight_kg) patchCargoRow(row.id, { total_weight_kg: v });
                           }}
                           placeholder="საერთო წონა (კგ)"
+                          radius="md"
+                          hideControls
                         />
                       </div>
                     </li>
@@ -375,8 +373,8 @@ export default function CargoPlatformInspectionDetail() {
                             </div>
                           </div>
                           {result === 'fix' && isDraft && (
-                            <Input
-                              className="mt-2 text-xs"
+                            <TextInput
+                              classNames={{ input: 'mt-2 text-xs' }}
                               disabled={!isDraft}
                               defaultValue={state?.comment ?? ''}
                               onBlur={(e) => {
@@ -384,6 +382,7 @@ export default function CargoPlatformInspectionDetail() {
                                 if (v !== (state?.comment ?? null)) patchItem(ci.id, { comment: v });
                               }}
                               placeholder="შენიშვნა / გამოსასწ. აღწერა"
+                              radius="md"
                             />
                           )}
                           {result === 'fix' && !isDraft && state?.comment && (
@@ -408,7 +407,7 @@ export default function CargoPlatformInspectionDetail() {
             <CardHeader><CardTitle className="text-base">დასკვნა</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>ვერდიქტი</Label>
+                <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">ვერდიქტი</p>
                 <div className="flex flex-wrap gap-2">
                   {(['approved', 'conditional', 'rejected'] as CPVerdict[]).map((v) => {
                     const active = item.verdict === v;
@@ -433,17 +432,18 @@ export default function CargoPlatformInspectionDetail() {
               </div>
 
               <div className="space-y-1">
-                <Label>კომენტარი / ღონისძიებები</Label>
+                <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">კომენტარი / ღონისძიებები</p>
                 {isDraft ? (
-                  <textarea
+                  <Textarea
                     rows={3}
                     defaultValue={item.verdictComment}
                     onBlur={(e) => {
                       const v = e.target.value;
                       if (v !== item.verdictComment) save({ verdictComment: v });
                     }}
-                    className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
                     placeholder="გამოსასწ. ჩამონათვალი ან დასკვნის ტექსტი"
+                    radius="md"
+                    autosize={false}
                   />
                 ) : (
                   <p className="text-sm text-neutral-700">{item.verdictComment || '—'}</p>
@@ -548,7 +548,7 @@ function PillPair<T extends string>({
 }) {
   return (
     <div className="space-y-1">
-      <Label>{label}</Label>
+      <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">{label}</p>
       <div className="flex gap-2">
         {options.map(([val, lbl]) => {
           const active = value === val;

@@ -2,9 +2,8 @@ import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select } from '@/components/ui/select';
+import { TextInput } from '@mantine/core';
+import { ProjectPicker } from '@/components/ui/project-picker';
 import { FloatingLabelInput } from '@/components/ui/floating-label-input';
 import { WizardShell } from '@/components/ui/wizard-shell';
 import { listProjects } from '@/lib/data/projects';
@@ -120,19 +119,18 @@ export default function NewBriefing() {
 
           {prefilledProjectId ? (
             <div className="space-y-1">
-              <Label>პროექტი</Label>
+              <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">პროექტი</p>
               <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm text-neutral-700">
                 {(projects ?? []).find((p) => p.id === projectId)?.name ?? '…'}
               </div>
             </div>
           ) : (
-            <Select
+            <ProjectPicker
               label="პროექტი"
               required
               value={projectId}
               onChange={setProjectId}
-              options={(projects ?? []).map((p) => ({ value: p.id, label: p.name }))}
-              placeholder="— აირჩიეთ პროექტი —"
+              options={(projects ?? []).map((p) => ({ value: p.id, label: p.name, logo: p.logo, company: p.company_name }))}
             />
           )}
 
@@ -174,13 +172,14 @@ export default function NewBriefing() {
           </div>
 
           <div className="flex gap-2">
-            <Input
+            <TextInput
               value={customTopicInput}
               onChange={(e) => setCustomTopicInput(e.target.value)}
               placeholder="საკუთარი თემა"
               onKeyDown={(e) => {
                 if (e.key === 'Enter') { e.preventDefault(); addCustomTopic(); }
               }}
+              radius="md"
             />
             <Button type="button" variant="outline" onClick={addCustomTopic} disabled={!customTopicInput.trim()}>
               დამატება
@@ -206,16 +205,18 @@ export default function NewBriefing() {
           <p className="text-sm text-neutral-500">დაამატეთ მინიმუმ ერთი მონაწილე.</p>
 
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_auto]">
-            <Input
+            <TextInput
               value={participantName}
               onChange={(e) => setParticipantName(e.target.value)}
               placeholder="სახელი, გვარი"
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addParticipant(); } }}
+              radius="md"
             />
-            <Input
+            <TextInput
               value={participantPosition}
               onChange={(e) => setParticipantPosition(e.target.value)}
               placeholder="თანამდებობა"
+              radius="md"
             />
             <Button type="button" variant="outline" onClick={addParticipant} disabled={!participantName.trim()}>
               დამატება

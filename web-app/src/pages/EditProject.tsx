@@ -2,10 +2,9 @@ import { useRef, useState, useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Upload, ArrowLeft } from 'lucide-react';
+import { TextInput } from '@mantine/core';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { getProject, updateProject, updateProjectLogo } from '@/lib/data/projects';
 import { AddressInput } from '@/components/AddressInput';
 
@@ -104,7 +103,7 @@ export default function EditProject() {
             }}
           >
             <div className="space-y-1">
-              <Label>ლოგო</Label>
+              <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">ლოგო</p>
               <div className="flex items-center gap-3">
                 <button
                   type="button"
@@ -135,16 +134,21 @@ export default function EditProject() {
               </div>
             </div>
 
+            <TextInput
+              label="პროექტის სახელი *"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              radius="md"
+            />
+            <TextInput
+              label="კომპანია"
+              value={companyName}
+              onChange={(e) => setCompanyName(e.target.value)}
+              radius="md"
+            />
             <div className="space-y-1">
-              <Label htmlFor="name">პროექტის სახელი *</Label>
-              <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="company">კომპანია</Label>
-              <Input id="company" value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="address">მისამართი</Label>
+              <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">მისამართი</p>
               <AddressInput
                 id="address"
                 value={address}
@@ -157,10 +161,13 @@ export default function EditProject() {
                 initialLng={project.longitude}
               />
             </div>
-            <div className="space-y-1">
-              <Label htmlFor="phone">ტელეფონი</Label>
-              <Input id="phone" type="tel" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} />
-            </div>
+            <TextInput
+              label="ტელეფონი"
+              type="tel"
+              value={contactPhone}
+              onChange={(e) => setContactPhone(e.target.value)}
+              radius="md"
+            />
 
             {mutation.error && (
               <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">

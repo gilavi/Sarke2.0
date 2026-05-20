@@ -12,8 +12,7 @@ import FieldInput from '@/components/FieldInput';
 import WizardSteps, { WizardNav } from '@/components/WizardSteps';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Textarea, TextInput } from '@mantine/core';
 import {
   createGeneralEquipmentInspection,
   deleteGeneralEquipmentInspection,
@@ -217,21 +216,20 @@ export default function GeneralEquipmentInspectionDetail() {
                 onSave={(v) => save({ activityType: v })} />
               <FieldInput label="აქტის ნომერი" value={effectiveItem.actNumber} disabled={!isDraft}
                 onSave={(v) => save({ actNumber: v })} />
+              <TextInput
+                label="შემოწმების თარიღი"
+                type="date"
+                disabled={!isDraft}
+                defaultValue={effectiveItem.inspectionDate ? effectiveItem.inspectionDate.slice(0, 10) : ''}
+                onBlur={(e) => {
+                  const v = e.target.value || null;
+                  if (v !== (effectiveItem.inspectionDate ? effectiveItem.inspectionDate.slice(0, 10) : null))
+                    save({ inspectionDate: v });
+                }}
+                radius="md"
+              />
               <div className="space-y-1">
-                <Label>შემოწმების თარიღი</Label>
-                <Input
-                  type="date"
-                  disabled={!isDraft}
-                  defaultValue={effectiveItem.inspectionDate ? effectiveItem.inspectionDate.slice(0, 10) : ''}
-                  onBlur={(e) => {
-                    const v = e.target.value || null;
-                    if (v !== (effectiveItem.inspectionDate ? effectiveItem.inspectionDate.slice(0, 10) : null))
-                      save({ inspectionDate: v });
-                  }}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label>შემოწმების სახეობა</Label>
+                <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">შემოწმების სახეობა</p>
                 <div className="flex flex-wrap gap-2">
                   {([
                     ['initial', 'პირველადი'],
@@ -300,23 +298,25 @@ export default function GeneralEquipmentInspectionDetail() {
                         )}
                       </div>
                       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                        <Input
+                        <TextInput
                           disabled={!isDraft}
                           defaultValue={row.name}
                           onBlur={(e) => {
                             if (e.target.value !== row.name) patchRow(row.id, { name: e.target.value });
                           }}
                           placeholder="დასახელება"
+                          radius="md"
                         />
-                        <Input
+                        <TextInput
                           disabled={!isDraft}
                           defaultValue={row.model}
                           onBlur={(e) => {
                             if (e.target.value !== row.model) patchRow(row.id, { model: e.target.value });
                           }}
                           placeholder="მოდელი"
+                          radius="md"
                         />
-                        <Input
+                        <TextInput
                           disabled={!isDraft}
                           defaultValue={row.serialNumber}
                           onBlur={(e) => {
@@ -324,6 +324,7 @@ export default function GeneralEquipmentInspectionDetail() {
                               patchRow(row.id, { serialNumber: e.target.value });
                           }}
                           placeholder="სერ. ნომერი"
+                          radius="md"
                         />
                       </div>
                       <div className="mt-2 flex flex-wrap gap-2">
@@ -352,14 +353,15 @@ export default function GeneralEquipmentInspectionDetail() {
                           );
                         })}
                       </div>
-                      <Input
+                      <TextInput
                         disabled={!isDraft}
                         defaultValue={row.note}
                         onBlur={(e) => {
                           if (e.target.value !== row.note) patchRow(row.id, { note: e.target.value });
                         }}
                         placeholder="შენიშვნა"
-                        className="mt-2 text-xs"
+                        classNames={{ input: 'mt-2 text-xs' }}
+                        radius="md"
                       />
                       <PhotoUploadWidget
                         paths={row.photo_paths ?? []}
@@ -437,7 +439,7 @@ export default function GeneralEquipmentInspectionDetail() {
               <FieldInput label="სახელი, გვარი" value={effectiveItem.signerName} disabled={!isDraft}
                 onSave={(v) => save({ signerName: v })} />
               <div className="space-y-1">
-                <Label>როლი</Label>
+                <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">როლი</p>
                 <div className="flex flex-wrap gap-2">
                   {([
                     ['electrician', 'ელექტრიკოსი'],
@@ -477,15 +479,16 @@ export default function GeneralEquipmentInspectionDetail() {
             <CardContent className="space-y-3">
               {isDraft ? (
                 <>
-                  <textarea
+                  <Textarea
                     rows={3}
                     defaultValue={effectiveItem.conclusion ?? ''}
                     onBlur={(e) => {
                       const v = e.target.value || null;
                       if (v !== effectiveItem.conclusion) save({ conclusion: v });
                     }}
-                    className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
                     placeholder="დასკვნის ტექსტი"
+                    radius="md"
+                    autosize={false}
                   />
                   <Button
                     size="sm"

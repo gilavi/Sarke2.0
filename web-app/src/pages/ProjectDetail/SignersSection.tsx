@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { TextInput } from '@mantine/core';
 import {
   addProjectSigner,
   deleteProjectSigner,
@@ -84,20 +84,23 @@ export function SignersSection({ projectId, onError }: Props) {
         {adding && (
           <div className="mb-3 space-y-2 rounded-md border border-brand-200 bg-brand-50/40 p-3">
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-              <Input
+              <TextInput
                 placeholder="სახელი, გვარი"
                 value={form.full_name}
                 onChange={(e) => setForm((f) => ({ ...f, full_name: e.target.value }))}
+                radius="md"
               />
-              <Input
+              <TextInput
                 placeholder="თანამდებობა"
                 value={form.position}
                 onChange={(e) => setForm((f) => ({ ...f, position: e.target.value }))}
+                radius="md"
               />
-              <Input
+              <TextInput
                 placeholder="ტელეფონი"
                 value={form.phone}
                 onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+                radius="md"
               />
             </div>
             <div className="flex gap-2">

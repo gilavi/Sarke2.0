@@ -15,7 +15,7 @@ export type LoggedError = {
  * nested wrapper, plain string, unknown — into a stable message string.
  * Pass `fallback` to override the default Georgian "unknown error" string.
  */
-export function toErrorMessage(e: unknown, fallback = 'უცნობი შეცდომა'): string {
+export function toErrorMessage(e: unknown, fallback = 'უცნობი შეცდომა', _depth = 0): string {
   if (e == null) return fallback;
   if (typeof e === 'string') return e;
   if (e instanceof Error) return e.message || fallback;
@@ -29,7 +29,8 @@ export function toErrorMessage(e: unknown, fallback = 'უცნობი შე
     if (typeof anyE.message === 'string') return anyE.message;
     if (typeof anyE.error_description === 'string') return anyE.error_description;
     if (typeof anyE.details === 'string') return anyE.details;
-    if (anyE.error != null) return toErrorMessage(anyE.error, fallback);
+    // Guard against self-referential objects or deeply nested error chains.
+    if (anyE.error != null && _depth < 3) return toErrorMessage(anyE.error, fallback, _depth + 1);
   }
   try {
     return JSON.stringify(e);

@@ -4,8 +4,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { Flame, Shield, Ban, Pencil, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { TextInput } from '@mantine/core';
 import { WizardShell } from '@/components/ui/wizard-shell';
 import SignatureCanvas from '@/components/SignatureCanvas';
 import {
@@ -18,7 +17,7 @@ import {
   type AlcoholControlOrderFormData,
 } from '@/lib/data/orders';
 import { getProject, listProjects } from '@/lib/data/projects';
-import { Select } from '@/components/ui/select';
+import { ProjectPicker } from '@/components/ui/project-picker';
 import {
   buildFireSafetyOrderHtml,
   buildFireSafetyOrderEnterpriseHtml,
@@ -416,20 +415,19 @@ function Step1DocType({
   docType: OrderDocumentType | null;
   setDocType: (t: OrderDocumentType) => void;
   prefilledProjectId: string;
-  projects: { id: string; name: string }[];
+  projects: { id: string; name: string; logo?: string | null; company_name?: string }[];
   selectedProjectId: string;
   setSelectedProjectId: (id: string) => void;
 }) {
   return (
     <div className="space-y-4">
       {!prefilledProjectId && (
-        <Select
+        <ProjectPicker
           label="პროექტი"
           required
           value={selectedProjectId}
           onChange={setSelectedProjectId}
-          options={projects.map((p) => ({ value: p.id, label: p.name }))}
-          placeholder="— აირჩიეთ პროექტი —"
+          options={projects.map((p) => ({ value: p.id, label: p.name, logo: p.logo, company: p.company_name }))}
         />
       )}
       <h2 className="text-base font-semibold text-neutral-800">ბრძანების ტიპი</h2>
@@ -458,7 +456,7 @@ function Step1DocType({
 function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
-      <Label className="text-xs text-neutral-600">{label}</Label>
+      <p className="text-xs font-medium text-neutral-600">{label}</p>
       {children}
     </div>
   );
@@ -470,27 +468,27 @@ function Step2Company({ form, setField }: { form: Form; setField: (k: keyof Form
       <h2 className="text-base font-semibold text-neutral-800">ბრძანების ინფო</h2>
       <div className="grid grid-cols-2 gap-3">
         <FieldRow label="ბრძანების ნომერი *">
-          <Input value={form.orderNumber} onChange={e => setField('orderNumber', e.target.value)} placeholder="მაგ. №01/2025" />
+          <TextInput radius="md"value={form.orderNumber} onChange={e => setField('orderNumber', e.target.value)} placeholder="მაგ. №01/2025" />
         </FieldRow>
         <FieldRow label="ქალაქი *">
-          <Input value={form.city} onChange={e => setField('city', e.target.value)} placeholder="თბილისი" />
+          <TextInput radius="md"value={form.city} onChange={e => setField('city', e.target.value)} placeholder="თბილისი" />
         </FieldRow>
       </div>
       <FieldRow label="ბრძანების თარიღი">
-        <Input type="date" value={form.orderDate} onChange={e => setField('orderDate', e.target.value)} />
+        <TextInput radius="md"type="date" value={form.orderDate} onChange={e => setField('orderDate', e.target.value)} />
       </FieldRow>
       <h2 className="text-sm font-semibold text-neutral-600 pt-1">კომპანიის ინფო</h2>
       <FieldRow label="კომპანიის დასახელება *">
-        <Input value={form.companyName} onChange={e => setField('companyName', e.target.value)} placeholder="შპს / სს ..." />
+        <TextInput radius="md"value={form.companyName} onChange={e => setField('companyName', e.target.value)} placeholder="შპს / სს ..." />
       </FieldRow>
       <FieldRow label="საიდენტიფიკაციო კოდი">
-        <Input value={form.identificationCode} onChange={e => setField('identificationCode', e.target.value)} />
+        <TextInput radius="md"value={form.identificationCode} onChange={e => setField('identificationCode', e.target.value)} />
       </FieldRow>
       <FieldRow label="იურიდიული მისამართი">
-        <Input value={form.legalAddress} onChange={e => setField('legalAddress', e.target.value)} />
+        <TextInput radius="md"value={form.legalAddress} onChange={e => setField('legalAddress', e.target.value)} />
       </FieldRow>
       <FieldRow label="დირექტორი (სახელი, გვარი) *">
-        <Input value={form.directorName} onChange={e => setField('directorName', e.target.value)} />
+        <TextInput radius="md"value={form.directorName} onChange={e => setField('directorName', e.target.value)} />
       </FieldRow>
     </div>
   );
@@ -501,19 +499,19 @@ function Step3LaborSafety({ form, setField }: { form: Form; setField: (k: keyof 
     <div className="space-y-4">
       <h2 className="text-base font-semibold text-neutral-800">სპეციალისტი</h2>
       <FieldRow label="ობიექტის სახელი და მისამართი *">
-        <Input value={form.facilityName} onChange={e => setField('facilityName', e.target.value)} />
+        <TextInput radius="md"value={form.facilityName} onChange={e => setField('facilityName', e.target.value)} />
       </FieldRow>
       <FieldRow label="სპეციალისტი (სახელი, გვარი) *">
-        <Input value={form.specialistName} onChange={e => setField('specialistName', e.target.value)} />
+        <TextInput radius="md"value={form.specialistName} onChange={e => setField('specialistName', e.target.value)} />
       </FieldRow>
       <FieldRow label="პირადი ნომერი">
-        <Input value={form.specialistPersonalId} onChange={e => setField('specialistPersonalId', e.target.value)} maxLength={11} />
+        <TextInput radius="md"value={form.specialistPersonalId} onChange={e => setField('specialistPersonalId', e.target.value)} maxLength={11} />
       </FieldRow>
       <FieldRow label="სერტიფიკატის ნომერი *">
-        <Input value={form.certificateNumber} onChange={e => setField('certificateNumber', e.target.value)} />
+        <TextInput radius="md"value={form.certificateNumber} onChange={e => setField('certificateNumber', e.target.value)} />
       </FieldRow>
       <FieldRow label="სერტიფიკატის გაცემის თარიღი">
-        <Input type="date" value={form.certificateDate} onChange={e => setField('certificateDate', e.target.value)} />
+        <TextInput radius="md"type="date" value={form.certificateDate} onChange={e => setField('certificateDate', e.target.value)} />
       </FieldRow>
     </div>
   );
@@ -524,16 +522,16 @@ function Step3AlcoholControl({ form, setField }: { form: Form; setField: (k: key
     <div className="space-y-4">
       <h2 className="text-base font-semibold text-neutral-800">პასუხისმგებელი პირი</h2>
       <FieldRow label="ობიექტის სახელი და მისამართი *">
-        <Input value={form.facilityName} onChange={e => setField('facilityName', e.target.value)} />
+        <TextInput radius="md"value={form.facilityName} onChange={e => setField('facilityName', e.target.value)} />
       </FieldRow>
       <FieldRow label="სახელი, გვარი *">
-        <Input value={form.responsiblePersonName} onChange={e => setField('responsiblePersonName', e.target.value)} />
+        <TextInput radius="md"value={form.responsiblePersonName} onChange={e => setField('responsiblePersonName', e.target.value)} />
       </FieldRow>
       <FieldRow label="თანამდებობა *">
-        <Input value={form.responsiblePersonPosition} onChange={e => setField('responsiblePersonPosition', e.target.value)} />
+        <TextInput radius="md"value={form.responsiblePersonPosition} onChange={e => setField('responsiblePersonPosition', e.target.value)} />
       </FieldRow>
       <FieldRow label="პირადი ნომერი">
-        <Input value={form.responsiblePersonPersonalId} onChange={e => setField('responsiblePersonPersonalId', e.target.value)} maxLength={11} />
+        <TextInput radius="md"value={form.responsiblePersonPersonalId} onChange={e => setField('responsiblePersonPersonalId', e.target.value)} maxLength={11} />
       </FieldRow>
     </div>
   );
@@ -544,17 +542,17 @@ function Step3FireSafety({ form, setField }: { form: Form; setField: (k: keyof F
     <div className="space-y-4">
       <h2 className="text-base font-semibold text-neutral-800">დანიშნული პირი</h2>
       <FieldRow label="სახელი, გვარი *">
-        <Input value={form.appointedName} onChange={e => setField('appointedName', e.target.value)} />
+        <TextInput radius="md"value={form.appointedName} onChange={e => setField('appointedName', e.target.value)} />
       </FieldRow>
       <FieldRow label="ტელეფონის ნომერი *">
-        <Input type="tel" value={form.appointedPhone} onChange={e => setField('appointedPhone', e.target.value)} />
+        <TextInput radius="md"type="tel" value={form.appointedPhone} onChange={e => setField('appointedPhone', e.target.value)} />
       </FieldRow>
       <h2 className="text-sm font-semibold text-neutral-600 pt-1">ობიექტი</h2>
       <FieldRow label="ობიექტის დასახელება *">
-        <Input value={form.objectName} onChange={e => setField('objectName', e.target.value)} />
+        <TextInput radius="md"value={form.objectName} onChange={e => setField('objectName', e.target.value)} />
       </FieldRow>
       <FieldRow label="ობიექტის მისამართი">
-        <Input value={form.objectAddress} onChange={e => setField('objectAddress', e.target.value)} />
+        <TextInput radius="md"value={form.objectAddress} onChange={e => setField('objectAddress', e.target.value)} />
       </FieldRow>
     </div>
   );
@@ -565,23 +563,23 @@ function Step3FireSafetyEnterprise({ form, setField }: { form: Form; setField: (
     <div className="space-y-4">
       <h2 className="text-base font-semibold text-neutral-800">დანიშნული პირი</h2>
       <FieldRow label="სახელი, გვარი *">
-        <Input value={form.appointedName} onChange={e => setField('appointedName', e.target.value)} />
+        <TextInput radius="md"value={form.appointedName} onChange={e => setField('appointedName', e.target.value)} />
       </FieldRow>
       <FieldRow label="თანამდებობა *">
-        <Input value={form.appointedPosition} onChange={e => setField('appointedPosition', e.target.value)} />
+        <TextInput radius="md"value={form.appointedPosition} onChange={e => setField('appointedPosition', e.target.value)} />
       </FieldRow>
       <FieldRow label="პირადი ნომერი *">
-        <Input value={form.appointedIdNumber} onChange={e => setField('appointedIdNumber', e.target.value)} maxLength={11} />
+        <TextInput radius="md"value={form.appointedIdNumber} onChange={e => setField('appointedIdNumber', e.target.value)} maxLength={11} />
       </FieldRow>
       <FieldRow label="ტელეფონის ნომერი *">
-        <Input type="tel" value={form.appointedPhone} onChange={e => setField('appointedPhone', e.target.value)} />
+        <TextInput radius="md"type="tel" value={form.appointedPhone} onChange={e => setField('appointedPhone', e.target.value)} />
       </FieldRow>
       <h2 className="text-sm font-semibold text-neutral-600 pt-1">ობიექტი</h2>
       <FieldRow label="ობიექტის დასახელება *">
-        <Input value={form.objectName} onChange={e => setField('objectName', e.target.value)} />
+        <TextInput radius="md"value={form.objectName} onChange={e => setField('objectName', e.target.value)} />
       </FieldRow>
       <FieldRow label="ობიექტის მისამართი">
-        <Input value={form.objectAddress} onChange={e => setField('objectAddress', e.target.value)} />
+        <TextInput radius="md"value={form.objectAddress} onChange={e => setField('objectAddress', e.target.value)} />
       </FieldRow>
     </div>
   );

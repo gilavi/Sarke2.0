@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Label } from '@/components/ui/label';
-import { Select } from '@/components/ui/select';
+import { ProjectPicker } from '@/components/ui/project-picker';
 import { FloatingLabelInput } from '@/components/ui/floating-label-input';
 import { WizardShell } from '@/components/ui/wizard-shell';
 import { listProjects } from '@/lib/data/projects';
@@ -56,19 +55,18 @@ export default function NewReport() {
 
         {prefilledProjectId ? (
           <div className="space-y-1">
-            <Label>პროექტი</Label>
+            <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">პროექტი</p>
             <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm text-neutral-700">
               {(projects ?? []).find((p) => p.id === projectId)?.name ?? '…'}
             </div>
           </div>
         ) : (
-          <Select
+          <ProjectPicker
             label="პროექტი"
             required
             value={projectId}
             onChange={setProjectId}
-            options={(projects ?? []).map((p) => ({ value: p.id, label: p.name }))}
-            placeholder="— აირჩიეთ პროექტი —"
+            options={(projects ?? []).map((p) => ({ value: p.id, label: p.name, logo: p.logo, company: p.company_name }))}
           />
         )}
 

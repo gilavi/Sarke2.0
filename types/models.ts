@@ -200,6 +200,7 @@ export interface Inspection {
   harness_name: string | null;
   conclusion_text: string | null;
   is_safe_for_use: boolean | null;
+  conclusion_photo_paths: string[];
   created_at: string;
   updated_at?: string;
   completed_at: string | null;

@@ -2,11 +2,10 @@ import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { TextInput } from '@mantine/core';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select } from '@/components/ui/select';
+import { ProjectPicker } from '@/components/ui/project-picker';
 import { listProjects } from '@/lib/data/projects';
 import { createExcavatorInspection } from '@/lib/data/excavator';
 
@@ -75,63 +74,52 @@ export default function NewExcavatorInspection() {
               handleSubmit();
             }}
           >
-            <Select
+            <ProjectPicker
               label="პროექტი"
               required
               value={projectId}
               onChange={setProjectId}
-              options={(projects ?? []).map((p) => ({ value: p.id, label: p.name }))}
-              placeholder="— აირჩიეთ პროექტი —"
+              options={(projects ?? []).map((p) => ({ value: p.id, label: p.name, logo: p.logo, company: p.company_name }))}
             />
 
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label htmlFor="serial">სერ. ნომერი</Label>
-                <Input
-                  id="serial"
-                  value={serialNumber}
-                  onChange={(e) => setSerialNumber(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="inv">ინვ. ნომერი</Label>
-                <Input
-                  id="inv"
-                  value={inventoryNumber}
-                  onChange={(e) => setInventoryNumber(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <Label htmlFor="department">დეპარტამენტი</Label>
-              <Input
-                id="department"
-                value={department}
-                onChange={(e) => setDepartment(e.target.value)}
-                placeholder="დეპარტამენტის დასახელება"
+              <TextInput
+                label="სერ. ნომერი"
+                value={serialNumber}
+                onChange={(e) => setSerialNumber(e.target.value)}
+                radius="md"
+              />
+              <TextInput
+                label="ინვ. ნომერი"
+                value={inventoryNumber}
+                onChange={(e) => setInventoryNumber(e.target.value)}
+                radius="md"
               />
             </div>
 
-            <div className="space-y-1">
-              <Label htmlFor="inspector">ინსპექტორი</Label>
-              <Input
-                id="inspector"
-                value={inspectorName}
-                onChange={(e) => setInspectorName(e.target.value)}
-                placeholder="სახელი, გვარი"
-              />
-            </div>
+            <TextInput
+              label="დეპარტამენტი"
+              value={department}
+              onChange={(e) => setDepartment(e.target.value)}
+              placeholder="დეპარტამენტის დასახელება"
+              radius="md"
+            />
 
-            <div className="space-y-1">
-              <Label htmlFor="inspectionDate">შემოწმების თარიღი</Label>
-              <Input
-                id="inspectionDate"
-                type="date"
-                value={inspectionDate}
-                onChange={(e) => setInspectionDate(e.target.value)}
-              />
-            </div>
+            <TextInput
+              label="ინსპექტორი"
+              value={inspectorName}
+              onChange={(e) => setInspectorName(e.target.value)}
+              placeholder="სახელი, გვარი"
+              radius="md"
+            />
+
+            <TextInput
+              label="შემოწმების თარიღი"
+              type="date"
+              value={inspectionDate}
+              onChange={(e) => setInspectionDate(e.target.value)}
+              radius="md"
+            />
 
             <div className="flex gap-2 pt-2">
               <Button type="submit" disabled={!canSubmit || submitting}>

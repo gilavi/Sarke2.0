@@ -3,8 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { TextInput, PasswordInput } from '@mantine/core';
 import { AuthLayout } from './AuthLayout';
 
 export default function Login() {
@@ -40,28 +39,25 @@ export default function Login() {
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit} className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="email">ელ-ფოსტა</Label>
-              <Input
-                id="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="password">პაროლი</Label>
-              <Input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
+            <TextInput
+              id="email"
+              label="ელ-ფოსტა"
+              type="email"
+              autoComplete="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              radius="md"
+            />
+            <PasswordInput
+              id="password"
+              label="პაროლი"
+              autoComplete="current-password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              radius="md"
+            />
             {error ? <p className="text-sm text-danger">{error}</p> : null}
             <Button type="submit" disabled={busy} className="w-full">
               {busy ? 'შესვლა…' : 'შესვლა'}

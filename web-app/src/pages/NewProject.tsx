@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { FloatingLabelInput } from '@/components/ui/floating-label-input';
 import { EditableProjectAvatar } from '@/components/ProjectAvatar';
 import { useAuth } from '@/lib/auth';
@@ -84,7 +83,7 @@ export default function NewProject() {
           >
             {/* Logo picker */}
             <div className="space-y-1">
-              <Label>ლოგო (სურვილისამებრ)</Label>
+              <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">ლოგო (სურვილისამებრ)</p>
               <div className="flex items-center gap-3">
                 <EditableProjectAvatar
                   project={{ name: name || '?', company_name: companyName, logo: logoDataUrl }}
@@ -112,7 +111,7 @@ export default function NewProject() {
               onChange={(e) => setCompanyName(e.target.value)}
             />
             <div className="space-y-1">
-              <Label htmlFor="address">მისამართი</Label>
+              <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">მისამართი</p>
               <AddressInput
                 id="address"
                 value={address}

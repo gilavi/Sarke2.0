@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ChevronDown } from 'lucide-react';
-import { Label } from '@/components/ui/label';
-import { Select } from '@/components/ui/select';
+import { ProjectPicker } from '@/components/ui/project-picker';
 import { WizardShell } from '@/components/ui/wizard-shell';
 import {
   DropdownMenu,
@@ -57,24 +56,23 @@ export default function NewInspection() {
 
         {prefilledProjectId ? (
           <div className="space-y-1">
-            <Label>პროექტი</Label>
+            <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">პროექტი</p>
             <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm text-neutral-700">
               {selectedProject?.name ?? '…'}
             </div>
           </div>
         ) : (
-          <Select
+          <ProjectPicker
             label="პროექტი"
             required
             value={projectId}
             onChange={setProjectId}
-            options={(projects ?? []).map((p) => ({ value: p.id, label: p.name }))}
-            placeholder="— აირჩიეთ პროექტი —"
+            options={(projects ?? []).map((p) => ({ value: p.id, label: p.name, logo: p.logo, company: p.company_name }))}
           />
         )}
 
         <div className="space-y-1">
-          <Label>შაბლონი *</Label>
+          <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">შაბლონი *</p>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button

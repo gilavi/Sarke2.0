@@ -4,12 +4,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, X, FileText, ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { NumberInput, Textarea, TextInput } from '@mantine/core';
 import { Select } from '@/components/ui/select';
+import { ProjectPicker } from '@/components/ui/project-picker';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import PhotoUploadWidget from '@/components/PhotoUploadWidget';
+import HarnessWizard from '@/components/inspections/HarnessWizard';
 import {
   addAnswerPhoto,
   createInspection,
@@ -63,6 +64,12 @@ const slideVariants = {
 
 const springTransition = { type: 'spring' as const, stiffness: 400, damping: 32 };
 
+/* freetext questions are redundant in harness flows (covered by HarnessWizard + ConclusionStep) */
+function filterQuestions(qs: Question[]): Question[] {
+  const hasGrid = qs.some((q) => q.type === 'component_grid');
+  return hasGrid ? qs.filter((q) => q.type !== 'freetext') : qs;
+}
+
 /* ─── Component ─── */
 
 export default function InspectionWizard({
@@ -90,7 +97,7 @@ export default function InspectionWizard({
   const [createdInspection, setCreatedInspection] = useState<Inspection | null>(existingInspection ?? null);
 
   /* ── Questions & answers ── */
-  const [questions, setQuestions] = useState<Question[]>(initialQuestions);
+  const [questions, setQuestions] = useState<Question[]>(() => filterQuestions(initialQuestions));
   const [answerMap, setAnswerMap] = useState<Record<string, Partial<Answer>>>(() => {
     const map: Record<string, Partial<Answer>> = {};
     for (const a of initialAnswers) map[a.question_id] = a;
@@ -107,6 +114,9 @@ export default function InspectionWizard({
     isSafe: existingInspection?.is_safe_for_use ?? null as boolean | null,
     text: existingInspection?.conclusion_text ?? '',
   });
+  const [conclusionPhotos, setConclusionPhotos] = useState<string[]>(
+    existingInspection?.conclusion_photo_paths ?? [],
+  );
 
   /* ── Data queries ── */
   const { data: projects } = useQuery({ queryKey: ['projects'], queryFn: listProjects, enabled: open && mode === 'create' });
@@ -136,7 +146,7 @@ export default function InspectionWizard({
       setDepartment('');
       setInspectorName('');
       setCreatedInspection(existingInspection ?? null);
-      setQuestions(initialQuestions);
+      setQuestions(filterQuestions(initialQuestions));
       setAnswerMap(() => {
         const map: Record<string, Partial<Answer>> = {};
         for (const a of initialAnswers) map[a.question_id] = a;
@@ -149,6 +159,7 @@ export default function InspectionWizard({
         isSafe: existingInspection?.is_safe_for_use ?? null,
         text: existingInspection?.conclusion_text ?? '',
       });
+      setConclusionPhotos(existingInspection?.conclusion_photo_paths ?? []);
     }
     if (!open) {
       hasResetRef.current = false;
@@ -169,6 +180,7 @@ export default function InspectionWizard({
 
   const currentQuestion = isQuestionStep ? questions[stepIndex - infoStepCount] : undefined;
   const currentAnswer = currentQuestion ? answerMap[currentQuestion.id] : undefined;
+  const isHarnessGridStep = isQuestionStep && currentQuestion?.type === 'component_grid';
 
   const progressPercent = totalSteps > 1 ? ((stepIndex) / (totalSteps - 1)) * 100 : 0;
 
@@ -206,6 +218,7 @@ export default function InspectionWizard({
           status: 'completed',
           conclusion_text: conclusion.text || null,
           is_safe_for_use: conclusion.isSafe,
+          conclusion_photo_paths: conclusionPhotos,
         });
         qc.invalidateQueries({ queryKey: ['inspection', insId] });
         qc.invalidateQueries({ queryKey: ['inspections'] });
@@ -255,7 +268,7 @@ export default function InspectionWizard({
         qc.invalidateQueries({ queryKey: ['inspections'] });
         const qs = await listQuestions(created.template_id);
         setCreatedInspection(created);
-        setQuestions(qs);
+        setQuestions(filterQuestions(qs));
         setDirection(1);
         setStepIndex(1);
       } catch (e) {
@@ -270,7 +283,7 @@ export default function InspectionWizard({
     setStepIndex((i) => Math.min(totalSteps - 1, i + 1));
   }, [
     isSuccessStep, isConclusionStep, isQuestionStep, isInfoStep,
-    effectiveInspection, conclusion, currentQuestion, currentAnswer,
+    effectiveInspection, conclusion, conclusionPhotos, currentQuestion, currentAnswer,
     projectId, templateId, harnessName, department, inspectorName,
     onClose, answerMutation, qc, totalSteps,
   ]);
@@ -429,7 +442,7 @@ export default function InspectionWizard({
                         />
                       )}
 
-                      {isQuestionStep && currentQuestion && (
+                      {isQuestionStep && currentQuestion && !isHarnessGridStep && (
                         <QuestionStepRenderer
                           question={currentQuestion}
                           answer={currentAnswer}
@@ -441,10 +454,24 @@ export default function InspectionWizard({
                         />
                       )}
 
+                      {isHarnessGridStep && currentQuestion && (
+                        <HarnessWizard
+                          question={currentQuestion}
+                          answer={currentAnswer}
+                          onChange={handleAnswerChange}
+                          onComplete={goNext}
+                          completing={submitting || answerMutation.isPending}
+                        />
+                      )}
+
                       {isConclusionStep && (
                         <ConclusionStepRenderer
                           conclusion={conclusion}
                           onChange={setConclusion}
+                          inspectionId={effectiveInspection!.id}
+                          photos={conclusionPhotos}
+                          onPhotoAdd={(path) => setConclusionPhotos((prev) => [...prev, path])}
+                          onPhotoRemove={(path) => setConclusionPhotos((prev) => prev.filter((p) => p !== path))}
                         />
                       )}
 
@@ -460,7 +487,7 @@ export default function InspectionWizard({
               </div>
 
               {/* Footer */}
-              {!isSuccessStep && (
+              {!isSuccessStep && !isHarnessGridStep && (
                 <div className="shrink-0 border-t border-neutral-200 bg-white px-6 py-4 dark:border-neutral-700 dark:bg-neutral-900">
                   <div className="mx-auto flex max-w-2xl items-center justify-between">
                     <Button
@@ -510,18 +537,17 @@ function InfoStep({
   harnessName: string; setHarnessName: (v: string) => void;
   department: string; setDepartment: (v: string) => void;
   inspectorName: string; setInspectorName: (v: string) => void;
-  projects: { id: string; name: string }[];
+  projects: { id: string; name: string; logo?: string | null; company_name?: string }[];
   templates: { id: string; name: string; is_system?: boolean }[];
 }) {
   return (
     <div className="space-y-5">
-      <Select
+      <ProjectPicker
         label="პროექტი"
         required
         value={projectId}
         onChange={setProjectId}
-        options={projects.map((p) => ({ value: p.id, label: p.name }))}
-        placeholder="— აირჩიეთ პროექტი —"
+        options={projects.map((p) => ({ value: p.id, label: p.name, logo: p.logo, company: p.company_name }))}
       />
 
       <Select
@@ -533,20 +559,29 @@ function InfoStep({
         placeholder="— აირჩიეთ შაბლონი —"
       />
 
-      <div className="space-y-1.5">
-        <Label className="text-sm font-medium">დასახელება</Label>
-        <Input value={harnessName} onChange={(e) => setHarnessName(e.target.value)} placeholder="მაგ: ხარაჩო A" className="rounded-xl" />
-      </div>
+      <TextInput
+        label="დასახელება"
+        value={harnessName}
+        onChange={(e) => setHarnessName(e.target.value)}
+        placeholder="მაგ: ხარაჩო A"
+        radius="md"
+      />
 
-      <div className="space-y-1.5">
-        <Label className="text-sm font-medium">დეპარტამენტი</Label>
-        <Input value={department} onChange={(e) => setDepartment(e.target.value)} placeholder="დეპარტამენტის დასახელება" className="rounded-xl" />
-      </div>
+      <TextInput
+        label="დეპარტამენტი"
+        value={department}
+        onChange={(e) => setDepartment(e.target.value)}
+        placeholder="დეპარტამენტის დასახელება"
+        radius="md"
+      />
 
-      <div className="space-y-1.5">
-        <Label className="text-sm font-medium">ინსპექტორის სახელი</Label>
-        <Input value={inspectorName} onChange={(e) => setInspectorName(e.target.value)} placeholder="სახელი გვარი" className="rounded-xl" />
-      </div>
+      <TextInput
+        label="ინსპექტორის სახელი"
+        value={inspectorName}
+        onChange={(e) => setInspectorName(e.target.value)}
+        placeholder="სახელი გვარი"
+        radius="md"
+      />
     </div>
   );
 }
@@ -589,7 +624,15 @@ function QuestionStepRenderer({
       {question.type === 'measure' && (
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <Input type="number" value={answer?.value_num ?? ''} onChange={(e) => onChange({ value_num: e.target.value ? Number(e.target.value) : null })} placeholder="მნიშვნელობა" className="rounded-xl" />
+            <NumberInput
+              value={answer?.value_num ?? ''}
+              onChange={(v) => onChange({ value_num: v === '' ? null : Number(v) })}
+              placeholder="მნიშვნელობა"
+              radius="md"
+              min={question.min_val ?? undefined}
+              max={question.max_val ?? undefined}
+              hideControls
+            />
             {question.unit && <span className="shrink-0 text-sm text-neutral-500">{question.unit}</span>}
           </div>
           {question.min_val !== null && question.max_val !== null && (
@@ -599,8 +642,14 @@ function QuestionStepRenderer({
       )}
 
       {question.type === 'freetext' && (
-        <textarea value={answer?.value_text ?? ''} onChange={(e) => onChange({ value_text: e.target.value })} placeholder="შეიყვანეთ პასუხი..." rows={4}
-          className="w-full resize-none rounded-xl border border-neutral-300 bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100" />
+        <Textarea
+          value={answer?.value_text ?? ''}
+          onChange={(e) => onChange({ value_text: e.target.value })}
+          placeholder="შეიყვანეთ პასუხი..."
+          rows={4}
+          autosize={false}
+          radius="md"
+        />
       )}
 
       {question.type === 'photo_upload' && (
@@ -611,10 +660,13 @@ function QuestionStepRenderer({
         <ComponentGridStep question={question} answer={answer} onChange={onChange} />
       )}
 
-      <div className="space-y-1.5">
-        <Label className="text-sm text-neutral-600">კომენტარი (არასავალდებულო)</Label>
-        <Input value={answer?.comment ?? ''} onChange={(e) => onChange({ comment: e.target.value })} placeholder="დამატებითი შენიშვნა" className="rounded-xl" />
-      </div>
+      <TextInput
+        label="კომენტარი (არასავალდებულო)"
+        value={answer?.comment ?? ''}
+        onChange={(e) => onChange({ comment: e.target.value })}
+        placeholder="დამატებითი შენიშვნა"
+        radius="md"
+      />
     </div>
   );
 }
@@ -622,10 +674,14 @@ function QuestionStepRenderer({
 /* ─── Conclusion Step ─── */
 
 function ConclusionStepRenderer({
-  conclusion, onChange,
+  conclusion, onChange, inspectionId, photos, onPhotoAdd, onPhotoRemove,
 }: {
   conclusion: { isSafe: boolean | null; text: string };
   onChange: (c: { isSafe: boolean | null; text: string }) => void;
+  inspectionId: string;
+  photos: string[];
+  onPhotoAdd: (path: string) => void;
+  onPhotoRemove: (path: string) => void;
 }) {
   return (
     <div className="space-y-6">
@@ -635,17 +691,33 @@ function ConclusionStepRenderer({
       </div>
 
       <div className="space-y-2">
-        <Label className="text-sm font-medium">გამოყენების ვარგისება</Label>
+        <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">გამოყენების ვარგისება</p>
         <div className="grid grid-cols-2 gap-3">
           <AnswerButton selected={conclusion.isSafe === true} onClick={() => onChange({ ...conclusion, isSafe: true })} icon={<CheckCircle2 size={20} />} label="გამოყენებადია" variant="yes" />
           <AnswerButton selected={conclusion.isSafe === false} onClick={() => onChange({ ...conclusion, isSafe: false })} icon={<X size={20} />} label="არა ვარგისი" variant="no" />
         </div>
       </div>
 
-      <div className="space-y-1.5">
-        <Label className="text-sm font-medium">დასკვნის ტექსტი</Label>
-        <textarea value={conclusion.text} onChange={(e) => onChange({ ...conclusion, text: e.target.value })} placeholder="შეიყვანეთ დასკვნა..." rows={5}
-          className="w-full resize-none rounded-xl border border-neutral-300 bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100" />
+      <Textarea
+        label="დასკვნის ტექსტი"
+        value={conclusion.text}
+        onChange={(e) => onChange({ ...conclusion, text: e.target.value })}
+        placeholder="შეიყვანეთ დასკვნა..."
+        rows={5}
+        autosize={false}
+        radius="md"
+      />
+
+      <div className="space-y-2">
+        <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">ფოტოები (არასავალდებულო)</p>
+        <PhotoUploadWidget
+          paths={photos}
+          prefix="inspections"
+          inspectionId={inspectionId}
+          itemId="conclusion"
+          onAdd={onPhotoAdd}
+          onRemove={onPhotoRemove}
+        />
       </div>
     </div>
   );
@@ -744,7 +816,7 @@ function ComponentGridStep({ question, answer, onChange }: {
                 </div>
               ))}
               {hasCommentCol && (
-                <Input value={values[row]?.['კომენტარი'] ?? ''} onChange={(e) => setCell(row, 'კომენტარი', e.target.value)} placeholder="კომენტარი" className="mt-2 rounded-lg text-xs" />
+                <TextInput value={values[row]?.['კომენტარი'] ?? ''} onChange={(e) => setCell(row, 'კომენტარი', e.target.value)} placeholder="კომენტარი" size="xs" radius="md" mt="xs" />
               )}
             </div>
           </div>
@@ -776,7 +848,7 @@ function ComponentGridStep({ question, answer, onChange }: {
                 ))}
                 {hasCommentCol && (
                   <td className="px-4 py-3">
-                    <Input value={values[row]?.['კომენტარი'] ?? ''} onChange={(e) => setCell(row, 'კომენტარი', e.target.value)} placeholder="კომენტარი" className="rounded-lg text-xs" />
+                    <TextInput value={values[row]?.['კომენტარი'] ?? ''} onChange={(e) => setCell(row, 'კომენტარი', e.target.value)} placeholder="კომენტარი" size="xs" radius="md" />
                   </td>
                 )}
               </tr>

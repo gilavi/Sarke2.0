@@ -12,8 +12,7 @@ import FieldInput from '@/components/FieldInput';
 import WizardSteps, { WizardNav } from '@/components/WizardSteps';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { NumberInput, Textarea, TextInput } from '@mantine/core';
 import {
   CABIN_ITEMS,
   ENGINE_ITEMS,
@@ -299,44 +298,41 @@ export default function ExcavatorInspectionDetail() {
                 disabled={!isDraft}
                 onSave={(v) => save({ inspectorPosition: v })}
               />
-              <div className="space-y-1">
-                <Label>შემოწმების თარიღი</Label>
-                <Input
-                  type="date"
-                  disabled={!isDraft}
-                  defaultValue={effectiveItem.inspectionDate ? effectiveItem.inspectionDate.slice(0, 10) : ''}
-                  onBlur={(e) => {
-                    const v = e.target.value || null;
-                    if (v !== (effectiveItem.inspectionDate ? effectiveItem.inspectionDate.slice(0, 10) : null))
-                      save({ inspectionDate: v });
-                  }}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label>წინა შემოწმების თარიღი</Label>
-                <Input
-                  type="date"
-                  disabled={!isDraft}
-                  defaultValue={effectiveItem.lastInspectionDate ? effectiveItem.lastInspectionDate.slice(0, 10) : ''}
-                  onBlur={(e) => {
-                    const v = e.target.value || null;
-                    if (v !== (effectiveItem.lastInspectionDate ? effectiveItem.lastInspectionDate.slice(0, 10) : null))
-                      save({ lastInspectionDate: v });
-                  }}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label>მუშა საათები</Label>
-                <Input
-                  type="number"
-                  disabled={!isDraft}
-                  defaultValue={effectiveItem.motoHours ?? ''}
-                  onBlur={(e) => {
-                    const v = e.target.value === '' ? null : Number(e.target.value);
-                    if (v !== effectiveItem.motoHours) save({ motoHours: v });
-                  }}
-                />
-              </div>
+              <TextInput
+                label="შემოწმების თარიღი"
+                type="date"
+                disabled={!isDraft}
+                defaultValue={effectiveItem.inspectionDate ? effectiveItem.inspectionDate.slice(0, 10) : ''}
+                onBlur={(e) => {
+                  const v = e.target.value || null;
+                  if (v !== (effectiveItem.inspectionDate ? effectiveItem.inspectionDate.slice(0, 10) : null))
+                    save({ inspectionDate: v });
+                }}
+                radius="md"
+              />
+              <TextInput
+                label="წინა შემოწმების თარიღი"
+                type="date"
+                disabled={!isDraft}
+                defaultValue={effectiveItem.lastInspectionDate ? effectiveItem.lastInspectionDate.slice(0, 10) : ''}
+                onBlur={(e) => {
+                  const v = e.target.value || null;
+                  if (v !== (effectiveItem.lastInspectionDate ? effectiveItem.lastInspectionDate.slice(0, 10) : null))
+                    save({ lastInspectionDate: v });
+                }}
+                radius="md"
+              />
+              <NumberInput
+                label="მუშა საათები"
+                disabled={!isDraft}
+                defaultValue={effectiveItem.motoHours ?? ''}
+                onBlur={(e) => {
+                  const v = e.target.value === '' ? null : Number(e.target.value);
+                  if (v !== effectiveItem.motoHours) save({ motoHours: v });
+                }}
+                radius="md"
+                hideControls
+              />
             </CardContent>
           </Card>
           <WizardNav current={step} total={3} onPrev={() => setStep(s => s - 1)} onNext={() => setStep(s => s + 1)} />
@@ -397,7 +393,7 @@ export default function ExcavatorInspectionDetail() {
                               );
                             })}
                           </div>
-                          <Input
+                          <TextInput
                             disabled={!isDraft}
                             defaultValue={st.comment ?? ''}
                             onBlur={(e) => {
@@ -407,7 +403,8 @@ export default function ExcavatorInspectionDetail() {
                               }
                             }}
                             placeholder="კომენტარი"
-                            className="mt-2 text-xs"
+                            classNames={{ input: 'mt-2 text-xs' }}
+                            radius="md"
                           />
                           <PhotoUploadWidget
                             paths={st.photo_paths ?? []}
@@ -469,7 +466,7 @@ export default function ExcavatorInspectionDetail() {
                             </button>
                           );
                         })}
-                        <Input
+                        <TextInput
                           type="date"
                           disabled={!isDraft}
                           defaultValue={st.date ?? ''}
@@ -477,7 +474,8 @@ export default function ExcavatorInspectionDetail() {
                             const v = e.target.value || null;
                             if (v !== (st.date ?? null)) patchMaintenance(m.id, { date: v });
                           }}
-                          className="max-w-[180px]"
+                          classNames={{ input: 'max-w-[180px]' }}
+                          radius="md"
                         />
                       </div>
                     </li>
@@ -539,7 +537,7 @@ export default function ExcavatorInspectionDetail() {
               {isDraft ? (
                 <>
                   <div className="space-y-1">
-                    <Label>დასკვნა</Label>
+                    <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">დასკვნა</p>
                     <div className="flex flex-wrap gap-2">
                       {(Object.keys(EXCAVATOR_VERDICT_LABEL) as ExcavatorVerdict[]).map((v) => {
                         const selected = effectiveItem.verdict === v;
@@ -560,18 +558,17 @@ export default function ExcavatorInspectionDetail() {
                       })}
                     </div>
                   </div>
-                  <div className="space-y-1">
-                    <Label>შენიშვნები</Label>
-                    <textarea
-                      rows={3}
-                      defaultValue={effectiveItem.notes ?? ''}
-                      onBlur={(e) => {
-                        const v = e.target.value || null;
-                        if (v !== effectiveItem.notes) save({ notes: v });
-                      }}
-                      className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
-                    />
-                  </div>
+                  <Textarea
+                    label="შენიშვნები"
+                    rows={3}
+                    defaultValue={effectiveItem.notes ?? ''}
+                    onBlur={(e) => {
+                      const v = e.target.value || null;
+                      if (v !== effectiveItem.notes) save({ notes: v });
+                    }}
+                    radius="md"
+                    autosize={false}
+                  />
                   <Button
                     size="sm"
                     onClick={() => save({ status: 'completed' })}

@@ -1,15 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
-import { AnimatePresence, motion } from 'framer-motion';
+import { Modal, TextInput, PasswordInput } from '@mantine/core';
 import {
   Receipt, User, KeyRound, Award, ScrollText,
-  ChevronRight, Moon, Sun, X, Check, CalendarDays, Infinity as InfinityIcon, ArrowRight, AlertTriangle,
+  ChevronRight, Moon, Sun, Check, CalendarDays, Infinity as InfinityIcon, ArrowRight, AlertTriangle,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/lib/theme';
 import { useAuth } from '@/lib/auth';
@@ -35,34 +33,11 @@ const STATUS_CLASS: Record<PaymentRecord['status'], string> = {
 const formatDateTime = fmtDateTimeKa;
 
 /* ── Reusable modal shell ── */
-function Modal({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: React.ReactNode }) {
+function AccountModal({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: React.ReactNode }) {
   return (
-    <AnimatePresence>
-      {open && (
-        <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center p-4">
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={onClose}
-          />
-          <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.97 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-            className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900"
-          >
-            <div className="flex items-center justify-between border-b border-neutral-100 px-5 py-4 dark:border-neutral-800">
-              <h2 className="font-display text-base font-semibold text-neutral-900 dark:text-neutral-100">{title}</h2>
-              <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-lg text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800">
-                <X size={16} />
-              </button>
-            </div>
-            <div className="p-5">{children}</div>
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
+    <Modal opened={open} onClose={onClose} title={title} radius="lg" size="md" centered>
+      {children}
+    </Modal>
   );
 }
 
@@ -91,22 +66,13 @@ function ProfileModal({ open, onClose }: { open: boolean; onClose: () => void })
   });
 
   return (
-    <Modal open={open} onClose={onClose} title="პროფილი">
+    <AccountModal open={open} onClose={onClose} title="პროფილი">
       <form onSubmit={(e) => { e.preventDefault(); if (firstName.trim() && lastName.trim()) mutation.mutate(); }} className="space-y-3">
         <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="m-first">სახელი</Label>
-            <Input id="m-first" value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="m-last">გვარი</Label>
-            <Input id="m-last" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
-          </div>
+          <TextInput label="სახელი" value={firstName} onChange={(e) => setFirstName(e.target.value)} required radius="md" />
+          <TextInput label="გვარი" value={lastName} onChange={(e) => setLastName(e.target.value)} required radius="md" />
         </div>
-        <div className="space-y-1.5">
-          <Label>ელ-ფოსტა</Label>
-          <Input value={user?.email ?? ''} disabled />
-        </div>
+        <TextInput label="ელ-ფოსტა" value={user?.email ?? ''} disabled radius="md" />
         {mutation.error && <p className="text-sm text-red-600">{mutation.error instanceof Error ? mutation.error.message : String(mutation.error)}</p>}
         {info && <p className="flex items-center gap-1 text-sm text-brand-600"><Check size={14} />{info}</p>}
         <div className="flex justify-end gap-2 pt-1">
@@ -114,7 +80,7 @@ function ProfileModal({ open, onClose }: { open: boolean; onClose: () => void })
           <Button type="submit" disabled={mutation.isPending}>{mutation.isPending ? 'ინახება…' : 'შენახვა'}</Button>
         </div>
       </form>
-    </Modal>
+    </AccountModal>
   );
 }
 
@@ -139,16 +105,10 @@ function PasswordModal({ open, onClose }: { open: boolean; onClose: () => void }
   const canSubmit = pw.length >= 8 && pw === pw2 && !mutation.isPending;
 
   return (
-    <Modal open={open} onClose={onClose} title="პაროლის შეცვლა">
+    <AccountModal open={open} onClose={onClose} title="პაროლის შეცვლა">
       <form onSubmit={(e) => { e.preventDefault(); if (canSubmit) mutation.mutate(); }} className="space-y-3">
-        <div className="space-y-1.5">
-          <Label htmlFor="m-pw">ახალი პაროლი</Label>
-          <Input id="m-pw" type="password" autoComplete="new-password" minLength={8} value={pw} onChange={(e) => setPw(e.target.value)} placeholder="მინ. 8 სიმბოლო" />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="m-pw2">გაიმეორეთ</Label>
-          <Input id="m-pw2" type="password" autoComplete="new-password" value={pw2} onChange={(e) => setPw2(e.target.value)} />
-        </div>
+        <PasswordInput label="ახალი პაროლი" autoComplete="new-password" minLength={8} value={pw} onChange={(e) => setPw(e.target.value)} placeholder="მინ. 8 სიმბოლო" radius="md" />
+        <PasswordInput label="გაიმეორეთ" autoComplete="new-password" value={pw2} onChange={(e) => setPw2(e.target.value)} radius="md" />
         {pw && pw2 && pw !== pw2 && <p className="text-sm text-red-600">პაროლები არ ემთხვევა.</p>}
         {mutation.error && <p className="text-sm text-red-600">{mutation.error instanceof Error ? mutation.error.message : String(mutation.error)}</p>}
         {info && <p className="flex items-center gap-1 text-sm text-brand-600"><Check size={14} />{info}</p>}
@@ -157,7 +117,7 @@ function PasswordModal({ open, onClose }: { open: boolean; onClose: () => void }
           <Button type="submit" disabled={!canSubmit}>{mutation.isPending ? 'ინახება…' : 'შეცვლა'}</Button>
         </div>
       </form>
-    </Modal>
+    </AccountModal>
   );
 }
 

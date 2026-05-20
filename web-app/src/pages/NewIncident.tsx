@@ -1,10 +1,9 @@
 import { useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Textarea, TextInput } from '@mantine/core';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select } from '@/components/ui/select';
+import { ProjectPicker } from '@/components/ui/project-picker';
 import { FloatingLabelInput } from '@/components/ui/floating-label-input';
 import { WizardShell } from '@/components/ui/wizard-shell';
 import { listProjects } from '@/lib/data/projects';
@@ -96,24 +95,23 @@ export default function NewIncident() {
         <div className="space-y-5">
           {prefilledProjectId ? (
             <div className="space-y-1">
-              <Label>პროექტი</Label>
+              <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">პროექტი</p>
               <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm text-neutral-700">
                 {(projects ?? []).find((p) => p.id === projectId)?.name ?? '…'}
               </div>
             </div>
           ) : (
-            <Select
+            <ProjectPicker
               label="პროექტი"
               required
               value={projectId}
               onChange={setProjectId}
-              options={(projects ?? []).map((p) => ({ value: p.id, label: p.name }))}
-              placeholder="— აირჩიეთ პროექტი —"
+              options={(projects ?? []).map((p) => ({ value: p.id, label: p.name, logo: p.logo, company: p.company_name }))}
             />
           )}
 
           <div className="space-y-2">
-            <Label>ინციდენტის სახეობა *</Label>
+            <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">ინციდენტის სახეობა *</p>
             <div className="flex flex-wrap gap-2">
               {TYPES.map(([key, label]) => (
                 <button
@@ -165,41 +163,38 @@ export default function NewIncident() {
             </div>
           )}
 
-          <div className="space-y-1">
-            <Label htmlFor="description">აღწერა *</Label>
-            <textarea
-              id="description"
-              rows={4}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="შეაღწერეთ რა მოხდა…"
-              className="w-full rounded-lg border border-neutral-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-            />
-          </div>
+          <Textarea
+            id="description"
+            label="აღწერა *"
+            rows={4}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="შეაღწერეთ რა მოხდა…"
+            radius="md"
+            autosize={false}
+          />
 
-          <div className="space-y-1">
-            <Label htmlFor="cause">მიზეზი *</Label>
-            <textarea
-              id="cause"
-              rows={3}
-              value={cause}
-              onChange={(e) => setCause(e.target.value)}
-              placeholder="ინციდენტის გამომწვევი მიზეზი…"
-              className="w-full rounded-lg border border-neutral-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-            />
-          </div>
+          <Textarea
+            id="cause"
+            label="მიზეზი *"
+            rows={3}
+            value={cause}
+            onChange={(e) => setCause(e.target.value)}
+            placeholder="ინციდენტის გამომწვევი მიზეზი…"
+            radius="md"
+            autosize={false}
+          />
 
-          <div className="space-y-1">
-            <Label htmlFor="actions">მიღებული ზომები *</Label>
-            <textarea
-              id="actions"
-              rows={3}
-              value={actionsTaken}
-              onChange={(e) => setActionsTaken(e.target.value)}
-              placeholder="რა ზომები იქნა მიღებული…"
-              className="w-full rounded-lg border border-neutral-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-            />
-          </div>
+          <Textarea
+            id="actions"
+            label="მიღებული ზომები *"
+            rows={3}
+            value={actionsTaken}
+            onChange={(e) => setActionsTaken(e.target.value)}
+            placeholder="რა ზომები იქნა მიღებული…"
+            radius="md"
+            autosize={false}
+          />
         </div>
       )}
 
@@ -207,13 +202,14 @@ export default function NewIncident() {
       {step === 2 && (
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label>მოწმეები</Label>
+            <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">მოწმეები</p>
             <div className="flex gap-2">
-              <Input
+              <TextInput
                 value={witnessInput}
                 onChange={(e) => setWitnessInput(e.target.value)}
                 placeholder="სახელი, გვარი"
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addWitness(); } }}
+                radius="md"
               />
               <Button type="button" variant="outline" onClick={addWitness} disabled={!witnessInput.trim()}>
                 დამატება
@@ -232,7 +228,7 @@ export default function NewIncident() {
           </div>
 
           <div className="space-y-2">
-            <Label>დანართი ფაილები</Label>
+            <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">დანართი ფაილები</p>
             <Button type="button" variant="outline" onClick={() => fileRef.current?.click()}>
               ფაილის არჩევა
             </Button>

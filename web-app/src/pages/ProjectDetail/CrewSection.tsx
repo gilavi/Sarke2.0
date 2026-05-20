@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { TextInput } from '@mantine/core';
 import { Select } from '@/components/ui/select';
 import { setProjectCrew, type CrewMember, type Project } from '@/lib/data/projects';
 import { projectKeys } from '@/app/queryKeys';
@@ -79,10 +79,11 @@ export function CrewSection({ project, onError }: Props) {
         {adding && (
           <div className="mb-3 space-y-2 rounded-md border border-brand-200 bg-brand-50/40 p-3">
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              <Input
+              <TextInput
                 placeholder="სახელი, გვარი"
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                radius="md"
               />
               <Select
                 size="sm"

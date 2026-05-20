@@ -8,8 +8,7 @@ import { toast } from 'sonner';
 import DeleteButton from '@/components/DeleteButton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Textarea, TextInput } from '@mantine/core';
 import PhotoUploadWidget from '@/components/PhotoUploadWidget';
 import SignatureCanvas from '@/components/SignatureCanvas';
 import FieldInput from '@/components/FieldInput';
@@ -317,7 +316,7 @@ export default function BobcatInspectionDetail() {
                             );
                           })}
                         </div>
-                        <Input
+                        <TextInput
                           disabled={!isDraft}
                           defaultValue={state.comment ?? ''}
                           onBlur={(e) => {
@@ -327,7 +326,8 @@ export default function BobcatInspectionDetail() {
                             }
                           }}
                           placeholder="კომენტარი"
-                          className="mt-2 text-xs"
+                          classNames={{ input: 'mt-2 text-xs' }}
+                          radius="md"
                         />
                         <PhotoUploadWidget
                           paths={state.photo_paths ?? []}
@@ -400,7 +400,7 @@ export default function BobcatInspectionDetail() {
               {isDraft ? (
                 <>
                   <div className="space-y-1">
-                    <Label>დასკვნა</Label>
+                    <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">დასკვნა</p>
                     <div className="flex flex-wrap gap-2">
                       {(Object.keys(VERDICT_LABEL) as BobcatVerdict[]).map((v) => {
                         const selected = effectiveItem.verdict === v;
@@ -421,18 +421,17 @@ export default function BobcatInspectionDetail() {
                       })}
                     </div>
                   </div>
-                  <div className="space-y-1">
-                    <Label>შენიშვნები</Label>
-                    <textarea
-                      rows={3}
-                      defaultValue={effectiveItem.notes ?? ''}
-                      onBlur={(e) => {
-                        const v = e.target.value || null;
-                        if (v !== effectiveItem.notes) save({ notes: v });
-                      }}
-                      className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
-                    />
-                  </div>
+                  <Textarea
+                    label="შენიშვნები"
+                    rows={3}
+                    defaultValue={effectiveItem.notes ?? ''}
+                    onBlur={(e) => {
+                      const v = e.target.value || null;
+                      if (v !== effectiveItem.notes) save({ notes: v });
+                    }}
+                    radius="md"
+                    autosize={false}
+                  />
                   <Button
                     size="sm"
                     onClick={() => save({ status: 'completed' })}

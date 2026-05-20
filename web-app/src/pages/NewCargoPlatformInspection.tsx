@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Select } from '@/components/ui/select';
+import { ProjectPicker } from '@/components/ui/project-picker';
 import { listProjects } from '@/lib/data/projects';
 import { createCargoPlatformInspection } from '@/lib/data/cargoPlatform';
 
@@ -57,13 +57,12 @@ export default function NewCargoPlatformInspection() {
               handleSubmit();
             }}
           >
-            <Select
+            <ProjectPicker
               label="პროექტი"
               required
               value={projectId}
               onChange={setProjectId}
-              options={(projects ?? []).map((p) => ({ value: p.id, label: p.name }))}
-              placeholder="— აირჩიეთ პროექტი —"
+              options={(projects ?? []).map((p) => ({ value: p.id, label: p.name, logo: p.logo, company: p.company_name }))}
             />
 
             <div className="flex gap-2 pt-2">

@@ -2,11 +2,10 @@ import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { TextInput } from '@mantine/core';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select } from '@/components/ui/select';
+import { ProjectPicker } from '@/components/ui/project-picker';
 import { listProjects } from '@/lib/data/projects';
 import {
   BOBCAT_TEMPLATE_ID,
@@ -38,7 +37,6 @@ export default function NewBobcatInspection() {
   const [inspectionType, setInspectionType] = useState<BobcatInspectionType>('pre_work');
 
   const canSubmit = !!projectId;
-
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit() {
@@ -84,22 +82,18 @@ export default function NewBobcatInspection() {
         <CardContent>
           <form
             className="space-y-4"
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleSubmit();
-            }}
+            onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}
           >
-            <Select
+            <ProjectPicker
               label="პროექტი"
               required
               value={projectId}
               onChange={setProjectId}
-              options={(projects ?? []).map((p) => ({ value: p.id, label: p.name }))}
-              placeholder="— აირჩიეთ პროექტი —"
+              options={(projects ?? []).map((p) => ({ value: p.id, label: p.name, logo: p.logo, company: p.company_name }))}
             />
 
             <div className="space-y-1">
-              <Label>ტექნიკის ტიპი</Label>
+              <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">ტექნიკის ტიპი</p>
               <div className="flex gap-2">
                 {(
                   [
@@ -124,94 +118,76 @@ export default function NewBobcatInspection() {
             </div>
 
             <div className="space-y-1">
-              <Label>შემოწმების ტიპი</Label>
+              <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">შემოწმების ტიპი</p>
               <div className="flex flex-wrap gap-2">
-                {(Object.entries(TYPE_LABELS) as [BobcatInspectionType, string][]).map(
-                  ([key, label]) => (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => setInspectionType(key)}
-                      className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
-                        inspectionType === key
-                          ? 'border-brand-600 bg-brand-600 text-white'
-                          : 'border-neutral-300 bg-white text-neutral-700 hover:border-brand-400'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ),
-                )}
+                {(Object.entries(TYPE_LABELS) as [BobcatInspectionType, string][]).map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setInspectionType(key)}
+                    className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                      inspectionType === key
+                        ? 'border-brand-600 bg-brand-600 text-white'
+                        : 'border-neutral-300 bg-white text-neutral-700 hover:border-brand-400'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
             </div>
 
-            <div className="space-y-1">
-              <Label htmlFor="company">კომპანია</Label>
-              <Input
-                id="company"
-                value={company}
-                onChange={(e) => setCompany(e.target.value)}
-              />
-            </div>
+            <TextInput
+              label="კომპანია"
+              value={company}
+              onChange={(e) => setCompany(e.target.value)}
+              radius="md"
+            />
 
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label htmlFor="model">ტექნიკის მოდელი</Label>
-                <Input
-                  id="model"
-                  value={equipmentModel}
-                  onChange={(e) => setEquipmentModel(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="reg">სარეგ. ნომერი</Label>
-                <Input
-                  id="reg"
-                  value={registrationNumber}
-                  onChange={(e) => setRegistrationNumber(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <Label htmlFor="department">დეპარტამენტი</Label>
-              <Input
-                id="department"
-                value={department}
-                onChange={(e) => setDepartment(e.target.value)}
-                placeholder="დეპარტამენტის დასახელება"
+              <TextInput
+                label="ტექნიკის მოდელი"
+                value={equipmentModel}
+                onChange={(e) => setEquipmentModel(e.target.value)}
+                radius="md"
+              />
+              <TextInput
+                label="სარეგ. ნომერი"
+                value={registrationNumber}
+                onChange={(e) => setRegistrationNumber(e.target.value)}
+                radius="md"
               />
             </div>
 
-            <div className="space-y-1">
-              <Label htmlFor="inspector">ინსპექტორი</Label>
-              <Input
-                id="inspector"
-                value={inspectorName}
-                onChange={(e) => setInspectorName(e.target.value)}
-                placeholder="სახელი, გვარი"
-              />
-            </div>
+            <TextInput
+              label="დეპარტამენტი"
+              value={department}
+              onChange={(e) => setDepartment(e.target.value)}
+              placeholder="დეპარტამენტის დასახელება"
+              radius="md"
+            />
 
-            <div className="space-y-1">
-              <Label htmlFor="inspectionDate">შემოწმების თარიღი</Label>
-              <Input
-                id="inspectionDate"
-                type="date"
-                value={inspectionDate}
-                onChange={(e) => setInspectionDate(e.target.value)}
-              />
-            </div>
+            <TextInput
+              label="ინსპექტორი"
+              value={inspectorName}
+              onChange={(e) => setInspectorName(e.target.value)}
+              placeholder="სახელი, გვარი"
+              radius="md"
+            />
+
+            <TextInput
+              label="შემოწმების თარიღი"
+              type="date"
+              value={inspectionDate}
+              onChange={(e) => setInspectionDate(e.target.value)}
+              radius="md"
+            />
 
             <div className="flex gap-2 pt-2">
               <Button type="submit" disabled={!canSubmit || submitting}>
                 {submitting ? 'იქმნება…' : 'შექმნა'}
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => navigate('/inspections')}
-              >
+              <Button type="button" variant="outline" onClick={() => navigate('/inspections')}>
                 გაუქმება
               </Button>
             </div>

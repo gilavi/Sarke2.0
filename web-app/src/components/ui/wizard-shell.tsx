@@ -1,5 +1,5 @@
 import * as React from 'react';
-import * as Dialog from '@radix-ui/react-dialog';
+import { Modal } from '@mantine/core';
 import { X } from 'lucide-react';
 import { StepBar } from '@/components/ui/step-bar';
 import { WizardNav } from '@/components/ui/wizard-nav';
@@ -34,66 +34,65 @@ export function WizardShell({
   finishLabel,
 }: WizardShellProps) {
   return (
-    <Dialog.Root open={open} onOpenChange={(o) => !o && onClose()}>
-      <Dialog.Portal>
-        <Dialog.Content
-          className="wizard-fullpage fixed inset-0 z-50 bg-white focus:outline-none"
-          onInteractOutside={(e) => e.preventDefault()}
-          style={{
-            height: '100dvh',
-            display: 'grid',
-            gridTemplateRows: 'auto auto 1fr auto',
-          }}
-        >
-          {/* Header */}
-          <div className="border-b border-neutral-200 bg-white">
-            <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-              <Dialog.Title className="font-display text-lg font-semibold text-neutral-900">
-                {title}
-              </Dialog.Title>
-              <Dialog.Close
-                onClick={onClose}
-                className="rounded-lg p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 focus:outline-none"
-                aria-label="დახურვა"
-              >
-                <X size={18} />
-              </Dialog.Close>
-            </div>
-          </div>
+    <Modal
+      opened={open}
+      onClose={onClose}
+      fullScreen
+      withCloseButton={false}
+      padding={0}
+      radius={0}
+      styles={{
+        content: { display: 'flex', flexDirection: 'column' },
+        body: { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: 0 },
+      }}
+    >
+      {/* Header */}
+      <div className="shrink-0 border-b border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-900">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
+          <span className="font-display text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+            {title}
+          </span>
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 focus:outline-none dark:hover:bg-neutral-800 dark:hover:text-neutral-300"
+            aria-label="დახურვა"
+          >
+            <X size={18} />
+          </button>
+        </div>
+      </div>
 
-          {/* Step bar */}
-          {steps.length > 1 && (
-            <div className="border-b border-neutral-100 bg-white">
-              <div className="mx-auto max-w-5xl px-6 py-3">
-                <StepBar steps={steps} current={currentStep} />
-              </div>
-            </div>
-          )}
-
-          {/* Scrollable content */}
-          <div className="overflow-y-auto bg-neutral-50">
-            <div className="mx-auto max-w-2xl px-6 py-8">
-              {children}
-            </div>
+      {/* Step bar */}
+      {steps.length > 1 && (
+        <div className="shrink-0 border-b border-neutral-100 bg-white dark:border-neutral-700 dark:bg-neutral-900">
+          <div className="mx-auto max-w-5xl px-6 py-3">
+            <StepBar steps={steps} current={currentStep} />
           </div>
+        </div>
+      )}
 
-          {/* Footer nav */}
-          <div className="border-t border-neutral-200 bg-white">
-            <div className="mx-auto max-w-5xl">
-              <WizardNav
-                current={currentStep}
-                total={steps.length}
-                onPrev={onPrev}
-                onNext={onNext}
-                onFinish={onFinish}
-                isSubmitting={isSubmitting}
-                nextDisabled={nextDisabled}
-                finishLabel={finishLabel}
-              />
-            </div>
-          </div>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+      {/* Scrollable content */}
+      <div className="flex-1 overflow-y-auto bg-neutral-50 dark:bg-neutral-950">
+        <div className="mx-auto max-w-2xl px-6 py-8">
+          {children}
+        </div>
+      </div>
+
+      {/* Footer nav */}
+      <div className="shrink-0 border-t border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-900">
+        <div className="mx-auto max-w-5xl">
+          <WizardNav
+            current={currentStep}
+            total={steps.length}
+            onPrev={onPrev}
+            onNext={onNext}
+            onFinish={onFinish}
+            isSubmitting={isSubmitting}
+            nextDisabled={nextDisabled}
+            finishLabel={finishLabel}
+          />
+        </div>
+      </div>
+    </Modal>
   );
 }

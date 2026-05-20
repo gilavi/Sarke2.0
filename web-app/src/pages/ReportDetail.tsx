@@ -7,8 +7,7 @@ import { toast } from 'sonner';
 import DeleteButton from '@/components/DeleteButton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Textarea, TextInput } from '@mantine/core';
 import PhotoGallery from '@/components/PhotoGallery';
 import {
   addReportSlide,
@@ -206,27 +205,24 @@ export default function ReportDetail() {
                   if (!addSlideMutation.isPending) addSlideMutation.mutate();
                 }}
               >
+                <TextInput
+                  id="slide-title"
+                  value={slideTitle}
+                  onChange={(e) => setSlideTitle(e.target.value)}
+                  placeholder="მაგ: ხარაჩოს ბოძი — დაუცველი"
+                  radius="md"
+                />
+                <Textarea
+                  id="slide-desc"
+                  label="აღწერა"
+                  rows={3}
+                  value={slideDescription}
+                  onChange={(e) => setSlideDescription(e.target.value)}
+                  radius="md"
+                  autosize={false}
+                />
                 <div className="space-y-1">
-                  <Label htmlFor="slide-title">სათაური</Label>
-                  <Input
-                    id="slide-title"
-                    value={slideTitle}
-                    onChange={(e) => setSlideTitle(e.target.value)}
-                    placeholder="მაგ: ხარაჩოს ბოძი — დაუცველი"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="slide-desc">აღწერა</Label>
-                  <textarea
-                    id="slide-desc"
-                    rows={3}
-                    value={slideDescription}
-                    onChange={(e) => setSlideDescription(e.target.value)}
-                    className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label>ფოტო (არასავალდებულო)</Label>
+                  <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">ფოტო (არასავალდებულო)</p>
                   <input
                     ref={photoInputRef}
                     type="file"
@@ -280,15 +276,16 @@ export default function ReportDetail() {
                 <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
                   <div className="flex-1 pr-2">
                     {item.status === 'draft' ? (
-                      <Input
+                      <TextInput
                         defaultValue={s.title}
                         placeholder={`სლაიდი ${idx + 1}`}
-                        className="font-semibold"
+                        classNames={{ input: 'font-semibold' }}
                         onBlur={(e) => {
                           const v = e.target.value.trim();
                           if (v !== s.title)
                             updateSlideMutation.mutate({ slideId: s.id, patch: { title: v } });
                         }}
+                        radius="md"
                       />
                     ) : (
                       <CardTitle className="text-base">
@@ -323,11 +320,12 @@ export default function ReportDetail() {
                 </CardHeader>
                 <CardContent>
                   {item.status === 'draft' ? (
-                    <textarea
+                    <Textarea
                       rows={2}
                       defaultValue={s.description}
                       placeholder="აღწერა"
-                      className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                      radius="md"
+                      autosize={false}
                       onBlur={(e) => {
                         const v = e.target.value;
                         if (v !== s.description)

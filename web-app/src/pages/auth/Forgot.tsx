@@ -3,8 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { TextInput } from '@mantine/core';
 import { AuthLayout } from './AuthLayout';
 
 export default function Forgot() {
@@ -49,16 +48,15 @@ export default function Forgot() {
             </div>
           ) : (
             <form onSubmit={onSubmit} className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="email">ელ-ფოსტა</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
+              <TextInput
+                id="email"
+                label="ელ-ფოსტა"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                radius="md"
+              />
               {error ? <p className="text-sm text-danger">{error}</p> : null}
               <Button type="submit" disabled={busy} className="w-full">
                 {busy ? 'იგზავნება…' : 'ბმულის გაგზავნა'}

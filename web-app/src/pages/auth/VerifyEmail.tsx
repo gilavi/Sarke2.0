@@ -4,8 +4,7 @@ import { MailCheck } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { TextInput } from '@mantine/core';
 import { AuthLayout } from './AuthLayout';
 
 const CODE_LENGTH = 6;
@@ -145,18 +144,19 @@ export default function VerifyEmail() {
         <CardContent>
           <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="code">დადასტურების კოდი</Label>
-              <Input
+              <TextInput
                 ref={inputRef}
                 id="code"
+                label="დადასტურების კოდი"
                 inputMode="numeric"
                 autoComplete="one-time-code"
                 maxLength={CODE_LENGTH}
                 value={code}
                 onChange={(e) => handleChange(e.target.value)}
                 disabled={busy}
-                className="text-center font-mono text-2xl tracking-[0.6em]"
+                classNames={{ input: 'text-center font-mono text-2xl tracking-[0.6em]' }}
                 placeholder="••••••"
+                radius="md"
               />
             </div>
             {error ? <p className="text-sm text-danger">{error}</p> : null}
