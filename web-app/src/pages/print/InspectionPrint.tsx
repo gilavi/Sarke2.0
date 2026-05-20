@@ -1,55 +1,51 @@
-import { useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   getInspection,
-  listAnswers,
   listQuestions,
-  type Answer,
+  listAnswers,
+  listAllAnswerPhotos,
+  type AnswerPhoto,
 } from '@/lib/data/inspections';
 import { getProject } from '@/lib/data/projects';
-import { A4_PRINT_STYLES, printAfterRender } from '@/lib/printable';
-
-function answerLabel(q: { type: string; grid_rows?: string[] | null; grid_cols?: string[] | null }, a?: Answer): string {
-  if (!a) return '—';
-  if (q.type === 'yesno') {
-    if (a.value_bool === true) return 'კი';
-    if (a.value_bool === false) return 'არა';
-    return 'არ ეხება';
-  }
-  if (q.type === 'measure') return a.value_num != null ? String(a.value_num) : '—';
-  if (q.type === 'freetext') return a.value_text || '—';
-  if (q.type === 'component_grid') {
-    if (!a.grid_values || !q.grid_rows || !q.grid_cols) return '—';
-    const rows = q.grid_rows;
-    const cols = q.grid_cols.filter((c) => c !== 'კომენტარი');
-    return rows
-      .map((row) => {
-        const rowVals = cols.map((col) => `${col}: ${a.grid_values?.[row]?.[col] || '—'}`).join(', ');
-        return `${row}: ${rowVals}`;
-      })
-      .join('; ');
-  }
-  return '—';
-}
+import { getTemplate } from '@/lib/data/templates';
+import { signedInspectionPhotoUrl } from '@/lib/photoUpload';
+import { buildInspectionPdfTemplate } from '@root/lib/inspectionPdfTemplate';
+import type {
+  Inspection as MobileInspection,
+  Template as MobileTemplate,
+  Project as MobileProject,
+  Question as MobileQuestion,
+  Answer as MobileAnswer,
+  SignatureRecord,
+} from '@root/types/models';
 
 export default function InspectionPrint() {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const isPreview = searchParams.get('preview') === '1';
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  const inspectionQ = useQuery({
+  const inspQ = useQuery({
     queryKey: ['inspection', id],
     queryFn: () => getInspection(id!),
     enabled: !!id,
   });
-  const projectQ = useQuery({
-    queryKey: ['project', inspectionQ.data?.project_id],
-    queryFn: () => getProject(inspectionQ.data!.project_id),
-    enabled: !!inspectionQ.data?.project_id,
+  const projQ = useQuery({
+    queryKey: ['project', inspQ.data?.project_id],
+    queryFn: () => getProject(inspQ.data!.project_id),
+    enabled: !!inspQ.data?.project_id,
+  });
+  const tplQ = useQuery({
+    queryKey: ['template', inspQ.data?.template_id],
+    queryFn: () => getTemplate(inspQ.data!.template_id),
+    enabled: !!inspQ.data?.template_id,
   });
   const questionsQ = useQuery({
-    queryKey: ['questions', inspectionQ.data?.template_id],
-    queryFn: () => listQuestions(inspectionQ.data!.template_id),
-    enabled: !!inspectionQ.data?.template_id,
+    queryKey: ['questions', inspQ.data?.template_id],
+    queryFn: () => listQuestions(inspQ.data!.template_id),
+    enabled: !!inspQ.data?.template_id,
   });
   const answersQ = useQuery({
     queryKey: ['answers', id],
@@ -57,96 +53,133 @@ export default function InspectionPrint() {
     enabled: !!id,
   });
 
-  const ready =
-    inspectionQ.isSuccess && projectQ.isSuccess && questionsQ.isSuccess && answersQ.isSuccess;
+  // Batch-fetch and sign all answer photos
+  const [photosByAnswer, setPhotosByAnswer] = useState<Record<string, AnswerPhoto[]>>({});
+  const [photosReady, setPhotosReady] = useState(false);
 
   useEffect(() => {
-    if (ready) printAfterRender(2000);
-  }, [ready]);
+    if (!answersQ.data) return;
+    const answerIds = answersQ.data.map(a => a.id);
+    if (!answerIds.length) { setPhotosReady(true); return; }
 
-  if (inspectionQ.isLoading) {
+    listAllAnswerPhotos(answerIds)
+      .then(async rawByAnswer => {
+        // Sign every storage_path so the iframe can load images over HTTPS
+        const signed: Record<string, AnswerPhoto[]> = {};
+        await Promise.all(
+          Object.entries(rawByAnswer).map(async ([answerId, photos]) => {
+            signed[answerId] = await Promise.all(
+              photos.map(async p => {
+                try {
+                  const url = await signedInspectionPhotoUrl(p.storage_path);
+                  return { ...p, storage_path: url };
+                } catch {
+                  return p;
+                }
+              }),
+            );
+          }),
+        );
+        setPhotosByAnswer(signed);
+        setPhotosReady(true);
+      })
+      .catch(() => setPhotosReady(true));
+  }, [answersQ.data]);
+
+  const ready =
+    inspQ.isSuccess &&
+    projQ.isSuccess &&
+    tplQ.isSuccess &&
+    questionsQ.isSuccess &&
+    answersQ.isSuccess &&
+    photosReady;
+
+  if (inspQ.isLoading) {
     return <p style={{ padding: 24 }}>იტვირთება…</p>;
   }
-  if (!inspectionQ.data) {
+  if (!inspQ.data) {
     return <p style={{ padding: 24 }}>აქტი ვერ მოიძებნა.</p>;
   }
+  if (!ready) {
+    return <p style={{ padding: 24 }}>იტვირთება…</p>;
+  }
 
-  const item = inspectionQ.data;
-  const p = projectQ.data;
+  const inspection = inspQ.data;
+  const project = projQ.data!;
+  const template = tplQ.data;
   const questions = questionsQ.data ?? [];
   const answers = answersQ.data ?? [];
-  const ansById = new Map(answers.map((a) => [a.question_id, a]));
 
-  const sections = [...new Set(questions.map((q) => q.section))].sort((a, b) => a - b);
+  // Convert web Inspection.signatories (JSONB SignatoryEntry[]) → SignatureRecord[]
+  // The web stores signatures as full data-URLs already.
+  const signatures: SignatureRecord[] = (inspection.signatories ?? []).map(s => ({
+    id: '',
+    inspection_id: inspection.id,
+    signer_role: s.role as any,
+    full_name: s.name,
+    phone: null,
+    position: null,
+    // Ensure full data URL (web stores it as-is, already prefixed)
+    signature_png_url: s.signature.startsWith('data:')
+      ? s.signature
+      : `data:image/png;base64,${s.signature}`,
+    signed_at: s.signed_at,
+    status: 'signed' as const,
+    person_name: null,
+  }));
+
+  // Build a fallback template object when the DB row couldn't be fetched
+  // (edge case: template deleted after inspection was created).
+  const tpl: MobileTemplate = template
+    ? (template as unknown as MobileTemplate)
+    : {
+        id: inspection.template_id,
+        owner_id: null,
+        name: 'შემოწმების აქტი',
+        category: (inspection as any).template?.[0]?.category ?? null,
+        is_system: false,
+        required_qualifications: [],
+        required_signer_roles: [],
+      };
+
+  const html = buildInspectionPdfTemplate({
+    questionnaire: inspection as unknown as MobileInspection,
+    template: tpl,
+    project: project as unknown as MobileProject,
+    questions: questions as unknown as MobileQuestion[],
+    answers: answers as unknown as MobileAnswer[],
+    signatures,
+    photosByAnswer: photosByAnswer as any,
+    mode: 'pdf',
+  });
 
   return (
     <>
-      <style>{A4_PRINT_STYLES}</style>
-      <div className="print-toolbar no-print">
-        <button onClick={() => window.history.back()}>დახურვა</button>
-        <button className="primary" onClick={() => window.print()}>
+      <div style={{
+        position: 'sticky', top: 0, background: '#FAFAFA',
+        borderBottom: '1px solid #E5E7EB', padding: '10px 16px',
+        display: 'flex', gap: 8, justifyContent: 'flex-end', zIndex: 10,
+      }}>
+        <button
+          onClick={() => window.history.back()}
+          style={{ padding: '6px 14px', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer', border: '1px solid #D1D5DB', background: '#fff' }}
+        >
+          დახურვა
+        </button>
+        <button
+          onClick={() => iframeRef.current?.contentWindow?.print()}
+          style={{ padding: '6px 14px', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer', border: '1px solid #2F855A', background: '#2F855A', color: '#fff' }}
+        >
           ბეჭდვა
         </button>
       </div>
-      <div className="doc">
-        <h1>შემოწმების აქტი</h1>
-        <p className="muted" style={{ textAlign: 'center' }}>
-          {item.harness_name || `#${item.id.slice(0, 8)}`} ·{' '}
-          {new Date(item.created_at).toLocaleDateString('ka-GE')}
-        </p>
-
-        <h2>1. პროექტი</h2>
-        <div className="field"><span className="field-label">დასახელება:</span> {p?.name || '—'}</div>
-        <div className="field"><span className="field-label">კომპანია:</span> {p?.company_name || '—'}</div>
-        <div className="field"><span className="field-label">დეპარტამენტი:</span> {item.department || '—'}</div>
-        <div className="field"><span className="field-label">ინსპექტორი:</span> {item.inspector_name || '—'}</div>
-
-        {sections.map((s) => (
-          <section key={s} style={{ pageBreakInside: 'avoid' }}>
-            <h2>სექცია {s}</h2>
-            <table>
-              <thead>
-                <tr>
-                  <th>კითხვა</th>
-                  <th style={{ width: '32mm' }}>პასუხი</th>
-                  <th>კომენტარი</th>
-                </tr>
-              </thead>
-              <tbody>
-                {questions
-                  .filter((q) => q.section === s)
-                  .map((q) => {
-                    const a = ansById.get(q.id);
-                    return (
-                      <tr key={q.id}>
-                        <td>{q.title}</td>
-                        <td>{answerLabel(q, a)}</td>
-                        <td>{a?.comment || ''}</td>
-                      </tr>
-                    );
-                  })}
-              </tbody>
-            </table>
-          </section>
-        ))}
-
-        <h2>დასკვნა</h2>
-        <div className="field">
-          <span className="field-label">გამოყენებისთვის:</span>{' '}
-          {item.is_safe_for_use === null ? '—' : item.is_safe_for_use ? 'უსაფრთხო' : 'არა'}
-        </div>
-        <div className="field">{item.conclusion_text || '—'}</div>
-
-        <div className="signature-block">
-          <div>
-            ინსპექტორი: {item.inspector_name || '—'}
-            <br />
-            {item.inspector_signature
-              ? <img src={`data:image/png;base64,${item.inspector_signature}`} alt="ხელმოწერა" style={{ height: 56, marginTop: 4 }} />
-              : <span>ხელმოწერა / თარიღი: ___________</span>}
-          </div>
-        </div>
-      </div>
+      <iframe
+        ref={iframeRef}
+        srcDoc={html}
+        style={{ width: '100%', height: 'calc(100vh - 53px)', border: 'none', display: 'block' }}
+        title="შემოწმების აქტი"
+        onLoad={() => { if (!isPreview) iframeRef.current?.contentWindow?.print(); }}
+      />
     </>
   );
 }

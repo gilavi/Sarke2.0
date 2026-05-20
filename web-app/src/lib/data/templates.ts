@@ -25,12 +25,22 @@ export interface Template {
   created_at: string;
 }
 
+export async function getTemplate(id: string): Promise<Template | null> {
+  const { data, error } = await supabase
+    .from('templates')
+    .select('id, owner_id, name, category, is_system, required_signer_roles, created_at')
+    .eq('id', id)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data as Template | null) ?? null;
+}
+
 export async function listTemplates(): Promise<Template[]> {
   const { data, error } = await supabase
     .from('templates')
     .select('id, owner_id, name, category, is_system, required_signer_roles, created_at')
     .order('is_system', { ascending: false })
     .order('name', { ascending: true });
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return (data ?? []) as Template[];
 }

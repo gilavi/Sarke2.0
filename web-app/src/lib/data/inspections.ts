@@ -2,6 +2,15 @@ import { supabase } from '@/lib/supabase';
 
 export type InspectionStatus = 'draft' | 'in_progress' | 'completed' | string;
 
+/** One entry in the inspection's `signatories` JSONB array. */
+export interface SignatoryEntry {
+  name: string;
+  role: string;
+  /** Full base64 PNG data-URL, e.g. "data:image/png;base64,..." */
+  signature: string;
+  signed_at: string; // ISO 8601
+}
+
 export interface Inspection {
   id: string;
   project_id: string;
@@ -15,6 +24,7 @@ export interface Inspection {
   is_safe_for_use: boolean | null;
   inspector_signature: string | null;
   conclusion_photo_paths: string[];
+  signatories: SignatoryEntry[];
   created_at: string;
   completed_at: string | null;
   template?: { category: string | null }[] | null;
@@ -24,13 +34,13 @@ export async function listInspections(projectId?: string): Promise<Inspection[]>
   let q = supabase
     .from('inspections')
     .select(
-      'id, project_id, user_id, template_id, status, harness_name, department, inspector_name, conclusion_text, is_safe_for_use, inspector_signature, conclusion_photo_paths, created_at, completed_at, template:templates(category)',
+      'id, project_id, user_id, template_id, status, harness_name, department, inspector_name, conclusion_text, is_safe_for_use, inspector_signature, conclusion_photo_paths, signatories, created_at, completed_at, template:templates(category)',
     )
     .order('created_at', { ascending: false })
     .limit(50);
   if (projectId) q = q.eq('project_id', projectId);
   const { data, error } = await q;
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return (data ?? []) as Inspection[];
 }
 
@@ -38,7 +48,7 @@ export async function countInspections(): Promise<number> {
   const { count, error } = await supabase
     .from('inspections')
     .select('id', { count: 'exact', head: true });
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return count ?? 0;
 }
 
@@ -46,13 +56,13 @@ export async function getInspection(id: string): Promise<Inspection | null> {
   const { data, error } = await supabase
     .from('inspections')
     .select(
-      'id, project_id, user_id, template_id, status, harness_name, department, inspector_name, conclusion_text, is_safe_for_use, inspector_signature, conclusion_photo_paths, created_at, completed_at',
+      'id, project_id, user_id, template_id, status, harness_name, department, inspector_name, conclusion_text, is_safe_for_use, inspector_signature, conclusion_photo_paths, signatories, created_at, completed_at',
     )
     .eq('id', id)
     .maybeSingle();
   if (error) {
     console.error('[getInspection] error for id', id, error);
-    throw error;
+    throw new Error(error.message);
   }
   if (!data) {
     console.warn('[getInspection] no row found for id', id);
@@ -72,13 +82,13 @@ export async function listInspectionPdfs(inspectionId: string): Promise<CertRow[
     .select('id, pdf_url, generated_at')
     .eq('inspection_id', inspectionId)
     .order('generated_at', { ascending: false });
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return (data ?? []) as CertRow[];
 }
 
 export async function signedPdfUrl(path: string): Promise<string> {
   const { data, error } = await supabase.storage.from('pdfs').createSignedUrl(path, 60 * 10);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data.signedUrl;
 }
 
@@ -106,16 +116,16 @@ export async function createInspection(input: CreateInspectionInput): Promise<In
       status: 'draft',
     })
     .select(
-      'id, project_id, user_id, template_id, status, harness_name, department, inspector_name, conclusion_text, is_safe_for_use, inspector_signature, conclusion_photo_paths, created_at, completed_at',
+      'id, project_id, user_id, template_id, status, harness_name, department, inspector_name, conclusion_text, is_safe_for_use, inspector_signature, conclusion_photo_paths, signatories, created_at, completed_at',
     )
     .single();
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data as Inspection;
 }
 
 export async function deleteInspection(id: string): Promise<void> {
   const { error } = await supabase.from('inspections').delete().eq('id', id);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
 }
 
 export interface Question {
@@ -139,7 +149,7 @@ export async function listQuestions(templateId: string): Promise<Question[]> {
     .eq('template_id', templateId)
     .order('section', { ascending: true })
     .order('"order"', { ascending: true });
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return (data ?? []) as Question[];
 }
 
@@ -157,9 +167,9 @@ export interface Answer {
 export async function listAnswers(inspectionId: string): Promise<Answer[]> {
   const { data, error } = await supabase
     .from('answers')
-    .select('id, inspection_id, question_id, value_bool, value_num, value_text, comment')
+    .select('id, inspection_id, question_id, value_bool, value_num, value_text, grid_values, comment')
     .eq('inspection_id', inspectionId);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return (data ?? []) as Answer[];
 }
 
@@ -188,7 +198,7 @@ export async function upsertAnswer(input: {
     )
     .select('id, inspection_id, question_id, value_bool, value_num, value_text, grid_values, comment')
     .single();
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data as Answer;
 }
 
@@ -199,16 +209,39 @@ export interface AnswerPhoto {
   answer_id: string;
   storage_path: string;
   caption: string | null;
+  /** Geo-tagged address stored at upload time (mobile only; null on web uploads). */
+  address: string | null;
   created_at: string;
 }
 
 export async function listAnswerPhotos(answerId: string): Promise<AnswerPhoto[]> {
   const { data, error } = await supabase
     .from('answer_photos')
-    .select('id, answer_id, storage_path, caption, created_at')
+    .select('id, answer_id, storage_path, caption, address, created_at')
     .eq('answer_id', answerId);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return (data ?? []) as AnswerPhoto[];
+}
+
+/**
+ * Batch-fetch photos for multiple answer IDs in a single query.
+ * Returns a map of answerId → AnswerPhoto[].
+ */
+export async function listAllAnswerPhotos(
+  answerIds: string[],
+): Promise<Record<string, AnswerPhoto[]>> {
+  if (!answerIds.length) return {};
+  const { data, error } = await supabase
+    .from('answer_photos')
+    .select('id, answer_id, storage_path, caption, address, created_at')
+    .in('answer_id', answerIds);
+  if (error) throw new Error(error.message);
+  const result: Record<string, AnswerPhoto[]> = {};
+  for (const p of data ?? []) {
+    const entry = p as AnswerPhoto;
+    (result[entry.answer_id] ??= []).push(entry);
+  }
+  return result;
 }
 
 export async function addAnswerPhoto(
@@ -229,13 +262,13 @@ export async function addAnswerPhoto(
     })
     .select('id, answer_id, storage_path, caption, created_at')
     .single();
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data as AnswerPhoto;
 }
 
 export async function removeAnswerPhoto(photoId: string, storagePath: string): Promise<void> {
   const { error } = await supabase.from('answer_photos').delete().eq('id', photoId);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   // Best-effort blob removal
   await supabase.storage.from('answer-photos').remove([storagePath]);
 }
@@ -250,11 +283,27 @@ export async function updateInspection(
     is_safe_for_use?: boolean | null;
     inspector_signature?: string | null;
     conclusion_photo_paths?: string[];
+    signatories?: SignatoryEntry[];
     status?: 'draft' | 'completed';
   },
 ): Promise<void> {
   const updates: Record<string, unknown> = { ...patch };
   if (patch.status === 'completed') updates.completed_at = new Date().toISOString();
   const { error } = await supabase.from('inspections').update(updates).eq('id', id);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Fetch the current session user's saved_signature_url (storage path) from
+ * the public.users table. Returns null if not set or not authenticated.
+ */
+export async function getSavedSignatureUrl(): Promise<string | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data } = await supabase
+    .from('users')
+    .select('saved_signature_url')
+    .eq('id', user.id)
+    .maybeSingle();
+  return (data?.saved_signature_url as string | null) ?? null;
 }
