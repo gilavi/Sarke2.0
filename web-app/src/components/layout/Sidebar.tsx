@@ -22,7 +22,10 @@ import {
   ChevronLeft,
   ChevronDown,
   MoreHorizontal,
+  type LucideProps,
 } from 'lucide-react';
+import type { ComponentType } from 'react';
+type LucideIcon = ComponentType<LucideProps>;
 import { useAuth } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 
@@ -31,7 +34,7 @@ import { cn } from '@/lib/utils';
 interface NavItemDef {
   to: string;
   label: string;
-  icon: React.ElementType;
+  icon: LucideIcon;
   shortcut?: string;
 }
 
@@ -132,11 +135,7 @@ function RailNavItem({
         }
         aria-label={item.label}
       >
-        <item.icon
-          size={20}
-          className="shrink-0"
-          strokeWidth={isActive ? 2.5 : 1.75}
-        />
+        {(() => { const ItemIcon = item.icon; return <ItemIcon size={20} className="shrink-0" strokeWidth={isActive ? 2.5 : 1.75} />; })()}
 
         {/* Label — only visible when expanded */}
         <AnimatePresence initial={false}>
@@ -243,7 +242,7 @@ interface SidebarProps {
 }
 
 export const Sidebar = memo(function Sidebar({ open = false, onClose }: SidebarProps) {
-  const [isPinned, setIsPinned] = useState(() => localStorage.getItem('sidebar-pinned') === 'true');
+  const [isPinned, setIsPinned] = useState(() => localStorage.getItem('sidebar-pinned') !== 'false');
   const [isHovered, setIsHovered] = useState(false);
   const { user, signOut } = useAuth();
 
@@ -475,12 +474,15 @@ export const Sidebar = memo(function Sidebar({ open = false, onClose }: SidebarP
                           )
                         }
                       >
-                        {({ isActive }) => (
-                          <>
-                            <item.icon size={20} strokeWidth={isActive ? 2.5 : 1.75} />
-                            <span>{item.label}</span>
-                          </>
-                        )}
+                        {({ isActive }) => {
+                          const ItemIcon = item.icon;
+                          return (
+                            <>
+                              <ItemIcon size={20} strokeWidth={isActive ? 2.5 : 1.75} />
+                              <span>{item.label}</span>
+                            </>
+                          );
+                        }}
                       </NavLink>
                     </li>
                   ))}

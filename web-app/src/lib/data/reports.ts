@@ -28,7 +28,7 @@ export async function listReports(projectId?: string): Promise<Report[]> {
   let q = supabase.from('reports').select(COLS).order('created_at', { ascending: false });
   if (projectId) q = q.eq('project_id', projectId);
   const { data, error } = await q;
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return (data ?? []) as Report[];
 }
 
@@ -38,13 +38,13 @@ export async function getReport(id: string): Promise<Report | null> {
     .select(COLS)
     .eq('id', id)
     .maybeSingle();
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return (data as Report | null) ?? null;
 }
 
 export async function signedReportPdfUrl(path: string): Promise<string> {
   const { data, error } = await supabase.storage.from('pdfs').createSignedUrl(path, 60 * 10);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data.signedUrl;
 }
 
@@ -52,7 +52,7 @@ export async function signedReportPhotoUrl(path: string): Promise<string> {
   const { data, error } = await supabase.storage
     .from('report-photos')
     .createSignedUrl(path, 60 * 10);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data.signedUrl;
 }
 
@@ -74,7 +74,7 @@ export async function createReport(args: {
     })
     .select(COLS)
     .single();
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data as Report;
 }
 
@@ -115,7 +115,7 @@ export async function addReportSlide(args: {
     .eq('id', args.report.id)
     .select(COLS)
     .single();
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data as Report;
 }
 
@@ -133,7 +133,7 @@ export async function updateReportSlide(
     .eq('id', report.id)
     .select(COLS)
     .single();
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data as Report;
 }
 
@@ -157,7 +157,7 @@ export async function removeReportSlide(report: Report, slideId: string): Promis
     .eq('id', report.id)
     .select(COLS)
     .single();
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data as Report;
 }
 
@@ -169,5 +169,5 @@ export async function deleteReport(report: Report): Promise<void> {
     await supabase.storage.from('report-photos').remove(paths);
   }
   const { error } = await supabase.from('reports').delete().eq('id', report.id);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
 }

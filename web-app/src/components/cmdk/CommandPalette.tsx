@@ -1,12 +1,14 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, X, FileText, FolderOpen, AlertTriangle, Megaphone, ClipboardCheck, Calendar, Settings, Home } from 'lucide-react';
+import { Search, X, FileText, FolderOpen, AlertTriangle, Megaphone, ClipboardCheck, Calendar, Settings, Home, type LucideProps } from 'lucide-react';
+import type { ComponentType } from 'react';
+type LucideIcon = ComponentType<LucideProps>;
 import { ActionIcon } from '@mantine/core';
 import { useCommandStore } from '@/store/commandStore';
 import { DURATION, EASE } from '@/lib/animations';
 
-const ICONS: Record<string, React.ElementType> = {
+const ICONS: Record<string, LucideIcon> = {
   Home, FileText, FolderOpen, AlertTriangle, Megaphone, ClipboardCheck, Calendar, Settings,
 };
 

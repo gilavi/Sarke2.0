@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Shield, FolderPlus, ClipboardCheck, PartyPopper } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useConfetti } from '@/hooks/useConfetti';
+import { useAuth } from '@/lib/auth';
 
 const STEPS = [
   { title: 'მოგესალმებით Sarke-ში', desc: 'თქვენი შრომის უსაფრთხოების ცენტრალური პანელი.', icon: Shield },
@@ -15,11 +16,13 @@ export function WelcomeModal() {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
   const fireConfetti = useConfetti();
+  const { session } = useAuth();
 
   useEffect(() => {
+    if (!session) return;
     const seen = localStorage.getItem('sarke-welcome-seen');
     if (!seen) setOpen(true);
-  }, []);
+  }, [session]);
 
   function close() {
     localStorage.setItem('sarke-welcome-seen', '1');

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { Pencil, Trash2 } from 'lucide-react';
+import { Modal } from '@mantine/core';
 import { Button } from '@/components/ui/button';
 import { SkeletonList } from '@/components/SkeletonCard';
 import {
@@ -87,6 +88,7 @@ export default function Inspections() {
   const [newInspectionOpen, setNewInspectionOpen] = useState(false);
   const [newInspectionCategory, setNewInspectionCategory] = useState<string>('');
   const [harnessOpen, setHarnessOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<Row | null>(null);
 
   const { data: genericInspections, isLoading: l1 } = useQuery({ queryKey: ['inspections'], queryFn: () => listInspections() });
   const { data: bobcats, isLoading: l2 } = useQuery({ queryKey: ['bobcatInspections'], queryFn: () => listBobcatInspections() });
@@ -105,16 +107,18 @@ export default function Inspections() {
   const delExcavator = useMutation({ mutationFn: deleteExcavatorInspection, onSuccess: () => qc.invalidateQueries({ queryKey: ['excavatorInspections'] }) });
   const delGeneral = useMutation({ mutationFn: deleteGeneralEquipmentInspection, onSuccess: () => qc.invalidateQueries({ queryKey: ['generalEquipmentInspections'] }) });
 
-  function handleDelete(row: Row) {
-    const ok = window.confirm('წავშალოთ ეს ჩანაწერი?');
-    if (!ok) return;
-    switch (row.type) {
-      case 'harness': delInspection.mutate(row.id); break;
-      case 'bobcat': delBobcat.mutate(row.id); break;
-      case 'excavator': delExcavator.mutate(row.id); break;
-      case 'general': delGeneral.mutate(row.id); break;
+  function confirmDelete() {
+    if (!pendingDelete) return;
+    switch (pendingDelete.type) {
+      case 'harness': delInspection.mutate(pendingDelete.id); break;
+      case 'bobcat': delBobcat.mutate(pendingDelete.id); break;
+      case 'excavator': delExcavator.mutate(pendingDelete.id); break;
+      case 'general': delGeneral.mutate(pendingDelete.id); break;
     }
+    setPendingDelete(null);
   }
+
+  const isDeleting = delInspection.isPending || delBobcat.isPending || delExcavator.isPending || delGeneral.isPending;
 
   const allRows: Row[] = [
     ...(genericInspections ?? []).map((i): Row => {
@@ -267,7 +271,7 @@ export default function Inspections() {
                     <Pencil size={14} />
                   </Link>
                   <button
-                    onClick={() => handleDelete(row)}
+                    onClick={() => setPendingDelete(row)}
                     className="rounded p-1 text-neutral-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
                   >
                     <Trash2 size={14} />
@@ -278,6 +282,51 @@ export default function Inspections() {
           ))}
         </motion.div>
       )}
+
+      {/* ── Delete confirmation modal ── */}
+      <Modal
+        opened={!!pendingDelete}
+        onClose={() => setPendingDelete(null)}
+        withCloseButton={false}
+        centered
+        size="sm"
+        radius="lg"
+        overlayProps={{ blur: 2 }}
+      >
+        <div className="space-y-4 px-1 py-2">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/40">
+              <Trash2 size={18} className="text-red-600 dark:text-red-400" />
+            </div>
+            <div>
+              <p className="font-semibold text-neutral-900 dark:text-neutral-100">ჩანაწერის წაშლა</p>
+              <p className="mt-0.5 text-sm text-neutral-500 dark:text-neutral-400">
+                {pendingDelete?.label && (
+                  <span className="font-medium text-neutral-700 dark:text-neutral-300">„{pendingDelete.label}"</span>
+                )}{' '}
+                სამუდამოდ წაიშლება. ეს მოქმედება შეუქცევადია.
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => setPendingDelete(null)}
+              className="rounded-xl border border-neutral-200 px-4 py-2 text-sm font-medium text-neutral-600 transition-colors hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+            >
+              გაუქმება
+            </button>
+            <button
+              type="button"
+              onClick={confirmDelete}
+              disabled={isDeleting}
+              className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:opacity-60"
+            >
+              {isDeleting ? 'იშლება…' : 'წაშლა'}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

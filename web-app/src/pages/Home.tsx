@@ -1,10 +1,12 @@
 import { useNavigate, Link } from 'react-router-dom';
+import type { ComponentType } from 'react';
+type LucideIcon = ComponentType<import('lucide-react').LucideProps>;
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   AlertTriangle, Megaphone, FileText, FolderOpen,
-  Flame, Zap, ChevronDown
+  Flame, Zap, ChevronDown,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -39,7 +41,7 @@ import { routes } from '@/app/routes';
 
 /* ─── Quick action tile ─── */
 function QuickActionTile({ to, icon: Icon, label, color, darkColor }: {
-  to: string; icon: React.ElementType; label: string; color: string; darkColor: string;
+  to: string; icon: LucideIcon; label: string; color: string; darkColor: string;
 }) {
   return (
     <Link

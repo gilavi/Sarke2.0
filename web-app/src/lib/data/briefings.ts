@@ -51,7 +51,7 @@ export async function listBriefings(projectId?: string): Promise<Briefing[]> {
     .limit(50);
   if (projectId) q = q.eq('project_id', projectId);
   const { data, error } = await q;
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return ((data ?? []) as DbRow[]).map(toModel);
 }
 
@@ -61,7 +61,7 @@ export async function getBriefing(id: string): Promise<Briefing | null> {
     .select('id, project_id, date_time, topics, participants, inspector_name, status, created_at')
     .eq('id', id)
     .maybeSingle();
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data ? toModel(data as DbRow) : null;
 }
 
@@ -90,7 +90,7 @@ export interface CreateBriefingInput {
 
 export async function deleteBriefing(id: string): Promise<void> {
   const { error } = await supabase.from('briefings').delete().eq('id', id);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
 }
 
 export async function updateBriefing(
@@ -110,7 +110,7 @@ export async function updateBriefing(
   if (patch.participants !== undefined) updates.participants = patch.participants;
   if (patch.status !== undefined) updates.status = patch.status;
   const { error } = await supabase.from('briefings').update(updates).eq('id', id);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
 }
 
 export async function createBriefing(input: CreateBriefingInput): Promise<Briefing> {
@@ -130,6 +130,6 @@ export async function createBriefing(input: CreateBriefingInput): Promise<Briefi
     })
     .select('id, project_id, date_time, topics, participants, inspector_name, status, created_at')
     .single();
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return toModel(data as DbRow);
 }

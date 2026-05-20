@@ -1,11 +1,9 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Animated,
   Dimensions,
-  Keyboard,
   Linking,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -22,35 +20,23 @@ import Reanimated, {
   withDelay,
 } from 'react-native-reanimated';
 import { Path, Svg } from 'react-native-svg';
-import { useSheetKeyboardMargin } from '../../lib/useSheetKeyboardMargin';
 import { Image } from 'expo-image';
 import { A11yText as Text } from '../../components/primitives/A11yText';
-import { SheetLayout } from '../../components/SheetLayout';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
-import { MapPreview } from '../../components/MapPreview';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { SkeletonMap } from '../../components/SkeletonMap';
-import { LocationRow } from '../../components/LocationRow';
-import { MapPickerInline } from '../../components/MapPickerInline';
 import { routeForInspection } from '../../lib/inspectionRouting';
 import { useBottomSheet } from '../../components/BottomSheet';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
-import { Button } from '../../components/ui';
-import { FloatingLabelInput } from '../../components/inputs/FloatingLabelInput';
 import { Skeleton, SkeletonCard, SkeletonListCard } from '../../components/Skeleton';
-import { MapPicker, type LatLng } from '../../components/MapPicker';
 import { SectionEmptyState } from '../../components/EmptyState';
-import { UploadedFilesSection } from '../../components/UploadedFilesSection';
 import {
   projectsApi,
   projectFilesApi,
   questionnairesApi,
-  templatesApi,
-  incidentsApi,
-  reportsApi,
 } from '../../lib/services';
 import { bobcatApi } from '../../lib/bobcatService';
 import { excavatorApi } from '../../lib/excavatorService';
@@ -69,7 +55,6 @@ import {
   useIncidentsByProject,
   useBriefingsByProject,
   useReportsByProject,
-  useCalendarEvents,
   useBobcatInspectionsByProject,
   useExcavatorInspectionsByProject,
   useGeneralEquipmentInspectionsByProject,
@@ -83,17 +68,14 @@ import {
 } from '../../lib/apiHooks';
 import { formatBlDate, BL_RESULT_COLORS, countsByStatus } from '../../types/breathalyzerLog';
 import type { BreathalizerLog } from '../../types/breathalyzerLog';
-import { supabase, STORAGE_BUCKETS } from '../../lib/supabase';
+import { supabase } from '../../lib/supabase';
 import { useToast } from '../../lib/toast';
-import { imageForDisplay } from '../../lib/imageUrl';
 import { useTheme } from '../../lib/theme';
-import { INCIDENT_COLORS, STATUS_DOT_COLOR } from '../../lib/statusColors';
-
 import { toErrorMessage } from '../../lib/logError';
 import { friendlyError } from '../../lib/errorMap';
 import { formatShortDateTime } from '../../lib/formatDate';
-import type { Briefing, CrewMember, Incident, IncidentType, Order, Project, ProjectFile, Questionnaire, Report, Template } from '../../types/models';
-import { INCIDENT_TYPE_LABEL, ORDER_DOCUMENT_TYPE_LABEL } from '../../types/models';
+import type { Briefing, CrewMember, Incident, Order, Project, ProjectFile, Questionnaire, Report, Template } from '../../types/models';
+import { ORDER_DOCUMENT_TYPE_LABEL } from '../../types/models';
 import { briefingsApi } from '../../lib/briefingsApi';
 import { ordersApi } from '../../lib/ordersApi';
 import { RoleSlotList } from '../../components/RoleSlotList';
@@ -108,6 +90,9 @@ import { QuickActions, type QuickAction } from '../../components/QuickActions';
 import { InspectionTypeAvatar } from '../../components/InspectionTypeAvatar';
 import { RecordTypePill } from '../../components/RecordTypePill';
 import { CustomDropdown } from '../../components/ui/CustomDropdown';
+import { EditProjectSheet } from '../../components/projects/EditProjectSheet';
+import { UpcomingSection } from '../../components/projects/UpcomingSection';
+import { EmptyState, FileThumbnail, IncidentRow, ViewMoreRow } from '../../components/projects/ProjectRowHelpers';
 
 const SCREEN_W = Dimensions.get('window').width;
 const SVG_H = 80;      // total SVG element height
@@ -1527,476 +1512,6 @@ export default function ProjectDetail() {
       )}
     </View>
     </TourGuide>
-  );
-}
-
-function StatItem({ number, label, theme }: { number: number; label: string; theme: any }) {
-  return (
-    <View style={{ alignItems: 'center', flex: 1 }}>
-      <Text style={{ fontSize: 22, fontWeight: '700', color: theme.colors.ink }}>{number}</Text>
-      <Text style={{ fontSize: 11, color: theme.colors.inkSoft, marginTop: 2, fontWeight: '500' }}>{label}</Text>
-    </View>
-  );
-}
-
-function EmptyState({ text }: { text: string }) {
-  const { theme } = useTheme();
-  const styles = useMemo(() => getStyles(theme), [theme]);
-
-  return (
-    <View style={styles.emptyState}>
-      <Ionicons name="document-text-outline" size={28} color={theme.colors.borderStrong} />
-      <Text style={styles.emptyStateText}>{text}</Text>
-    </View>
-  );
-}
-
-const FileThumbnail = memo(function FileThumbnail({ file }: { file: ProjectFile }) {
-  const { theme } = useTheme();
-  const isImage = !!file.mime_type?.startsWith('image/');
-  const [uri, setUri] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!isImage) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const u = await imageForDisplay(STORAGE_BUCKETS.projectFiles, file.storage_path);
-        if (!cancelled) setUri(u);
-      } catch {
-        // fall through to icon fallback
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [isImage, file.storage_path]);
-
-  const tile = useMemo(
-    () => ({
-      width: 72,
-      aspectRatio: 16 / 9,
-      borderRadius: 8,
-      backgroundColor: theme.colors.surfaceSecondary,
-      overflow: 'hidden' as const,
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
-    }),
-    [theme.colors.surfaceSecondary],
-  );
-
-  if (isImage && uri) {
-    return (
-      <View style={tile}>
-        <Image source={{ uri }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
-      </View>
-    );
-  }
-
-  const iconName = file.mime_type?.includes('pdf')
-    ? 'document-text-outline'
-    : isImage
-      ? 'image-outline'
-      : 'document-outline';
-
-  return (
-    <View style={tile}>
-      <Ionicons name={iconName} size={20} color={theme.colors.inkSoft} />
-    </View>
-  );
-});
-
-/**
- * "View more" row at the bottom of a section preview.
- * Renders stacked inspection-type icons for the hidden items.
- * Inputs:
- *   - items: icon descriptors for the overflow items
- *   - total: number of overflow items shown in the "+ N მეტი" label
- *   - onPress: navigate to the full list screen
- */
-function ViewMoreRow({
-  items,
-  total,
-  onPress,
-}: {
-  items: { category?: string | null; ionicon?: string }[];
-  total: number;
-  onPress: () => void;
-}) {
-  const { theme } = useTheme();
-  const styles = useMemo(() => getStyles(theme), [theme]);
-  const avatarItems = items.slice(0, 3);
-
-  return (
-    <Pressable
-      onPress={onPress}
-      style={styles.listRow}
-      {...a11y(`+ ${total} მეტი`, 'სრული სიის გახსნა', 'button')}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        {avatarItems.map((item, idx) => (
-          item.category != null ? (
-            <View key={idx} style={{ marginLeft: idx === 0 ? 0 : -10 }}>
-              <InspectionTypeAvatar category={item.category} size={32} />
-            </View>
-          ) : (
-            <View
-              key={idx}
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 16,
-                backgroundColor: theme.colors.surface,
-                borderWidth: 1.5,
-                borderColor: theme.colors.border,
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginLeft: idx === 0 ? 0 : -10,
-                shadowColor: '#000',
-                shadowOpacity: 0.06,
-                shadowRadius: 4,
-                elevation: 2,
-              }}
-            >
-              <Ionicons
-                name={(item.ionicon ?? 'document-outline') as any}
-                size={14}
-                color={theme.colors.inkSoft}
-              />
-            </View>
-          )
-        ))}
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.listRowTitle}>+ {total} მეტი</Text>
-      </View>
-      <Ionicons name="chevron-forward" size={18} color={theme.colors.borderStrong} />
-    </Pressable>
-  );
-}
-
-function SafeSigImage({ uri }: { uri: string }) {
-  const { theme } = useTheme();
-  const styles = useMemo(() => getStyles(theme), [theme]);
-
-  const [err, setErr] = useState(false);
-  if (err) return <Ionicons name="person" size={20} color={theme.colors.inkFaint} />;
-  return (
-    <Image
-      source={{ uri }}
-      style={{ width: '100%', height: '100%' }}
-      contentFit="contain"
-      onError={() => setErr(true)}
-    />
-  );
-}
-
-function EditProjectSheet({
-  visible,
-  project,
-  onClose,
-  onSaved,
-}: {
-  visible: boolean;
-  project: Project | null;
-  onClose: () => void;
-  onSaved: (p: Project) => void;
-}) {
-  const { theme } = useTheme();
-  const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
-  const toast = useToast();
-  const [company, setCompany] = useState('');
-  const [address, setAddress] = useState('');
-  const [phone, setPhone] = useState('');
-  const [pin, setPin] = useState<LatLng | null>(null);
-  const [logo, setLogo] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [mapVisible, setMapVisible] = useState(false);
-  const keyboardMargin = useSheetKeyboardMargin();
-
-  // Sync when project changes / modal opens
-  useFocusEffect(
-    useCallback(() => {
-      if (visible && project) {
-        setCompany(project.company_name || project.name);
-        setAddress(project.address ?? '');
-        setPhone(project.contact_phone ?? '');
-        setPin(
-          project.latitude != null && project.longitude != null
-            ? { latitude: project.latitude, longitude: project.longitude }
-            : null,
-        );
-        setLogo(project.logo ?? null);
-      }
-    }, [visible, project]),
-  );
-
-  const onPickLogo = async () => {
-    const next = await pickProjectLogo();
-    if (next) setLogo(next);
-  };
-
-  const save = async () => {
-    if (!project || !company.trim()) return;
-    setBusy(true);
-    try {
-      const saved = (await projectsApi.update(project.id, {
-        name: company.trim(),
-        company_name: company.trim(),
-        address: address.trim() || null,
-        contact_phone: phone.trim() || null,
-        latitude: pin?.latitude ?? null,
-        longitude: pin?.longitude ?? null,
-        logo,
-      }));
-      onSaved(saved);
-    } catch (e) {
-      toast.error(friendlyError(e, t('errors.saveFailed')));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={() => mapVisible ? setMapVisible(false) : onClose()}>
-      <View style={{ flex: 1, justifyContent: 'flex-end' }}>
-        {/* Backdrop */}
-        <Pressable
-          style={[StyleSheet.absoluteFillObject, { backgroundColor: theme.colors.overlay }]}
-          onPress={() => mapVisible ? setMapVisible(false) : onClose()}
-          {...a11y(t('common.close'), 'შეეხეთ ფონის დასახურად', 'button')}
-        />
-        {/* Card — marginBottom rides the iOS keyboard 1:1 */}
-        <Animated.View style={{ width: '100%', marginBottom: keyboardMargin }}>
-          <Pressable onPress={() => {}} style={{ width: '100%' }}>
-              <SheetLayout
-                maxHeightRatio={0.92}
-                header={{ title: t('projects.edit'), onClose }}
-                footer={
-                  <Button
-                    title={t('common.save')}
-                    size="lg"
-                    onPress={save}
-                    loading={busy}
-                    disabled={!company.trim()}
-                  />
-                }
-              >
-                <View style={{ alignItems: 'center', gap: 8, paddingVertical: 4 }}>
-                  <ProjectAvatar
-                    project={{ name: company, logo }}
-                    size={88}
-                    editable
-                    onEdit={onPickLogo}
-                  />
-                  {logo ? (
-                    <Pressable onPress={() => setLogo(null)} hitSlop={13}>
-                      <Text style={{ color: theme.colors.danger, fontSize: 13, fontWeight: '600' }}>
-                        {t('projects.logoRemove')}
-                      </Text>
-                    </Pressable>
-                  ) : null}
-                </View>
-
-                <FloatingLabelInput
-                  label={t('common.company')}
-                  required
-                  value={company}
-                  onChangeText={setCompany}
-                  autoFocus
-                />
-
-                <FloatingLabelInput
-                  label={t('common.address')}
-                  value={address}
-                  onChangeText={setAddress}
-                />
-
-                <FloatingLabelInput
-                  label="საკონტაქტო ტელეფონი"
-                  value={phone}
-                  onChangeText={setPhone}
-                  keyboardType="phone-pad"
-                />
-
-                <LocationRow pin={pin} address={address} onPress={() => { Keyboard.dismiss(); setMapVisible(true); }} />
-              </SheetLayout>
-          </Pressable>
-        </Animated.View>
-
-        {/* Full-screen map overlay — no nested Modal */}
-        {mapVisible && (
-          <View style={StyleSheet.absoluteFillObject}>
-            <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingTop: insets.top + 12, paddingVertical: 12 }}>
-                <View style={{ width: 24 }} />
-                <Text style={{ flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '700', color: theme.colors.ink }}>
-                  მდებარეობის არჩევა
-                </Text>
-                <Pressable onPress={() => setMapVisible(false)} hitSlop={10} {...a11y(t('common.close'), 'რუკის დახურვა', 'button')}>
-                  <Ionicons name="close" size={24} color={theme.colors.ink} />
-                </Pressable>
-              </View>
-              <MapPickerInline
-                initialPin={pin}
-                initialAddress={address}
-                onConfirm={(newPin, newAddress) => {
-                  setPin(newPin);
-                  setAddress(newAddress);
-                  setMapVisible(false);
-                }}
-                onCancel={() => setMapVisible(false)}
-              />
-            </View>
-          </View>
-        )}
-      </View>
-    </Modal>
-  );
-}
-
-function IncidentRow({
-  incident,
-  onPress,
-}: {
-  incident: Incident;
-  onPress: () => void;
-}) {
-  const { theme } = useTheme();
-  const badge = INCIDENT_COLORS[incident.type as IncidentType] ?? INCIDENT_COLORS.minor;
-  const styles = useMemo(() => getStyles(theme), [theme]);
-
-  return (
-    <Pressable onPress={onPress} style={styles.listRow}>
-      <View
-        style={[
-          styles.statusIcon,
-          { backgroundColor: badge.bg, borderWidth: 1, borderColor: badge.border },
-        ]}
-      >
-        <Ionicons name="warning-outline" size={13} color={badge.text} />
-      </View>
-      <View style={{ flex: 1 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <View
-            style={{
-              backgroundColor: badge.bg,
-              borderRadius: 4,
-              borderWidth: 1,
-              borderColor: badge.border,
-              paddingHorizontal: 6,
-              paddingVertical: 2,
-            }}
-          >
-            <Text style={{ fontSize: 10, fontWeight: '700', color: badge.text }}>
-              {INCIDENT_TYPE_LABEL[incident.type as IncidentType] ?? incident.type}
-            </Text>
-          </View>
-          {incident.status === 'draft' && (
-            <View
-              style={{
-                backgroundColor: theme.colors.warnSoft,
-                borderRadius: 4,
-                paddingHorizontal: 5,
-                paddingVertical: 2,
-              }}
-            >
-              <Text style={{ fontSize: 10, fontWeight: '700', color: theme.colors.certTint }}>
-                დრაფტი
-              </Text>
-            </View>
-          )}
-        </View>
-        <Text style={[styles.listRowTitle, { marginTop: 3 }]} numberOfLines={1}>
-          {incident.location || incident.description || '—'}
-        </Text>
-        <Text style={styles.listRowSubtitle}>
-          {formatShortDateTime(incident.date_time)}
-        </Text>
-      </View>
-      <Ionicons name="chevron-forward" size={18} color={theme.colors.borderStrong} />
-    </Pressable>
-  );
-}
-
-// ── Upcoming section ────────────────────────────────────────────────────────
-
-
-function UpcomingSection({ projectId }: { projectId: string | undefined }) {
-  const { theme } = useTheme();
-  const { t } = useTranslation();
-  const router = useRouter();
-  const events = useCalendarEvents();
-
-  const upcoming = useMemo(() => {
-    if (!projectId) return [];
-    return events
-      .filter(e => !e.isPast && e.projectId === projectId)
-      .sort((a, b) => a.date.getTime() - b.date.getTime())
-      .slice(0, 3);
-  }, [events, projectId]);
-
-  const styles = useMemo(() => getStyles(theme), [theme]);
-
-  if (upcoming.length === 0) return null;
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  function relativeLabel(date: Date): string {
-    const d = new Date(date);
-    d.setHours(0, 0, 0, 0);
-    const diff = Math.round((d.getTime() - today.getTime()) / 86400000);
-    if (diff === 0) return t('calendar.dueToday', 'დღეს');
-    if (diff > 0) return t('calendar.inDays', { count: diff, defaultValue: `${diff} დღეში` });
-    return t('calendar.overdueDays', { count: Math.abs(diff), defaultValue: `${Math.abs(diff)} დღე გადაცილდა` });
-  }
-
-  return (
-    <View style={[styles.sectionCard, { marginHorizontal: 16, marginTop: 12 }]}>
-      <View style={styles.sectionHeader}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Ionicons name="calendar-outline" size={16} color={theme.colors.inkSoft} />
-          <Text style={styles.sectionTitle}>{t('calendar.upcomingSection')}</Text>
-          <Text style={styles.sectionCount}>{upcoming.length}</Text>
-        </View>
-        <Pressable
-          onPress={() => router.push(`/(tabs)/calendar?projectId=${projectId}` as any)}
-          hitSlop={16}
-        >
-          <Text style={styles.sectionAddLink}>{t('common.all', 'ყველა')}</Text>
-        </Pressable>
-      </View>
-      <View style={{ gap: 8, marginTop: 10 }}>
-        {upcoming.map(event => {
-          const color = STATUS_DOT_COLOR[event.status as keyof typeof STATUS_DOT_COLOR] ?? theme.colors.inkSoft;
-          const iconName = event.type === 'inspection' ? 'shield-checkmark-outline' : 'people-outline';
-          return (
-            <Pressable
-              key={event.id}
-              onPress={() => router.push(`/(tabs)/calendar?projectId=${projectId}` as any)}
-              style={styles.listRow}
-            >
-              <View
-                style={[
-                  styles.statusIcon,
-                  { backgroundColor: color + '20', width: 30, height: 30, borderRadius: 8 },
-                ]}
-              >
-                <Ionicons name={iconName as any} size={16} color={color} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.listRowTitle} numberOfLines={1}>{event.title}</Text>
-              </View>
-              <Text style={{ fontSize: 12, fontWeight: '600', color }}>
-                {relativeLabel(event.date)}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-    </View>
   );
 }
 

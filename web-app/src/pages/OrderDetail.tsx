@@ -16,6 +16,8 @@ import {
   type LaborSafetyOrderFormData,
   type AlcoholControlOrderFormData,
 } from '@/lib/data/orders';
+import { getProject } from '@/lib/data/projects';
+import { routes } from '@/app/routes';
 import {
   buildFireSafetyOrderHtml,
   buildFireSafetyOrderEnterpriseHtml,
@@ -33,6 +35,12 @@ export default function OrderDetail() {
     queryKey: ['order', id],
     queryFn: () => getOrder(id!),
     enabled: !!id,
+  });
+  const projectId = order?.projectId;
+  const { data: project } = useQuery({
+    queryKey: ['project', projectId],
+    queryFn: () => getProject(projectId!),
+    enabled: !!projectId,
   });
 
   const [signingDirector, setSigningDirector] = useState(false);
@@ -147,13 +155,24 @@ export default function OrderDetail() {
 
   return (
     <div className="space-y-6">
-      {/* Back */}
-      <Link
-        to={`/projects/${order.projectId}`}
-        className="text-sm text-brand-600 hover:underline"
-      >
-        ← პროექტი
-      </Link>
+      {/* Breadcrumb */}
+      <nav className="flex items-center gap-1 text-sm">
+        {project && (
+          <>
+            <Link to={routes.projects.detail(project.id)} className="text-brand-600 hover:underline">
+              {project.name}
+            </Link>
+            <span className="text-neutral-400">›</span>
+          </>
+        )}
+        <Link to={routes.orders.list(projectId)} className="text-brand-600 hover:underline">
+          ბრძანებები
+        </Link>
+        <span className="text-neutral-400">›</span>
+        <span className="truncate max-w-[200px] text-neutral-500">
+          {ORDER_DOCUMENT_TYPE_LABEL[order.documentType]}
+        </span>
+      </nav>
 
       {/* Header */}
       <div className="flex items-start justify-between gap-4">

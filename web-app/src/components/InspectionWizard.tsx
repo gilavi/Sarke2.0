@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, X, FileText, ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { CheckCircle2, X, ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { NumberInput, Textarea, TextInput } from '@mantine/core';
 import { Select } from '@/components/ui/select';
@@ -10,6 +9,7 @@ import { ProjectPicker } from '@/components/ui/project-picker';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import PhotoUploadWidget from '@/components/PhotoUploadWidget';
+import InspectionSuccessCard from '@/components/InspectionSuccessCard';
 import HarnessWizard from '@/components/inspections/HarnessWizard';
 import {
   addAnswerPhoto,
@@ -476,8 +476,11 @@ export default function InspectionWizard({
                       )}
 
                       {isSuccessStep && effectiveInspection && (
-                        <SuccessStep
+                        <InspectionSuccessCard
                           inspection={effectiveInspection}
+                          printRoute={`#/inspections/${effectiveInspection.id}/print`}
+                          projectName={(projects ?? []).find((p) => p.id === projectId)?.name}
+                          projectId={projectId || undefined}
                           onClose={onClose}
                         />
                       )}
@@ -718,44 +721,6 @@ function ConclusionStepRenderer({
           onAdd={onPhotoAdd}
           onRemove={onPhotoRemove}
         />
-      </div>
-    </div>
-  );
-}
-
-/* ─── Success Step ─── */
-
-function SuccessStep({ inspection, onClose }: { inspection: Inspection; onClose: () => void }) {
-  const navigate = useNavigate();
-  return (
-    <div className="flex flex-col items-center justify-center py-10 text-center">
-      <motion.div
-        initial={{ scale: 0.5, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-        className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400"
-      >
-        <CheckCircle2 size={40} />
-      </motion.div>
-      <h3 className="mb-2 text-2xl font-bold text-neutral-900 dark:text-neutral-100">აქტი დასრულებულია</h3>
-      <p className="mb-8 max-w-sm text-sm text-neutral-500">შემოწმების აქტი წარმატებით დასრულდა. შეგიძლიათ PDF ვერსია გახსნათ ან ახალი აქტი შექმნათ.</p>
-      <div className="flex gap-3">
-        <Button
-          variant="outline"
-          onClick={() => {
-            onClose();
-            navigate('/inspections');
-          }}
-        >
-          სიაში დაბრუნება
-        </Button>
-        <Button
-          onClick={() => window.open(`#/inspections/${inspection.id}/print`, '_blank')}
-          className="gap-1.5"
-        >
-          <FileText size={16} />
-          PDF ნახვა
-        </Button>
       </div>
     </div>
   );

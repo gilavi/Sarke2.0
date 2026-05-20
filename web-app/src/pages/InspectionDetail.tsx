@@ -29,6 +29,8 @@ import {
   type Inspection,
   type Question,
 } from '@/lib/data/inspections';
+import { getProject } from '@/lib/data/projects';
+import { routes } from '@/app/routes';
 
 type PendingInspection = Parameters<typeof createInspection>[0];
 // photoUpload imported dynamically inside QuestionRow to keep top-level bundle lean
@@ -83,9 +85,16 @@ export default function InspectionDetail() {
     is_safe_for_use: null,
     inspector_signature: null,
     conclusion_photo_paths: [],
+    signatories: [],
     created_at: new Date().toISOString(),
     completed_at: null,
   } : null);
+  const projectId = inspectionQ.data?.project_id;
+  const { data: project } = useQuery({
+    queryKey: ['project', projectId],
+    queryFn: () => getProject(projectId!),
+    enabled: !!projectId,
+  });
   const templateId = isPending ? pendingCreate?.templateId : inspection?.template_id;
   const questionsQ = useQuery({
     queryKey: ['questions', templateId],
@@ -279,9 +288,23 @@ export default function InspectionDetail() {
 
       <header className="flex items-start justify-between gap-4">
         <div>
-          <Link to="/inspections" className="text-sm text-brand-600 hover:underline">
-            ← აქტები
-          </Link>
+          <nav className="flex items-center gap-1 text-sm">
+            {project && (
+              <>
+                <Link to={routes.projects.detail(project.id)} className="text-brand-600 hover:underline">
+                  {project.name}
+                </Link>
+                <span className="text-neutral-400">›</span>
+              </>
+            )}
+            <Link to={routes.inspections.list(projectId)} className="text-brand-600 hover:underline">
+              აქტები
+            </Link>
+            <span className="text-neutral-400">›</span>
+            <span className="truncate max-w-[200px] text-neutral-500">
+              {inspection?.harness_name || 'აქტი'}
+            </span>
+          </nav>
           <h1 className="mt-2 font-display text-3xl font-bold text-neutral-900">
             {inspection.harness_name || `აქტი #${inspection.id.slice(0, 8)}`}
           </h1>

@@ -25,7 +25,7 @@ export async function listQualifications(): Promise<Qualification[]> {
     .from('qualifications')
     .select('id, user_id, type, number, issued_at, expires_at, file_url, created_at')
     .order('created_at', { ascending: false });
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return (data ?? []) as Qualification[];
 }
 
@@ -33,7 +33,7 @@ export async function signedQualificationFileUrl(path: string): Promise<string> 
   const { data, error } = await supabase.storage
     .from('certificates')
     .createSignedUrl(path, 60 * 10);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data.signedUrl;
 }
 

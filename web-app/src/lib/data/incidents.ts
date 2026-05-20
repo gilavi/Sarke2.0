@@ -37,7 +37,7 @@ export async function listIncidents(projectId?: string): Promise<Incident[]> {
   let q = supabase.from('incidents').select(COLS).order('date_time', { ascending: false }).limit(50);
   if (projectId) q = q.eq('project_id', projectId);
   const { data, error } = await q;
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return ((data ?? []) as unknown[]) as Incident[];
 }
 
@@ -47,13 +47,13 @@ export async function getIncident(id: string): Promise<Incident | null> {
     .select(COLS)
     .eq('id', id)
     .maybeSingle();
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return (data as Incident | null) ?? null;
 }
 
 export async function signedIncidentPdfUrl(path: string): Promise<string> {
   const { data, error } = await supabase.storage.from('pdfs').createSignedUrl(path, 60 * 10);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data.signedUrl;
 }
 
@@ -61,7 +61,7 @@ export async function signedIncidentPhotoUrl(path: string): Promise<string> {
   const { data, error } = await supabase.storage
     .from('incident-photos')
     .createSignedUrl(path, 60 * 10);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data.signedUrl;
 }
 
@@ -82,7 +82,7 @@ export async function addIncidentPhoto(
 
   const next = [...incident.photos, path];
   const { error } = await supabase.from('incidents').update({ photos: next }).eq('id', incident.id);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return path;
 }
 
@@ -95,7 +95,7 @@ export async function removeIncidentPhoto(
 ): Promise<void> {
   const next = incident.photos.filter((p) => p !== path);
   const { error } = await supabase.from('incidents').update({ photos: next }).eq('id', incident.id);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   // best-effort blob removal
   await supabase.storage.from('incident-photos').remove([path]);
 }
@@ -113,7 +113,7 @@ export async function updateIncident(
   }>,
 ): Promise<void> {
   const { error } = await supabase.from('incidents').update(patch).eq('id', id);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
 }
 
 export async function deleteIncident(item: Incident): Promise<void> {
@@ -121,7 +121,7 @@ export async function deleteIncident(item: Incident): Promise<void> {
     await supabase.storage.from('incident-photos').remove(item.photos);
   }
   const { error } = await supabase.from('incidents').delete().eq('id', item.id);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
 }
 
 export interface CreateIncidentInput {
@@ -171,6 +171,6 @@ export async function createIncident(input: CreateIncidentInput): Promise<Incide
     })
     .select(COLS)
     .single();
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data as Incident;
 }

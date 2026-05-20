@@ -4,11 +4,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AuthLayout } from './auth/AuthLayout';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 export default function SubscribeSuccess() {
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
 
   useEffect(() => {
     // Refresh cached subscription state so /account shows the active tier as
@@ -16,11 +17,15 @@ export default function SubscribeSuccess() {
     qc.invalidateQueries({ queryKey: ['pdf-usage'] });
     qc.invalidateQueries({ queryKey: ['payment-history'] });
 
-    // For mobile: triggers SFAuthenticationSession to close and hand control back
-    // to the app. The mobile app's _layout.tsx also listens for this URL on cold
-    // start. On desktop browsers this is a no-op (unknown scheme).
-    window.location.href = 'sarke2://payment/success';
-  }, [qc]);
+    // Only trigger the custom scheme redirect when coming from the mobile app's
+    // WebView (SFAuthenticationSession). The mobile Subscribe page appends
+    // ?mobile=1 to the success URL so we can detect this context. On desktop
+    // browsers we must NOT navigate to the custom scheme — it causes
+    // ERR_UNKNOWN_URL_SCHEME and navigates the user away from the app.
+    if (params.get('mobile') === '1') {
+      window.location.href = 'sarke2://payment/success';
+    }
+  }, [qc, params]);
 
   return (
     <AuthLayout>

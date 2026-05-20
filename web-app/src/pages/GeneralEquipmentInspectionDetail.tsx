@@ -6,6 +6,7 @@ import { SkeletonDetailPage } from '@/components/SkeletonCard';
 import { FileText, Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import DeleteButton from '@/components/DeleteButton';
+import InspectionSignatures from '@/components/InspectionSignatures';
 import PhotoUploadWidget from '@/components/PhotoUploadWidget';
 import SignatureCanvas from '@/components/SignatureCanvas';
 import FieldInput from '@/components/FieldInput';
@@ -25,6 +26,8 @@ import {
   type GESignerRole,
   type GeneralEquipmentInspection,
 } from '@/lib/data/generalEquipment';
+import { getProject } from '@/lib/data/projects';
+import { routes } from '@/app/routes';
 
 const COND_LABEL: Record<GECondition, string> = {
   good: 'ნორმაში',
@@ -57,6 +60,12 @@ export default function GeneralEquipmentInspectionDetail() {
     queryKey: ['generalEquipmentInspection', id],
     queryFn: () => getGeneralEquipmentInspection(id!),
     enabled: !!id && !isPending,
+  });
+  const projectId = item?.projectId;
+  const { data: project } = useQuery({
+    queryKey: ['project', projectId],
+    queryFn: () => getProject(projectId!),
+    enabled: !!projectId,
   });
 
   const updateMutation = useMutation({
@@ -104,6 +113,7 @@ export default function GeneralEquipmentInspectionDetail() {
     inspectionType: pendingCreate?.inspectionType ?? null,
     equipment: [],
     inspectorSignature: null,
+    signatories: [],
     signerName: null,
     signerRole: null,
     signerRoleCustom: null,
@@ -173,9 +183,23 @@ export default function GeneralEquipmentInspectionDetail() {
       )}
       <header className="flex items-start justify-between gap-4">
         <div>
-          <Link to="/inspections" className="text-sm text-brand-600 hover:underline">
-            ← აქტები
-          </Link>
+          <nav className="flex items-center gap-1 text-sm">
+            {project && (
+              <>
+                <Link to={routes.projects.detail(project.id)} className="text-brand-600 hover:underline">
+                  {project.name}
+                </Link>
+                <span className="text-neutral-400">›</span>
+              </>
+            )}
+            <Link to={routes.inspections.list(projectId)} className="text-brand-600 hover:underline">
+              აქტები
+            </Link>
+            <span className="text-neutral-400">›</span>
+            <span className="truncate max-w-[200px] text-neutral-500">
+              {effectiveItem.objectName || 'მოწყობილობა'}
+            </span>
+          </nav>
           <h1 className="mt-2 font-display text-3xl font-bold text-neutral-900">
             {effectiveItem.objectName || (isPending ? 'ახალი ტექ. აქტი' : `ტექ. აქტი #${effectiveItem.id.slice(0, 8)}`)}
           </h1>
@@ -193,6 +217,21 @@ export default function GeneralEquipmentInspectionDetail() {
           )}
         </div>
       </header>
+
+      {/* ── Signatures ── */}
+      {!isPending && (
+        <InspectionSignatures
+          inspection={{
+            inspector_signature: effectiveItem.inspectorSignature ?? null,
+            inspector_name: effectiveItem.inspectorName ?? null,
+            signatories: effectiveItem.signatories ?? [],
+            created_at: effectiveItem.createdAt,
+            completed_at: effectiveItem.completedAt ?? null,
+          }}
+          canEdit={effectiveItem.status === 'completed'}
+          onUpdate={(sigs) => save({ signatories: sigs })}
+        />
+      )}
 
       <WizardSteps
         steps={[{ label: 'ინფო' }, { label: 'შემოწმება' }, { label: 'დასკვნა' }]}

@@ -47,29 +47,25 @@ export function WizardShell({
       }}
     >
       {/* Header */}
-      <div className="shrink-0 border-b border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-900">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-          <span className="font-display text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+      <div className="shrink-0 bg-white dark:bg-neutral-900">
+        <div className="mx-auto grid max-w-5xl grid-cols-3 items-center px-6 py-4">
+          <span className="font-display text-base font-semibold text-neutral-900 dark:text-neutral-100">
             {title}
           </span>
-          <button
-            onClick={onClose}
-            className="rounded-lg p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 focus:outline-none dark:hover:bg-neutral-800 dark:hover:text-neutral-300"
-            aria-label="დახურვა"
-          >
-            <X size={18} />
-          </button>
-        </div>
-      </div>
-
-      {/* Step bar */}
-      {steps.length > 1 && (
-        <div className="shrink-0 border-b border-neutral-100 bg-white dark:border-neutral-700 dark:bg-neutral-900">
-          <div className="mx-auto max-w-5xl px-6 py-3">
-            <StepBar steps={steps} current={currentStep} />
+          <div className="flex justify-center">
+            {steps.length > 1 && <StepBar steps={steps} current={currentStep} />}
+          </div>
+          <div className="flex justify-end">
+            <button
+              onClick={onClose}
+              className="rounded-lg p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 focus:outline-none dark:hover:bg-neutral-800 dark:hover:text-neutral-300"
+              aria-label="დახურვა"
+            >
+              <X size={18} />
+            </button>
           </div>
         </div>
-      )}
+      </div>
 
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto bg-neutral-50 dark:bg-neutral-950">

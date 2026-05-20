@@ -1,6 +1,8 @@
 import * as React from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, type LucideProps } from 'lucide-react';
+import type { ComponentType } from 'react';
+type LucideIcon = ComponentType<LucideProps>;
 import { cn } from '@/lib/utils';
 
 interface ListRowProps {
@@ -50,7 +52,7 @@ export function ListRowIcon({
   color = 'bg-neutral-100',
   iconColor = 'text-neutral-500',
 }: {
-  icon: React.ElementType;
+  icon: LucideIcon;
   color?: string;
   iconColor?: string;
 }) {

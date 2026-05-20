@@ -27,6 +27,7 @@ import type {
   ExcavatorMaintenanceItemState,
   ExcavatorVerdict,
 } from '@/lib/types/excavator';
+import type { SignatoryEntry } from '@/lib/data/inspections';
 import {
   CABIN_ITEMS,
   ENGINE_ITEMS,
@@ -61,6 +62,7 @@ interface DbRow {
   notes: string | null;
   inspector_position: string | null;
   inspector_signature: string | null;
+  signatories: SignatoryEntry[] | null;
   summary_photos: string[] | null;
   completed_at: string | null;
   created_at: string;
@@ -68,7 +70,7 @@ interface DbRow {
 }
 
 const COLS =
-  'id, project_id, template_id, user_id, status, machine_specs, serial_number, inventory_number, project_name, department, inspection_date, moto_hours, inspector_name, last_inspection_date, engine_items, undercarriage_items, cabin_items, safety_items, maintenance_items, verdict, notes, inspector_position, inspector_signature, summary_photos, completed_at, created_at, updated_at';
+  'id, project_id, template_id, user_id, status, machine_specs, serial_number, inventory_number, project_name, department, inspection_date, moto_hours, inspector_name, last_inspection_date, engine_items, undercarriage_items, cabin_items, safety_items, maintenance_items, verdict, notes, inspector_position, inspector_signature, signatories, summary_photos, completed_at, created_at, updated_at';
 
 function emptyChecklist(catalog: { id: number }[]): ExcavatorChecklistItemState[] {
   return catalog.map((c) => ({ id: c.id, result: null, comment: null, photo_paths: [] }));
@@ -104,6 +106,7 @@ function toModel(r: DbRow): ExcavatorInspection {
     notes: r.notes,
     inspectorPosition: r.inspector_position,
     inspectorSignature: r.inspector_signature,
+    signatories: r.signatories ?? [],
     summaryPhotos: r.summary_photos ?? [],
     completedAt: r.completed_at,
     createdAt: r.created_at,
@@ -121,7 +124,7 @@ export async function listExcavatorInspections(
     .limit(50);
   if (projectId) q = q.eq('project_id', projectId);
   const { data, error } = await q;
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return ((data ?? []) as DbRow[]).map(toModel);
 }
 
@@ -133,7 +136,7 @@ export async function getExcavatorInspection(
     .select(COLS)
     .eq('id', id)
     .maybeSingle();
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data ? toModel(data as DbRow) : null;
 }
 
@@ -170,7 +173,7 @@ export async function createExcavatorInspection(args: {
     })
     .select(COLS)
     .single();
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return toModel(data as DbRow);
 }
 
@@ -194,6 +197,7 @@ export async function updateExcavatorInspection(
     notes: string | null;
     inspectorPosition: string | null;
     inspectorSignature: string | null;
+    signatories: SignatoryEntry[];
     summaryPhotos: string[];
     status: 'draft' | 'completed';
   }>,
@@ -216,16 +220,17 @@ export async function updateExcavatorInspection(
   if (patch.notes !== undefined) u.notes = patch.notes;
   if (patch.inspectorPosition !== undefined) u.inspector_position = patch.inspectorPosition;
   if (patch.inspectorSignature !== undefined) u.inspector_signature = patch.inspectorSignature;
+  if (patch.signatories !== undefined) u.signatories = patch.signatories;
   if (patch.summaryPhotos !== undefined) u.summary_photos = patch.summaryPhotos;
   if (patch.status !== undefined) {
     u.status = patch.status;
     if (patch.status === 'completed') u.completed_at = new Date().toISOString();
   }
   const { error } = await supabase.from('excavator_inspections').update(u).eq('id', id);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
 }
 
 export async function deleteExcavatorInspection(id: string): Promise<void> {
   const { error } = await supabase.from('excavator_inspections').delete().eq('id', id);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
 }

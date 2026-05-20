@@ -20,6 +20,7 @@ import type {
   BobcatItemState,
   BobcatVerdict,
 } from '@/lib/types/bobcat';
+import type { SignatoryEntry } from '@/lib/data/inspections';
 import { BOBCAT_ITEMS } from '@/lib/types/bobcat';
 
 interface DbRow {
@@ -40,6 +41,7 @@ interface DbRow {
   verdict: BobcatVerdict | null;
   notes: string | null;
   inspector_signature: string | null;
+  signatories: SignatoryEntry[] | null;
   summary_photos: string[] | null;
   completed_at: string | null;
   created_at: string;
@@ -47,7 +49,7 @@ interface DbRow {
 }
 
 const COLS =
-  'id, project_id, template_id, user_id, status, company, address, equipment_model, registration_number, inspection_date, inspection_type, department, inspector_name, items, verdict, notes, inspector_signature, summary_photos, completed_at, created_at, updated_at';
+  'id, project_id, template_id, user_id, status, company, address, equipment_model, registration_number, inspection_date, inspection_type, department, inspector_name, items, verdict, notes, inspector_signature, signatories, summary_photos, completed_at, created_at, updated_at';
 
 function toModel(r: DbRow): BobcatInspection {
   return {
@@ -68,6 +70,7 @@ function toModel(r: DbRow): BobcatInspection {
     verdict: r.verdict,
     notes: r.notes,
     inspectorSignature: r.inspector_signature,
+    signatories: r.signatories ?? [],
     summaryPhotos: r.summary_photos ?? [],
     completedAt: r.completed_at,
     createdAt: r.created_at,
@@ -83,7 +86,7 @@ export async function listBobcatInspections(projectId?: string): Promise<BobcatI
     .limit(50);
   if (projectId) q = q.eq('project_id', projectId);
   const { data, error } = await q;
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return ((data ?? []) as DbRow[]).map(toModel);
 }
 
@@ -93,7 +96,7 @@ export async function getBobcatInspection(id: string): Promise<BobcatInspection 
     .select(COLS)
     .eq('id', id)
     .maybeSingle();
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data ? toModel(data as DbRow) : null;
 }
 
@@ -138,7 +141,7 @@ export async function createBobcatInspection(args: {
     })
     .select(COLS)
     .single();
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return toModel(data as DbRow);
 }
 
@@ -156,6 +159,7 @@ export async function updateBobcatInspection(
     verdict: BobcatVerdict | null;
     notes: string | null;
     inspectorSignature: string | null;
+    signatories: SignatoryEntry[];
     summaryPhotos: string[];
     status: 'draft' | 'completed';
   }>,
@@ -173,16 +177,17 @@ export async function updateBobcatInspection(
   if (patch.verdict !== undefined) updates.verdict = patch.verdict;
   if (patch.notes !== undefined) updates.notes = patch.notes;
   if (patch.inspectorSignature !== undefined) updates.inspector_signature = patch.inspectorSignature;
+  if (patch.signatories !== undefined) updates.signatories = patch.signatories;
   if (patch.summaryPhotos !== undefined) updates.summary_photos = patch.summaryPhotos;
   if (patch.status !== undefined) {
     updates.status = patch.status;
     if (patch.status === 'completed') updates.completed_at = new Date().toISOString();
   }
   const { error } = await supabase.from('bobcat_inspections').update(updates).eq('id', id);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
 }
 
 export async function deleteBobcatInspection(id: string): Promise<void> {
   const { error } = await supabase.from('bobcat_inspections').delete().eq('id', id);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
 }

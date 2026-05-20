@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import type { SignatoryEntry } from '@/lib/data/inspections';
 
 export const GENERAL_EQUIPMENT_TEMPLATE_ID = '66666666-6666-6666-6666-666666666666';
 
@@ -36,6 +37,7 @@ export interface GeneralEquipmentInspection {
   signerRole: GESignerRole | null;
   signerRoleCustom: string | null;
   inspectorSignature: string | null;
+  signatories: SignatoryEntry[];
   summaryPhotos: string[];
   completedAt: string | null;
   createdAt: string;
@@ -62,6 +64,7 @@ interface DbRow {
   signer_role: GESignerRole | null;
   signer_role_custom: string | null;
   inspector_signature: string | null;
+  signatories: SignatoryEntry[] | null;
   summary_photos: string[] | null;
   completed_at: string | null;
   created_at: string;
@@ -69,7 +72,7 @@ interface DbRow {
 }
 
 const COLS =
-  'id, project_id, template_id, user_id, status, object_name, address, activity_type, inspection_date, act_number, inspection_type, department, inspector_name, equipment, conclusion, signer_name, signer_role, signer_role_custom, inspector_signature, summary_photos, completed_at, created_at, updated_at';
+  'id, project_id, template_id, user_id, status, object_name, address, activity_type, inspection_date, act_number, inspection_type, department, inspector_name, equipment, conclusion, signer_name, signer_role, signer_role_custom, inspector_signature, signatories, summary_photos, completed_at, created_at, updated_at';
 
 function toModel(r: DbRow): GeneralEquipmentInspection {
   return {
@@ -92,6 +95,7 @@ function toModel(r: DbRow): GeneralEquipmentInspection {
     signerRole: r.signer_role,
     signerRoleCustom: r.signer_role_custom,
     inspectorSignature: r.inspector_signature,
+    signatories: r.signatories ?? [],
     summaryPhotos: r.summary_photos ?? [],
     completedAt: r.completed_at,
     createdAt: r.created_at,
@@ -109,7 +113,7 @@ export async function listGeneralEquipmentInspections(
     .limit(50);
   if (projectId) q = q.eq('project_id', projectId);
   const { data, error } = await q;
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return ((data ?? []) as DbRow[]).map(toModel);
 }
 
@@ -121,7 +125,7 @@ export async function getGeneralEquipmentInspection(
     .select(COLS)
     .eq('id', id)
     .maybeSingle();
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data ? toModel(data as DbRow) : null;
 }
 
@@ -155,7 +159,7 @@ export async function createGeneralEquipmentInspection(args: {
     })
     .select(COLS)
     .single();
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return toModel(data as DbRow);
 }
 
@@ -176,6 +180,7 @@ export async function updateGeneralEquipmentInspection(
     signerRole: GESignerRole | null;
     signerRoleCustom: string | null;
     inspectorSignature: string | null;
+    signatories: SignatoryEntry[];
     summaryPhotos: string[];
     status: 'draft' | 'completed';
   }>,
@@ -195,6 +200,7 @@ export async function updateGeneralEquipmentInspection(
   if (patch.signerRole !== undefined) updates.signer_role = patch.signerRole;
   if (patch.signerRoleCustom !== undefined) updates.signer_role_custom = patch.signerRoleCustom;
   if (patch.inspectorSignature !== undefined) updates.inspector_signature = patch.inspectorSignature;
+  if (patch.signatories !== undefined) updates.signatories = patch.signatories;
   if (patch.summaryPhotos !== undefined) updates.summary_photos = patch.summaryPhotos;
   if (patch.status !== undefined) {
     updates.status = patch.status;
@@ -204,7 +210,7 @@ export async function updateGeneralEquipmentInspection(
     .from('general_equipment_inspections')
     .update(updates)
     .eq('id', id);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
 }
 
 export async function deleteGeneralEquipmentInspection(id: string): Promise<void> {
@@ -212,7 +218,7 @@ export async function deleteGeneralEquipmentInspection(id: string): Promise<void
     .from('general_equipment_inspections')
     .delete()
     .eq('id', id);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
 }
 
 export function newEquipmentRow(): GEEquipmentRow {

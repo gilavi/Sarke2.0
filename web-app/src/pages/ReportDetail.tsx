@@ -19,6 +19,8 @@ import {
   signedReportPhotoUrl,
   type Report,
 } from '@/lib/data/reports';
+import { getProject } from '@/lib/data/projects';
+import { routes } from '@/app/routes';
 
 export default function ReportDetail() {
   const { id } = useParams();
@@ -29,6 +31,12 @@ export default function ReportDetail() {
     queryKey: ['report', id],
     queryFn: () => getReport(id!),
     enabled: !!id,
+  });
+  const projectId = item?.project_id;
+  const { data: project } = useQuery({
+    queryKey: ['project', projectId],
+    queryFn: () => getProject(projectId!),
+    enabled: !!projectId,
   });
   const { data: imageUrls = {} } = useQuery({
     queryKey: ['reportPhotos', id, item?.slides],
@@ -150,9 +158,23 @@ export default function ReportDetail() {
     <div className="space-y-6">
       <header className="flex items-start justify-between gap-4">
         <div>
-          <Link to="/reports" className="text-sm text-brand-600 hover:underline">
-            ← რეპორტები
-          </Link>
+          <nav className="flex items-center gap-1 text-sm">
+            {project && (
+              <>
+                <Link to={routes.projects.detail(project.id)} className="text-brand-600 hover:underline">
+                  {project.name}
+                </Link>
+                <span className="text-neutral-400">›</span>
+              </>
+            )}
+            <Link to={routes.reports.list(projectId)} className="text-brand-600 hover:underline">
+              რეპორტები
+            </Link>
+            <span className="text-neutral-400">›</span>
+            <span className="truncate max-w-[200px] text-neutral-500">
+              {item.title || 'რეპორტი'}
+            </span>
+          </nav>
           <h1 className="mt-2 font-display text-3xl font-bold text-neutral-900">
             {item.title || `რეპორტი #${item.id.slice(0, 8)}`}
           </h1>

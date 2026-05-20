@@ -16,6 +16,8 @@ import {
   type BriefingParticipant,
 } from '@/lib/data/briefings';
 import { fmtDateKa } from '@/lib/utils';
+import { getProject } from '@/lib/data/projects';
+import { routes } from '@/app/routes';
 
 export default function BriefingDetail() {
   const { id } = useParams();
@@ -28,6 +30,12 @@ export default function BriefingDetail() {
     queryKey: ['briefing', id],
     queryFn: () => getBriefing(id!),
     enabled: !!id,
+  });
+  const projectId = b?.projectId;
+  const { data: project } = useQuery({
+    queryKey: ['project', projectId],
+    queryFn: () => getProject(projectId!),
+    enabled: !!projectId,
   });
 
   const updateMutation = useMutation({
@@ -84,9 +92,23 @@ export default function BriefingDetail() {
     <div className="space-y-6">
       <header className="flex items-start justify-between gap-4">
         <div>
-          <Link to="/briefings" className="text-sm text-brand-600 hover:underline">
-            ← ინსტრუქტაჟები
-          </Link>
+          <nav className="flex items-center gap-1 text-sm">
+            {project && (
+              <>
+                <Link to={routes.projects.detail(project.id)} className="text-brand-600 hover:underline">
+                  {project.name}
+                </Link>
+                <span className="text-neutral-400">›</span>
+              </>
+            )}
+            <Link to={routes.briefings.list(projectId)} className="text-brand-600 hover:underline">
+              ინსტრუქტაჟები
+            </Link>
+            <span className="text-neutral-400">›</span>
+            <span className="truncate max-w-[200px] text-neutral-500">
+              {fmtDateKa(b.dateTime)}
+            </span>
+          </nav>
           <h1 className="mt-2 font-display text-3xl font-bold text-neutral-900">
             ინსტრუქტაჟი — {fmtDateKa(b.dateTime)}
           </h1>

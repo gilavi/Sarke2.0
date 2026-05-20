@@ -918,7 +918,7 @@ function renderQuestion(
           const rowVals = cols.map(col => grid[row]?.[col] ?? '');
           const isProblem = rowVals.some(v => isProblemValue(v));
           const cells = cols
-            .map((col, i) => {
+            .map((_col, i) => {
               const raw = rowVals[i];
               const status = classifyCell(raw);
               if (status === 'pass') {

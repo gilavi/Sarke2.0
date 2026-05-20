@@ -20,7 +20,7 @@ export async function getAccountUsage(userId: string): Promise<AccountUsage> {
     .select('pdf_count, subscription_status, subscription_expires_at')
     .eq('id', userId)
     .maybeSingle();
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   let status = ((data?.subscription_status as string) ?? 'free') as SubscriptionStatus;
   const expiresAt = (data?.subscription_expires_at as string | null) ?? null;
   if (status === 'active' && expiresAt) {

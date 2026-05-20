@@ -5,6 +5,7 @@ import { FileText, Plus, X } from 'lucide-react';
 import { SkeletonDetailPage } from '@/components/SkeletonCard';
 import { toast } from 'sonner';
 import DeleteButton from '@/components/DeleteButton';
+import InspectionSignatures from '@/components/InspectionSignatures';
 import FieldInput from '@/components/FieldInput';
 import WizardSteps, { WizardNav } from '@/components/WizardSteps';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,6 +26,8 @@ import {
   type CPCargoRow,
   type CPItemState,
 } from '@/lib/data/cargoPlatform';
+import { getProject } from '@/lib/data/projects';
+import { routes } from '@/app/routes';
 
 const VERDICT_COLOR: Record<CPVerdict, string> = {
   approved:    'border-emerald-600 bg-emerald-600 text-white',
@@ -52,6 +55,12 @@ export default function CargoPlatformInspectionDetail() {
     queryKey: ['cargoPlatformInspection', id],
     queryFn: () => getCargoPlatformInspection(id!),
     enabled: !!id,
+  });
+  const projectId = item?.projectId;
+  const { data: project } = useQuery({
+    queryKey: ['project', projectId],
+    queryFn: () => getProject(projectId!),
+    enabled: !!projectId,
   });
 
   const updateMutation = useMutation({
@@ -135,9 +144,23 @@ export default function CargoPlatformInspectionDetail() {
 
       <header className="flex items-start justify-between gap-4">
         <div>
-          <Link to="/inspections" className="text-sm text-brand-600 hover:underline">
-            ← აქტები
-          </Link>
+          <nav className="flex items-center gap-1 text-sm">
+            {project && (
+              <>
+                <Link to={routes.projects.detail(project.id)} className="text-brand-600 hover:underline">
+                  {project.name}
+                </Link>
+                <span className="text-neutral-400">›</span>
+              </>
+            )}
+            <Link to={routes.inspections.list(projectId)} className="text-brand-600 hover:underline">
+              აქტები
+            </Link>
+            <span className="text-neutral-400">›</span>
+            <span className="truncate max-w-[200px] text-neutral-500">
+              {item.company || 'პლატფორმა'}
+            </span>
+          </nav>
           <h1 className="mt-2 font-display text-3xl font-bold text-neutral-900">
             {item.company || `პლატფ. #${item.id.slice(0, 8)}`}
           </h1>
@@ -153,6 +176,18 @@ export default function CargoPlatformInspectionDetail() {
           <DeleteButton onDelete={() => delMutation.mutate()} isPending={delMutation.isPending} />
         </div>
       </header>
+
+      {/* ── Signatures ── */}
+      <InspectionSignatures
+        inspection={{
+          inspector_name: item.inspectorName || null,
+          signatories: item.signatories ?? [],
+          created_at: item.createdAt,
+          completed_at: item.completedAt ?? null,
+        }}
+        canEdit={item.status === 'completed'}
+        onUpdate={(sigs) => save({ signatories: sigs })}
+      />
 
       <WizardSteps
         steps={[

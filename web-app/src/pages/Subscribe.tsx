@@ -9,7 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AuthLayout } from './auth/AuthLayout';
 
-const SUCCESS_URL = 'https://gilavi.github.io/Sarke2.0/app/#/subscribe/success';
+const SUCCESS_URL_DESKTOP = 'https://gilavi.github.io/Sarke2.0/app/#/subscribe/success';
+const SUCCESS_URL_MOBILE = 'https://gilavi.github.io/Sarke2.0/app/#/subscribe/success?mobile=1';
 const FAIL_URL = 'https://gilavi.github.io/Sarke2.0/app/#/subscribe/fail';
 
 const FEATURES = [
@@ -94,7 +95,7 @@ export default function Subscribe() {
           'apikey': SUPABASE_ANON_KEY,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ success_url: SUCCESS_URL, fail_url: FAIL_URL }),
+        body: JSON.stringify({ success_url: at && rt ? SUCCESS_URL_MOBILE : SUCCESS_URL_DESKTOP, fail_url: FAIL_URL }),
       });
       const data = await fnRes.json() as { order_id?: string; redirect_url?: string; error?: string };
       if (!fnRes.ok) throw new Error(data.error ?? `HTTP ${fnRes.status}`);

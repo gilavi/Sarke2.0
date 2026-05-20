@@ -2,6 +2,8 @@
 // DB-backed by `bobcat_inspections` table (migration 0024).
 // Both template variants share the same table; templateId distinguishes them.
 
+import type { SignatoryEntry } from '../data/inspections';
+
 export type BobcatItemResult = 'good' | 'deficient' | 'unusable';
 export type BobcatInspectionType = 'pre_work' | 'scheduled' | 'other';
 export type BobcatVerdict = 'approved' | 'limited' | 'rejected';
@@ -40,6 +42,7 @@ export interface BobcatInspection {
   notes: string | null;
   // Section V
   inspectorSignature: string | null;
+  signatories: SignatoryEntry[];
   summaryPhotos?: string[];
   completedAt: string | null;
   createdAt: string;

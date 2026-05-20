@@ -4,6 +4,8 @@
 // a mixed checklist (3-state + yes/no/date), extended signature block, and
 // machine specs stored on the template definition rather than the form.
 
+import type { SignatoryEntry } from '../data/inspections';
+
 export type Section = 'engine' | 'undercarriage' | 'cabin' | 'safety';
 export type ExcavatorVerdict = 'approved' | 'conditional' | 'rejected';
 export type ExcavatorChecklistResult = 'good' | 'deficient' | 'unusable' | null;
@@ -153,6 +155,7 @@ export interface ExcavatorInspection {
   // Section V — Inspector
   inspectorPosition: string | null;
   inspectorSignature: string | null;
+  signatories: SignatoryEntry[];
   summaryPhotos?: string[];
 
   completedAt: string | null;

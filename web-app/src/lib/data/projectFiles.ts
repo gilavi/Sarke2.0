@@ -18,13 +18,13 @@ export async function listProjectFiles(projectId: string): Promise<ProjectFile[]
     .select('id, project_id, name, storage_path, size_bytes, mime_type, created_at')
     .eq('project_id', projectId)
     .order('created_at', { ascending: false });
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return (data ?? []) as ProjectFile[];
 }
 
 export async function signedFileUrl(path: string): Promise<string> {
   const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 10);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data.signedUrl;
 }
 
@@ -50,14 +50,14 @@ export async function uploadProjectFile(
     })
     .select('id, project_id, name, storage_path, size_bytes, mime_type, created_at')
     .single();
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data as ProjectFile;
 }
 
 export async function deleteProjectFile(file: ProjectFile): Promise<void> {
   await supabase.storage.from(BUCKET).remove([file.storage_path]);
   const { error } = await supabase.from('project_files').delete().eq('id', file.id);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
 }
 
 export function formatSize(bytes: number | null): string {

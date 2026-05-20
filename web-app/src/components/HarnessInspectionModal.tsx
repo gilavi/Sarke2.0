@@ -1,11 +1,16 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, X } from 'lucide-react';
+import { X, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { StepBar } from '@/components/ui/step-bar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Textarea } from '@mantine/core';
 import { toast } from 'sonner';
 import HarnessWizard from '@/components/inspections/HarnessWizard';
+import PhotoUploadWidget from '@/components/PhotoUploadWidget';
+import InspectionSuccessCard from '@/components/InspectionSuccessCard';
+import { routes } from '@/app/routes';
 import { listProjects, type Project } from '@/lib/data/projects';
 import {
   createInspection,
@@ -43,6 +48,7 @@ interface Props {
 
 export default function HarnessInspectionModal({ open, onClose, defaultProjectId = '' }: Props) {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const { profile } = useAuth();
 
   const [step, setStep] = useState(defaultProjectId ? STEP_HARNESS : STEP_PROJECT);
@@ -53,6 +59,7 @@ export default function HarnessInspectionModal({ open, onClose, defaultProjectId
   const [conclusionText, setConclusionText] = useState('');
   const [creating, setCreating] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const [conclusionPhotos, setConclusionPhotos] = useState<string[]>([]);
 
   const inspectorName = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || null;
 
@@ -99,6 +106,7 @@ export default function HarnessInspectionModal({ open, onClose, defaultProjectId
     setConclusionText('');
     setCreating(false);
     setCompleting(false);
+    setConclusionPhotos([]);
     onClose();
   }
 
@@ -132,8 +140,9 @@ export default function HarnessInspectionModal({ open, onClose, defaultProjectId
   }
 
   async function handleComplete() {
-    if (!inspection || isSafe === null) {
-      toast.error('აირჩიეთ დასკვნა');
+    if (!inspection || isSafe === null || !conclusionText.trim()) {
+      if (isSafe === null) toast.error('აირჩიეთ უსაფრთხოების სტატუსი');
+      else if (!conclusionText.trim()) toast.error('შეიყვანეთ შენიშვნა');
       return;
     }
     setCompleting(true);
@@ -141,7 +150,8 @@ export default function HarnessInspectionModal({ open, onClose, defaultProjectId
       await updateInspection(inspection.id, {
         status: 'completed',
         is_safe_for_use: isSafe,
-        conclusion_text: conclusionText.trim() || null,
+        conclusion_text: conclusionText.trim(),
+        conclusion_photo_paths: conclusionPhotos,
       });
       qc.invalidateQueries({ queryKey: ['inspections'] });
       qc.invalidateQueries({ queryKey: ['inspection', inspection.id] });
@@ -153,81 +163,107 @@ export default function HarnessInspectionModal({ open, onClose, defaultProjectId
     }
   }
 
-  const totalSteps = 3; // project, harness, conclusion (success not counted)
-  const progressStep = Math.min(step, totalSteps);
-  const progressPercent = (progressStep / totalSteps) * 100;
-  const showProgress = step > STEP_PROJECT && step < STEP_SUCCESS;
-  const title = step === STEP_SUCCESS ? 'დასრულებულია' : STEP_TITLES[step] ?? 'შემოწმება';
+  // Stepper is shown on all wizard steps (0–2); success lives in its own panel
+  const showStepper = step < STEP_SUCCESS;
+  const title = STEP_TITLES[step] ?? 'შემოწმება';
+
+  // Harness summary for the conclusion step
+  const statusCols = (gridQuestion?.grid_cols ?? []).filter((c) => c !== 'კომენტარი');
+  const gridVals = gridAnswer?.grid_values ?? {};
+  const evaluatedHarnesses = Object.entries(gridVals).filter(([, cols]) =>
+    statusCols.some((c) => cols[c] === 'ok' || cols[c] === 'bad'),
+  );
+  const badHarnessCount = evaluatedHarnesses.filter(([, cols]) =>
+    statusCols.some((c) => cols[c] === 'bad'),
+  ).length;
+  const okHarnessCount = evaluatedHarnesses.length - badHarnessCount;
 
   if (!open) return null;
 
   return createPortal(
     <div className="fixed inset-0 z-[100]">
+
+      {/* ── Shared backdrop ── */}
       <AnimatePresence>
         {open && (
-          <>
-            <motion.div
-              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-              variants={backdropVariants}
-              initial="hidden"
-              animate="visible"
-              exit="hidden"
-            />
-            <motion.div
-              className="absolute inset-0 flex flex-col bg-white dark:bg-neutral-900"
-              variants={panelVariants}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-            >
-              {/* Header */}
-              <div className="shrink-0 border-b border-neutral-200 bg-white/80 px-6 py-4 backdrop-blur dark:border-neutral-700 dark:bg-neutral-900/80">
-                <div className="mx-auto flex max-w-2xl items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <h2 className="font-display text-lg font-bold text-neutral-900 dark:text-neutral-100">
-                      {title}
-                    </h2>
-                    {showProgress && (
-                      <span className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs font-medium text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400">
-                        {STEP_LABELS[step]}
-                      </span>
-                    )}
-                  </div>
+          <motion.div
+            key="backdrop"
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            variants={backdropVariants}
+            initial="hidden"
+            animate="visible"
+            exit="hidden"
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── Full-screen wizard (steps 0–2) ── */}
+      <AnimatePresence>
+        {open && step < STEP_SUCCESS && (
+          <motion.div
+            key="wizard"
+            className="absolute inset-0 flex flex-col bg-white dark:bg-neutral-900"
+            variants={panelVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+          >
+            {/* Header */}
+            <div className="shrink-0 bg-white/80 px-6 py-4 backdrop-blur dark:bg-neutral-900/80">
+              <div className="mx-auto grid max-w-screen-2xl grid-cols-3 items-center">
+                <h2 className="font-display text-base font-semibold text-neutral-900 dark:text-neutral-100">
+                  {title}
+                </h2>
+                <div className="flex justify-center">
+                  {showStepper && <StepBar steps={STEP_LABELS} current={step} />}
+                </div>
+                <div className="flex justify-end">
                   <button
                     onClick={handleClose}
                     disabled={creating || completing}
-                    className="rounded-xl p-2.5 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700 active:scale-95 dark:hover:bg-neutral-800"
+                    className="rounded-lg p-1.5 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700 active:scale-95 dark:hover:bg-neutral-800"
                   >
-                    <X size={20} />
+                    <X size={18} />
                   </button>
                 </div>
-                {showProgress && (
-                  <div className="mx-auto mt-3 max-w-2xl">
-                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-neutral-100 dark:bg-neutral-800">
-                      <motion.div
-                        className="h-full rounded-full bg-brand-500"
-                        animate={{ width: `${progressPercent}%` }}
-                        transition={{ type: 'spring', stiffness: 200, damping: 25 }}
-                      />
-                    </div>
-                  </div>
-                )}
               </div>
+            </div>
 
-              {/* Content */}
-              <div className="flex-1 overflow-y-auto">
-                <div className={`mx-auto px-6 py-8 ${step === STEP_PROJECT ? 'max-w-3xl' : 'max-w-2xl'}`}>
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto">
+              {step === STEP_HARNESS && gridQuestion ? (
+                /* HarnessWizard is full-width; it owns its padding + footer full-bleed */
+                <HarnessWizard
+                  question={gridQuestion}
+                  answer={gridAnswer}
+                  onChange={handleGridChange}
+                  onComplete={() => setStep(STEP_CONCLUSION)}
+                  completing={answerMutation.isPending}
+                />
+              ) : (
+                <div className="mx-auto max-w-screen-2xl px-6 py-8">
 
-                  {/* Step 0: Project picker */}
-                  {step === STEP_PROJECT && (
+                  {/* Step 0: Project picker (also shown while creating) */}
+                  {(step === STEP_PROJECT || creating) && step < STEP_HARNESS && (
                     <div className="space-y-4">
                       <p className="text-sm text-neutral-500 dark:text-neutral-400">
                         დამცავი ქამრების შემოწმება — აირჩიეთ პროექტი
                       </p>
                       {creating ? (
-                        <div className="flex items-center justify-center py-20 text-sm text-neutral-500">
-                          იქმნება...
-                        </div>
+                        <motion.div
+                          key="creating"
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="flex flex-col items-center justify-center gap-4 py-28"
+                        >
+                          <div className="relative flex h-16 w-16 items-center justify-center">
+                            <span className="absolute inset-0 animate-ping rounded-full bg-brand-200 opacity-40 dark:bg-brand-800" />
+                            <span className="relative flex h-12 w-12 items-center justify-center rounded-full bg-brand-50 dark:bg-brand-950/40">
+                              <Loader2 className="h-5 w-5 animate-spin text-brand-500" />
+                            </span>
+                          </div>
+                          <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-200">ინსპექცია იქმნება...</p>
+                        </motion.div>
                       ) : (
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                           {projects.map((p) => (
@@ -246,20 +282,34 @@ export default function HarnessInspectionModal({ open, onClose, defaultProjectId
                     </div>
                   )}
 
-                  {/* Step 1: Harness grid */}
-                  {step === STEP_HARNESS && gridQuestion && (
-                    <HarnessWizard
-                      question={gridQuestion}
-                      answer={gridAnswer}
-                      onChange={handleGridChange}
-                      onComplete={() => setStep(STEP_CONCLUSION)}
-                      completing={answerMutation.isPending}
-                    />
-                  )}
-
                   {/* Step 2: Conclusion */}
                   {step === STEP_CONCLUSION && (
                     <div className="space-y-6">
+
+                      {/* Harness inspection summary */}
+                      {evaluatedHarnesses.length > 0 && (
+                        <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-700 dark:bg-neutral-800/50">
+                          <p className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+                            შემოწმების შეჯამება
+                          </p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">
+                              {evaluatedHarnesses.length} ქამარი
+                            </span>
+                            {okHarnessCount > 0 && (
+                              <span className="rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
+                                ✓ {okHarnessCount} გამართული
+                              </span>
+                            )}
+                            {badHarnessCount > 0 && (
+                              <span className="rounded-full bg-red-100 px-3 py-0.5 text-xs font-semibold text-red-700 dark:bg-red-900/40 dark:text-red-400">
+                                ✗ {badHarnessCount} პრობლემა
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
                       <div className="space-y-3">
                         <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
                           უსაფრთხოების სტატუსი
@@ -287,7 +337,9 @@ export default function HarnessInspectionModal({ open, onClose, defaultProjectId
                       </div>
 
                       <div className="space-y-1.5">
-                        <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">შენიშვნა</p>
+                        <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                          შენიშვნა <span className="text-red-500">*</span>
+                        </p>
                         <Textarea
                           value={conclusionText}
                           onChange={(e) => setConclusionText(e.target.value)}
@@ -296,72 +348,102 @@ export default function HarnessInspectionModal({ open, onClose, defaultProjectId
                           radius="md"
                         />
                       </div>
+
+                      {inspection && (
+                        <div className="space-y-1.5">
+                          <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                            ფოტოები (არასავალდებულო)
+                          </p>
+                          <PhotoUploadWidget
+                            paths={conclusionPhotos}
+                            prefix="inspections"
+                            inspectionId={inspection.id}
+                            itemId="conclusion"
+                            onAdd={(path) => setConclusionPhotos((prev) => [...prev, path])}
+                            onRemove={(path) => setConclusionPhotos((prev) => prev.filter((p) => p !== path))}
+                          />
+                        </div>
+                      )}
                     </div>
                   )}
-
-                  {/* Step 3: Success */}
-                  {step === STEP_SUCCESS && (
-                    <div className="flex flex-col items-center gap-6 py-12 text-center">
-                      <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/40">
-                        <CheckCircle2 size={40} className="text-emerald-600 dark:text-emerald-400" />
-                      </div>
-                      <div>
-                        <p className="text-xl font-bold text-neutral-900 dark:text-neutral-100">
-                          შემოწმება დასრულდა
-                        </p>
-                        <p className="mt-1 text-sm text-neutral-500">
-                          {isSafe ? 'სტატუსი: უსაფრთხოა ✓' : 'სტატუსი: არ არის უსაფრთხო'}
-                        </p>
-                      </div>
-                      <div className="flex gap-3">
-                        {inspection && (
-                          <button
-                            onClick={() => window.open(`#/inspections/${inspection.id}/print`, '_blank')}
-                            className="rounded-xl bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-600"
-                          >
-                            PDF ნახვა
-                          </button>
-                        )}
-                        <button
-                          onClick={handleClose}
-                          className="rounded-xl border border-neutral-200 px-5 py-2.5 text-sm font-semibold text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-300"
-                        >
-                          დახურვა
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Footer — only on conclusion step */}
-              {step === STEP_CONCLUSION && (
-                <div className="shrink-0 border-t border-neutral-200 bg-white px-6 py-4 dark:border-neutral-700 dark:bg-neutral-900">
-                  <div className="mx-auto flex max-w-2xl items-center justify-between">
-                    <button
-                      onClick={() => setStep(STEP_HARNESS)}
-                      className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-medium text-neutral-500 transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800"
-                    >
-                      ← წინა
-                    </button>
-                    <button
-                      onClick={handleComplete}
-                      disabled={isSafe === null || completing}
-                      className="min-w-[140px] rounded-2xl bg-brand-500 px-6 py-2.5 text-sm font-semibold text-white transition-all hover:bg-brand-600 active:scale-95 disabled:opacity-40"
-                    >
-                      {completing ? 'სრულდება...' : 'დასრულება'}
-                    </button>
-                  </div>
                 </div>
               )}
-            </motion.div>
-          </>
+            </div>
+
+            {/* Footer — only on conclusion step */}
+            {step === STEP_CONCLUSION && (
+              <div className="shrink-0 border-t border-neutral-200 bg-white px-6 py-4 dark:border-neutral-700 dark:bg-neutral-900">
+                <div className="mx-auto flex max-w-screen-2xl items-center justify-between">
+                  <button
+                    onClick={() => setStep(STEP_HARNESS)}
+                    className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-medium text-neutral-500 transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                  >
+                    ← წინა
+                  </button>
+                  <button
+                    onClick={handleComplete}
+                    disabled={isSafe === null || conclusionText.trim().length === 0 || completing}
+                    className="min-w-[140px] rounded-2xl bg-brand-500 px-6 py-2.5 text-sm font-semibold text-white transition-all hover:bg-brand-600 active:scale-95 disabled:opacity-40"
+                  >
+                    {completing ? 'სრულდება...' : 'დასრულება'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ── Success screen ── */}
+      <AnimatePresence>
+        {open && step === STEP_SUCCESS && inspection && (
+          <motion.div
+            key="success"
+            className="absolute inset-0 overflow-y-auto bg-white dark:bg-neutral-900"
+            variants={panelVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+          >
+            {/* Close button */}
+            <div className="sticky top-0 z-10 flex justify-end bg-white/80 px-6 py-3 backdrop-blur dark:bg-neutral-900/80">
+              <button
+                onClick={() => { handleClose(); navigate(routes.harness.detail(inspection.id)); }}
+                className="rounded-lg p-1.5 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="px-6 pb-12">
+              <InspectionSuccessCard
+                inspection={{
+                  id: inspection.id,
+                  is_safe_for_use: isSafe,
+                  conclusion_text: conclusionText || null,
+                  inspector_name: inspection.inspector_name ?? null,
+                  completed_at: new Date().toISOString(),
+                }}
+                printRoute={`#/inspections/${inspection.id}/print`}
+                projectName={projects.find((p) => p.id === projectId)?.name}
+                projectId={projectId}
+                summaryBadges={[
+                  ...(okHarnessCount > 0 ? [{ label: `✓ ${okHarnessCount} გამართული`, variant: 'ok' as const }] : []),
+                  ...(badHarnessCount > 0 ? [{ label: `✗ ${badHarnessCount} პრობლემა`, variant: 'bad' as const }] : []),
+                ]}
+                onClose={() => { handleClose(); navigate(routes.harness.detail(inspection.id)); }}
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </div>,
     document.body
   );
 }
+
+/* ── Step Indicator ── */
+
 
 /* ── Project Card ── */
 

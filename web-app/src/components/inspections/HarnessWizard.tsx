@@ -93,76 +93,75 @@ export default function HarnessWizard({
   }
 
   return (
-    <div className="flex flex-col gap-0">
-      {/* ── Two-column body ── */}
-      <div className="flex gap-5 pb-24">
-        {/* LEFT: form */}
-        <div className="min-w-0 flex-1 space-y-5">
-          <div className="flex items-center gap-2">
-            <h3 className="text-base font-semibold text-neutral-800 dark:text-neutral-100">
-              ქამარი {formDisplayNum}
-            </h3>
-            {isEditing && (
-              <span className="rounded-full bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-600 dark:bg-brand-900/40 dark:text-brand-400">
-                რედაქტირება
-              </span>
-            )}
+    <div className="flex flex-col">
+      {/* ── Body: constrained to 1536px, grid so right panel never shrinks form ── */}
+      <div className="mx-auto w-full max-w-screen-2xl px-6 py-8">
+        <div className="grid grid-cols-[1fr_176px] gap-5 pb-6">
+          {/* LEFT: form — always occupies 1fr regardless of right panel visibility */}
+          <div className="min-w-0 space-y-5">
+            <div className="flex items-center gap-2">
+              <h3 className="text-base font-semibold text-neutral-800 dark:text-neutral-100">
+                ქამარი {formDisplayNum}
+              </h3>
+              {isEditing && (
+                <span className="rounded-full bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-600 dark:bg-brand-900/40 dark:text-brand-400">
+                  რედაქტირება
+                </span>
+              )}
+            </div>
+
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={formKey}
+                initial={{ opacity: 0, x: 16 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -16 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 32 }}
+                className="space-y-4"
+              >
+                {statusCols.map((col) => {
+                  const current = (values[formKey]?.[col] ?? '') as StatusValue;
+                  return (
+                    <div key={col} className="space-y-2">
+                      <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">{col}</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {STATUS_OPTIONS.map((opt) => (
+                          <StatusButton
+                            key={opt.value + opt.label}
+                            label={opt.label}
+                            selected={current === opt.value}
+                            onClick={() => setCell(formKey, col, current === opt.value ? '' : opt.value)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {hasComment && (
+                  <Textarea
+                    label="კომენტარი"
+                    value={values[formKey]?.['კომენტარი'] ?? ''}
+                    onChange={(e) => setCell(formKey, 'კომენტარი', e.target.value)}
+                    placeholder="შეიყვანეთ კომენტარი..."
+                    rows={3}
+                    autosize={false}
+                    radius="md"
+                  />
+                )}
+              </motion.div>
+            </AnimatePresence>
           </div>
 
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={formKey}
-              initial={{ opacity: 0, x: 16 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -16 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 32 }}
-              className="space-y-4"
-            >
-              {statusCols.map((col) => {
-                const current = (values[formKey]?.[col] ?? '') as StatusValue;
-                return (
-                  <div key={col} className="space-y-2">
-                    <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">{col}</p>
-                    <div className="grid grid-cols-3 gap-2">
-                      {STATUS_OPTIONS.map((opt) => (
-                        <StatusButton
-                          key={opt.value + opt.label}
-                          label={opt.label}
-                          selected={current === opt.value}
-                          onClick={() => setCell(formKey, col, current === opt.value ? '' : opt.value)}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-
-              {hasComment && (
-                <Textarea
-                  label="კომენტარი"
-                  value={values[formKey]?.['კომენტარი'] ?? ''}
-                  onChange={(e) => setCell(formKey, 'კომენტარი', e.target.value)}
-                  placeholder="შეიყვანეთ კომენტარი..."
-                  rows={3}
-                  autosize={false}
-                  radius="md"
-                />
-              )}
-            </motion.div>
-          </AnimatePresence>
-        </div>
-
-        {/* RIGHT: progress cards — slides in after first harness is committed */}
-        <AnimatePresence>
-          {committedRows.length > 0 && (
-            <motion.div
-              initial={{ width: 0, opacity: 0 }}
-              animate={{ width: 168, opacity: 1 }}
-              exit={{ width: 0, opacity: 0 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 28 }}
-              className="shrink-0 overflow-hidden"
-            >
-              <div className="w-[168px] space-y-2">
+          {/* RIGHT: progress cards — grid column always allocated; content fades in after first commit */}
+          <div>
+            {committedRows.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.2 }}
+                className="space-y-2"
+              >
                 <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500">
                   დამატებული
                 </p>
@@ -231,15 +230,15 @@ export default function HarnessWizard({
                     </div>
                   </div>
                 )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              </motion.div>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* ── Sticky footer ── */}
-      <div className="sticky bottom-0 -mx-6 border-t border-neutral-200 bg-white px-6 py-4 dark:border-neutral-700 dark:bg-neutral-900">
-        <div className="flex items-center justify-between gap-3">
+      {/* ── Sticky footer — border spans full scroll-area width; content constrained to 1536px ── */}
+      <div className="sticky bottom-0 border-t border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-900">
+        <div className="mx-auto flex max-w-screen-2xl items-center justify-between gap-3 px-6 py-4">
           {/* Left: back / cancel */}
           <button
             type="button"

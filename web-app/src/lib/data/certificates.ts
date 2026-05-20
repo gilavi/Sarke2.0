@@ -16,7 +16,7 @@ export async function countCertificates(): Promise<number> {
   const { count, error } = await supabase
     .from('certificates')
     .select('id', { count: 'exact', head: true });
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return count ?? 0;
 }
 
@@ -25,13 +25,13 @@ export async function listCertificates(): Promise<Certificate[]> {
     .from('certificates')
     .select('id, inspection_id, user_id, template_id, pdf_url, is_safe_for_use, conclusion_text, generated_at')
     .order('generated_at', { ascending: false });
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return (data ?? []) as Certificate[];
 }
 
 export async function signedCertificatePdfUrl(path: string): Promise<string> {
   const { data, error } = await supabase.storage.from('pdfs').createSignedUrl(path, 60 * 10);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data.signedUrl;
 }
 
@@ -53,6 +53,6 @@ export async function uploadCertificate(file: File, user: User): Promise<Certifi
     })
     .select()
     .single();
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data as Certificate;
 }

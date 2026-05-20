@@ -6,6 +6,7 @@ import { SkeletonDetailPage } from '@/components/SkeletonCard';
 import { FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import DeleteButton from '@/components/DeleteButton';
+import InspectionSignatures from '@/components/InspectionSignatures';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea, TextInput } from '@mantine/core';
@@ -28,6 +29,8 @@ import {
   type BobcatItemState,
   type BobcatVerdict,
 } from '@/lib/data/bobcat';
+import { getProject } from '@/lib/data/projects';
+import { routes } from '@/app/routes';
 
 const RESULT_LABEL: Record<BobcatItemResult, string> = {
   good: 'ნორმაში',
@@ -71,6 +74,12 @@ export default function BobcatInspectionDetail() {
     queryKey: ['bobcatInspection', id],
     queryFn: () => getBobcatInspection(id!),
     enabled: !!id && !isPending,
+  });
+  const projectId = item?.projectId;
+  const { data: project } = useQuery({
+    queryKey: ['project', projectId],
+    queryFn: () => getProject(projectId!),
+    enabled: !!projectId,
   });
 
   const [signingOpen, setSigningOpen] = useState(false);
@@ -156,6 +165,7 @@ export default function BobcatInspectionDetail() {
     verdict: null,
     notes: null,
     inspectorSignature: null,
+    signatories: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     completedAt: null,
@@ -194,9 +204,23 @@ export default function BobcatInspectionDetail() {
       )}
       <header className="flex items-start justify-between gap-4">
         <div>
-          <Link to="/inspections" className="text-sm text-brand-600 hover:underline">
-            ← აქტები
-          </Link>
+          <nav className="flex items-center gap-1 text-sm">
+            {project && (
+              <>
+                <Link to={routes.projects.detail(project.id)} className="text-brand-600 hover:underline">
+                  {project.name}
+                </Link>
+                <span className="text-neutral-400">›</span>
+              </>
+            )}
+            <Link to={routes.inspections.list(projectId)} className="text-brand-600 hover:underline">
+              აქტები
+            </Link>
+            <span className="text-neutral-400">›</span>
+            <span className="truncate max-w-[200px] text-neutral-500">
+              {effectiveItem.equipmentModel || effectiveItem.company || 'ციცხვიანი დამტვირთველი'}
+            </span>
+          </nav>
           <h1 className="mt-2 font-display text-3xl font-bold text-neutral-900">
             {effectiveItem.equipmentModel || effectiveItem.company || 'ციცხვიანი დამტვირთველის აქტი'}
           </h1>
@@ -214,6 +238,21 @@ export default function BobcatInspectionDetail() {
           )}
         </div>
       </header>
+
+      {/* ── Signatures ── */}
+      {!isPending && (
+        <InspectionSignatures
+          inspection={{
+            inspector_signature: effectiveItem.inspectorSignature ?? null,
+            inspector_name: effectiveItem.inspectorName ?? null,
+            signatories: effectiveItem.signatories ?? [],
+            created_at: effectiveItem.createdAt,
+            completed_at: effectiveItem.completedAt ?? null,
+          }}
+          canEdit={effectiveItem.status === 'completed'}
+          onUpdate={(sigs) => save({ signatories: sigs })}
+        />
+      )}
 
       <WizardSteps
         steps={[{ label: 'ინფო' }, { label: 'შემოწმება' }, { label: 'დასკვნა' }]}

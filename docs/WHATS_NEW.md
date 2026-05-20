@@ -4,6 +4,28 @@
 
 ---
 
+## 2026-05-20 — Signing flow on all equipment inspection detail pages (web)
+
+### Signing flow — equipment pages (web-app)
+- **`InspectionSignatures` component** — prop renamed `isDraft` → `canEdit`; inspector signature bug fixed (bare base64 now gets `data:image/png;base64,` prefix before rendering); prop type changed from `Inspection` to generic `SignableInspection` interface so all equipment types can use it.
+- **`HarnessInspectionDetail`** — `canEdit` now `inspection.status === 'completed'` (was `isDraft`), so the "+ პირის დამატება" button appears only after the inspection is completed.
+- **`BobcatInspectionDetail`, `ExcavatorInspectionDetail`, `CargoPlatformInspectionDetail`, `GeneralEquipmentInspectionDetail`** — `InspectionSignatures` wired below the page header; `canEdit={status === 'completed'}`.
+- **Migration 0051** — `signatories JSONB NOT NULL DEFAULT '[]'` column added to `bobcat_inspections`, `excavator_inspections`, `cargo_platform_inspections`, `general_equipment_inspections`. Apply via `supabase db push`.
+- **Data layer** — `signatories: SignatoryEntry[]` field + SELECT + mapper + patch added to `bobcat.ts`, `excavator.ts`, `cargoPlatform.ts`, `generalEquipment.ts`; types updated in `lib/types/bobcat.ts` and `lib/types/excavator.ts`.
+
+---
+
+## 2026-05-20 — Harness detail page redesign + signatories (web)
+
+### `HarnessInspectionDetail` redesign (web-app)
+- **Removed 3-tab wizard** from the detail page (`/harness/:id`) — replaced with a single scrollable page.
+- **Signatures section** (`InspectionSignatures.tsx`) — shows existing `inspector_signature` as a pinned row; "+ პირის დამატება" opens a Mantine modal with name/role inputs and `SignatureCanvas`. Additional signatories saved to new `signatories` JSONB column.
+- **Info section** (`InspectionInfoView.tsx`) — card-based layout with 4 sub-sections: ზოგადი ინფო (editable when draft), ქამრების შედეგები (read-only grid table), შეფასება (safety chip + notes), ფოტოები (signed photo grid).
+- **Migration 0050** — `signatories JSONB NOT NULL DEFAULT '[]'` on `inspections`. Apply via `supabase db push`.
+- **Data layer** — `SignatoryEntry` type, `signatories` in select strings, `getSavedSignatureUrl()` helper, `signatories` in `updateInspection` patch.
+
+---
+
 ## 2026-05-20 — Dedicated harness inspection screens (web)
 
 ### Harness flow (web-app)

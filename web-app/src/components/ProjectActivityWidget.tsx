@@ -1,8 +1,7 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Plus, ChevronRight, Building2 } from 'lucide-react';
-import { ActionIcon, Button } from '@mantine/core';
+import { ActionIcon } from '@mantine/core';
 import { cn } from '@/lib/utils';
 import { type Project } from '@/lib/data/projects';
 import { listInspections } from '@/lib/data/inspections';
@@ -36,8 +35,6 @@ interface Props {
 }
 
 export function ProjectActivityWidget({ project, onNewAct }: Props) {
-  const [expanded, setExpanded] = useState(false);
-
   const { data: ins = [] }  = useQuery({ queryKey: ['inspections', project.id],         queryFn: () => listInspections(project.id),                staleTime: STALE });
   const { data: bobs = [] } = useQuery({ queryKey: ['bobcat', project.id],               queryFn: () => listBobcatInspections(project.id),           staleTime: STALE });
   const { data: gens = [] } = useQuery({ queryKey: ['generalEq', project.id],            queryFn: () => listGeneralEquipmentInspections(project.id),  staleTime: STALE });
@@ -54,7 +51,7 @@ export function ProjectActivityWidget({ project, onNewAct }: Props) {
     ...excs.map(i => ({ id: i.id, label: i.serialNumber   || 'ექსკავატ.',      date: i.createdAt,        status: i.status, href: `/excavator/${i.id}`,          type: 'excavator' as const })),
   ].sort((a, b) => b.date.localeCompare(a.date));
 
-  const visible = expanded ? all.slice(0, PREVIEW * 2) : all.slice(0, PREVIEW);
+  const visible = all.slice(0, PREVIEW);
   const remaining = all.length - PREVIEW;
 
   return (
@@ -86,13 +83,6 @@ export function ProjectActivityWidget({ project, onNewAct }: Props) {
         >
           <Plus size={15} />
         </ActionIcon>
-        <Link
-          to={`/projects/${project.id}`}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700 dark:text-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-neutral-300"
-          aria-label="პროექტის გახსნა"
-        >
-          <ChevronRight size={15} />
-        </Link>
       </div>
 
       {/* ── Activity rows ── */}
@@ -134,18 +124,13 @@ export function ProjectActivityWidget({ project, onNewAct }: Props) {
       )}
 
       {/* ── View more ── */}
-      {!expanded && remaining > 0 && (
-        <div className="border-t border-neutral-100 dark:border-neutral-800 px-4 py-2">
-          <Button
-            variant="subtle"
-            size="xs"
-            color="gray"
-            fullWidth
-            onClick={() => setExpanded(true)}
-          >
-            კიდევ {remaining} ჩანაწერი
-          </Button>
-        </div>
+      {remaining > 0 && (
+        <Link
+          to={`/projects/${project.id}`}
+          className="flex items-center justify-center gap-1 border-t border-neutral-100 px-4 py-2.5 text-xs text-neutral-500 transition-colors hover:bg-neutral-50 dark:border-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-800/50"
+        >
+          კიდევ {remaining} ჩანაწერი <ChevronRight size={12} />
+        </Link>
       )}
     </div>
   );

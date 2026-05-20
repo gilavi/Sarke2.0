@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ComponentType } from 'react';
+type LucideIcon = ComponentType<import('lucide-react').LucideProps>;
 import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { Modal, TextInput, PasswordInput } from '@mantine/core';
@@ -125,7 +126,7 @@ function PasswordModal({ open, onClose }: { open: boolean; onClose: () => void }
 interface ListItem { id: string; label: string; sub: string; href: string; }
 
 function ListCard({ to, title, icon: Icon, iconColor, iconBg, items, isLoading }: {
-  to: string; title: string; icon: React.ElementType;
+  to: string; title: string; icon: LucideIcon;
   iconColor: string; iconBg: string; items: ListItem[]; isLoading?: boolean;
 }) {
   const preview = items.slice(0, 3);

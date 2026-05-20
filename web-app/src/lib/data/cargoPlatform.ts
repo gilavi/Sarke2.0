@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import type { SignatoryEntry } from '@/lib/data/inspections';
 
 export const CARGO_PLATFORM_TEMPLATE_ID = '77777777-7777-7777-7777-777777777777';
 
@@ -53,6 +54,7 @@ export interface CargoPlatformInspection {
   verdictComment: string;
   summaryPhotos: string[];
   signatures: [CPSignatory, CPSignatory];
+  signatories: SignatoryEntry[];
   completedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -134,13 +136,14 @@ interface DbRow {
   verdict_comment: string | null;
   summary_photos: string[] | null;
   signatures: [CPSignatory, CPSignatory] | null;
+  signatories: SignatoryEntry[] | null;
   completed_at: string | null;
   created_at: string;
   updated_at: string;
 }
 
 const COLS =
-  'id, project_id, template_id, user_id, status, company, address, inspector_name, floor_zone, inspection_date, platform_type_model, platform_length_m, platform_width_m, platform_color_desc, side_guardrail, front_guardrail, guardrail_height, cargo, items, verdict, verdict_comment, summary_photos, signatures, completed_at, created_at, updated_at';
+  'id, project_id, template_id, user_id, status, company, address, inspector_name, floor_zone, inspection_date, platform_type_model, platform_length_m, platform_width_m, platform_color_desc, side_guardrail, front_guardrail, guardrail_height, cargo, items, verdict, verdict_comment, summary_photos, signatures, signatories, completed_at, created_at, updated_at';
 
 function emptySignatory(): CPSignatory {
   return { name: '', position: '', organization: '', signature: null, date: null };
@@ -175,6 +178,7 @@ function toModel(r: DbRow): CargoPlatformInspection {
     verdictComment: r.verdict_comment ?? '',
     summaryPhotos: r.summary_photos ?? [],
     signatures: r.signatures ?? [emptySignatory(), emptySignatory()],
+    signatories: r.signatories ?? [],
     completedAt: r.completed_at,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
@@ -190,7 +194,7 @@ export async function listCargoPlatformInspections(
     .order('created_at', { ascending: false });
   if (projectId) q = q.eq('project_id', projectId);
   const { data, error } = await q;
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return ((data ?? []) as DbRow[]).map(toModel);
 }
 
@@ -202,7 +206,7 @@ export async function getCargoPlatformInspection(
     .select(COLS)
     .eq('id', id)
     .maybeSingle();
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data ? toModel(data as DbRow) : null;
 }
 
@@ -224,7 +228,7 @@ export async function createCargoPlatformInspection(args: {
     })
     .select(COLS)
     .single();
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return toModel(data as DbRow);
 }
 
@@ -249,6 +253,7 @@ export async function updateCargoPlatformInspection(
     verdictComment: string | null;
     summaryPhotos: string[];
     signatures: [CPSignatory, CPSignatory];
+    signatories: SignatoryEntry[];
     status: 'draft' | 'completed';
   }>,
 ): Promise<void> {
@@ -271,6 +276,7 @@ export async function updateCargoPlatformInspection(
   if (patch.verdictComment !== undefined) updates.verdict_comment = patch.verdictComment;
   if (patch.summaryPhotos !== undefined) updates.summary_photos = patch.summaryPhotos;
   if (patch.signatures !== undefined) updates.signatures = patch.signatures;
+  if (patch.signatories !== undefined) updates.signatories = patch.signatories;
   if (patch.status !== undefined) {
     updates.status = patch.status;
     if (patch.status === 'completed') updates.completed_at = new Date().toISOString();
@@ -279,7 +285,7 @@ export async function updateCargoPlatformInspection(
     .from('cargo_platform_inspections')
     .update(updates)
     .eq('id', id);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
 }
 
 export async function deleteCargoPlatformInspection(id: string): Promise<void> {
@@ -287,5 +293,5 @@ export async function deleteCargoPlatformInspection(id: string): Promise<void> {
     .from('cargo_platform_inspections')
     .delete()
     .eq('id', id);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
 }

@@ -46,18 +46,18 @@ export async function addProjectSigner(args: {
     })
     .select('id, project_id, full_name, position, phone')
     .single();
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data as ProjectSigner;
 }
 
 export async function setProjectCrew(projectId: string, crew: CrewMember[]): Promise<void> {
   const { error } = await supabase.from('projects').update({ crew }).eq('id', projectId);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
 }
 
 export async function deleteProjectSigner(id: string): Promise<void> {
   const { error } = await supabase.from('project_signers').delete().eq('id', id);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
 }
 
 export async function listProjectSigners(projectId: string): Promise<ProjectSigner[]> {
@@ -66,7 +66,7 @@ export async function listProjectSigners(projectId: string): Promise<ProjectSign
     .select('id, project_id, full_name, position, phone')
     .eq('project_id', projectId)
     .order('created_at', { ascending: true });
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return (data ?? []) as ProjectSigner[];
 }
 
@@ -76,7 +76,7 @@ export async function listProjects(): Promise<Project[]> {
     .select('id, user_id, name, company_name, address, contact_phone, logo, crew, latitude, longitude, created_at')
     .order('created_at', { ascending: false })
     .limit(50);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return (data ?? []) as Project[];
 }
 
@@ -84,7 +84,7 @@ export async function countProjects(): Promise<number> {
   const { count, error } = await supabase
     .from('projects')
     .select('id', { count: 'exact', head: true });
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return count ?? 0;
 }
 
@@ -94,13 +94,13 @@ export async function getProject(id: string): Promise<Project | null> {
     .select('id, user_id, name, company_name, address, contact_phone, logo, crew, latitude, longitude, created_at')
     .eq('id', id)
     .maybeSingle();
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return (data as Project | null) ?? null;
 }
 
 export async function updateProjectLogo(id: string, logoDataUrl: string | null): Promise<void> {
   const { error } = await supabase.from('projects').update({ logo: logoDataUrl }).eq('id', id);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
 }
 
 export async function updateProject(
@@ -115,7 +115,7 @@ export async function updateProject(
   },
 ): Promise<void> {
   const { error } = await supabase.from('projects').update(patch).eq('id', id);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
 }
 
 export async function deleteProject(id: string): Promise<void> {
@@ -133,7 +133,7 @@ export async function deleteProject(id: string): Promise<void> {
     await supabase.storage.from('project-files').remove(paths);
   }
   const { error } = await supabase.from('projects').delete().eq('id', id);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
 }
 
 export async function createProject(args: {
@@ -158,6 +158,6 @@ export async function createProject(args: {
     })
     .select('id, user_id, name, company_name, address, contact_phone, logo, crew, latitude, longitude, created_at')
     .single();
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data as Project;
 }
