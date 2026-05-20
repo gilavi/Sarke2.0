@@ -252,7 +252,6 @@ export default function BobcatInspectionScreen() {
         items: insp.items,
         verdict: insp.verdict,
         notes: insp.notes,
-        inspectorSignature: insp.inspectorSignature,
       }).catch(e => {
         toast.error(friendlyError(e, 'შენახვა ვერ მოხერხდა'));
       }).finally(() => setSaving(false));
@@ -361,7 +360,6 @@ export default function BobcatInspectionScreen() {
         items: inspection.items,
         verdict: inspection.verdict,
         notes: inspection.notes,
-        inspectorSignature: inspection.inspectorSignature,
       });
       await bobcatApi.complete(inspection.id);
       const completedAt = new Date().toISOString();

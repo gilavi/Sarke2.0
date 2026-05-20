@@ -189,7 +189,7 @@ export const safetyNetApi = {
     if ('postTestItems'    in patch) db.post_test_items   = patch.postTestItems;
     if ('verdict'          in patch) db.verdict           = patch.verdict;
     if ('verdictComment'   in patch) db.verdict_comment   = patch.verdictComment;
-    if ('signatures'       in patch) db.signatures        = patch.signatures;
+    // Signatures are ephemeral (memory-only) — never persist to DB
     if ('qualDocPath'      in patch) db.qual_doc_path     = patch.qualDocPath;
     if ('summaryPhotos'    in patch) db.summary_photos    = patch.summaryPhotos;
 

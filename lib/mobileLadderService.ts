@@ -169,7 +169,7 @@ export const mobileLadderApi = {
     if ('items'               in patch) db.items                = patch.items;
     if ('verdict'             in patch) db.verdict              = patch.verdict;
     if ('verdictComment'      in patch) db.verdict_comment      = patch.verdictComment;
-    if ('signature'           in patch) db.signature            = patch.signature;
+    // Signatures are ephemeral (memory-only) — never persist to DB
 
     if (Object.keys(db).length === 0) return;
     const { error } = await supabase

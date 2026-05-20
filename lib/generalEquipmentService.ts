@@ -139,10 +139,7 @@ export const generalEquipmentApi = {
     if ('equipment'          in patch) db.equipment             = patch.equipment;
     if ('conclusion'         in patch) db.conclusion            = patch.conclusion;
     if ('summaryPhotos'      in patch) db.summary_photos        = patch.summaryPhotos;
-    if ('signerName'         in patch) db.signer_name           = patch.signerName;
-    if ('signerRole'         in patch) db.signer_role           = patch.signerRole;
-    if ('signerRoleCustom'   in patch) db.signer_role_custom    = patch.signerRoleCustom;
-    if ('inspectorSignature' in patch) db.inspector_signature   = patch.inspectorSignature;
+    // Signatures are ephemeral (memory-only) — never persist to DB
 
     if (Object.keys(db).length === 0) return;
     const { error } = await supabase

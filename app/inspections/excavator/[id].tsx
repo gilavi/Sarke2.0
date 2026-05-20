@@ -256,8 +256,6 @@ export default function ExcavatorInspectionScreen() {
         maintenanceItems: insp.maintenanceItems,
         verdict: insp.verdict,
         notes: insp.notes,
-        inspectorPosition: insp.inspectorPosition,
-        inspectorSignature: insp.inspectorSignature,
       }).catch(e => {
         toast.error(friendlyError(e, 'შენახვა ვერ მოხერხდა'));
       }).finally(() => setSaving(false));
@@ -390,8 +388,6 @@ export default function ExcavatorInspectionScreen() {
         maintenanceItems: inspection.maintenanceItems,
         verdict: inspection.verdict,
         notes: inspection.notes,
-        inspectorPosition: inspection.inspectorPosition,
-        inspectorSignature: inspection.inspectorSignature,
       });
       await excavatorApi.complete(inspection.id);
       const completedAt = new Date().toISOString();

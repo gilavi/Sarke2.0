@@ -182,10 +182,6 @@ export default function GeneralEquipmentScreen() {
         equipment:          insp.equipment,
         conclusion:         insp.conclusion,
         summaryPhotos:      insp.summaryPhotos,
-        signerName:         insp.signerName,
-        signerRole:         insp.signerRole,
-        signerRoleCustom:   insp.signerRoleCustom,
-        inspectorSignature: insp.inspectorSignature,
       }).catch(e => {
         toast.error(friendlyError(e, 'შენახვა ვერ მოხერხდა'));
       }).finally(() => setSaving(false));
@@ -306,10 +302,6 @@ export default function GeneralEquipmentScreen() {
         equipment:          inspection.equipment,
         conclusion:         inspection.conclusion,
         summaryPhotos:      inspection.summaryPhotos,
-        signerName:         inspection.signerName,
-        signerRole:         inspection.signerRole,
-        signerRoleCustom:   inspection.signerRoleCustom,
-        inspectorSignature: inspection.inspectorSignature,
       });
       await generalEquipmentApi.complete(inspection.id);
       const completedAt = new Date().toISOString();

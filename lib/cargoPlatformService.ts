@@ -169,7 +169,7 @@ export const cargoPlatformApi = {
     if ('verdict'           in patch) db.verdict              = patch.verdict;
     if ('verdictComment'    in patch) db.verdict_comment      = patch.verdictComment;
     if ('summaryPhotos'     in patch) db.summary_photos       = patch.summaryPhotos;
-    if ('signatures'        in patch) db.signatures           = patch.signatures;
+    // Signatures are ephemeral (memory-only) — never persist to DB
 
     if (Object.keys(db).length === 0) return;
     const { error } = await supabase

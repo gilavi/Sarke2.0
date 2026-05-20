@@ -3,7 +3,7 @@
 // Live PDF preview as the main content (full-screen WebView). Three buttons
 // in the bottom bar:
 //   - სერტიფიკატები: opens CertificatesActionSheet
-//   - ხელმოწერები (n/m):  opens SignaturesActionSheet
+//   - ხელმოწერები (n/m):  opens SignatureSheet (ephemeral, no DB)
 //   - გადმოწერა:        renders the same HTML through expo-print and shares
 //
 // The preview is regenerated whenever a sheet saves a change, so the inspector
@@ -25,14 +25,14 @@ import { A11yText as Text } from '../../components/primitives/A11yText';
 import { Button, Screen } from '../../components/ui';
 import { ErrorState } from '../../components/ErrorState';
 import { CertificatesActionSheet } from '../../components/CertificatesActionSheet';
-import { SignaturesActionSheet } from '../../components/SignaturesActionSheet';
+import { SignatureSheet } from '../../components/inspection/SignatureSheet';
+import { SignatoryData } from '../../components/inspection/SignatureBlock';
 import { useBottomSheet } from '../../components/BottomSheet';
 import {
   answersApi,
   inspectionAttachmentsApi,
   inspectionsApi,
   projectsApi,
-  signaturesApi,
   templatesApi,
 } from '../../lib/services';
 import {
@@ -41,14 +41,12 @@ import {
   useTemplate,
   useTemplateQuestions,
   useInspectionAnswers,
-  useSignatures,
 } from '../../lib/apiHooks';
 import { buildPdfHtml, buildPdfPreviewHtml, type PdfAttachment } from '../../lib/pdf';
 import { generateAndSharePdf, PdfLimitReachedError } from '../../lib/pdfOpen';
 import { generatePdfName } from '../../lib/pdfName';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import {
-  signatureAsDataUrl,
   pdfPhotoEmbed,
 } from '../../lib/imageUrl';
 import { useSession } from '../../lib/session';
@@ -67,9 +65,89 @@ import type {
   InspectionAttachment,
   Project,
   Question,
-  SignatureRecord,
   Template,
 } from '../../types/models';
+
+function signatoriesToRecords(signatories: SignatoryData[]) {
+  return signatories
+    .filter(s => s.signature)
+    .map(s => ({
+      id: '',
+      inspection_id: '',
+      signer_role: s.role as any,
+      full_name: s.name,
+      phone: null,
+      position: s.position,
+      signature_png_url: `data:image/png;base64,${s.signature}`,
+      signed_at: s.date ?? new Date().toISOString(),
+      status: 'signed' as any,
+      person_name: null,
+    }));
+}
+
+function EphemeralSignatureSheet({
+  initial,
+  onSync,
+  onClose,
+}: {
+  initial: SignatoryData[];
+  onSync: (sigs: SignatoryData[]) => void;
+  onClose: () => void;
+}) {
+  const [signatories, setSignatories] = useState(initial);
+  const signatoriesRef = useRef(signatories);
+  useEffect(() => { signatoriesRef.current = signatories; }, [signatories]);
+
+  const onSyncRef = useRef(onSync);
+  useEffect(() => { onSyncRef.current = onSync; }, [onSync]);
+
+  useEffect(() => {
+    return () => {
+      onSyncRef.current(signatoriesRef.current);
+    };
+  }, []);
+
+  return (
+    <SignatureSheet
+      signatories={signatories}
+      onChange={(index, field, value) => {
+        setSignatories(prev => {
+          const next = [...prev];
+          const sig = { ...next[index] };
+          if (field === 'name') sig.name = value;
+          else if (field === 'position') sig.position = value;
+          else if (field === 'organization') sig.organization = value;
+          else if (field.startsWith('extra.')) {
+            const key = field.slice(6);
+            sig.extra = { ...(sig.extra || {}), [key]: value };
+          } else if (field === 'signature') sig.signature = value || null;
+          next[index] = sig;
+          return next;
+        });
+      }}
+      onSign={(index, base64Png) => {
+        setSignatories(prev => {
+          const next = [...prev];
+          next[index] = { ...next[index], signature: base64Png, date: new Date().toISOString() };
+          return next;
+        });
+      }}
+      onAddSignatory={() => {
+        setSignatories(prev => [
+          ...prev,
+          { role: 'other', name: '', position: '', signature: null, date: null },
+        ]);
+      }}
+      onRemoveSignatory={(index) => {
+        setSignatories(prev => prev.filter((_, i) => i !== index));
+      }}
+      onClose={() => {
+        onSyncRef.current(signatoriesRef.current);
+        onClose();
+      }}
+    />
+  );
+}
 
 export default function InspectionResultScreen() {
   const { theme } = useTheme();
@@ -85,7 +163,7 @@ export default function InspectionResultScreen() {
   const [project, setProject] = useState<Project | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [answers, setAnswers] = useState<Answer[]>([]);
-  const [signatures, setSignatures] = useState<SignatureRecord[]>([]);
+  const [signatures, setSignatures] = useState<SignatoryData[]>([]);
   const [photosByAnswer, setPhotosByAnswer] = useState<Record<string, AnswerPhoto[]>>({});
   const [attachments, setAttachments] = useState<InspectionAttachment[]>([]);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
@@ -109,14 +187,12 @@ export default function InspectionResultScreen() {
   const templateQ = useTemplate(inspection?.template_id);
   const questionsQ = useTemplateQuestions(inspection?.template_id);
   const answersQ = useInspectionAnswers(id);
-  const signaturesQ = useSignatures(id);
 
   useEffect(() => { if (inspectionQ.data !== undefined) setInspection(inspectionQ.data); }, [inspectionQ.data]);
   useEffect(() => { if (projectQ.data !== undefined) setProject(projectQ.data); }, [projectQ.data]);
   useEffect(() => { if (templateQ.data !== undefined) setTemplate(templateQ.data); }, [templateQ.data]);
   useEffect(() => { if (questionsQ.data !== undefined) setQuestions(questionsQ.data); }, [questionsQ.data]);
   useEffect(() => { if (answersQ.data !== undefined) setAnswers(answersQ.data); }, [answersQ.data]);
-  useEffect(() => { if (signaturesQ.data !== undefined) setSignatures(signaturesQ.data); }, [signaturesQ.data]);
 
   const loadAll = useCallback(async () => {
     if (!id) {
@@ -153,10 +229,9 @@ export default function InspectionResultScreen() {
           return;
         }
       }
-      const [tpl, proj, sigs, atts] = await Promise.all([
+      const [tpl, proj, atts] = await Promise.all([
         templatesApi.getById(insp.template_id).catch(() => null),
         projectsApi.getById(insp.project_id).catch(() => null),
-        signaturesApi.list(insp.id).catch(() => [] as SignatureRecord[]),
         inspectionAttachmentsApi
           .listByInspection(insp.id)
           .catch(() => [] as InspectionAttachment[]),
@@ -164,8 +239,19 @@ export default function InspectionResultScreen() {
       if (mountedRef.current) {
         setTemplate(tpl);
         setProject(proj);
-        setSignatures(sigs);
         setAttachments(atts);
+      }
+      if (tpl?.required_signer_roles && mountedRef.current) {
+        setSignatures(prev => {
+          if (prev.length > 0) return prev;
+          return tpl.required_signer_roles!.map(role => ({
+            role,
+            name: '',
+            position: '',
+            signature: null,
+            date: null,
+          }));
+        });
       }
       if (tpl && mountedRef.current) {
         const [qs, ans] = await Promise.all([
@@ -209,7 +295,7 @@ export default function InspectionResultScreen() {
 
   const buildPreview = useCallback(
     async (
-      currentSignatures: SignatureRecord[],
+      currentSignatures: SignatoryData[],
       currentAttachments: InspectionAttachment[],
     ) => {
       if (!inspection || !template || !project) return;
@@ -238,20 +324,7 @@ export default function InspectionResultScreen() {
         );
 
         // Signatures → data URLs.
-        const sigsEmbedded = await Promise.all(
-          currentSignatures.map(async sig => {
-            if (!sig.signature_png_url || sig.signature_png_url.startsWith('data:')) return sig;
-            try {
-              const dataUrl = await signatureAsDataUrl(
-                STORAGE_BUCKETS.signatures,
-                sig.signature_png_url,
-              );
-              return { ...sig, signature_png_url: dataUrl };
-            } catch {
-              return sig;
-            }
-          }),
-        );
+        const sigsEmbedded = signatoriesToRecords(currentSignatures);
 
         // Attachments → data URLs for cert photos.
         const attsEmbedded: PdfAttachment[] = await Promise.all(
@@ -299,21 +372,15 @@ export default function InspectionResultScreen() {
   useEffect(() => {
     if ((loading && !loadTimedOut) || !inspection || !template || !project) return;
     void buildPreview(signatures, attachments);
-    // Intentional: don't refire on signatures/attachments changing — the
-    // sheet onChanged handler does that with fresh data so we avoid races
-    // with stale state still in the closure.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, loadTimedOut, inspection, template, project, questions, answers, photosByAnswer]);
+  }, [loading, loadTimedOut, inspection, template, project, questions, answers, photosByAnswer, signatures, attachments, buildPreview]);
 
   const refreshAfterSheetSave = useCallback(async () => {
     if (!inspection) return;
-    const [sigs, atts] = await Promise.all([
-      signaturesApi.list(inspection.id).catch(() => signatures),
-      inspectionAttachmentsApi.listByInspection(inspection.id).catch(() => attachments),
-    ]);
-    setSignatures(sigs);
+    const atts = await inspectionAttachmentsApi
+      .listByInspection(inspection.id)
+      .catch(() => attachments);
     setAttachments(atts);
-    await buildPreview(sigs, atts);
+    await buildPreview(signatures, atts);
   }, [inspection, signatures, attachments, buildPreview]);
 
   const openCertificatesSheet = useCallback(() => {
@@ -333,15 +400,17 @@ export default function InspectionResultScreen() {
     if (!inspection || !template) return;
     showSheet({
       content: ({ dismiss }) => (
-        <SignaturesActionSheet
-          inspectionId={inspection.id}
-          requiredRoles={template.required_signer_roles ?? []}
+        <EphemeralSignatureSheet
+          initial={signatures}
+          onSync={(sigs) => {
+            setSignatures(sigs);
+            void buildPreview(sigs, attachments);
+          }}
           onClose={dismiss}
-          onChanged={() => void refreshAfterSheetSave()}
         />
       ),
     });
-  }, [inspection, template, showSheet, refreshAfterSheetSave]);
+  }, [inspection, template, showSheet, signatures, attachments, buildPreview]);
 
   const downloadPdf = useCallback(async () => {
     if (!inspection || !template || !project || downloading) return;
@@ -369,20 +438,7 @@ export default function InspectionResultScreen() {
           );
         }),
       );
-      const sigsEmbedded = await Promise.all(
-        signatures.map(async sig => {
-          if (!sig.signature_png_url || sig.signature_png_url.startsWith('data:')) return sig;
-          try {
-            const dataUrl = await signatureAsDataUrl(
-              STORAGE_BUCKETS.signatures,
-              sig.signature_png_url,
-            );
-            return { ...sig, signature_png_url: dataUrl };
-          } catch {
-            return sig;
-          }
-        }),
-      );
+      const sigsEmbedded = signatoriesToRecords(signatures);
       const attsEmbedded: PdfAttachment[] = await Promise.all(
         attachments.map(async a => {
           if (!a.photo_path) return { ...a };
@@ -482,7 +538,7 @@ export default function InspectionResultScreen() {
     );
   }
 
-  const signedCount = signatures.filter(s => s.status === 'signed' && !!s.signature_png_url).length;
+  const signedCount = signatures.filter(s => !!s.signature).length;
   const requiredRoles = template?.required_signer_roles ?? [];
   const totalSlots = Math.max(requiredRoles.length, signatures.length);
 

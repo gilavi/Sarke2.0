@@ -132,7 +132,7 @@ export const bobcatApi = {
     if ('items'              in patch) db.items               = patch.items;
     if ('verdict'            in patch) db.verdict             = patch.verdict;
     if ('notes'              in patch) db.notes               = patch.notes;
-    if ('inspectorSignature' in patch) db.inspector_signature = patch.inspectorSignature;
+    // Signatures are ephemeral (memory-only) — never persist to DB
 
     if (Object.keys(db).length === 0) return;
     const { error } = await supabase

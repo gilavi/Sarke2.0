@@ -115,7 +115,7 @@ export default function SafetyNetInspectionScreen() {
           const name = `${u?.first_name ?? ''} ${u?.last_name ?? ''}`.trim();
           if (name) {
             patched = { ...patched, inspectorName: name };
-            const sigs = [...patched.signatures] as [SNSignatory, SNSignatory];
+            const sigs = [...patched.signatures];
             if (!sigs[0].name) sigs[0] = { ...sigs[0], name };
             patched = { ...patched, signatures: sigs };
           }
@@ -123,7 +123,6 @@ export default function SafetyNetInspectionScreen() {
         if (patched.inspectorName !== insp.inspectorName) {
           safetyNetApi.patch(patched.id, {
             inspectorName: patched.inspectorName,
-            signatures: patched.signatures,
           }).catch(() => {});
         }
 
@@ -387,7 +386,7 @@ export default function SafetyNetInspectionScreen() {
   const handleSignatoryChange = useCallback((idx: number, field: string, value: string) => {
     setInspection(prev => {
       if (!prev) return prev;
-      const sigs = [...prev.signatures] as [SNSignatory, SNSignatory];
+      const sigs = [...prev.signatures];
       sigs[idx] = { ...sigs[idx], [field]: field === 'signature' ? (value || null) : value };
       return { ...prev, signatures: sigs };
     });
@@ -396,7 +395,7 @@ export default function SafetyNetInspectionScreen() {
   const handleSignatorySign = useCallback((idx: number, base64Png: string) => {
     const insp = inspectionRef.current;
     if (!insp) return;
-    const sigs = [...insp.signatures] as [SNSignatory, SNSignatory];
+    const sigs = [...insp.signatures];
     sigs[idx] = { ...sigs[idx], signature: base64Png, date: new Date().toISOString() };
     setInspection({ ...insp, signatures: sigs });
   }, []);

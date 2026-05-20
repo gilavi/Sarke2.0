@@ -138,10 +138,7 @@ export const forkliftApi = {
     if ('notes'           in patch) db.notes            = patch.notes;
     if ('summaryPhotos'   in patch) db.summary_photos   = patch.summaryPhotos;
     if ('qualDocPath'     in patch) db.qual_doc_path    = patch.qualDocPath;
-    if ('signerName'      in patch) db.signer_name      = patch.signerName;
-    if ('signerPosition'  in patch) db.signer_position  = patch.signerPosition;
-    if ('signerPhone'     in patch) db.signer_phone     = patch.signerPhone;
-    if ('signerSignature' in patch) db.signer_signature = patch.signerSignature;
+    // Signatures are ephemeral (memory-only) — never persist to DB
 
     if (Object.keys(db).length === 0) return;
     const { error } = await supabase

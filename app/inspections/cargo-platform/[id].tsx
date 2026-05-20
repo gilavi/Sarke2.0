@@ -164,7 +164,7 @@ export default function CargoPlatformInspectionScreen() {
           if (name) {
             patched = { ...patched, inspectorName: name };
             // Patch first signatory name too if empty
-            const sigs = [...patched.signatures] as [CPSignatory, CPSignatory];
+            const sigs = [...patched.signatures];
             if (!sigs[0].name) sigs[0] = { ...sigs[0], name };
             patched = { ...patched, signatures: sigs };
           }
@@ -384,7 +384,7 @@ export default function CargoPlatformInspectionScreen() {
   const handleSignatoryChange = useCallback((idx: number, field: string, value: string) => {
     setInspection(prev => {
       if (!prev) return prev;
-      const sigs = [...prev.signatures] as [CPSignatory, CPSignatory];
+      const sigs = [...prev.signatures];
       sigs[idx] = { ...sigs[idx], [field]: field === 'signature' ? (value || null) : value };
       return { ...prev, signatures: sigs };
     });
@@ -393,7 +393,7 @@ export default function CargoPlatformInspectionScreen() {
   const handleSignatorySign = useCallback((idx: number, base64Png: string) => {
     const insp = inspectionRef.current;
     if (!insp) return;
-    const sigs = [...insp.signatures] as [CPSignatory, CPSignatory];
+    const sigs = [...insp.signatures];
     sigs[idx] = { ...sigs[idx], signature: base64Png, date: new Date().toISOString() };
     setInspection({ ...insp, signatures: sigs });
   }, []);

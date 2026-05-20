@@ -162,8 +162,7 @@ export const excavatorApi = {
     if ('maintenanceItems'   in patch) db.maintenance_items    = patch.maintenanceItems;
     if ('verdict'            in patch) db.verdict              = patch.verdict;
     if ('notes'              in patch) db.notes                = patch.notes;
-    if ('inspectorPosition'  in patch) db.inspector_position   = patch.inspectorPosition;
-    if ('inspectorSignature' in patch) db.inspector_signature  = patch.inspectorSignature;
+    // Signatures are ephemeral (memory-only) — never persist to DB
 
     if (Object.keys(db).length === 0) return;
     const { error } = await supabase

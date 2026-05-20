@@ -368,7 +368,7 @@ export default function LiftingAccessoriesInspectionScreen() {
   const handleSignatoryChange = useCallback((idx: number, field: string, value: string) => {
     setInspection(prev => {
       if (!prev) return prev;
-      const sigs = [...prev.signatures] as [LASignatory, LASignatory];
+      const sigs = [...prev.signatures];
       const sig = { ...sigs[idx] };
       if (field.startsWith('extra.')) {
         const key = field.slice(6);
@@ -384,7 +384,7 @@ export default function LiftingAccessoriesInspectionScreen() {
   const handleSign = useCallback((idx: number, base64Png: string) => {
     const insp = inspectionRef.current;
     if (!insp) return;
-    const sigs = [...insp.signatures] as [LASignatory, LASignatory];
+    const sigs = [...insp.signatures];
     sigs[idx] = { ...sigs[idx], signature: base64Png, date: new Date().toISOString() };
     setInspection({ ...insp, signatures: sigs });
   }, []);
