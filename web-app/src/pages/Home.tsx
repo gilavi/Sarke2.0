@@ -24,6 +24,7 @@ import { listProjects } from '@/lib/data/projects';
 import { listIncidents } from '@/lib/data/incidents';
 import { listBriefings } from '@/lib/data/briefings';
 import InspectionWizard from '@/components/InspectionWizard';
+import HarnessInspectionModal from '@/components/HarnessInspectionModal';
 import { staggerContainer, fadeUpItem, STAGGER } from '@/lib/animations';
 import {
   inspectionKeys,
@@ -72,7 +73,11 @@ export default function Home() {
   const isLoading = l1 || l2 || l3 || l4 || l5 || l6 || l7;
 
   const allInspectionsUnsliced = useMemo(() => [
-    ...(inspections ?? []).map((i) => ({ id: i.id, label: i.harness_name || 'შემოწმების აქტი', date: i.created_at ?? '', status: i.status, href: routes.inspections.detail(i.id) })),
+    ...(inspections ?? []).map((i) => {
+      const cat = Array.isArray(i.template) ? i.template[0]?.category : null;
+      const href = cat === 'harness' ? routes.harness.detail(i.id) : routes.inspections.detail(i.id);
+      return { id: i.id, label: i.harness_name || 'შემოწმების აქტი', date: i.created_at ?? '', status: i.status, href };
+    }),
     ...(bobcats ?? []).map((i) => ({ id: i.id, label: i.equipmentModel || 'ციცხვიანი', date: i.createdAt, status: i.status, href: routes.bobcat.detail(i.id) })),
     ...(generalEq ?? []).map((i) => ({ id: i.id, label: i.objectName || 'ტექ. აღჭურვილობა', date: i.createdAt, status: i.status, href: routes.generalEquipment.detail(i.id) })),
     ...(excavators ?? []).map((i) => ({ id: i.id, label: i.serialNumber || 'ექსკავატორი', date: i.createdAt, status: i.status, href: routes.excavator.detail(i.id) })),
@@ -81,6 +86,7 @@ export default function Home() {
   const totalInspections = useMemo(() => (inspections?.length ?? 0) + (bobcats?.length ?? 0) + (generalEq?.length ?? 0) + (excavators?.length ?? 0), [inspections, bobcats, generalEq, excavators]);
 
   const [newInspectionOpen, setNewInspectionOpen] = useState(false);
+  const [harnessOpen, setHarnessOpen] = useState(false);
 
   const heatmapData = useMemo(() => {
     const out: { date: string; count: number }[] = [];
@@ -117,7 +123,7 @@ export default function Home() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-64">
             <DropdownMenuItem onSelect={() => setNewInspectionOpen(true)}>ფასადის ხარაჩოს შემოწმება</DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => setNewInspectionOpen(true)}>დამცავი ქამრების შემოწმება</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setHarnessOpen(true)}>დამცავი ქამრების შემოწმება</DropdownMenuItem>
             <DropdownMenuItem onSelect={() => navigate(routes.bobcat.new)}>ციცხვიანი დამტვირთველი</DropdownMenuItem>
             <DropdownMenuItem onSelect={() => navigate(routes.excavator.new)}>ექსკავატორის შემოწმება</DropdownMenuItem>
             <DropdownMenuItem onSelect={() => navigate(routes.generalEquipment.new)}>ტექ. აღჭურვილობა</DropdownMenuItem>
@@ -125,6 +131,7 @@ export default function Home() {
           </DropdownMenuContent>
         </DropdownMenu>
         <InspectionWizard open={newInspectionOpen} onClose={() => setNewInspectionOpen(false)} />
+        <HarnessInspectionModal open={harnessOpen} onClose={() => setHarnessOpen(false)} />
       </motion.header>
 
       {/* ═════ Row 2: Subscription Banner (full width) ═════ */}

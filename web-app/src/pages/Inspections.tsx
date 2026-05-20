@@ -4,7 +4,6 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Select } from '@/components/ui/select';
 import { SkeletonList } from '@/components/SkeletonCard';
 import {
   DropdownMenu,
@@ -19,6 +18,7 @@ import { listExcavatorInspections, deleteExcavatorInspection } from '@/lib/data/
 import { listCargoPlatformInspections } from '@/lib/data/cargoPlatform';
 import { listProjects } from '@/lib/data/projects';
 import InspectionWizard from '@/components/InspectionWizard';
+import HarnessInspectionModal from '@/components/HarnessInspectionModal';
 
 const TYPE_LABEL: Record<string, string> = {
   harness:            '🦺 დამც. ქამარი',
@@ -86,6 +86,7 @@ export default function Inspections() {
   const projectParam = searchParams.get('project') ?? '';
   const [newInspectionOpen, setNewInspectionOpen] = useState(false);
   const [newInspectionCategory, setNewInspectionCategory] = useState<string>('');
+  const [harnessOpen, setHarnessOpen] = useState(false);
 
   const { data: genericInspections, isLoading: l1 } = useQuery({ queryKey: ['inspections'], queryFn: () => listInspections() });
   const { data: bobcats, isLoading: l2 } = useQuery({ queryKey: ['bobcatInspections'], queryFn: () => listBobcatInspections() });
@@ -116,13 +117,17 @@ export default function Inspections() {
   }
 
   const allRows: Row[] = [
-    ...(genericInspections ?? []).map((i): Row => ({
-      id: i.id, label: i.harness_name || `აქტი #${i.id.slice(0, 8)}`,
-      projectId: i.project_id,
-      type: genericInspectionType(i.template),
-      status: i.status,
-      date: i.created_at ?? '', href: `/inspections/${i.id}`,
-    })),
+    ...(genericInspections ?? []).map((i): Row => {
+      const type = genericInspectionType(i.template);
+      return {
+        id: i.id, label: i.harness_name || `აქტი #${i.id.slice(0, 8)}`,
+        projectId: i.project_id,
+        type,
+        status: i.status,
+        date: i.created_at ?? '',
+        href: type === 'harness' ? `/harness/${i.id}` : `/inspections/${i.id}`,
+      };
+    }),
     ...(bobcats ?? []).map((i): Row => ({
       id: i.id, label: i.equipmentModel || i.company || `ციცხვიანი #${i.id.slice(0, 8)}`,
       projectId: i.projectId, type: 'bobcat', status: i.status,
@@ -167,7 +172,7 @@ export default function Inspections() {
             <DropdownMenuItem onSelect={() => { setNewInspectionCategory('xaracho'); setNewInspectionOpen(true); }}>
               ფასადის ხარაჩოს შემოწმების აქტი
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => { setNewInspectionCategory('harness'); setNewInspectionOpen(true); }}>
+            <DropdownMenuItem onSelect={() => setHarnessOpen(true)}>
               დამცავი ქამრების შემოწმების აქტი
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => navigate(`/bobcat/new${filter ? `?project=${filter}` : ''}`)}>
@@ -190,14 +195,22 @@ export default function Inspections() {
       </header>
 
       {Object.keys(projects).length > 0 && (
-        <div className="flex items-center gap-2">
-          <label className="text-sm text-neutral-600 dark:text-neutral-400">პროექტი:</label>
-          <Select
-            size="sm"
-            value={filter}
-            onChange={setFilter}
-            options={[{ value: '', label: 'ყველა' }, ...Object.values(projects).map((p) => ({ value: p.id, label: p.name }))]}
-          />
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm text-neutral-600 dark:text-neutral-400">პროექტი:</span>
+          {[{ value: '', label: 'ყველა' }, ...Object.values(projects).map((p) => ({ value: p.id, label: p.name }))].map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setFilter(opt.value)}
+              className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                filter === opt.value
+                  ? 'border-brand-600 bg-brand-600 text-white'
+                  : 'border-neutral-300 bg-white text-neutral-700 hover:border-brand-400'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
         </div>
       )}
 
@@ -215,6 +228,7 @@ export default function Inspections() {
       )}
 
       <InspectionWizard open={newInspectionOpen} onClose={() => { setNewInspectionOpen(false); setNewInspectionCategory(''); }} defaultProjectId={filter} defaultCategory={newInspectionCategory} />
+      <HarnessInspectionModal open={harnessOpen} onClose={() => setHarnessOpen(false)} defaultProjectId={filter} />
 
       {allRows.length > 0 && (
         <motion.div initial="hidden" animate="visible" variants={containerVariants} className="divide-y divide-neutral-100 rounded-xl border border-neutral-200 bg-white dark:divide-neutral-800 dark:border-neutral-700 dark:bg-neutral-900">

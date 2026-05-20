@@ -30,7 +30,7 @@ const TYPE_AVATAR: Record<string, { emoji: string; bg: string }> = {
 
 interface Props {
   projectId: string;
-  onNew: () => void;
+  onNew: (category?: string) => void;
 }
 
 export function InspectionsSection({ projectId, onNew }: Props) {
@@ -101,7 +101,7 @@ export function InspectionsSection({ projectId, onNew }: Props) {
           <span className="ml-2 text-sm font-normal text-neutral-400">({items.length})</span>
         </CardTitle>
         <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" onClick={onNew}>
+          <Button variant="outline" size="sm" onClick={() => onNew()}>
             <Plus size={14} className="mr-1" />
             ახალი
           </Button>

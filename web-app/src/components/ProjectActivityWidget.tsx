@@ -44,7 +44,11 @@ export function ProjectActivityWidget({ project, onNewAct }: Props) {
   const { data: excs = [] } = useQuery({ queryKey: ['excavator', project.id],            queryFn: () => listExcavatorInspections(project.id),        staleTime: STALE });
 
   const all: ActivityItem[] = [
-    ...ins.map(i  => ({ id: i.id, label: i.harness_name  || 'შემოწმების აქტი', date: i.created_at ?? '', status: i.status, href: `/inspections/${i.id}`,      type: 'inspection' as const })),
+    ...ins.map(i  => {
+      const cat = Array.isArray(i.template) ? i.template[0]?.category : null;
+      const href = cat === 'harness' ? `/harness/${i.id}` : `/inspections/${i.id}`;
+      return { id: i.id, label: i.harness_name || 'შემოწმების აქტი', date: i.created_at ?? '', status: i.status, href, type: 'inspection' as const };
+    }),
     ...bobs.map(i => ({ id: i.id, label: i.equipmentModel || 'ციცხვიანი',      date: i.createdAt,        status: i.status, href: `/bobcat/${i.id}`,             type: 'bobcat' as const })),
     ...gens.map(i => ({ id: i.id, label: i.objectName     || 'ტექ. აღჭ.',      date: i.createdAt,        status: i.status, href: `/general-equipment/${i.id}`,  type: 'general' as const })),
     ...excs.map(i => ({ id: i.id, label: i.serialNumber   || 'ექსკავატ.',      date: i.createdAt,        status: i.status, href: `/excavator/${i.id}`,          type: 'excavator' as const })),

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import InspectionWizard from '@/components/InspectionWizard';
+import HarnessInspectionModal from '@/components/HarnessInspectionModal';
 import { getProject, type Project } from '@/lib/data/projects';
 import { projectKeys } from '@/app/queryKeys';
 import { ProjectHeader } from './ProjectHeader';
@@ -16,15 +17,6 @@ import { FilesSection } from './FilesSection';
 import { OrdersSection } from './OrdersSection';
 import { DangerZoneSection } from './DangerZoneSection';
 
-/**
- * Project detail route — a thin shell that fetches the project and composes
- * sections. Each section owns its own data fetches and mutations; the only
- * shared state at this level is "currently editing" and "wizard open" and
- * the single error banner.
- *
- * Was 1068 lines in a single file before the split. Now ~80 here + ~11 small
- * section files, each independently readable.
- */
 export default function ProjectDetail() {
   const { id = '' } = useParams<{ id: string }>();
   const qc = useQueryClient();
@@ -39,6 +31,7 @@ export default function ProjectDetail() {
 
   const [editing, setEditing] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [harnessOpen, setHarnessOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const error =
@@ -75,7 +68,13 @@ export default function ProjectDetail() {
       />
       <CrewSection project={project} onError={setActionError} />
       <SignersSection projectId={project.id} onError={setActionError} />
-      <InspectionsSection projectId={project.id} onNew={() => setWizardOpen(true)} />
+      <InspectionsSection
+        projectId={project.id}
+        onNew={(category) => {
+          if (category === 'harness') setHarnessOpen(true);
+          else setWizardOpen(true);
+        }}
+      />
       <IncidentsSection projectId={project.id} />
       <BriefingsSection projectId={project.id} />
       <ReportsSection projectId={project.id} />
@@ -86,6 +85,11 @@ export default function ProjectDetail() {
       <InspectionWizard
         open={wizardOpen}
         onClose={() => setWizardOpen(false)}
+        defaultProjectId={project.id}
+      />
+      <HarnessInspectionModal
+        open={harnessOpen}
+        onClose={() => setHarnessOpen(false)}
         defaultProjectId={project.id}
       />
     </div>

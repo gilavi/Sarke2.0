@@ -10,8 +10,7 @@ import DeleteButton from '@/components/DeleteButton';
 import SignatureCanvas from '@/components/SignatureCanvas';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Textarea, TextInput, NumberInput } from '@mantine/core';
 import {
   addAnswerPhoto,
   createInspection,
@@ -56,6 +55,14 @@ export default function InspectionDetail() {
     queryFn: () => getInspection(id!),
     enabled: !!id && !isPending,
   });
+
+  // Redirect harness inspections to the dedicated screen
+  useEffect(() => {
+    if (id && id !== 'draft' && inspectionQ.data?.template_id === '22222222-2222-2222-2222-222222222222') {
+      navigate(`/harness/${id}`, { replace: true });
+    }
+  }, [id, inspectionQ.data?.template_id, navigate]);
+
   const pdfsQ = useQuery({
     queryKey: ['inspectionPdfs', id],
     queryFn: () => listInspectionPdfs(id!),
@@ -75,6 +82,7 @@ export default function InspectionDetail() {
     conclusion_text: null,
     is_safe_for_use: null,
     inspector_signature: null,
+    conclusion_photo_paths: [],
     created_at: new Date().toISOString(),
     completed_at: null,
   } : null);
@@ -299,9 +307,9 @@ export default function InspectionDetail() {
         <CardHeader><CardTitle className="text-base">ზოგადი ინფორმაცია</CardTitle></CardHeader>
         <CardContent className="space-y-3">
           <div className="space-y-1">
-            <Label>დეპარტამენტი</Label>
             {isDraft ? (
-              <input
+              <TextInput
+                label="დეპარტამენტი"
                 key={inspection.department ?? ''}
                 defaultValue={inspection.department ?? ''}
                 onBlur={(e) => {
@@ -312,17 +320,20 @@ export default function InspectionDetail() {
                       qc.invalidateQueries({ queryKey: ['inspection', id] })
                     );
                 }}
-                className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                 placeholder="დეპარტამენტის დასახელება"
+                radius="md"
               />
             ) : (
-              <p className="text-sm text-neutral-700">{inspection.department || '—'}</p>
+              <>
+                <p className="text-sm font-medium text-neutral-700">დეპარტამენტი</p>
+                <p className="text-sm text-neutral-700">{inspection.department || '—'}</p>
+              </>
             )}
           </div>
           <div className="space-y-1">
-            <Label>ინსპექტორის სახელი</Label>
             {isDraft ? (
-              <input
+              <TextInput
+                label="ინსპექტორის სახელი"
                 key={inspection.inspector_name ?? ''}
                 defaultValue={inspection.inspector_name ?? ''}
                 onBlur={(e) => {
@@ -333,11 +344,14 @@ export default function InspectionDetail() {
                       qc.invalidateQueries({ queryKey: ['inspection', id] })
                     );
                 }}
-                className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                 placeholder="სახელი გვარი"
+                radius="md"
               />
             ) : (
-              <p className="text-sm text-neutral-700">{inspection.inspector_name || '—'}</p>
+              <>
+                <p className="text-sm font-medium text-neutral-700">ინსპექტორის სახელი</p>
+                <p className="text-sm text-neutral-700">{inspection.inspector_name || '—'}</p>
+              </>
             )}
           </div>
         </CardContent>
@@ -385,18 +399,17 @@ export default function InspectionDetail() {
         <CardContent className="space-y-3">
           {isDraft ? (
             <>
+              <Textarea
+                id="conc"
+                label="დასკვნის ტექსტი"
+                rows={3}
+                value={conclusionDraft ?? inspection.conclusion_text ?? ''}
+                onChange={(e) => setConclusionDraft(e.target.value)}
+                radius="md"
+                autosize={false}
+              />
               <div className="space-y-1">
-                <Label htmlFor="conc">დასკვნის ტექსტი</Label>
-                <textarea
-                  id="conc"
-                  rows={3}
-                  value={conclusionDraft ?? inspection.conclusion_text ?? ''}
-                  onChange={(e) => setConclusionDraft(e.target.value)}
-                  className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label>გამოყენებისთვის უსაფრთხო?</Label>
+                <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">გამოყენებისთვის უსაფრთხო?</p>
                 <div className="flex gap-2">
                   {[
                     { v: true, label: 'კი' },
@@ -423,7 +436,7 @@ export default function InspectionDetail() {
                 </div>
               </div>
               <div className="space-y-1">
-                <Label>ინსპექტორის ხელმოწერა</Label>
+                <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">ინსპექტორის ხელმოწერა</p>
                 {inspection.inspector_signature ? (
                   <div className="flex items-center gap-3">
                     <img
@@ -695,32 +708,34 @@ function QuestionRow({
 
       {q.type === 'measure' && (
         <div className="flex items-center gap-2">
-          <Input
-            type="number"
+          <NumberInput
             disabled={disabled}
-            defaultValue={ans?.value_num ?? ''}
+            defaultValue={ans?.value_num ?? undefined}
             onBlur={(e) => {
-              const v = e.target.value === '' ? null : Number(e.target.value);
+              const v = (e.target as HTMLInputElement).value === '' ? null : Number((e.target as HTMLInputElement).value);
               onChange({ valueNum: v, comment });
             }}
-            className="max-w-[160px]"
+            classNames={{ input: 'max-w-[160px]' }}
             placeholder={
               q.min_val != null && q.max_val != null
                 ? `${q.min_val}–${q.max_val}${q.unit ? ` ${q.unit}` : ''}`
                 : q.unit ?? ''
             }
+            radius="md"
+            hideControls
           />
           {q.unit && <span className="text-xs text-neutral-500">{q.unit}</span>}
         </div>
       )}
 
       {q.type === 'freetext' && (
-        <textarea
+        <Textarea
           rows={2}
           disabled={disabled}
           defaultValue={ans?.value_text ?? ''}
           onBlur={(e) => onChange({ valueText: e.target.value, comment })}
-          className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:bg-neutral-50"
+          radius="md"
+          autosize={false}
         />
       )}
 
@@ -826,7 +841,7 @@ function QuestionRow({
         <ComponentGridReadOnly question={q} answer={ans} />
       )}
 
-      <Input
+      <TextInput
         disabled={disabled}
         value={comment}
         onChange={(e) => setComment(e.target.value)}
@@ -841,7 +856,8 @@ function QuestionRow({
           }
         }}
         placeholder="კომენტარი (არასავალდებულო)"
-        className="text-xs"
+        classNames={{ input: 'text-xs' }}
+        radius="md"
       />
     </div>
   );

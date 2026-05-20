@@ -4,6 +4,16 @@
 
 ---
 
+## 2026-05-20 — Dedicated harness inspection screens (web)
+
+### Harness flow (web-app)
+- **`/harness/new`** — dedicated creation page: project selector + harness name + inspector + department. No template selector.
+- **`/harness/:id`** — dedicated detail/wizard page with `WizardSteps` (ინფო → ქამრები → დასკვნა). Embeds existing `HarnessWizard` component directly; conclusion step has safe/unsafe chips + notes textarea + save/complete buttons.
+- **Routing** — `Inspections.tsx` dropdown "დამცავი ქამრები" now navigates to `/harness/new` instead of opening the generic `InspectionWizard` modal. Harness rows in the list link to `/harness/:id`. `ProjectActivityWidget` also routes harness items to `/harness/:id`.
+- **Routes** added to `app/routes.ts` (`harnessNew`, `harnessDetail`, `routes.harness`) and `app/router.tsx`.
+
+---
+
 ## 2026-05-20 — `main` — Web regulations tab fixes
 
 ### Regulations tab (web-app)
