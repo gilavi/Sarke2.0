@@ -1,6 +1,18 @@
 # What's New — Sarke 2.0 Changelog
 
-**Updated:** 2026-05-21 | Branch: `main`
+**Updated:** 2026-05-22 | Branch: `main`
+
+---
+
+## 2026-05-22 — Reusable web inspection wizard (Expo web)
+
+### New — `components/web/InspectionWizard/`
+A generic, web-only full-page modal wizard meant to back every web inspection flow (harnesses, fall-protection, forklift, …). Mobile is untouched — every sub-component bails with `if (Platform.OS !== 'web') return null`.
+
+- **Layout:** fixed full-viewport modal with a 64px header (project identity + thin progress bar + close), a 260px left sidebar listing items with status sub-lines and an "add new" card, a scrollable max-680px main content area, and a 72px footer (back / save-and-next / complete). Header & footer borders span the full width naturally as the top/bottom rows of the modal column.
+- **Question table:** web-appropriate rows (no mobile buttons) with an inline 3-state segmented control (კი / არა / N/A). Keyboard: per-row focus + Y/1, N/2, 3/Space; a one-time hint fades after 3s; Escape closes; Arrow up/down switches items. Rows answered `არა` expand to reveal a comment field + photo button.
+- **API:** fully config-driven via `WizardConfig` (`projectName`, `actName`, `items`, `itemLabel`, `questions`, `onComplete`, `onClose`, optional `onSaveItem`/`onAddItem`). The wizard owns per-item answer state and recomputes status/stats internally.
+- **Note:** the component is not yet mounted on any route, so it has no live UI verification yet — wire it into a flow to render it. Web-only CSS keys (`cursor`, `transition*`, `position:'fixed'`) go through a typed `webStyle()` helper since react-native's `ViewStyle` omits them (no `any`).
 
 ---
 
