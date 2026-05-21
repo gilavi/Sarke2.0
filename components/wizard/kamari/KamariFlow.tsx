@@ -19,6 +19,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import Animated, { FadeInDown, FadeOut } from 'react-native-reanimated';
 import { Image } from 'expo-image';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -408,9 +409,10 @@ export function KamariDetailModal({
           <View style={styles.headerBtn} />
         </View>
 
-        <ScrollView
+        <KeyboardAwareScrollView
           contentContainerStyle={{ padding: 16, paddingBottom: 24, gap: 10 }}
           keyboardShouldPersistTaps="handled"
+          bottomOffset={24}
         >
           <Text size="sm" color={theme.colors.inkSoft} style={{ marginBottom: 4 }}>
             შეეხეთ კომპონენტს თუ აღმოაჩინეთ პრობლემა
@@ -495,7 +497,7 @@ export function KamariDetailModal({
               </View>
             );
           })}
-        </ScrollView>
+        </KeyboardAwareScrollView>
 
         <View style={[styles.detailFooter, { paddingBottom: 12 + insets.bottom }]}>
           <Button title="შენახვა" onPress={handleSave} size="lg" />

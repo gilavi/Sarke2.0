@@ -481,3 +481,32 @@ Auth inputs (login, register, forgot, reset) had no return-key field flow, no su
 - **§2.15–2.19 photo / OOM (expo-image migration, annotated-JPEG, temp-file cleanup):** not in this pass; the OOM claims need on-device profiling to verify before changing the photo pipeline.
 
 **Verified:** `npm run lint` typecheck clean for changed files (pre-existing unrelated failures remain). tsc validated all `textContentType`/`autoComplete` values. Auth flows not exercised on a device this session — return-key chaining + autofill should be smoke-tested on a real device.
+
+## Full-file audit pass — every remaining report bug triaged · 2026-05-22
+
+Ran five parallel read-only verifiers over **all ~156 detailed entries** in `Sarke2.0_Beta_Test_Master_Report.md` (P0 §1.x, P1 §2.x, P2 §3.x, P3 §4.x). Consistent with prior sprints, ~80% were false, already-handled, or carried regressing fixes. Each verdict was checked against current source; the genuine, safely-fixable bugs were fixed (correcting the report's proposed fix where it was wrong). All changes typecheck clean.
+
+**Fixed this pass (13):**
+- **§1.10** [app/projects/[id]/signer.tsx](app/projects/[id]/signer.tsx) — project-signer signature used the banned `fetch(dataURL).blob()` + `storageApi.upload` (0-byte objects on Hermes/SDK 54). Now uses canonical `uploadSignature`; throws if the upload had to be queued instead of silently saving a broken pointer.
+- **§1.15 + §1.24** [app/orders/[id]/success.tsx](app/orders/[id]/success.tsx) — hardcoded the "specialist appointment" eyebrow for all 6 order types and showed `id.slice(0,4)` instead of the order number. Now fetches the order and renders `ORDER_DOCUMENT_TYPE_LABEL[documentType]` + `formData.orderNumber`.
+- **§1.21** [app/inspections/bobcat/[id].tsx](app/inspections/bobcat/[id].tsx) — navigated to the success/done screen even when `complete()` failed (errors were swallowed). `handleComplete` now returns success and nav is gated on it.
+- **§2.11** [components/wizard/kamari/KamariFlow.tsx](components/wizard/kamari/KamariFlow.tsx) — detail modal's plain `ScrollView` let the keyboard cover the description input; now `KeyboardAwareScrollView` (canonical keyboard primitive).
+- **§2.13** [components/ScaffoldTour.tsx](components/ScaffoldTour.tsx) — re-opening the help tour kept the last slide index; added reset-to-0 on `visible`. (Report named the dead `ChecklistTour.tsx`; the live component is `ScaffoldTour`.)
+- **§2.16** [components/PhotoAnnotator.tsx](components/PhotoAnnotator.tsx) — annotated photos captured as PNG `quality:1` (5–10× larger); flattened opaque output → `jpg` `quality:0.9`.
+- **§2.18** [lib/photoCompression.ts](lib/photoCompression.ts) — `stageCompressedPhotoForOffline` threw if compression failed, so the offline photo was **dropped** (part of the reported photo-loss). Now falls back to staging the original file so the upload is still queued.
+- **§2.25** [app/inspections/[id]/wizard.tsx](app/inspections/[id]/wizard.tsx) — ConclusionStep showed "required" errors (conclusion, harness name, decision) on mount before any interaction; gated behind an `interacted` flag. Submit-time validation unchanged.
+- **§2.33** [components/MapPreview.tsx](components/MapPreview.tsx) — `initialRegion` never recentered when the pin changed; switched to controlled `region` (safe: map is `pointerEvents="none"`).
+- **§2.41** [app/projects/[id].tsx](app/projects/[id].tsx) — `deleteInspection` lacked the double-trigger guard its sibling `deleteFile` has; added a `deletingInspIdsRef` set with `finally` cleanup.
+- **§3.16** [components/RoleSlotSheet.tsx](components/RoleSlotSheet.tsx) — used a static `import { theme }` (light theme), so it ignored dark mode; switched to `useTheme()` + `makeStyles(theme)`.
+- **§3.48** [components/wizard/QuestionCard.tsx](components/wizard/QuestionCard.tsx) — screen-reader label mixed English ("კითხვა N from M"); now "/" to match the visible label.
+- **§4.1** [app/_layout.tsx](app/_layout.tsx) — `exchangedCodes` Set grew unbounded; capped via a `rememberCode` helper.
+
+**Deferred (real but not a safe one-liner):**
+- **§1.16** incident draft "Update" pushes to `/incidents/new` with no id → creates a duplicate. Needs an edit-mode in `incidents/new.tsx` (load + branch create→update) — a feature, not a patch.
+- **§2.43** PhotoAnnotator strokes aren't clamped to the canvas. Output is already clipped by `overflow:hidden`; clamping correctly needs a layout ref in the gesture hot path for marginal benefit — deferred to avoid drawing-path risk.
+- **§3.13** harness completed view passes `previewHtml={null}` (no PDF preview). Needs wiring `renderInspectionPdf` + the harness schema — substantial.
+- **§3.17** project order rows have a chevron but no `onPress`. **No order-detail route exists** (`app/orders/[id]/` only has `success.tsx`), so making them tappable would navigate to a 404. Not actionable until an order-detail screen exists.
+
+**Not changed — verified false / already-handled / device-only (representative):** §2.6, 2.7, 2.8, 2.9, 2.12, 2.14, 2.24, 2.26, 2.29, 2.31, 2.34, 2.37, 2.40, 2.44, 2.45; §3.1, 3.4, 3.7, 3.11, 3.12, 3.30, 3.31, 3.35, 3.39, 3.42, 3.46, 3.47; §4.2–4.6 (already done) and §4.7–4.26 (non-specific boilerplate). Several report-proposed fixes would have **regressed** working code (e.g. §2.26 `queryClient.clear()` already runs on account switch; §2.35's `isSuccess` gate would hang skeletons forever; §2.37's null-toggle breaks the `onChange:(value:string)` contract). Device-only items (layout/timing/RLS/perf) that need on-device repro: §1.3, 1.19, 2.5, 2.10, 2.15, 2.17, 2.19, 2.20, 2.23, 2.27, 2.38, 2.39, 2.42.
+
+**Verified:** `npm run lint` typecheck clean for all 13 changed files (only the pre-existing `lib/services.mock.ts` + web-app `src/` failures remain). Not exercised on a device this session.

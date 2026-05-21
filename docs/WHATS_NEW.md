@@ -4,6 +4,18 @@
 
 ---
 
+## 2026-05-22 — Full beta-report audit: 13 verified fixes (mobile)
+
+### Fixes — triaged every remaining report item, fixed the real ones
+Audited all ~156 detailed entries in the 10-agent beta report against current source and fixed the 13 that were genuinely broken and safely fixable:
+- **Data integrity:** project-signer signatures no longer upload as 0-byte files (canonical `uploadSignature`, §1.10); offline photos are no longer dropped when compression fails (§2.18); bobcat no longer shows "success" when completion fails (§1.21).
+- **Correctness:** order success screen shows the right document type + order number instead of a hardcoded label (§1.15/1.24); MapPreview recenters when the location pin changes (§2.33); `deleteInspection` guards against double-trigger (§2.41).
+- **UX/polish:** Kamari detail input no longer hidden by the keyboard (§2.11); scaffold help tour resets to the first slide on re-open (§2.13); conclusion-step "required" errors only appear after interaction (§2.25); annotated photos save as JPEG not PNG (§2.16); RoleSlotSheet respects dark mode (§3.16); fixed an English word in a Georgian screen-reader label (§3.48); capped an unbounded Set (§4.1).
+
+The vast majority of report items were false, already-handled, or device-only; a few of its proposed fixes would have regressed working code. Deferred (real but larger): incident edit-mode duplicate (§1.16), harness PDF preview (§3.13), annotator coord clamp (§2.43), tappable order rows (§3.17 — needs an order-detail screen that doesn't exist yet). Per-item evidence in [BUG_REPORT.md](../BUG_REPORT.md).
+
+---
+
 ## 2026-05-22 — Auth keyboard & autofill UX (mobile)
 
 ### Improvement — return-key flow + password-manager autofill on auth screens

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dimensions,
   Modal,
@@ -24,6 +24,14 @@ export function ScaffoldTour({ visible, onClose }: { visible: boolean; onClose: 
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+
+  // Reset to the first slide each time the tour is re-opened.
+  useEffect(() => {
+    if (visible) {
+      setIndex(0);
+      listRef.current?.scrollToOffset({ offset: 0, animated: false });
+    }
+  }, [visible]);
 
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const i = Math.round(e.nativeEvent.contentOffset.x / SCREEN_W);

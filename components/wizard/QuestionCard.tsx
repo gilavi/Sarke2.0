@@ -50,7 +50,7 @@ export function QuestionCard({
     }
 
     if (screenReaderEnabled) {
-      announce(`კითხვა ${stepIndex + 1} from ${totalSteps}. ${question.title}`);
+      announce(`კითხვა ${stepIndex + 1} / ${totalSteps}. ${question.title}`);
     }
   }, [question.id, direction, reduceMotion, screenReaderEnabled, stepIndex, totalSteps, translateX, opacity]);
 
@@ -64,7 +64,7 @@ export function QuestionCard({
       entering={reduceMotion ? undefined : FadeInUp.duration(300)}
       style={[styles.card, animatedStyle]}
       accessible
-      accessibilityLabel={`კითხვა ${stepIndex + 1} from ${totalSteps}. ${question.title}`}
+      accessibilityLabel={`კითხვა ${stepIndex + 1} / ${totalSteps}. ${question.title}`}
       accessibilityHint="გადაიფურცლეთ მარჯვნივ შემდეგი კითხვისთვის, მარცხნივ წინა კითხვისთვის"
       accessibilityRole="header"
     >

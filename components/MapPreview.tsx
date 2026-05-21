@@ -15,7 +15,7 @@ export function MapPreview({ latitude, longitude, pinColor, style }: Props) {
         provider={PROVIDER_DEFAULT}
         style={StyleSheet.absoluteFill}
         pointerEvents="none"
-        initialRegion={{
+        region={{
           latitude,
           longitude,
           latitudeDelta: 0.01,

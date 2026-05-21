@@ -10,7 +10,8 @@ import { Ionicons } from '@expo/vector-icons';
 import SignatureScreen, { type SignatureViewRef } from 'react-native-signature-canvas';
 import { Button, Field, Screen } from '../../../components/ui';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
-import { projectsApi, storageApi } from '../../../lib/services';
+import { projectsApi } from '../../../lib/services';
+import { uploadSignature } from '../../../lib/signatures';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import { useToast } from '../../../lib/toast';
 import { imageForDisplay } from '../../../lib/imageUrl';
@@ -84,11 +85,11 @@ export default function SignerForm() {
       let sigPath = existing?.signature_png_url ?? null;
 
       if (sigDirty && pendingSigData) {
-        // Upload new signature
-        const res = await fetch(`data:image/png;base64,${pendingSigData}`);
-        const blob = await res.blob();
+        // Upload via the canonical helper — the old fetch(dataURL).blob() +
+        // storageApi.upload path produced 0-byte objects on Hermes/SDK 54.
         const path = `project/${id}/signer-${existing?.id ?? Date.now()}-${Date.now()}.png`;
-        await storageApi.upload(STORAGE_BUCKETS.signatures, path, blob, 'image/png');
+        const { pending } = await uploadSignature(path, pendingSigData);
+        if (pending) throw new Error('ხელმოწერის ატვირთვა ვერ მოხერხდა');
         sigPath = path;
       }
 

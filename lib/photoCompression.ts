@@ -108,14 +108,25 @@ export async function stageCompressedPhotoForOffline(
   sourceUri: string,
   profile: CompressionProfile,
 ): Promise<string> {
-  const { uri: compressedUri } = await compressPhoto(sourceUri, { profile });
-  const fileName = compressedUri.split('/').pop() ?? `offline_${Date.now()}.jpg`;
-  const stagedUri = `${FileSystem.documentDirectory}offline-uploads/${fileName}`;
-  await FileSystem.makeDirectoryAsync(`${FileSystem.documentDirectory}offline-uploads/`, {
-    intermediates: true,
-  });
-  await FileSystem.copyAsync({ from: compressedUri, to: stagedUri });
-  // Clean up the cache copy
-  FileSystem.deleteAsync(compressedUri, { idempotent: true }).catch(() => {});
+  const dir = `${FileSystem.documentDirectory}offline-uploads/`;
+  await FileSystem.makeDirectoryAsync(dir, { intermediates: true }).catch(() => {});
+
+  // Never lose the photo: if compression fails, stage the original file so the
+  // offline upload still gets queued (uncompressed) instead of being dropped.
+  let toStage = sourceUri;
+  let compressedToCleanup: string | null = null;
+  try {
+    const { uri: compressedUri } = await compressPhoto(sourceUri, { profile });
+    toStage = compressedUri;
+    compressedToCleanup = compressedUri;
+  } catch (e) {
+    console.warn('[stageCompressedPhotoForOffline] compression failed, staging original', e);
+  }
+
+  const stagedUri = `${dir}offline_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
+  await FileSystem.copyAsync({ from: toStage, to: stagedUri });
+  if (compressedToCleanup) {
+    FileSystem.deleteAsync(compressedToCleanup, { idempotent: true }).catch(() => {});
+  }
   return stagedUri;
 }

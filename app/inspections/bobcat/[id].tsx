@@ -373,8 +373,10 @@ export default function BobcatInspectionScreen() {
       setInspection(prev => prev ? { ...prev, status: 'completed', completedAt } : prev);
       await AsyncStorage.removeItem(persistKey);
       toast.success('შემოწმება დასრულდა');
+      return true;
     } catch (e) {
       toast.error(friendlyError(e, 'შეცდომა'));
+      return false;
     } finally {
       setCompleting(false);
     }
@@ -485,8 +487,8 @@ export default function BobcatInspectionScreen() {
 
   const handleNext = useCallback(async () => {
     if (step === CONCLUSION_STEP) {
-      await handleComplete();
-      router.push(`/inspections/bobcat/${id}/done` as any);
+      const ok = await handleComplete();
+      if (ok) router.push(`/inspections/bobcat/${id}/done` as any);
     } else if (step < CONCLUSION_STEP) {
       setStep(s => s + 1);
     }

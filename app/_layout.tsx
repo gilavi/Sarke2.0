@@ -38,6 +38,12 @@ initCrashReporting();
 // same recovery link — the second exchange would fail and replace the user's
 // session with an error.
 const exchangedCodes = new Set<string>();
+// Deep-link codes are single-use; cap the set so it can't grow unbounded
+// across a long-lived session.
+function rememberCode(code: string) {
+  if (exchangedCodes.size > 50) exchangedCodes.clear();
+  exchangedCodes.add(code);
+}
 
 function ThemedStatusBar() {
   const { isDark } = useTheme();
@@ -98,7 +104,7 @@ function AuthGate() {
       const isVerifyEmail = parsed.path === 'verify-email' || parsed.hostname === 'verify-email';
       if (isVerifyEmail && code) {
         if (exchangedCodes.has(code)) return;
-        exchangedCodes.add(code);
+        rememberCode(code);
         try {
           const { error } = await supabase.auth.exchangeCodeForSession(code);
           if (error) throw error;
@@ -117,7 +123,7 @@ function AuthGate() {
         router.replace('/(auth)/reset');
         return;
       }
-      exchangedCodes.add(code);
+      rememberCode(code);
       try {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (error) throw error;

@@ -453,6 +453,8 @@ export default function ProjectDetail() {
     }
   };
 
+  const deletingInspIdsRef = useRef<Set<string>>(new Set());
+
   const deleteInspection = (item: UnifiedInspection) => {
     showActionSheetWithOptions(
       {
@@ -463,6 +465,8 @@ export default function ProjectDetail() {
       },
       async idx => {
         if (idx !== 0) return;
+        if (deletingInspIdsRef.current.has(item.id)) return;
+        deletingInspIdsRef.current.add(item.id);
         try {
           if (item.source === 'bobcat') {
             const { error } = await supabase.from('bobcat_inspections').delete().eq('id', item.id);
@@ -507,6 +511,8 @@ export default function ProjectDetail() {
           toast.success(t('notifications.deleted'));
         } catch (e) {
           toast.error(friendlyError(e, t('errors.deleteFailed')));
+        } finally {
+          deletingInspIdsRef.current.delete(item.id);
         }
       },
     );
