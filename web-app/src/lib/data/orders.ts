@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import type { TablesInsert, TablesUpdate } from '@/types/database';
 
 export type OrderDocumentType = 'labor_safety_specialist' | 'alcohol_control' | 'fire_safety_order' | 'fire_safety_order_enterprise';
 
@@ -169,7 +170,7 @@ export async function createOrder(args: {
       document_type: args.documentType,
       form_data: args.formData,
       status: args.status,
-    })
+    } as unknown as TablesInsert<'orders'>)
     .select()
     .single();
   if (error) throw new Error(error.message);
@@ -189,7 +190,7 @@ export async function updateOrder(id: string, patch: {
   if (patch.pdfHash !== undefined) db.pdf_hash = patch.pdfHash ?? null;
   const { data, error } = await supabase
     .from('orders')
-    .update(db)
+    .update(db as TablesUpdate<'orders'>)
     .eq('id', id)
     .select()
     .single();

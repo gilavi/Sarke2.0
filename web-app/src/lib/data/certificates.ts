@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { STORAGE_BUCKETS, signedUrl, upload } from '@/lib/db/storage';
+import type { TablesInsert } from '@/types/database';
 import type { User } from '@supabase/supabase-js';
 
 export interface Certificate {
@@ -46,7 +47,7 @@ export async function uploadCertificate(file: File, user: User): Promise<Certifi
       user_id: user.id,
       pdf_url: path,
       conclusion_text: file.name.replace(/\.pdf$/i, ''),
-    })
+    } as TablesInsert<'certificates'>)
     .select()
     .single();
   if (error) throw new Error(error.message);

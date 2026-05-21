@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import type { TablesInsert, TablesUpdate } from '@/types/database';
 
 export type BriefingStatus = 'draft' | 'completed' | string;
 
@@ -109,7 +110,10 @@ export async function updateBriefing(
   if (patch.topics !== undefined) updates.topics = patch.topics;
   if (patch.participants !== undefined) updates.participants = patch.participants;
   if (patch.status !== undefined) updates.status = patch.status;
-  const { error } = await supabase.from('briefings').update(updates).eq('id', id);
+  const { error } = await supabase
+    .from('briefings')
+    .update(updates as TablesUpdate<'briefings'>)
+    .eq('id', id);
   if (error) throw new Error(error.message);
 }
 
@@ -127,7 +131,7 @@ export async function createBriefing(input: CreateBriefingInput): Promise<Briefi
       participants: input.participants,
       inspector_name: input.inspectorName,
       status: 'draft',
-    })
+    } as unknown as TablesInsert<'briefings'>)
     .select('id, project_id, date_time, topics, participants, inspector_name, status, created_at')
     .single();
   if (error) throw new Error(error.message);

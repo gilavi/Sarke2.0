@@ -13,10 +13,17 @@
  * `toModel`, `toInsert`, `toUpdate`. `mapDefined` removes the copy-pasted
  * `if (patch.x !== undefined) row.col = patch.x` ladders from those mappers.
  */
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 
 /** Message shown by auth-guarded creates. Matches the existing literal. */
 export const NOT_AUTHENTICATED = 'არაავტორიზებული';
+
+// makeRepository operates on dynamic (runtime-string) table names, so it talks
+// to Supabase through the schema-less client view — the table-literal typing the
+// rest of the data layer relies on can't apply to a `string` table. Per-entity
+// type safety here comes from cfg.toModel / toInsert / toUpdate.
+const db = supabase as unknown as SupabaseClient;
 
 export interface Repository<TModel, TCreate, TPatch> {
   list(projectId?: string | null): Promise<TModel[]>;
@@ -57,7 +64,7 @@ export function makeRepository<TModel, TRow, TCreate, TPatch>(
 
   return {
     async list(projectId) {
-      let q = supabase
+      let q = db
         .from(cfg.table)
         .select(cfg.columns)
         .order(orderColumn, { ascending: orderAscending });
@@ -69,7 +76,7 @@ export function makeRepository<TModel, TRow, TCreate, TPatch>(
     },
 
     async get(id) {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from(cfg.table)
         .select(cfg.columns)
         .eq('id', id)
@@ -81,7 +88,7 @@ export function makeRepository<TModel, TRow, TCreate, TPatch>(
     async create(input) {
       const { data: userData, error: userErr } = await supabase.auth.getUser();
       if (userErr || !userData.user) throw userErr ?? new Error(NOT_AUTHENTICATED);
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from(cfg.table)
         .insert(cfg.toInsert(input, userData.user.id))
         .select(cfg.columns)
@@ -93,12 +100,12 @@ export function makeRepository<TModel, TRow, TCreate, TPatch>(
     async update(id, patch) {
       const updates = cfg.toUpdate(patch);
       if (Object.keys(updates).length === 0) return;
-      const { error } = await supabase.from(cfg.table).update(updates).eq('id', id);
+      const { error } = await db.from(cfg.table).update(updates).eq('id', id);
       if (error) throw new Error(error.message);
     },
 
     async remove(id) {
-      const { error } = await supabase.from(cfg.table).delete().eq('id', id);
+      const { error } = await db.from(cfg.table).delete().eq('id', id);
       if (error) throw new Error(error.message);
     },
   };

@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { STORAGE_BUCKETS, signedUrl, removeObjects } from '@/lib/db/storage';
+import type { TablesUpdate } from '@/types/database';
 
 export type InspectionStatus = 'draft' | 'in_progress' | 'completed' | string;
 
@@ -42,7 +43,7 @@ export async function listInspections(projectId?: string): Promise<Inspection[]>
   if (projectId) q = q.eq('project_id', projectId);
   const { data, error } = await q;
   if (error) throw new Error(error.message);
-  return (data ?? []) as Inspection[];
+  return (data ?? []) as unknown as Inspection[];
 }
 
 export async function countInspections(): Promise<number> {
@@ -119,7 +120,7 @@ export async function createInspection(input: CreateInspectionInput): Promise<In
     )
     .single();
   if (error) throw new Error(error.message);
-  return data as Inspection;
+  return data as unknown as Inspection;
 }
 
 export async function deleteInspection(id: string): Promise<void> {
@@ -288,7 +289,10 @@ export async function updateInspection(
 ): Promise<void> {
   const updates: Record<string, unknown> = { ...patch };
   if (patch.status === 'completed') updates.completed_at = new Date().toISOString();
-  const { error } = await supabase.from('inspections').update(updates).eq('id', id);
+  const { error } = await supabase
+    .from('inspections')
+    .update(updates as TablesUpdate<'inspections'>)
+    .eq('id', id);
   if (error) throw new Error(error.message);
 }
 

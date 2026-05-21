@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { STORAGE_BUCKETS, signedUrl, upload, removeObjects } from '@/lib/db/storage';
+import type { TablesInsert } from '@/types/database';
 
 export interface ProjectFile {
   id: string;
@@ -41,7 +42,7 @@ export async function uploadProjectFile(
       storage_path: path,
       size_bytes: file.size,
       mime_type: file.type || null,
-    })
+    } as TablesInsert<'project_files'>)
     .select('id, project_id, name, storage_path, size_bytes, mime_type, created_at')
     .single();
   if (error) throw new Error(error.message);

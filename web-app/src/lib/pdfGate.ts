@@ -46,7 +46,7 @@ export class PdfLimitReachedError extends Error {
 export async function checkAndIncrementPdfCount(userId: string): Promise<PdfGateResult> {
   const { data, error } = await supabase.rpc('increment_pdf_count', { user_id: userId });
   if (error) throw error;
-  const result = data as PdfGateResult;
+  const result = data as unknown as PdfGateResult;
   if (!result.allowed) throw new PdfLimitReachedError(result.count, result.limit);
   return result;
 }

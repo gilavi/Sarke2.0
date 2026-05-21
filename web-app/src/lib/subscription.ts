@@ -20,7 +20,7 @@ export interface CancelResult {
 export async function cancelSubscription(userId: string): Promise<CancelResult> {
   const { data, error } = await supabase.rpc('cancel_subscription', { user_id: userId });
   if (error) throw error;
-  return data as CancelResult;
+  return data as unknown as CancelResult;
 }
 
 export function usePaymentHistory() {

@@ -1,15 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
+import type { Database } from '@/types/database';
 
 // Validate the build-time env once, with a clear message instead of a vague
-// runtime crash deep in a query.
-//
-// NOTE: schema types are generated to src/types/database.ts (`npm run gen:types`)
-// but the client is intentionally NOT yet parameterized as
-// `createClient<Database>` — doing so surfaces ~24 type errors across the data
-// layer (generic-repo inserts, `as` casts, Json columns) that must be fixed in
-// one pass alongside replacing the hand-written interfaces with Database-derived
-// types. Deferred until the in-flight page migration is committed.
+// runtime crash deep in a query. The client is parameterized on the generated
+// schema types (src/types/database.ts, `npm run gen:types`) so every
+// `.from('table')` is type-checked end-to-end.
 const envSchema = z.object({
   VITE_SUPABASE_URL: z.string().url('VITE_SUPABASE_URL must be a valid URL'),
   VITE_SUPABASE_ANON_KEY: z.string().min(1, 'VITE_SUPABASE_ANON_KEY is required'),
@@ -21,7 +17,7 @@ if (!parsed.success) {
   throw new Error(`Invalid Supabase environment. Copy .env.example to .env.\n${issues}`);
 }
 
-export const supabase = createClient(
+export const supabase = createClient<Database>(
   parsed.data.VITE_SUPABASE_URL,
   parsed.data.VITE_SUPABASE_ANON_KEY,
   {

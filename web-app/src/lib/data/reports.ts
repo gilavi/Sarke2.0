@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { STORAGE_BUCKETS, signedUrl, upload, removeObjects } from '@/lib/db/storage';
+import type { Json } from '@/types/database';
 
 export type ReportStatus = 'draft' | 'completed';
 
@@ -103,7 +104,7 @@ export async function addReportSlide(args: {
   const updated = [...existing, nextSlide];
   const { data, error } = await supabase
     .from('reports')
-    .update({ slides: updated })
+    .update({ slides: updated as unknown as Json })
     .eq('id', args.report.id)
     .select(COLS)
     .single();
@@ -121,7 +122,7 @@ export async function updateReportSlide(
   );
   const { data, error } = await supabase
     .from('reports')
-    .update({ slides: updated })
+    .update({ slides: updated as unknown as Json })
     .eq('id', report.id)
     .select(COLS)
     .single();
@@ -145,7 +146,7 @@ export async function removeReportSlide(report: Report, slideId: string): Promis
     .map((s, i) => ({ ...s, order: i }));
   const { data, error } = await supabase
     .from('reports')
-    .update({ slides: updated })
+    .update({ slides: updated as unknown as Json })
     .eq('id', report.id)
     .select(COLS)
     .single();

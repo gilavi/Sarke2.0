@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { STORAGE_BUCKETS, signedUrl, upload, removeObjects } from '@/lib/db/storage';
+import type { TablesInsert, TablesUpdate } from '@/types/database';
 
 export type IncidentType = 'minor' | 'severe' | 'fatal' | 'mass' | 'nearmiss';
 export type IncidentStatus = 'draft' | 'completed';
@@ -106,7 +107,10 @@ export async function updateIncident(
     inspector_signature: string | null;
   }>,
 ): Promise<void> {
-  const { error } = await supabase.from('incidents').update(patch).eq('id', id);
+  const { error } = await supabase
+    .from('incidents')
+    .update(patch as TablesUpdate<'incidents'>)
+    .eq('id', id);
   if (error) throw new Error(error.message);
 }
 
@@ -159,7 +163,7 @@ export async function createIncident(input: CreateIncidentInput): Promise<Incide
       location: input.location ?? null,
       photos,
       status: 'draft',
-    })
+    } as TablesInsert<'incidents'>)
     .select(COLS)
     .single();
   if (error) throw new Error(error.message);

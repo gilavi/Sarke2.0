@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { STORAGE_BUCKETS, removeObjects } from '@/lib/db/storage';
+import type { Json, TablesInsert } from '@/types/database';
 
 export interface CrewMember {
   id: string;
@@ -44,7 +45,7 @@ export async function addProjectSigner(args: {
       full_name: args.fullName,
       position: args.position ?? null,
       phone: args.phone ?? null,
-    })
+    } as TablesInsert<'project_signers'>)
     .select('id, project_id, full_name, position, phone')
     .single();
   if (error) throw new Error(error.message);
@@ -52,7 +53,10 @@ export async function addProjectSigner(args: {
 }
 
 export async function setProjectCrew(projectId: string, crew: CrewMember[]): Promise<void> {
-  const { error } = await supabase.from('projects').update({ crew }).eq('id', projectId);
+  const { error } = await supabase
+    .from('projects')
+    .update({ crew: crew as unknown as Json })
+    .eq('id', projectId);
   if (error) throw new Error(error.message);
 }
 
