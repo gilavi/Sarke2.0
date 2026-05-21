@@ -18,7 +18,7 @@ test('app shell mounts without uncaught JS errors', async ({ page }) => {
   page.on('pageerror', (err) => errors.push(err.message));
 
   // The app uses hash routing on GitHub Pages — navigate to the hash route.
-  await page.goto('/Sarke2.0/app/#/home');
+  await page.goto('/app/#/home');
   await page.waitForLoadState('networkidle');
 
   // React must have rendered something into the root element.
