@@ -60,6 +60,13 @@ jobs:
             exit 1
           fi
 
+      # Guard 0: never deploy a build that doesn't typecheck or pass unit tests.
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
       - name: Build
         env:
           # Defaults match app.json — anon key is public-safe, but secrets win

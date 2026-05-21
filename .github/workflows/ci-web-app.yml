@@ -1,0 +1,52 @@
+name: CI web-app
+
+# Typecheck + unit tests for the web-app dashboard. The existing test.yml runs
+# the Expo/mobile suite; this gates web-app/ specifically on every PR and push
+# that touches it, before deploy-web-app.yml publishes.
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'web-app/**'
+      - '.github/workflows/ci-web-app.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'web-app/**'
+      - '.github/workflows/ci-web-app.yml'
+
+concurrency:
+  group: ci-web-app-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: typecheck + test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web-app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: web-app/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      # Non-blocking until the query-key migration on the page layer lands and
+      # the tree can be auto-fixed/formatted. Flip to a required step then.
+      - name: Lint (informational)
+        run: npm run lint
+        continue-on-error: true

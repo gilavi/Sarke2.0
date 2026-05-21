@@ -8,3 +8,4 @@ dist-ssr
 *.tsbuildinfo
 test-results
 playwright-report
+coverage
