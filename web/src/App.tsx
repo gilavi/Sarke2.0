@@ -2,8 +2,6 @@ import { useEffect, useState } from 'react';
 import { SignPage } from './pages/SignPage';
 import { SuccessPage } from './pages/SuccessPage';
 import { DeclinedPage } from './pages/DeclinedPage';
-import { Brand } from './components/Brand';
-
 import SafetyGuidePage from './pages/SafetyGuidePage';
 
 /**
