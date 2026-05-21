@@ -390,3 +390,38 @@ Wired into `package.json`: `lint` now runs `tsc --noEmit && node scripts/check-p
 - [package.json](package.json) — lint script chained to check-primitives.
 - [docs/primitives.md](docs/primitives.md) — new.
 - [CLAUDE.md](CLAUDE.md) — added "Before adding a util" section; updated workflow step 3 to `npm run lint`.
+
+## P0 — New-inspection-from-template used the template id as the project id · FIXED 2026-05-21
+
+**Source:** 10-agent beta report (`Sarke2.0_Beta_Test_Master_Report.md`, §1.4), Sprint 1.
+
+**Repro:** Project detail → start a new inspection on a project that has **two or more** system templates (so the template-picker dropdown appears) → pick a template.
+
+**Symptom:** The inspection is created against the wrong `project_id` — it is set to the **template's** id, so the inspection never appears under the project (and, depending on FK state, the insert can fail outright).
+
+**Root cause:** In [app/projects/[id].tsx](app/projects/[id].tsx) the template-picker `onChange` parameter was named `id`, shadowing the outer route param `id` (the project id). Dropdown options use `value: tpl.id`, so the callback `id` is the **template** id — and it was passed as the first argument to `createInspectionForTemplate(projectId, tpl)`:
+
+```ts
+onChange={async (id) => {
+  const tpl = templatePickerOptions.find(t => t.id === String(id));
+  if (tpl && id) await createInspectionForTemplate(String(id), tpl); // String(id) is the template id, not the project id
+}}
+```
+
+The single-template fast path (`createInspectionForTemplate(id, system[0])`) used the correct outer `id`, which is why the common case worked and the bug only surfaced with multiple system templates.
+
+**Fix:** rename the callback param to `templateId` to remove the shadow, and pass the outer project `id`:
+
+```ts
+onChange={async (templateId) => {
+  const tpl = templatePickerOptions.find(t => t.id === String(templateId));
+  if (tpl && id) await createInspectionForTemplate(id, tpl);
+}}
+```
+
+**Other beta-report Sprint-1 items — verified against source, no code change:**
+- **§1.1 BottomSheet "double bottom padding" / §1.2 SheetLayout "double keyboard handling":** already resolved in the 2026-04-28 keyboard pass (see the keyboard-unification entry above). `useSheetKeyboardMargin()` subtracts `insets.bottom` and rides the sheet to the keyboard top; every `SheetLayout` rendered inside a `BottomSheet` already passes `ScrollComponent={BottomSheetScrollView}` (so it doesn't use `KeyboardAwareScrollView`), and the no-ScrollComponent callers all live inside bespoke `<Modal>`s where KASV is correct. The report's proposed fix (delete the inset spacer / add an `insideBottomSheet` prop) would re-introduce overshoot or hide content behind the keyboard. The cited `LocalSignaturesSheet` is unused dead code.
+- **§1.5–1.7 "missing done screens" (mobile-ladder, safety-net, lifting-accessories):** false — all three complete **inline** (`api.complete()` → set status to `completed` → success toast + celebration → render preview). None navigate to a `/done` route, so there is no "screen not found" crash.
+- **§1.8–1.9 "undefined `inspectionRef`" (fall-protection, forklift):** false — both declare `const inspectionRef = useRef(...)` and sync it via `useEffect(() => { inspectionRef.current = inspection; }, [inspection])`; photo upload reads `inspectionRef.current.id` correctly.
+
+**Verified:** typecheck passes for the changed file (pre-existing unrelated failures in `lib/services.mock.ts` and web-app `src/` remain — not introduced here). On-device sheet/keyboard behavior was not re-tested (no simulator this session).

@@ -1346,9 +1346,9 @@ export default function ProjectDetail() {
           icon: <InspectionTypeAvatar category={tpl.category} size={36} />,
         }))}
         value={null}
-        onChange={async (id) => {
-          const tpl = templatePickerOptions.find(t => t.id === String(id));
-          if (tpl && id) await createInspectionForTemplate(String(id), tpl);
+        onChange={async (templateId) => {
+          const tpl = templatePickerOptions.find(t => t.id === String(templateId));
+          if (tpl && id) await createInspectionForTemplate(id, tpl);
         }}
         open={templatePickerVisible}
         onOpenChange={setTemplatePickerVisible}

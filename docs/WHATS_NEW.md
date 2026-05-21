@@ -4,6 +4,15 @@
 
 ---
 
+## 2026-05-21 — Fix new-inspection-from-template project association (mobile)
+
+### Fix — inspection now created under the right project
+The project-detail template picker passed the selected **template** id where `createInspectionForTemplate` expects the **project** id (a shadowed `id` callback param). Picking a template on a project with 2+ system templates created the inspection against the wrong `project_id`. Renamed the callback param to `templateId` and pass the route project `id`. ([app/projects/[id].tsx](../app/projects/[id].tsx))
+
+This was §1.4 of the 10-agent beta report (Sprint 1). The other Sprint-1 items in that report — BottomSheet/SheetLayout keyboard "double handling" (§1.1–1.2), three "missing done screens" (§1.5–1.7), and fall-protection/forklift "undefined `inspectionRef`" (§1.8–1.9) — were verified against source and found to be already-fixed or non-existent; no code change. See [BUG_REPORT.md](../BUG_REPORT.md) for the per-item evidence.
+
+---
+
 ## 2026-05-21 — Align web-app React types with the React 19 runtime (web-app)
 
 ### Fix — types now match runtime
