@@ -1,6 +1,15 @@
 # What's New — Sarke 2.0 Changelog
 
-**Updated:** 2026-05-21 | Branch: `main`
+**Updated:** 2026-05-22 | Branch: `main`
+
+---
+
+## 2026-05-22 — Auth keyboard & autofill UX (mobile)
+
+### Improvement — return-key flow + password-manager autofill on auth screens
+Login, register, forgot-password, and reset-password inputs now support return-key field chaining (email→password→submit, name→name→email→password on register), submit-on-return, and iOS/Android autofill hints (`textContentType` / `autoComplete`) for email, current/new password, and name fields. `FloatingLabelInput` now forwards those props (plus `blurOnSubmit`) to the underlying `TextInput`. ([components/inputs/FloatingLabelInput.tsx](../components/inputs/FloatingLabelInput.tsx), [app/(auth)/login.tsx](../app/(auth)/login.tsx), [forgot.tsx](../app/(auth)/forgot.tsx), [reset.tsx](../app/(auth)/reset.tsx))
+
+This was §2.1–2.3 of the 10-agent beta report (Sprint 3). Other Sprint-3 items were assessed: AuthGate redirect oscillation (§1.18) is already prevented by expo-router segment guards (not a bug); SignatureBlock's index keys (§2.21) are genuinely fragile but need stable ids threaded through callers (deferred); photo/OOM items (§2.15–2.19) need on-device profiling. See [BUG_REPORT.md](../BUG_REPORT.md) for details.
 
 ---
 

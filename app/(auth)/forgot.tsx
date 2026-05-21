@@ -87,6 +87,10 @@ export default function ForgotPasswordScreen() {
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
+                  textContentType="emailAddress"
+                  autoComplete="email"
+                  returnKeyType="go"
+                  onSubmitEditing={() => { if (email.trim()) submit(); }}
                 />
                 {error ? <ErrorText>{error}</ErrorText> : null}
                 <Button title={t('auth.sendLink')} onPress={submit} loading={busy} disabled={!email.trim()} />

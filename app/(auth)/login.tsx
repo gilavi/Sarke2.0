@@ -1,4 +1,4 @@
-import { useState , useMemo} from 'react';
+import { useState , useMemo, useRef} from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -8,6 +8,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  TextInput,
   View,
 } from 'react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
@@ -126,6 +127,10 @@ function ForgotPasswordModal({ visible, onClose }: { visible: boolean; onClose: 
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
+                textContentType="emailAddress"
+                autoComplete="email"
+                returnKeyType="go"
+                onSubmitEditing={() => { if (email.trim()) submit(); }}
               />
               <Button title={t('auth.sendLink')} onPress={submit} loading={busy} disabled={!email.trim()} />
             </View>
@@ -150,6 +155,7 @@ function LoginForm({ onForgotPassword }: { onForgotPassword: () => void }) {
   const [busy, setBusy] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const passwordRef = useRef<TextInput>(null);
 
   const handleSignIn = async () => {
     const trimmed = email.trim();
@@ -193,14 +199,24 @@ function LoginForm({ onForgotPassword }: { onForgotPassword: () => void }) {
         keyboardType="email-address"
         autoCapitalize="none"
         autoCorrect={false}
+        textContentType="emailAddress"
+        autoComplete="email"
+        returnKeyType="next"
+        blurOnSubmit={false}
+        onSubmitEditing={() => passwordRef.current?.focus()}
       />
       <FloatingLabelInput
+        ref={passwordRef}
         label={t('common.password')}
         value={password}
         onChangeText={setPassword}
         secureTextEntry={!showPw}
         rightIcon={showPw ? 'eye-off' : 'eye'}
         onRightIconPress={() => setShowPw(v => !v)}
+        textContentType="password"
+        autoComplete="current-password"
+        returnKeyType="go"
+        onSubmitEditing={handleSignIn}
       />
       <Pressable
         onPress={onForgotPassword}
@@ -243,6 +259,9 @@ function RegisterForm({
   const [busy, setBusy] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const lastNameRef = useRef<TextInput>(null);
+  const emailRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInput>(null);
 
   const canSubmit =
     !!firstName.trim() &&
@@ -297,27 +316,57 @@ function RegisterForm({
     <View style={{ gap: 12 }}>
       <View style={{ flexDirection: 'row', gap: 12 }}>
         <View style={{ flex: 1 }}>
-          <FloatingLabelInput label={t('auth.firstName')} value={firstName} onChangeText={setFirstName} />
+          <FloatingLabelInput
+            label={t('auth.firstName')}
+            value={firstName}
+            onChangeText={setFirstName}
+            textContentType="givenName"
+            autoComplete="name-given"
+            returnKeyType="next"
+            blurOnSubmit={false}
+            onSubmitEditing={() => lastNameRef.current?.focus()}
+          />
         </View>
         <View style={{ flex: 1 }}>
-          <FloatingLabelInput label={t('auth.lastName')} value={lastName} onChangeText={setLastName} />
+          <FloatingLabelInput
+            ref={lastNameRef}
+            label={t('auth.lastName')}
+            value={lastName}
+            onChangeText={setLastName}
+            textContentType="familyName"
+            autoComplete="name-family"
+            returnKeyType="next"
+            blurOnSubmit={false}
+            onSubmitEditing={() => emailRef.current?.focus()}
+          />
         </View>
       </View>
       <FloatingLabelInput
+        ref={emailRef}
         label={t('common.email')}
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"
         autoCapitalize="none"
         autoCorrect={false}
+        textContentType="emailAddress"
+        autoComplete="email"
+        returnKeyType="next"
+        blurOnSubmit={false}
+        onSubmitEditing={() => passwordRef.current?.focus()}
       />
       <FloatingLabelInput
+        ref={passwordRef}
         label={t('auth.passwordMinLength', { min: MIN_PASSWORD_LEN })}
         value={password}
         onChangeText={setPassword}
         secureTextEntry={!showPw}
         rightIcon={showPw ? 'eye-off-outline' : 'eye-outline'}
         onRightIconPress={() => setShowPw(v => !v)}
+        textContentType="newPassword"
+        autoComplete="new-password"
+        returnKeyType="go"
+        onSubmitEditing={() => { if (canSubmit) handleRegister(); }}
       />
       {error ? <InlineError>{error}</InlineError> : null}
       <Button title={t('auth.register')} onPress={handleRegister} loading={busy} disabled={!canSubmit} />

@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  TextInputProps,
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,6 +29,9 @@ export interface FloatingLabelInputProps {
   onBlur?: () => void;
   returnKeyType?: ReturnKeyTypeOptions;
   onSubmitEditing?: () => void;
+  textContentType?: TextInputProps['textContentType'];
+  autoComplete?: TextInputProps['autoComplete'];
+  blurOnSubmit?: boolean;
   // Extended props for password toggles and other native props
   rightIcon?: keyof typeof Ionicons.glyphMap;
   onRightIconPress?: () => void;
@@ -53,6 +57,7 @@ export const FloatingLabelInput = React.forwardRef<TextInput, FloatingLabelInput
       label, value: valueProp, onChangeText, required, error, helper,
       disabled, multiline, numberOfLines, keyboardType, secureTextEntry,
       onFocus, onBlur, returnKeyType, onSubmitEditing,
+      textContentType, autoComplete, blurOnSubmit,
       rightIcon, onRightIconPress,
       autoCapitalize, autoCorrect, autoFocus, maxLength,
       onEndEditing, inputAccessoryViewID, textAlignVertical,
@@ -189,6 +194,9 @@ export const FloatingLabelInput = React.forwardRef<TextInput, FloatingLabelInput
             secureTextEntry={secureTextEntry}
             returnKeyType={returnKeyType}
             onSubmitEditing={onSubmitEditing}
+            blurOnSubmit={blurOnSubmit}
+            textContentType={textContentType}
+            autoComplete={autoComplete}
             autoCapitalize={autoCapitalize}
             autoCorrect={autoCorrect}
             autoFocus={autoFocus}

@@ -463,3 +463,21 @@ A DB `unique (inspection_id, pdf_url)` constraint would be a stronger backstop b
 - **§2.4 "GridRowStep comment autoFocus hidden behind keyboard (regression)":** false. The comment input sits inside a `KeyboardAwareScrollView` (`react-native-keyboard-controller`, `bottomOffset={120}`) that auto-scrolls the focused field above the keyboard; the empty `onFocus` is intentional and documented inline. The manual `scrollToEnd` was removed on purpose in the 2026-04-28/05-02 keyboard migration, not a regression.
 
 **Verified:** `npm run lint` typecheck clean for the changed file; pre-existing unrelated failures in `lib/services.mock.ts` and web-app `src/` remain. Concurrency behavior reasoned from source; not reproduced on a device this session.
+
+## P1/P2 — Auth keyboard & autofill UX · FIXED 2026-05-22
+
+**Source:** beta report §2.1–2.3 (Sprint 3, "auth keyboard UX improvements").
+
+Auth inputs (login, register, forgot, reset) had no return-key field flow, no submit-on-return, and no autofill / password-manager hints. The shared input even dropped those props. Fixed:
+- [components/inputs/FloatingLabelInput.tsx](components/inputs/FloatingLabelInput.tsx) — now forwards `textContentType`, `autoComplete`, and `blurOnSubmit` to the underlying `TextInput` (previously declared nowhere, so callers couldn't set them).
+- [app/(auth)/login.tsx](app/(auth)/login.tsx) — LoginForm chains email→password (refs + `returnKeyType`/`onSubmitEditing`) and sets `emailAddress`/`email` + `password`/`current-password`; RegisterForm chains firstName→lastName→email→password with name + `emailAddress` + `newPassword`/`new-password` hints; the forgot-password modal email gets `emailAddress`/`email` and go-to-submit.
+- [app/(auth)/forgot.tsx](app/(auth)/forgot.tsx), [app/(auth)/reset.tsx](app/(auth)/reset.tsx) — same treatment; reset chains new-password→confirm with `newPassword`/`new-password`.
+
+`verify-email` already used a raw `TextInput` with `oneTimeCode`/`sms-otp`, so it was left as-is.
+
+**Other Sprint-3 items — assessed, not changed (with reasons):**
+- **§1.18 AuthGate redirect oscillation:** not a bug. AuthGate's redirects are guarded by expo-router segment checks (`!inAuth`, `!inTerms`, `inAuth || (inTerms && !viewMode)`) that go false once the target screen is reached, so they self-terminate. (The genuine wizard↔detail ping-pong already uses `navigationGuard.isOscillating`.) The report's `isOscillating(target, 3)` snippet doesn't even match the real two-arg signature.
+- **§2.21 SignatureBlock `key={idx}`:** real fragility — cards are removable (`onRemoveSignatory`), so index keys mis-associate per-card state on removal — but `SignatoryData` has no stable id and the component's whole API is index-based (`onChange(index)`, `onRemoveSignatory(index)`). A correct fix threads stable ids through every caller; deferred rather than shipped as a half-fix that could cause key collisions.
+- **§2.15–2.19 photo / OOM (expo-image migration, annotated-JPEG, temp-file cleanup):** not in this pass; the OOM claims need on-device profiling to verify before changing the photo pipeline.
+
+**Verified:** `npm run lint` typecheck clean for changed files (pre-existing unrelated failures remain). tsc validated all `textContentType`/`autoComplete` values. Auth flows not exercised on a device this session — return-key chaining + autofill should be smoke-tested on a real device.
