@@ -34,7 +34,7 @@ interface BaseInspection {
   projectId: string;
   status: string;
   inspectionDate: string;
-  inspectorName?: string;
+  inspectorName?: string | null;
   company?: string | null;
   address?: string | null;
 }
