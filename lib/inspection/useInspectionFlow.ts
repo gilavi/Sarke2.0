@@ -77,6 +77,7 @@ export interface InspectionFlowResult<T extends BaseInspection> {
   setInspection: React.Dispatch<React.SetStateAction<T | null>>;
   inspectionRef: React.MutableRefObject<T | null>;
   projectName: string;
+  setProjectName: React.Dispatch<React.SetStateAction<string>>;
   loading: boolean;
   saving: boolean;
   completing: boolean;
@@ -329,7 +330,7 @@ export function useInspectionFlow<T extends BaseInspection>(
 
   return {
     inspection, setInspection, inspectionRef,
-    projectName, loading, saving, completing, celebrating, generatingPdf,
+    projectName, setProjectName, loading, saving, completing, celebrating, generatingPdf,
     previewHtml, previewBusy,
     step, setStep, direction, animateSteps,
     paywallVisible, setPaywallVisible, pdfLocked: !!pdfUsage?.isLocked,
