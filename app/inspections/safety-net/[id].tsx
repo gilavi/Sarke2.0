@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { useCallback, useMemo } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,32 +11,24 @@ import { InspectionResultView } from '../../../components/InspectionResultView';
 import {
   ChecklistSection,
   DynamicTable,
+  SignatureSheet,
   VerdictSelector,
   PhotoSection,
   IdentificationGrid,
   QualDoc,
 } from '../../../components/inspection';
 import { useTheme, type Theme } from '../../../lib/theme';
-import { useSession } from '../../../lib/session';
 import { useToast } from '../../../lib/toast';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { safetyNetApi } from '../../../lib/safetyNetService';
-import { projectsApi } from '../../../lib/services';
-import { renderInspectionPdf } from '../../../lib/inspection/renderMobile';
 import { safetyNetSchema } from '../../../lib/inspection/schemas/safetyNet';
-import { generateAndSharePdf, PdfLimitReachedError } from '../../../lib/pdfOpen';
+import { useInspectionFlow } from '../../../lib/inspection/useInspectionFlow';
 import { PaywallModal } from '../../../components/PaywallModal';
 import { PdfLockedBanner } from '../../../components/PdfLockedBanner';
-import { usePdfUsage, useInvalidatePdfUsage } from '../../../lib/usePdfUsage';
-import { generatePdfName } from '../../../lib/pdfName';
-import { recordCompletion } from '../../../lib/calendarSchedule';
 import { friendlyError } from '../../../lib/errorMap';
 import { a11y } from '../../../lib/accessibility';
-import { haptic } from '../../../lib/haptics';
 import { CelebrationBurst } from '../../../components/animations';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { usePhotoWithLocation } from '../../../hooks/usePhotoWithLocation';
-import { SignatureSheet } from '../../../components/inspection/SignatureSheet';
 import {
   SN_VISUAL_ITEMS,
   SN_POST_TEST_ITEMS,
@@ -49,7 +41,6 @@ import {
   type SNVerdict,
   type SNResult,
   type SNPostResult,
-  type SNSignatory,
 } from '../../../types/safetyNet';
 
 // ── Step constants ────────────────────────────────────────────────────────────
@@ -58,7 +49,6 @@ const INSPECTION_STEP = 2;
 const CONCLUSION_STEP = 3;
 const DOCS_STEP       = 4;
 const TOTAL_STEPS     = 4;
-const STEP_LABELS     = ['ბადე', 'შემოწ.', 'დასკვნა', 'დოკ.'];
 
 // ── Main screen ───────────────────────────────────────────────────────────────
 
@@ -68,194 +58,104 @@ export default function SafetyNetInspectionScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const toast = useToast();
-  const session = useSession();
   const insets = useSafeAreaInsets();
   const { pickPhotoWithAnnotation } = usePhotoWithLocation();
 
-  const [paywallVisible, setPaywallVisible] = useState(false);
-  const { data: pdfUsage } = usePdfUsage();
-  const invalidatePdfUsage = useInvalidatePdfUsage();
-
-  const [inspection, setInspection] = useState<SafetyNetInspection | null>(null);
-  const [projectName, setProjectName] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [completing, setCompleting] = useState(false);
-  const [celebrating, setCelebrating] = useState(false);
-  const celebrationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [generatingPdf, setGeneratingPdf] = useState(false);
-  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
-  const [previewBusy, setPreviewBusy] = useState(false);
-
-  const [step, setStep] = useState(NET_ID_STEP);
-  const prevStepRef = useRef(NET_ID_STEP);
-  const [animateSteps, setAnimateSteps] = useState(false);
-  const inspectionRef = useRef<SafetyNetInspection | null>(null);
-  const animateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => { inspectionRef.current = inspection; }, [inspection]);
-
-  const persistKey = useMemo(() => `safety-net-wizard:${id}:step`, [id]);
-
-  const direction: 'next' | 'prev' = step >= prevStepRef.current ? 'next' : 'prev';
-  useEffect(() => { prevStepRef.current = step; }, [step]);
-
-  // ── Load ────────────────────────────────────────────────────────────────────
-
-  useEffect(() => {
-    if (!id) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const insp = await safetyNetApi.getById(id);
-        if (cancelled) return;
-        if (!insp) { router.back(); return; }
-
-        let patched = insp;
-        if (!insp.inspectorName && session.state.status === 'signedIn') {
-          const u = session.state.user;
-          const name = `${u?.first_name ?? ''} ${u?.last_name ?? ''}`.trim();
-          if (name) {
-            patched = { ...patched, inspectorName: name };
-            const sigs = [...patched.signatures];
-            if (!sigs[0].name) sigs[0] = { ...sigs[0], name };
-            patched = { ...patched, signatures: sigs };
-          }
+  // Shared orchestration: loading, step+persist, autosave, complete, celebration,
+  // PDF preview/download, paywall. Type-specific bits are passed as callbacks so
+  // behaviour matches the pre-refactor screen exactly.
+  const {
+    inspection, setInspection, inspectionRef,
+    projectName, saving, loading, completing, celebrating, generatingPdf,
+    previewHtml, previewBusy,
+    step, setStep, direction, animateSteps,
+    paywallVisible, setPaywallVisible, pdfLocked,
+    update, scheduleSave,
+    complete, handlePdf, buildPreview, exit,
+  } = useInspectionFlow<SafetyNetInspection>({
+    id,
+    firstStep: NET_ID_STEP,
+    lastStep: DOCS_STEP,
+    persistPrefix: 'safety-net-wizard',
+    templateId: SAFETY_NET_TEMPLATE_ID,
+    schema: safetyNetSchema,
+    api: safetyNetApi,
+    toPatch: (insp) => ({
+      company: insp.company,
+      address: insp.address,
+      inspectorName: insp.inspectorName,
+      inspectionDate: insp.inspectionDate,
+      manufacturer: insp.manufacturer,
+      netSize: insp.netSize,
+      postSize: insp.postSize,
+      postCount: insp.postCount,
+      postAnchorCount: insp.postAnchorCount,
+      anchorPointCount: insp.anchorPointCount,
+      edgeRopeCount: insp.edgeRopeCount,
+      cellSide: insp.cellSide,
+      workingDistance: insp.workingDistance,
+      certificate: insp.certificate,
+      items: insp.items,
+      loadTestRows: insp.loadTestRows,
+      postTestItems: insp.postTestItems,
+      verdict: insp.verdict,
+      verdictComment: insp.verdictComment,
+      qualDocPath: insp.qualDocPath,
+      summaryPhotos: insp.summaryPhotos,
+    }),
+    validateMissing: (insp) => (insp.verdict ? [] : ['დასკვნა']),
+    autofill: (insp, { inspectorName, project }) => {
+      let next = insp;
+      const patch: Record<string, unknown> = {};
+      if (!insp.inspectorName && inspectorName) {
+        next = { ...next, inspectorName };
+        const sigs = [...next.signatures];
+        if (!sigs[0].name) sigs[0] = { ...sigs[0], name: inspectorName };
+        next = { ...next, signatures: sigs };
+        patch.inspectorName = inspectorName;
+      }
+      if (project) {
+        if (!next.company?.trim()) {
+          const v = project.company_name || project.name;
+          next = { ...next, company: v };
+          patch.company = v;
         }
-        if (patched.inspectorName !== insp.inspectorName) {
-          safetyNetApi.patch(patched.id, {
-            inspectorName: patched.inspectorName,
-          }).catch(() => {});
-        }
-
-        if (insp.status !== 'completed') {
-          const saved = await AsyncStorage.getItem(persistKey);
-          if (saved && !cancelled) {
-            const s = parseInt(saved, 10);
-            if (!isNaN(s) && s >= NET_ID_STEP && s <= DOCS_STEP) setStep(s);
-          }
-        }
-
-        try {
-          const p = await projectsApi.getById(insp.projectId);
-          if (p) {
-            setProjectName(p.company_name || p.name);
-            const companyFill = !patched.company?.trim() ? (p.company_name || p.name) : null;
-            const addressFill = !patched.address?.trim() && p.address ? p.address : null;
-            if (companyFill || addressFill) {
-              patched = {
-                ...patched,
-                ...(companyFill ? { company: companyFill } : {}),
-                ...(addressFill ? { address: addressFill } : {}),
-              };
-              safetyNetApi.patch(patched.id, {
-                ...(companyFill ? { company: patched.company } : {}),
-                ...(addressFill ? { address: patched.address } : {}),
-              }).catch(() => {});
-            }
-          }
-        } catch {
-          // project fetch is best-effort
-        }
-
-        if (!cancelled) setInspection(patched);
-      } catch (e) {
-        if (!cancelled) {
-          toast.error(friendlyError(e, 'ვერ ჩაიტვირთა'));
-          router.back();
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-          animateTimeoutRef.current = setTimeout(() => setAnimateSteps(true), 50);
+        if (!next.address?.trim() && project.address) {
+          next = { ...next, address: project.address };
+          patch.address = project.address;
         }
       }
-    })();
-    return () => {
-      cancelled = true;
-      if (animateTimeoutRef.current) clearTimeout(animateTimeoutRef.current);
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
-
-  useEffect(() => {
-    if (step >= NET_ID_STEP && step <= DOCS_STEP) {
-      AsyncStorage.setItem(persistKey, String(step)).catch(() => {});
-    }
-  }, [step, persistKey]);
-
-  useEffect(() => {
-    return () => { if (celebrationTimer.current) clearTimeout(celebrationTimer.current); };
-  }, []);
-
-  // ── Auto-save (debounced) ───────────────────────────────────────────────────
-
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const scheduleSave = useCallback((insp: SafetyNetInspection) => {
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      setSaving(true);
-      safetyNetApi.patch(insp.id, {
-        company: insp.company,
-        address: insp.address,
-        inspectorName: insp.inspectorName,
-        inspectionDate: insp.inspectionDate,
-        manufacturer: insp.manufacturer,
-        netSize: insp.netSize,
-        postSize: insp.postSize,
-        postCount: insp.postCount,
-        postAnchorCount: insp.postAnchorCount,
-        anchorPointCount: insp.anchorPointCount,
-        edgeRopeCount: insp.edgeRopeCount,
-        cellSide: insp.cellSide,
-        workingDistance: insp.workingDistance,
-        certificate: insp.certificate,
-        items: insp.items,
-        loadTestRows: insp.loadTestRows,
-        postTestItems: insp.postTestItems,
-        verdict: insp.verdict,
-        verdictComment: insp.verdictComment,
-        qualDocPath: insp.qualDocPath,
-        summaryPhotos: insp.summaryPhotos,
-      }).catch(e => {
-        toast.error(friendlyError(e, 'შენახვა ვერ მოხერხდა'));
-      }).finally(() => setSaving(false));
-    }, 700);
-  }, [toast]);
-
-  const update = useCallback(<K extends keyof SafetyNetInspection>(
-    key: K,
-    value: SafetyNetInspection[K],
-  ) => {
-    setInspection(prev => {
-      if (!prev) return prev;
-      const next = { ...prev, [key]: value };
-      scheduleSave(next);
-      return next;
-    });
-  }, [scheduleSave]);
+      return { next, patch: Object.keys(patch).length ? patch : null };
+    },
+    pdf: {
+      nameLabel: 'SafetyNetInspection',
+      title: 'უსაფრთხოების ბადის შემოწმების აქტი',
+      subject: 'შრომის უსაფრთხოება',
+    },
+    loadingTitle: 'ბადის შემოწმება',
+  });
 
   // ── Items ───────────────────────────────────────────────────────────────────
 
-  const updateItem = useCallback((id: number, patch: { result?: SNResult | null; comment?: string | null }) => {
+  const updateItem = useCallback((itemId: number, patch: { result?: SNResult | null; comment?: string | null }) => {
     setInspection(prev => {
       if (!prev) return prev;
-      const items = prev.items.map(i => i.id === id ? { ...i, ...patch } : i);
+      const items = prev.items.map(i => i.id === itemId ? { ...i, ...patch } : i);
       const next = { ...prev, items };
       scheduleSave(next);
       return next;
     });
-  }, [scheduleSave]);
+  }, [scheduleSave, setInspection]);
 
-  const updatePostTestItem = useCallback((id: number, result: SNPostResult | null) => {
+  const updatePostTestItem = useCallback((itemId: number, result: SNPostResult | null) => {
     setInspection(prev => {
       if (!prev) return prev;
-      const postTestItems = prev.postTestItems.map(i => i.id === id ? { ...i, result } : i);
+      const postTestItems = prev.postTestItems.map(i => i.id === itemId ? { ...i, result } : i);
       const next = { ...prev, postTestItems };
       scheduleSave(next);
       return next;
     });
-  }, [scheduleSave]);
+  }, [scheduleSave, setInspection]);
 
   // ── Load test rows ──────────────────────────────────────────────────────────
 
@@ -272,7 +172,7 @@ export default function SafetyNetInspectionScreen() {
       scheduleSave(next);
       return next;
     });
-  }, [scheduleSave]);
+  }, [scheduleSave, setInspection]);
 
   // ── Photos ──────────────────────────────────────────────────────────────────
 
@@ -295,7 +195,7 @@ export default function SafetyNetInspectionScreen() {
     } catch (e) {
       toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
     }
-  }, [pickPhotoWithAnnotation, scheduleSave, toast]);
+  }, [pickPhotoWithAnnotation, scheduleSave, toast, inspectionRef, setInspection]);
 
   const handleDeleteItemPhoto = useCallback(async (itemId: number, path: string) => {
     try {
@@ -313,7 +213,7 @@ export default function SafetyNetInspectionScreen() {
       scheduleSave(next);
       return next;
     });
-  }, [scheduleSave, toast]);
+  }, [scheduleSave, toast, setInspection]);
 
   const handleAddQualDoc = useCallback(async () => {
     const result = await pickPhotoWithAnnotation();
@@ -331,7 +231,7 @@ export default function SafetyNetInspectionScreen() {
     } catch (e) {
       toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
     }
-  }, [pickPhotoWithAnnotation, scheduleSave, toast]);
+  }, [pickPhotoWithAnnotation, scheduleSave, toast, inspectionRef, setInspection]);
 
   const handleDeleteQualDoc = useCallback(async () => {
     const insp = inspectionRef.current;
@@ -347,7 +247,7 @@ export default function SafetyNetInspectionScreen() {
       scheduleSave(next);
       return next;
     });
-  }, [scheduleSave]);
+  }, [scheduleSave, inspectionRef, setInspection]);
 
   const handleAddSummaryPhoto = useCallback(async () => {
     const result = await pickPhotoWithAnnotation();
@@ -365,7 +265,7 @@ export default function SafetyNetInspectionScreen() {
     } catch (e) {
       toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
     }
-  }, [pickPhotoWithAnnotation, scheduleSave, toast]);
+  }, [pickPhotoWithAnnotation, scheduleSave, toast, inspectionRef, setInspection]);
 
   const handleDeleteSummaryPhoto = useCallback(async (path: string) => {
     try {
@@ -380,7 +280,7 @@ export default function SafetyNetInspectionScreen() {
       scheduleSave(next);
       return next;
     });
-  }, [scheduleSave, toast]);
+  }, [scheduleSave, toast, setInspection]);
 
   // ── Signatories ─────────────────────────────────────────────────────────────
 
@@ -391,7 +291,7 @@ export default function SafetyNetInspectionScreen() {
       sigs[idx] = { ...sigs[idx], [field]: field === 'signature' ? (value || null) : value };
       return { ...prev, signatures: sigs };
     });
-  }, []);
+  }, [setInspection]);
 
   const handleSignatorySign = useCallback((idx: number, base64Png: string) => {
     const insp = inspectionRef.current;
@@ -399,148 +299,40 @@ export default function SafetyNetInspectionScreen() {
     const sigs = [...insp.signatures];
     sigs[idx] = { ...sigs[idx], signature: base64Png, date: new Date().toISOString() };
     setInspection({ ...insp, signatures: sigs });
-  }, []);
+  }, [inspectionRef, setInspection]);
 
   // ── Verdict auto-suggest ────────────────────────────────────────────────────
 
   const suggestedVerdict = useMemo(
     () => inspection ? computeSNVerdictSuggestion(inspection.items, inspection.postTestItems) : null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [inspection?.items, inspection?.postTestItems],
   );
 
-  // ── PDF ─────────────────────────────────────────────────────────────────────
-
-  const handlePdf = useCallback(async () => {
-    const insp = inspectionRef.current;
-    if (!insp) return;
-    if (pdfUsage?.isLocked) { setPaywallVisible(true); return; }
-    setGeneratingPdf(true);
-    try {
-      const html = await renderInspectionPdf(safetyNetSchema, { inspection: insp, projectName: projectName || 'პროექტი' });
-      const pdfName = generatePdfName(
-        projectName || 'project',
-        'SafetyNetInspection',
-        new Date(insp.inspectionDate),
-        insp.id,
-      );
-      const uid = session.state.status === 'signedIn' ? session.state.session.user.id : undefined;
-      await generateAndSharePdf(html, pdfName, undefined, uid, {
-        title: 'უსაფრთხოების ბადის შემოწმების აქტი',
-        author: insp.inspectorName || undefined,
-        documentId: insp.id,
-        subject: 'შრომის უსაფრთხოება',
-      });
-      invalidatePdfUsage();
-    } catch (e) {
-      if (e instanceof PdfLimitReachedError) { setPaywallVisible(true); return; }
-      toast.error(friendlyError(e, 'PDF ვერ შეიქმნა'));
-    } finally {
-      setGeneratingPdf(false);
-    }
-  }, [projectName, session.state, invalidatePdfUsage, toast, pdfUsage]);
-
-  // ── Preview (completed) ─────────────────────────────────────────────────────
-
-  const buildPreview = useCallback(async () => {
-    const insp = inspectionRef.current;
-    if (!insp) return;
-    setPreviewBusy(true);
-    try {
-      const html = await renderInspectionPdf(safetyNetSchema, { inspection: insp, projectName: projectName || 'პროექტი' });
-      setPreviewHtml(html);
-    } catch (e) {
-      toast.error(friendlyError(e, 'PDF ვერ შეიქმნა'));
-    } finally {
-      setPreviewBusy(false);
-    }
-  }, [projectName, toast]);
-
-  useEffect(() => {
-    if (inspection?.status === 'completed') void buildPreview();
-  }, [inspection?.status]);
-
-  // ── Complete ────────────────────────────────────────────────────────────────
-
-  const handleComplete = useCallback(async () => {
-    if (!inspection) return;
-    const missing: string[] = [];
-    if (!inspection.verdict) missing.push('დასკვნა');
-
-    if (missing.length > 0) {
-      Alert.alert('შეავსეთ სავალდებულო ველები', missing.map(m => `• ${m}`).join('\n'));
-      return;
-    }
-
-    setCompleting(true);
-    try {
-      await safetyNetApi.patch(inspection.id, {
-        company: inspection.company,
-        address: inspection.address,
-        inspectorName: inspection.inspectorName,
-        inspectionDate: inspection.inspectionDate,
-        manufacturer: inspection.manufacturer,
-        netSize: inspection.netSize,
-        postSize: inspection.postSize,
-        postCount: inspection.postCount,
-        postAnchorCount: inspection.postAnchorCount,
-        anchorPointCount: inspection.anchorPointCount,
-        edgeRopeCount: inspection.edgeRopeCount,
-        cellSide: inspection.cellSide,
-        workingDistance: inspection.workingDistance,
-        certificate: inspection.certificate,
-        items: inspection.items,
-        loadTestRows: inspection.loadTestRows,
-        postTestItems: inspection.postTestItems,
-        verdict: inspection.verdict,
-        verdictComment: inspection.verdictComment,
-        qualDocPath: inspection.qualDocPath,
-        summaryPhotos: inspection.summaryPhotos,
-      });
-      await safetyNetApi.complete(inspection.id);
-      const completedAt = new Date().toISOString();
-      await recordCompletion(
-        'inspections',
-        inspection.id,
-        completedAt,
-        `${inspection.projectId}:${SAFETY_NET_TEMPLATE_ID}`,
-      ).catch(() => {});
-      setInspection(prev => prev ? { ...prev, status: 'completed', completedAt } : prev);
-      await AsyncStorage.removeItem(persistKey);
-      toast.success('შემოწმება დასრულდა');
-      setCelebrating(true);
-      haptic.inspectionComplete();
-      celebrationTimer.current = setTimeout(() => setCelebrating(false), 2000);
-    } catch (e) {
-      toast.error(friendlyError(e, 'შეცდომა'));
-    } finally {
-      setCompleting(false);
-    }
-  }, [inspection, persistKey, toast]);
-
-  // ── Step navigation ──────────────────────────────────────────────────────────
+  // ── Step navigation ─────────────────────────────────────────────────────────
 
   const canGoNext = useMemo(() => {
     if (!inspection) return false;
     if (step === CONCLUSION_STEP) return !!inspection.verdict;
     return true;
-  }, [step, inspection, completing]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, inspection]);
 
   const handleNext = useCallback(async () => {
     if (step === DOCS_STEP) {
-      await handleComplete();
+      await complete();
     } else {
       setStep(s => s + 1);
     }
-  }, [step, handleComplete]);
+  }, [step, complete, setStep]);
 
   const handlePrev = useCallback(async () => {
     if (step === NET_ID_STEP) {
-      await AsyncStorage.removeItem(persistKey);
-      router.back();
+      await exit();
     } else {
       setStep(s => s - 1);
     }
-  }, [step, persistKey, router]);
+  }, [step, exit, setStep]);
 
   // ── Loading & completed ─────────────────────────────────────────────────────
 
@@ -565,7 +357,7 @@ export default function SafetyNetInspectionScreen() {
         signedCount={inspection.signatures.filter(s => !!s.signature).length}
         totalSlots={inspection.signatures.length}
         attachmentCount={0}
-        pdfLocked={pdfUsage?.isLocked}
+        pdfLocked={pdfLocked}
         downloading={generatingPdf}
         paywallVisible={paywallVisible}
         onPaywallClose={() => setPaywallVisible(false)}
@@ -588,6 +380,8 @@ export default function SafetyNetInspectionScreen() {
       />
     );
   }
+
+  // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
     <View style={styles.root}>
@@ -621,7 +415,7 @@ export default function SafetyNetInspectionScreen() {
 
       {saving && <Text style={styles.savingHint}>შენახვა…</Text>}
 
-      {pdfUsage?.isLocked && <PdfLockedBanner onSubscribe={() => setPaywallVisible(true)} />}
+      {pdfLocked && <PdfLockedBanner onSubscribe={() => setPaywallVisible(true)} />}
 
       <View style={{ flex: 1 }}>
         <WizardStepTransition stepKey={step} direction={direction} animate={animateSteps}>
@@ -687,12 +481,12 @@ export default function SafetyNetInspectionScreen() {
                     photoPaths: state.photo_paths ?? [],
                   };
                 })}
-                onItemChange={(id, field, val) => {
+                onItemChange={(itemId, field, val) => {
                   if (field === 'value') {
                     const result: SNResult | null = val === 'N/A' ? 'na' : val as SNResult | null;
-                    updateItem(id, { result });
+                    updateItem(itemId, { result });
                   } else {
-                    updateItem(id, { comment: val });
+                    updateItem(itemId, { comment: val });
                   }
                 }}
                 onAddPhoto={handleAddItemPhoto}
@@ -736,9 +530,9 @@ export default function SafetyNetInspectionScreen() {
                     value: state.result,
                   };
                 })}
-                onItemChange={(id, field, val) => {
+                onItemChange={(itemId, field, val) => {
                   if (field === 'value') {
-                    updatePostTestItem(id, val as SNPostResult | null);
+                    updatePostTestItem(itemId, val as SNPostResult | null);
                   }
                 }}
                 onAddPhoto={() => {}}
