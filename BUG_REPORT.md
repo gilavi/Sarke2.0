@@ -510,3 +510,24 @@ Ran five parallel read-only verifiers over **all ~156 detailed entries** in `Sar
 **Not changed — verified false / already-handled / device-only (representative):** §2.6, 2.7, 2.8, 2.9, 2.12, 2.14, 2.24, 2.26, 2.29, 2.31, 2.34, 2.37, 2.40, 2.44, 2.45; §3.1, 3.4, 3.7, 3.11, 3.12, 3.30, 3.31, 3.35, 3.39, 3.42, 3.46, 3.47; §4.2–4.6 (already done) and §4.7–4.26 (non-specific boilerplate). Several report-proposed fixes would have **regressed** working code (e.g. §2.26 `queryClient.clear()` already runs on account switch; §2.35's `isSuccess` gate would hang skeletons forever; §2.37's null-toggle breaks the `onChange:(value:string)` contract). Device-only items (layout/timing/RLS/perf) that need on-device repro: §1.3, 1.19, 2.5, 2.10, 2.15, 2.17, 2.19, 2.20, 2.23, 2.27, 2.38, 2.39, 2.42.
 
 **Verified:** `npm run lint` typecheck clean for all 13 changed files (only the pre-existing `lib/services.mock.ts` + web-app `src/` failures remain). Not exercised on a device this session.
+
+## P0 (SECURITY, OPEN) — Storage RLS gap on 4 buckets · remediation recipe · 2026-05-22
+
+**Severity: HIGH.** The `certificates`, `answer-photos`, `pdfs`, `signatures` storage buckets have dashboard-created policies (`sarke_*_authenticated`) that gate **only** on `bucket_id` — so **any authenticated user can read or delete every other user's files**. Migration `0020` tightened `incident-photos`/`report-photos` with owner-scoped policies; these four were never done. (Also flagged in README "Storage RLS gap (open)".)
+
+**Why this is NOT a blind one-liner (must be done carefully, not shipped untested):**
+- The actual `0020` policy SQL is **not in version control** — [supabase/migrations/0020_storage_rls_and_timestamps.sql](supabase/migrations/0020_storage_rls_and_timestamps.sql) is a stub ("applied via Management API SQL endpoint"). The real policies live only in the remote DB.
+- The bucket **path layouts are heterogeneous**, so ownership can't be derived uniformly from the path:
+  - `answer-photos`: `<inspection_id>/<question_id>/<ts>.jpg` (generic wizard, [wizard.tsx:615](app/inspections/[id]/wizard.tsx)) **and** `<pathPrefix>/<sub>/<uuid>.jpg` e.g. `excavator/<inspId>/...` ([lib/inspection/service.ts:114](lib/inspection/service.ts)) **and** order summary photos ([orders/new.tsx:229](app/orders/new.tsx)).
+  - `signatures`: `project/<project_id>/signer-...png` ([signer.tsx](app/projects/[id]/signer.tsx)) + expert `saved_signature_url` + inspection signatures ([lib/signatures.ts:72](lib/signatures.ts)).
+  - `pdfs`: incident / order / inspection PDF paths ([incidents/new.tsx:372](app/incidents/new.tsx), [orders/new.tsx:554](app/orders/new.tsx)).
+  - `certificates`: qualification files + generated certs ([CertificatesActionSheet.tsx:211](components/CertificatesActionSheet.tsx)).
+
+**Recommended remediation (do, in order):**
+1. **Retrieve the working template:** on the remote DB, `select policyname, cmd, qual, with_check from pg_policies where schemaname='storage' and tablename='objects' and policyname like '%incident%' or '%report%';` — this is the proven owner-scoped pattern (EXISTS join from `storage.objects.name` → the owning row's `user_id`).
+2. **Map each of the 4 buckets' path → owning row** using the layouts above (some need an inspection/project/qualification join; the order-uploaded answer-photos need care).
+3. Write `supabase/migrations/0053_storage_rls_remaining.sql` with `drop policy` for the 4 unscoped `sarke_*` policies + owner-scoped `create policy` per bucket; **commit the real SQL** (don't leave a stub like 0020).
+4. **Test on a local/staging Supabase** with two users before prod: user A can read/delete only their own files; user B is denied.
+5. Apply to prod (coordinate with the migration-history drift noted above; use `supabase db push`/`migration repair` deliberately).
+
+**Status:** NOT done this session — drafting the SQL blind (no template in VC, no test harness, heterogeneous paths) risks either leaving the hole open or locking out all file access in prod. Flagged for a careful, tested change. A CI `lint` gate was added ([.github/workflows/test.yml](.github/workflows/test.yml)) so future typecheck regressions are caught on PRs (was previously local-only).
