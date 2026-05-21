@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { STORAGE_BUCKETS, signedUrl, upload, removeObjects } from '@/lib/db/storage';
 
 export interface ProjectFile {
   id: string;
@@ -10,8 +11,6 @@ export interface ProjectFile {
   created_at: string;
 }
 
-const BUCKET = 'project-files';
-
 export async function listProjectFiles(projectId: string): Promise<ProjectFile[]> {
   const { data, error } = await supabase
     .from('project_files')
@@ -22,10 +21,8 @@ export async function listProjectFiles(projectId: string): Promise<ProjectFile[]
   return (data ?? []) as ProjectFile[];
 }
 
-export async function signedFileUrl(path: string): Promise<string> {
-  const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 10);
-  if (error) throw new Error(error.message);
-  return data.signedUrl;
+export function signedFileUrl(path: string): Promise<string> {
+  return signedUrl(STORAGE_BUCKETS.projectFiles, path);
 }
 
 export async function uploadProjectFile(
@@ -34,10 +31,7 @@ export async function uploadProjectFile(
   file: File,
 ): Promise<ProjectFile> {
   const path = `${userId}/${projectId}/${Date.now()}_${file.name}`;
-  const { error: uploadError } = await supabase.storage
-    .from(BUCKET)
-    .upload(path, file, { upsert: false });
-  if (uploadError) throw uploadError;
+  await upload(STORAGE_BUCKETS.projectFiles, path, file, { upsert: false });
 
   const { data, error } = await supabase
     .from('project_files')
@@ -55,7 +49,7 @@ export async function uploadProjectFile(
 }
 
 export async function deleteProjectFile(file: ProjectFile): Promise<void> {
-  await supabase.storage.from(BUCKET).remove([file.storage_path]);
+  await removeObjects(STORAGE_BUCKETS.projectFiles, [file.storage_path]);
   const { error } = await supabase.from('project_files').delete().eq('id', file.id);
   if (error) throw new Error(error.message);
 }

@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { STORAGE_BUCKETS, signedUrl, upload, removeObjects } from '@/lib/db/storage';
 
 export type ReportStatus = 'draft' | 'completed';
 
@@ -42,18 +43,12 @@ export async function getReport(id: string): Promise<Report | null> {
   return (data as Report | null) ?? null;
 }
 
-export async function signedReportPdfUrl(path: string): Promise<string> {
-  const { data, error } = await supabase.storage.from('pdfs').createSignedUrl(path, 60 * 10);
-  if (error) throw new Error(error.message);
-  return data.signedUrl;
+export function signedReportPdfUrl(path: string): Promise<string> {
+  return signedUrl(STORAGE_BUCKETS.pdfs, path);
 }
 
-export async function signedReportPhotoUrl(path: string): Promise<string> {
-  const { data, error } = await supabase.storage
-    .from('report-photos')
-    .createSignedUrl(path, 60 * 10);
-  if (error) throw new Error(error.message);
-  return data.signedUrl;
+export function signedReportPhotoUrl(path: string): Promise<string> {
+  return signedUrl(STORAGE_BUCKETS.reportPhotos, path);
 }
 
 export async function createReport(args: {
@@ -92,10 +87,7 @@ export async function addReportSlide(args: {
   if (args.photo) {
     const ext = args.photo.name.split('.').pop() ?? 'bin';
     imagePath = `${args.report.project_id}/${args.report.id}/${Date.now()}_${randomId()}.${ext}`;
-    const { error: upErr } = await supabase.storage
-      .from('report-photos')
-      .upload(imagePath, args.photo);
-    if (upErr) throw upErr;
+    await upload(STORAGE_BUCKETS.reportPhotos, imagePath, args.photo);
   }
 
   const existing = args.report.slides ?? [];
@@ -145,7 +137,7 @@ export async function removeReportSlide(report: Report, slideId: string): Promis
       (p): p is string => !!p,
     );
     if (paths.length) {
-      await supabase.storage.from('report-photos').remove(paths);
+      await removeObjects(STORAGE_BUCKETS.reportPhotos, paths);
     }
   }
   const updated = existing
@@ -166,7 +158,7 @@ export async function deleteReport(report: Report): Promise<void> {
     .flatMap((s) => [s.image_path, s.annotated_image_path])
     .filter((p): p is string => !!p);
   if (paths.length) {
-    await supabase.storage.from('report-photos').remove(paths);
+    await removeObjects(STORAGE_BUCKETS.reportPhotos, paths);
   }
   const { error } = await supabase.from('reports').delete().eq('id', report.id);
   if (error) throw new Error(error.message);

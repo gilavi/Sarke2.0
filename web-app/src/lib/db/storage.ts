@@ -48,19 +48,22 @@ export interface UploadOptions {
   upsert?: boolean;
 }
 
-/** Upload a file/blob to `bucket` at `path`. Returns the stored path. */
+/**
+ * Upload a file/blob to `bucket` at `path`. Returns the stored path.
+ * If no `contentType` is given, falls back to the File's type when present and
+ * otherwise omits it (so Supabase applies its own default) — matching the
+ * mix of explicit and implicit content types the data modules relied on.
+ */
 export async function upload(
   bucket: StorageBucket,
   path: string,
   body: File | Blob,
   opts: UploadOptions = {},
 ): Promise<string> {
-  const contentType =
-    opts.contentType ?? (body instanceof File ? body.type : undefined) ?? 'application/octet-stream';
-  const { error } = await supabase.storage.from(bucket).upload(path, body, {
-    contentType,
-    upsert: opts.upsert ?? false,
-  });
+  const options: { contentType?: string; upsert: boolean } = { upsert: opts.upsert ?? false };
+  const contentType = opts.contentType ?? (body instanceof File && body.type ? body.type : undefined);
+  if (contentType) options.contentType = contentType;
+  const { error } = await supabase.storage.from(bucket).upload(path, body, options);
   if (error) throw new Error(error.message);
   return path;
 }

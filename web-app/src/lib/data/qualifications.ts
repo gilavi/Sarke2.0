@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { STORAGE_BUCKETS, signedUrl } from '@/lib/db/storage';
 
 export interface Qualification {
   id: string;
@@ -29,12 +30,8 @@ export async function listQualifications(): Promise<Qualification[]> {
   return (data ?? []) as Qualification[];
 }
 
-export async function signedQualificationFileUrl(path: string): Promise<string> {
-  const { data, error } = await supabase.storage
-    .from('certificates')
-    .createSignedUrl(path, 60 * 10);
-  if (error) throw new Error(error.message);
-  return data.signedUrl;
+export function signedQualificationFileUrl(path: string): Promise<string> {
+  return signedUrl(STORAGE_BUCKETS.certificates, path);
 }
 
 export function isExpiringSoon(expiresAt: string | null): boolean {

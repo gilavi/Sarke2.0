@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { STORAGE_BUCKETS, removeObjects } from '@/lib/db/storage';
 
 export interface CrewMember {
   id: string;
@@ -130,7 +131,7 @@ export async function deleteProject(id: string): Promise<void> {
     .eq('project_id', id);
   const paths = (files ?? []).map((f) => f.storage_path as string).filter(Boolean);
   if (paths.length) {
-    await supabase.storage.from('project-files').remove(paths);
+    await removeObjects(STORAGE_BUCKETS.projectFiles, paths);
   }
   const { error } = await supabase.from('projects').delete().eq('id', id);
   if (error) throw new Error(error.message);

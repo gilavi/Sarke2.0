@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { STORAGE_BUCKETS, signedUrl, upload } from '@/lib/db/storage';
 import type { User } from '@supabase/supabase-js';
 
 export interface Certificate {
@@ -29,20 +30,15 @@ export async function listCertificates(): Promise<Certificate[]> {
   return (data ?? []) as Certificate[];
 }
 
-export async function signedCertificatePdfUrl(path: string): Promise<string> {
-  const { data, error } = await supabase.storage.from('pdfs').createSignedUrl(path, 60 * 10);
-  if (error) throw new Error(error.message);
-  return data.signedUrl;
+export function signedCertificatePdfUrl(path: string): Promise<string> {
+  return signedUrl(STORAGE_BUCKETS.pdfs, path);
 }
 
 /** Upload a PDF file and insert a certificate record. */
 export async function uploadCertificate(file: File, user: User): Promise<Certificate> {
   const ext = file.name.split('.').pop() ?? 'pdf';
   const path = `certificates/${user.id}/${Date.now()}.${ext}`;
-  const { error: uploadError } = await supabase.storage
-    .from('pdfs')
-    .upload(path, file, { contentType: file.type || 'application/pdf' });
-  if (uploadError) throw uploadError;
+  await upload(STORAGE_BUCKETS.pdfs, path, file, { contentType: file.type || 'application/pdf' });
 
   const { data, error } = await supabase
     .from('certificates')

@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { STORAGE_BUCKETS, signedUrl, upload, removeObjects } from '@/lib/db/storage';
 
 export type IncidentType = 'minor' | 'severe' | 'fatal' | 'mass' | 'nearmiss';
 export type IncidentStatus = 'draft' | 'completed';
@@ -51,18 +52,12 @@ export async function getIncident(id: string): Promise<Incident | null> {
   return (data as Incident | null) ?? null;
 }
 
-export async function signedIncidentPdfUrl(path: string): Promise<string> {
-  const { data, error } = await supabase.storage.from('pdfs').createSignedUrl(path, 60 * 10);
-  if (error) throw new Error(error.message);
-  return data.signedUrl;
+export function signedIncidentPdfUrl(path: string): Promise<string> {
+  return signedUrl(STORAGE_BUCKETS.pdfs, path);
 }
 
-export async function signedIncidentPhotoUrl(path: string): Promise<string> {
-  const { data, error } = await supabase.storage
-    .from('incident-photos')
-    .createSignedUrl(path, 60 * 10);
-  if (error) throw new Error(error.message);
-  return data.signedUrl;
+export function signedIncidentPhotoUrl(path: string): Promise<string> {
+  return signedUrl(STORAGE_BUCKETS.incidentPhotos, path);
 }
 
 /**
@@ -75,10 +70,9 @@ export async function addIncidentPhoto(
 ): Promise<string> {
   const ext = file.name.split('.').pop() ?? 'jpg';
   const path = `${incident.project_id}/${incident.id}_${Date.now()}.${ext}`;
-  const { error: upErr } = await supabase.storage.from('incident-photos').upload(path, file, {
+  await upload(STORAGE_BUCKETS.incidentPhotos, path, file, {
     contentType: file.type || 'image/jpeg',
   });
-  if (upErr) throw upErr;
 
   const next = [...incident.photos, path];
   const { error } = await supabase.from('incidents').update({ photos: next }).eq('id', incident.id);
@@ -97,7 +91,7 @@ export async function removeIncidentPhoto(
   const { error } = await supabase.from('incidents').update({ photos: next }).eq('id', incident.id);
   if (error) throw new Error(error.message);
   // best-effort blob removal
-  await supabase.storage.from('incident-photos').remove([path]);
+  await removeObjects(STORAGE_BUCKETS.incidentPhotos, [path]);
 }
 
 export async function updateIncident(
@@ -118,7 +112,7 @@ export async function updateIncident(
 
 export async function deleteIncident(item: Incident): Promise<void> {
   if (item.photos.length > 0) {
-    await supabase.storage.from('incident-photos').remove(item.photos);
+    await removeObjects(STORAGE_BUCKETS.incidentPhotos, item.photos);
   }
   const { error } = await supabase.from('incidents').delete().eq('id', item.id);
   if (error) throw new Error(error.message);
@@ -145,10 +139,7 @@ export async function createIncident(input: CreateIncidentInput): Promise<Incide
     for (const file of input.attachments) {
       const ext = file.name.split('.').pop() ?? 'bin';
       const path = `${input.projectId}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error: upErr } = await supabase.storage
-        .from('incident-photos')
-        .upload(path, file);
-      if (upErr) throw upErr;
+      await upload(STORAGE_BUCKETS.incidentPhotos, path, file);
       photos.push(path);
     }
   }

@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { STORAGE_BUCKETS, signedUrl, removeObjects } from '@/lib/db/storage';
 
 export type InspectionStatus = 'draft' | 'in_progress' | 'completed' | string;
 
@@ -86,10 +87,8 @@ export async function listInspectionPdfs(inspectionId: string): Promise<CertRow[
   return (data ?? []) as CertRow[];
 }
 
-export async function signedPdfUrl(path: string): Promise<string> {
-  const { data, error } = await supabase.storage.from('pdfs').createSignedUrl(path, 60 * 10);
-  if (error) throw new Error(error.message);
-  return data.signedUrl;
+export function signedPdfUrl(path: string): Promise<string> {
+  return signedUrl(STORAGE_BUCKETS.pdfs, path);
 }
 
 export interface CreateInspectionInput {
@@ -270,7 +269,7 @@ export async function removeAnswerPhoto(photoId: string, storagePath: string): P
   const { error } = await supabase.from('answer_photos').delete().eq('id', photoId);
   if (error) throw new Error(error.message);
   // Best-effort blob removal
-  await supabase.storage.from('answer-photos').remove([storagePath]);
+  await removeObjects(STORAGE_BUCKETS.answerPhotos, [storagePath]);
 }
 
 export async function updateInspection(
