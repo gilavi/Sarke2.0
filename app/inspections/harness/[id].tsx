@@ -2,10 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   Pressable,
   StyleSheet,
   View,
 } from 'react-native';
+import { HarnessWebWizard } from './HarnessWebWizard';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -523,6 +525,25 @@ export default function HarnessInspectionScreen() {
   }
 
   if (!inspection) return null;
+
+  // ── Web: full-page wizard replaces the entire mobile multi-step flow ──────
+  if (Platform.OS === 'web') {
+    const projectName = project?.company_name || project?.name || '';
+    return (
+      <HarnessWebWizard
+        projectName={projectName}
+        projectLogo={project?.logo ?? undefined}
+        harnessName={harnessName}
+        questions={questions}
+        answers={answers}
+        harnessRowCount={harnessRowCount}
+        onPatchAnswer={patchAnswer}
+        onAddRow={() => setHarnessRowCount(Math.min(15, harnessRowCount + 1))}
+        onClose={() => router.back()}
+        onComplete={handleComplete}
+      />
+    );
+  }
 
   // ── HARNESS_STEP: full-screen takeover ────────────────────────────────────
   if (step === HARNESS_STEP) {
