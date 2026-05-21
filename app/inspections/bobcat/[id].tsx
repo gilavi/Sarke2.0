@@ -1,7 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
   Pressable,
   StyleSheet,
   View,
@@ -18,31 +16,24 @@ import { InspectionShell, ChecklistStep, ConclusionStep, ProjectPickerStep } fro
 import type { VerdictOption } from '../../../components/inspections';
 import { InspectionResultView } from '../../../components/InspectionResultView';
 import { useTheme, type Theme } from '../../../lib/theme';
-import { useSession } from '../../../lib/session';
 import { useToast } from '../../../lib/toast';
 
 import { bobcatApi } from '../../../lib/bobcatService';
-import { projectsApi, inspectionAttachmentsApi } from '../../../lib/services';
+import { inspectionAttachmentsApi } from '../../../lib/services';
 import {
   PhotoSection,
   SignatureSheet,
 } from '../../../components/inspection';
-import { STORAGE_BUCKETS } from '../../../lib/supabase';
 
-import { renderInspectionPdf } from '../../../lib/inspection/renderMobile';
 import { bobcatSchema } from '../../../lib/inspection/schemas/bobcat';
-import { generateAndSharePdf, PdfLimitReachedError } from '../../../lib/pdfOpen';
 import { PaywallModal } from '../../../components/PaywallModal';
-import { PdfLockedBanner } from '../../../components/PdfLockedBanner';
-import { usePdfUsage, useInvalidatePdfUsage } from '../../../lib/usePdfUsage';
-import { generatePdfName } from '../../../lib/pdfName';
-import { recordCompletion } from '../../../lib/calendarSchedule';
-import { friendlyError } from '../../../lib/errorMap';
-import { a11y } from '../../../lib/accessibility';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useInspectionFlow } from '../../../lib/inspection/useInspectionFlow';
 import { SuggestionPills } from '../../../components/SuggestionPills';
 import { useFieldHistory } from '../../../hooks/useFieldHistory';
 import { usePhotoWithLocation } from '../../../hooks/usePhotoWithLocation';
+import { useSession } from '../../../lib/session';
+import { friendlyError } from '../../../lib/errorMap';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   BOBCAT_ITEMS,
   BOBCAT_CATEGORY_LABELS,
@@ -57,7 +48,19 @@ import {
   type BobcatChecklistEntry,
 } from '../../../types/bobcat';
 
+// ── Step constants (template-derived; kept local per task instructions) ────────
+
 const CATEGORIES: BobcatCategory[] = ['A', 'B', 'C', 'D'];
+
+const PROJECT_STEP    = 0;
+const INFO_STEP       = 1;
+const SERIAL_STEP     = 2;
+const CHECKLIST_STEP  = 3;
+const CONCLUSION_STEP = 4;
+const TOTAL_STEPS     = 5;
+const STEP_LABELS     = ['პროექტი', 'მოდელი', 'ს/ნ', 'შემოწ.', 'დასკვნა'];
+
+// ── Main screen ───────────────────────────────────────────────────────────────
 
 export default function BobcatInspectionScreen() {
   const { theme } = useTheme();
@@ -69,48 +72,89 @@ export default function BobcatInspectionScreen() {
 
   const { pickPhotoWithAnnotation } = usePhotoWithLocation();
 
-  const [paywallVisible, setPaywallVisible] = useState(false);
-  const { data: pdfUsage } = usePdfUsage();
-  const invalidatePdfUsage = useInvalidatePdfUsage();
-
   const userId = session?.state?.status === 'signedIn' ? session.state.session.user.id : null;
 
   // ── Field suggestion histories ────────────────────────────────────────────
   const equipmentModelHistory = useFieldHistory(userId, 'bobcat:equipmentModel');
   const registrationNumberHistory = useFieldHistory(userId, 'bobcat:registrationNumber');
 
-  const PROJECT_STEP    = 0;
-  const INFO_STEP       = 1;
-  const SERIAL_STEP     = 2;
-  const CHECKLIST_STEP  = 3;
-  const CONCLUSION_STEP = 4;
-  const DONE_STEP       = 5;
-  const TOTAL_STEPS     = 5;
-  const STEP_LABELS     = ['პროექტი', 'მოდელი', 'ს/ნ', 'შემოწ.', 'დასკვნა'];
-
-  const [inspection, setInspection] = useState<BobcatInspection | null>(null);
-  const [projectName, setProjectName] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [completing, setCompleting] = useState(false);
-  const [generatingPdf, setGeneratingPdf] = useState(false);
-  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
-  const [previewBusy, setPreviewBusy] = useState(false);
-  const [attachmentCount, setAttachmentCount] = useState(0);
-
   const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [attachmentCount, setAttachmentCount] = useState(0);
 
   // Serial number step state
   const plateRef = useRef<PlateInputHandle>(null);
   const [activeSlotKind, setActiveSlotKind] = useState<'letter' | 'digit'>('letter');
 
-  // Step state: 0=info, 1=serial, 2=checklist, 3=conclusion
-  const [step, setStep] = useState(INFO_STEP);
-  const prevStepRef = useRef(INFO_STEP);
-  const [animateSteps, setAnimateSteps] = useState(false);
-  const inspectionRef = useRef<BobcatInspection | null>(null);
-  const animateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => { inspectionRef.current = inspection; }, [inspection]);
+  const summaryPhotosKey = useMemo(() => `bobcat-wizard:${id}:summaryPhotos`, [id]);
+
+  // ── Shared orchestration via useInspectionFlow ────────────────────────────
+
+  const {
+    inspection, setInspection, inspectionRef,
+    projectName, setProjectName,
+    saving, loading, completing,
+    previewHtml, previewBusy,
+    step, setStep, direction, animateSteps,
+    paywallVisible, setPaywallVisible, pdfLocked,
+    update, scheduleSave,
+    complete, handlePdf, buildPreview, exit,
+    generatingPdf,
+  } = useInspectionFlow<BobcatInspection>({
+    id,
+    firstStep: INFO_STEP,
+    lastStep: CONCLUSION_STEP,
+    persistPrefix: 'bobcat-wizard',
+    templateId: LARGE_LOADER_TEMPLATE_ID, // used for calendar key; bobcat template also works
+    schema: bobcatSchema,
+    api: bobcatApi,
+    toPatch: (insp) => ({
+      company: insp.company,
+      address: insp.address,
+      equipmentModel: insp.equipmentModel,
+      registrationNumber: insp.registrationNumber,
+      inspectionDate: insp.inspectionDate,
+      inspectionType: insp.inspectionType,
+      inspectorName: insp.inspectorName,
+      items: insp.items,
+      verdict: insp.verdict,
+      notes: insp.notes,
+    }),
+    validateMissing: (insp) => {
+      const missing: string[] = [];
+      if (!insp.equipmentModel?.trim())     missing.push('დამტვირთველის მარკა / მოდელი');
+      if (!insp.registrationNumber?.trim()) missing.push('სახელმწიფო / ს.ნ ნომერი');
+      if (!insp.verdict)                    missing.push('შეჯამება: დასკვნა');
+      return missing;
+    },
+    autofill: (insp, { inspectorName, project }) => {
+      let next = insp;
+      const patch: Record<string, unknown> = {};
+      if (!insp.inspectorName && inspectorName) {
+        next = { ...next, inspectorName };
+        patch.inspectorName = inspectorName;
+      }
+      if (project) {
+        if (!next.company?.trim()) {
+          const v = project.company_name || project.name;
+          next = { ...next, company: v };
+          patch.company = v;
+        }
+        if (!next.address?.trim() && project.address) {
+          next = { ...next, address: project.address };
+          patch.address = project.address;
+        }
+      }
+      return { next, patch: Object.keys(patch).length ? patch : null };
+    },
+    pdf: {
+      nameLabel: 'BobcatInspection',
+      title: 'ციცხვიანი დამტვირთველის შემოწმება',
+      subject: 'შრომის უსაფრთხოების შემოწმება',
+    },
+    loadingTitle: 'შემოწმება',
+  });
+
+  // ── Template-derived catalog (local — template bounds must stay in screen) ──
 
   const catalog: BobcatChecklistEntry[] = useMemo(
     () => inspection?.templateId === LARGE_LOADER_TEMPLATE_ID ? LARGE_LOADER_ITEMS : BOBCAT_ITEMS,
@@ -120,156 +164,7 @@ export default function BobcatInspectionScreen() {
   const isLargeLoader = inspection?.templateId === LARGE_LOADER_TEMPLATE_ID;
   const screenTitle = isLargeLoader ? 'დიდი ციცხვიანი დამტვირთველი' : 'ციცხვიანი დამტვირთველი';
 
-
-
-  const persistKey = useMemo(() => `bobcat-wizard:${id}:step`, [id]);
-  const summaryPhotosKey = useMemo(() => `bobcat-wizard:${id}:summaryPhotos`, [id]);
-
-  // Direction for animations
-  const direction: 'next' | 'prev' = step >= prevStepRef.current ? 'next' : 'prev';
-  useEffect(() => { prevStepRef.current = step; }, [step]);
-
-  // ── Load ───────────────────────────────────────────────────────────────────
-
-  useEffect(() => {
-    if (!id) {
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      try {
-        const insp = await bobcatApi.getById(id);
-        if (cancelled) return;
-        if (!insp) { router.back(); return; }
-
-        let patched = insp;
-        if (!insp.inspectorName && session.state.status === 'signedIn') {
-          const u = session.state.user;
-          const name = `${u?.first_name ?? ''} ${u?.last_name ?? ''}`.trim();
-          if (name) patched = { ...patched, inspectorName: name };
-        }
-        setInspection(patched);
-
-        // Load summary photos from AsyncStorage
-        const savedPhotos = await AsyncStorage.getItem(summaryPhotosKey);
-        if (savedPhotos && !cancelled) {
-          try {
-            const parsed = JSON.parse(savedPhotos);
-            if (Array.isArray(parsed)) {
-              setInspection(prev => prev ? { ...prev, summaryPhotos: parsed } : prev);
-            }
-          } catch {}
-        }
-
-        if (patched.inspectorName && patched.inspectorName !== insp.inspectorName) {
-          bobcatApi.patch(patched.id, { inspectorName: patched.inspectorName }).catch(() => {});
-        }
-
-        // Compute correct step constants based on the loaded inspection's template
-        const loadedCatalog = insp.templateId === LARGE_LOADER_TEMPLATE_ID ? LARGE_LOADER_ITEMS : BOBCAT_ITEMS;
-        const loadedChecklistCount = loadedCatalog.length;
-        const loadedSummaryStep = 1 + loadedChecklistCount;
-        const loadedSignatureStep = loadedSummaryStep + 1;
-        const loadedDoneStep = loadedSignatureStep + 1;
-
-        if (insp.status === 'completed') {
-          // Will render result view instead of wizard
-        } else {
-          // Restore saved step
-          const saved = await AsyncStorage.getItem(persistKey);
-          if (saved && !cancelled) {
-            const s = parseInt(saved, 10);
-            if (!isNaN(s) && s >= INFO_STEP && s <= CONCLUSION_STEP) {
-              setStep(s);
-            }
-          }
-        }
-
-        projectsApi.getById(insp.projectId).then(p => {
-          if (cancelled || !p) return;
-          setProjectName(p.company_name || p.name);
-          setInspection(prev => {
-            if (!prev) return prev;
-            const companyFill = !prev.company?.trim() ? (p.company_name || p.name) : null;
-            const addressFill = !prev.address?.trim() && p.address ? p.address : null;
-            if (!companyFill && !addressFill) return prev;
-            const next = {
-              ...prev,
-              ...(companyFill ? { company: companyFill } : {}),
-              ...(addressFill ? { address: addressFill } : {}),
-            };
-            bobcatApi.patch(next.id, {
-              ...(companyFill ? { company: next.company } : {}),
-              ...(addressFill ? { address: next.address } : {}),
-            }).catch(() => {});
-            return next;
-          });
-        }).catch(() => {});
-
-
-      } catch (e) {
-        if (!cancelled) {
-          toast.error(friendlyError(e, 'ვერ ჩაიტვირთა'));
-          router.back();
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-          // Enable animations after load to avoid animation on restored step
-          animateTimeoutRef.current = setTimeout(() => setAnimateSteps(true), 50);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-      if (animateTimeoutRef.current) clearTimeout(animateTimeoutRef.current);
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
-
-  // Persist step when in checklist range
-  useEffect(() => {
-    if (step >= INFO_STEP && step <= CONCLUSION_STEP) {
-      AsyncStorage.setItem(persistKey, String(step)).catch(() => {});
-    }
-  }, [step, persistKey, INFO_STEP, CONCLUSION_STEP]);
-
-  // ── Auto-save (debounced) ──────────────────────────────────────────────────
-
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const scheduleSave = useCallback((insp: BobcatInspection) => {
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      setSaving(true);
-      bobcatApi.patch(insp.id, {
-        company: insp.company,
-        address: insp.address,
-        equipmentModel: insp.equipmentModel,
-        registrationNumber: insp.registrationNumber,
-        inspectionDate: insp.inspectionDate,
-        inspectionType: insp.inspectionType,
-        inspectorName: insp.inspectorName,
-        items: insp.items,
-        verdict: insp.verdict,
-        notes: insp.notes,
-      }).catch(e => {
-        toast.error(friendlyError(e, 'შენახვა ვერ მოხერხდა'));
-      }).finally(() => setSaving(false));
-    }, 700);
-  }, [toast]);
-
-  const update = useCallback(<K extends keyof BobcatInspection>(
-    key: K,
-    value: BobcatInspection[K],
-  ) => {
-    setInspection(prev => {
-      if (!prev) return prev;
-      const next = { ...prev, [key]: value };
-      scheduleSave(next);
-      return next;
-    });
-  }, [scheduleSave]);
+  // ── Item update ───────────────────────────────────────────────────────────
 
   const updateItem = useCallback((
     itemId: number,
@@ -284,7 +179,7 @@ export default function BobcatInspectionScreen() {
       scheduleSave(next);
       return next;
     });
-  }, [scheduleSave]);
+  }, [scheduleSave, setInspection]);
 
   // ── Photo handling ─────────────────────────────────────────────────────────
 
@@ -307,7 +202,7 @@ export default function BobcatInspectionScreen() {
     } catch (e) {
       toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
     }
-  }, [pickPhotoWithAnnotation, scheduleSave, toast]);
+  }, [pickPhotoWithAnnotation, scheduleSave, toast, inspectionRef, setInspection]);
 
   const handleDeletePhoto = useCallback(async (itemId: number, path: string) => {
     try {
@@ -325,95 +220,7 @@ export default function BobcatInspectionScreen() {
       scheduleSave(next);
       return next;
     });
-  }, [scheduleSave, toast]);
-
-  // ── Load attachments when completed ───────────────────────────────────────
-
-  useEffect(() => {
-    if (inspection?.status !== 'completed') return;
-    inspectionAttachmentsApi.listByInspection(inspection.id)
-      .then(a => setAttachmentCount(a.length)).catch(() => {});
-  }, [inspection?.status, inspection?.id]);
-
-  // ── Complete ───────────────────────────────────────────────────────────────
-
-  const handleComplete = useCallback(async () => {
-    if (!inspection) return;
-    const missing: string[] = [];
-    if (!inspection.equipmentModel?.trim())     missing.push('დამტვირთველის მარკა / მოდელი');
-    if (!inspection.registrationNumber?.trim()) missing.push('სახელმწიფო / ს.ნ ნომერი');
-    if (!inspection.verdict)                    missing.push('შეჯამება: დასკვნა');
-
-    if (missing.length > 0) {
-      Alert.alert('შეავსეთ სავალდებულო ველები', missing.map(m => `• ${m}`).join('\n'));
-      return;
-    }
-    setCompleting(true);
-    try {
-      await bobcatApi.patch(inspection.id, {
-        company: inspection.company,
-        address: inspection.address,
-        equipmentModel: inspection.equipmentModel,
-        registrationNumber: inspection.registrationNumber,
-        inspectionDate: inspection.inspectionDate,
-        inspectionType: inspection.inspectionType,
-        inspectorName: inspection.inspectorName,
-        items: inspection.items,
-        verdict: inspection.verdict,
-        notes: inspection.notes,
-      });
-      await bobcatApi.complete(inspection.id);
-      const completedAt = new Date().toISOString();
-      await recordCompletion(
-        'inspections',
-        inspection.id,
-        completedAt,
-        `${inspection.projectId}:bobcat`,
-      ).catch(() => {});
-      setInspection(prev => prev ? { ...prev, status: 'completed', completedAt } : prev);
-      await AsyncStorage.removeItem(persistKey);
-      toast.success('შემოწმება დასრულდა');
-      return true;
-    } catch (e) {
-      toast.error(friendlyError(e, 'შეცდომა'));
-      return false;
-    } finally {
-      setCompleting(false);
-    }
-  }, [inspection, toast, persistKey]);
-
-  // ── PDF ────────────────────────────────────────────────────────────────────
-
-  const handlePdf = useCallback(async () => {
-    if (!inspection) return;
-    if (pdfUsage?.isLocked) { setPaywallVisible(true); return; }
-    setGeneratingPdf(true);
-    try {
-      const html = await renderInspectionPdf(bobcatSchema, {
-        inspection,
-        projectName: projectName || 'პროექტი',
-      });
-      const pdfName = generatePdfName(
-        projectName || 'project',
-        isLargeLoader ? 'LargeLoaderInspection' : 'BobcatInspection',
-        new Date(inspection.inspectionDate),
-        inspection.id,
-      );
-      const userId = session.state.status === 'signedIn' ? session.state.session.user.id : undefined;
-      await generateAndSharePdf(html, pdfName, undefined, userId, {
-        title: isLargeLoader ? 'დიდი ციცხვიანი' : 'ბობკატის შემოწმება',
-        author: inspection.inspectorName || undefined,
-        documentId: inspection.id,
-        subject: 'შრომის უსაფრთხოების შემოწმება',
-      });
-      invalidatePdfUsage();
-    } catch (e) {
-      if (e instanceof PdfLimitReachedError) { setPaywallVisible(true); return; }
-      toast.error(friendlyError(e, 'PDF ვერ შეიქმნა'));
-    } finally {
-      setGeneratingPdf(false);
-    }
-  }, [inspection, projectName, isLargeLoader, session.state, invalidatePdfUsage, toast]);
+  }, [scheduleSave, toast, setInspection]);
 
   // ── Summary Photos ─────────────────────────────────────────────────────────
 
@@ -433,7 +240,7 @@ export default function BobcatInspectionScreen() {
     } catch (e) {
       toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
     }
-  }, [pickPhotoWithAnnotation, toast]);
+  }, [pickPhotoWithAnnotation, toast, inspectionRef, setInspection, summaryPhotosKey]);
 
   const handleDeleteSummaryPhoto = useCallback(async (path: string) => {
     try {
@@ -448,31 +255,7 @@ export default function BobcatInspectionScreen() {
       AsyncStorage.setItem(summaryPhotosKey, JSON.stringify(next.summaryPhotos)).catch(() => {});
       return next;
     });
-  }, [summaryPhotosKey, toast]);
-
-  // ── PDF Preview ────────────────────────────────────────────────────────────
-
-  const buildPreview = useCallback(async () => {
-    if (!inspection) return;
-    setPreviewBusy(true);
-    try {
-      const html = await renderInspectionPdf(bobcatSchema, {
-        inspection,
-        projectName: projectName || 'პროექტი',
-      });
-      setPreviewHtml(html);
-    } catch (e) {
-      toast.error(friendlyError(e, 'PDF ვერ შეიქმნა'));
-    } finally {
-      setPreviewBusy(false);
-    }
-  }, [inspection, projectName, toast]);
-
-  useEffect(() => {
-    if (inspection?.status === 'completed') {
-      void buildPreview();
-    }
-  }, [inspection?.status, buildPreview]);
+  }, [summaryPhotosKey, toast, setInspection]);
 
   // ── Step navigation ────────────────────────────────────────────────────────
 
@@ -483,24 +266,24 @@ export default function BobcatInspectionScreen() {
     if (step === SERIAL_STEP) return !!inspection.registrationNumber?.trim();
     if (step === CONCLUSION_STEP) return !!inspection.verdict && !completing;
     return true;
-  }, [step, inspection, completing, PROJECT_STEP, INFO_STEP, SERIAL_STEP, CONCLUSION_STEP]);
+  }, [step, inspection, completing]);
 
   const handleNext = useCallback(async () => {
     if (step === CONCLUSION_STEP) {
-      const ok = await handleComplete();
+      const ok = await complete();
       if (ok) router.push(`/inspections/bobcat/${id}/done` as any);
     } else if (step < CONCLUSION_STEP) {
       setStep(s => s + 1);
     }
-  }, [step, CONCLUSION_STEP, handleComplete, id, router]);
+  }, [step, complete, id, router, setStep]);
 
-  const handlePrev = useCallback(() => {
+  const handlePrev = useCallback(async () => {
     if (step === PROJECT_STEP) {
-      router.back();
+      await exit();
     } else {
       setStep(s => s - 1);
     }
-  }, [step, PROJECT_STEP, router]);
+  }, [step, exit, setStep]);
 
   // ── Derived data for shared components ────────────────────────────────────
 
@@ -554,7 +337,7 @@ export default function BobcatInspectionScreen() {
         signedCount={inspection.inspectorSignature ? 1 : 0}
         totalSlots={1}
         attachmentCount={attachmentCount}
-        pdfLocked={pdfUsage?.isLocked}
+        pdfLocked={pdfLocked}
         downloading={generatingPdf}
         paywallVisible={paywallVisible}
         onPaywallClose={() => setPaywallVisible(false)}
@@ -611,7 +394,7 @@ export default function BobcatInspectionScreen() {
       generatingPdf={generatingPdf}
       onNext={handleNext}
       onPrev={step === PROJECT_STEP
-        ? async () => { await AsyncStorage.removeItem(persistKey); router.back(); }
+        ? async () => { await exit(); }
         : handlePrev}
       onClose={() => router.back()}
       onPdf={handlePdf}
@@ -695,7 +478,7 @@ export default function BobcatInspectionScreen() {
             </View>
           )}
 
-          {/* ── Step 2: Checklist ──────────────────────────────────────── */}
+          {/* ── Step 3: Checklist ──────────────────────────────────────── */}
           {step === CHECKLIST_STEP && (
             <ChecklistStep
               items={checklistItems}
@@ -705,7 +488,7 @@ export default function BobcatInspectionScreen() {
             />
           )}
 
-          {/* ── Step 3: Conclusion ─────────────────────────────────────── */}
+          {/* ── Step 4: Conclusion ─────────────────────────────────────── */}
           {step === CONCLUSION_STEP && (
             <ConclusionStep
               verdict={inspection.verdict}
@@ -736,121 +519,6 @@ function getstyles(theme: Theme) {
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: theme.colors.background },
     centred: { alignItems: 'center', justifyContent: 'center' },
-    savingHint: { fontSize: 11, color: theme.colors.inkFaint, textAlign: 'right', paddingHorizontal: 24, paddingTop: 4 },
-    stepBody: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 16, gap: 12 },
-    footer: {
-      gap: 10,
-      paddingHorizontal: 24,
-      paddingTop: 8,
-      paddingBottom: 16,
-      backgroundColor: theme.colors.card,
-    },
-
-    fieldRow: { marginBottom: 4, gap: 6 },
     fieldLabel: { fontSize: 12, fontWeight: '600', color: theme.colors.inkSoft },
-
-    sumTable: {
-      marginBottom: 12,
-    },
-    sumRow: { flexDirection: 'row', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.hairline },
-    sumHeaderRow: { backgroundColor: theme.colors.subtleSurface },
-    sumCell: { flex: 1, padding: 8, fontSize: 11 },
-    sumCatCell: { flex: 3, color: theme.colors.ink },
-    sumCountCell: { width: 40, textAlign: 'center', padding: 8, fontSize: 13, color: theme.colors.inkSoft },
-    sumHeaderText: { fontWeight: '700', color: theme.colors.inkSoft, fontSize: 10, textTransform: 'uppercase' },
-
-    suggestionBanner: {
-      flexDirection: 'row', alignItems: 'center', gap: 6,
-      backgroundColor: theme.colors.warnSoft,
-      padding: 10, marginBottom: 8,
-    },
-    suggestionText: { fontSize: 12, color: theme.colors.inkSoft, flex: 1 },
-    verdictBlock: { gap: 0, marginBottom: 12 },
-    verdictOption: {
-      flexDirection: 'row', alignItems: 'flex-start', gap: 10,
-      paddingVertical: 10, paddingHorizontal: 4,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.colors.hairline,
-    },
-    verdictOptionActive: {
-      borderBottomColor: theme.colors.accent,
-    },
-    verdictOptionSuggested: {
-      borderBottomColor: theme.colors.warn,
-    },
-    verdictCheck: {
-      width: 20, height: 20, borderRadius: 5,
-      borderWidth: 1.5, borderColor: theme.colors.hairline,
-      alignItems: 'center', justifyContent: 'center',
-      marginTop: 1,
-    },
-    verdictCheckActive: {
-      backgroundColor: theme.colors.accent, borderColor: theme.colors.accent,
-    },
-    verdictLabel: { flex: 1, fontSize: 12, color: theme.colors.inkSoft, lineHeight: 18 },
-    verdictLabelActive: { color: theme.colors.accent, fontWeight: '600' },
-
-    sigRow: {
-      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-      paddingVertical: 14, paddingHorizontal: 12,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.colors.hairline,
-    },
-    sigRowActive: {
-      borderBottomColor: theme.colors.semantic.success,
-    },
-    sigRowText: {
-      fontSize: 15, color: theme.colors.ink,
-    },
-    sigRowClear: {
-      fontSize: 13, color: theme.colors.accent,
-    },
-
-    completingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 16 },
-    completingText: { fontSize: 13, color: theme.colors.inkSoft },
-
-    doneHero: { paddingVertical: 16, gap: 6 },
-    doneTitle: { fontSize: 22, fontWeight: '800', color: theme.colors.ink, textAlign: 'center' },
-    doneDate: { fontSize: 13, color: theme.colors.inkSoft, marginTop: 2 },
-    doneVerdict: {
-      paddingHorizontal: 16, paddingVertical: 6,
-      borderRadius: 20, borderWidth: 1.5,
-      marginTop: 8,
-    },
-    doneVerdictGreen: { borderColor: theme.colors.semantic.success, backgroundColor: theme.colors.semantic.successSoft },
-    doneVerdictAmber: { borderColor: theme.colors.warn, backgroundColor: theme.colors.warnSoft },
-    doneVerdictRed:   { borderColor: theme.colors.dangerBorder, backgroundColor: theme.colors.dangerTint },
-    doneVerdictText:  { fontSize: 13, fontWeight: '700' },
-
-    // List row styles
-    listRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: 10,
-      paddingHorizontal: 4,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.colors.hairline,
-      gap: 8,
-    },
-    listRowInfo: { flex: 1, gap: 2 },
-    listRowLabel: { fontSize: 13, fontWeight: '600', color: theme.colors.ink },
-    listRowActions: { flexDirection: 'row', gap: 6 },
-    statusBtn: {
-      width: 44, height: 44,
-      borderRadius: 8,
-      borderWidth: 1.5,
-      alignItems: 'center', justifyContent: 'center',
-    },
-    statusBtnGood:       { borderColor: theme.colors.semantic.success },
-    statusBtnGoodActive: { backgroundColor: theme.colors.semantic.success, borderColor: theme.colors.semantic.success },
-    statusBtnWarn:       { borderColor: theme.colors.warn },
-    statusBtnWarnActive: { backgroundColor: theme.colors.warn, borderColor: theme.colors.warn },
-    statusBtnBad:        { borderColor: theme.colors.dangerBorder },
-    statusBtnBadActive:  { backgroundColor: theme.colors.danger, borderColor: theme.colors.danger },
-    statusBtnText:       { fontSize: 18 },
-    statusBtnTextGood:   { color: theme.colors.semantic.success },
-    statusBtnTextWarn:   { color: theme.colors.warn },
-    statusBtnTextBad:    { color: theme.colors.danger },
-    statusBtnTextActive: { color: theme.colors.white, fontWeight: '700' },
   });
 }
