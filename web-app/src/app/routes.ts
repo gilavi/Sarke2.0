@@ -80,7 +80,6 @@ export const routePattern = {
   cargoPlatformNew: `${cargoPlatform}/new`,
   cargoPlatformDetail: `${cargoPlatform}/:id`,
   cargoPlatformPrint: `${cargoPlatform}/:id/print`,
-  harnessNew: `${harness}/new`,
   harnessDetail: `${harness}/:id`,
 
   // Orders
@@ -169,7 +168,6 @@ export const routes = {
     print: (id: string) => `${cargoPlatform}/${id}/print`,
   },
   harness: {
-    new: (projectId?: string | null) => withProject(`${harness}/new`, projectId),
     detail: (id: string) => `${harness}/${id}`,
   },
 

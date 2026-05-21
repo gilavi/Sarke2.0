@@ -19,7 +19,7 @@ import { listExcavatorInspections, deleteExcavatorInspection } from '@/lib/data/
 import { listCargoPlatformInspections } from '@/lib/data/cargoPlatform';
 import { listProjects } from '@/lib/data/projects';
 import InspectionWizard from '@/components/InspectionWizard';
-import HarnessInspectionModal from '@/components/HarnessInspectionModal';
+import { harnessWizardPreset } from '@/components/inspections/harnessPreset';
 import { projectKeys, inspectionKeys, bobcatKeys, excavatorKeys, generalEquipmentKeys, cargoPlatformKeys } from '@/app/queryKeys';
 
 const TYPE_LABEL: Record<string, string> = {
@@ -233,7 +233,7 @@ export default function Inspections() {
       )}
 
       <InspectionWizard open={newInspectionOpen} onClose={() => { setNewInspectionOpen(false); setNewInspectionCategory(''); }} defaultProjectId={filter} defaultCategory={newInspectionCategory} />
-      <HarnessInspectionModal open={harnessOpen} onClose={() => setHarnessOpen(false)} defaultProjectId={filter} />
+      <InspectionWizard open={harnessOpen} onClose={() => setHarnessOpen(false)} defaultProjectId={filter} preset={harnessWizardPreset} />
 
       {allRows.length > 0 && (
         <motion.div initial="hidden" animate="visible" variants={containerVariants} className="divide-y divide-neutral-100 rounded-xl border border-neutral-200 bg-white dark:divide-neutral-800 dark:border-neutral-700 dark:bg-neutral-900">

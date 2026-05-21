@@ -26,7 +26,7 @@ import { listProjects } from '@/lib/data/projects';
 import { listIncidents } from '@/lib/data/incidents';
 import { listBriefings } from '@/lib/data/briefings';
 import InspectionWizard from '@/components/InspectionWizard';
-import HarnessInspectionModal from '@/components/HarnessInspectionModal';
+import { harnessWizardPreset } from '@/components/inspections/harnessPreset';
 import { staggerContainer, fadeUpItem, STAGGER } from '@/lib/animations';
 import {
   inspectionKeys,
@@ -133,7 +133,7 @@ export default function Home() {
           </DropdownMenuContent>
         </DropdownMenu>
         <InspectionWizard open={newInspectionOpen} onClose={() => setNewInspectionOpen(false)} />
-        <HarnessInspectionModal open={harnessOpen} onClose={() => setHarnessOpen(false)} />
+        <InspectionWizard open={harnessOpen} onClose={() => setHarnessOpen(false)} preset={harnessWizardPreset} />
       </motion.header>
 
       {/* ═════ Row 2: Subscription Banner (full width) ═════ */}

@@ -6,7 +6,7 @@
  *  - Summary block (safety verdict, badge pills, conclusion excerpt)
  *  - Two action cards: PDF (with document thumbnail + preview iframe) and Project
  *
- * Used in: HarnessInspectionModal, InspectionWizard
+ * Used in: InspectionWizard
  * Easy to drop into future flows: pass the right `printRoute` and optional props.
  */
 import { useState } from 'react';

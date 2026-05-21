@@ -101,6 +101,12 @@ The four equipment inspection detail pages (bobcat, excavator, general-equipment
 
 **Don't** add a `web-app/src/pages/<Type>InspectionDetail.tsx` — add a `features/inspections/equipment/<Type>Detail.tsx` that calls `useEquipmentDetail` and renders its type-specific steps with the shared widgets. The per-type data module ([`lib/data/<type>.ts`](../web-app/src/lib/data/) via `makeRepository`) supplies the get/update/remove/create fns + patch type. This is the **dashboard editor**; the legal PDF is rendered separately by `web-app/src/pages/print/<Type>Print.tsx` from the saved row — keep the `save()` shapes stable and the PDF is unaffected.
 
+## Web dashboard inspection create/edit wizard (web-app)
+
+One wizard owns the dashboard's question/template-driven inspection create + edit flow: [`web-app/src/components/InspectionWizard.tsx`](../web-app/src/components/InspectionWizard.tsx). It handles the generic flow and — via a `WizardPreset` — streamlined per-type flows (e.g. harness: locked template, project-only info step, grid-first checklist, required conclusion, navigate-to-detail on success).
+
+**Don't** build a bespoke `<Type>InspectionModal` — add a `WizardPreset` (see [`components/inspections/harnessPreset.ts`](../web-app/src/components/inspections/harnessPreset.ts)) and mount `<InspectionWizard preset={…} />`. The `component_grid` step renders via the shared [`HarnessWizard`](../web-app/src/components/inspections/HarnessWizard.tsx); the ok/bad summary + success badges are computed generically from the grid answer. The post-create success screen is `InspectionSuccessCard` — don't add a second success modal on the detail page.
+
 ## Inspection wizard shared UI
 
 Shared step-flow chrome lives in [`components/wizard/`](../components/wizard/). The full header + back + progress bar comes from `FlowHeader`; don't roll a custom per-screen header.

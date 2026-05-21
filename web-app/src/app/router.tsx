@@ -36,7 +36,6 @@ const NewExcavatorInspection = lazy(() => import('@/pages/NewExcavatorInspection
 const ExcavatorInspectionDetail = lazy(() => import('@/features/inspections/equipment/ExcavatorDetail'));
 const NewCargoPlatformInspection = lazy(() => import('@/pages/NewCargoPlatformInspection'));
 const CargoPlatformInspectionDetail = lazy(() => import('@/features/inspections/equipment/CargoPlatformDetail'));
-const NewHarnessInspection = lazy(() => import('@/pages/NewHarnessInspection'));
 const HarnessInspectionDetail = lazy(() => import('@/pages/HarnessInspectionDetail'));
 const CargoPlatformPrint = lazy(() => import('@/pages/print/CargoPlatformPrint'));
 const NewOrder = lazy(() => import('@/pages/NewOrder'));
@@ -203,7 +202,6 @@ export function AppRouter() {
             <Route path="/cargo-platform/draft" element={<Navigate to={routes.inspections.list()} replace />} />
             <Route path={routePattern.cargoPlatformDetail} element={<CargoPlatformInspectionDetail />} />
 
-            <Route path={routePattern.harnessNew} element={<NewHarnessInspection />} />
             <Route path="/harness/draft" element={<Navigate to={routes.inspections.list()} replace />} />
             <Route path={routePattern.harnessDetail} element={<HarnessInspectionDetail />} />
 

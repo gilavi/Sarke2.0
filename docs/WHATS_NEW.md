@@ -4,6 +4,19 @@
 
 ---
 
+## 2026-05-21 — Harness create flow folded into the shared InspectionWizard (web-app)
+
+### Internal refactor — one inspection create wizard; legal record unchanged
+The dedicated `HarnessInspectionModal` (504 lines) and the orphaned `/harness/new` page (`NewHarnessInspection`) are gone. Harness inspections are now created through the shared `InspectionWizard` via a `WizardPreset`.
+
+- **`InspectionWizard` gained a `preset` prop** — locks the template, streamlines the info step to a project picker, prefills the inspector from the signed-in profile, requires a conclusion, and navigates to the harness detail on success. Harness config lives in [`components/inspections/harnessPreset.ts`](../web-app/src/components/inspections/harnessPreset.ts).
+- **Grid summary generalized:** the ok/bad "შეჯამება" counts + success badges are computed from any `component_grid` answer, not harness-specific code.
+- **Call sites repointed:** Home, Inspections, ProjectDetail mount `InspectionWizard` with `harnessWizardPreset` (the generic new-inspection wizard was already there).
+- **Dead code removed:** `HarnessInspectionModal.tsx`, `pages/NewHarnessInspection.tsx`, the `/harness/new` route, and the never-triggered completion `Modal` in `HarnessInspectionDetail.tsx`.
+- **Fidelity:** harness acts still go through the same `createInspection` / `upsertAnswer` / `updateInspection` data path, so the saved record + PDF are unchanged. Verified by typecheck, lint, build, and tests (added an `InspectionWizard` harness-preset mount test; suite 70 → 71).
+
+---
+
 ## 2026-05-21 — Equipment inspection detail pages cut over to the shared engine (web-app)
 
 ### Internal refactor — no user-facing change; legal PDFs byte-identical

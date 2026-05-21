@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import InspectionWizard from '@/components/InspectionWizard';
-import HarnessInspectionModal from '@/components/HarnessInspectionModal';
+import { harnessWizardPreset } from '@/components/inspections/harnessPreset';
 import { getProject, type Project } from '@/lib/data/projects';
 import { projectKeys } from '@/app/queryKeys';
 import { ProjectHeader } from './ProjectHeader';
@@ -87,10 +87,11 @@ export default function ProjectDetail() {
         onClose={() => setWizardOpen(false)}
         defaultProjectId={project.id}
       />
-      <HarnessInspectionModal
+      <InspectionWizard
         open={harnessOpen}
         onClose={() => setHarnessOpen(false)}
         defaultProjectId={project.id}
+        preset={harnessWizardPreset}
       />
     </div>
   );

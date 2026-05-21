@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, X, ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -11,6 +12,7 @@ import { toast } from 'sonner';
 import PhotoUploadWidget from '@/components/PhotoUploadWidget';
 import InspectionSuccessCard from '@/components/InspectionSuccessCard';
 import HarnessWizard from '@/components/inspections/HarnessWizard';
+import { useAuth } from '@/lib/auth';
 import {
   addAnswerPhoto,
   createInspection,
@@ -31,12 +33,27 @@ import { projectKeys, inspectionKeys, templateKeys } from '@/app/queryKeys';
 
 type WizardMode = 'create' | 'edit';
 
+/**
+ * Locks the wizard to a single template for a streamlined, type-specific create
+ * flow (e.g. harness): the info step shows only the project picker, the inspector
+ * is taken from the signed-in profile, and on success the wizard navigates to the
+ * type's detail route. Pass this instead of mounting a bespoke per-type modal.
+ */
+export interface WizardPreset {
+  templateId: string;
+  title?: string;
+  requireConclusionText?: boolean;
+  successDetailRoute?: (id: string) => string;
+}
+
 interface InspectionWizardProps {
   open: boolean;
   onClose: () => void;
   // Creation mode
   defaultProjectId?: string;
   defaultCategory?: string;
+  /** Locked, streamlined single-template create flow (e.g. harness). */
+  preset?: WizardPreset;
   // Edit mode
   inspection?: Inspection;
   initialQuestions?: Question[];
@@ -78,17 +95,21 @@ export default function InspectionWizard({
   onClose,
   defaultProjectId = '',
   defaultCategory = '',
+  preset,
   inspection: existingInspection,
   initialQuestions = [],
   initialAnswers = [],
   onComplete,
 }: InspectionWizardProps) {
   const qc = useQueryClient();
+  const navigate = useNavigate();
+  const { profile } = useAuth();
+  const profileName = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || null;
   const mode: WizardMode = existingInspection ? 'edit' : 'create';
 
   /* ── Info form state (creation only) ── */
   const [projectId, setProjectId] = useState(defaultProjectId);
-  const [templateId, setTemplateId] = useState('');
+  const [templateId, setTemplateId] = useState(preset?.templateId ?? '');
   const [harnessName, setHarnessName] = useState('');
   const [department, setDepartment] = useState('');
   const [inspectorName, setInspectorName] = useState('');
@@ -142,7 +163,7 @@ export default function InspectionWizard({
     if (open && !hasResetRef.current) {
       hasResetRef.current = true;
       setProjectId(defaultProjectId);
-      setTemplateId('');
+      setTemplateId(preset?.templateId ?? '');
       setHarnessName('');
       setDepartment('');
       setInspectorName('');
@@ -165,7 +186,7 @@ export default function InspectionWizard({
     if (!open) {
       hasResetRef.current = false;
     }
-  }, [open, existingInspection, initialQuestions, initialAnswers, defaultProjectId]);
+  }, [open, existingInspection, initialQuestions, initialAnswers, defaultProjectId, preset]);
 
   /* ── Step flattening ── */
   const infoStepCount = mode === 'create' ? 1 : 0;
@@ -221,6 +242,18 @@ export default function InspectionWizard({
           is_safe_for_use: conclusion.isSafe,
           conclusion_photo_paths: conclusionPhotos,
         });
+        setCreatedInspection((prev) =>
+          prev
+            ? {
+                ...prev,
+                status: 'completed',
+                conclusion_text: conclusion.text || null,
+                is_safe_for_use: conclusion.isSafe,
+                conclusion_photo_paths: conclusionPhotos,
+                completed_at: new Date().toISOString(),
+              }
+            : prev,
+        );
         qc.invalidateQueries({ queryKey: inspectionKeys.detail(insId) });
         qc.invalidateQueries({ queryKey: inspectionKeys.lists() });
         onComplete?.();
@@ -264,7 +297,7 @@ export default function InspectionWizard({
           templateId,
           harnessName: harnessName.trim() || null,
           department: department.trim() || null,
-          inspectorName: inspectorName.trim() || null,
+          inspectorName: preset ? (profileName ?? null) : (inspectorName.trim() || null),
         });
         qc.invalidateQueries({ queryKey: inspectionKeys.lists() });
         const qs = await listQuestions(created.template_id);
@@ -286,7 +319,7 @@ export default function InspectionWizard({
     isSuccessStep, isConclusionStep, isQuestionStep, isInfoStep,
     effectiveInspection, conclusion, conclusionPhotos, currentQuestion, currentAnswer,
     projectId, templateId, harnessName, department, inspectorName,
-    onClose, answerMutation, qc, totalSteps,
+    onClose, answerMutation, qc, totalSteps, preset, profileName,
   ]);
 
   const goPrev = useCallback(() => {
@@ -306,7 +339,7 @@ export default function InspectionWizard({
   /* ── Step validation ── */
   const canGoNext = useMemo(() => {
     if (isSuccessStep) return true;
-    if (isConclusionStep) return conclusion.isSafe !== null;
+    if (isConclusionStep) return conclusion.isSafe !== null && (!preset?.requireConclusionText || conclusion.text.trim().length > 0);
     if (isInfoStep) return !!projectId && !!templateId;
     if (!currentQuestion) return false;
     const a = answerMap[currentQuestion.id];
@@ -319,7 +352,7 @@ export default function InspectionWizard({
       case 'component_grid': return !!a.grid_values && Object.keys(a.grid_values).length > 0;
       default: return false;
     }
-  }, [isSuccessStep, isConclusionStep, isInfoStep, currentQuestion, answerMap, conclusion, projectId, templateId]);
+  }, [isSuccessStep, isConclusionStep, isInfoStep, currentQuestion, answerMap, conclusion, projectId, templateId, preset]);
 
   /* ── Photo handling ── */
   const photosQ = useQuery({
@@ -348,13 +381,27 @@ export default function InspectionWizard({
     }
   }, [currentQuestion, currentAnswer, answerMutation, effectiveInspection]);
 
+  /* ── Grid summary (ok/bad counts) — shown for any component_grid inspection ── */
+  const gridSummary = useMemo(() => {
+    const gridQ = questions.find((q) => q.type === 'component_grid');
+    if (!gridQ) return null;
+    const gridVals = answerMap[gridQ.id]?.grid_values ?? {};
+    const statusCols = (gridQ.grid_cols ?? []).filter((c) => c !== 'კომენტარი');
+    const evaluated = Object.entries(gridVals).filter(([, cols]) =>
+      statusCols.some((c) => cols[c] === 'ok' || cols[c] === 'bad'),
+    );
+    if (evaluated.length === 0) return null;
+    const bad = evaluated.filter(([, cols]) => statusCols.some((c) => cols[c] === 'bad')).length;
+    return { total: evaluated.length, ok: evaluated.length - bad, bad };
+  }, [questions, answerMap]);
+
   /* ── Title ── */
   const title = useMemo(() => {
-    if (isInfoStep) return 'ახალი აქტი';
+    if (isInfoStep) return preset?.title ?? 'ახალი აქტი';
     if (isSuccessStep) return 'დასრულებულია';
     if (isConclusionStep) return 'დასკვნა';
     return effectiveInspection?.harness_name || 'შემოწმების აქტი';
-  }, [isInfoStep, isSuccessStep, isConclusionStep, effectiveInspection]);
+  }, [isInfoStep, isSuccessStep, isConclusionStep, effectiveInspection, preset]);
 
   if (!open) return null;
 
@@ -438,6 +485,7 @@ export default function InspectionWizard({
                           setDepartment={setDepartment}
                           inspectorName={inspectorName}
                           setInspectorName={setInspectorName}
+                          lockTemplate={!!preset}
                           projects={projects ?? []}
                           templates={templates ?? []}
                         />
@@ -469,6 +517,7 @@ export default function InspectionWizard({
                         <ConclusionStepRenderer
                           conclusion={conclusion}
                           onChange={setConclusion}
+                          summary={gridSummary}
                           inspectionId={effectiveInspection!.id}
                           photos={conclusionPhotos}
                           onPhotoAdd={(path) => setConclusionPhotos((prev) => [...prev, path])}
@@ -482,7 +531,22 @@ export default function InspectionWizard({
                           printRoute={`#/inspections/${effectiveInspection.id}/print`}
                           projectName={(projects ?? []).find((p) => p.id === projectId)?.name}
                           projectId={projectId || undefined}
-                          onClose={onClose}
+                          summaryBadges={
+                            gridSummary
+                              ? [
+                                  ...(gridSummary.ok > 0 ? [{ label: `✓ ${gridSummary.ok} გამართული`, variant: 'ok' as const }] : []),
+                                  ...(gridSummary.bad > 0 ? [{ label: `✗ ${gridSummary.bad} პრობლემა`, variant: 'bad' as const }] : []),
+                                ]
+                              : undefined
+                          }
+                          onClose={() => {
+                            const detailRoute =
+                              preset?.successDetailRoute && effectiveInspection
+                                ? preset.successDetailRoute(effectiveInspection.id)
+                                : null;
+                            onClose();
+                            if (detailRoute) navigate(detailRoute);
+                          }}
                         />
                       )}
                     </motion.div>
@@ -535,6 +599,7 @@ function InfoStep({
   department, setDepartment,
   inspectorName, setInspectorName,
   projects, templates,
+  lockTemplate = false,
 }: {
   projectId: string; setProjectId: (v: string) => void;
   templateId: string; setTemplateId: (v: string) => void;
@@ -543,7 +608,23 @@ function InfoStep({
   inspectorName: string; setInspectorName: (v: string) => void;
   projects: { id: string; name: string; logo?: string | null; company_name?: string }[];
   templates: { id: string; name: string; is_system?: boolean }[];
+  lockTemplate?: boolean;
 }) {
+  if (lockTemplate) {
+    return (
+      <div className="space-y-5">
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">აირჩიეთ პროექტი</p>
+        <ProjectPicker
+          label="პროექტი"
+          required
+          value={projectId}
+          onChange={setProjectId}
+          options={projects.map((p) => ({ value: p.id, label: p.name, logo: p.logo, company: p.company_name }))}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-5">
       <ProjectPicker
@@ -678,7 +759,7 @@ function QuestionStepRenderer({
 /* ─── Conclusion Step ─── */
 
 function ConclusionStepRenderer({
-  conclusion, onChange, inspectionId, photos, onPhotoAdd, onPhotoRemove,
+  conclusion, onChange, inspectionId, photos, onPhotoAdd, onPhotoRemove, summary,
 }: {
   conclusion: { isSafe: boolean | null; text: string };
   onChange: (c: { isSafe: boolean | null; text: string }) => void;
@@ -686,6 +767,7 @@ function ConclusionStepRenderer({
   photos: string[];
   onPhotoAdd: (path: string) => void;
   onPhotoRemove: (path: string) => void;
+  summary: { total: number; ok: number; bad: number } | null;
 }) {
   return (
     <div className="space-y-6">
@@ -693,6 +775,27 @@ function ConclusionStepRenderer({
         <h3 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">დასკვნა</h3>
         <p className="text-sm text-neutral-500">მიუთითეთ შემოწმების შედეგი და დასკვნა</p>
       </div>
+
+      {summary && (
+        <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-700 dark:bg-neutral-800/50">
+          <p className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+            შემოწმების შეჯამება
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">{summary.total} ერთეული</span>
+            {summary.ok > 0 && (
+              <span className="rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
+                ✓ {summary.ok} გამართული
+              </span>
+            )}
+            {summary.bad > 0 && (
+              <span className="rounded-full bg-red-100 px-3 py-0.5 text-xs font-semibold text-red-700 dark:bg-red-900/40 dark:text-red-400">
+                ✗ {summary.bad} პრობლემა
+              </span>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="space-y-2">
         <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">გამოყენების ვარგისება</p>
