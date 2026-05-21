@@ -10,6 +10,7 @@
  *     to RHF Controller, so validation lives in the zod schema (a single
  *     source that can mirror the data-layer types) instead of per-field code.
  */
+/* eslint-disable react-refresh/only-export-components -- form kit intentionally exports a hook + field components together */
 import type { ReactNode, FormHTMLAttributes } from 'react';
 import {
   useForm,

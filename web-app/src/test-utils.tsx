@@ -5,6 +5,7 @@
  *
  *   import { render, screen } from '@/test-utils';
  */
+/* eslint-disable react-refresh/only-export-components -- test helper, not a fast-refresh component module */
 import type { ReactElement, ReactNode } from 'react';
 import { render as rtlRender, type RenderOptions } from '@testing-library/react';
 import { MantineProvider } from '@mantine/core';
@@ -17,5 +18,4 @@ export function render(ui: ReactElement, options?: Omit<RenderOptions, 'wrapper'
   return rtlRender(ui, { wrapper: Providers, ...options });
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
 export * from '@testing-library/react';
