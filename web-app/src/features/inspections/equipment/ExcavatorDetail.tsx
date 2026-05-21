@@ -1,19 +1,27 @@
-import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { usePendingCreate } from '@/lib/usePendingCreate';
-import { SkeletonDetailPage } from '@/components/SkeletonCard';
+/**
+ * Excavator inspection detail.
+ *
+ * Built on the shared equipment engine (useEquipmentDetail + shared widgets).
+ * Excavator-specific: a read-only machine-specs grid, dated general-info fields,
+ * four checklist sections (each its own column) plus a yes/no+date maintenance
+ * section, and the approval verdict.
+ */
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { FileText } from 'lucide-react';
 import { toast } from 'sonner';
+import { NumberInput, Textarea, TextInput } from '@mantine/core';
 import DeleteButton from '@/components/DeleteButton';
 import InspectionSignatures from '@/components/InspectionSignatures';
-import PhotoUploadWidget from '@/components/PhotoUploadWidget';
 import SignatureCanvas from '@/components/SignatureCanvas';
 import FieldInput from '@/components/FieldInput';
 import WizardSteps, { WizardNav } from '@/components/WizardSteps';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { NumberInput, Textarea, TextInput } from '@mantine/core';
+import { SkeletonDetailPage } from '@/components/SkeletonCard';
+import { ErrorView, EmptyView } from '@/components/async/AsyncBoundary';
+import { routes } from '@/app/routes';
+import { excavatorKeys } from '@/app/queryKeys';
 import {
   CABIN_ITEMS,
   ENGINE_ITEMS,
@@ -25,32 +33,34 @@ import {
   deleteExcavatorInspection,
   getExcavatorInspection,
   updateExcavatorInspection,
+  type CreateExcavatorArgs,
   type ExcavatorChecklistEntry,
   type ExcavatorChecklistItemState,
   type ExcavatorChecklistResult,
   type ExcavatorInspection,
   type ExcavatorMaintenanceItemState,
+  type ExcavatorPatch,
   type ExcavatorVerdict,
 } from '@/lib/data/excavator';
-import { getProject } from '@/lib/data/projects';
-import { routes } from '@/app/routes';
-import { projectKeys, excavatorKeys } from '@/app/queryKeys';
+import { useEquipmentDetail } from './useEquipmentDetail';
+import { CompletedBanner } from './components/CompletedBanner';
+import { InspectionPdfOverlay } from './components/InspectionPdfOverlay';
+import { ChecklistItemRow } from './components/ChecklistItemRow';
+import type { ResultOption } from './components/ResultPills';
 
-const RESULT_LABEL: Record<Exclude<ExcavatorChecklistResult, null>, string> = {
-  good: 'ნორმაში',
-  deficient: 'ხარვეზი',
-  unusable: 'გამოუსადეგ.',
-};
+type ExcavatorResult = Exclude<ExcavatorChecklistResult, null>;
+
+const RESULT_OPTIONS: ResultOption<ExcavatorResult>[] = [
+  { value: 'good', label: 'ნორმაში', tone: 'good' },
+  { value: 'deficient', label: 'ხარვეზი', tone: 'warn' },
+  { value: 'unusable', label: 'გამოუსადეგ.', tone: 'bad' },
+];
 
 interface SectionDef {
   key: 'engine' | 'undercarriage' | 'cabin' | 'safety';
   title: string;
   items: ExcavatorChecklistEntry[];
-  field:
-    | 'engineItems'
-    | 'undercarriageItems'
-    | 'cabinItems'
-    | 'safetyItems';
+  field: 'engineItems' | 'undercarriageItems' | 'cabinItems' | 'safetyItems';
 }
 
 const SECTIONS: SectionDef[] = [
@@ -60,84 +70,39 @@ const SECTIONS: SectionDef[] = [
   { key: 'safety', title: 'უსაფრთხოება', items: SAFETY_ITEMS, field: 'safetyItems' },
 ];
 
-type PendingExcavator = Parameters<typeof createExcavatorInspection>[0];
-
 const EMPTY_SPECS = { weight: '—', engine: '—', power: '—', depth: '—', travel: '—', maxReach: '—' };
 
-export default function ExcavatorInspectionDetail() {
-  const { id } = useParams();
+export default function ExcavatorDetail() {
   const navigate = useNavigate();
-  const qc = useQueryClient();
-  const { pendingCreate, lazyCreate } = usePendingCreate<PendingExcavator>();
-  const isPending = id === 'draft';
-
-  useEffect(() => {
-    if (isPending && !pendingCreate) {
-      navigate('/inspections', { replace: true });
-    }
-  }, [isPending, pendingCreate, navigate]);
+  const d = useEquipmentDetail<ExcavatorInspection, ExcavatorPatch, CreateExcavatorArgs>({
+    get: getExcavatorInspection,
+    update: updateExcavatorInspection,
+    remove: deleteExcavatorInspection,
+    detailKey: excavatorKeys.detail,
+    listKey: excavatorKeys.lists,
+    getProjectId: (i) => i.projectId,
+  });
 
   const [signingOpen, setSigningOpen] = useState(false);
-  const [justCompleted, setJustCompleted] = useState(false);
-  const [step, setStep] = useState(0);
-  const [pdfOpen, setPdfOpen] = useState(false);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  const { data: item, error, isLoading } = useQuery({
-    queryKey: excavatorKeys.detail(id),
-    queryFn: () => getExcavatorInspection(id!),
-    enabled: !!id && !isPending,
-  });
-  const projectId = item?.projectId;
-  const { data: project } = useQuery({
-    queryKey: projectKeys.detail(projectId),
-    queryFn: () => getProject(projectId!),
-    enabled: !!projectId,
-  });
+  if (d.isLoading) return <SkeletonDetailPage />;
+  if (d.isError) return <ErrorView error={d.error} />;
+  if (!d.item && !d.isPending) return <EmptyView message="აქტი ვერ მოიძებნა." />;
 
-  const updateMutation = useMutation({
-    mutationFn: (patch: Parameters<typeof updateExcavatorInspection>[1]) =>
-      updateExcavatorInspection(id!, patch),
-    onSuccess: (_data, variables) => {
-      qc.invalidateQueries({ queryKey: excavatorKeys.detail(id) });
-      qc.invalidateQueries({ queryKey: excavatorKeys.lists() });
-      if (variables.status === 'completed') setJustCompleted(true);
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
-  });
-
-  const delMutation = useMutation({
-    mutationFn: () => deleteExcavatorInspection(id!),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: excavatorKeys.lists() });
-      navigate('/inspections');
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
-  });
-
-  if (isLoading) return <SkeletonDetailPage />;
-  if (error)
-    return (
-      <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-        {error instanceof Error ? error.message : String(error)}
-      </div>
-    );
-  if (!item && !isPending) return <p className="text-sm text-neutral-500">აქტი ვერ მოიძებნა.</p>;
-
-  const effectiveItem: ExcavatorInspection = item ?? {
+  const effectiveItem: ExcavatorInspection = d.item ?? {
     id: 'draft',
     status: 'draft',
-    projectId: pendingCreate?.projectId ?? '',
+    projectId: d.pendingCreate?.projectId ?? '',
     templateId: '',
     userId: '',
-    serialNumber: pendingCreate?.serialNumber ?? null,
+    serialNumber: d.pendingCreate?.serialNumber ?? null,
     registrationNumber: null,
-    inventoryNumber: pendingCreate?.inventoryNumber ?? null,
+    inventoryNumber: d.pendingCreate?.inventoryNumber ?? null,
     projectName: null,
-    department: pendingCreate?.department ?? null,
-    inspectorName: pendingCreate?.inspectorName ?? null,
+    department: d.pendingCreate?.department ?? null,
+    inspectorName: d.pendingCreate?.inspectorName ?? null,
     inspectorPosition: null,
-    inspectionDate: pendingCreate?.inspectionDate ?? new Date().toISOString().slice(0, 10),
+    inspectionDate: d.pendingCreate?.inspectionDate ?? new Date().toISOString().slice(0, 10),
     lastInspectionDate: null,
     motoHours: null,
     machineSpecs: EMPTY_SPECS,
@@ -157,89 +122,66 @@ export default function ExcavatorInspectionDetail() {
 
   const isDraft = effectiveItem.status === 'draft';
 
-  // Step 0 field saves are no-ops when pending (data lives in pendingCreate)
-  function save(patch: Parameters<typeof updateExcavatorInspection>[1]) {
-    if (isPending) return;
-    updateMutation.mutate(patch);
-  }
-
   async function patchSection(field: SectionDef['field'], itemId: number, patch: Partial<ExcavatorChecklistItemState>) {
-    if (isPending && pendingCreate) {
+    if (d.isPending && d.pendingCreate) {
       try {
-        const realId = await lazyCreate(createExcavatorInspection);
+        const realId = await d.lazyCreate(createExcavatorInspection);
         if (!realId) return;
         const sectionDef = SECTIONS.find((s) => s.field === field)!;
         const initial: ExcavatorChecklistItemState[] = sectionDef.items.map((e) => ({
           id: e.id, result: null, comment: null, photo_paths: [],
         }));
-        const patched = initial.map((it) => it.id === itemId ? { ...it, ...patch } : it);
-        await updateExcavatorInspection(realId, { [field]: patched } as Parameters<typeof updateExcavatorInspection>[1]);
-        qc.invalidateQueries({ queryKey: excavatorKeys.lists() });
-        navigate(`/excavator/${realId}`, { replace: true, state: {} });
+        const patched = initial.map((it) => (it.id === itemId ? { ...it, ...patch } : it));
+        await updateExcavatorInspection(realId, { [field]: patched } as ExcavatorPatch);
+        d.qc.invalidateQueries({ queryKey: excavatorKeys.lists() });
+        navigate(routes.excavator.detail(realId), { replace: true, state: {} });
       } catch (e) {
         toast.error(e instanceof Error ? e.message : String(e));
       }
       return;
     }
-    if (!item) return;
-    const list = item[field] as ExcavatorChecklistItemState[];
+    if (!d.item) return;
+    const list = d.item[field] as ExcavatorChecklistItemState[];
     const next = list.map((it) => (it.id === itemId ? { ...it, ...patch } : it));
-    updateMutation.mutate({ [field]: next } as Parameters<typeof updateExcavatorInspection>[1]);
+    d.save({ [field]: next } as ExcavatorPatch);
   }
 
   async function patchMaintenance(itemId: number, patch: Partial<ExcavatorMaintenanceItemState>) {
-    if (isPending && pendingCreate) {
+    if (d.isPending && d.pendingCreate) {
       try {
-        const realId = await lazyCreate(createExcavatorInspection);
+        const realId = await d.lazyCreate(createExcavatorInspection);
         if (!realId) return;
         const initial = MAINTENANCE_ITEMS.map((m) => ({ id: m.id, answer: null as null, date: null as null }));
-        const next = initial.map((m) => m.id === itemId ? { ...m, ...patch } : m);
+        const next = initial.map((m) => (m.id === itemId ? { ...m, ...patch } : m));
         await updateExcavatorInspection(realId, { maintenanceItems: next });
-        qc.invalidateQueries({ queryKey: excavatorKeys.lists() });
-        navigate(`/excavator/${realId}`, { replace: true, state: {} });
+        d.qc.invalidateQueries({ queryKey: excavatorKeys.lists() });
+        navigate(routes.excavator.detail(realId), { replace: true, state: {} });
       } catch (e) {
         toast.error(e instanceof Error ? e.message : String(e));
       }
       return;
     }
-    if (!item) return;
-    const next = item.maintenanceItems.map((m) => (m.id === itemId ? { ...m, ...patch } : m));
-    updateMutation.mutate({ maintenanceItems: next });
+    if (!d.item) return;
+    const next = d.item.maintenanceItems.map((m) => (m.id === itemId ? { ...m, ...patch } : m));
+    d.save({ maintenanceItems: next });
   }
 
   return (
     <div className="space-y-6">
-      {justCompleted && (
-        <div className="rounded-lg bg-green-50 border border-green-200 px-5 py-4 flex items-center justify-between gap-4">
-          <div>
-            <p className="font-semibold text-green-800">შემოწმების აქტი დასრულებულია ✓</p>
-            <p className="text-sm text-green-700 mt-0.5">შეგიძლიათ PDF ვერსია გახსნათ ან სიაში დაბრუნდეთ.</p>
-          </div>
-          <div className="flex gap-2 shrink-0">
-            <button
-              onClick={() => setPdfOpen(true)}
-              className="rounded-md bg-green-700 px-4 py-2 text-sm font-medium text-white hover:bg-green-800"
-            >
-              PDF ნახვა
-            </button>
-            <Link to="/inspections" className="rounded-md border border-green-300 px-4 py-2 text-sm font-medium text-green-800 hover:bg-green-100">
-              სიაში დაბრუნება
-            </Link>
-          </div>
-        </div>
-      )}
+      {d.justCompleted && <CompletedBanner onViewPdf={() => d.setPdfOpen(true)} />}
+
       <header className="flex items-start justify-between gap-4">
         <div>
           <nav className="flex items-center gap-1 text-sm">
-            {project && (
+            {d.project && (
               <>
-                <Link to={routes.projects.detail(project.id)} className="text-brand-600 hover:underline">
-                  {project.name}
+                <Link to={routes.projects.detail(d.project.id)} className="text-brand-600 hover:underline">
+                  {d.project.name}
                 </Link>
                 <span className="text-neutral-400">›</span>
               </>
             )}
-            <Link to={routes.inspections.list(projectId)} className="text-brand-600 hover:underline">
+            <Link to={routes.inspections.list(effectiveItem.projectId)} className="text-brand-600 hover:underline">
               აქტები
             </Link>
             <span className="text-neutral-400">›</span>
@@ -248,25 +190,24 @@ export default function ExcavatorInspectionDetail() {
             </span>
           </nav>
           <h1 className="mt-2 font-display text-3xl font-bold text-neutral-900">
-            ექსკავატორი — {effectiveItem.serialNumber || (isPending ? 'ახალი' : `#${effectiveItem.id.slice(0, 8)}`)}
+            ექსკავატორი — {effectiveItem.serialNumber || (d.isPending ? 'ახალი' : `#${effectiveItem.id.slice(0, 8)}`)}
           </h1>
-          <p className="mt-1 text-sm text-neutral-500">სტატუსი: {effectiveItem.status === 'completed' ? 'დასრულდა' : 'დრაფტი'}</p>
+          <p className="mt-1 text-sm text-neutral-500">
+            სტატუსი: {effectiveItem.status === 'completed' ? 'დასრულდა' : 'დრაფტი'}
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {!isPending && (
-            <Button variant="outline" size="sm" onClick={() => setPdfOpen(true)}>
+          {!d.isPending && (
+            <Button variant="outline" size="sm" onClick={() => d.setPdfOpen(true)}>
               <FileText size={14} className="mr-1" />
               PDF
             </Button>
           )}
-          {!isPending && (
-            <DeleteButton onDelete={() => delMutation.mutate()} isPending={delMutation.isPending} />
-          )}
+          {!d.isPending && <DeleteButton onDelete={d.del} isPending={d.deleting} />}
         </div>
       </header>
 
-      {/* ── Signatures ── */}
-      {!isPending && (
+      {!d.isPending && (
         <InspectionSignatures
           inspection={{
             inspector_signature: effectiveItem.inspectorSignature ?? null,
@@ -276,18 +217,17 @@ export default function ExcavatorInspectionDetail() {
             completed_at: effectiveItem.completedAt ?? null,
           }}
           canEdit={effectiveItem.status === 'completed'}
-          onUpdate={(sigs) => save({ signatories: sigs })}
+          onUpdate={(sigs) => d.save({ signatories: sigs })}
         />
       )}
 
       <WizardSteps
         steps={[{ label: 'ინფო' }, { label: 'შემოწმება' }, { label: 'დასკვნა' }]}
-        current={step}
-        onStep={setStep}
+        current={d.step}
+        onStep={d.setStep}
       />
 
-      {/* Step 0 — Info */}
-      {step === 0 && (
+      {d.step === 0 && (
         <>
           <Card>
             <CardHeader>
@@ -308,36 +248,11 @@ export default function ExcavatorInspectionDetail() {
               <CardTitle className="text-base">ზოგადი ინფორმაცია</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
-              <FieldInput
-                label="სერ. ნომერი"
-                value={effectiveItem.serialNumber}
-                disabled={!isDraft}
-                onSave={(v) => save({ serialNumber: v })}
-              />
-              <FieldInput
-                label="ინვ. ნომერი"
-                value={effectiveItem.inventoryNumber}
-                disabled={!isDraft}
-                onSave={(v) => save({ inventoryNumber: v })}
-              />
-              <FieldInput
-                label="დეპარტამენტი"
-                value={effectiveItem.department}
-                disabled={!isDraft}
-                onSave={(v) => save({ department: v })}
-              />
-              <FieldInput
-                label="ინსპექტორი"
-                value={effectiveItem.inspectorName}
-                disabled={!isDraft}
-                onSave={(v) => save({ inspectorName: v })}
-              />
-              <FieldInput
-                label="თანამდებობა"
-                value={effectiveItem.inspectorPosition}
-                disabled={!isDraft}
-                onSave={(v) => save({ inspectorPosition: v })}
-              />
+              <FieldInput label="სერ. ნომერი" value={effectiveItem.serialNumber} disabled={!isDraft} onSave={(v) => d.save({ serialNumber: v })} />
+              <FieldInput label="ინვ. ნომერი" value={effectiveItem.inventoryNumber} disabled={!isDraft} onSave={(v) => d.save({ inventoryNumber: v })} />
+              <FieldInput label="დეპარტამენტი" value={effectiveItem.department} disabled={!isDraft} onSave={(v) => d.save({ department: v })} />
+              <FieldInput label="ინსპექტორი" value={effectiveItem.inspectorName} disabled={!isDraft} onSave={(v) => d.save({ inspectorName: v })} />
+              <FieldInput label="თანამდებობა" value={effectiveItem.inspectorPosition} disabled={!isDraft} onSave={(v) => d.save({ inspectorPosition: v })} />
               <TextInput
                 label="შემოწმების თარიღი"
                 type="date"
@@ -346,7 +261,7 @@ export default function ExcavatorInspectionDetail() {
                 onBlur={(e) => {
                   const v = e.target.value || null;
                   if (v !== (effectiveItem.inspectionDate ? effectiveItem.inspectionDate.slice(0, 10) : null))
-                    save({ inspectionDate: v });
+                    d.save({ inspectionDate: v });
                 }}
                 radius="md"
               />
@@ -358,7 +273,7 @@ export default function ExcavatorInspectionDetail() {
                 onBlur={(e) => {
                   const v = e.target.value || null;
                   if (v !== (effectiveItem.lastInspectionDate ? effectiveItem.lastInspectionDate.slice(0, 10) : null))
-                    save({ lastInspectionDate: v });
+                    d.save({ lastInspectionDate: v });
                 }}
                 radius="md"
               />
@@ -368,19 +283,18 @@ export default function ExcavatorInspectionDetail() {
                 defaultValue={effectiveItem.motoHours ?? ''}
                 onBlur={(e) => {
                   const v = e.target.value === '' ? null : Number(e.target.value);
-                  if (v !== effectiveItem.motoHours) save({ motoHours: v });
+                  if (v !== effectiveItem.motoHours) d.save({ motoHours: v });
                 }}
                 radius="md"
                 hideControls
               />
             </CardContent>
           </Card>
-          <WizardNav current={step} total={3} onPrev={() => setStep(s => s - 1)} onNext={() => setStep(s => s + 1)} />
+          <WizardNav current={d.step} total={3} onPrev={() => d.setStep(d.step - 1)} onNext={() => d.setStep(d.step + 1)} />
         </>
       )}
 
-      {/* Step 1 — Checklist */}
-      {step === 1 && (
+      {d.step === 1 && (
         <>
           {SECTIONS.map((s) => {
             const stateList = effectiveItem[s.field] as ExcavatorChecklistItemState[];
@@ -394,76 +308,32 @@ export default function ExcavatorInspectionDetail() {
                   <ul className="divide-y divide-neutral-200">
                     {s.items.map((entry) => {
                       const st = stateById.get(entry.id) ?? {
-                        id: entry.id,
-                        result: null,
-                        comment: null,
-                        photo_paths: [],
+                        id: entry.id, result: null, comment: null, photo_paths: [],
                       };
                       return (
-                        <li key={entry.id} className="py-3">
-                          <div className="text-sm font-medium text-neutral-900">
-                            {entry.id}. {entry.label}
-                          </div>
-                          <div className="text-xs text-neutral-600">{entry.description}</div>
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            {(['good', 'deficient', 'unusable'] as const).map((r) => {
-                              const selected = st.result === r;
-                              return (
-                                <button
-                                  key={r}
-                                  type="button"
-                                  disabled={!isDraft}
-                                  onClick={() =>
-                                    patchSection(s.field, entry.id, {
-                                      result: selected ? null : r,
-                                    })
-                                  }
-                                  className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
-                                    selected
-                                      ? r === 'good'
-                                        ? 'border-emerald-600 bg-emerald-600 text-white'
-                                        : r === 'deficient'
-                                          ? 'border-amber-600 bg-amber-600 text-white'
-                                          : 'border-red-600 bg-red-600 text-white'
-                                      : 'border-neutral-300 bg-white text-neutral-700 hover:border-brand-400'
-                                  } disabled:cursor-not-allowed disabled:opacity-60`}
-                                >
-                                  {RESULT_LABEL[r]}
-                                </button>
-                              );
-                            })}
-                          </div>
-                          <TextInput
-                            disabled={!isDraft}
-                            defaultValue={st.comment ?? ''}
-                            onBlur={(e) => {
-                              const v = e.target.value || null;
-                              if (v !== (st.comment ?? null)) {
-                                patchSection(s.field, entry.id, { comment: v });
-                              }
-                            }}
-                            placeholder="კომენტარი"
-                            classNames={{ input: 'mt-2 text-xs' }}
-                            radius="md"
-                          />
-                          <PhotoUploadWidget
-                            paths={st.photo_paths ?? []}
-                            disabled={!isDraft}
-                            prefix="excavator"
-                            inspectionId={effectiveItem.id}
-                            itemId={entry.id}
-                            onAdd={(path) =>
-                              patchSection(s.field, entry.id, {
-                                photo_paths: [...(st.photo_paths ?? []), path],
-                              })
-                            }
-                            onRemove={(path) =>
-                              patchSection(s.field, entry.id, {
-                                photo_paths: (st.photo_paths ?? []).filter((p) => p !== path),
-                              })
-                            }
-                          />
-                        </li>
+                        <ChecklistItemRow
+                          key={entry.id}
+                          entryId={entry.id}
+                          label={entry.label}
+                          description={entry.description}
+                          options={RESULT_OPTIONS}
+                          result={st.result}
+                          comment={st.comment}
+                          photoPaths={st.photo_paths ?? []}
+                          disabled={!isDraft}
+                          photoPrefix="excavator"
+                          inspectionId={effectiveItem.id}
+                          onResult={(r) => patchSection(s.field, entry.id, { result: r })}
+                          onComment={(c) => patchSection(s.field, entry.id, { comment: c })}
+                          onAddPhoto={(path) =>
+                            patchSection(s.field, entry.id, { photo_paths: [...(st.photo_paths ?? []), path] })
+                          }
+                          onRemovePhoto={(path) =>
+                            patchSection(s.field, entry.id, {
+                              photo_paths: (st.photo_paths ?? []).filter((p) => p !== path),
+                            })
+                          }
+                        />
                       );
                     })}
                   </ul>
@@ -524,12 +394,11 @@ export default function ExcavatorInspectionDetail() {
               </ul>
             </CardContent>
           </Card>
-          <WizardNav current={step} total={3} onPrev={() => setStep(s => s - 1)} onNext={() => setStep(s => s + 1)} />
+          <WizardNav current={d.step} total={3} onPrev={() => d.setStep(d.step - 1)} onNext={() => d.setStep(d.step + 1)} />
         </>
       )}
 
-      {/* Step 2 — Signature + Verdict */}
-      {step === 2 && (
+      {d.step === 2 && (
         <>
           <Card>
             <CardHeader>
@@ -549,7 +418,7 @@ export default function ExcavatorInspectionDetail() {
                   {isDraft && signingOpen && (
                     <SignatureCanvas
                       existing={effectiveItem.inspectorSignature.startsWith('data:') ? effectiveItem.inspectorSignature : `data:image/png;base64,${effectiveItem.inspectorSignature}`}
-                      onSave={(dataUrl) => { save({ inspectorSignature: dataUrl }); setSigningOpen(false); }}
+                      onSave={(dataUrl) => { d.save({ inspectorSignature: dataUrl }); setSigningOpen(false); }}
                       onCancel={() => setSigningOpen(false)}
                     />
                   )}
@@ -557,7 +426,7 @@ export default function ExcavatorInspectionDetail() {
               ) : isDraft ? (
                 signingOpen ? (
                   <SignatureCanvas
-                    onSave={(dataUrl) => { save({ inspectorSignature: dataUrl }); setSigningOpen(false); }}
+                    onSave={(dataUrl) => { d.save({ inspectorSignature: dataUrl }); setSigningOpen(false); }}
                     onCancel={() => setSigningOpen(false)}
                   />
                 ) : (
@@ -585,7 +454,7 @@ export default function ExcavatorInspectionDetail() {
                           <button
                             key={v}
                             type="button"
-                            onClick={() => save({ verdict: selected ? null : v })}
+                            onClick={() => d.save({ verdict: selected ? null : v })}
                             className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
                               selected
                                 ? 'border-brand-600 bg-brand-600 text-white'
@@ -604,16 +473,12 @@ export default function ExcavatorInspectionDetail() {
                     defaultValue={effectiveItem.notes ?? ''}
                     onBlur={(e) => {
                       const v = e.target.value || null;
-                      if (v !== effectiveItem.notes) save({ notes: v });
+                      if (v !== effectiveItem.notes) d.save({ notes: v });
                     }}
                     radius="md"
                     autosize={false}
                   />
-                  <Button
-                    size="sm"
-                    onClick={() => save({ status: 'completed' })}
-                    disabled={updateMutation.isPending || isPending}
-                  >
+                  <Button size="sm" onClick={() => d.save({ status: 'completed' })} disabled={d.updating || d.isPending}>
                     დასრულება
                   </Button>
                 </>
@@ -625,35 +490,16 @@ export default function ExcavatorInspectionDetail() {
               )}
             </CardContent>
           </Card>
-          <WizardNav current={step} total={3} onPrev={() => setStep(s => s - 1)} onNext={() => setStep(s => s + 1)} />
+          <WizardNav current={d.step} total={3} onPrev={() => d.setStep(d.step - 1)} onNext={() => d.setStep(d.step + 1)} />
         </>
       )}
 
-      {pdfOpen && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-black/60">
-          <div className="flex items-center justify-between bg-white px-4 py-2 shadow">
-            <button
-              className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-50"
-              onClick={() => setPdfOpen(false)}
-            >
-              ✕ დახურვა
-            </button>
-            <button
-              className="rounded-md bg-brand-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-brand-700"
-              onClick={() => iframeRef.current?.contentWindow?.print()}
-            >
-              ბეჭდვა
-            </button>
-          </div>
-          <iframe
-            ref={iframeRef}
-            src={`#/excavator/${effectiveItem.id}/print?preview=1`}
-            className="flex-1 w-full border-0 bg-white"
-            title="PDF გადახედვა"
-          />
-        </div>
+      {d.pdfOpen && (
+        <InspectionPdfOverlay
+          src={`#${routes.excavator.print(effectiveItem.id)}?preview=1`}
+          onClose={() => d.setPdfOpen(false)}
+        />
       )}
     </div>
   );
 }
-

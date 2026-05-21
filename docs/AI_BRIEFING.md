@@ -105,6 +105,7 @@ Sarke 2.0/
 ├── web-app/                          # Dashboard (Vite + React)
 │   └── src/
 │       ├── pages/                    # 35+ page components
+│       ├── features/inspections/     # equipment detail engine (useEquipmentDetail + shared widgets)
 │       ├── lib/data/                 # Data layer (one file per entity)
 │       └── components/              # UI components incl. SkeletonCard.tsx
 │

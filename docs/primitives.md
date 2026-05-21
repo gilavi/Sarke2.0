@@ -87,6 +87,20 @@ One file: [`web-app/src/lib/photoUpload.ts`](../web-app/src/lib/photoUpload.ts).
 
 For UI, use [`web-app/src/components/PhotoUploadWidget.tsx`](../web-app/src/components/PhotoUploadWidget.tsx) — handles thumbnails, upload button, lightbox, and delete. Don't build a second upload widget component. For non-`answer-photos` buckets, pass optional `uploadFn`, `signedUrlFn`, and `deleteFn` props to override the default helpers.
 
+## Web dashboard equipment inspection detail (web-app)
+
+The four equipment inspection detail pages (bobcat, excavator, general-equipment, cargo-platform) share one engine in [`web-app/src/features/inspections/equipment/`](../web-app/src/features/inspections/equipment/). A detail page is a thin **per-type component** composing the shared lifecycle hook + widgets — never a hand-rolled query/mutation/PDF-overlay copy (that was the ~70% duplication across five 500–940-line pages this replaced).
+
+| Use case | Owner |
+|---|---|
+| Draft/query/mutation/delete + step/pdf/justCompleted lifecycle | `useEquipmentDetail(config)` — [useEquipmentDetail.ts](../web-app/src/features/inspections/equipment/useEquipmentDetail.ts) |
+| Result-selector pills (good/deficient/unusable, good/fix/na, …) | `ResultPills` + `ResultOption<V>` — [components/ResultPills.tsx](../web-app/src/features/inspections/equipment/components/ResultPills.tsx); map each enum onto a `tone` |
+| One checklist row (numbered label + pills + comment + photos) | `ChecklistItemRow` — [components/ChecklistItemRow.tsx](../web-app/src/features/inspections/equipment/components/ChecklistItemRow.tsx) |
+| Completed "act finalized" green banner | `CompletedBanner` — [components/CompletedBanner.tsx](../web-app/src/features/inspections/equipment/components/CompletedBanner.tsx) |
+| Full-screen PDF preview overlay (print-route iframe) | `InspectionPdfOverlay` — [components/InspectionPdfOverlay.tsx](../web-app/src/features/inspections/equipment/components/InspectionPdfOverlay.tsx) |
+
+**Don't** add a `web-app/src/pages/<Type>InspectionDetail.tsx` — add a `features/inspections/equipment/<Type>Detail.tsx` that calls `useEquipmentDetail` and renders its type-specific steps with the shared widgets. The per-type data module ([`lib/data/<type>.ts`](../web-app/src/lib/data/) via `makeRepository`) supplies the get/update/remove/create fns + patch type. This is the **dashboard editor**; the legal PDF is rendered separately by `web-app/src/pages/print/<Type>Print.tsx` from the saved row — keep the `save()` shapes stable and the PDF is unaffected.
+
 ## Inspection wizard shared UI
 
 Shared step-flow chrome lives in [`components/wizard/`](../components/wizard/). The full header + back + progress bar comes from `FlowHeader`; don't roll a custom per-screen header.

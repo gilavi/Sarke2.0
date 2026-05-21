@@ -1,12 +1,11 @@
 /**
- * Bobcat / large-loader inspection detail, rebuilt on the shared engine.
+ * Bobcat / large-loader inspection detail.
  *
- * This is the cutover-ready replacement for pages/BobcatInspectionDetail.tsx:
- * the draft/query/mutation lifecycle now comes from useEquipmentDetail, and the
- * completed banner, checklist rows, result pills, and PDF overlay come from the
- * shared widgets. Only bobcat-specific config (catalog selection, result/verdict
- * labels, category grouping) lives here. Not yet wired into the router — the
- * route swap happens at cutover so this can be preview-verified then.
+ * Built on the shared equipment engine: the draft/query/mutation lifecycle comes
+ * from useEquipmentDetail, and the completed banner, checklist rows, result
+ * pills, and PDF overlay come from the shared widgets. Only bobcat-specific
+ * config (catalog selection, result/verdict labels, category grouping) lives
+ * here.
  */
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -78,7 +77,7 @@ function optionsFor(entry: BobcatChecklistEntry): ResultOption<BobcatItemResult>
   );
 }
 
-export default function BobcatDetailEngine() {
+export default function BobcatDetail() {
   const navigate = useNavigate();
   const d = useEquipmentDetail<BobcatInspection, BobcatPatch, CreateBobcatArgs>({
     get: getBobcatInspection,

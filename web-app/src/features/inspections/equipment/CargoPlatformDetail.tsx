@@ -1,16 +1,25 @@
-import { useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+/**
+ * Cargo-platform inspection detail.
+ *
+ * Built on the shared equipment engine (useEquipmentDetail) for the
+ * query/mutation/delete/PDF lifecycle. Cargo-platform is the divergent member of
+ * the family: six steps, an add/remove cargo table, conditional per-item
+ * comments (no photos), and signing that happens on mobile — so the desktop view
+ * is signature-display-only and keeps its own result/verdict color language.
+ */
+import { Link } from 'react-router-dom';
 import { FileText, Plus, X } from 'lucide-react';
-import { SkeletonDetailPage } from '@/components/SkeletonCard';
-import { toast } from 'sonner';
+import { NumberInput, Textarea, TextInput } from '@mantine/core';
 import DeleteButton from '@/components/DeleteButton';
 import InspectionSignatures from '@/components/InspectionSignatures';
 import FieldInput from '@/components/FieldInput';
 import WizardSteps, { WizardNav } from '@/components/WizardSteps';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { NumberInput, Textarea, TextInput } from '@mantine/core';
+import { SkeletonDetailPage } from '@/components/SkeletonCard';
+import { ErrorView, EmptyView } from '@/components/async/AsyncBoundary';
+import { routes } from '@/app/routes';
+import { cargoPlatformKeys } from '@/app/queryKeys';
 import {
   getCargoPlatformInspection,
   deleteCargoPlatformInspection,
@@ -21,14 +30,17 @@ import {
   CP_SECTION_LABELS,
   CP_VERDICT_LABEL,
   CP_RESULT_LABEL,
+  type CargoPlatformInspection,
+  type CargoPlatformPatch,
+  type CreateCargoPlatformArgs,
   type CPVerdict,
   type CPResult,
   type CPCargoRow,
   type CPItemState,
 } from '@/lib/data/cargoPlatform';
-import { getProject } from '@/lib/data/projects';
-import { routes } from '@/app/routes';
-import { projectKeys, cargoPlatformKeys } from '@/app/queryKeys';
+import { useEquipmentDetail } from './useEquipmentDetail';
+import { CompletedBanner } from './components/CompletedBanner';
+import { InspectionPdfOverlay } from './components/InspectionPdfOverlay';
 
 const VERDICT_COLOR: Record<CPVerdict, string> = {
   approved:    'border-emerald-600 bg-emerald-600 text-white',
@@ -42,119 +54,58 @@ const RESULT_COLOR: Record<CPResult, string> = {
   na:   'border-neutral-400 bg-neutral-400 text-white',
 };
 
-export default function CargoPlatformInspectionDetail() {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const qc = useQueryClient();
-
-  const [step, setStep] = useState(0);
-  const [pdfOpen, setPdfOpen] = useState(false);
-  const [justCompleted, setJustCompleted] = useState(false);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-
-  const { data: item, error, isLoading } = useQuery({
-    queryKey: cargoPlatformKeys.detail(id),
-    queryFn: () => getCargoPlatformInspection(id!),
-    enabled: !!id,
-  });
-  const projectId = item?.projectId;
-  const { data: project } = useQuery({
-    queryKey: projectKeys.detail(projectId),
-    queryFn: () => getProject(projectId!),
-    enabled: !!projectId,
+export default function CargoPlatformDetail() {
+  const d = useEquipmentDetail<CargoPlatformInspection, CargoPlatformPatch, CreateCargoPlatformArgs>({
+    get: getCargoPlatformInspection,
+    update: updateCargoPlatformInspection,
+    remove: deleteCargoPlatformInspection,
+    detailKey: cargoPlatformKeys.detail,
+    listKey: cargoPlatformKeys.lists,
+    getProjectId: (i) => i.projectId,
   });
 
-  const updateMutation = useMutation({
-    mutationFn: (patch: Parameters<typeof updateCargoPlatformInspection>[1]) =>
-      updateCargoPlatformInspection(id!, patch),
-    onSuccess: (_data, variables) => {
-      qc.invalidateQueries({ queryKey: cargoPlatformKeys.detail(id) });
-      qc.invalidateQueries({ queryKey: cargoPlatformKeys.lists() });
-      if (variables.status === 'completed') setJustCompleted(true);
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
-  });
+  if (d.isLoading) return <SkeletonDetailPage />;
+  if (d.isError) return <ErrorView error={d.error} />;
+  if (!d.item) return <EmptyView message="აქტი ვერ მოიძებნა." />;
 
-  const delMutation = useMutation({
-    mutationFn: () => deleteCargoPlatformInspection(id!),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: cargoPlatformKeys.lists() });
-      navigate('/inspections');
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
-  });
-
-  if (isLoading) return <SkeletonDetailPage />;
-  if (error)
-    return (
-      <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-        {error instanceof Error ? error.message : String(error)}
-      </div>
-    );
-  if (!item) return <p className="text-sm text-neutral-500">აქტი ვერ მოიძებნა.</p>;
-
+  const item = d.item;
   const isDraft = item.status === 'draft';
-
-  function save(patch: Parameters<typeof updateCargoPlatformInspection>[1]) {
-    updateMutation.mutate(patch);
-  }
-
-  // ── Cargo rows ──────────────────────────────────────────────────────────────
+  const save = d.save;
 
   function addCargoRow() {
-    save({ cargo: [...item!.cargo, newCargoRow()] });
+    save({ cargo: [...item.cargo, newCargoRow()] });
   }
 
   function removeCargoRow(rowId: string) {
-    save({ cargo: item!.cargo.filter((r) => r.id !== rowId) });
+    save({ cargo: item.cargo.filter((r) => r.id !== rowId) });
   }
 
   function patchCargoRow(rowId: string, patch: Partial<CPCargoRow>) {
-    save({ cargo: item!.cargo.map((r) => (r.id === rowId ? { ...r, ...patch } : r)) });
+    save({ cargo: item.cargo.map((r) => (r.id === rowId ? { ...r, ...patch } : r)) });
   }
 
-  // ── Checklist items ─────────────────────────────────────────────────────────
-
   function patchItem(itemId: number, patch: Partial<CPItemState>) {
-    save({ items: item!.items.map((i) => (i.id === itemId ? { ...i, ...patch } : i)) });
+    save({ items: item.items.map((i) => (i.id === itemId ? { ...i, ...patch } : i)) });
   }
 
   const canComplete = isDraft && !!item.verdict;
 
   return (
     <div className="space-y-6">
-      {justCompleted && (
-        <div className="rounded-lg bg-green-50 border border-green-200 px-5 py-4 flex items-center justify-between gap-4">
-          <div>
-            <p className="font-semibold text-green-800">შემოწმების აქტი დასრულებულია ✓</p>
-            <p className="text-sm text-green-700 mt-0.5">შეგიძლიათ PDF ვერსია გახსნათ ან სიაში დაბრუნდეთ.</p>
-          </div>
-          <div className="flex gap-2 shrink-0">
-            <button
-              onClick={() => setPdfOpen(true)}
-              className="rounded-md bg-green-700 px-4 py-2 text-sm font-medium text-white hover:bg-green-800"
-            >
-              PDF ნახვა
-            </button>
-            <Link to="/inspections" className="rounded-md border border-green-300 px-4 py-2 text-sm font-medium text-green-800 hover:bg-green-100">
-              სიაში დაბრუნება
-            </Link>
-          </div>
-        </div>
-      )}
+      {d.justCompleted && <CompletedBanner onViewPdf={() => d.setPdfOpen(true)} />}
 
       <header className="flex items-start justify-between gap-4">
         <div>
           <nav className="flex items-center gap-1 text-sm">
-            {project && (
+            {d.project && (
               <>
-                <Link to={routes.projects.detail(project.id)} className="text-brand-600 hover:underline">
-                  {project.name}
+                <Link to={routes.projects.detail(d.project.id)} className="text-brand-600 hover:underline">
+                  {d.project.name}
                 </Link>
                 <span className="text-neutral-400">›</span>
               </>
             )}
-            <Link to={routes.inspections.list(projectId)} className="text-brand-600 hover:underline">
+            <Link to={routes.inspections.list(item.projectId)} className="text-brand-600 hover:underline">
               აქტები
             </Link>
             <span className="text-neutral-400">›</span>
@@ -170,15 +121,14 @@ export default function CargoPlatformInspectionDetail() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setPdfOpen(true)}>
+          <Button variant="outline" size="sm" onClick={() => d.setPdfOpen(true)}>
             <FileText size={14} className="mr-1" />
             PDF
           </Button>
-          <DeleteButton onDelete={() => delMutation.mutate()} isPending={delMutation.isPending} />
+          <DeleteButton onDelete={d.del} isPending={d.deleting} />
         </div>
       </header>
 
-      {/* ── Signatures ── */}
       <InspectionSignatures
         inspection={{
           inspector_name: item.inspectorName || null,
@@ -199,12 +149,11 @@ export default function CargoPlatformInspectionDetail() {
           { label: 'დასკვნა' },
           { label: 'ხელმოწ.' },
         ]}
-        current={step}
-        onStep={setStep}
+        current={d.step}
+        onStep={d.setStep}
       />
 
-      {/* Step 0 — General info */}
-      {step === 0 && (
+      {d.step === 0 && (
         <>
           <Card>
             <CardHeader><CardTitle className="text-base">ზოგადი ინფორმაცია</CardTitle></CardHeader>
@@ -231,12 +180,11 @@ export default function CargoPlatformInspectionDetail() {
               />
             </CardContent>
           </Card>
-          <WizardNav current={step} total={6} onPrev={() => setStep(s => s - 1)} onNext={() => setStep(s => s + 1)} />
+          <WizardNav current={d.step} total={6} onPrev={() => d.setStep(d.step - 1)} onNext={() => d.setStep(d.step + 1)} />
         </>
       )}
 
-      {/* Step 1 — Platform ID */}
-      {step === 1 && (
+      {d.step === 1 && (
         <>
           <Card>
             <CardHeader><CardTitle className="text-base">პლატფორმის იდენტიფიკაცია</CardTitle></CardHeader>
@@ -296,12 +244,11 @@ export default function CargoPlatformInspectionDetail() {
               />
             </CardContent>
           </Card>
-          <WizardNav current={step} total={6} onPrev={() => setStep(s => s - 1)} onNext={() => setStep(s => s + 1)} />
+          <WizardNav current={d.step} total={6} onPrev={() => d.setStep(d.step - 1)} onNext={() => d.setStep(d.step + 1)} />
         </>
       )}
 
-      {/* Step 2 — Cargo table */}
-      {step === 2 && (
+      {d.step === 2 && (
         <>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
@@ -363,12 +310,11 @@ export default function CargoPlatformInspectionDetail() {
               )}
             </CardContent>
           </Card>
-          <WizardNav current={step} total={6} onPrev={() => setStep(s => s - 1)} onNext={() => setStep(s => s + 1)} />
+          <WizardNav current={d.step} total={6} onPrev={() => d.setStep(d.step - 1)} onNext={() => d.setStep(d.step + 1)} />
         </>
       )}
 
-      {/* Step 3 — Checklist */}
-      {step === 3 && (
+      {d.step === 3 && (
         <>
           <Card>
             <CardHeader><CardTitle className="text-base">პლატფორმის შემოწმება</CardTitle></CardHeader>
@@ -432,12 +378,11 @@ export default function CargoPlatformInspectionDetail() {
               ))}
             </CardContent>
           </Card>
-          <WizardNav current={step} total={6} onPrev={() => setStep(s => s - 1)} onNext={() => setStep(s => s + 1)} />
+          <WizardNav current={d.step} total={6} onPrev={() => d.setStep(d.step - 1)} onNext={() => d.setStep(d.step + 1)} />
         </>
       )}
 
-      {/* Step 4 — Verdict / Conclusion */}
-      {step === 4 && (
+      {d.step === 4 && (
         <>
           <Card>
             <CardHeader><CardTitle className="text-base">დასკვნა</CardTitle></CardHeader>
@@ -489,7 +434,7 @@ export default function CargoPlatformInspectionDetail() {
               {isDraft && (
                 <Button
                   size="sm"
-                  disabled={!canComplete || updateMutation.isPending}
+                  disabled={!canComplete || d.updating}
                   onClick={() => save({ status: 'completed' })}
                 >
                   დასრულება
@@ -497,12 +442,11 @@ export default function CargoPlatformInspectionDetail() {
               )}
             </CardContent>
           </Card>
-          <WizardNav current={step} total={6} onPrev={() => setStep(s => s - 1)} onNext={() => setStep(s => s + 1)} />
+          <WizardNav current={d.step} total={6} onPrev={() => d.setStep(d.step - 1)} onNext={() => d.setStep(d.step + 1)} />
         </>
       )}
 
-      {/* Step 5 — Signatures (display only — signing happens on mobile) */}
-      {step === 5 && (
+      {d.step === 5 && (
         <>
           <Card>
             <CardHeader><CardTitle className="text-base">ხელმოწერები</CardTitle></CardHeader>
@@ -535,40 +479,21 @@ export default function CargoPlatformInspectionDetail() {
               ))}
             </CardContent>
           </Card>
-          <WizardNav current={step} total={6} onPrev={() => setStep(s => s - 1)} onNext={() => setStep(s => s + 1)} />
+          <WizardNav current={d.step} total={6} onPrev={() => d.setStep(d.step - 1)} onNext={() => d.setStep(d.step + 1)} />
         </>
       )}
 
-      {/* PDF overlay */}
-      {pdfOpen && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-black/60">
-          <div className="flex items-center justify-between bg-white px-4 py-2 shadow">
-            <button
-              className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-50"
-              onClick={() => setPdfOpen(false)}
-            >
-              ✕ დახურვა
-            </button>
-            <button
-              className="rounded-md bg-brand-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-brand-700"
-              onClick={() => iframeRef.current?.contentWindow?.print()}
-            >
-              ბეჭდვა
-            </button>
-          </div>
-          <iframe
-            ref={iframeRef}
-            src={`#/cargo-platform/${item.id}/print?preview=1`}
-            className="flex-1 w-full border-0 bg-white"
-            title="PDF გადახედვა"
-          />
-        </div>
+      {d.pdfOpen && (
+        <InspectionPdfOverlay
+          src={`#${routes.cargoPlatform.print(item.id)}?preview=1`}
+          onClose={() => d.setPdfOpen(false)}
+        />
       )}
     </div>
   );
 }
 
-// Reusable inner component declared inside the module scope to avoid React hooks rules issues
+// Reusable inner component declared in module scope to avoid React hooks rules issues
 function PillPair<T extends string>({
   label,
   value,

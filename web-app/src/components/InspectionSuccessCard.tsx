@@ -90,8 +90,8 @@ export default function InspectionSuccessCard({
   }
 
   // In HashRouter the iframe src is relative: '#/route?preview=1' resolves
-  // to the same SPA at /Sarke2.0/app/ with the new hash, exactly as
-  // BobcatInspectionDetail does for its PDF preview pane.
+  // to the same SPA at /Sarke2.0/app/ with the new hash, exactly as the
+  // equipment detail pages do for their PDF preview pane.
   const iframeSrc = `${printRoute}?preview=1`;
 
   /* ── Render ── */

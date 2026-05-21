@@ -4,6 +4,18 @@
 
 ---
 
+## 2026-05-21 — Equipment inspection detail pages cut over to the shared engine (web-app)
+
+### Internal refactor — no user-facing change; legal PDFs byte-identical
+The four equipment inspection **detail pages** (bobcat, excavator, general-equipment, cargo-platform) now render through the shared `features/inspections/equipment/` engine instead of five hand-cloned 500–940-line `pages/<Type>InspectionDetail.tsx` pages (~70% duplicated lifecycle / banner / PDF-overlay / checklist code).
+
+- **Per-type detail components → `features/inspections/equipment/<Type>Detail.tsx`:** each is a thin component composing `useEquipmentDetail` (draft/query/mutation/delete/step/pdf lifecycle) + the shared `ResultPills` / `ChecklistItemRow` / `CompletedBanner` / `InspectionPdfOverlay` widgets. The transitional `BobcatDetailEngine.tsx` is now `BobcatDetail.tsx`.
+- **Router repointed** ([`app/router.tsx`](../web-app/src/app/router.tsx)); the four old `pages/*InspectionDetail.tsx` deleted (~2,370 LOC removed).
+- **Fidelity:** every `update<Type>Inspection(id, patch)` save call is preserved verbatim, so the saved row — and the legal PDF rendered by the untouched `pages/print/<Type>Print.tsx` — is byte-identical. Verified by typecheck, ESLint (new files clean), production build (4 new chunks emitted), and the smoke test.
+- **Out of scope (unchanged):** the generic template/question path (`pages/InspectionDetail.tsx`) and the harness flow — those are DB-schema-driven, not equipment-catalog-driven. New canonical owner documented in [`primitives.md`](primitives.md#web-dashboard-equipment-inspection-detail-web-app).
+
+---
+
 ## 2026-05-21 — web-app architecture refactor + best-practices hardening (web-app)
 
 ### Internal refactor — no user-facing change
@@ -15,7 +27,7 @@ conventions, and roadmap in [`web-app-architecture.md`](web-app-architecture.md)
 - **Kernel primitives — `web-app/src/lib/db`, `lib/query`, `components/{async,form,print}`:** `makeRepository` (generic CRUD + `mapDefined`), a storage primitive (`STORAGE_BUCKETS` + `signedUrl`/`upload`/`removeObjects`), `useEntityQuery`/`useEntityMutation`, `AsyncBoundary`, `EntityForm` (react-hook-form + zod, previously installed but unused), `PrintLayout`.
 - **Equipment data layer → `makeRepository`:** bobcat/excavator/generalEquipment/cargoPlatform now build a repo via the factory (one CRUD impl, not five); public exports/behavior unchanged so pages are untouched.
 - **Storage consolidated:** every data-layer Supabase Storage callsite routes through the primitive — killed the 4× duplicated `signedPdfUrl` helpers and the stringly-typed bucket names.
-- **Inspection engine (started):** `features/inspections/equipment/` — shared `useEquipmentDetail` hook + `ResultPills`/`ChecklistItemRow`/`CompletedBanner`/`InspectionPdfOverlay`; bobcat detail rebuilt on it as the proof. Route cutover + the other 3 types pending.
+- **Inspection engine (started):** `features/inspections/equipment/` — shared `useEquipmentDetail` hook + `ResultPills`/`ChecklistItemRow`/`CompletedBanner`/`InspectionPdfOverlay`; bobcat detail rebuilt on it as the proof. (Route cutover for all four equipment types completed 2026-05-21 — see the entry above.)
 - **Tooling/CI:** ESLint (flat) + Prettier added (the app previously had no linting); zod env validation in `supabase.ts`; generated Supabase schema types (`npm run gen:types` → `src/types/database.ts`); CI workflow gating web-app on typecheck + unit tests (PR + pre-deploy); Vitest made runnable (excluded the Playwright spec, added `@testing-library/dom`) and a stale `StatusBadge` test fixed — suite now 66/66 green.
 
 ---
