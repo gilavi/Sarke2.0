@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { useCallback, useMemo } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,24 +19,16 @@ import {
   type VerdictOption,
 } from '../../../components/inspection';
 import { useTheme, type Theme } from '../../../lib/theme';
-import { useSession } from '../../../lib/session';
 import { useToast } from '../../../lib/toast';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { liftingAccessoriesApi } from '../../../lib/liftingAccessoriesService';
-import { projectsApi } from '../../../lib/services';
-import { renderInspectionPdf } from '../../../lib/inspection/renderMobile';
 import { liftingAccessoriesSchema } from '../../../lib/inspection/schemas/liftingAccessories';
-import { generateAndSharePdf, PdfLimitReachedError } from '../../../lib/pdfOpen';
+import { useInspectionFlow } from '../../../lib/inspection/useInspectionFlow';
 import { PaywallModal } from '../../../components/PaywallModal';
 import { PdfLockedBanner } from '../../../components/PdfLockedBanner';
-import { usePdfUsage, useInvalidatePdfUsage } from '../../../lib/usePdfUsage';
-import { generatePdfName } from '../../../lib/pdfName';
-import { recordCompletion } from '../../../lib/calendarSchedule';
 import { friendlyError } from '../../../lib/errorMap';
 import { a11y } from '../../../lib/accessibility';
-import { haptic } from '../../../lib/haptics';
 import { CelebrationBurst } from '../../../components/animations';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { usePhotoWithLocation } from '../../../hooks/usePhotoWithLocation';
 
 import {
@@ -54,7 +46,6 @@ import {
   type LiftingAccessoriesInspection,
   type LAVerdict,
   type LAResult,
-  type LASignatory,
   type LARemovedRow,
 } from '../../../types/liftingAccessories';
 
@@ -65,7 +56,6 @@ const CHECKLIST_STEP      = 2;
 const REMOVED_STEP        = 3;
 const CONCLUSION_STEP     = 4;
 const TOTAL_STEPS         = 4;
-const STEP_LABELS         = ['მოწყ.', 'შემოწ.', 'ამოღ.', 'დასკვ.'];
 
 // ── Main screen ───────────────────────────────────────────────────────────────
 
@@ -75,184 +65,85 @@ export default function LiftingAccessoriesInspectionScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const toast = useToast();
-  const session = useSession();
   const insets = useSafeAreaInsets();
   const { pickPhotoWithAnnotation } = usePhotoWithLocation();
 
-  const [paywallVisible, setPaywallVisible] = useState(false);
-  const { data: pdfUsage } = usePdfUsage();
-  const invalidatePdfUsage = useInvalidatePdfUsage();
-
-  const [inspection, setInspection] = useState<LiftingAccessoriesInspection | null>(null);
-  const [projectName, setProjectName] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [completing, setCompleting] = useState(false);
-  const [celebrating, setCelebrating] = useState(false);
-  const celebrationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [generatingPdf, setGeneratingPdf] = useState(false);
-  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
-  const [previewBusy, setPreviewBusy] = useState(false);
-
-  const [step, setStep] = useState(IDENTIFICATION_STEP);
-  const prevStepRef = useRef(IDENTIFICATION_STEP);
-  const [animateSteps, setAnimateSteps] = useState(false);
-  const inspectionRef = useRef<LiftingAccessoriesInspection | null>(null);
-  const animateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => { inspectionRef.current = inspection; }, [inspection]);
-
-  const persistKey = useMemo(() => `lifting-accessories-wizard:${id}:step`, [id]);
-
-  const direction: 'next' | 'prev' = step >= prevStepRef.current ? 'next' : 'prev';
-  useEffect(() => { prevStepRef.current = step; }, [step]);
-
-  // ── Load ────────────────────────────────────────────────────────────────────
-
-  useEffect(() => {
-    if (!id) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const insp = await liftingAccessoriesApi.getById(id);
-        if (cancelled) return;
-        if (!insp) { router.back(); return; }
-
-        let patched = insp;
-        if (!insp.inspectorName && session.state.status === 'signedIn') {
-          const u = session.state.user;
-          const name = `${u?.first_name ?? ''} ${u?.last_name ?? ''}`.trim();
-          if (name) {
-            patched = {
-              ...patched,
-              inspectorName: name,
-              signatures: [
-                { ...patched.signatures[0], name },
-                patched.signatures[1],
-              ],
-            };
-          }
+  // Shared orchestration: loading, step+persist, autosave, complete, celebration,
+  // PDF preview/download, paywall. Type-specific bits are passed as callbacks so
+  // behaviour matches the pre-refactor screen exactly.
+  const {
+    inspection, setInspection, inspectionRef,
+    projectName, saving, loading, completing, celebrating, generatingPdf,
+    previewHtml, previewBusy,
+    step, setStep, direction, animateSteps,
+    paywallVisible, setPaywallVisible, pdfLocked,
+    update, updateMany, scheduleSave,
+    complete, handlePdf, buildPreview, exit,
+  } = useInspectionFlow<LiftingAccessoriesInspection>({
+    id,
+    firstStep: IDENTIFICATION_STEP,
+    lastStep: CONCLUSION_STEP,
+    persistPrefix: 'lifting-accessories-wizard',
+    templateId: LIFTING_ACCESSORIES_TEMPLATE_ID,
+    schema: liftingAccessoriesSchema,
+    api: liftingAccessoriesApi,
+    toPatch: (insp) => ({
+      company:             insp.company,
+      address:             insp.address,
+      inspectorName:       insp.inspectorName,
+      inspectionDate:      insp.inspectionDate,
+      equipmentTypes:      insp.equipmentTypes,
+      equipmentTypeOther:  insp.equipmentTypeOther,
+      serialNumber:        insp.serialNumber,
+      manufacturer:        insp.manufacturer,
+      yearOfManufacture:   insp.yearOfManufacture,
+      markingStatus:       insp.markingStatus,
+      wllKg:               insp.wllKg,
+      unitCount:           insp.unitCount,
+      nextInspectionDate:  insp.nextInspectionDate,
+      items:               insp.items,
+      removedRows:         insp.removedRows,
+      verdict:             insp.verdict,
+      verdictComment:      insp.verdictComment,
+      summaryPhotos:       insp.summaryPhotos,
+    }),
+    validateMissing: (insp) => (insp.verdict ? [] : ['დასკვნა']),
+    autofill: (insp, { inspectorName, project }) => {
+      let next = insp;
+      const patch: Record<string, unknown> = {};
+      if (!insp.inspectorName && inspectorName) {
+        next = {
+          ...next,
+          inspectorName,
+          signatures: [
+            { ...next.signatures[0], name: inspectorName },
+            next.signatures[1],
+          ],
+        };
+        patch.inspectorName = inspectorName;
+      }
+      if (project) {
+        if (!next.company?.trim()) {
+          const v = project.company_name || project.name;
+          next = { ...next, company: v };
+          patch.company = v;
         }
-        if (patched.inspectorName !== insp.inspectorName) {
-          liftingAccessoriesApi.patch(patched.id, {
-            inspectorName: patched.inspectorName,
-          }).catch(() => {});
-        }
-
-        if (insp.status !== 'completed') {
-          const saved = await AsyncStorage.getItem(persistKey);
-          if (saved && !cancelled) {
-            const s = parseInt(saved, 10);
-            if (!isNaN(s) && s >= IDENTIFICATION_STEP && s <= CONCLUSION_STEP) setStep(s);
-          }
-        }
-
-        try {
-          const p = await projectsApi.getById(insp.projectId);
-          if (p) {
-            setProjectName(p.company_name || p.name);
-            const companyFill = !patched.company?.trim() ? (p.company_name || p.name) : null;
-            const addressFill = !patched.address?.trim() && p.address ? p.address : null;
-            if (companyFill || addressFill) {
-              patched = {
-                ...patched,
-                ...(companyFill ? { company: companyFill } : {}),
-                ...(addressFill ? { address: addressFill } : {}),
-              };
-              liftingAccessoriesApi.patch(patched.id, {
-                ...(companyFill ? { company: patched.company } : {}),
-                ...(addressFill ? { address: patched.address } : {}),
-              }).catch(() => {});
-            }
-          }
-        } catch {
-          // project fetch is best-effort
-        }
-
-        if (!cancelled) setInspection(patched);
-      } catch (e) {
-        if (!cancelled) {
-          toast.error(friendlyError(e, 'ვერ ჩაიტვირთა'));
-          router.back();
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-          animateTimeoutRef.current = setTimeout(() => setAnimateSteps(true), 50);
+        if (!next.address?.trim() && project.address) {
+          next = { ...next, address: project.address };
+          patch.address = project.address;
         }
       }
-    })();
-    return () => {
-      cancelled = true;
-      if (animateTimeoutRef.current) clearTimeout(animateTimeoutRef.current);
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+      return { next, patch: Object.keys(patch).length ? patch : null };
+    },
+    pdf: {
+      nameLabel: 'LiftingAccessoriesInspection',
+      title: 'ამწე მოწყ. / სლინგი / ჩამჭ. შემოწმება',
+      subject: 'შრომის უსაფრთხოება',
+    },
+    loadingTitle: 'სლინგის შემოწმება',
+  });
 
-  useEffect(() => {
-    if (step >= IDENTIFICATION_STEP && step <= CONCLUSION_STEP) {
-      AsyncStorage.setItem(persistKey, String(step)).catch(() => {});
-    }
-  }, [step, persistKey]);
-
-  useEffect(() => {
-    return () => { if (celebrationTimer.current) clearTimeout(celebrationTimer.current); };
-  }, []);
-
-  // ── Auto-save (debounced) ───────────────────────────────────────────────────
-
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const scheduleSave = useCallback((insp: LiftingAccessoriesInspection) => {
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      setSaving(true);
-      liftingAccessoriesApi.patch(insp.id, {
-        company:             insp.company,
-        address:             insp.address,
-        inspectorName:       insp.inspectorName,
-        inspectionDate:      insp.inspectionDate,
-        equipmentTypes:      insp.equipmentTypes,
-        equipmentTypeOther:  insp.equipmentTypeOther,
-        serialNumber:        insp.serialNumber,
-        manufacturer:        insp.manufacturer,
-        yearOfManufacture:   insp.yearOfManufacture,
-        markingStatus:       insp.markingStatus,
-        wllKg:               insp.wllKg,
-        unitCount:           insp.unitCount,
-        nextInspectionDate:  insp.nextInspectionDate,
-        items:               insp.items,
-        removedRows:         insp.removedRows,
-        verdict:             insp.verdict,
-        verdictComment:      insp.verdictComment,
-        summaryPhotos:       insp.summaryPhotos,
-      }).catch(e => {
-        toast.error(friendlyError(e, 'შენახვა ვერ მოხერხდა'));
-      }).finally(() => setSaving(false));
-    }, 700);
-  }, [toast]);
-
-  const update = useCallback(<K extends keyof LiftingAccessoriesInspection>(
-    key: K,
-    value: LiftingAccessoriesInspection[K],
-  ) => {
-    setInspection(prev => {
-      if (!prev) return prev;
-      const next = { ...prev, [key]: value };
-      scheduleSave(next);
-      return next;
-    });
-  }, [scheduleSave]);
-
-  const updateMulti = useCallback((patch: Partial<LiftingAccessoriesInspection>) => {
-    setInspection(prev => {
-      if (!prev) return prev;
-      const next = { ...prev, ...patch };
-      scheduleSave(next);
-      return next;
-    });
-  }, [scheduleSave]);
-
-  // ── Checklist ───────────────────────────────────────────────────────────────
+  // ── Checklist items ─────────────────────────────────────────────────────────
 
   const handleChecklistChange = useCallback(
     (itemId: number, field: 'value' | 'comment', val: string | null) => {
@@ -271,7 +162,7 @@ export default function LiftingAccessoriesInspectionScreen() {
         return next;
       });
     },
-    [scheduleSave],
+    [scheduleSave, setInspection],
   );
 
   // ── Item photos ─────────────────────────────────────────────────────────────
@@ -295,7 +186,7 @@ export default function LiftingAccessoriesInspectionScreen() {
     } catch (e) {
       toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
     }
-  }, [pickPhotoWithAnnotation, scheduleSave, toast]);
+  }, [pickPhotoWithAnnotation, scheduleSave, toast, inspectionRef, setInspection]);
 
   const handleDeleteItemPhoto = useCallback(async (itemId: number, path: string) => {
     try {
@@ -315,7 +206,7 @@ export default function LiftingAccessoriesInspectionScreen() {
       scheduleSave(next);
       return next;
     });
-  }, [scheduleSave, toast]);
+  }, [scheduleSave, toast, setInspection]);
 
   // ── Summary photos ──────────────────────────────────────────────────────────
 
@@ -335,7 +226,7 @@ export default function LiftingAccessoriesInspectionScreen() {
     } catch (e) {
       toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
     }
-  }, [pickPhotoWithAnnotation, scheduleSave, toast]);
+  }, [pickPhotoWithAnnotation, scheduleSave, toast, inspectionRef, setInspection]);
 
   const handleDeleteSummaryPhoto = useCallback(async (path: string) => {
     try {
@@ -350,7 +241,7 @@ export default function LiftingAccessoriesInspectionScreen() {
       scheduleSave(next);
       return next;
     });
-  }, [scheduleSave, toast]);
+  }, [scheduleSave, toast, setInspection]);
 
   // ── Removed rows ────────────────────────────────────────────────────────────
 
@@ -362,7 +253,7 @@ export default function LiftingAccessoriesInspectionScreen() {
       scheduleSave(next);
       return next;
     });
-  }, [scheduleSave]);
+  }, [scheduleSave, setInspection]);
 
   // ── Signatures ──────────────────────────────────────────────────────────────
 
@@ -380,7 +271,7 @@ export default function LiftingAccessoriesInspectionScreen() {
       sigs[idx] = sig;
       return { ...prev, signatures: sigs };
     });
-  }, []);
+  }, [setInspection]);
 
   const handleSign = useCallback((idx: number, base64Png: string) => {
     const insp = inspectionRef.current;
@@ -388,123 +279,15 @@ export default function LiftingAccessoriesInspectionScreen() {
     const sigs = [...insp.signatures];
     sigs[idx] = { ...sigs[idx], signature: base64Png, date: new Date().toISOString() };
     setInspection({ ...insp, signatures: sigs });
-  }, []);
+  }, [inspectionRef, setInspection]);
 
-  // ── Verdict suggestion ──────────────────────────────────────────────────────
+  // ── Verdict auto-suggest ────────────────────────────────────────────────────
 
   const suggestedVerdict = useMemo(
     () => inspection ? computeLAVerdictSuggestion(inspection.items, inspection.markingStatus) : null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [inspection?.items, inspection?.markingStatus],
   );
-
-  // ── PDF ─────────────────────────────────────────────────────────────────────
-
-  const handlePdf = useCallback(async () => {
-    const insp = inspectionRef.current;
-    if (!insp) return;
-    if (pdfUsage?.isLocked) { setPaywallVisible(true); return; }
-    setGeneratingPdf(true);
-    try {
-      const html = await renderInspectionPdf(liftingAccessoriesSchema, { inspection: insp, projectName: projectName || 'პროექტი' });
-      const pdfName = generatePdfName(
-        projectName || 'project',
-        'LiftingAccessoriesInspection',
-        new Date(insp.inspectionDate),
-        insp.id,
-      );
-      const uid = session.state.status === 'signedIn' ? session.state.session.user.id : undefined;
-      await generateAndSharePdf(html, pdfName, undefined, uid, {
-        title: 'ამწე მოწყ. / სლინგი / ჩამჭ. შემოწმება',
-        author: insp.inspectorName || undefined,
-        documentId: insp.id,
-        subject: 'შრომის უსაფრთხოება',
-      });
-      invalidatePdfUsage();
-    } catch (e) {
-      if (e instanceof PdfLimitReachedError) { setPaywallVisible(true); return; }
-      toast.error(friendlyError(e, 'PDF ვერ შეიქმნა'));
-    } finally {
-      setGeneratingPdf(false);
-    }
-  }, [projectName, session.state, invalidatePdfUsage, toast, pdfUsage]);
-
-  // ── Preview (completed) ─────────────────────────────────────────────────────
-
-  const buildPreview = useCallback(async () => {
-    const insp = inspectionRef.current;
-    if (!insp) return;
-    setPreviewBusy(true);
-    try {
-      const html = await renderInspectionPdf(liftingAccessoriesSchema, { inspection: insp, projectName: projectName || 'პროექტი' });
-      setPreviewHtml(html);
-    } catch (e) {
-      toast.error(friendlyError(e, 'PDF ვერ შეიქმნა'));
-    } finally {
-      setPreviewBusy(false);
-    }
-  }, [projectName, toast]);
-
-  useEffect(() => {
-    if (inspection?.status === 'completed') void buildPreview();
-  }, [inspection?.status]);
-
-  // ── Complete ────────────────────────────────────────────────────────────────
-
-  const isBothSigned = !!(inspection?.signatures[0].signature && inspection?.signatures[1].signature);
-
-  const handleComplete = useCallback(async () => {
-    if (!inspection) return;
-    const missing: string[] = [];
-    if (!inspection.verdict)          missing.push('დასკვნა');
-
-    if (missing.length > 0) {
-      Alert.alert('შეავსეთ სავალდებულო ველები', missing.map(m => `• ${m}`).join('\n'));
-      return;
-    }
-
-    setCompleting(true);
-    try {
-      await liftingAccessoriesApi.patch(inspection.id, {
-        company:             inspection.company,
-        address:             inspection.address,
-        inspectorName:       inspection.inspectorName,
-        inspectionDate:      inspection.inspectionDate,
-        equipmentTypes:      inspection.equipmentTypes,
-        equipmentTypeOther:  inspection.equipmentTypeOther,
-        serialNumber:        inspection.serialNumber,
-        manufacturer:        inspection.manufacturer,
-        yearOfManufacture:   inspection.yearOfManufacture,
-        markingStatus:       inspection.markingStatus,
-        wllKg:               inspection.wllKg,
-        unitCount:           inspection.unitCount,
-        nextInspectionDate:  inspection.nextInspectionDate,
-        items:               inspection.items,
-        removedRows:         inspection.removedRows,
-        verdict:             inspection.verdict,
-        verdictComment:      inspection.verdictComment,
-        summaryPhotos:       inspection.summaryPhotos,
-      });
-      await liftingAccessoriesApi.complete(inspection.id);
-      const completedAt = new Date().toISOString();
-      await recordCompletion(
-        'inspections',
-        inspection.id,
-        completedAt,
-        `${inspection.projectId}:${LIFTING_ACCESSORIES_TEMPLATE_ID}`,
-      ).catch(() => {});
-      setInspection(prev => prev ? { ...prev, status: 'completed', completedAt } : prev);
-      await AsyncStorage.removeItem(persistKey);
-      toast.success('შემოწმება დასრულდა');
-      setCelebrating(true);
-      haptic.inspectionComplete();
-      celebrationTimer.current = setTimeout(() => setCelebrating(false), 2000);
-    } catch (e) {
-      toast.error(friendlyError(e, 'შეცდომა'));
-    } finally {
-      setCompleting(false);
-    }
-  }, [inspection, persistKey, toast]);
 
   // ── Step navigation ─────────────────────────────────────────────────────────
 
@@ -516,20 +299,19 @@ export default function LiftingAccessoriesInspectionScreen() {
 
   const handleNext = useCallback(async () => {
     if (step === CONCLUSION_STEP) {
-      await handleComplete();
+      await complete();
     } else {
       setStep(s => s + 1);
     }
-  }, [step, handleComplete]);
+  }, [step, complete, setStep]);
 
   const handlePrev = useCallback(async () => {
     if (step === IDENTIFICATION_STEP) {
-      await AsyncStorage.removeItem(persistKey);
-      router.back();
+      await exit();
     } else {
       setStep(s => s - 1);
     }
-  }, [step, persistKey, router]);
+  }, [step, exit, setStep]);
 
   // ── Checklist items builder ─────────────────────────────────────────────────
 
@@ -572,7 +354,7 @@ export default function LiftingAccessoriesInspectionScreen() {
         signedCount={inspection.signatures.filter(s => !!s.signature).length}
         totalSlots={inspection.signatures.length}
         attachmentCount={0}
-        pdfLocked={pdfUsage?.isLocked}
+        pdfLocked={pdfLocked}
         downloading={generatingPdf}
         paywallVisible={paywallVisible}
         onPaywallClose={() => setPaywallVisible(false)}
@@ -630,7 +412,7 @@ export default function LiftingAccessoriesInspectionScreen() {
 
       {saving && <Text style={styles.savingHint}>შენახვა…</Text>}
 
-      {pdfUsage?.isLocked && <PdfLockedBanner onSubscribe={() => setPaywallVisible(true)} />}
+      {pdfLocked && <PdfLockedBanner onSubscribe={() => setPaywallVisible(true)} />}
 
       <View style={{ flex: 1 }}>
         <WizardStepTransition stepKey={step} direction={direction} animate={animateSteps}>
