@@ -19,7 +19,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSession } from '../../lib/session';
 import { isExpiringSoon, questionnairesApi } from '../../lib/services';
-import { supabase } from '../../lib/supabase';
+import { deleteInspectionBySource } from '../../lib/inspectionDelete';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   useProjects,
@@ -179,36 +179,7 @@ export default function HomeScreen() {
 
   const deleteRecentDraft = useCallback(async (id: string, category: string | undefined) => {
     try {
-      if (category === 'bobcat') {
-        const { error } = await supabase.from('bobcat_inspections').delete().eq('id', id);
-        if (error) throw error;
-      } else if (category === 'excavator') {
-        const { error } = await supabase.from('excavator_inspections').delete().eq('id', id);
-        if (error) throw error;
-      } else if (category === 'general_equipment') {
-        const { error } = await supabase.from('general_equipment_inspections').delete().eq('id', id);
-        if (error) throw error;
-      } else if (category === 'cargo_platform') {
-        const { error } = await supabase.from('cargo_platform_inspections').delete().eq('id', id);
-        if (error) throw error;
-      } else if (category === 'safety_net_inspection') {
-        const { error } = await supabase.from('safety_net_inspections').delete().eq('id', id);
-        if (error) throw error;
-      } else if (category === 'mobile_ladder_inspection') {
-        const { error } = await supabase.from('mobile_ladder_inspections').delete().eq('id', id);
-        if (error) throw error;
-      } else if (category === 'fall_protection_inspection') {
-        const { error } = await supabase.from('fall_protection_inspections').delete().eq('id', id);
-        if (error) throw error;
-      } else if (category === 'lifting_accessories_inspection') {
-        const { error } = await supabase.from('lifting_accessories_inspections').delete().eq('id', id);
-        if (error) throw error;
-      } else if (category === 'forklift_inspection') {
-        const { error } = await supabase.from('forklift_inspections').delete().eq('id', id);
-        if (error) throw error;
-      } else {
-        await questionnairesApi.remove(id);
-      }
+      await deleteInspectionBySource(category, id);
       await qc.invalidateQueries({ queryKey: ['inspections', 'recent'] });
     } catch {
       Alert.alert('შეცდომა', 'წაშლა ვერ მოხერხდა');

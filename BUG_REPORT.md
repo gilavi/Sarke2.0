@@ -390,3 +390,144 @@ Wired into `package.json`: `lint` now runs `tsc --noEmit && node scripts/check-p
 - [package.json](package.json) — lint script chained to check-primitives.
 - [docs/primitives.md](docs/primitives.md) — new.
 - [CLAUDE.md](CLAUDE.md) — added "Before adding a util" section; updated workflow step 3 to `npm run lint`.
+
+## P0 — New-inspection-from-template used the template id as the project id · FIXED 2026-05-21
+
+**Source:** 10-agent beta report (`Sarke2.0_Beta_Test_Master_Report.md`, §1.4), Sprint 1.
+
+**Repro:** Project detail → start a new inspection on a project that has **two or more** system templates (so the template-picker dropdown appears) → pick a template.
+
+**Symptom:** The inspection is created against the wrong `project_id` — it is set to the **template's** id, so the inspection never appears under the project (and, depending on FK state, the insert can fail outright).
+
+**Root cause:** In [app/projects/[id].tsx](app/projects/[id].tsx) the template-picker `onChange` parameter was named `id`, shadowing the outer route param `id` (the project id). Dropdown options use `value: tpl.id`, so the callback `id` is the **template** id — and it was passed as the first argument to `createInspectionForTemplate(projectId, tpl)`:
+
+```ts
+onChange={async (id) => {
+  const tpl = templatePickerOptions.find(t => t.id === String(id));
+  if (tpl && id) await createInspectionForTemplate(String(id), tpl); // String(id) is the template id, not the project id
+}}
+```
+
+The single-template fast path (`createInspectionForTemplate(id, system[0])`) used the correct outer `id`, which is why the common case worked and the bug only surfaced with multiple system templates.
+
+**Fix:** rename the callback param to `templateId` to remove the shadow, and pass the outer project `id`:
+
+```ts
+onChange={async (templateId) => {
+  const tpl = templatePickerOptions.find(t => t.id === String(templateId));
+  if (tpl && id) await createInspectionForTemplate(id, tpl);
+}}
+```
+
+**Other beta-report Sprint-1 items — verified against source, no code change:**
+- **§1.1 BottomSheet "double bottom padding" / §1.2 SheetLayout "double keyboard handling":** already resolved in the 2026-04-28 keyboard pass (see the keyboard-unification entry above). `useSheetKeyboardMargin()` subtracts `insets.bottom` and rides the sheet to the keyboard top; every `SheetLayout` rendered inside a `BottomSheet` already passes `ScrollComponent={BottomSheetScrollView}` (so it doesn't use `KeyboardAwareScrollView`), and the no-ScrollComponent callers all live inside bespoke `<Modal>`s where KASV is correct. The report's proposed fix (delete the inset spacer / add an `insideBottomSheet` prop) would re-introduce overshoot or hide content behind the keyboard. The cited `LocalSignaturesSheet` is unused dead code.
+- **§1.5–1.7 "missing done screens" (mobile-ladder, safety-net, lifting-accessories):** false — all three complete **inline** (`api.complete()` → set status to `completed` → success toast + celebration → render preview). None navigate to a `/done` route, so there is no "screen not found" crash.
+- **§1.8–1.9 "undefined `inspectionRef`" (fall-protection, forklift):** false — both declare `const inspectionRef = useRef(...)` and sync it via `useEffect(() => { inspectionRef.current = inspection; }, [inspection])`; photo upload reads `inspectionRef.current.id` correctly.
+
+**Verified:** typecheck passes for the changed file (pre-existing unrelated failures in `lib/services.mock.ts` and web-app `src/` remain — not introduced here). On-device sheet/keyboard behavior was not re-tested (no simulator this session).
+
+## P0 — Concurrent PDF-upload flush could insert duplicate certificates · FIXED 2026-05-21
+
+**Source:** 10-agent beta report (`Sarke2.0_Beta_Test_Master_Report.md`, §1.14), Sprint 2.
+
+**Symptom:** The same inspection occasionally produced two `certificates` rows (same `inspection_id` + `pdf_url`, different ids).
+
+**Root cause:** `flushPendingPdfUploads()` in [lib/pdfUploadQueue.ts](lib/pdfUploadQueue.ts) had no single-flight guard. It is called from three places that can fire near-simultaneously on app start ([app/_layout.tsx](app/_layout.tsx) on mount, plus the `NetInfo.fetch` seed and the reconnect listener in [lib/offline.tsx](lib/offline.tsx)). Its in-loop dedup is check-then-create:
+
+```ts
+const existing = await certificatesApi.listByInspection(p.inspectionId);
+const already = existing.some(c => c.pdf_url === p.pdfUrl);
+if (!already) await certificatesApi.create({ … });
+```
+
+Two concurrent flushes can both read "no certificate yet" before either inserts (TOCTOU), and there is **no DB unique constraint** on `certificates` (`idx_certificates_inspection` is a plain, non-unique index), so both inserts succeed → duplicate.
+
+**Fix:** module-level single-flight guard. All callers share one JS thread, so a boolean is sufficient; concurrent calls become no-ops while one flush runs, which makes the existing check-then-create dedup correct again (and still covers sequential retries):
+
+```ts
+let isFlushingPdfUploads = false;
+export async function flushPendingPdfUploads() {
+  if (isFlushingPdfUploads) return;
+  isFlushingPdfUploads = true;
+  try { await flushPendingPdfUploadsInner(); }
+  finally { isFlushingPdfUploads = false; }
+}
+```
+
+A DB `unique (inspection_id, pdf_url)` constraint would be a stronger backstop but needs a migration + dedup backfill and risks rejecting legitimate re-generations — deferred, not done here.
+
+**Other beta-report Sprint-2 items — verified against source, no code change:**
+- **§1.12 "offline photo queue FK violation → permanent photo loss":** false. The flush rotates a failing op to the back of the queue with an incremented attempt count ([lib/offline.tsx](lib/offline.tsx)), so a `photo_upload` that briefly precedes its `answer_upsert` simply retries after the answer lands — it is not lost. Ops that do exhaust retries move to a *failed* queue with their staged file **retained** (deleted only on success or explicit `dismissFailed`), so they remain retryable. No permanent loss.
+- **§1.13 "AsyncStorage queue corruption discards the whole queue":** false premise. `readQueue()` already wraps `JSON.parse` in try/catch, logs, and returns `[]` — there is no unhandled crash. All queue mutations are serialized through `runExclusive`/`queueLock`, so there is no concurrent-write corruption. The report's "write a backup copy first" scheme is not atomic either (kill between the two writes leaves them disagreeing) and doubles every write; not implemented.
+- **§1.20 "wizard patchAnswer race creates duplicate answers / orphans photos":** false in practice. `patchAnswer` reuses `answers[question.id]?.id` and only mints a UUID when no answer exists; `enqueueAnswerUpsert` coalesces by `(inspection_id, question_id)` and the DB upserts `onConflict (inspection_id, question_id)`, so rapid taps collapse to one row. A photo can only attach after the multi-second OS image-picker round-trip, by which time the answer id is stable. The report's per-`answerId` lock also wouldn't catch the described case (the race mints *different* ids).
+- **§2.4 "GridRowStep comment autoFocus hidden behind keyboard (regression)":** false. The comment input sits inside a `KeyboardAwareScrollView` (`react-native-keyboard-controller`, `bottomOffset={120}`) that auto-scrolls the focused field above the keyboard; the empty `onFocus` is intentional and documented inline. The manual `scrollToEnd` was removed on purpose in the 2026-04-28/05-02 keyboard migration, not a regression.
+
+**Verified:** `npm run lint` typecheck clean for the changed file; pre-existing unrelated failures in `lib/services.mock.ts` and web-app `src/` remain. Concurrency behavior reasoned from source; not reproduced on a device this session.
+
+## P1/P2 — Auth keyboard & autofill UX · FIXED 2026-05-22
+
+**Source:** beta report §2.1–2.3 (Sprint 3, "auth keyboard UX improvements").
+
+Auth inputs (login, register, forgot, reset) had no return-key field flow, no submit-on-return, and no autofill / password-manager hints. The shared input even dropped those props. Fixed:
+- [components/inputs/FloatingLabelInput.tsx](components/inputs/FloatingLabelInput.tsx) — now forwards `textContentType`, `autoComplete`, and `blurOnSubmit` to the underlying `TextInput` (previously declared nowhere, so callers couldn't set them).
+- [app/(auth)/login.tsx](app/(auth)/login.tsx) — LoginForm chains email→password (refs + `returnKeyType`/`onSubmitEditing`) and sets `emailAddress`/`email` + `password`/`current-password`; RegisterForm chains firstName→lastName→email→password with name + `emailAddress` + `newPassword`/`new-password` hints; the forgot-password modal email gets `emailAddress`/`email` and go-to-submit.
+- [app/(auth)/forgot.tsx](app/(auth)/forgot.tsx), [app/(auth)/reset.tsx](app/(auth)/reset.tsx) — same treatment; reset chains new-password→confirm with `newPassword`/`new-password`.
+
+`verify-email` already used a raw `TextInput` with `oneTimeCode`/`sms-otp`, so it was left as-is.
+
+**Other Sprint-3 items — assessed, not changed (with reasons):**
+- **§1.18 AuthGate redirect oscillation:** not a bug. AuthGate's redirects are guarded by expo-router segment checks (`!inAuth`, `!inTerms`, `inAuth || (inTerms && !viewMode)`) that go false once the target screen is reached, so they self-terminate. (The genuine wizard↔detail ping-pong already uses `navigationGuard.isOscillating`.) The report's `isOscillating(target, 3)` snippet doesn't even match the real two-arg signature.
+- **§2.21 SignatureBlock `key={idx}`:** real fragility — cards are removable (`onRemoveSignatory`), so index keys mis-associate per-card state on removal — but `SignatoryData` has no stable id and the component's whole API is index-based (`onChange(index)`, `onRemoveSignatory(index)`). A correct fix threads stable ids through every caller; deferred rather than shipped as a half-fix that could cause key collisions.
+- **§2.15–2.19 photo / OOM (expo-image migration, annotated-JPEG, temp-file cleanup):** not in this pass; the OOM claims need on-device profiling to verify before changing the photo pipeline.
+
+**Verified:** `npm run lint` typecheck clean for changed files (pre-existing unrelated failures remain). tsc validated all `textContentType`/`autoComplete` values. Auth flows not exercised on a device this session — return-key chaining + autofill should be smoke-tested on a real device.
+
+## Full-file audit pass — every remaining report bug triaged · 2026-05-22
+
+Ran five parallel read-only verifiers over **all ~156 detailed entries** in `Sarke2.0_Beta_Test_Master_Report.md` (P0 §1.x, P1 §2.x, P2 §3.x, P3 §4.x). Consistent with prior sprints, ~80% were false, already-handled, or carried regressing fixes. Each verdict was checked against current source; the genuine, safely-fixable bugs were fixed (correcting the report's proposed fix where it was wrong). All changes typecheck clean.
+
+**Fixed this pass (13):**
+- **§1.10** [app/projects/[id]/signer.tsx](app/projects/[id]/signer.tsx) — project-signer signature used the banned `fetch(dataURL).blob()` + `storageApi.upload` (0-byte objects on Hermes/SDK 54). Now uses canonical `uploadSignature`; throws if the upload had to be queued instead of silently saving a broken pointer.
+- **§1.15 + §1.24** [app/orders/[id]/success.tsx](app/orders/[id]/success.tsx) — hardcoded the "specialist appointment" eyebrow for all 6 order types and showed `id.slice(0,4)` instead of the order number. Now fetches the order and renders `ORDER_DOCUMENT_TYPE_LABEL[documentType]` + `formData.orderNumber`.
+- **§1.21** [app/inspections/bobcat/[id].tsx](app/inspections/bobcat/[id].tsx) — navigated to the success/done screen even when `complete()` failed (errors were swallowed). `handleComplete` now returns success and nav is gated on it.
+- **§2.11** [components/wizard/kamari/KamariFlow.tsx](components/wizard/kamari/KamariFlow.tsx) — detail modal's plain `ScrollView` let the keyboard cover the description input; now `KeyboardAwareScrollView` (canonical keyboard primitive).
+- **§2.13** [components/ScaffoldTour.tsx](components/ScaffoldTour.tsx) — re-opening the help tour kept the last slide index; added reset-to-0 on `visible`. (Report named the dead `ChecklistTour.tsx`; the live component is `ScaffoldTour`.)
+- **§2.16** [components/PhotoAnnotator.tsx](components/PhotoAnnotator.tsx) — annotated photos captured as PNG `quality:1` (5–10× larger); flattened opaque output → `jpg` `quality:0.9`.
+- **§2.18** [lib/photoCompression.ts](lib/photoCompression.ts) — `stageCompressedPhotoForOffline` threw if compression failed, so the offline photo was **dropped** (part of the reported photo-loss). Now falls back to staging the original file so the upload is still queued.
+- **§2.25** [app/inspections/[id]/wizard.tsx](app/inspections/[id]/wizard.tsx) — ConclusionStep showed "required" errors (conclusion, harness name, decision) on mount before any interaction; gated behind an `interacted` flag. Submit-time validation unchanged.
+- **§2.33** [components/MapPreview.tsx](components/MapPreview.tsx) — `initialRegion` never recentered when the pin changed; switched to controlled `region` (safe: map is `pointerEvents="none"`).
+- **§2.41** [app/projects/[id].tsx](app/projects/[id].tsx) — `deleteInspection` lacked the double-trigger guard its sibling `deleteFile` has; added a `deletingInspIdsRef` set with `finally` cleanup.
+- **§3.16** [components/RoleSlotSheet.tsx](components/RoleSlotSheet.tsx) — used a static `import { theme }` (light theme), so it ignored dark mode; switched to `useTheme()` + `makeStyles(theme)`.
+- **§3.48** [components/wizard/QuestionCard.tsx](components/wizard/QuestionCard.tsx) — screen-reader label mixed English ("კითხვა N from M"); now "/" to match the visible label.
+- **§4.1** [app/_layout.tsx](app/_layout.tsx) — `exchangedCodes` Set grew unbounded; capped via a `rememberCode` helper.
+
+**Deferred (real but not a safe one-liner):**
+- **§1.16** — **partially resolved 2026-05-22.** The draft incident "განახლება" (Update) button opened a blank `/incidents/new` form, implying in-place edit and leading users to create a second incident. Relabeled to "ახალი ინციდენტი" (New incident) to match its actual behavior. True draft content-editing was deliberately **not** built blind: incident photos are stored as paths but the create form uploads `{uri}` objects, so a blind edit/re-save risks silent photo loss/duplication in storage — a real edit-mode needs on-device verification.
+- **§2.43** PhotoAnnotator strokes aren't clamped to the canvas. Output is already clipped by `overflow:hidden`; clamping correctly needs a layout ref in the gesture hot path for marginal benefit — deferred to avoid drawing-path risk.
+- **§3.13** — **not a real bug (verified 2026-05-22).** The `harness/[id].tsx` completed view passes `previewHtml={null}` + a no-op download, but `inspectionRouting.ts` routes *completed* harness inspections to the generic `/inspections/[id]` screen, which has full working PDF preview + download (`buildPdfPreviewHtml`). The stub is an unreached edge branch of the draft wizard screen. No fix needed.
+- **§3.17** project order rows showed a chevron but had no `onPress`, and no order-detail route exists (`app/orders/[id]/` only has `success.tsx`). **Resolved 2026-05-22** by removing the misleading chevron so the rows are honest info rows (commit on `fix/beta-sprint-3`). A real order viewer (re-open / re-share the stored `pdfUrl`) is a separate opt-in feature, not built here.
+
+**Not changed — verified false / already-handled / device-only (representative):** §2.6, 2.7, 2.8, 2.9, 2.12, 2.14, 2.24, 2.26, 2.29, 2.31, 2.34, 2.37, 2.40, 2.44, 2.45; §3.1, 3.4, 3.7, 3.11, 3.12, 3.30, 3.31, 3.35, 3.39, 3.42, 3.46, 3.47; §4.2–4.6 (already done) and §4.7–4.26 (non-specific boilerplate). Several report-proposed fixes would have **regressed** working code (e.g. §2.26 `queryClient.clear()` already runs on account switch; §2.35's `isSuccess` gate would hang skeletons forever; §2.37's null-toggle breaks the `onChange:(value:string)` contract). Device-only items (layout/timing/RLS/perf) that need on-device repro: §1.3, 1.19, 2.5, 2.10, 2.15, 2.17, 2.19, 2.20, 2.23, 2.27, 2.38, 2.39, 2.42.
+
+**Verified:** `npm run lint` typecheck clean for all 13 changed files (only the pre-existing `lib/services.mock.ts` + web-app `src/` failures remain). Not exercised on a device this session.
+
+## P0 (SECURITY, OPEN) — Storage RLS gap on 4 buckets · remediation recipe · 2026-05-22
+
+**Severity: HIGH.** The `certificates`, `answer-photos`, `pdfs`, `signatures` storage buckets have dashboard-created policies (`sarke_*_authenticated`) that gate **only** on `bucket_id` — so **any authenticated user can read or delete every other user's files**. Migration `0020` tightened `incident-photos`/`report-photos` with owner-scoped policies; these four were never done. (Also flagged in README "Storage RLS gap (open)".)
+
+**Why this is NOT a blind one-liner (must be done carefully, not shipped untested):**
+- The actual `0020` policy SQL is **not in version control** — [supabase/migrations/0020_storage_rls_and_timestamps.sql](supabase/migrations/0020_storage_rls_and_timestamps.sql) is a stub ("applied via Management API SQL endpoint"). The real policies live only in the remote DB.
+- The bucket **path layouts are heterogeneous**, so ownership can't be derived uniformly from the path:
+  - `answer-photos`: `<inspection_id>/<question_id>/<ts>.jpg` (generic wizard, [wizard.tsx:615](app/inspections/[id]/wizard.tsx)) **and** `<pathPrefix>/<sub>/<uuid>.jpg` e.g. `excavator/<inspId>/...` ([lib/inspection/service.ts:114](lib/inspection/service.ts)) **and** order summary photos ([orders/new.tsx:229](app/orders/new.tsx)).
+  - `signatures`: `project/<project_id>/signer-...png` ([signer.tsx](app/projects/[id]/signer.tsx)) + expert `saved_signature_url` + inspection signatures ([lib/signatures.ts:72](lib/signatures.ts)).
+  - `pdfs`: incident / order / inspection PDF paths ([incidents/new.tsx:372](app/incidents/new.tsx), [orders/new.tsx:554](app/orders/new.tsx)).
+  - `certificates`: qualification files + generated certs ([CertificatesActionSheet.tsx:211](components/CertificatesActionSheet.tsx)).
+
+**Recommended remediation (do, in order):**
+1. **Retrieve the working template:** on the remote DB, `select policyname, cmd, qual, with_check from pg_policies where schemaname='storage' and tablename='objects' and policyname like '%incident%' or '%report%';` — this is the proven owner-scoped pattern (EXISTS join from `storage.objects.name` → the owning row's `user_id`).
+2. **Map each of the 4 buckets' path → owning row** using the layouts above (some need an inspection/project/qualification join; the order-uploaded answer-photos need care).
+3. Write `supabase/migrations/0053_storage_rls_remaining.sql` with `drop policy` for the 4 unscoped `sarke_*` policies + owner-scoped `create policy` per bucket; **commit the real SQL** (don't leave a stub like 0020).
+4. **Test on a local/staging Supabase** with two users before prod: user A can read/delete only their own files; user B is denied.
+5. Apply to prod (coordinate with the migration-history drift noted above; use `supabase db push`/`migration repair` deliberately).
+
+**Status:** NOT done this session — drafting the SQL blind (no template in VC, no test harness, heterogeneous paths) risks either leaving the hole open or locking out all file access in prod. Flagged for a careful, tested change. A CI `lint` gate was added ([.github/workflows/test.yml](.github/workflows/test.yml)) so future typecheck regressions are caught on PRs (was previously local-only).

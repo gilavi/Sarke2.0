@@ -60,7 +60,7 @@ import {
 } from '../../lib/apiHooks';
 import { formatBlDate, BL_RESULT_COLORS, countsByStatus } from '../../types/breathalyzerLog';
 import type { BreathalizerLog } from '../../types/breathalyzerLog';
-import { supabase } from '../../lib/supabase';
+import { deleteInspectionBySource } from '../../lib/inspectionDelete';
 import { useToast } from '../../lib/toast';
 import { useTheme } from '../../lib/theme';
 import { toErrorMessage } from '../../lib/logError';
@@ -453,6 +453,8 @@ export default function ProjectDetail() {
     }
   };
 
+  const deletingInspIdsRef = useRef<Set<string>>(new Set());
+
   const deleteInspection = (item: UnifiedInspection) => {
     showActionSheetWithOptions(
       {
@@ -463,50 +465,28 @@ export default function ProjectDetail() {
       },
       async idx => {
         if (idx !== 0) return;
+        if (deletingInspIdsRef.current.has(item.id)) return;
+        deletingInspIdsRef.current.add(item.id);
         try {
-          if (item.source === 'bobcat') {
-            const { error } = await supabase.from('bobcat_inspections').delete().eq('id', item.id);
-            if (error) throw error;
-            setBobcatInspections(prev => prev.filter(x => x.id !== item.id));
-          } else if (item.source === 'excavator') {
-            const { error } = await supabase.from('excavator_inspections').delete().eq('id', item.id);
-            if (error) throw error;
-            setExcavatorInspections(prev => prev.filter(x => x.id !== item.id));
-          } else if (item.source === 'general_equipment') {
-            const { error } = await supabase.from('general_equipment_inspections').delete().eq('id', item.id);
-            if (error) throw error;
-            setGeneralEquipmentInspections(prev => prev.filter(x => x.id !== item.id));
-          } else if (item.source === 'cargo_platform') {
-            const { error } = await supabase.from('cargo_platform_inspections').delete().eq('id', item.id);
-            if (error) throw error;
-            setCpInspections(prev => prev.filter(x => x.id !== item.id));
-          } else if (item.source === 'safety_net_inspection') {
-            const { error } = await supabase.from('safety_net_inspections').delete().eq('id', item.id);
-            if (error) throw error;
-            setSnInspections(prev => prev.filter(x => x.id !== item.id));
-          } else if (item.source === 'mobile_ladder_inspection') {
-            const { error } = await supabase.from('mobile_ladder_inspections').delete().eq('id', item.id);
-            if (error) throw error;
-            setMlInspections(prev => prev.filter(x => x.id !== item.id));
-          } else if (item.source === 'fall_protection_inspection') {
-            const { error } = await supabase.from('fall_protection_inspections').delete().eq('id', item.id);
-            if (error) throw error;
-            setFpInspections(prev => prev.filter(x => x.id !== item.id));
-          } else if (item.source === 'lifting_accessories_inspection') {
-            const { error } = await supabase.from('lifting_accessories_inspections').delete().eq('id', item.id);
-            if (error) throw error;
-            setLaInspections(prev => prev.filter(x => x.id !== item.id));
-          } else if (item.source === 'forklift_inspection') {
-            const { error } = await supabase.from('forklift_inspections').delete().eq('id', item.id);
-            if (error) throw error;
-            setFkInspections(prev => prev.filter(x => x.id !== item.id));
-          } else {
-            await questionnairesApi.remove(item.id);
-            setQuestionnaires(prev => prev.filter(x => x.id !== item.id));
+          await deleteInspectionBySource(item.source, item.id);
+          // Optimistic local removal from the matching per-source list.
+          switch (item.source) {
+            case 'bobcat': setBobcatInspections(prev => prev.filter(x => x.id !== item.id)); break;
+            case 'excavator': setExcavatorInspections(prev => prev.filter(x => x.id !== item.id)); break;
+            case 'general_equipment': setGeneralEquipmentInspections(prev => prev.filter(x => x.id !== item.id)); break;
+            case 'cargo_platform': setCpInspections(prev => prev.filter(x => x.id !== item.id)); break;
+            case 'safety_net_inspection': setSnInspections(prev => prev.filter(x => x.id !== item.id)); break;
+            case 'mobile_ladder_inspection': setMlInspections(prev => prev.filter(x => x.id !== item.id)); break;
+            case 'fall_protection_inspection': setFpInspections(prev => prev.filter(x => x.id !== item.id)); break;
+            case 'lifting_accessories_inspection': setLaInspections(prev => prev.filter(x => x.id !== item.id)); break;
+            case 'forklift_inspection': setFkInspections(prev => prev.filter(x => x.id !== item.id)); break;
+            default: setQuestionnaires(prev => prev.filter(x => x.id !== item.id));
           }
           toast.success(t('notifications.deleted'));
         } catch (e) {
           toast.error(friendlyError(e, t('errors.deleteFailed')));
+        } finally {
+          deletingInspIdsRef.current.delete(item.id);
         }
       },
     );
@@ -1162,7 +1142,6 @@ export default function ProjectDetail() {
                         {order.status === 'draft' ? ' · მონახაზი' : ''}
                       </Text>
                     </View>
-                    <Ionicons name="chevron-forward" size={18} color={theme.colors.borderStrong} />
                   </View>
                 ))}
               </View>
@@ -1346,9 +1325,9 @@ export default function ProjectDetail() {
           icon: <InspectionTypeAvatar category={tpl.category} size={36} />,
         }))}
         value={null}
-        onChange={async (id) => {
-          const tpl = templatePickerOptions.find(t => t.id === String(id));
-          if (tpl && id) await createInspectionForTemplate(String(id), tpl);
+        onChange={async (templateId) => {
+          const tpl = templatePickerOptions.find(t => t.id === String(templateId));
+          if (tpl && id) await createInspectionForTemplate(id, tpl);
         }}
         open={templatePickerVisible}
         onOpenChange={setTemplatePickerVisible}

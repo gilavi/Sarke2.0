@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
@@ -21,25 +21,18 @@ import {
   type DynamicTableColumn,
 } from '../../../components/inspection';
 import { useTheme, type Theme } from '../../../lib/theme';
-import { useSession } from '../../../lib/session';
 import { useToast } from '../../../lib/toast';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { fallProtectionApi } from '../../../lib/fallProtectionService';
-import { projectsApi } from '../../../lib/services';
-import { renderInspectionPdf } from '../../../lib/inspection/renderMobile';
 import { fallProtectionSchema } from '../../../lib/inspection/schemas/fallProtection';
-import { generateAndSharePdf, PdfLimitReachedError } from '../../../lib/pdfOpen';
 import { PaywallModal } from '../../../components/PaywallModal';
 import { PdfLockedBanner } from '../../../components/PdfLockedBanner';
-import { usePdfUsage, useInvalidatePdfUsage } from '../../../lib/usePdfUsage';
-import { generatePdfName } from '../../../lib/pdfName';
-import { recordCompletion } from '../../../lib/calendarSchedule';
 import { friendlyError } from '../../../lib/errorMap';
 import { a11y } from '../../../lib/accessibility';
 import { haptic } from '../../../lib/haptics';
 import { CelebrationBurst } from '../../../components/animations';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { usePhotoWithLocation } from '../../../hooks/usePhotoWithLocation';
+import { useInspectionFlow } from '../../../lib/inspection/useInspectionFlow';
 import {
   FP_CHECKLIST_ITEMS,
   FP_CHECKLIST_OPTIONS,
@@ -65,7 +58,6 @@ import {
 const REGISTRY_STEP   = 0;
 const DEVICES_STEP    = 1;
 const TOTAL_STEPS     = 2;
-const STEP_LABELS     = ['რეესტრი', 'მოწყობ.'];
 
 // ── Device registry table columns ─────────────────────────────────────────────
 
@@ -109,142 +101,74 @@ export default function FallProtectionInspectionScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const toast = useToast();
-  const session = useSession();
   const insets = useSafeAreaInsets();
   const { pickPhotoWithAnnotation } = usePhotoWithLocation();
 
-  const [paywallVisible, setPaywallVisible] = useState(false);
-  const { data: pdfUsage } = usePdfUsage();
-  const invalidatePdfUsage = useInvalidatePdfUsage();
-
-  const [inspection, setInspection] = useState<FallProtectionInspection | null>(null);
-  const [projectName, setProjectName] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [completing, setCompleting] = useState(false);
-  const [celebrating, setCelebrating] = useState(false);
-  const celebrationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [generatingPdf, setGeneratingPdf] = useState(false);
-  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
-  const [previewBusy, setPreviewBusy] = useState(false);
-
-  const [step, setStep] = useState(REGISTRY_STEP);
-  const prevStepRef = useRef(REGISTRY_STEP);
-  const [animateSteps, setAnimateSteps] = useState(false);
   const [activeDeviceIdx, setActiveDeviceIdx] = useState(0);
-  const inspectionRef = useRef<FallProtectionInspection | null>(null);
-  const animateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => { inspectionRef.current = inspection; }, [inspection]);
 
-  const persistKey = useMemo(() => `fall-protection-wizard:${id}:step`, [id]);
-
-  const direction: 'next' | 'prev' = step >= prevStepRef.current ? 'next' : 'prev';
-  useEffect(() => { prevStepRef.current = step; }, [step]);
-
-  // ── Load ────────────────────────────────────────────────────────────────────
-
-  useEffect(() => {
-    if (!id) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const insp = await fallProtectionApi.getById(id);
-        if (cancelled) return;
-        if (!insp) { router.back(); return; }
-
-        let patched = insp;
-
-        if (insp.status !== 'completed') {
-          const saved = await AsyncStorage.getItem(persistKey);
-          if (saved && !cancelled) {
-            const s = parseInt(saved, 10);
-            if (!isNaN(s) && s >= REGISTRY_STEP && s <= DEVICES_STEP) setStep(s);
-          }
+  // Shared orchestration: loading, step+persist, autosave, complete, celebration,
+  // PDF preview/download, paywall. Type-specific bits are passed as callbacks.
+  const {
+    inspection, setInspection, inspectionRef,
+    projectName, saving, loading, completing, celebrating, generatingPdf,
+    previewHtml, previewBusy,
+    step, setStep, direction, animateSteps,
+    paywallVisible, setPaywallVisible, pdfLocked,
+    update, scheduleSave,
+    complete, handlePdf, buildPreview, exit,
+  } = useInspectionFlow<FallProtectionInspection>({
+    id,
+    firstStep: REGISTRY_STEP,
+    lastStep: DEVICES_STEP,
+    persistPrefix: 'fall-protection-wizard',
+    templateId: FALL_PROTECTION_TEMPLATE_ID,
+    schema: fallProtectionSchema,
+    api: fallProtectionApi,
+    toPatch: (insp) => ({
+      company: insp.company,
+      address: insp.address,
+      inspectionDate: insp.inspectionDate,
+      safetyLeaderName: insp.safetyLeaderName,
+      safetyLeaderPhone: insp.safetyLeaderPhone,
+      inspectionType: insp.inspectionType,
+      nextInspectionDate: insp.nextInspectionDate,
+      devices: insp.devices,
+      deviceData: insp.deviceData,
+    }),
+    validateMissing: (insp) => {
+      const missing: string[] = [];
+      if (insp.devices.length === 0) missing.push('მინიმუმ 1 მოწყობილობა');
+      const incompleteDevices = insp.deviceData
+        .map((d, i) => (!d.verdict ? insp.devices[i]?.id : null))
+        .filter(Boolean);
+      if (incompleteDevices.length > 0) {
+        missing.push(`დასკვნა: ${incompleteDevices.join(', ')}`);
+      }
+      return missing;
+    },
+    autofill: (insp, { project }) => {
+      let next = insp;
+      const patch: Record<string, unknown> = {};
+      if (project) {
+        if (!next.company?.trim()) {
+          const v = project.company_name || project.name;
+          next = { ...next, company: v };
+          patch.company = v;
         }
-
-        try {
-          const p = await projectsApi.getById(insp.projectId);
-          if (p) {
-            setProjectName(p.company_name || p.name);
-            const companyFill = !patched.company?.trim() ? (p.company_name || p.name) : null;
-            const addressFill = !patched.address?.trim() && p.address ? p.address : null;
-            if (companyFill || addressFill) {
-              patched = {
-                ...patched,
-                ...(companyFill ? { company: companyFill } : {}),
-                ...(addressFill ? { address: addressFill } : {}),
-              };
-              fallProtectionApi.patch(patched.id, {
-                ...(companyFill ? { company: patched.company } : {}),
-                ...(addressFill ? { address: patched.address } : {}),
-              }).catch(() => {});
-            }
-          }
-        } catch {
-          // project fetch is best-effort
-        }
-
-        if (!cancelled) setInspection(patched);
-      } catch (e) {
-        if (!cancelled) {
-          toast.error(friendlyError(e, 'ვერ ჩაიტვირთა'));
-          router.back();
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-          animateTimeoutRef.current = setTimeout(() => setAnimateSteps(true), 50);
+        if (!next.address?.trim() && project.address) {
+          next = { ...next, address: project.address };
+          patch.address = project.address;
         }
       }
-    })();
-    return () => {
-      cancelled = true;
-      if (animateTimeoutRef.current) clearTimeout(animateTimeoutRef.current);
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
-
-  useEffect(() => {
-    if (step >= REGISTRY_STEP && step <= DEVICES_STEP) {
-      AsyncStorage.setItem(persistKey, String(step)).catch(() => {});
-    }
-  }, [step, persistKey]);
-
-  // ── Auto-save (debounced) ───────────────────────────────────────────────────
-
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const scheduleSave = useCallback((insp: FallProtectionInspection) => {
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      setSaving(true);
-      fallProtectionApi.patch(insp.id, {
-        company: insp.company,
-        address: insp.address,
-        inspectionDate: insp.inspectionDate,
-        safetyLeaderName: insp.safetyLeaderName,
-        safetyLeaderPhone: insp.safetyLeaderPhone,
-        inspectionType: insp.inspectionType,
-        nextInspectionDate: insp.nextInspectionDate,
-        devices: insp.devices,
-        deviceData: insp.deviceData,
-      }).catch(e => {
-        toast.error(friendlyError(e, 'შენახვა ვერ მოხერხდა'));
-      }).finally(() => setSaving(false));
-    }, 700);
-  }, [toast]);
-
-  const update = useCallback(<K extends keyof FallProtectionInspection>(
-    key: K,
-    value: FallProtectionInspection[K],
-  ) => {
-    setInspection(prev => {
-      if (!prev) return prev;
-      const next = { ...prev, [key]: value };
-      scheduleSave(next);
-      return next;
-    });
-  }, [scheduleSave]);
+      return { next, patch: Object.keys(patch).length ? patch : null };
+    },
+    pdf: {
+      nameLabel: 'FallProtectionInspection',
+      title: 'დამჭერი მოწყობილობების შემოწმების აქტი',
+      subject: 'შრომის უსაფრთხოება',
+    },
+    loadingTitle: 'შემოწმება',
+  });
 
   // ── Registry table ──────────────────────────────────────────────────────────
 
@@ -257,13 +181,13 @@ export default function FallProtectionInspectionScreen() {
       scheduleSave(next);
       return next;
     });
-  }, [scheduleSave]);
+  }, [scheduleSave, setInspection]);
 
   const buildDefaultRow = useCallback(() => {
     const insp = inspectionRef.current;
     const idx = insp ? insp.devices.length : 0;
     return buildDefaultFPDeviceRow(idx);
-  }, []);
+  }, [inspectionRef]);
 
   // ── Per-device data mutations ────────────────────────────────────────────────
 
@@ -279,7 +203,7 @@ export default function FallProtectionInspectionScreen() {
         return next;
       });
     },
-    [scheduleSave],
+    [scheduleSave, setInspection],
   );
 
   const handleChecklistChange = useCallback(
@@ -318,13 +242,13 @@ export default function FallProtectionInspectionScreen() {
     updateDeviceData(devIdx, data => ({ ...data, verdictComment: v }));
   }, [updateDeviceData]);
 
-  const handleSignChange = useCallback((idx: number, field: string, value: string) => {
+  const handleSignChange = useCallback((_idx: number, field: string, value: string) => {
     setInspection(prev => {
       if (!prev) return prev;
       const sig = { ...prev.signature, [field]: field === 'signature' ? (value || null) : value };
       return { ...prev, signature: sig };
     });
-  }, []);
+  }, [setInspection]);
 
   const handleSign = useCallback((_idx: number, base64Png: string) => {
     const insp = inspectionRef.current;
@@ -333,7 +257,7 @@ export default function FallProtectionInspectionScreen() {
       ...insp,
       signature: { ...insp.signature, signature: base64Png, date: new Date().toISOString() },
     });
-  }, []);
+  }, [inspectionRef, setInspection]);
 
   // ── Photos ──────────────────────────────────────────────────────────────────
 
@@ -366,7 +290,7 @@ export default function FallProtectionInspectionScreen() {
         toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
       }
     },
-    [pickPhotoWithAnnotation, updateDeviceData, toast],
+    [pickPhotoWithAnnotation, updateDeviceData, toast, inspectionRef],
   );
 
   const handleDeleteItemPhoto = useCallback(
@@ -414,7 +338,7 @@ export default function FallProtectionInspectionScreen() {
         toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
       }
     },
-    [pickPhotoWithAnnotation, updateDeviceData, toast],
+    [pickPhotoWithAnnotation, updateDeviceData, toast, inspectionRef],
   );
 
   const handleDeleteDevicePhoto = useCallback(
@@ -433,126 +357,13 @@ export default function FallProtectionInspectionScreen() {
     [updateDeviceData, toast],
   );
 
-  // ── Completion ──────────────────────────────────────────────────────────────
+  // ── Step navigation ─────────────────────────────────────────────────────────
 
   const allDevicesDone = useMemo(() => {
     if (!inspection) return false;
     if (inspection.devices.length === 0) return false;
     return inspection.deviceData.every(d => !!d.verdict);
   }, [inspection]);
-
-  const handleComplete = useCallback(async () => {
-    if (!inspection) return;
-    const missing: string[] = [];
-    if (inspection.devices.length === 0) missing.push('მინიმუმ 1 მოწყობილობა');
-
-    const incompleteDevices = inspection.deviceData
-      .map((d, i) => (!d.verdict ? inspection.devices[i]?.id : null))
-      .filter(Boolean);
-    if (incompleteDevices.length > 0) {
-      missing.push(`დასკვნა: ${incompleteDevices.join(', ')}`);
-    }
-
-    if (missing.length > 0) {
-      Alert.alert('შეავსეთ სავალდებულო ველები', missing.map(m => `• ${m}`).join('\n'));
-      return;
-    }
-
-    setCompleting(true);
-    try {
-      await fallProtectionApi.patch(inspection.id, {
-        company: inspection.company,
-        address: inspection.address,
-        inspectionDate: inspection.inspectionDate,
-        safetyLeaderName: inspection.safetyLeaderName,
-        safetyLeaderPhone: inspection.safetyLeaderPhone,
-        inspectionType: inspection.inspectionType,
-        nextInspectionDate: inspection.nextInspectionDate,
-        devices: inspection.devices,
-        deviceData: inspection.deviceData,
-      });
-      await fallProtectionApi.complete(inspection.id);
-      const completedAt = new Date().toISOString();
-      await recordCompletion(
-        'inspections',
-        inspection.id,
-        completedAt,
-        `${inspection.projectId}:${FALL_PROTECTION_TEMPLATE_ID}`,
-      ).catch(() => {});
-      setInspection(prev => prev ? { ...prev, status: 'completed', completedAt } : prev);
-      await AsyncStorage.removeItem(persistKey);
-      toast.success('შემოწმება დასრულდა');
-      setCelebrating(true);
-      haptic.inspectionComplete();
-      celebrationTimer.current = setTimeout(() => setCelebrating(false), 2000);
-    } catch (e) {
-      toast.error(friendlyError(e, 'შეცდომა'));
-    } finally {
-      setCompleting(false);
-    }
-  }, [inspection, persistKey, toast]);
-
-  // ── PDF ─────────────────────────────────────────────────────────────────────
-
-  const handlePdf = useCallback(async () => {
-    const insp = inspectionRef.current;
-    if (!insp) return;
-    if (pdfUsage?.isLocked) { setPaywallVisible(true); return; }
-    setGeneratingPdf(true);
-    try {
-      const html = await renderInspectionPdf(fallProtectionSchema, {
-        inspection: insp,
-        projectName: projectName || 'პროექტი',
-      });
-      const pdfName = generatePdfName(
-        projectName || 'project',
-        'FallProtectionInspection',
-        new Date(insp.inspectionDate),
-        insp.id,
-      );
-      const uid = session.state.status === 'signedIn'
-        ? session.state.session.user.id
-        : undefined;
-      await generateAndSharePdf(html, pdfName, undefined, uid, {
-        title: 'დამჭერი მოწყობილობების შემოწმების აქტი',
-        documentId: insp.id,
-        subject: 'შრომის უსაფრთხოება',
-      });
-      invalidatePdfUsage();
-    } catch (e) {
-      if (e instanceof PdfLimitReachedError) { setPaywallVisible(true); return; }
-      toast.error(friendlyError(e, 'PDF ვერ შეიქმნა'));
-    } finally {
-      setGeneratingPdf(false);
-    }
-  }, [projectName, session.state, invalidatePdfUsage, toast, pdfUsage]);
-
-  const buildPreview = useCallback(async () => {
-    const insp = inspectionRef.current;
-    if (!insp) return;
-    setPreviewBusy(true);
-    try {
-      const html = await renderInspectionPdf(fallProtectionSchema, {
-        inspection: insp,
-        projectName: projectName || 'პროექტი',
-      });
-      setPreviewHtml(html);
-    } catch (e) {
-      toast.error(friendlyError(e, 'PDF ვერ შეიქმნა'));
-    } finally {
-      setPreviewBusy(false);
-    }
-  }, [projectName, toast]);
-
-  useEffect(() => {
-    if (inspection?.status === 'completed') void buildPreview();
-  }, [inspection?.status]);
-
-  useEffect(() => {
-    return () => { if (celebrationTimer.current) clearTimeout(celebrationTimer.current); };
-  }, []);
-
-  // ── Navigation ──────────────────────────────────────────────────────────────
 
   const canGoNext = useMemo(() => {
     if (!inspection) return false;
@@ -565,20 +376,19 @@ export default function FallProtectionInspectionScreen() {
 
   const handleNext = useCallback(async () => {
     if (step === DEVICES_STEP) {
-      await handleComplete();
+      await complete();
     } else {
       setStep(s => s + 1);
     }
-  }, [step, handleComplete]);
+  }, [step, complete, setStep]);
 
   const handlePrev = useCallback(async () => {
     if (step === REGISTRY_STEP) {
-      await AsyncStorage.removeItem(persistKey);
-      router.back();
+      await exit();
     } else {
       setStep(s => s - 1);
     }
-  }, [step, persistKey, router]);
+  }, [step, exit, setStep]);
 
   // ── Loading & completed ─────────────────────────────────────────────────────
 
@@ -603,7 +413,7 @@ export default function FallProtectionInspectionScreen() {
         signedCount={inspection.signature?.signature ? 1 : 0}
         totalSlots={1}
         attachmentCount={0}
-        pdfLocked={pdfUsage?.isLocked}
+        pdfLocked={pdfLocked}
         downloading={generatingPdf}
         paywallVisible={paywallVisible}
         onPaywallClose={() => setPaywallVisible(false)}
@@ -681,7 +491,7 @@ export default function FallProtectionInspectionScreen() {
         <Text style={styles.savingHint}>შენახვა…</Text>
       )}
 
-      {pdfUsage?.isLocked && (
+      {pdfLocked && (
         <PdfLockedBanner onSubscribe={() => setPaywallVisible(true)} />
       )}
 

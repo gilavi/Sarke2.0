@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   StyleSheet,
   View,
 } from 'react-native';
@@ -15,11 +14,9 @@ import { WizardStepTransition } from '../../../components/wizard/WizardStepTrans
 import { FlowHeader } from '../../../components/FlowHeader';
 import { InspectionResultView } from '../../../components/InspectionResultView';
 import { useTheme, type Theme } from '../../../lib/theme';
-import { useSession } from '../../../lib/session';
 import { useToast } from '../../../lib/toast';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { forkliftApi } from '../../../lib/forkliftService';
-import { projectsApi } from '../../../lib/services';
 import {
   ChecklistSection,
   IdentificationGrid,
@@ -28,29 +25,25 @@ import {
   SignatureSheet,
   VerdictSelector,
   type ChecklistItemData,
-  type SignatoryData,
+
   type VerdictOption,
 } from '../../../components/inspection';
 
-import { renderInspectionPdf } from '../../../lib/inspection/renderMobile';
 import { forkliftSchema } from '../../../lib/inspection/schemas/forklift';
-import { generateAndSharePdf, PdfLimitReachedError } from '../../../lib/pdfOpen';
 import { PaywallModal } from '../../../components/PaywallModal';
 import { PdfLockedBanner } from '../../../components/PdfLockedBanner';
-import { usePdfUsage, useInvalidatePdfUsage } from '../../../lib/usePdfUsage';
-import { generatePdfName } from '../../../lib/pdfName';
-import { recordCompletion } from '../../../lib/calendarSchedule';
 import { friendlyError } from '../../../lib/errorMap';
 import { a11y } from '../../../lib/accessibility';
-import { haptic } from '../../../lib/haptics';
 import { CelebrationBurst } from '../../../components/animations';
 import { usePhotoWithLocation } from '../../../hooks/usePhotoWithLocation';
+import { useInspectionFlow } from '../../../lib/inspection/useInspectionFlow';
 import {
   FORKLIFT_ITEMS,
   FORKLIFT_CATEGORY_LABELS,
   FORKLIFT_VERDICT_LABEL,
   FORKLIFT_SUMMARY_CATS,
   FORKLIFT_COMPONENTS,
+  FORKLIFT_TEMPLATE_ID,
   ENGINE_TYPE_LABEL,
   computeForkliftVerdictSuggestion,
   forkliftSubcategoryCounts,
@@ -60,6 +53,8 @@ import {
   type ForkliftCategory,
 } from '../../../types/forklift';
 
+// ── Step constants ────────────────────────────────────────────────────────────
+
 const INFO_STEP       = 0;
 const CHECKLIST_STEP  = 1;
 const CONCLUSION_STEP = 2;
@@ -67,8 +62,7 @@ const TOTAL_STEPS     = 3;
 
 const FORKLIFT_CATEGORIES: ForkliftCategory[] = ['A', 'B', 'C'];
 
-// ── Extra signer fields ───────────────────────────────────────────────────────
-const SIGNER_EXTRA_FIELDS = [{ key: 'phone', label: 'ტელეფონის ნომერი' }];
+// ── Main screen ───────────────────────────────────────────────────────────────
 
 export default function ForkliftInspectionScreen() {
   const { theme } = useTheme();
@@ -76,142 +70,78 @@ export default function ForkliftInspectionScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const toast = useToast();
-  const session = useSession();
   const insets = useSafeAreaInsets();
   const { pickPhotoWithAnnotation } = usePhotoWithLocation();
 
-  const [paywallVisible, setPaywallVisible] = useState(false);
-  const { data: pdfUsage } = usePdfUsage();
-  const invalidatePdfUsage = useInvalidatePdfUsage();
-
-  const [inspection, setInspection] = useState<ForkliftInspection | null>(null);
-  const [projectName, setProjectName] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [completing, setCompleting] = useState(false);
-  const [celebrating, setCelebrating] = useState(false);
-  const celebrationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [generatingPdf, setGeneratingPdf] = useState(false);
-  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
-  const [previewBusy, setPreviewBusy] = useState(false);
-
-  const [step, setStep] = useState(INFO_STEP);
-  const prevStepRef = useRef(INFO_STEP);
-  const [animateSteps, setAnimateSteps] = useState(false);
-  const inspectionRef = useRef<ForkliftInspection | null>(null);
-  const animateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => { inspectionRef.current = inspection; }, [inspection]);
-
-  const direction: 'next' | 'prev' = step >= prevStepRef.current ? 'next' : 'prev';
-  useEffect(() => { prevStepRef.current = step; }, [step]);
-
-  // ── Load ───────────────────────────────────────────────────────────────────
-
-  useEffect(() => {
-    if (!id) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const insp = await forkliftApi.getById(id);
-        if (cancelled) return;
-        if (!insp) { router.back(); return; }
-
-        let patched = insp;
-        if (!insp.inspectorName && session.state.status === 'signedIn') {
-          const u = session.state.user;
-          const name = `${u?.first_name ?? ''} ${u?.last_name ?? ''}`.trim();
-          if (name) patched = { ...patched, inspectorName: name };
+  // Shared orchestration: loading, step+persist, autosave, complete, celebration,
+  // PDF preview/download, paywall. Type-specific bits are passed as callbacks.
+  const {
+    inspection, setInspection, inspectionRef,
+    projectName, saving, loading, completing, celebrating, generatingPdf,
+    previewHtml, previewBusy,
+    step, setStep, direction, animateSteps,
+    paywallVisible, setPaywallVisible, pdfLocked,
+    update, scheduleSave,
+    complete, handlePdf, buildPreview, exit,
+  } = useInspectionFlow<ForkliftInspection>({
+    id,
+    firstStep: INFO_STEP,
+    lastStep: CONCLUSION_STEP,
+    persistPrefix: 'forklift-wizard',
+    templateId: FORKLIFT_TEMPLATE_ID,
+    schema: forkliftSchema,
+    api: forkliftApi,
+    toPatch: (insp) => ({
+      company: insp.company,
+      address: insp.address,
+      inventoryNumber: insp.inventoryNumber,
+      brandModel: insp.brandModel,
+      engineType: insp.engineType,
+      inspectionDate: insp.inspectionDate,
+      inspectorName: insp.inspectorName,
+      items: insp.items,
+      verdict: insp.verdict,
+      notes: insp.notes,
+      summaryPhotos: insp.summaryPhotos,
+      qualDocPath: insp.qualDocPath,
+    }),
+    validateMissing: (insp) => {
+      const missing: string[] = [];
+      if (!insp.brandModel?.trim())      missing.push('მარკა / მოდელი');
+      if (!insp.inventoryNumber?.trim()) missing.push('ინვენტ. / სერიული ნომერი');
+      if (!insp.verdict)                 missing.push('დასკვნა');
+      return missing;
+    },
+    autofill: (insp, { inspectorName, project }) => {
+      let next = insp;
+      const patch: Record<string, unknown> = {};
+      if (!insp.inspectorName && inspectorName) {
+        next = { ...next, inspectorName };
+        if (!next.signerName) next = { ...next, signerName: inspectorName };
+        patch.inspectorName = inspectorName;
+      }
+      if (project) {
+        if (!next.company?.trim()) {
+          const v = project.company_name || project.name;
+          next = { ...next, company: v };
+          patch.company = v;
         }
-        // Pre-fill signer name from inspector name if empty
-        if (!patched.signerName && patched.inspectorName) {
-          patched = { ...patched, signerName: patched.inspectorName };
-        }
-        setInspection(patched);
-
-        if (patched.inspectorName !== insp.inspectorName) {
-          forkliftApi.patch(patched.id, {
-            inspectorName: patched.inspectorName,
-          }).catch(() => {});
-        }
-
-        projectsApi.getById(insp.projectId).then(p => {
-          if (cancelled || !p) return;
-          setProjectName(p.company_name || p.name);
-          setInspection(prev => {
-            if (!prev) return prev;
-            const companyFill = !prev.company?.trim() ? (p.company_name || p.name) : null;
-            const addressFill = !prev.address?.trim() && p.address ? p.address : null;
-            if (!companyFill && !addressFill) return prev;
-            const next = {
-              ...prev,
-              ...(companyFill ? { company: companyFill } : {}),
-              ...(addressFill ? { address: addressFill } : {}),
-            };
-            forkliftApi.patch(next.id, {
-              ...(companyFill ? { company: next.company } : {}),
-              ...(addressFill ? { address: next.address } : {}),
-            }).catch(() => {});
-            return next;
-          });
-        }).catch(() => {});
-
-      } catch (e) {
-        if (!cancelled) {
-          toast.error(friendlyError(e, 'ვერ ჩაიტვირთა'));
-          router.back();
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-          animateTimeoutRef.current = setTimeout(() => setAnimateSteps(true), 50);
+        if (!next.address?.trim() && project.address) {
+          next = { ...next, address: project.address };
+          patch.address = project.address;
         }
       }
-    })();
-    return () => {
-      cancelled = true;
-      if (animateTimeoutRef.current) clearTimeout(animateTimeoutRef.current);
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+      return { next, patch: Object.keys(patch).length ? patch : null };
+    },
+    pdf: {
+      nameLabel: 'ForkliftInspection',
+      title: 'ჩანგლიანი დამტვირთველი',
+      subject: 'შრომის უსაფრთხოების შემოწმება',
+    },
+    loadingTitle: 'შემოწმება',
+  });
 
-  // ── Auto-save ──────────────────────────────────────────────────────────────
-
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const scheduleSave = useCallback((insp: ForkliftInspection) => {
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      setSaving(true);
-      forkliftApi.patch(insp.id, {
-        company: insp.company,
-        address: insp.address,
-        inventoryNumber: insp.inventoryNumber,
-        brandModel: insp.brandModel,
-        engineType: insp.engineType,
-        inspectionDate: insp.inspectionDate,
-        inspectorName: insp.inspectorName,
-        items: insp.items,
-        verdict: insp.verdict,
-        notes: insp.notes,
-        summaryPhotos: insp.summaryPhotos,
-        qualDocPath: insp.qualDocPath,
-      }).catch(e => {
-        toast.error(friendlyError(e, 'შენახვა ვერ მოხერხდა'));
-      }).finally(() => setSaving(false));
-    }, 700);
-  }, [toast]);
-
-  const update = useCallback(<K extends keyof ForkliftInspection>(
-    key: K,
-    value: ForkliftInspection[K],
-  ) => {
-    setInspection(prev => {
-      if (!prev) return prev;
-      const next = { ...prev, [key]: value };
-      scheduleSave(next);
-      return next;
-    });
-  }, [scheduleSave]);
+  // ── Item update helper ───────────────────────────────────────────────────────
 
   const updateItem = useCallback((
     itemId: number,
@@ -219,16 +149,14 @@ export default function ForkliftInspectionScreen() {
   ) => {
     setInspection(prev => {
       if (!prev) return prev;
-      const items = prev.items.map(i =>
-        i.id === itemId ? { ...i, ...patch } : i,
-      );
+      const items = prev.items.map(i => i.id === itemId ? { ...i, ...patch } : i);
       const next = { ...prev, items };
       scheduleSave(next);
       return next;
     });
-  }, [scheduleSave]);
+  }, [scheduleSave, setInspection]);
 
-  // ── Photo handling ─────────────────────────────────────────────────────────
+  // ── Photo handling ───────────────────────────────────────────────────────────
 
   const handleAddPhoto = useCallback(async (itemId: number) => {
     const result = await pickPhotoWithAnnotation();
@@ -249,7 +177,7 @@ export default function ForkliftInspectionScreen() {
     } catch (e) {
       toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
     }
-  }, [pickPhotoWithAnnotation, scheduleSave, toast]);
+  }, [pickPhotoWithAnnotation, scheduleSave, toast, inspectionRef, setInspection]);
 
   const handleDeletePhoto = useCallback(async (itemId: number, path: string) => {
     try {
@@ -267,7 +195,7 @@ export default function ForkliftInspectionScreen() {
       scheduleSave(next);
       return next;
     });
-  }, [scheduleSave, toast]);
+  }, [scheduleSave, toast, setInspection]);
 
   const handleAddSummaryPhoto = useCallback(async () => {
     const result = await pickPhotoWithAnnotation();
@@ -285,7 +213,7 @@ export default function ForkliftInspectionScreen() {
     } catch (e) {
       toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
     }
-  }, [pickPhotoWithAnnotation, scheduleSave, toast]);
+  }, [pickPhotoWithAnnotation, scheduleSave, toast, inspectionRef, setInspection]);
 
   const handleDeleteSummaryPhoto = useCallback(async (path: string) => {
     try {
@@ -300,7 +228,7 @@ export default function ForkliftInspectionScreen() {
       scheduleSave(next);
       return next;
     });
-  }, [scheduleSave, toast]);
+  }, [scheduleSave, toast, setInspection]);
 
   const handleAddQualDoc = useCallback(async () => {
     const result = await pickPhotoWithAnnotation();
@@ -318,7 +246,7 @@ export default function ForkliftInspectionScreen() {
     } catch (e) {
       toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
     }
-  }, [pickPhotoWithAnnotation, scheduleSave, toast]);
+  }, [pickPhotoWithAnnotation, scheduleSave, toast, inspectionRef, setInspection]);
 
   const handleDeleteQualDoc = useCallback(async () => {
     const insp = inspectionRef.current;
@@ -332,26 +260,22 @@ export default function ForkliftInspectionScreen() {
       scheduleSave(next);
       return next;
     });
-  }, [scheduleSave]);
+  }, [scheduleSave, inspectionRef, setInspection]);
 
-  // ── Signer ────────────────────────────────────────────────────────────────
+  // ── Signer ───────────────────────────────────────────────────────────────────
 
-  const handleSignerChange = useCallback((
-    _index: number,
-    field: string,
-    value: string,
-  ) => {
+  const handleSignerChange = useCallback((_index: number, field: string, value: string) => {
     setInspection(prev => {
       if (!prev) return prev;
       let next = prev;
-      if (field === 'name')           next = { ...prev, signerName: value };
-      else if (field === 'position')  next = { ...prev, signerPosition: value };
+      if (field === 'name')             next = { ...prev, signerName: value };
+      else if (field === 'position')    next = { ...prev, signerPosition: value };
       else if (field === 'extra.phone') next = { ...prev, signerPhone: value };
-      else if (field === 'signature') next = { ...prev, signerSignature: value || null };
+      else if (field === 'signature')   next = { ...prev, signerSignature: value || null };
       scheduleSave(next);
       return next;
     });
-  }, [scheduleSave]);
+  }, [scheduleSave, setInspection]);
 
   const handleSign = useCallback((_index: number, base64Png: string) => {
     setInspection(prev => {
@@ -360,144 +284,9 @@ export default function ForkliftInspectionScreen() {
       scheduleSave(next);
       return next;
     });
-  }, [scheduleSave]);
+  }, [scheduleSave, setInspection]);
 
-  // ── Complete ───────────────────────────────────────────────────────────────
-
-  const handleComplete = useCallback(async () => {
-    if (!inspection) return;
-    const missing: string[] = [];
-    if (!inspection.brandModel?.trim())     missing.push('მარკა / მოდელი');
-    if (!inspection.inventoryNumber?.trim()) missing.push('ინვენტ. / სერიული ნომერი');
-    if (!inspection.verdict)                 missing.push('დასკვნა');
-
-    if (missing.length > 0) {
-      Alert.alert('შეავსეთ სავალდებულო ველები', missing.map(m => `• ${m}`).join('\n'));
-      return;
-    }
-    setCompleting(true);
-    try {
-      await forkliftApi.patch(inspection.id, {
-        company: inspection.company,
-        address: inspection.address,
-        inventoryNumber: inspection.inventoryNumber,
-        brandModel: inspection.brandModel,
-        engineType: inspection.engineType,
-        inspectionDate: inspection.inspectionDate,
-        inspectorName: inspection.inspectorName,
-        items: inspection.items,
-        verdict: inspection.verdict,
-        notes: inspection.notes,
-        summaryPhotos: inspection.summaryPhotos,
-        qualDocPath: inspection.qualDocPath,
-      });
-      await forkliftApi.complete(inspection.id);
-      const completedAt = new Date().toISOString();
-      await recordCompletion(
-        'inspections',
-        inspection.id,
-        completedAt,
-        `${inspection.projectId}:forklift_inspection`,
-      ).catch(() => {});
-      setInspection(prev => prev ? { ...prev, status: 'completed', completedAt } : prev);
-
-      toast.success('შემოწმება დასრულდა');
-      setCelebrating(true);
-      haptic.inspectionComplete();
-      celebrationTimer.current = setTimeout(() => setCelebrating(false), 2000);
-    } catch (e) {
-      toast.error(friendlyError(e, 'შეცდომა'));
-    } finally {
-      setCompleting(false);
-    }
-  }, [inspection, toast]);
-
-  // ── PDF ────────────────────────────────────────────────────────────────────
-
-  const handlePdf = useCallback(async () => {
-    const insp = inspectionRef.current;
-    if (!insp) return;
-    if (pdfUsage?.isLocked) { setPaywallVisible(true); return; }
-    setGeneratingPdf(true);
-    try {
-      const html = await renderInspectionPdf(forkliftSchema, {
-        inspection: insp,
-        projectName: projectName || 'პროექტი',
-      });
-      const pdfName = generatePdfName(
-        projectName || 'project',
-        'ForkliftInspection',
-        new Date(insp.inspectionDate),
-        insp.id,
-      );
-      const userId = session.state.status === 'signedIn' ? session.state.session.user.id : undefined;
-      await generateAndSharePdf(html, pdfName, undefined, userId, {
-        title: 'ჩანგლიანი დამტვირთველი',
-        author: insp.inspectorName || undefined,
-        documentId: insp.id,
-        subject: 'შრომის უსაფრთხოების შემოწმება',
-      });
-      invalidatePdfUsage();
-    } catch (e) {
-      if (e instanceof PdfLimitReachedError) { setPaywallVisible(true); return; }
-      toast.error(friendlyError(e, 'PDF ვერ შეიქმნა'));
-    } finally {
-      setGeneratingPdf(false);
-    }
-  }, [projectName, session.state, invalidatePdfUsage, toast, pdfUsage?.isLocked]);
-
-  // ── PDF Preview (completed) ────────────────────────────────────────────────
-
-  const buildPreview = useCallback(async () => {
-    const insp = inspectionRef.current;
-    if (!insp) return;
-    setPreviewBusy(true);
-    try {
-      const html = await renderInspectionPdf(forkliftSchema, {
-        inspection: insp,
-        projectName: projectName || 'პროექტი',
-      });
-      setPreviewHtml(html);
-    } catch (e) {
-      toast.error(friendlyError(e, 'PDF ვერ შეიქმნა'));
-    } finally {
-      setPreviewBusy(false);
-    }
-  }, [projectName, toast]);
-
-  useEffect(() => {
-    if (inspection?.status === 'completed') void buildPreview();
-  }, [inspection?.status]);
-
-  useEffect(() => {
-    return () => { if (celebrationTimer.current) clearTimeout(celebrationTimer.current); };
-  }, []);
-
-  // ── Step navigation ────────────────────────────────────────────────────────
-
-  const canGoNext = useMemo(() => {
-    if (!inspection) return false;
-    if (step === INFO_STEP) {
-      return !!inspection.brandModel?.trim() && !!inspection.inventoryNumber?.trim();
-    }
-    if (step === CONCLUSION_STEP) return !!inspection.verdict && !completing;
-    return true;
-  }, [step, inspection, completing]);
-
-  const handleNext = useCallback(async () => {
-    if (step === CONCLUSION_STEP) {
-      await handleComplete();
-    } else {
-      setStep(s => s + 1);
-    }
-  }, [step, handleComplete]);
-
-  const handlePrev = useCallback(() => {
-    if (step === INFO_STEP) router.back();
-    else setStep(s => s - 1);
-  }, [step, router]);
-
-  // ── Checklist item data builders ───────────────────────────────────────────
+  // ── Checklist item data builders ─────────────────────────────────────────────
 
   const checklistItemsFor = useCallback(
     (cat: ForkliftCategory): ChecklistItemData[] => {
@@ -520,27 +309,39 @@ export default function ForkliftInspectionScreen() {
     [inspection],
   );
 
-  // ── Verdict suggestion ─────────────────────────────────────────────────────
+  // ── Verdict suggestion ────────────────────────────────────────────────────────
 
   const verdictSuggestion = useMemo(
     () => inspection ? computeForkliftVerdictSuggestion(inspection.items) : null,
-    [inspection],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [inspection?.items],
   );
 
-  // ── Signatories for SignatureBlock ─────────────────────────────────────────
+  // ── Step navigation ───────────────────────────────────────────────────────────
 
-  const signatories = useMemo<SignatoryData[]>(() => {
-    if (!inspection) return [];
-    return [{
-      role: 'უსაფრთ.სპეც. / ტექნიკოსი / ოპერატორი',
-      name: inspection.signerName ?? '',
-      position: inspection.signerPosition ?? '',
-      extra: { phone: inspection.signerPhone ?? '' },
-      signature: inspection.signerSignature,
-    }];
-  }, [inspection]);
+  const canGoNext = useMemo(() => {
+    if (!inspection) return false;
+    if (step === INFO_STEP) {
+      return !!inspection.brandModel?.trim() && !!inspection.inventoryNumber?.trim();
+    }
+    if (step === CONCLUSION_STEP) return !!inspection.verdict && !completing;
+    return true;
+  }, [step, inspection, completing]);
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  const handleNext = useCallback(async () => {
+    if (step === CONCLUSION_STEP) {
+      await complete();
+    } else {
+      setStep(s => s + 1);
+    }
+  }, [step, complete, setStep]);
+
+  const handlePrev = useCallback(() => {
+    if (step === INFO_STEP) void exit();
+    else setStep(s => s - 1);
+  }, [step, exit, setStep]);
+
+  // ── Loading ───────────────────────────────────────────────────────────────────
 
   if (loading || !inspection) {
     return (
@@ -550,6 +351,8 @@ export default function ForkliftInspectionScreen() {
       </View>
     );
   }
+
+  // ── Completed ─────────────────────────────────────────────────────────────────
 
   if (inspection.status === 'completed' && !celebrating) {
     return (
@@ -563,7 +366,7 @@ export default function ForkliftInspectionScreen() {
         signedCount={inspection.signerSignature ? 1 : 0}
         totalSlots={1}
         attachmentCount={0}
-        pdfLocked={pdfUsage?.isLocked}
+        pdfLocked={pdfLocked}
         downloading={generatingPdf}
         paywallVisible={paywallVisible}
         onPaywallClose={() => setPaywallVisible(false)}
@@ -592,6 +395,8 @@ export default function ForkliftInspectionScreen() {
     );
   }
 
+  // ── Render ────────────────────────────────────────────────────────────────────
+
   return (
     <View style={styles.root}>
       <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
@@ -619,9 +424,9 @@ export default function ForkliftInspectionScreen() {
         backDisabled={false}
       />
 
-      {saving && (
-        <Text style={styles.savingHint}>შენახვა…</Text>
-      )}
+      {saving && <Text style={styles.savingHint}>შენახვა…</Text>}
+
+      {pdfLocked && <PdfLockedBanner onSubscribe={() => setPaywallVisible(true)} />}
 
       <View style={{ flex: 1 }}>
         <WizardStepTransition stepKey={step} direction={direction} animate={animateSteps}>

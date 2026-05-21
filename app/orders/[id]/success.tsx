@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
@@ -7,17 +7,24 @@ import { Button, Card, Screen } from '../../../components/ui';
 import { AnimatedSuccessIcon, CelebrationBurst } from '../../../components/animations';
 import { useTheme } from '../../../lib/theme';
 import { haptic } from '../../../lib/haptics';
+import { ordersApi } from '../../../lib/ordersApi';
+import { ORDER_DOCUMENT_TYPE_LABEL, type Order } from '../../../types/models';
 
 export default function OrderSuccessScreen() {
   const { theme } = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const [order, setOrder] = useState<Order | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => haptic.inspectionComplete(), 400);
     return () => clearTimeout(t);
   }, []);
+
+  useEffect(() => {
+    if (id) ordersApi.getById(id).then(setOrder).catch(() => {});
+  }, [id]);
 
   return (
     <Screen edgeToEdge>
@@ -33,9 +40,11 @@ export default function OrderSuccessScreen() {
         </View>
 
         <Card>
-          <Text style={styles.eyebrow}>შრომის უსაფრთხოების სპეციალისტის დანიშვნა</Text>
+          <Text style={styles.eyebrow}>
+            {order ? ORDER_DOCUMENT_TYPE_LABEL[order.documentType] : 'ბრძანება'}
+          </Text>
           <Text style={[styles.eyebrow, { marginTop: 6, color: theme.colors.accent }]}>
-            ბრძანება №{id?.slice(0, 4).toUpperCase()}
+            ბრძანება №{order?.formData.orderNumber ?? id?.slice(0, 4).toUpperCase()}
           </Text>
         </Card>
 

@@ -6,7 +6,7 @@ import { Button } from './ui';
 import { FloatingLabelInput } from './inputs/FloatingLabelInput';
 import { BottomSheetScrollView } from './BottomSheet';
 import { SheetLayout } from './SheetLayout';
-import { theme } from '../lib/theme';
+import { useTheme } from '../lib/theme';
 import { haptic } from '../lib/haptics';
 import { a11y } from '../lib/accessibility';
 import { CREW_ROLE_LABEL } from '../types/models';
@@ -56,6 +56,8 @@ export function RoleSlotSheet({
   loading = false,
   error = null,
 }: Props) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [name, setName] = useState(initialName);
   const [customRole, setCustomRole] = useState(
     roleKey === 'other' ? initialRoleLabel ?? '' : '',
@@ -133,7 +135,7 @@ export function RoleSlotSheet({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: any) => StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',

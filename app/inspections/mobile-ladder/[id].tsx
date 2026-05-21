@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { useCallback, useMemo } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,24 +17,16 @@ import {
   type VerdictOption,
 } from '../../../components/inspection';
 import { useTheme, type Theme } from '../../../lib/theme';
-import { useSession } from '../../../lib/session';
 import { useToast } from '../../../lib/toast';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { mobileLadderApi } from '../../../lib/mobileLadderService';
-import { projectsApi } from '../../../lib/services';
-import { renderInspectionPdf } from '../../../lib/inspection/renderMobile';
 import { mobileLadderSchema } from '../../../lib/inspection/schemas/mobileLadder';
-import { generateAndSharePdf, PdfLimitReachedError } from '../../../lib/pdfOpen';
+import { useInspectionFlow } from '../../../lib/inspection/useInspectionFlow';
 import { PaywallModal } from '../../../components/PaywallModal';
 import { PdfLockedBanner } from '../../../components/PdfLockedBanner';
-import { usePdfUsage, useInvalidatePdfUsage } from '../../../lib/usePdfUsage';
-import { generatePdfName } from '../../../lib/pdfName';
-import { recordCompletion } from '../../../lib/calendarSchedule';
 import { friendlyError } from '../../../lib/errorMap';
 import { a11y } from '../../../lib/accessibility';
-import { haptic } from '../../../lib/haptics';
 import { CelebrationBurst } from '../../../components/animations';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { usePhotoWithLocation } from '../../../hooks/usePhotoWithLocation';
 
 import {
@@ -56,7 +48,6 @@ const IDENTIFICATION_STEP = 1;
 const CHECKLIST_STEP      = 2;
 const CONCLUSION_STEP     = 3;
 const TOTAL_STEPS         = 3;
-const STEP_LABELS         = ['კიბე', 'შემოწ.', 'დასკვნა'];
 
 // ── Main screen ───────────────────────────────────────────────────────────────
 
@@ -66,179 +57,74 @@ export default function MobileLadderInspectionScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const toast = useToast();
-  const session = useSession();
   const insets = useSafeAreaInsets();
   const { pickPhotoWithAnnotation } = usePhotoWithLocation();
 
-  const [paywallVisible, setPaywallVisible] = useState(false);
-  const { data: pdfUsage } = usePdfUsage();
-  const invalidatePdfUsage = useInvalidatePdfUsage();
-
-  const [inspection, setInspection] = useState<MobileLadderInspection | null>(null);
-  const [projectName, setProjectName] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [completing, setCompleting] = useState(false);
-  const [celebrating, setCelebrating] = useState(false);
-  const celebrationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [generatingPdf, setGeneratingPdf] = useState(false);
-  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
-  const [previewBusy, setPreviewBusy] = useState(false);
-
-  const [step, setStep] = useState(IDENTIFICATION_STEP);
-  const prevStepRef = useRef(IDENTIFICATION_STEP);
-  const [animateSteps, setAnimateSteps] = useState(false);
-  const inspectionRef = useRef<MobileLadderInspection | null>(null);
-  const animateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => { inspectionRef.current = inspection; }, [inspection]);
-
-  const persistKey = useMemo(() => `mobile-ladder-wizard:${id}:step`, [id]);
-
-  const direction: 'next' | 'prev' = step >= prevStepRef.current ? 'next' : 'prev';
-  useEffect(() => { prevStepRef.current = step; }, [step]);
-
-  // ── Load ────────────────────────────────────────────────────────────────────
-
-  useEffect(() => {
-    if (!id) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const insp = await mobileLadderApi.getById(id);
-        if (cancelled) return;
-        if (!insp) { router.back(); return; }
-
-        let patched = insp;
-        if (!insp.inspectorName && session.state.status === 'signedIn') {
-          const u = session.state.user;
-          const name = `${u?.first_name ?? ''} ${u?.last_name ?? ''}`.trim();
-          if (name) {
-            patched = {
-              ...patched,
-              inspectorName: name,
-              signature: { ...patched.signature, name },
-            };
-          }
+  // Shared orchestration: loading, step+persist, autosave, complete, celebration,
+  // PDF preview/download, paywall. Type-specific bits are passed as callbacks so
+  // behaviour matches the pre-refactor screen exactly.
+  const {
+    inspection, setInspection, inspectionRef,
+    projectName, saving, loading, completing, celebrating, generatingPdf,
+    previewHtml, previewBusy,
+    step, setStep, direction, animateSteps,
+    paywallVisible, setPaywallVisible, pdfLocked,
+    update, updateMany: updateIdentification, scheduleSave,
+    complete, handlePdf, buildPreview, exit,
+  } = useInspectionFlow<MobileLadderInspection>({
+    id,
+    firstStep: IDENTIFICATION_STEP,
+    lastStep: CONCLUSION_STEP,
+    persistPrefix: 'mobile-ladder-wizard',
+    templateId: MOBILE_LADDER_TEMPLATE_ID,
+    schema: mobileLadderSchema,
+    api: mobileLadderApi,
+    toPatch: (insp) => ({
+      company: insp.company,
+      address: insp.address,
+      inspectorName: insp.inspectorName,
+      inspectionDate: insp.inspectionDate,
+      ladderType: insp.ladderType,
+      ladderTypeUnknown: insp.ladderTypeUnknown,
+      model: insp.model,
+      modelUnknown: insp.modelUnknown,
+      heightM: insp.heightM,
+      heightUnknown: insp.heightUnknown,
+      maxLoadKg: insp.maxLoadKg,
+      maxLoadUnknown: insp.maxLoadUnknown,
+      nextInspectionDate: insp.nextInspectionDate,
+      items: insp.items,
+      verdict: insp.verdict,
+      verdictComment: insp.verdictComment,
+    }),
+    validateMissing: (insp) => (insp.verdict ? [] : ['დასკვნა']),
+    autofill: (insp, { inspectorName, project }) => {
+      let next = insp;
+      const patch: Record<string, unknown> = {};
+      if (!insp.inspectorName && inspectorName) {
+        next = { ...next, inspectorName, signature: { ...next.signature, name: inspectorName } };
+        patch.inspectorName = inspectorName;
+      }
+      if (project) {
+        if (!next.company?.trim()) {
+          const v = project.company_name || project.name;
+          next = { ...next, company: v };
+          patch.company = v;
         }
-        if (patched.inspectorName !== insp.inspectorName) {
-          mobileLadderApi.patch(patched.id, {
-            inspectorName: patched.inspectorName,
-          }).catch(() => {});
-        }
-
-        if (insp.status !== 'completed') {
-          const saved = await AsyncStorage.getItem(persistKey);
-          if (saved && !cancelled) {
-            const s = parseInt(saved, 10);
-            if (!isNaN(s) && s >= IDENTIFICATION_STEP && s <= CONCLUSION_STEP) setStep(s);
-          }
-        }
-
-        try {
-          const p = await projectsApi.getById(insp.projectId);
-          if (p) {
-            setProjectName(p.company_name || p.name);
-            const companyFill = !patched.company?.trim() ? (p.company_name || p.name) : null;
-            const addressFill = !patched.address?.trim() && p.address ? p.address : null;
-            if (companyFill || addressFill) {
-              patched = {
-                ...patched,
-                ...(companyFill ? { company: companyFill } : {}),
-                ...(addressFill ? { address: addressFill } : {}),
-              };
-              mobileLadderApi.patch(patched.id, {
-                ...(companyFill ? { company: patched.company } : {}),
-                ...(addressFill ? { address: patched.address } : {}),
-              }).catch(() => {});
-            }
-          }
-        } catch {
-          // project fetch is best-effort
-        }
-
-        if (!cancelled) setInspection(patched);
-      } catch (e) {
-        if (!cancelled) {
-          toast.error(friendlyError(e, 'ვერ ჩაიტვირთა'));
-          router.back();
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-          animateTimeoutRef.current = setTimeout(() => setAnimateSteps(true), 50);
+        if (!next.address?.trim() && project.address) {
+          next = { ...next, address: project.address };
+          patch.address = project.address;
         }
       }
-    })();
-    return () => {
-      cancelled = true;
-      if (animateTimeoutRef.current) clearTimeout(animateTimeoutRef.current);
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
-
-  useEffect(() => {
-    if (step >= IDENTIFICATION_STEP && step <= CONCLUSION_STEP) {
-      AsyncStorage.setItem(persistKey, String(step)).catch(() => {});
-    }
-  }, [step, persistKey]);
-
-  useEffect(() => {
-    return () => { if (celebrationTimer.current) clearTimeout(celebrationTimer.current); };
-  }, []);
-
-  // ── Auto-save (debounced) ───────────────────────────────────────────────────
-
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const scheduleSave = useCallback((insp: MobileLadderInspection) => {
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      setSaving(true);
-      mobileLadderApi.patch(insp.id, {
-        company: insp.company,
-        address: insp.address,
-        inspectorName: insp.inspectorName,
-        inspectionDate: insp.inspectionDate,
-        ladderType: insp.ladderType,
-        ladderTypeUnknown: insp.ladderTypeUnknown,
-        model: insp.model,
-        modelUnknown: insp.modelUnknown,
-        heightM: insp.heightM,
-        heightUnknown: insp.heightUnknown,
-        maxLoadKg: insp.maxLoadKg,
-        maxLoadUnknown: insp.maxLoadUnknown,
-        nextInspectionDate: insp.nextInspectionDate,
-        items: insp.items,
-        verdict: insp.verdict,
-        verdictComment: insp.verdictComment,
-      }).catch(e => {
-        toast.error(friendlyError(e, 'შენახვა ვერ მოხერხდა'));
-      }).finally(() => setSaving(false));
-    }, 700);
-  }, [toast]);
-
-  const update = useCallback(<K extends keyof MobileLadderInspection>(
-    key: K,
-    value: MobileLadderInspection[K],
-  ) => {
-    setInspection(prev => {
-      if (!prev) return prev;
-      const next = { ...prev, [key]: value };
-      scheduleSave(next);
-      return next;
-    });
-  }, [scheduleSave]);
-
-  // ── Identification fields ───────────────────────────────────────────────────
-
-  const updateIdentification = useCallback((patch: Partial<MobileLadderInspection>) => {
-    setInspection(prev => {
-      if (!prev) return prev;
-      const next = { ...prev, ...patch };
-      scheduleSave(next);
-      return next;
-    });
-  }, [scheduleSave]);
+      return { next, patch: Object.keys(patch).length ? patch : null };
+    },
+    pdf: {
+      nameLabel: 'MobileLadderInspection',
+      title: 'მობილური კიბის შემოწმების აქტი',
+      subject: 'შრომის უსაფრთხოება',
+    },
+    loadingTitle: 'კიბის შემოწმება',
+  });
 
   // ── Checklist items ─────────────────────────────────────────────────────────
 
@@ -259,7 +145,7 @@ export default function MobileLadderInspectionScreen() {
         return next;
       });
     },
-    [scheduleSave],
+    [scheduleSave, setInspection],
   );
 
   // ── Photos ──────────────────────────────────────────────────────────────────
@@ -283,7 +169,7 @@ export default function MobileLadderInspectionScreen() {
     } catch (e) {
       toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
     }
-  }, [pickPhotoWithAnnotation, scheduleSave, toast]);
+  }, [pickPhotoWithAnnotation, scheduleSave, toast, inspectionRef, setInspection]);
 
   const handleDeleteItemPhoto = useCallback(async (itemId: number, path: string) => {
     try {
@@ -303,7 +189,7 @@ export default function MobileLadderInspectionScreen() {
       scheduleSave(next);
       return next;
     });
-  }, [scheduleSave, toast]);
+  }, [scheduleSave, toast, setInspection]);
 
   // ── Signature ───────────────────────────────────────────────────────────────
 
@@ -316,14 +202,14 @@ export default function MobileLadderInspectionScreen() {
       };
       return { ...prev, signature };
     });
-  }, []);
+  }, [setInspection]);
 
   const handleSign = useCallback((_idx: number, base64Png: string) => {
     const insp = inspectionRef.current;
     if (!insp) return;
     const signature = { ...insp.signature, signature: base64Png, date: new Date().toISOString() };
     setInspection({ ...insp, signature });
-  }, []);
+  }, [inspectionRef, setInspection]);
 
   // ── Verdict auto-suggest ────────────────────────────────────────────────────
 
@@ -333,111 +219,7 @@ export default function MobileLadderInspectionScreen() {
     [inspection?.items],
   );
 
-  // ── PDF ─────────────────────────────────────────────────────────────────────
-
-  const handlePdf = useCallback(async () => {
-    const insp = inspectionRef.current;
-    if (!insp) return;
-    if (pdfUsage?.isLocked) { setPaywallVisible(true); return; }
-    setGeneratingPdf(true);
-    try {
-      const html = await renderInspectionPdf(mobileLadderSchema, { inspection: insp, projectName: projectName || 'პროექტი' });
-      const pdfName = generatePdfName(
-        projectName || 'project',
-        'MobileLadderInspection',
-        new Date(insp.inspectionDate),
-        insp.id,
-      );
-      const uid = session.state.status === 'signedIn' ? session.state.session.user.id : undefined;
-      await generateAndSharePdf(html, pdfName, undefined, uid, {
-        title: 'მობილური კიბის შემოწმების აქტი',
-        author: insp.inspectorName || undefined,
-        documentId: insp.id,
-        subject: 'შრომის უსაფრთხოება',
-      });
-      invalidatePdfUsage();
-    } catch (e) {
-      if (e instanceof PdfLimitReachedError) { setPaywallVisible(true); return; }
-      toast.error(friendlyError(e, 'PDF ვერ შეიქმნა'));
-    } finally {
-      setGeneratingPdf(false);
-    }
-  }, [projectName, session.state, invalidatePdfUsage, toast, pdfUsage]);
-
-  // ── Preview (completed) ─────────────────────────────────────────────────────
-
-  const buildPreview = useCallback(async () => {
-    const insp = inspectionRef.current;
-    if (!insp) return;
-    setPreviewBusy(true);
-    try {
-      const html = await renderInspectionPdf(mobileLadderSchema, { inspection: insp, projectName: projectName || 'პროექტი' });
-      setPreviewHtml(html);
-    } catch (e) {
-      toast.error(friendlyError(e, 'PDF ვერ შეიქმნა'));
-    } finally {
-      setPreviewBusy(false);
-    }
-  }, [projectName, toast]);
-
-  useEffect(() => {
-    if (inspection?.status === 'completed') void buildPreview();
-  }, [inspection?.status]);
-
-  // ── Complete ────────────────────────────────────────────────────────────────
-
   const isSigned = !!(inspection?.signature.signature);
-
-  const handleComplete = useCallback(async () => {
-    if (!inspection) return;
-    const missing: string[] = [];
-    if (!inspection.verdict)          missing.push('დასკვნა');
-
-    if (missing.length > 0) {
-      Alert.alert('შეავსეთ სავალდებულო ველები', missing.map(m => `• ${m}`).join('\n'));
-      return;
-    }
-
-    setCompleting(true);
-    try {
-      await mobileLadderApi.patch(inspection.id, {
-        company: inspection.company,
-        address: inspection.address,
-        inspectorName: inspection.inspectorName,
-        inspectionDate: inspection.inspectionDate,
-        ladderType: inspection.ladderType,
-        ladderTypeUnknown: inspection.ladderTypeUnknown,
-        model: inspection.model,
-        modelUnknown: inspection.modelUnknown,
-        heightM: inspection.heightM,
-        heightUnknown: inspection.heightUnknown,
-        maxLoadKg: inspection.maxLoadKg,
-        maxLoadUnknown: inspection.maxLoadUnknown,
-        nextInspectionDate: inspection.nextInspectionDate,
-        items: inspection.items,
-        verdict: inspection.verdict,
-        verdictComment: inspection.verdictComment,
-      });
-      await mobileLadderApi.complete(inspection.id);
-      const completedAt = new Date().toISOString();
-      await recordCompletion(
-        'inspections',
-        inspection.id,
-        completedAt,
-        `${inspection.projectId}:${MOBILE_LADDER_TEMPLATE_ID}`,
-      ).catch(() => {});
-      setInspection(prev => prev ? { ...prev, status: 'completed', completedAt } : prev);
-      await AsyncStorage.removeItem(persistKey);
-      toast.success('შემოწმება დასრულდა');
-      setCelebrating(true);
-      haptic.inspectionComplete();
-      celebrationTimer.current = setTimeout(() => setCelebrating(false), 2000);
-    } catch (e) {
-      toast.error(friendlyError(e, 'შეცდომა'));
-    } finally {
-      setCompleting(false);
-    }
-  }, [inspection, persistKey, toast]);
 
   // ── Step navigation ─────────────────────────────────────────────────────────
 
@@ -449,20 +231,19 @@ export default function MobileLadderInspectionScreen() {
 
   const handleNext = useCallback(async () => {
     if (step === CONCLUSION_STEP) {
-      await handleComplete();
+      await complete();
     } else {
       setStep(s => s + 1);
     }
-  }, [step, handleComplete]);
+  }, [step, complete, setStep]);
 
   const handlePrev = useCallback(async () => {
     if (step === IDENTIFICATION_STEP) {
-      await AsyncStorage.removeItem(persistKey);
-      router.back();
+      await exit();
     } else {
       setStep(s => s - 1);
     }
-  }, [step, persistKey, router]);
+  }, [step, exit, setStep]);
 
   // ── Loading & completed ─────────────────────────────────────────────────────
 
@@ -487,7 +268,7 @@ export default function MobileLadderInspectionScreen() {
         signedCount={inspection.signature?.signature ? 1 : 0}
         totalSlots={1}
         attachmentCount={0}
-        pdfLocked={pdfUsage?.isLocked}
+        pdfLocked={pdfLocked}
         downloading={generatingPdf}
         paywallVisible={paywallVisible}
         onPaywallClose={() => setPaywallVisible(false)}
@@ -607,7 +388,7 @@ export default function MobileLadderInspectionScreen() {
 
       {saving && <Text style={styles.savingHint}>შენახვა…</Text>}
 
-      {pdfUsage?.isLocked && <PdfLockedBanner onSubscribe={() => setPaywallVisible(true)} />}
+      {pdfLocked && <PdfLockedBanner onSubscribe={() => setPaywallVisible(true)} />}
 
       <View style={{ flex: 1 }}>
         <WizardStepTransition stepKey={step} direction={direction} animate={animateSteps}>

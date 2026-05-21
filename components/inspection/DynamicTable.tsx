@@ -1,4 +1,4 @@
-import { memo, useMemo, useState } from 'react';
+import { memo, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { A11yText as Text } from '../primitives/A11yText';
@@ -158,13 +158,27 @@ function EditableCell({
   const [draft, setDraft] = useState<string>(
     value != null ? String(value) : '',
   );
+  // Resync the draft when `value` changes from outside this cell — e.g. when
+  // the parent list reuses this instance for a different row after a mid-list
+  // delete (rows are keyed by index). Without this the cell would show the
+  // previous row's stale text. Guarded by `lastEmitted` so in-progress numeric
+  // typing (e.g. "1," which emits 1) isn't clobbered by the echo-back.
+  const lastEmitted = useRef<any>(value);
+  if (value !== lastEmitted.current) {
+    lastEmitted.current = value;
+    const next = value != null ? String(value) : '';
+    if (next !== draft) setDraft(next);
+  }
 
   const handleChange = (text: string) => {
     setDraft(text);
     if (col.type === 'number') {
       const n = parseFloat(text.replace(',', '.'));
-      onChange(isNaN(n) ? null : n);
+      const v = isNaN(n) ? null : n;
+      lastEmitted.current = v;
+      onChange(v);
     } else {
+      lastEmitted.current = text;
       onChange(text);
     }
   };

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { useState, useRef } from 'react';
+import { StyleSheet, TextInput, View } from 'react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -18,6 +18,7 @@ export default function ResetPasswordScreen() {
   const router = useRouter();
   const { signOut } = useSession();
   const [password, setPassword] = useState('');
+  const confirmRef = useRef<TextInput>(null);
   const [confirm, setConfirm] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -89,12 +90,22 @@ export default function ResetPasswordScreen() {
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry
+                  textContentType="newPassword"
+                  autoComplete="new-password"
+                  returnKeyType="next"
+                  blurOnSubmit={false}
+                  onSubmitEditing={() => confirmRef.current?.focus()}
                 />
                 <FloatingLabelInput
+                  ref={confirmRef}
                   label="გაიმეორეთ პაროლი"
                   value={confirm}
                   onChangeText={setConfirm}
                   secureTextEntry
+                  textContentType="newPassword"
+                  autoComplete="new-password"
+                  returnKeyType="go"
+                  onSubmitEditing={() => { if (canSubmit) submit(); }}
                 />
                 {error ? <ErrorText>{error}</ErrorText> : null}
                 <Button

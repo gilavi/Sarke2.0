@@ -176,6 +176,7 @@ function seed(): MockDB {
     template_id: tplA.id, user_id: MOCK_USER_ID, status: 'completed',
     harness_name: null, conclusion_text: 'ყველა სისტემა გამართულია.',
     is_safe_for_use: true,
+    conclusion_photo_paths: [],
     created_at: new Date(Date.now() - 5 * 864e5).toISOString(),
     completed_at: new Date(Date.now() - 5 * 864e5 + 3600e3).toISOString(),
   };
@@ -184,6 +185,7 @@ function seed(): MockDB {
     template_id: tplB.id, user_id: MOCK_USER_ID, status: 'completed',
     harness_name: 'Petzl NEWTON', conclusion_text: 'ორი ქამრის გამოცვლა საჭიროა.',
     is_safe_for_use: false,
+    conclusion_photo_paths: [],
     created_at: new Date(Date.now() - 2 * 864e5).toISOString(),
     completed_at: new Date(Date.now() - 2 * 864e5 + 3600e3).toISOString(),
   };
@@ -191,6 +193,7 @@ function seed(): MockDB {
     id: 'insp-3', project_id: proj2.id, project_item_id: null,
     template_id: tplA.id, user_id: MOCK_USER_ID, status: 'draft',
     harness_name: null, conclusion_text: null, is_safe_for_use: null,
+    conclusion_photo_paths: [],
     created_at: new Date(Date.now() - 1 * 864e5).toISOString(),
     completed_at: null,
   };
@@ -451,6 +454,7 @@ export const inspectionsApi = {
       harness_name: args.harnessName ?? null,
       conclusion_text: null,
       is_safe_for_use: null,
+      conclusion_photo_paths: [],
       created_at: now(),
       completed_at: null,
     };

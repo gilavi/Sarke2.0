@@ -115,11 +115,28 @@ export async function removePendingPdfUpload(id: string): Promise<void> {
   await writePending(filtered);
 }
 
+// Single-flight guard. All callers (app-open in _layout, plus NetInfo fetch +
+// reconnect in OfflineProvider) run on the same JS thread, so a module-level
+// boolean is enough to serialize them. Without it, two concurrent flushes both
+// pass the check-then-create dedup below before either inserts, producing
+// duplicate certificate rows (there is no DB unique constraint on certificates).
+let isFlushingPdfUploads = false;
+
 /**
  * Retry all queued PDF uploads. Call on app open, network reconnect, etc.
- * Idempotent.
+ * Idempotent and single-flight: concurrent calls are no-ops while one runs.
  */
 export async function flushPendingPdfUploads(): Promise<void> {
+  if (isFlushingPdfUploads) return;
+  isFlushingPdfUploads = true;
+  try {
+    await flushPendingPdfUploadsInner();
+  } finally {
+    isFlushingPdfUploads = false;
+  }
+}
+
+async function flushPendingPdfUploadsInner(): Promise<void> {
   let list = await readPending();
   if (list.length === 0) return;
 

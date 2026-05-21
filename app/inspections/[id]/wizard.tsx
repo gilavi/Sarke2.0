@@ -1842,6 +1842,8 @@ const ConclusionStep = memo(function ConclusionStep({
   const needsHarness = template?.category === 'harness';
   const harnessEmpty = needsHarness && !harnessName.trim();
   const conclusionEmpty = !conclusion.trim();
+  // Don't surface "required" errors until the user has engaged with the step.
+  const [interacted, setInteracted] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState<AnswerPhoto | null>(null);
   const hasPhotos = photos.length > 0;
   const accessoryId = 'wizardConclusionAccessory';
@@ -1870,8 +1872,8 @@ const ConclusionStep = memo(function ConclusionStep({
           label="ღვედის დასახელება"
           required
           value={harnessName}
-          onChangeText={onHarnessName}
-          error={harnessEmpty ? 'სავალდებულო ველი' : undefined}
+          onChangeText={(s) => { setInteracted(true); onHarnessName(s); }}
+          error={interacted && harnessEmpty ? 'სავალდებულო ველი' : undefined}
           returnKeyType="done"
           onSubmitEditing={Keyboard.dismiss}
           inputAccessoryViewID={Platform.OS === 'ios' ? accessoryId : undefined}
@@ -1883,6 +1885,7 @@ const ConclusionStep = memo(function ConclusionStep({
           <Pressable
             onPress={() => {
               haptic.light();
+              setInteracted(true);
               onIsSafe(true);
             }}
             style={[
@@ -1910,6 +1913,7 @@ const ConclusionStep = memo(function ConclusionStep({
           <Pressable
             onPress={() => {
               haptic.light();
+              setInteracted(true);
               onIsSafe(false);
             }}
             style={[
@@ -1935,7 +1939,7 @@ const ConclusionStep = memo(function ConclusionStep({
             </Text>
           </Pressable>
         </View>
-        {isSafe === null ? (
+        {interacted && isSafe === null ? (
           <Text style={styles.fieldError}>აუცილებლად აირჩიეთ სტატუსი.</Text>
         ) : null}
       </View>
@@ -1980,8 +1984,8 @@ const ConclusionStep = memo(function ConclusionStep({
           label="დასკვნა"
           required
           value={conclusion}
-          onChangeText={onConclusion}
-          error={conclusionEmpty ? 'სავალდებულო ველი' : undefined}
+          onChangeText={(s) => { setInteracted(true); onConclusion(s); }}
+          error={interacted && conclusionEmpty ? 'სავალდებულო ველი' : undefined}
           multiline
           inputAccessoryViewID={Platform.OS === 'ios' ? accessoryId : undefined}
         />

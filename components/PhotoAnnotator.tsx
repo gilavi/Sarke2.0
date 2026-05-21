@@ -271,8 +271,8 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
     setSaving(true);
     try {
       const uri = await captureRef(photoContainerRef, {
-        format: 'png',
-        quality: 1,
+        format: 'jpg',
+        quality: 0.9,
         result: 'tmpfile',
       });
       onSave(uri);
