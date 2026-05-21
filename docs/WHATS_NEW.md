@@ -4,6 +4,15 @@
 
 ---
 
+## 2026-05-21 — Align web-app React types with the React 19 runtime (web-app)
+
+### Fix — types now match runtime
+Bumped `@types/react` / `@types/react-dom` from `^18` to `^19` (web-app runs React 19.2). Typecheck, build, tests, and smoke stay green — the prior `@types@18` was a latent type-safety hole (types lagged the runtime by a major version).
+
+Note: the install confirmed `react-leaflet@4` peer-requires React 18 (web-app is installed with `--legacy-peer-deps`). It works under React 19 at runtime and typechecks, but a future `react-leaflet@5` bump would make that peer dependency honest.
+
+---
+
 ## 2026-05-21 — Split the Landing + Sidebar god-components (web-app)
 
 ### Internal refactor — no behavior change
