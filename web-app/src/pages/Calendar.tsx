@@ -19,6 +19,7 @@ import { listBriefings } from '@/lib/data/briefings';
 import { listIncidents } from '@/lib/data/incidents';
 import { listProjects } from '@/lib/data/projects';
 import { SkeletonList } from '@/components/SkeletonCard';
+import { projectKeys, inspectionKeys, bobcatKeys, excavatorKeys, generalEquipmentKeys, briefingKeys, incidentKeys } from '@/app/queryKeys';
 
 /* ─── Types ─── */
 
@@ -219,13 +220,13 @@ export default function Calendar() {
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const [dayModal, setDayModal] = useState<{ date: Date; events: CalendarEvent[] } | null>(null);
 
-  const inspectionsQ = useQuery({ queryKey: ['inspections'], queryFn: () => listInspections() });
-  const bobcatQ = useQuery({ queryKey: ['bobcatInspections'], queryFn: () => listBobcatInspections() });
-  const excavatorQ = useQuery({ queryKey: ['excavatorInspections'], queryFn: () => listExcavatorInspections() });
-  const generalQ = useQuery({ queryKey: ['generalEquipmentInspections'], queryFn: () => listGeneralEquipmentInspections() });
-  const briefingQ = useQuery({ queryKey: ['briefings'], queryFn: () => listBriefings() });
-  const incidentQ = useQuery({ queryKey: ['incidents'], queryFn: () => listIncidents() });
-  const projectsQ = useQuery({ queryKey: ['projects'], queryFn: () => listProjects() });
+  const inspectionsQ = useQuery({ queryKey: inspectionKeys.lists(), queryFn: () => listInspections() });
+  const bobcatQ = useQuery({ queryKey: bobcatKeys.lists(), queryFn: () => listBobcatInspections() });
+  const excavatorQ = useQuery({ queryKey: excavatorKeys.lists(), queryFn: () => listExcavatorInspections() });
+  const generalQ = useQuery({ queryKey: generalEquipmentKeys.lists(), queryFn: () => listGeneralEquipmentInspections() });
+  const briefingQ = useQuery({ queryKey: briefingKeys.lists(), queryFn: () => listBriefings() });
+  const incidentQ = useQuery({ queryKey: incidentKeys.lists(), queryFn: () => listIncidents() });
+  const projectsQ = useQuery({ queryKey: projectKeys.lists(), queryFn: () => listProjects() });
 
   const isLoading =
     inspectionsQ.isLoading ||

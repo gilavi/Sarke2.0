@@ -6,6 +6,7 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { SkeletonList } from '@/components/SkeletonCard';
 import { listIncidents, deleteIncident, INCIDENT_TYPE_LABEL, type Incident } from '@/lib/data/incidents';
 import { listProjects } from '@/lib/data/projects';
+import { projectKeys, incidentKeys } from '@/app/queryKeys';
 
 const INCIDENT_AVATAR: Record<string, { emoji: string; bg: string }> = {
   fatal:    { emoji: '🚨', bg: 'bg-red-50 dark:bg-red-950/20' },
@@ -35,13 +36,13 @@ const itemVariants = {
 
 export default function Incidents() {
   const qc = useQueryClient();
-  const { data: items, error } = useQuery({ queryKey: ['incidents'], queryFn: () => listIncidents() });
-  const { data: projectList } = useQuery({ queryKey: ['projects'], queryFn: listProjects });
+  const { data: items, error } = useQuery({ queryKey: incidentKeys.lists(), queryFn: () => listIncidents() });
+  const { data: projectList } = useQuery({ queryKey: projectKeys.lists(), queryFn: listProjects });
   const projects = projectList ? Object.fromEntries(projectList.map((p) => [p.id, p])) : {};
 
   const deleteMutation = useMutation({
     mutationFn: deleteIncident,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['incidents'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: incidentKeys.lists() }),
   });
 
   function handleDelete(item: Incident) {

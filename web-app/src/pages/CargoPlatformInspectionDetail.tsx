@@ -28,6 +28,7 @@ import {
 } from '@/lib/data/cargoPlatform';
 import { getProject } from '@/lib/data/projects';
 import { routes } from '@/app/routes';
+import { projectKeys, cargoPlatformKeys } from '@/app/queryKeys';
 
 const VERDICT_COLOR: Record<CPVerdict, string> = {
   approved:    'border-emerald-600 bg-emerald-600 text-white',
@@ -52,13 +53,13 @@ export default function CargoPlatformInspectionDetail() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const { data: item, error, isLoading } = useQuery({
-    queryKey: ['cargoPlatformInspection', id],
+    queryKey: cargoPlatformKeys.detail(id),
     queryFn: () => getCargoPlatformInspection(id!),
     enabled: !!id,
   });
   const projectId = item?.projectId;
   const { data: project } = useQuery({
-    queryKey: ['project', projectId],
+    queryKey: projectKeys.detail(projectId),
     queryFn: () => getProject(projectId!),
     enabled: !!projectId,
   });
@@ -67,8 +68,8 @@ export default function CargoPlatformInspectionDetail() {
     mutationFn: (patch: Parameters<typeof updateCargoPlatformInspection>[1]) =>
       updateCargoPlatformInspection(id!, patch),
     onSuccess: (_data, variables) => {
-      qc.invalidateQueries({ queryKey: ['cargoPlatformInspection', id] });
-      qc.invalidateQueries({ queryKey: ['cargoPlatformInspections'] });
+      qc.invalidateQueries({ queryKey: cargoPlatformKeys.detail(id) });
+      qc.invalidateQueries({ queryKey: cargoPlatformKeys.lists() });
       if (variables.status === 'completed') setJustCompleted(true);
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
@@ -77,7 +78,7 @@ export default function CargoPlatformInspectionDetail() {
   const delMutation = useMutation({
     mutationFn: () => deleteCargoPlatformInspection(id!),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['cargoPlatformInspections'] });
+      qc.invalidateQueries({ queryKey: cargoPlatformKeys.lists() });
       navigate('/inspections');
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),

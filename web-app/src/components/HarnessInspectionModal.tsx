@@ -22,6 +22,7 @@ import {
   type Inspection,
 } from '@/lib/data/inspections';
 import { useAuth } from '@/lib/auth';
+import { projectKeys, inspectionKeys } from '@/app/queryKeys';
 
 const HARNESS_TEMPLATE_ID = '22222222-2222-2222-2222-222222222222';
 
@@ -64,13 +65,13 @@ export default function HarnessInspectionModal({ open, onClose, defaultProjectId
   const inspectorName = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || null;
 
   const { data: projects = [] } = useQuery({
-    queryKey: ['projects'],
+    queryKey: projectKeys.lists(),
     queryFn: listProjects,
     enabled: open,
   });
 
   const questionsQ = useQuery({
-    queryKey: ['questions', HARNESS_TEMPLATE_ID],
+    queryKey: inspectionKeys.questions(HARNESS_TEMPLATE_ID),
     queryFn: () => listQuestions(HARNESS_TEMPLATE_ID),
     enabled: open,
   });
@@ -78,7 +79,7 @@ export default function HarnessInspectionModal({ open, onClose, defaultProjectId
 
   // Load existing answers if reopening a draft
   const existingAnswersQ = useQuery({
-    queryKey: ['answers', inspection?.id],
+    queryKey: inspectionKeys.answers(inspection?.id),
     queryFn: () => listAnswers(inspection!.id),
     enabled: !!inspection?.id,
   });
@@ -119,7 +120,7 @@ export default function HarnessInspectionModal({ open, onClose, defaultProjectId
         templateId: HARNESS_TEMPLATE_ID,
         inspectorName,
       });
-      qc.invalidateQueries({ queryKey: ['inspections'] });
+      qc.invalidateQueries({ queryKey: inspectionKeys.lists() });
       setInspection(created);
       setStep(STEP_HARNESS);
     } catch (e) {
@@ -153,8 +154,8 @@ export default function HarnessInspectionModal({ open, onClose, defaultProjectId
         conclusion_text: conclusionText.trim(),
         conclusion_photo_paths: conclusionPhotos,
       });
-      qc.invalidateQueries({ queryKey: ['inspections'] });
-      qc.invalidateQueries({ queryKey: ['inspection', inspection.id] });
+      qc.invalidateQueries({ queryKey: inspectionKeys.lists() });
+      qc.invalidateQueries({ queryKey: inspectionKeys.detail(inspection.id) });
       setStep(STEP_SUCCESS);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));

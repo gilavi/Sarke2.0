@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ProjectPicker } from '@/components/ui/project-picker';
 import { listProjects } from '@/lib/data/projects';
+import { projectKeys } from '@/app/queryKeys';
 import { createGeneralEquipmentInspection, type GEInspectionType } from '@/lib/data/generalEquipment';
 
 const TYPE_LABELS: Record<GEInspectionType, string> = {
@@ -19,7 +20,7 @@ export default function NewGeneralEquipmentInspection() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
 
-  const { data: projects } = useQuery({ queryKey: ['projects'], queryFn: listProjects });
+  const { data: projects } = useQuery({ queryKey: projectKeys.lists(), queryFn: listProjects });
 
   const [projectId, setProjectId] = useState(params.get('project') ?? '');
   const [objectName, setObjectName] = useState('');

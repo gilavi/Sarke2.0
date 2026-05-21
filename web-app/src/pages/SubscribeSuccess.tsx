@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AuthLayout } from './auth/AuthLayout';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { accountKeys } from '@/app/queryKeys';
 
 export default function SubscribeSuccess() {
   const qc = useQueryClient();
@@ -14,8 +15,8 @@ export default function SubscribeSuccess() {
   useEffect(() => {
     // Refresh cached subscription state so /account shows the active tier as
     // soon as the user returns from BOG.
-    qc.invalidateQueries({ queryKey: ['pdf-usage'] });
-    qc.invalidateQueries({ queryKey: ['payment-history'] });
+    qc.invalidateQueries({ queryKey: accountKeys.pdfUsage() });
+    qc.invalidateQueries({ queryKey: accountKeys.paymentHistory() });
 
     // Only trigger the custom scheme redirect when coming from the mobile app's
     // WebView (SFAuthenticationSession). The mobile Subscribe page appends

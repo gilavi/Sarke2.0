@@ -17,6 +17,7 @@ import {
   type AlcoholControlOrderFormData,
 } from '@/lib/data/orders';
 import { getProject, listProjects } from '@/lib/data/projects';
+import { projectKeys } from '@/app/queryKeys';
 import { ProjectPicker } from '@/components/ui/project-picker';
 import {
   buildFireSafetyOrderHtml,
@@ -117,7 +118,7 @@ export default function NewOrder() {
 
   // Load projects list when no project was pre-filled (direct navigation to /orders/new)
   const { data: projects } = useQuery({
-    queryKey: ['projects'],
+    queryKey: projectKeys.lists(),
     queryFn: listProjects,
     enabled: !prefilledProjectId,
   });

@@ -10,6 +10,7 @@ import {
   type BobcatItemResult,
 } from '@/lib/data/bobcat';
 import { getProject } from '@/lib/data/projects';
+import { projectKeys, bobcatKeys } from '@/app/queryKeys';
 import { A4_PRINT_STYLES, printAfterRender } from '@/lib/printable';
 import { signedInspectionPhotoUrl } from '@/lib/photoUpload';
 
@@ -38,12 +39,12 @@ export default function BobcatPrint() {
   const isPreview = searchParams.get('preview') === '1';
 
   const inspectionQ = useQuery({
-    queryKey: ['bobcatInspection', id],
+    queryKey: bobcatKeys.detail(id),
     queryFn: () => getBobcatInspection(id!),
     enabled: !!id,
   });
   const projectQ = useQuery({
-    queryKey: ['project', inspectionQ.data?.projectId],
+    queryKey: projectKeys.detail(inspectionQ.data?.projectId),
     queryFn: () => getProject(inspectionQ.data!.projectId),
     enabled: !!inspectionQ.data?.projectId,
   });

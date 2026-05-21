@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { listTemplates, SIGNER_ROLE_LABEL, type Template } from '@/lib/data/templates';
+import { templateKeys } from '@/app/queryKeys';
 import { SkeletonGrid } from '@/components/SkeletonCard';
 
 const CATEGORY_LABEL: Record<string, string> = {
@@ -21,7 +22,7 @@ function categoryLabel(t: Template): string {
 
 export default function Templates() {
   const q = useQuery({
-    queryKey: ['templates'],
+    queryKey: templateKeys.lists(),
     queryFn: listTemplates,
   });
 

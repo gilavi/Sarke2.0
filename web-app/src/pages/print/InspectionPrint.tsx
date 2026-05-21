@@ -9,6 +9,7 @@ import {
   type AnswerPhoto,
 } from '@/lib/data/inspections';
 import { getProject } from '@/lib/data/projects';
+import { projectKeys, inspectionKeys } from '@/app/queryKeys';
 import { getTemplate } from '@/lib/data/templates';
 import { signedInspectionPhotoUrl } from '@/lib/photoUpload';
 import { buildInspectionPdfTemplate } from '@root/lib/inspectionPdfTemplate';
@@ -28,12 +29,12 @@ export default function InspectionPrint() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const inspQ = useQuery({
-    queryKey: ['inspection', id],
+    queryKey: inspectionKeys.detail(id),
     queryFn: () => getInspection(id!),
     enabled: !!id,
   });
   const projQ = useQuery({
-    queryKey: ['project', inspQ.data?.project_id],
+    queryKey: projectKeys.detail(inspQ.data?.project_id),
     queryFn: () => getProject(inspQ.data!.project_id),
     enabled: !!inspQ.data?.project_id,
   });
@@ -43,12 +44,12 @@ export default function InspectionPrint() {
     enabled: !!inspQ.data?.template_id,
   });
   const questionsQ = useQuery({
-    queryKey: ['questions', inspQ.data?.template_id],
+    queryKey: inspectionKeys.questions(inspQ.data?.template_id),
     queryFn: () => listQuestions(inspQ.data!.template_id),
     enabled: !!inspQ.data?.template_id,
   });
   const answersQ = useQuery({
-    queryKey: ['answers', id],
+    queryKey: inspectionKeys.answers(id),
     queryFn: () => listAnswers(id!),
     enabled: !!id,
   });

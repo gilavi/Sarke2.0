@@ -18,6 +18,7 @@ import {
 } from '@/lib/data/orders';
 import { getProject } from '@/lib/data/projects';
 import { routes } from '@/app/routes';
+import { projectKeys, orderKeys } from '@/app/queryKeys';
 import {
   buildFireSafetyOrderHtml,
   buildFireSafetyOrderEnterpriseHtml,
@@ -32,13 +33,13 @@ export default function OrderDetail() {
   const qc = useQueryClient();
 
   const { data: order, isLoading, error } = useQuery({
-    queryKey: ['order', id],
+    queryKey: orderKeys.detail(id),
     queryFn: () => getOrder(id!),
     enabled: !!id,
   });
   const projectId = order?.projectId;
   const { data: project } = useQuery({
-    queryKey: ['project', projectId],
+    queryKey: projectKeys.detail(projectId),
     queryFn: () => getProject(projectId!),
     enabled: !!projectId,
   });
@@ -49,7 +50,7 @@ export default function OrderDetail() {
 
   const updateMutation = useMutation({
     mutationFn: (patch: Parameters<typeof updateOrder>[1]) => updateOrder(id!, patch),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['order', id] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: orderKeys.detail(id) }),
     onError: (e) => toast.error(e instanceof Error ? e.message : 'შეცდომა'),
   });
 
@@ -83,7 +84,7 @@ export default function OrderDetail() {
     setDeleting(true);
     try {
       await deleteOrder(id!);
-      qc.invalidateQueries({ queryKey: ['orders'] });
+      qc.invalidateQueries({ queryKey: orderKeys.lists() });
       navigate(-1);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'წაშლა ვერ მოხერხდა');

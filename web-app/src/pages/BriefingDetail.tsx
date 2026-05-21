@@ -18,6 +18,7 @@ import {
 import { fmtDateKa } from '@/lib/utils';
 import { getProject } from '@/lib/data/projects';
 import { routes } from '@/app/routes';
+import { projectKeys, briefingKeys } from '@/app/queryKeys';
 
 export default function BriefingDetail() {
   const { id } = useParams();
@@ -27,13 +28,13 @@ export default function BriefingDetail() {
   const [actionError, setActionError] = useState<string | null>(null);
 
   const { data: b, error, isLoading } = useQuery({
-    queryKey: ['briefing', id],
+    queryKey: briefingKeys.detail(id),
     queryFn: () => getBriefing(id!),
     enabled: !!id,
   });
   const projectId = b?.projectId;
   const { data: project } = useQuery({
-    queryKey: ['project', projectId],
+    queryKey: projectKeys.detail(projectId),
     queryFn: () => getProject(projectId!),
     enabled: !!projectId,
   });
@@ -41,8 +42,8 @@ export default function BriefingDetail() {
   const updateMutation = useMutation({
     mutationFn: (patch: Parameters<typeof updateBriefing>[1]) => updateBriefing(id!, patch),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['briefing', id] });
-      qc.invalidateQueries({ queryKey: ['briefings'] });
+      qc.invalidateQueries({ queryKey: briefingKeys.detail(id) });
+      qc.invalidateQueries({ queryKey: briefingKeys.lists() });
     },
     onError: (e) => setActionError(e instanceof Error ? e.message : String(e)),
   });
@@ -50,7 +51,7 @@ export default function BriefingDetail() {
   const delMutation = useMutation({
     mutationFn: () => deleteBriefing(id!),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['briefings'] });
+      qc.invalidateQueries({ queryKey: briefingKeys.lists() });
       navigate('/briefings');
     },
     onError: (e) => setActionError(e instanceof Error ? e.message : String(e)),

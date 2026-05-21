@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ProjectPicker } from '@/components/ui/project-picker';
 import { listProjects } from '@/lib/data/projects';
+import { projectKeys } from '@/app/queryKeys';
 import {
   BOBCAT_TEMPLATE_ID,
   LARGE_LOADER_TEMPLATE_ID,
@@ -24,7 +25,7 @@ export default function NewBobcatInspection() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
 
-  const { data: projects } = useQuery({ queryKey: ['projects'], queryFn: listProjects });
+  const { data: projects } = useQuery({ queryKey: projectKeys.lists(), queryFn: listProjects });
 
   const [projectId, setProjectId] = useState(params.get('project') ?? '');
   const [variant, setVariant] = useState<'bobcat' | 'large_loader'>('bobcat');

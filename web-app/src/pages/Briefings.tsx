@@ -7,6 +7,7 @@ import { SkeletonList } from '@/components/SkeletonCard';
 import { listBriefings, deleteBriefing } from '@/lib/data/briefings';
 import { listProjects } from '@/lib/data/projects';
 import { fmtDateKa } from '@/lib/utils';
+import { projectKeys, briefingKeys } from '@/app/queryKeys';
 
 const STATUS_LABEL: Record<string, string> = {
   draft: 'დრაფტი',
@@ -28,14 +29,14 @@ export default function Briefings() {
   const [searchParams] = useSearchParams();
   const projectParam = searchParams.get('project') ?? '';
 
-  const { data: items, error } = useQuery({ queryKey: ['briefings'], queryFn: () => listBriefings() });
-  const { data: projectList } = useQuery({ queryKey: ['projects'], queryFn: listProjects });
+  const { data: items, error } = useQuery({ queryKey: briefingKeys.lists(), queryFn: () => listBriefings() });
+  const { data: projectList } = useQuery({ queryKey: projectKeys.lists(), queryFn: listProjects });
   const projects = projectList ? Object.fromEntries(projectList.map((p) => [p.id, p])) : {};
   const filtered = projectParam ? (items?.filter((b) => b.projectId === projectParam) ?? null) : (items ?? null);
 
   const deleteMutation = useMutation({
     mutationFn: deleteBriefing,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['briefings'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: briefingKeys.lists() }),
   });
 
   function handleDelete(id: string) {

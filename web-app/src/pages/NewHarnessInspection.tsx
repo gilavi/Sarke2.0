@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { listProjects, type Project } from '@/lib/data/projects';
 import { createInspection } from '@/lib/data/inspections';
 import { useAuth } from '@/lib/auth';
+import { projectKeys } from '@/app/queryKeys';
 
 const HARNESS_TEMPLATE_ID = '22222222-2222-2222-2222-222222222222';
 
@@ -15,7 +16,7 @@ export default function NewHarnessInspection() {
   const { profile } = useAuth();
   const preselectedProject = params.get('project') ?? '';
 
-  const { data: projects = [] } = useQuery({ queryKey: ['projects'], queryFn: listProjects });
+  const { data: projects = [] } = useQuery({ queryKey: projectKeys.lists(), queryFn: listProjects });
   const [selected, setSelected] = useState(preselectedProject);
   const [submitting, setSubmitting] = useState(false);
 

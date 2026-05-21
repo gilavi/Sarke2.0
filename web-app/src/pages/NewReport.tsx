@@ -5,6 +5,7 @@ import { ProjectPicker } from '@/components/ui/project-picker';
 import { FloatingLabelInput } from '@/components/ui/floating-label-input';
 import { WizardShell } from '@/components/ui/wizard-shell';
 import { listProjects } from '@/lib/data/projects';
+import { projectKeys, reportKeys } from '@/app/queryKeys';
 import { createReport, type Report } from '@/lib/data/reports';
 
 const STEPS = ['ძირითადი'];
@@ -14,7 +15,7 @@ export default function NewReport() {
   const qc = useQueryClient();
   const [params] = useSearchParams();
 
-  const { data: projects } = useQuery({ queryKey: ['projects'], queryFn: listProjects });
+  const { data: projects } = useQuery({ queryKey: projectKeys.lists(), queryFn: listProjects });
 
   const prefilledProjectId = params.get('project') ?? '';
 
@@ -28,7 +29,7 @@ export default function NewReport() {
         title: title.trim() || 'უსახელო რეპორტი',
       }),
     onSuccess: (created: Report) => {
-      qc.invalidateQueries({ queryKey: ['reports'] });
+      qc.invalidateQueries({ queryKey: reportKeys.lists() });
       navigate(`/reports/${created.id}`);
     },
   });

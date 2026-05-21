@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from './supabase';
 import { useAuth } from './auth';
+import { accountKeys } from '@/app/queryKeys';
 
 export interface PaymentRecord {
   id: string;
@@ -27,7 +28,7 @@ export function usePaymentHistory() {
   const userId = user?.id ?? null;
 
   return useQuery<PaymentRecord[]>({
-    queryKey: ['payment-history', userId],
+    queryKey: accountKeys.paymentHistory(userId ?? undefined),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('payment_records')

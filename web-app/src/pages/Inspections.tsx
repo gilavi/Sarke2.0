@@ -20,6 +20,7 @@ import { listCargoPlatformInspections } from '@/lib/data/cargoPlatform';
 import { listProjects } from '@/lib/data/projects';
 import InspectionWizard from '@/components/InspectionWizard';
 import HarnessInspectionModal from '@/components/HarnessInspectionModal';
+import { projectKeys, inspectionKeys, bobcatKeys, excavatorKeys, generalEquipmentKeys, cargoPlatformKeys } from '@/app/queryKeys';
 
 const TYPE_LABEL: Record<string, string> = {
   harness:            '🦺 დამც. ქამარი',
@@ -90,22 +91,22 @@ export default function Inspections() {
   const [harnessOpen, setHarnessOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Row | null>(null);
 
-  const { data: genericInspections, isLoading: l1 } = useQuery({ queryKey: ['inspections'], queryFn: () => listInspections() });
-  const { data: bobcats, isLoading: l2 } = useQuery({ queryKey: ['bobcatInspections'], queryFn: () => listBobcatInspections() });
-  const { data: generalEq, isLoading: l3 } = useQuery({ queryKey: ['generalEquipmentInspections'], queryFn: () => listGeneralEquipmentInspections() });
-  const { data: excavators, isLoading: l4 } = useQuery({ queryKey: ['excavatorInspections'], queryFn: () => listExcavatorInspections() });
-  const { data: cargoPlatforms, isLoading: l5 } = useQuery({ queryKey: ['cargoPlatformInspections'], queryFn: () => listCargoPlatformInspections() });
-  const { data: projectList } = useQuery({ queryKey: ['projects'], queryFn: listProjects });
+  const { data: genericInspections, isLoading: l1 } = useQuery({ queryKey: inspectionKeys.lists(), queryFn: () => listInspections() });
+  const { data: bobcats, isLoading: l2 } = useQuery({ queryKey: bobcatKeys.lists(), queryFn: () => listBobcatInspections() });
+  const { data: generalEq, isLoading: l3 } = useQuery({ queryKey: generalEquipmentKeys.lists(), queryFn: () => listGeneralEquipmentInspections() });
+  const { data: excavators, isLoading: l4 } = useQuery({ queryKey: excavatorKeys.lists(), queryFn: () => listExcavatorInspections() });
+  const { data: cargoPlatforms, isLoading: l5 } = useQuery({ queryKey: cargoPlatformKeys.lists(), queryFn: () => listCargoPlatformInspections() });
+  const { data: projectList } = useQuery({ queryKey: projectKeys.lists(), queryFn: listProjects });
 
   const projects = projectList ? Object.fromEntries(projectList.map((p) => [p.id, p])) : {};
   const [filter, setFilter] = useState<string>(projectParam);
 
   const isLoading = l1 || l2 || l3 || l4 || l5;
 
-  const delInspection = useMutation({ mutationFn: deleteInspection, onSuccess: () => qc.invalidateQueries({ queryKey: ['inspections'] }) });
-  const delBobcat = useMutation({ mutationFn: deleteBobcatInspection, onSuccess: () => qc.invalidateQueries({ queryKey: ['bobcatInspections'] }) });
-  const delExcavator = useMutation({ mutationFn: deleteExcavatorInspection, onSuccess: () => qc.invalidateQueries({ queryKey: ['excavatorInspections'] }) });
-  const delGeneral = useMutation({ mutationFn: deleteGeneralEquipmentInspection, onSuccess: () => qc.invalidateQueries({ queryKey: ['generalEquipmentInspections'] }) });
+  const delInspection = useMutation({ mutationFn: deleteInspection, onSuccess: () => qc.invalidateQueries({ queryKey: inspectionKeys.lists() }) });
+  const delBobcat = useMutation({ mutationFn: deleteBobcatInspection, onSuccess: () => qc.invalidateQueries({ queryKey: bobcatKeys.lists() }) });
+  const delExcavator = useMutation({ mutationFn: deleteExcavatorInspection, onSuccess: () => qc.invalidateQueries({ queryKey: excavatorKeys.lists() }) });
+  const delGeneral = useMutation({ mutationFn: deleteGeneralEquipmentInspection, onSuccess: () => qc.invalidateQueries({ queryKey: generalEquipmentKeys.lists() }) });
 
   function confirmDelete() {
     if (!pendingDelete) return;

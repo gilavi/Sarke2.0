@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from './supabase';
 import { useAuth } from './auth';
 import { PDF_FREE_LIMIT } from './pdfGate';
+import { accountKeys } from '@/app/queryKeys';
 
 export interface PdfUsage {
   count: number;
@@ -17,7 +18,7 @@ export function usePdfUsage() {
   const userId = user?.id ?? null;
 
   return useQuery<PdfUsage>({
-    queryKey: ['pdf-usage', userId],
+    queryKey: accountKeys.pdfUsage(userId ?? undefined),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('users')
@@ -49,5 +50,5 @@ export function usePdfUsage() {
 
 export function useInvalidatePdfUsage() {
   const qc = useQueryClient();
-  return () => qc.invalidateQueries({ queryKey: ['pdf-usage'] });
+  return () => qc.invalidateQueries({ queryKey: accountKeys.pdfUsage() });
 }

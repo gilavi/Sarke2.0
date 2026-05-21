@@ -7,6 +7,7 @@ import {
   INCIDENT_TYPE_LABEL,
 } from '@/lib/data/incidents';
 import { getProject } from '@/lib/data/projects';
+import { projectKeys, incidentKeys } from '@/app/queryKeys';
 import { useAuth } from '@/lib/auth';
 import { A4_PRINT_STYLES, printAfterRender, urlToDataUrl } from '@/lib/printable';
 
@@ -23,13 +24,13 @@ export default function IncidentPrint() {
   const { profile, user } = useAuth();
 
   const incidentQ = useQuery({
-    queryKey: ['incident', id],
+    queryKey: incidentKeys.detail(id),
     queryFn: () => getIncident(id!),
     enabled: !!id,
   });
 
   const projectQ = useQuery({
-    queryKey: ['project', incidentQ.data?.project_id],
+    queryKey: projectKeys.detail(incidentQ.data?.project_id),
     queryFn: () => getProject(incidentQ.data!.project_id),
     enabled: !!incidentQ.data?.project_id,
   });

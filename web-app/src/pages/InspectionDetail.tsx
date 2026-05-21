@@ -31,6 +31,7 @@ import {
 } from '@/lib/data/inspections';
 import { getProject } from '@/lib/data/projects';
 import { routes } from '@/app/routes';
+import { projectKeys, inspectionKeys } from '@/app/queryKeys';
 
 type PendingInspection = Parameters<typeof createInspection>[0];
 // photoUpload imported dynamically inside QuestionRow to keep top-level bundle lean
@@ -53,7 +54,7 @@ export default function InspectionDetail() {
   }, [isPending, pendingCreate, navigate]);
 
   const inspectionQ = useQuery({
-    queryKey: ['inspection', id],
+    queryKey: inspectionKeys.detail(id),
     queryFn: () => getInspection(id!),
     enabled: !!id && !isPending,
   });
@@ -66,11 +67,11 @@ export default function InspectionDetail() {
   }, [id, inspectionQ.data?.template_id, navigate]);
 
   const pdfsQ = useQuery({
-    queryKey: ['inspectionPdfs', id],
+    queryKey: inspectionKeys.pdfs(id),
     queryFn: () => listInspectionPdfs(id!),
     enabled: !!id && !isPending,
   });
-  const listCache = qc.getQueryData<Inspection[]>(['inspections']);
+  const listCache = qc.getQueryData<Inspection[]>(inspectionKeys.lists() as unknown as string[]);
   const cachedInspection = listCache?.find((i) => i.id === id) ?? null;
   const inspection: Inspection | null = inspectionQ.data ?? cachedInspection ?? (isPending && pendingCreate ? {
     id: 'draft',
@@ -91,18 +92,18 @@ export default function InspectionDetail() {
   } : null);
   const projectId = inspectionQ.data?.project_id;
   const { data: project } = useQuery({
-    queryKey: ['project', projectId],
+    queryKey: projectKeys.detail(projectId),
     queryFn: () => getProject(projectId!),
     enabled: !!projectId,
   });
   const templateId = isPending ? pendingCreate?.templateId : inspection?.template_id;
   const questionsQ = useQuery({
-    queryKey: ['questions', templateId],
+    queryKey: inspectionKeys.questions(templateId),
     queryFn: () => listQuestions(templateId!),
     enabled: !!templateId,
   });
   const answersQ = useQuery({
-    queryKey: ['answers', id],
+    queryKey: inspectionKeys.answers(id),
     queryFn: () => listAnswers(id!),
     enabled: !!id && !isPending,
   });
@@ -167,8 +168,8 @@ export default function InspectionDetail() {
         status: 'completed',
       }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['inspection', id] });
-      qc.invalidateQueries({ queryKey: ['inspections'] });
+      qc.invalidateQueries({ queryKey: inspectionKeys.detail(id) });
+      qc.invalidateQueries({ queryKey: inspectionKeys.lists() });
       setJustCompleted(true);
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
@@ -181,7 +182,7 @@ export default function InspectionDetail() {
         is_safe_for_use: safeDraft === undefined ? inspection?.is_safe_for_use ?? null : safeDraft,
       }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['inspection', id] });
+      qc.invalidateQueries({ queryKey: inspectionKeys.detail(id) });
       setConclusionDraft(null);
       setSafeDraft(undefined);
     },
@@ -191,7 +192,7 @@ export default function InspectionDetail() {
   const deleteMutation = useMutation({
     mutationFn: () => deleteInspection(id!),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['inspections'] });
+      qc.invalidateQueries({ queryKey: inspectionKeys.lists() });
       navigate('/inspections');
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
@@ -221,7 +222,7 @@ export default function InspectionDetail() {
       try {
         realId = await lazyCreate(createInspection);
         if (!realId) return;
-        qc.invalidateQueries({ queryKey: ['inspections'] });
+        qc.invalidateQueries({ queryKey: inspectionKeys.lists() });
         navigate(`/inspections/${realId}`, { replace: true, state: {} });
       } catch (e) {
         toast.error(e instanceof Error ? e.message : String(e));
@@ -282,7 +283,7 @@ export default function InspectionDetail() {
         onComplete={() => {
           setJustCompleted(true);
           setWizardOpen(false);
-          qc.invalidateQueries({ queryKey: ['inspection', id] });
+          qc.invalidateQueries({ queryKey: inspectionKeys.detail(id) });
         }}
       />
 
@@ -340,7 +341,7 @@ export default function InspectionDetail() {
                   const v = e.target.value.trim() || null;
                   if (v !== inspection.department)
                     updateInspection(id!, { department: v }).then(() =>
-                      qc.invalidateQueries({ queryKey: ['inspection', id] })
+                      qc.invalidateQueries({ queryKey: inspectionKeys.detail(id) })
                     );
                 }}
                 placeholder="დეპარტამენტის დასახელება"
@@ -364,7 +365,7 @@ export default function InspectionDetail() {
                   const v = e.target.value.trim() || null;
                   if (v !== inspection.inspector_name)
                     updateInspection(id!, { inspector_name: v }).then(() =>
-                      qc.invalidateQueries({ queryKey: ['inspection', id] })
+                      qc.invalidateQueries({ queryKey: inspectionKeys.detail(id) })
                     );
                 }}
                 placeholder="სახელი გვარი"
@@ -469,7 +470,7 @@ export default function InspectionDetail() {
                     />
                     <button
                       className="text-xs text-neutral-500 hover:text-red-600"
-                      onClick={() => { if (!isPending) updateInspection(id!, { inspector_signature: null }).then(() => qc.invalidateQueries({ queryKey: ['inspection', id] })); }}
+                      onClick={() => { if (!isPending) updateInspection(id!, { inspector_signature: null }).then(() => qc.invalidateQueries({ queryKey: inspectionKeys.detail(id) })); }}
                     >
                       წაშლა
                     </button>
@@ -481,7 +482,7 @@ export default function InspectionDetail() {
                       if (isPending) { setSigningOpen(false); return; }
                       const base64 = dataUrl.replace(/^data:image\/png;base64,/, '');
                       updateInspection(id!, { inspector_signature: base64 }).then(() => {
-                        qc.invalidateQueries({ queryKey: ['inspection', id] });
+                        qc.invalidateQueries({ queryKey: inspectionKeys.detail(id) });
                         setSigningOpen(false);
                       });
                     }}
@@ -599,7 +600,7 @@ function QuestionRow({
 
   // Photos — only loaded for photo_upload questions where an answer exists
   const photosQ = useQuery<AnswerPhoto[]>({
-    queryKey: ['answerPhotos', ans?.id],
+    queryKey: inspectionKeys.answerPhotos(ans?.id),
     queryFn: () => listAnswerPhotos(ans!.id),
     enabled: !!ans?.id && q.type === 'photo_upload',
     staleTime: 0,
@@ -665,7 +666,7 @@ function QuestionRow({
           m.upsertAnswer({ inspectionId, questionId: q.id }),
         );
         answerId = saved.id;
-        qc.invalidateQueries({ queryKey: ['answers', inspectionId] });
+        qc.invalidateQueries({ queryKey: inspectionKeys.answers(inspectionId) });
       }
       // Best-effort geolocation — don't block upload if denied/unavailable
       const geo = await new Promise<{ latitude?: number; longitude?: number; address?: string } | null>((resolve) => {
@@ -680,7 +681,7 @@ function QuestionRow({
         const path = await upload('inspections', inspectionId, q.id, file);
         await addAnswerPhoto(answerId, path, null, geo ?? undefined);
       }
-      qc.invalidateQueries({ queryKey: ['answerPhotos', answerId] });
+      qc.invalidateQueries({ queryKey: inspectionKeys.answerPhotos(answerId) });
     } catch (e) {
       setPhotoError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -695,7 +696,7 @@ function QuestionRow({
     } catch {
       // best-effort
     }
-    qc.invalidateQueries({ queryKey: ['answerPhotos', ans?.id] });
+    qc.invalidateQueries({ queryKey: inspectionKeys.answerPhotos(ans?.id) });
   }
 
   return (

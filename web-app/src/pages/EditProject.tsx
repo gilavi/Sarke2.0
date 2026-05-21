@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { getProject, updateProject, updateProjectLogo } from '@/lib/data/projects';
 import { AddressInput } from '@/components/AddressInput';
+import { projectKeys } from '@/app/queryKeys';
 
 export default function EditProject() {
   const { id } = useParams();
@@ -14,7 +15,7 @@ export default function EditProject() {
   const qc = useQueryClient();
 
   const { data: project, isLoading } = useQuery({
-    queryKey: ['project', id],
+    queryKey: projectKeys.detail(id),
     queryFn: () => getProject(id!),
     enabled: !!id,
   });
@@ -69,8 +70,8 @@ export default function EditProject() {
       }
     },
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['project', id] });
-      void qc.invalidateQueries({ queryKey: ['projects'] });
+      void qc.invalidateQueries({ queryKey: projectKeys.detail(id) });
+      void qc.invalidateQueries({ queryKey: projectKeys.lists() });
       navigate(`/projects/${id}`);
     },
   });

@@ -18,6 +18,7 @@ import { usePdfUsage, useInvalidatePdfUsage } from '@/lib/usePdfUsage';
 import { fmtDateTimeKa, fmtDateKa } from '@/lib/utils';
 import { listCertificates } from '@/lib/data/certificates';
 import { listQualifications, qualificationLabel } from '@/lib/data/qualifications';
+import { certificateKeys, qualificationKeys } from '@/app/queryKeys';
 
 const STATUS_LABEL: Record<PaymentRecord['status'], string> = {
   success: 'წარმატებული',
@@ -189,8 +190,8 @@ export default function Account() {
   const [cancelling, setCancelling] = useState(false);
   const [cancelMsg, setCancelMsg] = useState<string | null>(null);
 
-  const { data: certs } = useQuery({ queryKey: ['certificates'], queryFn: listCertificates, staleTime: 1000 * 60 * 5 });
-  const { data: quals } = useQuery({ queryKey: ['qualifications'], queryFn: listQualifications, staleTime: 1000 * 60 * 5 });
+  const { data: certs } = useQuery({ queryKey: certificateKeys.lists(), queryFn: listCertificates, staleTime: 1000 * 60 * 5 });
+  const { data: quals } = useQuery({ queryKey: qualificationKeys.lists(), queryFn: listQualifications, staleTime: 1000 * 60 * 5 });
 
   const displayName = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || user?.email?.split('@')[0] || '';
 

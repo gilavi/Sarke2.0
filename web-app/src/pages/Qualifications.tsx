@@ -10,10 +10,11 @@ import {
   isExpiringSoon,
 } from '@/lib/data/qualifications';
 import { SkeletonList } from '@/components/SkeletonCard';
+import { qualificationKeys } from '@/app/queryKeys';
 
 export default function Qualifications() {
   const { data: items, error: queryError, isLoading } = useQuery({
-    queryKey: ['qualifications'],
+    queryKey: qualificationKeys.lists(),
     queryFn: listQualifications,
   });
   const [error, setError] = useState<string | null>(null);

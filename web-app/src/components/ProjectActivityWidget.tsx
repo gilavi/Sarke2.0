@@ -8,6 +8,12 @@ import { listInspections } from '@/lib/data/inspections';
 import { listBobcatInspections } from '@/lib/data/bobcat';
 import { listGeneralEquipmentInspections } from '@/lib/data/generalEquipment';
 import { listExcavatorInspections } from '@/lib/data/excavator';
+import {
+  inspectionKeys,
+  bobcatKeys,
+  generalEquipmentKeys,
+  excavatorKeys,
+} from '@/app/queryKeys';
 
 interface ActivityItem {
   id: string;
@@ -35,10 +41,10 @@ interface Props {
 }
 
 export function ProjectActivityWidget({ project, onNewAct }: Props) {
-  const { data: ins = [] }  = useQuery({ queryKey: ['inspections', project.id],         queryFn: () => listInspections(project.id),                staleTime: STALE });
-  const { data: bobs = [] } = useQuery({ queryKey: ['bobcat', project.id],               queryFn: () => listBobcatInspections(project.id),           staleTime: STALE });
-  const { data: gens = [] } = useQuery({ queryKey: ['generalEq', project.id],            queryFn: () => listGeneralEquipmentInspections(project.id),  staleTime: STALE });
-  const { data: excs = [] } = useQuery({ queryKey: ['excavator', project.id],            queryFn: () => listExcavatorInspections(project.id),        staleTime: STALE });
+  const { data: ins = [] }  = useQuery({ queryKey: inspectionKeys.list(project.id),         queryFn: () => listInspections(project.id),                staleTime: STALE });
+  const { data: bobs = [] } = useQuery({ queryKey: bobcatKeys.list(project.id),              queryFn: () => listBobcatInspections(project.id),           staleTime: STALE });
+  const { data: gens = [] } = useQuery({ queryKey: generalEquipmentKeys.list(project.id),   queryFn: () => listGeneralEquipmentInspections(project.id),  staleTime: STALE });
+  const { data: excs = [] } = useQuery({ queryKey: excavatorKeys.list(project.id),           queryFn: () => listExcavatorInspections(project.id),        staleTime: STALE });
 
   const all: ActivityItem[] = [
     ...ins.map(i  => {

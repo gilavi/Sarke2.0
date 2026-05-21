@@ -3,6 +3,7 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getCargoPlatformInspection } from '@/lib/data/cargoPlatform';
 import { getProject } from '@/lib/data/projects';
+import { projectKeys, cargoPlatformKeys } from '@/app/queryKeys';
 import { signedInspectionPhotoUrl } from '@/lib/photoUpload';
 import { buildCargoPlatformPdfTemplate } from '@root/lib/cargoPlatformPdfTemplate';
 
@@ -13,12 +14,12 @@ export default function CargoPlatformPrint() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const inspQ = useQuery({
-    queryKey: ['cargoPlatformInspection', id],
+    queryKey: cargoPlatformKeys.detail(id),
     queryFn: () => getCargoPlatformInspection(id!),
     enabled: !!id,
   });
   const projQ = useQuery({
-    queryKey: ['project', inspQ.data?.projectId],
+    queryKey: projectKeys.detail(inspQ.data?.projectId),
     queryFn: () => getProject(inspQ.data!.projectId),
     enabled: !!inspQ.data?.projectId,
   });

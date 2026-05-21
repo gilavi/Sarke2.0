@@ -31,6 +31,7 @@ import {
 } from '@/lib/data/bobcat';
 import { getProject } from '@/lib/data/projects';
 import { routes } from '@/app/routes';
+import { projectKeys, bobcatKeys } from '@/app/queryKeys';
 
 const RESULT_LABEL: Record<BobcatItemResult, string> = {
   good: 'ნორმაში',
@@ -71,13 +72,13 @@ export default function BobcatInspectionDetail() {
   }, [isPending, pendingCreate, navigate]);
 
   const { data: item, error, isLoading } = useQuery({
-    queryKey: ['bobcatInspection', id],
+    queryKey: bobcatKeys.detail(id),
     queryFn: () => getBobcatInspection(id!),
     enabled: !!id && !isPending,
   });
   const projectId = item?.projectId;
   const { data: project } = useQuery({
-    queryKey: ['project', projectId],
+    queryKey: projectKeys.detail(projectId),
     queryFn: () => getProject(projectId!),
     enabled: !!projectId,
   });
@@ -92,8 +93,8 @@ export default function BobcatInspectionDetail() {
     mutationFn: (patch: Parameters<typeof updateBobcatInspection>[1]) =>
       updateBobcatInspection(id!, patch),
     onSuccess: (_data, variables) => {
-      qc.invalidateQueries({ queryKey: ['bobcatInspection', id] });
-      qc.invalidateQueries({ queryKey: ['bobcatInspections'] });
+      qc.invalidateQueries({ queryKey: bobcatKeys.detail(id) });
+      qc.invalidateQueries({ queryKey: bobcatKeys.lists() });
       if (variables.status === 'completed') setJustCompleted(true);
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
@@ -102,7 +103,7 @@ export default function BobcatInspectionDetail() {
   const delMutation = useMutation({
     mutationFn: () => deleteBobcatInspection(id!),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['bobcatInspections'] });
+      qc.invalidateQueries({ queryKey: bobcatKeys.lists() });
       navigate('/inspections');
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
@@ -126,7 +127,7 @@ export default function BobcatInspectionDetail() {
         }));
         const patched = initialItems.map((it) => it.id === itemId ? { ...it, ...patch } : it);
         await updateBobcatInspection(realId, { items: patched });
-        qc.invalidateQueries({ queryKey: ['bobcatInspections'] });
+        qc.invalidateQueries({ queryKey: bobcatKeys.lists() });
         navigate(`/bobcat/${realId}`, { replace: true, state: {} });
       } catch (e) {
         toast.error(e instanceof Error ? e.message : String(e));

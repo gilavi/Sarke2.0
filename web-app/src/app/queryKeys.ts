@@ -26,67 +26,67 @@ function listKey<P extends string>(prefix: P, projectId?: string | null) {
 export const projectKeys = {
   lists: () => ['projects'] as const,
   list: () => ['projects'] as const,
-  detail: (id: string) => ['project', id] as const,
-  signers: (projectId: string) => ['projectSigners', projectId] as const,
-  files: (projectId: string) => ['projectFiles', projectId] as const,
+  detail: (id: string | null | undefined) => ['project', id] as const,
+  signers: (projectId: string | null | undefined) => ['projectSigners', projectId] as const,
+  files: (projectId: string | null | undefined) => ['projectFiles', projectId] as const,
 } as const;
 
 export const inspectionKeys = {
   lists: () => ['inspections'] as const,
   list: (projectId?: string | null) => listKey('inspections', projectId),
-  detail: (id: string) => ['inspection', id] as const,
-  questions: (templateId: string) => ['questions', templateId] as const,
-  answers: (inspectionId: string) => ['answers', inspectionId] as const,
-  answerPhotos: (answerId: string) => ['answerPhotos', answerId] as const,
-  pdfs: (inspectionId: string) => ['inspectionPdfs', inspectionId] as const,
+  detail: (id: string | null | undefined) => ['inspection', id] as const,
+  questions: (templateId: string | null | undefined) => ['questions', templateId] as const,
+  answers: (inspectionId: string | null | undefined) => ['answers', inspectionId] as const,
+  answerPhotos: (answerId: string | null | undefined) => ['answerPhotos', answerId] as const,
+  pdfs: (inspectionId: string | null | undefined) => ['inspectionPdfs', inspectionId] as const,
 } as const;
 
 export const bobcatKeys = {
   lists: () => ['bobcatInspections'] as const,
   list: (projectId?: string | null) => listKey('bobcatInspections', projectId),
-  detail: (id: string) => ['bobcatInspection', id] as const,
+  detail: (id: string | null | undefined) => ['bobcatInspection', id] as const,
 } as const;
 
 export const excavatorKeys = {
   lists: () => ['excavatorInspections'] as const,
   list: (projectId?: string | null) => listKey('excavatorInspections', projectId),
-  detail: (id: string) => ['excavatorInspection', id] as const,
+  detail: (id: string | null | undefined) => ['excavatorInspection', id] as const,
 } as const;
 
 export const generalEquipmentKeys = {
   lists: () => ['generalEquipmentInspections'] as const,
   list: (projectId?: string | null) => listKey('generalEquipmentInspections', projectId),
-  detail: (id: string) => ['generalEquipmentInspection', id] as const,
+  detail: (id: string | null | undefined) => ['generalEquipmentInspection', id] as const,
 } as const;
 
 export const cargoPlatformKeys = {
   lists: () => ['cargoPlatformInspections'] as const,
   list: (projectId?: string | null) => listKey('cargoPlatformInspections', projectId),
-  detail: (id: string) => ['cargoPlatformInspection', id] as const,
+  detail: (id: string | null | undefined) => ['cargoPlatformInspection', id] as const,
 } as const;
 
 export const briefingKeys = {
   lists: () => ['briefings'] as const,
   list: (projectId?: string | null) => listKey('briefings', projectId),
-  detail: (id: string) => ['briefing', id] as const,
+  detail: (id: string | null | undefined) => ['briefing', id] as const,
 } as const;
 
 export const incidentKeys = {
   lists: () => ['incidents'] as const,
   list: (projectId?: string | null) => listKey('incidents', projectId),
-  detail: (id: string) => ['incident', id] as const,
+  detail: (id: string | null | undefined) => ['incident', id] as const,
 } as const;
 
 export const reportKeys = {
   lists: () => ['reports'] as const,
   list: (projectId?: string | null) => listKey('reports', projectId),
-  detail: (id: string) => ['report', id] as const,
+  detail: (id: string | null | undefined) => ['report', id] as const,
 } as const;
 
 export const orderKeys = {
   lists: () => ['orders'] as const,
   list: (projectId?: string | null) => listKey('orders', projectId),
-  detail: (id: string) => ['order', id] as const,
+  detail: (id: string | null | undefined) => ['order', id] as const,
 } as const;
 
 export const certificateKeys = {
@@ -102,6 +102,7 @@ export const templateKeys = {
 } as const;
 
 export const accountKeys = {
+  user: (userId: string | null | undefined) => ['users', userId] as const,
   pdfUsage: (userId?: string) =>
     (userId ? ['pdf-usage', userId] : ['pdf-usage']) as readonly unknown[],
   paymentHistory: (userId?: string) =>

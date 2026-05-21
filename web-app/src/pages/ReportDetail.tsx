@@ -21,6 +21,7 @@ import {
 } from '@/lib/data/reports';
 import { getProject } from '@/lib/data/projects';
 import { routes } from '@/app/routes';
+import { projectKeys, reportKeys } from '@/app/queryKeys';
 
 export default function ReportDetail() {
   const { id } = useParams();
@@ -28,13 +29,13 @@ export default function ReportDetail() {
   const qc = useQueryClient();
 
   const { data: item, error: queryError, isLoading } = useQuery({
-    queryKey: ['report', id],
+    queryKey: reportKeys.detail(id),
     queryFn: () => getReport(id!),
     enabled: !!id,
   });
   const projectId = item?.project_id;
   const { data: project } = useQuery({
-    queryKey: ['project', projectId],
+    queryKey: projectKeys.detail(projectId),
     queryFn: () => getProject(projectId!),
     enabled: !!projectId,
   });
@@ -85,7 +86,7 @@ export default function ReportDetail() {
     },
     onSuccess: (next: Report) => {
       qc.setQueryData(['report', id], next);
-      qc.invalidateQueries({ queryKey: ['reports'] });
+      qc.invalidateQueries({ queryKey: reportKeys.lists() });
       setSlideTitle('');
       setSlideDescription('');
       setSlidePhoto(null);
@@ -102,7 +103,7 @@ export default function ReportDetail() {
     },
     onSuccess: (next: Report) => {
       qc.setQueryData(['report', id], next);
-      qc.invalidateQueries({ queryKey: ['reports'] });
+      qc.invalidateQueries({ queryKey: reportKeys.lists() });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
   });
@@ -124,7 +125,7 @@ export default function ReportDetail() {
       return deleteReport(item);
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['reports'] });
+      qc.invalidateQueries({ queryKey: reportKeys.lists() });
       navigate('/reports');
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),

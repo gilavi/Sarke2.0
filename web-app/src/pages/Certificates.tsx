@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { SkeletonList } from '@/components/SkeletonCard';
 import { useAuth } from '@/lib/auth';
 import { listCertificates, signedCertificatePdfUrl, uploadCertificate } from '@/lib/data/certificates';
+import { certificateKeys } from '@/app/queryKeys';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -23,7 +24,7 @@ export default function Certificates() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: items, error: queryError, isLoading } = useQuery({
-    queryKey: ['certificates'],
+    queryKey: certificateKeys.lists(),
     queryFn: listCertificates,
   });
 
@@ -36,7 +37,7 @@ export default function Certificates() {
       return uploadCertificate(file, user);
     },
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['certificates'] });
+      void qc.invalidateQueries({ queryKey: certificateKeys.lists() });
     },
   });
 

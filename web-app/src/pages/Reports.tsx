@@ -6,6 +6,7 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { SkeletonList } from '@/components/SkeletonCard';
 import { listReports, deleteReport, type Report } from '@/lib/data/reports';
 import { listProjects } from '@/lib/data/projects';
+import { projectKeys, reportKeys } from '@/app/queryKeys';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -19,13 +20,13 @@ const itemVariants = {
 
 export default function Reports() {
   const qc = useQueryClient();
-  const { data: items, error } = useQuery({ queryKey: ['reports'], queryFn: () => listReports() });
-  const { data: projectList } = useQuery({ queryKey: ['projects'], queryFn: listProjects });
+  const { data: items, error } = useQuery({ queryKey: reportKeys.lists(), queryFn: () => listReports() });
+  const { data: projectList } = useQuery({ queryKey: projectKeys.lists(), queryFn: listProjects });
   const projects = projectList ? Object.fromEntries(projectList.map((p) => [p.id, p])) : {};
 
   const deleteMutation = useMutation({
     mutationFn: deleteReport,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['reports'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: reportKeys.lists() }),
   });
 
   function handleDelete(item: Report) {

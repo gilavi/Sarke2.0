@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { listProjects } from '@/lib/data/projects';
 import { listTemplates } from '@/lib/data/templates';
+import { projectKeys, templateKeys } from '@/app/queryKeys';
 
 const STEPS = ['შაბლონი'];
 
@@ -20,8 +21,8 @@ export default function NewInspection() {
   const [params] = useSearchParams();
   const prefilledProjectId = params.get('project') ?? '';
 
-  const { data: projects } = useQuery({ queryKey: ['projects'], queryFn: listProjects });
-  const { data: templates } = useQuery({ queryKey: ['templates'], queryFn: listTemplates });
+  const { data: projects } = useQuery({ queryKey: projectKeys.lists(), queryFn: listProjects });
+  const { data: templates } = useQuery({ queryKey: templateKeys.lists(), queryFn: listTemplates });
 
   const [projectId, setProjectId] = useState(prefilledProjectId);
   const [templateId, setTemplateId] = useState('');

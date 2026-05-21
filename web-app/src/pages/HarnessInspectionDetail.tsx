@@ -20,6 +20,7 @@ import {
 } from '@/lib/data/inspections';
 import { getProject } from '@/lib/data/projects';
 import { routes } from '@/app/routes';
+import { projectKeys, inspectionKeys } from '@/app/queryKeys';
 
 export default function HarnessInspectionDetail() {
   const { id } = useParams();
@@ -37,25 +38,25 @@ export default function HarnessInspectionDetail() {
   });
 
   const inspectionQ = useQuery({
-    queryKey: ['inspection', id],
+    queryKey: inspectionKeys.detail(id),
     queryFn: () => getInspection(id!),
     enabled: !!id,
   });
   const inspection = inspectionQ.data ?? null;
   const projectId = inspection?.project_id;
   const { data: project } = useQuery({
-    queryKey: ['project', projectId],
+    queryKey: projectKeys.detail(projectId),
     queryFn: () => getProject(projectId!),
     enabled: !!projectId,
   });
 
   const questionsQ = useQuery({
-    queryKey: ['questions', inspection?.template_id],
+    queryKey: inspectionKeys.questions(inspection?.template_id),
     queryFn: () => listQuestions(inspection!.template_id),
     enabled: !!inspection?.template_id,
   });
   const answersQ = useQuery({
-    queryKey: ['answers', id],
+    queryKey: inspectionKeys.answers(id),
     queryFn: () => listAnswers(id!),
     enabled: !!id,
   });
@@ -67,8 +68,8 @@ export default function HarnessInspectionDetail() {
   const updateMutation = useMutation({
     mutationFn: (patch: Parameters<typeof updateInspection>[1]) => updateInspection(id!, patch),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['inspection', id] });
-      qc.invalidateQueries({ queryKey: ['inspections'] });
+      qc.invalidateQueries({ queryKey: inspectionKeys.detail(id) });
+      qc.invalidateQueries({ queryKey: inspectionKeys.lists() });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
   });
@@ -76,7 +77,7 @@ export default function HarnessInspectionDetail() {
   const deleteMutation = useMutation({
     mutationFn: () => deleteInspection(id!),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['inspections'] });
+      qc.invalidateQueries({ queryKey: inspectionKeys.lists() });
       navigate('/inspections');
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),

@@ -7,6 +7,7 @@ import { ProjectPicker } from '@/components/ui/project-picker';
 import { FloatingLabelInput } from '@/components/ui/floating-label-input';
 import { WizardShell } from '@/components/ui/wizard-shell';
 import { listProjects } from '@/lib/data/projects';
+import { projectKeys, briefingKeys } from '@/app/queryKeys';
 import {
   createBriefing,
   topicLabel,
@@ -22,7 +23,7 @@ export default function NewBriefing() {
   const qc = useQueryClient();
   const [params] = useSearchParams();
 
-  const { data: projects } = useQuery({ queryKey: ['projects'], queryFn: listProjects });
+  const { data: projects } = useQuery({ queryKey: projectKeys.lists(), queryFn: listProjects });
 
   const prefilledProjectId = params.get('project') ?? '';
 
@@ -46,7 +47,7 @@ export default function NewBriefing() {
         inspectorName: inspectorName.trim(),
       }),
     onSuccess: (created: Briefing) => {
-      qc.invalidateQueries({ queryKey: ['briefings'] });
+      qc.invalidateQueries({ queryKey: briefingKeys.lists() });
       navigate(`/briefings/${created.id}`);
     },
   });

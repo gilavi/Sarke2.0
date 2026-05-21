@@ -4,6 +4,7 @@ import { Download, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { listProjectFiles, signedFileUrl, deleteProjectFile, formatSize, type ProjectFile } from '@/lib/data/projectFiles';
 import { getProject } from '@/lib/data/projects';
+import { projectKeys } from '@/app/queryKeys';
 import { SkeletonList } from '@/components/SkeletonCard';
 import { useState } from 'react';
 
@@ -13,12 +14,12 @@ export default function ProjectFiles() {
   const [deleting, setDeleting] = useState<string | null>(null);
 
   const { data: project } = useQuery({
-    queryKey: ['project', id],
+    queryKey: projectKeys.detail(id),
     queryFn: () => getProject(id!),
     enabled: !!id,
   });
   const { data: files, isLoading } = useQuery({
-    queryKey: ['projectFiles', id],
+    queryKey: projectKeys.files(id),
     queryFn: () => listProjectFiles(id!),
     enabled: !!id,
   });

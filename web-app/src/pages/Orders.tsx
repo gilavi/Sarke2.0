@@ -7,6 +7,7 @@ import { SkeletonList } from '@/components/SkeletonCard';
 import { listOrders } from '@/lib/data/orders';
 import { listProjects } from '@/lib/data/projects';
 import { ORDER_DOCUMENT_TYPE_LABEL } from '@/lib/data/orders';
+import { projectKeys, orderKeys } from '@/app/queryKeys';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -26,11 +27,11 @@ export default function Orders() {
   const projectParam = searchParams.get('project') ?? '';
 
   const { data: items, error } = useQuery({
-    queryKey: ['orders'],
+    queryKey: orderKeys.lists(),
     queryFn: () => listOrders(),
   });
   const { data: projectList } = useQuery({
-    queryKey: ['projects'],
+    queryKey: projectKeys.lists(),
     queryFn: listProjects,
   });
 

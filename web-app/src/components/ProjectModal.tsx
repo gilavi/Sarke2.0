@@ -12,6 +12,7 @@ import {
   getProject,
   type Project,
 } from '@/lib/data/projects';
+import { projectKeys } from '@/app/queryKeys';
 
 /* ── Phone helpers ── */
 function normalizePhone(raw: string) {
@@ -36,7 +37,7 @@ export function ProjectModal({ open, onClose, projectId }: Props) {
   const isEdit = !!projectId;
 
   const { data: existing } = useQuery({
-    queryKey: ['project', projectId],
+    queryKey: projectKeys.detail(projectId),
     queryFn: () => getProject(projectId!),
     enabled: isEdit && open,
   });
@@ -108,11 +109,11 @@ export function ProjectModal({ open, onClose, projectId }: Props) {
     },
     onSuccess: (created) => {
       if (isEdit && projectId) {
-        void qc.invalidateQueries({ queryKey: ['project', projectId] });
+        void qc.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
       } else if (created) {
-        qc.setQueryData<Project[]>(['projects'], (prev) => (prev ? [created, ...prev] : [created]));
+        qc.setQueryData<Project[]>(projectKeys.lists() as unknown as string[], (prev) => (prev ? [created, ...prev] : [created]));
       }
-      void qc.invalidateQueries({ queryKey: ['projects'] });
+      void qc.invalidateQueries({ queryKey: projectKeys.lists() });
       onClose();
     },
   });

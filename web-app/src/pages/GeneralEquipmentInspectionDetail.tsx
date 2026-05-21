@@ -28,6 +28,7 @@ import {
 } from '@/lib/data/generalEquipment';
 import { getProject } from '@/lib/data/projects';
 import { routes } from '@/app/routes';
+import { projectKeys, generalEquipmentKeys } from '@/app/queryKeys';
 
 const COND_LABEL: Record<GECondition, string> = {
   good: 'ნორმაში',
@@ -57,13 +58,13 @@ export default function GeneralEquipmentInspectionDetail() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const { data: item, error, isLoading } = useQuery({
-    queryKey: ['generalEquipmentInspection', id],
+    queryKey: generalEquipmentKeys.detail(id),
     queryFn: () => getGeneralEquipmentInspection(id!),
     enabled: !!id && !isPending,
   });
   const projectId = item?.projectId;
   const { data: project } = useQuery({
-    queryKey: ['project', projectId],
+    queryKey: projectKeys.detail(projectId),
     queryFn: () => getProject(projectId!),
     enabled: !!projectId,
   });
@@ -72,8 +73,8 @@ export default function GeneralEquipmentInspectionDetail() {
     mutationFn: (patch: Parameters<typeof updateGeneralEquipmentInspection>[1]) =>
       updateGeneralEquipmentInspection(id!, patch),
     onSuccess: (_data, variables) => {
-      qc.invalidateQueries({ queryKey: ['generalEquipmentInspection', id] });
-      qc.invalidateQueries({ queryKey: ['generalEquipmentInspections'] });
+      qc.invalidateQueries({ queryKey: generalEquipmentKeys.detail(id) });
+      qc.invalidateQueries({ queryKey: generalEquipmentKeys.lists() });
       if (variables.status === 'completed') setJustCompleted(true);
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
@@ -82,7 +83,7 @@ export default function GeneralEquipmentInspectionDetail() {
   const delMutation = useMutation({
     mutationFn: () => deleteGeneralEquipmentInspection(id!),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['generalEquipmentInspections'] });
+      qc.invalidateQueries({ queryKey: generalEquipmentKeys.lists() });
       navigate('/inspections');
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
@@ -144,7 +145,7 @@ export default function GeneralEquipmentInspectionDetail() {
         if (!realId) return;
         const newRow = newEquipmentRow();
         await updateGeneralEquipmentInspection(realId, { equipment: [newRow] });
-        qc.invalidateQueries({ queryKey: ['generalEquipmentInspections'] });
+        qc.invalidateQueries({ queryKey: generalEquipmentKeys.lists() });
         navigate(`/general-equipment/${realId}`, { replace: true, state: {} });
       } catch (e) {
         toast.error(e instanceof Error ? e.message : String(e));

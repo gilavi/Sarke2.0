@@ -21,6 +21,7 @@ import {
 import { supabase } from '@/lib/supabase';
 import { getProject } from '@/lib/data/projects';
 import { routes } from '@/app/routes';
+import { projectKeys, incidentKeys } from '@/app/queryKeys';
 
 export default function IncidentDetail() {
   const { id } = useParams();
@@ -28,13 +29,13 @@ export default function IncidentDetail() {
   const qc = useQueryClient();
   const [confirming, setConfirming] = useState(false);
   const { data: item, error: queryError, isLoading } = useQuery({
-    queryKey: ['incident', id],
+    queryKey: incidentKeys.detail(id),
     queryFn: () => getIncident(id!),
     enabled: !!id,
   });
   const projectId = item?.project_id;
   const { data: project } = useQuery({
-    queryKey: ['project', projectId],
+    queryKey: projectKeys.detail(projectId),
     queryFn: () => getProject(projectId!),
     enabled: !!projectId,
   });
@@ -75,8 +76,8 @@ export default function IncidentDetail() {
         injured_role: form.injured_role.trim() || null,
       }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['incident', id] });
-      qc.invalidateQueries({ queryKey: ['incidents'] });
+      qc.invalidateQueries({ queryKey: incidentKeys.detail(id) });
+      qc.invalidateQueries({ queryKey: incidentKeys.lists() });
       setEditing(false);
     },
     onError: (e) => setActionError(e instanceof Error ? e.message : String(e)),
@@ -88,7 +89,7 @@ export default function IncidentDetail() {
       return deleteIncident(item);
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['incidents'] });
+      qc.invalidateQueries({ queryKey: incidentKeys.lists() });
       navigate('/incidents');
     },
     onError: (e) => setActionError(e instanceof Error ? e.message : String(e)),
@@ -327,8 +328,8 @@ export default function IncidentDetail() {
                 prefix=""
                 inspectionId={item.id}
                 itemId="photos"
-                onAdd={() => qc.invalidateQueries({ queryKey: ['incident', id] })}
-                onRemove={() => qc.invalidateQueries({ queryKey: ['incident', id] })}
+                onAdd={() => qc.invalidateQueries({ queryKey: incidentKeys.detail(id) })}
+                onRemove={() => qc.invalidateQueries({ queryKey: incidentKeys.detail(id) })}
                 uploadFn={(file) => addIncidentPhoto(item, file)}
                 signedUrlFn={signedIncidentPhotoUrl}
                 deleteFn={(path) => removeIncidentPhoto(item, path)}
@@ -341,7 +342,7 @@ export default function IncidentDetail() {
       <SignatureSection
         signature={item.inspector_signature}
         isDraft={item.status === 'draft'}
-        onSave={(dataUrl) => updateIncident(item.id, { inspector_signature: dataUrl }).then(() => qc.invalidateQueries({ queryKey: ['incident', id] }))}
+        onSave={(dataUrl) => updateIncident(item.id, { inspector_signature: dataUrl }).then(() => qc.invalidateQueries({ queryKey: incidentKeys.detail(id) }))}
       />
 
       {item.pdf_url && (

@@ -6,13 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ProjectPicker } from '@/components/ui/project-picker';
 import { listProjects } from '@/lib/data/projects';
+import { projectKeys } from '@/app/queryKeys';
 import { createCargoPlatformInspection } from '@/lib/data/cargoPlatform';
 
 export default function NewCargoPlatformInspection() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
 
-  const { data: projects } = useQuery({ queryKey: ['projects'], queryFn: listProjects });
+  const { data: projects } = useQuery({ queryKey: projectKeys.lists(), queryFn: listProjects });
 
   const [projectId, setProjectId] = useState(params.get('project') ?? '');
   const [submitting, setSubmitting] = useState(false);

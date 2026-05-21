@@ -6,6 +6,7 @@ import {
   type GECondition,
 } from '@/lib/data/generalEquipment';
 import { getProject } from '@/lib/data/projects';
+import { projectKeys, generalEquipmentKeys } from '@/app/queryKeys';
 import { A4_PRINT_STYLES, printAfterRender } from '@/lib/printable';
 import { signedInspectionPhotoUrl } from '@/lib/photoUpload';
 
@@ -21,12 +22,12 @@ export default function GeneralEquipmentPrint() {
   const isPreview = searchParams.get('preview') === '1';
 
   const inspectionQ = useQuery({
-    queryKey: ['generalEquipmentInspection', id],
+    queryKey: generalEquipmentKeys.detail(id),
     queryFn: () => getGeneralEquipmentInspection(id!),
     enabled: !!id,
   });
   const projectQ = useQuery({
-    queryKey: ['project', inspectionQ.data?.projectId],
+    queryKey: projectKeys.detail(inspectionQ.data?.projectId),
     queryFn: () => getProject(inspectionQ.data!.projectId),
     enabled: !!inspectionQ.data?.projectId,
   });

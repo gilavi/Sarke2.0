@@ -3,19 +3,20 @@ import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getReport, signedReportPhotoUrl } from '@/lib/data/reports';
 import { getProject } from '@/lib/data/projects';
+import { projectKeys, reportKeys } from '@/app/queryKeys';
 import { A4_PRINT_STYLES, printAfterRender, urlToDataUrl } from '@/lib/printable';
 
 export default function ReportPrint() {
   const { id } = useParams();
 
   const reportQ = useQuery({
-    queryKey: ['report', id],
+    queryKey: reportKeys.detail(id),
     queryFn: () => getReport(id!),
     enabled: !!id,
   });
 
   const projectQ = useQuery({
-    queryKey: ['project', reportQ.data?.project_id],
+    queryKey: projectKeys.detail(reportQ.data?.project_id),
     queryFn: () => getProject(reportQ.data!.project_id),
     enabled: !!reportQ.data?.project_id,
   });

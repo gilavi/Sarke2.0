@@ -25,6 +25,7 @@ import {
 } from '@/lib/data/inspections';
 import { listProjects } from '@/lib/data/projects';
 import { listTemplates } from '@/lib/data/templates';
+import { projectKeys, inspectionKeys, templateKeys } from '@/app/queryKeys';
 
 /* ─── Types ─── */
 
@@ -119,8 +120,8 @@ export default function InspectionWizard({
   );
 
   /* ── Data queries ── */
-  const { data: projects } = useQuery({ queryKey: ['projects'], queryFn: listProjects, enabled: open && mode === 'create' });
-  const { data: templates } = useQuery({ queryKey: ['templates'], queryFn: listTemplates, enabled: open && mode === 'create' });
+  const { data: projects } = useQuery({ queryKey: projectKeys.lists(), queryFn: listProjects, enabled: open && mode === 'create' });
+  const { data: templates } = useQuery({ queryKey: templateKeys.lists(), queryFn: listTemplates, enabled: open && mode === 'create' });
 
   /* ── Auto-select template from defaultCategory ── */
   useEffect(() => {
@@ -220,8 +221,8 @@ export default function InspectionWizard({
           is_safe_for_use: conclusion.isSafe,
           conclusion_photo_paths: conclusionPhotos,
         });
-        qc.invalidateQueries({ queryKey: ['inspection', insId] });
-        qc.invalidateQueries({ queryKey: ['inspections'] });
+        qc.invalidateQueries({ queryKey: inspectionKeys.detail(insId) });
+        qc.invalidateQueries({ queryKey: inspectionKeys.lists() });
         onComplete?.();
         setDirection(1);
         setStepIndex((i) => i + 1);
@@ -265,7 +266,7 @@ export default function InspectionWizard({
           department: department.trim() || null,
           inspectorName: inspectorName.trim() || null,
         });
-        qc.invalidateQueries({ queryKey: ['inspections'] });
+        qc.invalidateQueries({ queryKey: inspectionKeys.lists() });
         const qs = await listQuestions(created.template_id);
         setCreatedInspection(created);
         setQuestions(filterQuestions(qs));
@@ -322,7 +323,7 @@ export default function InspectionWizard({
 
   /* ── Photo handling ── */
   const photosQ = useQuery({
-    queryKey: ['answerPhotos', currentAnswer?.id],
+    queryKey: inspectionKeys.answerPhotos(currentAnswer?.id),
     queryFn: () => listAnswerPhotos(currentAnswer!.id!),
     enabled: currentQuestion?.type === 'photo_upload' && !!currentAnswer?.id,
   });
@@ -332,13 +333,13 @@ export default function InspectionWizard({
   const handlePhotoAdd = useCallback(async (path: string) => {
     if (!currentAnswer?.id) return;
     await addAnswerPhoto(currentAnswer.id, path, null);
-    qc.invalidateQueries({ queryKey: ['answerPhotos', currentAnswer.id] });
+    qc.invalidateQueries({ queryKey: inspectionKeys.answerPhotos(currentAnswer.id) });
   }, [currentAnswer, qc]);
 
   const handlePhotoRemove = useCallback(async (path: string) => {
     if (!currentAnswer?.id) return;
     await removeAnswerPhoto(currentAnswer.id, path);
-    qc.invalidateQueries({ queryKey: ['answerPhotos', currentAnswer.id] });
+    qc.invalidateQueries({ queryKey: inspectionKeys.answerPhotos(currentAnswer.id) });
   }, [currentAnswer, qc]);
 
   useEffect(() => {

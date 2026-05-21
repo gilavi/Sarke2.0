@@ -3,19 +3,20 @@ import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getBriefing, topicLabel } from '@/lib/data/briefings';
 import { getProject } from '@/lib/data/projects';
+import { projectKeys, briefingKeys } from '@/app/queryKeys';
 import { A4_PRINT_STYLES, printAfterRender } from '@/lib/printable';
 
 export default function BriefingPrint() {
   const { id } = useParams();
 
   const briefingQ = useQuery({
-    queryKey: ['briefing', id],
+    queryKey: briefingKeys.detail(id),
     queryFn: () => getBriefing(id!),
     enabled: !!id,
   });
 
   const projectQ = useQuery({
-    queryKey: ['project', briefingQ.data?.projectId],
+    queryKey: projectKeys.detail(briefingQ.data?.projectId),
     queryFn: () => getProject(briefingQ.data!.projectId),
     enabled: !!briefingQ.data?.projectId,
   });

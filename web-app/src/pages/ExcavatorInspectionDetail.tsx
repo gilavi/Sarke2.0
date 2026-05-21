@@ -34,6 +34,7 @@ import {
 } from '@/lib/data/excavator';
 import { getProject } from '@/lib/data/projects';
 import { routes } from '@/app/routes';
+import { projectKeys, excavatorKeys } from '@/app/queryKeys';
 
 const RESULT_LABEL: Record<Exclude<ExcavatorChecklistResult, null>, string> = {
   good: 'ნორმაში',
@@ -83,13 +84,13 @@ export default function ExcavatorInspectionDetail() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const { data: item, error, isLoading } = useQuery({
-    queryKey: ['excavatorInspection', id],
+    queryKey: excavatorKeys.detail(id),
     queryFn: () => getExcavatorInspection(id!),
     enabled: !!id && !isPending,
   });
   const projectId = item?.projectId;
   const { data: project } = useQuery({
-    queryKey: ['project', projectId],
+    queryKey: projectKeys.detail(projectId),
     queryFn: () => getProject(projectId!),
     enabled: !!projectId,
   });
@@ -98,8 +99,8 @@ export default function ExcavatorInspectionDetail() {
     mutationFn: (patch: Parameters<typeof updateExcavatorInspection>[1]) =>
       updateExcavatorInspection(id!, patch),
     onSuccess: (_data, variables) => {
-      qc.invalidateQueries({ queryKey: ['excavatorInspection', id] });
-      qc.invalidateQueries({ queryKey: ['excavatorInspections'] });
+      qc.invalidateQueries({ queryKey: excavatorKeys.detail(id) });
+      qc.invalidateQueries({ queryKey: excavatorKeys.lists() });
       if (variables.status === 'completed') setJustCompleted(true);
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
@@ -108,7 +109,7 @@ export default function ExcavatorInspectionDetail() {
   const delMutation = useMutation({
     mutationFn: () => deleteExcavatorInspection(id!),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['excavatorInspections'] });
+      qc.invalidateQueries({ queryKey: excavatorKeys.lists() });
       navigate('/inspections');
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
@@ -173,7 +174,7 @@ export default function ExcavatorInspectionDetail() {
         }));
         const patched = initial.map((it) => it.id === itemId ? { ...it, ...patch } : it);
         await updateExcavatorInspection(realId, { [field]: patched } as Parameters<typeof updateExcavatorInspection>[1]);
-        qc.invalidateQueries({ queryKey: ['excavatorInspections'] });
+        qc.invalidateQueries({ queryKey: excavatorKeys.lists() });
         navigate(`/excavator/${realId}`, { replace: true, state: {} });
       } catch (e) {
         toast.error(e instanceof Error ? e.message : String(e));
@@ -194,7 +195,7 @@ export default function ExcavatorInspectionDetail() {
         const initial = MAINTENANCE_ITEMS.map((m) => ({ id: m.id, answer: null as null, date: null as null }));
         const next = initial.map((m) => m.id === itemId ? { ...m, ...patch } : m);
         await updateExcavatorInspection(realId, { maintenanceItems: next });
-        qc.invalidateQueries({ queryKey: ['excavatorInspections'] });
+        qc.invalidateQueries({ queryKey: excavatorKeys.lists() });
         navigate(`/excavator/${realId}`, { replace: true, state: {} });
       } catch (e) {
         toast.error(e instanceof Error ? e.message : String(e));

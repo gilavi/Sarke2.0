@@ -14,6 +14,7 @@ import {
   type ExcavatorChecklistResult,
 } from '@/lib/data/excavator';
 import { getProject } from '@/lib/data/projects';
+import { projectKeys, excavatorKeys } from '@/app/queryKeys';
 import { A4_PRINT_STYLES, printAfterRender } from '@/lib/printable';
 import { signedInspectionPhotoUrl } from '@/lib/photoUpload';
 
@@ -42,12 +43,12 @@ export default function ExcavatorPrint() {
   const isPreview = searchParams.get('preview') === '1';
 
   const inspectionQ = useQuery({
-    queryKey: ['excavatorInspection', id],
+    queryKey: excavatorKeys.detail(id),
     queryFn: () => getExcavatorInspection(id!),
     enabled: !!id,
   });
   const projectQ = useQuery({
-    queryKey: ['project', inspectionQ.data?.projectId],
+    queryKey: projectKeys.detail(inspectionQ.data?.projectId),
     queryFn: () => getProject(inspectionQ.data!.projectId),
     enabled: !!inspectionQ.data?.projectId,
   });

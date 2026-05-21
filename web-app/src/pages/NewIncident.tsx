@@ -7,6 +7,7 @@ import { ProjectPicker } from '@/components/ui/project-picker';
 import { FloatingLabelInput } from '@/components/ui/floating-label-input';
 import { WizardShell } from '@/components/ui/wizard-shell';
 import { listProjects } from '@/lib/data/projects';
+import { projectKeys, incidentKeys } from '@/app/queryKeys';
 import { createIncident, INCIDENT_TYPE_LABEL, type IncidentType, type Incident } from '@/lib/data/incidents';
 
 const STEPS = ['ინციდენტი', 'დეტალები', 'მოწმეები'];
@@ -17,7 +18,7 @@ export default function NewIncident() {
   const qc = useQueryClient();
   const [params] = useSearchParams();
 
-  const { data: projects } = useQuery({ queryKey: ['projects'], queryFn: listProjects });
+  const { data: projects } = useQuery({ queryKey: projectKeys.lists(), queryFn: listProjects });
 
   const prefilledProjectId = params.get('project') ?? '';
 
@@ -52,7 +53,7 @@ export default function NewIncident() {
         attachments: files.length ? files : undefined,
       }),
     onSuccess: (created: Incident) => {
-      qc.invalidateQueries({ queryKey: ['incidents'] });
+      qc.invalidateQueries({ queryKey: incidentKeys.lists() });
       navigate(`/incidents/${created.id}`);
     },
   });
