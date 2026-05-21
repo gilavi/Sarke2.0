@@ -9,9 +9,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AuthLayout } from './auth/AuthLayout';
 
-const SUCCESS_URL_DESKTOP = 'https://gilavi.github.io/Sarke2.0/app/#/subscribe/success';
-const SUCCESS_URL_MOBILE = 'https://gilavi.github.io/Sarke2.0/app/#/subscribe/success?mobile=1';
-const FAIL_URL = 'https://gilavi.github.io/Sarke2.0/app/#/subscribe/fail';
+const SUCCESS_URL_DESKTOP = 'https://hubble.ge/app/#/subscribe/success';
+const SUCCESS_URL_MOBILE = 'https://hubble.ge/app/#/subscribe/success?mobile=1';
+const FAIL_URL = 'https://hubble.ge/app/#/subscribe/fail';
 
 const FEATURES = [
   'შეუზღუდავი PDF გენერაცია',
@@ -50,7 +50,7 @@ export default function Subscribe() {
       .setSession({ access_token: at, refresh_token: rt })
       .then(({ error }) => {
         if (error) {
-          setAuthError('სესიის ვადა გავიდა. დაბრუნდით Sarke აპში და სცადეთ ხელახლა.');
+          setAuthError('სესიის ვადა გავიდა. დაბრუნდით Hubble აპში და სცადეთ ხელახლა.');
           setAuthStatus('error');
         } else {
           setAuthStatus('ready');
@@ -115,7 +115,7 @@ export default function Subscribe() {
     <AuthLayout>
       <Card>
         <CardHeader>
-          <CardTitle>Sarke Pro</CardTitle>
+          <CardTitle>Hubble Pro</CardTitle>
           <CardDescription>ყოველთვიური გამოწერა</CardDescription>
         </CardHeader>
         <CardContent>

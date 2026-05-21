@@ -290,7 +290,7 @@ export const Sidebar = memo(function Sidebar({ open = false, onClose }: SidebarP
                 transition={{ duration: 0.15 }}
                 className="font-display text-base font-bold text-neutral-900 dark:text-neutral-100 whitespace-nowrap"
               >
-                Sarke
+                Hubble
               </motion.span>
             )}
           </AnimatePresence>
@@ -444,7 +444,7 @@ export const Sidebar = memo(function Sidebar({ open = false, onClose }: SidebarP
                     <ShieldCheck size={16} />
                   </div>
                   <span className="font-display text-base font-bold text-neutral-900 dark:text-neutral-100">
-                    Sarke
+                    Hubble
                   </span>
                 </NavLink>
                 <button

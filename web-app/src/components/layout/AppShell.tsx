@@ -56,7 +56,7 @@ export const AppShell = memo(function AppShell({ children }: { children: ReactNo
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-500 text-white shadow-sm dark:shadow-[0_0_12px_rgba(71,175,135,0.3)]">
                 <ShieldCheck size={15} />
               </div>
-              <span className="font-display text-base font-bold text-neutral-900 dark:text-neutral-100">Sarke</span>
+              <span className="font-display text-base font-bold text-neutral-900 dark:text-neutral-100">Hubble</span>
             </Link>
           </div>
           <button

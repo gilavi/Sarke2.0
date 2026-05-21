@@ -63,7 +63,7 @@ export default function Terms() {
           {body.linkLabel} →
         </a>
         <p className="mt-2 text-xs text-neutral-400">
-          © 2026 Sarke 2.0 · {lang === 'ka' ? 'ყველა უფლება დაცულია' : 'All rights reserved'}
+          © 2026 Hubble · {lang === 'ka' ? 'ყველა უფლება დაცულია' : 'All rights reserved'}
         </p>
       </div>
     </div>

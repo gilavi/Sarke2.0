@@ -4,7 +4,7 @@
 // build time and breaks CI. Keep this file in sync with lib/terms.ts when copy changes.
 export const TERMS_VERSION = '2026-04-22';
 
-export const TERMS_PUBLIC_URL = 'https://sarke.ge/terms';
+export const TERMS_PUBLIC_URL = 'https://hubble.ge/terms';
 
 export interface TermsBody {
   heading: string;
@@ -25,7 +25,7 @@ export const termsKa: TermsBody = {
     {
       title: '1. მომსახურების აღწერა',
       body:
-        'Sarke 2.0 არის შრომის უსაფრთხოების ექსპერტის აპლიკაცია ხარაჩოებისა და ' +
+        'Hubble არის შრომის უსაფრთხოების ექსპერტის აპლიკაცია ხარაჩოებისა და ' +
         'ინდივიდუალური დაცვის საშუალებების ინსპექტირებისთვის. აპლიკაცია შეიცავს ' +
         'კითხვარებს, ფოტო/ხელმოწერების შეგროვებას და PDF ანგარიშების გენერაციას.',
     },
@@ -70,7 +70,7 @@ export const termsKa: TermsBody = {
     {
       title: '8. საკონტაქტო',
       body:
-        'კითხვებისთვის: support@sarke.ge',
+        'კითხვებისთვის: support@hubble.ge',
     },
   ],
 };
@@ -85,7 +85,7 @@ export const termsEn: TermsBody = {
     {
       title: '1. Service description',
       body:
-        'Sarke 2.0 is an occupational safety inspection app for scaffolding and ' +
+        'Hubble is an occupational safety inspection app for scaffolding and ' +
         'personal fall-protection equipment. It provides inspection questionnaires, ' +
         'photo and signature capture, and PDF report generation.',
     },
@@ -128,7 +128,7 @@ export const termsEn: TermsBody = {
     },
     {
       title: '8. Contact',
-      body: 'Questions: support@sarke.ge',
+      body: 'Questions: support@hubble.ge',
     },
   ],
 };

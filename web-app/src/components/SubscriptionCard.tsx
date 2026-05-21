@@ -73,7 +73,7 @@ export function SubscriptionCard() {
 
           {/* Info — stacked vertically */}
           <div className="flex flex-1 flex-col gap-0.5 min-w-0">
-            <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Sarke Pro</span>
+            <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Hubble Pro</span>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5">
               {expiresAt && (
                 <span className="flex items-center gap-1 text-xs text-neutral-500 dark:text-neutral-400">

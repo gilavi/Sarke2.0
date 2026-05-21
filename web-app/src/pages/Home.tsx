@@ -112,7 +112,7 @@ export default function Home() {
             მოგესალმებით{firstName ? `, ${firstName}` : ''}
           </h1>
           <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-            Sarke — თქვენი შრომის უსაფრთხოების ცენტრი.
+            Hubble — თქვენი შრომის უსაფრთხოების ცენტრი.
           </p>
         </div>
         <DropdownMenu>

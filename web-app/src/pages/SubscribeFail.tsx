@@ -12,7 +12,7 @@ export default function SubscribeFail() {
         </CardHeader>
         <CardContent>
           <p className="text-center text-sm text-neutral-600">
-            გადახდა გაუქმდა ან მოხდა შეცდომა. დახურეთ ეს ფანჯარა Sarke-ში დასაბრუნებლად.
+            გადახდა გაუქმდა ან მოხდა შეცდომა. დახურეთ ეს ფანჯარა Hubble-ში დასაბრუნებლად.
           </p>
         </CardContent>
       </Card>

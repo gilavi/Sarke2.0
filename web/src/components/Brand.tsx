@@ -2,9 +2,9 @@ export function Brand() {
   return (
     <div className="brand">
       <div className="brand-mark" aria-hidden>
-        ს
+        H
       </div>
-      <div className="brand-name">სარკე</div>
+      <div className="brand-name">Hubble</div>
     </div>
   );
 }

@@ -4,7 +4,7 @@ sidebar_position: 3
 
 # Architecture
 
-Sarke 2.0 is a **client-only** mobile app talking directly to **Supabase** — there is no custom HTTP backend. All reads and writes go through the Supabase JS SDK; PostgREST + RLS is the API.
+Hubble is a **client-only** mobile app talking directly to **Supabase** — there is no custom HTTP backend. All reads and writes go through the Supabase JS SDK; PostgREST + RLS is the API.
 
 ## High-level data flow
 

@@ -3,9 +3,9 @@ slug: /
 sidebar_position: 1
 ---
 
-# Sarke 2.0
+# Hubble
 
-**Sarke 2.0** is a safety inspection platform for Georgian construction sites. An expert opens the app, picks a project, walks through a specialized checklist on site, attaches photos, collects signatures, and generates a legally formatted PDF report.
+**Hubble** is a safety inspection platform for Georgian construction sites. An expert opens the app, picks a project, walks through a specialized checklist on site, attaches photos, collects signatures, and generates a legally formatted PDF report.
 
 ## Quick Reference
 
@@ -13,9 +13,9 @@ sidebar_position: 1
 
 | | URL |
 |---|---|
-| **Web Dashboard** | https://gilavi.github.io/Sarke2.0/app/ |
-| **Signing Page** (SMS links go here) | https://gilavi.github.io/Sarke2.0/ |
-| **Docs** (this site) | https://gilavi.github.io/Sarke2.0/docs/ |
+| **Web Dashboard** | https://hubble.ge/app/ |
+| **Signing Page** (SMS links go here) | https://hubble.ge/ |
+| **Docs** (this site) | https://hubble.ge/docs/ |
 | **GitHub Repo** | https://github.com/gilavi/Sarke2.0 |
 | **Supabase Dashboard** | https://supabase.com/dashboard/project/seskuthiopywrgntsgfw |
 
@@ -26,13 +26,13 @@ sidebar_position: 1
 npm install --legacy-peer-deps
 npx expo start
 
-# Web Dashboard → http://localhost:5173/Sarke2.0/app/
+# Web Dashboard → http://localhost:5173/app/
 cd web-app && npm install && npm run dev
 
-# Signing Page → http://localhost:5173/Sarke2.0/
+# Signing Page → http://localhost:5173/
 cd web && npm install && npm run dev
 
-# Docs Site → http://localhost:3000/Sarke2.0/docs/
+# Docs Site → http://localhost:3000/docs/
 cd website && npm install && npm start
 ```
 
@@ -87,9 +87,9 @@ EAS project ID: ab800403-36c4-4673-8dd8-dfc75b66d14b
 | Codebase | Path | URL | Purpose |
 |---|---|---|---|
 | **Mobile** | `/` (repo root) | Expo Go / TestFlight | Primary app — inspections, signatures, PDF |
-| **Dashboard** | `web-app/` | `https://gilavi.github.io/Sarke2.0/app/` | Web management dashboard (Vite + React) |
-| **Signing page** | `web/` | `https://gilavi.github.io/Sarke2.0/` | Token-based signing page linked from SMS |
-| **This docs site** | `website/` | `https://gilavi.github.io/Sarke2.0/docs/` | You are here |
+| **Dashboard** | `web-app/` | `https://hubble.ge/app/` | Web management dashboard (Vite + React) |
+| **Signing page** | `web/` | `https://hubble.ge/` | Token-based signing page linked from SMS |
+| **This docs site** | `website/` | `https://hubble.ge/docs/` | You are here |
 
 They share only Supabase. No code is shared between them.
 

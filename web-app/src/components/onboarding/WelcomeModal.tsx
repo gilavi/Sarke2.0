@@ -6,7 +6,7 @@ import { useConfetti } from '@/hooks/useConfetti';
 import { useAuth } from '@/lib/auth';
 
 const STEPS = [
-  { title: 'მოგესალმებით Sarke-ში', desc: 'თქვენი შრომის უსაფრთხოების ცენტრალური პანელი.', icon: Shield },
+  { title: 'მოგესალმებით Hubble-ში', desc: 'თქვენი შრომის უსაფრთხოების ცენტრალური პანელი.', icon: Shield },
   { title: 'თქვენი პირველი პროექტი', desc: 'შექმენით პროექტი და დაიწყეთ მისი მართვა.', icon: FolderPlus },
   { title: 'შემოწმების დაწყება', desc: 'ჩაატარეთ უსაფრთხოების შემოწმება რამდენიმე დაჭერით.', icon: ClipboardCheck },
   { title: 'მზად ხართ!', desc: 'ყველაფერი მზად არის. წარმატებები!', icon: PartyPopper },

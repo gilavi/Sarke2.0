@@ -63,7 +63,7 @@ function PhoneMockup() {
       <text x="24" y="40" fill="rgba(255,255,255,0.4)" fontSize="11" fontFamily="system-ui">9:41</text>
       {/* Header */}
       <rect x="20" y="58" width="240" height="48" rx="12" fill="#1A2F22" />
-      <text x="36" y="88" fill="white" fontSize="14" fontFamily="system-ui,sans-serif" fontWeight="700">SARKE</text>
+      <text x="36" y="88" fill="white" fontSize="14" fontFamily="system-ui,sans-serif" fontWeight="700">HUBBLE</text>
       <rect x="180" y="70" width="68" height="24" rx="8" fill="#147A4F" />
       <text x="214" y="86" fill="white" fontSize="10" fontFamily="system-ui" fontWeight="600" textAnchor="middle">+ PDF</text>
       {/* Checklist rows */}
@@ -179,7 +179,7 @@ function Navbar() {
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-500">
             <ShieldCheck size={18} className="text-white" />
           </div>
-          <span className="text-xl font-bold tracking-tight text-neutral-900">SARKE</span>
+          <span className="text-xl font-bold tracking-tight text-neutral-900">HUBBLE</span>
         </Link>
 
         <nav className="hidden md:flex items-center gap-6">
@@ -264,7 +264,7 @@ function Hero() {
           </motion.h1>
 
           <motion.p variants={fadeUp} className="text-lg text-neutral-500 leading-relaxed mb-8 max-w-xl">
-            SARKE ათავისუფლებს შრომის უსაფრთხოების სპეციალისტებს ქაღალდის ფორმებისგან.
+            HUBBLE ათავისუფლებს შრომის უსაფრთხოების სპეციალისტებს ქაღალდის ფორმებისგან.
             ციფრული შემოწმება, PDF გენერაცია, ხელმოწერები — პირდაპირ სამშენებლო მოედნიდან.
           </motion.p>
 
@@ -359,7 +359,7 @@ function PainSection() {
           initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
           className="text-center text-xl font-semibold text-[#75C3A5]"
         >
-          SARKE ამოხსნის ამ პრობლემებს
+          HUBBLE ამოხსნის ამ პრობლემებს
         </motion.p>
       </div>
     </section>
@@ -522,12 +522,12 @@ function Pricing() {
 
 // ─── FAQ ──────────────────────────────────────────────────────────────────────
 const faqs = [
-  { q: 'რა ფორმატშია PDF?', a: 'SARKE გენერირებს სრულ PDF დოკუმენტს SHA256 ჰეშით, GPS კოორდინატებით, ფოტოებითა და ციფრული ხელმოწერებით. ფაილი ინახება Supabase Storage-ში და ხელმისაწვდომია ნებისმიერ დროს.' },
-  { q: 'iOS-ზე ხელმისაწვდომია?', a: 'დიახ. SARKE ამჟამად iOS-ზეა ხელმისაწვდომი App Store-ის მეშვეობით. Android-ის ვერსია მუშავდება.' },
+  { q: 'რა ფორმატშია PDF?', a: 'HUBBLE გენერირებს სრულ PDF დოკუმენტს SHA256 ჰეშით, GPS კოორდინატებით, ფოტოებითა და ციფრული ხელმოწერებით. ფაილი ინახება Supabase Storage-ში და ხელმისაწვდომია ნებისმიერ დროს.' },
+  { q: 'iOS-ზე ხელმისაწვდომია?', a: 'დიახ. HUBBLE ამჟამად iOS-ზეა ხელმისაწვდომი App Store-ის მეშვეობით. Android-ის ვერსია მუშავდება.' },
   { q: 'ინტერნეტის გარეშე მუშაობს?', a: 'შემოწმების ფორმების შევსება ოფლაინ რეჟიმშიც შესაძლებელია. PDF გენერაცია და ფოტოების ატვირთვა ინტერნეტ კავშირს საჭიროებს.' },
   { q: 'BOG-ის გარდა სხვა გადახდა?', a: 'ამჟამად მხოლოდ BOG-ს მხარს ვუჭერთ. სხვა ბანკებისა და Visa/Mastercard-ის მხარდაჭერა ახლო მომავალში დაემატება.' },
   { q: 'მონაცემები სად ინახება?', a: 'ყველა მონაცემი ინახება Supabase-ის EU-ზონაში. ორგანიზაციის მონაცემები სხვა ორგანიზაციისთვის მიუწვდომელია (Row Level Security).' },
-  { q: 'კორპორატიული ტარიფი გაქვს?', a: '5-ზე მეტი სპეციალისტისთვის გთავაზობთ კორპორატიულ ტარიფს. კონტაქტი: sarke@sarke.ge' },
+  { q: 'კორპორატიული ტარიფი გაქვს?', a: '5-ზე მეტი სპეციალისტისთვის გთავაზობთ კორპორატიულ ტარიფს. კონტაქტი: hello@hubble.ge' },
 ];
 
 function FAQ() {
@@ -613,19 +613,19 @@ function Footer() {
               <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-brand-500">
                 <ShieldCheck size={15} className="text-white" />
               </div>
-              <span className="text-lg font-bold text-neutral-900">SARKE</span>
+              <span className="text-lg font-bold text-neutral-900">HUBBLE</span>
             </div>
             <p className="text-sm text-neutral-500">შრომის უსაფრთხოების ციფრული პლათფორმა</p>
           </div>
           <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-neutral-500">
             <Link to="/terms" className="hover:text-brand-600 transition-colors">კონფიდენციალობა</Link>
             <Link to="/terms" className="hover:text-brand-600 transition-colors">პირობები</Link>
-            <a href="mailto:sarke@sarke.ge" className="hover:text-brand-600 transition-colors">კონტაქტი</a>
+            <a href="mailto:hello@hubble.ge" className="hover:text-brand-600 transition-colors">კონტაქტი</a>
           </div>
         </div>
         <div className="mt-8 pt-6 border-t border-neutral-100 flex flex-col md:flex-row items-center justify-between gap-2 text-xs text-neutral-400">
-          <span>© 2026 SARKE · გაკეთებულია საქართველოში 🇬🇪</span>
-          <span>sarke@sarke.ge</span>
+          <span>© 2026 HUBBLE · გაკეთებულია საქართველოში 🇬🇪</span>
+          <span>hello@hubble.ge</span>
         </div>
       </div>
     </footer>
@@ -655,7 +655,7 @@ function StickyMobileBar() {
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-500 shrink-0">
             <ShieldCheck size={18} className="text-white" />
           </div>
-          <p className="flex-1 min-w-0 text-sm font-semibold text-neutral-900 truncate">SARKE — გადმოწერე უფასოდ</p>
+          <p className="flex-1 min-w-0 text-sm font-semibold text-neutral-900 truncate">HUBBLE — გადმოწერე უფასოდ</p>
           <a
             href="#"
             className="shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-black px-3 py-2 text-xs font-semibold text-white"
@@ -721,7 +721,7 @@ function ExitIntentPopup() {
             </div>
             {!submitted ? (
               <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-                <p className="text-sm text-neutral-600 mb-1">მიიღე SARKE-ს შესახებ განახლებები პირველ რიგში:</p>
+                <p className="text-sm text-neutral-600 mb-1">მიიღე HUBBLE-ს შესახებ განახლებები პირველ რიგში:</p>
                 <input
                   type="email" value={email} onChange={e => setEmail(e.target.value)}
                   placeholder="შენი ელ.ფოსტა" required
