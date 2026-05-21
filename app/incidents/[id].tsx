@@ -460,7 +460,7 @@ export default function IncidentDetail() {
               style={{ width: '100%' }}
             />
             <Button
-              title="განახლება"
+              title="ახალი ინციდენტი"
               variant="link"
               onPress={() => router.push(`/incidents/new?projectId=${incident.project_id}` as any)}
               style={{ width: '100%' }}
