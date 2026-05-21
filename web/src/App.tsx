@@ -42,7 +42,7 @@ export function App() {
     return <SafetyGuidePage />;
   }
 
-  // No signing token in URL — redirect to the dashboard at /app/
-  window.location.replace('/app/');
+  // Fallback — index.html already redirects non-signing visitors to /app/
+  // before React loads, so this branch should never be reached in production.
   return null;
 }
