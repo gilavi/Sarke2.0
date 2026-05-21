@@ -4,6 +4,15 @@
 
 ---
 
+## 2026-05-21 — Split the Landing + Sidebar god-components (web-app)
+
+### Internal refactor — no behavior change
+- **`Landing.tsx` 799 → ~35 lines:** extracted into `pages/landing/` — `marketing-data.ts` (content), `shared.tsx` (animation variants + store badges + phone mockup), `sections.tsx` (the 9 page sections), `overlays.tsx` (sticky bar, exit-intent, cookie banner). `Landing.tsx` is now a thin composition. Verified rendering identically via preview screenshot.
+- **`Sidebar.tsx` 532 → ~140 lines:** nav config → `layout/navItems.ts`; `Tooltip`/`RailNavItem`/`MoreGroup` + shared `SidebarNavList` + `SidebarFooter` → `layout/SidebarNav.tsx`. The mobile drawer (which had re-declared the nav markup + account/sign-out) now reuses `SidebarNavList`/`SidebarFooter` in always-expanded mode — the drawer is just the expanded rail.
+- Verified: typecheck + build + tests (71) + smoke green.
+
+---
+
 ## 2026-05-21 — Enforced the no-shadow rule across the web-app (web-app)
 
 ### Internal cleanup — border-based separation, with a guard
