@@ -84,7 +84,7 @@ function Tooltip({
             animate={{ opacity: 1, x: 0, scale: 1 }}
             exit={{ opacity: 0, x: -4, scale: 0.96 }}
             transition={{ duration: 0.15, ease: 'easeOut' }}
-            className="pointer-events-none absolute left-full z-50 ml-2 whitespace-nowrap rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 shadow-lg dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+            className="pointer-events-none absolute left-full z-50 ml-2 whitespace-nowrap rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
           >
             <div className="flex items-center gap-2">
               <span>{label}</span>
@@ -278,7 +278,7 @@ export const Sidebar = memo(function Sidebar({ open = false, onClose }: SidebarP
       {/* ── Logo + Pin Toggle ── */}
       <div className="flex items-center h-14 overflow-hidden border-b border-neutral-200 dark:border-neutral-800 px-3 gap-2">
         <NavLink to="/home" className="flex flex-1 min-w-0 items-center gap-2 overflow-hidden" aria-label="მთავარი">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-500 text-white shadow-sm dark:shadow-[0_0_12px_rgba(71,175,135,0.35)]">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-500 text-white">
             <ShieldCheck size={16} />
           </div>
           <AnimatePresence initial={false}>
@@ -440,7 +440,7 @@ export const Sidebar = memo(function Sidebar({ open = false, onClose }: SidebarP
               {/* Logo */}
               <div className="flex h-14 items-center gap-3 border-b border-neutral-200 px-4 dark:border-neutral-800">
                 <NavLink to="/home" className="flex items-center gap-2" onClick={onClose}>
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-500 text-white shadow-sm">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-500 text-white">
                     <ShieldCheck size={16} />
                   </div>
                   <span className="font-display text-base font-bold text-neutral-900 dark:text-neutral-100">

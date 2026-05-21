@@ -29,7 +29,7 @@ export function StatCard({ title, value, icon: Icon, sparklineData, trendCurrent
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: 'spring', ...SPRING.cardEntrance, delay: staggerIndex * 0.08 }}
       className={cn(
-        'rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm transition hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900',
+        'rounded-2xl border border-neutral-200 bg-white p-4 transition hover:border-neutral-300 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:border-neutral-700',
         href && 'cursor-pointer',
         className,
       )}

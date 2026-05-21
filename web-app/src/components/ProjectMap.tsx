@@ -49,7 +49,7 @@ export default function ProjectMap({ pins, singlePin = false, className }: Proje
       {/* Selected pin card */}
       {selected && (
         <div className="absolute bottom-4 left-1/2 z-[1000] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2">
-          <div className="rounded-2xl bg-white shadow-xl ring-1 ring-black/5 dark:bg-neutral-900 dark:ring-white/10">
+          <div className="rounded-2xl bg-white ring-1 ring-black/5 dark:bg-neutral-900 dark:ring-white/10">
             <div className="p-4">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-start gap-2">
@@ -104,7 +104,7 @@ export default function ProjectMap({ pins, singlePin = false, className }: Proje
             <button
               key={pin.id}
               onClick={() => setSelected(pin)}
-              className="shrink-0 rounded-full bg-white/90 px-3 py-1.5 text-xs font-medium text-neutral-700 shadow-sm backdrop-blur transition hover:bg-white dark:bg-neutral-900/90 dark:text-neutral-200 dark:hover:bg-neutral-900"
+              className="shrink-0 rounded-full border border-neutral-200 bg-white/90 px-3 py-1.5 text-xs font-medium text-neutral-700 backdrop-blur transition hover:bg-white dark:border-neutral-700 dark:bg-neutral-900/90 dark:text-neutral-200 dark:hover:bg-neutral-900"
             >
               <span className="flex items-center gap-1">
                 <MapPin size={10} className="text-brand-500" />
@@ -120,7 +120,7 @@ export default function ProjectMap({ pins, singlePin = false, className }: Proje
         href={`https://maps.google.com/?q=${firstPin.latitude},${firstPin.longitude}`}
         target="_blank"
         rel="noopener noreferrer"
-        className="absolute right-3 top-3 z-[500] rounded-lg bg-white/90 px-2.5 py-1.5 text-xs font-medium text-neutral-700 shadow-sm backdrop-blur transition hover:bg-white dark:bg-neutral-900/90 dark:text-neutral-200 dark:hover:bg-neutral-900"
+        className="absolute right-3 top-3 z-[500] rounded-lg border border-neutral-200 bg-white/90 px-2.5 py-1.5 text-xs font-medium text-neutral-700 backdrop-blur transition hover:bg-white dark:border-neutral-700 dark:bg-neutral-900/90 dark:text-neutral-200 dark:hover:bg-neutral-900"
       >
         Google Maps-ზე გახსნა →
       </a>

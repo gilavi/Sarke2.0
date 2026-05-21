@@ -836,8 +836,8 @@ function AnswerButton({ selected, onClick, icon, label, variant }: {
   selected: boolean; onClick: () => void; icon: React.ReactNode; label: string; variant: 'yes' | 'no';
 }) {
   const base = variant === 'yes'
-    ? selected ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/25 ring-2 ring-emerald-500 ring-offset-2' : 'bg-white text-neutral-600 hover:bg-emerald-50 hover:text-emerald-600 border border-neutral-200'
-    : selected ? 'bg-red-500 text-white shadow-lg shadow-red-500/25 ring-2 ring-red-500 ring-offset-2' : 'bg-white text-neutral-600 hover:bg-red-50 hover:text-red-600 border border-neutral-200';
+    ? selected ? 'bg-emerald-500 text-white ring-2 ring-emerald-500 ring-offset-2' : 'bg-white text-neutral-600 hover:bg-emerald-50 hover:text-emerald-600 border border-neutral-200'
+    : selected ? 'bg-red-500 text-white ring-2 ring-red-500 ring-offset-2' : 'bg-white text-neutral-600 hover:bg-red-50 hover:text-red-600 border border-neutral-200';
   return (
     <motion.button type="button" whileTap={{ scale: 0.96 }} onClick={onClick}
       className={`flex items-center justify-center gap-2 rounded-2xl px-6 py-4 text-sm font-semibold transition-all ${base} dark:ring-offset-neutral-900`}>
@@ -870,7 +870,7 @@ function ComponentGridStep({ question, answer, onChange }: {
     <div className="space-y-4">
       <div className="space-y-3 md:hidden">
         {rows.map((row) => (
-          <div key={row} className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
+          <div key={row} className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-800">
             <p className="mb-3 text-sm font-semibold text-neutral-800 dark:text-neutral-100">{row}</p>
             <div className="space-y-2">
               {statusCols.map((col) => (

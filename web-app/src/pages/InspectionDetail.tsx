@@ -837,7 +837,7 @@ function QuestionRow({
                   <img
                     src={photoSignedUrls[photos[lightbox].id]}
                     alt={`ფოტო ${lightbox + 1}`}
-                    className="max-h-[80vh] max-w-full rounded-lg object-contain shadow-2xl"
+                    className="max-h-[80vh] max-w-full rounded-lg object-contain"
                   />
                 ) : (
                   <div className="h-64 w-96 rounded-lg bg-neutral-800" />

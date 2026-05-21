@@ -66,7 +66,7 @@ export function CommandPalette() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: -10 }}
             transition={{ duration: DURATION.normal, ease: EASE.easeOut }}
-            className="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-neutral-900"
+            className="w-full max-w-lg overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-900"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center gap-3 border-b border-neutral-100 px-4 py-3 dark:border-neutral-800">

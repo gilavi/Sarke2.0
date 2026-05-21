@@ -162,7 +162,7 @@ export default function Projects() {
               onClick={handleSetList}
               className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition ${
                 view === 'list'
-                  ? 'bg-white text-neutral-900 shadow-sm'
+                  ? 'bg-white text-neutral-900'
                   : 'text-neutral-500 hover:text-neutral-700'
               }`}
             >
@@ -173,7 +173,7 @@ export default function Projects() {
               onClick={handleSetMap}
               className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition ${
                 view === 'map'
-                  ? 'bg-white text-neutral-900 shadow-sm'
+                  ? 'bg-white text-neutral-900'
                   : 'text-neutral-500 hover:text-neutral-700'
               }`}
             >

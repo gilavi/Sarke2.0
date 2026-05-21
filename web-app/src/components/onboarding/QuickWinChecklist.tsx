@@ -43,7 +43,7 @@ export function QuickWinChecklist() {
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900"
+      className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900"
     >
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-semibold text-neutral-900 dark:text-neutral-100">საწყისი ნაბიჯები</h3>

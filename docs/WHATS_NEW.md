@@ -4,6 +4,17 @@
 
 ---
 
+## 2026-05-21 — Enforced the no-shadow rule across the web-app (web-app)
+
+### Internal cleanup — border-based separation, with a guard
+Removed all 25 Tailwind `shadow-*` / `drop-shadow-*` utility violations across the dashboard (cards, modals, popovers, map chips, sidebar + logo, toggles, the marketing hero). Separation now comes from borders/backgrounds per the project rule.
+
+- **Guard added:** [`web-app/scripts/check-no-shadows.mjs`](../web-app/scripts/check-no-shadows.mjs), wired into `npm run lint`, fails on any `shadow-` utility in `src/` (three.js light props in `Scene3D.tsx` are exempt). Documented in [primitives.md](primitives.md#web-dashboard-separation--no-shadows-web-app).
+- Modals (Welcome, CommandPalette, Calendar) and map chips gained a `border`; the PDF-overlay toolbar a bottom border; hover affordance uses a border-color change.
+- Decorative removals worth a look: the dark-mode brand glow on the logo (Sidebar/AppShell) and the hero `drop-shadow-2xl` (Landing). The `glow-*` tokens in `tailwind.config.ts` remain available if you want a sanctioned glow back.
+
+---
+
 ## 2026-05-21 — Harness create flow folded into the shared InspectionWizard (web-app)
 
 ### Internal refactor — one inspection create wizard; legal record unchanged

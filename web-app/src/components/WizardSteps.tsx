@@ -21,7 +21,7 @@ export default function WizardSteps({ steps, current, onStep }: Props) {
           onClick={() => onStep(i)}
           className={`flex-1 whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium transition ${
             i === current
-              ? 'bg-brand-600 text-white shadow-sm'
+              ? 'bg-brand-600 text-white'
               : 'text-neutral-600 hover:bg-neutral-100'
           }`}
         >

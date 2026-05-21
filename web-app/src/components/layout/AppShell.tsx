@@ -53,7 +53,7 @@ export const AppShell = memo(function AppShell({ children }: { children: ReactNo
               <Menu size={20} />
             </button>
             <Link to="/home" className="flex items-center gap-2 lg:hidden">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-500 text-white shadow-sm dark:shadow-[0_0_12px_rgba(71,175,135,0.3)]">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-500 text-white">
                 <ShieldCheck size={15} />
               </div>
               <span className="font-display text-base font-bold text-neutral-900 dark:text-neutral-100">Hubble</span>
@@ -72,7 +72,7 @@ export const AppShell = memo(function AppShell({ children }: { children: ReactNo
         {/* Skip-to-content link */}
         <a
           href="#main-content"
-          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-brand-600 focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-white focus:shadow-lg"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-brand-600 focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-white"
         >
           კონტენტზე გადასვლა
         </a>

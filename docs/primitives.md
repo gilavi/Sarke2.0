@@ -101,6 +101,10 @@ The four equipment inspection detail pages (bobcat, excavator, general-equipment
 
 **Don't** add a `web-app/src/pages/<Type>InspectionDetail.tsx` — add a `features/inspections/equipment/<Type>Detail.tsx` that calls `useEquipmentDetail` and renders its type-specific steps with the shared widgets. The per-type data module ([`lib/data/<type>.ts`](../web-app/src/lib/data/) via `makeRepository`) supplies the get/update/remove/create fns + patch type. This is the **dashboard editor**; the legal PDF is rendered separately by `web-app/src/pages/print/<Type>Print.tsx` from the saved row — keep the `save()` shapes stable and the PDF is unaffected.
 
+## Web dashboard separation — no shadows (web-app)
+
+The web-app uses **borders and backgrounds** for separation, never box-shadows. Don't add Tailwind `shadow-*` / `drop-shadow-*` utility classes in `web-app/src` — [`scripts/check-no-shadows.mjs`](../web-app/scripts/check-no-shadows.mjs) (run by `npm run lint`) blocks them. Modals/popovers get a `border`; cards rely on their existing `border`; hover affordance is a border-color change, not `hover:shadow-*`. The `shadow-*` light props on three.js elements in `Scene3D.tsx` are exempt — they're three.js config, not CSS.
+
 ## Web dashboard inspection create/edit wizard (web-app)
 
 One wizard owns the dashboard's question/template-driven inspection create + edit flow: [`web-app/src/components/InspectionWizard.tsx`](../web-app/src/components/InspectionWizard.tsx). It handles the generic flow and — via a `WizardPreset` — streamlined per-type flows (e.g. harness: locked template, project-only info step, grid-first checklist, required conclusion, navigate-to-detail on success).

@@ -112,7 +112,7 @@ export function HeatmapCalendar({ data }: HeatmapCalendarProps) {
       {/* Tooltip */}
       {hovered && (
         <div
-          className="fixed z-50 rounded-lg bg-neutral-900 px-2.5 py-1.5 text-xs text-white shadow-xl dark:bg-white dark:text-neutral-900"
+          className="fixed z-50 rounded-lg bg-neutral-900 px-2.5 py-1.5 text-xs text-white dark:bg-white dark:text-neutral-900"
           style={{ left: hovered.x, top: hovered.y - 44, transform: 'translateX(-50%)' }}
         >
           <p className="font-medium">{new Date(hovered.date).toLocaleDateString('ka-GE', { day: 'numeric', month: 'long' })}</p>

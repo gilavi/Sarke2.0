@@ -93,7 +93,7 @@ export default function Regulations() {
           return (
             <Card
               key={item.id}
-              className="cursor-pointer overflow-hidden transition-shadow hover:shadow-md"
+              className="cursor-pointer overflow-hidden transition hover:border-brand-300"
               onClick={() => handleOpen(item.id, item.url)}
             >
               <div className="h-0.5 bg-emerald-600 opacity-70" />

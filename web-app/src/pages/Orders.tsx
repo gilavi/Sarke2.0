@@ -81,7 +81,7 @@ export default function Orders() {
             return (
               <motion.div key={o.id} variants={itemVariants}>
               <Link to={`/orders/${o.id}`}>
-                <Card className="transition hover:border-brand-300 hover:shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+                <Card className="transition hover:border-brand-300 dark:border-neutral-800 dark:bg-neutral-900">
                   <CardHeader className="pb-2">
                     <CardTitle className="flex items-center justify-between text-heading-3">
                       <span>{label}</span>

@@ -15,7 +15,7 @@ export function InspectionPdfOverlay({ src, onClose }: InspectionPdfOverlayProps
   const iframeRef = useRef<HTMLIFrameElement>(null);
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-black/60">
-      <div className="flex items-center justify-between bg-white px-4 py-2 shadow">
+      <div className="flex items-center justify-between border-b border-neutral-200 bg-white px-4 py-2">
         <button
           className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-50"
           onClick={onClose}
