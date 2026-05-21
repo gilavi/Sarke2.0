@@ -1168,7 +1168,6 @@ export default function ProjectDetail() {
                         {order.status === 'draft' ? ' · მონახაზი' : ''}
                       </Text>
                     </View>
-                    <Ionicons name="chevron-forward" size={18} color={theme.colors.borderStrong} />
                   </View>
                 ))}
               </View>
