@@ -1,12 +1,15 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen } from '@/test-utils';
 import StatusBadge from '@/components/StatusBadge';
 
 describe('StatusBadge — known statuses', () => {
-  it('completed → "დასრულდა" with green classes', () => {
+  it('completed → "დასრულდა" with green styling', () => {
     const { container } = render(<StatusBadge status="completed" />);
     expect(screen.getByText('დასრულდა')).toBeInTheDocument();
-    expect(container.firstChild).toHaveClass('text-green-700');
+    // StatusBadge maps "completed" to a Mantine <Badge color="green">, whose
+    // color is applied as an inline CSS variable referencing the green palette.
+    const badge = container.querySelector('.mantine-Badge-root');
+    expect(badge?.getAttribute('style') ?? '').toContain('green');
   });
 
   it('draft → "დრაფტი"', () => {
@@ -41,9 +44,11 @@ describe('StatusBadge — unknown status', () => {
     expect(screen.getByText('something_weird')).toBeInTheDocument();
   });
 
-  it('falls back to neutral classes', () => {
+  it('falls back to gray styling', () => {
     const { container } = render(<StatusBadge status="unknown" />);
-    expect(container.firstChild).toHaveClass('text-neutral-700');
+    // Unknown statuses fall back to <Badge color="gray">.
+    const badge = container.querySelector('.mantine-Badge-root');
+    expect(badge?.getAttribute('style') ?? '').toContain('gray');
   });
 });
 
@@ -61,8 +66,8 @@ describe('StatusBadge — showIcon prop', () => {
 });
 
 describe('StatusBadge — className prop', () => {
-  it('forwards extra className to the wrapper span', () => {
+  it('forwards extra className to the badge root', () => {
     const { container } = render(<StatusBadge status="draft" className="my-custom-class" />);
-    expect(container.firstChild).toHaveClass('my-custom-class');
+    expect(container.querySelector('.mantine-Badge-root')).toHaveClass('my-custom-class');
   });
 });
