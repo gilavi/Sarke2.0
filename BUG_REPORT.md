@@ -425,3 +425,41 @@ onChange={async (templateId) => {
 - **§1.8–1.9 "undefined `inspectionRef`" (fall-protection, forklift):** false — both declare `const inspectionRef = useRef(...)` and sync it via `useEffect(() => { inspectionRef.current = inspection; }, [inspection])`; photo upload reads `inspectionRef.current.id` correctly.
 
 **Verified:** typecheck passes for the changed file (pre-existing unrelated failures in `lib/services.mock.ts` and web-app `src/` remain — not introduced here). On-device sheet/keyboard behavior was not re-tested (no simulator this session).
+
+## P0 — Concurrent PDF-upload flush could insert duplicate certificates · FIXED 2026-05-21
+
+**Source:** 10-agent beta report (`Sarke2.0_Beta_Test_Master_Report.md`, §1.14), Sprint 2.
+
+**Symptom:** The same inspection occasionally produced two `certificates` rows (same `inspection_id` + `pdf_url`, different ids).
+
+**Root cause:** `flushPendingPdfUploads()` in [lib/pdfUploadQueue.ts](lib/pdfUploadQueue.ts) had no single-flight guard. It is called from three places that can fire near-simultaneously on app start ([app/_layout.tsx](app/_layout.tsx) on mount, plus the `NetInfo.fetch` seed and the reconnect listener in [lib/offline.tsx](lib/offline.tsx)). Its in-loop dedup is check-then-create:
+
+```ts
+const existing = await certificatesApi.listByInspection(p.inspectionId);
+const already = existing.some(c => c.pdf_url === p.pdfUrl);
+if (!already) await certificatesApi.create({ … });
+```
+
+Two concurrent flushes can both read "no certificate yet" before either inserts (TOCTOU), and there is **no DB unique constraint** on `certificates` (`idx_certificates_inspection` is a plain, non-unique index), so both inserts succeed → duplicate.
+
+**Fix:** module-level single-flight guard. All callers share one JS thread, so a boolean is sufficient; concurrent calls become no-ops while one flush runs, which makes the existing check-then-create dedup correct again (and still covers sequential retries):
+
+```ts
+let isFlushingPdfUploads = false;
+export async function flushPendingPdfUploads() {
+  if (isFlushingPdfUploads) return;
+  isFlushingPdfUploads = true;
+  try { await flushPendingPdfUploadsInner(); }
+  finally { isFlushingPdfUploads = false; }
+}
+```
+
+A DB `unique (inspection_id, pdf_url)` constraint would be a stronger backstop but needs a migration + dedup backfill and risks rejecting legitimate re-generations — deferred, not done here.
+
+**Other beta-report Sprint-2 items — verified against source, no code change:**
+- **§1.12 "offline photo queue FK violation → permanent photo loss":** false. The flush rotates a failing op to the back of the queue with an incremented attempt count ([lib/offline.tsx](lib/offline.tsx)), so a `photo_upload` that briefly precedes its `answer_upsert` simply retries after the answer lands — it is not lost. Ops that do exhaust retries move to a *failed* queue with their staged file **retained** (deleted only on success or explicit `dismissFailed`), so they remain retryable. No permanent loss.
+- **§1.13 "AsyncStorage queue corruption discards the whole queue":** false premise. `readQueue()` already wraps `JSON.parse` in try/catch, logs, and returns `[]` — there is no unhandled crash. All queue mutations are serialized through `runExclusive`/`queueLock`, so there is no concurrent-write corruption. The report's "write a backup copy first" scheme is not atomic either (kill between the two writes leaves them disagreeing) and doubles every write; not implemented.
+- **§1.20 "wizard patchAnswer race creates duplicate answers / orphans photos":** false in practice. `patchAnswer` reuses `answers[question.id]?.id` and only mints a UUID when no answer exists; `enqueueAnswerUpsert` coalesces by `(inspection_id, question_id)` and the DB upserts `onConflict (inspection_id, question_id)`, so rapid taps collapse to one row. A photo can only attach after the multi-second OS image-picker round-trip, by which time the answer id is stable. The report's per-`answerId` lock also wouldn't catch the described case (the race mints *different* ids).
+- **§2.4 "GridRowStep comment autoFocus hidden behind keyboard (regression)":** false. The comment input sits inside a `KeyboardAwareScrollView` (`react-native-keyboard-controller`, `bottomOffset={120}`) that auto-scrolls the focused field above the keyboard; the empty `onFocus` is intentional and documented inline. The manual `scrollToEnd` was removed on purpose in the 2026-04-28/05-02 keyboard migration, not a regression.
+
+**Verified:** `npm run lint` typecheck clean for the changed file; pre-existing unrelated failures in `lib/services.mock.ts` and web-app `src/` remain. Concurrency behavior reasoned from source; not reproduced on a device this session.

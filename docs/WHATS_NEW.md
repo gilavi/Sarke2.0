@@ -4,6 +4,15 @@
 
 ---
 
+## 2026-05-21 — Single-flight guard on the PDF upload queue (mobile)
+
+### Fix — no more duplicate certificate rows
+`flushPendingPdfUploads()` is called from three places that can fire near-simultaneously on app start (app mount + the NetInfo seed and reconnect listener). With no concurrency guard, two flushes could both pass the check-then-create dedup before either inserted — and `certificates` has no DB unique constraint — producing duplicate certificate rows. Added a module-level single-flight guard so concurrent calls are no-ops while one flush runs. ([lib/pdfUploadQueue.ts](../lib/pdfUploadQueue.ts))
+
+This was §1.14 of the 10-agent beta report (Sprint 2). The other Sprint-2 items — offline photo-queue "FK violation / permanent loss" (§1.12), AsyncStorage "queue corruption" (§1.13), wizard `patchAnswer` "race" (§1.20), and GridRowStep comment "keyboard regression" (§2.4) — were verified against source and found to be already-handled or non-existent; no code change. See [BUG_REPORT.md](../BUG_REPORT.md) for per-item evidence.
+
+---
+
 ## 2026-05-21 — Fix new-inspection-from-template project association (mobile)
 
 ### Fix — inspection now created under the right project
