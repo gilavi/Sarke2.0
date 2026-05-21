@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 import path from 'node:path';
 
 export default defineConfig({
-  base: '/Sarke2.0/app/',
+  base: '/app/',
   plugins: [react()],
   resolve: {
     alias: {

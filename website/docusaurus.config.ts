@@ -3,7 +3,7 @@ import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
-  title: 'Sarke 2.0',
+  title: 'Hubble',
   tagline: 'ხარაჩოს უსაფრთხოების შემოწმების აპი — full project documentation',
   favicon: 'img/favicon.ico',
 
@@ -11,8 +11,8 @@ const config: Config = {
     v4: true,
   },
 
-  url: 'https://gilavi.github.io',
-  baseUrl: '/Sarke2.0/docs/',
+  url: 'https://hubble.ge',
+  baseUrl: '/docs/',
 
   organizationName: 'gilavi',
   projectName: 'Sarke2.0',
@@ -53,7 +53,7 @@ const config: Config = {
       respectPrefersColorScheme: true,
     },
     navbar: {
-      title: 'Sarke 2.0',
+      title: 'Hubble',
       items: [
         {
           type: 'docSidebar',
