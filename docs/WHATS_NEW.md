@@ -4,7 +4,24 @@
 
 ---
 
-## 2026-05-22 — Reusable web inspection wizard (Expo web)
+## 2026-05-22 — Harness wizard redesign lands in the actual dashboard (web-app)
+
+The previous "reusable web inspection wizard" (entry below) was built in `components/web/InspectionWizard/` — the **Expo** web layer, which never deploys to hubble.ge. hubble.ge is served by the `web-app/` dashboard, so that work was never visible. This entry corrects it.
+
+### Removed — `components/web/InspectionWizard/` + `app/inspections/harness/HarnessWebWizard.tsx`
+Deleted the Expo "web version of mobile" harness wizard and its `Platform.OS === 'web'` branch in `app/inspections/harness/[id].tsx`. The native mobile flow is untouched.
+
+### Redesigned — `web-app/src/components/inspections/HarnessWizard.tsx`
+The harness checklist step now matches the intended layout, in the dashboard that actually ships:
+- **Left sidebar (260px):** lists harnesses (`grid_rows`) with status sub-labels (შეუვსებელი / X კი · Y არა / ✓ დასრულდა / ⚠ X პრობლემა), active highlight, and a dashed "+ ახალი ქამარი" add card. Arrow up/down navigates.
+- **Main content (max 680px):** per-harness question table — one row per check column (`grid_cols`) with a compact inline კი / არა / N/A segmented control and zebra striping. Per-row keyboard: Y/1, N/2, 3/Space.
+- **Full-width footer:** უკან (previous step) · კიდევ ერთი (when rows remain) · შენახვა და შემდეგი.
+- The harness step renders full-bleed (the surrounding `InspectionWizard` no longer constrains it to `max-w-2xl`); answers auto-save on every cell change via the existing `onChange`.
+- **Data-model note:** comments stay per-harness (one `კომენტარი` column), not per-question, so the spec's per-row comment expansion is one harness-level comment field.
+
+---
+
+## 2026-05-22 — Reusable web inspection wizard (Expo web) — superseded/removed
 
 ### New — `components/web/InspectionWizard/`
 A generic, web-only full-page modal wizard meant to back every web inspection flow (harnesses, fall-protection, forklift, …). Mobile is untouched — every sub-component bails with `if (Platform.OS !== 'web') return null`.
