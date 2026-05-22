@@ -254,9 +254,22 @@ function SignatureCaptureModal({
   const styles = useMemo(() => getstyles(theme), [theme]);
 
   const ref = useRef<SignatureViewRef>(null);
+  const [hasStroke, setHasStroke] = useState(false);
 
-  const handleSave = () => ref.current?.readSignature();
-  const handleClear = () => ref.current?.clearSignature();
+  useEffect(() => {
+    if (visible) setHasStroke(false);
+  }, [visible]);
+
+  const handleSave = () => {
+    if (!hasStroke) {
+      return;
+    }
+    ref.current?.readSignature();
+  };
+  const handleClear = () => {
+    ref.current?.clearSignature();
+    setHasStroke(false);
+  };
 
   const webStyle = `
     .m-signature-pad { box-shadow: none; border: none; background: #fff; margin: 0; }
@@ -282,6 +295,8 @@ function SignatureCaptureModal({
             <SignatureScreen
               ref={ref}
               onOK={onDone}
+              onBegin={() => setHasStroke(true)}
+              onEnd={() => setHasStroke(true)}
               webStyle={webStyle}
               descriptionText=""
               autoClear={false}
@@ -295,7 +310,12 @@ function SignatureCaptureModal({
               style={{ flex: 1 }}
               onPress={handleClear}
             />
-            <Button title={t('projectSigner.saveButton')} style={{ flex: 1.4 }} onPress={handleSave} />
+            <Button
+              title={t('projectSigner.saveButton')}
+              style={{ flex: 1.4 }}
+              onPress={handleSave}
+              disabled={!hasStroke}
+            />
           </View>
         </View>
       </View>

@@ -8,7 +8,16 @@ import { AnimatedSuccessIcon, CelebrationBurst } from '../../../components/anima
 import { useTheme } from '../../../lib/theme';
 import { haptic } from '../../../lib/haptics';
 import { ordersApi } from '../../../lib/ordersApi';
-import { ORDER_DOCUMENT_TYPE_LABEL, type Order } from '../../../types/models';
+import { ORDER_DOCUMENT_TYPE_LABEL, type Order, type OrderDocumentType } from '../../../types/models';
+
+const ORDER_SUCCESS_TITLE: Partial<Record<OrderDocumentType, string>> = {
+  labor_safety_specialist: 'სპეციალისტი დანიშნულია!',
+  alcohol_control: 'ალკოჰოლის კონტროლი დანიშნულია!',
+  fire_safety_order: 'სახანძრო უსაფრთხოების პასუხისმგებელი პირი დანიშნულია!',
+  fire_safety_order_enterprise: 'საწარმოს სახანძრო უსაფრთხოების პასუხისმგებელი პირი დანიშნულია!',
+  crane_operator_order: 'კოშკურა ამწის ოპერატორი დანიშნულია!',
+  crane_technical_order: 'ამწის ტექნიკური შემოწმება დანიშნულია!',
+};
 
 export default function OrderSuccessScreen() {
   const { theme } = useTheme();
@@ -33,7 +42,9 @@ export default function OrderSuccessScreen() {
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.header}>
           <AnimatedSuccessIcon />
-          <Text style={styles.title}>ბრძანება შეიქმნა!</Text>
+          <Text style={styles.title}>
+            {order ? (ORDER_SUCCESS_TITLE[order.documentType] ?? 'ბრძანება შეიქმნა!') : 'ბრძანება შეიქმნა!'}
+          </Text>
           <Text style={styles.subtitle}>
             PDF ბრძანება გაიზიარა. ასლი ავტომატურად ატვირთება.
           </Text>

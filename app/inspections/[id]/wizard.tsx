@@ -406,9 +406,13 @@ export default function QuestionnaireWizard() {
         toast.error(`ჩატვირთვა ვერ მოხერხდა: ${toErrorMessage(e)}`);
       }
     } finally {
-      // Always clear loading — even if cancelled — so the UI doesn't stay
-      // stuck on skeletons when the screen regains focus.
-      setLoading(false);
+      // Only clear loading if this load is still the active one. Otherwise
+      // a late-returning cancelled load can clobber the loading state of a
+      // newer load that is still in flight, leaving the UI with stale data
+      // and no skeletons.
+      if (loadCtrlRef.current === ctrl) {
+        setLoading(false);
+      }
     }
   }, [id, toast]);
 
@@ -497,53 +501,61 @@ export default function QuestionnaireWizard() {
   const photoAnswerId = photoQuestion ? answers[photoQuestion.id]?.id ?? null : null;
   const generalPhotos: AnswerPhoto[] = photoAnswerId ? photos[photoAnswerId] ?? [] : [];
 
+  const patchingRef = useRef<Set<string>>(new Set());
+
   const patchAnswer = useCallback(async (question: Question, mutate: (a: Answer) => Answer) => {
     if (!questionnaire) return;
-    const current: Answer =
-      answers[question.id] ??
-      ({
-        id: crypto.randomUUID(),
-        inspection_id: questionnaire.id,
-        question_id: question.id,
-        value_bool: null,
-        value_num: null,
-        value_text: null,
-        grid_values: null,
-        comment: null,
-        notes: null,
-      } as Answer);
-    const next = mutate({ ...current });
-    if (!isAnswerShapeValidForType(question.type, next)) {
-      logError(
-        new Error(`answer/type mismatch: q=${question.id} type=${question.type}`),
-        'wizard.patchAnswer.shape',
-      );
-      // Don't enqueue a payload that the server schema would reject — the
-      // user can keep editing locally; surface a soft warning instead.
-      toast.error('პასუხის ფორმატი არასწორია. გთხოვთ, შეასწოროთ.');
-      return;
-    }
-    // Optimistic update so UI feels instant
-    setAnswers(prev => {
-      const updated = { ...prev, [question.id]: next };
-      void offline.cacheAnswers(questionnaire.id, updated);
-      return updated;
-    });
+    if (patchingRef.current.has(question.id)) return; // prevent race on rapid taps
+    patchingRef.current.add(question.id);
     try {
-      await offline.enqueueAnswerUpsert({
-        id: next.id,
-        inspection_id: next.inspection_id,
-        question_id: next.question_id,
-        value_bool: next.value_bool,
-        value_num: next.value_num,
-        value_text: next.value_text,
-        grid_values: next.grid_values,
-        comment: next.comment,
-        notes: next.notes,
+      const current: Answer =
+        answers[question.id] ??
+        ({
+          id: crypto.randomUUID(),
+          inspection_id: questionnaire.id,
+          question_id: question.id,
+          value_bool: null,
+          value_num: null,
+          value_text: null,
+          grid_values: null,
+          comment: null,
+          notes: null,
+        } as Answer);
+      const next = mutate({ ...current });
+      if (!isAnswerShapeValidForType(question.type, next)) {
+        logError(
+          new Error(`answer/type mismatch: q=${question.id} type=${question.type}`),
+          'wizard.patchAnswer.shape',
+        );
+        // Don't enqueue a payload that the server schema would reject — the
+        // user can keep editing locally; surface a soft warning instead.
+        toast.error('პასუხის ფორმატი არასწორია. გთხოვთ, შეასწოროთ.');
+        return;
+      }
+      // Optimistic update so UI feels instant
+      setAnswers(prev => {
+        const updated = { ...prev, [question.id]: next };
+        void offline.cacheAnswers(questionnaire.id, updated);
+        return updated;
       });
-    } catch (e) {
-      logError(e, 'wizard.patchAnswer.enqueue');
-      toast.error(`პასუხი ვერ შეინახა: ${toErrorMessage(e)}`);
+      try {
+        await offline.enqueueAnswerUpsert({
+          id: next.id,
+          inspection_id: next.inspection_id,
+          question_id: next.question_id,
+          value_bool: next.value_bool,
+          value_num: next.value_num,
+          value_text: next.value_text,
+          grid_values: next.grid_values,
+          comment: next.comment,
+          notes: next.notes,
+        });
+      } catch (e) {
+        logError(e, 'wizard.patchAnswer.enqueue');
+        toast.error(`პასუხი ვერ შეინახა: ${toErrorMessage(e)}`);
+      }
+    } finally {
+      patchingRef.current.delete(question.id);
     }
   }, [questionnaire, answers, offline, toast]);
 
@@ -650,19 +662,42 @@ export default function QuestionnaireWizard() {
 
   const deletePhoto = async (photo: AnswerPhoto) => {
     haptic.medium();
-    try {
-      await answersApi.removePhoto(photo.id);
-      setPhotos(prev => {
-        const next: Record<string, AnswerPhoto[]> = {};
-        for (const [aid, list] of Object.entries(prev)) {
-          next[aid] = list.filter(p => p.id !== photo.id);
+    const doDelete = async () => {
+      try {
+        if (!offline.isOnline) {
+          // Offline: queue deletion and optimistically remove from UI.
+          await offline.enqueuePhotoDelete(photo.id, photo.storage_path);
+          setPhotos(prev => {
+            const next: Record<string, AnswerPhoto[]> = {};
+            for (const [aid, list] of Object.entries(prev)) {
+              next[aid] = list.filter(p => p.id !== photo.id);
+            }
+            return next;
+          });
+          toast.success('ფოტო წაიშალა — სინქრონიზაცია მოხდება ქსელის დაბრუნებისას');
+          return;
         }
-        return next;
-      });
-      toast.success('ფოტო წაიშალა');
-    } catch (e) {
-      toast.error(`ფოტო ვერ წაიშალა: ${toErrorMessage(e, 'ქსელის შეცდომა')}`);
-    }
+        await answersApi.removePhoto(photo.id);
+        setPhotos(prev => {
+          const next: Record<string, AnswerPhoto[]> = {};
+          for (const [aid, list] of Object.entries(prev)) {
+            next[aid] = list.filter(p => p.id !== photo.id);
+          }
+          return next;
+        });
+        toast.success('ფოტო წაიშალა');
+      } catch (e) {
+        toast.error(`ფოტო ვერ წაიშალა: ${toErrorMessage(e, 'ქსელის შეცდომა')}`);
+      }
+    };
+    Alert.alert(
+      'ფოტოს წაშლა',
+      'დარწმუნებული ხართ, რომ გსურთ ამ ფოტოს წაშლა?',
+      [
+        { text: 'გაუქმება', style: 'cancel' },
+        { text: 'წაშლა', style: 'destructive', onPress: doDelete },
+      ],
+    );
   };
 
   const saveConclusionAndGo = async () => {
@@ -712,7 +747,12 @@ export default function QuestionnaireWizard() {
         AsyncStorage.removeItem(stepKey(questionnaire.id)),
       ]).catch(() => {});
       haptic.success();
+      const navTimeout = setTimeout(() => {
+        setFinishing(false);
+        toast.error('ნავიგაცია ვერ მოხერხდა');
+      }, 5000);
       router.replace(`/inspections/${questionnaire.id}/done` as any);
+      clearTimeout(navTimeout);
     } catch (e) {
       haptic.error();
       toast.error(`შემოწმების აქტის დასრულება ვერ მოხერხდა: ${toErrorMessage(e, 'ქსელის შეცდომა')}`);
@@ -1659,7 +1699,9 @@ const GridRowStep = memo(function GridRowStep({
                 onChangeText={text => setValue('კომენტარი', text || null, false)}
                 autoFocus
                 onFocus={() => {
-                  // KeyboardAwareScrollView handles scroll-to-focus automatically
+                  requestAnimationFrame(() => {
+                    scrollRef.current?.scrollToEnd({ animated: true });
+                  });
                 }}
               />
             ) : null}

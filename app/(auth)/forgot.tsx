@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { Keyboard } from 'react-native';
 import * as Linking from 'expo-linking';
 import { supabase } from '../../lib/supabase';
 import { Button, Card, ErrorText } from '../../components/ui';
@@ -26,6 +27,7 @@ export default function ForgotPasswordScreen() {
   const [sent, setSent] = useState(false);
 
   const submit = async () => {
+    Keyboard.dismiss();
     setBusy(true);
     setError(null);
     try {

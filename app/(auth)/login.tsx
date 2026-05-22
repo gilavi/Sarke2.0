@@ -158,6 +158,7 @@ function LoginForm({ onForgotPassword }: { onForgotPassword: () => void }) {
   const passwordRef = useRef<TextInput>(null);
 
   const handleSignIn = async () => {
+    Keyboard.dismiss();
     const trimmed = email.trim();
     if (!isEmail(trimmed)) {
       setError(t('auth.enterValidEmail'));
@@ -270,6 +271,7 @@ function RegisterForm({
     password.length >= MIN_PASSWORD_LEN;
 
   const handleRegister = async () => {
+    Keyboard.dismiss();
     setBusy(true);
     setError(null);
     try {

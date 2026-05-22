@@ -20,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as MediaLibrary from 'expo-media-library';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system/legacy';
 import { Image } from 'expo-image';
 import { useTheme } from '../lib/theme';
 
@@ -141,7 +142,13 @@ export default function PhotoPickerScreen() {
         // iCloud-backed thumbnails need an explicit info fetch to surface a
         // local URI we can hand to fetch/upload.
         const info = await MediaLibrary.getAssetInfoAsync(asset);
-        const uri = info.localUri ?? asset.uri;
+        let uri = info.localUri ?? asset.uri;
+        // iCloud / ph:// URIs aren't readable by FileSystem — copy locally.
+        if (uri.startsWith('ph://') || uri.includes('icloud')) {
+          const localCopy = (FileSystem.cacheDirectory ?? FileSystem.documentDirectory) + 'local_' + asset.id + '.jpg';
+          await FileSystem.copyAsync({ from: uri, to: localCopy });
+          uri = localCopy;
+        }
         // Get location concurrently — fast tap so GPS has time to resolve.
         const location = await getCurrentLocation();
         setLastPhotoLocation(location);

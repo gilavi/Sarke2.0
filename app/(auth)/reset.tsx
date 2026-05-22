@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { Keyboard } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/session';
 import { Button, Card, ErrorText } from '../../components/ui';
@@ -28,6 +29,7 @@ export default function ResetPasswordScreen() {
   const canSubmit = password.length >= 6 && password === confirm;
 
   const submit = async () => {
+    Keyboard.dismiss();
     setBusy(true);
     setError(null);
     try {

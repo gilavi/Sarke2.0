@@ -89,5 +89,5 @@ export function WizardStepTransition({ stepKey, direction, animate = true, child
 
 const styles = StyleSheet.create({
   wrap: { flex: 1 },
-  inner: { ...StyleSheet.absoluteFillObject },
+  inner: { flex: 1 },
 });

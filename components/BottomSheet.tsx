@@ -61,6 +61,10 @@ export type ShowBottomSheet = (
 
 const Ctx = createContext<ShowBottomSheet | null>(null);
 
+// Global guard: prevents stacking multiple modals simultaneously, which
+// freezes iOS when two RN Modals are mounted at the same time.
+let isSheetOpen = false;
+
 export function useBottomSheet(): ShowBottomSheet {
   const ctx = useContext(Ctx);
   if (!ctx) throw new Error('useBottomSheet must be used inside BottomSheetProvider');
@@ -117,6 +121,7 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
         useNativeDriver: true,
       }).start(() => {
         haptic.medium();
+        isSheetOpen = true;
       });
     }
   }, [sheet, backdropProgress, sheetProgress, dragY]);
@@ -141,6 +146,7 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
       ]).start(({ finished }) => {
         if (finished) {
           setSheet(null);
+          isSheetOpen = false;
           // Fire callback after Modal is fully gone — prevents two Modals
           // being open simultaneously which freezes iOS.
           cb?.(idx);
@@ -155,6 +161,10 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
 
   const show: ShowBottomSheet = useCallback(
     (options, callback) => {
+      if (isSheetOpen) {
+        // iOS freezes when two Modals are open simultaneously — bail out.
+        return { dismiss: () => {} };
+      }
       const prev = callbackRef.current;
       callbackRef.current = callback ?? null;
       backdropProgress.setValue(0);
@@ -373,7 +383,6 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
                       <View style={styles.handle} />
                     </View>
                     {renderBody()}
-                    <View style={{ backgroundColor: theme.colors.surface, height: insets.bottom + 8 }} />
                   </View>
                 </GestureDetector>
               </Animated.View>
@@ -437,7 +446,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     shadowRadius: 20,
     elevation: 10,
     overflow: 'hidden',
-    paddingBottom: 8,
+    paddingBottom: 0,
   },
   handleBar: {
     alignItems: 'center',

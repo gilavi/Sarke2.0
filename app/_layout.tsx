@@ -23,6 +23,7 @@ import { OfflineProvider } from '../lib/offline';
 import { OfflineBanner } from '../components/OfflineBanner';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { logError } from '../lib/logError';
+import { isOscillating, recordRedirect } from '../lib/navigationGuard';
 import { ThemeProvider, useTheme } from '../lib/ThemeContext';
 import { HeaderBackPill } from '../components/HeaderBackPill';
 import { I18nextProvider } from 'react-i18next';
@@ -144,8 +145,13 @@ function AuthGate() {
     const inTerms = segments[0] === 'terms';
     const inReset = inAuth && (segments as string[])[1] === 'reset';
     if (inReset) return; // let the reset flow run regardless of session state
+    const currentPath = segments.join('/');
     if (state.status === 'signedOut' && !inAuth) {
-      router.replace('/(auth)/login');
+      const target = '/(auth)/login';
+      if (!isOscillating(currentPath, target)) {
+        recordRedirect(currentPath, target);
+        router.replace(target);
+      }
     } else if (state.status === 'signedIn') {
       // Only redirect to terms when the user profile is loaded. If user is null
       // (profile fetch failed or still in-flight), leave navigation alone.
@@ -153,9 +159,17 @@ function AuthGate() {
         !!state.user &&
         (!state.user.tc_accepted_version || state.user.tc_accepted_version !== TERMS_VERSION);
       if (needsTerms && !inTerms) {
-        router.replace('/terms');
+        const target = '/terms';
+        if (!isOscillating(currentPath, target)) {
+          recordRedirect(currentPath, target);
+          router.replace(target);
+        }
       } else if (!needsTerms && (inAuth || (inTerms && !isTermsViewMode))) {
-        router.replace('/(tabs)/home');
+        const target = '/(tabs)/home';
+        if (!isOscillating(currentPath, target)) {
+          recordRedirect(currentPath, target);
+          router.replace(target);
+        }
       }
       // Opportunistic retry of any signature uploads that failed earlier.
       void flushPendingSignatures().catch((e) => logError(e, '_layout.flushPendingSignatures'));

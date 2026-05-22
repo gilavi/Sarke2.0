@@ -15,7 +15,7 @@ export interface VerdictOption {
 export interface VerdictSelectorProps {
   options: VerdictOption[];
   value: string | null;
-  onChange: (value: string) => void;
+  onChange: (value: string | null) => void;
   note?: string;
   onNoteChange?: (text: string) => void;
   notePlaceholder?: string;
@@ -43,7 +43,7 @@ export function VerdictSelector({
               style={[styles.chip, active && styles.chipActive]}
               onPress={() => {
                 haptic.light();
-                onChange(opt.value);
+                onChange(value === opt.value ? null : opt.value);
               }}
               {...a11y(opt.label, undefined, 'radio')}
             >

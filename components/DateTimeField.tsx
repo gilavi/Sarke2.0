@@ -78,7 +78,7 @@ export function DateTimeField({
 
   useEffect(() => {
     if (open) setDraft(value);
-  }, [open, value]);
+  }, [open]);
 
   const openSheet = (tab: 'date' | 'time') => {
     if (disabled) return;

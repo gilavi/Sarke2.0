@@ -11,7 +11,7 @@ import React, {
   useState,
 } from 'react';
 import { supabase } from './supabase';
-import { storageApi } from './services';
+import { answersApi, storageApi } from './services';
 import { logError } from './logError';
 import { stageCompressedPhotoForOffline } from './photoCompression';
 import { flushPendingPdfUploads } from './pdfUploadQueue';
@@ -48,13 +48,20 @@ type PhotoUploadPayload = {
   address: string | null;
 };
 
+type PhotoDeletePayload = {
+  photoId: string;
+};
+
 type QueueOp =
   | { kind: 'answer_upsert'; payload: AnswerUpsertPayload; attempts?: number }
   | { kind: 'questionnaire_update'; payload: QuestionnaireUpdatePayload; attempts?: number }
-  | { kind: 'photo_upload'; payload: PhotoUploadPayload; attempts?: number };
+  | { kind: 'photo_upload'; payload: PhotoUploadPayload; attempts?: number }
+  | { kind: 'photo_delete'; payload: PhotoDeletePayload; attempts?: number };
 
 const QUEUE_KEY = '@offline:queue';
+const QUEUE_BACKUP_KEY = '@offline:queue:backup';
 const FAILED_QUEUE_KEY = '@offline:failed';
+const FAILED_QUEUE_BACKUP_KEY = '@offline:failed:backup';
 const answersKey = (qid: string) => `@offline:answers:${qid}`;
 const questionnaireKey = (qid: string) => `@offline:questionnaire:${qid}`;
 
@@ -112,6 +119,12 @@ type OfflineContextValue = {
     longitude?: number | null;
     address?: string | null;
   }) => Promise<AnswerPhoto>;
+  /**
+   * Queue a photo deletion for deferred execution. If the photo is still
+   * pending upload (optimistic id), removes the pending upload from the
+   * queue instead.
+   */
+  enqueuePhotoDelete: (photoId: string, localUriHint?: string) => Promise<void>;
   hydrateAnswers: (qid: string) => Promise<Record<string, Answer>>;
   cacheAnswers: (qid: string, answers: Record<string, Answer>) => Promise<void>;
   hydrateQuestionnairePatch: (qid: string) => Promise<Partial<Inspection> | null>;
@@ -140,13 +153,27 @@ async function readQueue(): Promise<QueueOp[]> {
     if (!Array.isArray(parsed)) return [];
     return parsed as QueueOp[];
   } catch (e) {
+    // Primary corrupted — try backup
+    const backup = await AsyncStorage.getItem(QUEUE_BACKUP_KEY);
+    if (backup) {
+      try {
+        const parsed = JSON.parse(backup);
+        if (!Array.isArray(parsed)) return [];
+        return parsed as QueueOp[];
+      } catch {
+        logError(e, 'offline.readQueue.backup_corrupted');
+        return [];
+      }
+    }
     logError(e, 'offline.readQueue.parse');
     return [];
   }
 }
 
 async function writeQueueRaw(ops: QueueOp[]): Promise<void> {
-  await AsyncStorage.setItem(QUEUE_KEY, JSON.stringify(ops));
+  const serialized = JSON.stringify(ops);
+  await AsyncStorage.setItem(QUEUE_BACKUP_KEY, serialized);
+  await AsyncStorage.setItem(QUEUE_KEY, serialized);
 }
 
 async function readFailedQueue(): Promise<QueueOp[]> {
@@ -157,13 +184,26 @@ async function readFailedQueue(): Promise<QueueOp[]> {
     if (!Array.isArray(parsed)) return [];
     return parsed as QueueOp[];
   } catch (e) {
+    const backup = await AsyncStorage.getItem(FAILED_QUEUE_BACKUP_KEY);
+    if (backup) {
+      try {
+        const parsed = JSON.parse(backup);
+        if (!Array.isArray(parsed)) return [];
+        return parsed as QueueOp[];
+      } catch {
+        logError(e, 'offline.readFailedQueue.backup_corrupted');
+        return [];
+      }
+    }
     logError(e, 'offline.readFailedQueue.parse');
     return [];
   }
 }
 
 async function writeFailedQueueRaw(ops: QueueOp[]): Promise<void> {
-  await AsyncStorage.setItem(FAILED_QUEUE_KEY, JSON.stringify(ops));
+  const serialized = JSON.stringify(ops);
+  await AsyncStorage.setItem(FAILED_QUEUE_BACKUP_KEY, serialized);
+  await AsyncStorage.setItem(FAILED_QUEUE_KEY, serialized);
 }
 
 export function OfflineProvider({ children }: { children: React.ReactNode }) {
@@ -219,12 +259,23 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
               .update(rest)
               .eq('id', id);
             if (error) throw error;
+          } else if (op.kind === 'photo_delete') {
+            await answersApi.removePhoto(op.payload.photoId);
           } else {
-            // photo_upload — upload local file, insert answer_photos row, then
-            // delete the staged file. Retry-safe: storageApi.uploadFromUri is
-            // upsert and the row insert is idempotent on (answer_id, storage_path)
-            // for our caller's usage pattern (one path per capture).
+            // photo_upload — defer if the prerequisite answer hasn't been
+            // flushed yet. The answer_photos table has an FK on answers.id,
+            // so inserting before the answer row exists causes a permanent
+            // FK violation and the photo is lost after max retries.
             const { localUri, bucket, path, contentType, answerId, caption, latitude, longitude, address } = op.payload;
+            const hasPendingAnswer = ops.some(
+              (o) => o.kind === 'answer_upsert' && o.payload.id === answerId,
+            );
+            if (hasPendingAnswer) {
+              ops = [...ops.slice(1), { ...op, attempts: op.attempts ?? 0 }];
+              await setQueue(ops);
+              processed++;
+              continue;
+            }
             await storageApi.uploadFromUri(bucket, path, localUri, contentType);
             const { error } = await supabase
               .from('answer_photos')
@@ -252,6 +303,12 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
         processed++;
       }
     });
+    // After flush completes, if new ops were enqueued during the flush,
+    // trigger another flush so they don't sit until the next reconnect.
+    const remaining = await readQueue();
+    if (remaining.length > 0 && onlineRef.current) {
+      setTimeout(() => flush(), 0);
+    }
   }, [setQueue, runExclusive]);
 
   useEffect(() => {
@@ -385,6 +442,39 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
     [flush, setQueue, runExclusive],
   );
 
+  const enqueuePhotoDelete = useCallback<OfflineContextValue['enqueuePhotoDelete']>(
+    async (photoId, localUriHint) => {
+      await runExclusive(async () => {
+        let ops = await readQueue();
+        // If this is an optimistic pending photo, remove its upload op
+        // from the queue rather than queueing a delete.
+        if (photoId.startsWith('pending:')) {
+          ops = ops.filter(
+            (o) =>
+              !(o.kind === 'photo_upload' &&
+                (o.payload.localUri === localUriHint || o.payload.path.includes(photoId))),
+          );
+          // Best-effort: delete the staged file if we know its URI.
+          if (localUriHint) {
+            FileSystem.deleteAsync(localUriHint, { idempotent: true }).catch(() => undefined);
+          }
+        } else {
+          // Real server photo — queue a deferred deletion.
+          // Also drop any pending upload for the same path (edge case:
+          // photo was taken offline then deleted before flush).
+          ops = ops.filter(
+            (o) =>
+              !(o.kind === 'photo_upload' && o.payload.path === localUriHint),
+          );
+          ops.push({ kind: 'photo_delete', payload: { photoId } });
+        }
+        await setQueue(ops);
+      });
+      if (onlineRef.current) void flush();
+    },
+    [flush, setQueue, runExclusive],
+  );
+
   const hydrateAnswers = useCallback<OfflineContextValue['hydrateAnswers']>(async (qid) => {
     const raw = await AsyncStorage.getItem(answersKey(qid));
     if (!raw) return {};
@@ -474,6 +564,7 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
       enqueueAnswerUpsert,
       enqueueQuestionnaireUpdate,
       enqueuePhotoUpload,
+      enqueuePhotoDelete,
       hydrateAnswers,
       cacheAnswers,
       hydrateQuestionnairePatch,
@@ -492,6 +583,7 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
       enqueueAnswerUpsert,
       enqueueQuestionnaireUpdate,
       enqueuePhotoUpload,
+      enqueuePhotoDelete,
       hydrateAnswers,
       cacheAnswers,
       hydrateQuestionnairePatch,

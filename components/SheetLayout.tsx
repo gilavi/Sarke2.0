@@ -36,6 +36,10 @@ export interface SheetLayoutProps {
   maxHeightRatio?: number;
   /** Use KeyboardAwareScrollView for the body. Default true. */
   keyboardAware?: boolean;
+  /** When true, uses a plain ScrollView instead of KeyboardAwareScrollView.
+   *  Use this when SheetLayout is nested inside a BottomSheet to avoid
+   *  double keyboard-handling fights. */
+  insideBottomSheet?: boolean;
   /** Keep footer pinned at bottom of sheet card. Default true. */
   footerSticky?: boolean;
   /** Extra container style (rare). */
@@ -59,6 +63,7 @@ export function SheetLayout({
   bodyScrollProps,
   maxHeightRatio = 0.85,
   keyboardAware = true,
+  insideBottomSheet = false,
   footerSticky = true,
   style,
   bodyContentStyle,
@@ -67,7 +72,7 @@ export function SheetLayout({
   const { theme } = useTheme();
   const screenH = Dimensions.get('window').height;
 
-  const Body = ScrollComponent ?? KeyboardAwareScrollView;
+  const Body = ScrollComponent ?? (insideBottomSheet ? ScrollView : KeyboardAwareScrollView);
   const headerNode = renderHeader(header, theme);
 
   return (

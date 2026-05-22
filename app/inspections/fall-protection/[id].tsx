@@ -231,7 +231,7 @@ export default function FallProtectionInspectionScreen() {
     [updateDeviceData],
   );
 
-  const handleVerdictChange = useCallback((devIdx: number, v: string) => {
+  const handleVerdictChange = useCallback((devIdx: number, v: string | null) => {
     updateDeviceData(devIdx, data => ({
       ...data,
       verdict: v as FPVerdict,
