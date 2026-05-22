@@ -460,6 +460,16 @@ export default function InspectionWizard({
               </div>
 
               {/* Content */}
+              {isHarnessGridStep && currentQuestion ? (
+                <HarnessWizard
+                  question={currentQuestion}
+                  answer={currentAnswer}
+                  onChange={handleAnswerChange}
+                  onComplete={goNext}
+                  onBack={goPrev}
+                  completing={submitting || answerMutation.isPending}
+                />
+              ) : (
               <div className="flex-1 overflow-y-auto">
                 <div className="mx-auto max-w-2xl px-6 py-8">
                   <AnimatePresence mode="wait" custom={direction}>
@@ -503,16 +513,6 @@ export default function InspectionWizard({
                         />
                       )}
 
-                      {isHarnessGridStep && currentQuestion && (
-                        <HarnessWizard
-                          question={currentQuestion}
-                          answer={currentAnswer}
-                          onChange={handleAnswerChange}
-                          onComplete={goNext}
-                          completing={submitting || answerMutation.isPending}
-                        />
-                      )}
-
                       {isConclusionStep && (
                         <ConclusionStepRenderer
                           conclusion={conclusion}
@@ -553,6 +553,7 @@ export default function InspectionWizard({
                   </AnimatePresence>
                 </div>
               </div>
+              )}
 
               {/* Footer */}
               {!isSuccessStep && !isHarnessGridStep && (

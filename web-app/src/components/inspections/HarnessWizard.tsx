@@ -1,7 +1,7 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Textarea } from '@mantine/core';
-import { CheckCircle2, Loader2, Plus, Pencil, ArrowRight, ArrowLeft } from 'lucide-react';
+import { CheckCircle2, Loader2, Plus, ArrowRight, ArrowLeft, AlertTriangle } from 'lucide-react';
 import type { Question, Answer } from '@/lib/data/inspections';
 
 interface HarnessWizardProps {
@@ -9,6 +9,8 @@ interface HarnessWizardProps {
   answer?: Partial<Answer>;
   onChange: (patch: Partial<Answer>) => void;
   onComplete: () => Promise<void> | void;
+  /** Navigate to the previous wizard step (info). */
+  onBack?: () => void;
   completing?: boolean;
 }
 
@@ -21,32 +23,42 @@ const STATUS_OPTIONS = [
 ] as const;
 type StatusValue = 'ok' | 'bad' | '';
 
+type RowStatus = 'pending' | 'in_progress' | 'done' | 'problem';
+
 export default function HarnessWizard({
   question,
   answer,
   onChange,
   onComplete,
+  onBack,
   completing = false,
 }: HarnessWizardProps) {
-  const rows = question.grid_rows ?? [];
-  const cols = question.grid_cols ?? [];
-  const statusCols = cols.filter((c) => c !== 'კომენტარი');
+  const rows = useMemo(() => question.grid_rows ?? [], [question.grid_rows]);
+  const cols = useMemo(() => question.grid_cols ?? [], [question.grid_cols]);
+  const statusCols = useMemo(() => cols.filter((c) => c !== 'კომენტარი'), [cols]);
   const hasComment = cols.includes('კომენტარი');
 
-  const values: Record<string, Record<string, string>> = answer?.grid_values ?? {};
-
-  const [committedRows, setCommitted] = useState<string[]>(() =>
-    rows.filter((row) => statusCols.some((c) => (values[row]?.[c] ?? '') !== '')),
+  const values: Record<string, Record<string, string>> = useMemo(
+    () => answer?.grid_values ?? {},
+    [answer?.grid_values],
   );
-  const [editingRow, setEditingRow] = useState<string | null>(null);
 
-  const isEditing = editingRow !== null;
-  // Key of the row the form is currently writing to
-  const formKey = editingRow ?? rows[committedRows.length] ?? '';
+  // How many harnesses are revealed in the sidebar. Start with every row that
+  // already holds data (resumed inspection), but always show at least one.
+  const initialAdded = useMemo(() => {
+    let last = 0;
+    rows.forEach((row, i) => {
+      if (statusCols.some((c) => (values[row]?.[c] ?? '') !== '')) last = i + 1;
+    });
+    return Math.max(1, last);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const formDisplayNum = isEditing
-    ? committedRows.indexOf(editingRow) + 1
-    : committedRows.length + 1;
+  const [addedCount, setAddedCount] = useState(initialAdded);
+  const [activeIdx, setActiveIdx] = useState(0);
+
+  const activeRow = rows[activeIdx] ?? '';
+  const canAddMore = addedCount < rows.length;
 
   const setCell = useCallback(
     (row: string, col: string, value: string) => {
@@ -56,240 +68,189 @@ export default function HarnessWizard({
     [values, onChange],
   );
 
-  const formHasValue = statusCols.some((c) => (values[formKey]?.[c] ?? '') !== '');
+  const rowStatus = useCallback(
+    (row: string): RowStatus => {
+      const rv = values[row] ?? {};
+      const answered = statusCols.filter((c) => (rv[c] ?? '') !== '');
+      const bad = statusCols.filter((c) => rv[c] === 'bad').length;
+      if (bad > 0) return 'problem';
+      if (answered.length === 0) return 'pending';
+      if (answered.length === statusCols.length) return 'done';
+      return 'in_progress';
+    },
+    [values, statusCols],
+  );
 
-  // Commit current form row + advance to next slot
-  const handleAddAnother = useCallback(() => {
-    if (!formHasValue || isEditing) return;
-    setCommitted((prev) => [...prev, formKey]);
-  }, [formHasValue, isEditing, formKey]);
+  const handleAddHarness = useCallback(() => {
+    if (!canAddMore) return;
+    setActiveIdx(addedCount);
+    setAddedCount((n) => n + 1);
+  }, [canAddMore, addedCount]);
 
-  // Commit current form (if filled) and call onComplete to advance wizard
-  const handleNext = useCallback(async () => {
-    if (formHasValue && !isEditing && !committedRows.includes(formKey)) {
-      setCommitted((prev) => [...prev, formKey]);
-    }
-    await onComplete();
-  }, [formHasValue, isEditing, committedRows, formKey, onComplete]);
-
-  // Back: from edit → cancel; from new → edit last committed
-  const handleBack = useCallback(() => {
-    if (isEditing) {
-      setEditingRow(null);
-    } else if (committedRows.length > 0) {
-      setEditingRow(committedRows[committedRows.length - 1]);
-    }
-  }, [isEditing, committedRows]);
-
-  const handleSaveEdit = useCallback(() => setEditingRow(null), []);
-  const handleEditCard = useCallback((row: string) => setEditingRow(row), []);
-
-  const backDisabled = !isEditing && committedRows.length === 0;
-  const canAddMore = !isEditing && committedRows.length < rows.length - 1 && formHasValue;
-  const canProceed = !isEditing && (committedRows.length > 0 || formHasValue);
+  const sidebarRef = useRef<HTMLDivElement>(null);
+  const handleSidebarKey = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setActiveIdx((i) => Math.min(addedCount - 1, i + 1));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setActiveIdx((i) => Math.max(0, i - 1));
+      }
+    },
+    [addedCount],
+  );
 
   if (rows.length === 0 || cols.length === 0) {
-    return <p className="text-sm text-neutral-500">ბადის მონაცემები ვერ მოიძებნა.</p>;
+    return <p className="p-8 text-sm text-neutral-500">ბადის მონაცემები ვერ მოიძებნა.</p>;
   }
 
   return (
-    <div className="flex flex-col">
-      {/* ── Body: constrained to 1536px, grid so right panel never shrinks form ── */}
-      <div className="mx-auto w-full max-w-screen-2xl px-6 py-8">
-        <div className="grid grid-cols-[1fr_176px] gap-5 pb-6">
-          {/* LEFT: form — always occupies 1fr regardless of right panel visibility */}
-          <div className="min-w-0 space-y-5">
-            <div className="flex items-center gap-2">
-              <h3 className="text-base font-semibold text-neutral-800 dark:text-neutral-100">
-                ქამარი {formDisplayNum}
-              </h3>
-              {isEditing && (
-                <span className="rounded-full bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-600 dark:bg-brand-900/40 dark:text-brand-400">
-                  რედაქტირება
-                </span>
-              )}
-            </div>
+    <div className="flex min-h-0 flex-1 flex-col">
+      {/* ── Sidebar + main ─────────────────────────────────────────────── */}
+      <div className="flex min-h-0 flex-1">
+        {/* LEFT SIDEBAR */}
+        <div
+          ref={sidebarRef}
+          tabIndex={0}
+          onKeyDown={handleSidebarKey}
+          className="w-[260px] shrink-0 overflow-y-auto border-r border-neutral-200 bg-neutral-50 outline-none dark:border-neutral-700 dark:bg-neutral-900/40"
+        >
+          <p className="px-4 pb-1 pt-4 text-xs font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500">
+            ქამარები
+          </p>
 
+          {/* Add-new card */}
+          <button
+            type="button"
+            onClick={handleAddHarness}
+            disabled={!canAddMore}
+            className="mx-3 my-2 flex w-[calc(100%-1.5rem)] items-center gap-2 rounded-lg border-[1.5px] border-dashed border-neutral-300 px-3 py-2.5 text-[13px] text-neutral-500 transition-colors hover:border-brand-400 hover:text-brand-600 disabled:cursor-not-allowed disabled:opacity-40 dark:border-neutral-600 dark:text-neutral-400"
+          >
+            <Plus size={15} />
+            ახალი ქამარი
+          </button>
+
+          {/* Harness list */}
+          <div className="px-2 pb-4">
+            {rows.slice(0, addedCount).map((row, i) => {
+              const status = rowStatus(row);
+              const isActive = i === activeIdx;
+              return (
+                <button
+                  key={row}
+                  type="button"
+                  onClick={() => setActiveIdx(i)}
+                  className={[
+                    'mx-1 my-0.5 block w-[calc(100%-0.5rem)] rounded-lg border-[1.5px] px-3 py-2.5 text-left transition-colors',
+                    isActive
+                      ? 'border-brand-500 bg-brand-50 dark:border-brand-600 dark:bg-brand-950/30'
+                      : 'border-transparent hover:bg-neutral-100 dark:hover:bg-neutral-800/60',
+                  ].join(' ')}
+                >
+                  <div className="text-[13px] font-medium text-neutral-800 dark:text-neutral-100">
+                    ქამარი {i + 1}
+                  </div>
+                  <StatusLabel status={status} row={row} values={values} statusCols={statusCols} />
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* MAIN CONTENT */}
+        <div className="min-w-0 flex-1 overflow-y-auto bg-white dark:bg-neutral-900">
+          <div className="mx-auto max-w-[680px] px-8 py-7">
             <AnimatePresence mode="wait">
               <motion.div
-                key={formKey}
-                initial={{ opacity: 0, x: 16 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -16 }}
-                transition={{ type: 'spring', stiffness: 400, damping: 32 }}
-                className="space-y-4"
+                key={activeRow}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.12 }}
               >
-                {statusCols.map((col) => {
-                  const current = (values[formKey]?.[col] ?? '') as StatusValue;
-                  return (
-                    <div key={col} className="space-y-2">
-                      <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">{col}</p>
-                      <div className="grid grid-cols-3 gap-2">
-                        {STATUS_OPTIONS.map((opt) => (
-                          <StatusButton
-                            key={opt.value + opt.label}
-                            label={opt.label}
-                            selected={current === opt.value}
-                            onClick={() => setCell(formKey, col, current === opt.value ? '' : opt.value)}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
+                <h2 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">
+                  ქამარი {activeIdx + 1}
+                </h2>
+                <p className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">
+                  შეამოწმეთ ყველა პუნქტი
+                </p>
+                <div className="my-5 border-t border-neutral-200 dark:border-neutral-700" />
+
+                {/* Question table */}
+                <div>
+                  {statusCols.map((col, ri) => {
+                    const current = (values[activeRow]?.[col] ?? '') as StatusValue;
+                    return (
+                      <QuestionRow
+                        key={col}
+                        label={col}
+                        value={current}
+                        zebra={ri % 2 === 1}
+                        onSelect={(v) => setCell(activeRow, col, v === current ? '' : v)}
+                      />
+                    );
+                  })}
+                </div>
 
                 {hasComment && (
-                  <Textarea
-                    label="კომენტარი"
-                    value={values[formKey]?.['კომენტარი'] ?? ''}
-                    onChange={(e) => setCell(formKey, 'კომენტარი', e.target.value)}
-                    placeholder="შეიყვანეთ კომენტარი..."
-                    rows={3}
-                    autosize={false}
-                    radius="md"
-                  />
+                  <div className="mt-6">
+                    <Textarea
+                      label="კომენტარი"
+                      value={values[activeRow]?.['კომენტარი'] ?? ''}
+                      onChange={(e) => setCell(activeRow, 'კომენტარი', e.target.value)}
+                      placeholder="შეიყვანეთ კომენტარი..."
+                      rows={3}
+                      autosize={false}
+                      radius="md"
+                    />
+                  </div>
                 )}
               </motion.div>
             </AnimatePresence>
           </div>
-
-          {/* RIGHT: progress cards — grid column always allocated; content fades in after first commit */}
-          <div>
-            {committedRows.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.2 }}
-                className="space-y-2"
-              >
-                <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500">
-                  დამატებული
-                </p>
-                <AnimatePresence initial={false}>
-                  {committedRows.map((row, i) => {
-                    const rv = values[row] ?? {};
-                    const okCount  = statusCols.filter((c) => rv[c] === 'ok').length;
-                    const badCount = statusCols.filter((c) => rv[c] === 'bad').length;
-                    const naCount  = statusCols.filter((c) => rv[c] === '').length;
-                    const isActive = editingRow === row;
-                    return (
-                      <motion.div
-                        key={row}
-                        initial={{ opacity: 0, y: -12 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                        className={[
-                          'rounded-xl border p-3 transition-colors',
-                          isActive
-                            ? 'border-brand-400 bg-brand-50 dark:border-brand-600 dark:bg-brand-950/30'
-                            : 'border-neutral-200 bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800/50',
-                        ].join(' ')}
-                      >
-                        <div className="mb-1.5 flex items-center justify-between">
-                          <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-200">
-                            ქამარი {i + 1}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleEditCard(row)}
-                            className="text-neutral-400 transition-colors hover:text-brand-500"
-                          >
-                            <Pencil size={11} />
-                          </button>
-                        </div>
-                        <div className="flex flex-wrap gap-1">
-                          {okCount > 0 && (
-                            <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
-                              {okCount} კი
-                            </span>
-                          )}
-                          {badCount > 0 && (
-                            <span className="rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-900/40 dark:text-red-400">
-                              {badCount} არა
-                            </span>
-                          )}
-                          {naCount > 0 && (
-                            <span className="rounded-full bg-neutral-200 px-1.5 py-0.5 text-[10px] font-medium text-neutral-600 dark:bg-neutral-700 dark:text-neutral-400">
-                              {naCount} N/A
-                            </span>
-                          )}
-                        </div>
-                      </motion.div>
-                    );
-                  })}
-                </AnimatePresence>
-
-                {/* Ghost card for in-progress harness (only when filling new) */}
-                {!isEditing && committedRows.length < rows.length && (
-                  <div className="rounded-xl border border-dashed border-neutral-300 p-3 dark:border-neutral-600">
-                    <span className="text-xs font-semibold text-neutral-400 dark:text-neutral-500">
-                      ქამარი {committedRows.length + 1}
-                    </span>
-                    <div className="mt-1 text-[10px] text-neutral-400 dark:text-neutral-600">
-                      მიმდინარეობს...
-                    </div>
-                  </div>
-                )}
-              </motion.div>
-            )}
-          </div>
         </div>
       </div>
 
-      {/* ── Sticky footer — border spans full scroll-area width; content constrained to 1536px ── */}
-      <div className="sticky bottom-0 border-t border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-900">
-        <div className="mx-auto flex max-w-screen-2xl items-center justify-between gap-3 px-6 py-4">
-          {/* Left: back / cancel */}
+      {/* ── Footer — full width ─────────────────────────────────────────── */}
+      <div className="shrink-0 border-t border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-900">
+        <div className="flex items-center justify-between gap-3 px-6 py-4">
           <button
             type="button"
-            onClick={handleBack}
-            disabled={backDisabled}
+            onClick={onBack}
+            disabled={!onBack}
             className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-medium text-neutral-500 transition-colors hover:bg-neutral-100 disabled:opacity-30 dark:hover:bg-neutral-800"
           >
             <ArrowLeft size={15} />
-            {isEditing ? 'გამოსვლა' : 'წინა'}
+            უკან
           </button>
 
-          {/* Right: contextual actions */}
           <div className="flex items-center gap-2">
-            {isEditing ? (
+            {canAddMore && (
               <button
                 type="button"
-                onClick={handleSaveEdit}
-                className="flex items-center gap-2 rounded-2xl bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-brand-600 active:scale-95"
+                onClick={handleAddHarness}
+                className="flex items-center gap-2 rounded-2xl border border-brand-500 px-4 py-2.5 text-sm font-semibold text-brand-500 transition-all hover:bg-brand-50 active:scale-95 dark:hover:bg-brand-950/30"
               >
-                <CheckCircle2 size={15} />
-                შენახვა
+                <Plus size={14} />
+                კიდევ ერთი
               </button>
-            ) : (
-              <>
-                {canAddMore && (
-                  <button
-                    type="button"
-                    onClick={handleAddAnother}
-                    className="flex items-center gap-2 rounded-2xl border border-brand-500 px-4 py-2.5 text-sm font-semibold text-brand-500 transition-all hover:bg-brand-50 active:scale-95 dark:hover:bg-brand-950/30"
-                  >
-                    <Plus size={14} />
-                    კიდევ ერთი
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={handleNext}
-                  disabled={!canProceed || completing}
-                  className="flex min-w-[130px] items-center justify-center gap-2 rounded-2xl bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-brand-600 active:scale-95 disabled:opacity-40"
-                >
-                  {completing ? (
-                    <Loader2 size={15} className="animate-spin" />
-                  ) : (
-                    <>
-                      შემდეგი
-                      <ArrowRight size={15} />
-                    </>
-                  )}
-                </button>
-              </>
             )}
+            <button
+              type="button"
+              onClick={onComplete}
+              disabled={completing}
+              className="flex min-w-[150px] items-center justify-center gap-2 rounded-2xl bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-brand-600 active:scale-95 disabled:opacity-40"
+            >
+              {completing ? (
+                <Loader2 size={15} className="animate-spin" />
+              ) : (
+                <>
+                  შენახვა და შემდეგი
+                  <ArrowRight size={15} />
+                </>
+              )}
+            </button>
           </div>
         </div>
       </div>
@@ -297,40 +258,110 @@ export default function HarnessWizard({
   );
 }
 
-/* ─── Status Button ─── */
+/* ─── Sidebar status sub-label ─── */
 
-function StatusButton({
+function StatusLabel({
+  status,
+  row,
+  values,
+  statusCols,
+}: {
+  status: RowStatus;
+  row: string;
+  values: Record<string, Record<string, string>>;
+  statusCols: string[];
+}) {
+  const rv = values[row] ?? {};
+  const ok = statusCols.filter((c) => rv[c] === 'ok').length;
+  const bad = statusCols.filter((c) => rv[c] === 'bad').length;
+
+  if (status === 'pending') {
+    return <div className="mt-0.5 text-[11px] text-neutral-400 dark:text-neutral-500">შეუვსებელი</div>;
+  }
+  if (status === 'problem') {
+    return (
+      <div className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-red-600 dark:text-red-400">
+        <AlertTriangle size={11} />
+        {bad} პრობლემა
+      </div>
+    );
+  }
+  if (status === 'done') {
+    return (
+      <div className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+        <CheckCircle2 size={11} />
+        დასრულდა
+      </div>
+    );
+  }
+  return (
+    <div className="mt-0.5 text-[11px] text-neutral-500 dark:text-neutral-400">
+      {ok} კი · {bad} არა
+    </div>
+  );
+}
+
+/* ─── Question row + segmented control ─── */
+
+function QuestionRow({
   label,
-  selected,
-  onClick,
+  value,
+  zebra,
+  onSelect,
 }: {
   label: string;
-  selected: boolean;
-  onClick: () => void;
+  value: StatusValue;
+  zebra: boolean;
+  onSelect: (v: StatusValue) => void;
 }) {
-  let classes = '';
-  if (label === 'კი') {
-    classes = selected
-      ? 'bg-emerald-500 text-white ring-2 ring-emerald-500 ring-offset-2 dark:ring-offset-neutral-900'
-      : 'bg-white text-neutral-600 border border-neutral-200 hover:bg-emerald-50 hover:text-emerald-600 dark:bg-neutral-800 dark:border-neutral-600 dark:text-neutral-300';
-  } else if (label === 'არა') {
-    classes = selected
-      ? 'bg-red-500 text-white ring-2 ring-red-500 ring-offset-2 dark:ring-offset-neutral-900'
-      : 'bg-white text-neutral-600 border border-neutral-200 hover:bg-red-50 hover:text-red-600 dark:bg-neutral-800 dark:border-neutral-600 dark:text-neutral-300';
-  } else {
-    classes = selected
-      ? 'bg-neutral-600 text-white ring-2 ring-neutral-500 ring-offset-2 dark:ring-offset-neutral-900'
-      : 'bg-white text-neutral-600 border border-neutral-200 hover:bg-neutral-100 dark:bg-neutral-800 dark:border-neutral-600 dark:text-neutral-300';
-  }
+  const handleKey = (e: React.KeyboardEvent) => {
+    const k = e.key.toLowerCase();
+    if (k === 'y' || k === '1') {
+      e.preventDefault();
+      onSelect('ok');
+    } else if (k === 'n' || k === '2') {
+      e.preventDefault();
+      onSelect('bad');
+    } else if (k === '3' || k === ' ') {
+      e.preventDefault();
+      onSelect('');
+    }
+  };
 
   return (
-    <motion.button
-      type="button"
-      whileTap={{ scale: 0.96 }}
-      onClick={onClick}
-      className={`rounded-2xl px-4 py-3 text-sm font-semibold transition-all ${classes}`}
+    <div
+      tabIndex={0}
+      onKeyDown={handleKey}
+      className={[
+        'flex items-center justify-between gap-4 rounded-lg px-3 py-2.5 outline-none transition-shadow focus-visible:ring-2 focus-visible:ring-brand-500',
+        zebra ? 'bg-neutral-50 dark:bg-neutral-800/40' : 'bg-transparent',
+      ].join(' ')}
     >
-      {label}
-    </motion.button>
+      <span className="text-sm text-neutral-800 dark:text-neutral-200">{label}</span>
+      <div className="flex shrink-0 overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-700">
+        {STATUS_OPTIONS.map((opt, i) => {
+          const selected = value === opt.value;
+          let sel = 'bg-neutral-500 text-white';
+          if (opt.value === 'ok') sel = 'bg-brand-500 text-white';
+          else if (opt.value === 'bad') sel = 'bg-red-500 text-white';
+          return (
+            <button
+              key={opt.label}
+              type="button"
+              onClick={() => onSelect(opt.value as StatusValue)}
+              className={[
+                'h-8 w-14 text-[13px] font-medium transition-colors',
+                i > 0 ? 'border-l border-neutral-200 dark:border-neutral-700' : '',
+                selected
+                  ? sel
+                  : 'bg-white text-neutral-600 hover:bg-neutral-100 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700',
+              ].join(' ')}
+            >
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
