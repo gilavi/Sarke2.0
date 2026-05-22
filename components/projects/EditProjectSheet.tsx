@@ -116,6 +116,7 @@ export function EditProjectSheet({
         <Animated.View style={{ width: '100%', marginBottom: keyboardMargin }}>
           <Pressable onPress={() => {}} style={{ width: '100%' }}>
             <SheetLayout
+              insideBottomSheet
               maxHeightRatio={0.92}
               header={{ title: t('projects.edit'), onClose }}
               footer={

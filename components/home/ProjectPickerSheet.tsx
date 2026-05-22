@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
+  Dimensions,
   Keyboard,
   Modal,
   Pressable,
@@ -232,6 +233,8 @@ export function ProjectPickerSheet({
     }
   };
 
+  const screenH = Dimensions.get('window').height;
+
   return (
     <Modal
       visible={visible}
@@ -245,8 +248,17 @@ export function ProjectPickerSheet({
           visible={visible}
           onPress={() => (mapVisible ? setMapVisible(false) : onClose())}
         />
-        <Animated.View style={{ width: '100%', marginBottom: keyboardMargin }}>
-          <Pressable style={[pickerStyles.card, { maxHeight: '90%' }]} onPress={() => {}}>
+        {/* Spacer pushes the sheet card to the bottom */}
+        <View style={{ flex: 1 }} />
+        <Animated.View
+          style={{
+            width: '100%',
+            height: screenH * 0.55,
+            marginBottom: view === 'new' ? keyboardMargin : 0,
+            flexDirection: 'column',
+          }}
+        >
+          <Pressable style={[pickerStyles.card, { flex: 1, paddingBottom: Math.max(insets.bottom, 16) + 16 }]} onPress={() => {}}>
             <View style={pickerStyles.handle} />
 
             {view === 'list' ? (
@@ -284,7 +296,7 @@ export function ProjectPickerSheet({
                   </>
                 ) : (
                   <ScrollView
-                    style={{ maxHeight: 380 }}
+                    style={{ flex: 1 }}
                     showsVerticalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled"
                   >
@@ -318,7 +330,7 @@ export function ProjectPickerSheet({
                 {/* New project form */}
                 <View style={pickerStyles.sheetHeader}>
                   <Pressable
-                    onPress={() => setView('list')}
+                    onPress={() => { Keyboard.dismiss(); setView('list'); }}
                     hitSlop={12}
                     style={{ marginRight: 10 }}
                   >
@@ -336,7 +348,7 @@ export function ProjectPickerSheet({
                   keyboardShouldPersistTaps="handled"
                   keyboardDismissMode="interactive"
                   showsVerticalScrollIndicator={false}
-                  style={{ maxHeight: '72%' }}
+                  style={{ flex: 1 }}
                   contentContainerStyle={{ paddingTop: 4, paddingBottom: 8, gap: 16 }}
                 >
                   <View style={{ alignItems: 'center', gap: 8, marginBottom: 4 }}>
@@ -357,7 +369,7 @@ export function ProjectPickerSheet({
                         color={theme.colors.accent}
                       />
                       <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.accent }}>
-                        {logo ? t('projects.changePhoto') : t('projects.addPhoto')}
+                        {logo ? t('projects.changePhoto') : t('a11y.addPhoto')}
                       </Text>
                     </Pressable>
                   </View>

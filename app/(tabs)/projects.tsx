@@ -389,6 +389,7 @@ function CreateProjectSheet({
         <Animated.View style={{ width: '100%', marginBottom: keyboardMargin }}>
           <Pressable onPress={() => {}} style={{ width: '100%' }}>
               <SheetLayout
+                insideBottomSheet
                 maxHeightRatio={0.92}
                 header={{ title: t('home.newProjectFormTitle'), onClose }}
                 footer={
