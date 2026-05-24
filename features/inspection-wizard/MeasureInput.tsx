@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../components/inputs/FloatingLabelInput';
 import { useTheme } from '../../lib/theme';
 import type { Question } from '../../types/models';
-import { getstyles, staticStyles } from './styles';
+import { staticStyles } from './styles';
 import { measureError, parseMeasure } from './wizardSchema';
 
 export function MeasureInput({
@@ -17,10 +17,6 @@ export function MeasureInput({
   onCommit: (value: number | null) => void;
 }) {
   const { theme } = useTheme();
-  // styles factory kept for parity with original (call site previously
-  // pulled getstyles even though no key is read here — left in to avoid
-  // a behavior change while refactor is structural-only).
-  useMemo(() => getstyles(theme), [theme]);
 
   const [text, setText] = useState(initial == null ? '' : String(initial));
   const lastCommitted = useRef<number | null>(initial);

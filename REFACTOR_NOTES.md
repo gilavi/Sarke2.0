@@ -23,7 +23,6 @@ The fire-safety / crane flows render `StepSignaturesFireSafety` and
 `StepSignaturesCrane` (the combined two-signature steps) instead.
 Not carried over into `features/order-new/` since they had no callers.
 
-### `features/inspection-wizard/MeasureInput.tsx` — unused styles factory
-`useMemo(() => getstyles(theme), [theme])` is called and the result
-discarded. Inherited from the original; left in for byte-for-byte
-behavior parity but safe to delete.
+### `features/inspection-wizard/MeasureInput.tsx` — unused styles factory ✅ FIXED in v2 Phase 1
+`useMemo(() => getstyles(theme), [theme])` was called and discarded.
+Removed.
