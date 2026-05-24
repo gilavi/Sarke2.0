@@ -29,7 +29,7 @@ import {
 import { inspectionRegistry } from '../../lib/inspection/registry';
 import { formatBlDate, BL_RESULT_COLORS, countsByStatus } from '../../types/breathalyzerLog';
 import type { BreathalizerLog } from '../../types/breathalyzerLog';
-import { deleteInspectionBySource } from '../../lib/inspectionDelete';
+import { buildUnifiedInspections, deleteUnifiedInspection, type UnifiedInspection } from './unifiedInspections';
 import { useToast } from '../../lib/toast';
 import { useTheme } from '../../lib/theme';
 import { toErrorMessage } from '../../lib/logError';
@@ -175,90 +175,15 @@ export default function ProjectDetail() {
     [project, toast],
   );
 
-  // ── Unified inspections list (generic + equipment) ──
-  type UnifiedInspection = {
-    id: string;
-    template_id: string;
-    status: 'draft' | 'completed';
-    created_at: string;
-    source: 'generic' | 'bobcat' | 'excavator' | 'general_equipment' | 'cargo_platform' | 'safety_net_inspection' | 'mobile_ladder_inspection' | 'fall_protection_inspection' | 'lifting_accessories_inspection' | 'forklift_inspection';
-  };
-
-  const allInspections = useMemo<UnifiedInspection[]>(() => {
-    const generic: UnifiedInspection[] = questionnaires.map(q => ({
-      id: q.id,
-      template_id: q.template_id,
-      status: q.status,
-      created_at: q.created_at,
-      source: 'generic',
-    }));
-    const bobcat: UnifiedInspection[] = bobcatInspections.map(b => ({
-      id: b.id,
-      template_id: b.templateId,
-      status: b.status,
-      created_at: b.createdAt,
-      source: 'bobcat',
-    }));
-    const excavator: UnifiedInspection[] = excavatorInspections.map(e => ({
-      id: e.id,
-      template_id: e.templateId,
-      status: e.status,
-      created_at: e.createdAt,
-      source: 'excavator',
-    }));
-    const ge: UnifiedInspection[] = generalEquipmentInspections.map(g => ({
-      id: g.id,
-      template_id: g.templateId,
-      status: g.status,
-      created_at: g.createdAt,
-      source: 'general_equipment' as const,
-    }));
-    const cp: UnifiedInspection[] = cpInspections.map(c => ({
-      id: c.id,
-      template_id: c.templateId,
-      status: c.status,
-      created_at: c.createdAt,
-      source: 'cargo_platform' as const,
-    }));
-    const sn: UnifiedInspection[] = snInspections.map(s => ({
-      id: s.id,
-      template_id: s.templateId,
-      status: s.status,
-      created_at: s.createdAt,
-      source: 'safety_net_inspection' as const,
-    }));
-    const ml: UnifiedInspection[] = mlInspections.map(m => ({
-      id: m.id,
-      template_id: m.templateId,
-      status: m.status,
-      created_at: m.createdAt,
-      source: 'mobile_ladder_inspection' as const,
-    }));
-    const fp: UnifiedInspection[] = fpInspections.map(f => ({
-      id: f.id,
-      template_id: f.templateId,
-      status: f.status,
-      created_at: f.createdAt,
-      source: 'fall_protection_inspection' as const,
-    }));
-    const la: UnifiedInspection[] = laInspections.map(l => ({
-      id: l.id,
-      template_id: l.templateId,
-      status: l.status,
-      created_at: l.createdAt,
-      source: 'lifting_accessories_inspection' as const,
-    }));
-    const fk: UnifiedInspection[] = fkInspections.map(f => ({
-      id: f.id,
-      template_id: f.templateId,
-      status: f.status,
-      created_at: f.createdAt,
-      source: 'forklift_inspection' as const,
-    }));
-    return [...generic, ...bobcat, ...excavator, ...ge, ...cp, ...sn, ...ml, ...fp, ...la, ...fk].sort(
-      (a, b) => +new Date(b.created_at) - +new Date(a.created_at),
-    );
-  }, [questionnaires, bobcatInspections, excavatorInspections, generalEquipmentInspections, cpInspections, snInspections, mlInspections, fpInspections, laInspections, fkInspections]);
+  // Cross-source inspection helpers live in ./unifiedInspections.
+  const allInspections = useMemo<UnifiedInspection[]>(
+    () => buildUnifiedInspections({
+      questionnaires, bobcatInspections, excavatorInspections,
+      generalEquipmentInspections, cpInspections, snInspections,
+      mlInspections, fpInspections, laInspections, fkInspections,
+    }),
+    [questionnaires, bobcatInspections, excavatorInspections, generalEquipmentInspections, cpInspections, snInspections, mlInspections, fpInspections, laInspections, fkInspections],
+  );
 
   const allInspectionsSorted = allInspections;
   const allInspectionsPreview = useMemo(
@@ -360,20 +285,18 @@ export default function ProjectDetail() {
         if (deletingInspIdsRef.current.has(item.id)) return;
         deletingInspIdsRef.current.add(item.id);
         try {
-          await deleteInspectionBySource(item.source, item.id);
-          // Optimistic local removal from the matching per-source list.
-          switch (item.source) {
-            case 'bobcat': setBobcatInspections(prev => prev.filter(x => x.id !== item.id)); break;
-            case 'excavator': setExcavatorInspections(prev => prev.filter(x => x.id !== item.id)); break;
-            case 'general_equipment': setGeneralEquipmentInspections(prev => prev.filter(x => x.id !== item.id)); break;
-            case 'cargo_platform': setCpInspections(prev => prev.filter(x => x.id !== item.id)); break;
-            case 'safety_net_inspection': setSnInspections(prev => prev.filter(x => x.id !== item.id)); break;
-            case 'mobile_ladder_inspection': setMlInspections(prev => prev.filter(x => x.id !== item.id)); break;
-            case 'fall_protection_inspection': setFpInspections(prev => prev.filter(x => x.id !== item.id)); break;
-            case 'lifting_accessories_inspection': setLaInspections(prev => prev.filter(x => x.id !== item.id)); break;
-            case 'forklift_inspection': setFkInspections(prev => prev.filter(x => x.id !== item.id)); break;
-            default: setQuestionnaires(prev => prev.filter(x => x.id !== item.id));
-          }
+          await deleteUnifiedInspection(item, {
+            setBobcatInspections,
+            setExcavatorInspections,
+            setGeneralEquipmentInspections,
+            setCpInspections,
+            setSnInspections,
+            setMlInspections,
+            setFpInspections,
+            setLaInspections,
+            setFkInspections,
+            setQuestionnaires,
+          });
           toast.success(t('notifications.deleted'));
         } catch (e) {
           toast.error(friendlyError(e, t('errors.deleteFailed')));
