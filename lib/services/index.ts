@@ -1,16 +1,17 @@
 // Services dispatcher.
 //
 // Reads `expo.extra.useMockData` from app.json. When true, all API surfaces
-// are served by the in-memory mock in `services.mock.ts`; when false, the
-// real Supabase-backed implementation in `services.real.ts` is used.
+// are served by the in-memory mock in `./mock`; when false, the real
+// Supabase-backed implementation in `./real` is used.
 //
-// Rationale: on `gio-experiment` the DB schema (inspections / qualifications
+// Rationale: on gio-experiment the DB schema (inspections / qualifications
 // / certificates-as-PDFs) isn't applied to the live Supabase yet — main
 // needs the old schema to keep working. Flipping `useMockData: true` lets
 // us iterate on the new UX against a local AsyncStorage-backed fake DB.
+
 import Constants from 'expo-constants';
-import * as real from './services.real';
-import * as mock from './services.mock';
+import * as real from './real';
+import * as mock from './mock';
 
 const useMock = Constants.expoConfig?.extra?.useMockData === true;
 
