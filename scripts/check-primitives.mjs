@@ -12,7 +12,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
 const ROOT = decodeURIComponent(new URL('..', import.meta.url).pathname);
-const SCAN_DIRS = ['app', 'components', 'lib', 'shims'];
+const SCAN_DIRS = ['app', 'components', 'features', 'lib', 'shims'];
 const SKIP_DIRS = new Set(['node_modules', '.git', 'ios', 'android', '.expo', 'dist', 'build']);
 const EXTS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs']);
 
