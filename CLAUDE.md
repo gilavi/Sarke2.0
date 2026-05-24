@@ -68,6 +68,17 @@ If you're adding a new folder, add an `AGENTS.md` next to it using
 the same template (What this module does / Public API / Internal
 files / Gotchas / Canonical helpers).
 
+## File-size targets
+
+Enforced limits. If a change would push a file over its target, split it into siblings in the same folder (extract a hook, a section component, a CSS sibling, …) rather than letting it grow.
+
+- **Component:** < 200 lines
+- **Hook:** < 150 lines
+- **Route file (`app/**/*.tsx`):** < 300 lines, orchestration only — delegate to a feature module under `features/`
+- **Service file (`lib/**/*.ts`):** < 500 lines
+
+A few files currently exceed these targets (`features/project-detail/ProjectDetail.tsx`, `features/inspection-wizard/useWizardState.ts`, `lib/pdf/inspection/template.css.ts`) — they're documented in [REFACTOR_SUMMARY_V2.md](REFACTOR_SUMMARY_V2.md) along with the reasons each remaining residue was deferred. Don't grow them further.
+
 ## Web codebases
 
 There are three separate web codebases in this repo. None share code with the Expo mobile app — only Supabase.
@@ -84,3 +95,4 @@ All three deploy to the same `gh-pages` branch under different `destination_dir`
 - Don't bump Expo/RN/React major versions without an accompanying README note.
 - Don't delete entries from `BUG_REPORT.md` — mark them resolved.
 - Don't edit historical `QA_REPORT_YYYY-MM-DD.md` files.
+- Don't re-consolidate the domain-split files (`lib/services/`, `lib/pdf/`, `features/`). The split is intentional and enforced by the File-size targets above.
