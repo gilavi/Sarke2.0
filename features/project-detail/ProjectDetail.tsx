@@ -1,6 +1,5 @@
 ﻿import { useCallback, useMemo, useRef, useState } from 'react';
 import {
-  Animated,
   Linking,
   Pressable,
   ScrollView,
@@ -18,7 +17,6 @@ import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { SkeletonMap } from '../../components/SkeletonMap';
 import { routeForInspection } from '../../lib/inspectionRouting';
 import { useBottomSheet } from '../../components/BottomSheet';
-import { Skeleton, SkeletonCard, SkeletonListCard } from '../../components/Skeleton';
 import {
   projectsApi,
   projectFilesApi,
@@ -34,7 +32,6 @@ import type { CrewMember, Project, ProjectFile, Template } from '../../types/mod
 import { briefingsApi } from '../../lib/briefingsApi';
 import { ordersApi } from '../../lib/ordersApi';
 import { RoleSlotList } from '../../components/RoleSlotList';
-import { ProjectAvatar } from '../../components/ProjectAvatar';
 import { pickProjectLogo } from '../../lib/projectLogo';
 import { useSession } from '../../lib/session';
 import { a11y } from '../../lib/accessibility';
@@ -55,6 +52,8 @@ import { BriefingsSection } from './sections/BriefingsSection';
 import { ReportsSection } from './sections/ReportsSection';
 import { FilesAndOrdersSection } from './sections/FilesAndOrdersSection';
 import { BreathalyzerSection } from './sections/BreathalyzerSection';
+import { LoadingSkeletonScreen } from './LoadingSkeletonScreen';
+import { ProjectMapModal, useProjectMapModal } from './ProjectMapModal';
 
 export default function ProjectDetail() {
   const { theme } = useTheme();
@@ -92,12 +91,9 @@ export default function ProjectDetail() {
 
   const [filesBusy, setFilesBusy] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [mapModalVisible, setMapModalVisible] = useState(false);
-  const [mapSelected, setMapSelected] = useState<Project | null>(null);
-  const mapCardAnim = useRef(new Animated.Value(240)).current;
+  const mapModalState = useProjectMapModal(project);
   const [templatePickerVisible, setTemplatePickerVisible] = useState(false);
   const [templatePickerOptions, setTemplatePickerOptions] = useState<Template[]>([]);
-  const [allProjects, setAllProjects] = useState<Project[]>([]);
 
   // Project screen onboarding tour
   const heroRef = useRef<View>(null);
@@ -373,25 +369,6 @@ export default function ProjectDetail() {
     );
   };
 
-  const openMapModal = async () => {
-    setMapModalVisible(true);
-    if (allProjects.length === 0) {
-      const list = await projectsApi.list().catch(() => []);
-      setAllProjects(list);
-    }
-  };
-
-  const openMapCard = useCallback((p: Project) => {
-    setMapSelected(p);
-    Animated.spring(mapCardAnim, { toValue: 0, useNativeDriver: true, tension: 70, friction: 12 }).start();
-  }, [mapCardAnim]);
-
-  const closeMapCard = useCallback(() => {
-    Animated.timing(mapCardAnim, { toValue: 240, duration: 200, useNativeDriver: true }).start(() =>
-      setMapSelected(null),
-    );
-  }, [mapCardAnim]);
-
   const quickActions: QuickAction[] = useMemo(
     () => [
       { label: 'შემოწმება',   colorKey: 'inspection',  onPress: startNewInspection },
@@ -404,47 +381,11 @@ export default function ProjectDetail() {
     [id, router, startNewInspection, uploadFile],
   );
 
-  const mapMarkers = useMemo(() => {
-    const withCoords = allProjects.filter(p => p.latitude != null && p.longitude != null);
-    if (withCoords.length > 20) {
-      // Limit map markers to 20 for performance
-    }
-    return withCoords.slice(0, 20);
-  }, [allProjects]);
-
   // Arch SVG morph + logo entrance animation. See ProjectArchHeader.tsx.
   const { archProps, logoStyle, scrollHandler } = useArchAnimation(loaded);
 
   if (!loaded && !project) {
-    return (
-      <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-        <Stack.Screen options={{ headerShown: false }} />
-        <ScrollView
-          style={{ flex: 1 }}
-          contentInsetAdjustmentBehavior="never"
-          automaticallyAdjustContentInsets={false}
-          contentInset={{ top: 0, bottom: 0, left: 0, right: 0 }}
-          contentContainerStyle={{
-            paddingHorizontal: 24,
-            paddingTop: 12,
-            paddingBottom: 32,
-            gap: 14,
-          }}
-        >
-          <SkeletonCard>
-            <Skeleton width={80} height={10} />
-            <View style={{ height: 8 }} />
-            <Skeleton width={'70%'} height={22} />
-            <View style={{ height: 10 }} />
-            <Skeleton width={'45%'} height={13} />
-            <View style={{ height: 4 }} />
-            <Skeleton width={'55%'} height={13} />
-          </SkeletonCard>
-          <SkeletonListCard rows={2} />
-          <SkeletonListCard rows={3} />
-        </ScrollView>
-      </View>
-    );
+    return <LoadingSkeletonScreen />;
   }
 
   const participantCount = (project?.crew?.length ?? 0) + (inspector ? 1 : 0);
@@ -488,7 +429,7 @@ export default function ProjectDetail() {
             {project?.latitude != null && project?.longitude != null ? (
               <Pressable
                 style={StyleSheet.absoluteFill}
-                onPress={openMapModal}
+                onPress={mapModalState.open}
                 {...a11y('რუქა', 'გახსნა სრულ ეკრანზე', 'button')}
               >
                 <MapView
@@ -676,136 +617,7 @@ export default function ProjectDetail() {
         onOpenChange={setTemplatePickerVisible}
       />
 
-      {/* Full-screen map with all projects */}
-      {mapModalVisible && (
-        <View style={StyleSheet.absoluteFillObject} pointerEvents="auto">
-          <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingTop: insets.top + 12, paddingBottom: 12 }}>
-              <View style={{ width: 24 }} />
-              <Text style={{ flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '700', color: theme.colors.ink }}>
-                პროექტები რუკაზე
-              </Text>
-              <Pressable onPress={() => setMapModalVisible(false)} hitSlop={10} {...a11y('დახურვა', 'რუკის დახურვა', 'button')}>
-                <Ionicons name="close" size={24} color={theme.colors.ink} />
-              </Pressable>
-            </View>
-            <MapView
-              provider={PROVIDER_DEFAULT}
-              style={{ flex: 1 }}
-              initialRegion={{
-                latitude: project?.latitude ?? 41.7151,
-                longitude: project?.longitude ?? 44.8271,
-                latitudeDelta: 0.5,
-                longitudeDelta: 0.5,
-              }}
-              onPress={closeMapCard}
-            >
-              {mapMarkers.map(p => {
-                const isActive = p.id === id;
-                const pinBg = isActive ? theme.colors.accent : theme.colors.certTint;
-                return (
-                  <Marker
-                    key={p.id}
-                    coordinate={{ latitude: p.latitude!, longitude: p.longitude! }}
-                    tracksViewChanges={false}
-                    onPress={() => openMapCard(p)}
-                  >
-                    <View style={{ alignItems: 'center' }}>
-                      <View style={{
-                        backgroundColor: pinBg,
-                        borderRadius: 20,
-                        width: 32,
-                        height: 32,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        shadowColor: '#000',
-                        shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: 0.28,
-                        shadowRadius: 4,
-                        elevation: 5,
-                      }}>
-                        <Ionicons name="business" size={15} color={theme.colors.white} />
-                      </View>
-                      <View style={{
-                        width: 0, height: 0,
-                        borderLeftWidth: 5, borderRightWidth: 5, borderTopWidth: 7,
-                        borderLeftColor: 'transparent', borderRightColor: 'transparent',
-                        borderTopColor: pinBg,
-                        marginTop: -1,
-                      }} />
-                    </View>
-                  </Marker>
-                );
-              })}
-            </MapView>
-
-            {allProjects.filter(p => p.latitude != null && p.longitude != null).length > 20 && (
-              <View style={{ position: 'absolute', bottom: insets.bottom + 100, left: 16, right: 16, alignItems: 'center' }}>
-                <View style={{ backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 }}>
-                  <Text style={{ color: theme.colors.white, fontSize: 12, fontWeight: '600' }}>
-                    ნაჩვენებია პირველი 20 პროექტი
-                  </Text>
-                </View>
-              </View>
-            )}
-
-            {/* Slide-up project card */}
-            {mapSelected && (
-              <Animated.View style={{
-                position: 'absolute', bottom: 0, left: 0, right: 0,
-                transform: [{ translateY: mapCardAnim }],
-              }}>
-                <View style={{
-                  backgroundColor: theme.colors.surface,
-                  borderTopLeftRadius: 22,
-                  borderTopRightRadius: 22,
-                  paddingHorizontal: 16,
-                  paddingTop: 10,
-                  paddingBottom: insets.bottom + 20,
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: -4 },
-                  shadowOpacity: 0.12,
-                  shadowRadius: 16,
-                  elevation: 12,
-                }}>
-                  <Pressable onPress={closeMapCard} hitSlop={12} style={{ alignItems: 'center', paddingBottom: 10 }}>
-                    <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: theme.colors.hairline }} />
-                  </Pressable>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                    <ProjectAvatar project={mapSelected} size={44} />
-                    <View style={{ flex: 1 }}>
-                      <Text size="base" weight="bold" numberOfLines={1}>
-                        {mapSelected.company_name || mapSelected.name}
-                      </Text>
-                      {mapSelected.address ? (
-                        <Text size="xs" color={theme.colors.inkSoft} numberOfLines={1} style={{ marginTop: 2 }}>
-                          {mapSelected.address}
-                        </Text>
-                      ) : null}
-                    </View>
-                    <Pressable
-                      onPress={() => {
-                        closeMapCard();
-                        setMapModalVisible(false);
-                        router.push(`/projects/${mapSelected.id}` as any);
-                      }}
-                      hitSlop={8}
-                      style={{
-                        backgroundColor: theme.colors.accent,
-                        borderRadius: 10,
-                        paddingHorizontal: 14,
-                        paddingVertical: 9,
-                      }}
-                    >
-                      <Text size="sm" weight="semibold" color={theme.colors.white}>გახსნა →</Text>
-                    </Pressable>
-                  </View>
-                </View>
-              </Animated.View>
-            )}
-          </View>
-        </View>
-      )}
+      <ProjectMapModal state={mapModalState} />
     </View>
     </TourGuide>
   );
