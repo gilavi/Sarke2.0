@@ -1,5 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+﻿import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Linking,
@@ -28,25 +27,6 @@ import {
   questionnairesApi,
 } from '../../lib/services';
 import { inspectionRegistry } from '../../lib/inspection/registry';
-import {
-  useProject,
-  useInspectionsByProject,
-  useTemplates,
-  useProjectFiles,
-  useIncidentsByProject,
-  useBriefingsByProject,
-  useReportsByProject,
-  useBobcatInspectionsByProject,
-  useExcavatorInspectionsByProject,
-  useGeneralEquipmentInspectionsByProject,
-  useCargoPlatformInspectionsByProject,
-  useSafetyNetInspectionsByProject,
-  useMobileLadderInspectionsByProject,
-  useFallProtectionInspectionsByProject,
-  useLiftingAccessoriesInspectionsByProject,
-  useForkliftInspectionsByProject,
-  useBreathalizerLogsByProject,
-} from '../../lib/apiHooks';
 import { formatBlDate, BL_RESULT_COLORS, countsByStatus } from '../../types/breathalyzerLog';
 import type { BreathalizerLog } from '../../types/breathalyzerLog';
 import { deleteInspectionBySource } from '../../lib/inspectionDelete';
@@ -76,6 +56,7 @@ import { UpcomingSection } from '../../components/projects/UpcomingSection';
 import { EmptyState, FileThumbnail, IncidentRow, ViewMoreRow } from '../../components/projects/ProjectRowHelpers';
 import { getStyles } from './styles';
 import { ProjectArchSvg, useArchAnimation } from './ProjectArchHeader';
+import { useProjectDetailData } from './useProjectDetailData';
 
 export default function ProjectDetail() {
   const { theme } = useTheme();
@@ -89,19 +70,28 @@ export default function ProjectDetail() {
   const { pickPhotoWithAnnotation } = usePhotoWithLocation();
   const insets = useSafeAreaInsets();
 
-  const [project, setProject] = useState<Project | null>(null);
-  const [questionnaires, setQuestionnaires] = useState<Questionnaire[]>([]);
-  const [bobcatInspections, setBobcatInspections] = useState<any[]>([]);
-  const [excavatorInspections, setExcavatorInspections] = useState<any[]>([]);
-  const [generalEquipmentInspections, setGeneralEquipmentInspections] = useState<any[]>([]);
-  const [cpInspections, setCpInspections] = useState<any[]>([]);
-  const [snInspections, setSnInspections] = useState<any[]>([]);
-  const [mlInspections, setMlInspections] = useState<any[]>([]);
-  const [fpInspections, setFpInspections] = useState<any[]>([]);
-  const [laInspections, setLaInspections] = useState<any[]>([]);
-  const [fkInspections, setFkInspections] = useState<any[]>([]);
-  const [templates, setTemplates] = useState<Template[]>([]);
-  const [files, setFiles] = useState<ProjectFile[]>([]);
+  const {
+    loaded,
+    project, setProject,
+    questionnaires, setQuestionnaires,
+    bobcatInspections, setBobcatInspections,
+    excavatorInspections, setExcavatorInspections,
+    generalEquipmentInspections, setGeneralEquipmentInspections,
+    cpInspections, setCpInspections,
+    snInspections, setSnInspections,
+    mlInspections, setMlInspections,
+    fpInspections, setFpInspections,
+    laInspections, setLaInspections,
+    fkInspections, setFkInspections,
+    templates, setTemplates,
+    files, setFiles,
+    incidents,
+    briefings,
+    reports,
+    orders,
+    breathalyzerLogs,
+  } = useProjectDetailData(id);
+
   const [filesBusy, setFilesBusy] = useState(false);
   const [editing, setEditing] = useState(false);
   const [mapModalVisible, setMapModalVisible] = useState(false);
@@ -110,89 +100,6 @@ export default function ProjectDetail() {
   const [templatePickerVisible, setTemplatePickerVisible] = useState(false);
   const [templatePickerOptions, setTemplatePickerOptions] = useState<Template[]>([]);
   const [allProjects, setAllProjects] = useState<Project[]>([]);
-  const [loaded, setLoaded] = useState(false);
-
-  // React Query hooks provide cached data instantly + background refetch.
-  // We sync their results into local state so existing mutations (crew edit,
-  // file upload, etc.) continue to work via setProject / setFiles.
-  const projectQ = useProject(id);
-  const questionnairesQ = useInspectionsByProject(id);
-  const bobcatQ = useBobcatInspectionsByProject(id);
-  const excavatorQ = useExcavatorInspectionsByProject(id);
-  const generalEquipmentQ = useGeneralEquipmentInspectionsByProject(id);
-  const cpQ = useCargoPlatformInspectionsByProject(id);
-  const snQ = useSafetyNetInspectionsByProject(id);
-  const mlQ = useMobileLadderInspectionsByProject(id);
-  const fpQ = useFallProtectionInspectionsByProject(id);
-  const laQ = useLiftingAccessoriesInspectionsByProject(id);
-  const fkQ = useForkliftInspectionsByProject(id);
-  const templatesQ = useTemplates();
-  const filesQ = useProjectFiles(id);
-  const incidentsQ = useIncidentsByProject(id);
-  const briefingsQ = useBriefingsByProject(id);
-  const reportsQ = useReportsByProject(id);
-  const ordersQ = useQuery<Order[]>({
-    queryKey: ['orders', 'byProject', id],
-    queryFn: () => id ? ordersApi.listByProject(id) : Promise.resolve([]),
-    enabled: !!id,
-  });
-
-  const breathalyzerLogsQ = useBreathalizerLogsByProject(id);
-
-  // Read-only data consumed directly from the query cache (no local state needed)
-  const incidents = incidentsQ.data ?? [];
-  const briefings = briefingsQ.data ?? [];
-  const reports = reportsQ.data ?? [];
-  const orders = ordersQ.data ?? [];
-  const breathalyzerLogs = breathalyzerLogsQ.data ?? [];
-
-  useEffect(() => {
-    if (projectQ.data !== undefined) setProject(projectQ.data);
-  }, [projectQ.data]);
-  useEffect(() => {
-    if (questionnairesQ.data !== undefined) setQuestionnaires(questionnairesQ.data);
-  }, [questionnairesQ.data]);
-  useEffect(() => {
-    if (bobcatQ.data !== undefined) setBobcatInspections(bobcatQ.data);
-  }, [bobcatQ.data]);
-  useEffect(() => {
-    if (excavatorQ.data !== undefined) setExcavatorInspections(excavatorQ.data);
-  }, [excavatorQ.data]);
-  useEffect(() => {
-    if (generalEquipmentQ.data !== undefined) setGeneralEquipmentInspections(generalEquipmentQ.data);
-  }, [generalEquipmentQ.data]);
-  useEffect(() => {
-    if (cpQ.data !== undefined) setCpInspections(cpQ.data);
-  }, [cpQ.data]);
-  useEffect(() => {
-    if (snQ.data !== undefined) setSnInspections(snQ.data);
-  }, [snQ.data]);
-  useEffect(() => {
-    if (mlQ.data !== undefined) setMlInspections(mlQ.data);
-  }, [mlQ.data]);
-  useEffect(() => {
-    if (fpQ.data !== undefined) setFpInspections(fpQ.data);
-  }, [fpQ.data]);
-  useEffect(() => {
-    if (laQ.data !== undefined) setLaInspections(laQ.data);
-  }, [laQ.data]);
-  useEffect(() => {
-    if (fkQ.data !== undefined) setFkInspections(fkQ.data);
-  }, [fkQ.data]);
-  useEffect(() => {
-    if (templatesQ.data !== undefined) setTemplates(templatesQ.data);
-  }, [templatesQ.data]);
-  useEffect(() => {
-    if (filesQ.data !== undefined) setFiles(filesQ.data);
-  }, [filesQ.data]);
-  useEffect(() => {
-    const anyLoading = projectQ.isLoading || questionnairesQ.isLoading || bobcatQ.isLoading
-      || excavatorQ.isLoading || generalEquipmentQ.isLoading || cpQ.isLoading || templatesQ.isLoading
-      || filesQ.isLoading || incidentsQ.isLoading || briefingsQ.isLoading || reportsQ.isLoading;
-    if (!anyLoading) setLoaded(true);
-  }, [projectQ.isLoading, questionnairesQ.isLoading, bobcatQ.isLoading, excavatorQ.isLoading,
-      generalEquipmentQ.isLoading, cpQ.isLoading, templatesQ.isLoading, filesQ.isLoading,
-      incidentsQ.isLoading, briefingsQ.isLoading, reportsQ.isLoading]);
 
   // Project screen onboarding tour
   const heroRef = useRef<View>(null);
