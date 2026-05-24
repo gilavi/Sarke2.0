@@ -18,25 +18,19 @@ import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { SkeletonMap } from '../../components/SkeletonMap';
 import { routeForInspection } from '../../lib/inspectionRouting';
 import { useBottomSheet } from '../../components/BottomSheet';
-import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { Skeleton, SkeletonCard, SkeletonListCard } from '../../components/Skeleton';
-import { SectionEmptyState } from '../../components/EmptyState';
 import {
   projectsApi,
   projectFilesApi,
   questionnairesApi,
 } from '../../lib/services';
 import { inspectionRegistry } from '../../lib/inspection/registry';
-import { formatBlDate, BL_RESULT_COLORS, countsByStatus } from '../../types/breathalyzerLog';
-import type { BreathalizerLog } from '../../types/breathalyzerLog';
 import { buildUnifiedInspections, deleteUnifiedInspection, type UnifiedInspection } from './unifiedInspections';
 import { useToast } from '../../lib/toast';
 import { useTheme } from '../../lib/theme';
 import { toErrorMessage } from '../../lib/logError';
 import { friendlyError } from '../../lib/errorMap';
-import { formatShortDateTime } from '../../lib/formatDate';
-import type { Briefing, CrewMember, Incident, Order, Project, ProjectFile, Questionnaire, Report, Template } from '../../types/models';
-import { ORDER_DOCUMENT_TYPE_LABEL } from '../../types/models';
+import type { CrewMember, Project, ProjectFile, Template } from '../../types/models';
 import { briefingsApi } from '../../lib/briefingsApi';
 import { ordersApi } from '../../lib/ordersApi';
 import { RoleSlotList } from '../../components/RoleSlotList';
@@ -49,11 +43,9 @@ import { useTranslation } from 'react-i18next';
 import { usePhotoWithLocation } from '../../hooks/usePhotoWithLocation';
 import { QuickActions, type QuickAction } from '../../components/QuickActions';
 import { InspectionTypeAvatar } from '../../components/InspectionTypeAvatar';
-import { RecordTypePill } from '../../components/RecordTypePill';
 import { CustomDropdown } from '../../components/ui/CustomDropdown';
 import { EditProjectSheet } from '../../components/projects/EditProjectSheet';
 import { UpcomingSection } from '../../components/projects/UpcomingSection';
-import { EmptyState, FileThumbnail, IncidentRow, ViewMoreRow } from '../../components/projects/ProjectRowHelpers';
 import { getStyles } from './styles';
 import { ProjectArchSvg, useArchAnimation } from './ProjectArchHeader';
 import { useProjectDetailData } from './useProjectDetailData';
