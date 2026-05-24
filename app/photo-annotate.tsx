@@ -4,7 +4,7 @@
 // returns the annotated URI back to the caller via photoPickerBus.
 
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import PhotoAnnotator from '../components/PhotoAnnotator';
+import PhotoAnnotator from '../components/photo-annotator';
 import { resolvePhotoAnnotate } from '../lib/photoPickerBus';
 
 export default function PhotoAnnotateScreen() {
