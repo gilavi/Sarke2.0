@@ -2,24 +2,13 @@
 import { useQuery } from '@tanstack/react-query';
 import {
   Animated,
-  Dimensions,
   Linking,
   Pressable,
   ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
-import Reanimated, {
-  useSharedValue,
-  useAnimatedProps,
-  useAnimatedScrollHandler,
-  useAnimatedStyle,
-  useDerivedValue,
-  interpolate,
-  withSpring,
-  withDelay,
-} from 'react-native-reanimated';
-import { Path, Svg } from 'react-native-svg';
+import Reanimated from 'react-native-reanimated';
 import { Image } from 'expo-image';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -86,12 +75,7 @@ import { EditProjectSheet } from '../../components/projects/EditProjectSheet';
 import { UpcomingSection } from '../../components/projects/UpcomingSection';
 import { EmptyState, FileThumbnail, IncidentRow, ViewMoreRow } from '../../components/projects/ProjectRowHelpers';
 import { getStyles } from './styles';
-
-const SCREEN_W = Dimensions.get('window').width;
-const SVG_H = 80;      // total SVG element height
-const SVG_EDGE_Y = 68; // y within SVG where arch edges sit (stays fixed)
-
-const AnimatedPath = Reanimated.createAnimatedComponent(Path);
+import { ProjectArchSvg, useArchAnimation } from './ProjectArchHeader';
 
 export default function ProjectDetail() {
   const { theme } = useTheme();
@@ -659,52 +643,8 @@ export default function ProjectDetail() {
     return withCoords.slice(0, 20);
   }, [allProjects]);
 
-  // ── Arch SVG morph animation ──────────────────────────────────────────────
-  // archMountProgress: 0→1 on load (arch curves in from flat)
-  // archScrollDelta: scroll-driven offset (negative = deeper arch on pull-down)
-  const archMountProgress = useSharedValue(0);
-  const archScrollDelta = useSharedValue(0);
-  const logoProgress = useSharedValue(0);
-
-  // peakY: controls the SVG bezier control point.
-  //   SVG_EDGE_Y = flat (no curve), 0 = full arch, negative = extra deep
-  const archPeakY = useDerivedValue(() => {
-    'worklet';
-    const mount = interpolate(archMountProgress.value, [0, 1], [SVG_EDGE_Y, 0]);
-    return mount + archScrollDelta.value;
-  });
-
-  const archProps = useAnimatedProps(() => {
-    'worklet';
-    const p = archPeakY.value;
-    const W = SCREEN_W;
-    return {
-      d: `M0,${SVG_EDGE_Y} Q${W / 2},${p.toFixed(1)} ${W},${SVG_EDGE_Y} L${W},${SVG_H} L0,${SVG_H} Z`,
-    };
-  });
-
-  const logoStyle = useAnimatedStyle(() => ({
-    opacity: logoProgress.value,
-    transform: [{ scale: interpolate(logoProgress.value, [0, 1], [0.6, 1]) }],
-  }));
-
-  const scrollHandler = useAnimatedScrollHandler({
-    onScroll: (event) => {
-      'worklet';
-      archScrollDelta.value = interpolate(
-        event.contentOffset.y,
-        [-80, 0, 100],
-        [-22, 0, SVG_EDGE_Y],
-        'clamp' as any,
-      );
-    },
-  });
-
-  useEffect(() => {
-    if (!loaded) return;
-    archMountProgress.value = withSpring(1, { damping: 16, stiffness: 120 });
-    logoProgress.value = withDelay(160, withSpring(1, { damping: 12, stiffness: 150 }));
-  }, [loaded]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Arch SVG morph + logo entrance animation. See ProjectArchHeader.tsx.
+  const { archProps, logoStyle, scrollHandler } = useArchAnimation(loaded);
 
   if (!loaded && !project) {
     return (
@@ -808,14 +748,7 @@ export default function ProjectDetail() {
           </View>
 
           {/* SVG arch — morphs between flat and curved via Reanimated */}
-          <Svg
-            width={SCREEN_W}
-            height={SVG_H}
-            style={{ position: 'absolute', bottom: 0, left: 0 }}
-            pointerEvents="none"
-          >
-            <AnimatedPath animatedProps={archProps} fill={theme.colors.background} />
-          </Svg>
+          <ProjectArchSvg archProps={archProps} fill={theme.colors.background} />
         </View>
 
         {/* ── Sheet — sits flush below the arch ── */}
