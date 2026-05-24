@@ -42,6 +42,32 @@ Rules:
 - **Languages:** UI strings are in Georgian (ქართული). Do not auto-translate them to English.
 - **Migrations:** range is currently `0001`–`0052`. Numbers `0044`/`0045`/`0046` are each used by two files (merged branches) — do **not** renumber them (it desyncs the hosted migration history); new migrations continue from `0052`. The full list with one-line descriptions is in [README.md](README.md#migrations-supabasemigrations).
 
+## Per-module context
+
+Feature folders and most component subfolders carry an `AGENTS.md`
+that documents the module's public API, internal files, gotchas, and
+canonical helpers it consumes. When you start work in any of these
+folders, **read its `AGENTS.md` first** — it's the cheapest way to
+load the local invariants before editing.
+
+Locations to look:
+
+- `features/<feature>/AGENTS.md` — slice-by-slice context for
+  `features/inspection-wizard`, `features/order-new`, and
+  `features/project-detail`.
+- `components/<folder>/AGENTS.md` — the per-component-folder docs
+  (animations, bobcat, cargoPlatform, excavator, generalEquipment,
+  harness-list, home, icons, inputs, inspection-parts,
+  inspection-steps, layout, photo-annotator, primitives, projects,
+  qualifications, ui, wizard, wizard/kamari).
+- `lib/services/AGENTS.md` — services dispatcher + real/mock split.
+- `lib/pdf/order/AGENTS.md`, `lib/pdf/inspection/AGENTS.md` — PDF
+  template internals.
+
+If you're adding a new folder, add an `AGENTS.md` next to it using
+the same template (What this module does / Public API / Internal
+files / Gotchas / Canonical helpers).
+
 ## Web codebases
 
 There are three separate web codebases in this repo. None share code with the Expo mobile app — only Supabase.
