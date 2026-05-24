@@ -23,3 +23,7 @@ supabase/.temp/
 website/build/
 website/.docusaurus/
 website/.cache-loader/
+
+# Playwright test artefacts
+playwright-report/
+test-results/
