@@ -23,8 +23,11 @@ queue.
 - `styles.ts` — `getstyles(theme)` factory, `staticStyles`, `uploadPillStyles`.
 - `QuestionStep.tsx` — generic question step (yesno/measure/freetext +
   photos + notes).
-- `GridRowStep.tsx` — `component_grid` row step. Handles both harness
-  rows (✓/✗ chips per col) and scaffold rows (status options + comment).
+- `HarnessRowStep.tsx` — harness (N1-N15) `component_grid` row step:
+  ✓/✗ chips per col + row-count picker on the first row.
+- `ScaffoldRowStep.tsx` — non-harness `component_grid` row step:
+  big status buttons rendered by `ScaffoldFooterButtons` in the
+  global footer + an optional comment field.
 - `ConclusionStep.tsx` — final step with safety verdict, harness name,
   general photos, and conclusion textarea.
 - `MeasureInput.tsx`, `DebouncedFreetext.tsx`, `DebouncedNotes.tsx` —
@@ -52,12 +55,14 @@ queue.
 - Step transition direction (`'next' | 'prev'`) is derived in the
   orchestrator from the previous `stepIndex` (a ref) — the direction
   drives the slide animation in `WizardStepTransition`.
-- `GridRowStep` calls `useState`/`useRef` *conditionally* inside the
-  `!isHarness` branch. This is a pre-existing rules-of-hooks violation
-  that the original god-file also had. **Do not "fix" it as a side
-  effect of moving the file** — `isHarness` is stable for the life of a
-  step (mounted/unmounted by `WizardStepTransition`), so the bug is
-  latent. Logged in `REFACTOR_NOTES.md`.
+- Grid rows are split by domain (`HarnessRowStep` vs `ScaffoldRowStep`)
+  to avoid the conditional-hook bug the pre-v2 `GridRowStep` had.
+  The orchestrator (`InspectionWizard.tsx`) dispatches on
+  `step.question.grid_rows?.[0] === 'N1'` before mounting either
+  component, so each one's hooks are called unconditionally.
+  **Future grid types must follow this pattern — add a sibling
+  `<Type>RowStep` + a dispatch branch in the wizard, do not
+  consolidate back into one file with internal branching.**
 - `removeInspection` / `deleteConfirmVisible` are wired up but the modal
   has no visible trigger from inside the wizard. The trigger lives on
   the inspection detail screen; the modal stays here so a flag flip is

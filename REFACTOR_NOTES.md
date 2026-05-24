@@ -5,16 +5,11 @@ of fixed inline (structural-only constraint).
 
 ## Pre-existing bugs
 
-### `features/inspection-wizard/GridRowStep.tsx` — conditional hook calls
-The non-harness branch (`if (!isHarness) { ... }`) calls `useState` and
-`useRef` after a conditional `return`. This violates the rules of hooks
-and was present in the original god-file
-(`app/inspections/[id]/wizard.tsx`, `GridRowStep`). Latent because the
-parent (`WizardStepTransition`) unmounts/remounts on each step, so
-`isHarness` is stable for the life of any one mount — but a future
-refactor that keeps the same `GridRowStep` mounted across step
-transitions would crash. Fix would be to split into `HarnessRowStep` +
-`ScaffoldRowStep` components.
+### `features/inspection-wizard/GridRowStep.tsx` — conditional hook calls ✅ FIXED in v2 Phase 3
+Split into `HarnessRowStep.tsx` + `ScaffoldRowStep.tsx`; the dispatch
+on `grid_rows[0] === 'N1'` moved up to `InspectionWizard.tsx`. Each
+new file calls its hooks unconditionally. AGENTS.md updated with the
+rule that future grid variants must follow the same pattern.
 
 ### `app/orders/new.tsx` — dead step components dropped
 The original `NewOrderScreen` declared but never rendered

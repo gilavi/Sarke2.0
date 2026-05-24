@@ -33,7 +33,8 @@ import {
 import { getstyles, staticStyles, uploadPillStyles } from './styles';
 import { QuestionStep } from './QuestionStep';
 import { ConclusionStep } from './ConclusionStep';
-import { GridRowStep } from './GridRowStep';
+import { HarnessRowStep } from './HarnessRowStep';
+import { ScaffoldRowStep } from './ScaffoldRowStep';
 import { WizardHeader } from './WizardHeader';
 import { ScaffoldFooterButtons } from './ScaffoldFooterButtons';
 import { CompletedRedirect } from './CompletedRedirect';
@@ -311,19 +312,30 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
         >
           <WizardStepTransition stepKey={stepIndex} direction={stepDirection} animate={animateSteps && Math.abs(stepIndex - prevStepIndexRef.current) <= 1}>
             {step.kind === 'gridRow' ? (
-              <GridRowStep
-                question={step.question}
-                row={step.row}
-                answer={answers[step.question.id]}
-                photosByAnswer={photos}
-                isFirstRow={step.row === (step.question.grid_rows?.[0] ?? '')}
-                harnessRowCount={harnessRowCount}
-                setHarnessRowCount={setHarnessRowCount}
-                onAnswer={patchAnswer}
-                onPickPhoto={() => pickPhoto(step.question, step.row)}
-                onDeletePhoto={deletePhoto}
-                onAdvance={goNext}
-              />
+              (step.question.grid_rows?.[0] ?? '') === 'N1' ? (
+                <HarnessRowStep
+                  question={step.question}
+                  row={step.row}
+                  answer={answers[step.question.id]}
+                  photosByAnswer={photos}
+                  isFirstRow={step.row === (step.question.grid_rows?.[0] ?? '')}
+                  harnessRowCount={harnessRowCount}
+                  setHarnessRowCount={setHarnessRowCount}
+                  onAnswer={patchAnswer}
+                  onPickPhoto={() => pickPhoto(step.question, step.row)}
+                  onDeletePhoto={deletePhoto}
+                />
+              ) : (
+                <ScaffoldRowStep
+                  question={step.question}
+                  row={step.row}
+                  answer={answers[step.question.id]}
+                  photosByAnswer={photos}
+                  onAnswer={patchAnswer}
+                  onPickPhoto={() => pickPhoto(step.question, step.row)}
+                  onDeletePhoto={deletePhoto}
+                />
+              )
             ) : (
               <KeyboardAwareScrollView
                 style={{ flex: 1 }}
