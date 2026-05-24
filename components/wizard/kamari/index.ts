@@ -1,5 +1,3 @@
-// Backwards-compatible barrel. The real implementations now live one
-// file per step.
 export { KamariCount } from './KamariCount';
 export { KamariOverview } from './KamariOverview';
 export { KamariDetailModal } from './KamariDetailModal';
