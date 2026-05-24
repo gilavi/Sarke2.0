@@ -21,8 +21,13 @@ Called by:
 of the above so existing callers don't need to change paths.
 
 ## Internal files
-- `template.ts` — the main `buildInspectionPdfTemplate` (still large:
-  ~810 lines, mostly inline CSS + page structure).
+- `template.ts` — the main `buildInspectionPdfTemplate` (now ~280
+  lines, almost entirely HTML structure since the stylesheet moved
+  to `template.css.ts`).
+- `template.css.ts` — `getInspectionPdfCss({ isPdf })`. Holds the
+  ~550-line stylesheet as a tagged template literal. The only
+  dynamic value is `isPdf` (widens body padding + enables
+  `page-break-inside: avoid` for the structural cards).
 - `_shared.ts` — `tPdf` (Georgian-locked translator against
   `locales/ka.json`), `formatDate`, `pad2`, `escapeHtml`.
 - `renderQuestion.ts` — `renderQuestion` + private `isProblemValue` /
@@ -41,9 +46,11 @@ of the above so existing callers don't need to change paths.
 - Photo paths are not fetched here — callers must pre-resolve
   `photosByAnswer[id][*].storage_path` to renderable URLs. See
   `lib/inspection/photos.ts` and `lib/inspection/renderMobile.ts`.
-- `template.ts` still owns several hundred lines of inline CSS. A
-  follow-up could split that into `template.css.ts` exporting a
-  template literal — left as-is for byte-for-byte parity.
+- The stylesheet lives in a separate `template.css.ts` so the
+  structure file reads as plain HTML. Only `isPdf` flows from the
+  template into the CSS (via the function argument); any other
+  dynamic CSS values should land in the structure file as inline
+  styles, not new args to `getInspectionPdfCss`.
 
 ## Canonical helpers used
 - `locales/ka.json` — strings.
