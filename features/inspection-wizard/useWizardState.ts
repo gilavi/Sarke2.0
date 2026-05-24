@@ -51,6 +51,7 @@ import {
   safetyKey,
   stepKey,
 } from './wizardSchema';
+import { useWizardPersistence } from './hooks/useWizardPersistence';
 
 export function useWizardState(id: string | undefined) {
   const router = useRouter();
@@ -212,45 +213,10 @@ export function useWizardState(id: string | undefined) {
     }
   }, [id, toast]);
 
-  // Persist step index
-  useEffect(() => {
-    if (!id || loading) return;
-    AsyncStorage.setItem(stepKey(id), String(stepIndex)).catch((e) =>
-      logError(e, 'wizard.persistStep'),
-    );
-  }, [id, stepIndex, loading]);
-
-  useEffect(() => {
-    if (!id || loading) return;
-    AsyncStorage.setItem(harnessCountKey(id), String(harnessRowCount)).catch((e) =>
-      logError(e, 'wizard.persistHarnessCount'),
-    );
-  }, [id, harnessRowCount, loading]);
-
-  useEffect(() => {
-    if (!id || loading) return;
-    AsyncStorage.setItem(conclusionKey(id), conclusion).catch((e) =>
-      logError(e, 'wizard.persistConclusion'),
-    );
-  }, [id, conclusion, loading]);
-
-  useEffect(() => {
-    if (!id || loading) return;
-    if (isSafe === null) {
-      AsyncStorage.removeItem(safetyKey(id)).catch(() => {});
-    } else {
-      AsyncStorage.setItem(safetyKey(id), String(isSafe)).catch((e) =>
-        logError(e, 'wizard.persistSafety'),
-      );
-    }
-  }, [id, isSafe, loading]);
-
-  useEffect(() => {
-    if (!id || loading) return;
-    AsyncStorage.setItem(harnessNameKey(id), harnessName).catch((e) =>
-      logError(e, 'wizard.persistHarnessName'),
-    );
-  }, [id, harnessName, loading]);
+  // Per-field AsyncStorage write-through. See ./hooks/useWizardPersistence.
+  useWizardPersistence({
+    id, loading, stepIndex, harnessRowCount, conclusion, isSafe, harnessName,
+  });
 
   // Initial + focus loads. The cancellation token in load() handles benign double-fire.
   useEffect(() => {

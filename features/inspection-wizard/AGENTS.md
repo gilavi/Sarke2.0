@@ -14,9 +14,15 @@ queue.
 ## Internal files
 - `InspectionWizard.tsx` — orchestrator. Renders header/footer + the
   current step. Owns local UI state (tour, swipe gesture, entrance anim).
-- `useWizardState.ts` — single hook owning all wizard state, load,
-  persistence, answer/photo mutations and finish flow. Larger than the
-  150-line "hook" target on purpose — see "Gotchas".
+- `useWizardState.ts` — single hook owning wizard state, load,
+  answer/photo mutations and finish flow. Larger than the 150-line
+  "hook" target on purpose — see "Gotchas".
+- `hooks/useWizardPersistence.ts` — write-only side-effect hook
+  consumed by `useWizardState`. Mirrors `stepIndex`, `harnessRowCount`,
+  `conclusion`, `isSafe`, `harnessName` into AsyncStorage as the user
+  edits them. Add new persisted fields here by adding an entry to its
+  args + one useEffect, then clearing it on finish in
+  `saveConclusionAndGo`.
 - `wizardSchema.ts` — pure helpers: `FlatStep` type, `buildSteps`,
   `hasAnswer`, `isAnswerShapeValidForType`, `parseMeasure`, `measureError`,
   `scaffoldColStyle`, AsyncStorage key helpers, bounded photo-URL cache.
@@ -42,12 +48,19 @@ queue.
 - `NavigationRecovery.tsx` — fallback UI shown if load hangs > 5 s.
 
 ## Gotchas / non-obvious things
-- `useWizardState.ts` is intentionally one large hook (~500 lines) rather
-  than 4–5 slices. The load/patch/upload/finish flows touch the same
-  state shapes (answers, photos, questionnaire, offline) — splitting
-  them introduces prop-drilling between the slices and double work for
-  the React Query cache. Keep it cohesive; only split if a *clean*
-  boundary appears.
+- `useWizardState.ts` is intentionally one large hook (~560 lines)
+  rather than load/answers/persistence slices. **The
+  load/answers/finish boundary was evaluated in v2 Phase 5 and left
+  merged**: `load()` writes every state field, and `patchAnswer` +
+  `doUpload` write to the same `answers` / `photos` / `project`
+  states load wrote. Separating them would require either (a)
+  drilling setters between slices via props (effectively re-creating
+  the orchestrator) or (b) a useReducer / context overhaul, which
+  exceeds the structural-only constraint. The persistence layer DID
+  separate cleanly because it's write-only — see
+  `hooks/useWizardPersistence.ts`. Apply the same test to any future
+  attempt: split only when the proposed slice has no shared
+  writable state with another slice.
 - `photoUrlCache` is a *module-level* Map in `wizardSchema.ts` shared
   between `PhotoThumb` and `PhotoPreviewModal`. Bounded to 100 entries
   via `setPhotoUrlCache`. Don't replace with `useState` — the cache must
