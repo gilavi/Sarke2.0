@@ -57,6 +57,7 @@ import { EmptyState, FileThumbnail, IncidentRow, ViewMoreRow } from '../../compo
 import { getStyles } from './styles';
 import { ProjectArchSvg, useArchAnimation } from './ProjectArchHeader';
 import { useProjectDetailData } from './useProjectDetailData';
+import { InspectionsSection } from './sections/InspectionsSection';
 
 export default function ProjectDetail() {
   const { theme } = useTheme();
@@ -185,11 +186,6 @@ export default function ProjectDetail() {
     [questionnaires, bobcatInspections, excavatorInspections, generalEquipmentInspections, cpInspections, snInspections, mlInspections, fpInspections, laInspections, fkInspections],
   );
 
-  const allInspectionsSorted = allInspections;
-  const allInspectionsPreview = useMemo(
-    () => allInspectionsSorted.slice(0, 3),
-    [allInspectionsSorted],
-  );
   const incidentsSorted = useMemo(
     () =>
       [...incidents].sort(
@@ -230,10 +226,6 @@ export default function ProjectDetail() {
   const reportsPreview = useMemo(() => reportsSorted.slice(0, 3), [reportsSorted]);
   const overflowReports = useMemo(() => reportsSorted.slice(3), [reportsSorted]);
 
-  const overflowAllInspections = useMemo(
-    () => allInspectionsSorted.slice(3),
-    [allInspectionsSorted],
-  );
   const overflowIncidents = useMemo(
     () => incidentsSorted.slice(3),
     [incidentsSorted],
@@ -640,69 +632,13 @@ export default function ProjectDetail() {
 
           {/* ── Inspections (generic + equipment) ── */}
           <View ref={questionnairesRef} collapsable={false} style={styles.sectionCard}>
-            <View style={styles.sectionHeader}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Ionicons name="shield-checkmark-outline" size={16} color={theme.colors.inkSoft} />
-                <Text style={styles.sectionTitle}>{t('projects.questionnairesSection')}</Text>
-                <Text style={styles.sectionCount}>{allInspections.length}</Text>
-              </View>
-              <Pressable onPress={startNewInspection} hitSlop={16}>
-                <Text style={styles.sectionAddLink}>+ დამატება</Text>
-              </Pressable>
-            </View>
-
-            {allInspections.length === 0 ? (
-              <EmptyState text={t('projects.noCompletedInspections')} />
-            ) : (
-              <View style={{ gap: 8, marginTop: 10 }}>
-                {allInspectionsPreview.map(item => {
-                  const tpl = templates.find(t => t.id === item.template_id);
-                  const isCompleted = item.status === 'completed';
-                  const route = routeForInspection(item.source, item.id, isCompleted);
-                  return (
-                    <Swipeable
-                      key={`${item.source}-${item.id}`}
-                      renderRightActions={() => (
-                        <Pressable onPress={() => deleteInspection(item)} style={styles.swipeDelete} {...a11y('შემოწმების აქტს წაშლა', 'შემოწმების აქტს წაშლა', 'button')}>
-                          <Ionicons name="trash" size={18} color={theme.colors.white} />
-                        </Pressable>
-                      )}
-                      overshootRight={false}
-                    >
-                      <Pressable
-                        onPress={() => router.push(route as any)}
-                        style={styles.listRow}
-                        {...a11y(tpl?.name ?? 'შემოწმების აქტი', isCompleted ? 'დასრულებული შემოწმების აქტს ნახვა' : 'დრაფტის გასაგრძელებლად დააჭირეთ', 'button')}
-                      >
-                        <InspectionTypeAvatar
-                          category={item.source === 'generic' ? tpl?.category : item.source}
-                          size={36}
-                          status={isCompleted ? 'completed' : 'draft'}
-                        />
-                        <View style={{ flex: 1 }}>
-                          <RecordTypePill recordType="inspection" />
-                          <Text style={styles.listRowTitle}>{tpl?.name ?? t('common.inspection')}</Text>
-                          <Text style={styles.listRowSubtitle}>
-                            {formatShortDateTime(item.created_at)}
-                          </Text>
-                        </View>
-                        <Ionicons name="chevron-forward" size={18} color={theme.colors.borderStrong} />
-                      </Pressable>
-                    </Swipeable>
-                  );
-                })}
-                {overflowAllInspections.length > 0 ? (
-                  <ViewMoreRow
-                    items={overflowAllInspections.map(item => {
-                      const tpl = templates.find(t => t.id === item.template_id);
-                      return { category: item.source === 'generic' ? (tpl?.category ?? null) : item.source };
-                    })}
-                    total={overflowAllInspections.length}
-                    onPress={() => router.push(`/projects/${id}/inspections` as any)}
-                  />
-                ) : null}
-              </View>
-            )}
+            <InspectionsSection
+              id={id}
+              allInspections={allInspections}
+              templates={templates}
+              onAdd={startNewInspection}
+              onDelete={deleteInspection}
+            />
           </View>
 
           {/* ── ინციდენტები ── */}
