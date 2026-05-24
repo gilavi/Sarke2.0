@@ -58,6 +58,7 @@ import { getStyles } from './styles';
 import { ProjectArchSvg, useArchAnimation } from './ProjectArchHeader';
 import { useProjectDetailData } from './useProjectDetailData';
 import { InspectionsSection } from './sections/InspectionsSection';
+import { IncidentsSection } from './sections/IncidentsSection';
 
 export default function ProjectDetail() {
   const { theme } = useTheme();
@@ -186,17 +187,6 @@ export default function ProjectDetail() {
     [questionnaires, bobcatInspections, excavatorInspections, generalEquipmentInspections, cpInspections, snInspections, mlInspections, fpInspections, laInspections, fkInspections],
   );
 
-  const incidentsSorted = useMemo(
-    () =>
-      [...incidents].sort(
-        (a, b) => +new Date(b.date_time) - +new Date(a.date_time),
-      ),
-    [incidents],
-  );
-  const incidentsPreview = useMemo(
-    () => incidentsSorted.slice(0, 3),
-    [incidentsSorted],
-  );
   const briefingsSorted = useMemo(
     () =>
       [...briefings].sort(
@@ -226,10 +216,6 @@ export default function ProjectDetail() {
   const reportsPreview = useMemo(() => reportsSorted.slice(0, 3), [reportsSorted]);
   const overflowReports = useMemo(() => reportsSorted.slice(3), [reportsSorted]);
 
-  const overflowIncidents = useMemo(
-    () => incidentsSorted.slice(3),
-    [incidentsSorted],
-  );
   const overflowBriefings = useMemo(
     () => briefingsSorted.slice(3),
     [briefingsSorted],
@@ -643,38 +629,7 @@ export default function ProjectDetail() {
 
           {/* ── ინციდენტები ── */}
           <View style={styles.sectionCard}>
-            <View style={styles.sectionHeader}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Ionicons name="warning-outline" size={16} color={theme.colors.inkSoft} />
-                <Text style={styles.sectionTitle}>ინციდენტები</Text>
-                <Text style={styles.sectionCount}>{incidents.length}</Text>
-              </View>
-              <Pressable onPress={() => router.push(`/incidents/new?projectId=${id}` as any)} hitSlop={16}>
-                <Text style={styles.sectionAddLink}>+ დამატება</Text>
-              </Pressable>
-            </View>
-
-            {incidents.length === 0 ? (
-              <SectionEmptyState type="incidents" />
-            ) : (
-              <View style={{ gap: 8, marginTop: 10 }}>
-                {incidentsPreview.map(inc => (
-                  <IncidentRow
-                    key={inc.id}
-                    incident={inc}
-                    onPress={() => router.push(`/incidents/${inc.id}` as any)}
-                  />
-                ))}
-                {overflowIncidents.length > 0 ? (
-                  <ViewMoreRow
-                    items={overflowIncidents.map(() => ({ ionicon: 'warning-outline' }))}
-                    total={overflowIncidents.length}
-                    onPress={() => router.push(`/projects/${id}/incidents` as any)}
-                  />
-                ) : null}
-              </View>
-            )}
-
+            <IncidentsSection id={id} incidents={incidents} />
           </View>
 
           {/* ── ინსტრუქტაჟი ── */}
