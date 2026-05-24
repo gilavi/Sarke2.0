@@ -1,0 +1,146 @@
+// Files + Orders section of the project detail screen.
+//
+// One card on the screen shows both:
+//   - Generated orders (ბრძანებები) — read-only previews
+//   - Uploaded files (ფაილები) — swipe-to-delete, tap-to-open
+//
+// Header has two `+` actions: "+ ბრძანება" (new order) and
+// "+ ატვირთვა" (upload file). Empty state renders only when both
+// lists are empty.
+
+import { useMemo } from 'react';
+import { Pressable, View } from 'react-native';
+import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { A11yText as Text } from '../../../components/primitives/A11yText';
+import { SectionEmptyState } from '../../../components/EmptyState';
+import { FileThumbnail, ViewMoreRow } from '../../../components/projects/ProjectRowHelpers';
+import { useTheme } from '../../../lib/theme';
+import { a11y } from '../../../lib/accessibility';
+import { formatShortDateTime } from '../../../lib/formatDate';
+import type { Order, ProjectFile } from '../../../types/models';
+import { ORDER_DOCUMENT_TYPE_LABEL } from '../../../types/models';
+import { getStyles } from '../styles';
+
+export function FilesAndOrdersSection({
+  id,
+  files,
+  orders,
+  filesBusy,
+  onUpload,
+  onOpenFile,
+  onDeleteFile,
+}: {
+  id: string | undefined;
+  files: ProjectFile[];
+  orders: Order[];
+  filesBusy: boolean;
+  onUpload: () => void;
+  onOpenFile: (f: ProjectFile) => void;
+  onDeleteFile: (f: ProjectFile) => void;
+}) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
+  const router = useRouter();
+
+  const filesSorted = useMemo(
+    () => [...files].sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at)),
+    [files],
+  );
+  const filesPreview = useMemo(() => filesSorted.slice(0, 3), [filesSorted]);
+  const overflowFiles = useMemo(() => filesSorted.slice(3), [filesSorted]);
+
+  return (
+    <>
+      <View style={styles.sectionHeader}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Ionicons name="ribbon-outline" size={16} color={theme.colors.inkSoft} />
+          <Text style={styles.sectionTitle}>ბრძანებები</Text>
+          <Text style={styles.sectionCount}>{files.length + orders.length}</Text>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <Pressable
+            onPress={() => router.push(`/orders/new?projectId=${id}` as any)}
+            hitSlop={16}
+            {...a11y('ბრძანების შექმნა', 'ახალი ბრძანების შექმნა', 'button')}
+          >
+            <Text style={styles.sectionAddLink}>+ ბრძანება</Text>
+          </Pressable>
+          <Pressable onPress={onUpload} disabled={filesBusy} hitSlop={16}>
+            <Text style={[styles.sectionAddLink, filesBusy && { opacity: 0.5 }]}>
+              {filesBusy ? 'იტვირთება…' : '+ ატვირთვა'}
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+
+      {/* Generated orders (ბრძანებები) */}
+      {orders.length > 0 ? (
+        <View style={{ gap: 8, marginTop: 10 }}>
+          {orders.map(order => (
+            <View key={order.id} style={styles.listRow}>
+              <View style={{
+                width: 32, height: 32, borderRadius: 8,
+                backgroundColor: theme.colors.accentSoft,
+                alignItems: 'center', justifyContent: 'center',
+              }}>
+                <Ionicons name="document-text-outline" size={17} color={theme.colors.accent} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.listRowTitle} numberOfLines={1}>
+                  {ORDER_DOCUMENT_TYPE_LABEL[order.documentType] ?? order.documentType}
+                </Text>
+                <Text style={styles.listRowSubtitle}>
+                  {formatShortDateTime(order.createdAt)}
+                  {order.status === 'draft' ? ' · მონახაზი' : ''}
+                </Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      ) : null}
+
+      {/* Uploaded files */}
+      {files.length === 0 && orders.length === 0 ? (
+        <SectionEmptyState type="documents" />
+      ) : files.length === 0 ? null : (
+        <View style={{ gap: 8, marginTop: orders.length > 0 ? 8 : 10 }}>
+          {filesPreview.map(f => (
+            <Swipeable
+              key={f.id}
+              renderRightActions={() => (
+                <Pressable onPress={() => onDeleteFile(f)} style={styles.swipeDelete} {...a11y('ფაილის წაშლა', 'ფაილის წაშლა', 'button')}>
+                  <Ionicons name="trash" size={18} color={theme.colors.white} />
+                </Pressable>
+              )}
+              overshootRight={false}
+            >
+              <Pressable
+                onPress={() => onOpenFile(f)}
+                style={styles.listRow}
+                {...a11y(f.name, 'ფაილის გახსნა', 'button')}
+              >
+                <FileThumbnail file={f} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.listRowTitle} numberOfLines={1}>{f.name}</Text>
+                  <Text style={styles.listRowSubtitle}>
+                    {formatShortDateTime(f.created_at)}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={theme.colors.borderStrong} />
+              </Pressable>
+            </Swipeable>
+          ))}
+          {overflowFiles.length > 0 ? (
+            <ViewMoreRow
+              items={overflowFiles.map(() => ({ ionicon: 'document-outline' }))}
+              total={overflowFiles.length}
+              onPress={() => router.push(`/projects/${id}/files` as any)}
+            />
+          ) : null}
+        </View>
+      )}
+    </>
+  );
+}
