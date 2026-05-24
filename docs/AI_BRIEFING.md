@@ -1,7 +1,7 @@
 # AI Agent Briefing — Sarke 2.0
 
 **Purpose:** Quick reference for AI agents working on this codebase  
-**Updated:** 2026-05-20 | Branch: `main`  
+**Updated:** 2026-05-25 | Branch: `main`  
 **Full context:** See [`ONBOARDING.md`](../ONBOARDING.md) in the repo root for the complete guide.
 
 ---
@@ -12,6 +12,7 @@
 **Primary Language:** Georgian (ქართული) UI — all strings inline, no i18n file  
 **Target Users:** Safety experts conducting equipment/scaffolding inspections on Georgian construction sites  
 **Backend:** Supabase (Postgres + Auth + Storage) — single project shared by all three frontends  
+**Architecture:** Feature-sliced. Modules live in `features/<name>/` with co-located `AGENTS.md` per folder; `app/` route files for large flows are thin orchestrators that re-export from `features/`.  
 **Source:** https://github.com/gilavi/Sarke2.0
 
 ---
@@ -21,6 +22,7 @@
 ```
 Mobile:
 ├─ Expo SDK 54 + React Native 0.81 + React 19
+├─ New Architecture (Fabric + TurboModules) — enabled
 ├─ expo-router (file-based routing)
 ├─ TypeScript
 ├─ react-native-signature-canvas (signatures)
@@ -210,4 +212,4 @@ npm run lint        # tsc --noEmit + check-primitives.mjs
 ---
 
 **Full context → [`ONBOARDING.md`](../ONBOARDING.md)**  
-**Last sync:** 2026-05-20
+**Last sync:** 2026-05-25
