@@ -12,6 +12,7 @@ There is also a public web dashboard ([`web-app/`](web-app/)) and a tokenized si
 
 - **Expo SDK 54** + expo-router (`~6.0.23`) — file-based routing.
 - **React Native 0.81**, **React 19**.
+- **New Architecture** (Fabric + TurboModules) enabled via `app.json`'s `newArchEnabled: true`; required by `react-native-reanimated@4.x`.
 - **Supabase** (`@supabase/supabase-js ^2.58.0`) — Postgres + Auth + Storage. URL and anon key are baked into `app.json` → `expo.extra`.
 - **`react-native-keyboard-controller`** — wired at the root via `<KeyboardProvider>`. Always import `KeyboardAvoidingView` / `KeyboardAwareScrollView` from this package, not from `react-native`.
 - **`expo-image-picker`**, **`expo-document-picker`**, **`expo-print`**, **`expo-sharing`** — media + PDF generation.
@@ -49,9 +50,10 @@ Top-level folders, one line each.
 
 | Path | Purpose |
 |---|---|
-| `app/` | expo-router routes for the mobile app. Subfolders: `(auth)/`, `(tabs)/`, `projects/[id]/logs/` (breathalyzer log journal), `questionnaire/`, `template/`, `inspections/` (per-category screens: bobcat, excavator, cargo-platform, general-equipment, safety-net, mobile-ladder, fall-protection, forklift, lifting-accessories, plus generic `[id].tsx`). |
-| `components/` | Shared RN components — `ui.tsx` primitives (Button, Card, Input, Chip, Screen, FormField, ButtonGroup, SectionHeader, ActionSheet, SheetLayout), `ProjectAvatar`, `BackButton`, `QuickActions` row, `wizard/kamari/` harness flow. |
-| `lib/` | Supabase client, session/auth provider, data services, theme, the schema-driven equipment-inspection PDF engine (`inspection/` — renderer, schemas, service factory, registry; see [docs/primitives.md](docs/primitives.md#inspection-pdf-engine)), generic PDF template (`pdf.ts`), offline queue, `pdfGate.ts`, `pdfSecurity.ts`, `crashReporting.ts`, `photoLocationAlert.ts`, `sms.ts`, canonical keyboard hooks. |
+| `app/` | expo-router routes for the mobile app. Large flows (`inspections/[id]/wizard.tsx`, `orders/new.tsx`, `projects/[id].tsx`) are thin orchestrators that re-export from `features/`. Subfolders: `(auth)/`, `(tabs)/`, `projects/[id]/logs/` (breathalyzer log journal), `questionnaire/`, `template/`, `inspections/` (per-category screens: bobcat, excavator, cargo-platform, general-equipment, safety-net, mobile-ladder, fall-protection, forklift, lifting-accessories, plus generic `[id].tsx`). |
+| `components/` | Shared RN components, organized as flat top-level files (`ProjectAvatar`, `BottomSheet`, `FlowHeader`, `SheetLayout`, …) plus domain folders (`ui/` primitives, `harness-list/`, `photo-annotator/`, `wizard/` + `wizard/kamari/`, `inspection-parts/`, `inspection-steps/`, `bobcat/`, `excavator/`, `cargoPlatform/`, `generalEquipment/`, `home/`, `icons/`, `inputs/`, `layout/`, `primitives/`, `projects/`, `qualifications/`, `animations/`) each with its own `AGENTS.md` documenting public API and gotchas. |
+| `features/` | Feature-sliced modules. Each subfolder (`inspection-wizard/`, `order-new/`, `project-detail/`) owns a self-contained flow with its own `AGENTS.md`; `app/` route files delegate to the matching feature module. |
+| `lib/` | Supabase client, session/auth provider, domain-split data services under `services/` (`real/<domain>.ts` + `mock/<domain>.ts`), theme, the schema-driven equipment-inspection PDF engine (`inspection/` — renderer, schemas, service factory, registry; see [docs/primitives.md](docs/primitives.md#inspection-pdf-engine)), domain-split order/inspection PDF templates under `pdf/order/` and `pdf/inspection/` (with `template.css.ts` siblings; the original `lib/orderPdf.ts` and `lib/inspectionPdfTemplate.ts` paths remain as re-export barrels), generic PDF template (`pdf.ts`), offline queue, `pdfGate.ts`, `pdfSecurity.ts`, `crashReporting.ts`, `photoLocationAlert.ts`, `sms.ts`, canonical keyboard hooks. |
 | `hooks/` | React hooks (e.g. `usePhotoWithLocation` for direct ImagePicker flows). |
 | `utils/` | Stateless helpers (`location.ts` GPS + reverseGeocode, etc.). |
 | `types/` | Shared TypeScript models (`models.ts`). |
