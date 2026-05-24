@@ -16,6 +16,13 @@ refactor that keeps the same `GridRowStep` mounted across step
 transitions would crash. Fix would be to split into `HarnessRowStep` +
 `ScaffoldRowStep` components.
 
+### `app/orders/new.tsx` — dead step components dropped
+The original `NewOrderScreen` declared but never rendered
+`StepSignDirector`, `StepSignAppointed`, and `StepSignCraneOperator`.
+The fire-safety / crane flows render `StepSignaturesFireSafety` and
+`StepSignaturesCrane` (the combined two-signature steps) instead.
+Not carried over into `features/order-new/` since they had no callers.
+
 ### `features/inspection-wizard/MeasureInput.tsx` — unused styles factory
 `useMemo(() => getstyles(theme), [theme])` is called and the result
 discarded. Inherited from the original; left in for byte-for-byte
