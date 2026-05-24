@@ -59,6 +59,7 @@ import { ProjectArchSvg, useArchAnimation } from './ProjectArchHeader';
 import { useProjectDetailData } from './useProjectDetailData';
 import { InspectionsSection } from './sections/InspectionsSection';
 import { IncidentsSection } from './sections/IncidentsSection';
+import { BriefingsSection } from './sections/BriefingsSection';
 
 export default function ProjectDetail() {
   const { theme } = useTheme();
@@ -187,17 +188,6 @@ export default function ProjectDetail() {
     [questionnaires, bobcatInspections, excavatorInspections, generalEquipmentInspections, cpInspections, snInspections, mlInspections, fpInspections, laInspections, fkInspections],
   );
 
-  const briefingsSorted = useMemo(
-    () =>
-      [...briefings].sort(
-        (a, b) => +new Date(b.dateTime) - +new Date(a.dateTime),
-      ),
-    [briefings],
-  );
-  const briefingsPreview = useMemo(
-    () => briefingsSorted.slice(0, 3),
-    [briefingsSorted],
-  );
   const filesSorted = useMemo(
     () =>
       [...files].sort(
@@ -216,10 +206,6 @@ export default function ProjectDetail() {
   const reportsPreview = useMemo(() => reportsSorted.slice(0, 3), [reportsSorted]);
   const overflowReports = useMemo(() => reportsSorted.slice(3), [reportsSorted]);
 
-  const overflowBriefings = useMemo(
-    () => briefingsSorted.slice(3),
-    [briefingsSorted],
-  );
   const overflowFiles = useMemo(() => filesSorted.slice(3), [filesSorted]);
 
   const startNewInspection = () => {
@@ -634,59 +620,7 @@ export default function ProjectDetail() {
 
           {/* ── ინსტრუქტაჟი ── */}
           <View style={styles.sectionCard}>
-            <View style={styles.sectionHeader}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Ionicons name="megaphone-outline" size={16} color={theme.colors.inkSoft} />
-                <Text style={styles.sectionTitle}>ინსტრუქტაჟი</Text>
-                <Text style={styles.sectionCount}>{briefings.length}</Text>
-              </View>
-              <Pressable onPress={() => id && router.push(`/briefings/new?projectId=${id}` as any)} hitSlop={16}>
-                <Text style={styles.sectionAddLink}>+ დამატება</Text>
-              </Pressable>
-            </View>
-
-            {briefings.length === 0 ? (
-              <SectionEmptyState type="briefings" />
-            ) : (
-              <View style={{ gap: 8, marginTop: 10 }}>
-                {briefingsPreview.map(b => {
-                  const isCompleted = b.status === 'completed';
-                  return (
-                    <Pressable
-                      key={b.id}
-                      onPress={() => router.push(`/briefings/${b.id}` as any)}
-                      style={styles.listRow}
-                      {...a11y('ინსტრუქტაჟი', 'დეტალების სანახავად დააჭირეთ', 'button')}
-                    >
-                      <View style={[styles.statusIcon, { backgroundColor: isCompleted ? theme.colors.semantic.successSoft : theme.colors.semantic.warningSoft }]}>
-                        <Ionicons
-                          name={isCompleted ? 'shield-checkmark' : 'hourglass-outline'}
-                          size={14}
-                          color={isCompleted ? theme.colors.semantic.success : theme.colors.certTint}
-                        />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.listRowTitle}>
-                          {formatShortDateTime(b.dateTime)}
-                        </Text>
-                        <Text style={styles.listRowSubtitle}>
-                          {b.participants.length} მონაწილე · {isCompleted ? 'დასრულებული' : 'მიმდინარე'}
-                        </Text>
-                      </View>
-                      <Ionicons name="chevron-forward" size={18} color={theme.colors.borderStrong} />
-                    </Pressable>
-                  );
-                })}
-                {overflowBriefings.length > 0 ? (
-                  <ViewMoreRow
-                    items={overflowBriefings.map(() => ({ ionicon: 'megaphone-outline' }))}
-                    total={overflowBriefings.length}
-                    onPress={() => router.push(`/projects/${id}/briefings` as any)}
-                  />
-                ) : null}
-              </View>
-            )}
-
+            <BriefingsSection id={id} briefings={briefings} />
           </View>
 
           {/* ── რეპორტები ── */}
