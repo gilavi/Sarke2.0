@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+﻿import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Image,
   Pressable,
@@ -15,9 +15,9 @@ import { PlateInput, type PlateInputHandle } from '../../../components/inputs/Pl
 import { SerialKeypad } from '../../../components/inputs/SerialKeypad';
 import { Button } from '../../../components/ui';
 import { ExcavatorMaintenanceItem } from '../../../components/excavator/ExcavatorMaintenanceItem';
-import { InspectionShell, ChecklistStep, ConclusionStep, ProjectPickerStep } from '../../../components/inspections';
-import type { VerdictOption } from '../../../components/inspections';
-import { SignatureSheet } from '../../../components/inspection/SignatureSheet';
+import { InspectionShell, ChecklistStep, ConclusionStep, ProjectPickerStep } from '../../../components/inspection-steps';
+import type { VerdictOption } from '../../../components/inspection-steps';
+import { SignatureSheet } from '../../../components/inspection-parts/SignatureSheet';
 import { InspectionResultView } from '../../../components/InspectionResultView';
 import { useTheme, type Theme } from '../../../lib/theme';
 import { useToast } from '../../../lib/toast';

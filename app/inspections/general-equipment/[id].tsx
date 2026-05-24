@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+﻿import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -12,15 +12,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
 import { DateTimeField } from '../../../components/DateTimeField';
-import { InspectionShell, ChecklistStep, ConclusionStep, ProjectPickerStep } from '../../../components/inspections';
-import type { VerdictOption, ChecklistResult } from '../../../components/inspections';
+import { InspectionShell, ChecklistStep, ConclusionStep, ProjectPickerStep } from '../../../components/inspection-steps';
+import type { VerdictOption, ChecklistResult } from '../../../components/inspection-steps';
 import { InspectionResultView } from '../../../components/InspectionResultView';
 import { useTheme, type Theme } from '../../../lib/theme';
 import { useToast } from '../../../lib/toast';
 import { generalEquipmentApi } from '../../../lib/generalEquipmentService';
 import { inspectionAttachmentsApi } from '../../../lib/services';
 import { imageForDisplay } from '../../../lib/imageUrl';
-import { SignatureSheet } from '../../../components/inspection/SignatureSheet';
+import { SignatureSheet } from '../../../components/inspection-parts/SignatureSheet';
 import { generalEquipmentSchema } from '../../../lib/inspection/schemas/generalEquipment';
 import { useInspectionFlow } from '../../../lib/inspection/useInspectionFlow';
 import { PaywallModal } from '../../../components/PaywallModal';

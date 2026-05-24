@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+﻿import { useCallback, useMemo } from 'react';
 import {
   ActivityIndicator,
   StyleSheet,
@@ -27,7 +27,7 @@ import {
   type ChecklistItemData,
 
   type VerdictOption,
-} from '../../../components/inspection';
+} from '../../../components/inspection-parts';
 
 import { forkliftSchema } from '../../../lib/inspection/schemas/forklift';
 import { PaywallModal } from '../../../components/PaywallModal';

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+﻿import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -12,8 +12,8 @@ import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
 import { PlateInput, type PlateInputHandle } from '../../../components/inputs/PlateInput';
 import { SerialKeypad } from '../../../components/inputs/SerialKeypad';
-import { InspectionShell, ChecklistStep, ConclusionStep, ProjectPickerStep } from '../../../components/inspections';
-import type { VerdictOption } from '../../../components/inspections';
+import { InspectionShell, ChecklistStep, ConclusionStep, ProjectPickerStep } from '../../../components/inspection-steps';
+import type { VerdictOption } from '../../../components/inspection-steps';
 import { InspectionResultView } from '../../../components/InspectionResultView';
 import { useTheme, type Theme } from '../../../lib/theme';
 import { useToast } from '../../../lib/toast';
@@ -23,7 +23,7 @@ import { inspectionAttachmentsApi } from '../../../lib/services';
 import {
   PhotoSection,
   SignatureSheet,
-} from '../../../components/inspection';
+} from '../../../components/inspection-parts';
 
 import { bobcatSchema } from '../../../lib/inspection/schemas/bobcat';
 import { PaywallModal } from '../../../components/PaywallModal';
@@ -297,7 +297,7 @@ export default function BobcatInspectionScreen() {
       const s = inspection?.items.find(i => i.id === e.id);
       return {
         id: String(e.id),
-        result: (s?.result ?? null) as import('../../../components/inspections').ChecklistResult,
+        result: (s?.result ?? null) as import('../../../components/inspection-steps').ChecklistResult,
         comment: s?.comment ?? null,
         photo_paths: s?.photo_paths ?? [],
       };

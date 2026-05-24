@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+﻿import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
@@ -26,7 +26,7 @@ import { friendlyError } from '../../lib/errorMap';
 import { ordersApi } from '../../lib/ordersApi';
 import { buildLaborSafetyOrderHtml, buildAlcoholControlOrderHtml, buildFireSafetyOrderHtml, buildFireSafetyOrderEnterpriseHtml, buildCraneOperatorOrderHtml, buildCraneTechnicalOrderHtml } from '../../lib/orderPdf';
 import { SignatureCanvas } from '../../components/SignatureCanvas';
-import { QualDoc } from '../../components/inspection';
+import { QualDoc } from '../../components/inspection-parts';
 import { storageApi, projectsApi } from '../../lib/services';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { usePhotoWithLocation } from '../../hooks/usePhotoWithLocation';

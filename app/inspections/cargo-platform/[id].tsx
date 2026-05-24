@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+﻿import { useCallback, useMemo } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -11,7 +11,7 @@ import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
 import { Button } from '../../../components/ui';
 import { DateTimeField } from '../../../components/DateTimeField';
-import { ProjectPickerStep } from '../../../components/inspections';
+import { ProjectPickerStep } from '../../../components/inspection-steps';
 import { WizardStepTransition } from '../../../components/wizard/WizardStepTransition';
 import { FlowHeader } from '../../../components/FlowHeader';
 import { InspectionResultView } from '../../../components/InspectionResultView';
@@ -21,7 +21,7 @@ import {
   SignatureSheet,
   VerdictSelector,
   PhotoSection,
-} from '../../../components/inspection';
+} from '../../../components/inspection-parts';
 import { useTheme, type Theme } from '../../../lib/theme';
 import { useToast } from '../../../lib/toast';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

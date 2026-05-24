@@ -1,4 +1,4 @@
-// Inspection result screen.
+﻿// Inspection result screen.
 //
 // Live PDF preview as the main content (full-screen WebView). Three buttons
 // in the bottom bar:
@@ -25,8 +25,8 @@ import { A11yText as Text } from '../../components/primitives/A11yText';
 import { Button, Screen } from '../../components/ui';
 import { ErrorState } from '../../components/ErrorState';
 import { CertificatesActionSheet } from '../../components/CertificatesActionSheet';
-import { SignatureSheet } from '../../components/inspection/SignatureSheet';
-import { SignatoryData } from '../../components/inspection/SignatureBlock';
+import { SignatureSheet } from '../../components/inspection-parts/SignatureSheet';
+import { SignatoryData } from '../../components/inspection-parts/SignatureBlock';
 import { useBottomSheet } from '../../components/BottomSheet';
 import {
   answersApi,

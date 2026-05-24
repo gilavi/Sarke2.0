@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -13,8 +13,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
 import { Button, Screen } from '../../../components/ui';
-import { InspectionShell, ConclusionStep } from '../../../components/inspections';
-import type { VerdictOption } from '../../../components/inspections';
+import { InspectionShell, ConclusionStep } from '../../../components/inspection-steps';
+import type { VerdictOption } from '../../../components/inspection-steps';
 import { InspectionResultView } from '../../../components/InspectionResultView';
 import { HarnessListFlow } from '../../../components/HarnessListFlow';
 import { useTheme } from '../../../lib/theme';
