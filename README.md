@@ -168,7 +168,7 @@ Schema + seed already applied to the hosted project. Migrations are preserved fo
 
 ### Migrations (`supabase/migrations/`)
 
-> **Duplicate numbers:** `0044`, `0045`, `0046` each have **two files** — inspection tables from one branch and reports-RLS fixes from another, merged together. Both halves are applied to the hosted DB. **Do not renumber them** — it would desync the migration history. New migrations continue from `0052`.
+> **Duplicate numbers:** `0044`, `0045`, `0046` each have **two files** — inspection tables from one branch and reports-RLS fixes from another, merged together. Both halves are applied to the hosted DB. **Do not renumber them** — it would desync the migration history. Numeric migrations continue from `0052`; **migrations from 2026-05-25 onward use timestamp-prefixed names** (`YYYYMMDDHHMMSS_...sql`) for SQL that originated in Supabase Studio and was captured to the repo after the fact. Both naming conventions coexist.
 
 | File | Purpose |
 |---|---|
@@ -227,6 +227,9 @@ Schema + seed already applied to the hosted project. Migrations are preserved fo
 | `0050_inspections_add_signatories.sql` | `signatories JSONB NOT NULL DEFAULT '[]'` column on `inspections` — stores additional signatories (name, role, base64 PNG signature, signed_at) beyond the primary inspector |
 | `0051_equipment_signatories.sql` | Same `signatories JSONB NOT NULL DEFAULT '[]'` column added to `bobcat_inspections`, `excavator_inspections`, `cargo_platform_inspections`, `general_equipment_inspections` |
 | `0052_inspection_conclusion_photos.sql` | `conclusion_photo_paths text[]` column on `inspections` — storage paths for conclusion-step photos. (Renamed from a colliding `0047_…` to `0052`.) |
+| `20260525180000_pin_function_search_paths.sql` | Pins `search_path = public, pg_catalog` on every public function. Fixes the TestFlight `auth.admin.deleteUser` 500 caused by trigger functions referencing the `questionnaire_status` enum without schema qualification. |
+| `20260525183000_cascade_user_deletion.sql` | Adds `ON DELETE CASCADE` FKs from every user-owned public column (`%user_id%` / `%owner_id%` / `%created_by%` / `%uploaded_by%`) to `auth.users(id)`. Required for App Store Review Guideline 5.1.1(v). |
+| `20260525190000_dedupe_user_fkeys.sql` | Drops duplicate `*_auth_users_fkey` constraints produced by the prior migration's `information_schema` blind spot. |
 
 > Migration `0028_pdf_usage_tracking.sql` and the free-tier limit are noted in memory — the function currently allows 30 free PDFs (soft-launch). Tighten when BOG payment is fully wired.
 
