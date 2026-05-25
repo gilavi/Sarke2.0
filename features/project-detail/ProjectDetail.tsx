@@ -60,7 +60,12 @@ export default function ProjectDetail() {
   const { theme } = useTheme();
   const { t } = useTranslation();
   const styles = useMemo(() => getStyles(theme), [theme]);
-  const { id } = useLocalSearchParams<{ id: string }>();
+  // `useLocalSearchParams<{ id: string }>()` is only a TYPE cast — the runtime
+  // value of `id` can be `string | string[] | undefined`. Coerce to a single
+  // non-empty string here so downstream code (inspection create, navigation)
+  // can rely on `id` being a usable project UUID without re-checking.
+  const rawParams = useLocalSearchParams<{ id: string | string[] }>();
+  const id = Array.isArray(rawParams.id) ? rawParams.id[0] : rawParams.id;
   const router = useRouter();
   const showActionSheetWithOptions = useBottomSheet();
   const toast = useToast();
@@ -181,12 +186,16 @@ export default function ProjectDetail() {
   );
 
   const startNewInspection = () => {
+    if (!id || typeof id !== 'string') {
+      toast.error(t('errors.sessionLost', 'სესია არ მუშაობს, ხელახლა გახსენით პროექტი'));
+      return;
+    }
     const system = templates.filter(tpl => tpl.is_system);
     if (system.length === 0) {
       toast.error(t('projects.templateMissing'));
       return;
     }
-    if (system.length === 1 && id) {
+    if (system.length === 1) {
       void createInspectionForTemplate(id, system[0]);
       return;
     }
@@ -612,7 +621,12 @@ export default function ProjectDetail() {
         value={null}
         onChange={async (templateId) => {
           const tpl = templatePickerOptions.find(t => t.id === String(templateId));
-          if (tpl && id) await createInspectionForTemplate(id, tpl);
+          if (!tpl) return;
+          if (!id || typeof id !== 'string') {
+            toast.error(t('errors.sessionLost', 'სესია არ მუშაობს, ხელახლა გახსენით პროექტი'));
+            return;
+          }
+          await createInspectionForTemplate(id, tpl);
         }}
         open={templatePickerVisible}
         onOpenChange={setTemplatePickerVisible}

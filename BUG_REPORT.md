@@ -426,6 +426,15 @@ onChange={async (templateId) => {
 
 **Verified:** typecheck passes for the changed file (pre-existing unrelated failures in `lib/services.mock.ts` and web-app `src/` remain — not introduced here). On-device sheet/keyboard behavior was not re-tested (no simulator this session).
 
+### 2026-05-25 follow-up — defensive guards added after a user-reported re-recurrence
+
+A user re-reported the same FK violation (`questionnaires_project_id_fkey`) on the project-page create flow. The shadow-`id` fix above remained in place. To make a future regression fail loudly instead of producing a vague Postgres error:
+
+- **Service layer:** [lib/services/real/inspections.ts](lib/services/real/inspections.ts) and [lib/inspection/service.ts](lib/inspection/service.ts) now validate `projectId` and `templateId` as UUID-shaped strings before insert. A bad value throws a clear typed error (`inspectionsApi.create: projectId must be a UUID (got "…")`) that the caller's `friendlyError()` wraps into a Georgian toast.
+- **Route layer:** [features/project-detail/ProjectDetail.tsx](features/project-detail/ProjectDetail.tsx) coerces `useLocalSearchParams<{ id }>()` to a single non-empty string before any create call, and toasts `სესია არ მუშაობს, ხელახლა გახსენით პროექტი` if the route param is missing.
+
+See [TASK2_DIAGNOSIS.md](TASK2_DIAGNOSIS.md) for the full trace.
+
 ## P0 — Concurrent PDF-upload flush could insert duplicate certificates · FIXED 2026-05-21
 
 **Source:** 10-agent beta report (`Sarke2.0_Beta_Test_Master_Report.md`, §1.14), Sprint 2.
