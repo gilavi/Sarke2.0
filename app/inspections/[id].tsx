@@ -58,6 +58,7 @@ import { usePdfUsage, useInvalidatePdfUsage } from '../../lib/usePdfUsage';
 import { toErrorMessage } from '../../lib/logError';
 import { haptic } from '../../lib/haptics';
 import { useTheme } from '../../lib/theme';
+import { getInspectionDisplayName } from '../../lib/inspectionDisplayName';
 import type {
   Answer,
   AnswerPhoto,
@@ -550,7 +551,7 @@ export default function InspectionResultScreen() {
       <Stack.Screen
         options={{
           headerShown: true,
-          title: template?.name ?? 'შემოწმების აქტი',
+          title: getInspectionDisplayName(template?.name) || 'შემოწმების აქტი',
           headerBackTitle: 'უკან',
         }}
       />

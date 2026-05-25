@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { listTemplates, SIGNER_ROLE_LABEL, type Template } from '@/lib/data/templates';
 import { templateKeys } from '@/app/queryKeys';
 import { SkeletonGrid } from '@/components/SkeletonCard';
+import { getInspectionDisplayName } from '@/lib/inspectionDisplayName';
 
 const CATEGORY_LABEL: Record<string, string> = {
   harness:            'დამცავი ქამარი',
@@ -50,7 +51,7 @@ export default function Templates() {
           {items.map((t) => (
             <Card key={t.id}>
               <CardHeader>
-                <CardTitle className="text-heading-3 text-neutral-900 dark:text-neutral-100">{t.name}</CardTitle>
+                <CardTitle className="text-heading-3 text-neutral-900 dark:text-neutral-100">{getInspectionDisplayName(t.name)}</CardTitle>
                 <p className="text-xs text-neutral-500 dark:text-neutral-400">
                   {categoryLabel(t)} · {(t.category && CATEGORY_LABEL[t.category]) ?? t.category ?? '—'}
                 </p>

@@ -176,6 +176,16 @@ const html = buildLaborSafetyOrderHtml({ formData, projectName });
 const localUri = await generateAndSharePdf(html, pdfName, true, userId);
 ```
 
+## Inspection display name (UI only)
+
+Two files (mobile + web-app mirror): [lib/inspectionDisplayName.ts](../lib/inspectionDisplayName.ts) and [web-app/src/lib/inspectionDisplayName.ts](../web-app/src/lib/inspectionDisplayName.ts). One export: `getInspectionDisplayName(fullName)`.
+
+Maps the formal `templates.name` stored in the DB (e.g. `დამცავი ქამრების შემოწმების აქტი`) to the short UI display name (e.g. `დამცავი ქამრები`) shown in list rows, cards, and screen titles where `შემოწმება` is already implied by the section header / category chip. Templates that already have short names fall through unchanged.
+
+**Do NOT** call this from `lib/pdf/**` or `web-app/src/pages/print/**` — the printed PDF reports and legal artifacts must keep the full formal name. The helper is for screen display only.
+
+If you add a new template in `supabase/migrations/`, add the full→short pair to **both** files. They duplicate by design (mobile and web-app share no code).
+
 ## Adding a new primitive
 
 If you're about to add a util in `lib/` or a wrapper in `components/`:

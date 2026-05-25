@@ -16,6 +16,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { SkeletonMap } from '../../components/SkeletonMap';
 import { routeForInspection } from '../../lib/inspectionRouting';
+import { getInspectionDisplayName } from '../../lib/inspectionDisplayName';
 import { useBottomSheet } from '../../components/BottomSheet';
 import {
   projectsApi,
@@ -604,7 +605,7 @@ export default function ProjectDetail() {
       <CustomDropdown
         label={t('projects.chooseTemplateTitle')}
         options={templatePickerOptions.map(tpl => ({
-          label: tpl.name,
+          label: getInspectionDisplayName(tpl.name),
           value: tpl.id,
           icon: <InspectionTypeAvatar category={tpl.category} size={36} />,
         }))}

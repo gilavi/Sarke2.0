@@ -20,6 +20,7 @@ import {
 } from '../../../lib/apiHooks';
 import { InspectionTypeAvatar } from '../../../components/InspectionTypeAvatar';
 import { RecentListRow } from '../../../components/RecentListRow';
+import { getInspectionDisplayName } from '../../../lib/inspectionDisplayName';
 
 function formatGeorgianDate(isoDate: string): string {
   return new Date(isoDate).toLocaleDateString('ka-GE', {
@@ -114,7 +115,7 @@ export default function ProjectInspectionsList() {
                         status={isCompleted ? 'completed' : 'draft'}
                       />
                     }
-                    title={tpl?.name ?? 'შემოწმების აქტი'}
+                    title={getInspectionDisplayName(tpl?.name) || 'შემოწმების აქტი'}
                     subtitle={formatShortDateTime(item.created_at)}
                     isLast={isLast}
                     onPress={() => router.push(route as any)}

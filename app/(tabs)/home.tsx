@@ -36,6 +36,7 @@ import { NumberPop, useScrollHeader } from '../../components/animations';
 import { QuickActions } from '../../components/QuickActions';
 import { Skeleton } from '../../components/Skeleton';
 import { routeForInspection } from '../../lib/inspectionRouting';
+import { getInspectionDisplayName } from '../../lib/inspectionDisplayName';
 import { useToast } from '../../lib/toast';
 import { haptic } from '../../lib/haptics';
 import { useTranslation } from 'react-i18next';
@@ -198,7 +199,10 @@ export default function HomeScreen() {
     setRefreshing(false);
   }, [certsQ, templatesQ, recentQ, projectsQ]);
 
-  const templateName = useCallback((id: string) => templates.find((tpl) => tpl.id === id)?.name ?? t('common.inspection'), [templates, t]);
+  const templateName = useCallback((id: string) => {
+    const full = templates.find((tpl) => tpl.id === id)?.name;
+    return full ? getInspectionDisplayName(full) : t('common.inspection');
+  }, [templates, t]);
 
   useEffect(() => { void loadDraftSteps(); }, [loadDraftSteps]);
   useEffect(() => {
@@ -649,7 +653,7 @@ export default function HomeScreen() {
       <CustomDropdown
         label={t('home.chooseTemplate')}
         options={tplPickerTemplates.map(tpl => ({
-          label: tpl.name,
+          label: getInspectionDisplayName(tpl.name),
           value: tpl.id,
           icon: <InspectionTypeAvatar category={tpl.category} size={36} />,
         }))}

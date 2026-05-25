@@ -1,4 +1,5 @@
 import { FlowHeader } from '../../components/FlowHeader';
+import { getInspectionDisplayName } from '../../lib/inspectionDisplayName';
 import type { Project, Template } from '../../types/models';
 import type { FlatStep } from './wizardSchema';
 
@@ -26,7 +27,7 @@ export function WizardHeader({
   void step;
   return (
     <FlowHeader
-      flowTitle={template?.name ?? 'კითხვარი'}
+      flowTitle={getInspectionDisplayName(template?.name) || 'კითხვარი'}
       project={project}
       step={stepIndex + 1}
       totalSteps={total}
