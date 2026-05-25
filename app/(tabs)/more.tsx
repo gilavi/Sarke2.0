@@ -114,7 +114,11 @@ export default function MoreScreen() {
         </Text>
 
         {/* Profile */}
-        <Card style={{ marginHorizontal: 16 }}>
+        <Card
+          style={{ marginHorizontal: 16 }}
+          onPress={() => router.push('/profile')}
+          a11y={a11y('პროფილი', 'პროფილის რედაქტირება', 'button')}
+        >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
             <Image source={{ uri: avatarUrl }} style={styles.avatar} contentFit="cover" />
             <View style={{ flex: 1 }}>
@@ -123,6 +127,7 @@ export default function MoreScreen() {
               </Text>
               <Text style={{ color: theme.colors.inkSoft, fontSize: 12 }}>{user?.email ?? ''}</Text>
             </View>
+            <Ionicons name="chevron-forward" size={18} color={theme.colors.inkFaint} />
           </View>
         </Card>
 

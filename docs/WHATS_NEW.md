@@ -4,6 +4,18 @@
 
 ---
 
+## 2026-05-25 — In-app profile editing + account deletion (mobile)
+
+The profile card at the top of the More tab is now tappable and opens a new [/profile](../app/profile.tsx) screen with first / last name editing, a link to the existing password-change flow at [/account-settings](../app/account-settings.tsx), and an "ანგარიშის წაშლა" destructive row at the bottom (App Store Review Guideline 5.1.1(v) requires an in-app deletion path). Profile mutations route through new helper [lib/profileService.ts](../lib/profileService.ts) — mirrors `web-app/src/lib/data/account.ts` so both auth metadata and the public.users row stay in sync. Deletion is handled by a new Edge Function [supabase/functions/delete-account/index.ts](../supabase/functions/delete-account/index.ts) (service-role on the server; the client only ships its JWT).
+
+---
+
+## 2026-05-25 — Shorten inspection display names (UI)
+
+List rows, screen titles, and pickers across the mobile app and web dashboard now show short inspection names (`დამცავი ქამრები`) instead of the formal full names (`დამცავი ქამრების შემოწმების აქტი`); PDF reports and PDF metadata keep the full formal name. New helpers: [lib/inspectionDisplayName.ts](../lib/inspectionDisplayName.ts) and [web-app/src/lib/inspectionDisplayName.ts](../web-app/src/lib/inspectionDisplayName.ts) (mirrored — the two codebases share no code). Documented in [docs/primitives.md](primitives.md#inspection-display-name-ui-only).
+
+---
+
 ## 2026-05-25 — Polish-pass refactor: god-file slimming and conditional-hook fix (mobile)
 
 Follow-up to the 2026-05-24 feature-sliced refactor. Five phases of structural polish, plus one bonus extraction in Phase 4; commits `4247d48`…`489d544`. Full audit trail in [REFACTOR_SUMMARY_V2.md](../REFACTOR_SUMMARY_V2.md).
