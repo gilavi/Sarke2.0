@@ -1,6 +1,60 @@
 # What's New — Sarke 2.0 Changelog
 
-**Updated:** 2026-05-22 | Branch: `main`
+**Updated:** 2026-05-25 | Branch: `main`
+
+---
+
+## 2026-05-25 — Polish-pass refactor: god-file slimming and conditional-hook fix (mobile)
+
+Follow-up to the 2026-05-24 feature-sliced refactor. Five phases of structural polish, plus one bonus extraction in Phase 4; commits `4247d48`…`489d544`. Full audit trail in [REFACTOR_SUMMARY_V2.md](../REFACTOR_SUMMARY_V2.md).
+
+### Fixed — `features/inspection-wizard/GridRowStep`
+The non-harness branch called `useState` and `useRef` after a conditional `return`, violating the rules of hooks. Split into [HarnessRowStep.tsx](../features/inspection-wizard/HarnessRowStep.tsx) (169 lines) + [ScaffoldRowStep.tsx](../features/inspection-wizard/ScaffoldRowStep.tsx) (146 lines); the `grid_rows[0] === 'N1'` dispatch moved up to `InspectionWizard.tsx`. Each new file calls its hooks unconditionally. Was latent because `WizardStepTransition` unmounts on every step change — a future change that keeps step components mounted across transitions would have crashed.
+
+### Refactored — `features/project-detail/`
+`ProjectDetail.tsx` 1,470 → 624 lines. Extractions: `ProjectArchHeader.tsx` (SVG bezier morph + arch animation), `useProjectDetailData.ts` (14 `useState`s + 17 queries + 12 syncs consolidated), `unifiedInspections.ts` (the discriminated union + swipe-delete dispatch), seven `sections/*.tsx` cards (Inspections, Incidents, Briefings, Reports, FilesAndOrders, Breathalyzer), plus `LoadingSkeletonScreen.tsx` and `ProjectMapModal.tsx`. The 624-line residue (map hero, logo/info hero, file/upload action handlers, EditProjectSheet/CustomDropdown) is logged as the next slimming target in `features/project-detail/AGENTS.md`.
+
+### Refactored — `lib/pdf/inspection/template.ts`
+832 → 281 lines. The ~550-line CSS body extracted to a sibling [template.css.ts](../lib/pdf/inspection/template.css.ts) exporting `getInspectionPdfCss({ isPdf })` — a function, not a const, because the CSS has six `${isPdf ? ... : ...}` interpolations.
+
+### Refactored — `features/inspection-wizard/useWizardState.ts` (partial)
+593 → 558 lines. The five write-only AsyncStorage persistence `useEffect`s extracted to [hooks/useWizardPersistence.ts](../features/inspection-wizard/hooks/useWizardPersistence.ts). The remaining `load` + `answers` + `finish` stayed merged because they all write to the same `answers`/`photos`/`project` state shapes — splitting them would re-create an orchestrator above three thin wrappers with the same cross-references. Documented in `features/inspection-wizard/AGENTS.md` along with the rule: split only when the proposed slice has no shared writable state with another slice.
+
+### Removed — dead `useMemo` in `features/inspection-wizard/MeasureInput`
+`useMemo(() => getstyles(theme), [theme])` was called and the result discarded (carried over from the pre-refactor god-file). Removed; file is 91 → 86 lines.
+
+### Verified — New Architecture is ON
+`app.json` declares `newArchEnabled: true`; no per-platform overrides; `react-native-reanimated@4.1.1` is in use (which requires New Arch at runtime). Compat check passes for all native libs (gesture-handler, screens, safe-area-context, maps, webview, svg, sentry, keyboard-controller). Diagnosis in [NEWARCH_REPORT.md](../NEWARCH_REPORT.md).
+
+---
+
+## 2026-05-24 — Feature-sliced refactor: god-file → module split (mobile)
+
+A multi-phase structural refactor: convert god-files in a mixed flat/folder layout into a feature-sliced architecture with co-located `AGENTS.md` per module. Commits `49e1325`…`0802de7`. Full audit trail in [REFACTOR_SUMMARY.md](../REFACTOR_SUMMARY.md).
+
+### New — `features/` folder with per-module `AGENTS.md`
+Three feature modules created at the new top-level `features/` slot. Each carries its own `AGENTS.md` documenting public API, internal files, gotchas, and canonical helpers it consumes:
+- **`features/inspection-wizard/`** (18 files) — the wizard god-file [app/inspections/[id]/wizard.tsx](../app/inspections/%5Bid%5D/wizard.tsx) (2,582 lines) became an 8-line orchestrator that re-exports from here.
+- **`features/order-new/`** (16 files) — [app/orders/new.tsx](../app/orders/new.tsx) (1,749 lines) became a 1-line orchestrator.
+- **`features/project-detail/`** (3 files at v1 end; expanded in v2) — [app/projects/[id].tsx](../app/projects/%5Bid%5D.tsx) (1,742 lines) became a 1-line orchestrator.
+
+### Refactored — `lib/services/` split by domain
+`lib/services.real.ts` (1,298 lines) and `lib/services.mock.ts` (1,011 lines) collapsed into `lib/services/` with one file per domain (`projects`, `templates`, `inspections`, `answers`, `signatures`, `qualifications`, `projectItems`, `schedules`, `remoteSigning`, `storage`, `reports`, `incidents`, `payments`) under both `real/` and `mock/` subfolders. The folder-resolved [lib/services/index.ts](../lib/services/index.ts) dispatches between real and mock based on the `useMockData` flag.
+
+### Refactored — `lib/pdf/` split by document type
+[lib/orderPdf.ts](../lib/orderPdf.ts) (1,588 lines) split into [lib/pdf/order/](../lib/pdf/order/) (one file per doctype: `laborSafety`, `alcoholControl`, `fireSafety`, `fireSafetyEnterprise`, `craneOperator`, `craneTechnical`, plus `_shared` and `index`). [lib/inspectionPdfTemplate.ts](../lib/inspectionPdfTemplate.ts) (1,112 lines) split into [lib/pdf/inspection/](../lib/pdf/inspection/) (`_shared`, `template`, `renderQuestion`, `renderPhoto`, `renderSignatures`, `renderProjectBrand`, `index`). The original paths remain as re-export barrels so the separate `web-app/` codebase keeps working unchanged.
+
+### Refactored — `components/` god-files split into sibling folders
+[components/PhotoAnnotator.tsx](../components/photo-annotator/) (754 lines) → `components/photo-annotator/` (3 files). `components/wizard/kamari/KamariFlow.tsx` (713 lines) → 4 step files + `_shared` + `styles`. [components/HarnessListFlow.tsx](../components/harness-list/) (665 lines) → `components/harness-list/` (3 components + `_shared` + `styles`). All three keep a backwards-compat re-export barrel at the original path.
+
+### Removed — repo-root cruft and primitive duplication
+`__strings.txt` and the unused `src/` folder deleted. `components/ui.tsx` deduped to a `components/ui/` folder. The `components/inspection` vs `components/inspections` naming collision resolved by renaming the inspection-parts/inspection-steps folders.
+
+### Spotted but not fixed (carried into v2)
+Three bugs/oddities surfaced during the structural pass and were logged in `REFACTOR_NOTES.md` instead of patched mid-refactor: conditional-hook calls in `features/inspection-wizard/GridRowStep.tsx` (fixed in v2 — see the 2026-05-25 entry above), dead `useMemo(getstyles)` in `features/inspection-wizard/MeasureInput.tsx` (fixed in v2), and `app/orders/new.tsx` dead step components (intentionally dropped — they had no callers).
+
+### Verified
+`npm run typecheck` and `npm run check:primitives` clean after every commit. [scripts/check-primitives.mjs](../scripts/check-primitives.mjs) `SCAN_DIRS` extended to include `features/` so the wrong-default guardrails apply inside the new feature folders.
 
 ---
 
