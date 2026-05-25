@@ -12,7 +12,7 @@ import { STORAGE_BUCKETS } from './supabase';
  * (i.e. what `Questionnaire.pdf_url` holds).
  */
 export async function shareStoredPdf(storagePath: string): Promise<void> {
-  const url = storageApi.publicUrl(STORAGE_BUCKETS.pdfs, storagePath);
+  const url = await storageApi.signedUrl(STORAGE_BUCKETS.pdfs, storagePath);
   const name = storagePath.split('/').pop() ?? 'report.pdf';
   const baseDir = FileSystem.cacheDirectory ?? FileSystem.documentDirectory;
   if (!baseDir) throw new Error('No filesystem directory available for PDF sharing');

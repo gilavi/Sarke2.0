@@ -8,7 +8,8 @@
 
 ### Security
 - **Closed the "any authenticated user can delete/overwrite anyone's files" hole** on the `certificates`, `answer-photos`, `pdfs`, and `signatures` buckets. They were guarded only by dashboard-created `sarke_*` policies that gated on `bucket_id` alone (no per-row owner check). New migration [0053_storage_rls_owner_scoping.sql](../supabase/migrations/0053_storage_rls_owner_scoping.sql) replaces them with per-bucket `owner = auth.uid()` policies for SELECT/UPDATE/DELETE (INSERT stays auth-only). Owner-based scoping was chosen over path-based because upload-path schemes are inconsistent across the mobile and web codebases; pre-flight confirmed every existing file already has an owner set. Companion to `0020`.
-- **Read exposure is still open** — these buckets are currently `public = true`, so reads bypass RLS regardless. Closing reads is a tracked follow-up (flip buckets to private + move all `getPublicUrl` reads to signed URLs). See the P0 entry in [BUG_REPORT.md](../BUG_REPORT.md).
+- **Read paths migrated to signed URLs (prep for making the buckets private).** Every read of these four buckets now resolves through `createSignedUrl` (which works on both public and private buckets): the mobile helpers in [lib/imageUrl.ts](../lib/imageUrl.ts) already did, and the two direct `getPublicUrl` readers were converted — [lib/sharePdf.ts](../lib/sharePdf.ts) (PDF share) and [web-app/src/pages/IncidentDetail.tsx](../web-app/src/pages/IncidentDetail.tsx) (incident signature). The orphaned `publicUrl` helper was dropped from the web dashboard's storage module.
+- **Read exposure still open until the bucket flip.** The buckets remain `public = true` for now — flipping them to private is gated on clients picking up the signed-URL fixes (web dashboard redeploy + a new mobile build), otherwise PDF sharing breaks on already-installed apps. Tracked in the P0 entry in [BUG_REPORT.md](../BUG_REPORT.md).
 
 ---
 

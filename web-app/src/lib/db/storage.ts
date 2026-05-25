@@ -38,11 +38,6 @@ export async function signedUrl(
   return data.signedUrl;
 }
 
-/** Resolve a stable public URL (only meaningful for public buckets). */
-export function publicUrl(bucket: StorageBucket, path: string): string {
-  return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
-}
-
 export interface UploadOptions {
   contentType?: string;
   upsert?: boolean;

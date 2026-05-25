@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileText, Pencil, Trash2 } from 'lucide-react';
@@ -18,7 +18,7 @@ import {
   updateIncident,
   INCIDENT_TYPE_LABEL,
 } from '@/lib/data/incidents';
-import { supabase } from '@/lib/supabase';
+import { signedUrl, STORAGE_BUCKETS } from '@/lib/db/storage';
 import { getProject } from '@/lib/data/projects';
 import { routes } from '@/app/routes';
 import { projectKeys, incidentKeys } from '@/app/queryKeys';
@@ -366,15 +366,25 @@ function SignatureSection({
   onSave: (dataUrl: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  // Signatures from mobile are stored as storage paths (e.g. "expert/uuid.png").
-  // Web-created signatures are stored as raw base64 without the data: prefix.
-  const normSig = signature
-    ? signature.startsWith('data:')
-      ? signature
-      : signature.includes('/')
-        ? supabase.storage.from('signatures').getPublicUrl(signature).data.publicUrl
-        : `data:image/png;base64,${signature}`
-    : null;
+  // Signatures from mobile are stored as storage paths (e.g. "expert/uuid.png");
+  // the signatures bucket is private, so a path resolves to a short-lived signed
+  // URL. Web-created signatures are stored as raw base64 without the data: prefix.
+  const isStoragePath = !!signature && !signature.startsWith('data:') && signature.includes('/');
+  const [signedSig, setSignedSig] = useState<string | null>(null);
+  useEffect(() => {
+    if (!isStoragePath) return;
+    let cancelled = false;
+    signedUrl(STORAGE_BUCKETS.signatures, signature)
+      .then((url) => { if (!cancelled) setSignedSig(url); })
+      .catch(() => { if (!cancelled) setSignedSig(null); });
+    return () => { cancelled = true; };
+  }, [signature, isStoragePath]);
+  const normSig = useMemo(() => {
+    if (!signature) return null;
+    if (signature.startsWith('data:')) return signature;
+    if (isStoragePath) return signedSig;
+    return `data:image/png;base64,${signature}`;
+  }, [signature, isStoragePath, signedSig]);
 
   return (
     <Card>
