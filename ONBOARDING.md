@@ -1,7 +1,7 @@
 # Sarke 2.0 — AI Onboarding Guide
 
 > Complete context for any AI agent joining this codebase cold.
-> Updated: 2026-05-14 | Branch coverage: `main` + `after-testflight`
+> Updated: 2026-05-25 | Branch: `main` (the `after-testflight` work has been merged into `main`; the branch should be considered historical)
 
 ---
 
@@ -34,7 +34,8 @@ This repo contains three completely separate frontends that share only Supabase:
 
 ### Mobile (Expo)
 ```
-Expo SDK 55 + React Native 0.81 + React 19
+Expo SDK 54 + React Native 0.81 + React 19
+New Architecture (Fabric + TurboModules) enabled
 expo-router (file-based routing)
 TypeScript
 Supabase JS client
@@ -46,7 +47,7 @@ react-native-keyboard-controller  keyboard avoidance
 
 ### Web-App (dashboard)
 ```
-Vite + React 18 + TypeScript + Tailwind CSS
+Vite + React 19 + TypeScript + Tailwind CSS
 shadcn/ui components
 React Query (@tanstack/react-query)
 React Router v6 (HashRouter)
@@ -64,7 +65,7 @@ Do NOT change its base path — breaks in-flight SMS links
 
 ## Supabase Schema
 
-42 migrations applied (0001–0042). Key tables:
+52 migrations applied (0001–0052; numbers 0044/0045/0046 are each used by two files from merged branches — see [README.md migrations table](README.md#migrations-supabasemigrations)). Key tables:
 
 | Table | Key columns | Purpose |
 |---|---|---|
@@ -91,27 +92,9 @@ Storage buckets: `certificates`, `answer-photos`, `pdfs`, `signatures`, `inciden
 
 ## Branch State
 
-| Branch | HEAD | What's on it |
-|---|---|---|
-| `main` | be46348 | Stable. BOG payments, 3D SafetyGuide, PDF security/hashing, project photos+geo, orders feature (4 templates), tab bar polish, bundle splitting |
-| `after-testflight` | f80a372 | 1 commit ahead of main. Adds: cargo platform inspection (full mobile wizard + web CRUD), mobile scaffold N1/N3 templates, skeleton loading system |
-| **Uncommitted (session work on after-testflight)** | — | fire_safety_order template, fire_safety_order_enterprise template (5-clause variant with position+ID fields), web orders wizard + detail extended for both enterprise types |
+`main` is the only active branch. `after-testflight` was merged into `main` and the branch should be considered historical — do not modify from `main`. The `ios-legacy` branch holds the native SwiftUI port and is also not maintained from `main`.
 
-### What's on `main` but not in any docs (added after AI_BRIEFING last updated)
-- BOG recurring payment integration (mobile + web)
-- 3D Interactive Safety Guide (`web-app/src/pages/SafetyGuidePage.tsx`, React Three Fiber)
-- PDF security: hashing (`sha256` stored in `pdf_hash` column, migration 0039) + metadata
-- Project photos + geo-location
-- Orders / ბრძანებები system: 4 document templates
-- Tab bar polish + FAB improvements
-- Web bundle splitting + error boundary
-
-### What's on `after-testflight` only
-- Cargo platform inspection (`cargo_platform_inspections` table, migration 0040)
-- Mobile scaffold N1 (migration 0041) and N3 (migration 0042) templates
-- `SkeletonCard.tsx` variants: `SkeletonStatCard`, `SkeletonGrid`, `SkeletonDetailPage`
-- Web `CargoPlatformInspectionDetail.tsx` + `NewCargoPlatformInspection.tsx`
-- Web skeleton loading on all pages
+Commit hashes rot quickly; run `git log --oneline -20` for the current state of `main` rather than relying on a snapshot here. Recent changes are tracked in [docs/WHATS_NEW.md](docs/WHATS_NEW.md).
 
 ---
 
@@ -153,9 +136,10 @@ Web flow: `web-app/src/pages/NewOrder.tsx` (wizard), `web-app/src/pages/OrderDet
 ### PDF Generation Pipeline
 
 **Mobile:**
-- Specialized inspections: shared schema engine `lib/inspection/` (per-type descriptors in `lib/inspection/schemas/`, e.g. `bobcat.ts`, `excavator.ts`, `forklift.ts`); legacy per-type builders (`lib/generalEquipmentPdf.ts`, `lib/cargoPlatformPdf.ts`) for not-yet-migrated types
-- Orders: `lib/orderPdf.ts` (4 builders, one per document type)
-- Shared utilities: `lib/pdfShared.ts` (`embedInspectionPhotos`, `escHtml`, `fmtDate`)
+- All equipment inspections (bobcat, excavator, general-equipment, cargo-platform, safety-net, mobile-ladder, fall-protection, forklift, lifting-accessories) route through the shared schema-driven engine in `lib/inspection/` (per-type descriptors in `lib/inspection/schemas/`). See [docs/primitives.md → Inspection PDF engine](docs/primitives.md#inspection-pdf-engine).
+- Orders: domain-split under `lib/pdf/order/` (one file per doctype: `laborSafety`, `alcoholControl`, `fireSafety`, `fireSafetyEnterprise`, `craneOperator`, `craneTechnical`). `lib/orderPdf.ts` is a re-export barrel.
+- Generic / harness inspection template: domain-split under `lib/pdf/inspection/` (`template.ts` for structure, `template.css.ts` for CSS). `lib/inspectionPdfTemplate.ts` is a re-export barrel.
+- Legacy shared utilities: `lib/pdfShared.ts` (`embedInspectionPhotos`, `escHtml`, `fmtDate`) — retained only for `lib/breathalyzerLogPdf.ts`; do not use for new inspection PDFs.
 - Security: `lib/pdfSecurity.ts` (sha256 hash stored in DB)
 - Entry: `lib/pdfOpen.ts` → `generateAndSharePdf()` → `expo-print` + `expo-sharing`
 - Paywall: `lib/pdfGate.ts` (`checkAndIncrementPdfCount`) → 30 free PDFs via `increment_pdf_count` RPC
@@ -322,18 +306,19 @@ npm run lint                     # tsc + check-primitives.mjs
 
 ### Add a new inspection type (specialized, own table)
 
+> **Read [docs/primitives.md → Inspection PDF engine](docs/primitives.md#inspection-pdf-engine) first.** All equipment types now go through the shared `lib/inspection/` engine — don't hand-roll a `lib/<name>Pdf.ts` builder or a `lib/<name>Service.ts` CRUD module; add a schema and use the factory. The steps below predate the engine and remain only as a rough template for the surrounding glue (migration, types, screen, routing); the **PDF builder** and **CRUD service** steps in particular should be replaced by a single schema descriptor + `makeInspectionService(...)`.
+
 1. Write migration `supabase/migrations/XXXX_<name>.sql` — table + RLS + updated_at trigger + template INSERT
 2. Create `types/<name>.ts` — types + constants (mirror `types/cargoPlatform.ts`)
-3. Create `lib/<name>Service.ts` — CRUD + photo upload (mirror `lib/bobcatService.ts`)
-4. Create `lib/<name>Pdf.ts` — HTML PDF builder (mirror `lib/generalEquipmentPdf.ts`)
-5. Create `app/inspections/<category>/[id].tsx` — wizard screen
-6. Update `lib/inspectionRouting.ts` — add category → path mapping
-7. Update `app/projects/[id].tsx` — add query + createInspection branch
-8. Update `app/(tabs)/home.tsx` — add to unified inspection list
-9. Web: create `web-app/src/lib/data/<name>.ts`, `NewXInspection.tsx`, `XInspectionDetail.tsx`, optional print page
-10. Web: add routes to `web-app/src/App.tsx`
-11. Web: update `web-app/src/pages/Inspections.tsx` — add to list + dropdown
-12. Web: update `web-app/src/pages/Templates.tsx` — add category label
+3. Add a schema descriptor at `lib/inspection/schemas/<name>.ts` and register it in `lib/inspection/registry.ts` — this replaces the legacy `lib/<name>Pdf.ts` step. The service is built via `makeInspectionService(...)` rather than a hand-written `lib/<name>Service.ts`.
+4. Create `app/inspections/<category>/[id].tsx` — wizard screen
+5. Update `lib/inspectionRouting.ts` — add category → path mapping
+6. Update `app/projects/[id].tsx` — add query + createInspection branch
+7. Update `app/(tabs)/home.tsx` — add to unified inspection list
+8. Web: create `web-app/src/lib/data/<name>.ts`, `features/inspections/equipment/<Name>Detail.tsx` (uses `useEquipmentDetail`), optional print page. See [primitives.md → Web dashboard equipment inspection detail](docs/primitives.md#web-dashboard-equipment-inspection-detail-web-app).
+9. Web: add routes to `web-app/src/app/router.tsx`
+10. Web: update `web-app/src/pages/Inspections.tsx` — add to list + dropdown
+11. Web: update `web-app/src/pages/Templates.tsx` — add category label
 
 ### Add a new order document type
 
