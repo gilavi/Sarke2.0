@@ -572,3 +572,33 @@ Ran five parallel read-only verifiers over **all ~156 detailed entries** in `Sar
 **Symptom:** The original `NewOrderScreen` declared `StepSignDirector`, `StepSignAppointed`, and `StepSignCraneOperator` components but never rendered them — the fire-safety / crane flows render `StepSignaturesFireSafety` and `StepSignaturesCrane` (the combined two-signature steps) instead.
 
 **Resolution** (commit `c794f9f`): not carried over into `features/order-new/` since they had no callers. No bug existed at runtime; this entry exists for the audit trail.
+
+## P0 — Account deletion 500 "Database error deleting user" · FIXED 2026-05-25
+
+**Repro:** TestFlight build → Profile screen → "ანგარიშის წაშლა" → confirm. `supabase.auth.admin.deleteUser` returned `500: Database error deleting user`.
+
+**Symptom:** App Store Review Guideline 5.1.1(v) account-deletion path failed end-to-end. The Edge Function [supabase/functions/delete-account/index.ts](supabase/functions/delete-account/index.ts) surfaced the Postgres error verbatim; the user was left on the Profile screen with their account intact.
+
+**Root cause:** Two trigger functions, `block_answer_write_when_completed` and `block_answer_photo_write_when_completed`, declared local variables of type `questionnaire_status` (a public-schema enum) without schema qualification. `auth.admin.deleteUser` runs with restricted `search_path`, so the trigger could not resolve `questionnaire_status` at execution time. Postgres aborted the cascade and bubbled the abort up as the 500 the client saw.
+
+**Fix** (migration [20260525180000_pin_function_search_paths.sql](supabase/migrations/20260525180000_pin_function_search_paths.sql)): pin `search_path = public, pg_catalog` on every public function so the same class of failure cannot recur for any future function. Schema qualification on individual references would have fixed the immediate trigger; the migration is the safer global remedy.
+
+**Verified:** Account deletion succeeds end-to-end in TestFlight after the migration was applied. Auth user row, public.users row, and all cascade-owned data deleted; the client signs out and routes to `/(auth)/login`.
+
+## P0 — Account deletion orphaned all user-owned data · FIXED 2026-05-25
+
+**Symptom:** Even after the 500 above was resolved, deleting an `auth.users` row left every public row owned by that user intact — projects, inspections, photos, certificates, qualifications. The user could not be reused (RLS no longer matched) and the data could not be reached. App Store Review Guideline 5.1.1(v) requires that account deletion deletes user data.
+
+**Root cause:** No foreign keys existed from the public user-owned columns to `auth.users(id)`. The 22+ tables that store `user_id` / `owner_id` / `created_by` / `uploaded_by` had no FK relationship enforcing referential integrity against the auth schema, and therefore no cascade behavior.
+
+**Fix** (migration [20260525183000_cascade_user_deletion.sql](supabase/migrations/20260525183000_cascade_user_deletion.sql)): add `ON DELETE CASCADE` foreign keys from every matching column to `auth.users(id)`. Discovery is dynamic — the migration scans `information_schema.columns` for `%user_id%` / `%owner_id%` / `%created_by%` / `%uploaded_by%` and uses `pg_catalog` (not `information_schema`) to test for an existing FK, because `information_schema` cannot see FKs that target the `auth` schema. Orphaned rows are cleaned before each constraint is added.
+
+A follow-up migration ([20260525190000_dedupe_user_fkeys.sql](supabase/migrations/20260525190000_dedupe_user_fkeys.sql)) dropped duplicate `*_auth_users_fkey` constraints that were added in cases where an equivalent CASCADE FK already existed but was hidden from the existence check by the same `information_schema` blind spot.
+
+**Verified:** Deleting a test account in TestFlight after both migrations removes the auth row plus every row in public that references it. No orphans remain.
+
+## P3 — Duplicate "პაროლის შეცვლა" row on More tab · FIXED 2026-05-25
+
+**Symptom:** After the in-app Profile screen landed (commit `db0ec1a`), the password-change row existed in two places — once on the More tab's settings card and once on the new Profile screen. Both linked to the same `/account-settings` route.
+
+**Fix** (commit `b6f5212`): removed the More tab row plus its trailing divider. The route file at [app/account-settings.tsx](app/account-settings.tsx) is unchanged — still reachable from Profile.
