@@ -20,9 +20,32 @@ const FALLBACK = {
   order: 'ბრძანება',
 } as const;
 
-/** Inspection title — the template name (e.g. "დამცავი ქამრები"), or a generic fallback. */
+/**
+ * Maps the formal `templates.name` (as stored in the DB / used in PDF reports)
+ * to the short UI display name shown in list rows, cards, and screen titles,
+ * where `შემოწმება` is already implied by the section header / category chip.
+ * Templates already stored with short names fall through unchanged.
+ *
+ * Add new template name pairs here — this is the single map for both codebases.
+ * PDF/print paths must NOT use this; they keep the full formal name.
+ */
+const INSPECTION_SHORT_NAME: Record<string, string> = {
+  'ფასადის ხარაჩოს შემოწმების აქტი': 'ფასადის ხარაჩო',
+  'მობილური ხარაჩოს შემოწმების აქტი': 'მობილური ხარაჩო',
+  'მობილური ხარაჩოს შემოწმების აქტი N3': 'მობილური ხარაჩო N3',
+  'დამცავი ქამრების შემოწმების აქტი': 'დამცავი ქამრები',
+  'ციცხვიანი დამტვირთველის შემოწმების აქტი': 'ციცხვიანი დამტვირთველი',
+  'დიდი ციცხვიანი დამტვირთველის შემოწმება': 'დიდი ციცხვიანი დამტვირთველი',
+  'ექსკავატორის ტექნიკური შემოწმების აქტი': 'ექსკავატორი',
+  'ტექნიკური აღჭურვილობის შემოწმების აქტი': 'ტექნიკური აღჭურვილობა',
+  'ტვირთის მიმღები პლატფორმის შემოწმების აქტი': 'ტვირთის მიმღები პლატფორმა',
+};
+
+/** Inspection title — the short display name for the template (e.g. "ექსკავატორი"), or a generic fallback. */
 export function inspectionDisplayName(templateName?: string | null): string {
-  return templateName?.trim() || FALLBACK.inspection;
+  const trimmed = templateName?.trim();
+  if (!trimmed) return FALLBACK.inspection;
+  return INSPECTION_SHORT_NAME[trimmed] ?? trimmed;
 }
 
 /** Report title — the user-entered report title, or a generic fallback. */

@@ -17,6 +17,17 @@ import { storageApi } from '../services';
 import { logError } from '../logError';
 import * as Crypto from 'expo-crypto';
 
+// Validates a UUID-shaped string. Surfaces a clear typed error before Supabase
+// produces a vague FK violation when a caller passes an empty/array/wrong-shape
+// projectId or templateId.
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function assertUuid(value: unknown, field: string, table: string): string {
+  if (typeof value !== 'string' || !UUID_REGEX.test(value)) {
+    throw new Error(`${table}.create: ${field} must be a UUID (got ${JSON.stringify(value)})`);
+  }
+  return value;
+}
+
 export interface CreateArgs {
   projectId: string;
   templateId: string;
@@ -58,14 +69,16 @@ export function makeInspectionService<T, P extends object = Record<string, unkno
 
   return {
     create: async (args) => {
+      const projectId = assertUuid(args.projectId, 'projectId', table);
+      const templateId = assertUuid(args.templateId, 'templateId', table);
       const {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) throw new Error('Not signed in');
 
       const insert: Record<string, unknown> = {
-        project_id: args.projectId,
-        template_id: args.templateId,
+        project_id: projectId,
+        template_id: templateId,
         user_id: user.id,
         ...cfg.createColumns(args),
       };

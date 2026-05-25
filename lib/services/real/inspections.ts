@@ -6,6 +6,17 @@ import type { Inspection, InspectionAttachment } from '../../../types/models';
 import { throwIfError, throwIfErrorMaybe } from './_shared';
 import { storageApi } from './storage';
 
+// Validates a UUID-shaped string. Used to surface a clear, typed error before
+// Supabase produces a vague "questionnaires_project_id_fkey" violation when a
+// caller passes an empty/array/wrong-shape projectId.
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function assertUuid(value: unknown, field: string): string {
+  if (typeof value !== 'string' || !UUID_REGEX.test(value)) {
+    throw new Error(`inspectionsApi.create: ${field} must be a UUID (got ${JSON.stringify(value)})`);
+  }
+  return value;
+}
+
 export const inspectionsApi = {
   recent: async (limit = 100): Promise<Inspection[]> => {
     const { data, error } = await supabase
@@ -37,14 +48,16 @@ export const inspectionsApi = {
     harnessName?: string;
     projectItemId?: string | null;
   }): Promise<Inspection> => {
+    const projectId = assertUuid(args.projectId, 'projectId');
+    const templateId = assertUuid(args.templateId, 'templateId');
     const user = (await supabase.auth.getSession()).data.session?.user ?? null;
     if (!user) throw new Error('Not signed in');
     return throwIfError<Inspection>(
       await supabase
         .from('inspections')
         .insert({
-          project_id: args.projectId,
-          template_id: args.templateId,
+          project_id: projectId,
+          template_id: templateId,
           user_id: user.id,
           status: 'draft',
           harness_name: args.harnessName ?? null,

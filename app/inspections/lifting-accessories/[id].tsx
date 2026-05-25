@@ -15,7 +15,7 @@ import {
   SignatureSheet,
   VerdictSelector,
   PhotoSection,
-  IdentificationGrid,
+  SlingsIdentificationStep,
   type VerdictOption,
 } from '../../../components/inspection-parts';
 import { useTheme, type Theme } from '../../../lib/theme';
@@ -37,9 +37,6 @@ import {
   LA_CHIP_TO_RESULT,
   LA_VERDICT_LABELS,
   LA_CHECKLIST_OPTIONS,
-  LA_EQUIPMENT_TYPES,
-  LA_OTHER_EQUIPMENT_VALUE,
-  LA_MARKING_OPTIONS,
   LIFTING_ACCESSORIES_TEMPLATE_ID,
   computeLAVerdictSuggestion,
   buildDefaultLARemovedRow,
@@ -419,83 +416,18 @@ export default function LiftingAccessoriesInspectionScreen() {
 
           {/* ── Step 1: Equipment Identification ────────────────────────────── */}
           {step === IDENTIFICATION_STEP && (
-            <KeyboardAwareScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={styles.stepBody}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
-              showsVerticalScrollIndicator={false}
-              bottomOffset={120}
-            >
-              <IdentificationGrid
-                fields={[
-                  {
-                    label: 'ტ-პი / სახ.',
-                    value: '',
-                    type: 'chips',
-                    multiSelect: true,
-                    values: inspection.equipmentTypes,
-                    onValuesChange: v => update('equipmentTypes', v),
-                    options: LA_EQUIPMENT_TYPES as unknown as string[],
-                    otherOptionValue: LA_OTHER_EQUIPMENT_VALUE,
-                    otherValue: inspection.equipmentTypeOther,
-                    onOtherValueChange: v => update('equipmentTypeOther', v),
-                  },
-                  {
-                    label: 'სერ. NN / ID',
-                    value: inspection.serialNumber,
-                    onChange: v => update('serialNumber', v),
-                  },
-                  {
-                    label: 'მწარმოებელი',
-                    value: inspection.manufacturer,
-                    onChange: v => update('manufacturer', v),
-                  },
-                  {
-                    label: 'წ. წარმ.',
-                    value: inspection.yearOfManufacture,
-                    type: 'number',
-                    onChange: v => update('yearOfManufacture', v),
-                  },
-                  {
-                    label: 'WLL (კგ)',
-                    value: inspection.wllKg,
-                    type: 'number',
-                    onChange: v => update('wllKg', v),
-                  },
-                  {
-                    label: 'ერთ. რ-ბა',
-                    value: inspection.unitCount,
-                    type: 'number',
-                    onChange: v => update('unitCount', v),
-                  },
-                  {
-                    label: 'მარ-ბა',
-                    value: inspection.markingStatus ?? '',
-                    type: 'chips',
-                    options: LA_MARKING_OPTIONS as unknown as string[],
-                    onChange: v => update('markingStatus', v),
-                    isProblematic: inspection.markingStatus === LA_MARKING_OPTIONS[2],
-                    isWarning: inspection.markingStatus === LA_MARKING_OPTIONS[1],
-                  },
-                ]}
-                columns={2}
-              />
-
-              <View style={styles.nextDateRow}>
-                <Text style={styles.fieldLabel}>მომდევნო შემოწმება</Text>
-                <DateTimeField
-                  label="მომდევნო შემოწმება"
-                  value={
-                    inspection.nextInspectionDate
-                      ? new Date(inspection.nextInspectionDate)
-                      : new Date()
-                  }
-                  onChange={d => update('nextInspectionDate', d.toISOString().slice(0, 10))}
-                  mode="date"
-                />
-              </View>
-            </KeyboardAwareScrollView>
+            <SlingsIdentificationStep
+              equipmentTypes={inspection.equipmentTypes}
+              equipmentTypeOther={inspection.equipmentTypeOther}
+              serialNumber={inspection.serialNumber}
+              manufacturer={inspection.manufacturer}
+              yearOfManufacture={inspection.yearOfManufacture}
+              wllKg={inspection.wllKg}
+              unitCount={inspection.unitCount}
+              markingStatus={inspection.markingStatus}
+              nextInspectionDate={inspection.nextInspectionDate}
+              onUpdate={updateMany}
+            />
           )}
 
           {/* ── Step 2: Checklist ────────────────────────────────────────────── */}
@@ -663,7 +595,6 @@ function getstyles(theme: Theme) {
       fontSize: 13, fontWeight: '700',
       color: theme.colors.ink, marginBottom: 4,
     },
-    nextDateRow: { gap: 4, marginTop: 8 },
     suggestBanner: {
       flexDirection: 'row', alignItems: 'center', gap: 8,
       backgroundColor: theme.colors.warnSoft ?? theme.colors.accentSoft,

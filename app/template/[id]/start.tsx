@@ -20,6 +20,7 @@ import { questionnairesApi, projectsApi } from '../../../lib/services';
 import { InspectionTypeAvatar } from '../../../components/InspectionTypeAvatar';
 import { inspectionRegistry } from '../../../lib/inspection/registry';
 import { routeForInspection } from '../../../lib/inspectionRouting';
+import { inspectionDisplayName } from '../../../lib/shared/documentName';
 import { useToast } from '../../../lib/toast';
 import { useTheme } from '../../../lib/theme';
 
@@ -87,7 +88,7 @@ export default function StartTemplateScreen() {
             <View style={{ flex: 1, gap: 4 }}>
               <Text style={styles.eyebrow}>შაბლონი</Text>
               {template ? (
-                <Text style={styles.templateName}>{template.name}</Text>
+                <Text style={styles.templateName}>{inspectionDisplayName(template.name)}</Text>
               ) : (
                 <Skeleton width={'80%'} height={22} />
               )}

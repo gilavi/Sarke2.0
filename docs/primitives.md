@@ -180,9 +180,13 @@ const localUri = await generateAndSharePdf(html, pdfName, true, userId);
 
 One file: [`lib/shared/documentName.ts`](../lib/shared/documentName.ts). Exports `inspectionDisplayName`, `reportDisplayName`, `certificateDisplayName`, `orderDisplayName`. **Pure TypeScript** — no React/RN/DOM/i18n imports — so it is the single source of truth imported by **both** the Expo app (relative import, e.g. `../lib/shared/documentName`) and the `web-app/` dashboard (`@root/lib/shared/documentName`, re-exported via `web-app/src/lib/documentNames.ts`).
 
-The display name is the document's **type/template name** (e.g. the inspection's template name), never a raw `id` slice. Callers resolve the template/title string and pass it in.
+`inspectionDisplayName` returns the **short UI display name**: it maps the formal `templates.name` stored in the DB (e.g. `დამცავი ქამრების შემოწმების აქტი`) to the short form shown in list rows, cards, and screen titles (e.g. `დამცავი ქამრები`) via the `INSPECTION_SHORT_NAME` map in this same file. A name that's already short (or not in the map) falls through unchanged; an empty/missing name falls back to the generic Georgian label. The other three helpers return the document's title/type string (or a generic fallback), never a raw `id` slice.
 
-**Don't** reintroduce `harness_name || "#" + id.slice(0,8)` style fallbacks in either codebase — that drift (web showing `ქამარი #0c9537aa` while mobile showed the template name) is exactly what this primitive removes. Equipment inspections on web have no template row, so `web-app/src/lib/documentNames.ts` maps their type to a constant label and routes it through `inspectionDisplayName`.
+**Do NOT** call `inspectionDisplayName` from `lib/pdf/**` or `web-app/src/pages/print/**` — printed PDF reports and legal artifacts must keep the full formal `templates.name`. The helper is for screen display only.
+
+When you add a new template in `supabase/migrations/`, add its full→short pair to `INSPECTION_SHORT_NAME` in this **one** file — both codebases import it, so there is no second map to keep in sync. (This replaced the earlier duplicated `lib/inspectionDisplayName.ts` + `web-app/src/lib/inspectionDisplayName.ts` pair.)
+
+**Don't** reintroduce `harness_name || "#" + id.slice(0,8)` style fallbacks in either codebase — that drift (web showing `ქამარი #0c9537aa` while mobile showed the template name) is exactly what this primitive removes. Equipment inspections on web have no template row, so `web-app/src/lib/documentNames.ts` maps their type to a constant full name and routes it through `inspectionDisplayName`.
 
 ## Adding a new primitive
 

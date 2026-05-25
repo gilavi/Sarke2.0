@@ -13,6 +13,7 @@ import {
 import { listProjects } from '@/lib/data/projects';
 import { listTemplates } from '@/lib/data/templates';
 import { projectKeys, templateKeys } from '@/app/queryKeys';
+import { inspectionDisplayName } from '@/lib/documentNames';
 
 const STEPS = ['შაბლონი'];
 
@@ -82,7 +83,7 @@ export default function NewInspection() {
               >
                 <span className={selectedTemplate ? 'text-neutral-900' : 'text-neutral-400'}>
                   {selectedTemplate
-                    ? `${selectedTemplate.name}${selectedTemplate.is_system ? ' (სისტემური)' : ''}`
+                    ? `${inspectionDisplayName(selectedTemplate.name)}${selectedTemplate.is_system ? ' (სისტემური)' : ''}`
                     : '— აირჩიეთ შაბლონი —'}
                 </span>
                 <ChevronDown className="h-4 w-4 shrink-0 text-neutral-400" />
@@ -97,7 +98,7 @@ export default function NewInspection() {
               )}
               {(templates ?? []).map((t) => (
                 <DropdownMenuItem key={t.id} onSelect={() => setTemplateId(t.id)}>
-                  {t.name}{t.is_system ? ' (სისტემური)' : ''}
+                  {inspectionDisplayName(t.name)}{t.is_system ? ' (სისტემური)' : ''}
                 </DropdownMenuItem>
               ))}
             </DropdownMenuContent>

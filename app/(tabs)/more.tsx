@@ -114,7 +114,11 @@ export default function MoreScreen() {
         </Text>
 
         {/* Profile */}
-        <Card style={{ marginHorizontal: 16 }}>
+        <Card
+          style={{ marginHorizontal: 16 }}
+          onPress={() => router.push('/profile')}
+          a11y={a11y('პროფილი', 'პროფილის რედაქტირება', 'button')}
+        >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
             <Image source={{ uri: avatarUrl }} style={styles.avatar} contentFit="cover" />
             <View style={{ flex: 1 }}>
@@ -123,6 +127,7 @@ export default function MoreScreen() {
               </Text>
               <Text style={{ color: theme.colors.inkSoft, fontSize: 12 }}>{user?.email ?? ''}</Text>
             </View>
+            <Ionicons name="chevron-forward" size={18} color={theme.colors.inkFaint} />
           </View>
         </Card>
 
@@ -224,12 +229,6 @@ export default function MoreScreen() {
           <Pressable onPress={() => router.push('/terms?mode=view')} style={styles.settingsRow} {...a11y(t('more.terms'), undefined, 'button')}>
             <Ionicons name="document-text-outline" size={18} color={theme.colors.inkSoft} />
             <Text style={styles.settingsLabel}>{t('more.terms')}</Text>
-            <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
-          </Pressable>
-          <View style={styles.divider} />
-          <Pressable onPress={() => router.push('/account-settings')} style={styles.settingsRow} {...a11y(t('more.changePassword'), undefined, 'button')}>
-            <Ionicons name="key-outline" size={18} color={theme.colors.inkSoft} />
-            <Text style={styles.settingsLabel}>{t('more.changePassword')}</Text>
             <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
           </Pressable>
           <View style={styles.divider} />

@@ -13,6 +13,8 @@
 **Target Users:** Safety experts conducting equipment/scaffolding inspections on Georgian construction sites  
 **Backend:** Supabase (Postgres + Auth + Storage) — single project shared by all three frontends  
 **Architecture:** Feature-sliced. Modules live in `features/<name>/` with co-located `AGENTS.md` per folder; `app/` route files for large flows are thin orchestrators that re-export from `features/`.  
+**Account deletion:** Implemented end-to-end via Edge Function `delete-account` + `ON DELETE CASCADE` FKs on all user-owned tables. App Store Review Guideline 5.1.1(v) compliant on the data-deletion axis.
+**Function search_path:** All public Postgres functions have `SET search_path = public, pg_catalog`. Functions invoked from `auth.admin` operations run with restricted search_path and fail to resolve unqualified public-schema types without this pin — see migration `supabase/migrations/20260525180000_pin_function_search_paths.sql` for the precedent and the bug it fixed.
 **Source:** https://github.com/gilavi/Sarke2.0
 
 ---

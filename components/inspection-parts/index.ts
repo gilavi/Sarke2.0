@@ -23,3 +23,9 @@ export type { IdentificationGridProps, IdentificationField } from './Identificat
 
 export { QualDoc } from './QualDoc';
 export type { QualDocProps } from './QualDoc';
+
+export { SlingTypeSheet } from './SlingTypeSheet';
+export type { SlingTypeSheetProps } from './SlingTypeSheet';
+
+export { SlingsIdentificationStep } from './SlingsIdentificationStep';
+export type { SlingsIdentificationStepProps } from './SlingsIdentificationStep';

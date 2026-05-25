@@ -4,9 +4,32 @@
 
 ---
 
-## 2026-05-25 — Shared document naming (mobile + web single source of truth)
+## 2026-05-25 — Shared document naming + multi-task session & DB compliance
 
-Web list/detail screens showed raw id slices (e.g. `ქამარი #0c9537aa`) while mobile showed the document's template/type name. The naming logic now lives in one pure-TS module, [lib/shared/documentName.ts](../lib/shared/documentName.ts) — the first code shared between the Expo app and `web-app/` (imported relatively on mobile, via the `@root` alias on web). Exports `inspectionDisplayName` / `reportDisplayName` / `certificateDisplayName` / `orderDisplayName`; the display name is the template/type name, never an id. Web wires it through [web-app/src/lib/documentNames.ts](../web-app/src/lib/documentNames.ts) (template-name resolver hook + constant labels for the equipment tables that have no template row). See [docs/primitives.md → Document display names](primitives.md#document-display-names-shared-with-web). Print PDFs were intentionally left untouched for legal-document fidelity.
+### Document naming (mobile + web single source of truth)
+Web list/detail screens showed raw id slices (e.g. `ქამარი #0c9537aa`) while mobile showed the template/type name; a parallel effort on `main` also added short UI names via a duplicated `lib/inspectionDisplayName.ts` (+ web mirror). Both are now unified in one pure-TS module, [lib/shared/documentName.ts](../lib/shared/documentName.ts) — the first code shared between the Expo app and `web-app/` (imported relatively on mobile, via the `@root` alias on web). Exports `inspectionDisplayName` / `reportDisplayName` / `certificateDisplayName` / `orderDisplayName`. `inspectionDisplayName` maps the formal `templates.name` to its short UI form (e.g. `დამცავი ქამრების შემოწმების აქტი` → `დამცავი ქამრები`) via a single `INSPECTION_SHORT_NAME` map; the per-codebase `lib/inspectionDisplayName.ts` duplicates were removed in favor of this one source. Web wires it through [web-app/src/lib/documentNames.ts](../web-app/src/lib/documentNames.ts) (template-name resolver hook + constant labels for the equipment tables that have no template row). See [docs/primitives.md → Document display names](primitives.md#document-display-names-shared-with-web). Print PDFs were intentionally left untouched for legal-document fidelity. (commits `442aa65`, local naming refactor)
+
+### New
+- **In-app profile editing.** New screen at [app/profile.tsx](../app/profile.tsx) with first / last name fields, a link to the existing password-change flow at [/account-settings](../app/account-settings.tsx), and an "ანგარიშის წაშლა" destructive row at the bottom. Entry point: the profile card at the top of the More tab is now tappable. Profile mutations route through new helper [lib/profileService.ts](../lib/profileService.ts) — mirrors `web-app/src/lib/data/account.ts` so both auth metadata and the public.users row stay in sync. (commit `db0ec1a`)
+- **`delete-account` Edge Function.** [supabase/functions/delete-account/index.ts](../supabase/functions/delete-account/index.ts). Reads the caller's JWT, calls `auth.admin.deleteUser` server-side so the service-role key never reaches the client. Required for App Store Review Guideline 5.1.1(v). (commit `db0ec1a`)
+- **Slings type selector bottom sheet.** [components/inspection-parts/SlingTypeSheet.tsx](../components/inspection-parts/SlingTypeSheet.tsx) replaces the 7-chip multi-select on step 1 of the slings / chains inspection. (commit `6172f31`)
+- **Three database migrations** capturing schema work that previously lived only in Supabase Studio:
+  - [`20260525180000_pin_function_search_paths.sql`](../supabase/migrations/20260525180000_pin_function_search_paths.sql) — pins `search_path = public, pg_catalog` on every public function.
+  - [`20260525183000_cascade_user_deletion.sql`](../supabase/migrations/20260525183000_cascade_user_deletion.sql) — adds `ON DELETE CASCADE` FKs from every user-owned public column to `auth.users(id)`.
+  - [`20260525190000_dedupe_user_fkeys.sql`](../supabase/migrations/20260525190000_dedupe_user_fkeys.sql) — cleanup pass that drops duplicate `*_auth_users_fkey` constraints produced by the prior migration's blind spot.
+
+### Fixed
+- **FK violation creating inspection from project page.** The project-page entry path was not propagating `project_id` reliably to the inspection-create call, producing the legacy `questionnaires_project_id_fkey` Postgres error. Wired `project_id` through the navigation, coerced `useLocalSearchParams<{ id }>` to a single string at the route boundary, and added a UUID guard at the service layer so the failure mode now surfaces as a clear Georgian toast. Diagnosis in [TASK2_DIAGNOSIS.md](../TASK2_DIAGNOSIS.md). (commit `8486713`)
+- **Account deletion blocked by trigger search_path resolution.** Two trigger functions referenced the `questionnaire_status` public enum without schema qualification; `auth.admin.deleteUser` runs with restricted `search_path` and failed to resolve the type, returning a 500 "Database error deleting user" in TestFlight. Pinned `search_path` on every public function. See migration [`20260525180000_pin_function_search_paths.sql`](../supabase/migrations/20260525180000_pin_function_search_paths.sql).
+- **Account deletion left user data orphaned.** No FKs existed from public user-owned tables to `auth.users(id)`, so deleting an auth row left 22+ tables worth of rows behind. Added `ON DELETE CASCADE` FKs across the matching columns. See migrations [`20260525183000_cascade_user_deletion.sql`](../supabase/migrations/20260525183000_cascade_user_deletion.sql) and [`20260525190000_dedupe_user_fkeys.sql`](../supabase/migrations/20260525190000_dedupe_user_fkeys.sql).
+
+### Refactored
+- **Slings / chains inspection step 1.** Replaced the 7-chip multi-select for equipment type with a tappable section that opens [`SlingTypeSheet`](../components/inspection-parts/SlingTypeSheet.tsx); introduced section headers (`ტ-პი / სახ.`, `იდენტიფიკაცია`, `მახასიათებლები`, `მარ-ბა`, `მომდევნო შემოწმება`) for visual hierarchy; removed the duplicate `მომდევნო შემოწმება` label that previously appeared between the section header and the date picker. Step body extracted into [`SlingsIdentificationStep`](../components/inspection-parts/SlingsIdentificationStep.tsx) so the route file shrank by ~70 lines. Georgian abbreviations on this screen are intentional and locked — see the new [AGENTS.md](../app/inspections/lifting-accessories/AGENTS.md). (commit `6172f31`)
+
+### Removed
+- **Duplicate "პაროლის შეცვლა" row on the More tab.** Same row existed on both the More tab and the new Profile screen, both linking to `/account-settings`. Removed the More tab copy; the route file remains in place (still reached from Profile). (commit `b6f5212`)
+
+---
 
 ## 2026-05-25 — Polish-pass refactor: god-file slimming and conditional-hook fix (mobile)
 
