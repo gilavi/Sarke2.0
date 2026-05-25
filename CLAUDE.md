@@ -96,3 +96,4 @@ All three deploy to the same `gh-pages` branch under different `destination_dir`
 - Don't delete entries from `BUG_REPORT.md` — mark them resolved.
 - Don't edit historical `QA_REPORT_YYYY-MM-DD.md` files.
 - Don't re-consolidate the domain-split files (`lib/services/`, `lib/pdf/`, `features/`). The split is intentional and enforced by the File-size targets above.
+- Don't create public Postgres functions without `SET search_path = public, pg_catalog`. Functions invoked from `auth.admin` contexts (notably `deleteUser`) run with an empty search_path and fail to resolve unqualified public-schema types. See migration `supabase/migrations/20260525180000_pin_function_search_paths.sql` for the precedent and the TestFlight 500 it fixed.
