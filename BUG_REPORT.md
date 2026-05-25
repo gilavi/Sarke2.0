@@ -197,7 +197,7 @@ The same migration adds `updated_at TIMESTAMPTZ` columns and a shared `set_updat
 
 **Verified:** Pre/post snapshots saved in `~/sarke-backups/snapshot_pre_0020_*.json` and `snapshot_post_0020_*.json`. All 6 RLS policies updated, 8 columns + 8 triggers + 2 indexes created, row counts unchanged across 18 tables.
 
-## P0 — Storage RLS permissive on `certificates`, `answer-photos`, `pdfs`, `signatures` · PARTIALLY FIXED 2026-05-26 (write/delete closed; read still open)
+## P0 — Storage RLS permissive on `certificates`, `answer-photos`, `pdfs`, `signatures` · FIXED 2026-05-26
 
 **Repro:** Same exposure pattern as above, on the `certificates`, `answer-photos`, `pdfs`, and `signatures` buckets. The `sarke_{insert,read,update,delete}_authenticated` policy family gated only on `bucket_id = ANY (ARRAY[...])` — no per-row owner check.
 
@@ -211,7 +211,9 @@ The same migration adds `updated_at TIMESTAMPTZ` columns and a shared `set_updat
 
 **Read-path audit (done):** every read of these buckets now resolves through **signed URLs**, which work on both public and private buckets — so the code can ship before the flip. The mobile canonical helpers (`imageForDisplay`, `pdfPhotoEmbed`, `signatureAsDataUrl` in [lib/imageUrl.ts](lib/imageUrl.ts)) already prefer `createSignedUrl`. The two primary `getPublicUrl` readers were converted: [lib/sharePdf.ts](lib/sharePdf.ts) (PDF share download) and [web-app/src/pages/IncidentDetail.tsx](web-app/src/pages/IncidentDetail.tsx) (incident signature display); the now-orphaned `publicUrl` helper was removed from `web-app/src/lib/db/storage.ts`. `web/` (sarke-sign) doesn't read these buckets, and remote-signing PDFs use pre-generated signed URLs (valid on private buckets). DB columns store paths, not public URLs, so nothing cached breaks.
 
-**Next step (final flip) — gated on client rollout, NOT yet done:** flipping the buckets to private now would break the *already-deployed* clients that predate the signed-URL fixes — specifically mobile **PDF sharing** on every currently-installed app (until users update) and incident-signature display in the web dashboard (until it redeploys). Mobile image display is unaffected (signed-URL-first). Correct order: ship the signed-URL reads (web-app auto-deploys on push to main; mobile via a new build), let clients update, **then** run `update storage.buckets set public = false where id in ('certificates','answer-photos','pdfs','signatures');` and mark this entry fully FIXED.
+**Final flip — DONE 2026-05-26.** Ran `update storage.buckets set public = false where id in ('certificates','answer-photos','pdfs','signatures');`. Verified: the public download endpoint now returns `400 Bucket not found` for an existing object, so reads no longer bypass RLS; owner-scoped SELECT policies (from 0053) now gate signed-URL access to each file's owner. The vulnerability is closed.
+
+**Deploy follow-through (rollout, not a security gap):** the buckets went private before the signed-URL read fixes (commit 618655a) reached clients, so until rollout completes: (a) the web dashboard's incident-signature display is broken until 618655a is pushed and redeploys; (b) mobile **PDF sharing** is broken on already-installed apps until a new build ships and is adopted. Mobile image display is unaffected (signed-URL-first). Push 618655a and cut a mobile build to clear the window.
 
 ---
 
