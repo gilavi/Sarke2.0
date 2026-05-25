@@ -232,12 +232,6 @@ export default function MoreScreen() {
             <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
           </Pressable>
           <View style={styles.divider} />
-          <Pressable onPress={() => router.push('/account-settings')} style={styles.settingsRow} {...a11y(t('more.changePassword'), undefined, 'button')}>
-            <Ionicons name="key-outline" size={18} color={theme.colors.inkSoft} />
-            <Text style={styles.settingsLabel}>{t('more.changePassword')}</Text>
-            <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
-          </Pressable>
-          <View style={styles.divider} />
           <Pressable onPress={() => router.push('/guide')} style={styles.settingsRow} {...a11y('Guide / ინსტრუქცია', undefined, 'button')}>
             <Ionicons name="book-outline" size={18} color={theme.colors.inkSoft} />
             <Text style={styles.settingsLabel}>Guide / ინსტრუქცია</Text>
