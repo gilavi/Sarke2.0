@@ -531,3 +531,35 @@ Ran five parallel read-only verifiers over **all ~156 detailed entries** in `Sar
 5. Apply to prod (coordinate with the migration-history drift noted above; use `supabase db push`/`migration repair` deliberately).
 
 **Status:** NOT done this session — drafting the SQL blind (no template in VC, no test harness, heterogeneous paths) risks either leaving the hole open or locking out all file access in prod. Flagged for a careful, tested change. A CI `lint` gate was added ([.github/workflows/test.yml](.github/workflows/test.yml)) so future typecheck regressions are caught on PRs (was previously local-only).
+
+## P3 — Conditional hook calls in `features/inspection-wizard/GridRowStep` · FIXED 2026-05-24
+
+**Source:** Spotted during the v1 feature-sliced refactor (logged in `REFACTOR_NOTES.md`); carried into v2 as Phase 3.
+
+**Symptom:** Rules-of-hooks violation. The non-harness branch of `GridRowStep` had a conditional early return followed by `useState`/`useRef` calls, so the harness branch and the scaffold branch had different hook counts.
+
+**Why it was latent:** `WizardStepTransition` unmounts on every step change, so `isHarness` was stable for the life of any one mount — React's stable-render check never had two mounts to compare with mismatched hook counts. A future change that kept the same `GridRowStep` mounted across step transitions would have crashed.
+
+**Fix** (commit `584fb17`): split into [HarnessRowStep.tsx](features/inspection-wizard/HarnessRowStep.tsx) (harness ✓/✗ chips + row-count picker) and [ScaffoldRowStep.tsx](features/inspection-wizard/ScaffoldRowStep.tsx) (scaffold comment field + footer). The dispatch on `step.question.grid_rows?.[0] === 'N1'` moved up to [InspectionWizard.tsx](features/inspection-wizard/InspectionWizard.tsx). Each new file calls its hooks unconditionally. Rule documented in `features/inspection-wizard/AGENTS.md`: future grid variants must add a new sibling component, not branch inside an existing one.
+
+**Verified:** `npm run lint` clean. Behavior unchanged (both new components render the same JSX as the corresponding branch did before).
+
+## P4 — Dead `useMemo(getstyles)` in `features/inspection-wizard/MeasureInput` · FIXED 2026-05-24
+
+**Source:** Spotted during the v1 feature-sliced refactor (logged in `REFACTOR_NOTES.md`); fixed in v2 Phase 1.
+
+**Symptom:** `useMemo(() => getstyles(theme), [theme])` was called and the result discarded. No runtime impact (memo never used), but the dead code plus its `getstyles` and `useMemo` imports had to be carried alongside every future edit.
+
+**Root cause:** Inherited from the pre-refactor god-file `app/inspections/[id]/wizard.tsx`. The original presumably used a `styles` const that was removed during an earlier cleanup; the `useMemo` wrapper was never removed.
+
+**Fix** (commit `4247d48`): removed the `useMemo` call along with its unused `useMemo` + `getstyles` imports. File is 91 → 86 lines.
+
+**Verified:** `npm run lint` clean. No behavior change.
+
+## P4 — Dead step components in `app/orders/new.tsx` · DROPPED 2026-05-24
+
+**Source:** Spotted during the v1 feature-sliced refactor (logged in `REFACTOR_NOTES.md`).
+
+**Symptom:** The original `NewOrderScreen` declared `StepSignDirector`, `StepSignAppointed`, and `StepSignCraneOperator` components but never rendered them — the fire-safety / crane flows render `StepSignaturesFireSafety` and `StepSignaturesCrane` (the combined two-signature steps) instead.
+
+**Resolution** (commit `c794f9f`): not carried over into `features/order-new/` since they had no callers. No bug existed at runtime; this entry exists for the audit trail.
