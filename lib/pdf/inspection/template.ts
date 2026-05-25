@@ -12,9 +12,8 @@ import type {
   SignatureRecord,
   Template,
 } from '../../../types/models';
-import { escapeHtml, formatDate, pad2, tPdf } from './_shared';
+import { escapeHtml, pad2, tPdf } from './_shared';
 import { renderQuestion } from './renderQuestion';
-import { renderPhoto } from './renderPhoto';
 import { renderSignatures } from './renderSignatures';
 import { renderProjectBrand } from './renderProjectBrand';
 import { getInspectionPdfCss } from './template.css';
