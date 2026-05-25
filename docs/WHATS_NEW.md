@@ -4,6 +4,14 @@
 
 ---
 
+## 2026-05-26 — Storage security: owner-scoped RLS on `certificates` / `answer-photos` / `pdfs` / `signatures`
+
+### Security
+- **Closed the "any authenticated user can delete/overwrite anyone's files" hole** on the `certificates`, `answer-photos`, `pdfs`, and `signatures` buckets. They were guarded only by dashboard-created `sarke_*` policies that gated on `bucket_id` alone (no per-row owner check). New migration [0053_storage_rls_owner_scoping.sql](../supabase/migrations/0053_storage_rls_owner_scoping.sql) replaces them with per-bucket `owner = auth.uid()` policies for SELECT/UPDATE/DELETE (INSERT stays auth-only). Owner-based scoping was chosen over path-based because upload-path schemes are inconsistent across the mobile and web codebases; pre-flight confirmed every existing file already has an owner set. Companion to `0020`.
+- **Read exposure is still open** — these buckets are currently `public = true`, so reads bypass RLS regardless. Closing reads is a tracked follow-up (flip buckets to private + move all `getPublicUrl` reads to signed URLs). See the P0 entry in [BUG_REPORT.md](../BUG_REPORT.md).
+
+---
+
 ## 2026-05-26 — Inspection wizard UX: stacked inputs, cleaner stepper, in-flow project selection
 
 ### Changed

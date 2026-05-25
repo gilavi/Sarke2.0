@@ -197,13 +197,19 @@ The same migration adds `updated_at TIMESTAMPTZ` columns and a shared `set_updat
 
 **Verified:** Pre/post snapshots saved in `~/sarke-backups/snapshot_pre_0020_*.json` and `snapshot_post_0020_*.json`. All 6 RLS policies updated, 8 columns + 8 triggers + 2 indexes created, row counts unchanged across 18 tables.
 
-## P0 — Storage RLS still permissive on `certificates`, `answer-photos`, `pdfs`, `signatures` · OPEN
+## P0 — Storage RLS permissive on `certificates`, `answer-photos`, `pdfs`, `signatures` · PARTIALLY FIXED 2026-05-26 (write/delete closed; read still open)
 
-**Repro:** Same exposure pattern as above, on the `certificates`, `answer-photos`, `pdfs`, and `signatures` buckets. The `sarke_{insert,read,update,delete}_authenticated` policy family gates only on `bucket_id = ANY (ARRAY[...])` — no per-row owner check.
+**Repro:** Same exposure pattern as above, on the `certificates`, `answer-photos`, `pdfs`, and `signatures` buckets. The `sarke_{insert,read,update,delete}_authenticated` policy family gated only on `bucket_id = ANY (ARRAY[...])` — no per-row owner check.
 
-**Why not bundled into 0020:** these policies aren't in version control (created via the Supabase dashboard), and proper scoping requires understanding multi-source path conventions per bucket. In particular `signatures` is referenced from at least three tables (`users.saved_signature_url`, `project_signers.signature_png_url`, `signatures.signature_png_url`) so a single owner-scoped policy needs either a unified path scheme or a UNION-style EXISTS.
+**Why not bundled into 0020:** these policies weren't in version control (created via the Supabase dashboard), and scoping required auditing multi-source path conventions per bucket.
 
-**Next step:** audit upload paths in [lib/services.real.ts](lib/services.real.ts) for each bucket, then write `0021_storage_rls_remaining.sql` to replace the four `sarke_*_authenticated` policies with owner-scoped ones.
+**Scoping decision (audit result):** path schemes are inconsistent across the mobile (generic + specialized inspections) and web codebases — e.g. `answer-photos` puts the inspection id at path segment `[0]` for generic mobile inspections but `[1]` for specialized types and the web dashboard. Path-based RLS is therefore fragile. Instead we use **owner-based** scoping (`owner = auth.uid()`): confirmed there are **no service-role/server-side uploads** to any of the four buckets (all uploads are client-side with the user's JWT), so `storage.objects.owner` is reliably populated. Pre-flight confirmed **0 NULL-owner rows** across all 614 files (answer-photos 319, pdfs 131, signatures 123, certificates 41). App is single-operator per account (signers are captured on the inspector's own device, so owner = reader), so no cross-account read carve-out is needed. Remote-signer signatures live in the separate `remote-signatures` bucket (token-scoped in `0011`) and are out of scope.
+
+**Fix (write/delete half)** in [supabase/migrations/0053_storage_rls_owner_scoping.sql](supabase/migrations/0053_storage_rls_owner_scoping.sql): drop the four `sarke_*_authenticated` policies and add per-bucket `owner = auth.uid()` policies for SELECT/UPDATE/DELETE. INSERT stays `auth.uid() IS NOT NULL` because `owner` is not yet populated when the `WITH CHECK` predicate runs (same rationale as `0020`'s `incident-photos` INSERT). Applied to live via `supabase db query --linked` (Management API channel, like `0020`).
+
+**Read half still OPEN — the buckets are `public = true`.** On a public bucket, reads bypass RLS entirely (the public download endpoint serves objects without auth), so the owner-scoped SELECT policies above are cosmetic for reads — anyone with/guessing an object path can fetch it. INSERT/UPDATE/DELETE *do* still go through RLS, which is why 0053 closes the destructive half. Closing reads requires flipping the four buckets to `public = false` **and** migrating every `getPublicUrl` read path to signed URLs first, or display breaks. Known offender: [web-app/src/pages/IncidentDetail.tsx:375](web-app/src/pages/IncidentDetail.tsx:375); the mobile read helpers (`imageForDisplay`, `signatureAsDataUrl`, `pdfPhotoEmbed`) need an audit before flipping.
+
+**Next step (read half):** audit all `getPublicUrl` reads across mobile + web, switch them to signed URLs, then flip `certificates`/`answer-photos`/`pdfs`/`signatures` to private. Then mark this entry fully FIXED.
 
 ---
 
@@ -239,7 +245,7 @@ Both components were imported but never used in `app/inspections/[id]/wizard.tsx
 
 ## Session 2026-05-02 (second pass) — refactor sweep: bugs + perf
 
-Three parallel audits surfaced ~75 candidates; the highest-leverage 10 were fixed in this pass. Wave-2 items (FlatList migrations, wizard split, RLS gap on remaining buckets) are flagged but deferred to dedicated sessions because their blast radius warrants their own review.
+Three parallel audits surfaced ~75 candidates; the highest-leverage 10 were fixed in this pass. Wave-2 items (FlatList migrations, wizard split, RLS gap on remaining buckets) are flagged but deferred to dedicated sessions because their blast radius warrants their own review. (Update 2026-05-26: the RLS gap's write/delete half was closed in `0053` — see the P0 entry above; the read half remains open pending a bucket-privacy follow-up.)
 
 ### P1 — `photoUrlCache` Map grew unbounded across sessions · FIXED 2026-05-02
 
@@ -295,7 +301,7 @@ Zero importers. The exports (`relativeTime`, `formatDate`, `formatDateTime`, etc
 
 ### Deferred to dedicated sessions
 
-- **Storage RLS gap on `certificates`, `answer-photos`, `pdfs`, `signatures` buckets** — security migration; needs careful path-convention audit per bucket. Tracked above in the open P0 entry.
+- **Storage RLS gap on `certificates`, `answer-photos`, `pdfs`, `signatures` buckets** — write/delete half closed in `0053` (owner-scoped policies); read half still open because the buckets are public. Tracked above in the partially-fixed P0 entry.
 - **`ScrollView + .map()` → `FlatList`/`FlashList` on home, projects-tab, project detail tabs** — high blast radius across many list-rendering screens; deserves its own session with manual smoke testing of scroll/refresh/empty states per list.
 - **Wizard split (`app/inspections/[id]/wizard.tsx` is 2420 lines)** — the recently-fixed wizard↔detail loop lives here; further restructuring should not happen in the same change as fixes elsewhere.
 - **Modal/sheet bodies rendered when closed** — many sheets across the app gate their `Modal` `visible` prop but render the full body unconditionally. A per-sheet audit is needed since some bodies legitimately need to stay mounted (autofocus, animation continuity).
