@@ -4,6 +4,12 @@
 
 ---
 
+## 2026-05-25 — Slings / chains inspection step 1 redesign (mobile)
+
+Step 1 of [app/inspections/lifting-accessories/[id].tsx](../app/inspections/lifting-accessories/%5Bid%5D.tsx) replaced the 7-chip multi-select for equipment type with a tappable row that opens a bottom sheet ([SlingTypeSheet](../components/inspection-parts/SlingTypeSheet.tsx)), introduced section headers (`ტ-პი / სახ.`, `იდენტიფიკაცია`, `მახასიათებლები`, `მარ-ბა`, `მომდევნო შემოწმება`) for visual hierarchy, and removed the duplicate `მომდევნო შემოწმება` label that appeared between the section header and the date picker. The step body was extracted into [SlingsIdentificationStep](../components/inspection-parts/SlingsIdentificationStep.tsx) so the route file shrank by ~70 lines instead of growing. The Georgian abbreviations on this screen are intentional and locked — see the new [AGENTS.md](../app/inspections/lifting-accessories/AGENTS.md) for that route.
+
+---
+
 ## 2026-05-25 — In-app profile editing + account deletion (mobile)
 
 The profile card at the top of the More tab is now tappable and opens a new [/profile](../app/profile.tsx) screen with first / last name editing, a link to the existing password-change flow at [/account-settings](../app/account-settings.tsx), and an "ანგარიშის წაშლა" destructive row at the bottom (App Store Review Guideline 5.1.1(v) requires an in-app deletion path). Profile mutations route through new helper [lib/profileService.ts](../lib/profileService.ts) — mirrors `web-app/src/lib/data/account.ts` so both auth metadata and the public.users row stay in sync. Deletion is handled by a new Edge Function [supabase/functions/delete-account/index.ts](../supabase/functions/delete-account/index.ts) (service-role on the server; the client only ships its JWT).
