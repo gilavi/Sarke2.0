@@ -182,7 +182,7 @@ function CertEditView({
 }) {
   const { theme } = useTheme();
   const toast = useToast();
-  const { pickPhotoWithAnnotation } = usePhotoWithLocation();
+  const { pickPhoto: pickPhotoFromLibrary } = usePhotoWithLocation();
   const [type, setType] = useState<string>(existing?.cert_type ?? ATTACHMENT_TYPE_PRESETS[0]);
   const [customType, setCustomType] = useState<string>(
     existing && !ATTACHMENT_TYPE_PRESETS.includes(existing.cert_type as any)
@@ -220,10 +220,14 @@ function CertEditView({
   }, [photoPath, photoUri]);
 
   const pickPhoto = useCallback(async () => {
-    const result = await pickPhotoWithAnnotation({ skipAnnotate: true });
+    // Must use pickPhoto (ImagePicker directly) instead of pickPhotoWithAnnotation
+    // here — this component runs inside a Modal and router.push navigates behind
+    // the modal, making the photo-picker screen unreachable. The promise would
+    // hang forever, freezing the upload button.
+    const result = await pickPhotoFromLibrary();
     if (!result) return;
     setPhotoUri(result.uri);
-  }, [pickPhotoWithAnnotation]);
+  }, [pickPhotoFromLibrary]);
 
   const save = useCallback(async () => {
     const finalType = isCustom ? customType.trim() : type;

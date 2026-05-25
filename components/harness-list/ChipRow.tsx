@@ -17,8 +17,7 @@ export const ChipRow = memo(function ChipRow({
   state,
   comment,
   cellPhotos,
-  onOk,
-  onBad,
+  onSet,
   onCommentChange,
   onPickPhoto,
   onDeletePhoto,
@@ -30,12 +29,13 @@ export const ChipRow = memo(function ChipRow({
   state: 'ok' | 'bad' | undefined;
   comment: string;
   cellPhotos: AnswerPhoto[];
-  onOk: () => void;
-  onBad: () => void;
-  onCommentChange: (text: string) => void;
-  onPickPhoto: () => void;
+  // Stable handlers (receive item/row) so memoized rows don't all re-render
+  // on every keystroke/tap — only the row whose data changed re-renders.
+  onSet: (item: HarnessItem, row: string, value: 'ok' | 'bad') => void;
+  onCommentChange: (item: HarnessItem, row: string, text: string) => void;
+  onPickPhoto: (item: HarnessItem, row: string) => void;
   onDeletePhoto: (p: AnswerPhoto) => Promise<void>;
-  onHelp: () => void;
+  onHelp: (item: HarnessItem) => void;
   rowRef?: React.RefObject<View | null>;
 }) {
   const { theme } = useTheme();
@@ -67,11 +67,11 @@ export const ChipRow = memo(function ChipRow({
         <Text style={s.itemLabel} numberOfLines={2}>
           {item.label}
         </Text>
-        <HelpIcon onPress={onHelp} />
+        <HelpIcon onPress={() => onHelp(item)} />
         <View style={{ flexDirection: 'row', gap: 6 }}>
           {/* ✓ chip */}
           <Pressable
-            onPress={onOk}
+            onPress={() => onSet(item, row, 'ok')}
             style={[
               s.chip,
               isOk && { backgroundColor: theme.colors.accentSoft, borderColor: theme.colors.accent },
@@ -86,7 +86,7 @@ export const ChipRow = memo(function ChipRow({
           </Pressable>
           {/* ✗ chip */}
           <Pressable
-            onPress={onBad}
+            onPress={() => onSet(item, row, 'bad')}
             style={[
               s.chip,
               isBad && { backgroundColor: theme.colors.dangerSoft, borderColor: theme.colors.danger },
@@ -114,7 +114,7 @@ export const ChipRow = memo(function ChipRow({
             value={draft}
             onChangeText={text => {
               setDraft(text);
-              onCommentChange(text);
+              onCommentChange(item, row, text);
             }}
             multiline
           />
@@ -126,7 +126,7 @@ export const ChipRow = memo(function ChipRow({
             {cellPhotos.map(p => (
               <CellPhotoThumb key={p.id} photo={p} onDelete={() => onDeletePhoto(p)} />
             ))}
-            <Pressable onPress={onPickPhoto} style={s.addPhotoSmall} accessibilityLabel="ფოტოს დამატება">
+            <Pressable onPress={() => onPickPhoto(item, row)} style={s.addPhotoSmall} accessibilityLabel="ფოტოს დამატება">
               <Ionicons name="camera-outline" size={20} color={theme.colors.danger} />
               <Text style={s.addPhotoText}>+ ფოტოს დამატება</Text>
             </Pressable>
@@ -135,4 +135,17 @@ export const ChipRow = memo(function ChipRow({
       )}
     </View>
   );
-});
+}, (prev, next) =>
+  prev.item === next.item &&
+  prev.row === next.row &&
+  prev.state === next.state &&
+  prev.comment === next.comment &&
+  prev.rowRef === next.rowRef &&
+  prev.onSet === next.onSet &&
+  prev.onCommentChange === next.onCommentChange &&
+  prev.onPickPhoto === next.onPickPhoto &&
+  prev.onDeletePhoto === next.onDeletePhoto &&
+  prev.onHelp === next.onHelp &&
+  prev.cellPhotos.length === next.cellPhotos.length &&
+  prev.cellPhotos.every((p, i) => p.id === next.cellPhotos[i]?.id),
+);

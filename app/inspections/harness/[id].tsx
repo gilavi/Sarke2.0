@@ -62,7 +62,6 @@ const INFO_STEP       = 0;
 const HARNESS_STEP    = 1;
 const CONCLUSION_STEP = 2;
 const TOTAL_STEPS     = 3;
-const STEP_LABELS     = ['ინფო', 'ქამრები', 'დასკვნა'];
 
 // ── Verdict helpers ───────────────────────────────────────────────────────────
 type HarnessVerdict = 'safe' | 'unsafe';
@@ -540,6 +539,7 @@ export default function HarnessInspectionScreen() {
           </View>
         )}
         <HarnessListFlow
+          inspectionId={id}
           template={{ category: 'harness' } as any}
           questions={questions}
           answers={answers}
@@ -565,7 +565,6 @@ export default function HarnessInspectionScreen() {
       projectName={projectName}
       step={step}
       totalSteps={TOTAL_STEPS}
-      stepLabels={STEP_LABELS}
       direction={direction}
       animate={animateSteps}
       canGoNext={canGoNext}

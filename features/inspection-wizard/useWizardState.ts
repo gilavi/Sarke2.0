@@ -10,7 +10,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert } from 'react-native';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -71,7 +71,6 @@ export function useWizardState(id: string | undefined) {
   const [loadTimedOut, setLoadTimedOut] = useState(false);
   const [animateSteps, setAnimateSteps] = useState(false);
   const [harnessRowCount, setHarnessRowCount] = useState(5);
-  const [headerH, setHeaderH] = useState(0);
   const [photoUploadCount, setPhotoUploadCount] = useState(0);
   const [conclusion, setConclusion] = useState('');
   const [isSafe, setIsSafe] = useState<boolean | null>(null);
@@ -98,7 +97,6 @@ export function useWizardState(id: string | undefined) {
 
   // Cancellation token for in-flight load(). See original wizard.tsx for why.
   const loadCtrlRef = useRef<{ cancelled: boolean }>({ cancelled: false });
-  const isFirstFocusRef = useRef(true);
 
   const load = useCallback(async () => {
     if (!id) {
@@ -219,25 +217,16 @@ export function useWizardState(id: string | undefined) {
   });
 
   // Initial + focus loads. The cancellation token in load() handles benign double-fire.
+  // Load once per inspection id. We intentionally do NOT reload on screen
+  // re-focus: the wizard owns its in-flight state (answers, step, harness
+  // position, optimistic photos) and a focus refetch would tear the UI down
+  // and overwrite local state — e.g. returning from the photo picker would
+  // "reload" the screen mid-flow. Matches the equipment screens, which also
+  // load once on [id]. Resume-after-kill is covered by the offline cache.
   useEffect(() => {
     if (id) void load();
     return () => { loadCtrlRef.current.cancelled = true; };
   }, [id]);
-
-  useFocusEffect(
-    useCallback(() => {
-      if (isFirstFocusRef.current) {
-        isFirstFocusRef.current = false;
-        return () => {
-          loadCtrlRef.current.cancelled = true;
-        };
-      }
-      if (id) void load();
-      return () => {
-        loadCtrlRef.current.cancelled = true;
-      };
-    }, [load, id]),
-  );
 
   const steps = useMemo(
     () => buildSteps(questions, harnessRowCount),
@@ -397,7 +386,7 @@ export function useWizardState(id: string | undefined) {
     const mime = 'image/jpeg';
     const ext = 'jpg';
     const path = `${questionnaire.id}/${question.id}/${Date.now()}.${ext}`;
-    doUpload(result.uri, question, rowKey, mime, ext, path, result.location);
+    await doUpload(result.uri, question, rowKey, mime, ext, path, result.location);
   }, [questionnaire, pickPhotoWithAnnotation, doUpload]);
 
   const deletePhoto = useCallback(async (photo: AnswerPhoto) => {
@@ -527,8 +516,6 @@ export function useWizardState(id: string | undefined) {
     animateSteps,
     harnessRowCount,
     setHarnessRowCount,
-    headerH,
-    setHeaderH,
     photoUploadCount,
     // form fields
     conclusion,

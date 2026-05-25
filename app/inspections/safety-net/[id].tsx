@@ -451,6 +451,7 @@ export default function SafetyNetInspectionScreen() {
                     isProblematic: inspection.certificate === 'expired' || inspection.certificate === 'none',
                   },
                 ]}
+                columns={1}
               />
             </KeyboardAwareScrollView>
           )}

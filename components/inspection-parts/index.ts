@@ -24,6 +24,9 @@ export type { IdentificationGridProps, IdentificationField } from './Identificat
 export { QualDoc } from './QualDoc';
 export type { QualDocProps } from './QualDoc';
 
+export { ChipNavStrip } from './ChipNavStrip';
+export type { ChipNavStripProps, ChipNavItem, ChipNavState } from './ChipNavStrip';
+
 export { SlingTypeSheet } from './SlingTypeSheet';
 export type { SlingTypeSheetProps } from './SlingTypeSheet';
 

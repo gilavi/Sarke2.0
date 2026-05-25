@@ -406,6 +406,7 @@ export default function MobileLadderInspectionScreen() {
               <IdentificationGrid
                 fields={identFields}
                 allowUnknown
+                columns={1}
               />
 
               <View style={styles.nextDateRow}>

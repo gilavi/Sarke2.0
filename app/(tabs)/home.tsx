@@ -56,6 +56,11 @@ import {
   RECENT_SKELETONS,
 } from '../../lib/homeUtils';
 
+// Equipment flows where project selection is the first in-flow step (created
+// lazily once a project is chosen — see app/inspections/new.tsx). Starting these
+// from Home routes into that screen instead of the project-picker sheet.
+const DEFERRED_PROJECT_CATEGORIES = ['excavator', 'bobcat', 'general_equipment', 'cargo_platform'];
+
 function stepKeyFor(category: string | null | undefined, id: string): string {
   const map: Record<string, string> = {
     xaracho: 'wizard', mobile_scaffold: 'wizard',
@@ -109,6 +114,7 @@ export default function HomeScreen() {
 
 
   const [refreshing, setRefreshing] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pickerInitialView, setPickerInitialView] = useState<'list' | 'new'>('list');
   const [pickerAction, setPickerAction] = useState<'inspection' | 'incident' | 'briefing' | 'report'>('inspection');
@@ -258,7 +264,8 @@ export default function HomeScreen() {
 
       <Animated.ScrollView
         onScroll={scrollHandler}
-        scrollEventThrottle={32}
+        onScrollBeginDrag={() => { if (openMenuId) setOpenMenuId(null); }}
+        scrollEventThrottle={16}
         contentInsetAdjustmentBehavior="never"
         contentContainerStyle={[staticStyles.scrollContent, { paddingTop: HEADER_FULL + 8 }]}
       >
@@ -275,13 +282,8 @@ export default function HomeScreen() {
           <View style={{ paddingHorizontal: 20, paddingBottom: 4 }}>
             <View style={styles.draftSectionRow}>
               <Text style={styles.draftSectionTitle}>გაგრძელება</Text>
-              {allDrafts.length > 1 ? (
-                <View style={styles.draftBadge}>
-                  <Text style={styles.draftBadgeText}>{allDrafts.length}</Text>
-                </View>
-              ) : null}
             </View>
-            {allDrafts.slice(0, 3).map((draft, index) => {
+            {allDrafts.slice(0, 1).map((draft, index) => {
               const tpl = templates.find(t => t.id === draft.template_id);
               const step = draftSteps[draft.id] ?? 0;
               const totalSteps = STEP_TOTALS[tpl?.category ?? ''] ?? 0;
@@ -573,36 +575,77 @@ export default function HomeScreen() {
                     {group.items.map((q, i) => {
                       const tpl = templates.find(t => t.id === q.template_id);
                       const isLast = isLastGroup && i === group.items.length - 1;
+                      const isDraft = q.status === 'draft';
+                      const menuOpen = openMenuId === q.id;
                       const rowContent = (
-                        <Pressable
-                          onPress={() =>
-                            router.push(routeForInspection(tpl?.category, q.id, q.status === 'completed') as any)
-                          }
-                          style={[styles.recentRow, !isLast && styles.recentRowBorder]}
-                          {...a11y(
-                            `${templateName(q.template_id)}, ${q.status === 'completed' ? 'დასრულებული' : 'მონახაზი'}`,
-                            q.status === 'completed' ? 'შეეხეთ დეტალების სანახავად' : 'შეეხეთ გასაგრძელებლად',
-                            'button',
-                          )}
-                        >
-                          <InspectionTypeAvatar
-                            category={tpl?.category}
-                            size={48}
-                            status={q.status === 'completed' ? 'completed' : 'draft'}
-                            style={{ marginRight: 14 }}
-                          />
-                          <View style={staticStyles.flex}>
-                            <RecordTypePill recordType="inspection" />
-                            <Text style={styles.recentTitle} numberOfLines={1}>
-                              {templateName(q.template_id)}
-                            </Text>
-                            <Text style={styles.recentMeta} numberOfLines={1}>
-                              {(() => { const p = projects.find(pr => pr.id === q.project_id); return p ? (p.company_name || p.name) : ''; })()}
-                            </Text>
+                        <View style={[styles.recentRow, !isLast && styles.recentRowBorder]}>
+                          <Pressable
+                            onPress={() => router.push(routeForInspection(tpl?.category, q.id, !isDraft) as any)}
+                            style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}
+                          >
+                            <InspectionTypeAvatar
+                              category={tpl?.category}
+                              size={48}
+                              status={isDraft ? 'draft' : 'completed'}
+                              style={{ marginRight: 14 }}
+                            />
+                            <View style={staticStyles.flex}>
+                              <RecordTypePill recordType="inspection" />
+                              <Text style={styles.recentTitle} numberOfLines={1}>
+                                {templateName(q.template_id)}
+                              </Text>
+                              <Text style={styles.recentMeta} numberOfLines={1}>
+                                {(() => { const p = projects.find(pr => pr.id === q.project_id); return p ? (p.company_name || p.name) : ''; })()}
+                              </Text>
+                            </View>
+                            <Text style={styles.recentTime}>{relativeTime(q.created_at, t, i18n.language)}</Text>
+                          </Pressable>
+                          <View style={{ position: 'relative' }}>
+                            <Pressable
+                              hitSlop={8}
+                              onPress={() => setOpenMenuId(menuOpen ? null : q.id)}
+                              style={styles.kebabBtn}
+                            >
+                              <Ionicons name="ellipsis-vertical" size={18} color={theme.colors.inkSoft} />
+                            </Pressable>
+                            {menuOpen && (
+                              <>
+                                <Pressable
+                                  style={StyleSheet.absoluteFillObject}
+                                  onPress={() => setOpenMenuId(null)}
+                                />
+                                <View style={[styles.rowMenu, { backgroundColor: theme.colors.card, borderColor: theme.colors.hairline }]}>
+                                  <Pressable
+                                    style={styles.rowMenuItem}
+                                    onPress={() => {
+                                      setOpenMenuId(null);
+                                      router.push(routeForInspection(tpl?.category, q.id, !isDraft) as any);
+                                    }}
+                                  >
+                                    <Ionicons name={isDraft ? 'play-outline' : 'eye-outline'} size={15} color={theme.colors.ink} />
+                                    <Text style={[styles.rowMenuLabel, { color: theme.colors.ink }]}>
+                                      {isDraft ? 'გაგრძელება' : 'ნახვა'}
+                                    </Text>
+                                  </Pressable>
+                                  <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: theme.colors.hairline }} />
+                                  <Pressable
+                                    style={styles.rowMenuItem}
+                                    onPress={() => {
+                                      setOpenMenuId(null);
+                                      Alert.alert('წაშლა', 'დარწმუნებული ხართ?', [
+                                        { text: 'გაუქმება', style: 'cancel' },
+                                        { text: 'წაშლა', style: 'destructive', onPress: () => deleteRecentDraft(q.id, tpl?.category ?? undefined) },
+                                      ]);
+                                    }}
+                                  >
+                                    <Ionicons name="trash-outline" size={15} color={theme.colors.danger} />
+                                    <Text style={[styles.rowMenuLabel, { color: theme.colors.danger }]}>წაშლა</Text>
+                                  </Pressable>
+                                </View>
+                              </>
+                            )}
                           </View>
-                          <Text style={styles.recentTime}>{relativeTime(q.created_at, t, i18n.language)}</Text>
-                          <Ionicons name="chevron-forward" size={14} color={theme.colors.border} />
-                        </Pressable>
+                        </View>
                       );
                       return q.status === 'draft' ? (
                         <Swipeable
@@ -657,7 +700,11 @@ export default function HomeScreen() {
         value={null}
         onChange={(id) => {
           const tpl = tplPickerTemplates.find(t => t.id === String(id));
-          if (tpl) {
+          if (!tpl) return;
+          // Equipment flows pick their project as the first in-flow step.
+          if (tpl.category && DEFERRED_PROJECT_CATEGORIES.includes(tpl.category)) {
+            router.push(`/inspections/new?category=${tpl.category}&templateId=${tpl.id}` as any);
+          } else {
             setPickerPreselectedTemplateId(tpl.id);
             setPickerVisible(true);
           }
@@ -1056,6 +1103,38 @@ function getStyles(theme: Theme) {
     color: theme.colors.white,
     fontSize: 11,
     fontWeight: '700',
+  },
+  kebabBtn: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rowMenu: {
+    position: 'absolute',
+    right: 0,
+    top: 34,
+    width: 150,
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 6,
+    zIndex: 100,
+    overflow: 'hidden',
+  },
+  rowMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+  },
+  rowMenuLabel: {
+    fontSize: 14,
+    fontWeight: '500',
   },
 
   // TIP

@@ -1,4 +1,4 @@
-﻿import { useMemo, useRef, useState } from 'react';
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,18 +8,27 @@ import { haptic } from '../../lib/haptics';
 import type { Answer, AnswerPhoto, GridValues, Question, Template } from '../../types/models';
 import { TourGuide, type TourStep } from '../TourGuide';
 import { useScaffoldHelpSheet } from '../ScaffoldHelpSheet';
+import { ChipNavStrip, type ChipNavItem } from '../inspection-parts/ChipNavStrip';
 import {
   buildItems,
   captionFor,
-  cellState,
-  readComment,
   rowLabelsFor,
   type HarnessItem,
 } from './_shared';
 import { gets } from './styles';
 import { ChipRow } from './ChipRow';
 
+// Survives remounts within a session (keyed by inspection id) so an
+// unexpected unmount of this full-screen takeover doesn't bounce the user
+// back to the count picker — it restores their place (list + active harness).
+const flowPos = new Map<string, { step: 'count' | 'list'; rowIdx: number }>();
+
+function cloneGrid(g?: GridValues | null): GridValues {
+  return g ? JSON.parse(JSON.stringify(g)) : {};
+}
+
 export type HarnessListFlowProps = {
+  inspectionId: string;
   template: Template;
   questions: Question[];
   answers: Record<string, Answer>;
@@ -37,6 +46,7 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
   const { theme } = useTheme();
   const s = useMemo(() => gets(theme), [theme]);
   const {
+    inspectionId,
     questions,
     answers,
     photos,
@@ -56,9 +66,103 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
     [questions, harnessRowCount],
   );
   /** 'count' = number picker; 'list' = per-harness chip list */
-  const [step, setStep] = useState<'count' | 'list'>('count');
-  const [currentRowIdx, setCurrentRowIdx] = useState(0);
+  const restored = flowPos.get(inspectionId);
+  const [step, setStep] = useState<'count' | 'list'>(restored?.step ?? 'count');
+  const [currentRowIdx, setCurrentRowIdx] = useState(restored?.rowIdx ?? 0);
+  // Persist position so a remount restores it instead of resetting to 'count'.
+  useEffect(() => {
+    flowPos.set(inspectionId, { step, rowIdx: currentRowIdx });
+  }, [inspectionId, step, currentRowIdx]);
   const showHelp = useScaffoldHelpSheet();
+
+  // Local draft of grid values (row → col → value), keyed by question id,
+  // seeded from the persisted answers. ✓/✗ taps and comment edits mutate this
+  // ONLY — we persist to the server (onPatchAnswer) when the user advances or
+  // leaves, never on every tap/keystroke. Persisting per interaction re-rendered
+  // the parent wizard and reloaded the whole screen.
+  const [draft, setDraft] = useState<Record<string, GridValues>>(() => {
+    const d: Record<string, GridValues> = {};
+    for (const it of items) {
+      if (!d[it.question.id]) d[it.question.id] = cloneGrid(answers[it.question.id]?.grid_values);
+    }
+    return d;
+  });
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
+  const answersRef = useRef(answers);
+  answersRef.current = answers;
+  const photosRef = useRef(photos);
+  photosRef.current = photos;
+
+  const draftStateOf = (item: HarnessItem, r: string): 'ok' | 'bad' | undefined => {
+    const v = draft[item.question.id]?.[r]?.[item.col];
+    if (v === 'bad' || v === 'დაზიანებულია') return 'bad';
+    if (v === 'ok' || v === 'ვარგისია') return 'ok';
+    return undefined;
+  };
+  const draftCommentOf = (item: HarnessItem, r: string): string =>
+    draft[item.question.id]?.[r]?.[`კომენტარი_${item.col}`] ?? '';
+
+  // Stable handlers (item/row passed in) so memoized ChipRows only re-render
+  // when their own row's data changes.
+  const handleSet = useCallback((item: HarnessItem, r: string, value: 'ok' | 'bad') => {
+    haptic.light();
+    setDraft(prev => {
+      const grid: GridValues = { ...(prev[item.question.id] ?? {}) };
+      const cur: Record<string, string> = { ...(grid[r] ?? {}) };
+      cur[item.col] = value;
+      if (value === 'ok') delete cur[`კომენტარი_${item.col}`];
+      grid[r] = cur;
+      return { ...prev, [item.question.id]: grid };
+    });
+  }, []);
+
+  const handleComment = useCallback((item: HarnessItem, r: string, text: string) => {
+    setDraft(prev => {
+      const grid: GridValues = { ...(prev[item.question.id] ?? {}) };
+      const cur: Record<string, string> = { ...(grid[r] ?? {}) };
+      if (text.trim()) cur[`კომენტარი_${item.col}`] = text;
+      else delete cur[`კომენტარი_${item.col}`];
+      grid[r] = cur;
+      return { ...prev, [item.question.id]: grid };
+    });
+  }, []);
+
+  const handlePickPhoto = useCallback(
+    (item: HarnessItem, r: string) => onPickItemPhoto(item.question, r, item.col),
+    [onPickItemPhoto],
+  );
+
+  const handleHelp = useCallback((item: HarnessItem) => showHelp(item.label), [showHelp]);
+
+  // Persist the whole draft to the server. Called on advance/leave only.
+  const flush = useCallback(
+    async (snapshot?: Record<string, GridValues>) => {
+      const snap = snapshot ?? draftRef.current;
+      const byQuestion = new Map<string, Question>();
+      for (const it of items) byQuestion.set(it.question.id, it.question);
+      for (const [qid, grid] of Object.entries(snap)) {
+        const q = byQuestion.get(qid);
+        if (!q) continue;
+        await onPatchAnswer(q, a => ({ ...a, grid_values: grid }));
+      }
+      // Drop photos for cells that ended up marked good.
+      for (const it of items) {
+        const grid = snap[it.question.id];
+        if (!grid) continue;
+        for (const r of Object.keys(grid)) {
+          const v = grid[r]?.[it.col];
+          if (v !== 'ok' && v !== 'ვარგისია') continue;
+          const a = answersRef.current[it.question.id];
+          const cellPhotos = a ? photosRef.current[a.id] ?? [] : [];
+          const tag = captionFor(r, it.col);
+          for (const p of cellPhotos) if (p.caption === tag) void onDeletePhoto(p);
+        }
+      }
+    },
+    [items, onPatchAnswer, onDeletePhoto],
+  );
+
   // Tour refs
   const headerRef = useRef<View>(null);
   const firstRowRef = useRef<View>(null);
@@ -162,70 +266,55 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
   const safeRowIdx = Math.min(currentRowIdx, rowLabels.length - 1);
   const row = rowLabels[safeRowIdx];
 
-  const setCell = async (item: HarnessItem, r: string, value: 'ok' | 'bad') => {
-    haptic.light();
-    await onPatchAnswer(item.question, a => {
-      const grid: GridValues = { ...(a.grid_values ?? {}) };
-      const cur: Record<string, string> = { ...(grid[r] ?? {}) };
-      cur[item.col] = value;
-      if (value === 'ok') delete cur[`კომენტარი_${item.col}`];
-      grid[r] = cur;
-      return { ...a, grid_values: grid };
-    });
-    // Remove photos when marking good
-    if (value === 'ok') {
-      const tag = captionFor(r, item.col);
-      const a = answers[item.question.id];
-      const cellPhotos = a ? photos[a.id] ?? [] : [];
-      for (const p of cellPhotos) if (p.caption === tag) void onDeletePhoto(p);
-    }
-  };
-
-  const onCommentChange = (item: HarnessItem, text: string) =>
-    onPatchAnswer(item.question, a => {
-      const grid: GridValues = { ...(a.grid_values ?? {}) };
-      const cur: Record<string, string> = { ...(grid[row] ?? {}) };
-      if (text.trim()) cur[`კომენტარი_${item.col}`] = text;
-      else delete cur[`კომენტარი_${item.col}`];
-      grid[row] = cur;
-      return { ...a, grid_values: grid };
-    });
-
-  const applyAutoOkForCurrentRow = async () => {
+  // Snapshot of the draft with every unanswered cell in the current row
+  // defaulted to 'ok' (the harness convention).
+  const buildAutoOkSnapshot = (): Record<string, GridValues> => {
+    const snap: Record<string, GridValues> = {};
+    for (const [qid, g] of Object.entries(draftRef.current)) snap[qid] = cloneGrid(g);
     for (const item of items) {
-      const v = answers[item.question.id]?.grid_values?.[row]?.[item.col];
-      if (v !== undefined) continue;
-      await onPatchAnswer(item.question, a => {
-        const grid: GridValues = { ...(a.grid_values ?? {}) };
-        const cur: Record<string, string> = { ...(grid[row] ?? {}) };
-        cur[item.col] = 'ok';
-        grid[row] = cur;
-        return { ...a, grid_values: grid };
-      });
+      const qid = item.question.id;
+      if (!snap[qid]) snap[qid] = {};
+      const cur: Record<string, string> = { ...(snap[qid][row] ?? {}) };
+      if (cur[item.col] === undefined) cur[item.col] = 'ok';
+      snap[qid][row] = cur;
     }
-  };
-
-  const advance = () => {
-    if (safeRowIdx + 1 >= rowLabels.length) {
-      onConclude();
-    } else {
-      setCurrentRowIdx(safeRowIdx + 1);
-    }
+    return snap;
   };
 
   const confirmCurrentRow = () => {
     haptic.success();
-    // Advance first so the user moves on immediately.
-    // Auto-ok fires after (using captured `row`/`answers` from this render)
-    // so there's no visible flash of chips changing state.
-    advance();
-    void applyAutoOkForCurrentRow();
+    const snap = buildAutoOkSnapshot();
+    if (safeRowIdx + 1 >= rowLabels.length) {
+      // Last harness: persist everything once, then leave the flow.
+      setDraft(snap);
+      void flush(snap).then(onConclude);
+    } else {
+      // Advancing between harnesses is purely local — only the list (middle)
+      // re-renders; the header stays put and nothing is sent to the server,
+      // so there's no full-screen reload. Persistence happens on conclude/close.
+      setDraft(snap);
+      setCurrentRowIdx(safeRowIdx + 1);
+    }
+  };
+
+  // Leaving the flow persists whatever's been entered so far.
+  const handleClose = () => {
+    void flush();
+    onClose();
   };
 
   const badCountThisRow = items.reduce(
-    (n, it) => (cellState(answers, it, row) === 'bad' ? n + 1 : n),
+    (n, it) => (draftStateOf(it, row) === 'bad' ? n + 1 : n),
     0,
   );
+
+  // Secondary navigation: one chip per harness, so the user can jump around
+  // instead of only advancing linearly via "დადასტურება →".
+  const harnessChips: ChipNavItem[] = rowLabels.map(r => {
+    const hasBad = items.some(it => draftStateOf(it, r) === 'bad');
+    const allSet = items.every(it => draftStateOf(it, r) !== undefined);
+    return { key: r, label: r, state: hasBad ? 'problem' : allSet ? 'done' : 'pending' };
+  });
 
   return (
     <TourGuide tourId="harness_list_v2" steps={tourSteps}>
@@ -238,7 +327,7 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
                 ქამარი {safeRowIdx + 1} / {rowLabels.length}
               </Text>
             </View>
-            <Pressable hitSlop={12} onPress={onClose} style={s.closeBtn} accessibilityLabel="დახურვა">
+            <Pressable hitSlop={12} onPress={handleClose} style={s.closeBtn} accessibilityLabel="დახურვა">
               <Ionicons name="close" size={22} color={theme.colors.ink} />
             </Pressable>
           </View>
@@ -247,14 +336,20 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
           </Text>
         </View>
 
+        <ChipNavStrip
+          items={harnessChips}
+          activeIndex={safeRowIdx}
+          onSelect={setCurrentRowIdx}
+        />
+
         <ScrollView
           style={{ flex: 1 }}
           contentContainerStyle={{ padding: 16, gap: 8, paddingBottom: 24 }}
           keyboardShouldPersistTaps="handled"
         >
           {items.map((item, idx) => {
-            const state = cellState(answers, item, row);
-            const comment = readComment(answers, item, row);
+            const state = draftStateOf(item, row);
+            const comment = draftCommentOf(item, row);
             const a = answers[item.question.id];
             const allPhotos = a ? photos[a.id] ?? [] : [];
             const cellPhotos = allPhotos.filter(p => p.caption === captionFor(row, item.col));
@@ -266,12 +361,11 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
                 state={state}
                 comment={comment}
                 cellPhotos={cellPhotos}
-                onOk={() => setCell(item, row, 'ok')}
-                onBad={() => setCell(item, row, 'bad')}
-                onCommentChange={text => onCommentChange(item, text)}
-                onPickPhoto={() => onPickItemPhoto(item.question, row, item.col)}
+                onSet={handleSet}
+                onCommentChange={handleComment}
+                onPickPhoto={handlePickPhoto}
                 onDeletePhoto={onDeletePhoto}
-                onHelp={() => showHelp(item.label)}
+                onHelp={handleHelp}
                 rowRef={idx === 0 ? firstRowRef : undefined}
               />
             );

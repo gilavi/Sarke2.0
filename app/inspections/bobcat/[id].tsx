@@ -12,7 +12,7 @@ import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
 import { PlateInput, type PlateInputHandle } from '../../../components/inputs/PlateInput';
 import { SerialKeypad } from '../../../components/inputs/SerialKeypad';
-import { InspectionShell, ChecklistStep, ConclusionStep, ProjectPickerStep } from '../../../components/inspection-steps';
+import { InspectionShell, ChecklistStep, ConclusionStep } from '../../../components/inspection-steps';
 import type { VerdictOption } from '../../../components/inspection-steps';
 import { InspectionResultView } from '../../../components/InspectionResultView';
 import { useTheme, type Theme } from '../../../lib/theme';
@@ -58,7 +58,6 @@ const SERIAL_STEP     = 2;
 const CHECKLIST_STEP  = 3;
 const CONCLUSION_STEP = 4;
 const TOTAL_STEPS     = 5;
-const STEP_LABELS     = ['პროექტი', 'მოდელი', 'ს/ნ', 'შემოწ.', 'დასკვნა'];
 
 // ── Main screen ───────────────────────────────────────────────────────────────
 
@@ -91,7 +90,7 @@ export default function BobcatInspectionScreen() {
 
   const {
     inspection, setInspection, inspectionRef,
-    projectName, setProjectName,
+    projectName,
     saving, loading, completing,
     previewHtml, previewBusy,
     step, setStep, direction, animateSteps,
@@ -278,7 +277,7 @@ export default function BobcatInspectionScreen() {
   }, [step, complete, id, router, setStep]);
 
   const handlePrev = useCallback(async () => {
-    if (step === PROJECT_STEP) {
+    if (step === INFO_STEP) {
       await exit();
     } else {
       setStep(s => s - 1);
@@ -381,35 +380,21 @@ export default function BobcatInspectionScreen() {
     <InspectionShell
       title={screenTitle}
       projectName={projectName}
-      step={step}
-      totalSteps={TOTAL_STEPS}
+      step={step - 1}
+      totalSteps={TOTAL_STEPS - 1}
       direction={direction}
       animate={animateSteps}
       canGoNext={canGoNext}
       isLastStep={step === CONCLUSION_STEP}
       saving={saving}
       completing={completing}
-      stepLabels={STEP_LABELS}
       showPdfIcon={step > PROJECT_STEP}
       generatingPdf={generatingPdf}
       onNext={handleNext}
-      onPrev={step === PROJECT_STEP
-        ? async () => { await exit(); }
-        : handlePrev}
+      onPrev={handlePrev}
       onClose={() => router.back()}
       onPdf={handlePdf}
     >
-          {/* ── Step 0: Project picker ──────────────────────────────────── */}
-          {step === PROJECT_STEP && (
-            <ProjectPickerStep
-              selectedId={inspection.projectId}
-              onSelect={p => {
-                setProjectName(p.company_name || p.name);
-                setInspection(prev => prev ? { ...prev, projectId: p.id } : prev);
-              }}
-            />
-          )}
-
           {/* ── Step 1: Equipment model ─────────────────────────────────── */}
           {step === INFO_STEP && (
             <KeyboardAwareScrollView

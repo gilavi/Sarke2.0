@@ -39,6 +39,14 @@ const qMerged: Inspection = { ...q, ...(safePatch ?? {}) };
 
 **Verified:** Simulator, after fix — Continue draft → wizard loads in ~1s on q1/17 with the previously-tapped "კი" highlighted. Stepped to q7/17 (scaffold radio), tapped a row, opened exit modal, saved as draft, back to home. Recent activity bumps to "8 სთ. წინ". Clean round-trip, no loops, no skeleton-stuck states.
 
+## P0 — Report slides overwritten: only the last-edited slide survives · FIXED 2026-05-26
+
+**Repro:** Reports → create slide 1, add a title/photo, save → back on the slide list, add slide 2 → fill slide 2 → finish. Slide 1 is blank/gone; only slide 2 has content.
+
+**Root cause:** The slide editor ([app/reports/[id]/slide/[slideId].tsx](app/reports/[id]/slide/[slideId].tsx)) saved each slide via `reportsApi.update` but never wrote the result back into the React Query cache. The parent slide-list screen ([app/reports/[id]/edit.tsx](app/reports/[id]/edit.tsx)) reads `report` from that cache via `useReport`; on a stack `router.back()` it does not remount or refetch, so it kept a stale copy of the slides. When the user then tapped "add slide", `addSlide`/`persistSlides` rebuilt the slides array from the **stale** cache and PATCHed it to the server — silently overwriting the content/photo the user had just saved into the previous slide. Each new slide reset every earlier slide to its pre-edit empty state, so only the last slide edited looked saved.
+
+**Fix:** After `reportsApi.update` in the slide editor's `onSave`, write the returned report into the cache with `queryClient.setQueryData(qk.reports.byId(saved.id), saved)` — the same pattern `edit.tsx`'s `persistSlides` already uses. The list screen now builds on fresh data when adding subsequent slides, so all slides persist.
+
 ## P1-1 — Empty `კითხვარი` screen on back · resolved by P0 fix
 
 This was the wizard rendering its `if (!step)` "შინაარსი ვერ ჩაიტვირთა" branch after a stale stepIndex restored from AsyncStorage indexed past an empty `steps` array — itself a downstream effect of the load loop never reaching the questions/template fetch. With P0 fixed, `steps` is always populated by the time loading=false, so this branch no longer triggers.

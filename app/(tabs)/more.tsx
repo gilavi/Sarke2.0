@@ -107,8 +107,8 @@ export default function MoreScreen() {
 
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top']}>
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingVertical: 16, paddingBottom: 32, gap: 18 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top', 'bottom']}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingTop: 16, paddingBottom: 24, gap: 18 }}>
         <Text style={{ fontSize: 22, fontWeight: '700', fontFamily: theme.typography.fontFamily.heading, paddingHorizontal: 20, color: theme.colors.ink }}>
           {t('more.title')}
         </Text>
@@ -127,7 +127,7 @@ export default function MoreScreen() {
               </Text>
               <Text style={{ color: theme.colors.inkSoft, fontSize: 12 }}>{user?.email ?? ''}</Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color={theme.colors.inkFaint} />
+            <Ionicons name="create-outline" size={20} color={theme.colors.inkSoft} />
           </View>
         </Card>
 
@@ -232,9 +232,9 @@ export default function MoreScreen() {
             <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
           </Pressable>
           <View style={styles.divider} />
-          <Pressable onPress={() => router.push('/guide')} style={styles.settingsRow} {...a11y('Guide / ინსტრუქცია', undefined, 'button')}>
-            <Ionicons name="book-outline" size={18} color={theme.colors.inkSoft} />
-            <Text style={styles.settingsLabel}>Guide / ინსტრუქცია</Text>
+          <Pressable onPress={() => router.push('/guide')} style={styles.settingsRow} {...a11y('ხარაჩო 3D გიდი', undefined, 'button')}>
+            <Ionicons name="cube-outline" size={18} color={theme.colors.inkSoft} />
+            <Text style={styles.settingsLabel}>ხარაჩო 3D გიდი</Text>
             <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
           </Pressable>
           <View style={styles.divider} />

@@ -11,7 +11,6 @@ import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
 import { Button } from '../../../components/ui';
 import { DateTimeField } from '../../../components/DateTimeField';
-import { ProjectPickerStep } from '../../../components/inspection-steps';
 import { WizardStepTransition } from '../../../components/wizard/WizardStepTransition';
 import { FlowHeader } from '../../../components/FlowHeader';
 import { InspectionResultView } from '../../../components/InspectionResultView';
@@ -58,7 +57,6 @@ const CARGO_STEP      = 2;
 const CHECKLIST_STEP  = 3;
 const CONCLUSION_STEP = 4;
 const TOTAL_STEPS     = 5;
-const STEP_LABELS     = ['ინფო', 'პლატფ.', 'ტვირთი', 'შემოწ.', 'დასკვნა'];
 
 // ── Binary pill selector ──────────────────────────────────────────────────────
 function BinaryPills<T extends string>({
@@ -111,7 +109,7 @@ export default function CargoPlatformInspectionScreen() {
   // behaviour matches the pre-refactor screen exactly.
   const {
     inspection, setInspection, inspectionRef,
-    projectName, setProjectName, saving, loading, completing, celebrating, generatingPdf,
+    projectName, saving, loading, completing, celebrating, generatingPdf,
     previewHtml, previewBusy,
     step, setStep, direction, animateSteps,
     paywallVisible, setPaywallVisible, pdfLocked,
@@ -119,7 +117,7 @@ export default function CargoPlatformInspectionScreen() {
     complete, handlePdf, buildPreview, exit,
   } = useInspectionFlow<CargoPlatformInspection>({
     id,
-    firstStep: INFO_STEP,
+    firstStep: PLATFORM_STEP,
     lastStep: CONCLUSION_STEP,
     persistPrefix: 'cargo-platform-wizard',
     templateId: CARGO_PLATFORM_TEMPLATE_ID,
@@ -326,7 +324,7 @@ export default function CargoPlatformInspectionScreen() {
   }, [step, complete, setStep]);
 
   const handlePrev = useCallback(async () => {
-    if (step === INFO_STEP) {
+    if (step === PLATFORM_STEP) {
       await exit();
     } else {
       setStep(s => s - 1);
@@ -398,9 +396,8 @@ export default function CargoPlatformInspectionScreen() {
       <FlowHeader
         flowTitle="პლატფორმის შემოწმება"
         project={projectName ? { name: projectName } : null}
-        step={step + 1}
-        totalSteps={TOTAL_STEPS}
-        stepLabels={STEP_LABELS}
+        step={step}
+        totalSteps={TOTAL_STEPS - 1}
         leading="back"
         trailing="close"
         onClose={() => router.back()}
@@ -431,22 +428,6 @@ export default function CargoPlatformInspectionScreen() {
       <View style={{ flex: 1 }}>
         <WizardStepTransition stepKey={step} direction={direction} animate={animateSteps}>
 
-          {/* ── Step 0: Project picker ───────────────────────────────────────── */}
-          {step === INFO_STEP && (
-            <ProjectPickerStep
-              selectedId={inspection.projectId}
-              onSelect={p => {
-                setProjectName(p.company_name || p.name);
-                setInspection(prev => prev ? {
-                  ...prev,
-                  projectId: p.id,
-                  company: p.company_name || p.name,
-                  address: p.address ?? prev.address,
-                } : prev);
-              }}
-            />
-          )}
-
           {/* ── Step 1: Platform ID ──────────────────────────────────────────── */}
           {step === PLATFORM_STEP && (
             <KeyboardAwareScrollView
@@ -476,30 +457,24 @@ export default function CargoPlatformInspectionScreen() {
                 onChangeText={v => update('platformTypeModel', v)}
               />
 
-              <View style={styles.twoCol}>
-                <View style={styles.colHalf}>
-                  <FloatingLabelInput
-                    label="სიგრძე (მ)"
-                    value={inspection.platformLength != null ? String(inspection.platformLength) : ''}
-                    onChangeText={v => {
-                      const n = parseFloat(v);
-                      update('platformLength', isNaN(n) ? null : n);
-                    }}
-                    keyboardType="decimal-pad"
-                  />
-                </View>
-                <View style={styles.colHalf}>
-                  <FloatingLabelInput
-                    label="სიგანე (მ)"
-                    value={inspection.platformWidth != null ? String(inspection.platformWidth) : ''}
-                    onChangeText={v => {
-                      const n = parseFloat(v);
-                      update('platformWidth', isNaN(n) ? null : n);
-                    }}
-                    keyboardType="decimal-pad"
-                  />
-                </View>
-              </View>
+              <FloatingLabelInput
+                label="სიგრძე (მ)"
+                value={inspection.platformLength != null ? String(inspection.platformLength) : ''}
+                onChangeText={v => {
+                  const n = parseFloat(v);
+                  update('platformLength', isNaN(n) ? null : n);
+                }}
+                keyboardType="decimal-pad"
+              />
+              <FloatingLabelInput
+                label="სიგანე (მ)"
+                value={inspection.platformWidth != null ? String(inspection.platformWidth) : ''}
+                onChangeText={v => {
+                  const n = parseFloat(v);
+                  update('platformWidth', isNaN(n) ? null : n);
+                }}
+                keyboardType="decimal-pad"
+              />
 
               <FloatingLabelInput
                 label="ვიზუალური აღწერა / ფერი"
@@ -716,8 +691,6 @@ function getstyles(theme: Theme) {
     stepBody: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 12 },
     footer: { gap: 10, paddingHorizontal: 24, paddingTop: 8, paddingBottom: 16, backgroundColor: theme.colors.card },
 
-    twoCol: { flexDirection: 'row', gap: 8 },
-    colHalf: { flex: 1 },
 
     fieldLabel: { fontSize: 12, fontWeight: '600', color: theme.colors.inkSoft },
     sectionHint: { fontSize: 12, color: theme.colors.inkSoft, fontStyle: 'italic', lineHeight: 18 },

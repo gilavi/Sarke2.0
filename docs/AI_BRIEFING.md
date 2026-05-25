@@ -156,6 +156,17 @@ Single `orders` table (`document_type text`, `form_data jsonb` — no per-type t
 | `lifting_accessories_inspection` | `lifting_accessories_inspections` | aaaaaaaa | `app/inspections/lifting-accessories/[id].tsx` |
 | `forklift_inspection` | `forklift_inspections` | dddddddd | `app/inspections/forklift/[id].tsx` — 39-item checklist, 13-row summary, extended signature |
 
+### Project selection (no in-flow project step)
+Equipment inspections are created **with a project already attached** (DB
+`project_id` is `NOT NULL`), so there's no in-flow project-pick step. Launching
+**from a project** creates the row immediately and opens on the first real step.
+Launching **from Home** routes to `app/inspections/new.tsx` — a lightweight
+screen where project selection is the first full-screen step; it creates the row
+lazily once a project is chosen (via `lib/inspection/registry.ts`), then
+`router.replace`s into the real flow. Multi-item flows (fall-protection devices,
+harnesses) share `components/inspection-parts/ChipNavStrip` for jump-navigation
+between sub-items.
+
 ---
 
 ## Workflow Rules (from CLAUDE.md)

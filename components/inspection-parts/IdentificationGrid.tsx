@@ -11,10 +11,10 @@ export interface IdentificationField {
   label: string;
   value: string;
   onChange?: (v: string) => void;
-  type?: 'text' | 'number' | 'chips';
-  /** For type='chips': raw option values */
+  type?: 'text' | 'number' | 'chips' | 'select';
+  /** For type='chips'|'select': raw option values */
   options?: string[];
-  /** For type='chips': display labels (parallel to options); falls back to options if absent */
+  /** For type='chips'|'select': display labels (parallel to options); falls back to options if absent */
   optionLabels?: string[];
   /** Red indicator when true (caller computes from domain logic) */
   isProblematic?: boolean;
@@ -61,10 +61,12 @@ export function IdentificationGrid({
       {fields.map((field, idx) => (
         <View
           key={idx}
-          // chips fields span full width for readability
-          style={[styles.item, { width: field.type === 'chips' ? '100%' : itemWidth }]}
+          // chips/select fields span full width for readability
+          style={[styles.item, { width: field.type === 'chips' || field.type === 'select' ? '100%' : itemWidth }]}
         >
-          {field.type === 'chips' ? (
+          {field.type === 'select' ? (
+            <SelectField field={field} />
+          ) : field.type === 'chips' ? (
             field.multiSelect
               ? <MultiChipsField field={field} />
               : <ChipsField field={field} />
@@ -98,6 +100,44 @@ export function IdentificationGrid({
           )}
         </View>
       ))}
+    </View>
+  );
+}
+
+// ── Single-select "form selector" — full-width selectable list rows ──────────
+
+function SelectField({ field }: { field: IdentificationField }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+  const options = field.options ?? [];
+  const labels = field.optionLabels ?? options;
+
+  return (
+    <View style={styles.chipsGroup}>
+      <Text style={styles.chipsLabel}>{field.label}</Text>
+      <View style={styles.selectList}>
+        {options.map((opt, i) => {
+          const active = field.value === opt;
+          return (
+            <Pressable
+              key={opt}
+              style={[styles.selectRow, active && styles.selectRowActive]}
+              onPress={() => {
+                haptic.light();
+                field.onChange?.(opt);
+              }}
+              {...a11y(labels[i] ?? opt, undefined, 'radio')}
+            >
+              <Text style={[styles.selectRowText, active && styles.selectRowTextActive]}>
+                {labels[i] ?? opt}
+              </Text>
+              <View style={[styles.radio, active && styles.radioActive]}>
+                {active && <View style={styles.radioDot} />}
+              </View>
+            </Pressable>
+          );
+        })}
+      </View>
     </View>
   );
 }
@@ -224,6 +264,36 @@ function getstyles(theme: Theme) {
     unknownLabel: { fontSize: 11, color: theme.colors.inkSoft },
     chipsGroup: { gap: 8 },
     chipsLabel: { fontSize: 12, fontWeight: '600', color: theme.colors.inkSoft },
+    selectList: { gap: 8 },
+    selectRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 10,
+      paddingHorizontal: 14,
+      paddingVertical: 14,
+      borderRadius: 12,
+      borderWidth: 1.5,
+      borderColor: theme.colors.hairline,
+      backgroundColor: theme.colors.card,
+    },
+    selectRowActive: {
+      borderColor: theme.colors.accent,
+      backgroundColor: theme.colors.accentSoft,
+    },
+    selectRowText: { fontSize: 15, color: theme.colors.ink, fontWeight: '500' },
+    selectRowTextActive: { color: theme.colors.accent, fontWeight: '700' },
+    radio: {
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      borderWidth: 2,
+      borderColor: theme.colors.hairline,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    radioActive: { borderColor: theme.colors.accent },
+    radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: theme.colors.accent },
     chipsRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
     chip: {
       paddingHorizontal: 12,

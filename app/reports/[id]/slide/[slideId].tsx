@@ -22,6 +22,8 @@ import { friendlyError } from '../../../../lib/errorMap';
 import { reportsApi, storageApi } from '../../../../lib/services';
 import { STORAGE_BUCKETS } from '../../../../lib/supabase';
 import { imageForDisplay } from '../../../../lib/imageUrl';
+import { qk } from '../../../../lib/apiHooks';
+import { useQueryClient } from '@tanstack/react-query';
 import { usePhotoWithLocation } from '../../../../hooks/usePhotoWithLocation';
 import type { Report, ReportSlide } from '../../../../types/models';
 
@@ -32,6 +34,7 @@ export default function ReportSlideEditor() {
   const router = useRouter();
   const toast = useToast();
   const showSheet = useBottomSheet();
+  const queryClient = useQueryClient();
   const { id, slideId } = useLocalSearchParams<{ id: string; slideId: string }>();
   const { pickPhotoWithAnnotation, pickPhotoWithAnnotationFromUri } = usePhotoWithLocation();
 
@@ -190,7 +193,8 @@ export default function ReportSlideEditor() {
         : s,
     );
     try {
-      await reportsApi.update(report.id, { slides: next });
+      const saved = await reportsApi.update(report.id, { slides: next });
+      queryClient.setQueryData(qk.reports.byId(saved.id), saved);
       router.back();
     } catch (e) {
       toast.error(friendlyError(e, 'შენახვა ვერ მოხერხდა'));

@@ -80,6 +80,19 @@ queue.
   has no visible trigger from inside the wizard. The trigger lives on
   the inspection detail screen; the modal stays here so a flag flip is
   enough to surface it without prop drilling.
+- **Loads once per inspection id — no focus refetch.** A previous
+  `useFocusEffect` re-ran `load()` (→ `loading=true`) on every screen
+  re-focus (e.g. returning from the photo picker), which tore the step
+  UI down, refetched, and overwrote in-flight state — surfacing as a
+  mid-flow "reload" (and bouncing `HarnessListFlow` back to its count
+  picker). The focus refetch was removed; the single `[id]` effect
+  loads once, like the equipment screens. Resume-after-kill is covered
+  by the offline answer cache. Don't re-add a focus reload.
+- The footer is wrapped in `KeyboardStickyView` (react-native-keyboard-
+  controller) so the primary action button rides above the keyboard.
+  Each step owns its own `KeyboardAwareScrollView` — do NOT also wrap
+  the tree in `KeyboardAvoidingView` (that double-counts the keyboard
+  height and pushes the focused field off-screen).
 
 ## Canonical helpers used (from lib/)
 - `lib/services` — `answersApi`, `inspectionsApi`, `projectsApi`,

@@ -15,7 +15,7 @@ import { PlateInput, type PlateInputHandle } from '../../../components/inputs/Pl
 import { SerialKeypad } from '../../../components/inputs/SerialKeypad';
 import { Button } from '../../../components/ui';
 import { ExcavatorMaintenanceItem } from '../../../components/excavator/ExcavatorMaintenanceItem';
-import { InspectionShell, ChecklistStep, ConclusionStep, ProjectPickerStep } from '../../../components/inspection-steps';
+import { InspectionShell, ChecklistStep, ConclusionStep } from '../../../components/inspection-steps';
 import type { VerdictOption } from '../../../components/inspection-steps';
 import { SignatureSheet } from '../../../components/inspection-parts/SignatureSheet';
 import { InspectionResultView } from '../../../components/InspectionResultView';
@@ -97,7 +97,6 @@ const SERIAL_STEP     = 2;
 const CHECKLIST_STEP  = 3;
 const CONCLUSION_STEP = 4;
 const TOTAL_STEPS     = 5;
-const STEP_LABELS     = ['პროექტი', 'სახ.ნომ', 'სERიული', 'შემოწ.', 'დასკვნა'];
 
 export default function ExcavatorInspectionScreen() {
   const { theme } = useTheme();
@@ -129,7 +128,7 @@ export default function ExcavatorInspectionScreen() {
 
   const {
     inspection, setInspection, inspectionRef,
-    projectName, setProjectName,
+    projectName,
     saving, loading, completing, celebrating, generatingPdf,
     previewHtml, previewBusy,
     step, setStep, direction, animateSteps,
@@ -138,7 +137,7 @@ export default function ExcavatorInspectionScreen() {
     complete, handlePdf, buildPreview, exit,
   } = useInspectionFlow<ExcavatorInspection>({
     id,
-    firstStep: INFO_STEP,
+    firstStep: PLATE_STEP,
     lastStep: CONCLUSION_STEP,
     persistPrefix: 'excavator-wizard',
     templateId: EXCAVATOR_TEMPLATE_ID,
@@ -373,7 +372,7 @@ export default function ExcavatorInspectionScreen() {
   }, [step, complete, setStep]);
 
   const handlePrev = useCallback(async () => {
-    if (step === INFO_STEP) {
+    if (step === PLATE_STEP) {
       await exit();
     } else {
       setStep(s => s - 1);
@@ -489,15 +488,14 @@ export default function ExcavatorInspectionScreen() {
       <InspectionShell
         title="ექსკავატორი"
         projectName={projectName}
-        step={step}
-        totalSteps={TOTAL_STEPS}
+        step={step - 1}
+        totalSteps={TOTAL_STEPS - 1}
         direction={direction}
         animate={animateSteps}
         canGoNext={canGoNext}
         isLastStep={step === CONCLUSION_STEP}
         saving={saving}
         completing={completing}
-        stepLabels={STEP_LABELS}
         showPdfIcon={step > INFO_STEP}
         generatingPdf={generatingPdf}
         onNext={handleNext}
@@ -505,17 +503,6 @@ export default function ExcavatorInspectionScreen() {
         onClose={() => router.back()}
         onPdf={handlePdf}
       >
-        {/* ── Step 0: Project picker ─────────────────────────────────── */}
-        {step === INFO_STEP && (
-          <ProjectPickerStep
-            selectedId={inspection.projectId}
-            onSelect={p => {
-              setProjectName(p.company_name || p.name);
-              setInspection(prev => prev ? { ...prev, projectId: p.id } : prev);
-            }}
-          />
-        )}
-
         {/* ── Step 1: Plate / registration number (custom keypad) ─────── */}
         {step === PLATE_STEP && (
           <View style={{ flex: 1 }}>

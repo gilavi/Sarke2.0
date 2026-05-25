@@ -10,6 +10,7 @@ import {
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { A11yText as Text } from '../components/primitives/A11yText';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
@@ -88,6 +89,7 @@ const HOTSPOTS: { key: PartKey; x: number; y: number; w: number; h: number }[] =
 ];
 
 export default function GuideScreen() {
+  const router = useRouter();
   const [selected, setSelected] = useState<PartKey | null>(null);
   const slideAnim = useRef(new Animated.Value(0)).current;
 
@@ -126,6 +128,15 @@ export default function GuideScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
+          <Ionicons name="chevron-back" size={24} color="#cbd5e1" />
+        </Pressable>
+        <Text style={styles.headerTitle}>ხარაჩო 3D გიდი</Text>
+        <View style={{ width: 40 }} />
+      </View>
+
       <View style={styles.inner}>
         {/* Hint pill */}
         {!selected && (
@@ -212,6 +223,25 @@ function getStyles() {
     container: {
       flex: 1,
       backgroundColor: '#0f172a',
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 8,
+      paddingVertical: 10,
+    },
+    backBtn: {
+      width: 40,
+      height: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    headerTitle: {
+      flex: 1,
+      color: '#ffffff',
+      fontSize: 17,
+      fontWeight: '700',
+      textAlign: 'center',
     },
     inner: {
       flex: 1,

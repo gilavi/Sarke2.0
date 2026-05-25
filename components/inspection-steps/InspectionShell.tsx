@@ -4,7 +4,7 @@
  * so each flow only needs to provide its step content.
  */
 import { type ReactNode } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -79,7 +79,7 @@ export function InspectionShell({
         trailing="close"
         onClose={onClose}
         trailingElement={
-          showPdfIcon && step > 0 && onPdf ? (
+          showPdfIcon && onPdf ? (
             <Pressable
               onPress={onPdf}
               disabled={generatingPdf}

@@ -11,8 +11,9 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
+import { IdentificationGrid } from '../../../components/inspection-parts/IdentificationGrid';
 import { DateTimeField } from '../../../components/DateTimeField';
-import { InspectionShell, ChecklistStep, ConclusionStep, ProjectPickerStep } from '../../../components/inspection-steps';
+import { InspectionShell, ChecklistStep, ConclusionStep } from '../../../components/inspection-steps';
 import type { VerdictOption, ChecklistResult } from '../../../components/inspection-steps';
 import { InspectionResultView } from '../../../components/InspectionResultView';
 import { useTheme, type Theme } from '../../../lib/theme';
@@ -47,7 +48,6 @@ const DETAILS_STEP    = 1;
 const CHECKLIST_STEP  = 2;
 const CONCLUSION_STEP = 3;
 const TOTAL_STEPS     = 4;
-const STEP_LABELS     = ['პროექტი', 'ინფო', 'შემოწ.', 'დასკვნა'];
 
 export default function GeneralEquipmentScreen() {
   const { theme } = useTheme();
@@ -72,7 +72,7 @@ export default function GeneralEquipmentScreen() {
   // ── Shared orchestration ──────────────────────────────────────────────────
   const {
     inspection, setInspection, inspectionRef,
-    projectName, setProjectName,
+    projectName,
     saving, loading, completing, celebrating, generatingPdf,
     previewHtml, previewBusy,
     step, setStep, direction, animateSteps,
@@ -81,7 +81,7 @@ export default function GeneralEquipmentScreen() {
     complete, handlePdf, buildPreview, exit,
   } = useInspectionFlow<GeneralEquipmentInspection>({
     id,
-    firstStep: INFO_STEP,
+    firstStep: DETAILS_STEP,
     lastStep: CONCLUSION_STEP,
     persistPrefix: 'ge-wizard',
     templateId: GENERAL_EQUIPMENT_TEMPLATE_ID,
@@ -113,7 +113,7 @@ export default function GeneralEquipmentScreen() {
       }
       return missing;
     },
-    autofill: (insp, { inspectorName }) => {
+    autofill: (insp, { inspectorName, project }) => {
       let next = insp;
       const patch: Record<string, unknown> = {};
       if (inspectorName) {
@@ -125,6 +125,10 @@ export default function GeneralEquipmentScreen() {
           next = { ...next, signerName: inspectorName };
           patch.signerName = inspectorName;
         }
+      }
+      if (project && !next.address?.trim() && project.address) {
+        next = { ...next, address: project.address };
+        patch.address = project.address;
       }
       return { next, patch: Object.keys(patch).length ? patch : null };
     },
@@ -224,7 +228,7 @@ export default function GeneralEquipmentScreen() {
   }, [step, complete, setStep]);
 
   const handlePrev = useCallback(async () => {
-    if (step === INFO_STEP) {
+    if (step === DETAILS_STEP) {
       await exit();
     } else {
       setStep(s => s - 1);
@@ -340,15 +344,14 @@ export default function GeneralEquipmentScreen() {
       <InspectionShell
         title="ტექ. აღჭ."
         projectName={projectName}
-        step={step}
-        totalSteps={TOTAL_STEPS}
+        step={step - 1}
+        totalSteps={TOTAL_STEPS - 1}
         direction={direction}
         animate={animateSteps}
         canGoNext={canGoNext}
         isLastStep={step === CONCLUSION_STEP}
         saving={saving}
         completing={completing}
-        stepLabels={STEP_LABELS}
         showPdfIcon={step > INFO_STEP}
         generatingPdf={generatingPdf}
         onNext={handleNext}
@@ -356,21 +359,6 @@ export default function GeneralEquipmentScreen() {
         onClose={() => router.back()}
         onPdf={handlePdf}
       >
-        {/* ── Step 0: Project picker ─────────────────────────────────────── */}
-        {step === INFO_STEP && (
-          <ProjectPickerStep
-            selectedId={inspection.projectId}
-            onSelect={p => {
-              setProjectName(p.company_name || p.name);
-              setInspection(prev => prev ? {
-                ...prev,
-                projectId: p.id,
-                address: p.address ?? prev.address,
-              } : prev);
-            }}
-          />
-        )}
-
         {/* ── Step 1: Inspection details ─────────────────────────────────── */}
         {step === DETAILS_STEP && (
           <KeyboardAwareScrollView
@@ -440,24 +428,23 @@ export default function GeneralEquipmentScreen() {
               visible={focusedField === 'actNumber' || (!inspection.actNumber?.trim() && actNumberHistory.suggestions.length > 0)}
             />
 
-            <Text style={styles.fieldLabel}>შემოწმების სახე</Text>
-            <View style={styles.typeChips}>
-              {(['initial', 'repeat', 'scheduled'] as GEInspectionType[]).map(t => {
-                const active = inspection.inspectionType === t;
-                return (
-                  <Pressable
-                    key={t}
-                    style={[styles.typeChip, active && styles.typeChipActive]}
-                    onPress={() => update('inspectionType', active ? null : t)}
-                    {...a11y(INSPECTION_TYPE_LABEL[t], undefined, 'radio')}
-                  >
-                    <Text style={[styles.typeChipText, active && styles.typeChipTextActive]}>
-                      {INSPECTION_TYPE_LABEL[t]}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+            <IdentificationGrid
+              columns={1}
+              fields={[
+                {
+                  label: 'შემოწმების სახე',
+                  type: 'select',
+                  value: inspection.inspectionType ?? '',
+                  onChange: v => update('inspectionType', (v || null) as GEInspectionType),
+                  options: ['initial', 'repeat', 'scheduled'],
+                  optionLabels: [
+                    INSPECTION_TYPE_LABEL.initial,
+                    INSPECTION_TYPE_LABEL.repeat,
+                    INSPECTION_TYPE_LABEL.scheduled,
+                  ],
+                },
+              ]}
+            />
           </KeyboardAwareScrollView>
         )}
 
@@ -610,17 +597,6 @@ function getstyles(theme: Theme) {
 
     fieldRow:   { marginBottom: 4, gap: 6 },
     fieldLabel: { fontSize: 12, fontWeight: '600', color: theme.colors.inkSoft, marginBottom: 6 },
-
-    typeChips:         { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
-    typeChip: {
-      paddingHorizontal: 12, paddingVertical: 16,
-      borderRadius: 20, borderWidth: 1.5,
-      borderColor: theme.colors.hairline,
-      backgroundColor: theme.colors.card,
-    },
-    typeChipActive:     { borderColor: theme.colors.accent, backgroundColor: theme.colors.accentSoft },
-    typeChipText:       { fontSize: 13, color: theme.colors.inkSoft, fontWeight: '500' },
-    typeChipTextActive: { color: theme.colors.accent, fontWeight: '700' },
 
     progressPill: {
       paddingHorizontal: 10,

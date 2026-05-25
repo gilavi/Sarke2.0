@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { KeyboardAvoidingView, KeyboardAwareScrollView } from 'react-native-keyboard-controller';
+import { KeyboardAwareScrollView, KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Stack, useRouter } from 'expo-router';
@@ -16,7 +16,6 @@ import { Button, Screen } from '../../components/ui';
 import { FlowHeader } from '../../components/FlowHeader';
 import { ErrorState } from '../../components/ErrorState';
 import { ScaffoldTour } from '../../components/ScaffoldTour';
-import { SyncStatusPill } from '../../components/SyncStatusPill';
 import { TOUR_SEEN_KEY } from '../../lib/scaffoldHelp';
 import { WizardStepTransition, AnswerButtons } from '../../components/wizard';
 import { HarnessListFlow } from '../../components/HarnessListFlow';
@@ -68,8 +67,6 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
     animateSteps,
     harnessRowCount,
     setHarnessRowCount,
-    headerH,
-    setHeaderH,
     photoUploadCount,
     conclusion,
     setConclusion,
@@ -224,7 +221,7 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
 
   if (step.kind === 'empty') {
     return (
-      <Screen edgeToEdge edges={['top']} style={{ backgroundColor: theme.colors.card }}>
+      <Screen edgeToEdge edges={[]} style={{ backgroundColor: theme.colors.card }}>
         <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
         <FlowHeader
           flowTitle=""
@@ -253,6 +250,7 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
       <View style={{ flex: 1, backgroundColor: theme.colors.card }}>
         <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
         <HarnessListFlow
+          inspectionId={questionnaire!.id}
           template={template!}
           questions={questions}
           answers={answers}
@@ -270,11 +268,10 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
   }
 
   return (
-    <Screen edgeToEdge edges={['top']} style={{ backgroundColor: theme.colors.card }}>
+    <Screen edgeToEdge edges={[]} style={{ backgroundColor: theme.colors.card }}>
       <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
       <ScaffoldTour visible={showTour} onClose={dismissTour} />
-      <SyncStatusPill />
-      {questions.length === 0 && !loading ? (
+{questions.length === 0 && !loading ? (
         <View style={{ padding: 12, backgroundColor: theme.colors.warnSoft }}>
           <Text style={{ color: theme.colors.warn, fontSize: 13 }}>
             ⚠️ This template has no questions. You may be using the wrong wizard.
@@ -292,7 +289,7 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
         </View>
       ) : null}
       <Animated.View style={{ flex: 1, opacity: enterAnim }}>
-        <View onLayout={e => setHeaderH(e.nativeEvent.layout.height)}>
+        <View>
           <WizardHeader
             step={step}
             stepIndex={stepIndex}
@@ -305,11 +302,7 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
           />
         </View>
         <GestureDetector gesture={swipeBack}>
-        <KeyboardAvoidingView
-          behavior="padding"
-          style={{ flex: 1 }}
-          keyboardVerticalOffset={insets.top + headerH}
-        >
+        <View style={{ flex: 1 }}>
           <WizardStepTransition stepKey={stepIndex} direction={stepDirection} animate={animateSteps && Math.abs(stepIndex - prevStepIndexRef.current) <= 1}>
             {step.kind === 'gridRow' ? (
               (step.question.grid_rows?.[0] ?? '') === 'N1' ? (
@@ -374,6 +367,7 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
             )}
           </WizardStepTransition>
 
+          <KeyboardStickyView offset={{ closed: 0, opened: insets.bottom }}>
           <View style={[styles.footer, { paddingBottom: 16 + insets.bottom }]}>
             {isYesNo && step.kind === 'question' ? (
               <AnswerButtons
@@ -417,6 +411,7 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
               />
             )}
           </View>
+          </KeyboardStickyView>
 
         <DeleteConfirmModal
           visible={deleteConfirmVisible}
@@ -424,7 +419,7 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
           onCancel={() => setDeleteConfirmVisible(false)}
           onConfirm={() => { void removeInspection(); }}
         />
-        </KeyboardAvoidingView>
+        </View>
         </GestureDetector>
       </Animated.View>
     </Screen>

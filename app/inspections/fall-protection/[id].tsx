@@ -1,5 +1,5 @@
 ﻿import { useCallback, useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,10 +13,12 @@ import { InspectionResultView } from '../../../components/InspectionResultView';
 import { SectionHeader } from '../../../components/SectionHeader';
 import {
   ChecklistItem,
+  ChipNavStrip,
   SignatureSheet,
   VerdictSelector,
   DynamicTable,
   PhotoSection,
+  type ChipNavItem,
   type VerdictOption,
   type DynamicTableColumn,
 } from '../../../components/inspection-parts';
@@ -50,7 +52,6 @@ import {
   type FPDeviceData,
   type FPVerdict,
   type FPResult,
-  type FPTabState,
 } from '../../../types/fallProtection';
 
 // ── Step constants ────────────────────────────────────────────────────────────
@@ -69,29 +70,6 @@ const REGISTRY_COLS: DynamicTableColumn[] = [
   { key: 'purpose',  label: 'ვისთვის / რისთვის',   type: 'text' },
   { key: 'comment',  label: 'კომენტარი',            type: 'text' },
 ];
-
-// ── Tab state color ────────────────────────────────────────────────────────────
-
-function tabColor(state: FPTabState, theme: Theme): string {
-  switch (state) {
-    case 'done':    return theme.colors.semantic?.success ?? '#10B981';
-    case 'problem': return theme.colors.danger;
-    case 'warning': return theme.colors.warn;
-    case 'active':  return theme.colors.accent;
-    default:        return theme.colors.hairline;
-  }
-}
-
-function tabBg(state: FPTabState, active: boolean, theme: Theme): string {
-  if (!active) return theme.colors.card;
-  switch (state) {
-    case 'done':    return (theme.colors.semantic as any)?.successSoft ?? '#D1FAE5';
-    case 'problem': return theme.colors.dangerSoft ?? theme.colors.dangerTint;
-    case 'warning': return theme.colors.warnSoft ?? '#FEF3C7';
-    case 'active':  return theme.colors.accentSoft;
-    default:        return theme.colors.subtleSurface;
-  }
-}
 
 // ── Main screen ───────────────────────────────────────────────────────────────
 
@@ -586,44 +564,16 @@ export default function FallProtectionInspectionScreen() {
             <View style={{ flex: 1 }}>
 
               {/* Device tab strip */}
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.tabStrip}
-                style={styles.tabStripWrap}
-              >
-                {inspection.devices.map((d, idx) => {
-                  const state = tabStates[idx] ?? 'pending';
-                  const isActive = idx === safeDeviceIdx;
-                  return (
-                    <Pressable
-                      key={d.id}
-                      style={[
-                        styles.tab,
-                        { borderColor: tabColor(state, theme) },
-                        isActive && { backgroundColor: tabBg(state, true, theme) },
-                      ]}
-                      onPress={() => { haptic.light(); setActiveDeviceIdx(idx); }}
-                      {...a11y(d.id, `${d.id} — ${d.type || 'მოწყობილობა'}`, 'tab')}
-                    >
-                      <View
-                        style={[
-                          styles.tabDot,
-                          { backgroundColor: tabColor(state, theme) },
-                        ]}
-                      />
-                      <Text
-                        style={[
-                          styles.tabLabel,
-                          isActive && { color: tabColor(state, theme), fontWeight: '800' },
-                        ]}
-                      >
-                        {d.id}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
+              <ChipNavStrip
+                items={inspection.devices.map((d, idx): ChipNavItem => ({
+                  key: d.id,
+                  label: d.id,
+                  state: tabStates[idx] ?? 'pending',
+                  a11yHint: `${d.id} — ${d.type || 'მოწყობილობა'}`,
+                }))}
+                activeIndex={safeDeviceIdx}
+                onSelect={setActiveDeviceIdx}
+              />
 
               {/* Device details */}
               {currentDevice && currentDeviceData && (
@@ -830,27 +780,6 @@ function getstyles(theme: Theme) {
     typeChipText: { fontSize: 13, color: theme.colors.inkSoft },
     typeChipTextActive: { color: theme.colors.accent, fontWeight: '700' },
     // Device tabs
-    tabStripWrap: {
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.colors.hairline,
-      backgroundColor: theme.colors.card,
-      maxHeight: 52,
-    },
-    tabStrip: {
-      flexDirection: 'row', paddingHorizontal: 12, gap: 6,
-      alignItems: 'center', paddingVertical: 8,
-    },
-    tab: {
-      flexDirection: 'row', alignItems: 'center', gap: 5,
-      paddingHorizontal: 12, paddingVertical: 6,
-      borderRadius: 20, borderWidth: 1.5,
-      borderColor: theme.colors.hairline,
-      backgroundColor: theme.colors.card,
-    },
-    tabDot: {
-      width: 7, height: 7, borderRadius: 3.5,
-    },
-    tabLabel: { fontSize: 13, fontWeight: '600', color: theme.colors.inkSoft },
     deviceMeta: {
       fontSize: 11, color: theme.colors.inkSoft,
       paddingHorizontal: 2, marginBottom: 4,

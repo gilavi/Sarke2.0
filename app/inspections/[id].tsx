@@ -49,6 +49,7 @@ import { inspectionDisplayName } from '../../lib/shared/documentName';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import {
   pdfPhotoEmbed,
+  imageForDisplay,
 } from '../../lib/imageUrl';
 import { useSession } from '../../lib/session';
 import { useToast } from '../../lib/toast';
@@ -340,8 +341,18 @@ export default function InspectionResultScreen() {
                 a.photo_path,
               );
               return { ...a, photo_data_url: dataUrl };
-            } catch {
-              return { ...a };
+            } catch (e) {
+              console.warn(
+                '[inspection.cert] embed failed, falling back to URL:',
+                a.photo_path,
+                toErrorMessage(e),
+              );
+              try {
+                const url = await imageForDisplay(STORAGE_BUCKETS.certificates, a.photo_path);
+                return { ...a, photo_data_url: url };
+              } catch {
+                return { ...a };
+              }
             }
           }),
         );
@@ -452,8 +463,18 @@ export default function InspectionResultScreen() {
               a.photo_path,
             );
             return { ...a, photo_data_url: dataUrl };
-          } catch {
-            return { ...a };
+          } catch (e) {
+            console.warn(
+              '[inspection.cert] embed failed, falling back to URL:',
+              a.photo_path,
+              toErrorMessage(e),
+            );
+            try {
+              const url = await imageForDisplay(STORAGE_BUCKETS.certificates, a.photo_path);
+              return { ...a, photo_data_url: url };
+            } catch {
+              return { ...a };
+            }
           }
         }),
       );

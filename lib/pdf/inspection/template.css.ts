@@ -537,14 +537,21 @@ export function getInspectionPdfCss(opts: { isPdf: boolean }): string {
     }
     .cert-meta-label { color: var(--gray); font-weight: 600; }
     .cert-img-wrap {
+      position: relative;
       margin-top: 10px;
+      width: 100%;
+      /* padding-top % gives a 16:9 box in every engine; aspect-ratio is not
+         honored by the expo-print/WKWebView print path and collapses to 0. */
+      padding-top: 56.25%;
       border-radius: 8px;
       overflow: hidden;
       border: 1px solid var(--line);
-      aspect-ratio: 16 / 9;
       background: var(--bg-soft);
     }
     .cert-img {
+      position: absolute;
+      top: 0;
+      left: 0;
       display: block;
       width: 100%;
       height: 100%;

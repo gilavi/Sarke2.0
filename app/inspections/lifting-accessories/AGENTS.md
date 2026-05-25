@@ -15,9 +15,9 @@ through the shared schema-driven engine via
 
 ## Step structure
 1. **IDENTIFICATION_STEP** — equipment identity. Sections: type
-   selector (sheet), იდენტიფიკაცია, მახასიათებლები, მარ-ბა,
-   მომდევნო შემოწმება. Type selector opens
-   `components/inspection-parts/SlingTypeSheet.tsx`.
+   selector (sheet), იდენტიფიკაცია, მახასიათებლები, მარკირება,
+   მომდევნო შემოწმება. All inputs are stacked one-per-row. Type
+   selector opens `components/inspection-parts/SlingTypeSheet.tsx`.
 2. **CHECKLIST_STEP** — 10-item A/B checklist via
    `ChecklistSection`.
 3. **REMOVED_STEP** — `DynamicTable` for removed equipment + summary
@@ -33,7 +33,11 @@ them breaks visual parity with the paper version. Keep them as-is:
 
 - Screen header: `სლინგ. / ჩამჭ. შემოწ.`
 - Field labels: `ტ-პი / სახ.`, `სერ. NN / ID`, `წ. წარმ.`,
-  `ერთ. რ-ბა`, `მარ-ბა`
+  `ერთ. რ-ბა`
+- **Exception:** the marking section was renamed `მარ-ბა` → `მარკირება`
+  (2026-05-26, with explicit user sign-off) to match the PDF template
+  label in `lib/inspection/schemas/liftingAccessories.ts`. The rest of
+  the abbreviations above stay locked.
 - Equipment type catalog (`types/liftingAccessories.ts` →
   `LA_EQUIPMENT_TYPES`): `ტექ. სლინგი`, `მრგვ. სლინგი`,
   `ბეწვ. სლინგი`, `ჯაჭვ. სლინგი`, `ჩამჭიდი`, `კაუჭი`, `სხვა`

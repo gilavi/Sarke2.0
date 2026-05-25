@@ -455,7 +455,7 @@ export default function ForkliftInspectionScreen() {
                   },
                   {
                     label: 'ძრავის ტიპი',
-                    type: 'chips',
+                    type: 'select',
                     value: inspection.engineType ?? '',
                     onChange: v => update('engineType', (v || null) as ForkliftInspection['engineType']),
                     options: ['electric', 'gasoline', 'diesel', 'gas'],
@@ -467,7 +467,7 @@ export default function ForkliftInspectionScreen() {
                     ],
                   },
                 ]}
-                columns={2}
+                columns={1}
               />
             </KeyboardAwareScrollView>
           )}

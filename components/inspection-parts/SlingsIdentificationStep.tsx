@@ -1,7 +1,7 @@
 // Step 1 of the slings / chains / lifting-accessories inspection.
 //
 // Five sections: type selector (opens SlingTypeSheet), იდენტიფიკაცია,
-// მახასიათებლები, მარ-ბა, მომდევნო შემოწმება.
+// მახასიათებლები, მარკირება, მომდევნო შემოწმება.
 //
 // Abbreviations in field labels and the equipment-type catalog are
 // preserved verbatim per the route's AGENTS.md — they come from the
@@ -120,44 +120,34 @@ export function SlingsIdentificationStep({
 
       {/* Section: Identification */}
       <Text style={[styles.sectionHeader, styles.sectionSpacing]}>იდენტიფიკაცია</Text>
-      <View style={styles.row2col}>
-        <View style={styles.col}>
-          <FloatingLabelInput
-            label="სერ. NN / ID"
-            value={serialNumber}
-            onChangeText={v => onUpdate({ serialNumber: v })}
-          />
-        </View>
-        <View style={styles.col}>
-          <FloatingLabelInput
-            label="მწარმოებელი"
-            value={manufacturer}
-            onChangeText={v => onUpdate({ manufacturer: v })}
-          />
-        </View>
+      <View style={styles.fieldStack}>
+        <FloatingLabelInput
+          label="სერ. NN / ID"
+          value={serialNumber}
+          onChangeText={v => onUpdate({ serialNumber: v })}
+        />
+        <FloatingLabelInput
+          label="მწარმოებელი"
+          value={manufacturer}
+          onChangeText={v => onUpdate({ manufacturer: v })}
+        />
       </View>
 
       {/* Section: Characteristics */}
       <Text style={[styles.sectionHeader, styles.sectionSpacing]}>მახასიათებლები</Text>
-      <View style={styles.row2col}>
-        <View style={styles.col}>
-          <FloatingLabelInput
-            label="წ. წარმ."
-            value={yearOfManufacture}
-            onChangeText={v => onUpdate({ yearOfManufacture: v })}
-            keyboardType="decimal-pad"
-          />
-        </View>
-        <View style={styles.col}>
-          <FloatingLabelInput
-            label="WLL (კგ)"
-            value={wllKg}
-            onChangeText={v => onUpdate({ wllKg: v })}
-            keyboardType="decimal-pad"
-          />
-        </View>
-      </View>
-      <View style={{ marginTop: 12 }}>
+      <View style={styles.fieldStack}>
+        <FloatingLabelInput
+          label="წ. წარმ."
+          value={yearOfManufacture}
+          onChangeText={v => onUpdate({ yearOfManufacture: v })}
+          keyboardType="decimal-pad"
+        />
+        <FloatingLabelInput
+          label="WLL (კგ)"
+          value={wllKg}
+          onChangeText={v => onUpdate({ wllKg: v })}
+          keyboardType="decimal-pad"
+        />
         <FloatingLabelInput
           label="ერთ. რ-ბა"
           value={unitCount}
@@ -167,7 +157,7 @@ export function SlingsIdentificationStep({
       </View>
 
       {/* Section: Marking */}
-      <Text style={[styles.sectionHeader, styles.sectionSpacing]}>მარ-ბა</Text>
+      <Text style={[styles.sectionHeader, styles.sectionSpacing]}>მარკირება</Text>
       <View style={styles.chipsRow}>
         {(LA_MARKING_OPTIONS as unknown as string[]).map((opt, i) => {
           const active = markingStatus === opt;
@@ -253,8 +243,7 @@ function getStyles(theme: Theme) {
       color: theme.colors.inkFaint,
       fontWeight: '400',
     },
-    row2col: { flexDirection: 'row', gap: 10 },
-    col:     { flex: 1 },
+    fieldStack: { gap: 12 },
     chipsRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
     chip: {
       paddingHorizontal: 14,

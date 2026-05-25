@@ -48,7 +48,7 @@ export default function AddQualificationSheet({
 }) {
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
-  const { pickPhotoWithAnnotation } = usePhotoWithLocation();
+  const { pickPhoto: pickPhotoFromLibrary } = usePhotoWithLocation();
 
   const [type, setType] = useState(initialType ?? 'xaracho_inspector');
   const [number, setNumber] = useState('');
@@ -77,7 +77,9 @@ export default function AddQualificationSheet({
   }, [visible, initialType]);
 
   const pickPhoto = async () => {
-    const result = await pickPhotoWithAnnotation({ skipAnnotate: true });
+    // Must use pickPhoto (ImagePicker directly) — this component is a Modal and
+    // router.push navigates behind it, freezing the picker callback forever.
+    const result = await pickPhotoFromLibrary();
     if (!result) return;
     setPhotoUri(result.uri);
   };
