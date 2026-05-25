@@ -14,4 +14,5 @@ export const harnessWizardPreset: WizardPreset = {
   title: 'დამცავი ქამრების შემოწმება',
   requireConclusionText: true,
   successDetailRoute: (id) => routes.harness.detail(id),
+  itemLabel: 'ქამარი',
 };

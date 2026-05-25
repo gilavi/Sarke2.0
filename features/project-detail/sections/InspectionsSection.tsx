@@ -20,6 +20,7 @@ import { useTheme } from '../../../lib/theme';
 import { a11y } from '../../../lib/accessibility';
 import { formatShortDateTime } from '../../../lib/formatDate';
 import { routeForInspection } from '../../../lib/inspectionRouting';
+import { inspectionDisplayName } from '../../../lib/shared/documentName';
 import type { Template } from '../../../types/models';
 import { getStyles } from '../styles';
 import type { UnifiedInspection } from '../unifiedInspections';
@@ -79,7 +80,7 @@ export function InspectionsSection({
                 <Pressable
                   onPress={() => router.push(route as any)}
                   style={styles.listRow}
-                  {...a11y(tpl?.name ?? 'შემოწმების აქტი', isCompleted ? 'დასრულებული შემოწმების აქტს ნახვა' : 'დრაფტის გასაგრძელებლად დააჭირეთ', 'button')}
+                  {...a11y(inspectionDisplayName(tpl?.name), isCompleted ? 'დასრულებული შემოწმების აქტს ნახვა' : 'დრაფტის გასაგრძელებლად დააჭირეთ', 'button')}
                 >
                   <InspectionTypeAvatar
                     category={item.source === 'generic' ? tpl?.category : item.source}
@@ -88,7 +89,7 @@ export function InspectionsSection({
                   />
                   <View style={{ flex: 1 }}>
                     <RecordTypePill recordType="inspection" />
-                    <Text style={styles.listRowTitle}>{tpl?.name ?? t('common.inspection')}</Text>
+                    <Text style={styles.listRowTitle}>{inspectionDisplayName(tpl?.name)}</Text>
                     <Text style={styles.listRowSubtitle}>
                       {formatShortDateTime(item.created_at)}
                     </Text>

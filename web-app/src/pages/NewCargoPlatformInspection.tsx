@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { ProjectPicker } from '@/components/ui/project-picker';
+import { WizardFrame } from '@/components/wizard';
 import { listProjects } from '@/lib/data/projects';
+import { equipmentInspectionName } from '@/lib/documentNames';
 import { projectKeys } from '@/app/queryKeys';
 import { createCargoPlatformInspection } from '@/lib/data/cargoPlatform';
 
@@ -33,54 +33,33 @@ export default function NewCargoPlatformInspection() {
   }
 
   return (
-    <div className="mx-auto max-w-xl space-y-6">
-      <header>
-        <Link to="/inspections" className="text-sm text-brand-600 hover:underline">
-          ← აქტები
-        </Link>
-        <h1 className="mt-2 font-display text-3xl font-bold text-neutral-900">
-          ახალი პლატფორმის აქტი
-        </h1>
-        <p className="mt-1 text-sm text-neutral-500">
-          ტვირთის მიმღები პლატფორმის შემოწმების აქტი.
-        </p>
-      </header>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">პროექტის არჩევა</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form
-            className="space-y-4"
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleSubmit();
-            }}
-          >
-            <ProjectPicker
-              label="პროექტი"
-              required
-              value={projectId}
-              onChange={setProjectId}
-              options={(projects ?? []).map((p) => ({ value: p.id, label: p.name, logo: p.logo, company: p.company_name }))}
-            />
-
-            <div className="flex gap-2 pt-2">
-              <Button type="submit" disabled={!canSubmit}>
-                {submitting ? 'იქმნება…' : 'შექმნა'}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => navigate('/inspections')}
-              >
-                გაუქმება
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+    <WizardFrame
+      open
+      onClose={() => navigate('/inspections')}
+      inspectionName={equipmentInspectionName('cargo_platform')}
+      stepName="პროექტის არჩევა"
+      showProgress={false}
+      progressPercent={0}
+      stepKey="new"
+      direction={1}
+      onBack={() => navigate('/inspections')}
+      backDisabled
+      onNext={handleSubmit}
+      nextDisabled={!canSubmit}
+      nextLabel={submitting ? 'იქმნება…' : 'შექმნა'}
+      hideNextArrow
+      submitting={submitting}
+    >
+      <div className="space-y-2">
+        <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">პროექტი</p>
+        <ProjectPicker
+          label=""
+          required
+          value={projectId}
+          onChange={setProjectId}
+          options={(projects ?? []).map((p) => ({ value: p.id, label: p.name, logo: p.logo, company: p.company_name }))}
+        />
+      </div>
+    </WizardFrame>
   );
 }

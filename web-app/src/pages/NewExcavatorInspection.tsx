@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { TextInput } from '@mantine/core';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { ProjectPicker } from '@/components/ui/project-picker';
+import { WizardFrame } from '@/components/wizard';
 import { listProjects } from '@/lib/data/projects';
+import { equipmentInspectionName } from '@/lib/documentNames';
 import { projectKeys } from '@/app/queryKeys';
 import { createExcavatorInspection } from '@/lib/data/excavator';
 
@@ -25,12 +25,11 @@ export default function NewExcavatorInspection() {
 
   const projectName = projects?.find((p) => p.id === projectId)?.name ?? null;
 
-  const canSubmit = !!projectId;
-
   const [submitting, setSubmitting] = useState(false);
+  const canSubmit = !!projectId && !submitting;
 
   async function handleSubmit() {
-    if (!canSubmit || submitting) return;
+    if (!canSubmit) return;
     setSubmitting(true);
     try {
       const created = await createExcavatorInspection({
@@ -50,93 +49,44 @@ export default function NewExcavatorInspection() {
   }
 
   return (
-    <div className="mx-auto max-w-xl space-y-6">
-      <header>
-        <Link to="/inspections" className="text-sm text-brand-600 hover:underline">
-          ← აქტები
-        </Link>
-        <h1 className="mt-2 font-display text-3xl font-bold text-neutral-900">
-          ახალი ექსკავატორის აქტი
-        </h1>
-        <p className="mt-1 text-sm text-neutral-500">
-          ტექნიკური მახასიათებლები მოიკრიფება ჩამოშლილი შაბლონიდან.
-        </p>
-      </header>
+    <WizardFrame
+      open
+      onClose={() => navigate('/inspections')}
+      inspectionName={equipmentInspectionName('excavator')}
+      stepName="ზოგადი ინფორმაცია"
+      showProgress={false}
+      progressPercent={0}
+      stepKey="new"
+      direction={1}
+      onBack={() => navigate('/inspections')}
+      backDisabled
+      onNext={handleSubmit}
+      nextDisabled={!canSubmit}
+      nextLabel={submitting ? 'იქმნება…' : 'შექმნა'}
+      hideNextArrow
+      submitting={submitting}
+    >
+      <div className="space-y-5">
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">პროექტი</p>
+          <ProjectPicker
+            label=""
+            required
+            value={projectId}
+            onChange={setProjectId}
+            options={(projects ?? []).map((p) => ({ value: p.id, label: p.name, logo: p.logo, company: p.company_name }))}
+          />
+        </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">ზოგადი ინფორმაცია</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form
-            className="space-y-4"
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleSubmit();
-            }}
-          >
-            <ProjectPicker
-              label="პროექტი"
-              required
-              value={projectId}
-              onChange={setProjectId}
-              options={(projects ?? []).map((p) => ({ value: p.id, label: p.name, logo: p.logo, company: p.company_name }))}
-            />
+        <div className="grid grid-cols-2 gap-3">
+          <TextInput label="სერ. ნომერი" value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} radius="md" />
+          <TextInput label="ინვ. ნომერი" value={inventoryNumber} onChange={(e) => setInventoryNumber(e.target.value)} radius="md" />
+        </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <TextInput
-                label="სერ. ნომერი"
-                value={serialNumber}
-                onChange={(e) => setSerialNumber(e.target.value)}
-                radius="md"
-              />
-              <TextInput
-                label="ინვ. ნომერი"
-                value={inventoryNumber}
-                onChange={(e) => setInventoryNumber(e.target.value)}
-                radius="md"
-              />
-            </div>
-
-            <TextInput
-              label="დეპარტამენტი"
-              value={department}
-              onChange={(e) => setDepartment(e.target.value)}
-              placeholder="დეპარტამენტის დასახელება"
-              radius="md"
-            />
-
-            <TextInput
-              label="ინსპექტორი"
-              value={inspectorName}
-              onChange={(e) => setInspectorName(e.target.value)}
-              placeholder="სახელი, გვარი"
-              radius="md"
-            />
-
-            <TextInput
-              label="შემოწმების თარიღი"
-              type="date"
-              value={inspectionDate}
-              onChange={(e) => setInspectionDate(e.target.value)}
-              radius="md"
-            />
-
-            <div className="flex gap-2 pt-2">
-              <Button type="submit" disabled={!canSubmit || submitting}>
-                {submitting ? 'იქმნება…' : 'შექმნა'}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => navigate('/inspections')}
-              >
-                გაუქმება
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+        <TextInput label="დეპარტამენტი" value={department} onChange={(e) => setDepartment(e.target.value)} placeholder="დეპარტამენტის დასახელება" radius="md" />
+        <TextInput label="ინსპექტორი" value={inspectorName} onChange={(e) => setInspectorName(e.target.value)} placeholder="სახელი, გვარი" radius="md" />
+        <TextInput label="შემოწმების თარიღი" type="date" value={inspectionDate} onChange={(e) => setInspectionDate(e.target.value)} radius="md" />
+      </div>
+    </WizardFrame>
   );
 }

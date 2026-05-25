@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { useTheme } from '../../../lib/theme';
 import { formatShortDateTime } from '../../../lib/formatDate';
+import { inspectionDisplayName } from '../../../lib/shared/documentName';
 import {
   useProject,
   useInspectionsByProject,
@@ -114,7 +115,7 @@ export default function ProjectInspectionsList() {
                         status={isCompleted ? 'completed' : 'draft'}
                       />
                     }
-                    title={tpl?.name ?? 'შემოწმების აქტი'}
+                    title={inspectionDisplayName(tpl?.name)}
                     subtitle={formatShortDateTime(item.created_at)}
                     isLast={isLast}
                     onPress={() => router.push(route as any)}

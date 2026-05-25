@@ -15,6 +15,7 @@ import {
   excavatorKeys,
   generalEquipmentKeys,
 } from '@/app/queryKeys';
+import { useInspectionName, equipmentInspectionName } from '@/lib/documentNames';
 import { routes } from '@/app/routes';
 
 const TYPE_AVATAR: Record<string, { emoji: string; bg: string }> = {
@@ -51,6 +52,7 @@ export function InspectionsSection({ projectId, onNew }: Props) {
     queryFn: () => listGeneralEquipmentInspections(projectId),
   });
 
+  const inspectionName = useInspectionName();
   const items = useMemo(() => {
     const merged = [
       ...(inspectionsQ.data ?? []).map((i) => {
@@ -59,7 +61,7 @@ export function InspectionsSection({ projectId, onNew }: Props) {
         return {
           id: i.id,
           type,
-          label: i.harness_name || `#${i.id.slice(0, 8)}`,
+          label: inspectionName(i.template_id),
           status: i.status,
           href: routes.inspections.detail(i.id),
           date: i.created_at ?? '',
@@ -68,7 +70,7 @@ export function InspectionsSection({ projectId, onNew }: Props) {
       ...(bobcatsQ.data ?? []).map((i) => ({
         id: i.id,
         type: 'bobcat',
-        label: i.equipmentModel || i.company || `ციცხვიანი #${i.id.slice(0, 8)}`,
+        label: equipmentInspectionName('bobcat'),
         status: i.status,
         href: routes.bobcat.detail(i.id),
         date: i.createdAt,
@@ -76,7 +78,7 @@ export function InspectionsSection({ projectId, onNew }: Props) {
       ...(excavatorsQ.data ?? []).map((i) => ({
         id: i.id,
         type: 'excavator',
-        label: `ექსკავატორი${i.serialNumber ? ` — ${i.serialNumber}` : ''}`,
+        label: equipmentInspectionName('excavator'),
         status: i.status,
         href: routes.excavator.detail(i.id),
         date: i.createdAt,
@@ -84,14 +86,14 @@ export function InspectionsSection({ projectId, onNew }: Props) {
       ...(generalQ.data ?? []).map((i) => ({
         id: i.id,
         type: 'general',
-        label: i.objectName || `ტექ. #${i.id.slice(0, 8)}`,
+        label: equipmentInspectionName('general'),
         status: i.status,
         href: routes.generalEquipment.detail(i.id),
         date: i.createdAt,
       })),
     ];
     return merged.sort((a, b) => b.date.localeCompare(a.date));
-  }, [inspectionsQ.data, bobcatsQ.data, excavatorsQ.data, generalQ.data]);
+  }, [inspectionsQ.data, bobcatsQ.data, excavatorsQ.data, generalQ.data, inspectionName]);
 
   return (
     <Card className="overflow-hidden">

@@ -21,6 +21,7 @@ import EmptyState from '../../components/EmptyState';
 import { certificatesApi } from '../../lib/services';
 import { useToast } from '../../lib/toast';
 import { useTheme } from '../../lib/theme';
+import { inspectionDisplayName } from '../../lib/shared/documentName';
 
 import { toErrorMessage } from '../../lib/logError';
 import { friendlyError } from '../../lib/errorMap';
@@ -153,7 +154,7 @@ const MemoizedCertItem = memo(function CertItem({
             {/* Metadata */}
             <View style={{ flex: 1, gap: 3 }}>
               <Text style={styles.rowTitle} numberOfLines={1}>
-                {tpl?.name ?? t('certificates.pdfReport')}
+                {inspectionDisplayName(tpl?.name)}
               </Text>
               <Text style={styles.rowMeta} numberOfLines={1}>
                 {proj?.name ?? '—'}

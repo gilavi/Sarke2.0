@@ -36,6 +36,7 @@ import { NumberPop, useScrollHeader } from '../../components/animations';
 import { QuickActions } from '../../components/QuickActions';
 import { Skeleton } from '../../components/Skeleton';
 import { routeForInspection } from '../../lib/inspectionRouting';
+import { inspectionDisplayName } from '../../lib/shared/documentName';
 import { useToast } from '../../lib/toast';
 import { haptic } from '../../lib/haptics';
 import { useTranslation } from 'react-i18next';
@@ -198,7 +199,7 @@ export default function HomeScreen() {
     setRefreshing(false);
   }, [certsQ, templatesQ, recentQ, projectsQ]);
 
-  const templateName = useCallback((id: string) => templates.find((tpl) => tpl.id === id)?.name ?? t('common.inspection'), [templates, t]);
+  const templateName = useCallback((id: string) => inspectionDisplayName(templates.find((tpl) => tpl.id === id)?.name), [templates]);
 
   useEffect(() => { void loadDraftSteps(); }, [loadDraftSteps]);
   useEffect(() => {

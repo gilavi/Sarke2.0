@@ -15,6 +15,7 @@ import { useTheme } from '../lib/theme';
 
 import { friendlyError } from '../lib/errorMap';
 import { a11y } from '../lib/accessibility';
+import { inspectionDisplayName } from '../lib/shared/documentName';
 import {
   useRecentInspections,
   useTemplates,
@@ -103,7 +104,7 @@ const MemoizedHistoryItem = memo(function HistoryItem({
         }}
         style={({ pressed }) => pressed ? { opacity: 0.7 } : undefined}
         {...a11y(
-          `${tpl?.name ?? t('common.inspection')} — ${p?.company_name || p?.name || ''}`.trim(),
+          `${inspectionDisplayName(tpl?.name)} — ${p?.company_name || p?.name || ''}`.trim(),
           q.status === 'completed' ? 'დასრულებული შემოწმების აქტის ნახვა' : 'დრაფტის გაგრძელება',
           'button'
         )}
@@ -118,7 +119,7 @@ const MemoizedHistoryItem = memo(function HistoryItem({
             <View style={{ flex: 1 }}>
               <RecordTypePill recordType="inspection" />
               <Text style={{ fontWeight: '600', color: theme.colors.ink }}>
-                {tpl?.name ?? t('common.inspection')}
+                {inspectionDisplayName(tpl?.name)}
               </Text>
               {p ? (
                 <Text style={{ fontSize: 11, color: theme.colors.inkSoft }}>{p.company_name || p.name}</Text>

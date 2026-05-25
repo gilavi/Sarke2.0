@@ -176,6 +176,14 @@ const html = buildLaborSafetyOrderHtml({ formData, projectName });
 const localUri = await generateAndSharePdf(html, pdfName, true, userId);
 ```
 
+## Document display names (shared with web)
+
+One file: [`lib/shared/documentName.ts`](../lib/shared/documentName.ts). Exports `inspectionDisplayName`, `reportDisplayName`, `certificateDisplayName`, `orderDisplayName`. **Pure TypeScript** — no React/RN/DOM/i18n imports — so it is the single source of truth imported by **both** the Expo app (relative import, e.g. `../lib/shared/documentName`) and the `web-app/` dashboard (`@root/lib/shared/documentName`, re-exported via `web-app/src/lib/documentNames.ts`).
+
+The display name is the document's **type/template name** (e.g. the inspection's template name), never a raw `id` slice. Callers resolve the template/title string and pass it in.
+
+**Don't** reintroduce `harness_name || "#" + id.slice(0,8)` style fallbacks in either codebase — that drift (web showing `ქამარი #0c9537aa` while mobile showed the template name) is exactly what this primitive removes. Equipment inspections on web have no template row, so `web-app/src/lib/documentNames.ts` maps their type to a constant label and routes it through `inspectionDisplayName`.
+
 ## Adding a new primitive
 
 If you're about to add a util in `lib/` or a wrapper in `components/`:

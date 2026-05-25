@@ -41,6 +41,10 @@ export interface EquipmentDetail<TModel extends { id: string }, TPatch, TCreate>
   error: unknown;
   step: number;
   setStep: (step: number) => void;
+  /** Direction of the last step change (1 = forward, -1 = back) for slide anim. */
+  direction: number;
+  /** Move to a step, recording the slide direction. */
+  goStep: (step: number) => void;
   pdfOpen: boolean;
   setPdfOpen: (open: boolean) => void;
   justCompleted: boolean;
@@ -83,8 +87,14 @@ export function useEquipmentDetail<TModel extends { id: string }, TPatch, TCreat
   });
 
   const [step, setStep] = useState(0);
+  const [direction, setDirection] = useState(1);
   const [pdfOpen, setPdfOpen] = useState(false);
   const [justCompleted, setJustCompleted] = useState(false);
+
+  function goStep(next: number) {
+    setDirection(next >= step ? 1 : -1);
+    setStep(next);
+  }
 
   const updateMutation = useEntityMutation<TPatch, void>({
     mutationFn: (patch) => cfg.update(id!, patch),
@@ -117,6 +127,8 @@ export function useEquipmentDetail<TModel extends { id: string }, TPatch, TCreat
     error: itemQuery.error,
     step,
     setStep,
+    direction,
+    goStep,
     pdfOpen,
     setPdfOpen,
     justCompleted,

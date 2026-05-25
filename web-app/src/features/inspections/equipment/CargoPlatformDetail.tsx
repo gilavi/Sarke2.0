@@ -7,19 +7,22 @@
  * comments (no photos), and signing that happens on mobile — so the desktop view
  * is signature-display-only and keeps its own result/verdict color language.
  */
-import { Link } from 'react-router-dom';
-import { FileText, Plus, X } from 'lucide-react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, X } from 'lucide-react';
 import { NumberInput, Textarea, TextInput } from '@mantine/core';
 import DeleteButton from '@/components/DeleteButton';
 import InspectionSignatures from '@/components/InspectionSignatures';
 import FieldInput from '@/components/FieldInput';
-import WizardSteps, { WizardNav } from '@/components/WizardSteps';
+import { WizardFrame, SegmentedControl } from '@/components/wizard';
+import SuccessModal, { type SuccessModalData } from '@/components/web/SuccessModal';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { SkeletonDetailPage } from '@/components/SkeletonCard';
 import { ErrorView, EmptyView } from '@/components/async/AsyncBoundary';
 import { routes } from '@/app/routes';
 import { cargoPlatformKeys } from '@/app/queryKeys';
+import { equipmentInspectionName } from '@/lib/documentNames';
 import {
   getCargoPlatformInspection,
   deleteCargoPlatformInspection,
@@ -39,22 +42,23 @@ import {
   type CPItemState,
 } from '@/lib/data/cargoPlatform';
 import { useEquipmentDetail } from './useEquipmentDetail';
-import { CompletedBanner } from './components/CompletedBanner';
-import { InspectionPdfOverlay } from './components/InspectionPdfOverlay';
 
-const VERDICT_COLOR: Record<CPVerdict, string> = {
-  approved:    'border-emerald-600 bg-emerald-600 text-white',
-  conditional: 'border-amber-500 bg-amber-500 text-white',
-  rejected:    'border-red-600 bg-red-600 text-white',
+const VERDICT_BG: Record<CPVerdict, string> = {
+  approved: '#1D9E75',
+  conditional: '#D97706',
+  rejected: '#EF4444',
 };
 
-const RESULT_COLOR: Record<CPResult, string> = {
-  good: 'border-emerald-600 bg-emerald-600 text-white',
-  fix:  'border-amber-500 bg-amber-500 text-white',
-  na:   'border-neutral-400 bg-neutral-400 text-white',
+const RESULT_BG: Record<CPResult, string> = {
+  good: '#1D9E75',
+  fix: '#D97706',
+  na: '#94A3B8',
 };
+
+const STEP_LABELS = ['ინფო', 'პლატფ.', 'ტვირთი', 'შემოწმება', 'დასკვნა', 'ხელმოწ.'];
 
 export default function CargoPlatformDetail() {
+  const navigate = useNavigate();
   const d = useEquipmentDetail<CargoPlatformInspection, CargoPlatformPatch, CreateCargoPlatformArgs>({
     get: getCargoPlatformInspection,
     update: updateCargoPlatformInspection,
@@ -63,6 +67,7 @@ export default function CargoPlatformDetail() {
     listKey: cargoPlatformKeys.lists,
     getProjectId: (i) => i.projectId,
   });
+  const [successOpen, setSuccessOpen] = useState(false);
 
   if (d.isLoading) return <SkeletonDetailPage />;
   if (d.isError) return <ErrorView error={d.error} />;
@@ -89,72 +94,52 @@ export default function CargoPlatformDetail() {
   }
 
   const canComplete = isDraft && !!item.verdict;
+  const total = STEP_LABELS.length;
+  const isLast = d.step === total - 1;
+
+  const evaluated = item.items.filter((i) => i.result !== null);
+  const goodCount = evaluated.filter((i) => i.result === 'good').length;
+  const successData: SuccessModalData = {
+    totalCount: evaluated.length,
+    safeCount: goodCount,
+    problemCount: evaluated.filter((i) => i.result === 'fix').length,
+    inspectionName: equipmentInspectionName('cargo_platform'),
+    projectName: d.project?.name ?? '',
+    itemLabel: 'პუნქტი',
+  };
+
+  function handleNext() {
+    if (!isLast) { d.goStep(d.step + 1); return; }
+    if (isDraft) {
+      if (canComplete) { save({ status: 'completed' }); setSuccessOpen(true); }
+    } else {
+      window.open(`#${routes.cargoPlatform.print(item.id)}`, '_blank');
+    }
+  }
 
   return (
-    <div className="space-y-6">
-      {d.justCompleted && <CompletedBanner onViewPdf={() => d.setPdfOpen(true)} />}
-
-      <header className="flex items-start justify-between gap-4">
-        <div>
-          <nav className="flex items-center gap-1 text-sm">
-            {d.project && (
-              <>
-                <Link to={routes.projects.detail(d.project.id)} className="text-brand-600 hover:underline">
-                  {d.project.name}
-                </Link>
-                <span className="text-neutral-400">›</span>
-              </>
-            )}
-            <Link to={routes.inspections.list(item.projectId)} className="text-brand-600 hover:underline">
-              აქტები
-            </Link>
-            <span className="text-neutral-400">›</span>
-            <span className="truncate max-w-[200px] text-neutral-500">
-              {item.company || 'პლატფორმა'}
-            </span>
-          </nav>
-          <h1 className="mt-2 font-display text-3xl font-bold text-neutral-900">
-            {item.company || `პლატფ. #${item.id.slice(0, 8)}`}
-          </h1>
-          <p className="mt-1 text-sm text-neutral-500">
-            სტატუსი: {item.status === 'completed' ? 'დასრულდა' : 'დრაფტი'}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => d.setPdfOpen(true)}>
-            <FileText size={14} className="mr-1" />
-            PDF
-          </Button>
-          <DeleteButton onDelete={d.del} isPending={d.deleting} />
-        </div>
-      </header>
-
-      <InspectionSignatures
-        inspection={{
-          inspector_name: item.inspectorName || null,
-          signatories: item.signatories ?? [],
-          created_at: item.createdAt,
-          completed_at: item.completedAt ?? null,
-        }}
-        canEdit={item.status === 'completed'}
-        onUpdate={(sigs) => save({ signatories: sigs })}
-      />
-
-      <WizardSteps
-        steps={[
-          { label: 'ინფო' },
-          { label: 'პლატფ.' },
-          { label: 'ტვირთი' },
-          { label: 'შემოწმება' },
-          { label: 'დასკვნა' },
-          { label: 'ხელმოწ.' },
-        ]}
-        current={d.step}
-        onStep={d.setStep}
-      />
-
+    <>
+      <WizardFrame
+        open
+        onClose={() => navigate(routes.inspections.list())}
+        projectName={d.project?.name}
+        inspectionName={equipmentInspectionName('cargo_platform')}
+        stepName={`${STEP_LABELS[d.step]} · ${d.step + 1}/${total}`}
+        showProgress
+        progressPercent={(d.step / (total - 1)) * 100}
+        closeDisabled={d.updating}
+        stepKey={d.step}
+        direction={d.direction}
+        onBack={() => d.goStep(d.step - 1)}
+        onNext={handleNext}
+        backDisabled={d.step === 0 || d.updating}
+        nextDisabled={isLast && isDraft ? !canComplete || d.updating : false}
+        nextLabel={isLast ? (isDraft ? 'დასრულება' : 'PDF გენერირება') : 'შემდეგი'}
+        hideNextArrow={isLast}
+        submitting={isLast && isDraft && d.updating}
+      >
       {d.step === 0 && (
-        <>
+        <div className="space-y-4">
           <Card>
             <CardHeader><CardTitle className="text-base">ზოგადი ინფორმაცია</CardTitle></CardHeader>
             <CardContent className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
@@ -180,12 +165,16 @@ export default function CargoPlatformDetail() {
               />
             </CardContent>
           </Card>
-          <WizardNav current={d.step} total={6} onPrev={() => d.setStep(d.step - 1)} onNext={() => d.setStep(d.step + 1)} />
-        </>
+          {!d.isPending && (
+            <div className="flex justify-end">
+              <DeleteButton onDelete={d.del} isPending={d.deleting} />
+            </div>
+          )}
+        </div>
       )}
 
       {d.step === 1 && (
-        <>
+        <div className="space-y-4">
           <Card>
             <CardHeader><CardTitle className="text-base">პლატფორმის იდენტიფიკაცია</CardTitle></CardHeader>
             <CardContent className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
@@ -244,12 +233,11 @@ export default function CargoPlatformDetail() {
               />
             </CardContent>
           </Card>
-          <WizardNav current={d.step} total={6} onPrev={() => d.setStep(d.step - 1)} onNext={() => d.setStep(d.step + 1)} />
-        </>
+        </div>
       )}
 
       {d.step === 2 && (
-        <>
+        <div className="space-y-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <CardTitle className="text-base">
@@ -310,12 +298,11 @@ export default function CargoPlatformDetail() {
               )}
             </CardContent>
           </Card>
-          <WizardNav current={d.step} total={6} onPrev={() => d.setStep(d.step - 1)} onNext={() => d.setStep(d.step + 1)} />
-        </>
+        </div>
       )}
 
       {d.step === 3 && (
-        <>
+        <div className="space-y-4">
           <Card>
             <CardHeader><CardTitle className="text-base">პლატფორმის შემოწმება</CardTitle></CardHeader>
             <CardContent>
@@ -335,23 +322,17 @@ export default function CargoPlatformDetail() {
                               <p className="text-sm font-medium text-neutral-800">{ci.label}</p>
                               <p className="text-xs text-neutral-500">{ci.description}</p>
                             </div>
-                            <div className="flex shrink-0 gap-1.5">
-                              {(['good', 'fix', 'na'] as CPResult[]).map((r) => {
-                                const active = result === r;
-                                return (
-                                  <button
-                                    key={r}
-                                    type="button"
-                                    disabled={!isDraft}
-                                    onClick={() => patchItem(ci.id, { result: active ? null : r })}
-                                    className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold transition disabled:opacity-60 ${
-                                      active ? RESULT_COLOR[r] : 'border-neutral-300 bg-white text-neutral-700 hover:border-neutral-400'
-                                    }`}
-                                  >
-                                    {CP_RESULT_LABEL[r]}
-                                  </button>
-                                );
-                              })}
+                            <div className="shrink-0" style={{ width: 180 }}>
+                              <SegmentedControl
+                                fullWidth
+                                options={(['good', 'fix', 'na'] as CPResult[]).map((r) => ({
+                                  label: CP_RESULT_LABEL[r],
+                                  value: r,
+                                  selectedBg: RESULT_BG[r],
+                                }))}
+                                selected={result}
+                                onSelect={(r) => { if (isDraft) patchItem(ci.id, { result: r === result ? null : (r as CPResult) }); }}
+                              />
                             </div>
                           </div>
                           {result === 'fix' && isDraft && (
@@ -378,35 +359,38 @@ export default function CargoPlatformDetail() {
               ))}
             </CardContent>
           </Card>
-          <WizardNav current={d.step} total={6} onPrev={() => d.setStep(d.step - 1)} onNext={() => d.setStep(d.step + 1)} />
-        </>
+        </div>
       )}
 
       {d.step === 4 && (
-        <>
+        <div className="space-y-4">
           <Card>
             <CardHeader><CardTitle className="text-base">დასკვნა</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">ვერდიქტი</p>
-                <div className="flex flex-wrap gap-2">
-                  {(['approved', 'conditional', 'rejected'] as CPVerdict[]).map((v) => {
-                    const active = item.verdict === v;
-                    return (
-                      <button
-                        key={v}
-                        type="button"
-                        disabled={!isDraft}
-                        onClick={() => save({ verdict: active ? null : v })}
-                        className={`rounded-full border px-3 py-1 text-xs font-semibold transition disabled:opacity-60 ${
-                          active ? VERDICT_COLOR[v] : 'border-neutral-300 bg-white text-neutral-700 hover:border-neutral-400'
-                        }`}
-                      >
-                        {v === 'approved' ? 'შეესაბამება' : v === 'conditional' ? 'პირობით' : 'არ შეესაბამება'}
-                      </button>
-                    );
-                  })}
-                </div>
+                {isDraft ? (
+                  <SegmentedControl
+                    fullWidth
+                    options={(['approved', 'conditional', 'rejected'] as CPVerdict[]).map((v) => ({
+                      label: v === 'approved' ? 'შეესაბამება' : v === 'conditional' ? 'პირობით' : 'არ შეესაბამება',
+                      value: v,
+                      selectedBg: VERDICT_BG[v],
+                    }))}
+                    selected={item.verdict}
+                    onSelect={(v) => save({ verdict: v === item.verdict ? null : (v as CPVerdict) })}
+                  />
+                ) : (
+                  <p className="text-sm text-neutral-700">
+                    {item.verdict
+                      ? item.verdict === 'approved'
+                        ? 'შეესაბამება'
+                        : item.verdict === 'conditional'
+                          ? 'პირობით'
+                          : 'არ შეესაბამება'
+                      : '—'}
+                  </p>
+                )}
                 {item.verdict && (
                   <p className="text-xs text-neutral-500">{CP_VERDICT_LABEL[item.verdict]}</p>
                 )}
@@ -430,24 +414,23 @@ export default function CargoPlatformDetail() {
                   <p className="text-sm text-neutral-700">{item.verdictComment || '—'}</p>
                 )}
               </div>
-
-              {isDraft && (
-                <Button
-                  size="sm"
-                  disabled={!canComplete || d.updating}
-                  onClick={() => save({ status: 'completed' })}
-                >
-                  დასრულება
-                </Button>
-              )}
             </CardContent>
           </Card>
-          <WizardNav current={d.step} total={6} onPrev={() => d.setStep(d.step - 1)} onNext={() => d.setStep(d.step + 1)} />
-        </>
+        </div>
       )}
 
       {d.step === 5 && (
-        <>
+        <div className="space-y-4">
+          <InspectionSignatures
+            inspection={{
+              inspector_name: item.inspectorName || null,
+              signatories: item.signatories ?? [],
+              created_at: item.createdAt,
+              completed_at: item.completedAt ?? null,
+            }}
+            canEdit={item.status === 'completed'}
+            onUpdate={(sigs) => save({ signatories: sigs })}
+          />
           <Card>
             <CardHeader><CardTitle className="text-base">ხელმოწერები</CardTitle></CardHeader>
             <CardContent className="space-y-6">
@@ -479,17 +462,17 @@ export default function CargoPlatformDetail() {
               ))}
             </CardContent>
           </Card>
-          <WizardNav current={d.step} total={6} onPrev={() => d.setStep(d.step - 1)} onNext={() => d.setStep(d.step + 1)} />
-        </>
+        </div>
       )}
+      </WizardFrame>
 
-      {d.pdfOpen && (
-        <InspectionPdfOverlay
-          src={`#${routes.cargoPlatform.print(item.id)}?preview=1`}
-          onClose={() => d.setPdfOpen(false)}
-        />
-      )}
-    </div>
+      <SuccessModal
+        isOpen={successOpen}
+        onClose={() => setSuccessOpen(false)}
+        onGeneratePDF={() => window.open(`#${routes.cargoPlatform.print(item.id)}`, '_blank')}
+        data={successData}
+      />
+    </>
   );
 }
 
@@ -510,26 +493,12 @@ function PillPair<T extends string>({
   return (
     <div className="space-y-1">
       <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">{label}</p>
-      <div className="flex gap-2">
-        {options.map(([val, lbl]) => {
-          const active = value === val;
-          return (
-            <button
-              key={val}
-              type="button"
-              disabled={disabled}
-              onClick={() => onChange(active ? null : val)}
-              className={`rounded-full border px-3 py-1 text-xs font-semibold transition disabled:opacity-60 ${
-                active
-                  ? 'border-brand-600 bg-brand-600 text-white'
-                  : 'border-neutral-300 bg-white text-neutral-700 hover:border-brand-400'
-              }`}
-            >
-              {lbl}
-            </button>
-          );
-        })}
-      </div>
+      <SegmentedControl
+        fullWidth
+        options={options.map(([val, lbl]) => ({ label: lbl, value: val, selectedBg: '#1D9E75' }))}
+        selected={value}
+        onSelect={(v) => { if (!disabled) onChange(v === value ? null : (v as T)); }}
+      />
     </div>
   );
 }

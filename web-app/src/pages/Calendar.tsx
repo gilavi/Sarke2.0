@@ -19,6 +19,7 @@ import { listBriefings } from '@/lib/data/briefings';
 import { listIncidents } from '@/lib/data/incidents';
 import { listProjects } from '@/lib/data/projects';
 import { SkeletonList } from '@/components/SkeletonCard';
+import { useInspectionName, equipmentInspectionName } from '@/lib/documentNames';
 import { projectKeys, inspectionKeys, bobcatKeys, excavatorKeys, generalEquipmentKeys, briefingKeys, incidentKeys } from '@/app/queryKeys';
 
 /* ─── Types ─── */
@@ -87,6 +88,7 @@ function buildItems(
   briefings: Awaited<ReturnType<typeof listBriefings>>,
   incidents: Awaited<ReturnType<typeof listIncidents>>,
   projectMap: Map<string, { name: string }>,
+  resolveInspectionName: (templateId?: string | null) => string,
 ): CalendarEvent[] {
   const out: CalendarEvent[] = [];
 
@@ -112,7 +114,7 @@ function buildItems(
     out.push({
       id: `insp-${i.id}`,
       href: `/inspections/${i.id}`,
-      title: i.harness_name || `აქტი #${i.id.slice(0, 8)}`,
+      title: resolveInspectionName(i.template_id),
       projectName: projectMap.get(i.project_id)?.name ?? '—',
       date,
       kind: 'inspection',
@@ -128,7 +130,7 @@ function buildItems(
     out.push({
       id: `bobcat-${i.id}`,
       href: `/bobcat/${i.id}`,
-      title: i.equipmentModel || i.company || `ციცხვიანი #${i.id.slice(0, 8)}`,
+      title: equipmentInspectionName('bobcat'),
       projectName: projectMap.get(i.projectId)?.name ?? '—',
       date,
       kind: 'inspection',
@@ -144,7 +146,7 @@ function buildItems(
     out.push({
       id: `exc-${i.id}`,
       href: `/excavator/${i.id}`,
-      title: `ექსკავატორი${i.serialNumber ? ` — ${i.serialNumber}` : ''}`,
+      title: equipmentInspectionName('excavator'),
       projectName: projectMap.get(i.projectId)?.name ?? '—',
       date,
       kind: 'inspection',
@@ -160,7 +162,7 @@ function buildItems(
     out.push({
       id: `ge-${i.id}`,
       href: `/general-equipment/${i.id}`,
-      title: i.objectName || `ტექ. აქტი #${i.id.slice(0, 8)}`,
+      title: equipmentInspectionName('general'),
       projectName: projectMap.get(i.projectId)?.name ?? '—',
       date,
       kind: 'inspection',
@@ -252,6 +254,7 @@ export default function Calendar() {
     return map;
   }, [projectsQ.data]);
 
+  const inspectionName = useInspectionName();
   const allEvents = useMemo(() => {
     if (isLoading) return [];
     return buildItems(
@@ -262,8 +265,9 @@ export default function Calendar() {
       briefingQ.data ?? [],
       incidentQ.data ?? [],
       projectMap,
+      inspectionName,
     );
-  }, [inspectionsQ.data, bobcatQ.data, excavatorQ.data, generalQ.data, briefingQ.data, incidentQ.data, projectMap, isLoading]);
+  }, [inspectionsQ.data, bobcatQ.data, excavatorQ.data, generalQ.data, briefingQ.data, incidentQ.data, projectMap, isLoading, inspectionName]);
 
   const year = currentMonth.getFullYear();
   const month = currentMonth.getMonth();

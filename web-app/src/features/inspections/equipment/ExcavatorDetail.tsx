@@ -7,21 +7,22 @@
  * section, and the approval verdict.
  */
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { FileText } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { NumberInput, Textarea, TextInput } from '@mantine/core';
 import DeleteButton from '@/components/DeleteButton';
 import InspectionSignatures from '@/components/InspectionSignatures';
 import SignatureCanvas from '@/components/SignatureCanvas';
 import FieldInput from '@/components/FieldInput';
-import WizardSteps, { WizardNav } from '@/components/WizardSteps';
+import { WizardFrame, SegmentedControl } from '@/components/wizard';
+import SuccessModal, { type SuccessModalData } from '@/components/web/SuccessModal';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { SkeletonDetailPage } from '@/components/SkeletonCard';
 import { ErrorView, EmptyView } from '@/components/async/AsyncBoundary';
 import { routes } from '@/app/routes';
 import { excavatorKeys } from '@/app/queryKeys';
+import { equipmentInspectionName } from '@/lib/documentNames';
 import {
   CABIN_ITEMS,
   ENGINE_ITEMS,
@@ -43,8 +44,6 @@ import {
   type ExcavatorVerdict,
 } from '@/lib/data/excavator';
 import { useEquipmentDetail } from './useEquipmentDetail';
-import { CompletedBanner } from './components/CompletedBanner';
-import { InspectionPdfOverlay } from './components/InspectionPdfOverlay';
 import { ChecklistItemRow } from './components/ChecklistItemRow';
 import type { ResultOption } from './components/ResultPills';
 
@@ -55,6 +54,9 @@ const RESULT_OPTIONS: ResultOption<ExcavatorResult>[] = [
   { value: 'deficient', label: 'ხარვეზი', tone: 'warn' },
   { value: 'unusable', label: 'გამოუსადეგ.', tone: 'bad' },
 ];
+
+const VERDICT_BG = ['#1D9E75', '#D97706', '#EF4444', '#94A3B8'];
+const STEP_LABELS = ['ინფო', 'შემოწმება', 'დასკვნა'];
 
 interface SectionDef {
   key: 'engine' | 'undercarriage' | 'cabin' | 'safety';
@@ -84,6 +86,7 @@ export default function ExcavatorDetail() {
   });
 
   const [signingOpen, setSigningOpen] = useState(false);
+  const [successOpen, setSuccessOpen] = useState(false);
 
   if (d.isLoading) return <SkeletonDetailPage />;
   if (d.isError) return <ErrorView error={d.error} />;
@@ -166,69 +169,59 @@ export default function ExcavatorDetail() {
     d.save({ maintenanceItems: next });
   }
 
+  const total = STEP_LABELS.length;
+  const isConclusion = d.step === total - 1;
+
+  const allItems = [
+    ...effectiveItem.engineItems,
+    ...effectiveItem.undercarriageItems,
+    ...effectiveItem.cabinItems,
+    ...effectiveItem.safetyItems,
+  ];
+  const evaluated = allItems.filter((i) => i.result !== null);
+  const goodCount = evaluated.filter((i) => i.result === 'good').length;
+  const successData: SuccessModalData = {
+    totalCount: evaluated.length,
+    safeCount: goodCount,
+    problemCount: evaluated.length - goodCount,
+    inspectionName: equipmentInspectionName('excavator'),
+    projectName: d.project?.name ?? '',
+    itemLabel: 'პუნქტი',
+  };
+
+  function handleNext() {
+    if (!isConclusion) { d.goStep(d.step + 1); return; }
+    if (isDraft) {
+      d.save({ status: 'completed' });
+      setSuccessOpen(true);
+    } else {
+      window.open(`#${routes.excavator.print(effectiveItem.id)}`, '_blank');
+    }
+  }
+
   return (
-    <div className="space-y-6">
-      {d.justCompleted && <CompletedBanner onViewPdf={() => d.setPdfOpen(true)} />}
-
-      <header className="flex items-start justify-between gap-4">
-        <div>
-          <nav className="flex items-center gap-1 text-sm">
-            {d.project && (
-              <>
-                <Link to={routes.projects.detail(d.project.id)} className="text-brand-600 hover:underline">
-                  {d.project.name}
-                </Link>
-                <span className="text-neutral-400">›</span>
-              </>
-            )}
-            <Link to={routes.inspections.list(effectiveItem.projectId)} className="text-brand-600 hover:underline">
-              აქტები
-            </Link>
-            <span className="text-neutral-400">›</span>
-            <span className="truncate max-w-[200px] text-neutral-500">
-              {effectiveItem.serialNumber || 'ექსკავატორი'}
-            </span>
-          </nav>
-          <h1 className="mt-2 font-display text-3xl font-bold text-neutral-900">
-            ექსკავატორი — {effectiveItem.serialNumber || (d.isPending ? 'ახალი' : `#${effectiveItem.id.slice(0, 8)}`)}
-          </h1>
-          <p className="mt-1 text-sm text-neutral-500">
-            სტატუსი: {effectiveItem.status === 'completed' ? 'დასრულდა' : 'დრაფტი'}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {!d.isPending && (
-            <Button variant="outline" size="sm" onClick={() => d.setPdfOpen(true)}>
-              <FileText size={14} className="mr-1" />
-              PDF
-            </Button>
-          )}
-          {!d.isPending && <DeleteButton onDelete={d.del} isPending={d.deleting} />}
-        </div>
-      </header>
-
-      {!d.isPending && (
-        <InspectionSignatures
-          inspection={{
-            inspector_signature: effectiveItem.inspectorSignature ?? null,
-            inspector_name: effectiveItem.inspectorName ?? null,
-            signatories: effectiveItem.signatories ?? [],
-            created_at: effectiveItem.createdAt,
-            completed_at: effectiveItem.completedAt ?? null,
-          }}
-          canEdit={effectiveItem.status === 'completed'}
-          onUpdate={(sigs) => d.save({ signatories: sigs })}
-        />
-      )}
-
-      <WizardSteps
-        steps={[{ label: 'ინფო' }, { label: 'შემოწმება' }, { label: 'დასკვნა' }]}
-        current={d.step}
-        onStep={d.setStep}
-      />
-
+    <>
+      <WizardFrame
+        open
+        onClose={() => navigate(routes.inspections.list())}
+        projectName={d.project?.name}
+        inspectionName={equipmentInspectionName('excavator')}
+        stepName={`${STEP_LABELS[d.step]} · ${d.step + 1}/${total}`}
+        showProgress
+        progressPercent={(d.step / (total - 1)) * 100}
+        closeDisabled={d.updating}
+        stepKey={d.step}
+        direction={d.direction}
+        onBack={() => d.goStep(d.step - 1)}
+        onNext={handleNext}
+        backDisabled={d.step === 0 || d.updating}
+        nextDisabled={isConclusion && isDraft ? !effectiveItem.verdict || d.updating || d.isPending : false}
+        nextLabel={isConclusion ? (isDraft ? 'დასრულება' : 'PDF გენერირება') : 'შემდეგი'}
+        hideNextArrow={isConclusion}
+        submitting={isConclusion && isDraft && d.updating}
+      >
       {d.step === 0 && (
-        <>
+        <div className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle className="text-base">ტექნიკის მახასიათებლები</CardTitle>
@@ -290,12 +283,16 @@ export default function ExcavatorDetail() {
               />
             </CardContent>
           </Card>
-          <WizardNav current={d.step} total={3} onPrev={() => d.setStep(d.step - 1)} onNext={() => d.setStep(d.step + 1)} />
-        </>
+          {!d.isPending && (
+            <div className="flex justify-end">
+              <DeleteButton onDelete={d.del} isPending={d.deleting} />
+            </div>
+          )}
+        </div>
       )}
 
       {d.step === 1 && (
-        <>
+        <div className="space-y-4">
           {SECTIONS.map((s) => {
             const stateList = effectiveItem[s.field] as ExcavatorChecklistItemState[];
             const stateById = new Map(stateList.map((it) => [it.id, it]));
@@ -304,9 +301,8 @@ export default function ExcavatorDetail() {
                 <CardHeader>
                   <CardTitle className="text-base">{s.title}</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <ul className="divide-y divide-neutral-200">
-                    {s.items.map((entry) => {
+                <CardContent className="p-0">
+                  {s.items.map((entry) => {
                       const st = stateById.get(entry.id) ?? {
                         id: entry.id, result: null, comment: null, photo_paths: [],
                       };
@@ -336,7 +332,6 @@ export default function ExcavatorDetail() {
                         />
                       );
                     })}
-                  </ul>
                 </CardContent>
               </Card>
             );
@@ -353,29 +348,20 @@ export default function ExcavatorDetail() {
                     effectiveItem.maintenanceItems.find((x) => x.id === m.id) ??
                     ({ id: m.id, answer: null, date: null } as ExcavatorMaintenanceItemState);
                   return (
-                    <li key={m.id} className="space-y-2 py-3">
+                    <li key={m.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                       <div className="text-sm text-neutral-900">{m.label}</div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        {(['yes', 'no'] as const).map((a) => {
-                          const selected = st.answer === a;
-                          return (
-                            <button
-                              key={a}
-                              type="button"
-                              disabled={!isDraft}
-                              onClick={() => patchMaintenance(m.id, { answer: selected ? null : a })}
-                              className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
-                                selected
-                                  ? a === 'yes'
-                                    ? 'border-emerald-600 bg-emerald-600 text-white'
-                                    : 'border-red-600 bg-red-600 text-white'
-                                  : 'border-neutral-300 bg-white text-neutral-700 hover:border-brand-400'
-                              } disabled:cursor-not-allowed disabled:opacity-60`}
-                            >
-                              {a === 'yes' ? 'კი' : 'არა'}
-                            </button>
-                          );
-                        })}
+                      <div className="flex items-center gap-2">
+                        <div style={{ width: 140 }}>
+                          <SegmentedControl
+                            fullWidth
+                            options={[
+                              { label: 'კი', value: 'yes', selectedBg: '#1D9E75' },
+                              { label: 'არა', value: 'no', selectedBg: '#EF4444' },
+                            ]}
+                            selected={st.answer}
+                            onSelect={(a) => { if (isDraft) patchMaintenance(m.id, { answer: a === st.answer ? null : (a as 'yes' | 'no') }); }}
+                          />
+                        </div>
                         <TextInput
                           type="date"
                           disabled={!isDraft}
@@ -394,12 +380,24 @@ export default function ExcavatorDetail() {
               </ul>
             </CardContent>
           </Card>
-          <WizardNav current={d.step} total={3} onPrev={() => d.setStep(d.step - 1)} onNext={() => d.setStep(d.step + 1)} />
-        </>
+        </div>
       )}
 
       {d.step === 2 && (
-        <>
+        <div className="space-y-4">
+          {!d.isPending && (
+            <InspectionSignatures
+              inspection={{
+                inspector_signature: effectiveItem.inspectorSignature ?? null,
+                inspector_name: effectiveItem.inspectorName ?? null,
+                signatories: effectiveItem.signatories ?? [],
+                created_at: effectiveItem.createdAt,
+                completed_at: effectiveItem.completedAt ?? null,
+              }}
+              canEdit={effectiveItem.status === 'completed'}
+              onUpdate={(sigs) => d.save({ signatories: sigs })}
+            />
+          )}
           <Card>
             <CardHeader>
               <CardTitle className="text-base">ინსპექტორის ხელმოწერა</CardTitle>
@@ -447,25 +445,16 @@ export default function ExcavatorDetail() {
                 <>
                   <div className="space-y-1">
                     <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">დასკვნა</p>
-                    <div className="flex flex-wrap gap-2">
-                      {(Object.keys(EXCAVATOR_VERDICT_LABEL) as ExcavatorVerdict[]).map((v) => {
-                        const selected = effectiveItem.verdict === v;
-                        return (
-                          <button
-                            key={v}
-                            type="button"
-                            onClick={() => d.save({ verdict: selected ? null : v })}
-                            className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
-                              selected
-                                ? 'border-brand-600 bg-brand-600 text-white'
-                                : 'border-neutral-300 bg-white text-neutral-700 hover:border-brand-400'
-                            }`}
-                          >
-                            {EXCAVATOR_VERDICT_LABEL[v]}
-                          </button>
-                        );
-                      })}
-                    </div>
+                    <SegmentedControl
+                      fullWidth
+                      options={(Object.keys(EXCAVATOR_VERDICT_LABEL) as ExcavatorVerdict[]).map((v, i) => ({
+                        label: EXCAVATOR_VERDICT_LABEL[v],
+                        value: v,
+                        selectedBg: VERDICT_BG[i] ?? '#94A3B8',
+                      }))}
+                      selected={effectiveItem.verdict}
+                      onSelect={(v) => d.save({ verdict: v === effectiveItem.verdict ? null : (v as ExcavatorVerdict) })}
+                    />
                   </div>
                   <Textarea
                     label="შენიშვნები"
@@ -478,9 +467,6 @@ export default function ExcavatorDetail() {
                     radius="md"
                     autosize={false}
                   />
-                  <Button size="sm" onClick={() => d.save({ status: 'completed' })} disabled={d.updating || d.isPending}>
-                    დასრულება
-                  </Button>
                 </>
               ) : (
                 <div className="space-y-1 text-sm text-neutral-700">
@@ -490,16 +476,16 @@ export default function ExcavatorDetail() {
               )}
             </CardContent>
           </Card>
-          <WizardNav current={d.step} total={3} onPrev={() => d.setStep(d.step - 1)} onNext={() => d.setStep(d.step + 1)} />
-        </>
+        </div>
       )}
+      </WizardFrame>
 
-      {d.pdfOpen && (
-        <InspectionPdfOverlay
-          src={`#${routes.excavator.print(effectiveItem.id)}?preview=1`}
-          onClose={() => d.setPdfOpen(false)}
-        />
-      )}
-    </div>
+      <SuccessModal
+        isOpen={successOpen}
+        onClose={() => setSuccessOpen(false)}
+        onGeneratePDF={() => window.open(`#${routes.excavator.print(effectiveItem.id)}`, '_blank')}
+        data={successData}
+      />
+    </>
   );
 }

@@ -20,6 +20,7 @@ import {
   type Report,
 } from '@/lib/data/reports';
 import { getProject } from '@/lib/data/projects';
+import { reportDisplayName } from '@/lib/documentNames';
 import { routes } from '@/app/routes';
 import { projectKeys, reportKeys } from '@/app/queryKeys';
 
@@ -173,11 +174,11 @@ export default function ReportDetail() {
             </Link>
             <span className="text-neutral-400">›</span>
             <span className="truncate max-w-[200px] text-neutral-500">
-              {item.title || 'რეპორტი'}
+              {reportDisplayName(item.title)}
             </span>
           </nav>
           <h1 className="mt-2 font-display text-3xl font-bold text-neutral-900">
-            {item.title || `რეპორტი #${item.id.slice(0, 8)}`}
+            {reportDisplayName(item.title)}
           </h1>
           <p className="mt-1 text-sm text-neutral-500">სტატუსი: {item.status === 'completed' ? 'დასრულდა' : 'დრაფტი'}</p>
         </div>

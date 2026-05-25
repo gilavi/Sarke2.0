@@ -30,6 +30,7 @@ import {
   type Question,
 } from '@/lib/data/inspections';
 import { getProject } from '@/lib/data/projects';
+import { useInspectionName } from '@/lib/documentNames';
 import { routes } from '@/app/routes';
 import { projectKeys, inspectionKeys } from '@/app/queryKeys';
 
@@ -44,6 +45,7 @@ export default function InspectionDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const inspectionName = useInspectionName();
   const { pendingCreate, lazyCreate } = usePendingCreate<PendingInspection>();
   const isPending = id === 'draft';
 
@@ -303,11 +305,11 @@ export default function InspectionDetail() {
             </Link>
             <span className="text-neutral-400">›</span>
             <span className="truncate max-w-[200px] text-neutral-500">
-              {inspection?.harness_name || 'აქტი'}
+              {inspectionName(templateId)}
             </span>
           </nav>
           <h1 className="mt-2 font-display text-3xl font-bold text-neutral-900">
-            {inspection.harness_name || `აქტი #${inspection.id.slice(0, 8)}`}
+            {inspectionName(templateId)}
           </h1>
           <p className="mt-1 text-sm text-neutral-500">სტატუსი: {inspection.status === 'completed' ? 'დასრულდა' : 'დრაფტი'}</p>
         </div>

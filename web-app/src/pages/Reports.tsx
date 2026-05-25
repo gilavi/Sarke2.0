@@ -6,6 +6,7 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { SkeletonList } from '@/components/SkeletonCard';
 import { listReports, deleteReport, type Report } from '@/lib/data/reports';
 import { listProjects } from '@/lib/data/projects';
+import { reportDisplayName } from '@/lib/documentNames';
 import { projectKeys, reportKeys } from '@/app/queryKeys';
 
 const containerVariants = {
@@ -84,7 +85,7 @@ export default function Reports() {
                   </div>
                   <div className="min-w-0">
                     <p className="truncate font-medium text-neutral-900 dark:text-neutral-100">
-                      {r.title || `რეპორტი #${r.id.slice(0, 8)}`}
+                      {reportDisplayName(r.title)}
                     </p>
                     <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
                       {proj?.name ?? '—'}

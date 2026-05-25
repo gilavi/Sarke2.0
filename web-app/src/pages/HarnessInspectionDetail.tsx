@@ -1,4 +1,5 @@
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileText } from 'lucide-react';
 import { SkeletonDetailPage } from '@/components/SkeletonCard';
@@ -6,6 +7,8 @@ import { toast } from 'sonner';
 import DeleteButton from '@/components/DeleteButton';
 import InspectionSignatures from '@/components/InspectionSignatures';
 import InspectionInfoView from '@/components/InspectionInfoView';
+import SuccessModal, { type SuccessModalData } from '@/components/web/SuccessModal';
+import { useInspectionName } from '@/lib/documentNames';
 import { Button } from '@/components/ui/button';
 import {
   deleteInspection,
@@ -23,7 +26,22 @@ import { projectKeys, inspectionKeys } from '@/app/queryKeys';
 export default function HarnessInspectionDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const qc = useQueryClient();
+  const inspectionName = useInspectionName();
+
+  /* ── Success modal, shown when the wizard navigates here after completion ── */
+  const [successData, setSuccessData] = useState<SuccessModalData | null>(
+    () => (location.state as { inspectionSuccess?: SuccessModalData } | null)?.inspectionSuccess ?? null,
+  );
+  const closeSuccess = () => {
+    setSuccessData(null);
+    // Drop the router state so the modal doesn't reappear on back-navigation.
+    // Done on close (not mount) to avoid a re-init race that closes it instantly.
+    if ((location.state as { inspectionSuccess?: SuccessModalData } | null)?.inspectionSuccess) {
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  };
 
   const inspectionQ = useQuery({
     queryKey: inspectionKeys.detail(id),
@@ -71,13 +89,23 @@ export default function HarnessInspectionDetail() {
     onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
   });
 
-  if (inspectionQ.isLoading) return <SkeletonDetailPage />;
-  if (!inspection) return <p className="text-sm text-neutral-500">აქტი ვერ მოიძებნა.</p>;
+  const successModal = (
+    <SuccessModal
+      isOpen={!!successData}
+      onClose={closeSuccess}
+      onGeneratePDF={() => window.open(`#/inspections/${id}/print`, '_blank')}
+      data={successData ?? { totalCount: 0, safeCount: 0, problemCount: 0, inspectionName: '', projectName: '', itemLabel: '' }}
+    />
+  );
+
+  if (inspectionQ.isLoading) return <>{successModal}<SkeletonDetailPage /></>;
+  if (!inspection) return <>{successModal}<p className="text-sm text-neutral-500">აქტი ვერ მოიძებნა.</p></>;
 
   const isDraft = inspection.status === 'draft' || inspection.status === 'in_progress';
 
   return (
     <div className="space-y-6">
+      {successModal}
       {/* ── Page header ── */}
       <header className="flex items-start justify-between gap-4">
         <div>
@@ -95,11 +123,11 @@ export default function HarnessInspectionDetail() {
             </Link>
             <span className="text-neutral-400">›</span>
             <span className="truncate max-w-[200px] text-neutral-500">
-              {inspection?.harness_name || 'ქამარი'}
+              {inspectionName(inspection.template_id)}
             </span>
           </nav>
           <h1 className="mt-2 font-display text-3xl font-bold text-neutral-900 dark:text-neutral-100">
-            {inspection.harness_name || `ქამარი #${inspection.id.slice(0, 8)}`}
+            {inspectionName(inspection.template_id)}
           </h1>
           <p className="mt-1 text-sm text-neutral-500">
             სტატუსი: {inspection.status === 'completed' ? 'დასრულდა' : 'დრაფტი'}

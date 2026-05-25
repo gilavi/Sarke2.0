@@ -6,16 +6,16 @@
  *
  * These guard the render tree, not behavior: each test loads a COMPLETED
  * (read-only) inspection, asserts the component mounts past the loading skeleton,
- * renders its wizard step labels, and — by clicking through every step — renders
- * every step branch without throwing (where a runtime crash would otherwise
- * hide). The per-type data module is mocked so only the async fetch fns are
- * stubbed; the real checklist catalogs / label maps are kept (importActual), so
- * the components render exactly what they would in production.
+ * and — by stepping forward through the shared WizardFrame footer ("შემდეგი") —
+ * renders every step branch without throwing. The per-type data module is mocked
+ * so only the async fetch fns are stubbed; the real checklist catalogs / label
+ * maps are kept (importActual), so the components render exactly what they would
+ * in production.
  *
- * Note: the green "completed" banner is only shown after an in-session complete
- * mutation (`justCompleted`), not on a freshly-loaded completed act — so these
- * assert the completed *status* line + the read-only verdict/conclusion text
- * instead.
+ * Note: the equipment flows now render inside the full-screen wizard kit — one
+ * step at a time, navigated via the footer (no clickable step pills, no status
+ * line). So these mount on the info step and walk forward to the read-only
+ * verdict/conclusion.
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { ReactElement } from 'react';
@@ -170,24 +170,19 @@ describe('BobcatDetail', () => {
     completedAt: ISO,
   };
 
-  it('mounts a completed act and renders every step branch', async () => {
+  it('mounts a completed act and steps to the read-only conclusion', async () => {
     vi.mocked(getBobcatInspection).mockResolvedValue(fixture);
     renderDetail(<BobcatDetail />, routePattern.bobcatDetail, routes.bobcat.detail(ID));
 
-    // Mounted past the loading skeleton → completed status line.
-    expect(await screen.findByText(/დასრულდა/)).toBeInTheDocument();
+    // Mounted past the loading skeleton → step 0 info card.
+    expect(await screen.findByText('ზოგადი ინფორმაცია')).toBeInTheDocument();
 
-    // All three step labels present.
-    expect(screen.getByRole('button', { name: /ინფო/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /შემოწმება/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /დასკვნა/ })).toBeInTheDocument();
-
-    // Step through checklist → conclusion (renders the heavy branches).
-    fireEvent.click(screen.getByRole('button', { name: /შემოწმება/ }));
-    fireEvent.click(screen.getByRole('button', { name: /დასკვნა/ }));
+    // Walk forward: info → checklist → conclusion (renders the heavy branches).
+    fireEvent.click(screen.getByRole('button', { name: /შემდეგი/ }));
+    fireEvent.click(screen.getByRole('button', { name: /შემდეგი/ }));
 
     // Read-only verdict + notes.
-    expect(screen.getByText(/დაშვებულია/)).toBeInTheDocument();
+    expect(await screen.findByText(/დაშვებულია/)).toBeInTheDocument();
     expect(screen.getByText(/ბობკატის ჩანაწერი/)).toBeInTheDocument();
   });
 });
@@ -228,20 +223,17 @@ describe('ExcavatorDetail', () => {
     completedAt: ISO,
   };
 
-  it('mounts a completed act and renders every step branch', async () => {
+  it('mounts a completed act and steps to the read-only conclusion', async () => {
     vi.mocked(getExcavatorInspection).mockResolvedValue(fixture);
     renderDetail(<ExcavatorDetail />, routePattern.excavatorDetail, routes.excavator.detail(ID));
 
-    expect(await screen.findByText(/დასრულდა/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /ინფო/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /შემოწმება/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /დასკვნა/ })).toBeInTheDocument();
+    expect(await screen.findByText('ზოგადი ინფორმაცია')).toBeInTheDocument();
 
     // Step 1 renders the 4 checklist sections + maintenance; step 2 the verdict.
-    fireEvent.click(screen.getByRole('button', { name: /შემოწმება/ }));
-    fireEvent.click(screen.getByRole('button', { name: /დასკვნა/ }));
+    fireEvent.click(screen.getByRole('button', { name: /შემდეგი/ }));
+    fireEvent.click(screen.getByRole('button', { name: /შემდეგი/ }));
 
-    expect(screen.getByText(textRx(EXCAVATOR_VERDICT_LABEL[verdict]))).toBeInTheDocument();
+    expect(await screen.findByText(textRx(EXCAVATOR_VERDICT_LABEL[verdict]))).toBeInTheDocument();
     expect(screen.getByText(/ექსკავატორის ჩანაწერი/)).toBeInTheDocument();
   });
 });
@@ -279,7 +271,7 @@ describe('GeneralEquipmentDetail', () => {
     completedAt: ISO,
   };
 
-  it('mounts a completed act and renders every step branch', async () => {
+  it('mounts a completed act and steps to the read-only conclusion', async () => {
     vi.mocked(getGeneralEquipmentInspection).mockResolvedValue(fixture);
     renderDetail(
       <GeneralEquipmentDetail />,
@@ -287,18 +279,15 @@ describe('GeneralEquipmentDetail', () => {
       routes.generalEquipment.detail(ID),
     );
 
-    expect(await screen.findByText(/დასრულდა/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /ინფო/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /შემოწმება/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /დასკვნა/ })).toBeInTheDocument();
+    expect(await screen.findByText('ზოგადი ინფორმაცია')).toBeInTheDocument();
 
     // Step 1 renders the equipment row; the condition pills render as text
     // (the row name is an <input> value, not a text node).
-    fireEvent.click(screen.getByRole('button', { name: /შემოწმება/ }));
-    expect(screen.getByText(/ნორმაში/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /შემდეგი/ }));
+    expect(await screen.findByText(/ნორმაში/)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /დასკვნა/ }));
-    expect(screen.getByText(/ტექ\. დასკვნა OK/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /შემდეგი/ }));
+    expect(await screen.findByText(/ტექ\. დასკვნა OK/)).toBeInTheDocument();
   });
 });
 
@@ -339,7 +328,7 @@ describe('CargoPlatformDetail', () => {
     updatedAt: ISO,
   };
 
-  it('mounts a completed act and renders all six step branches', async () => {
+  it('mounts a completed act and steps through all six branches', async () => {
     vi.mocked(getCargoPlatformInspection).mockResolvedValue(fixture);
     renderDetail(
       <CargoPlatformDetail />,
@@ -347,25 +336,22 @@ describe('CargoPlatformDetail', () => {
       routes.cargoPlatform.detail(ID),
     );
 
-    expect(await screen.findByText(/დასრულდა/)).toBeInTheDocument();
+    expect(await screen.findByText('ზოგადი ინფორმაცია')).toBeInTheDocument();
 
-    // Six step labels (info / platform / cargo / checklist / verdict / signatures).
-    for (const label of [/ინფო/, /პლატფ/, /ტვირთი/, /შემოწმება/, /დასკვნა/, /ხელმოწ/]) {
-      expect(screen.getByRole('button', { name: label })).toBeInTheDocument();
-    }
+    const next = () => fireEvent.click(screen.getByRole('button', { name: /შემდეგი/ }));
 
     // Walk every step so each branch renders. The cargo total renders as text
     // (the row name/weight are <input> values, not text nodes).
-    fireEvent.click(screen.getByRole('button', { name: /პლატფ/ }));
-    fireEvent.click(screen.getByRole('button', { name: /ტვირთი/ }));
-    expect(screen.getByText(/სულ:/)).toBeInTheDocument();
+    next(); // → platform
+    next(); // → cargo
+    expect(await screen.findByText(/სულ:/)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /^\d.*შემოწმება/ }));
-    fireEvent.click(screen.getByRole('button', { name: /დასკვნა/ }));
-    expect(screen.getByText(/ყველაფერი წესრიგშია/)).toBeInTheDocument();
+    next(); // → checklist
+    next(); // → verdict
+    expect(await screen.findByText(/ყველაფერი წესრიგშია/)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /ხელმოწ/ }));
+    next(); // → signatures
     // Both signatory slots are unsigned in the fixture → mobile-signing placeholder.
-    expect(screen.getAllByText(/მობილური აპიდან/)).toHaveLength(2);
+    expect(await screen.findAllByText(/მობილური აპიდან/)).toHaveLength(2);
   });
 });

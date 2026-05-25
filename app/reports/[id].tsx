@@ -17,6 +17,7 @@ import { useBottomSheet } from '../../components/BottomSheet';
 import { useTheme } from '../../lib/theme';
 import { useToast } from '../../lib/toast';
 import { useSession } from '../../lib/session';
+import { reportDisplayName } from '../../lib/shared/documentName';
 import { friendlyError } from '../../lib/errorMap';
 import { reportsApi } from '../../lib/services';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
@@ -141,7 +142,7 @@ export default function ReportDetailScreen() {
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Stack.Screen
         options={{
-          title: 'რეპორტი',
+          title: reportDisplayName(report?.title),
           headerBackVisible: false,
           headerLeft: () => <HeaderBackPill onPress={() => router.back()} />,
           headerShadowVisible: false,

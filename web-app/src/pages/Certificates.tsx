@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { SkeletonList } from '@/components/SkeletonCard';
 import { useAuth } from '@/lib/auth';
 import { listCertificates, signedCertificatePdfUrl, uploadCertificate } from '@/lib/data/certificates';
+import { certificateDisplayName } from '@/lib/documentNames';
 import { certificateKeys } from '@/app/queryKeys';
 
 const containerVariants = {
@@ -126,7 +127,7 @@ export default function Certificates() {
           className="divide-y divide-neutral-100 rounded-xl border border-neutral-200 bg-white dark:divide-neutral-800 dark:border-neutral-700 dark:bg-neutral-900"
         >
           {items.map((c) => {
-            const name = c.conclusion_text || `სერტიფიკატი #${c.id.slice(0, 8)}`;
+            const name = certificateDisplayName(c.conclusion_text);
             return (
               <motion.div
                 key={c.id}

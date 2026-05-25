@@ -5,7 +5,7 @@ import { Textarea, TextInput } from '@mantine/core';
 import { Button } from '@/components/ui/button';
 import { ProjectPicker } from '@/components/ui/project-picker';
 import { FloatingLabelInput } from '@/components/ui/floating-label-input';
-import { WizardShell } from '@/components/ui/wizard-shell';
+import { WizardFrame, useWizardFlow } from '@/components/wizard';
 import { listProjects } from '@/lib/data/projects';
 import { projectKeys, incidentKeys } from '@/app/queryKeys';
 import { createIncident, INCIDENT_TYPE_LABEL, type IncidentType, type Incident } from '@/lib/data/incidents';
@@ -22,7 +22,7 @@ export default function NewIncident() {
 
   const prefilledProjectId = params.get('project') ?? '';
 
-  const [step, setStep] = useState(0);
+  const flow = useWizardFlow(STEPS.length);
   const [projectId, setProjectId] = useState(prefilledProjectId);
   const [type, setType] = useState<IncidentType>('minor');
   const [dateTime, setDateTime] = useState(() => new Date().toISOString().slice(0, 16));
@@ -74,31 +74,46 @@ export default function NewIncident() {
   const canFinish = canAdvanceStep0 && canAdvanceStep1 && !mutation.isPending;
 
   const stepNextDisabled =
-    (step === 0 && !canAdvanceStep0) ||
-    (step === 1 && !canAdvanceStep1) ||
-    (step === 2 && !canFinish);
+    (flow.stepIndex === 0 && !canAdvanceStep0) ||
+    (flow.stepIndex === 1 && !canAdvanceStep1) ||
+    (flow.stepIndex === 2 && !canFinish);
+
+  const projectName = (projects ?? []).find((p) => p.id === projectId)?.name;
 
   return (
-    <WizardShell
+    <WizardFrame
       open
       onClose={() => navigate('/incidents')}
-      title="ახალი ინციდენტი"
-      steps={STEPS}
-      currentStep={step}
-      onPrev={() => setStep((s) => s - 1)}
-      onNext={() => setStep((s) => s + 1)}
-      onFinish={() => { if (canFinish) mutation.mutate(); }}
-      isSubmitting={mutation.isPending}
+      projectName={projectName}
+      inspectionName="ახალი ინციდენტი"
+      stepName={`${STEPS[flow.stepIndex]} · ${flow.stepIndex + 1}/${STEPS.length}`}
+      showProgress
+      progressPercent={(flow.stepIndex / (STEPS.length - 1)) * 100}
+      closeDisabled={mutation.isPending}
+      stepKey={flow.stepIndex}
+      direction={flow.direction}
+      onBack={flow.goPrev}
+      onNext={() => {
+        if (flow.isLast) {
+          if (canFinish) mutation.mutate();
+        } else {
+          flow.goNext();
+        }
+      }}
+      backDisabled={flow.isFirst || mutation.isPending}
       nextDisabled={stepNextDisabled}
+      nextLabel={flow.isLast ? 'შენახვა' : 'შემდეგი'}
+      hideNextArrow={flow.isLast}
+      submitting={mutation.isPending}
     >
       {/* Step 0: ინციდენტი */}
-      {step === 0 && (
+      {flow.stepIndex === 0 && (
         <div className="space-y-5">
           {prefilledProjectId ? (
             <div className="space-y-1">
               <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">პროექტი</p>
               <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm text-neutral-700">
-                {(projects ?? []).find((p) => p.id === projectId)?.name ?? '…'}
+                {projectName ?? '…'}
               </div>
             </div>
           ) : (
@@ -147,7 +162,7 @@ export default function NewIncident() {
       )}
 
       {/* Step 1: დეტალები */}
-      {step === 1 && (
+      {flow.stepIndex === 1 && (
         <div className="space-y-5">
           {type !== 'nearmiss' && (
             <div className="grid grid-cols-2 gap-3">
@@ -200,7 +215,7 @@ export default function NewIncident() {
       )}
 
       {/* Step 2: მოწმეები */}
-      {step === 2 && (
+      {flow.stepIndex === 2 && (
         <div className="space-y-4">
           <div className="space-y-2">
             <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">მოწმეები</p>
@@ -253,6 +268,6 @@ export default function NewIncident() {
           )}
         </div>
       )}
-    </WizardShell>
+    </WizardFrame>
   );
 }

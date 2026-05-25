@@ -45,6 +45,7 @@ import {
 import { buildPdfHtml, buildPdfPreviewHtml, type PdfAttachment } from '../../lib/pdf';
 import { generateAndSharePdf, PdfLimitReachedError } from '../../lib/pdfOpen';
 import { generatePdfName } from '../../lib/pdfName';
+import { inspectionDisplayName } from '../../lib/shared/documentName';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import {
   pdfPhotoEmbed,
@@ -550,7 +551,7 @@ export default function InspectionResultScreen() {
       <Stack.Screen
         options={{
           headerShown: true,
-          title: template?.name ?? 'შემოწმების აქტი',
+          title: inspectionDisplayName(template?.name),
           headerBackTitle: 'უკან',
         }}
       />

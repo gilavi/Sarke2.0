@@ -9,6 +9,7 @@ import { listGeneralEquipmentInspections, deleteGeneralEquipmentInspection } fro
 import { listCargoPlatformInspections, deleteCargoPlatformInspection } from '@/lib/data/cargoPlatform';
 import { listProjects } from '@/lib/data/projects';
 import { SkeletonList } from '@/components/SkeletonCard';
+import { useInspectionName, equipmentInspectionName } from '@/lib/documentNames';
 import { projectKeys, inspectionKeys, bobcatKeys, excavatorKeys, generalEquipmentKeys, cargoPlatformKeys } from '@/app/queryKeys';
 
 const STATUS_LABEL: Record<string, string> = {
@@ -74,13 +75,14 @@ export default function History() {
   const { data: projectList } = useQuery({ queryKey: projectKeys.lists(), queryFn: listProjects });
 
   const projects = projectList ? Object.fromEntries(projectList.map((p) => [p.id, p])) : {};
+  const inspectionName = useInspectionName();
   const isLoading = l1 || l2 || l3 || l4 || l5;
 
   const allRows: Row[] = useMemo(() => {
     const rows: Row[] = [
       ...(harness ?? []).map((i): Row => ({
         id: i.id,
-        label: i.harness_name || `აქტი #${i.id.slice(0, 8)}`,
+        label: inspectionName(i.template_id),
         projectId: i.project_id,
         type: 'harness',
         status: i.status,
@@ -89,7 +91,7 @@ export default function History() {
       })),
       ...(bobcats ?? []).map((i): Row => ({
         id: i.id,
-        label: i.equipmentModel || i.company || `ციცხვიანი #${i.id.slice(0, 8)}`,
+        label: equipmentInspectionName('bobcat'),
         projectId: i.projectId,
         type: 'bobcat',
         status: i.status,
@@ -98,7 +100,7 @@ export default function History() {
       })),
       ...(excavators ?? []).map((i): Row => ({
         id: i.id,
-        label: `ექსკავატორი${i.serialNumber ? ` — ${i.serialNumber}` : ''}`,
+        label: equipmentInspectionName('excavator'),
         projectId: i.projectId,
         type: 'excavator',
         status: i.status,
@@ -107,7 +109,7 @@ export default function History() {
       })),
       ...(generalEq ?? []).map((i): Row => ({
         id: i.id,
-        label: i.objectName || `ტექ. აქტი #${i.id.slice(0, 8)}`,
+        label: equipmentInspectionName('general'),
         projectId: i.projectId,
         type: 'general',
         status: i.status,
@@ -116,7 +118,7 @@ export default function History() {
       })),
       ...(cargoPlatforms ?? []).map((i): Row => ({
         id: i.id,
-        label: `კარგო პლატფორმა #${i.id.slice(0, 8)}`,
+        label: equipmentInspectionName('cargo_platform'),
         projectId: i.projectId,
         type: 'cargo_platform',
         status: i.status,
@@ -125,7 +127,7 @@ export default function History() {
       })),
     ];
     return rows.sort((a, b) => b.date.localeCompare(a.date));
-  }, [harness, bobcats, excavators, generalEq, cargoPlatforms]);
+  }, [harness, bobcats, excavators, generalEq, cargoPlatforms, inspectionName]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, Row[]>();

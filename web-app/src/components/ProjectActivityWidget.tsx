@@ -14,6 +14,7 @@ import {
   generalEquipmentKeys,
   excavatorKeys,
 } from '@/app/queryKeys';
+import { useInspectionName, equipmentInspectionName } from '@/lib/documentNames';
 
 interface ActivityItem {
   id: string;
@@ -46,15 +47,16 @@ export function ProjectActivityWidget({ project, onNewAct }: Props) {
   const { data: gens = [] } = useQuery({ queryKey: generalEquipmentKeys.list(project.id),   queryFn: () => listGeneralEquipmentInspections(project.id),  staleTime: STALE });
   const { data: excs = [] } = useQuery({ queryKey: excavatorKeys.list(project.id),           queryFn: () => listExcavatorInspections(project.id),        staleTime: STALE });
 
+  const inspectionName = useInspectionName();
   const all: ActivityItem[] = [
     ...ins.map(i  => {
       const cat = Array.isArray(i.template) ? i.template[0]?.category : null;
       const href = cat === 'harness' ? `/harness/${i.id}` : `/inspections/${i.id}`;
-      return { id: i.id, label: i.harness_name || 'შემოწმების აქტი', date: i.created_at ?? '', status: i.status, href, type: 'inspection' as const };
+      return { id: i.id, label: inspectionName(i.template_id), date: i.created_at ?? '', status: i.status, href, type: 'inspection' as const };
     }),
-    ...bobs.map(i => ({ id: i.id, label: i.equipmentModel || 'ციცხვიანი',      date: i.createdAt,        status: i.status, href: `/bobcat/${i.id}`,             type: 'bobcat' as const })),
-    ...gens.map(i => ({ id: i.id, label: i.objectName     || 'ტექ. აღჭ.',      date: i.createdAt,        status: i.status, href: `/general-equipment/${i.id}`,  type: 'general' as const })),
-    ...excs.map(i => ({ id: i.id, label: i.serialNumber   || 'ექსკავატ.',      date: i.createdAt,        status: i.status, href: `/excavator/${i.id}`,          type: 'excavator' as const })),
+    ...bobs.map(i => ({ id: i.id, label: equipmentInspectionName('bobcat'),    date: i.createdAt,        status: i.status, href: `/bobcat/${i.id}`,             type: 'bobcat' as const })),
+    ...gens.map(i => ({ id: i.id, label: equipmentInspectionName('general'),   date: i.createdAt,        status: i.status, href: `/general-equipment/${i.id}`,  type: 'general' as const })),
+    ...excs.map(i => ({ id: i.id, label: equipmentInspectionName('excavator'), date: i.createdAt,        status: i.status, href: `/excavator/${i.id}`,          type: 'excavator' as const })),
   ].sort((a, b) => b.date.localeCompare(a.date));
 
   const visible = all.slice(0, PREVIEW);

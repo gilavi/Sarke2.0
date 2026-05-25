@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import StatusBadge from '@/components/StatusBadge';
 import { listReports, signedReportPhotoUrl, type ReportSlide } from '@/lib/data/reports';
+import { reportDisplayName } from '@/lib/documentNames';
 import { reportKeys } from '@/app/queryKeys';
 import { routes } from '@/app/routes';
 
@@ -80,7 +81,7 @@ export function ReportsSection({ projectId }: Props) {
                     <ReportThumb slides={r.slides} />
                     <div className="flex flex-col gap-0.5 min-w-0">
                       <span className="truncate text-sm text-neutral-800 dark:text-neutral-200">
-                        {r.title || `რეპორტი #${r.id.slice(0, 8)}`}
+                        {reportDisplayName(r.title)}
                       </span>
                       <span className="text-xs text-neutral-500 dark:text-neutral-400">
                         {r.slides?.length ?? 0} სლაიდი ·{' '}

@@ -27,6 +27,7 @@ import { listIncidents } from '@/lib/data/incidents';
 import { listBriefings } from '@/lib/data/briefings';
 import InspectionWizard from '@/components/InspectionWizard';
 import { harnessWizardPreset } from '@/components/inspections/harnessPreset';
+import { useInspectionName, equipmentInspectionName } from '@/lib/documentNames';
 import { staggerContainer, fadeUpItem, STAGGER } from '@/lib/animations';
 import {
   inspectionKeys,
@@ -74,16 +75,17 @@ export default function Home() {
 
   const isLoading = l1 || l2 || l3 || l4 || l5 || l6 || l7;
 
+  const inspectionName = useInspectionName();
   const allInspectionsUnsliced = useMemo(() => [
     ...(inspections ?? []).map((i) => {
       const cat = Array.isArray(i.template) ? i.template[0]?.category : null;
       const href = cat === 'harness' ? routes.harness.detail(i.id) : routes.inspections.detail(i.id);
-      return { id: i.id, label: i.harness_name || 'შემოწმების აქტი', date: i.created_at ?? '', status: i.status, href };
+      return { id: i.id, label: inspectionName(i.template_id), date: i.created_at ?? '', status: i.status, href };
     }),
-    ...(bobcats ?? []).map((i) => ({ id: i.id, label: i.equipmentModel || 'ციცხვიანი', date: i.createdAt, status: i.status, href: routes.bobcat.detail(i.id) })),
-    ...(generalEq ?? []).map((i) => ({ id: i.id, label: i.objectName || 'ტექ. აღჭურვილობა', date: i.createdAt, status: i.status, href: routes.generalEquipment.detail(i.id) })),
-    ...(excavators ?? []).map((i) => ({ id: i.id, label: i.serialNumber || 'ექსკავატორი', date: i.createdAt, status: i.status, href: routes.excavator.detail(i.id) })),
-  ].sort((a, b) => b.date.localeCompare(a.date)), [inspections, bobcats, generalEq, excavators]);
+    ...(bobcats ?? []).map((i) => ({ id: i.id, label: equipmentInspectionName('bobcat'), date: i.createdAt, status: i.status, href: routes.bobcat.detail(i.id) })),
+    ...(generalEq ?? []).map((i) => ({ id: i.id, label: equipmentInspectionName('general'), date: i.createdAt, status: i.status, href: routes.generalEquipment.detail(i.id) })),
+    ...(excavators ?? []).map((i) => ({ id: i.id, label: equipmentInspectionName('excavator'), date: i.createdAt, status: i.status, href: routes.excavator.detail(i.id) })),
+  ].sort((a, b) => b.date.localeCompare(a.date)), [inspections, bobcats, generalEq, excavators, inspectionName]);
 
   const totalInspections = useMemo(() => (inspections?.length ?? 0) + (bobcats?.length ?? 0) + (generalEq?.length ?? 0) + (excavators?.length ?? 0), [inspections, bobcats, generalEq, excavators]);
 

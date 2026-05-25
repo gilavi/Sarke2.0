@@ -20,6 +20,7 @@ import { listCargoPlatformInspections } from '@/lib/data/cargoPlatform';
 import { listProjects } from '@/lib/data/projects';
 import InspectionWizard from '@/components/InspectionWizard';
 import { harnessWizardPreset } from '@/components/inspections/harnessPreset';
+import { useInspectionName, equipmentInspectionName } from '@/lib/documentNames';
 import { projectKeys, inspectionKeys, bobcatKeys, excavatorKeys, generalEquipmentKeys, cargoPlatformKeys } from '@/app/queryKeys';
 
 const TYPE_LABEL: Record<string, string> = {
@@ -99,6 +100,7 @@ export default function Inspections() {
   const { data: projectList } = useQuery({ queryKey: projectKeys.lists(), queryFn: listProjects });
 
   const projects = projectList ? Object.fromEntries(projectList.map((p) => [p.id, p])) : {};
+  const inspectionName = useInspectionName();
   const [filter, setFilter] = useState<string>(projectParam);
 
   const isLoading = l1 || l2 || l3 || l4 || l5;
@@ -125,7 +127,7 @@ export default function Inspections() {
     ...(genericInspections ?? []).map((i): Row => {
       const type = genericInspectionType(i.template);
       return {
-        id: i.id, label: i.harness_name || `აქტი #${i.id.slice(0, 8)}`,
+        id: i.id, label: inspectionName(i.template_id),
         projectId: i.project_id,
         type,
         status: i.status,
@@ -134,22 +136,22 @@ export default function Inspections() {
       };
     }),
     ...(bobcats ?? []).map((i): Row => ({
-      id: i.id, label: i.equipmentModel || i.company || `ციცხვიანი #${i.id.slice(0, 8)}`,
+      id: i.id, label: equipmentInspectionName('bobcat'),
       projectId: i.projectId, type: 'bobcat', status: i.status,
       date: i.createdAt, href: `/bobcat/${i.id}`,
     })),
     ...(excavators ?? []).map((i): Row => ({
-      id: i.id, label: `ექსკავატორი${i.serialNumber ? ` — ${i.serialNumber}` : ''}`,
+      id: i.id, label: equipmentInspectionName('excavator'),
       projectId: i.projectId, type: 'excavator', status: i.status,
       date: i.createdAt, href: `/excavator/${i.id}`,
     })),
     ...(generalEq ?? []).map((i): Row => ({
-      id: i.id, label: i.objectName || `ტექ. აქტი #${i.id.slice(0, 8)}`,
+      id: i.id, label: equipmentInspectionName('general'),
       projectId: i.projectId, type: 'general', status: i.status,
       date: i.createdAt, href: `/general-equipment/${i.id}`,
     })),
     ...(cargoPlatforms ?? []).map((i): Row => ({
-      id: i.id, label: i.company || `პლატფ. #${i.id.slice(0, 8)}`,
+      id: i.id, label: equipmentInspectionName('cargo_platform'),
       projectId: i.projectId, type: 'cargo_platform', status: i.status,
       date: i.createdAt, href: `/cargo-platform/${i.id}`,
     })),

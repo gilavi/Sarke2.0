@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getReport, signedReportPhotoUrl } from '@/lib/data/reports';
 import { getProject } from '@/lib/data/projects';
+import { reportDisplayName } from '@/lib/documentNames';
 import { projectKeys, reportKeys } from '@/app/queryKeys';
 import { A4_PRINT_STYLES, printAfterRender, urlToDataUrl } from '@/lib/printable';
 
@@ -72,7 +73,7 @@ export default function ReportPrint() {
         </button>
       </div>
       <div className="doc">
-        <h1>{r.title || `რეპორტი #${r.id.slice(0, 8)}`}</h1>
+        <h1>{reportDisplayName(r.title)}</h1>
         <p className="muted" style={{ textAlign: 'center' }}>
           {p?.name ?? ''} · {new Date(r.created_at).toLocaleDateString('ka-GE')}
         </p>

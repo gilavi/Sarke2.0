@@ -1,17 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, X, ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { CheckCircle2, X } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { NumberInput, Textarea, TextInput } from '@mantine/core';
 import { Select } from '@/components/ui/select';
-import { ProjectPicker } from '@/components/ui/project-picker';
-import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import PhotoUploadWidget from '@/components/PhotoUploadWidget';
-import InspectionSuccessCard from '@/components/InspectionSuccessCard';
-import HarnessWizard from '@/components/inspections/HarnessWizard';
+import PhotoUploadZone from '@/components/PhotoUploadZone';
+import SuccessModal, { type SuccessModalData } from '@/components/web/SuccessModal';
+import { inspectionDisplayName } from '@/lib/documentNames';
+import { WizardFrame, WizardSidebar, SegmentedControl } from '@/components/wizard';
+import { HarnessChecklist } from '@/components/inspections/HarnessChecklist';
 import { useAuth } from '@/lib/auth';
 import {
   addAnswerPhoto,
@@ -44,6 +43,8 @@ export interface WizardPreset {
   title?: string;
   requireConclusionText?: boolean;
   successDetailRoute?: (id: string) => string;
+  /** Noun shown in the success modal stat line, e.g. "ქამარი", "მოწყობილობა". */
+  itemLabel?: string;
 }
 
 interface InspectionWizardProps {
@@ -61,31 +62,11 @@ interface InspectionWizardProps {
   onComplete?: () => void;
 }
 
-/* ─── Animation variants ─── */
-
-const backdropVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1 },
-};
-
-const panelVariants = {
-  hidden: { opacity: 0, scale: 0.98 },
-  visible: { opacity: 1, scale: 1, transition: { type: 'spring' as const, damping: 28, stiffness: 300 } },
-  exit: { opacity: 0, scale: 0.98, transition: { duration: 0.2 } },
-};
-
-const slideVariants = {
-  enter: (dir: number) => ({ x: dir > 0 ? 50 : -50, opacity: 0 }),
-  center: { x: 0, opacity: 1 },
-  exit: (dir: number) => ({ x: dir > 0 ? -50 : 50, opacity: 0 }),
-};
-
-const springTransition = { type: 'spring' as const, stiffness: 400, damping: 32 };
-
-/* freetext questions are redundant in harness flows (covered by HarnessWizard + ConclusionStep) */
+/* freetext + photo_upload questions are redundant in harness flows
+   (covered by HarnessWizard + ConclusionStep, which has its own photo upload) */
 function filterQuestions(qs: Question[]): Question[] {
   const hasGrid = qs.some((q) => q.type === 'component_grid');
-  return hasGrid ? qs.filter((q) => q.type !== 'freetext') : qs;
+  return hasGrid ? qs.filter((q) => q.type !== 'freetext' && q.type !== 'photo_upload') : qs;
 }
 
 /* ─── Component ─── */
@@ -130,6 +111,17 @@ export default function InspectionWizard({
   const [stepIndex, setStepIndex] = useState(0);
   const [direction, setDirection] = useState(1);
   const [submitting, setSubmitting] = useState(false);
+
+  /* ── Success modal (shown after completion, survives the wizard closing) ── */
+  const [successData, setSuccessData] = useState<SuccessModalData | null>(null);
+  const [successOpen, setSuccessOpen] = useState(false);
+  const [completedId, setCompletedId] = useState<string | null>(null);
+
+  /* ── Harness (component_grid) UI state, lifted so the shared sidebar persists
+     across the checklist and conclusion steps ── */
+  const [harnessAddedCount, setHarnessAddedCount] = useState(1);
+  const [harnessActiveIdx, setHarnessActiveIdx] = useState(0);
+  const [harnessNaSet, setHarnessNaSet] = useState<Set<string>>(new Set());
 
   /* ── Conclusion ── */
   const [conclusion, setConclusion] = useState({
@@ -177,6 +169,24 @@ export default function InspectionWizard({
       setStepIndex(0);
       setDirection(1);
       setSubmitting(false);
+      setSuccessData(null);
+      setSuccessOpen(false);
+      setCompletedId(null);
+      setHarnessActiveIdx(0);
+      setHarnessNaSet(new Set());
+      // Reveal every item that already holds data (resumed inspection); always ≥1.
+      const initGrid = filterQuestions(initialQuestions).find((q) => q.type === 'component_grid');
+      let initAdded = 1;
+      if (initGrid) {
+        const gv = initialAnswers.find((a) => a.question_id === initGrid.id)?.grid_values ?? {};
+        const sc = (initGrid.grid_cols ?? []).filter((c) => c !== 'კომენტარი');
+        let last = 0;
+        (initGrid.grid_rows ?? []).forEach((row, i) => {
+          if (sc.some((c) => (gv[row]?.[c] ?? '') !== '')) last = i + 1;
+        });
+        initAdded = Math.max(1, last);
+      }
+      setHarnessAddedCount(initAdded);
       setConclusion({
         isSafe: existingInspection?.is_safe_for_use ?? null,
         text: existingInspection?.conclusion_text ?? '',
@@ -191,14 +201,12 @@ export default function InspectionWizard({
   /* ── Step flattening ── */
   const infoStepCount = mode === 'create' ? 1 : 0;
   const conclusionStepCount = 1;
-  const successStepCount = 1;
   const questionCount = questions.length;
-  const totalSteps = infoStepCount + questionCount + conclusionStepCount + successStepCount;
+  const totalSteps = infoStepCount + questionCount + conclusionStepCount;
 
   const isInfoStep = mode === 'create' && stepIndex === 0;
   const isQuestionStep = stepIndex >= infoStepCount && stepIndex < infoStepCount + questionCount;
   const isConclusionStep = stepIndex === infoStepCount + questionCount;
-  const isSuccessStep = stepIndex === totalSteps - 1;
 
   const currentQuestion = isQuestionStep ? questions[stepIndex - infoStepCount] : undefined;
   const currentAnswer = currentQuestion ? answerMap[currentQuestion.id] : undefined;
@@ -225,13 +233,27 @@ export default function InspectionWizard({
     onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
   });
 
+  /* ── Grid summary (ok/bad counts) — shown for any component_grid inspection ── */
+  const gridSummary = useMemo(() => {
+    const gridQ = questions.find((q) => q.type === 'component_grid');
+    if (!gridQ) return null;
+    const gridVals = answerMap[gridQ.id]?.grid_values ?? {};
+    const statusCols = (gridQ.grid_cols ?? []).filter((c) => c !== 'კომენტარი');
+    const evaluated = Object.entries(gridVals).filter(([, cols]) =>
+      statusCols.some((c) => cols[c] === 'ok' || cols[c] === 'bad'),
+    );
+    if (evaluated.length === 0) return null;
+    const bad = evaluated.filter(([, cols]) => statusCols.some((c) => cols[c] === 'bad')).length;
+    return { total: evaluated.length, ok: evaluated.length - bad, bad };
+  }, [questions, answerMap]);
+
+  const projectName = useMemo(
+    () => (projects ?? []).find((p) => p.id === projectId)?.name ?? '',
+    [projects, projectId],
+  );
+
   /* ── Navigation handlers ── */
   const goNext = useCallback(async () => {
-    if (isSuccessStep) {
-      onClose();
-      return;
-    }
-
     if (isConclusionStep) {
       setSubmitting(true);
       try {
@@ -257,8 +279,25 @@ export default function InspectionWizard({
         qc.invalidateQueries({ queryKey: inspectionKeys.detail(insId) });
         qc.invalidateQueries({ queryKey: inspectionKeys.lists() });
         onComplete?.();
-        setDirection(1);
-        setStepIndex((i) => i + 1);
+        const successPayload: SuccessModalData = {
+          totalCount: gridSummary?.total ?? 0,
+          safeCount: gridSummary?.ok ?? 0,
+          problemCount: gridSummary?.bad ?? 0,
+          inspectionName: preset?.title ?? 'შემოწმება',
+          projectName,
+          itemLabel: preset?.itemLabel ?? 'ერთეული',
+        };
+        if (preset?.successDetailRoute) {
+          // Navigate to the detail page and let it own the success modal, so the
+          // confirmation appears on top of the completed inspection.
+          onClose();
+          navigate(preset.successDetailRoute(insId), { state: { inspectionSuccess: successPayload } });
+        } else {
+          // No detail route — show the modal in place over the list/project screen.
+          setCompletedId(insId);
+          setSuccessData(successPayload);
+          setSuccessOpen(true);
+        }
       } catch (e) {
         toast.error(e instanceof Error ? e.message : String(e));
       } finally {
@@ -316,10 +355,11 @@ export default function InspectionWizard({
     setDirection(1);
     setStepIndex((i) => Math.min(totalSteps - 1, i + 1));
   }, [
-    isSuccessStep, isConclusionStep, isQuestionStep, isInfoStep,
+    isConclusionStep, isQuestionStep, isInfoStep,
     effectiveInspection, conclusion, conclusionPhotos, currentQuestion, currentAnswer,
     projectId, templateId, harnessName, department, inspectorName,
-    onClose, answerMutation, qc, totalSteps, preset, profileName,
+    answerMutation, qc, totalSteps, preset, profileName,
+    onComplete, gridSummary, projectName, onClose, navigate,
   ]);
 
   const goPrev = useCallback(() => {
@@ -338,7 +378,6 @@ export default function InspectionWizard({
 
   /* ── Step validation ── */
   const canGoNext = useMemo(() => {
-    if (isSuccessStep) return true;
     if (isConclusionStep) return conclusion.isSafe !== null && (!preset?.requireConclusionText || conclusion.text.trim().length > 0);
     if (isInfoStep) return !!projectId && !!templateId;
     if (!currentQuestion) return false;
@@ -352,7 +391,7 @@ export default function InspectionWizard({
       case 'component_grid': return !!a.grid_values && Object.keys(a.grid_values).length > 0;
       default: return false;
     }
-  }, [isSuccessStep, isConclusionStep, isInfoStep, currentQuestion, answerMap, conclusion, projectId, templateId, preset]);
+  }, [isConclusionStep, isInfoStep, currentQuestion, answerMap, conclusion, projectId, templateId, preset]);
 
   /* ── Photo handling ── */
   const photosQ = useQuery({
@@ -381,213 +420,204 @@ export default function InspectionWizard({
     }
   }, [currentQuestion, currentAnswer, answerMutation, effectiveInspection]);
 
-  /* ── Grid summary (ok/bad counts) — shown for any component_grid inspection ── */
-  const gridSummary = useMemo(() => {
-    const gridQ = questions.find((q) => q.type === 'component_grid');
-    if (!gridQ) return null;
-    const gridVals = answerMap[gridQ.id]?.grid_values ?? {};
-    const statusCols = (gridQ.grid_cols ?? []).filter((c) => c !== 'კომენტარი');
-    const evaluated = Object.entries(gridVals).filter(([, cols]) =>
-      statusCols.some((c) => cols[c] === 'ok' || cols[c] === 'bad'),
-    );
-    if (evaluated.length === 0) return null;
-    const bad = evaluated.filter(([, cols]) => statusCols.some((c) => cols[c] === 'bad')).length;
-    return { total: evaluated.length, ok: evaluated.length - bad, bad };
-  }, [questions, answerMap]);
+  /* ── Harness (component_grid) derived values + handlers ── */
+  const gridQuestion = useMemo(() => questions.find((q) => q.type === 'component_grid'), [questions]);
+  const harnessRows = useMemo(() => gridQuestion?.grid_rows ?? [], [gridQuestion]);
+  const harnessStatusCols = useMemo(
+    () => (gridQuestion?.grid_cols ?? []).filter((c) => c !== 'კომენტარი'),
+    [gridQuestion],
+  );
+  const harnessHasComment = !!gridQuestion?.grid_cols?.includes('კომენტარი');
+  const gridValues = useMemo<Record<string, Record<string, string>>>(
+    () => (gridQuestion ? answerMap[gridQuestion.id]?.grid_values : undefined) ?? {},
+    [gridQuestion, answerMap],
+  );
 
-  /* ── Title ── */
-  const title = useMemo(() => {
-    if (isInfoStep) return preset?.title ?? 'ახალი აქტი';
-    if (isSuccessStep) return 'დასრულებულია';
-    if (isConclusionStep) return 'დასკვნა';
-    return effectiveInspection?.harness_name || 'შემოწმების აქტი';
-  }, [isInfoStep, isSuccessStep, isConclusionStep, effectiveInspection, preset]);
+  const harnessItemLabel = preset?.itemLabel ?? 'ქამარი';
+  const harnessCanAddMore = harnessAddedCount < harnessRows.length;
+  const showSidebar = !!gridQuestion && isHarnessGridStep;
+  const gridStepIndex = useMemo(() => {
+    const qi = questions.findIndex((q) => q.type === 'component_grid');
+    return qi >= 0 ? infoStepCount + qi : -1;
+  }, [questions, infoStepCount]);
 
-  if (!open) return null;
+  const setGridCell = (row: string, col: string, value: string) => {
+    if (!gridQuestion) return;
+    setAnswerMap((prev) => {
+      const cur = prev[gridQuestion.id]?.grid_values ?? {};
+      const next = { ...cur, [row]: { ...(cur[row] ?? {}), [col]: value } };
+      return { ...prev, [gridQuestion.id]: { ...(prev[gridQuestion.id] ?? {}), grid_values: next } };
+    });
+  };
 
-  return createPortal(
-    <div className="fixed inset-0 z-[100]">
-      <AnimatePresence>
-        {open && (
-          <>
-            <motion.div
-              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-              variants={backdropVariants}
-              initial="hidden"
-              animate="visible"
-              exit="hidden"
-              onClick={onClose}
+  const handleHarnessSelect = (row: string, col: string, opt: 'ok' | 'bad' | 'na') => {
+    const key = `${row}|${col}`;
+    if (opt === 'na') {
+      setGridCell(row, col, '');
+      setHarnessNaSet((s) => new Set(s).add(key));
+    } else {
+      const cur = gridValues[row]?.[col] ?? '';
+      setGridCell(row, col, cur === opt ? '' : opt);
+      setHarnessNaSet((s) => {
+        const n = new Set(s);
+        n.delete(key);
+        return n;
+      });
+    }
+  };
+
+  const handleHarnessComment = (row: string, value: string) => setGridCell(row, 'კომენტარი', value);
+
+  const goToGridStep = () => {
+    if (gridStepIndex >= 0) {
+      setDirection(1);
+      setStepIndex(gridStepIndex);
+    }
+  };
+
+  const handleHarnessSelectIdx = (i: number) => {
+    setHarnessActiveIdx(i);
+    goToGridStep();
+  };
+
+  const handleHarnessAdd = () => {
+    if (!harnessCanAddMore) return;
+    setHarnessActiveIdx(harnessAddedCount);
+    setHarnessAddedCount((n) => n + 1);
+    goToGridStep();
+  };
+
+  /* ── Header context (project · inspection · step) ── */
+  const templateName = (templates ?? []).find((t) => t.id === templateId)?.name;
+  const inspectionName = inspectionDisplayName(templateName || preset?.title);
+  const stepName = useMemo(() => {
+    const base = isInfoStep
+      ? 'პროექტის არჩევა'
+      : isConclusionStep
+        ? 'დასკვნა'
+        : isHarnessGridStep
+          ? `${harnessItemLabel} ${harnessActiveIdx + 1}`
+          : currentQuestion?.title ?? '';
+    return isInfoStep ? base : `${base} · ${stepIndex + 1}/${totalSteps}`;
+  }, [
+    isInfoStep, isConclusionStep, isHarnessGridStep, harnessItemLabel, harnessActiveIdx,
+    currentQuestion, stepIndex, totalSteps,
+  ]);
+
+  /* ── Success modal handlers (only used for flows without a detail route) ── */
+  const handleSuccessClose = () => {
+    setSuccessOpen(false);
+    onClose();
+  };
+  const handleGeneratePDF = () => {
+    if (completedId) window.open(`#/inspections/${completedId}/print`, '_blank');
+  };
+
+  if (!open && !successOpen) return null;
+
+  return (
+    <>
+      <WizardFrame
+        open={open}
+        onClose={onClose}
+        projectName={projectName}
+        inspectionName={inspectionName}
+        stepName={stepName}
+        showProgress={!isInfoStep}
+        progressPercent={progressPercent}
+        closeDisabled={submitting || creating}
+        stepKey={stepIndex}
+        direction={direction}
+        sidebar={
+          showSidebar ? (
+            <WizardSidebar
+              heading="ქამარები"
+              addLabel="ახალი ქამარი"
+              itemLabel={harnessItemLabel}
+              rows={harnessRows}
+              addedCount={harnessAddedCount}
+              activeIdx={harnessActiveIdx}
+              values={gridValues}
+              statusCols={harnessStatusCols}
+              canAddMore={harnessCanAddMore}
+              onSelect={handleHarnessSelectIdx}
+              onAdd={handleHarnessAdd}
             />
-            <motion.div
-              className="absolute inset-0 flex flex-col bg-white dark:bg-neutral-900"
-              variants={panelVariants}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-            >
-              {/* Header */}
-              <div className="shrink-0 border-b border-neutral-200 bg-white/80 px-6 py-4 backdrop-blur dark:border-neutral-700 dark:bg-neutral-900/80">
-                <div className="mx-auto flex max-w-2xl items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <h2 className="font-display text-lg font-bold text-neutral-900 dark:text-neutral-100">{title}</h2>
-                    {!isInfoStep && !isSuccessStep && (
-                      <span className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs font-medium text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400">
-                        {stepIndex + 1} / {totalSteps}
-                      </span>
-                    )}
-                  </div>
-                  <button
-                    onClick={onClose}
-                    disabled={submitting || creating}
-                    className="rounded-xl p-2.5 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700 active:scale-95 dark:hover:bg-neutral-800"
-                  >
-                    <X size={20} />
-                  </button>
-                </div>
-                {/* Progress bar */}
-                {!isInfoStep && !isSuccessStep && (
-                  <div className="mx-auto mt-3 max-w-2xl">
-                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-neutral-100 dark:bg-neutral-800">
-                      <motion.div
-                        className="h-full rounded-full bg-brand-500"
-                        initial={{ width: 0 }}
-                        animate={{ width: `${progressPercent}%` }}
-                        transition={{ type: 'spring', stiffness: 200, damping: 25 }}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Content */}
-              {isHarnessGridStep && currentQuestion ? (
-                <HarnessWizard
-                  question={currentQuestion}
-                  answer={currentAnswer}
-                  onChange={handleAnswerChange}
-                  onComplete={goNext}
-                  onBack={goPrev}
-                  completing={submitting || answerMutation.isPending}
-                />
-              ) : (
-              <div className="flex-1 overflow-y-auto">
-                <div className="mx-auto max-w-2xl px-6 py-8">
-                  <AnimatePresence mode="wait" custom={direction}>
-                    <motion.div
-                      key={stepIndex}
-                      custom={direction}
-                      variants={slideVariants}
-                      initial="enter"
-                      animate="center"
-                      exit="exit"
-                      transition={springTransition}
-                      className="space-y-6"
-                    >
-                      {isInfoStep && (
-                        <InfoStep
-                          projectId={projectId}
-                          setProjectId={setProjectId}
-                          templateId={templateId}
-                          setTemplateId={setTemplateId}
-                          harnessName={harnessName}
-                          setHarnessName={setHarnessName}
-                          department={department}
-                          setDepartment={setDepartment}
-                          inspectorName={inspectorName}
-                          setInspectorName={setInspectorName}
-                          lockTemplate={!!preset}
-                          projects={projects ?? []}
-                          templates={templates ?? []}
-                        />
-                      )}
-
-                      {isQuestionStep && currentQuestion && !isHarnessGridStep && (
-                        <QuestionStepRenderer
-                          question={currentQuestion}
-                          answer={currentAnswer}
-                          onChange={handleAnswerChange}
-                          photoPaths={photoPaths}
-                          onPhotoAdd={handlePhotoAdd}
-                          onPhotoRemove={handlePhotoRemove}
-                          inspectionId={effectiveInspection!.id}
-                        />
-                      )}
-
-                      {isConclusionStep && (
-                        <ConclusionStepRenderer
-                          conclusion={conclusion}
-                          onChange={setConclusion}
-                          summary={gridSummary}
-                          inspectionId={effectiveInspection!.id}
-                          photos={conclusionPhotos}
-                          onPhotoAdd={(path) => setConclusionPhotos((prev) => [...prev, path])}
-                          onPhotoRemove={(path) => setConclusionPhotos((prev) => prev.filter((p) => p !== path))}
-                        />
-                      )}
-
-                      {isSuccessStep && effectiveInspection && (
-                        <InspectionSuccessCard
-                          inspection={effectiveInspection}
-                          printRoute={`#/inspections/${effectiveInspection.id}/print`}
-                          projectName={(projects ?? []).find((p) => p.id === projectId)?.name}
-                          projectId={projectId || undefined}
-                          summaryBadges={
-                            gridSummary
-                              ? [
-                                  ...(gridSummary.ok > 0 ? [{ label: `✓ ${gridSummary.ok} გამართული`, variant: 'ok' as const }] : []),
-                                  ...(gridSummary.bad > 0 ? [{ label: `✗ ${gridSummary.bad} პრობლემა`, variant: 'bad' as const }] : []),
-                                ]
-                              : undefined
-                          }
-                          onClose={() => {
-                            const detailRoute =
-                              preset?.successDetailRoute && effectiveInspection
-                                ? preset.successDetailRoute(effectiveInspection.id)
-                                : null;
-                            onClose();
-                            if (detailRoute) navigate(detailRoute);
-                          }}
-                        />
-                      )}
-                    </motion.div>
-                  </AnimatePresence>
-                </div>
-              </div>
-              )}
-
-              {/* Footer */}
-              {!isSuccessStep && !isHarnessGridStep && (
-                <div className="shrink-0 border-t border-neutral-200 bg-white px-6 py-4 dark:border-neutral-700 dark:bg-neutral-900">
-                  <div className="mx-auto flex max-w-2xl items-center justify-between">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={goPrev}
-                      disabled={stepIndex === 0 || submitting || creating}
-                      className="gap-1.5"
-                    >
-                      <ArrowLeft size={16} />
-                      წინა
-                    </Button>
-                    <Button
-                      size="md"
-                      className="min-w-[140px] gap-1.5"
-                      onClick={goNext}
-                      disabled={!canGoNext || submitting || creating}
-                    >
-                      {(submitting || creating) && <Loader2 size={15} className="animate-spin" />}
-                      {isConclusionStep ? 'დასრულება' : 'შემდეგი'}
-                      {!isConclusionStep && !(submitting || creating) && <ArrowRight size={16} />}
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </motion.div>
-          </>
+          ) : undefined
+        }
+        onBack={goPrev}
+        onNext={goNext}
+        backDisabled={stepIndex === 0 || submitting || creating}
+        nextDisabled={!canGoNext || submitting || creating}
+        nextLabel={isConclusionStep ? 'დასრულება' : 'შემდეგი'}
+        nextTooltip={isConclusionStep ? 'აირჩიეთ გამოყენების ვარგისიანობა' : undefined}
+        hideNextArrow={isConclusionStep}
+        submitting={submitting || creating}
+      >
+        {isInfoStep && (
+          <InfoStep
+            projectId={projectId}
+            setProjectId={setProjectId}
+            templateId={templateId}
+            setTemplateId={setTemplateId}
+            harnessName={harnessName}
+            setHarnessName={setHarnessName}
+            department={department}
+            setDepartment={setDepartment}
+            inspectorName={inspectorName}
+            setInspectorName={setInspectorName}
+            lockTemplate={!!preset}
+            projects={projects ?? []}
+            templates={templates ?? []}
+          />
         )}
-      </AnimatePresence>
-    </div>,
-    document.body
+
+        {isQuestionStep && currentQuestion && !isHarnessGridStep && (
+          <QuestionStepRenderer
+            question={currentQuestion}
+            answer={currentAnswer}
+            onChange={handleAnswerChange}
+            photoPaths={photoPaths}
+            onPhotoAdd={handlePhotoAdd}
+            onPhotoRemove={handlePhotoRemove}
+            inspectionId={effectiveInspection!.id}
+          />
+        )}
+
+        {isHarnessGridStep && gridQuestion && (
+          <HarnessChecklist
+            itemLabel={harnessItemLabel}
+            activeIdx={harnessActiveIdx}
+            activeRow={harnessRows[harnessActiveIdx] ?? ''}
+            statusCols={harnessStatusCols}
+            values={gridValues}
+            naSet={harnessNaSet}
+            hasComment={harnessHasComment}
+            onSelect={handleHarnessSelect}
+            onComment={handleHarnessComment}
+          />
+        )}
+
+        {isConclusionStep && (
+          <ConclusionStepRenderer
+            conclusion={conclusion}
+            onChange={setConclusion}
+            summary={gridSummary}
+            inspectionId={effectiveInspection!.id}
+            photos={conclusionPhotos}
+            onPhotoAdd={(path) => setConclusionPhotos((prev) => [...prev, path])}
+            onPhotoRemove={(path) => setConclusionPhotos((prev) => prev.filter((p) => p !== path))}
+          />
+        )}
+      </WizardFrame>
+
+      <SuccessModal
+        isOpen={successOpen}
+        onClose={handleSuccessClose}
+        onGeneratePDF={handleGeneratePDF}
+        data={successData ?? { totalCount: 0, safeCount: 0, problemCount: 0, inspectionName: '', projectName: '', itemLabel: '' }}
+      />
+    </>
   );
 }
 
@@ -615,26 +645,17 @@ function InfoStep({
     return (
       <div className="space-y-5">
         <p className="text-sm text-neutral-500 dark:text-neutral-400">აირჩიეთ პროექტი</p>
-        <ProjectPicker
-          label="პროექტი"
-          required
-          value={projectId}
-          onChange={setProjectId}
-          options={projects.map((p) => ({ value: p.id, label: p.name, logo: p.logo, company: p.company_name }))}
-        />
+        <ProjectCardGrid projects={projects} projectId={projectId} setProjectId={setProjectId} />
       </div>
     );
   }
 
   return (
     <div className="space-y-5">
-      <ProjectPicker
-        label="პროექტი"
-        required
-        value={projectId}
-        onChange={setProjectId}
-        options={projects.map((p) => ({ value: p.id, label: p.name, logo: p.logo, company: p.company_name }))}
-      />
+      <div className="space-y-2">
+        <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">პროექტი</p>
+        <ProjectCardGrid projects={projects} projectId={projectId} setProjectId={setProjectId} />
+      </div>
 
       <Select
         label="შაბლონი"
@@ -668,6 +689,61 @@ function InfoStep({
         placeholder="სახელი გვარი"
         radius="md"
       />
+    </div>
+  );
+}
+
+/* ─── Project card grid (selector) ─── */
+
+function ProjectCardGrid({
+  projects,
+  projectId,
+  setProjectId,
+}: {
+  projects: { id: string; name: string; logo?: string | null; company_name?: string }[];
+  projectId: string;
+  setProjectId: (v: string) => void;
+}) {
+  if (projects.length === 0) {
+    return <p className="text-sm text-neutral-400">პროექტები ვერ მოიძებნა.</p>;
+  }
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      {projects.map((p) => {
+        const selected = projectId === p.id;
+        const initials = p.name
+          .split(' ')
+          .slice(0, 2)
+          .map((w) => w[0] ?? '')
+          .join('')
+          .toUpperCase();
+        return (
+          <button
+            key={p.id}
+            type="button"
+            onClick={() => setProjectId(p.id)}
+            className="flex items-center gap-3 rounded-xl p-3 text-left transition-colors"
+            style={{
+              border: selected ? '2px solid #1D9E75' : '1px solid #E8E6E0',
+              background: selected ? '#F0FBF7' : '#fff',
+            }}
+          >
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-neutral-100 text-xs font-semibold text-neutral-500">
+              {p.logo ? <img src={p.logo} alt={p.name} className="h-full w-full object-cover" /> : initials || '?'}
+            </div>
+            <div className="min-w-0">
+              <div className="truncate" style={{ fontSize: 14, fontWeight: 600, color: '#1A1A1A' }}>
+                {p.name}
+              </div>
+              {p.company_name && (
+                <div className="truncate" style={{ fontSize: 12, color: '#9CA3AF' }}>
+                  {p.company_name}
+                </div>
+              )}
+            </div>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -739,11 +815,7 @@ function QuestionStepRenderer({
       )}
 
       {question.type === 'photo_upload' && (
-        <PhotoUploadWidget paths={photoPaths} prefix="inspections" inspectionId={inspectionId} itemId={question.id} onAdd={onPhotoAdd} onRemove={onPhotoRemove} />
-      )}
-
-      {question.type === 'component_grid' && (
-        <ComponentGridStep question={question} answer={answer} onChange={onChange} />
+        <PhotoUploadZone paths={photoPaths} prefix="inspections" inspectionId={inspectionId} itemId={question.id} onAdd={onPhotoAdd} onRemove={onPhotoRemove} />
       )}
 
       <TextInput
@@ -777,54 +849,73 @@ function ConclusionStepRenderer({
         <p className="text-sm text-neutral-500">მიუთითეთ შემოწმების შედეგი და დასკვნა</p>
       </div>
 
+      {/* 1 — Compact summary line */}
       {summary && (
-        <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-700 dark:bg-neutral-800/50">
-          <p className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
-            შემოწმების შეჯამება
-          </p>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">{summary.total} ერთეული</span>
-            {summary.ok > 0 && (
-              <span className="rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
-                ✓ {summary.ok} გამართული
-              </span>
-            )}
-            {summary.bad > 0 && (
-              <span className="rounded-full bg-red-100 px-3 py-0.5 text-xs font-semibold text-red-700 dark:bg-red-900/40 dark:text-red-400">
-                ✗ {summary.bad} პრობლემა
-              </span>
-            )}
-          </div>
+        <div
+          style={{
+            background: '#F9F8F6',
+            border: '1px solid #F0EFEC',
+            borderRadius: '8px',
+            padding: '12px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            fontSize: '13px',
+            marginBottom: '20px',
+          }}
+        >
+          <span style={{ color: '#6B7280' }}>შეჯამება:</span>
+          <span style={{ fontWeight: 500 }}>{summary.total} ქამარი</span>
+          <span style={{ color: '#9CA3AF' }}>·</span>
+          <span style={{ color: '#1D9E75', fontWeight: 500 }}>{summary.ok} კარგია</span>
+          <span style={{ color: '#9CA3AF' }}>·</span>
+          <span style={{ color: '#DC2626', fontWeight: 500 }}>{summary.bad} პრობლემა</span>
         </div>
       )}
 
-      <div className="space-y-2">
-        <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">გამოყენების ვარგისება</p>
-        <div className="grid grid-cols-2 gap-3">
-          <AnswerButton selected={conclusion.isSafe === true} onClick={() => onChange({ ...conclusion, isSafe: true })} icon={<CheckCircle2 size={20} />} label="გამოყენებადია" variant="yes" />
-          <AnswerButton selected={conclusion.isSafe === false} onClick={() => onChange({ ...conclusion, isSafe: false })} icon={<X size={20} />} label="არა ვარგისი" variant="no" />
-        </div>
+      {/* 2 — Divider */}
+      <div style={{ borderTop: '1px solid #F0EFEC' }} />
+
+      {/* 3 — Verdict (hero) */}
+      <div>
+        <p style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }} className="text-neutral-900 dark:text-neutral-100">
+          გამოყენების ვარგისობა
+        </p>
+        <SegmentedControl
+          fullWidth
+          height={48}
+          fontSize={15}
+          options={[
+            { label: '✓ გამოყენებადია', value: 'yes', selectedBg: '#1D9E75' },
+            { label: '✗ არა ვარგისი', value: 'no', selectedBg: '#EF4444' },
+          ]}
+          selected={conclusion.isSafe === true ? 'yes' : conclusion.isSafe === false ? 'no' : null}
+          onSelect={(v) => onChange({ ...conclusion, isSafe: v === 'yes' })}
+        />
       </div>
 
+      {/* 4 — Textarea (secondary) */}
       <Textarea
-        label="დასკვნის ტექსტი"
+        label="კომენტარი / დასკვნა"
         value={conclusion.text}
         onChange={(e) => onChange({ ...conclusion, text: e.target.value })}
         placeholder="შეიყვანეთ დასკვნა..."
-        rows={5}
+        rows={4}
         autosize={false}
         radius="md"
       />
 
+      {/* 5 — Photos (tertiary) */}
       <div className="space-y-2">
-        <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">ფოტოები (არასავალდებულო)</p>
-        <PhotoUploadWidget
+        <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">ფოტოები</p>
+        <PhotoUploadZone
           paths={photos}
           prefix="inspections"
           inspectionId={inspectionId}
           itemId="conclusion"
           onAdd={onPhotoAdd}
           onRemove={onPhotoRemove}
+          placeholder="ფოტო არ არის სავალდებულო"
         />
       </div>
     </div>
@@ -847,85 +938,3 @@ function AnswerButton({ selected, onClick, icon, label, variant }: {
   );
 }
 
-/* ─── Component Grid Step ─── */
-
-function ComponentGridStep({ question, answer, onChange }: {
-  question: Question; answer?: Partial<Answer>; onChange: (patch: Partial<Answer>) => void;
-}) {
-  const rows = question.grid_rows ?? [];
-  const cols = question.grid_cols ?? [];
-  const statusCols = cols.filter((c) => c !== 'კომენტარი');
-  const hasCommentCol = cols.includes('კომენტარი');
-  const values: Record<string, Record<string, string>> = answer?.grid_values ?? {};
-
-  function setCell(row: string, col: string, value: string) {
-    const next = { ...values, [row]: { ...values[row], [col]: value } };
-    onChange({ grid_values: next });
-  }
-
-  if (rows.length === 0 || cols.length === 0) {
-    return <p className="text-sm text-neutral-500">ბადის მონაცემები ვერ მოიძებნა.</p>;
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="space-y-3 md:hidden">
-        {rows.map((row) => (
-          <div key={row} className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-800">
-            <p className="mb-3 text-sm font-semibold text-neutral-800 dark:text-neutral-100">{row}</p>
-            <div className="space-y-2">
-              {statusCols.map((col) => (
-                <div key={col} className="flex items-center justify-between gap-2">
-                  <span className="text-xs text-neutral-500">{col}</span>
-                  <Select
-                    size="sm"
-                    value={values[row]?.[col] ?? ''}
-                    onChange={(v) => setCell(row, col, v)}
-                    options={[{ value: '', label: '—' }, { value: 'კი', label: 'კი' }, { value: 'არა', label: 'არა' }, { value: 'N/A', label: 'N/A' }]}
-                  />
-                </div>
-              ))}
-              {hasCommentCol && (
-                <TextInput value={values[row]?.['კომენტარი'] ?? ''} onChange={(e) => setCell(row, 'კომენტარი', e.target.value)} placeholder="კომენტარი" size="xs" radius="md" mt="xs" />
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="hidden overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-700 md:block">
-        <table className="w-full text-sm">
-          <thead className="bg-neutral-50 dark:bg-neutral-800">
-            <tr>
-              <th className="px-4 py-2.5 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400">რიგი</th>
-              {statusCols.map((col) => (<th key={col} className="px-4 py-2.5 text-center text-xs font-semibold text-neutral-600 dark:text-neutral-400">{col}</th>))}
-              {hasCommentCol && <th className="px-4 py-2.5 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400">კომენტარი</th>}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-neutral-100 dark:divide-neutral-700">
-            {rows.map((row) => (
-              <tr key={row} className="bg-white hover:bg-neutral-50 dark:bg-neutral-900 dark:hover:bg-neutral-800">
-                <td className="px-4 py-3 font-medium text-neutral-800 dark:text-neutral-200">{row}</td>
-                {statusCols.map((col) => (
-                  <td key={col} className="px-4 py-3 text-center">
-                    <Select
-                      size="sm"
-                      value={values[row]?.[col] ?? ''}
-                      onChange={(v) => setCell(row, col, v)}
-                      options={[{ value: '', label: '—' }, { value: 'კი', label: 'კი' }, { value: 'არა', label: 'არა' }, { value: 'N/A', label: 'N/A' }]}
-                    />
-                  </td>
-                ))}
-                {hasCommentCol && (
-                  <td className="px-4 py-3">
-                    <TextInput value={values[row]?.['კომენტარი'] ?? ''} onChange={(e) => setCell(row, 'კომენტარი', e.target.value)} placeholder="კომენტარი" size="xs" radius="md" />
-                  </td>
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}

@@ -18,6 +18,7 @@ import { useBottomSheet } from '../../../components/BottomSheet';
 import { useTheme } from '../../../lib/theme';
 import { useToast } from '../../../lib/toast';
 import { a11y } from '../../../lib/accessibility';
+import { reportDisplayName } from '../../../lib/shared/documentName';
 import { friendlyError } from '../../../lib/errorMap';
 import { reportsApi } from '../../../lib/services';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
@@ -163,7 +164,7 @@ export default function ReportSlidesEditor() {
       <Stack.Screen
         options={{
           headerShown: true,
-          title: report.title || 'რეპორტი',
+          title: reportDisplayName(report.title),
           headerBackVisible: false,
           headerLeft: () => <HeaderBackPill onPress={() => router.back()} />,
           headerShadowVisible: false,

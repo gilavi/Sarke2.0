@@ -18,6 +18,7 @@ import { usePdfUsage, useInvalidatePdfUsage } from '@/lib/usePdfUsage';
 import { fmtDateTimeKa, fmtDateKa } from '@/lib/utils';
 import { listCertificates } from '@/lib/data/certificates';
 import { listQualifications, qualificationLabel } from '@/lib/data/qualifications';
+import { certificateDisplayName } from '@/lib/documentNames';
 import { certificateKeys, qualificationKeys } from '@/app/queryKeys';
 
 const STATUS_LABEL: Record<PaymentRecord['status'], string> = {
@@ -364,7 +365,7 @@ export default function Account() {
         isLoading={!certs}
         items={(certs ?? []).map((c) => ({
           id: c.id,
-          label: c.conclusion_text || `სერტ. #${c.id.slice(0, 6)}`,
+          label: certificateDisplayName(c.conclusion_text),
           sub: c.generated_at ? new Date(c.generated_at).toLocaleDateString('ka-GE') : '',
           href: `/certificates/${c.id}`,
         }))}

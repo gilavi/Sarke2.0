@@ -14,6 +14,7 @@ import { AnimatedSuccessIcon, CelebrationBurst } from '../../../components/anima
 import { inspectionsApi, projectsApi, templatesApi } from '../../../lib/services';
 import { useTheme } from '../../../lib/theme';
 import { haptic } from '../../../lib/haptics';
+import { inspectionDisplayName } from '../../../lib/shared/documentName';
 import type { Inspection, Project, Template } from '../../../types/models';
 
 export default function InspectionDoneScreen() {
@@ -91,7 +92,7 @@ export default function InspectionDoneScreen() {
         ) : inspection ? (
           <Card>
             <Text style={styles.eyebrow}>შეჯამება</Text>
-            <Text style={styles.inspTitle}>{template?.name ?? 'ინსპექცია'}</Text>
+            <Text style={styles.inspTitle}>{inspectionDisplayName(template?.name)}</Text>
             {project ? <Text style={styles.inspMeta}>{project.name}</Text> : null}
             <Text style={styles.inspMeta}>
               {new Date(inspection.completed_at ?? inspection.created_at).toLocaleString('ka-GE')}

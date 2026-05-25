@@ -7,22 +7,24 @@
  * a free-text conclusion instead of a verdict.
  */
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { FileText, Plus, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Textarea, TextInput } from '@mantine/core';
 import DeleteButton from '@/components/DeleteButton';
 import InspectionSignatures from '@/components/InspectionSignatures';
 import SignatureCanvas from '@/components/SignatureCanvas';
 import FieldInput from '@/components/FieldInput';
-import PhotoUploadWidget from '@/components/PhotoUploadWidget';
-import WizardSteps, { WizardNav } from '@/components/WizardSteps';
+import PhotoUploadZone from '@/components/PhotoUploadZone';
+import { WizardFrame, SegmentedControl } from '@/components/wizard';
+import SuccessModal, { type SuccessModalData } from '@/components/web/SuccessModal';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { SkeletonDetailPage } from '@/components/SkeletonCard';
 import { ErrorView, EmptyView } from '@/components/async/AsyncBoundary';
 import { routes } from '@/app/routes';
 import { generalEquipmentKeys } from '@/app/queryKeys';
+import { equipmentInspectionName } from '@/lib/documentNames';
 import {
   createGeneralEquipmentInspection,
   deleteGeneralEquipmentInspection,
@@ -38,15 +40,23 @@ import {
   type GESignerRole,
 } from '@/lib/data/generalEquipment';
 import { useEquipmentDetail } from './useEquipmentDetail';
-import { CompletedBanner } from './components/CompletedBanner';
-import { InspectionPdfOverlay } from './components/InspectionPdfOverlay';
-import { ResultPills, type ResultOption } from './components/ResultPills';
+import { type ResultOption, type ResultTone } from './components/ResultPills';
+
+const TONE_BG: Record<ResultTone, string> = {
+  good: '#1D9E75',
+  warn: '#D97706',
+  bad: '#EF4444',
+  neutral: '#94A3B8',
+};
 
 const CONDITION_OPTIONS: ResultOption<GECondition>[] = [
   { value: 'good', label: 'ნორმაში', tone: 'good' },
   { value: 'needs_service', label: 'ტექ. მომსახურება', tone: 'warn' },
   { value: 'unusable', label: 'გამოუსადეგ.', tone: 'bad' },
 ];
+
+const CONDITION_SEG = CONDITION_OPTIONS.map((o) => ({ label: o.label, value: o.value, selectedBg: TONE_BG[o.tone] }));
+const STEP_LABELS = ['ინფო', 'შემოწმება', 'დასკვნა'];
 
 const INSPECTION_TYPES: [GEInspectionType, string][] = [
   ['initial', 'პირველადი'],
@@ -73,6 +83,7 @@ export default function GeneralEquipmentDetail() {
   });
 
   const [signingOpen, setSigningOpen] = useState(false);
+  const [successOpen, setSuccessOpen] = useState(false);
 
   if (d.isLoading) return <SkeletonDetailPage />;
   if (d.isError) return <ErrorView error={d.error} />;
@@ -136,69 +147,53 @@ export default function GeneralEquipmentDetail() {
     d.save({ equipment: effectiveItem.equipment.filter((r) => r.id !== rowId) });
   }
 
+  const total = STEP_LABELS.length;
+  const isConclusion = d.step === total - 1;
+
+  const evaluated = effectiveItem.equipment.filter((r) => r.condition !== null);
+  const goodCount = evaluated.filter((r) => r.condition === 'good').length;
+  const successData: SuccessModalData = {
+    totalCount: evaluated.length,
+    safeCount: goodCount,
+    problemCount: evaluated.length - goodCount,
+    inspectionName: equipmentInspectionName('general'),
+    projectName: d.project?.name ?? '',
+    itemLabel: 'ერთეული',
+  };
+
+  function handleNext() {
+    if (!isConclusion) { d.goStep(d.step + 1); return; }
+    if (isDraft) {
+      d.save({ status: 'completed' });
+      setSuccessOpen(true);
+    } else {
+      window.open(`#${routes.generalEquipment.print(effectiveItem.id)}`, '_blank');
+    }
+  }
+
   return (
-    <div className="space-y-6">
-      {d.justCompleted && <CompletedBanner onViewPdf={() => d.setPdfOpen(true)} />}
-
-      <header className="flex items-start justify-between gap-4">
-        <div>
-          <nav className="flex items-center gap-1 text-sm">
-            {d.project && (
-              <>
-                <Link to={routes.projects.detail(d.project.id)} className="text-brand-600 hover:underline">
-                  {d.project.name}
-                </Link>
-                <span className="text-neutral-400">›</span>
-              </>
-            )}
-            <Link to={routes.inspections.list(effectiveItem.projectId)} className="text-brand-600 hover:underline">
-              აქტები
-            </Link>
-            <span className="text-neutral-400">›</span>
-            <span className="truncate max-w-[200px] text-neutral-500">
-              {effectiveItem.objectName || 'მოწყობილობა'}
-            </span>
-          </nav>
-          <h1 className="mt-2 font-display text-3xl font-bold text-neutral-900">
-            {effectiveItem.objectName || (d.isPending ? 'ახალი ტექ. აქტი' : `ტექ. აქტი #${effectiveItem.id.slice(0, 8)}`)}
-          </h1>
-          <p className="mt-1 text-sm text-neutral-500">
-            სტატუსი: {effectiveItem.status === 'completed' ? 'დასრულდა' : 'დრაფტი'}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {!d.isPending && (
-            <Button variant="outline" size="sm" onClick={() => d.setPdfOpen(true)}>
-              <FileText size={14} className="mr-1" />
-              PDF
-            </Button>
-          )}
-          {!d.isPending && <DeleteButton onDelete={d.del} isPending={d.deleting} />}
-        </div>
-      </header>
-
-      {!d.isPending && (
-        <InspectionSignatures
-          inspection={{
-            inspector_signature: effectiveItem.inspectorSignature ?? null,
-            inspector_name: effectiveItem.inspectorName ?? null,
-            signatories: effectiveItem.signatories ?? [],
-            created_at: effectiveItem.createdAt,
-            completed_at: effectiveItem.completedAt ?? null,
-          }}
-          canEdit={effectiveItem.status === 'completed'}
-          onUpdate={(sigs) => d.save({ signatories: sigs })}
-        />
-      )}
-
-      <WizardSteps
-        steps={[{ label: 'ინფო' }, { label: 'შემოწმება' }, { label: 'დასკვნა' }]}
-        current={d.step}
-        onStep={d.setStep}
-      />
-
+    <>
+      <WizardFrame
+        open
+        onClose={() => navigate(routes.inspections.list())}
+        projectName={d.project?.name}
+        inspectionName={equipmentInspectionName('general')}
+        stepName={`${STEP_LABELS[d.step]} · ${d.step + 1}/${total}`}
+        showProgress
+        progressPercent={(d.step / (total - 1)) * 100}
+        closeDisabled={d.updating}
+        stepKey={d.step}
+        direction={d.direction}
+        onBack={() => d.goStep(d.step - 1)}
+        onNext={handleNext}
+        backDisabled={d.step === 0 || d.updating}
+        nextDisabled={isConclusion && isDraft ? d.updating || d.isPending : false}
+        nextLabel={isConclusion ? (isDraft ? 'დასრულება' : 'PDF გენერირება') : 'შემდეგი'}
+        hideNextArrow={isConclusion}
+        submitting={isConclusion && isDraft && d.updating}
+      >
       {d.step === 0 && (
-        <>
+        <div className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle className="text-base">ზოგადი ინფორმაცია</CardTitle>
@@ -222,34 +217,27 @@ export default function GeneralEquipmentDetail() {
               />
               <div className="space-y-1">
                 <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">შემოწმების სახეობა</p>
-                <div className="flex flex-wrap gap-2">
-                  {INSPECTION_TYPES.map(([val, label]) => (
-                    <button
-                      key={val}
-                      type="button"
-                      disabled={!isDraft}
-                      onClick={() => d.save({ inspectionType: effectiveItem.inspectionType === val ? null : val })}
-                      className={`rounded-full border px-3 py-1 text-xs font-semibold transition disabled:opacity-60 ${
-                        effectiveItem.inspectionType === val
-                          ? 'border-brand-600 bg-brand-600 text-white'
-                          : 'border-neutral-300 bg-white text-neutral-700 hover:border-brand-400'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
+                <SegmentedControl
+                  fullWidth
+                  options={INSPECTION_TYPES.map(([val, label]) => ({ label, value: val, selectedBg: '#1D9E75' }))}
+                  selected={effectiveItem.inspectionType}
+                  onSelect={(val) => { if (isDraft) d.save({ inspectionType: effectiveItem.inspectionType === val ? null : (val as GEInspectionType) }); }}
+                />
               </div>
               <FieldInput label="დეპარტამენტი" value={effectiveItem.department} disabled={!isDraft} onSave={(v) => d.save({ department: v })} />
               <FieldInput label="ინსპექტორი" value={effectiveItem.inspectorName} disabled={!isDraft} onSave={(v) => d.save({ inspectorName: v })} />
             </CardContent>
           </Card>
-          <WizardNav current={d.step} total={3} onPrev={() => d.setStep(d.step - 1)} onNext={() => d.setStep(d.step + 1)} />
-        </>
+          {!d.isPending && (
+            <div className="flex justify-end">
+              <DeleteButton onDelete={d.del} isPending={d.deleting} />
+            </div>
+          )}
+        </div>
       )}
 
       {d.step === 1 && (
-        <>
+        <div className="space-y-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <CardTitle className="text-base">
@@ -301,12 +289,14 @@ export default function GeneralEquipmentDetail() {
                           radius="md"
                         />
                       </div>
-                      <ResultPills
-                        options={CONDITION_OPTIONS}
-                        value={row.condition}
-                        disabled={!isDraft}
-                        onSelect={(c) => patchRow(row.id, { condition: c })}
-                      />
+                      <div className="mt-2">
+                        <SegmentedControl
+                          fullWidth
+                          options={CONDITION_SEG}
+                          selected={row.condition}
+                          onSelect={(c) => { if (isDraft) patchRow(row.id, { condition: c === row.condition ? null : (c as GECondition) }); }}
+                        />
+                      </div>
                       <TextInput
                         disabled={!isDraft}
                         defaultValue={row.note}
@@ -315,29 +305,44 @@ export default function GeneralEquipmentDetail() {
                         classNames={{ input: 'mt-2 text-xs' }}
                         radius="md"
                       />
-                      <PhotoUploadWidget
-                        paths={row.photo_paths ?? []}
-                        disabled={!isDraft}
-                        prefix="general-equipment"
-                        inspectionId={effectiveItem.id}
-                        itemId={row.id}
-                        onAdd={(path) => patchRow(row.id, { photo_paths: [...(row.photo_paths ?? []), path] })}
-                        onRemove={(path) =>
-                          patchRow(row.id, { photo_paths: (row.photo_paths ?? []).filter((p) => p !== path) })
-                        }
-                      />
+                      <div className="mt-2">
+                        <PhotoUploadZone
+                          paths={row.photo_paths ?? []}
+                          disabled={!isDraft}
+                          prefix="general-equipment"
+                          inspectionId={effectiveItem.id}
+                          itemId={row.id}
+                          onAdd={(path) => patchRow(row.id, { photo_paths: [...(row.photo_paths ?? []), path] })}
+                          onRemove={(path) =>
+                            patchRow(row.id, { photo_paths: (row.photo_paths ?? []).filter((p) => p !== path) })
+                          }
+                          placeholder="ფოტო არ არის სავალდებულო"
+                        />
+                      </div>
                     </li>
                   ))}
                 </ul>
               )}
             </CardContent>
           </Card>
-          <WizardNav current={d.step} total={3} onPrev={() => d.setStep(d.step - 1)} onNext={() => d.setStep(d.step + 1)} />
-        </>
+        </div>
       )}
 
       {d.step === 2 && (
-        <>
+        <div className="space-y-4">
+          {!d.isPending && (
+            <InspectionSignatures
+              inspection={{
+                inspector_signature: effectiveItem.inspectorSignature ?? null,
+                inspector_name: effectiveItem.inspectorName ?? null,
+                signatories: effectiveItem.signatories ?? [],
+                created_at: effectiveItem.createdAt,
+                completed_at: effectiveItem.completedAt ?? null,
+              }}
+              canEdit={effectiveItem.status === 'completed'}
+              onUpdate={(sigs) => d.save({ signatories: sigs })}
+            />
+          )}
           <Card>
             <CardHeader>
               <CardTitle className="text-base">ინსპექტორის ხელმოწერა</CardTitle>
@@ -384,23 +389,12 @@ export default function GeneralEquipmentDetail() {
               <FieldInput label="სახელი, გვარი" value={effectiveItem.signerName} disabled={!isDraft} onSave={(v) => d.save({ signerName: v })} />
               <div className="space-y-1">
                 <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">როლი</p>
-                <div className="flex flex-wrap gap-2">
-                  {SIGNER_ROLES.map(([val, label]) => (
-                    <button
-                      key={val}
-                      type="button"
-                      disabled={!isDraft}
-                      onClick={() => d.save({ signerRole: effectiveItem.signerRole === val ? null : val })}
-                      className={`rounded-full border px-3 py-1 text-xs font-semibold transition disabled:opacity-60 ${
-                        effectiveItem.signerRole === val
-                          ? 'border-brand-600 bg-brand-600 text-white'
-                          : 'border-neutral-300 bg-white text-neutral-700 hover:border-brand-400'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
+                <SegmentedControl
+                  fullWidth
+                  options={SIGNER_ROLES.map(([val, label]) => ({ label, value: val, selectedBg: '#1D9E75' }))}
+                  selected={effectiveItem.signerRole}
+                  onSelect={(val) => { if (isDraft) d.save({ signerRole: effectiveItem.signerRole === val ? null : (val as GESignerRole) }); }}
+                />
               </div>
               {effectiveItem.signerRole === 'other' && (
                 <div className="sm:col-span-2">
@@ -416,37 +410,32 @@ export default function GeneralEquipmentDetail() {
             </CardHeader>
             <CardContent className="space-y-3">
               {isDraft ? (
-                <>
-                  <Textarea
-                    rows={3}
-                    defaultValue={effectiveItem.conclusion ?? ''}
-                    onBlur={(e) => {
-                      const v = e.target.value || null;
-                      if (v !== effectiveItem.conclusion) d.save({ conclusion: v });
-                    }}
-                    placeholder="დასკვნის ტექსტი"
-                    radius="md"
-                    autosize={false}
-                  />
-                  <Button size="sm" onClick={() => d.save({ status: 'completed' })} disabled={d.isPending || d.updating}>
-                    დასრულება
-                  </Button>
-                </>
+                <Textarea
+                  rows={3}
+                  defaultValue={effectiveItem.conclusion ?? ''}
+                  onBlur={(e) => {
+                    const v = e.target.value || null;
+                    if (v !== effectiveItem.conclusion) d.save({ conclusion: v });
+                  }}
+                  placeholder="დასკვნის ტექსტი"
+                  radius="md"
+                  autosize={false}
+                />
               ) : (
                 <p className="text-sm text-neutral-700">{effectiveItem.conclusion || '—'}</p>
               )}
             </CardContent>
           </Card>
-          <WizardNav current={d.step} total={3} onPrev={() => d.setStep(d.step - 1)} onNext={() => d.setStep(d.step + 1)} />
-        </>
+        </div>
       )}
+      </WizardFrame>
 
-      {d.pdfOpen && (
-        <InspectionPdfOverlay
-          src={`#${routes.generalEquipment.print(effectiveItem.id)}?preview=1`}
-          onClose={() => d.setPdfOpen(false)}
-        />
-      )}
-    </div>
+      <SuccessModal
+        isOpen={successOpen}
+        onClose={() => setSuccessOpen(false)}
+        onGeneratePDF={() => window.open(`#${routes.generalEquipment.print(effectiveItem.id)}`, '_blank')}
+        data={successData}
+      />
+    </>
   );
 }

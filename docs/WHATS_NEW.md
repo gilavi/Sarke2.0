@@ -4,6 +4,10 @@
 
 ---
 
+## 2026-05-25 — Shared document naming (mobile + web single source of truth)
+
+Web list/detail screens showed raw id slices (e.g. `ქამარი #0c9537aa`) while mobile showed the document's template/type name. The naming logic now lives in one pure-TS module, [lib/shared/documentName.ts](../lib/shared/documentName.ts) — the first code shared between the Expo app and `web-app/` (imported relatively on mobile, via the `@root` alias on web). Exports `inspectionDisplayName` / `reportDisplayName` / `certificateDisplayName` / `orderDisplayName`; the display name is the template/type name, never an id. Web wires it through [web-app/src/lib/documentNames.ts](../web-app/src/lib/documentNames.ts) (template-name resolver hook + constant labels for the equipment tables that have no template row). See [docs/primitives.md → Document display names](primitives.md#document-display-names-shared-with-web). Print PDFs were intentionally left untouched for legal-document fidelity.
+
 ## 2026-05-25 — Polish-pass refactor: god-file slimming and conditional-hook fix (mobile)
 
 Follow-up to the 2026-05-24 feature-sliced refactor. Five phases of structural polish, plus one bonus extraction in Phase 4; commits `4247d48`…`489d544`. Full audit trail in [REFACTOR_SUMMARY_V2.md](../REFACTOR_SUMMARY_V2.md).
