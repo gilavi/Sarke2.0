@@ -25,6 +25,11 @@ import { haptic } from '../haptics';
 import { generateAndSharePdf, PdfLimitReachedError } from '../pdfOpen';
 import { generatePdfName } from '../pdfName';
 import { renderInspectionPdf } from './renderMobile';
+import {
+  clearSignaturesSession,
+  getSignaturesSession,
+} from '../../features/signatures';
+import type { SignaturesSectionData } from '../pdf/inspection/renderSignaturesSection';
 import type { InspectionSchema } from './schema';
 import type { Project } from '../../types/models';
 
@@ -271,6 +276,23 @@ export function useInspectionFlow<T extends BaseInspection>(
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [persistKey, toast]);
 
+  // ── Signatures session → PDF section data ────────────────────────────────────
+  const buildSignaturesSection = useCallback(
+    (inspectionId: string): SignaturesSectionData | null => {
+      const snap = getSignaturesSession(inspectionId);
+      if (!snap) return null;
+      const u = session.state.status === 'signedIn' ? session.state.user : null;
+      const creatorName = u ? `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim() : '';
+      return {
+        creatorSignature: snap.creatorSignature
+          ? { ...snap.creatorSignature, creatorName }
+          : null,
+        additionalRowsCount: snap.additionalRowsCount,
+      };
+    },
+    [session.state],
+  );
+
   // ── PDF download/share ───────────────────────────────────────────────────────
   const handlePdf = useCallback(async () => {
     const insp = inspectionRef.current;
@@ -278,7 +300,11 @@ export function useInspectionFlow<T extends BaseInspection>(
     if (pdfUsage?.isLocked) { setPaywallVisible(true); return; }
     setGeneratingPdf(true);
     try {
-      const html = await renderInspectionPdf(schema, { inspection: insp, projectName: projectName || 'პროექტი' });
+      const html = await renderInspectionPdf(schema, {
+        inspection: insp,
+        projectName: projectName || 'პროექტი',
+        signaturesSession: buildSignaturesSection(insp.id),
+      });
       const pdfName = generatePdfName(
         projectName || 'project',
         cfg.pdf.nameLabel,
@@ -292,6 +318,8 @@ export function useInspectionFlow<T extends BaseInspection>(
         documentId: insp.id,
         subject: cfg.pdf.subject,
       });
+      // Drop the captured signatures so a re-share doesn't reuse stale data.
+      clearSignaturesSession(insp.id);
       invalidatePdfUsage();
     } catch (e) {
       if (e instanceof PdfLimitReachedError) { setPaywallVisible(true); return; }
@@ -300,7 +328,7 @@ export function useInspectionFlow<T extends BaseInspection>(
       setGeneratingPdf(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectName, session.state, invalidatePdfUsage, toast, pdfUsage]);
+  }, [projectName, session.state, invalidatePdfUsage, toast, pdfUsage, buildSignaturesSection]);
 
   // ── Completed-view preview ───────────────────────────────────────────────────
   const buildPreview = useCallback(async () => {
@@ -308,7 +336,11 @@ export function useInspectionFlow<T extends BaseInspection>(
     if (!insp) return;
     setPreviewBusy(true);
     try {
-      const html = await renderInspectionPdf(schema, { inspection: insp, projectName: projectName || 'პროექტი' });
+      const html = await renderInspectionPdf(schema, {
+        inspection: insp,
+        projectName: projectName || 'პროექტი',
+        signaturesSession: buildSignaturesSection(insp.id),
+      });
       setPreviewHtml(html);
     } catch (e) {
       toast.error(friendlyError(e, 'PDF ვერ შეიქმნა'));
@@ -316,7 +348,7 @@ export function useInspectionFlow<T extends BaseInspection>(
       setPreviewBusy(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectName, toast]);
+  }, [projectName, toast, buildSignaturesSection]);
 
   useEffect(() => {
     if (inspection?.status === 'completed') void buildPreview();

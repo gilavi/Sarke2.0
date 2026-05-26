@@ -12,6 +12,7 @@
 import { escapeHtml, fmtDate } from './escape';
 import { BASE_PDF_CSS } from './pdfStyles';
 import { INTERNAL_DOC_BADGE } from './schema';
+import { renderSignaturesSection, type SignaturesSectionData } from '../pdf/inspection/renderSignaturesSection';
 import type {
   ChecklistSection,
   InfoField,
@@ -27,10 +28,10 @@ import type {
 /** Build the full HTML document for an inspection PDF. */
 export function buildInspectionPdf<T>(
   schema: InspectionSchema<T>,
-  data: { inspection: T; projectName: string },
+  data: { inspection: T; projectName: string; signaturesSession?: SignaturesSectionData | null },
   photos: PhotoMap,
 ): string {
-  const { inspection, projectName } = data;
+  const { inspection, projectName, signaturesSession = null } = data;
   const { docId, docDate } = schema.meta(inspection);
   const docTitle = resolveField(schema.docTitle, inspection) ?? '';
   const docSubtitle = resolveField(schema.docSubtitle, inspection);
@@ -42,6 +43,8 @@ export function buildInspectionPdf<T>(
     .map((block) => renderBlock(block, inspection, photos))
     .filter(Boolean)
     .join('\n');
+
+  const signaturesHtml = renderSignaturesSection(signaturesSession);
 
   const css = `${BASE_PDF_CSS}\n${schema.extraCss ?? ''}`;
   const plainTitle = docTitle.replace(/<br\s*\/?>/gi, ' ');
@@ -58,6 +61,7 @@ export function buildInspectionPdf<T>(
   <div class="page">
     ${renderHeader({ docTitle, docSubtitle, badge, projectName, docId, docDate, metaLines })}
     ${body}
+    ${signaturesHtml}
     ${renderFooter(footerLabel, docId, docDate)}
   </div>
 </body>

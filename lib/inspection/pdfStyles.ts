@@ -163,6 +163,50 @@ export const BASE_PDF_CSS = `
     font-size: 10px; color: var(--inkFaint);
   }
 
+  /* ── Unified signatures section (wizard creator + empty hand-sign slots) ── */
+  .signatures-section { margin-top: 18px; page-break-inside: avoid; }
+  .signatures-heading { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .signatures-heading-text {
+    font-size: 12px; font-weight: 700; color: var(--ink);
+    text-transform: uppercase; letter-spacing: 0.4px;
+  }
+  .signatures-heading-rule { flex: 1; height: 1px; background: var(--hairline); }
+
+  .signatures-creator { margin-bottom: 14px; }
+  .signatures-creator-img {
+    height: 90px;
+    display: flex; align-items: center; justify-content: flex-start;
+    padding: 2px 0;
+  }
+  .signatures-creator-img img { max-height: 90px; max-width: 260px; display: block; }
+  .signatures-creator-rule { height: 1px; background: var(--ink); margin-bottom: 4px; }
+  .signatures-creator-meta { display: flex; align-items: baseline; gap: 10px; }
+  .signatures-creator-name { font-size: 12px; font-weight: 700; color: var(--ink); }
+  .signatures-creator-date { font-size: 10px; color: var(--inkSoft); }
+
+  .signatures-empty-slot {
+    padding: 8px 0;
+    border-top: 1px solid var(--hairline);
+  }
+  .signatures-empty-slot:first-child { border-top: none; }
+  .signatures-empty-row {
+    display: flex; align-items: flex-end; gap: 8px;
+    margin-bottom: 10px;
+  }
+  .signatures-empty-row:last-child { margin-bottom: 0; }
+  .signatures-empty-row-split { gap: 24px; }
+  .signatures-empty-half {
+    display: flex; align-items: flex-end; gap: 6px; flex: 1;
+  }
+  .signatures-empty-label {
+    font-size: 10px; color: var(--inkSoft); font-weight: 600; white-space: nowrap;
+  }
+  .signatures-empty-line {
+    display: inline-block; border-bottom: 1px solid var(--ink); align-self: flex-end;
+  }
+  .signatures-empty-line-long { flex: 1; height: 70px; }
+  .signatures-empty-line-short { flex: 1; height: 32px; }
+
   @media print {
     html, body { background: #fff; }
     .page { padding: 0; max-width: none; }
