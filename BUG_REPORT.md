@@ -9,6 +9,18 @@
 
 One real bug found — a **P0** infinite redirect loop between the wizard and the inspection-detail screen — root-caused and fixed. The other items in my initial pass turned out to be either downstream effects of the loop, simulator artifacts, or a misobservation. No code changes needed for the rest.
 
+## P0 — Inspection signatures persisted in violation of the regulatory no-save rule · FIXED 2026-05-26 (code), MIGRATION PENDING (DB)
+
+**Audit context:** the no-persistence rule for captured inspection signatures was not held across the codebase. [SIGNATURE_AUDIT.md](SIGNATURE_AUDIT.md) catalogs the surface that violated it:
+
+- DB tables and columns: the `signatures` table (per-inspection signature pointers, 0001 + 0004), `inspections.inspector_signature` (0032), `inspections.signatories` JSONB (0050), `inspector_signature` and `signatories` JSONB on `bobcat_inspections` / `excavator_inspections` / `general_equipment_inspections` (0024–0027 + 0051), `signatures` + `signatories` JSONB on `cargo_platform_inspections` (0040 + 0051).
+- Storage: inspection signature objects in the `signatures` bucket at `<inspectionId>/<role>-<ts>.png`.
+- Local: AsyncStorage `pending-signatures` queue (retry pool feeding `signatures` bucket uploads) and the unused `local-sigs:<inspectionId>` prefix in `lib/localSignatures.ts`.
+
+**Code fix (landed 2026-05-26):** the signature redesign across the wizard and post-completion screens removes every UI path that wrote signature data anywhere except wizard component state and an in-memory cross-screen session store. Captured signatures now live only in RAM and are cleared after PDF generation. Old patterns removed: `SignaturesActionSheet`, `SignatureSheet`, `SignatureBlock`, the per-inspection-screen `renderSignaturesSheet` blocks, `EphemeralSignatureSheet` in the generic result screen, the `signaturesApi` (real + mock), the `useSignatures` query hook, and the dead `lib/localSignatures.ts`. The unified replacement lives at [`features/signatures/`](features/signatures/).
+
+**DB fix (pending manual application):** [`supabase/migrations/20260526002032_remove_persisted_inspection_signatures.sql`](supabase/migrations/20260526002032_remove_persisted_inspection_signatures.sql) drops every table/column/storage object listed above. Out-of-scope flows preserved unchanged (project signers' `project/...` storage paths, the `signatures` Postgres table is dropped entirely because it only ever held inspection-scoped rows, `users.saved_signature_url` and `expert/<userId>.png` stay for the incident/briefing reusable expert signature, the `remote-signatures` bucket and `remote_signings` table are untouched). The migration is not executed from Claude Code — apply manually after review via `supabase db query --linked` or the Management API.
+
 ## P0 — Wizard ↔ detail-screen ping-pong loop · FIXED
 
 **Repro:** From Home, tap "გააგრძელე დრაფტი" (or any draft in Recent activity).

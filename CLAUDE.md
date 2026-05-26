@@ -40,7 +40,7 @@ Rules:
 - **Native iOS legacy:** `ios-legacy` branch — do not modify from main.
 - **Storage buckets:** `certificates`, `answer-photos`, `pdfs`, `signatures`, `incident-photos`, `report-photos`, `project-files`, `remote-signatures`.
 - **Languages:** UI strings are in Georgian (ქართული). Do not auto-translate them to English.
-- **Migrations:** range is currently `0001`–`0053`. Numbers `0044`/`0045`/`0046` are each used by two files (merged branches) — do **not** renumber them (it desyncs the hosted migration history); new migrations continue from `0053`. The full list with one-line descriptions is in [README.md](README.md#migrations-supabasemigrations).
+- **Migrations:** range is currently `0001`–`0053` plus timestamp-prefixed migrations from 2026-05-25 onward (`YYYYMMDDHHMMSS_*.sql`). Numbers `0044`/`0045`/`0046` are each used by two files (merged branches) — do **not** renumber them (it desyncs the hosted migration history); new numeric migrations would continue from `0053`. The full list with one-line descriptions is in [README.md](README.md#migrations-supabasemigrations).
 
 ## Per-module context
 
@@ -97,3 +97,4 @@ All three deploy to the same `gh-pages` branch under different `destination_dir`
 - Don't edit historical `QA_REPORT_YYYY-MM-DD.md` files.
 - Don't re-consolidate the domain-split files (`lib/services/`, `lib/pdf/`, `features/`). The split is intentional and enforced by the File-size targets above.
 - Don't create public Postgres functions without `SET search_path = public, pg_catalog`. Functions invoked from `auth.admin` contexts (notably `deleteUser`) run with an empty search_path and fail to resolve unqualified public-schema types. See migration `supabase/migrations/20260525180000_pin_function_search_paths.sql` for the precedent and the TestFlight 500 it fixed.
+- Do not persist captured inspection signature data in any form (Supabase storage, DB column, AsyncStorage, MMKV, SecureStore, file system). Regulatory requirement. Captured signatures live in wizard state and an in-memory session store only and exist for one purpose: rasterization into the generated PDF. The session is cleared after PDF generation. Out-of-scope flows (project signers, tokenized remote signing, order signatures, incident/briefing reusable expert signature) are preserved and unrelated to this rule. See [`features/signatures/AGENTS.md`](features/signatures/AGENTS.md).

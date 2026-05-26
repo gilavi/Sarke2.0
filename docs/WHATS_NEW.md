@@ -4,6 +4,34 @@
 
 ---
 
+## 2026-05-26 — Inspection signatures redesign: single unified flow, no persistence
+
+### Redesigned — unified signatures flow across all inspection types
+The inspection signature surface has been reduced to one screen at the wizard's final step. New module [features/signatures/](../features/signatures/) owns the flow: one creator signature (captured digitally, profile-resolved name, no editable inputs) plus any number of additional empty hand-sign slots that render as labeled blanks on the printed PDF. Entry point is a status row on `ConclusionStep` showing `ხელმოწერა არ არის დამატებული` / `1 ხელმოწერა` / `1 ხელმოწერა + N დამატებითი ხაზი`; tap opens [`SignaturesScreen`](../features/signatures/SignaturesScreen.tsx) as a full-screen modal. The wizard's `დასრულება` button is intentionally not gated by signature state — PDFs generate whether or not a signature was captured.
+
+### New — PDF signatures section with hand-sign slots
+Both the generic inspection PDF ([lib/pdf/inspection/template.ts](../lib/pdf/inspection/template.ts) → [renderSignaturesSection.ts](../lib/pdf/inspection/renderSignaturesSection.ts)) and the equipment-engine PDFs ([lib/inspection/pdf.ts](../lib/inspection/pdf.ts), wired once through [useInspectionFlow](../lib/inspection/useInspectionFlow.ts)) render a unified section at the bottom: heading, the captured creator signature over a horizontal rule with name + Georgian-formatted date, then N labeled empty signing slots for printed-page co-signers. The section is omitted entirely if no signature was captured and no rows were added.
+
+### Regulatory non-negotiable — captured signature data is never persisted
+Wizard-scope signature state lives only in component memory and bridges to the result screen's PDF generator via an in-process [`features/signatures/sessionStore`](../features/signatures/sessionStore.ts) — RAM only, cleared explicitly after PDF generation, lost on process exit. The rule is documented in `CLAUDE.md → Things to Avoid` and in `features/signatures/AGENTS.md`. Out-of-scope flows preserved unchanged: project-signer witnesses (`project_signers` + `project/<projectId>/...` paths in the `signatures` bucket), tokenized remote signing (`remote_signings`, `remote-signatures` bucket, `send-signing-sms` Edge Function), order signatures embedded in `orders.form_data`, and the incident/briefing reusable expert signature (`users.saved_signature_url` → `expert/<userId>.png`).
+
+### Persistence cleanup migration (must run manually)
+[`supabase/migrations/20260526002032_remove_persisted_inspection_signatures.sql`](../supabase/migrations/20260526002032_remove_persisted_inspection_signatures.sql) drops the `signatures` table and `signature_status` enum, the `inspector_signature` columns on `inspections` / `bobcat_inspections` / `excavator_inspections` / `general_equipment_inspections`, the `signatories` JSONB columns on those four plus `cargo_platform_inspections`, and the older `cargo_platform_inspections.signatures` JSONB. Deletes objects from the `signatures` storage bucket whose first path segment is not `expert` or `project` (preserves expert/project-signer assets). Multi-device per-row signature fields inside `safety_net_inspections` / `mobile_ladder_inspections` / `lifting_accessories_inspections` / `fall_protection_inspections` / `forklift_inspections` JSON columns are stripped via commented-out backfill SQL the user can opt into after reviewing schemas. Claude Code does not execute this — apply manually after review via `supabase db query --linked` or the Management API.
+
+### Removed — legacy signature surfaces
+- The bottom-sheet "name + role inputs then sign" capture flow (`components/inspection-parts/SignatureBlock.tsx` + `SignatureSheet.tsx`, plus the per-inspection-screen `renderSignaturesSheet` prop blocks on excavator / bobcat / general-equipment / cargo-platform / safety-net / mobile-ladder / forklift / fall-protection / lifting-accessories).
+- The roles-keyed alternative sheet (`components/SignaturesActionSheet.tsx`).
+- The legacy `signaturesApi` (real + mock) and the `useSignatures` query hook, plus the `signaturesApi` re-export from `lib/services`.
+- The dead `lib/localSignatures.ts` AsyncStorage writer (`local-sigs:<id>` prefix).
+- The generic result screen's `EphemeralSignatureSheet` + `signatoriesToRecords` and the signatures button + count badge on its bottom bar.
+- The signatures button on the shared `InspectionResultView` (post-completion result view now exposes Certificates + Download only).
+- The per-screen `handleSign` / `handleSignChange` / `handleSignerChange` / `handleSignatoryChange` / `handleSignatorySign` callbacks across the six screens that defined them.
+
+### Audit artifact
+[SIGNATURE_AUDIT.md](../SIGNATURE_AUDIT.md) catalogs every file, table, column, bucket, and AsyncStorage key the old inspection signature surface reached, with the scope split (in vs. out) the redesign was bounded by.
+
+---
+
 ## 2026-05-26 — Storage security: owner-scoped RLS on `certificates` / `answer-photos` / `pdfs` / `signatures`
 
 ### Security

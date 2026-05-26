@@ -1,7 +1,7 @@
 # AI Agent Briefing — Sarke 2.0
 
 **Purpose:** Quick reference for AI agents working on this codebase  
-**Updated:** 2026-05-25 | Branch: `main`  
+**Updated:** 2026-05-26 | Branch: `main`  
 **Full context:** See [`ONBOARDING.md`](../ONBOARDING.md) in the repo root for the complete guide.
 
 ---
@@ -15,6 +15,7 @@
 **Architecture:** Feature-sliced. Modules live in `features/<name>/` with co-located `AGENTS.md` per folder; `app/` route files for large flows are thin orchestrators that re-export from `features/`.  
 **Account deletion:** Implemented end-to-end via Edge Function `delete-account` + `ON DELETE CASCADE` FKs on all user-owned tables. App Store Review Guideline 5.1.1(v) compliant on the data-deletion axis.
 **Function search_path:** All public Postgres functions have `SET search_path = public, pg_catalog`. Functions invoked from `auth.admin` operations run with restricted search_path and fail to resolve unqualified public-schema types without this pin — see migration `supabase/migrations/20260525180000_pin_function_search_paths.sql` for the precedent and the bug it fixed.
+**Signatures:** Single unified flow at the wizard's last step. One creator signature (captured digitally, never persisted) + N empty hand-sign slots rendered in the PDF for printed-page signing. Captured base64 lives in component/wizard state and an in-memory session store only — never to Supabase storage, any DB column, AsyncStorage, MMKV, SecureStore, or the file system. See [`features/signatures/AGENTS.md`](../features/signatures/AGENTS.md) and the cleanup migration `supabase/migrations/20260526002032_remove_persisted_inspection_signatures.sql`.
 **Source:** https://github.com/gilavi/Sarke2.0
 
 ---
@@ -225,4 +226,4 @@ npm run lint        # tsc --noEmit + check-primitives.mjs
 ---
 
 **Full context → [`ONBOARDING.md`](../ONBOARDING.md)**  
-**Last sync:** 2026-05-25
+**Last sync:** 2026-05-26
