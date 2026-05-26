@@ -22,6 +22,7 @@ import { listInspections } from '@/lib/data/inspections';
 import { listBobcatInspections } from '@/lib/data/bobcat';
 import { listGeneralEquipmentInspections } from '@/lib/data/generalEquipment';
 import { listExcavatorInspections } from '@/lib/data/excavator';
+import { listCargoPlatformInspections } from '@/lib/data/cargoPlatform';
 import { listProjects } from '@/lib/data/projects';
 import { listIncidents } from '@/lib/data/incidents';
 import { listBriefings } from '@/lib/data/briefings';
@@ -34,6 +35,7 @@ import {
   bobcatKeys,
   generalEquipmentKeys,
   excavatorKeys,
+  cargoPlatformKeys,
   projectKeys,
   incidentKeys,
   briefingKeys,
@@ -63,17 +65,21 @@ function QuickActionTile({ to, icon: Icon, label, color, darkColor }: {
 export default function Home() {
   const navigate = useNavigate();
   const { profile, user } = useAuth();
-  const firstName = profile?.first_name?.trim() || user?.email?.split('@')[0] || '';
+  // Only fall back to the email prefix once `profile` has actually loaded —
+  // otherwise the greeting flashes "gilavi2000" before correcting to "Giorgi"
+  // on the first render after auth restores.
+  const firstName = profile ? (profile.first_name?.trim() || user?.email?.split('@')[0] || '') : '';
 
   const { data: inspections, isLoading: l1 } = useQuery({ queryKey: inspectionKeys.lists(), queryFn: () => listInspections(), staleTime: 1000 * 60 * 5 });
   const { data: bobcats, isLoading: l2 } = useQuery({ queryKey: bobcatKeys.lists(), queryFn: () => listBobcatInspections(), staleTime: 1000 * 60 * 5 });
   const { data: generalEq, isLoading: l3 } = useQuery({ queryKey: generalEquipmentKeys.lists(), queryFn: () => listGeneralEquipmentInspections(), staleTime: 1000 * 60 * 5 });
   const { data: excavators, isLoading: l4 } = useQuery({ queryKey: excavatorKeys.lists(), queryFn: () => listExcavatorInspections(), staleTime: 1000 * 60 * 5 });
+  const { data: cargoPlatforms, isLoading: l8 } = useQuery({ queryKey: cargoPlatformKeys.lists(), queryFn: () => listCargoPlatformInspections(), staleTime: 1000 * 60 * 5 });
   const { data: projects, isLoading: l5 } = useQuery({ queryKey: projectKeys.lists(), queryFn: listProjects, staleTime: 1000 * 60 * 5 });
   const { data: incidents, isLoading: l6 } = useQuery({ queryKey: incidentKeys.lists(), queryFn: () => listIncidents(), staleTime: 1000 * 60 * 5 });
   const { data: briefings, isLoading: l7 } = useQuery({ queryKey: briefingKeys.lists(), queryFn: () => listBriefings(), staleTime: 1000 * 60 * 5 });
 
-  const isLoading = l1 || l2 || l3 || l4 || l5 || l6 || l7;
+  const isLoading = l1 || l2 || l3 || l4 || l5 || l6 || l7 || l8;
 
   const inspectionName = useInspectionName();
   const allInspectionsUnsliced = useMemo(() => [
@@ -85,9 +91,10 @@ export default function Home() {
     ...(bobcats ?? []).map((i) => ({ id: i.id, label: equipmentInspectionName('bobcat'), date: i.createdAt, status: i.status, href: routes.bobcat.detail(i.id) })),
     ...(generalEq ?? []).map((i) => ({ id: i.id, label: equipmentInspectionName('general'), date: i.createdAt, status: i.status, href: routes.generalEquipment.detail(i.id) })),
     ...(excavators ?? []).map((i) => ({ id: i.id, label: equipmentInspectionName('excavator'), date: i.createdAt, status: i.status, href: routes.excavator.detail(i.id) })),
-  ].sort((a, b) => b.date.localeCompare(a.date)), [inspections, bobcats, generalEq, excavators, inspectionName]);
+    ...(cargoPlatforms ?? []).map((i) => ({ id: i.id, label: equipmentInspectionName('cargo_platform'), date: i.createdAt, status: i.status, href: routes.cargoPlatform.detail(i.id) })),
+  ].sort((a, b) => b.date.localeCompare(a.date)), [inspections, bobcats, generalEq, excavators, cargoPlatforms, inspectionName]);
 
-  const totalInspections = useMemo(() => (inspections?.length ?? 0) + (bobcats?.length ?? 0) + (generalEq?.length ?? 0) + (excavators?.length ?? 0), [inspections, bobcats, generalEq, excavators]);
+  const totalInspections = useMemo(() => (inspections?.length ?? 0) + (bobcats?.length ?? 0) + (generalEq?.length ?? 0) + (excavators?.length ?? 0) + (cargoPlatforms?.length ?? 0), [inspections, bobcats, generalEq, excavators, cargoPlatforms]);
 
   const [newInspectionOpen, setNewInspectionOpen] = useState(false);
   const [harnessOpen, setHarnessOpen] = useState(false);

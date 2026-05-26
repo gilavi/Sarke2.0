@@ -21,9 +21,9 @@ export default function SafetyGuidePage({ standalone }: { standalone?: boolean }
         <div className="sg-page__topbar">
           <Link to="/" className="sg-page__back">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
-            Dashboard
+            მთავარი
           </Link>
-          <h1 className="sg-page__heading">3D Safety Guide</h1>
+          <h1 className="sg-page__heading">3D უსაფრთხოების სახელმძღვანელო</h1>
         </div>
       )}
       <main className="sg-page__main">

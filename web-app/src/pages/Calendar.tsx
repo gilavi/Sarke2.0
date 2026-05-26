@@ -15,7 +15,7 @@ import { listInspections } from '@/lib/data/inspections';
 import { listBobcatInspections } from '@/lib/data/bobcat';
 import { listExcavatorInspections } from '@/lib/data/excavator';
 import { listGeneralEquipmentInspections } from '@/lib/data/generalEquipment';
-import { listBriefings } from '@/lib/data/briefings';
+import { listBriefings, topicLabel } from '@/lib/data/briefings';
 import { listIncidents } from '@/lib/data/incidents';
 import { listProjects } from '@/lib/data/projects';
 import { SkeletonList } from '@/components/SkeletonCard';
@@ -176,7 +176,7 @@ function buildItems(
     out.push({
       id: `brief-${b.id}`,
       href: `/briefings/${b.id}`,
-      title: b.topics?.[0] || 'ინსტრუქტაჟი',
+      title: b.topics?.[0] ? topicLabel(b.topics[0]) : 'ინსტრუქტაჟი',
       projectName: projectMap.get(b.projectId)?.name ?? '—',
       date,
       kind: 'briefing',

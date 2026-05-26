@@ -4,6 +4,49 @@
 
 ---
 
+## 2026-05-26 — Web-app test campaign: 9.4% → 51% coverage, 520 tests, 2 real bugs fixed
+
+### Coverage milestone — [web-app/TESTING_PLAN.md](../web-app/TESTING_PLAN.md)
+
+70 test files / **520 passing tests** under [web-app/src/__tests__/](../web-app/src/__tests__).
+Statement coverage **9.4% → 51.0%** (lines 55.0%, branches 44.6%, functions 39.3%). Typecheck clean.
+
+Established pattern: module-level `vi.mock('@/lib/supabase')` + `vi.mock('@/lib/data/*')` with a shared chain-mock helper at [src/__tests__/helpers/supabaseChain.ts](../web-app/src/__tests__/helpers/supabaseChain.ts). MSW was evaluated and rejected — adding a network-mock layer alongside the existing module-mock pattern would have created two parallel ways to test the same thing.
+
+Suites added across every layer: data layer (inspections, orders, projects, incidents, reports, briefings, certificates, qualifications, account, projectFiles, templates, regulations, 4 equipment modules); lib (orderPdf, db/storage + db/repository, photoUpload, printable, documentNames, subscription, animations, theme); components (SegmentedControl, SuccessModal, StatCard, charts, FloatingLabelInput, Button/Card, SkeletonCard, SubscriptionCard, PaywallModal, ProjectAvatar, AppShell, navItems, ListRow, ExpandableRow, FieldInput, ProjectActivityWidget, Sidebar, ProjectModal, ProjectMap, WelcomeModal, QuickWinChecklist, PhotoGallery, AddressInput, SettingsModal, DeleteButton, WizardHeader/Footer, ChipSelect, ResultPills, VirtualList, SignatureCanvas, SidePanel, PrintLayout, ErrorBoundary, ProtectedRoute, WizardSteps); store/hooks (useSafetySelectors, useConfetti, useWizardFlow, usePdfUsage, AuthProvider/useAuth with persisted-session + profile-fetch + signIn/signUp/signOut/sendPasswordReset/updatePassword); pages (the auth set, all list pages, dashboards, forms, detail pages, all 11 ProjectDetail sections, Landing + sections, all 8 print pages — 4 equipment + Inspection + Incident + Briefing + Report — both not-found and loaded states); plus i18n init and a 940-LOC InspectionWizard mount (create + preset + edit variants).
+
+### Fixed — 2 real bugs surfaced by writing the tests
+
+- **`useSafetyActions` was missing `useShallow`.** The Zustand action selector returned a fresh object literal on every call, so any component consuming it would see a new snapshot on every render and infinite-loop via `useSyncExternalStore`'s "getSnapshot should be cached" guard — i.e. any caller would crash. Wrapped with `useShallow`. ([useSafetySelectors.ts](../web-app/src/store/useSafetySelectors.ts))
+- **Dotless-filename extension fallback was dead code in 5 places.** `file.name.split('.').pop() ?? 'jpg'` never returns `undefined` for a dotless filename — it returns the whole string. So uploading `photo` (no extension) would store as `…/{uuid}.photo` instead of `…/{uuid}.jpg`, and `image.png.txt` would silently keep `.txt`. Switched to `lastIndexOf('.') > 0` + `slice`. Fixed in [photoUpload.ts](../web-app/src/lib/photoUpload.ts), [data/incidents.ts](../web-app/src/lib/data/incidents.ts) (both `addIncidentPhoto` and `createIncident` attachments), [data/reports.ts](../web-app/src/lib/data/reports.ts), [data/certificates.ts](../web-app/src/lib/data/certificates.ts).
+
+### Fixed — UX inconsistencies caught while wiring page tests
+
+- **History page hard-coded `'harness'` for every row from the `inspections` table.** That table actually holds harness AND three scaffold variants (xaracho / mobile_scaffold / mobile_scaffold_n3), so scaffold rows showed a harness badge. Now reads the joined `template.category` and falls back to `'harness'` only when absent. Same page also unmapped the cargo-platform delete branch and the cargo-platform link (was `href: '#'`). ([History.tsx](../web-app/src/pages/History.tsx))
+- **`ProjectActivityWidget` was silently dropping cargo-platform inspections** from the project activity feed (only inspection/bobcat/general/excavator types were wired). Added a 5th query + type + avatar (`📦` ტვირთის პლატფ.). ([ProjectActivityWidget.tsx](../web-app/src/components/ProjectActivityWidget.tsx))
+- **`SidePanel` showed English severity/category labels** (`Critical / High / Medium / Low`, `Hazard / Procedure / Compliance`). Translated to Georgian (`კრიტიკული / მაღალი / საშუალო / დაბალი`, `საფრთხე / პროცედურა / სტანდარტი`); `PPE` stays as `PPE` (universal term). ([SidePanel.tsx](../web-app/src/components/SidePanel.tsx))
+
+### Infrastructure
+
+- **`IntersectionObserver` mock added to [test-setup.ts](../web-app/src/test-setup.ts)** — framer-motion's `whileInView` uses it, and jsdom doesn't ship one. Without the mock, every page that mounts a `motion.div` with `whileInView` crashes at render time.
+- **Coverage now excludes `src/__tests__/**`** — test files were being measured against themselves, inflating the denominator. ([vitest.config.ts](../web-app/vitest.config.ts))
+
+---
+
+## 2026-05-26 — Mobile: Reanimated worklet warnings fixed + PDF cell-status canonicalization
+
+### Fixed
+
+- **`BottomSheet` was logging "Tried to modify key `current` of an object already passed to a worklet" on every scroll event.** The bottom-sheet pan gesture read `scrollAtTopRef.current` inside its `onUpdate` worklet, but the same ref was being mutated by the scroll handler on the JS thread — Reanimated 4 doesn't allow plain ref mutation on objects captured into a worklet. Converted to `useSharedValue(true)` so the worklet sees coordinated reads and the JS side writes via `.value`. ([components/BottomSheet.tsx](../components/BottomSheet.tsx))
+- **`useScrollHeader` was triggering the same warning on every frame.** A plain `let lastUpdate = 0` was captured into the `useAnimatedScrollHandler` worklet and reassigned each onScroll tick. Converted to `useSharedValue(0)`. ([components/animations/useScrollHeader.ts](../components/animations/useScrollHeader.ts))
+
+### Changed — inspection PDF cell rendering ([lib/pdf/inspection/renderQuestion.ts](../lib/pdf/inspection/renderQuestion.ts))
+
+- **Web's internal cell keys (`bad`, `na`/`n/a`) are now classified correctly.** The `classifyCell` / `isProblemValue` regexes only knew the Georgian + English long-form variants; cells stored by the web dashboard came through as `null` and rendered as plain text in the printed act.
+- **Cells now render canonical Georgian labels in the PDF.** A new `cellLabel(status, raw)` helper maps the classified status to `კი` / `არა` (or `—` for neutral) instead of echoing the raw stored value. The PDF act is now consistently Georgian whether the answer came from mobile (already Georgian) or web (stored as `ok` / `bad`).
+
+---
+
 ## 2026-05-26 — Mobile unit test coverage: ~3% → ~26% (milestones 1 & 2)
 
 ### Added — 26 new test files under [tests/unit/](../tests/unit) (407 passing tests across 36 files)

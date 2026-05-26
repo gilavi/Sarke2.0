@@ -32,7 +32,7 @@ import {
   GestureDetector,
   NativeGesture,
 } from 'react-native-gesture-handler';
-import { runOnJS } from 'react-native-reanimated';
+import { runOnJS, useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { haptic } from '../lib/haptics';
@@ -99,7 +99,11 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
   // separate Animated.View wraps the native-driven slide/drag transform.
   const keyboardMargin = useSheetKeyboardMargin();
 
-  const scrollAtTopRef = useRef(true);
+  // Shared value (not a ref): read inside the pan worklet and written from the
+  // scroll handler. A plain ref captured into a worklet then mutated triggers
+  // Reanimated's "Tried to modify key `current` of an object already passed to
+  // a worklet" warning on every scroll event.
+  const scrollAtTop = useSharedValue(true);
   const nativeGestureRef = useRef<NativeGesture | null>(null);
   const [nativeGestureVersion, setNativeGestureVersion] = useState(0);
 
@@ -219,7 +223,7 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
       .onUpdate(e => {
         'worklet';
         // Only allow downward drag from the top of any inner scroll view.
-        if (!scrollAtTopRef.current) return;
+        if (!scrollAtTop.value) return;
         const ty = Math.max(0, e.translationY);
         runOnJS(setDragY)(ty);
       })
@@ -242,7 +246,7 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
   const scrollCtx = useMemo<ScrollCtx>(
     () => ({
       setScrollAtTop: v => {
-        scrollAtTopRef.current = v;
+        scrollAtTop.value = v;
       },
       registerNative: g => {
         nativeGestureRef.current = g;

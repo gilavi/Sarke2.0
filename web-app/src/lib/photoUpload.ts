@@ -26,7 +26,11 @@ export async function uploadInspectionPhoto(
   itemId: string | number,
   file: File,
 ): Promise<string> {
-  const ext = file.name.split('.').pop() ?? 'jpg';
+  // `name.split('.').pop()` never returns undefined for a dotless filename (it
+  // returns the whole string), so a plain `?? 'jpg'` was dead code. Use the last
+  // dot's index instead, requiring a non-leading dot for a real extension.
+  const dotIdx = file.name.lastIndexOf('.');
+  const ext = dotIdx > 0 ? file.name.slice(dotIdx + 1) : 'jpg';
   const uuid = crypto.randomUUID();
   const path = `${prefix}/${inspectionId}/${itemId}/${uuid}.${ext}`;
   return upload(STORAGE_BUCKETS.answerPhotos, path, file, {

@@ -5,16 +5,28 @@ import { renderPhoto } from './renderPhoto';
 function isProblemValue(raw: string): boolean {
   const v = (raw ?? '').trim().toLocaleLowerCase('ka-GE');
   if (!v) return false;
-  return /(პრობლემ|აღენიშნება|არა|fail|no|broken|damaged|defect)/i.test(v);
+  return /(პრობლემ|აღენიშნება|არა|fail|bad|no|broken|damaged|defect)/i.test(v);
 }
 
 function classifyCell(raw: string): 'pass' | 'fail' | 'neutral' | null {
   const v = (raw ?? '').trim().toLocaleLowerCase('ka-GE');
   if (!v) return null;
-  if (/(პრობლემ|აღენიშნება|არა|fail|no|broken|damaged|defect)/i.test(v)) return 'fail';
+  if (/(პრობლემ|აღენიშნება|არა|fail|bad|no|broken|damaged|defect)/i.test(v)) return 'fail';
   if (/(კი|ok|pass|yes|good|ok\.|ნორმ|გამართულია)/i.test(v)) return 'pass';
-  if (/არ გააჩნია/i.test(v)) return 'neutral';
+  if (/(არ გააჩნია|^na$|n\/a)/i.test(v)) return 'neutral';
   return null;
+}
+
+// Canonical Georgian labels for classified cells. Web stores internal keys
+// (ok/bad/na); mobile already stores Georgian. Rendering the canonical label
+// makes the printed/PDF act consistently Georgian regardless of source.
+function cellLabel(status: 'pass' | 'fail' | 'neutral', raw: string): string {
+  if (status === 'pass') return 'კი';
+  if (status === 'fail') return 'არა';
+  // neutral
+  return raw && /კი|ok|pass|yes|good|ok\.|ნორმ|გამართულია|არა|fail|bad|no|broken|damaged|defect/i.test(raw)
+    ? raw
+    : '—';
 }
 
 export function renderQuestion(
@@ -87,13 +99,13 @@ export function renderQuestion(
               const raw = rowVals[i];
               const status = classifyCell(raw);
               if (status === 'pass') {
-                return `<td><span class="cell-status cell-status--pass">${escapeHtml(raw)}</span></td>`;
+                return `<td><span class="cell-status cell-status--pass">${escapeHtml(cellLabel('pass', raw))}</span></td>`;
               }
               if (status === 'fail') {
-                return `<td><span class="cell-status cell-status--fail">${escapeHtml(raw)}</span></td>`;
+                return `<td><span class="cell-status cell-status--fail">${escapeHtml(cellLabel('fail', raw))}</span></td>`;
               }
               if (status === 'neutral') {
-                return `<td><span class="cell-status cell-status--neutral">${escapeHtml(raw)}</span></td>`;
+                return `<td><span class="cell-status cell-status--neutral">${escapeHtml(cellLabel('neutral', raw))}</span></td>`;
               }
               return `<td>${escapeHtml(raw)}</td>`;
             })

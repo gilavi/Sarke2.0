@@ -37,7 +37,8 @@ export function signedCertificatePdfUrl(path: string): Promise<string> {
 
 /** Upload a PDF file and insert a certificate record. */
 export async function uploadCertificate(file: File, user: User): Promise<Certificate> {
-  const ext = file.name.split('.').pop() ?? 'pdf';
+  const dotIdx = file.name.lastIndexOf('.');
+  const ext = dotIdx > 0 ? file.name.slice(dotIdx + 1) : 'pdf';
   const path = `certificates/${user.id}/${Date.now()}.${ext}`;
   await upload(STORAGE_BUCKETS.pdfs, path, file, { contentType: file.type || 'application/pdf' });
 

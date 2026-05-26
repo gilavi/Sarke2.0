@@ -80,15 +80,24 @@ export default function History() {
 
   const allRows: Row[] = useMemo(() => {
     const rows: Row[] = [
-      ...(harness ?? []).map((i): Row => ({
-        id: i.id,
-        label: inspectionName(i.template_id),
-        projectId: i.project_id,
-        type: 'harness',
-        status: i.status,
-        date: i.created_at ?? '',
-        href: `/inspections/${i.id}`,
-      })),
+      ...(harness ?? []).map((i): Row => {
+        // The `inspections` table holds both harness AND scaffold acts (xaracho,
+        // mobile_scaffold, mobile_scaffold_n3). Hardcoding 'harness' here gave
+        // scaffold rows a harness badge. Read the template category off the
+        // joined `template:templates(category)` and fall back to 'harness'.
+        const tmpl = (i as { template?: { category?: string | null }[] | null }).template;
+        const cat = Array.isArray(tmpl) ? tmpl[0]?.category ?? null : null;
+        const type: Row['type'] = (cat && cat in TYPE_LABEL ? (cat as Row['type']) : 'harness');
+        return {
+          id: i.id,
+          label: inspectionName(i.template_id),
+          projectId: i.project_id,
+          type,
+          status: i.status,
+          date: i.created_at ?? '',
+          href: `/inspections/${i.id}`,
+        };
+      }),
       ...(bobcats ?? []).map((i): Row => ({
         id: i.id,
         label: equipmentInspectionName('bobcat'),
@@ -123,7 +132,7 @@ export default function History() {
         type: 'cargo_platform',
         status: i.status,
         date: i.createdAt,
-        href: `#`,
+        href: `/cargo-platform/${i.id}`,
       })),
     ];
     return rows.sort((a, b) => b.date.localeCompare(a.date));
@@ -163,22 +172,17 @@ export default function History() {
   function handleDelete(row: Row) {
     const ok = window.confirm('წავშალოთ ეს ჩანაწერი?');
     if (!ok) return;
-    switch (row.type) {
-      case 'harness':
-        delInspection.mutate(row.id);
-        break;
-      case 'bobcat':
-        delBobcat.mutate(row.id);
-        break;
-      case 'excavator':
-        delExcavator.mutate(row.id);
-        break;
-      case 'general':
-        delGeneral.mutate(row.id);
-        break;
-      case 'cargo_platform':
-        delCargo.mutate(row.id);
-        break;
+    // harness + scaffold types all live in the inspections table
+    if (['harness', 'xaracho', 'mobile_scaffold', 'mobile_scaffold_n3'].includes(row.type)) {
+      delInspection.mutate(row.id);
+    } else if (row.type === 'bobcat') {
+      delBobcat.mutate(row.id);
+    } else if (row.type === 'excavator') {
+      delExcavator.mutate(row.id);
+    } else if (row.type === 'general') {
+      delGeneral.mutate(row.id);
+    } else if (row.type === 'cargo_platform') {
+      delCargo.mutate(row.id);
     }
   }
 
