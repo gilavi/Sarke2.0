@@ -14,7 +14,6 @@ import type {
   Qualification,
   Question,
   Schedule,
-  SignatureRecord,
   Template,
 } from '../../../types/models';
 
@@ -30,7 +29,6 @@ export type MockDB = {
   inspections: Inspection[];
   answers: Answer[];
   answer_photos: AnswerPhoto[];
-  signatures: SignatureRecord[];
   qualifications: Qualification[];
   certificates: Certificate[];
   inspection_attachments: InspectionAttachment[];
@@ -225,7 +223,6 @@ function seed(): MockDB {
     inspections: [insp1, insp2, insp3],
     answers: [],
     answer_photos: [],
-    signatures: [],
     qualifications: [qual1, qual2],
     certificates: [cert1, cert2, cert2b],
     inspection_attachments: [],

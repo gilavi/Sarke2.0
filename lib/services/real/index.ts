@@ -6,7 +6,6 @@ export { projectsApi, projectFilesApi } from './projects';
 export { templatesApi } from './templates';
 export { inspectionsApi, questionnairesApi, inspectionAttachmentsApi } from './inspections';
 export { answersApi } from './answers';
-export { signaturesApi } from './signatures';
 export { qualificationsApi, certificatesApi, isExpiringSoon } from './qualifications';
 export { projectItemsApi } from './projectItems';
 export { schedulesApi } from './schedules';

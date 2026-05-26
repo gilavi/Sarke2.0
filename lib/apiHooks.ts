@@ -24,7 +24,6 @@ import {
   schedulesApi,
   incidentsApi,
   reportsApi,
-  signaturesApi,
   remoteSigningApi,
   paymentRecordsApi,
 } from './services';
@@ -432,14 +431,6 @@ export function useInspectionCounts() {
   }>({
     queryKey: ['inspections', 'counts'] as const,
     queryFn: () => inspectionsApi.counts(),
-  });
-}
-
-export function useSignatures(inspectionId: string | undefined) {
-  return useQuery({
-    queryKey: inspectionId ? ['signatures', 'byInspection', inspectionId] : ['signatures', 'none'],
-    queryFn: () => (inspectionId ? signaturesApi.list(inspectionId) : Promise.resolve([])),
-    enabled: !!inspectionId,
   });
 }
 

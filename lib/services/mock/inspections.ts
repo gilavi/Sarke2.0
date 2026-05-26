@@ -65,7 +65,6 @@ export const inspectionsApi = {
     const db = await load();
     db.inspections = db.inspections.filter(i => i.id !== id);
     db.answers = db.answers.filter(a => a.inspection_id !== id);
-    db.signatures = db.signatures.filter(s => s.inspection_id !== id);
     db.certificates = db.certificates.filter(c => c.inspection_id !== id);
     await save();
   },

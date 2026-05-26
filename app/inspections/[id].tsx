@@ -1,13 +1,14 @@
 ﻿// Inspection result screen.
 //
-// Live PDF preview as the main content (full-screen WebView). Three buttons
-// in the bottom bar:
+// Live PDF preview as the main content (full-screen WebView). Two buttons in
+// the bottom bar:
 //   - სერტიფიკატები: opens CertificatesActionSheet
-//   - ხელმოწერები (n/m):  opens SignatureSheet (ephemeral, no DB)
-//   - გადმოწერა:        renders the same HTML through expo-print and shares
+//   - გადმოწერა:    renders the same HTML through expo-print and shares
 //
-// The preview is regenerated whenever a sheet saves a change, so the inspector
-// always sees the current state of the PDF.
+// Signatures captured upstream on the wizard's last step (features/signatures
+// /SignaturesScreen) flow into the PDF via features/signatures/sessionStore.
+//
+// The preview is regenerated whenever the certificates sheet saves a change.
 
 import { createElement, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -551,10 +552,6 @@ function createStyles(theme: any) {
       paddingHorizontal: 16,
       paddingTop: 12,
       paddingBottom: 16,
-    },
-    bottomBarRow: {
-      flexDirection: 'row',
-      gap: 10,
     },
     bottomBtn: {
       flex: 1,

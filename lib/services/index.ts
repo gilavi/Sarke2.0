@@ -30,7 +30,6 @@ export const inspectionsApi = src.inspectionsApi;
 /** @deprecated alias kept for older imports. */
 export const questionnairesApi = src.questionnairesApi;
 export const answersApi = src.answersApi;
-export const signaturesApi = src.signaturesApi;
 export const qualificationsApi = src.qualificationsApi;
 export const certificatesApi = src.certificatesApi;
 export const inspectionAttachmentsApi = src.inspectionAttachmentsApi;
