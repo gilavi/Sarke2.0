@@ -5,15 +5,18 @@ Single-screen signatures management for an inspection. Captures one
 creator signature (digitally, on a canvas) and any number of empty
 hand-sign slots that render as labeled blank blocks in the generated
 PDF so a printed copy can be co-signed by hand. Presented as a
-full-screen Modal from the inspection wizard's final step.
+full-screen Modal from the **inspection result screen** (post-completion),
+NOT from the wizard.
 
 ## Public API (from index.ts)
 - `SignaturesScreen` — the modal screen. Props: `visible`, `onClose`,
   `creatorName`, `state`.
-- `useSignaturesState()` — wizard-scope state hook. Returns
+- `useSignaturesState()` — result-screen-scope state hook. Returns
   `{ creatorSignature, additionalRows, setCreatorSignature,
   clearCreatorSignature, addRow, removeRow, clear }`.
 - `SignaturesState` — the hook's return type.
+- `SignaturesSnapshot` — the value the result screen hands to its
+  PDF builder at download time (`{ creatorSignature, additionalRowsCount }`).
 - `SignatureData`, `AdditionalSignatureRow` — value types.
 
 ## Internal files
@@ -31,18 +34,19 @@ full-screen Modal from the inspection wizard's final step.
   travels with the module.
 - `useSignaturesState.ts` — state hook holding `creatorSignature: null
   | { pngBase64, capturedAt }` and `additionalRows: { id }[]`.
-- `types.ts` — `SignatureData` + `AdditionalSignatureRow`.
+- `types.ts` — `SignatureData`, `AdditionalSignatureRow`,
+  `SignaturesSnapshot`.
 
 ## Gotchas / non-obvious things
 
 - **REGULATORY — Captured signature data is NEVER persisted.** The
   base64 PNG from `SignatureCanvasModal.onConfirm` is held in
-  component / wizard state only and exists for one purpose:
-  rasterization into the generated PDF. It MUST NOT be uploaded to
-  Supabase storage, written to any DB column, cached in AsyncStorage
-  / MMKV / SecureStore, or saved to the file system. The wizard
-  clears the signatures state explicitly after PDF generation. See
-  `CLAUDE.md → Things to Avoid` for the project-wide rule.
+  component state only and exists for one purpose: rasterization
+  into the generated PDF. It MUST NOT be uploaded to Supabase
+  storage, written to any DB column, cached in AsyncStorage / MMKV
+  / SecureStore, or saved to the file system. The state dies when
+  the result screen unmounts. See `CLAUDE.md → Things to Avoid` for
+  the project-wide rule.
 
 - **Empty additional rows do not capture or collect any data.** The
   placeholder labels in `AdditionalRowCard` are visual only — they
@@ -58,18 +62,22 @@ full-screen Modal from the inspection wizard's final step.
   field, and no multi-digital-signatory support — co-signers always
   sign the printed PDF by hand using the additional rows.
 
-- **Wizard-scope state lifetime.** `useSignaturesState` is called
-  inside the inspection wizard's state hook. The state survives
-  step navigation within a single wizard session but does not
-  persist across kills. Calling `clear()` after PDF generation is
-  the contract; the wizard must not skip it.
+- **State lives on the result screen.** `useSignaturesState` is
+  instantiated by the inspection result screen (the
+  `InspectionResultView` shell for the 9 equipment + harness types,
+  and inline in `app/inspections/[id].tsx` for the generic harness
+  /scaffold result). The state survives as long as the screen
+  stays mounted; leaving the screen and returning starts fresh. No
+  cross-screen / cross-session persistence. The snapshot is handed
+  to the parent's PDF builder via the `onDownloadPdf` callback at
+  download time — no shared cache, no module-level store.
 
 - **Modal presentation, not router push.** The screen is mounted as a
-  `Modal` with `presentationStyle="fullScreen"` inside the wizard
-  tree so the state hook lives with the wizard and the screen sees
-  it directly. Don't move this to an expo-router route — that would
-  fragment the state across navigation and tempt someone to wire up
-  a shared cache (which would be a persistence violation).
+  `Modal` with `presentationStyle="fullScreen"` inside the result
+  screen tree so the state hook lives with the screen and the modal
+  sees it directly. Don't move this to an expo-router route — that
+  would fragment the state across navigation and tempt someone to
+  wire up a shared cache (which would be a persistence violation).
 
 ## Canonical helpers used (from lib/ and components/)
 - `components/SignatureCanvas` — the canvas + capture buttons.

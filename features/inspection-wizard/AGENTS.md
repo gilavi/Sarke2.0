@@ -47,6 +47,14 @@ queue.
   wizard route is hit for an already-completed inspection.
 - `NavigationRecovery.tsx` — fallback UI shown if load hangs > 5 s.
 
+## Signatures are NOT owned here
+The wizard does not own or display any signature UI. Signatures are
+captured on the **inspection result screen** post-completion (via
+`InspectionResultView`'s embedded `useSignaturesState` + the
+`features/signatures/SignaturesScreen` modal). The wizard's
+`ConclusionStep` returned to its decision/notes/photos shape after the
+2026-05-26 relocation — do not add a signatures section back to it.
+
 ## Gotchas / non-obvious things
 - `useWizardState.ts` is intentionally one large hook (~560 lines)
   rather than load/answers/persistence slices. **The

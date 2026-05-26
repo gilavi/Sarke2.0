@@ -4,6 +4,21 @@
 
 ---
 
+## 2026-05-26 — Signature placement correction
+
+Follow-up to the same-day signatures redesign that mounted the entry on the wizard's last step. The entry point belongs on the inspection result screen, not the wizard — corrected here. The previous redesign also removed the certificates button from the result screen's bottom bar as a side effect of stripping the signatures button; the side-by-side row layout is restored.
+
+### Fixed — signatures relocated from wizard to result screen
+The `ხელმოწერები` entry now lives on the inspection result screen (the post-completion view). It opens the existing `features/signatures/SignaturesScreen` modal — internals unchanged. State is managed via `useSignaturesState` scoped to the result screen component; the captured snapshot is passed into the parent's PDF builder as a function argument (`onDownloadPdf(snapshot)`), so there's no global state hop. The state survives while the user remains on the result screen (re-sharing keeps the same signature) and dies when the screen unmounts (regulatory no-save rule preserved).
+
+### Fixed — certificates button restored to the result screen bottom bar
+Collateral removal from the prior session's Phase 5: the bottom bar lost the two-button side-by-side row when the signatures button was stripped, leaving only a single stacked certificates button. The row is back ([components/InspectionResultView.tsx](../components/InspectionResultView.tsx)), with `სერტიფიკატები` and `ხელმოწერები` side by side above the green `გადმოწერა` button — matching the layout that shipped before the redesign. The certificates feature itself was never gone; only the layout shell changed.
+
+### Removed — `features/signatures/sessionStore.ts`
+With the wizard out of the signatures flow and the result screen owning state directly, the in-memory cross-screen bridge is dead. Deleted. Public API on `features/signatures/index.ts` drops `setSignaturesSession` / `getSignaturesSession` / `clearSignaturesSession` / `SignaturesSessionData`. `lib/inspection/useInspectionFlow.ts`'s `handlePdf` and `buildPreview` accept the snapshot as a function argument now; their session-store fallback and `clearSignaturesSession` call are gone.
+
+---
+
 ## 2026-05-26 — Inspection signatures redesign: single unified flow, no persistence
 
 ### Redesigned — unified signatures flow across all inspection types

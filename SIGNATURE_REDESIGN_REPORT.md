@@ -101,3 +101,15 @@ git reset --hard pre-signature-redesign
 ```
 
 (The tag was created at the start of the session, before any of the 14 commits above.)
+
+---
+
+## 2026-05-26 correction — signatures relocated to the result screen
+
+After the redesign landed, the entry point's placement was wrong: signatures belong on the inspection result screen (post-completion), not on the wizard's last step. A follow-up session corrected this; see [SIGNATURE_RELOCATION_REPORT.md](SIGNATURE_RELOCATION_REPORT.md) for the per-phase commit list. Net effect against this report:
+
+- **Phase 4 of this report is reversed.** The wizard no longer owns or displays a signatures section. `features/inspection-wizard/SignaturesEntryRow.tsx` is deleted; `ConclusionStep` is back to its decision / harness-name / photos / conclusion shape; `InspectionWizard` no longer instantiates `useSignaturesState` or mounts `SignaturesScreen`.
+- **Phase 4 of this report's "in-memory session store" bridge is gone.** `features/signatures/sessionStore.ts` was deleted because the result screen owns state directly and hands the snapshot to the PDF builder as a function argument. `lib/inspection/useInspectionFlow.ts` and `app/inspections/[id].tsx` now take the snapshot through `handlePdf(snapshot)` instead of reading from a global store.
+- **Phase 2 of this report's destructive SQL migration is unchanged** and still pending manual apply — the application-side cleanup it pairs with is intact.
+
+The signature redesign artifact (one creator capture + N hand-sign slots, no persistence, unified PDF section) stayed; only the entry point moved.
