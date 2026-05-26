@@ -9,12 +9,11 @@ import type {
   InspectionAttachment,
   Project,
   Question,
-  SignatureRecord,
   Template,
 } from '../../../types/models';
 import { escapeHtml, pad2, tPdf } from './_shared';
 import { renderQuestion } from './renderQuestion';
-import { renderSignatures } from './renderSignatures';
+import { renderSignaturesSection, type SignaturesSectionData } from './renderSignaturesSection';
 import { renderProjectBrand } from './renderProjectBrand';
 import { getInspectionPdfCss } from './template.css';
 
@@ -36,7 +35,13 @@ export interface PdfTemplateArgs {
   project: Project;
   questions: Question[];
   answers: Answer[];
-  signatures: SignatureRecord[];
+  /**
+   * Wizard-captured signatures snapshot from features/signatures/sessionStore.
+   * `null` or absent means the section is omitted entirely from the PDF.
+   * The captured PNG base64 is rasterized into the printed page and not
+   * persisted anywhere outside this in-flight HTML payload.
+   */
+  signaturesSession?: SignaturesSectionData | null;
   photosByAnswer?: Record<string, AnswerPhoto[]>;
   attachments?: PdfAttachment[];
   mode?: 'pdf' | 'preview';
@@ -56,7 +61,7 @@ export function buildInspectionPdfTemplate(args: PdfTemplateArgs): string {
     project,
     questions,
     answers,
-    signatures,
+    signaturesSession = null,
     photosByAnswer = {},
     attachments = [],
     mode = 'pdf',
@@ -127,8 +132,8 @@ export function buildInspectionPdfTemplate(args: PdfTemplateArgs): string {
     })
     .join('');
 
-  // ── Signatures ──
-  const sigHtml = renderSignatures(signatures);
+  // ── Signatures section (creator + empty hand-sign slots) ──
+  const signaturesHtml = renderSignaturesSection(signaturesSession);
 
   // ── Attachments (equipment certs uploaded against this inspection) ──
   const attachmentsHtml =
@@ -267,11 +272,7 @@ export function buildInspectionPdfTemplate(args: PdfTemplateArgs): string {
     ${statusBadge}
   </div>
 
-  <div class="signatures-header">
-    <span class="signatures-header-text">${t('pdf.signaturesTitle')}</span>
-    <div class="signatures-header-rule"></div>
-  </div>
-  <div class="sig-grid">${sigHtml}</div>
+  ${signaturesHtml}
 
   ${attachmentsHtml}
 </body>

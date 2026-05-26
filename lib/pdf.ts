@@ -2,8 +2,10 @@
  * pdf.ts — mobile async wrapper around the shared inspection PDF template.
  *
  * Callers embed photos as base64 data-URIs (via pdfPhotoEmbed / imageUrl.ts)
- * before passing them here. This module no longer contains HTML-building logic;
- * the single source of truth lives in lib/inspectionPdfTemplate.ts.
+ * before passing them here. They also read the captured signatures snapshot
+ * from features/signatures/sessionStore and pass it through as
+ * `signaturesSession` — the wizard captures, the result screen renders, and
+ * the snapshot is cleared after the PDF is generated. No persistence path.
  */
 import type {
   Answer,
@@ -11,10 +13,10 @@ import type {
   Inspection,
   Project,
   Question,
-  SignatureRecord,
   Template,
 } from '../types/models';
 import { buildInspectionPdfTemplate } from './inspectionPdfTemplate';
+import type { SignaturesSectionData } from './pdf/inspection/renderSignaturesSection';
 
 export type { PdfAttachment } from './inspectionPdfTemplate';
 import type { PdfAttachment } from './inspectionPdfTemplate';
@@ -26,7 +28,9 @@ export interface PdfHtmlArgs {
   project: Project;
   questions: Question[];
   answers: Answer[];
-  signatures: SignatureRecord[];
+  /** Captured creator signature + additional-row count snapshot. `null` or
+   *  absent skips the signatures section entirely. */
+  signaturesSession?: SignaturesSectionData | null;
   photosByAnswer?: Record<string, AnswerPhoto[]>;
   attachments?: PdfAttachment[];
 }

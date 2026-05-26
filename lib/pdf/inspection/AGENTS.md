@@ -35,8 +35,12 @@ of the above so existing callers don't need to change paths.
 - `renderPhoto.ts` — `renderPhoto`; handles data URIs, local
   `file://`/`content://`/`ph://`/`asset://`, and remote URLs, plus a
   fallback placeholder for unrenderable refs.
-- `renderSignatures.ts` — `renderSignatures`; orders expert first,
-  filters to status==='signed' with a valid base64 PNG.
+- `renderSignaturesSection.ts` — `renderSignaturesSection`; takes a
+  `SignaturesSectionData` snapshot from the wizard's
+  `features/signatures/sessionStore` and emits the unified section
+  (heading + creator capture + N labeled empty hand-sign slots).
+  Returns an empty string when neither part is populated, so the
+  section is omitted entirely from the PDF.
 - `renderProjectBrand.ts` — `renderProjectBrand` (logo or initials).
 
 ## Gotchas / non-obvious things

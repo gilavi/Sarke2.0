@@ -28,6 +28,11 @@ import { ErrorState } from '../../components/ErrorState';
 import { CertificatesActionSheet } from '../../components/CertificatesActionSheet';
 import { useBottomSheet } from '../../components/BottomSheet';
 import {
+  clearSignaturesSession,
+  getSignaturesSession,
+} from '../../features/signatures';
+import type { SignaturesSectionData } from '../../lib/pdf/inspection';
+import {
   answersApi,
   inspectionAttachmentsApi,
   inspectionsApi,
@@ -200,6 +205,22 @@ export default function InspectionResultScreen() {
     return () => clearTimeout(t);
   }, [loading]);
 
+  const buildSignaturesSection = useCallback(
+    (inspectionId: string): SignaturesSectionData | null => {
+      const snap = getSignaturesSession(inspectionId);
+      if (!snap) return null;
+      const u = session.state.status === 'signedIn' ? session.state.user : null;
+      const creatorName = u ? `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim() : '';
+      return {
+        creatorSignature: snap.creatorSignature
+          ? { ...snap.creatorSignature, creatorName }
+          : null,
+        additionalRowsCount: snap.additionalRowsCount,
+      };
+    },
+    [session.state],
+  );
+
   const buildPreview = useCallback(
     async (currentAttachments: InspectionAttachment[]) => {
       if (!inspection || !template || !project) return;
@@ -262,7 +283,7 @@ export default function InspectionResultScreen() {
           project,
           questions,
           answers,
-          signatures: [],
+          signaturesSession: buildSignaturesSection(inspection.id),
           photosByAnswer: photosEmbedded,
           attachments: attsEmbedded,
         });
@@ -275,7 +296,7 @@ export default function InspectionResultScreen() {
         setPreviewBusy(false);
       }
     },
-    [inspection, template, project, questions, answers, photosByAnswer],
+    [inspection, template, project, questions, answers, photosByAnswer, buildSignaturesSection],
   );
 
   // Initial preview build whenever core data is loaded. Subsequent rebuilds
@@ -367,7 +388,7 @@ export default function InspectionResultScreen() {
         project,
         questions,
         answers,
-        signatures: [],
+        signaturesSession: buildSignaturesSection(inspection.id),
         photosByAnswer: photosEmbedded,
         attachments: attsEmbedded,
       });
@@ -394,6 +415,9 @@ export default function InspectionResultScreen() {
         setTimeout(() => reject(new Error('PDF გენერირება ძალიან დიდხანს გრძელდება — სცადე თავიდან')), 30_000),
       );
       await Promise.race([pdfPromise, timeoutPromise]);
+      // Captured signatures are no longer needed — drop them so a second
+      // run (e.g. re-share) doesn't reuse a stale snapshot.
+      clearSignaturesSession(inspection.id);
       haptic.success();
       invalidatePdfUsage();
     } catch (e) {
@@ -414,6 +438,8 @@ export default function InspectionResultScreen() {
     toast,
     pdfUsage,
     invalidatePdfUsage,
+    buildSignaturesSection,
+    session,
   ]);
 
   if (!loading && (notFound || loadError)) {

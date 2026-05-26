@@ -427,77 +427,100 @@ export function getInspectionPdfCss(opts: { isPdf: boolean }): string {
       margin-bottom: 12px;
     }
 
-    /* ── Signatures ── */
-    .signatures-header {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin: 24px 0 12px;
+    /* ── Signatures section (creator capture + empty hand-sign slots) ── */
+    .signatures-section {
       position: relative;
       z-index: 1;
-    }
-    .signatures-header-text {
-      font-size: 14px;
-      font-weight: 700;
-      color: var(--ink);
-    }
-    .signatures-header-rule { flex: 1; height: 1px; background: var(--line); }
-    .sig-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      position: relative;
-      z-index: 1;
-    }
-    .sig-block {
-      background: #fff;
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      padding: 14px;
+      margin-top: 24px;
       ${isPdf ? 'page-break-inside: avoid;' : ''}
     }
-    .sig-block.is-expert {
-      background: var(--green-tint);
-      border-color: var(--green);
+    .signatures-heading {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
     }
-    .sig-name {
+    .signatures-heading-text {
       font-size: 14px;
       font-weight: 700;
       color: var(--ink);
-      margin-bottom: 2px;
     }
-    .sig-role {
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      color: var(--gray);
-      font-weight: 600;
-      margin-bottom: 2px;
+    .signatures-heading-rule { flex: 1; height: 1px; background: var(--line); }
+
+    /* Creator (digital) block */
+    .signatures-creator {
+      margin-bottom: 18px;
     }
-    .sig-position {
-      font-size: 11px;
-      color: var(--ink-soft);
-      margin-bottom: 10px;
-    }
-    .sig-img-box {
-      border: 1px solid var(--line);
-      border-radius: 6px;
-      padding: 8px;
-      background: #fff;
-      height: 70px;
+    .signatures-creator-img {
+      height: 100px;
       display: flex;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
+      padding: 4px 0;
     }
-    .sig-img-box img {
-      max-width: 160px;
-      max-height: 80px;
+    .signatures-creator-img img {
+      max-height: 100px;
+      max-width: 280px;
       display: block;
     }
-    .sig-date {
-      font-size: 10px;
-      color: var(--gray);
-      margin-top: 8px;
+    .signatures-creator-rule {
+      height: 1px;
+      background: var(--ink);
+      margin-bottom: 6px;
+    }
+    .signatures-creator-meta {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+    }
+    .signatures-creator-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+    .signatures-creator-date {
+      font-size: 11px;
+      color: var(--ink-soft);
+    }
+
+    /* Empty hand-sign slots */
+    .signatures-empty-slot {
+      padding: 10px 0;
+      border-top: 1px solid var(--line);
+    }
+    .signatures-empty-slot:first-child { border-top: none; }
+    .signatures-empty-row {
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .signatures-empty-row:last-child { margin-bottom: 0; }
+    .signatures-empty-row-split { gap: 28px; }
+    .signatures-empty-half {
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+      flex: 1;
+    }
+    .signatures-empty-label {
+      font-size: 11px;
+      color: var(--ink-soft);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .signatures-empty-line {
+      display: inline-block;
+      border-bottom: 1px solid var(--ink);
+      align-self: flex-end;
+    }
+    .signatures-empty-line-long {
+      flex: 1;
+      height: 80px;
+    }
+    .signatures-empty-line-short {
+      flex: 1;
+      height: 40px;
     }
 
     .audit-trail {
@@ -559,7 +582,7 @@ export function getInspectionPdfCss(opts: { isPdf: boolean }): string {
     }
 
     @media print {
-      .question-card, .photo-item, .sig-block, .section,
+      .question-card, .photo-item, .section, .signatures-section,
       .conclusion-card, .cert-card, .status-hero {
         page-break-inside: avoid;
       }

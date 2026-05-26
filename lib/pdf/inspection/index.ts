@@ -4,3 +4,4 @@
 
 export { buildInspectionPdfTemplate } from './template';
 export type { PdfAttachment, PdfTemplateArgs } from './template';
+export type { SignaturesSectionData } from './renderSignaturesSection';
