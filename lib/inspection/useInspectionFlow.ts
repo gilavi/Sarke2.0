@@ -25,25 +25,10 @@ import { haptic } from '../haptics';
 import { generateAndSharePdf, PdfLimitReachedError } from '../pdfOpen';
 import { generatePdfName } from '../pdfName';
 import { renderInspectionPdf } from './renderMobile';
-import {
-  clearSignaturesSession,
-  getSignaturesSession,
-  type SignaturesSessionData,
-  type SignaturesSnapshot,
-} from '../../features/signatures';
+import type { SignaturesSnapshot } from '../../features/signatures';
 import type { SignaturesSectionData } from '../pdf/inspection/renderSignaturesSection';
 import type { InspectionSchema } from './schema';
 import type { Project } from '../../types/models';
-
-/**
- * Bridge the old `SignaturesSessionData` (capturedAtIso) and the
- * result-view-owned `SignaturesSnapshot` (capturedAt as a Date) into one
- * intermediate shape used by `buildSignaturesSection`. Removed in Phase 5
- * when the sessionStore goes away.
- */
-function sessionFallback(inspectionId: string): SignaturesSessionData | null {
-  return getSignaturesSession(inspectionId);
-}
 
 /** Minimum shape every inspection model shares. */
 interface BaseInspection {
@@ -292,32 +277,25 @@ export function useInspectionFlow<T extends BaseInspection>(
   }, [persistKey, toast]);
 
   // ── Signatures snapshot → PDF section data ───────────────────────────────────
-  // Result-screen-owned snapshot is the canonical source (passed to handlePdf
-  // as `signatures`). The sessionStore read is a fallback only while the
-  // wizard is still pushing into it — Phase 5 removes the fallback and the
-  // store itself.
+  // The result screen owns useSignaturesState and passes its snapshot down
+  // through handlePdf/buildPreview. No global state hop.
   const buildSignaturesSection = useCallback(
-    (
-      inspectionId: string,
-      snapshot?: SignaturesSnapshot | null,
-    ): SignaturesSectionData | null => {
-      const snap = snapshot ?? sessionFallback(inspectionId);
-      if (!snap || (!snap.creatorSignature && snap.additionalRowsCount === 0)) return null;
+    (snapshot?: SignaturesSnapshot | null): SignaturesSectionData | null => {
+      if (!snapshot || (!snapshot.creatorSignature && snapshot.additionalRowsCount === 0)) {
+        return null;
+      }
       const u = session.state.status === 'signedIn' ? session.state.user : null;
       const creatorName = u ? `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim() : '';
-      const creator = snap.creatorSignature;
+      const creator = snapshot.creatorSignature;
       return {
         creatorSignature: creator
           ? {
               pngBase64: creator.pngBase64,
-              capturedAtIso:
-                'capturedAt' in creator
-                  ? creator.capturedAt.toISOString()
-                  : creator.capturedAtIso,
+              capturedAtIso: creator.capturedAt.toISOString(),
               creatorName,
             }
           : null,
-        additionalRowsCount: snap.additionalRowsCount,
+        additionalRowsCount: snapshot.additionalRowsCount,
       };
     },
     [session.state],
@@ -333,7 +311,7 @@ export function useInspectionFlow<T extends BaseInspection>(
       const html = await renderInspectionPdf(schema, {
         inspection: insp,
         projectName: projectName || 'პროექტი',
-        signaturesSession: buildSignaturesSection(insp.id, signatures),
+        signaturesSession: buildSignaturesSection(signatures),
       });
       const pdfName = generatePdfName(
         projectName || 'project',
@@ -348,10 +326,8 @@ export function useInspectionFlow<T extends BaseInspection>(
         documentId: insp.id,
         subject: cfg.pdf.subject,
       });
-      // Old sessionStore path also gets its entry dropped — no-op once Phase 5
-      // deletes the store. The result-view snapshot lives only in component
-      // state and stays bound to the screen instance.
-      clearSignaturesSession(insp.id);
+      // No store to clear — the result-view snapshot lives only in component
+      // state and dies when the screen unmounts.
       invalidatePdfUsage();
     } catch (e) {
       if (e instanceof PdfLimitReachedError) { setPaywallVisible(true); return; }
@@ -371,7 +347,7 @@ export function useInspectionFlow<T extends BaseInspection>(
       const html = await renderInspectionPdf(schema, {
         inspection: insp,
         projectName: projectName || 'პროექტი',
-        signaturesSession: buildSignaturesSection(insp.id, signatures),
+        signaturesSession: buildSignaturesSection(signatures),
       });
       setPreviewHtml(html);
     } catch (e) {

@@ -36,8 +36,8 @@ of the above so existing callers don't need to change paths.
   `file://`/`content://`/`ph://`/`asset://`, and remote URLs, plus a
   fallback placeholder for unrenderable refs.
 - `renderSignaturesSection.ts` — `renderSignaturesSection`; takes a
-  `SignaturesSectionData` snapshot from the wizard's
-  `features/signatures/sessionStore` and emits the unified section
+  `SignaturesSectionData` snapshot derived from the inspection result
+  screen's `useSignaturesState` hook and emits the unified section
   (heading + creator capture + N labeled empty hand-sign slots).
   Returns an empty string when neither part is populated, so the
   section is omitted entirely from the PDF.

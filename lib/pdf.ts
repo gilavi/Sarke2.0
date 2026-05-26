@@ -2,10 +2,9 @@
  * pdf.ts — mobile async wrapper around the shared inspection PDF template.
  *
  * Callers embed photos as base64 data-URIs (via pdfPhotoEmbed / imageUrl.ts)
- * before passing them here. They also read the captured signatures snapshot
- * from features/signatures/sessionStore and pass it through as
- * `signaturesSession` — the wizard captures, the result screen renders, and
- * the snapshot is cleared after the PDF is generated. No persistence path.
+ * before passing them here. They also pass the captured signatures snapshot
+ * as `signaturesSession` — owned by the inspection result screen's
+ * useSignaturesState hook, lost when the screen unmounts. No persistence path.
  */
 import type {
   Answer,

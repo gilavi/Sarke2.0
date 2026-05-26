@@ -36,7 +36,8 @@ export interface PdfTemplateArgs {
   questions: Question[];
   answers: Answer[];
   /**
-   * Wizard-captured signatures snapshot from features/signatures/sessionStore.
+   * Signatures snapshot owned by the inspection result screen's
+   * useSignaturesState hook.
    * `null` or absent means the section is omitted entirely from the PDF.
    * The captured PNG base64 is rasterized into the printed page and not
    * persisted anywhere outside this in-flight HTML payload.

@@ -5,8 +5,8 @@
 //   - სერტიფიკატები: opens CertificatesActionSheet
 //   - გადმოწერა:    renders the same HTML through expo-print and shares
 //
-// Signatures captured upstream on the wizard's last step (features/signatures
-// /SignaturesScreen) flow into the PDF via features/signatures/sessionStore.
+// Signatures are captured on this screen via features/signatures/SignaturesScreen
+// and flow into the PDF builder as a local snapshot — no global state hop.
 //
 // The preview is regenerated whenever the certificates sheet saves a change.
 

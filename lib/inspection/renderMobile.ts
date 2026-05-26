@@ -6,8 +6,8 @@
  * with { inspection, projectName, signaturesSession }; it resolves photos
  * (base64 on mobile, signed URLs on web) and hands them to the synchronous
  * renderer. `signaturesSession` is the wizard's captured-signature snapshot
- * (RAM-only — see features/signatures/sessionStore) and feeds the unified
- * signatures section at the bottom of every equipment PDF.
+ * (RAM-only — owned by InspectionResultView's useSignaturesState) and feeds
+ * the unified signatures section at the bottom of every equipment PDF.
  */
 import { buildInspectionPdf } from './pdf';
 import { resolveInspectionPhotos } from './photos';

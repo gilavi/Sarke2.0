@@ -14,9 +14,11 @@
 
 import { escapeHtml, tPdf } from './_shared';
 
-/** Lightweight value shape consumed by this renderer. Mirrors the
- *  features/signatures/sessionStore SignaturesSessionData but defined
- *  inline here so lib/pdf has no dependency on features/. */
+/** Lightweight value shape consumed by this renderer. The structure
+ *  mirrors what the inspection result screen produces from its
+ *  `useSignaturesState` hook (plus the inspector's profile name), but the
+ *  shape is defined inline here so lib/pdf stays free of any features/
+ *  dependency. */
 export interface SignaturesSectionData {
   creatorSignature: {
     pngBase64: string;

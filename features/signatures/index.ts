@@ -12,11 +12,3 @@ export type {
   AdditionalSignatureRow,
   SignaturesSnapshot,
 } from './types';
-// sessionStore is a transitional helper — kept while the wizard/result
-// switchover settles. Phase 5 of the relocation deletes it.
-export {
-  setSignaturesSession,
-  getSignaturesSession,
-  clearSignaturesSession,
-  type SignaturesSessionData,
-} from './sessionStore';
