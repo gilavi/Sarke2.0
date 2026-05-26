@@ -22,7 +22,6 @@ import {
   IdentificationGrid,
   PhotoSection,
   QualDoc,
-  SignatureSheet,
   VerdictSelector,
   type ChecklistItemData,
 
@@ -359,12 +358,9 @@ export default function ForkliftInspectionScreen() {
       <InspectionResultView
         inspectionId={inspection.id}
         templateName="ჩანგლიანი დამტვირთველი"
-        requiredSignerRoles={[]}
         previewHtml={previewHtml}
         previewBusy={previewBusy}
         previewError={null}
-        signedCount={inspection.signerSignature ? 1 : 0}
-        totalSlots={1}
         attachmentCount={0}
         pdfLocked={pdfLocked}
         downloading={generatingPdf}
@@ -372,25 +368,6 @@ export default function ForkliftInspectionScreen() {
         onPaywallClose={() => setPaywallVisible(false)}
         onDownloadPdf={() => void handlePdf()}
         onSheetSaved={() => void buildPreview()}
-        renderSignaturesSheet={({ dismiss, onChanged }) => (
-          <SignatureSheet
-            onClose={dismiss}
-            signatories={[
-              {
-                role: 'ხელმომწერი',
-                name: inspection.signerName ?? '',
-                position: inspection.signerPosition ?? '',
-                extra: { phone: inspection.signerPhone ?? '' },
-                signature: inspection.signerSignature,
-              },
-            ]}
-            onChange={handleSignerChange}
-            onSign={(idx, base64) => {
-              handleSign(idx, base64);
-              onChanged();
-            }}
-          />
-        )}
       />
     );
   }

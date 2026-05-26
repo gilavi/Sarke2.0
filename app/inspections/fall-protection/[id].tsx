@@ -14,7 +14,6 @@ import { SectionHeader } from '../../../components/SectionHeader';
 import {
   ChecklistItem,
   ChipNavStrip,
-  SignatureSheet,
   VerdictSelector,
   DynamicTable,
   PhotoSection,
@@ -384,12 +383,9 @@ export default function FallProtectionInspectionScreen() {
       <InspectionResultView
         inspectionId={inspection.id}
         templateName="დამჭერი მოწყობილობა"
-        requiredSignerRoles={[]}
         previewHtml={previewHtml}
         previewBusy={previewBusy}
         previewError={null}
-        signedCount={inspection.signature?.signature ? 1 : 0}
-        totalSlots={1}
         attachmentCount={0}
         pdfLocked={pdfLocked}
         downloading={generatingPdf}
@@ -397,25 +393,6 @@ export default function FallProtectionInspectionScreen() {
         onPaywallClose={() => setPaywallVisible(false)}
         onDownloadPdf={() => void handlePdf()}
         onSheetSaved={() => void buildPreview()}
-        renderSignaturesSheet={({ dismiss, onChanged }) => (
-          <SignatureSheet
-            onClose={dismiss}
-            signatories={[
-              {
-                role: 'შემომწმებელი პირი',
-                name: inspection.signature.name,
-                position: inspection.signature.position,
-                signature: inspection.signature.signature,
-                date: inspection.signature.date,
-              },
-            ]}
-            onChange={handleSignChange}
-            onSign={(idx, base64) => {
-              handleSign(idx, base64);
-              onChanged();
-            }}
-          />
-        )}
       />
     );
   }

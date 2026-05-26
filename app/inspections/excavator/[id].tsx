@@ -17,7 +17,6 @@ import { Button } from '../../../components/ui';
 import { ExcavatorMaintenanceItem } from '../../../components/excavator/ExcavatorMaintenanceItem';
 import { InspectionShell, ChecklistStep, ConclusionStep } from '../../../components/inspection-steps';
 import type { VerdictOption } from '../../../components/inspection-steps';
-import { SignatureSheet } from '../../../components/inspection-parts/SignatureSheet';
 import { InspectionResultView } from '../../../components/InspectionResultView';
 import { useTheme, type Theme } from '../../../lib/theme';
 import { useToast } from '../../../lib/toast';
@@ -435,12 +434,9 @@ export default function ExcavatorInspectionScreen() {
       <InspectionResultView
         inspectionId={inspection.id}
         templateName="ექსკავატორი"
-        requiredSignerRoles={[]}
         previewHtml={previewHtml}
         previewBusy={previewBusy}
         previewError={null}
-        signedCount={inspection.inspectorSignature ? 1 : 0}
-        totalSlots={1}
         attachmentCount={attachmentCount}
         pdfLocked={pdfLocked}
         downloading={generatingPdf}
@@ -452,33 +448,6 @@ export default function ExcavatorInspectionScreen() {
             .then(a => setAttachmentCount(a.length)).catch(() => {});
           void buildPreview();
         }}
-        renderSignaturesSheet={({ dismiss, onChanged }) => (
-          <SignatureSheet
-            onClose={dismiss}
-            signatories={[
-              {
-                role: 'შემომწმებელი',
-                name: inspection.inspectorName ?? '',
-                position: inspection.inspectorPosition ?? '',
-                signature: inspection.inspectorSignature,
-              },
-            ]}
-            onChange={(idx, field, value) => {
-              setInspection(prev => {
-                if (!prev) return prev;
-                const next = { ...prev };
-                if (field === 'name') next.inspectorName = value;
-                else if (field === 'position') next.inspectorPosition = value;
-                else if (field === 'signature') next.inspectorSignature = value || null;
-                return next;
-              });
-            }}
-            onSign={(idx, base64) => {
-              setInspection(prev => prev ? { ...prev, inspectorSignature: base64 } : prev);
-              onChanged();
-            }}
-          />
-        )}
       />
     );
   }

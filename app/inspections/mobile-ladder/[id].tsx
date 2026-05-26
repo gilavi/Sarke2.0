@@ -11,7 +11,6 @@ import { FlowHeader } from '../../../components/FlowHeader';
 import { InspectionResultView } from '../../../components/InspectionResultView';
 import {
   ChecklistSection,
-  SignatureSheet,
   VerdictSelector,
   IdentificationGrid,
   type VerdictOption,
@@ -261,12 +260,9 @@ export default function MobileLadderInspectionScreen() {
       <InspectionResultView
         inspectionId={inspection.id}
         templateName="მობილური კიბე"
-        requiredSignerRoles={[]}
         previewHtml={previewHtml}
         previewBusy={previewBusy}
         previewError={null}
-        signedCount={inspection.signature?.signature ? 1 : 0}
-        totalSlots={1}
         attachmentCount={0}
         pdfLocked={pdfLocked}
         downloading={generatingPdf}
@@ -274,19 +270,6 @@ export default function MobileLadderInspectionScreen() {
         onPaywallClose={() => setPaywallVisible(false)}
         onDownloadPdf={() => void handlePdf()}
         onSheetSaved={() => void buildPreview()}
-        renderSignaturesSheet={({ dismiss, onChanged }) => (
-          <SignatureSheet
-            onClose={dismiss}
-            signatories={[
-              { role: 'ხელმომწერი', ...inspection.signature },
-            ]}
-            onChange={handleSignChange}
-            onSign={(idx, base64) => {
-              handleSign(idx, base64);
-              onChanged();
-            }}
-          />
-        )}
       />
     );
   }

@@ -28,7 +28,6 @@ import {
   answersApi,
   inspectionsApi,
   projectsApi,
-  signaturesApi,
   storageApi,
   templatesApi,
 } from '../../../lib/services';
@@ -47,7 +46,6 @@ import type {
   Inspection,
   Project,
   Question,
-  SignatureRecord,
 } from '../../../types/models';
 
 // ── AsyncStorage keys ────────────────────────────────────────────────────────
@@ -100,7 +98,6 @@ export default function HarnessInspectionScreen() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [answers, setAnswers] = useState<Record<string, Answer>>({});
   const [photos, setPhotos] = useState<Record<string, AnswerPhoto[]>>({});
-  const [signatures, setSignatures] = useState<SignatureRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [completing, setCompleting] = useState(false);
   const [photoUploadCount, setPhotoUploadCount] = useState(0);
@@ -223,12 +220,6 @@ export default function HarnessInspectionScreen() {
   useEffect(() => {
     if (!loading) setAnimateSteps(true);
   }, [loading]);
-
-  // Load signatures when completed
-  useEffect(() => {
-    if (inspection?.status !== 'completed' || !id) return;
-    signaturesApi.list(id).then(setSignatures).catch(() => {});
-  }, [inspection?.status, id]);
 
   // ── Persist mid-session state ──────────────────────────────────────────────
   useEffect(() => {
@@ -497,26 +488,20 @@ export default function HarnessInspectionScreen() {
 
   // ── Completed ──────────────────────────────────────────────────────────────
   if (inspection?.status === 'completed') {
-    const signedCount = signatures.filter(s => s.status === 'signed' && !!s.signature_png_url).length;
     return (
       <InspectionResultView
         inspectionId={inspection.id}
         templateName="დამცავი ქამრების შემოწმება"
-        requiredSignerRoles={[]}
         previewHtml={null}
         previewBusy={false}
         previewError={null}
-        signedCount={signedCount}
-        totalSlots={signatures.length}
         attachmentCount={0}
         pdfLocked={false}
         downloading={false}
         paywallVisible={false}
         onPaywallClose={() => {}}
         onDownloadPdf={() => {}}
-        onSheetSaved={() => {
-          signaturesApi.list(inspection.id).then(setSignatures).catch(() => {});
-        }}
+        onSheetSaved={() => {}}
       />
     );
   }

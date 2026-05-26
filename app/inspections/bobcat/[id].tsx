@@ -20,10 +20,7 @@ import { useToast } from '../../../lib/toast';
 
 import { bobcatApi } from '../../../lib/bobcatService';
 import { inspectionAttachmentsApi } from '../../../lib/services';
-import {
-  PhotoSection,
-  SignatureSheet,
-} from '../../../components/inspection-parts';
+import { PhotoSection } from '../../../components/inspection-parts';
 
 import { bobcatSchema } from '../../../lib/inspection/schemas/bobcat';
 import { PaywallModal } from '../../../components/PaywallModal';
@@ -329,12 +326,9 @@ export default function BobcatInspectionScreen() {
       <InspectionResultView
         inspectionId={inspection.id}
         templateName={screenTitle}
-        requiredSignerRoles={[]}
         previewHtml={previewHtml}
         previewBusy={previewBusy}
         previewError={null}
-        signedCount={inspection.inspectorSignature ? 1 : 0}
-        totalSlots={1}
         attachmentCount={attachmentCount}
         pdfLocked={pdfLocked}
         downloading={generatingPdf}
@@ -346,32 +340,6 @@ export default function BobcatInspectionScreen() {
             .then(a => setAttachmentCount(a.length)).catch(() => {});
           void buildPreview();
         }}
-        renderSignaturesSheet={({ dismiss, onChanged }) => (
-          <SignatureSheet
-            onClose={dismiss}
-            signatories={[
-              {
-                role: 'შემომწმებელი',
-                name: inspection.inspectorName ?? '',
-                position: '',
-                signature: inspection.inspectorSignature,
-              },
-            ]}
-            onChange={(_idx: number, field: string, value: string) => {
-              setInspection(prev => {
-                if (!prev) return prev;
-                const next = { ...prev };
-                if (field === 'name') next.inspectorName = value;
-                else if (field === 'signature') next.inspectorSignature = value || null;
-                return next;
-              });
-            }}
-            onSign={(_idx: number, base64: string) => {
-              setInspection(prev => prev ? { ...prev, inspectorSignature: base64 } : prev);
-              onChanged();
-            }}
-          />
-        )}
       />
     );
   }

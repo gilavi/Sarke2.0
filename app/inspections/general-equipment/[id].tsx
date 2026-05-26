@@ -21,7 +21,6 @@ import { useToast } from '../../../lib/toast';
 import { generalEquipmentApi } from '../../../lib/generalEquipmentService';
 import { inspectionAttachmentsApi } from '../../../lib/services';
 import { imageForDisplay } from '../../../lib/imageUrl';
-import { SignatureSheet } from '../../../components/inspection-parts/SignatureSheet';
 import { generalEquipmentSchema } from '../../../lib/inspection/schemas/generalEquipment';
 import { useInspectionFlow } from '../../../lib/inspection/useInspectionFlow';
 import { PaywallModal } from '../../../components/PaywallModal';
@@ -284,12 +283,9 @@ export default function GeneralEquipmentScreen() {
       <InspectionResultView
         inspectionId={inspection.id}
         templateName="ტექ. აღჭურვილობა"
-        requiredSignerRoles={[]}
         previewHtml={previewHtml}
         previewBusy={previewBusy}
         previewError={null}
-        signedCount={inspection.inspectorSignature ? 1 : 0}
-        totalSlots={1}
         attachmentCount={attachmentCount}
         pdfLocked={pdfLocked}
         downloading={generatingPdf}
@@ -301,35 +297,6 @@ export default function GeneralEquipmentScreen() {
             .then(a => setAttachmentCount(a.length)).catch(() => {});
           void buildPreview();
         }}
-        renderSignaturesSheet={({ dismiss, onChanged }) => (
-          <SignatureSheet
-            onClose={dismiss}
-            signatories={[
-              {
-                role: 'ხელმომწერი',
-                name: inspection.signerName ?? '',
-                position: inspection.signerRole === 'other'
-                  ? (inspection.signerRoleCustom ?? '')
-                  : (inspection.signerRole ?? ''),
-                signature: inspection.inspectorSignature,
-              },
-            ]}
-            onChange={(_, field, value) => {
-              setInspection(prev => {
-                if (!prev) return prev;
-                const next = { ...prev };
-                if (field === 'name') next.signerName = value;
-                else if (field === 'position') next.signerRoleCustom = value;
-                else if (field === 'signature') next.inspectorSignature = value || null;
-                return next;
-              });
-            }}
-            onSign={(_, base64) => {
-              setInspection(prev => prev ? { ...prev, inspectorSignature: base64 } : prev);
-              onChanged();
-            }}
-          />
-        )}
       />
     );
   }

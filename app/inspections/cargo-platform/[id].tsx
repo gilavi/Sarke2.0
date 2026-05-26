@@ -17,7 +17,6 @@ import { InspectionResultView } from '../../../components/InspectionResultView';
 import {
   ChecklistSection,
   DynamicTable,
-  SignatureSheet,
   VerdictSelector,
   PhotoSection,
 } from '../../../components/inspection-parts';
@@ -358,12 +357,9 @@ export default function CargoPlatformInspectionScreen() {
       <InspectionResultView
         inspectionId={inspection.id}
         templateName="ტვირთის მიმღები პლატფორმა"
-        requiredSignerRoles={[]}
         previewHtml={previewHtml}
         previewBusy={previewBusy}
         previewError={null}
-        signedCount={inspection.signatures.filter(s => !!s.signature).length}
-        totalSlots={inspection.signatures.length}
         attachmentCount={0}
         pdfLocked={pdfLocked}
         downloading={generatingPdf}
@@ -371,20 +367,6 @@ export default function CargoPlatformInspectionScreen() {
         onPaywallClose={() => setPaywallVisible(false)}
         onDownloadPdf={() => void handlePdf()}
         onSheetSaved={() => void buildPreview()}
-        renderSignaturesSheet={({ dismiss, onChanged }) => (
-          <SignatureSheet
-            onClose={dismiss}
-            signatories={[
-              { role: 'I ხელმომწერი', ...inspection.signatures[0] },
-              { role: 'II ხელმომწერი', ...inspection.signatures[1] },
-            ]}
-            onChange={handleSignatoryChange}
-            onSign={(idx, base64) => {
-              handleSignatorySign(idx, base64);
-              onChanged();
-            }}
-          />
-        )}
       />
     );
   }

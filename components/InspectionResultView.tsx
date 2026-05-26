@@ -1,12 +1,16 @@
 // Shared post-completion result view for inspection flows.
 //
-// Renders a full-screen WebView PDF preview plus a bottom bar with three
-// buttons: Certificates, Signatures, Download. The caller is responsible
-// for building the preview HTML (each flow has its own PDF builder) and
-// for the download action — this component only owns the UI shell, the
-// action sheets, and the paywall modal.
+// Renders a full-screen WebView PDF preview plus a bottom bar with two
+// buttons: Certificates and Download. The caller is responsible for
+// building the preview HTML (each flow has its own PDF builder) and for
+// the download action — this component only owns the UI shell, the
+// certificates action sheet, and the paywall modal.
+//
+// Signatures are no longer surfaced here. They're captured upstream on
+// the wizard's last step via features/signatures/SignaturesScreen and
+// flow into the PDF via the in-memory features/signatures/sessionStore.
 
-import { createElement, useMemo, type ReactNode } from 'react';
+import { createElement, useMemo } from 'react';
 import {
   ActivityIndicator,
   Platform,
@@ -20,61 +24,42 @@ import WebView from 'react-native-webview';
 import { A11yText as Text } from './primitives/A11yText';
 import { Screen } from './ui';
 import { CertificatesActionSheet } from './CertificatesActionSheet';
-import { SignaturesActionSheet } from './SignaturesActionSheet';
 import { useBottomSheet } from './BottomSheet';
 import { PaywallModal } from './PaywallModal';
 import { useTheme } from '../lib/theme';
-import type { SignerRole } from '../types/models';
 
 type Props = {
   inspectionId: string;
   templateName?: string;
-  /** Empty array is fine for equipment flows (no required roles). */
-  requiredSignerRoles: SignerRole[];
   previewHtml: string | null;
   previewBusy: boolean;
   previewError: string | null;
-  /** Number of signed signatures, used for the badge label. */
-  signedCount: number;
-  /** Total signature slots (max of required roles + existing rows). */
-  totalSlots: number;
   /** Number of certificate attachments, used for the badge label. */
   attachmentCount: number;
   /** Disables the download button + shows lock icon when true. */
   pdfLocked?: boolean;
   /**
-   * Hide the Certificates + Signatures action-sheet buttons. Used by
-   * equipment flows (bobcat/excavator) whose rows live outside the
-   * `inspections` table and so don't satisfy the FKs those sheets write.
+   * Hide the Certificates action-sheet button. Used by equipment flows
+   * whose rows live outside the `inspections` table and so don't satisfy
+   * the FK the certificates sheet writes.
    */
   hideSheets?: boolean;
   downloading?: boolean;
   paywallVisible: boolean;
   onPaywallClose: () => void;
   onDownloadPdf: () => void;
-  /** Called after either action sheet saves a change so caller can rebuild preview. */
+  /** Called after the certificates sheet saves a change so the caller can
+   *  rebuild the preview. */
   onSheetSaved: () => void;
-  /**
-   * Replace the default SignaturesActionSheet with a custom component.
-   * Receives `dismiss` to close the sheet and `onChanged` to notify the
-   * parent that signatures were updated (triggers preview rebuild).
-   */
-  renderSignaturesSheet?: (props: {
-    dismiss: () => void;
-    onChanged: () => void;
-  }) => ReactNode;
 };
 
 export function InspectionResultView(props: Props) {
   const {
     inspectionId,
     templateName,
-    requiredSignerRoles,
     previewHtml,
     previewBusy,
     previewError,
-    signedCount,
-    totalSlots,
     attachmentCount,
     pdfLocked,
     hideSheets,
@@ -83,7 +68,6 @@ export function InspectionResultView(props: Props) {
     onPaywallClose,
     onDownloadPdf,
     onSheetSaved,
-    renderSignaturesSheet,
   } = props;
 
   const { theme } = useTheme();
@@ -102,28 +86,7 @@ export function InspectionResultView(props: Props) {
     });
   };
 
-  const openSignaturesSheet = () => {
-    if (renderSignaturesSheet) {
-      showSheet({
-        content: ({ dismiss }) =>
-          renderSignaturesSheet({ dismiss, onChanged: onSheetSaved }),
-      });
-    } else {
-      showSheet({
-        content: ({ dismiss }) => (
-          <SignaturesActionSheet
-            inspectionId={inspectionId}
-            requiredRoles={requiredSignerRoles}
-            onClose={dismiss}
-            onChanged={onSheetSaved}
-          />
-        ),
-      });
-    }
-  };
-
   const certBadge = attachmentCount > 0 ? `(${attachmentCount})` : '';
-  const sigBadge = totalSlots > 0 ? `(${signedCount}/${totalSlots})` : '';
 
   return (
     <Screen edges={['bottom']}>
@@ -170,26 +133,15 @@ export function InspectionResultView(props: Props) {
       <View style={styles.bottomBarSafe}>
         <View style={styles.bottomBar}>
           {!hideSheets && (
-            <View style={styles.bottomBarRow}>
-              <Pressable
-                onPress={openCertificatesSheet}
-                style={({ pressed }) => [styles.bottomBtn, styles.bottomBtnGhost, pressed && { opacity: 0.7 }]}
-              >
-                <Ionicons name="document-attach-outline" size={18} color={theme.colors.ink} />
-                <Text style={styles.bottomBtnText} numberOfLines={1}>
-                  სერტიფიკატები {certBadge}
-                </Text>
-              </Pressable>
-              <Pressable
-                onPress={openSignaturesSheet}
-                style={({ pressed }) => [styles.bottomBtn, styles.bottomBtnGhost, pressed && { opacity: 0.7 }]}
-              >
-                <Ionicons name="create-outline" size={18} color={theme.colors.ink} />
-                <Text style={styles.bottomBtnText} numberOfLines={1}>
-                  ხელმოწერები {sigBadge}
-                </Text>
-              </Pressable>
-            </View>
+            <Pressable
+              onPress={openCertificatesSheet}
+              style={({ pressed }) => [styles.bottomBtn, styles.bottomBtnGhost, pressed && { opacity: 0.7 }]}
+            >
+              <Ionicons name="document-attach-outline" size={18} color={theme.colors.ink} />
+              <Text style={styles.bottomBtnText} numberOfLines={1}>
+                სერტიფიკატები {certBadge}
+              </Text>
+            </Pressable>
           )}
           <Pressable
             onPress={onDownloadPdf}
@@ -247,10 +199,6 @@ function createStyles(theme: any) {
       paddingHorizontal: 16,
       paddingTop: 12,
       paddingBottom: 16,
-    },
-    bottomBarRow: {
-      flexDirection: 'row',
-      gap: 10,
     },
     bottomBtn: {
       flex: 1,

@@ -25,8 +25,6 @@ import { A11yText as Text } from '../../components/primitives/A11yText';
 import { Button, Screen } from '../../components/ui';
 import { ErrorState } from '../../components/ErrorState';
 import { CertificatesActionSheet } from '../../components/CertificatesActionSheet';
-import { SignatureSheet } from '../../components/inspection-parts/SignatureSheet';
-import { SignatoryData } from '../../components/inspection-parts/SignatureBlock';
 import { useBottomSheet } from '../../components/BottomSheet';
 import {
   answersApi,
@@ -70,87 +68,6 @@ import type {
   Template,
 } from '../../types/models';
 
-function signatoriesToRecords(signatories: SignatoryData[]) {
-  return signatories
-    .filter(s => s.signature)
-    .map(s => ({
-      id: '',
-      inspection_id: '',
-      signer_role: s.role as any,
-      full_name: s.name,
-      phone: null,
-      position: s.position,
-      signature_png_url: `data:image/png;base64,${s.signature}`,
-      signed_at: s.date ?? new Date().toISOString(),
-      status: 'signed' as any,
-      person_name: null,
-    }));
-}
-
-function EphemeralSignatureSheet({
-  initial,
-  onSync,
-  onClose,
-}: {
-  initial: SignatoryData[];
-  onSync: (sigs: SignatoryData[]) => void;
-  onClose: () => void;
-}) {
-  const [signatories, setSignatories] = useState(initial);
-  const signatoriesRef = useRef(signatories);
-  useEffect(() => { signatoriesRef.current = signatories; }, [signatories]);
-
-  const onSyncRef = useRef(onSync);
-  useEffect(() => { onSyncRef.current = onSync; }, [onSync]);
-
-  useEffect(() => {
-    return () => {
-      onSyncRef.current(signatoriesRef.current);
-    };
-  }, []);
-
-  return (
-    <SignatureSheet
-      signatories={signatories}
-      onChange={(index, field, value) => {
-        setSignatories(prev => {
-          const next = [...prev];
-          const sig = { ...next[index] };
-          if (field === 'name') sig.name = value;
-          else if (field === 'position') sig.position = value;
-          else if (field === 'organization') sig.organization = value;
-          else if (field.startsWith('extra.')) {
-            const key = field.slice(6);
-            sig.extra = { ...(sig.extra || {}), [key]: value };
-          } else if (field === 'signature') sig.signature = value || null;
-          next[index] = sig;
-          return next;
-        });
-      }}
-      onSign={(index, base64Png) => {
-        setSignatories(prev => {
-          const next = [...prev];
-          next[index] = { ...next[index], signature: base64Png, date: new Date().toISOString() };
-          return next;
-        });
-      }}
-      onAddSignatory={() => {
-        setSignatories(prev => [
-          ...prev,
-          { role: 'other', name: '', position: '', signature: null, date: null },
-        ]);
-      }}
-      onRemoveSignatory={(index) => {
-        setSignatories(prev => prev.filter((_, i) => i !== index));
-      }}
-      onClose={() => {
-        onSyncRef.current(signatoriesRef.current);
-        onClose();
-      }}
-    />
-  );
-}
-
 export default function InspectionResultScreen() {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -165,7 +82,6 @@ export default function InspectionResultScreen() {
   const [project, setProject] = useState<Project | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [answers, setAnswers] = useState<Answer[]>([]);
-  const [signatures, setSignatures] = useState<SignatoryData[]>([]);
   const [photosByAnswer, setPhotosByAnswer] = useState<Record<string, AnswerPhoto[]>>({});
   const [attachments, setAttachments] = useState<InspectionAttachment[]>([]);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
@@ -243,18 +159,6 @@ export default function InspectionResultScreen() {
         setProject(proj);
         setAttachments(atts);
       }
-      if (tpl?.required_signer_roles && mountedRef.current) {
-        setSignatures(prev => {
-          if (prev.length > 0) return prev;
-          return tpl.required_signer_roles!.map(role => ({
-            role,
-            name: '',
-            position: '',
-            signature: null,
-            date: null,
-          }));
-        });
-      }
       if (tpl && mountedRef.current) {
         const [qs, ans] = await Promise.all([
           templatesApi.questions(tpl.id).catch(() => [] as Question[]),
@@ -296,10 +200,7 @@ export default function InspectionResultScreen() {
   }, [loading]);
 
   const buildPreview = useCallback(
-    async (
-      currentSignatures: SignatoryData[],
-      currentAttachments: InspectionAttachment[],
-    ) => {
+    async (currentAttachments: InspectionAttachment[]) => {
       if (!inspection || !template || !project) return;
       setPreviewBusy(true);
       setPreviewError(null);
@@ -324,9 +225,6 @@ export default function InspectionResultScreen() {
             );
           }),
         );
-
-        // Signatures → data URLs.
-        const sigsEmbedded = signatoriesToRecords(currentSignatures);
 
         // Attachments → data URLs for cert photos.
         const attsEmbedded: PdfAttachment[] = await Promise.all(
@@ -363,7 +261,7 @@ export default function InspectionResultScreen() {
           project,
           questions,
           answers,
-          signatures: sigsEmbedded,
+          signatures: [],
           photosByAnswer: photosEmbedded,
           attachments: attsEmbedded,
         });
@@ -383,8 +281,8 @@ export default function InspectionResultScreen() {
   // are triggered explicitly when sheets save changes.
   useEffect(() => {
     if ((loading && !loadTimedOut) || !inspection || !template || !project) return;
-    void buildPreview(signatures, attachments);
-  }, [loading, loadTimedOut, inspection, template, project, questions, answers, photosByAnswer, signatures, attachments, buildPreview]);
+    void buildPreview(attachments);
+  }, [loading, loadTimedOut, inspection, template, project, questions, answers, photosByAnswer, attachments, buildPreview]);
 
   const refreshAfterSheetSave = useCallback(async () => {
     if (!inspection) return;
@@ -392,8 +290,8 @@ export default function InspectionResultScreen() {
       .listByInspection(inspection.id)
       .catch(() => attachments);
     setAttachments(atts);
-    await buildPreview(signatures, atts);
-  }, [inspection, signatures, attachments, buildPreview]);
+    await buildPreview(atts);
+  }, [inspection, attachments, buildPreview]);
 
   const openCertificatesSheet = useCallback(() => {
     if (!inspection) return;
@@ -407,22 +305,6 @@ export default function InspectionResultScreen() {
       ),
     });
   }, [inspection, showSheet, refreshAfterSheetSave]);
-
-  const openSignaturesSheet = useCallback(() => {
-    if (!inspection || !template) return;
-    showSheet({
-      content: ({ dismiss }) => (
-        <EphemeralSignatureSheet
-          initial={signatures}
-          onSync={(sigs) => {
-            setSignatures(sigs);
-            void buildPreview(sigs, attachments);
-          }}
-          onClose={dismiss}
-        />
-      ),
-    });
-  }, [inspection, template, showSheet, signatures, attachments, buildPreview]);
 
   const downloadPdf = useCallback(async () => {
     if (!inspection || !template || !project || downloading) return;
@@ -450,7 +332,6 @@ export default function InspectionResultScreen() {
           );
         }),
       );
-      const sigsEmbedded = signatoriesToRecords(signatures);
       const attsEmbedded: PdfAttachment[] = await Promise.all(
         attachments.map(async a => {
           if (!a.photo_path) return { ...a };
@@ -485,7 +366,7 @@ export default function InspectionResultScreen() {
         project,
         questions,
         answers,
-        signatures: sigsEmbedded,
+        signatures: [],
         photosByAnswer: photosEmbedded,
         attachments: attsEmbedded,
       });
@@ -526,7 +407,6 @@ export default function InspectionResultScreen() {
     project,
     questions,
     answers,
-    signatures,
     attachments,
     photosByAnswer,
     downloading,
@@ -560,12 +440,7 @@ export default function InspectionResultScreen() {
     );
   }
 
-  const signedCount = signatures.filter(s => !!s.signature).length;
-  const requiredRoles = template?.required_signer_roles ?? [];
-  const totalSlots = Math.max(requiredRoles.length, signatures.length);
-
   const certBadge = attachments.length > 0 ? `(${attachments.length})` : '';
-  const sigBadge = totalSlots > 0 ? `(${signedCount}/${totalSlots})` : '';
 
   return (
     <Screen edges={['bottom']}>
@@ -611,26 +486,15 @@ export default function InspectionResultScreen() {
 
       <View style={styles.bottomBarSafe}>
         <View style={styles.bottomBar}>
-          <View style={styles.bottomBarRow}>
-            <Pressable
-              onPress={openCertificatesSheet}
-              style={({ pressed }) => [styles.bottomBtn, styles.bottomBtnGhost, pressed && { opacity: 0.7 }]}
-            >
-              <Ionicons name="document-attach-outline" size={18} color={theme.colors.ink} />
-              <Text style={styles.bottomBtnText} numberOfLines={1}>
-                სერტიფიკატები {certBadge}
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={openSignaturesSheet}
-              style={({ pressed }) => [styles.bottomBtn, styles.bottomBtnGhost, pressed && { opacity: 0.7 }]}
-            >
-              <Ionicons name="create-outline" size={18} color={theme.colors.ink} />
-              <Text style={styles.bottomBtnText} numberOfLines={1}>
-                ხელმოწერები {sigBadge}
-              </Text>
-            </Pressable>
-          </View>
+          <Pressable
+            onPress={openCertificatesSheet}
+            style={({ pressed }) => [styles.bottomBtn, styles.bottomBtnGhost, pressed && { opacity: 0.7 }]}
+          >
+            <Ionicons name="document-attach-outline" size={18} color={theme.colors.ink} />
+            <Text style={styles.bottomBtnText} numberOfLines={1}>
+              სერტიფიკატები {certBadge}
+            </Text>
+          </Pressable>
           <Pressable
             onPress={downloadPdf}
             disabled={downloading}

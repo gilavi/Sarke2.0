@@ -11,7 +11,6 @@ import { InspectionResultView } from '../../../components/InspectionResultView';
 import {
   ChecklistSection,
   DynamicTable,
-  SignatureSheet,
   VerdictSelector,
   PhotoSection,
   IdentificationGrid,
@@ -350,12 +349,9 @@ export default function SafetyNetInspectionScreen() {
       <InspectionResultView
         inspectionId={inspection.id}
         templateName="უსაფრთხოების ბადე"
-        requiredSignerRoles={[]}
         previewHtml={previewHtml}
         previewBusy={previewBusy}
         previewError={null}
-        signedCount={inspection.signatures.filter(s => !!s.signature).length}
-        totalSlots={inspection.signatures.length}
         attachmentCount={0}
         pdfLocked={pdfLocked}
         downloading={generatingPdf}
@@ -363,20 +359,6 @@ export default function SafetyNetInspectionScreen() {
         onPaywallClose={() => setPaywallVisible(false)}
         onDownloadPdf={() => void handlePdf()}
         onSheetSaved={() => void buildPreview()}
-        renderSignaturesSheet={({ dismiss, onChanged }) => (
-          <SignatureSheet
-            onClose={dismiss}
-            signatories={[
-              { role: 'I ხელმომწერი', ...inspection.signatures[0] },
-              { role: 'II ხელმომწერი', ...inspection.signatures[1] },
-            ]}
-            onChange={handleSignatoryChange}
-            onSign={(idx, base64) => {
-              handleSignatorySign(idx, base64);
-              onChanged();
-            }}
-          />
-        )}
       />
     );
   }
