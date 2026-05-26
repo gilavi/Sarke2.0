@@ -1,0 +1,18 @@
+appId: ge.sarke.app
+---
+- launchApp
+- tapOn: "პროექტები"
+- tapOn:
+    index: 0
+- tapOn: "შემოწმება"
+- takeScreenshot: template_selector
+- tapOn: "ფასადის ხარაჩოს შემოწმების აქტი"
+- takeScreenshot: inspection_step1
+- tapOn: "კი"
+- tapOn: "კი"
+- tapOn: "კი"
+- tapOn: "კი"
+- tapOn: "კი"
+- takeScreenshot: inspection_after_yes
+- tapOn: "შემდეგი"
+- takeScreenshot: inspection_step2

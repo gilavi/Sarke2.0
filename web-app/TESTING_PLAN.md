@@ -557,3 +557,51 @@ would hurt most.
 1. **E2E backend:** interception (B) or a seeded non-prod Supabase account (A)? (Recommend B to start.)
 2. **Web PDF gate:** is wiring `checkAndIncrementPdfCount` into the print/order flow planned? It changes whether the subscription-enforcement E2E is in scope.
 3. **Coverage gate aggressiveness:** ratchet per-PR (recommended) vs. set a single 70% bar now (will fail CI until Week 3).
+
+---
+
+## 8. Final state (2026-05-26)
+
+| Metric | Start | End | Δ |
+|---|---|---|---|
+| **Statements** | 9.4% | **66.13%** | +56.7 |
+| **Branches** | — | 61.72% | — |
+| **Functions** | — | 57.01% | — |
+| **Lines** | — | **70.52%** | — |
+
+- **119 test files, 737 tests** — all passing.
+- Lines coverage hits the **70% target**.
+- Statements remains 3.87% below 70% — the gap is concentrated in:
+  - `ExcavatorDetail.tsx` (38%) and `GeneralEquipmentDetail.tsx` (34%) — large equipment detail files with deep wizard interactions
+  - `SignatureCanvas.tsx` (10%) — canvas-based component, hard to test in jsdom
+  - `Scene3D.tsx` / `ConstructionModel.tsx` (0%) — three.js components, deliberately not unit-tested
+  - `router.tsx` (0%) — top-level routing setup, exercised by integration tests only
+  - 3 print pages (40–55%) — heavy data-binding files with limited branchable logic.
+
+### Latent bugs fixed while writing tests
+
+- `lib/photoUpload.ts`, `lib/data/incidents.ts` (×2), `lib/data/reports.ts`, `lib/data/certificates.ts` — dead-code `split('.').pop() ?? 'jpg'` (Array.pop always returns a value), replaced with `lastIndexOf('.') > 0 ? slice : 'jpg'`.
+- `store/useSafetySelectors.ts` — `useSafetyActions` returned a fresh object every render, causing infinite-loop renders; wrapped in `useShallow` from `zustand/react/shallow`.
+
+### Mocking patterns established
+
+- Supabase data layer: `vi.mock('@/lib/data/X', async (io) => ({ ...(await io<object>()), fn1: vi.fn(), ... }))` — partial mocks that preserve constants and helper functions.
+- Mantine portals (Modal / Drawer): query against `document.body`, not the React test container. The container only holds the trigger.
+- Mantine TextInput: renders `<input>` WITHOUT an explicit `type` attribute, so `querySelector('input[type="text"]')` misses them. Filter by the `.type` property (`input.type === 'text'`) instead.
+- framer-motion `whileInView`: requires an `IntersectionObserver` mock in `test-setup.ts`.
+- `SignatureCanvas`: mock to render a button that calls `onSave('data:image/png;base64,...')` so the parent's save handler fires.
+- TanStack Query mutations: `expect(fn).toHaveBeenCalledWith(...)` fails because mutate passes a second `{ client, meta, mutationKey }` argument; use `expect(fn).toHaveBeenCalled()` + `mock.calls[0][0]` instead.
+
+### Coverage by area
+
+| Area | Coverage | Notes |
+|---|---|---|
+| `lib/` | 91.13% stmt / 96.5% lines | Data layer + utilities, heavily tested |
+| `lib/data/` | 85.71% stmt / 96.24% lines | Supabase CRUD modules |
+| `pages/auth/` | 84.23% stmt / 90.69% lines | Login/Register/Forgot/Reset + VerifyEmail |
+| `pages/landing/` | 73.11% stmt / 84.21% lines | Marketing pages |
+| `pages/` (other) | 65.7% stmt / 69.45% lines | Detail/list/edit pages |
+| `pages/print/` | 56.29% stmt / 59.75% lines | Print templates; mostly empty-state + happy path covered |
+| `components/` | 54.57% stmt / 58.01% lines | Many components have deep interactions still untested |
+| `components/ui/` | 62.96% stmt / 68.36% lines | shadcn-style primitives |
+| `app/` | 40.09% stmt / 51.87% lines | `router.tsx` is 0% — top-level routing not unit-testable |
