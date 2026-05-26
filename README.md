@@ -42,6 +42,18 @@ npm run typecheck   # tsc only
 
 `scripts/check-primitives.mjs` blocks grep-detectable misuses (bare `KeyboardAvoidingView` from `react-native`, legacy image helper names, direct `AsyncStorage` access to `pdf_language`). When adding a cross-cutting helper, read [docs/primitives.md](docs/primitives.md) first.
 
+### Unit tests
+
+```sh
+npx vitest run                  # run all unit tests
+npx vitest run --coverage       # with v8 coverage report
+npx vitest                      # watch mode
+```
+
+Tests live under [tests/unit/](tests/unit) (config: [vitest.config.ts](vitest.config.ts), jsdom environment, `react-native` aliased to `react-native-web`). Project-wide coverage is currently **~26% statements / ~28% branches / ~20% functions / ~26% lines** across 36 files / 407 tests, gated by `coverage.thresholds = 20/20/20/20`. Coverage is measured over `lib/**`, `types/**`, and `store/**` (see `coverage.include` in `vitest.config.ts`); `lib/supabase.ts`, `lib/theme.ts`, `lib/ThemeContext.tsx` are excluded.
+
+The legacy `__tests__/*.mjs` files are not run (they use `node:test` which doesn't load under vitest's jsdom). New unit tests go in `tests/unit/`. Integration tests in `tests/integration/` need a live Supabase and are not part of the default run.
+
 ---
 
 ## Repository Layout
@@ -67,7 +79,8 @@ Top-level folders, one line each.
 | `web-app/` | Public dashboard (Vite + React + TS + Tailwind). Deployed to `https://gilavi.github.io/Sarke2.0/app/`. |
 | `website/` | Docusaurus documentation site. Deployed via `.github/workflows/docs.yml`. |
 | `public/` | Static assets for the web bundles. |
-| `tests/` , `__tests__/` | Vitest unit tests (config in `vitest.config.ts`). |
+| `tests/` | Vitest unit tests under `tests/unit/` (canonical location; config in [vitest.config.ts](vitest.config.ts)) plus live-Supabase integration tests under `tests/integration/`. |
+| `__tests__/` | Legacy `.mjs` test mirrors that import `node:test` — not loaded by the vitest runner. Do not add new tests here; write them under `tests/unit/`. |
 | `e2e/` | Playwright end-to-end tests (config in `playwright.config.ts`). |
 | `src/` | Misc shared sources used by the web bundles. |
 | `ios/` | Native iOS scaffold (legacy reference; primary native port is on `ios-legacy` branch). |
