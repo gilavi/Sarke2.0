@@ -43,14 +43,18 @@ export default function Register() {
     setInfo(null);
     setBusy(true);
     try {
-      await signUp({
+      const { needsEmailConfirmation } = await signUp({
         email: email.trim(),
         password,
         firstName: firstName.trim(),
         lastName: lastName.trim(),
       });
-      setInfo('შემოწმეთ ელ-ფოსტა — გამოვაგზავნეთ დადასტურების კოდი.');
-      navigate(`/verify-email?email=${encodeURIComponent(email.trim())}`);
+      if (needsEmailConfirmation) {
+        setInfo('შემოწმეთ ელ-ფოსტა — გამოვაგზავნეთ დადასტურების კოდი.');
+        navigate(`/verify-email?email=${encodeURIComponent(email.trim())}`);
+      } else {
+        navigate('/');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'რეგისტრაცია ვერ მოხერხდა');
     } finally {

@@ -4,6 +4,23 @@
 
 ---
 
+## 2026-05-26 — Web-app: registration email delivery fixed (Resend SMTP)
+
+### Fixed — users not receiving OTP email after sign-up ([web-app/src/lib/auth.tsx](../web-app/src/lib/auth.tsx), [web-app/src/pages/auth/Register.tsx](../web-app/src/pages/auth/Register.tsx))
+
+Supabase's built-in free-tier SMTP (~4 emails/hour, poor deliverability) was the root cause. Replaced with a dedicated **Resend** SMTP integration sending from `noreply@mail.hubble.ge`.
+
+**Infrastructure changes (Supabase dashboard — no migration needed):**
+- Custom SMTP enabled: `smtp.resend.com:465`, username `resend`, password = Resend API key (`supabase-smtp`).
+- Sending domain `mail.hubble.ge` added to Resend with SPF/DKIM/DMARC records on Amazon Route 53 (via domenebi.ge). Domain verified within minutes.
+
+**Code fix — `signUp` return value:**
+- `AuthProvider.signUp` now returns `{ needsEmailConfirmation: boolean }` derived from whether Supabase returned a live session (`session !== null` → confirmations disabled, user is immediately active).
+- `Register.tsx` uses this flag: navigates to `/verify-email?email=…` only when confirmation is required; goes straight to `/` otherwise. Previously it always redirected to verify-email regardless.
+- Tests in `src/__tests__/lib/auth.test.tsx` and `src/__tests__/pages/auth.test.tsx` updated to match.
+
+---
+
 ## 2026-05-26 — Web-app test campaign: 9.4% → 51% coverage, 520 tests, 2 real bugs fixed
 
 ### Coverage milestone — [web-app/TESTING_PLAN.md](../web-app/TESTING_PLAN.md)

@@ -73,15 +73,24 @@ Files that *do* exist and match the request: `SegmentedControl`, `SuccessModal`,
 > ChipSelect, ResultPills, VirtualList, SignatureCanvas, SidePanel, PrintLayout,
 > `routes`).
 >
-> **Final state: 70 files / 520 tests, coverage 9.4% → 51.0% statements / 55.0%
-> lines / 44.6% branches / 39.3% functions. Typecheck clean.** The remaining ~19
-> points to reach a 70% statement bar are dominated by interactive multi-step
-> flows that need integration-style tests, not mount-only: `pages/InspectionDetail`
-> (945 LOC, 17%), `pages/NewOrder` (736, 21%), `components/InspectionWizard`
-> (940, 48%) step transitions, and the four equipment-detail edit flows
-> (`features/inspections/equipment/*`, ~30–50% each). Pushing those past 70%
-> requires walking each wizard's steps with state changes — a meaningful next
-> milestone, but a different shape of work than the mount-test scaffolding here.
+> A first big-interactive round then added: **NewOrder step walkthrough** (type
+> picker → company step → Prev rewind, exercising the `canAdvance` state machine),
+> **equipment detail draft-mode** walks for all four flows (Bobcat/Excavator/
+> General/CargoPlatform mounted with `status='draft'` to exercise editable
+> handlers; Bobcat walks info → checklist → conclusion), and **ProjectDetail
+> editing-mode** flows (ProjectDetailsCard save/cancel/error, CrewSection add,
+> SignersSection add).
+>
+> **Current state: 73 files / 539 tests, coverage 9.4% → 52.0% statements / 56.1%
+> lines / 45.9% branches / 40.8% functions. Typecheck clean.** Statement growth
+> from 51% → 52% over this round shows the diminishing-returns shape: the
+> remaining ~18 points sit in deeply interactive paths inside five files:
+> `pages/InspectionDetail` (945 LOC, ~17%), `pages/NewOrder` (736 LOC, walking
+> further requires per-step input filling), `components/InspectionWizard`
+> (940 LOC, the `createInspection` mutation path past the info step), and the
+> equipment detail conclusion/signature flows. Each needs a full
+> fixture-and-walk integration test rather than mount-only — meaningful next
+> work, in a different shape from the scaffolding here.
 
 **Existing test files (pre-batch): 11** (10 unit/component via Vitest + 1 Playwright smoke).
 
