@@ -73,15 +73,24 @@ Files that *do* exist and match the request: `SegmentedControl`, `SuccessModal`,
 > ChipSelect, ResultPills, VirtualList, SignatureCanvas, SidePanel, PrintLayout,
 > `routes`).
 >
-> **Final state: 70 files / 520 tests, coverage 9.4% → 51.0% statements / 55.0%
-> lines / 44.6% branches / 39.3% functions. Typecheck clean.** The remaining ~19
-> points to reach a 70% statement bar are dominated by interactive multi-step
-> flows that need integration-style tests, not mount-only: `pages/InspectionDetail`
-> (945 LOC, 17%), `pages/NewOrder` (736, 21%), `components/InspectionWizard`
-> (940, 48%) step transitions, and the four equipment-detail edit flows
-> (`features/inspections/equipment/*`, ~30–50% each). Pushing those past 70%
-> requires walking each wizard's steps with state changes — a meaningful next
-> milestone, but a different shape of work than the mount-test scaffolding here.
+> A first big-interactive round then added: **NewOrder step walkthrough** (type
+> picker → company step → Prev rewind, exercising the `canAdvance` state machine),
+> **equipment detail draft-mode** walks for all four flows (Bobcat/Excavator/
+> General/CargoPlatform mounted with `status='draft'` to exercise editable
+> handlers; Bobcat walks info → checklist → conclusion), and **ProjectDetail
+> editing-mode** flows (ProjectDetailsCard save/cancel/error, CrewSection add,
+> SignersSection add).
+>
+> **Current state: 73 files / 539 tests, coverage 9.4% → 52.0% statements / 56.1%
+> lines / 45.9% branches / 40.8% functions. Typecheck clean.** Statement growth
+> from 51% → 52% over this round shows the diminishing-returns shape: the
+> remaining ~18 points sit in deeply interactive paths inside five files:
+> `pages/InspectionDetail` (945 LOC, ~17%), `pages/NewOrder` (736 LOC, walking
+> further requires per-step input filling), `components/InspectionWizard`
+> (940 LOC, the `createInspection` mutation path past the info step), and the
+> equipment detail conclusion/signature flows. Each needs a full
+> fixture-and-walk integration test rather than mount-only — meaningful next
+> work, in a different shape from the scaffolding here.
 
 **Existing test files (pre-batch): 11** (10 unit/component via Vitest + 1 Playwright smoke).
 
@@ -548,3 +557,51 @@ would hurt most.
 1. **E2E backend:** interception (B) or a seeded non-prod Supabase account (A)? (Recommend B to start.)
 2. **Web PDF gate:** is wiring `checkAndIncrementPdfCount` into the print/order flow planned? It changes whether the subscription-enforcement E2E is in scope.
 3. **Coverage gate aggressiveness:** ratchet per-PR (recommended) vs. set a single 70% bar now (will fail CI until Week 3).
+
+---
+
+## 8. Final state (2026-05-26)
+
+| Metric | Start | End | Δ |
+|---|---|---|---|
+| **Statements** | 9.4% | **66.13%** | +56.7 |
+| **Branches** | — | 61.72% | — |
+| **Functions** | — | 57.01% | — |
+| **Lines** | — | **70.52%** | — |
+
+- **119 test files, 737 tests** — all passing.
+- Lines coverage hits the **70% target**.
+- Statements remains 3.87% below 70% — the gap is concentrated in:
+  - `ExcavatorDetail.tsx` (38%) and `GeneralEquipmentDetail.tsx` (34%) — large equipment detail files with deep wizard interactions
+  - `SignatureCanvas.tsx` (10%) — canvas-based component, hard to test in jsdom
+  - `Scene3D.tsx` / `ConstructionModel.tsx` (0%) — three.js components, deliberately not unit-tested
+  - `router.tsx` (0%) — top-level routing setup, exercised by integration tests only
+  - 3 print pages (40–55%) — heavy data-binding files with limited branchable logic.
+
+### Latent bugs fixed while writing tests
+
+- `lib/photoUpload.ts`, `lib/data/incidents.ts` (×2), `lib/data/reports.ts`, `lib/data/certificates.ts` — dead-code `split('.').pop() ?? 'jpg'` (Array.pop always returns a value), replaced with `lastIndexOf('.') > 0 ? slice : 'jpg'`.
+- `store/useSafetySelectors.ts` — `useSafetyActions` returned a fresh object every render, causing infinite-loop renders; wrapped in `useShallow` from `zustand/react/shallow`.
+
+### Mocking patterns established
+
+- Supabase data layer: `vi.mock('@/lib/data/X', async (io) => ({ ...(await io<object>()), fn1: vi.fn(), ... }))` — partial mocks that preserve constants and helper functions.
+- Mantine portals (Modal / Drawer): query against `document.body`, not the React test container. The container only holds the trigger.
+- Mantine TextInput: renders `<input>` WITHOUT an explicit `type` attribute, so `querySelector('input[type="text"]')` misses them. Filter by the `.type` property (`input.type === 'text'`) instead.
+- framer-motion `whileInView`: requires an `IntersectionObserver` mock in `test-setup.ts`.
+- `SignatureCanvas`: mock to render a button that calls `onSave('data:image/png;base64,...')` so the parent's save handler fires.
+- TanStack Query mutations: `expect(fn).toHaveBeenCalledWith(...)` fails because mutate passes a second `{ client, meta, mutationKey }` argument; use `expect(fn).toHaveBeenCalled()` + `mock.calls[0][0]` instead.
+
+### Coverage by area
+
+| Area | Coverage | Notes |
+|---|---|---|
+| `lib/` | 91.13% stmt / 96.5% lines | Data layer + utilities, heavily tested |
+| `lib/data/` | 85.71% stmt / 96.24% lines | Supabase CRUD modules |
+| `pages/auth/` | 84.23% stmt / 90.69% lines | Login/Register/Forgot/Reset + VerifyEmail |
+| `pages/landing/` | 73.11% stmt / 84.21% lines | Marketing pages |
+| `pages/` (other) | 65.7% stmt / 69.45% lines | Detail/list/edit pages |
+| `pages/print/` | 56.29% stmt / 59.75% lines | Print templates; mostly empty-state + happy path covered |
+| `components/` | 54.57% stmt / 58.01% lines | Many components have deep interactions still untested |
+| `components/ui/` | 62.96% stmt / 68.36% lines | shadcn-style primitives |
+| `app/` | 40.09% stmt / 51.87% lines | `router.tsx` is 0% — top-level routing not unit-testable |

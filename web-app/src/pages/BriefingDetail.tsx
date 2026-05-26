@@ -5,7 +5,7 @@ import { FileText, Plus, Trash2, X } from 'lucide-react';
 import { SkeletonDetailPage } from '@/components/SkeletonCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { TextInput } from '@mantine/core';
+import { Input } from '@/components/ui/input';
 import {
   deleteBriefing,
   getBriefing,
@@ -171,7 +171,7 @@ export default function BriefingDetail() {
           <CardTitle className="text-base">ზოგადი ინფორმაცია</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
-          <TextInput
+          <Input
             label="ინსპექტორი"
             disabled={!isDraft}
             defaultValue={b.inspectorName}
@@ -179,9 +179,8 @@ export default function BriefingDetail() {
               const v = e.target.value.trim();
               if (v !== b.inspectorName) updateMutation.mutate({ inspectorName: v });
             }}
-            radius="md"
           />
-          <TextInput
+          <Input
             label="თარიღი და დრო"
             type="datetime-local"
             disabled={!isDraft}
@@ -192,7 +191,6 @@ export default function BriefingDetail() {
                 updateMutation.mutate({ dateTime: new Date(v).toISOString() });
               }
             }}
-            radius="md"
           />
         </CardContent>
       </Card>
@@ -265,25 +263,23 @@ export default function BriefingDetail() {
                   {isDraft ? (
                     <>
                       <div className="grid flex-1 grid-cols-1 gap-2 sm:grid-cols-2">
-                        <TextInput
+                        <Input
                           defaultValue={p.fullName}
                           onBlur={(e) => {
                             if (e.target.value !== p.fullName)
                               patchParticipant(i, { fullName: e.target.value });
                           }}
                           placeholder="სახელი გვარი"
-                          classNames={{ input: 'text-sm' }}
-                          radius="md"
+                          className="text-sm"
                         />
-                        <TextInput
+                        <Input
                           defaultValue={p.position ?? ''}
                           onBlur={(e) => {
                             if (e.target.value !== (p.position ?? ''))
                               patchParticipant(i, { position: e.target.value });
                           }}
                           placeholder="თანამდებობა"
-                          classNames={{ input: 'text-sm' }}
-                          radius="md"
+                          className="text-sm"
                         />
                       </div>
                       <button

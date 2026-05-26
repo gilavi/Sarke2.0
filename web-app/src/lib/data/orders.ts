@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import type { TablesInsert, TablesUpdate } from '@/types/database';
+import type { Json, Tables, TablesInsert, TablesUpdate } from '@/types/database';
 
 export type OrderDocumentType = 'labor_safety_specialist' | 'alcohol_control' | 'fire_safety_order' | 'fire_safety_order_enterprise';
 
@@ -96,18 +96,7 @@ export interface Order {
   updatedAt: string;
 }
 
-type DbRow = {
-  id: string;
-  project_id: string;
-  user_id: string;
-  document_type: string;
-  form_data: Record<string, unknown>;
-  status: string;
-  pdf_url: string | null;
-  pdf_hash: string | null;
-  created_at: string;
-  updated_at: string;
-};
+type DbRow = Pick<Tables<'orders'>, 'id' | 'project_id' | 'user_id' | 'document_type' | 'form_data' | 'status' | 'pdf_url' | 'pdf_hash' | 'created_at' | 'updated_at'>;
 
 function toModel(row: DbRow): Order {
   return {
@@ -184,7 +173,7 @@ export async function updateOrder(id: string, patch: {
   pdfHash?: string | null;
 }): Promise<Order> {
   const db: Partial<DbRow> = {};
-  if (patch.formData !== undefined) db.form_data = patch.formData as unknown as Record<string, unknown>;
+  if (patch.formData !== undefined) db.form_data = patch.formData as unknown as Json;
   if (patch.status !== undefined) db.status = patch.status;
   if (patch.pdfUrl !== undefined) db.pdf_url = patch.pdfUrl;
   if (patch.pdfHash !== undefined) db.pdf_hash = patch.pdfHash ?? null;

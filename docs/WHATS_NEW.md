@@ -1,6 +1,79 @@
 # What's New — Sarke 2.0 Changelog
 
-**Updated:** 2026-05-26 | Branch: `main`
+**Updated:** 2026-05-27 | Branch: `main`
+
+---
+
+## 2026-05-27 — Web-app: architectural refactor — native inputs (complete), AsyncBoundary isolation, store rename
+
+- **Native Input/Textarea complete migration**: All Mantine `TextInput` and `Textarea` usages across the web-app replaced with native Tailwind-only `<Input>`/`<Textarea>` components. Migrated ~35 files covering auth pages, project detail sections, inspection detail/wizard, equipment detail pages, briefing/incident/report detail pages, and shared components (FieldInput, ChecklistItemRow, InspectionSignatures, HarnessChecklist, InspectionInfoView). Mantine is kept only for UI components (Modal, NumberInput, PasswordInput, Badge, Card, etc.).
+- **NewOrder extracted to feature module**: `NewOrder` component moved from a page-level file to `features/orders/components/NewOrder/` in line with the feature-sliced architecture; route file is now a thin orchestrator.
+- **Data layer `Tables<T>` type aliases**: All `lib/data/` modules now export `Tables<T>` type aliases for their DB row types, making query return types explicit and reducing `any` casts across the data layer.
+- **AsyncBoundary applied to all ProjectDetail sections**: All 10 data-fetching sections in `src/pages/ProjectDetail/index.tsx` (`ProjectDetailsCard`, `CrewSection`, `SignersSection`, `InspectionsSection`, `IncidentsSection`, `BriefingsSection`, `ReportsSection`, `FilesSection`, `OrdersSection`, `DangerZoneSection`) are now each wrapped in `<AsyncBoundary>`. A section-level render error now shows an inline red banner for that section only instead of blanking the entire page. `AsyncBoundary` extended to support a no-query shell mode backed by a `SectionErrorBoundary` class component.
+- **`useSafetyStore` renamed from `useAppStore`**: The Zustand 3D safety viewer store in `src/store/safetyStore.ts` is now exported as `useSafetyStore`. All consumers updated: `Scene3D.tsx`, `SidePanel.tsx`, `ConstructionModel.tsx`, `useSafetySelectors.ts`, and all affected test files. Zero `useAppStore` references remain in `src/`.
+
+---
+
+## 2026-05-27 — Mobile: unified inspection-start flow + CustomDropdown reuses canonical BottomSheet
+
+### 🔴 BUG-23 — non-equipment templates froze the app after the template picker closed ([app/(tabs)/home.tsx](../app/(tabs)/home.tsx), [components/ui/CustomDropdown.tsx](../components/ui/CustomDropdown.tsx))
+
+Picking `ფასადის ხარაჩო`, `დამცავი ქამრები`, or any non-equipment template from the home dropdown left the app stuck on home — the bottom sheet closed but no navigation happened. Two compounding bugs:
+
+1. `CustomDropdown` rolled its own RN `<Modal>` (radius 20, no shadow, no gesture dismiss) instead of using the canonical `BottomSheet` from `components/BottomSheet.tsx`. Visually inconsistent with every other action sheet (radius 24, spring entrance, swipe-down dismiss).
+2. The non-equipment branch then opened a **second** `BottomSheet` via `ProjectPickerSheet` for project selection. `BottomSheet`'s global `isSheetOpen` guard silently no-ops a second sheet while the first is still animating closed (~220 ms). Result: second sheet never opens, app appears frozen.
+
+**Fix:**
+
+- `CustomDropdown` now delegates its sheet to `useBottomSheet()` — all three call sites (`home.tsx`, `more.tsx`, `features/project-detail`) get the same rounded corners, shadow, spring entrance, haptic, and gesture dismiss. `onChange` fires synchronously from the `Pressable.onPress` so `router.push` runs in a normal React event tick (firing it from the BottomSheet animation-finish callback is dropped on the floor by expo-router on iOS — that was the actual freeze, after the sheet had closed).
+- Removed the `DEFERRED_PROJECT_CATEGORIES` branch in `home.tsx`. **Every** template — equipment or not — now navigates to `/inspections/new?category=…&templateId=…` and picks its project as step 0 inside the wizard. No more nested sheets.
+- `app/inspections/new.tsx` extended to handle all template categories: dispatches through `inspectionRegistry` for equipment, falls back to `questionnairesApi.create` for generic templates (xaracho, mobile_scaffold, harness, …). Title derived from the template name via `inspectionDisplayName`. The early `router.back()` guard moved inside a `useEffect` so it can't infinite-loop during render if `useLocalSearchParams` is briefly undefined.
+- `ProjectPickerSheet` retained for incident/briefing/report quick actions and the new-project inline flow (where it still works because it's the only sheet open).
+
+**Tests:** [tests/unit/CustomDropdown.test.tsx](../tests/unit/CustomDropdown.test.tsx) — 16 cases covering trigger rendering, sheet content, synchronous-onChange invariant (the bug-fix lock-in), cancel-without-onChange, controlled mode, and per-option dispatch. Uses `@testing-library/react` against the `react-native-web` alias.
+
+**Files:**
+- [components/ui/CustomDropdown.tsx](../components/ui/CustomDropdown.tsx) — full rewrite, delegates to canonical sheet
+- [app/(tabs)/home.tsx](../app/(tabs)/home.tsx) — template `onChange` always pushes to `/inspections/new`; single-template quick action does the same; dead `pickerPreselectedTemplateId` state removed
+- [app/inspections/new.tsx](../app/inspections/new.tsx) — category-agnostic, registry-or-generic dispatch
+- [tests/unit/CustomDropdown.test.tsx](../tests/unit/CustomDropdown.test.tsx) — new
+
+---
+
+## 2026-05-26 — Web-app: ghost-page DOM accumulation fixed + scaffold badge + dropdown cleanup
+
+### 🔴 BUG-20 — every navigation leaked a permanent copy of the previous page into the DOM ([web-app/src/components/layout/AppShell.tsx](../web-app/src/components/layout/AppShell.tsx))
+
+`<AnimatePresence>` wrapped a ternary whose two `motion.div` branches both used `key={location.pathname}`. Exit animations never reconciled, so each navigation left the outgoing page mounted alongside the new one. Verified on live hubble.ge: fresh reload = 1 child under `<main>`, after 2 nav round-trips = 2 children, after 4 = 3 children, and so on — within a normal browsing session every page rendered 8-12× and the app was visibly broken (duplicated buttons, duplicated content, runaway query refires).
+
+**Fix:** collapsed the ternary into a single `motion.div` driven by an `isSafety` boolean, switched `<AnimatePresence>` to `mode="wait" initial={false}`, and shortened the transition to `0.15s`. Wait-mode runs the outgoing exit before the incoming enter so the DOM stays clean; at 0.15s the gap is barely perceptible.
+
+### 🟠 BUG-21 — scaffold/xaracho rows showed the harness badge on the home activity widget ([web-app/src/components/ProjectActivityWidget.tsx](../web-app/src/components/ProjectActivityWidget.tsx))
+
+The widget read `template.category` for the href but then set `type: 'inspection' as const` regardless, so every `inspections`-table row got the 🦺 emoji and "შემოწმება" badge — including `ფასადის ხარაჩო`. The other three list views (`History`, `Inspections`, project-detail `InspectionsSection`) were already reading category correctly; this was the last hold-out.
+
+**Fix:** extended the `ActivityItem['type']` union to include `harness | xaracho | mobile_scaffold | mobile_scaffold_n3` (plus the equipment types), added their entries to `ACTIVITY_TYPE_AVATAR` (🏗️ for scaffold variants), and pick the type from `template.category` matching the same fallback rule the other views use. Href routing is unchanged — only `category === 'harness'` goes to `/harness/:id`, everything else stays on `/inspections/:id`.
+
+### 🟡 BUG-22 — duplicate "+ ახალი შემოწმება" dropdown entry both routed to `/bobcat/new` ([web-app/src/pages/Inspections.tsx](../web-app/src/pages/Inspections.tsx))
+
+`დიდი ციცხვიანი დამტვირთველის შემოწმება` had the same `onSelect={() => navigate('/bobcat/new')}` as `ციცხვიანი დამტვირთველის შემოწმების აქტი` — a copy-paste leftover. The "large bobcat" template lives in the `inspections` table with a non-standard category and a dedicated wizard is not wired yet, so the menu item misled users to the equipment-bobcat form. Removed the dup entry; can be re-added behind a proper wizard preset later.
+
+---
+
+## 2026-05-26 — Web-app: registration email delivery fixed (Resend SMTP)
+
+### Fixed — users not receiving OTP email after sign-up ([web-app/src/lib/auth.tsx](../web-app/src/lib/auth.tsx), [web-app/src/pages/auth/Register.tsx](../web-app/src/pages/auth/Register.tsx))
+
+Supabase's built-in free-tier SMTP (~4 emails/hour, poor deliverability) was the root cause. Replaced with a dedicated **Resend** SMTP integration sending from `noreply@mail.hubble.ge`.
+
+**Infrastructure changes (Supabase dashboard — no migration needed):**
+- Custom SMTP enabled: `smtp.resend.com:465`, username `resend`, password = Resend API key (`supabase-smtp`).
+- Sending domain `mail.hubble.ge` added to Resend with SPF/DKIM/DMARC records on Amazon Route 53 (via domenebi.ge). Domain verified within minutes.
+
+**Code fix — `signUp` return value:**
+- `AuthProvider.signUp` now returns `{ needsEmailConfirmation: boolean }` derived from whether Supabase returned a live session (`session !== null` → confirmations disabled, user is immediately active).
+- `Register.tsx` uses this flag: navigates to `/verify-email?email=…` only when confirmation is required; goes straight to `/` otherwise. Previously it always redirected to verify-email regardless.
+- Tests in `src/__tests__/lib/auth.test.tsx` and `src/__tests__/pages/auth.test.tsx` updated to match.
 
 ---
 

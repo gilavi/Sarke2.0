@@ -179,6 +179,10 @@ There is one way to handle the keyboard for each surface type. Don't invent a fo
 
 Schema + seed already applied to the hosted project. Migrations are preserved for reference.
 
+### Auth — email delivery (Resend SMTP)
+
+Outbound email uses **Resend** via custom SMTP (configured in the Supabase dashboard under Auth → SMTP Settings). Sender domain is `mail.hubble.ge` (SPF/DKIM/DMARC on Amazon Route 53). Do not switch back to Supabase's built-in SMTP — the free tier caps at ~4 emails/hour and has poor deliverability.
+
 ### Migrations (`supabase/migrations/`)
 
 > **Duplicate numbers:** `0044`, `0045`, `0046` each have **two files** — inspection tables from one branch and reports-RLS fixes from another, merged together. Both halves are applied to the hosted DB. **Do not renumber them** — it would desync the migration history. Numeric migrations continue from `0053`; **migrations from 2026-05-25 onward use timestamp-prefixed names** (`YYYYMMDDHHMMSS_...sql`) for SQL that originated in Supabase Studio and was captured to the repo after the fact. Both naming conventions coexist.

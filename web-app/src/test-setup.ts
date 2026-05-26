@@ -1,10 +1,8 @@
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
 
-// jsdom implements neither matchMedia nor ResizeObserver, both of which Mantine
-// touches at render time (MantineProvider's color-scheme hook calls matchMedia;
-// several components observe size). Provide inert mocks so component tests can
-// render inside a MantineProvider. See web-app/src/test-utils.tsx.
+// jsdom does not implement matchMedia or ResizeObserver; mock them for component
+// tests that check media queries or observe element sizes.
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
   value: (query: string) => ({

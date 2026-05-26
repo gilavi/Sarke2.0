@@ -3,7 +3,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { TextInput, PasswordInput } from '@mantine/core';
+import { PasswordInput } from '@mantine/core';
+import { Input } from '@/components/ui/input';
 import { AuthLayout } from './AuthLayout';
 
 /**
@@ -57,7 +58,7 @@ export default function Login() {
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit} className="space-y-4">
-            <TextInput
+            <Input
               id="email"
               label="ელ-ფოსტა"
               type="email"
@@ -65,7 +66,6 @@ export default function Login() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              radius="md"
             />
             <PasswordInput
               id="password"

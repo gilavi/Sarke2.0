@@ -15,7 +15,7 @@ interface AuthContextValue {
   profile: Profile | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (args: { email: string; password: string; firstName: string; lastName: string }) => Promise<void>;
+  signUp: (args: { email: string; password: string; firstName: string; lastName: string }) => Promise<{ needsEmailConfirmation: boolean }>;
   signOut: () => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
   updatePassword: (password: string) => Promise<void>;
@@ -102,12 +102,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (error) throw error;
       },
       async signUp({ email, password, firstName, lastName }) {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: { data: { first_name: firstName, last_name: lastName } },
         });
         if (error) throw error;
+        // session is non-null when confirmations are disabled (user is immediately active)
+        return { needsEmailConfirmation: data.session === null };
       },
       async signOut() {
         await supabase.auth.signOut();

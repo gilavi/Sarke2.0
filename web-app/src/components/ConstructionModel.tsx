@@ -2,7 +2,7 @@ import { useRef, useState, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Html, RoundedBox } from '@react-three/drei';
 import * as THREE from 'three';
-import { useAppStore } from '@/store/safetyStore';
+import { useSafetyStore } from '@/store/safetyStore';
 import { safetyTips } from '@/data/safetyTips';
 
 /* ─── Shared Material configs ─── */
@@ -25,7 +25,7 @@ const wood = { color: '#a08050', roughness: 0.9 };
 function Zone({ id, children, pos, name }: { id: string; children: React.ReactNode; pos: [number, number, number]; name: string }) {
   const [hovered, setHovered] = useState(false);
   const ref = useRef<THREE.Group>(null);
-  const { selectedPartId, setHoveredPart, setSelectedPart } = useAppStore();
+  const { selectedPartId, setHoveredPart, setSelectedPart } = useSafetyStore();
   const isSel = selectedPartId === id;
 
   useEffect(() => {

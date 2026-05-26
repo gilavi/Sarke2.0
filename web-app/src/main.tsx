@@ -11,31 +11,25 @@ const theme = createTheme({
   primaryColor: 'brand',
   colors: {
     brand: [
-      '#E8F5F0', // 0
-      '#D1EBE1', // 1
-      '#A3D7C3', // 2
-      '#75C3A5', // 3
-      '#47AF87', // 4
-      '#147A4F', // 5  ← primaryShade light
-      '#106240', // 6
-      '#0C4930', // 7
-      '#083120', // 8
-      '#041810', // 9
+      '#E8F5F0',
+      '#D1EBE1',
+      '#A3D7C3',
+      '#75C3A5',
+      '#47AF87',
+      '#147A4F',
+      '#106240',
+      '#0C4930',
+      '#083120',
+      '#041810',
     ],
   },
   primaryShade: { light: 5, dark: 4 },
   fontFamily: 'Inter, system-ui, sans-serif',
   defaultRadius: 'md',
   components: {
-    Button: {
-      defaultProps: { radius: 'md' },
-    },
-    TextInput: {
-      defaultProps: { radius: 'md' },
-    },
-    Select: {
-      defaultProps: { radius: 'md' },
-    },
+    Button: { defaultProps: { radius: 'md' } },
+    TextInput: { defaultProps: { radius: 'md' } },
+    Select: { defaultProps: { radius: 'md' } },
   },
 });
 

@@ -113,7 +113,7 @@ describe('AuthProvider — actions', () => {
   });
 
   it('signUp passes first_name/last_name as metadata', async () => {
-    signUp.mockResolvedValue({ error: null });
+    signUp.mockResolvedValue({ data: { session: null }, error: null });
     const { result } = renderHook(() => useAuth(), { wrapper });
     await act(() => result.current.signUp({ email: 'a@b.com', password: 'pw', firstName: 'გელა', lastName: 'ხელაძე' }));
     expect(signUp).toHaveBeenCalledWith({

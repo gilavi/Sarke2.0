@@ -10,7 +10,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, X } from 'lucide-react';
-import { NumberInput, Textarea, TextInput } from '@mantine/core';
+import { NumberInput } from '@mantine/core';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import DeleteButton from '@/components/DeleteButton';
 import InspectionSignatures from '@/components/InspectionSignatures';
 import FieldInput from '@/components/FieldInput';
@@ -151,7 +153,7 @@ export default function CargoPlatformDetail() {
                 onSave={(v) => save({ inspectorName: v })} />
               <FieldInput label="სართული / ზონა" value={item.floorZone || null} disabled={!isDraft}
                 onSave={(v) => save({ floorZone: v })} />
-              <TextInput
+              <Input
                 label="შემოწმების თარიღი"
                 type="date"
                 disabled={!isDraft}
@@ -161,7 +163,6 @@ export default function CargoPlatformDetail() {
                   if (v !== (item.inspectionDate ? item.inspectionDate.slice(0, 10) : null))
                     save({ inspectionDate: v });
                 }}
-                radius="md"
               />
             </CardContent>
           </Card>
@@ -191,7 +192,6 @@ export default function CargoPlatformDetail() {
                   const v = e.target.value ? parseFloat(e.target.value) : null;
                   if (v !== item.platformLength) save({ platformLength: v });
                 }}
-                radius="md"
                 hideControls
               />
               <NumberInput
@@ -203,7 +203,6 @@ export default function CargoPlatformDetail() {
                   const v = e.target.value ? parseFloat(e.target.value) : null;
                   if (v !== item.platformWidth) save({ platformWidth: v });
                 }}
-                radius="md"
                 hideControls
               />
               <div className="sm:col-span-2">
@@ -267,12 +266,11 @@ export default function CargoPlatformDetail() {
                         )}
                       </div>
                       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                        <TextInput
+                        <Input
                           disabled={!isDraft}
                           defaultValue={row.name}
                           onBlur={(e) => { if (e.target.value !== row.name) patchCargoRow(row.id, { name: e.target.value }); }}
                           placeholder="ტვირთის დასახელება"
-                          radius="md"
                         />
                         <NumberInput
                           disabled={!isDraft}
@@ -283,7 +281,6 @@ export default function CargoPlatformDetail() {
                             if (v !== row.total_weight_kg) patchCargoRow(row.id, { total_weight_kg: v });
                           }}
                           placeholder="საერთო წონა (კგ)"
-                          radius="md"
                           hideControls
                         />
                       </div>
@@ -336,8 +333,8 @@ export default function CargoPlatformDetail() {
                             </div>
                           </div>
                           {result === 'fix' && isDraft && (
-                            <TextInput
-                              classNames={{ input: 'mt-2 text-xs' }}
+                            <Input
+                              className="mt-2 text-xs"
                               disabled={!isDraft}
                               defaultValue={state?.comment ?? ''}
                               onBlur={(e) => {
@@ -345,7 +342,6 @@ export default function CargoPlatformDetail() {
                                 if (v !== (state?.comment ?? null)) patchItem(ci.id, { comment: v });
                               }}
                               placeholder="შენიშვნა / გამოსასწ. აღწერა"
-                              radius="md"
                             />
                           )}
                           {result === 'fix' && !isDraft && state?.comment && (
@@ -407,8 +403,6 @@ export default function CargoPlatformDetail() {
                       if (v !== item.verdictComment) save({ verdictComment: v });
                     }}
                     placeholder="გამოსასწ. ჩამონათვალი ან დასკვნის ტექსტი"
-                    radius="md"
-                    autosize={false}
                   />
                 ) : (
                   <p className="text-sm text-neutral-700">{item.verdictComment || '—'}</p>

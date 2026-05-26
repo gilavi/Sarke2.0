@@ -1,6 +1,8 @@
 import { supabase } from '@/lib/supabase';
 import { STORAGE_BUCKETS, signedUrl, upload, removeObjects } from '@/lib/db/storage';
-import type { TablesInsert, TablesUpdate } from '@/types/database';
+import type { Tables, TablesInsert, TablesUpdate } from '@/types/database';
+
+export type IncidentRow = Tables<'incidents'>;
 
 export type IncidentType = 'minor' | 'severe' | 'fatal' | 'mass' | 'nearmiss';
 export type IncidentStatus = 'draft' | 'completed';

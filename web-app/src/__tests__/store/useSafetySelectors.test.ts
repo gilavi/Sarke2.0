@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useAppStore } from '@/store/safetyStore';
+import { useSafetyStore } from '@/store/safetyStore';
 import {
   useSelectedPartId,
   useHoveredPartId,
@@ -10,7 +10,7 @@ import {
 } from '@/store/useSafetySelectors';
 
 beforeEach(() => {
-  useAppStore.setState({ selectedPartId: null, hoveredPartId: null, isPanelOpen: true, cameraTarget: null });
+  useSafetyStore.setState({ selectedPartId: null, hoveredPartId: null, isPanelOpen: true, cameraTarget: null });
 });
 
 describe('safety selectors', () => {
@@ -30,7 +30,7 @@ describe('safety selectors', () => {
 
   it('selectors react to store updates', () => {
     const { result } = renderHook(() => useSelectedPartId());
-    act(() => useAppStore.getState().setSelectedPart('crane-boom'));
+    act(() => useSafetyStore.getState().setSelectedPart('crane-boom'));
     expect(result.current).toBe('crane-boom');
   });
 });

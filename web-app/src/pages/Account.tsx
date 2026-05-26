@@ -2,7 +2,8 @@ import { useEffect, useState, type ComponentType } from 'react';
 type LucideIcon = ComponentType<import('lucide-react').LucideProps>;
 import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
-import { Modal, TextInput, PasswordInput } from '@mantine/core';
+import { Modal, PasswordInput } from '@mantine/core';
+import { Input } from '@/components/ui/input';
 import {
   Receipt, User, KeyRound, Award, ScrollText,
   ChevronRight, Moon, Sun, Check, CalendarDays, Infinity as InfinityIcon, ArrowRight, AlertTriangle,
@@ -72,10 +73,10 @@ function ProfileModal({ open, onClose }: { open: boolean; onClose: () => void })
     <AccountModal open={open} onClose={onClose} title="პროფილი">
       <form onSubmit={(e) => { e.preventDefault(); if (firstName.trim() && lastName.trim()) mutation.mutate(); }} className="space-y-3">
         <div className="grid grid-cols-2 gap-3">
-          <TextInput label="სახელი" value={firstName} onChange={(e) => setFirstName(e.target.value)} required radius="md" />
-          <TextInput label="გვარი" value={lastName} onChange={(e) => setLastName(e.target.value)} required radius="md" />
+          <Input label="სახელი" value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
+          <Input label="გვარი" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
         </div>
-        <TextInput label="ელ-ფოსტა" value={user?.email ?? ''} disabled radius="md" />
+        <Input label="ელ-ფოსტა" value={user?.email ?? ''} disabled />
         {mutation.error && <p className="text-sm text-red-600">{mutation.error instanceof Error ? mutation.error.message : String(mutation.error)}</p>}
         {info && <p className="flex items-center gap-1 text-sm text-brand-600"><Check size={14} />{info}</p>}
         <div className="flex justify-end gap-2 pt-1">

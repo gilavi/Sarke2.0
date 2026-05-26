@@ -2,7 +2,7 @@ import { useRef, useState, useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Upload, ArrowLeft } from 'lucide-react';
-import { TextInput } from '@mantine/core';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { getProject, updateProject, updateProjectLogo } from '@/lib/data/projects';
@@ -135,18 +135,16 @@ export default function EditProject() {
               </div>
             </div>
 
-            <TextInput
+            <Input
               label="პროექტის სახელი *"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              radius="md"
             />
-            <TextInput
+            <Input
               label="კომპანია"
               value={companyName}
               onChange={(e) => setCompanyName(e.target.value)}
-              radius="md"
             />
             <div className="space-y-1">
               <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">მისამართი</p>
@@ -162,12 +160,11 @@ export default function EditProject() {
                 initialLng={project.longitude}
               />
             </div>
-            <TextInput
+            <Input
               label="ტელეფონი"
               type="tel"
               value={contactPhone}
               onChange={(e) => setContactPhone(e.target.value)}
-              radius="md"
             />
 
             {mutation.error && (

@@ -9,7 +9,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { NumberInput, Textarea, TextInput } from '@mantine/core';
+import { NumberInput } from '@mantine/core';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import DeleteButton from '@/components/DeleteButton';
 import InspectionSignatures from '@/components/InspectionSignatures';
 import SignatureCanvas from '@/components/SignatureCanvas';
@@ -246,7 +248,7 @@ export default function ExcavatorDetail() {
               <FieldInput label="დეპარტამენტი" value={effectiveItem.department} disabled={!isDraft} onSave={(v) => d.save({ department: v })} />
               <FieldInput label="ინსპექტორი" value={effectiveItem.inspectorName} disabled={!isDraft} onSave={(v) => d.save({ inspectorName: v })} />
               <FieldInput label="თანამდებობა" value={effectiveItem.inspectorPosition} disabled={!isDraft} onSave={(v) => d.save({ inspectorPosition: v })} />
-              <TextInput
+              <Input
                 label="შემოწმების თარიღი"
                 type="date"
                 disabled={!isDraft}
@@ -256,9 +258,8 @@ export default function ExcavatorDetail() {
                   if (v !== (effectiveItem.inspectionDate ? effectiveItem.inspectionDate.slice(0, 10) : null))
                     d.save({ inspectionDate: v });
                 }}
-                radius="md"
               />
-              <TextInput
+              <Input
                 label="წინა შემოწმების თარიღი"
                 type="date"
                 disabled={!isDraft}
@@ -268,7 +269,6 @@ export default function ExcavatorDetail() {
                   if (v !== (effectiveItem.lastInspectionDate ? effectiveItem.lastInspectionDate.slice(0, 10) : null))
                     d.save({ lastInspectionDate: v });
                 }}
-                radius="md"
               />
               <NumberInput
                 label="მუშა საათები"
@@ -278,7 +278,6 @@ export default function ExcavatorDetail() {
                   const v = e.target.value === '' ? null : Number(e.target.value);
                   if (v !== effectiveItem.motoHours) d.save({ motoHours: v });
                 }}
-                radius="md"
                 hideControls
               />
             </CardContent>
@@ -362,7 +361,7 @@ export default function ExcavatorDetail() {
                             onSelect={(a) => { if (isDraft) patchMaintenance(m.id, { answer: a === st.answer ? null : (a as 'yes' | 'no') }); }}
                           />
                         </div>
-                        <TextInput
+                        <Input
                           type="date"
                           disabled={!isDraft}
                           defaultValue={st.date ?? ''}
@@ -370,8 +369,7 @@ export default function ExcavatorDetail() {
                             const v = e.target.value || null;
                             if (v !== (st.date ?? null)) patchMaintenance(m.id, { date: v });
                           }}
-                          classNames={{ input: 'max-w-[180px]' }}
-                          radius="md"
+                          className="max-w-[180px]"
                         />
                       </div>
                     </li>
@@ -464,8 +462,6 @@ export default function ExcavatorDetail() {
                       const v = e.target.value || null;
                       if (v !== effectiveItem.notes) d.save({ notes: v });
                     }}
-                    radius="md"
-                    autosize={false}
                   />
                 </>
               ) : (

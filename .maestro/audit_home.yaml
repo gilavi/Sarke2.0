@@ -1,0 +1,12 @@
+appId: ge.sarke.app
+---
+- launchApp
+- assertVisible: "საქმო მშვიდობისა"
+- takeScreenshot: home_screen
+- tapOn: "პროექტები"
+- takeScreenshot: projects_list
+- tapOn:
+    index: 0
+- takeScreenshot: project_screen
+- scrollDown
+- takeScreenshot: project_screen_scrolled

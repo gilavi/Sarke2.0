@@ -6,7 +6,7 @@
  *
  * Used by the bobcat / excavator / cargo-platform checklists.
  */
-import { TextInput } from '@mantine/core';
+import { Input } from '@/components/ui/input';
 import PhotoUploadZone from '@/components/PhotoUploadZone';
 import { SegmentedControl } from '@/components/wizard';
 import type { ResultOption, ResultTone } from './ResultPills';
@@ -75,7 +75,7 @@ export function ChecklistItemRow<V extends string>({
 
       {showDetails && (
         <div className="mt-3 space-y-2">
-          <TextInput
+          <Input
             disabled={disabled}
             defaultValue={comment ?? ''}
             onBlur={(e) => {
@@ -83,8 +83,7 @@ export function ChecklistItemRow<V extends string>({
               if (v !== (comment ?? null)) onComment(v);
             }}
             placeholder="კომენტარი"
-            classNames={{ input: 'text-xs' }}
-            radius="md"
+            className="text-xs"
           />
           <PhotoUploadZone
             paths={photoPaths ?? []}

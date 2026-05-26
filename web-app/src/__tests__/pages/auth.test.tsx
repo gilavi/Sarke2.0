@@ -58,7 +58,7 @@ describe('Login', () => {
 
 describe('Register', () => {
   it('shows a password-strength meter and signs up', async () => {
-    auth.signUp.mockResolvedValue(undefined);
+    auth.signUp.mockResolvedValue({ needsEmailConfirmation: true });
     const { container } = renderPage(<Register />, '/register');
 
     fill(container, 'first', 'გელა');

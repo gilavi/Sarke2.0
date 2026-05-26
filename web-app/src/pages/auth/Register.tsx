@@ -3,7 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { TextInput, PasswordInput } from '@mantine/core';
+import { PasswordInput } from '@mantine/core';
+import { Input } from '@/components/ui/input';
 import { AuthLayout } from './AuthLayout';
 
 const getPasswordStrength = (password: string): { score: number; label: string; color: string } => {
@@ -43,14 +44,18 @@ export default function Register() {
     setInfo(null);
     setBusy(true);
     try {
-      await signUp({
+      const { needsEmailConfirmation } = await signUp({
         email: email.trim(),
         password,
         firstName: firstName.trim(),
         lastName: lastName.trim(),
       });
-      setInfo('შემოწმეთ ელ-ფოსტა — გამოვაგზავნეთ დადასტურების კოდი.');
-      navigate(`/verify-email?email=${encodeURIComponent(email.trim())}`);
+      if (needsEmailConfirmation) {
+        setInfo('შემოწმეთ ელ-ფოსტა — გამოვაგზავნეთ დადასტურების კოდი.');
+        navigate(`/verify-email?email=${encodeURIComponent(email.trim())}`);
+      } else {
+        navigate('/');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'რეგისტრაცია ვერ მოხერხდა');
     } finally {
@@ -68,24 +73,22 @@ export default function Register() {
         <CardContent>
           <form onSubmit={onSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
-              <TextInput
+              <Input
                 id="first"
                 label="სახელი"
                 required
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
-                radius="md"
               />
-              <TextInput
+              <Input
                 id="last"
                 label="გვარი"
                 required
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
-                radius="md"
               />
             </div>
-            <TextInput
+            <Input
               id="email"
               label="ელ-ფოსტა"
               type="email"
@@ -93,7 +96,6 @@ export default function Register() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              radius="md"
             />
             <div className="space-y-1">
               <PasswordInput

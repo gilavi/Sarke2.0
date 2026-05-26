@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Textarea } from '@mantine/core';
+import { Textarea } from '@/components/ui/textarea';
 import { SegmentedControl } from '@/components/wizard/SegmentedControl';
 
 /**
@@ -75,8 +75,6 @@ export function HarnessChecklist({
               onChange={(e) => onComment(activeRow, e.target.value)}
               placeholder="შეიყვანეთ კომენტარი..."
               rows={3}
-              autosize={false}
-              radius="md"
             />
           </div>
         )}

@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import type { TablesInsert, TablesUpdate } from '@/types/database';
+import type { Tables, TablesInsert, TablesUpdate } from '@/types/database';
 
 export type BriefingStatus = 'draft' | 'completed' | string;
 
@@ -20,16 +20,7 @@ export interface Briefing {
   createdAt: string;
 }
 
-interface DbRow {
-  id: string;
-  project_id: string;
-  date_time: string;
-  topics: string[] | null;
-  participants: BriefingParticipant[] | null;
-  inspector_name: string | null;
-  status: string;
-  created_at: string;
-}
+type DbRow = Pick<Tables<'briefings'>, 'id' | 'project_id' | 'date_time' | 'topics' | 'participants' | 'inspector_name' | 'status' | 'created_at'>;
 
 function toModel(r: DbRow): Briefing {
   return {
@@ -37,7 +28,7 @@ function toModel(r: DbRow): Briefing {
     projectId: r.project_id,
     dateTime: r.date_time,
     topics: r.topics ?? [],
-    participants: r.participants ?? [],
+    participants: (r.participants ?? []) as unknown as BriefingParticipant[],
     inspectorName: r.inspector_name ?? '',
     status: r.status,
     createdAt: r.created_at,

@@ -1,9 +1,13 @@
-// Project-selection entry for equipment inspections started without a project
-// (i.e. from Home). Renders the project picker as the first full-screen step,
-// then creates the inspection for the given category + template and replaces
-// into the real inspection flow. Inspections launched from a project screen
-// skip this — they are created with a project already attached.
-import { useState } from 'react';
+// Project-selection entry for inspections started without a project (i.e. from
+// Home). Renders the project picker as the first full-screen step, then creates
+// the inspection for the given template and replaces into the real inspection
+// flow. Inspections launched from a project screen skip this — they are created
+// with a project already attached.
+//
+// Handles every template category uniformly: equipment categories dispatch via
+// `inspectionRegistry`; anything else (xaracho, mobile_scaffold, harness, …)
+// falls back to the generic `questionnairesApi.create`.
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -12,36 +16,28 @@ import { InspectionShell, ProjectPickerStep } from '../../components/inspection-
 import { ProjectPickerSheet } from '../../components/home/ProjectPickerSheet';
 import { routeForInspection } from '../../lib/inspectionRouting';
 import { inspectionRegistry } from '../../lib/inspection/registry';
+import { questionnairesApi } from '../../lib/services';
 import { useProjects, useTemplates } from '../../lib/apiHooks';
+import { inspectionDisplayName } from '../../lib/shared/documentName';
 import { useTheme } from '../../lib/theme';
 import { useToast } from '../../lib/toast';
 import { friendlyError } from '../../lib/errorMap';
 import { a11y } from '../../lib/accessibility';
 import type { Project } from '../../types/models';
 
-type Cat = 'excavator' | 'bobcat' | 'general_equipment' | 'cargo_platform';
-
-// In-flow header title — matches each type's own screen.
-const TITLE: Record<Cat, string> = {
-  excavator: 'ექსკავატორი',
-  bobcat: 'ციცხვიანი დამტვირთველი',
-  general_equipment: 'ტექ. აღჭ.',
-  cargo_platform: 'პლატფორმის შემოწმება',
-};
-
-// Total steps of each flow (including this project step) — drives the progress bar.
-const TOTAL: Record<Cat, number> = {
-  excavator: 5,
-  bobcat: 5,
-  general_equipment: 4,
-  cargo_platform: 5,
-};
+// Total steps shown in the progress bar before we enter the real wizard. The
+// registry entries each have their own step count; for non-registry generic
+// templates 4 is the post-creation wizard's effective length (info → photos →
+// questions → finish), so step 0 + 3 wizard steps + finish ≈ 4. The real
+// wizard's progress bar re-anchors on mount, so this only matters cosmetically
+// for the brief moment between "next" and the route replace.
+const DEFAULT_TOTAL_STEPS = 5;
 
 export default function NewInspectionProjectStep() {
   const { theme } = useTheme();
   const router = useRouter();
   const toast = useToast();
-  const { category, templateId } = useLocalSearchParams<{ category: string; templateId: string }>();
+  const { category, templateId } = useLocalSearchParams<{ category?: string; templateId: string }>();
   const { data: projects = [] } = useProjects();
   const { data: templates = [] } = useTemplates();
 
@@ -49,20 +45,38 @@ export default function NewInspectionProjectStep() {
   const [creating, setCreating] = useState(false);
   const [sheetVisible, setSheetVisible] = useState(false);
 
-  const cat = category as Cat;
-  const entry = inspectionRegistry[cat];
+  const template = useMemo(
+    () => templates.find(t => t.id === templateId) ?? null,
+    [templates, templateId],
+  );
 
-  if (!entry || !templateId) {
-    router.back();
-    return null;
-  }
+  // category from query param takes precedence; fall back to the template's own
+  // category. Either may be missing for generic templates.
+  const resolvedCategory: string | null =
+    (category && category.length > 0 ? category : template?.category) ?? null;
+  const registryEntry = resolvedCategory ? inspectionRegistry[resolvedCategory] : undefined;
+
+  // Defer the redirect into an effect — calling router.back() during render
+  // can re-fire on every render and looks like a freeze (the user gets bounced
+  // back to wherever they came from before any of their state can persist).
+  useEffect(() => {
+    if (!templateId) router.back();
+  }, [templateId, router]);
+
+  if (!templateId) return null;
+
+  const title = template?.name
+    ? inspectionDisplayName(template.name)
+    : 'შემოწმება';
 
   const onNext = async () => {
     if (!selected || creating) return;
     setCreating(true);
     try {
-      const created = await entry.create({ projectId: selected.id, templateId });
-      router.replace(routeForInspection(cat, created.id, false) as any);
+      const created = registryEntry
+        ? await registryEntry.create({ projectId: selected.id, templateId })
+        : await questionnairesApi.create({ projectId: selected.id, templateId });
+      router.replace(routeForInspection(resolvedCategory, created.id, false) as any);
     } catch (e) {
       toast.error(friendlyError(e, 'ვერ შეიქმნა'));
       setCreating(false);
@@ -72,10 +86,10 @@ export default function NewInspectionProjectStep() {
   return (
     <>
       <InspectionShell
-        title={TITLE[cat]}
+        title={title}
         projectName={selected ? (selected.company_name || selected.name) : ''}
         step={0}
-        totalSteps={TOTAL[cat]}
+        totalSteps={DEFAULT_TOTAL_STEPS}
         direction="next"
         animate={false}
         canGoNext={!!selected}

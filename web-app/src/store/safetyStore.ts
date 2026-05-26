@@ -12,7 +12,7 @@ interface SafetyState {
   setCameraTarget: (target: [number, number, number] | null) => void;
 }
 
-export const useAppStore = create<SafetyState>((set) => ({
+export const useSafetyStore = create<SafetyState>((set) => ({
   selectedPartId: null,
   hoveredPartId: null,
   isPanelOpen: true,

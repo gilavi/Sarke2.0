@@ -15,6 +15,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import type { Database } from '@/types/database';
 
 /** Message shown by auth-guarded creates. Matches the existing literal. */
 export const NOT_AUTHENTICATED = 'არაავტორიზებული';
@@ -35,7 +36,7 @@ export interface Repository<TModel, TCreate, TPatch> {
 
 export interface RepositoryConfig<TModel, TRow, TCreate, TPatch> {
   /** Postgres table name, e.g. 'bobcat_inspections'. */
-  table: string;
+  table: keyof Database['public']['Tables'];
   /** Explicit column select list (a Postgrest select string). */
   columns: string;
   /** Map a DB row to the camelCase domain model. */

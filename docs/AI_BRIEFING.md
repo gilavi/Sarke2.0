@@ -1,7 +1,7 @@
 # AI Agent Briefing — Sarke 2.0
 
 **Purpose:** Quick reference for AI agents working on this codebase  
-**Updated:** 2026-05-26 | Branch: `main`  
+**Updated:** 2026-05-27 | Branch: `main`  
 **Full context:** See [`ONBOARDING.md`](../ONBOARDING.md) in the repo root for the complete guide.
 
 ---
@@ -35,7 +35,7 @@ Mobile:
 
 Web-App (dashboard):
 ├─ Vite + React 19 + TypeScript + Tailwind CSS
-├─ Mantine v9 + Radix UI (shadcn-style primitives), React Query, React Router v6 HashRouter
+├─ Radix UI (shadcn-style primitives), React Query, React Router v6 HashRouter
 ├─ three.js + @react-three/fiber (3D SafetyGuide), Leaflet (maps), Recharts
 └─ Supabase JS client
 
@@ -222,6 +222,8 @@ npm run lint        # tsc --noEmit + check-primitives.mjs
 | Adding a new order type | No migration needed — `document_type` is plain text, `form_data` is jsonb |
 | Forgetting signature base64 prefix | Order signatures strip `data:image/png;base64,` before storing; re-add it for `<img src>` |
 | Typecheck failing | Expected. See CLAUDE.md. Note new failures but don't block on them. |
+| Adding page transitions in `AppShell` | Keep `<AnimatePresence mode="wait" initial={false}>`. Never branch with two `motion.div`s sharing the same `key` — exits never reconcile and the DOM accumulates one ghost copy per navigation (BUG-20, fixed 2026-05-26). One `motion.div` per `AnimatePresence`; vary props with conditionals, not separate elements. |
+| Scaffold vs harness in inspections-table rows | The `inspections` table holds 4 categories (`harness`, `xaracho`, `mobile_scaffold`, `mobile_scaffold_n3`). Always read `template[0]?.category` from the joined `template:templates(category)` to set the row type — hardcoding `'harness'` (or `'inspection'`) gives every scaffold row a harness badge. Pattern in `History.tsx`, `Inspections.tsx`, `InspectionsSection.tsx`, `ProjectActivityWidget.tsx`. |
 
 ---
 

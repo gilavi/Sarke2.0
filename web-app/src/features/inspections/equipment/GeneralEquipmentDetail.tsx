@@ -10,7 +10,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { Textarea, TextInput } from '@mantine/core';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import DeleteButton from '@/components/DeleteButton';
 import InspectionSignatures from '@/components/InspectionSignatures';
 import SignatureCanvas from '@/components/SignatureCanvas';
@@ -203,7 +204,7 @@ export default function GeneralEquipmentDetail() {
               <FieldInput label="მისამართი" value={effectiveItem.address} disabled={!isDraft} onSave={(v) => d.save({ address: v })} />
               <FieldInput label="საქმიანობის ტიპი" value={effectiveItem.activityType} disabled={!isDraft} onSave={(v) => d.save({ activityType: v })} />
               <FieldInput label="აქტის ნომერი" value={effectiveItem.actNumber} disabled={!isDraft} onSave={(v) => d.save({ actNumber: v })} />
-              <TextInput
+              <Input
                 label="შემოწმების თარიღი"
                 type="date"
                 disabled={!isDraft}
@@ -213,7 +214,6 @@ export default function GeneralEquipmentDetail() {
                   if (v !== (effectiveItem.inspectionDate ? effectiveItem.inspectionDate.slice(0, 10) : null))
                     d.save({ inspectionDate: v });
                 }}
-                radius="md"
               />
               <div className="space-y-1">
                 <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">შემოწმების სახეობა</p>
@@ -267,26 +267,23 @@ export default function GeneralEquipmentDetail() {
                         )}
                       </div>
                       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                        <TextInput
+                        <Input
                           disabled={!isDraft}
                           defaultValue={row.name}
                           onBlur={(e) => { if (e.target.value !== row.name) patchRow(row.id, { name: e.target.value }); }}
                           placeholder="დასახელება"
-                          radius="md"
                         />
-                        <TextInput
+                        <Input
                           disabled={!isDraft}
                           defaultValue={row.model}
                           onBlur={(e) => { if (e.target.value !== row.model) patchRow(row.id, { model: e.target.value }); }}
                           placeholder="მოდელი"
-                          radius="md"
                         />
-                        <TextInput
+                        <Input
                           disabled={!isDraft}
                           defaultValue={row.serialNumber}
                           onBlur={(e) => { if (e.target.value !== row.serialNumber) patchRow(row.id, { serialNumber: e.target.value }); }}
                           placeholder="სერ. ნომერი"
-                          radius="md"
                         />
                       </div>
                       <div className="mt-2">
@@ -297,13 +294,12 @@ export default function GeneralEquipmentDetail() {
                           onSelect={(c) => { if (isDraft) patchRow(row.id, { condition: c === row.condition ? null : (c as GECondition) }); }}
                         />
                       </div>
-                      <TextInput
+                      <Input
                         disabled={!isDraft}
                         defaultValue={row.note}
                         onBlur={(e) => { if (e.target.value !== row.note) patchRow(row.id, { note: e.target.value }); }}
                         placeholder="შენიშვნა"
-                        classNames={{ input: 'mt-2 text-xs' }}
-                        radius="md"
+                        className="mt-2 text-xs"
                       />
                       <div className="mt-2">
                         <PhotoUploadZone
@@ -418,8 +414,6 @@ export default function GeneralEquipmentDetail() {
                     if (v !== effectiveItem.conclusion) d.save({ conclusion: v });
                   }}
                   placeholder="დასკვნის ტექსტი"
-                  radius="md"
-                  autosize={false}
                 />
               ) : (
                 <p className="text-sm text-neutral-700">{effectiveItem.conclusion || '—'}</p>

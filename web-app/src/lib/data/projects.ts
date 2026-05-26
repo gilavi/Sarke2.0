@@ -1,6 +1,8 @@
 import { supabase } from '@/lib/supabase';
 import { STORAGE_BUCKETS, removeObjects } from '@/lib/db/storage';
-import type { Json, TablesInsert } from '@/types/database';
+import type { Json, Tables, TablesInsert } from '@/types/database';
+
+export type ProjectRow = Tables<'projects'>;
 
 export interface CrewMember {
   id: string;

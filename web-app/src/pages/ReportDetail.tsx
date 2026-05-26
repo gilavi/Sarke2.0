@@ -7,7 +7,8 @@ import { toast } from 'sonner';
 import DeleteButton from '@/components/DeleteButton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Textarea, TextInput } from '@mantine/core';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import PhotoGallery from '@/components/PhotoGallery';
 import {
   addReportSlide,
@@ -229,12 +230,11 @@ export default function ReportDetail() {
                   if (!addSlideMutation.isPending) addSlideMutation.mutate();
                 }}
               >
-                <TextInput
+                <Input
                   id="slide-title"
                   value={slideTitle}
                   onChange={(e) => setSlideTitle(e.target.value)}
                   placeholder="მაგ: ხარაჩოს ბოძი — დაუცველი"
-                  radius="md"
                 />
                 <Textarea
                   id="slide-desc"
@@ -242,8 +242,6 @@ export default function ReportDetail() {
                   rows={3}
                   value={slideDescription}
                   onChange={(e) => setSlideDescription(e.target.value)}
-                  radius="md"
-                  autosize={false}
                 />
                 <div className="space-y-1">
                   <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">ფოტო (არასავალდებულო)</p>
@@ -300,16 +298,15 @@ export default function ReportDetail() {
                 <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
                   <div className="flex-1 pr-2">
                     {item.status === 'draft' ? (
-                      <TextInput
+                      <Input
                         defaultValue={s.title}
                         placeholder={`სლაიდი ${idx + 1}`}
-                        classNames={{ input: 'font-semibold' }}
+                        className="font-semibold"
                         onBlur={(e) => {
                           const v = e.target.value.trim();
                           if (v !== s.title)
                             updateSlideMutation.mutate({ slideId: s.id, patch: { title: v } });
                         }}
-                        radius="md"
                       />
                     ) : (
                       <CardTitle className="text-base">
@@ -348,8 +345,6 @@ export default function ReportDetail() {
                       rows={2}
                       defaultValue={s.description}
                       placeholder="აღწერა"
-                      radius="md"
-                      autosize={false}
                       onBlur={(e) => {
                         const v = e.target.value;
                         if (v !== s.description)
