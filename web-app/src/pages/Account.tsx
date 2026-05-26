@@ -327,6 +327,9 @@ export default function Account() {
             <p className="text-xs text-neutral-500 dark:text-neutral-400">{isDark ? 'მუქი რეჟიმი' : 'ნათელი რეჟიმი'}</p>
           </div>
           <button
+            type="button"
+            role="switch"
+            aria-checked={isDark}
             onClick={toggleMode}
             aria-label="გარეგნობის შეცვლა"
             className={cn(

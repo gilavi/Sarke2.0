@@ -1,12 +1,18 @@
 import type { SafetyTip } from '@/types/safety';
 
+// TODO(localisation): titles + shortDescription have been translated to Georgian
+// since they appear in the always-visible safety panel list. The detailed
+// fullDescription / checklist / regulations fields still reference US
+// (OSHA/ANSI/ASME/ACI) standards in English — a SH&E specialist should pass
+// over them, either translating to Georgian or replacing with Georgian
+// equivalents from matsne.gov.ge (mirrored in web-app/src/lib/data/regulations.ts).
 export const safetyTips: Record<string, SafetyTip> = {
   foundation: {
     id: 'foundation',
-    title: 'Foundation & Excavation Safety',
+    title: 'ფუნდამენტისა და ექსკავაციის უსაფრთხოება',
     category: 'hazard',
     severity: 'critical',
-    shortDescription: 'Excavation work presents cave-in, falling, and atmospheric hazards requiring strict protective systems.',
+    shortDescription: 'ექსკავაციის სამუშაოები შეიცავს ჩავარდნის, დაცემისა და ატმოსფერული საფრთხეებს, რომლებიც მკაცრ დამცავ სისტემებს მოითხოვს.',
     fullDescription: 'Excavation and foundation work is among the most hazardous construction operations. Cave-ins pose the greatest risk and are much more likely than other excavation-related accidents to result in worker fatalities. All excavations require protective systems when depths reach 5 feet (1.5m) or greater, and must be inspected daily by a competent person before work begins.',
     checklist: [
       'Inspect excavation daily and after rainstorms',
@@ -25,10 +31,10 @@ export const safetyTips: Record<string, SafetyTip> = {
   },
   scaffolding: {
     id: 'scaffolding',
-    title: 'Scaffolding Safety Requirements',
+    title: 'ხარაჩოს უსაფრთხოების მოთხოვნები',
     category: 'compliance',
     severity: 'high',
-    shortDescription: 'Scaffolding must support intended loads with proper access, guardrails, and plank-grade platforms.',
+    shortDescription: 'ხარაჩომ უნდა გაუძლოს დაგეგმილ დატვირთვას, საჭიროა სათანადო წვდომა, მოაჯირები და სტანდარტული ფიცრის პლატფორმები.',
     fullDescription: 'Scaffolds are temporary elevated work platforms that must be designed, erected, and dismantled under the supervision of a competent person. All scaffolding must be capable of supporting its own weight plus four times the maximum intended load without failure. Workers on platforms 10 feet or higher must have fall protection.',
     checklist: [
       'Inspect scaffold before each shift and after any changes',
@@ -47,10 +53,10 @@ export const safetyTips: Record<string, SafetyTip> = {
   },
   crane: {
     id: 'crane',
-    title: 'Crane & Rigging Operations',
+    title: 'ამწე და ტაკელაჟის ოპერაციები',
     category: 'hazard',
     severity: 'critical',
-    shortDescription: 'Crane operations require certified operators, load capacity verification, and exclusion zones for personnel.',
+    shortDescription: 'ამწეს ექსპლუატაცია მოითხოვს სერტიფიცირებულ ოპერატორებს, დატვირთვის ტევადობის შემოწმებას და პერსონალისთვის უსაფრთხო ზონების შემოღობვას.',
     fullDescription: 'Crane-related incidents are among the leading causes of fatal construction accidents. All crane operators must be certified and rigging work must be supervised by a qualified rigger. Critical lift plans are required for loads exceeding 75% of capacity, lifts near power lines, or multi-crane picks.',
     checklist: [
       'Verify operator certification and training records',
@@ -69,10 +75,10 @@ export const safetyTips: Record<string, SafetyTip> = {
   },
   structure: {
     id: 'structure',
-    title: 'Structural Steel & Concrete',
+    title: 'ლითონის კონსტრუქცია და ბეტონი',
     category: 'procedure',
     severity: 'high',
-    shortDescription: 'Structural work requires fall protection above 6 feet, controlled access zones, and proper sequencing.',
+    shortDescription: 'სამშენებლო კონსტრუქციული სამუშაოები 1.8 მ-ზე მაღლა მოითხოვს დაცემისგან დაცვას, კონტროლირებად ზონებსა და სამუშაოთა სწორ თანმიმდევრობას.',
     fullDescription: 'Structural steel erection and concrete work involve working at height with heavy materials. Fall protection is required at 6 feet for steel erection (lower than the general 10-foot threshold). Concrete formwork must be designed to withstand all loads during placement, curing, and stripping operations.',
     checklist: [
       'Install safety nets or personal fall arrest systems for steel work',
@@ -92,10 +98,10 @@ export const safetyTips: Record<string, SafetyTip> = {
   },
   barriers: {
     id: 'barriers',
-    title: 'Safety Barriers & Edge Protection',
+    title: 'უსაფრთხოების ბარიერები და კიდის დაცვა',
     category: 'ppe',
     severity: 'medium',
-    shortDescription: 'Perimeter barriers, guardrails, and toe boards prevent falls and falling object hazards.',
+    shortDescription: 'პერიმეტრის ბარიერები, მოაჯირები და ფეხის ფიცრები იცავს დაცემისა და საგნების ჩამოვარდნისგან.',
     fullDescription: 'Proper edge protection is the first line of defense against fall hazards. Guardrail systems must include top rails, mid rails, and toe boards capable of withstanding specified forces. All floor openings, wall openings, and excavations require barriers or covers rated for intended traffic loads.',
     checklist: [
       'Install guardrails on all unprotected edges 6 feet or higher',
@@ -114,10 +120,10 @@ export const safetyTips: Record<string, SafetyTip> = {
   },
   ppe: {
     id: 'ppe',
-    title: 'Personal Protective Equipment (PPE)',
+    title: 'ინდივიდუალური დამცავი აღჭურვილობა (PPE)',
     category: 'ppe',
     severity: 'medium',
-    shortDescription: 'Minimum PPE includes hard hat, safety glasses, high-visibility vest, and steel-toe boots on all sites.',
+    shortDescription: 'მინიმალური PPE მოიცავს ჩაფხუტს, დამცავ სათვალეებს, მაღალი ხილვადობის ჟილეტს და ფოლადის ცხვირიან ფეხსაცმელს ნებისმიერ ობიექტზე.',
     fullDescription: 'PPE is the last line of defense in the hierarchy of controls. Employers must assess hazards and provide appropriate PPE at no cost to workers. All construction personnel must wear approved hard hats, eye protection, high-visibility clothing, and protective footwear in active work zones.',
     checklist: [
       'Verify hard hat Class E rating and inspect for cracks or damage',

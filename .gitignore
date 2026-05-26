@@ -27,3 +27,6 @@ website/.cache-loader/
 # Playwright test artefacts
 playwright-report/
 test-results/
+
+# Vitest coverage output (regenerated on `npx vitest run --coverage`)
+coverage/

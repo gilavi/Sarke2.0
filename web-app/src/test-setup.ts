@@ -25,3 +25,15 @@ class ResizeObserverMock {
   disconnect() {}
 }
 window.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
+
+// framer-motion's `whileInView` uses IntersectionObserver; jsdom doesn't ship one.
+class IntersectionObserverMock {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+  takeRecords() { return []; }
+  root = null;
+  rootMargin = '';
+  thresholds = [];
+}
+window.IntersectionObserver = IntersectionObserverMock as unknown as typeof IntersectionObserver;

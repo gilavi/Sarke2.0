@@ -16,7 +16,7 @@ import { listInspections, deleteInspection } from '@/lib/data/inspections';
 import { listBobcatInspections, deleteBobcatInspection } from '@/lib/data/bobcat';
 import { listGeneralEquipmentInspections, deleteGeneralEquipmentInspection } from '@/lib/data/generalEquipment';
 import { listExcavatorInspections, deleteExcavatorInspection } from '@/lib/data/excavator';
-import { listCargoPlatformInspections } from '@/lib/data/cargoPlatform';
+import { listCargoPlatformInspections, deleteCargoPlatformInspection } from '@/lib/data/cargoPlatform';
 import { listProjects } from '@/lib/data/projects';
 import InspectionWizard from '@/components/InspectionWizard';
 import { harnessWizardPreset } from '@/components/inspections/harnessPreset';
@@ -109,19 +109,26 @@ export default function Inspections() {
   const delBobcat = useMutation({ mutationFn: deleteBobcatInspection, onSuccess: () => qc.invalidateQueries({ queryKey: bobcatKeys.lists() }) });
   const delExcavator = useMutation({ mutationFn: deleteExcavatorInspection, onSuccess: () => qc.invalidateQueries({ queryKey: excavatorKeys.lists() }) });
   const delGeneral = useMutation({ mutationFn: deleteGeneralEquipmentInspection, onSuccess: () => qc.invalidateQueries({ queryKey: generalEquipmentKeys.lists() }) });
+  const delCargo = useMutation({ mutationFn: deleteCargoPlatformInspection, onSuccess: () => qc.invalidateQueries({ queryKey: cargoPlatformKeys.lists() }) });
 
   function confirmDelete() {
     if (!pendingDelete) return;
-    switch (pendingDelete.type) {
-      case 'harness': delInspection.mutate(pendingDelete.id); break;
-      case 'bobcat': delBobcat.mutate(pendingDelete.id); break;
-      case 'excavator': delExcavator.mutate(pendingDelete.id); break;
-      case 'general': delGeneral.mutate(pendingDelete.id); break;
+    // harness + scaffold types all live in the inspections table
+    if (['harness', 'xaracho', 'mobile_scaffold', 'mobile_scaffold_n3'].includes(pendingDelete.type)) {
+      delInspection.mutate(pendingDelete.id);
+    } else if (pendingDelete.type === 'bobcat') {
+      delBobcat.mutate(pendingDelete.id);
+    } else if (pendingDelete.type === 'excavator') {
+      delExcavator.mutate(pendingDelete.id);
+    } else if (pendingDelete.type === 'general') {
+      delGeneral.mutate(pendingDelete.id);
+    } else if (pendingDelete.type === 'cargo_platform') {
+      delCargo.mutate(pendingDelete.id);
     }
     setPendingDelete(null);
   }
 
-  const isDeleting = delInspection.isPending || delBobcat.isPending || delExcavator.isPending || delGeneral.isPending;
+  const isDeleting = delInspection.isPending || delBobcat.isPending || delExcavator.isPending || delGeneral.isPending || delCargo.isPending;
 
   const allRows: Row[] = [
     ...(genericInspections ?? []).map((i): Row => {

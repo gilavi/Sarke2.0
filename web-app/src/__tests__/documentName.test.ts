@@ -1,4 +1,9 @@
 import { describe, it, expect } from 'vitest';
+// `lib/shared/*` is the one place web-app may import from the mobile
+// codebase — it's the official shared channel introduced 2026-05-25
+// (see docs/WHATS_NEW.md and docs/primitives.md → "Document display names").
+// The general @root import ban still holds for everything else.
+// eslint-disable-next-line no-restricted-imports
 import {
   inspectionDisplayName,
   reportDisplayName,

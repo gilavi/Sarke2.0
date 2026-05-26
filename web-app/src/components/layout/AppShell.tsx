@@ -78,7 +78,13 @@ export const AppShell = memo(function AppShell({ children }: { children: ReactNo
         </a>
 
         <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto bg-neutral-50 outline-none dark:bg-neutral-950">
-          <AnimatePresence mode="wait">
+          {/*
+            No `mode="wait"`: with wait-mode the outgoing page fully fades to
+            opacity 0 BEFORE the incoming one starts, producing a ~0.5s blank
+            gap on every navigation. Default mode crossfades them concurrently
+            so content never disappears between routes.
+          */}
+          <AnimatePresence>
             {location.pathname === '/safety' ? (
               <motion.div
                 key={location.pathname}

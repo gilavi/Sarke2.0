@@ -21,6 +21,9 @@ interface ProjectMapProps {
 export default function ProjectMap({ pins, singlePin = false, className }: ProjectMapProps) {
   const navigate = useNavigate();
   const [selected, setSelected] = useState<ProjectPin | null>(null);
+  // Track the iframe's first-load so we can show a loader instead of a blank
+  // white box for the ~3-5s the Google Maps embed takes to render.
+  const [mapLoaded, setMapLoaded] = useState(false);
 
   if (pins.length === 0) {
     return (
@@ -44,7 +47,16 @@ export default function ProjectMap({ pins, singlePin = false, className }: Proje
         style={{ filter: 'grayscale(0)' }}
         loading="lazy"
         allowFullScreen
+        onLoad={() => setMapLoaded(true)}
       />
+      {!mapLoaded && (
+        <div className="absolute inset-0 z-[400] flex items-center justify-center bg-neutral-50 text-sm text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400">
+          <span className="flex items-center gap-2">
+            <span className="h-3 w-3 animate-spin rounded-full border-2 border-neutral-300 border-t-brand-500 dark:border-neutral-700 dark:border-t-brand-400" />
+            რუკა იტვირთება…
+          </span>
+        </div>
+      )}
 
       {/* Selected pin card */}
       {selected && (

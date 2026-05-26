@@ -71,10 +71,10 @@ export default function Scene3D() {
       </Canvas>
 
       <div className="sg-controls">
-        <h4>Controls</h4>
-        <div className="sg-control-row"><kbd>Click</kbd><span>Select construction part</span></div>
-        <div className="sg-control-row"><kbd>Drag</kbd><span>Rotate camera</span></div>
-        <div className="sg-control-row"><kbd>Scroll</kbd><span>Zoom in/out</span></div>
+        <h4>მართვა</h4>
+        <div className="sg-control-row"><kbd>კლიკი</kbd><span>ნაწილის არჩევა</span></div>
+        <div className="sg-control-row"><kbd>გადათრევა</kbd><span>კამერის ბრუნვა</span></div>
+        <div className="sg-control-row"><kbd>სქროლი</kbd><span>გადიდება/დაპატარავება</span></div>
       </div>
     </div>
   );

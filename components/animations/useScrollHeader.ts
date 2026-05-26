@@ -35,13 +35,16 @@ export function useScrollHeader({
 }: Options = {}) {
   const scrollY = useSharedValue(0);
 
-  let lastUpdate = 0;
+  // Shared value (not a plain closure variable): a `let` captured into a
+  // worklet then reassigned inside it triggers Reanimated's "Tried to modify
+  // key … of an object already passed to a worklet" warning on every frame.
+  const lastUpdate = useSharedValue(0);
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (e) => {
       'worklet';
       const now = Date.now();
-      if (now - lastUpdate < 16) return;
-      lastUpdate = now;
+      if (now - lastUpdate.value < 16) return;
+      lastUpdate.value = now;
       scrollY.value = e.contentOffset.y;
     },
   });

@@ -86,7 +86,7 @@ export function ProjectDetailsCard({ project, editing, onCancel, onSaved, onErro
                   id="edit-lat"
                   step={0.000001}
                   decimalScale={6}
-                  placeholder="გრძედი (Latitude)"
+                  placeholder="განედი (Latitude)"
                   value={form.latitude}
                   onChange={(v) => setForm((f) => ({ ...f, latitude: String(v) }))}
                   classNames={{ input: 'flex-1 min-w-[140px]' }}
@@ -97,7 +97,7 @@ export function ProjectDetailsCard({ project, editing, onCancel, onSaved, onErro
                   id="edit-lng"
                   step={0.000001}
                   decimalScale={6}
-                  placeholder="გრძელი (Longitude)"
+                  placeholder="გრძედი (Longitude)"
                   value={form.longitude}
                   onChange={(v) => setForm((f) => ({ ...f, longitude: String(v) }))}
                   classNames={{ input: 'flex-1 min-w-[140px]' }}

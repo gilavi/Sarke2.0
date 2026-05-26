@@ -9,11 +9,13 @@ import { listInspections } from '@/lib/data/inspections';
 import { listBobcatInspections } from '@/lib/data/bobcat';
 import { listExcavatorInspections } from '@/lib/data/excavator';
 import { listGeneralEquipmentInspections } from '@/lib/data/generalEquipment';
+import { listCargoPlatformInspections } from '@/lib/data/cargoPlatform';
 import {
   inspectionKeys,
   bobcatKeys,
   excavatorKeys,
   generalEquipmentKeys,
+  cargoPlatformKeys,
 } from '@/app/queryKeys';
 import { useInspectionName, equipmentInspectionName } from '@/lib/documentNames';
 import { routes } from '@/app/routes';
@@ -50,6 +52,10 @@ export function InspectionsSection({ projectId, onNew }: Props) {
   const generalQ = useQuery({
     queryKey: generalEquipmentKeys.list(projectId),
     queryFn: () => listGeneralEquipmentInspections(projectId),
+  });
+  const cargoQ = useQuery({
+    queryKey: cargoPlatformKeys.list(projectId),
+    queryFn: () => listCargoPlatformInspections(projectId),
   });
 
   const inspectionName = useInspectionName();
@@ -91,9 +97,17 @@ export function InspectionsSection({ projectId, onNew }: Props) {
         href: routes.generalEquipment.detail(i.id),
         date: i.createdAt,
       })),
+      ...(cargoQ.data ?? []).map((i) => ({
+        id: i.id,
+        type: 'cargo_platform',
+        label: equipmentInspectionName('cargo_platform'),
+        status: i.status,
+        href: routes.cargoPlatform.detail(i.id),
+        date: i.createdAt,
+      })),
     ];
     return merged.sort((a, b) => b.date.localeCompare(a.date));
-  }, [inspectionsQ.data, bobcatsQ.data, excavatorsQ.data, generalQ.data, inspectionName]);
+  }, [inspectionsQ.data, bobcatsQ.data, excavatorsQ.data, generalQ.data, cargoQ.data, inspectionName]);
 
   return (
     <Card className="overflow-hidden">

@@ -86,7 +86,8 @@ export async function addReportSlide(args: {
 }): Promise<Report> {
   let imagePath: string | null = null;
   if (args.photo) {
-    const ext = args.photo.name.split('.').pop() ?? 'bin';
+    const dotIdx = args.photo.name.lastIndexOf('.');
+    const ext = dotIdx > 0 ? args.photo.name.slice(dotIdx + 1) : 'bin';
     imagePath = `${args.report.project_id}/${args.report.id}/${Date.now()}_${randomId()}.${ext}`;
     await upload(STORAGE_BUCKETS.reportPhotos, imagePath, args.photo);
   }

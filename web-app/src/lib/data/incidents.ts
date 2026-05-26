@@ -69,7 +69,8 @@ export async function addIncidentPhoto(
   incident: Incident,
   file: File,
 ): Promise<string> {
-  const ext = file.name.split('.').pop() ?? 'jpg';
+  const dotIdx = file.name.lastIndexOf('.');
+  const ext = dotIdx > 0 ? file.name.slice(dotIdx + 1) : 'jpg';
   const path = `${incident.project_id}/${incident.id}_${Date.now()}.${ext}`;
   await upload(STORAGE_BUCKETS.incidentPhotos, path, file, {
     contentType: file.type || 'image/jpeg',
@@ -141,7 +142,8 @@ export async function createIncident(input: CreateIncidentInput): Promise<Incide
 
   if (input.attachments && input.attachments.length > 0) {
     for (const file of input.attachments) {
-      const ext = file.name.split('.').pop() ?? 'bin';
+      const dotIdx = file.name.lastIndexOf('.');
+      const ext = dotIdx > 0 ? file.name.slice(dotIdx + 1) : 'bin';
       const path = `${input.projectId}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
       await upload(STORAGE_BUCKETS.incidentPhotos, path, file);
       photos.push(path);
