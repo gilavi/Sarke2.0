@@ -1,6 +1,32 @@
 # What's New — Sarke 2.0 Changelog
 
-**Updated:** 2026-05-26 | Branch: `main`
+**Updated:** 2026-05-27 | Branch: `main`
+
+---
+
+## 2026-05-27 — Mobile: unified inspection-start flow + CustomDropdown reuses canonical BottomSheet
+
+### 🔴 BUG-23 — non-equipment templates froze the app after the template picker closed ([app/(tabs)/home.tsx](../app/(tabs)/home.tsx), [components/ui/CustomDropdown.tsx](../components/ui/CustomDropdown.tsx))
+
+Picking `ფასადის ხარაჩო`, `დამცავი ქამრები`, or any non-equipment template from the home dropdown left the app stuck on home — the bottom sheet closed but no navigation happened. Two compounding bugs:
+
+1. `CustomDropdown` rolled its own RN `<Modal>` (radius 20, no shadow, no gesture dismiss) instead of using the canonical `BottomSheet` from `components/BottomSheet.tsx`. Visually inconsistent with every other action sheet (radius 24, spring entrance, swipe-down dismiss).
+2. The non-equipment branch then opened a **second** `BottomSheet` via `ProjectPickerSheet` for project selection. `BottomSheet`'s global `isSheetOpen` guard silently no-ops a second sheet while the first is still animating closed (~220 ms). Result: second sheet never opens, app appears frozen.
+
+**Fix:**
+
+- `CustomDropdown` now delegates its sheet to `useBottomSheet()` — all three call sites (`home.tsx`, `more.tsx`, `features/project-detail`) get the same rounded corners, shadow, spring entrance, haptic, and gesture dismiss. `onChange` fires synchronously from the `Pressable.onPress` so `router.push` runs in a normal React event tick (firing it from the BottomSheet animation-finish callback is dropped on the floor by expo-router on iOS — that was the actual freeze, after the sheet had closed).
+- Removed the `DEFERRED_PROJECT_CATEGORIES` branch in `home.tsx`. **Every** template — equipment or not — now navigates to `/inspections/new?category=…&templateId=…` and picks its project as step 0 inside the wizard. No more nested sheets.
+- `app/inspections/new.tsx` extended to handle all template categories: dispatches through `inspectionRegistry` for equipment, falls back to `questionnairesApi.create` for generic templates (xaracho, mobile_scaffold, harness, …). Title derived from the template name via `inspectionDisplayName`. The early `router.back()` guard moved inside a `useEffect` so it can't infinite-loop during render if `useLocalSearchParams` is briefly undefined.
+- `ProjectPickerSheet` retained for incident/briefing/report quick actions and the new-project inline flow (where it still works because it's the only sheet open).
+
+**Tests:** [tests/unit/CustomDropdown.test.tsx](../tests/unit/CustomDropdown.test.tsx) — 16 cases covering trigger rendering, sheet content, synchronous-onChange invariant (the bug-fix lock-in), cancel-without-onChange, controlled mode, and per-option dispatch. Uses `@testing-library/react` against the `react-native-web` alias.
+
+**Files:**
+- [components/ui/CustomDropdown.tsx](../components/ui/CustomDropdown.tsx) — full rewrite, delegates to canonical sheet
+- [app/(tabs)/home.tsx](../app/(tabs)/home.tsx) — template `onChange` always pushes to `/inspections/new`; single-template quick action does the same; dead `pickerPreselectedTemplateId` state removed
+- [app/inspections/new.tsx](../app/inspections/new.tsx) — category-agnostic, registry-or-generic dispatch
+- [tests/unit/CustomDropdown.test.tsx](../tests/unit/CustomDropdown.test.tsx) — new
 
 ---
 

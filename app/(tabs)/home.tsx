@@ -59,7 +59,10 @@ import {
 // Equipment flows where project selection is the first in-flow step (created
 // lazily once a project is chosen — see app/inspections/new.tsx). Starting these
 // from Home routes into that screen instead of the project-picker sheet.
-const DEFERRED_PROJECT_CATEGORIES = ['excavator', 'bobcat', 'general_equipment', 'cargo_platform'];
+// All template categories now defer project selection to the first step of the
+// inspection wizard (see `app/inspections/new.tsx`). Kept as a list-less marker
+// for searchability; the previous category-gated branch was removed because
+// non-equipment templates were freezing the app via stacked BottomSheets.
 
 function stepKeyFor(category: string | null | undefined, id: string): string {
   const map: Record<string, string> = {
@@ -118,7 +121,6 @@ export default function HomeScreen() {
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pickerInitialView, setPickerInitialView] = useState<'list' | 'new'>('list');
   const [pickerAction, setPickerAction] = useState<'inspection' | 'incident' | 'briefing' | 'report'>('inspection');
-  const [pickerPreselectedTemplateId, setPickerPreselectedTemplateId] = useState<string | null>(null);
   const [tplPickerVisible, setTplPickerVisible] = useState(false);
   const [tplPickerTemplates, setTplPickerTemplates] = useState<Template[]>([]);
 
@@ -418,11 +420,12 @@ export default function HomeScreen() {
                     toast.error(t('errors.notFoundTemplate'));
                     return;
                   }
-                  setPickerAction('inspection');
-                  setPickerInitialView('list');
                   if (sysTpls.length === 1) {
-                    setPickerPreselectedTemplateId(sysTpls[0].id);
-                    setPickerVisible(true);
+                    const tpl = sysTpls[0];
+                    const qs = tpl.category
+                      ? `category=${tpl.category}&templateId=${tpl.id}`
+                      : `templateId=${tpl.id}`;
+                    router.push(`/inspections/new?${qs}` as any);
                   } else {
                     setTplPickerTemplates(sysTpls);
                     setTplPickerVisible(true);
@@ -701,13 +704,11 @@ export default function HomeScreen() {
         onChange={(id) => {
           const tpl = tplPickerTemplates.find(t => t.id === String(id));
           if (!tpl) return;
-          // Equipment flows pick their project as the first in-flow step.
-          if (tpl.category && DEFERRED_PROJECT_CATEGORIES.includes(tpl.category)) {
-            router.push(`/inspections/new?category=${tpl.category}&templateId=${tpl.id}` as any);
-          } else {
-            setPickerPreselectedTemplateId(tpl.id);
-            setPickerVisible(true);
-          }
+          // Every template picks its project as the first in-flow step.
+          const qs = tpl.category
+            ? `category=${tpl.category}&templateId=${tpl.id}`
+            : `templateId=${tpl.id}`;
+          router.push(`/inspections/new?${qs}` as any);
         }}
         open={tplPickerVisible}
         onOpenChange={setTplPickerVisible}
@@ -719,7 +720,7 @@ export default function HomeScreen() {
         action={pickerAction}
         projects={projects}
         templates={templates}
-        preselectedTemplateId={pickerPreselectedTemplateId}
+        preselectedTemplateId={null}
         onClose={() => setPickerVisible(false)}
         onCreated={async () => {
           // Invalidate caches so the new inspection/project appears immediately

@@ -1,7 +1,7 @@
 # AI Agent Briefing — Sarke 2.0
 
 **Purpose:** Quick reference for AI agents working on this codebase  
-**Updated:** 2026-05-26 | Branch: `main`  
+**Updated:** 2026-05-27 | Branch: `main`  
 **Full context:** See [`ONBOARDING.md`](../ONBOARDING.md) in the repo root for the complete guide.
 
 ---
