@@ -167,8 +167,16 @@ For reference, this is what the new module needs to match or shorten:
 
 ## Cleanup needed (Phase 2)
 
-The no-save rule is **currently broken**. The cleanup migration in Phase 2 must remove (or null out) every column listed in B2 and delete every object in the `signatures` storage bucket whose path is **not** a project-signer or qualification-certificate artifact. The destructive migration is written but **not executed from Claude Code** — the user will review and apply it manually via the Supabase Management API or `supabase db query --linked`.
+The no-save rule is **currently broken**. The destructive SQL is written at [supabase/migrations/20260526002032_remove_persisted_inspection_signatures.sql](supabase/migrations/20260526002032_remove_persisted_inspection_signatures.sql) and **must be applied manually** — Claude Code does not execute it. Steps in the migration:
+
+1. Drops the `signatures` table and the `signature_status` enum.
+2. Drops `inspector_signature` columns from `inspections`, `bobcat_inspections`, `excavator_inspections`, `general_equipment_inspections`.
+3. Drops `signatories` JSONB from the same four tables plus `cargo_platform_inspections`, and drops the older `cargo_platform_inspections.signatures` JSONB.
+4. Deletes objects from the `signatures` storage bucket whose first path segment is **not** `expert` or `project` (preserves the reusable expert signature used by incidents/briefings, and preserves project-signer witness signatures).
+5. **Commented-out** JSONB-strip updates for multi-device equipment types (safety-net, mobile-ladder, lifting-accessories, fall-protection, forklift). The exact JSONB paths differ per type; the user must verify against the live schema before applying. After application code stops writing those fields (Phase 5), this can be a one-off backfill.
+
+The `users.saved_signature_url` column and `expert/<userId>.png` storage objects are **preserved** — they're consumed by the incident and briefing flows (out of scope). 
 
 The local AsyncStorage writers in B3 are removed in code as part of Phase 5 (no migration needed — the keys evaporate on next user-data purge).
 
-Out-of-scope persistence (project signers, tokenized remote signing, order signatures) is preserved unchanged.
+Out-of-scope persistence (project signers, tokenized remote signing, order signatures, incident/briefing reusable expert signature) is preserved unchanged.
