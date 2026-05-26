@@ -4,6 +4,26 @@
 
 ---
 
+## 2026-05-26 — Web-app: ghost-page DOM accumulation fixed + scaffold badge + dropdown cleanup
+
+### 🔴 BUG-20 — every navigation leaked a permanent copy of the previous page into the DOM ([web-app/src/components/layout/AppShell.tsx](../web-app/src/components/layout/AppShell.tsx))
+
+`<AnimatePresence>` wrapped a ternary whose two `motion.div` branches both used `key={location.pathname}`. Exit animations never reconciled, so each navigation left the outgoing page mounted alongside the new one. Verified on live hubble.ge: fresh reload = 1 child under `<main>`, after 2 nav round-trips = 2 children, after 4 = 3 children, and so on — within a normal browsing session every page rendered 8-12× and the app was visibly broken (duplicated buttons, duplicated content, runaway query refires).
+
+**Fix:** collapsed the ternary into a single `motion.div` driven by an `isSafety` boolean, switched `<AnimatePresence>` to `mode="wait" initial={false}`, and shortened the transition to `0.15s`. Wait-mode runs the outgoing exit before the incoming enter so the DOM stays clean; at 0.15s the gap is barely perceptible.
+
+### 🟠 BUG-21 — scaffold/xaracho rows showed the harness badge on the home activity widget ([web-app/src/components/ProjectActivityWidget.tsx](../web-app/src/components/ProjectActivityWidget.tsx))
+
+The widget read `template.category` for the href but then set `type: 'inspection' as const` regardless, so every `inspections`-table row got the 🦺 emoji and "შემოწმება" badge — including `ფასადის ხარაჩო`. The other three list views (`History`, `Inspections`, project-detail `InspectionsSection`) were already reading category correctly; this was the last hold-out.
+
+**Fix:** extended the `ActivityItem['type']` union to include `harness | xaracho | mobile_scaffold | mobile_scaffold_n3` (plus the equipment types), added their entries to `ACTIVITY_TYPE_AVATAR` (🏗️ for scaffold variants), and pick the type from `template.category` matching the same fallback rule the other views use. Href routing is unchanged — only `category === 'harness'` goes to `/harness/:id`, everything else stays on `/inspections/:id`.
+
+### 🟡 BUG-22 — duplicate "+ ახალი შემოწმება" dropdown entry both routed to `/bobcat/new` ([web-app/src/pages/Inspections.tsx](../web-app/src/pages/Inspections.tsx))
+
+`დიდი ციცხვიანი დამტვირთველის შემოწმება` had the same `onSelect={() => navigate('/bobcat/new')}` as `ციცხვიანი დამტვირთველის შემოწმების აქტი` — a copy-paste leftover. The "large bobcat" template lives in the `inspections` table with a non-standard category and a dedicated wizard is not wired yet, so the menu item misled users to the equipment-bobcat form. Removed the dup entry; can be re-added behind a proper wizard preset later.
+
+---
+
 ## 2026-05-26 — Web-app: registration email delivery fixed (Resend SMTP)
 
 ### Fixed — users not receiving OTP email after sign-up ([web-app/src/lib/auth.tsx](../web-app/src/lib/auth.tsx), [web-app/src/pages/auth/Register.tsx](../web-app/src/pages/auth/Register.tsx))

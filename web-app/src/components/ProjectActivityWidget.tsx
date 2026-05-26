@@ -24,16 +24,30 @@ interface ActivityItem {
   date: string;
   status: string;
   href: string;
-  type: 'inspection' | 'bobcat' | 'general' | 'excavator' | 'cargo_platform';
+  // The `inspections` table holds harness + the three scaffold variants; each
+  // needs its own emoji/label so a scaffold row doesn't get a harness badge
+  // (BUG-21). Equipment tables keep their own dedicated types.
+  type:
+    | 'harness'
+    | 'xaracho'
+    | 'mobile_scaffold'
+    | 'mobile_scaffold_n3'
+    | 'bobcat'
+    | 'general'
+    | 'excavator'
+    | 'cargo_platform';
 }
 
 /** Maps each inspection type to the emoji + pastel bg that mobile InspectionTypeAvatar uses. */
 const ACTIVITY_TYPE_AVATAR: Record<ActivityItem['type'], { emoji: string; bg: string; label: string }> = {
-  inspection:     { emoji: '🦺', bg: 'bg-blue-50 dark:bg-blue-950/20',       label: 'შემოწმება' },
-  bobcat:         { emoji: '🚜', bg: 'bg-amber-50 dark:bg-amber-950/20',     label: 'ციცხვიანი' },
-  general:        { emoji: '⚙️', bg: 'bg-emerald-50 dark:bg-emerald-950/20', label: 'ტექ. აღჭ.' },
-  excavator:      { emoji: '🚧', bg: 'bg-orange-50 dark:bg-orange-950/20',   label: 'ექსკავ.' },
-  cargo_platform: { emoji: '📦', bg: 'bg-sky-50 dark:bg-sky-950/20',         label: 'ტვირთის პლატფ.' },
+  harness:            { emoji: '🦺', bg: 'bg-blue-50 dark:bg-blue-950/20',     label: 'შემოწმება' },
+  xaracho:            { emoji: '🏗️', bg: 'bg-yellow-50 dark:bg-yellow-950/20', label: 'ფასადის ხარაჩო' },
+  mobile_scaffold:    { emoji: '🏗️', bg: 'bg-yellow-50 dark:bg-yellow-950/20', label: 'მობ. ხარაჩო' },
+  mobile_scaffold_n3: { emoji: '🏗️', bg: 'bg-yellow-50 dark:bg-yellow-950/20', label: 'მობ. ხარაჩო N3' },
+  bobcat:             { emoji: '🚜', bg: 'bg-amber-50 dark:bg-amber-950/20',   label: 'ციცხვიანი' },
+  general:            { emoji: '⚙️', bg: 'bg-emerald-50 dark:bg-emerald-950/20', label: 'ტექ. აღჭ.' },
+  excavator:          { emoji: '🚧', bg: 'bg-orange-50 dark:bg-orange-950/20', label: 'ექსკავ.' },
+  cargo_platform:     { emoji: '📦', bg: 'bg-sky-50 dark:bg-sky-950/20',       label: 'ტვირთის პლატფ.' },
 };
 
 const STALE = 1000 * 60 * 5;
@@ -54,9 +68,21 @@ export function ProjectActivityWidget({ project, onNewAct }: Props) {
   const inspectionName = useInspectionName();
   const all: ActivityItem[] = [
     ...ins.map(i  => {
+      // Distinguish scaffold acts (xaracho / mobile_scaffold / mobile_scaffold_n3)
+      // from harness via the joined template.category — otherwise every
+      // inspections-table row gets the harness badge (BUG-21).
       const cat = Array.isArray(i.template) ? i.template[0]?.category : null;
+      const type: ActivityItem['type'] =
+        cat === 'xaracho' || cat === 'mobile_scaffold' || cat === 'mobile_scaffold_n3'
+          ? cat
+          : 'harness';
+      // Preserve original href logic: only category='harness' goes to the
+      // dedicated /harness route. Everything else (scaffold + unknown
+      // templates like "ციცხვიანი დამტვირთველი") stays on the generic
+      // /inspections route so unknown templates don't break the harness
+      // detail page.
       const href = cat === 'harness' ? `/harness/${i.id}` : `/inspections/${i.id}`;
-      return { id: i.id, label: inspectionName(i.template_id), date: i.created_at ?? '', status: i.status, href, type: 'inspection' as const };
+      return { id: i.id, label: inspectionName(i.template_id), date: i.created_at ?? '', status: i.status, href, type };
     }),
     ...bobs.map(i  => ({ id: i.id, label: equipmentInspectionName('bobcat'),          date: i.createdAt, status: i.status, href: `/bobcat/${i.id}`,             type: 'bobcat' as const })),
     ...gens.map(i  => ({ id: i.id, label: equipmentInspectionName('general'),         date: i.createdAt, status: i.status, href: `/general-equipment/${i.id}`,  type: 'general' as const })),

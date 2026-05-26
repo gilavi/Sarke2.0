@@ -192,9 +192,6 @@ export default function Inspections() {
             <DropdownMenuItem onSelect={() => navigate(`/bobcat/new${filter ? `?project=${filter}` : ''}`)}>
               ციცხვიანი დამტვირთველის შემოწმების აქტი
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => navigate(`/bobcat/new${filter ? `?project=${filter}` : ''}`)}>
-              დიდი ციცხვიანი დამტვირთველის შემოწმება
-            </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => navigate(`/excavator/new${filter ? `?project=${filter}` : ''}`)}>
               ექსკავატორის ტექნიკური შემოწმების აქტი
             </DropdownMenuItem>

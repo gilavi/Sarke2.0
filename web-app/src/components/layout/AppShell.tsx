@@ -12,6 +12,7 @@ export const AppShell = memo(function AppShell({ children }: { children: ReactNo
   const handleOpenSidebar = useCallback(() => setSidebarOpen(true), []);
   const handleCloseSidebar = useCallback(() => setSidebarOpen(false), []);
   const location = useLocation();
+  const isSafety = location.pathname === '/safety';
 
   // Focus main content on route change for keyboard/screen-reader users
   useEffect(() => {
@@ -79,35 +80,36 @@ export const AppShell = memo(function AppShell({ children }: { children: ReactNo
 
         <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto bg-neutral-50 outline-none dark:bg-neutral-950">
           {/*
-            No `mode="wait"`: with wait-mode the outgoing page fully fades to
-            opacity 0 BEFORE the incoming one starts, producing a ~0.5s blank
-            gap on every navigation. Default mode crossfades them concurrently
-            so content never disappears between routes.
+            `mode="wait"` is REQUIRED here. Without it, the previous attempt
+            (concurrent crossfade with two ternary branches sharing
+            `key={location.pathname}`) caused exit animations to never
+            complete — old pages piled up in the DOM, one per navigation,
+            until the app became visually broken (BUG-20). Wait-mode runs the
+            outgoing exit before the incoming enter; with the short 0.15s
+            duration below the gap is barely perceptible and the DOM stays
+            clean.
+
+            Use a SINGLE motion.div (not a ternary): two motion.div branches
+            with the same key confuse AnimatePresence's reconciliation.
+            We pick the className/initial/exit values from `isSafety` so the
+            3D Safety page still gets its full-width container and a plain
+            opacity fade (no y-shift on a fullscreen 3D scene).
           */}
-          <AnimatePresence>
-            {location.pathname === '/safety' ? (
-              <motion.div
-                key={location.pathname}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className="h-full w-full"
-              >
-                {children}
-              </motion.div>
-            ) : (
-              <motion.div
-                key={location.pathname}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.25, ease: 'easeOut' }}
-                className="mx-auto w-full max-w-screen-2xl px-4 py-6 sm:px-12 lg:px-24 sm:py-8 dark:text-neutral-100"
-              >
-                {children}
-              </motion.div>
-            )}
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={location.pathname}
+              initial={isSafety ? { opacity: 0 } : { opacity: 0, y: 12 }}
+              animate={isSafety ? { opacity: 1 } : { opacity: 1, y: 0 }}
+              exit={isSafety ? { opacity: 0 } : { opacity: 0, y: -8 }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
+              className={
+                isSafety
+                  ? 'h-full w-full'
+                  : 'mx-auto w-full max-w-screen-2xl px-4 py-6 sm:px-12 lg:px-24 sm:py-8 dark:text-neutral-100'
+              }
+            >
+              {children}
+            </motion.div>
           </AnimatePresence>
         </main>
       </div>
