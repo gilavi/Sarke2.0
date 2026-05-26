@@ -9,15 +9,16 @@
 // passed in from the user profile. See features/signatures/AGENTS.md.
 
 import { useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Modal, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { A11yText as Text } from '../../components/primitives/A11yText';
-import { useTheme, type Theme } from '../../lib/theme';
+import { useTheme } from '../../lib/theme';
 import { a11y } from '../../lib/accessibility';
 import { CreatorSignatureCard } from './CreatorSignatureCard';
 import { AdditionalRowCard } from './AdditionalRowCard';
 import { SignatureCanvasModal } from './SignatureCanvasModal';
+import { makeSignaturesScreenStyles } from './SignaturesScreen.styles';
 import type { SignaturesState } from './useSignaturesState';
 
 interface Props {
@@ -31,7 +32,7 @@ interface Props {
 
 export function SignaturesScreen({ visible, onClose, creatorName, state }: Props) {
   const { theme } = useTheme();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const styles = useMemo(() => makeSignaturesScreenStyles(theme), [theme]);
   const [canvasOpen, setCanvasOpen] = useState(false);
 
   const {
@@ -134,90 +135,4 @@ export function SignaturesScreen({ visible, onClose, creatorName, state }: Props
       </SafeAreaView>
     </Modal>
   );
-}
-
-function makeStyles(theme: Theme) {
-  return StyleSheet.create({
-    root: { flex: 1, backgroundColor: theme.colors.background },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: 12,
-      paddingTop: 4,
-      paddingBottom: 12,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.colors.hairline,
-    },
-    headerPill: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-      paddingVertical: 6,
-      paddingHorizontal: 10,
-      borderRadius: 8,
-    },
-    headerPillText: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: theme.colors.accent,
-    },
-    headerTitle: {
-      flex: 1,
-      textAlign: 'center',
-      fontSize: 17,
-      fontWeight: '700',
-      color: theme.colors.ink,
-    },
-    headerBtn: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: theme.colors.subtleSurface,
-    },
-    pressed: { opacity: 0.7 },
-    scrollContent: {
-      padding: 16,
-      paddingBottom: 32,
-      gap: 24,
-    },
-    section: { gap: 12 },
-    sectionLabel: {
-      fontSize: 11,
-      fontWeight: '700',
-      color: theme.colors.inkSoft,
-      textTransform: 'uppercase',
-      letterSpacing: 0.6,
-    },
-    emptyCaption: {
-      fontSize: 13,
-      color: theme.colors.inkFaint,
-      fontStyle: 'italic',
-    },
-    rowsStack: { gap: 12 },
-    footer: {
-      padding: 16,
-      paddingTop: 12,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: theme.colors.hairline,
-      backgroundColor: theme.colors.surface,
-    },
-    addRowBtn: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 6,
-      paddingVertical: 14,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: theme.colors.accent,
-      backgroundColor: theme.colors.surface,
-    },
-    addRowText: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: theme.colors.accent,
-    },
-  });
 }

@@ -8,3 +8,9 @@
 export { SignaturesScreen } from './SignaturesScreen';
 export { useSignaturesState, type SignaturesState } from './useSignaturesState';
 export type { SignatureData, AdditionalSignatureRow } from './types';
+export {
+  setSignaturesSession,
+  getSignaturesSession,
+  clearSignaturesSession,
+  type SignaturesSessionData,
+} from './sessionStore';

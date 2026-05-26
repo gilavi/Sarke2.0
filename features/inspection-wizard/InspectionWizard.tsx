@@ -23,6 +23,12 @@ import { useTheme } from '../../lib/theme';
 import { haptic } from '../../lib/haptics';
 import { isOscillating } from '../../lib/navigationGuard';
 import { useToast } from '../../lib/toast';
+import { useSession } from '../../lib/session';
+import {
+  SignaturesScreen,
+  setSignaturesSession,
+  useSignaturesState,
+} from '../signatures';
 
 import { useWizardState } from './useWizardState';
 import {
@@ -46,8 +52,38 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const toast = useToast();
+  const session = useSession();
 
   const ws = useWizardState(inspectionId);
+
+  // Captured signature lives in RAM only; stashed to the cross-screen session
+  // store on finish so the result screen's PDF generator can read it. Never
+  // persisted. See features/signatures/AGENTS.md.
+  const signatures = useSignaturesState();
+  const [signaturesOpen, setSignaturesOpen] = useState(false);
+
+  const creatorName = useMemo(() => {
+    if (session.state.status !== 'signedIn') return '';
+    const u = session.state.user;
+    if (!u) return '';
+    return `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim();
+  }, [session.state]);
+
+  const signatureStatusText = useMemo(() => {
+    const hasCreator = !!signatures.creatorSignature;
+    const rowCount = signatures.additionalRows.length;
+    if (!hasCreator && rowCount === 0) return 'ხელმოწერა არ არის დამატებული';
+    if (hasCreator && rowCount === 0) return '1 ხელმოწერა';
+    if (!hasCreator && rowCount > 0) return `${rowCount} დამატებითი ხაზი`;
+    return `1 ხელმოწერა + ${rowCount} დამატებითი ხაზი`;
+  }, [signatures.creatorSignature, signatures.additionalRows.length]);
+
+  const handleFinish = useCallback(() => {
+    if (ws.questionnaire) {
+      setSignaturesSession(ws.questionnaire.id, signatures);
+    }
+    ws.saveConclusionAndGo();
+  }, [ws, signatures]);
 
   const {
     questionnaire,
@@ -361,6 +397,8 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
                     photos={generalPhotos}
                     onPickPhoto={() => photoQuestion && pickPhoto(photoQuestion)}
                     onDeletePhoto={deletePhoto}
+                    signatureStatusText={signatureStatusText}
+                    onOpenSignatures={() => setSignaturesOpen(true)}
                   />
                 )}
               </KeyboardAwareScrollView>
@@ -385,7 +423,7 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
                 onPress={() => {
                   if (finishing) return;
                   haptic.medium();
-                  saveConclusionAndGo();
+                  handleFinish();
                 }}
               />
             ) : isScaffoldRow && step.kind === 'gridRow' ? (
@@ -422,6 +460,13 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
         </View>
         </GestureDetector>
       </Animated.View>
+
+      <SignaturesScreen
+        visible={signaturesOpen}
+        onClose={() => setSignaturesOpen(false)}
+        creatorName={creatorName}
+        state={signatures}
+      />
     </Screen>
   );
 }

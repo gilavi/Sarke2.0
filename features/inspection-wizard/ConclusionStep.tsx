@@ -11,6 +11,7 @@ import type { AnswerPhoto, Question, Template } from '../../types/models';
 import { getstyles, staticStyles } from './styles';
 import { PhotoThumb } from './PhotoThumb';
 import { PhotoPreviewModal } from './PhotoPreviewModal';
+import { SignaturesEntryRow } from './SignaturesEntryRow';
 
 export const ConclusionStep = memo(function ConclusionStep({
   conclusion,
@@ -25,6 +26,8 @@ export const ConclusionStep = memo(function ConclusionStep({
   photos,
   onPickPhoto,
   onDeletePhoto,
+  signatureStatusText,
+  onOpenSignatures,
 }: {
   conclusion: string;
   onConclusion: (s: string) => void;
@@ -38,6 +41,8 @@ export const ConclusionStep = memo(function ConclusionStep({
   photos: AnswerPhoto[];
   onPickPhoto: () => void;
   onDeletePhoto: (photo: AnswerPhoto) => Promise<void>;
+  signatureStatusText: string;
+  onOpenSignatures: () => void;
 }) {
   // photoAnswerId is propagated for parity with the original signature;
   // PhotoThumb/PhotoPreviewModal key off photo.id internally.
@@ -185,6 +190,10 @@ export const ConclusionStep = memo(function ConclusionStep({
           />
         </View>
       ) : null}
+      <View style={staticStyles.gap8}>
+        <Text style={styles.label}>ხელმოწერები</Text>
+        <SignaturesEntryRow statusText={signatureStatusText} onPress={onOpenSignatures} />
+      </View>
       <View>
         <FloatingLabelInput
           label="დასკვნა"
