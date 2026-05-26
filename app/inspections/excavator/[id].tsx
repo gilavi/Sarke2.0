@@ -133,7 +133,7 @@ export default function ExcavatorInspectionScreen() {
     step, setStep, direction, animateSteps,
     paywallVisible, setPaywallVisible, pdfLocked,
     update, scheduleSave,
-    complete, handlePdf, buildPreview, exit,
+    complete, handlePdf, buildPreview, exit, creatorName,
   } = useInspectionFlow<ExcavatorInspection>({
     id,
     firstStep: PLATE_STEP,
@@ -442,7 +442,8 @@ export default function ExcavatorInspectionScreen() {
         downloading={generatingPdf}
         paywallVisible={paywallVisible}
         onPaywallClose={() => setPaywallVisible(false)}
-        onDownloadPdf={() => void handlePdf()}
+        creatorName={creatorName}
+        onDownloadPdf={(sig) => void handlePdf(sig)}
         onSheetSaved={() => {
           inspectionAttachmentsApi.listByInspection(inspection.id)
             .then(a => setAttachmentCount(a.length)).catch(() => {});
@@ -470,7 +471,7 @@ export default function ExcavatorInspectionScreen() {
         onNext={handleNext}
         onPrev={handlePrev}
         onClose={() => router.back()}
-        onPdf={handlePdf}
+        onPdf={() => handlePdf()}
       >
         {/* ── Step 1: Plate / registration number (custom keypad) ─────── */}
         {step === PLATE_STEP && (

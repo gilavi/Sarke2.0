@@ -70,7 +70,7 @@ export default function SafetyNetInspectionScreen() {
     step, setStep, direction, animateSteps,
     paywallVisible, setPaywallVisible, pdfLocked,
     update, scheduleSave,
-    complete, handlePdf, buildPreview, exit,
+    complete, handlePdf, buildPreview, exit, creatorName,
   } = useInspectionFlow<SafetyNetInspection>({
     id,
     firstStep: NET_ID_STEP,
@@ -338,7 +338,8 @@ export default function SafetyNetInspectionScreen() {
         downloading={generatingPdf}
         paywallVisible={paywallVisible}
         onPaywallClose={() => setPaywallVisible(false)}
-        onDownloadPdf={() => void handlePdf()}
+        creatorName={creatorName}
+        onDownloadPdf={(sig) => void handlePdf(sig)}
         onSheetSaved={() => void buildPreview()}
       />
     );
@@ -360,7 +361,7 @@ export default function SafetyNetInspectionScreen() {
         onClose={() => router.back()}
         trailingElement={(
           <Pressable
-            onPress={handlePdf}
+            onPress={() => handlePdf()}
             disabled={generatingPdf}
             hitSlop={10}
             {...a11y('PDF', 'PDF დოკუმენტის გენერირება', 'button')}

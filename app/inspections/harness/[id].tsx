@@ -488,6 +488,10 @@ export default function HarnessInspectionScreen() {
 
   // ── Completed ──────────────────────────────────────────────────────────────
   if (inspection?.status === 'completed') {
+    const creatorName =
+      session.state.status === 'signedIn'
+        ? `${session.state.user?.first_name ?? ''} ${session.state.user?.last_name ?? ''}`.trim()
+        : '';
     return (
       <InspectionResultView
         inspectionId={inspection.id}
@@ -499,6 +503,7 @@ export default function HarnessInspectionScreen() {
         pdfLocked={false}
         downloading={false}
         paywallVisible={false}
+        creatorName={creatorName}
         onPaywallClose={() => {}}
         onDownloadPdf={() => {}}
         onSheetSaved={() => {}}

@@ -94,7 +94,7 @@ export default function BobcatInspectionScreen() {
     paywallVisible, setPaywallVisible, pdfLocked,
     update, scheduleSave,
     complete, handlePdf, buildPreview, exit,
-    generatingPdf,
+    generatingPdf, creatorName,
   } = useInspectionFlow<BobcatInspection>({
     id,
     firstStep: INFO_STEP,
@@ -334,7 +334,8 @@ export default function BobcatInspectionScreen() {
         downloading={generatingPdf}
         paywallVisible={paywallVisible}
         onPaywallClose={() => setPaywallVisible(false)}
-        onDownloadPdf={() => void handlePdf()}
+        creatorName={creatorName}
+        onDownloadPdf={(sig) => void handlePdf(sig)}
         onSheetSaved={() => {
           inspectionAttachmentsApi.listByInspection(inspection.id)
             .then(a => setAttachmentCount(a.length)).catch(() => {});
@@ -361,7 +362,7 @@ export default function BobcatInspectionScreen() {
       onNext={handleNext}
       onPrev={handlePrev}
       onClose={() => router.back()}
-      onPdf={handlePdf}
+      onPdf={() => handlePdf()}
     >
           {/* ── Step 1: Equipment model ─────────────────────────────────── */}
           {step === INFO_STEP && (

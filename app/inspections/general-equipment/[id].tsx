@@ -77,7 +77,7 @@ export default function GeneralEquipmentScreen() {
     step, setStep, direction, animateSteps,
     paywallVisible, setPaywallVisible, pdfLocked,
     update, scheduleSave,
-    complete, handlePdf, buildPreview, exit,
+    complete, handlePdf, buildPreview, exit, creatorName,
   } = useInspectionFlow<GeneralEquipmentInspection>({
     id,
     firstStep: DETAILS_STEP,
@@ -291,7 +291,8 @@ export default function GeneralEquipmentScreen() {
         downloading={generatingPdf}
         paywallVisible={paywallVisible}
         onPaywallClose={() => setPaywallVisible(false)}
-        onDownloadPdf={() => void handlePdf()}
+        creatorName={creatorName}
+        onDownloadPdf={(sig) => void handlePdf(sig)}
         onSheetSaved={() => {
           inspectionAttachmentsApi.listByInspection(inspection.id)
             .then(a => setAttachmentCount(a.length)).catch(() => {});
@@ -324,7 +325,7 @@ export default function GeneralEquipmentScreen() {
         onNext={handleNext}
         onPrev={handlePrev}
         onClose={() => router.back()}
-        onPdf={handlePdf}
+        onPdf={() => handlePdf()}
       >
         {/* ── Step 1: Inspection details ─────────────────────────────────── */}
         {step === DETAILS_STEP && (

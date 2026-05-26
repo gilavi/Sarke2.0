@@ -30,3 +30,15 @@ export interface SignatureData {
 export interface AdditionalSignatureRow {
   id: string;
 }
+
+/**
+ * Snapshot of the signatures state at PDF-build time. The result view
+ * (which owns `useSignaturesState`) passes one of these to the parent's
+ * download callback so the PDF builder can render the unified signatures
+ * section. Per the no-persistence rule, this object lives only in memory
+ * — it's constructed at download time and never persisted.
+ */
+export interface SignaturesSnapshot {
+  creatorSignature: SignatureData | null;
+  additionalRowsCount: number;
+}

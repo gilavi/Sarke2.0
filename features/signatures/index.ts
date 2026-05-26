@@ -7,7 +7,13 @@
 
 export { SignaturesScreen } from './SignaturesScreen';
 export { useSignaturesState, type SignaturesState } from './useSignaturesState';
-export type { SignatureData, AdditionalSignatureRow } from './types';
+export type {
+  SignatureData,
+  AdditionalSignatureRow,
+  SignaturesSnapshot,
+} from './types';
+// sessionStore is a transitional helper — kept while the wizard/result
+// switchover settles. Phase 5 of the relocation deletes it.
 export {
   setSignaturesSession,
   getSignaturesSession,

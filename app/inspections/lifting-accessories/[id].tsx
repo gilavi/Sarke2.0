@@ -74,7 +74,7 @@ export default function LiftingAccessoriesInspectionScreen() {
     step, setStep, direction, animateSteps,
     paywallVisible, setPaywallVisible, pdfLocked,
     update, updateMany, scheduleSave,
-    complete, handlePdf, buildPreview, exit,
+    complete, handlePdf, buildPreview, exit, creatorName,
   } = useInspectionFlow<LiftingAccessoriesInspection>({
     id,
     firstStep: IDENTIFICATION_STEP,
@@ -325,7 +325,8 @@ export default function LiftingAccessoriesInspectionScreen() {
         downloading={generatingPdf}
         paywallVisible={paywallVisible}
         onPaywallClose={() => setPaywallVisible(false)}
-        onDownloadPdf={() => void handlePdf()}
+        creatorName={creatorName}
+        onDownloadPdf={(sig) => void handlePdf(sig)}
         onSheetSaved={() => void buildPreview()}
       />
     );
@@ -347,7 +348,7 @@ export default function LiftingAccessoriesInspectionScreen() {
         onClose={() => router.back()}
         trailingElement={(
           <Pressable
-            onPress={handlePdf}
+            onPress={() => handlePdf()}
             disabled={generatingPdf}
             hitSlop={10}
             {...a11y('PDF', 'PDF დოკუმენტის გენერირება', 'button')}

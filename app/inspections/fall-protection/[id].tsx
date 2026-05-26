@@ -92,7 +92,7 @@ export default function FallProtectionInspectionScreen() {
     step, setStep, direction, animateSteps,
     paywallVisible, setPaywallVisible, pdfLocked,
     update, scheduleSave,
-    complete, handlePdf, buildPreview, exit,
+    complete, handlePdf, buildPreview, exit, creatorName,
   } = useInspectionFlow<FallProtectionInspection>({
     id,
     firstStep: REGISTRY_STEP,
@@ -374,7 +374,8 @@ export default function FallProtectionInspectionScreen() {
         downloading={generatingPdf}
         paywallVisible={paywallVisible}
         onPaywallClose={() => setPaywallVisible(false)}
-        onDownloadPdf={() => void handlePdf()}
+        creatorName={creatorName}
+        onDownloadPdf={(sig) => void handlePdf(sig)}
         onSheetSaved={() => void buildPreview()}
       />
     );
@@ -408,7 +409,7 @@ export default function FallProtectionInspectionScreen() {
         trailingElement={
           step > 0 ? (
             <Pressable
-              onPress={handlePdf}
+              onPress={() => handlePdf()}
               disabled={generatingPdf}
               hitSlop={10}
               {...a11y('PDF', 'PDF დოკუმენტის გენერირება', 'button')}

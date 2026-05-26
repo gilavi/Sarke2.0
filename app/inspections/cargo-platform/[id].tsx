@@ -113,7 +113,7 @@ export default function CargoPlatformInspectionScreen() {
     step, setStep, direction, animateSteps,
     paywallVisible, setPaywallVisible, pdfLocked,
     update, scheduleSave,
-    complete, handlePdf, buildPreview, exit,
+    complete, handlePdf, buildPreview, exit, creatorName,
   } = useInspectionFlow<CargoPlatformInspection>({
     id,
     firstStep: PLATFORM_STEP,
@@ -346,7 +346,8 @@ export default function CargoPlatformInspectionScreen() {
         downloading={generatingPdf}
         paywallVisible={paywallVisible}
         onPaywallClose={() => setPaywallVisible(false)}
-        onDownloadPdf={() => void handlePdf()}
+        creatorName={creatorName}
+        onDownloadPdf={(sig) => void handlePdf(sig)}
         onSheetSaved={() => void buildPreview()}
       />
     );
@@ -367,7 +368,7 @@ export default function CargoPlatformInspectionScreen() {
         trailingElement={
           step > INFO_STEP ? (
             <Pressable
-              onPress={handlePdf}
+              onPress={() => handlePdf()}
               disabled={generatingPdf}
               hitSlop={10}
               {...a11y('PDF', 'PDF დოკუმენტის გენერირება', 'button')}

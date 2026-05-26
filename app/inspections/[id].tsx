@@ -28,8 +28,8 @@ import { ErrorState } from '../../components/ErrorState';
 import { CertificatesActionSheet } from '../../components/CertificatesActionSheet';
 import { useBottomSheet } from '../../components/BottomSheet';
 import {
-  clearSignaturesSession,
-  getSignaturesSession,
+  SignaturesScreen,
+  useSignaturesState,
 } from '../../features/signatures';
 import type { SignaturesSectionData } from '../../lib/pdf/inspection';
 import {
@@ -103,6 +103,17 @@ export default function InspectionResultScreen() {
   const [redirectBlocked, setRedirectBlocked] = useState(false);
   const [loadTimedOut, setLoadTimedOut] = useState(false);
   const mountedRef = useRef(true);
+
+  // Signatures state — local to this result screen. Dies when the screen
+  // unmounts. See features/signatures/AGENTS.md for the no-persistence rule.
+  const signatures = useSignaturesState();
+  const [signaturesOpen, setSignaturesOpen] = useState(false);
+  const creatorName = useMemo(() => {
+    if (session.state.status !== 'signedIn') return '';
+    const u = session.state.user;
+    if (!u) return '';
+    return `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim();
+  }, [session.state]);
 
   // React Query hooks seed cached data instantly so skeletons disappear faster.
   // loadAll() below still runs on mount for nested photo / attachment data.
@@ -206,19 +217,22 @@ export default function InspectionResultScreen() {
   }, [loading]);
 
   const buildSignaturesSection = useCallback(
-    (inspectionId: string): SignaturesSectionData | null => {
-      const snap = getSignaturesSession(inspectionId);
-      if (!snap) return null;
-      const u = session.state.status === 'signedIn' ? session.state.user : null;
-      const creatorName = u ? `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim() : '';
+    (): SignaturesSectionData | null => {
+      const creator = signatures.creatorSignature;
+      const rowCount = signatures.additionalRows.length;
+      if (!creator && rowCount === 0) return null;
       return {
-        creatorSignature: snap.creatorSignature
-          ? { ...snap.creatorSignature, creatorName }
+        creatorSignature: creator
+          ? {
+              pngBase64: creator.pngBase64,
+              capturedAtIso: creator.capturedAt.toISOString(),
+              creatorName,
+            }
           : null,
-        additionalRowsCount: snap.additionalRowsCount,
+        additionalRowsCount: rowCount,
       };
     },
-    [session.state],
+    [signatures.creatorSignature, signatures.additionalRows.length, creatorName],
   );
 
   const buildPreview = useCallback(
@@ -283,7 +297,7 @@ export default function InspectionResultScreen() {
           project,
           questions,
           answers,
-          signaturesSession: buildSignaturesSection(inspection.id),
+          signaturesSession: buildSignaturesSection(),
           photosByAnswer: photosEmbedded,
           attachments: attsEmbedded,
         });
@@ -388,7 +402,7 @@ export default function InspectionResultScreen() {
         project,
         questions,
         answers,
-        signaturesSession: buildSignaturesSection(inspection.id),
+        signaturesSession: buildSignaturesSection(),
         photosByAnswer: photosEmbedded,
         attachments: attsEmbedded,
       });
@@ -415,9 +429,9 @@ export default function InspectionResultScreen() {
         setTimeout(() => reject(new Error('PDF გენერირება ძალიან დიდხანს გრძელდება — სცადე თავიდან')), 30_000),
       );
       await Promise.race([pdfPromise, timeoutPromise]);
-      // Captured signatures are no longer needed — drop them so a second
-      // run (e.g. re-share) doesn't reuse a stale snapshot.
-      clearSignaturesSession(inspection.id);
+      // Captured signatures persist while the user remains on this screen
+      // (so re-sharing keeps the same signature); they die when the screen
+      // unmounts. No persistence path — see features/signatures/AGENTS.md.
       haptic.success();
       invalidatePdfUsage();
     } catch (e) {
@@ -513,15 +527,26 @@ export default function InspectionResultScreen() {
 
       <View style={styles.bottomBarSafe}>
         <View style={styles.bottomBar}>
-          <Pressable
-            onPress={openCertificatesSheet}
-            style={({ pressed }) => [styles.bottomBtn, styles.bottomBtnGhost, pressed && { opacity: 0.7 }]}
-          >
-            <Ionicons name="document-attach-outline" size={18} color={theme.colors.ink} />
-            <Text style={styles.bottomBtnText} numberOfLines={1}>
-              სერტიფიკატები {certBadge}
-            </Text>
-          </Pressable>
+          <View style={styles.bottomBarRow}>
+            <Pressable
+              onPress={openCertificatesSheet}
+              style={({ pressed }) => [styles.bottomBtn, styles.bottomBtnGhost, pressed && { opacity: 0.7 }]}
+            >
+              <Ionicons name="document-attach-outline" size={18} color={theme.colors.ink} />
+              <Text style={styles.bottomBtnText} numberOfLines={1}>
+                სერტიფიკატები {certBadge}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setSignaturesOpen(true)}
+              style={({ pressed }) => [styles.bottomBtn, styles.bottomBtnGhost, pressed && { opacity: 0.7 }]}
+            >
+              <Ionicons name="create-outline" size={18} color={theme.colors.ink} />
+              <Text style={styles.bottomBtnText} numberOfLines={1}>
+                ხელმოწერები
+              </Text>
+            </Pressable>
+          </View>
           <Pressable
             onPress={downloadPdf}
             disabled={downloading}
@@ -547,6 +572,12 @@ export default function InspectionResultScreen() {
         </View>
       </View>
       <PaywallModal visible={paywallVisible} onClose={() => setPaywallVisible(false)} />
+      <SignaturesScreen
+        visible={signaturesOpen}
+        onClose={() => setSignaturesOpen(false)}
+        creatorName={creatorName}
+        state={signatures}
+      />
     </Screen>
   );
 }
@@ -578,6 +609,10 @@ function createStyles(theme: any) {
       paddingHorizontal: 16,
       paddingTop: 12,
       paddingBottom: 16,
+    },
+    bottomBarRow: {
+      flexDirection: 'row',
+      gap: 10,
     },
     bottomBtn: {
       flex: 1,

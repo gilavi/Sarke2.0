@@ -69,7 +69,7 @@ export default function MobileLadderInspectionScreen() {
     step, setStep, direction, animateSteps,
     paywallVisible, setPaywallVisible, pdfLocked,
     update, updateMany: updateIdentification, scheduleSave,
-    complete, handlePdf, buildPreview, exit,
+    complete, handlePdf, buildPreview, exit, creatorName,
   } = useInspectionFlow<MobileLadderInspection>({
     id,
     firstStep: IDENTIFICATION_STEP,
@@ -248,7 +248,8 @@ export default function MobileLadderInspectionScreen() {
         downloading={generatingPdf}
         paywallVisible={paywallVisible}
         onPaywallClose={() => setPaywallVisible(false)}
-        onDownloadPdf={() => void handlePdf()}
+        creatorName={creatorName}
+        onDownloadPdf={(sig) => void handlePdf(sig)}
         onSheetSaved={() => void buildPreview()}
       />
     );
@@ -333,7 +334,7 @@ export default function MobileLadderInspectionScreen() {
         onClose={() => router.back()}
         trailingElement={(
           <Pressable
-            onPress={handlePdf}
+            onPress={() => handlePdf()}
             disabled={generatingPdf}
             hitSlop={10}
             {...a11y('PDF', 'PDF დოკუმენტის გენერირება', 'button')}

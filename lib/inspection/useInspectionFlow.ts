@@ -28,10 +28,22 @@ import { renderInspectionPdf } from './renderMobile';
 import {
   clearSignaturesSession,
   getSignaturesSession,
+  type SignaturesSessionData,
+  type SignaturesSnapshot,
 } from '../../features/signatures';
 import type { SignaturesSectionData } from '../pdf/inspection/renderSignaturesSection';
 import type { InspectionSchema } from './schema';
 import type { Project } from '../../types/models';
+
+/**
+ * Bridge the old `SignaturesSessionData` (capturedAtIso) and the
+ * result-view-owned `SignaturesSnapshot` (capturedAt as a Date) into one
+ * intermediate shape used by `buildSignaturesSection`. Removed in Phase 5
+ * when the sessionStore goes away.
+ */
+function sessionFallback(inspectionId: string): SignaturesSessionData | null {
+  return getSignaturesSession(inspectionId);
+}
 
 /** Minimum shape every inspection model shares. */
 interface BaseInspection {
@@ -83,6 +95,9 @@ export interface InspectionFlowResult<T extends BaseInspection> {
   inspectionRef: React.MutableRefObject<T | null>;
   projectName: string;
   setProjectName: React.Dispatch<React.SetStateAction<string>>;
+  /** Signed-in user's display name (`first_name last_name`), or '' when
+   *  signed out. Pass this to `InspectionResultView.creatorName`. */
+  creatorName: string;
   loading: boolean;
   saving: boolean;
   completing: boolean;
@@ -104,8 +119,8 @@ export interface InspectionFlowResult<T extends BaseInspection> {
   /** Debounced autosave for callers that mutate via setInspection themselves. */
   scheduleSave: (insp: T) => void;
   complete: () => Promise<boolean>;
-  handlePdf: () => Promise<void>;
-  buildPreview: () => Promise<void>;
+  handlePdf: (signatures?: SignaturesSnapshot | null) => Promise<void>;
+  buildPreview: (signatures?: SignaturesSnapshot | null) => Promise<void>;
   /** Clear the persisted step and navigate back (used when leaving from step 1). */
   exit: () => Promise<void>;
 }
@@ -276,16 +291,31 @@ export function useInspectionFlow<T extends BaseInspection>(
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [persistKey, toast]);
 
-  // ── Signatures session → PDF section data ────────────────────────────────────
+  // ── Signatures snapshot → PDF section data ───────────────────────────────────
+  // Result-screen-owned snapshot is the canonical source (passed to handlePdf
+  // as `signatures`). The sessionStore read is a fallback only while the
+  // wizard is still pushing into it — Phase 5 removes the fallback and the
+  // store itself.
   const buildSignaturesSection = useCallback(
-    (inspectionId: string): SignaturesSectionData | null => {
-      const snap = getSignaturesSession(inspectionId);
-      if (!snap) return null;
+    (
+      inspectionId: string,
+      snapshot?: SignaturesSnapshot | null,
+    ): SignaturesSectionData | null => {
+      const snap = snapshot ?? sessionFallback(inspectionId);
+      if (!snap || (!snap.creatorSignature && snap.additionalRowsCount === 0)) return null;
       const u = session.state.status === 'signedIn' ? session.state.user : null;
       const creatorName = u ? `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim() : '';
+      const creator = snap.creatorSignature;
       return {
-        creatorSignature: snap.creatorSignature
-          ? { ...snap.creatorSignature, creatorName }
+        creatorSignature: creator
+          ? {
+              pngBase64: creator.pngBase64,
+              capturedAtIso:
+                'capturedAt' in creator
+                  ? creator.capturedAt.toISOString()
+                  : creator.capturedAtIso,
+              creatorName,
+            }
           : null,
         additionalRowsCount: snap.additionalRowsCount,
       };
@@ -294,7 +324,7 @@ export function useInspectionFlow<T extends BaseInspection>(
   );
 
   // ── PDF download/share ───────────────────────────────────────────────────────
-  const handlePdf = useCallback(async () => {
+  const handlePdf = useCallback(async (signatures?: SignaturesSnapshot | null) => {
     const insp = inspectionRef.current;
     if (!insp) return;
     if (pdfUsage?.isLocked) { setPaywallVisible(true); return; }
@@ -303,7 +333,7 @@ export function useInspectionFlow<T extends BaseInspection>(
       const html = await renderInspectionPdf(schema, {
         inspection: insp,
         projectName: projectName || 'პროექტი',
-        signaturesSession: buildSignaturesSection(insp.id),
+        signaturesSession: buildSignaturesSection(insp.id, signatures),
       });
       const pdfName = generatePdfName(
         projectName || 'project',
@@ -318,7 +348,9 @@ export function useInspectionFlow<T extends BaseInspection>(
         documentId: insp.id,
         subject: cfg.pdf.subject,
       });
-      // Drop the captured signatures so a re-share doesn't reuse stale data.
+      // Old sessionStore path also gets its entry dropped — no-op once Phase 5
+      // deletes the store. The result-view snapshot lives only in component
+      // state and stays bound to the screen instance.
       clearSignaturesSession(insp.id);
       invalidatePdfUsage();
     } catch (e) {
@@ -331,7 +363,7 @@ export function useInspectionFlow<T extends BaseInspection>(
   }, [projectName, session.state, invalidatePdfUsage, toast, pdfUsage, buildSignaturesSection]);
 
   // ── Completed-view preview ───────────────────────────────────────────────────
-  const buildPreview = useCallback(async () => {
+  const buildPreview = useCallback(async (signatures?: SignaturesSnapshot | null) => {
     const insp = inspectionRef.current;
     if (!insp) return;
     setPreviewBusy(true);
@@ -339,7 +371,7 @@ export function useInspectionFlow<T extends BaseInspection>(
       const html = await renderInspectionPdf(schema, {
         inspection: insp,
         projectName: projectName || 'პროექტი',
-        signaturesSession: buildSignaturesSection(insp.id),
+        signaturesSession: buildSignaturesSection(insp.id, signatures),
       });
       setPreviewHtml(html);
     } catch (e) {
@@ -360,9 +392,17 @@ export function useInspectionFlow<T extends BaseInspection>(
     router.back();
   }, [persistKey, router]);
 
+  const creatorName = useMemo(() => {
+    if (session.state.status !== 'signedIn') return '';
+    const u = session.state.user;
+    if (!u) return '';
+    return `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim();
+  }, [session.state]);
+
   return {
     inspection, setInspection, inspectionRef,
-    projectName, setProjectName, loading, saving, completing, celebrating, generatingPdf,
+    projectName, setProjectName, creatorName,
+    loading, saving, completing, celebrating, generatingPdf,
     previewHtml, previewBusy,
     step, setStep, direction, animateSteps,
     paywallVisible, setPaywallVisible, pdfLocked: !!pdfUsage?.isLocked,
