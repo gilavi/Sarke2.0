@@ -261,30 +261,6 @@ export default function ForkliftInspectionScreen() {
     });
   }, [scheduleSave, inspectionRef, setInspection]);
 
-  // ── Signer ───────────────────────────────────────────────────────────────────
-
-  const handleSignerChange = useCallback((_index: number, field: string, value: string) => {
-    setInspection(prev => {
-      if (!prev) return prev;
-      let next = prev;
-      if (field === 'name')             next = { ...prev, signerName: value };
-      else if (field === 'position')    next = { ...prev, signerPosition: value };
-      else if (field === 'extra.phone') next = { ...prev, signerPhone: value };
-      else if (field === 'signature')   next = { ...prev, signerSignature: value || null };
-      scheduleSave(next);
-      return next;
-    });
-  }, [scheduleSave, setInspection]);
-
-  const handleSign = useCallback((_index: number, base64Png: string) => {
-    setInspection(prev => {
-      if (!prev) return prev;
-      const next = { ...prev, signerSignature: base64Png };
-      scheduleSave(next);
-      return next;
-    });
-  }, [scheduleSave, setInspection]);
-
   // ── Checklist item data builders ─────────────────────────────────────────────
 
   const checklistItemsFor = useCallback(

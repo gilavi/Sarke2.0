@@ -281,25 +281,6 @@ export default function SafetyNetInspectionScreen() {
     });
   }, [scheduleSave, toast, setInspection]);
 
-  // ── Signatories ─────────────────────────────────────────────────────────────
-
-  const handleSignatoryChange = useCallback((idx: number, field: string, value: string) => {
-    setInspection(prev => {
-      if (!prev) return prev;
-      const sigs = [...prev.signatures];
-      sigs[idx] = { ...sigs[idx], [field]: field === 'signature' ? (value || null) : value };
-      return { ...prev, signatures: sigs };
-    });
-  }, [setInspection]);
-
-  const handleSignatorySign = useCallback((idx: number, base64Png: string) => {
-    const insp = inspectionRef.current;
-    if (!insp) return;
-    const sigs = [...insp.signatures];
-    sigs[idx] = { ...sigs[idx], signature: base64Png, date: new Date().toISOString() };
-    setInspection({ ...insp, signatures: sigs });
-  }, [inspectionRef, setInspection]);
-
   // ── Verdict auto-suggest ────────────────────────────────────────────────────
 
   const suggestedVerdict = useMemo(

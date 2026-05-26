@@ -190,26 +190,6 @@ export default function MobileLadderInspectionScreen() {
     });
   }, [scheduleSave, toast, setInspection]);
 
-  // ── Signature ───────────────────────────────────────────────────────────────
-
-  const handleSignChange = useCallback((idx: number, field: string, value: string) => {
-    setInspection(prev => {
-      if (!prev) return prev;
-      const signature = {
-        ...prev.signature,
-        [field]: field === 'signature' ? (value || null) : value,
-      };
-      return { ...prev, signature };
-    });
-  }, [setInspection]);
-
-  const handleSign = useCallback((_idx: number, base64Png: string) => {
-    const insp = inspectionRef.current;
-    if (!insp) return;
-    const signature = { ...insp.signature, signature: base64Png, date: new Date().toISOString() };
-    setInspection({ ...insp, signature });
-  }, [inspectionRef, setInspection]);
-
   // ── Verdict auto-suggest ────────────────────────────────────────────────────
 
   const suggestedVerdict = useMemo(

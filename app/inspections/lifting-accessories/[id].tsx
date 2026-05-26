@@ -251,32 +251,6 @@ export default function LiftingAccessoriesInspectionScreen() {
     });
   }, [scheduleSave, setInspection]);
 
-  // ── Signatures ──────────────────────────────────────────────────────────────
-
-  const handleSignatoryChange = useCallback((idx: number, field: string, value: string) => {
-    setInspection(prev => {
-      if (!prev) return prev;
-      const sigs = [...prev.signatures];
-      const sig = { ...sigs[idx] };
-      if (field.startsWith('extra.')) {
-        const key = field.slice(6);
-        sig.extra = { ...(sig.extra ?? {}), [key]: value };
-      } else {
-        (sig as any)[field] = field === 'signature' ? (value || null) : value;
-      }
-      sigs[idx] = sig;
-      return { ...prev, signatures: sigs };
-    });
-  }, [setInspection]);
-
-  const handleSign = useCallback((idx: number, base64Png: string) => {
-    const insp = inspectionRef.current;
-    if (!insp) return;
-    const sigs = [...insp.signatures];
-    sigs[idx] = { ...sigs[idx], signature: base64Png, date: new Date().toISOString() };
-    setInspection({ ...insp, signatures: sigs });
-  }, [inspectionRef, setInspection]);
-
   // ── Verdict auto-suggest ────────────────────────────────────────────────────
 
   const suggestedVerdict = useMemo(

@@ -219,23 +219,6 @@ export default function FallProtectionInspectionScreen() {
     updateDeviceData(devIdx, data => ({ ...data, verdictComment: v }));
   }, [updateDeviceData]);
 
-  const handleSignChange = useCallback((_idx: number, field: string, value: string) => {
-    setInspection(prev => {
-      if (!prev) return prev;
-      const sig = { ...prev.signature, [field]: field === 'signature' ? (value || null) : value };
-      return { ...prev, signature: sig };
-    });
-  }, [setInspection]);
-
-  const handleSign = useCallback((_idx: number, base64Png: string) => {
-    const insp = inspectionRef.current;
-    if (!insp) return;
-    setInspection({
-      ...insp,
-      signature: { ...insp.signature, signature: base64Png, date: new Date().toISOString() },
-    });
-  }, [inspectionRef, setInspection]);
-
   // ── Photos ──────────────────────────────────────────────────────────────────
 
   const handleAddItemPhoto = useCallback(
