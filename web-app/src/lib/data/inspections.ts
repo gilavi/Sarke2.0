@@ -1,6 +1,8 @@
 import { supabase } from '@/lib/supabase';
 import { STORAGE_BUCKETS, signedUrl, removeObjects } from '@/lib/db/storage';
-import type { TablesUpdate } from '@/types/database';
+import type { Tables, TablesUpdate } from '@/types/database';
+
+type InspectionRow = Tables<'inspections'>;
 
 export type InspectionStatus = 'draft' | 'in_progress' | 'completed' | string;
 
@@ -62,13 +64,7 @@ export async function getInspection(id: string): Promise<Inspection | null> {
     )
     .eq('id', id)
     .maybeSingle();
-  if (error) {
-    console.error('[getInspection] error for id', id, error);
-    throw new Error(error.message);
-  }
-  if (!data) {
-    console.warn('[getInspection] no row found for id', id);
-  }
+  if (error) throw new Error(error.message);
   return (data as Inspection | null) ?? null;
 }
 
@@ -120,7 +116,7 @@ export async function createInspection(input: CreateInspectionInput): Promise<In
     )
     .single();
   if (error) throw new Error(error.message);
-  return data as unknown as Inspection;
+  return data as InspectionRow as unknown as Inspection;
 }
 
 export async function deleteInspection(id: string): Promise<void> {

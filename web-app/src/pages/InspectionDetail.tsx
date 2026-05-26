@@ -10,7 +10,9 @@ import DeleteButton from '@/components/DeleteButton';
 import SignatureCanvas from '@/components/SignatureCanvas';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Textarea, TextInput, NumberInput } from '@mantine/core';
+import { NumberInput } from '@mantine/core';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import {
   addAnswerPhoto,
   createInspection,
@@ -334,7 +336,7 @@ export default function InspectionDetail() {
         <CardContent className="space-y-3">
           <div className="space-y-1">
             {isDraft ? (
-              <TextInput
+              <Input
                 label="დეპარტამენტი"
                 key={inspection.department ?? ''}
                 defaultValue={inspection.department ?? ''}
@@ -347,7 +349,6 @@ export default function InspectionDetail() {
                     );
                 }}
                 placeholder="დეპარტამენტის დასახელება"
-                radius="md"
               />
             ) : (
               <>
@@ -358,7 +359,7 @@ export default function InspectionDetail() {
           </div>
           <div className="space-y-1">
             {isDraft ? (
-              <TextInput
+              <Input
                 label="ინსპექტორის სახელი"
                 key={inspection.inspector_name ?? ''}
                 defaultValue={inspection.inspector_name ?? ''}
@@ -371,7 +372,6 @@ export default function InspectionDetail() {
                     );
                 }}
                 placeholder="სახელი გვარი"
-                radius="md"
               />
             ) : (
               <>
@@ -431,8 +431,6 @@ export default function InspectionDetail() {
                 rows={3}
                 value={conclusionDraft ?? inspection.conclusion_text ?? ''}
                 onChange={(e) => setConclusionDraft(e.target.value)}
-                radius="md"
-                autosize={false}
               />
               <div className="space-y-1">
                 <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">გამოყენებისთვის უსაფრთხო?</p>
@@ -741,13 +739,12 @@ function QuestionRow({
               const v = (e.target as HTMLInputElement).value === '' ? null : Number((e.target as HTMLInputElement).value);
               onChange({ valueNum: v, comment });
             }}
-            classNames={{ input: 'max-w-[160px]' }}
+            className="max-w-[160px]"
             placeholder={
               q.min_val != null && q.max_val != null
                 ? `${q.min_val}–${q.max_val}${q.unit ? ` ${q.unit}` : ''}`
                 : q.unit ?? ''
             }
-            radius="md"
             hideControls
           />
           {q.unit && <span className="text-xs text-neutral-500">{q.unit}</span>}
@@ -760,8 +757,6 @@ function QuestionRow({
           disabled={disabled}
           defaultValue={ans?.value_text ?? ''}
           onBlur={(e) => onChange({ valueText: e.target.value, comment })}
-          radius="md"
-          autosize={false}
         />
       )}
 
@@ -867,7 +862,7 @@ function QuestionRow({
         <ComponentGridReadOnly question={q} answer={ans} />
       )}
 
-      <TextInput
+      <Input
         disabled={disabled}
         value={comment}
         onChange={(e) => setComment(e.target.value)}
@@ -882,8 +877,7 @@ function QuestionRow({
           }
         }}
         placeholder="კომენტარი (არასავალდებულო)"
-        classNames={{ input: 'text-xs' }}
-        radius="md"
+        className="text-xs"
       />
     </div>
   );

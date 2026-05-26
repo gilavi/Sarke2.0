@@ -15,11 +15,11 @@ import SignatureCanvas from '@/components/SignatureCanvas';
 import SidePanel from '@/components/SidePanel';
 import { PrintLayout } from '@/components/print/PrintLayout';
 import { routes, routePattern } from '@/app/routes';
-import { useAppStore } from '@/store/safetyStore';
+import { useSafetyStore } from '@/store/safetyStore';
 
 beforeEach(() => {
   vi.clearAllMocks();
-  useAppStore.setState({ selectedPartId: null, hoveredPartId: null, isPanelOpen: true, cameraTarget: null });
+  useSafetyStore.setState({ selectedPartId: null, hoveredPartId: null, isPanelOpen: true, cameraTarget: null });
 });
 
 describe('ErrorBoundary', () => {
@@ -175,7 +175,7 @@ describe('SignatureCanvas', () => {
 
 describe('SidePanel', () => {
   it('renders a closed panel when nothing is selected', () => {
-    useAppStore.setState({ selectedPartId: null, isPanelOpen: true });
+    useSafetyStore.setState({ selectedPartId: null, isPanelOpen: true });
     const { container } = render(<SidePanel />);
     expect(container.firstChild).toBeTruthy();
   });

@@ -1,7 +1,8 @@
 import { useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Textarea, TextInput } from '@mantine/core';
+import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ProjectPicker } from '@/components/ui/project-picker';
 import { FloatingLabelInput } from '@/components/ui/floating-label-input';
@@ -186,8 +187,6 @@ export default function NewIncident() {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="შეაღწერეთ რა მოხდა…"
-            radius="md"
-            autosize={false}
           />
 
           <Textarea
@@ -197,8 +196,6 @@ export default function NewIncident() {
             value={cause}
             onChange={(e) => setCause(e.target.value)}
             placeholder="ინციდენტის გამომწვევი მიზეზი…"
-            radius="md"
-            autosize={false}
           />
 
           <Textarea
@@ -208,8 +205,6 @@ export default function NewIncident() {
             value={actionsTaken}
             onChange={(e) => setActionsTaken(e.target.value)}
             placeholder="რა ზომები იქნა მიღებული…"
-            radius="md"
-            autosize={false}
           />
         </div>
       )}
@@ -220,12 +215,11 @@ export default function NewIncident() {
           <div className="space-y-2">
             <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">მოწმეები</p>
             <div className="flex gap-2">
-              <TextInput
+              <Input
                 value={witnessInput}
                 onChange={(e) => setWitnessInput(e.target.value)}
                 placeholder="სახელი, გვარი"
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addWitness(); } }}
-                radius="md"
               />
               <Button type="button" variant="outline" onClick={addWitness} disabled={!witnessInput.trim()}>
                 დამატება

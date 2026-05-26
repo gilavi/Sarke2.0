@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query';
-import { Modal, TextInput } from '@mantine/core';
+import { Modal } from '@mantine/core';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { EditableProjectAvatar } from '@/components/ProjectAvatar';
 import { AddressInput } from '@/components/AddressInput';
@@ -156,23 +157,21 @@ export function ProjectModal({ open, onClose, projectId }: Props) {
         </div>
 
         {/* Name */}
-        <TextInput
+        <Input
           id="pm-name"
           label="პროექტის სახელი *"
           value={name}
           onChange={(e) => setName(e.target.value)}
           autoFocus
           error={errors.name}
-          radius="md"
         />
 
         {/* Company */}
-        <TextInput
+        <Input
           id="pm-company"
           label="კომპანია"
           value={companyName}
           onChange={(e) => setCompanyName(e.target.value)}
-          radius="md"
         />
 
         {/* Address */}
@@ -189,7 +188,7 @@ export function ProjectModal({ open, onClose, projectId }: Props) {
         </div>
 
         {/* Phone */}
-        <TextInput
+        <Input
           id="pm-phone"
           label="ტელეფონი"
           type="tel"
@@ -198,7 +197,6 @@ export function ProjectModal({ open, onClose, projectId }: Props) {
           onChange={(e) => setPhone(normalizePhone(e.target.value))}
           placeholder="+995 5XX XXX XXX"
           error={errors.phone}
-          radius="md"
         />
 
         {mutation.error && (

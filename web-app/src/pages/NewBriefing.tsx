@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { TextInput } from '@mantine/core';
+import { Input } from '@/components/ui/input';
 import { ProjectPicker } from '@/components/ui/project-picker';
 import { FloatingLabelInput } from '@/components/ui/floating-label-input';
 import { WizardShell } from '@/components/ui/wizard-shell';
@@ -173,14 +173,13 @@ export default function NewBriefing() {
           </div>
 
           <div className="flex gap-2">
-            <TextInput
+            <Input
               value={customTopicInput}
               onChange={(e) => setCustomTopicInput(e.target.value)}
               placeholder="საკუთარი თემა"
               onKeyDown={(e) => {
                 if (e.key === 'Enter') { e.preventDefault(); addCustomTopic(); }
               }}
-              radius="md"
             />
             <Button type="button" variant="outline" onClick={addCustomTopic} disabled={!customTopicInput.trim()}>
               დამატება
@@ -206,18 +205,16 @@ export default function NewBriefing() {
           <p className="text-sm text-neutral-500">დაამატეთ მინიმუმ ერთი მონაწილე.</p>
 
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_auto]">
-            <TextInput
+            <Input
               value={participantName}
               onChange={(e) => setParticipantName(e.target.value)}
               placeholder="სახელი, გვარი"
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addParticipant(); } }}
-              radius="md"
             />
-            <TextInput
+            <Input
               value={participantPosition}
               onChange={(e) => setParticipantPosition(e.target.value)}
               placeholder="თანამდებობა"
-              radius="md"
             />
             <Button type="button" variant="outline" onClick={addParticipant} disabled={!participantName.trim()}>
               დამატება

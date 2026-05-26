@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { TextInput } from '@mantine/core';
+import { Input } from '@/components/ui/input';
 import { ProjectPicker } from '@/components/ui/project-picker';
 import { WizardFrame, SegmentedControl } from '@/components/wizard';
 import { listProjects } from '@/lib/data/projects';
@@ -119,16 +119,16 @@ export default function NewBobcatInspection() {
           />
         </div>
 
-        <TextInput label="კომპანია" value={company} onChange={(e) => setCompany(e.target.value)} radius="md" />
+        <Input label="კომპანია" value={company} onChange={(e) => setCompany(e.target.value)} />
 
         <div className="grid grid-cols-2 gap-3">
-          <TextInput label="ტექნიკის მოდელი" value={equipmentModel} onChange={(e) => setEquipmentModel(e.target.value)} radius="md" />
-          <TextInput label="სარეგ. ნომერი" value={registrationNumber} onChange={(e) => setRegistrationNumber(e.target.value)} radius="md" />
+          <Input label="ტექნიკის მოდელი" value={equipmentModel} onChange={(e) => setEquipmentModel(e.target.value)} />
+          <Input label="სარეგ. ნომერი" value={registrationNumber} onChange={(e) => setRegistrationNumber(e.target.value)} />
         </div>
 
-        <TextInput label="დეპარტამენტი" value={department} onChange={(e) => setDepartment(e.target.value)} placeholder="დეპარტამენტის დასახელება" radius="md" />
-        <TextInput label="ინსპექტორი" value={inspectorName} onChange={(e) => setInspectorName(e.target.value)} placeholder="სახელი, გვარი" radius="md" />
-        <TextInput label="შემოწმების თარიღი" type="date" value={inspectionDate} onChange={(e) => setInspectionDate(e.target.value)} radius="md" />
+        <Input label="დეპარტამენტი" value={department} onChange={(e) => setDepartment(e.target.value)} placeholder="დეპარტამენტის დასახელება" />
+        <Input label="ინსპექტორი" value={inspectorName} onChange={(e) => setInspectorName(e.target.value)} placeholder="სახელი, გვარი" />
+        <Input label="შემოწმების თარიღი" type="date" value={inspectionDate} onChange={(e) => setInspectionDate(e.target.value)} />
       </div>
     </WizardFrame>
   );

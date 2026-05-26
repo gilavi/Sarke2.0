@@ -8,7 +8,8 @@
  *   onUpdate    Called with the updated signatories array; caller persists via updateInspection
  */
 import { useState } from 'react';
-import { Modal, TextInput } from '@mantine/core';
+import { Modal } from '@mantine/core';
+import { Input } from '@/components/ui/input';
 import { Trash2, UserPlus } from 'lucide-react';
 import SignatureCanvas from '@/components/SignatureCanvas';
 import { type SignatoryEntry } from '@/lib/data/inspections';
@@ -123,19 +124,17 @@ export default function InspectionSignatures({ inspection, canEdit, onUpdate }: 
       >
         <div className="space-y-4 pb-2">
           <div className="grid grid-cols-2 gap-3">
-            <TextInput
+            <Input
               label="სახელი / გვარი"
               placeholder="გ. ხელაძე"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              radius="md"
             />
-            <TextInput
+            <Input
               label="როლი"
               placeholder="სამშენებლო მენეჯერი"
               value={newRole}
               onChange={(e) => setNewRole(e.target.value)}
-              radius="md"
             />
           </div>
 

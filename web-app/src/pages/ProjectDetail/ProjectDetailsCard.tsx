@@ -3,7 +3,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Check, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { NumberInput, TextInput } from '@mantine/core';
+import { NumberInput } from '@mantine/core';
+import { Input } from '@/components/ui/input';
 import ProjectMap from '@/components/ProjectMap';
 import { updateProject, type Project } from '@/lib/data/projects';
 import { projectKeys } from '@/app/queryKeys';
@@ -58,26 +59,23 @@ export function ProjectDetailsCard({ project, editing, onCancel, onSaved, onErro
       <CardContent>
         {editing ? (
           <div className="space-y-4">
-            <TextInput
+            <Input
               id="edit-name"
               label="სახელი"
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              radius="md"
             />
-            <TextInput
+            <Input
               id="edit-address"
               label="მისამართი"
               value={form.address}
               onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
-              radius="md"
             />
-            <TextInput
+            <Input
               id="edit-phone"
               label="ტელეფონი"
               value={form.contact_phone}
               onChange={(e) => setForm((f) => ({ ...f, contact_phone: e.target.value }))}
-              radius="md"
             />
             <div className="space-y-1">
               <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">GPS კოორდინატები</p>

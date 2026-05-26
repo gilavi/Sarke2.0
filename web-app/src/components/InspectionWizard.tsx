@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CheckCircle2, X } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { NumberInput, Textarea, TextInput } from '@mantine/core';
+import { NumberInput } from '@mantine/core';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Select } from '@/components/ui/select';
 import { toast } from 'sonner';
 import PhotoUploadZone from '@/components/PhotoUploadZone';
@@ -666,28 +668,25 @@ function InfoStep({
         placeholder="— აირჩიეთ შაბლონი —"
       />
 
-      <TextInput
+      <Input
         label="დასახელება"
         value={harnessName}
         onChange={(e) => setHarnessName(e.target.value)}
         placeholder="მაგ: ხარაჩო A"
-        radius="md"
       />
 
-      <TextInput
+      <Input
         label="დეპარტამენტი"
         value={department}
         onChange={(e) => setDepartment(e.target.value)}
         placeholder="დეპარტამენტის დასახელება"
-        radius="md"
       />
 
-      <TextInput
+      <Input
         label="ინსპექტორის სახელი"
         value={inspectorName}
         onChange={(e) => setInspectorName(e.target.value)}
         placeholder="სახელი გვარი"
-        radius="md"
       />
     </div>
   );
@@ -790,7 +789,6 @@ function QuestionStepRenderer({
               value={answer?.value_num ?? ''}
               onChange={(v) => onChange({ value_num: v === '' ? null : Number(v) })}
               placeholder="მნიშვნელობა"
-              radius="md"
               min={question.min_val ?? undefined}
               max={question.max_val ?? undefined}
               hideControls
@@ -809,8 +807,6 @@ function QuestionStepRenderer({
           onChange={(e) => onChange({ value_text: e.target.value })}
           placeholder="შეიყვანეთ პასუხი..."
           rows={4}
-          autosize={false}
-          radius="md"
         />
       )}
 
@@ -818,12 +814,11 @@ function QuestionStepRenderer({
         <PhotoUploadZone paths={photoPaths} prefix="inspections" inspectionId={inspectionId} itemId={question.id} onAdd={onPhotoAdd} onRemove={onPhotoRemove} />
       )}
 
-      <TextInput
+      <Input
         label="კომენტარი (არასავალდებულო)"
         value={answer?.comment ?? ''}
         onChange={(e) => onChange({ comment: e.target.value })}
         placeholder="დამატებითი შენიშვნა"
-        radius="md"
       />
     </div>
   );
@@ -901,8 +896,6 @@ function ConclusionStepRenderer({
         onChange={(e) => onChange({ ...conclusion, text: e.target.value })}
         placeholder="შეიყვანეთ დასკვნა..."
         rows={4}
-        autosize={false}
-        radius="md"
       />
 
       {/* 5 — Photos (tertiary) */}

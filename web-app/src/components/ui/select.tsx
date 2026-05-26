@@ -1,4 +1,4 @@
-import { Select as MantineSelect } from '@mantine/core';
+import { cn } from '@/lib/utils';
 
 export interface SelectOption {
   value: string;
@@ -28,20 +28,42 @@ export function Select({
   disabled,
   className,
 }: SelectProps) {
+  const selectId = label?.toLowerCase().replace(/\s+/g, '-');
   return (
-    <MantineSelect
-      label={label}
-      required={required}
-      value={value || null}
-      onChange={(v) => onChange(v ?? '')}
-      data={options}
-      placeholder={placeholder}
-      size={size === 'sm' ? 'sm' : 'md'}
-      disabled={disabled}
-      className={className}
-      radius="md"
-      allowDeselect={false}
-      searchable
-    />
+    <div className="space-y-1">
+      {label && (
+        <label
+          htmlFor={selectId}
+          className="block text-sm font-medium text-neutral-700 dark:text-neutral-300"
+        >
+          {label}
+          {required && <span className="ml-1 text-red-500" aria-hidden="true">*</span>}
+        </label>
+      )}
+      <select
+        id={selectId}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+        required={required}
+        className={cn(
+          'w-full rounded-lg border border-neutral-300 bg-white px-3 text-sm text-neutral-900 outline-none transition',
+          'focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20',
+          'dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100',
+          'disabled:cursor-not-allowed disabled:opacity-50',
+          size === 'sm' ? 'py-1' : 'py-2',
+          className,
+        )}
+      >
+        <option value="" disabled>
+          {placeholder}
+        </option>
+        {options.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+    </div>
   );
 }

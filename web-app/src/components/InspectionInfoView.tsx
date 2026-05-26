@@ -15,7 +15,7 @@
  *   onFieldSave  Called with a patch object; caller calls updateInspection
  */
 import { useState, useEffect } from 'react';
-import { Textarea } from '@mantine/core';
+import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import FieldInput from '@/components/FieldInput';
@@ -216,7 +216,6 @@ export default function InspectionInfoView({
                   onChange={(e) => setConclusionText(e.target.value)}
                   placeholder="დასკვნა / შენიშვნა..."
                   rows={3}
-                  radius="md"
                 />
                 <div className="flex justify-end pt-1">
                   <Button

@@ -10,7 +10,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Textarea } from '@mantine/core';
+import { Textarea } from '@/components/ui/textarea';
 import DeleteButton from '@/components/DeleteButton';
 import InspectionSignatures from '@/components/InspectionSignatures';
 import SignatureCanvas from '@/components/SignatureCanvas';
@@ -364,8 +364,6 @@ export default function BobcatDetail() {
                         const v = e.target.value || null;
                         if (v !== effectiveItem.notes) d.save({ notes: v });
                       }}
-                      radius="md"
-                      autosize={false}
                     />
                   </>
                 ) : (

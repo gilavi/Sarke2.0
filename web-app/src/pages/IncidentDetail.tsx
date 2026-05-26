@@ -6,7 +6,8 @@ import { SkeletonDetailPage } from '@/components/SkeletonCard';
 import SignatureCanvas from '@/components/SignatureCanvas';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { TextInput, Textarea } from '@mantine/core';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import PhotoUploadWidget from '@/components/PhotoUploadWidget';
 import {
   addIncidentPhoto,
@@ -206,48 +207,39 @@ export default function IncidentDetail() {
               }}
             >
               <div className="grid grid-cols-2 gap-3">
-                <TextInput
+                <Input
                   label="დაზარალებულის სახელი"
                   value={form.injured_name}
                   onChange={(e) => setForm((f) => ({ ...f, injured_name: e.target.value }))}
-                  radius="md"
                 />
-                <TextInput
+                <Input
                   label="თანამდებობა"
                   value={form.injured_role}
                   onChange={(e) => setForm((f) => ({ ...f, injured_role: e.target.value }))}
-                  radius="md"
                 />
               </div>
-              <TextInput
+              <Input
                 label="ადგილი"
                 value={form.location}
                 onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
-                radius="md"
               />
               <Textarea
                 label="აღწერა"
                 rows={3}
                 value={form.description}
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                radius="md"
-                autosize={false}
               />
               <Textarea
                 label="მიზეზი"
                 rows={2}
                 value={form.cause}
                 onChange={(e) => setForm((f) => ({ ...f, cause: e.target.value }))}
-                radius="md"
-                autosize={false}
               />
               <Textarea
                 label="გატარებული ღონისძიებები"
                 rows={2}
                 value={form.actions_taken}
                 onChange={(e) => setForm((f) => ({ ...f, actions_taken: e.target.value }))}
-                radius="md"
-                autosize={false}
               />
               <div className="flex gap-2">
                 <Button type="submit" size="sm" disabled={editMutation.isPending}>

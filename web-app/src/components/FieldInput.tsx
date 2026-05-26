@@ -1,6 +1,6 @@
 import { useId, useState } from 'react';
-import { TextInput } from '@mantine/core';
 import { cn } from '@/lib/utils';
+import { Input } from '@/components/ui/input';
 
 interface Props {
   label: string;
@@ -14,15 +14,12 @@ export default function FieldInput({ label, value, disabled, onSave }: Props) {
   const [saved, setSaved] = useState(false);
 
   return (
-    <TextInput
+    <Input
       id={id}
       label={label}
       disabled={disabled}
       defaultValue={value ?? ''}
-      radius="md"
-      classNames={{
-        input: cn('transition duration-300', saved && 'ring-2 ring-green-400 ring-offset-1'),
-      }}
+      className={cn('transition duration-300', saved && 'ring-2 ring-green-400 ring-offset-1')}
       onBlur={(e) => {
         const v = e.target.value.trim() || null;
         if (v !== (value ?? null)) {

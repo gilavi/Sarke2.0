@@ -2,12 +2,12 @@ import { useRef, useEffect, memo } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, ContactShadows, PerspectiveCamera } from '@react-three/drei';
 import * as THREE from 'three';
-import { useAppStore } from '@/store/safetyStore';
+import { useSafetyStore } from '@/store/safetyStore';
 import ConstructionModel from './ConstructionModel';
 
 function CameraController() {
   const { camera, controls } = useThree();
-  const target = useAppStore((s) => s.cameraTarget);
+  const target = useSafetyStore((s) => s.cameraTarget);
   const ref = useRef<THREE.Vector3 | null>(null);
 
   useEffect(() => {

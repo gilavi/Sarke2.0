@@ -7,12 +7,12 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@/test-utils';
 
 import SidePanel from '@/components/SidePanel';
-import { useAppStore } from '@/store/safetyStore';
+import { useSafetyStore } from '@/store/safetyStore';
 import { safetyTips } from '@/data/safetyTips';
 
 beforeEach(() => {
   // Reset store between tests.
-  useAppStore.setState({
+  useSafetyStore.setState({
     selectedPartId: null, hoveredPartId: null, isPanelOpen: true, cameraTarget: null,
   });
 });
@@ -25,21 +25,21 @@ describe('SidePanel', () => {
   });
 
   it('renders the toggle button when panel is closed', () => {
-    useAppStore.setState({ isPanelOpen: false });
+    useSafetyStore.setState({ isPanelOpen: false });
     render(<SidePanel />);
     expect(screen.getByLabelText('უსაფრთხოების პანელის გახსნა')).toBeInTheDocument();
   });
 
   it('clicking the toggle button opens the panel', () => {
-    useAppStore.setState({ isPanelOpen: false });
+    useSafetyStore.setState({ isPanelOpen: false });
     render(<SidePanel />);
     fireEvent.click(screen.getByLabelText('უსაფრთხოების პანელის გახსნა'));
-    expect(useAppStore.getState().isPanelOpen).toBe(true);
+    expect(useSafetyStore.getState().isPanelOpen).toBe(true);
   });
 
   it('renders the selected tip details when a part is selected', () => {
     const firstTipId = Object.keys(safetyTips)[0];
-    useAppStore.setState({ selectedPartId: firstTipId, isPanelOpen: true });
+    useSafetyStore.setState({ selectedPartId: firstTipId, isPanelOpen: true });
     render(<SidePanel />);
     const tip = safetyTips[firstTipId];
     expect(screen.getByText(tip.title)).toBeInTheDocument();
@@ -49,30 +49,30 @@ describe('SidePanel', () => {
 
   it('clicking "შემდეგი თემა" advances to the next tip', () => {
     const ids = Object.keys(safetyTips);
-    useAppStore.setState({ selectedPartId: ids[0], isPanelOpen: true });
+    useSafetyStore.setState({ selectedPartId: ids[0], isPanelOpen: true });
     render(<SidePanel />);
     fireEvent.click(screen.getByRole('button', { name: /შემდეგი თემა/ }));
-    expect(useAppStore.getState().selectedPartId).toBe(ids[1]);
+    expect(useSafetyStore.getState().selectedPartId).toBe(ids[1]);
   });
 
   it('clicking "მონიშვნის გასუფთავება" clears the selection', () => {
     const firstId = Object.keys(safetyTips)[0];
-    useAppStore.setState({ selectedPartId: firstId, isPanelOpen: true });
+    useSafetyStore.setState({ selectedPartId: firstId, isPanelOpen: true });
     render(<SidePanel />);
     fireEvent.click(screen.getByRole('button', { name: /მონიშვნის გასუფთავება/ }));
-    expect(useAppStore.getState().selectedPartId).toBe(null);
+    expect(useSafetyStore.getState().selectedPartId).toBe(null);
   });
 
   it('clicking the close button closes the panel', () => {
     render(<SidePanel />);
     fireEvent.click(screen.getByLabelText('პანელის დახურვა'));
-    expect(useAppStore.getState().isPanelOpen).toBe(false);
+    expect(useSafetyStore.getState().isPanelOpen).toBe(false);
   });
 
   it('clicking an empty-state list item selects that part', () => {
     render(<SidePanel />);
     const firstTipTitle = Object.values(safetyTips)[0].title;
     fireEvent.click(screen.getByRole('button', { name: new RegExp(firstTipTitle) }));
-    expect(useAppStore.getState().selectedPartId).toBe(Object.keys(safetyTips)[0]);
+    expect(useSafetyStore.getState().selectedPartId).toBe(Object.keys(safetyTips)[0]);
   });
 });

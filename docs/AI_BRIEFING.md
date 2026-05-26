@@ -34,7 +34,7 @@ Mobile:
 
 Web-App (dashboard):
 ├─ Vite + React 19 + TypeScript + Tailwind CSS
-├─ Mantine v9 + Radix UI (shadcn-style primitives), React Query, React Router v6 HashRouter
+├─ Radix UI (shadcn-style primitives), React Query, React Router v6 HashRouter
 ├─ three.js + @react-three/fiber (3D SafetyGuide), Leaflet (maps), Recharts
 └─ Supabase JS client
 

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { TextInput } from '@mantine/core';
+import { Input } from '@/components/ui/input';
 import { AuthLayout } from './AuthLayout';
 
 export default function Forgot() {
@@ -48,14 +48,13 @@ export default function Forgot() {
             </div>
           ) : (
             <form onSubmit={onSubmit} className="space-y-4">
-              <TextInput
+              <Input
                 id="email"
                 label="ელ-ფოსტა"
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                radius="md"
               />
               {error ? <p className="text-sm text-danger">{error}</p> : null}
               <Button type="submit" disabled={busy} className="w-full">

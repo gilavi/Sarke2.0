@@ -10,8 +10,17 @@
  *
  * `children` only renders once data is present and non-empty, so it receives a
  * non-null value.
+ *
+ * When used WITHOUT a `query` prop, AsyncBoundary acts as a section-level
+ * error isolation shell — it renders `children` directly and, if any child
+ * throws during render, shows an inline ErrorView instead of propagating to
+ * the nearest root error boundary.
+ *
+ *   <AsyncBoundary>
+ *     <SomeSection />
+ *   </AsyncBoundary>
  */
-import type { ReactNode } from 'react';
+import { Component, type ReactNode } from 'react';
 import type { UseQueryResult } from '@tanstack/react-query';
 import { SkeletonList, SkeletonDetailPage } from '@/components/SkeletonCard';
 
@@ -31,7 +40,17 @@ export function EmptyView({ message = 'ვერ მოიძებნა.' }: {
   return <p className="text-sm text-neutral-500 dark:text-neutral-400">{message}</p>;
 }
 
-interface AsyncBoundaryProps<T> {
+/** Used when AsyncBoundary wraps a section with no query prop. */
+interface SectionBoundaryProps {
+  query?: undefined;
+  children: ReactNode;
+  variant?: never;
+  loading?: never;
+  empty?: never;
+  isEmpty?: never;
+}
+
+interface QueryBoundaryProps<T> {
   query: Pick<UseQueryResult<T>, 'data' | 'isLoading' | 'isError' | 'error'>;
   children: (data: NonNullable<T>) => ReactNode;
   /** Default loading skeleton shape. */
@@ -44,14 +63,39 @@ interface AsyncBoundaryProps<T> {
   isEmpty?: (data: NonNullable<T>) => boolean;
 }
 
-export function AsyncBoundary<T>({
-  query,
-  children,
-  variant = 'list',
-  loading,
-  empty,
-  isEmpty,
-}: AsyncBoundaryProps<T>) {
+type AsyncBoundaryProps<T> = SectionBoundaryProps | QueryBoundaryProps<T>;
+
+// ── Section-level error boundary class (no-query mode) ───────────────────────
+
+interface SectionBoundaryState { hasError: boolean; error?: unknown }
+
+class SectionErrorBoundary extends Component<{ children: ReactNode }, SectionBoundaryState> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: unknown): SectionBoundaryState {
+    return { hasError: true, error };
+  }
+
+  render() {
+    if (this.state.hasError) return <ErrorView error={this.state.error} />;
+    return this.props.children;
+  }
+}
+
+// ── Public export ─────────────────────────────────────────────────────────────
+
+export function AsyncBoundary<T>(props: AsyncBoundaryProps<T>) {
+  // No-query mode: act as a section-level error isolation shell.
+  if (props.query === undefined) {
+    return <SectionErrorBoundary>{props.children as ReactNode}</SectionErrorBoundary>;
+  }
+
+  const { query, children, variant = 'list', loading, empty, isEmpty } =
+    props as QueryBoundaryProps<T>;
+
   if (query.isLoading) {
     return <>{loading ?? (variant === 'detail' ? <SkeletonDetailPage /> : <SkeletonList />)}</>;
   }

@@ -5,6 +5,7 @@ import InspectionWizard from '@/components/InspectionWizard';
 import { harnessWizardPreset } from '@/components/inspections/harnessPreset';
 import { getProject, type Project } from '@/lib/data/projects';
 import { projectKeys } from '@/app/queryKeys';
+import { AsyncBoundary } from '@/components/async/AsyncBoundary';
 import { ProjectHeader } from './ProjectHeader';
 import { ProjectDetailsCard } from './ProjectDetailsCard';
 import { CrewSection } from './CrewSection';
@@ -59,28 +60,48 @@ export default function ProjectDetail() {
         onEdit={() => setEditing(true)}
         onError={setActionError}
       />
-      <ProjectDetailsCard
-        project={project}
-        editing={editing}
-        onCancel={() => setEditing(false)}
-        onSaved={() => setEditing(false)}
-        onError={setActionError}
-      />
-      <CrewSection project={project} onError={setActionError} />
-      <SignersSection projectId={project.id} onError={setActionError} />
-      <InspectionsSection
-        projectId={project.id}
-        onNew={(category) => {
-          if (category === 'harness') setHarnessOpen(true);
-          else setWizardOpen(true);
-        }}
-      />
-      <IncidentsSection projectId={project.id} />
-      <BriefingsSection projectId={project.id} />
-      <ReportsSection projectId={project.id} />
-      <FilesSection projectId={project.id} onError={setActionError} />
-      <OrdersSection projectId={project.id} />
-      <DangerZoneSection project={project} onError={setActionError} />
+      <AsyncBoundary>
+        <ProjectDetailsCard
+          project={project}
+          editing={editing}
+          onCancel={() => setEditing(false)}
+          onSaved={() => setEditing(false)}
+          onError={setActionError}
+        />
+      </AsyncBoundary>
+      <AsyncBoundary>
+        <CrewSection project={project} onError={setActionError} />
+      </AsyncBoundary>
+      <AsyncBoundary>
+        <SignersSection projectId={project.id} onError={setActionError} />
+      </AsyncBoundary>
+      <AsyncBoundary>
+        <InspectionsSection
+          projectId={project.id}
+          onNew={(category) => {
+            if (category === 'harness') setHarnessOpen(true);
+            else setWizardOpen(true);
+          }}
+        />
+      </AsyncBoundary>
+      <AsyncBoundary>
+        <IncidentsSection projectId={project.id} />
+      </AsyncBoundary>
+      <AsyncBoundary>
+        <BriefingsSection projectId={project.id} />
+      </AsyncBoundary>
+      <AsyncBoundary>
+        <ReportsSection projectId={project.id} />
+      </AsyncBoundary>
+      <AsyncBoundary>
+        <FilesSection projectId={project.id} onError={setActionError} />
+      </AsyncBoundary>
+      <AsyncBoundary>
+        <OrdersSection projectId={project.id} />
+      </AsyncBoundary>
+      <AsyncBoundary>
+        <DangerZoneSection project={project} onError={setActionError} />
+      </AsyncBoundary>
 
       <InspectionWizard
         open={wizardOpen}

@@ -4,6 +4,16 @@
 
 ---
 
+## 2026-05-27 — Web-app: architectural refactor — native inputs (complete), AsyncBoundary isolation, store rename
+
+- **Native Input/Textarea complete migration**: All Mantine `TextInput` and `Textarea` usages across the web-app replaced with native Tailwind-only `<Input>`/`<Textarea>` components. Migrated ~35 files covering auth pages, project detail sections, inspection detail/wizard, equipment detail pages, briefing/incident/report detail pages, and shared components (FieldInput, ChecklistItemRow, InspectionSignatures, HarnessChecklist, InspectionInfoView). Mantine is kept only for UI components (Modal, NumberInput, PasswordInput, Badge, Card, etc.).
+- **NewOrder extracted to feature module**: `NewOrder` component moved from a page-level file to `features/orders/components/NewOrder/` in line with the feature-sliced architecture; route file is now a thin orchestrator.
+- **Data layer `Tables<T>` type aliases**: All `lib/data/` modules now export `Tables<T>` type aliases for their DB row types, making query return types explicit and reducing `any` casts across the data layer.
+- **AsyncBoundary applied to all ProjectDetail sections**: All 10 data-fetching sections in `src/pages/ProjectDetail/index.tsx` (`ProjectDetailsCard`, `CrewSection`, `SignersSection`, `InspectionsSection`, `IncidentsSection`, `BriefingsSection`, `ReportsSection`, `FilesSection`, `OrdersSection`, `DangerZoneSection`) are now each wrapped in `<AsyncBoundary>`. A section-level render error now shows an inline red banner for that section only instead of blanking the entire page. `AsyncBoundary` extended to support a no-query shell mode backed by a `SectionErrorBoundary` class component.
+- **`useSafetyStore` renamed from `useAppStore`**: The Zustand 3D safety viewer store in `src/store/safetyStore.ts` is now exported as `useSafetyStore`. All consumers updated: `Scene3D.tsx`, `SidePanel.tsx`, `ConstructionModel.tsx`, `useSafetySelectors.ts`, and all affected test files. Zero `useAppStore` references remain in `src/`.
+
+---
+
 ## 2026-05-27 — Mobile: unified inspection-start flow + CustomDropdown reuses canonical BottomSheet
 
 ### 🔴 BUG-23 — non-equipment templates froze the app after the template picker closed ([app/(tabs)/home.tsx](../app/(tabs)/home.tsx), [components/ui/CustomDropdown.tsx](../components/ui/CustomDropdown.tsx))

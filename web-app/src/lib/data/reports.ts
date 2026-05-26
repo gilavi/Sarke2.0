@@ -1,6 +1,8 @@
 import { supabase } from '@/lib/supabase';
 import { STORAGE_BUCKETS, signedUrl, upload, removeObjects } from '@/lib/db/storage';
-import type { Json } from '@/types/database';
+import type { Json, Tables } from '@/types/database';
+
+export type ReportRow = Tables<'reports'>;
 
 export type ReportStatus = 'draft' | 'completed';
 

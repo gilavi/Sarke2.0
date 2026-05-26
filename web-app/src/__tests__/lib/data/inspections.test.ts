@@ -86,18 +86,14 @@ describe('getInspection', () => {
     expect(b.eq).toHaveBeenCalledWith('id', 'i1');
   });
 
-  it('warns and returns null when no row is found', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  it('returns null when no row is found', async () => {
     from.mockReturnValue(makeBuilder({ data: null, error: null }));
     expect(await getInspection('missing')).toBeNull();
-    expect(warn).toHaveBeenCalled();
   });
 
-  it('logs and throws on error', async () => {
-    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+  it('throws on error', async () => {
     from.mockReturnValue(makeBuilder({ data: null, error: { message: 'bad' } }));
     await expect(getInspection('i1')).rejects.toThrow('bad');
-    expect(error).toHaveBeenCalled();
   });
 });
 

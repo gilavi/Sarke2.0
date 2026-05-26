@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useAppStore } from '@/store/safetyStore';
+import { useSafetyStore } from '@/store/safetyStore';
 import { safetyTips } from '@/data/safetyTips';
 
 const severityStyles: Record<string, { class: string; label: string }> = {
@@ -17,7 +17,7 @@ const categoryStyles: Record<string, { class: string; label: string }> = {
 };
 
 export default function SidePanel() {
-  const { selectedPartId, isPanelOpen, setPanelOpen, setSelectedPart } = useAppStore();
+  const { selectedPartId, isPanelOpen, setPanelOpen, setSelectedPart } = useSafetyStore();
   const tip = selectedPartId ? safetyTips[selectedPartId] : null;
 
   useEffect(() => {
@@ -69,7 +69,7 @@ export default function SidePanel() {
               {Object.values(safetyTips).slice(0, 3).map((t) => (
                 <button
                   key={t.id}
-                  onClick={() => useAppStore.getState().setSelectedPart(t.id)}
+                  onClick={() => useSafetyStore.getState().setSelectedPart(t.id)}
                   className="sg-empty__item"
                 >
                   <span className={`sg-dot sg-dot--${t.severity}`} />
@@ -137,7 +137,7 @@ export default function SidePanel() {
                   const nextIds = Object.keys(safetyTips);
                   const currentIdx = nextIds.indexOf(tip.id);
                   const nextId = nextIds[(currentIdx + 1) % nextIds.length];
-                  useAppStore.getState().setSelectedPart(nextId);
+                  useSafetyStore.getState().setSelectedPart(nextId);
                 }}
                 className="sg-btn sg-btn--primary"
               >

@@ -1,29 +1,17 @@
-import { TextInput, type TextInputProps } from '@mantine/core';
 import { forwardRef } from 'react';
+import { Input, type InputProps } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
-// Keep onChange compatible with native ChangeEvent so callers using
-// `onChange={(e) => setState(e.target.value)}` continue to work unchanged.
-export interface FloatingLabelInputProps extends Omit<TextInputProps, 'label'> {
-  label: string;
-  error?: string;
+// FloatingLabelInput now wraps the native Input.
+// The "floating" name is historical — the label sits above the input.
+export interface FloatingLabelInputProps extends InputProps {
   /** @deprecated use className */
   containerClassName?: string;
-  hint?: string;
 }
 
 export const FloatingLabelInput = forwardRef<HTMLInputElement, FloatingLabelInputProps>(
-  ({ label, error, hint, className, containerClassName, ...props }, ref) => (
-    <TextInput
-      ref={ref}
-      label={label}
-      error={error}
-      description={hint}
-      radius="md"
-      size="md"
-      className={cn(containerClassName, className)}
-      {...props}
-    />
+  ({ containerClassName, className, ...props }, ref) => (
+    <Input ref={ref} className={cn(containerClassName, className)} {...props} />
   ),
 );
 FloatingLabelInput.displayName = 'FloatingLabelInput';
