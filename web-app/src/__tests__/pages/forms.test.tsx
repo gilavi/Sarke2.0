@@ -66,7 +66,7 @@ describe('NewBriefing', () => {
   it('renders the first step of the briefing wizard', async () => {
     renderPage(<NewBriefing />, '/briefings/new');
     expect(await screen.findByText('ახალი ინსტრუქტაჟი')).toBeInTheDocument();
-    expect(screen.getByText('ინსტრუქტორი *')).toBeInTheDocument();
+    expect(screen.getByText(/ინსტრუქტორი/)).toBeInTheDocument();
   });
 });
 

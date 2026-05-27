@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { ClipboardList, Trash2 } from 'lucide-react';
+import { ClipboardList } from 'lucide-react';
+import DeleteButton from '@/components/DeleteButton';
 import { listInspections, deleteInspection } from '@/lib/data/inspections';
 import { listBobcatInspections, deleteBobcatInspection } from '@/lib/data/bobcat';
 import { listExcavatorInspections, deleteExcavatorInspection } from '@/lib/data/excavator';
@@ -19,14 +20,14 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 const TYPE_LABEL: Record<string, string> = {
-  harness:            '🦺 დამც. ქამარი',
+  harness:            '🦺 დამცავი ქამარი',
   xaracho:            '🏗️ ფასადის ხარაჩო',
   mobile_scaffold:    '🏗️ მობ. ხარაჩო',
   mobile_scaffold_n3: '🏗️ მობ. ხარაჩო N3',
-  bobcat:             '🚜 ციცხვიანი',
+  bobcat:             '🚜 ციცხვ. დამტვირთ.',
   excavator:          '🚧 ექსკავატორი',
   general:            '⚙️ ტექ. აღჭურვილობა',
-  cargo_platform:     '📦 ტვირთის პლატფ.',
+  cargo_platform:     '📦 ტვირთის პლატფორმა',
 };
 
 const TYPE_AVATAR: Record<string, { emoji: string; bg: string }> = {
@@ -170,8 +171,6 @@ export default function History() {
   });
 
   function handleDelete(row: Row) {
-    const ok = window.confirm('წავშალოთ ეს ჩანაწერი?');
-    if (!ok) return;
     // harness + scaffold types all live in the inspections table
     if (['harness', 'xaracho', 'mobile_scaffold', 'mobile_scaffold_n3'].includes(row.type)) {
       delInspection.mutate(row.id);
@@ -240,13 +239,9 @@ export default function History() {
                     >
                       {STATUS_LABEL[row.status] ?? row.status}
                     </span>
-                    <button
-                      onClick={() => handleDelete(row)}
-                      className="rounded p-1 text-neutral-400 opacity-0 transition-opacity hover:text-red-600 hover:bg-red-50 group-hover:opacity-100 dark:hover:bg-red-900/20"
-                      title="წაშლა"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                    <div className="opacity-0 transition-opacity group-hover:opacity-100">
+                      <DeleteButton iconOnly onDelete={() => handleDelete(row)} />
+                    </div>
                   </div>
                 </div>
               ))}

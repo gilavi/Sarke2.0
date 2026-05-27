@@ -48,9 +48,9 @@ export function HarnessChecklist({
         <h2 className="text-neutral-900 dark:text-neutral-100" style={{ fontSize: 20, fontWeight: 600, marginBottom: 4 }}>
           {itemLabel} {activeIdx + 1}
         </h2>
-        <p style={{ fontSize: 13, color: '#9CA3AF', marginBottom: 20 }}>შეამოწმეთ ყველა პუნქტი</p>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>შეამოწმეთ ყველა პუნქტი</p>
 
-        <div style={{ border: '1px solid #F0EFEC', borderRadius: 12, overflow: 'hidden' }}>
+        <div style={{ border: '1px solid var(--border-subtle)', borderRadius: 12, overflow: 'hidden' }}>
           {statusCols.map((col, ri) => {
             const current = values[activeRow]?.[col] ?? '';
             const key = `${activeRow}|${col}`;
@@ -118,7 +118,7 @@ function ChecklistRow({
         paddingBottom: 14,
         paddingLeft: 16,
         paddingRight: 16,
-        borderBottom: last ? undefined : '1px solid #F0EFEC',
+        borderBottom: last ? undefined : '1px solid var(--border-subtle)',
       }}
     >
       <span className="text-sm text-neutral-800 dark:text-neutral-200">{label}</span>

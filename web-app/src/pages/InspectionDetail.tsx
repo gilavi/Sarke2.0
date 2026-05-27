@@ -310,7 +310,7 @@ export default function InspectionDetail() {
               {inspectionName(templateId)}
             </span>
           </nav>
-          <h1 className="mt-2 font-display text-3xl font-bold text-neutral-900">
+          <h1 className="mt-2 font-display text-3xl font-bold text-neutral-900 dark:text-neutral-100">
             {inspectionName(templateId)}
           </h1>
           <p className="mt-1 text-sm text-neutral-500">სტატუსი: {inspection.status === 'completed' ? 'დასრულდა' : 'დრაფტი'}</p>
@@ -450,7 +450,7 @@ export default function InspectionDetail() {
                         className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
                           selected
                             ? 'border-brand-600 bg-brand-600 text-white'
-                            : 'border-neutral-300 bg-white text-neutral-700 hover:border-brand-400'
+                            : 'border-neutral-300 bg-white text-neutral-700 hover:border-brand-400 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:border-brand-500'
                         }`}
                       >
                         {opt.label}
@@ -701,7 +701,7 @@ function QuestionRow({
 
   return (
     <div className="space-y-2">
-      <div className="text-sm font-medium text-neutral-900">{q.title}</div>
+      <div className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{q.title}</div>
 
       {q.type === 'yesno' && (
         <div className="flex gap-2">
@@ -720,7 +720,7 @@ function QuestionRow({
                 className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
                   selected
                     ? 'border-brand-600 bg-brand-600 text-white'
-                    : 'border-neutral-300 bg-white text-neutral-700 hover:border-brand-400'
+                    : 'border-neutral-300 bg-white text-neutral-700 hover:border-brand-400 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:border-brand-500'
                 } disabled:cursor-not-allowed disabled:opacity-50`}
               >
                 {opt.label}

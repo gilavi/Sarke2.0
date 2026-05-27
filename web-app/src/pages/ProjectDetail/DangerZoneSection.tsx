@@ -1,8 +1,6 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
-import { Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useQueryClient, useMutation } from '@tanstack/react-query';
+import DeleteButton from '@/components/DeleteButton';
 import { deleteProject, type Project } from '@/lib/data/projects';
 import { projectKeys } from '@/app/queryKeys';
 import { routes } from '@/app/routes';
@@ -15,27 +13,16 @@ interface Props {
 export function DangerZoneSection({ project, onError }: Props) {
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const [deleting, setDeleting] = useState(false);
 
-  async function handleDelete() {
-    const ok = window.confirm(
-      `წაშლა: "${project.name}"\n\n` +
-        `ყველა ინსპექცია, ინსტრუქტაჟი, ინციდენტი, რეპორტი და ფაილი წაიშლება. ეს მოქმედება უკან არ ბრუნდება.`,
-    );
-    if (!ok) return;
-    setDeleting(true);
-    try {
-      await deleteProject(project.id);
-      qc.setQueryData<Project[]>(projectKeys.lists(), (prev) =>
-        (prev ?? []).filter((p) => p.id !== project.id),
-      );
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteProject(project.id),
+    onSuccess: () => {
+      qc.setQueryData<Project[]>(projectKeys.lists(), (prev) => (prev ?? []).filter((p) => p.id !== project.id));
       qc.removeQueries({ queryKey: projectKeys.detail(project.id) });
       navigate(routes.projects.list);
-    } catch (e) {
-      onError(e instanceof Error ? e.message : String(e));
-      setDeleting(false);
-    }
-  }
+    },
+    onError: (e) => onError(e instanceof Error ? e.message : String(e)),
+  });
 
   return (
     <section className="pt-4">
@@ -47,17 +34,12 @@ export function DangerZoneSection({ project, onError }: Props) {
               ყველა შემოწმება, ინსტრუქტაჟი, ინციდენტი, რეპორტი და ფაილი წაიშლება.
             </div>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => void handleDelete()}
-            disabled={deleting}
-            className="text-red-700 hover:border-red-400 hover:bg-red-100"
-          >
-            <Trash2 size={14} className="mr-1" />
-            {deleting ? 'იშლება…' : 'პროექტის წაშლა'}
-          </Button>
+          <DeleteButton
+            label="პროექტის წაშლა"
+            description="ყველა შემოწმება, ინსტრუქტაჟი, ინციდენტი, რეპორტი და ფაილი წაიშლება. ეს მოქმედება შეუქცევადია."
+            onDelete={() => deleteMutation.mutate()}
+            isPending={deleteMutation.isPending}
+          />
         </div>
       </div>
     </section>

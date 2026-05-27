@@ -39,6 +39,8 @@ export function WizardShell({
       onClose={onClose}
       fullScreen
       withCloseButton={false}
+      closeOnClickOutside={false}
+      closeOnEscape={false}
       padding={0}
       radius={0}
       styles={{

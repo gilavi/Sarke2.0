@@ -1,7 +1,9 @@
 import { Link, useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { Download, Trash2 } from 'lucide-react';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
+import { Download } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import DeleteButton from '@/components/DeleteButton';
 import { listProjectFiles, signedFileUrl, deleteProjectFile, formatSize, type ProjectFile } from '@/lib/data/projectFiles';
 import { getProject } from '@/lib/data/projects';
 import { projectKeys } from '@/app/queryKeys';
@@ -10,8 +12,9 @@ import { useState } from 'react';
 
 export default function ProjectFiles() {
   const { id } = useParams();
+  const qc = useQueryClient();
   const [opening, setOpening] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const { data: project } = useQuery({
     queryKey: projectKeys.detail(id),
@@ -34,18 +37,12 @@ export default function ProjectFiles() {
     }
   }
 
-  async function handleDelete(f: ProjectFile) {
-    const ok = window.confirm(`წავშალოთ "${f.name}"?`);
-    if (!ok) return;
-    setDeleting(f.id);
-    try {
-      await deleteProjectFile(f);
-    } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
-    } finally {
-      setDeleting(null);
-    }
-  }
+  const deleteMutation = useMutation({
+    mutationFn: deleteProjectFile,
+    onMutate: (f) => setDeletingId(f.id),
+    onSuccess: () => { setDeletingId(null); qc.invalidateQueries({ queryKey: projectKeys.files(id) }); },
+    onError: (e) => { setDeletingId(null); toast.error(e instanceof Error ? e.message : String(e)); },
+  });
 
   return (
     <div className="space-y-6">
@@ -89,16 +86,11 @@ export default function ProjectFiles() {
                   <Download size={14} className="mr-1" />
                   {opening === f.id ? 'იხსნება…' : 'გახსნა'}
                 </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => void handleDelete(f)}
-                  disabled={deleting === f.id}
-                  className="text-red-600 hover:border-red-300 hover:bg-red-50"
-                >
-                  <Trash2 size={14} />
-                </Button>
+                <DeleteButton
+                  onDelete={() => deleteMutation.mutate(f)}
+                  isPending={deletingId === f.id}
+                  description={`"${f.name}" სამუდამოდ წაიშლება.`}
+                />
               </div>
             </div>
           ))}

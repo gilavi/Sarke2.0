@@ -120,13 +120,13 @@ describe('IncidentDetail (draft edit)', () => {
       '/incidents/i1',
     );
     await screen.findByRole('heading', { level: 1, name: 'მსუბუქი' });
-    // First click opens confirm UI ("დარწმუნებული ხართ?"); pick the unique trash button.
-    const deleteBtns = screen.getAllByRole('button', { name: /წაშლა/ });
+    // Click the trigger — AlertDialog opens.
+    const deleteBtns = screen.getAllByRole('button', { name: /^წაშლა$/ });
     fireEvent.click(deleteBtns[0]);
-    // Now the "დარწმუნებული ხართ?" prompt is visible, with a small "წაშლა" button to confirm.
-    expect(screen.getByText('დარწმუნებული ხართ?')).toBeInTheDocument();
-    const confirmBtn = screen.getAllByRole('button', { name: /წაშლა/ })[0];
-    fireEvent.click(confirmBtn);
+    // Wait for the dialog title to appear, then click the confirm button.
+    await screen.findByText('ჩანაწერის წაშლა');
+    const allBtns = screen.getAllByRole('button', { name: /^წაშლა$/ });
+    fireEvent.click(allBtns[allBtns.length - 1]);
     await waitFor(() => expect(deleteIncident).toHaveBeenCalled());
   });
 });

@@ -38,10 +38,10 @@ export default function Qualifications() {
     <div className="space-y-8">
       <header>
         <h1 className="font-display text-heading-1 text-neutral-900 dark:text-neutral-100">
-          ჩემი კვალიფიკაცია
+          კვალიფიკაციები
         </h1>
         <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-          პროფესიული სერტიფიკატები (ხარაჩოს / ღვედის ინსპექტორი).
+          ინსპექტორის ლიცენზიები და ნებართვები.
         </p>
       </header>
 

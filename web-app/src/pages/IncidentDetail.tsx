@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileText, Pencil, Trash2 } from 'lucide-react';
+import { FileText, Pencil } from 'lucide-react';
+import DeleteButton from '@/components/DeleteButton';
 import { SkeletonDetailPage } from '@/components/SkeletonCard';
 import SignatureCanvas from '@/components/SignatureCanvas';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,7 +29,6 @@ export default function IncidentDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const [confirming, setConfirming] = useState(false);
   const { data: item, error: queryError, isLoading } = useQuery({
     queryKey: incidentKeys.detail(id),
     queryFn: () => getIncident(id!),
@@ -141,7 +141,7 @@ export default function IncidentDetail() {
               {INCIDENT_TYPE_LABEL[item.type] ?? item.type}
             </span>
           </nav>
-          <h1 className="mt-2 font-display text-3xl font-bold text-neutral-900">
+          <h1 className="mt-2 font-display text-3xl font-bold text-neutral-900 dark:text-neutral-100">
             {INCIDENT_TYPE_LABEL[item.type] ?? item.type}
           </h1>
           <p className="mt-1 text-sm text-neutral-500">
@@ -163,33 +163,7 @@ export default function IncidentDetail() {
               რედაქტირება
             </Button>
           )}
-          {confirming ? (
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-neutral-700">დარწმუნებული ხართ?</span>
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-red-300 text-red-700 hover:bg-red-50"
-                onClick={() => delMutation.mutate()}
-                disabled={delMutation.isPending}
-              >
-                {delMutation.isPending ? 'იშლება…' : 'წაშლა'}
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setConfirming(false)} disabled={delMutation.isPending}>
-                გაუქმება
-              </Button>
-            </div>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-red-600 hover:border-red-300 hover:bg-red-50"
-              onClick={() => setConfirming(true)}
-            >
-              <Trash2 size={14} className="mr-1" />
-              წაშლა
-            </Button>
-          )}
+          <DeleteButton onDelete={() => delMutation.mutate()} isPending={delMutation.isPending} />
         </div>
       </header>
 
@@ -262,7 +236,7 @@ export default function IncidentDetail() {
         <>
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">დაშავებული</CardTitle>
+          <CardTitle className="text-base">დაზარალებული</CardTitle>
         </CardHeader>
         <CardContent className="space-y-1 text-sm text-neutral-700">
           <div>სახელი: {item.injured_name || '—'}</div>

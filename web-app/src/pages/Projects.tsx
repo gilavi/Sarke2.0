@@ -4,6 +4,16 @@ import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { Plus, List, Map, Pencil, Trash2, Building2, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { listProjects, deleteProject, type Project } from '@/lib/data/projects';
 import { SkeletonList } from '@/components/SkeletonCard';
 import { ProjectModal } from '@/components/ProjectModal';
@@ -93,12 +103,26 @@ function ProjectCard({ p, onDelete, onEdit }: { p: Project; onDelete: (id: strin
         >
           <Pencil size={13} />
         </button>
-        <button
-          onClick={() => onDelete(p.id)}
-          className="rounded-lg bg-white/90 p-1.5 text-neutral-500 backdrop-blur-sm transition-colors hover:text-red-600 dark:bg-neutral-900/90 dark:text-neutral-400"
-        >
-          <Trash2 size={13} />
-        </button>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <button
+              type="button"
+              className="rounded-lg bg-white/90 p-1.5 text-neutral-500 backdrop-blur-sm transition-colors hover:text-red-600 dark:bg-neutral-900/90 dark:text-neutral-400"
+            >
+              <Trash2 size={13} />
+            </button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogTitle>პროექტის წაშლა</AlertDialogTitle>
+            <AlertDialogDescription>ყველა დაკავშირებული ჩანაწერი წაიშლება. ეს მოქმედება შეუქცევადია.</AlertDialogDescription>
+            <AlertDialogFooter>
+              <AlertDialogCancel asChild><Button variant="outline" size="sm">გაუქმება</Button></AlertDialogCancel>
+              <AlertDialogAction asChild>
+                <Button size="sm" variant="danger" onClick={() => onDelete(p.id)}>წაშლა</Button>
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </motion.div>
   );
@@ -139,8 +163,6 @@ export default function Projects() {
   });
 
   function handleDelete(id: string) {
-    const ok = window.confirm('წავშალოთ ეს პროექტი? ყველა დაკავშირებული ჩანაწერი წაიშლება.');
-    if (!ok) return;
     deleteMutation.mutate(id);
   }
 
@@ -183,7 +205,7 @@ export default function Projects() {
           </div>
           <Button className="shrink-0" onClick={openNew}>
             <Plus size={16} className="mr-1" />
-            ახალი
+            ახალი პროექტი
           </Button>
         </div>
       </header>

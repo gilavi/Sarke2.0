@@ -128,7 +128,7 @@ export default function Home() {
           <DropdownMenuTrigger asChild>
             <Button className="shrink-0 gap-1.5">
               <Zap size={15} />
-              ახალი აქტი
+              ახალი შემოწმება
               <ChevronDown size={13} />
             </Button>
           </DropdownMenuTrigger>
@@ -170,15 +170,15 @@ export default function Home() {
           to={routes.reports.new()}
           icon={FileText}
           label="ახალი რეპორტი"
-          color="bg-red-50 text-red-600"
-          darkColor="dark:bg-red-950/30 dark:text-red-400"
+          color="bg-violet-50 text-violet-600"
+          darkColor="dark:bg-violet-950/30 dark:text-violet-400"
         />
         <QuickActionTile
           to={routes.orders.new()}
           icon={Flame}
           label="ბრძანების შექმნა"
-          color="bg-red-50 text-red-600"
-          darkColor="dark:bg-red-950/30 dark:text-red-400"
+          color="bg-orange-50 text-orange-600"
+          darkColor="dark:bg-orange-950/30 dark:text-orange-400"
         />
       </motion.div>
 
@@ -203,7 +203,7 @@ export default function Home() {
                     { title: 'შემოწმებები', value: totalInspections, href: routes.inspections.list(), sparklineData: [2,5,3,8,6,totalInspections] },
                     { title: 'პროექტები',   value: projects?.length ?? 0, href: routes.projects.list,   sparklineData: [1,2,2,3,4,projects?.length ?? 0] },
                     { title: 'ინციდენტები', value: incidents?.length ?? 0, href: routes.incidents.list(), sparklineData: [0,1,0,2,1,incidents?.length ?? 0] },
-                    { title: 'ინსტრუქტ.',  value: briefings?.length ?? 0, href: routes.briefings.list(), sparklineData: [1,3,2,4,3,briefings?.length ?? 0] },
+                    { title: 'ინსტრუქტაჟი', value: briefings?.length ?? 0, href: routes.briefings.list(), sparklineData: [1,3,2,4,3,briefings?.length ?? 0] },
                   ].map(({ title, value, href, sparklineData }) => (
                     <Link key={href} to={href} className="group flex flex-col justify-between p-5 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/40">
                       <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">{title}</p>

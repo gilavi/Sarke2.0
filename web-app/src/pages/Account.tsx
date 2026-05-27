@@ -3,6 +3,16 @@ type LucideIcon = ComponentType<import('lucide-react').LucideProps>;
 import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { Modal, PasswordInput } from '@mantine/core';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import {
   Receipt, User, KeyRound, Award, ScrollText,
@@ -201,11 +211,6 @@ export default function Account() {
 
   async function handleCancel() {
     if (!user || !usage) return;
-    if (!window.confirm(
-      usage.expiresAt
-        ? `გამოწერის გაუქმება? წვდომა გაგრძელდება ${fmtDateKa(usage.expiresAt)}-მდე.`
-        : 'გამოწერის გაუქმება?',
-    )) return;
     setCancelling(true);
     try {
       const res = await cancelSubscription(user.id);
@@ -283,13 +288,34 @@ export default function Account() {
           </div>
           {/* Plan action */}
           {usage?.status === 'active' && !cancelled && (
-            <button
-              onClick={() => void handleCancel()}
-              disabled={cancelling}
-              className="shrink-0 text-xs font-medium text-neutral-400 transition-colors hover:text-red-500 disabled:opacity-50 dark:text-neutral-500"
-            >
-              {cancelling ? '…' : 'გაუქმება'}
-            </button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <button
+                  disabled={cancelling}
+                  className="shrink-0 text-xs font-medium text-neutral-400 transition-colors hover:text-red-500 disabled:opacity-50 dark:text-neutral-500"
+                >
+                  {cancelling ? '…' : 'გაუქმება'}
+                </button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogTitle>გამოწერის გაუქმება</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {usage.expiresAt
+                    ? `წვდომა გაგრძელდება ${fmtDateKa(usage.expiresAt)}-მდე.`
+                    : 'გამოწერა გაუქმდება.'}
+                </AlertDialogDescription>
+                <AlertDialogFooter>
+                  <AlertDialogCancel asChild>
+                    <Button variant="outline" size="sm">გაუქმება</Button>
+                  </AlertDialogCancel>
+                  <AlertDialogAction asChild>
+                    <Button size="sm" variant="danger" onClick={() => void handleCancel()} disabled={cancelling}>
+                      გამოწერის გაუქმება
+                    </Button>
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           )}
           {(usage?.status === 'expired' || usage?.status === 'free' || (usage?.status === 'active' && cancelled)) && (
             <Button onClick={() => navigate('/subscribe')} size="sm" className="shrink-0 gap-1">

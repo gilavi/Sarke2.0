@@ -1,8 +1,7 @@
 /**
- * Walk through NewIncident's 3-step wizard. Currently 43%; this exercises:
+ * Walk through NewIncident's 2-step wizard. Currently 43%; this exercises:
  *  - step 0 → step 1 advance (project picker + type pill + datetime auto-filled)
- *  - step 1 → step 2 advance after filling description/cause/actionsTaken
- *  - step 2 final submit calls createIncident
+ *  - step 1 (last) fill description/cause/actionsTaken + submit calls createIncident
  *  - type pill click changes selected type
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -47,23 +46,20 @@ describe('NewIncident — step walk', () => {
     expect(severeBtn.className).toContain('bg-brand-600');
   });
 
-  it('walks step 0 → 1 → 2 and submits → createIncident is called', async () => {
+  it('walks step 0 → 1 and submits → createIncident is called', async () => {
     renderPage(<NewIncident />, '/incidents/new?project=p1');
     // Step 0 has projectId pre-filled + dateTime pre-filled → can advance.
     fireEvent.click(screen.getByRole('button', { name: 'შემდეგი' }));
 
-    // Step 1 — wait for it to render, then fill required textareas.
+    // Step 1 (last step) — wait for it to render, then fill required textareas.
     await screen.findByText('აღწერა *');
     const textareas = document.body.querySelectorAll<HTMLTextAreaElement>('textarea');
     expect(textareas.length).toBeGreaterThanOrEqual(3);
     fireEvent.change(textareas[0], { target: { value: 'აღწერა' } });
     fireEvent.change(textareas[1], { target: { value: 'მიზეზი' } });
     fireEvent.change(textareas[2], { target: { value: 'ქმედება' } });
-    fireEvent.click(screen.getByRole('button', { name: 'შემდეგი' }));
-
-    // Step 2 — final step. The next button is "შენახვა" with no arrow.
-    const saveBtn = await screen.findByRole('button', { name: 'შენახვა' });
-    fireEvent.click(saveBtn);
+    // Step 1 is the last step; finish button is "შენახვა".
+    fireEvent.click(screen.getByRole('button', { name: 'შენახვა' }));
 
     // createIncident fires asynchronously.
     await new Promise((r) => setTimeout(r, 60));

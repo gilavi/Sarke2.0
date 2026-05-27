@@ -71,7 +71,7 @@ export default function Regulations() {
     <div className="space-y-6">
       <header className="flex items-end justify-between">
         <div>
-          <h1 className="font-display text-3xl font-bold text-neutral-900">რეგულაციები</h1>
+          <h1 className="font-display text-3xl font-bold text-neutral-900 dark:text-neutral-100">რეგულაციები</h1>
           <p className="mt-1 text-sm text-neutral-500">
             ბოლო განახლება: {formatLastFetch(lastFetch)}
           </p>
@@ -103,7 +103,7 @@ export default function Regulations() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start gap-2">
-                    <span className="flex-1 text-sm font-semibold leading-snug text-neutral-900">
+                    <span className="flex-1 text-sm font-semibold leading-snug text-neutral-900 dark:text-neutral-100">
                       {item.title}
                     </span>
                     {st?.isUpdated && (

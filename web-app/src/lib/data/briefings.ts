@@ -28,7 +28,11 @@ function toModel(r: DbRow): Briefing {
     projectId: r.project_id,
     dateTime: r.date_time,
     topics: r.topics ?? [],
-    participants: (r.participants ?? []) as unknown as BriefingParticipant[],
+    participants: ((r.participants ?? []) as unknown as Array<{ name?: string; fullName?: string; position?: string | null; signature?: string | null }>).map(p => ({
+      fullName: p.fullName ?? p.name ?? '',
+      position: p.position ?? null,
+      signature: p.signature ?? null,
+    })),
     inspectorName: r.inspector_name ?? '',
     status: r.status,
     createdAt: r.created_at,

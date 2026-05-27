@@ -26,7 +26,7 @@ export function WizardFooter({
 }) {
   return (
     <div
-      className="flex items-center justify-between"
+      className="flex items-center justify-between border-t border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-900"
       style={{
         position: 'fixed',
         bottom: 0,
@@ -36,8 +36,6 @@ export function WizardFooter({
         height: 80,
         paddingLeft: 32,
         paddingRight: 32,
-        borderTop: '1px solid #E8E6E0',
-        background: '#fff',
         zIndex: 50,
       }}
     >
@@ -45,7 +43,7 @@ export function WizardFooter({
         type="button"
         onClick={onBack}
         disabled={backDisabled}
-        className="flex items-center gap-2 text-base font-medium text-neutral-500 transition-colors hover:text-neutral-700 disabled:opacity-30"
+        className="flex items-center gap-2 text-base font-medium text-neutral-500 transition-colors hover:text-neutral-700 disabled:opacity-30 dark:text-neutral-400 dark:hover:text-neutral-200"
       >
         <ArrowLeft size={18} />
         უკან

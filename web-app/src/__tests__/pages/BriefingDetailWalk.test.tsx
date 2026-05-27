@@ -87,12 +87,13 @@ describe('BriefingDetail (draft)', () => {
       '/briefings/b1',
     );
     await screen.findByDisplayValue('ი. ი.');
-    // Open the delete confirmation.
-    const deleteBtns = screen.getAllByRole('button', { name: /წაშლა/ });
+    // Open the AlertDialog.
+    const deleteBtns = screen.getAllByRole('button', { name: /^წაშლა$/ });
     fireEvent.click(deleteBtns[0]);
-    // Confirm.
-    const confirmBtn = screen.getAllByRole('button', { name: /წაშლა/ })[0];
-    fireEvent.click(confirmBtn);
+    // Wait for the dialog title to appear, then click the confirm button.
+    await screen.findByText('ჩანაწერის წაშლა');
+    const allBtns = screen.getAllByRole('button', { name: /^წაშლა$/ });
+    fireEvent.click(allBtns[allBtns.length - 1]);
     await waitFor(() => expect(deleteBriefing).toHaveBeenCalled());
   });
 });

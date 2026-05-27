@@ -65,7 +65,7 @@ describe('Register', () => {
     fill(container, 'last', 'ხელაძე');
     fill(container, 'email', 'g@h.com');
     fill(container, 'password', 'Abcdef12!');
-    expect(screen.getByText('Very strong')).toBeInTheDocument();
+    expect(screen.getByText('ძალიან ძლიერი')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'რეგისტრაცია' }));
     await waitFor(() =>

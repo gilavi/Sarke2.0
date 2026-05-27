@@ -74,7 +74,7 @@ export function ProjectHeader({ project, onEdit, editing, onError }: Props) {
             onChange={(e) => void handleLogoChange(e)}
           />
           <div>
-            <h1 className="font-display text-3xl font-bold text-neutral-900">{project.name}</h1>
+            <h1 className="font-display text-3xl font-bold text-neutral-900 dark:text-neutral-100">{project.name}</h1>
             <p className="mt-1 text-sm text-neutral-500">{project.company_name}</p>
           </div>
         </div>

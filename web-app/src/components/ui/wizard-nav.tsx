@@ -35,7 +35,7 @@ export function WizardNav({
   return (
     <div
       className={cn(
-        'flex shrink-0 items-center justify-between border-t border-neutral-200 bg-white px-4 py-3',
+        'flex shrink-0 items-center justify-between px-4 py-3',
         className,
       )}
     >

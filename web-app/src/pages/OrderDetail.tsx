@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileText, Pencil, RotateCcw, Trash2 } from 'lucide-react';
+import { FileText, Pencil, RotateCcw } from 'lucide-react';
+import DeleteButton from '@/components/DeleteButton';
 import { toast } from 'sonner';
 import { SkeletonDetailPage } from '@/components/SkeletonCard';
 import { Button } from '@/components/ui/button';
@@ -46,12 +47,17 @@ export default function OrderDetail() {
 
   const [signingDirector, setSigningDirector] = useState(false);
   const [signingAppointed, setSigningAppointed] = useState(false);
-  const [deleting, setDeleting] = useState(false);
 
   const updateMutation = useMutation({
     mutationFn: (patch: Parameters<typeof updateOrder>[1]) => updateOrder(id!, patch),
     onSuccess: () => qc.invalidateQueries({ queryKey: orderKeys.detail(id) }),
     onError: (e) => toast.error(e instanceof Error ? e.message : 'შეცდომა'),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteOrder(id!),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: orderKeys.lists() }); navigate(-1); },
+    onError: (e) => toast.error(e instanceof Error ? e.message : 'წაშლა ვერ მოხერხდა'),
   });
 
   if (isLoading) return <SkeletonDetailPage />;
@@ -77,20 +83,6 @@ export default function OrderDetail() {
     else if (order!.documentType === 'alcohol_control') html = buildAlcoholControlOrderHtml(fdAlcohol);
     else html = buildLaborSafetyOrderHtml(fdLabor);
     openOrderPdfPreview(html);
-  }
-
-  async function handleDelete() {
-    if (!confirm('ბრძანება წაიშლება. გააგრძელებთ?')) return;
-    setDeleting(true);
-    try {
-      await deleteOrder(id!);
-      qc.invalidateQueries({ queryKey: orderKeys.lists() });
-      navigate(-1);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'წაშლა ვერ მოხერხდა');
-    } finally {
-      setDeleting(false);
-    }
   }
 
   function saveDirectorSig(dataUrl: string) {
@@ -119,7 +111,7 @@ export default function OrderDetail() {
         ['დანიშნული პირი', fd.appointedName],
         ['ტელეფონი', fd.appointedPhone],
         ['ობიექტი', fd.objectName],
-        ['ობ. მისამართი', fd.objectAddress],
+        ['ობიექტის მისამართი', fd.objectAddress],
       ]
     : isFireSafetyEnterprise
     ? [
@@ -133,7 +125,7 @@ export default function OrderDetail() {
         ['პ/ნ', fdEnterprise.appointedIdNumber],
         ['ტელეფონი', fdEnterprise.appointedPhone],
         ['ობიექტი', fdEnterprise.objectName],
-        ['ობ. მისამართი', fdEnterprise.objectAddress],
+        ['ობიექტის მისამართი', fdEnterprise.objectAddress],
       ]
     : order.documentType === 'labor_safety_specialist'
     ? [
@@ -178,14 +170,14 @@ export default function OrderDetail() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="font-display text-2xl font-bold text-neutral-900">
+          <h1 className="font-display text-2xl font-bold text-neutral-900 dark:text-neutral-100">
             {ORDER_DOCUMENT_TYPE_LABEL[order.documentType]}
           </h1>
           <p className="mt-1 text-sm text-neutral-500">
             {new Date(order.createdAt).toLocaleDateString('ka-GE')}
             {' · '}
             <span className={`font-medium ${order.status === 'completed' ? 'text-green-700' : 'text-amber-700'}`}>
-              {order.status === 'completed' ? 'დასრულდა' : 'მონახაზი'}
+              {order.status === 'completed' ? 'დასრულდა' : 'დრაფტი'}
             </span>
           </p>
         </div>
@@ -196,11 +188,11 @@ export default function OrderDetail() {
       </div>
 
       {/* Info */}
-      <div className="divide-y divide-neutral-100 rounded-xl border border-neutral-200 bg-white">
+      <div className="divide-y divide-neutral-100 rounded-xl border border-neutral-200 bg-white dark:divide-neutral-800 dark:border-neutral-800 dark:bg-neutral-900">
         {infoRows.map(([label, value]) => (
           <div key={label} className="flex items-center gap-4 px-4 py-2.5 text-sm">
             <span className="w-36 shrink-0 text-neutral-500">{label}</span>
-            <span className="font-medium text-neutral-900">{value || '—'}</span>
+            <span className="font-medium text-neutral-900 dark:text-neutral-100">{value || '—'}</span>
           </div>
         ))}
       </div>
@@ -208,7 +200,7 @@ export default function OrderDetail() {
       {/* Signatures (fire safety variants only) */}
       {isFireSafetyVariant && (
         <div className="space-y-3">
-          <h2 className="text-sm font-semibold text-neutral-700">ხელმოწერები</h2>
+          <h2 className="text-base font-semibold text-neutral-800">ხელმოწერები</h2>
 
           {/* Director */}
           <div className="rounded-xl border border-neutral-200 bg-white p-4 space-y-3">
@@ -234,7 +226,7 @@ export default function OrderDetail() {
               <div className="flex items-center gap-3">
                 <img
                   src={`data:image/png;base64,${fd.directorSignature}`}
-                  alt="Director signature"
+                  alt="დირექტორის ხელმოწერა"
                   className="h-14 rounded border border-neutral-200 bg-white p-1"
                 />
                 <span className="text-xs text-green-700 font-medium">
@@ -278,7 +270,7 @@ export default function OrderDetail() {
               <div className="flex items-center gap-3">
                 <img
                   src={`data:image/png;base64,${fd.appointedSignature}`}
-                  alt="Appointed signature"
+                  alt="დანიშნული პირის ხელმოწერა"
                   className="h-14 rounded border border-neutral-200 bg-white p-1"
                 />
                 <span className="text-xs text-green-700 font-medium">
@@ -311,16 +303,7 @@ export default function OrderDetail() {
       <div className="rounded-lg border border-red-200 bg-red-50 p-4">
         <div className="flex items-center justify-between gap-3">
           <p className="text-sm text-red-800">ბრძანების წაშლა</p>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => void handleDelete()}
-            disabled={deleting}
-            className="text-red-700 hover:border-red-400 hover:bg-red-100"
-          >
-            <Trash2 size={14} className="mr-1" />
-            {deleting ? 'იშლება…' : 'წაშლა'}
-          </Button>
+          <DeleteButton onDelete={() => deleteMutation.mutate()} isPending={deleteMutation.isPending} />
         </div>
       </div>
     </div>

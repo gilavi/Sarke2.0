@@ -1,7 +1,6 @@
 import { motion } from 'framer-motion';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { SkeletonList } from '@/components/SkeletonCard';
 import { listOrders } from '@/lib/data/orders';
@@ -74,28 +73,40 @@ export default function Orders() {
       )}
 
       {filtered && filtered.length > 0 && (
-        <motion.div initial="hidden" animate="visible" variants={containerVariants} className="grid gap-6">
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={containerVariants}
+          className="divide-y divide-neutral-100 rounded-xl border border-neutral-200 bg-white dark:divide-neutral-800 dark:border-neutral-700 dark:bg-neutral-900"
+        >
           {filtered.map((o) => {
             const proj = projects[o.projectId];
             const label = ORDER_DOCUMENT_TYPE_LABEL[o.documentType] ?? o.documentType;
             return (
               <motion.div key={o.id} variants={itemVariants}>
-              <Link to={`/orders/${o.id}`}>
-                <Card className="transition hover:border-brand-300 dark:border-neutral-800 dark:bg-neutral-900">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="flex items-center justify-between text-heading-3">
-                      <span>{label}</span>
-                      <span className="font-mono text-xs tabular-nums text-neutral-400 dark:text-neutral-500">{o.status === 'completed' ? 'დასრულდა' : 'მონახაზი'}</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-1 text-sm text-neutral-600 dark:text-neutral-400">
-                    <div>{proj?.name ?? '—'}</div>
-                    <div className="text-xs text-neutral-500">
+                <Link
+                  to={`/orders/${o.id}`}
+                  className="flex items-center gap-3 px-6 py-4 hover:bg-neutral-50 transition-colors dark:hover:bg-neutral-800/60"
+                >
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-50 dark:bg-violet-950/20">
+                    <span className="text-xl leading-none">📄</span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium text-neutral-900 dark:text-neutral-100">{label}</p>
+                    <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
+                      {proj?.name ?? '—'}
+                      {' · '}
                       {new Date(o.createdAt).toLocaleDateString('ka-GE')}
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
+                    </p>
+                  </div>
+                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
+                    o.status === 'completed'
+                      ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400'
+                      : 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400'
+                  }`}>
+                    {o.status === 'completed' ? 'დასრულდა' : 'დრაფტი'}
+                  </span>
+                </Link>
               </motion.div>
             );
           })}

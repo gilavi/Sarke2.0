@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileText, Plus, Trash2, X } from 'lucide-react';
+import { FileText, Plus, X } from 'lucide-react';
+import DeleteButton from '@/components/DeleteButton';
 import { SkeletonDetailPage } from '@/components/SkeletonCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,7 +25,6 @@ export default function BriefingDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const [confirming, setConfirming] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const { data: b, error, isLoading } = useQuery({
@@ -107,10 +107,10 @@ export default function BriefingDetail() {
             </Link>
             <span className="text-neutral-400">›</span>
             <span className="truncate max-w-[200px] text-neutral-500">
-              {fmtDateKa(b.dateTime)}
+              {b.topics.length > 0 ? topicLabel(b.topics[0]) : fmtDateKa(b.dateTime)}
             </span>
           </nav>
-          <h1 className="mt-2 font-display text-3xl font-bold text-neutral-900">
+          <h1 className="mt-2 font-display text-3xl font-bold text-neutral-900 dark:text-neutral-100">
             ინსტრუქტაჟი — {fmtDateKa(b.dateTime)}
           </h1>
           <p className="mt-1 text-sm text-neutral-500">სტატუსი: {b.status === 'completed' ? 'დასრულდა' : 'დრაფტი'}</p>
@@ -124,38 +124,7 @@ export default function BriefingDetail() {
             <FileText size={14} className="mr-1" />
             PDF
           </Button>
-          {confirming ? (
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-neutral-700">დარწმუნებული ხართ?</span>
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-red-300 text-red-700 hover:bg-red-50"
-                onClick={() => delMutation.mutate()}
-                disabled={delMutation.isPending}
-              >
-                {delMutation.isPending ? 'იშლება…' : 'წაშლა'}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setConfirming(false)}
-                disabled={delMutation.isPending}
-              >
-                გაუქმება
-              </Button>
-            </div>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-red-600 hover:border-red-300 hover:bg-red-50"
-              onClick={() => setConfirming(true)}
-            >
-              <Trash2 size={14} className="mr-1" />
-              წაშლა
-            </Button>
-          )}
+          <DeleteButton onDelete={() => delMutation.mutate()} isPending={delMutation.isPending} />
         </div>
       </header>
 
@@ -217,7 +186,7 @@ export default function BriefingDetail() {
                     className={`rounded-full border px-3 py-1 text-xs font-semibold transition disabled:opacity-60 ${
                       selected
                         ? 'border-brand-600 bg-brand-600 text-white'
-                        : 'border-neutral-300 bg-white text-neutral-700 hover:border-brand-400'
+                        : 'border-neutral-300 bg-white text-neutral-700 hover:border-brand-400 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:border-brand-500'
                     }`}
                   >
                     {TOPIC_LABELS[key as keyof typeof TOPIC_LABELS] ?? key}
@@ -292,7 +261,7 @@ export default function BriefingDetail() {
                     </>
                   ) : (
                     <div className="text-sm">
-                      <div className="font-medium text-neutral-900">{p.fullName || '—'}</div>
+                      <div className="font-medium text-neutral-900 dark:text-neutral-100">{p.fullName || '—'}</div>
                       {p.position && <div className="text-xs text-neutral-500">{p.position}</div>}
                     </div>
                   )}

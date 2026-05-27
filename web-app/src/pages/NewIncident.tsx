@@ -6,12 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ProjectPicker } from '@/components/ui/project-picker';
 import { FloatingLabelInput } from '@/components/ui/floating-label-input';
-import { WizardFrame, useWizardFlow } from '@/components/wizard';
+import { WizardShell } from '@/components/ui/wizard-shell';
 import { listProjects } from '@/lib/data/projects';
 import { projectKeys, incidentKeys } from '@/app/queryKeys';
 import { createIncident, INCIDENT_TYPE_LABEL, type IncidentType, type Incident } from '@/lib/data/incidents';
 
-const STEPS = ['ინციდენტი', 'დეტალები', 'მოწმეები'];
+const STEPS = ['ინციდენტი', 'დეტალები'];
 const TYPES = Object.entries(INCIDENT_TYPE_LABEL) as [IncidentType, string][];
 
 export default function NewIncident() {
@@ -23,7 +23,7 @@ export default function NewIncident() {
 
   const prefilledProjectId = params.get('project') ?? '';
 
-  const flow = useWizardFlow(STEPS.length);
+  const [step, setStep] = useState(0);
   const [projectId, setProjectId] = useState(prefilledProjectId);
   const [type, setType] = useState<IncidentType>('minor');
   const [dateTime, setDateTime] = useState(() => new Date().toISOString().slice(0, 16));
@@ -75,45 +75,32 @@ export default function NewIncident() {
   const canFinish = canAdvanceStep0 && canAdvanceStep1 && !mutation.isPending;
 
   const stepNextDisabled =
-    (flow.stepIndex === 0 && !canAdvanceStep0) ||
-    (flow.stepIndex === 1 && !canAdvanceStep1) ||
-    (flow.stepIndex === 2 && !canFinish);
+    (step === 0 && !canAdvanceStep0) ||
+    (step === 1 && !canFinish);
 
   const projectName = (projects ?? []).find((p) => p.id === projectId)?.name;
 
   return (
-    <WizardFrame
+    <WizardShell
       open
       onClose={() => navigate('/incidents')}
-      projectName={projectName}
-      inspectionName="ახალი ინციდენტი"
-      stepName={`${STEPS[flow.stepIndex]} · ${flow.stepIndex + 1}/${STEPS.length}`}
-      showProgress
-      progressPercent={(flow.stepIndex / (STEPS.length - 1)) * 100}
-      closeDisabled={mutation.isPending}
-      stepKey={flow.stepIndex}
-      direction={flow.direction}
-      onBack={flow.goPrev}
-      onNext={() => {
-        if (flow.isLast) {
-          if (canFinish) mutation.mutate();
-        } else {
-          flow.goNext();
-        }
-      }}
-      backDisabled={flow.isFirst || mutation.isPending}
+      title="ახალი ინციდენტი"
+      steps={STEPS}
+      currentStep={step}
+      onPrev={() => setStep((s) => s - 1)}
+      onNext={() => setStep((s) => s + 1)}
+      onFinish={() => { if (canFinish) mutation.mutate(); }}
+      isSubmitting={mutation.isPending}
       nextDisabled={stepNextDisabled}
-      nextLabel={flow.isLast ? 'შენახვა' : 'შემდეგი'}
-      hideNextArrow={flow.isLast}
-      submitting={mutation.isPending}
+      finishLabel="შენახვა"
     >
       {/* Step 0: ინციდენტი */}
-      {flow.stepIndex === 0 && (
+      {step === 0 && (
         <div className="space-y-5">
           {prefilledProjectId ? (
             <div className="space-y-1">
               <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">პროექტი</p>
-              <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm text-neutral-700">
+              <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm text-neutral-700 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300">
                 {projectName ?? '…'}
               </div>
             </div>
@@ -138,7 +125,7 @@ export default function NewIncident() {
                   className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
                     type === key
                       ? 'border-brand-600 bg-brand-600 text-white'
-                      : 'border-neutral-300 bg-white text-neutral-700 hover:border-brand-400'
+                      : 'border-neutral-300 bg-white text-neutral-700 hover:border-brand-400 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:border-brand-500'
                   }`}
                 >
                   {label}
@@ -163,7 +150,7 @@ export default function NewIncident() {
       )}
 
       {/* Step 1: დეტალები */}
-      {flow.stepIndex === 1 && (
+      {step === 1 && (
         <div className="space-y-5">
           {type !== 'nearmiss' && (
             <div className="grid grid-cols-2 gap-3">
@@ -206,53 +193,52 @@ export default function NewIncident() {
             onChange={(e) => setActionsTaken(e.target.value)}
             placeholder="რა ზომები იქნა მიღებული…"
           />
-        </div>
-      )}
 
-      {/* Step 2: მოწმეები */}
-      {flow.stepIndex === 2 && (
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">მოწმეები</p>
-            <div className="flex gap-2">
-              <Input
-                value={witnessInput}
-                onChange={(e) => setWitnessInput(e.target.value)}
-                placeholder="სახელი, გვარი"
-                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addWitness(); } }}
-              />
-              <Button type="button" variant="outline" onClick={addWitness} disabled={!witnessInput.trim()}>
-                დამატება
-              </Button>
+          <div className="space-y-4 border-t border-neutral-100 pt-5 dark:border-neutral-800">
+            <p className="text-xs font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">სურვილისამებრ</p>
+
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">მოწმეები</p>
+              <div className="flex gap-2">
+                <Input
+                  value={witnessInput}
+                  onChange={(e) => setWitnessInput(e.target.value)}
+                  placeholder="სახელი, გვარი"
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addWitness(); } }}
+                />
+                <Button type="button" variant="outline" onClick={addWitness} disabled={!witnessInput.trim()}>
+                  დამატება
+                </Button>
+              </div>
+              {witnesses.length > 0 && (
+                <ul className="space-y-1">
+                  {witnesses.map((w) => (
+                    <li key={w} className="flex items-center justify-between rounded-md bg-neutral-50 px-3 py-1.5 text-sm">
+                      <span>{w}</span>
+                      <button type="button" onClick={() => setWitnesses((p) => p.filter((x) => x !== w))} className="text-neutral-400 hover:text-red-500">×</button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
-            {witnesses.length > 0 && (
-              <ul className="space-y-1">
-                {witnesses.map((w) => (
-                  <li key={w} className="flex items-center justify-between rounded-md bg-neutral-50 px-3 py-1.5 text-sm">
-                    <span>{w}</span>
-                    <button type="button" onClick={() => setWitnesses((p) => p.filter((x) => x !== w))} className="text-neutral-400 hover:text-red-500">×</button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
 
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">დანართი ფაილები</p>
-            <Button type="button" variant="outline" onClick={() => fileRef.current?.click()}>
-              ფაილის არჩევა
-            </Button>
-            <input ref={fileRef} type="file" multiple accept="image/*,.pdf,.doc,.docx" onChange={onFileChange} className="hidden" />
-            {files.length > 0 && (
-              <ul className="space-y-1">
-                {files.map((f, i) => (
-                  <li key={i} className="flex items-center justify-between rounded-md bg-neutral-50 px-3 py-1.5 text-sm">
-                    <span className="max-w-xs truncate">{f.name}</span>
-                    <button type="button" onClick={() => setFiles((p) => p.filter((_, j) => j !== i))} className="ml-2 shrink-0 text-neutral-400 hover:text-red-500">×</button>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">დანართი ფაილები</p>
+              <Button type="button" variant="outline" onClick={() => fileRef.current?.click()}>
+                ფაილის არჩევა
+              </Button>
+              <input ref={fileRef} type="file" multiple accept="image/*,.pdf,.doc,.docx" onChange={onFileChange} className="hidden" />
+              {files.length > 0 && (
+                <ul className="space-y-1">
+                  {files.map((f, i) => (
+                    <li key={i} className="flex items-center justify-between rounded-md bg-neutral-50 px-3 py-1.5 text-sm">
+                      <span className="max-w-xs truncate">{f.name}</span>
+                      <button type="button" onClick={() => setFiles((p) => p.filter((_, j) => j !== i))} className="ml-2 shrink-0 text-neutral-400 hover:text-red-500">×</button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
 
           {mutation.error && (
@@ -262,6 +248,6 @@ export default function NewIncident() {
           )}
         </div>
       )}
-    </WizardFrame>
+    </WizardShell>
   );
 }

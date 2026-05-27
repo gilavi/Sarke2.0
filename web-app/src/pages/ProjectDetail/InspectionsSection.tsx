@@ -1,8 +1,14 @@
 import { useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Plus } from 'lucide-react';
+import { ChevronDown, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import StatusBadge from '@/components/StatusBadge';
 import { listInspections } from '@/lib/data/inspections';
@@ -37,6 +43,7 @@ interface Props {
 }
 
 export function InspectionsSection({ projectId, onNew }: Props) {
+  const navigate = useNavigate();
   const inspectionsQ = useQuery({
     queryKey: inspectionKeys.list(projectId),
     queryFn: () => listInspections(projectId),
@@ -117,10 +124,23 @@ export function InspectionsSection({ projectId, onNew }: Props) {
           <span className="ml-2 text-sm font-normal text-neutral-400">({items.length})</span>
         </CardTitle>
         <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" onClick={() => onNew()}>
-            <Plus size={14} className="mr-1" />
-            ახალი
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1">
+                <Plus size={14} />
+                ახალი
+                <ChevronDown size={12} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem onSelect={() => onNew()}>ფასადის ხარაჩო</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => onNew('harness')}>დამცავი ქამრები</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => navigate(routes.bobcat.new)}>ციცხვიანი დამტვირთველი</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => navigate(routes.excavator.new)}>ექსკავატორის შემოწმება</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => navigate(routes.generalEquipment.new)}>ტექ. აღჭურვილობა</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => navigate(routes.cargoPlatform.new)}>ტვირთის პლატფორმა</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           {items.length > 5 && (
             <Link to={routes.inspections.list(projectId)} className="text-sm text-brand-600 hover:underline">
               ყველა →

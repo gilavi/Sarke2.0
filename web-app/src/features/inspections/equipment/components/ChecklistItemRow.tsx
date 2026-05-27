@@ -55,7 +55,7 @@ export function ChecklistItemRow<V extends string>({
   const showDetails = result !== null || !!comment || (photoPaths?.length ?? 0) > 0;
 
   return (
-    <div style={{ borderBottom: '1px solid #F0EFEC', paddingTop: 14, paddingBottom: 14, paddingLeft: 16, paddingRight: 16 }}>
+    <div style={{ borderBottom: '1px solid var(--border-subtle)', paddingTop: 14, paddingBottom: 14, paddingLeft: 16, paddingRight: 16 }}>
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
           <div className="text-sm font-medium text-neutral-900 dark:text-neutral-100">

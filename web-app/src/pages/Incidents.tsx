@@ -1,10 +1,11 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil } from 'lucide-react';
+import DeleteButton from '@/components/DeleteButton';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { SkeletonList } from '@/components/SkeletonCard';
-import { listIncidents, deleteIncident, INCIDENT_TYPE_LABEL, type Incident } from '@/lib/data/incidents';
+import { listIncidents, deleteIncident, INCIDENT_TYPE_LABEL } from '@/lib/data/incidents';
 import { listProjects } from '@/lib/data/projects';
 import { projectKeys, incidentKeys } from '@/app/queryKeys';
 
@@ -45,11 +46,6 @@ export default function Incidents() {
     onSuccess: () => qc.invalidateQueries({ queryKey: incidentKeys.lists() }),
   });
 
-  function handleDelete(item: Incident) {
-    const ok = window.confirm('წავშალოთ ეს ინციდენტი?');
-    if (!ok) return;
-    deleteMutation.mutate(item);
-  }
 
   return (
     <div className="space-y-8">
@@ -118,12 +114,7 @@ export default function Incidents() {
                     <Link to={`/incidents/${i.id}`} className="rounded p-1 text-neutral-400 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-950/30">
                       <Pencil size={14} />
                     </Link>
-                    <button
-                      onClick={() => handleDelete(i)}
-                      className="rounded p-1 text-neutral-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                    <DeleteButton iconOnly onDelete={() => deleteMutation.mutate(i)} />
                   </div>
                 </div>
               </motion.div>

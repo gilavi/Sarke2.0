@@ -98,7 +98,7 @@ describe('Certificates page', () => {
 describe('Qualifications page', () => {
   it('renders the empty state', async () => {
     renderPage(<Qualifications />);
-    expect(await screen.findByRole('heading', { name: 'ჩემი კვალიფიკაცია' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'კვალიფიკაციები' })).toBeInTheDocument();
     expect(await screen.findByText('სერტიფიკატები არ არის ატვირთული.')).toBeInTheDocument();
   });
 });

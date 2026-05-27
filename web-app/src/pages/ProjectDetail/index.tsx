@@ -18,6 +18,17 @@ import { FilesSection } from './FilesSection';
 import { OrdersSection } from './OrdersSection';
 import { DangerZoneSection } from './DangerZoneSection';
 
+function SectionGroup({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-3 pt-2">
+      <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+        {label}
+      </span>
+      <div className="flex-1 border-t border-neutral-100 dark:border-neutral-800" />
+    </div>
+  );
+}
+
 export default function ProjectDetail() {
   const { id = '' } = useParams<{ id: string }>();
   const qc = useQueryClient();
@@ -69,12 +80,15 @@ export default function ProjectDetail() {
           onError={setActionError}
         />
       </AsyncBoundary>
+      <SectionGroup label="გუნდი" />
       <AsyncBoundary>
         <CrewSection project={project} onError={setActionError} />
       </AsyncBoundary>
       <AsyncBoundary>
         <SignersSection projectId={project.id} onError={setActionError} />
       </AsyncBoundary>
+
+      <SectionGroup label="ჩანაწერები" />
       <AsyncBoundary>
         <InspectionsSection
           projectId={project.id}
@@ -90,6 +104,8 @@ export default function ProjectDetail() {
       <AsyncBoundary>
         <BriefingsSection projectId={project.id} />
       </AsyncBoundary>
+
+      <SectionGroup label="დოკუმენტები" />
       <AsyncBoundary>
         <ReportsSection projectId={project.id} />
       </AsyncBoundary>
@@ -99,6 +115,7 @@ export default function ProjectDetail() {
       <AsyncBoundary>
         <OrdersSection projectId={project.id} />
       </AsyncBoundary>
+
       <AsyncBoundary>
         <DangerZoneSection project={project} onError={setActionError} />
       </AsyncBoundary>

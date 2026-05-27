@@ -1,8 +1,9 @@
 import '@mantine/core/styles.css';
+import type { ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MantineProvider, createTheme } from '@mantine/core';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { ThemeProvider } from '@/lib/theme';
+import { ThemeProvider, useTheme } from '@/lib/theme';
 import '@/lib/i18n';
 import './index.css';
 import App from './App';
@@ -33,12 +34,21 @@ const theme = createTheme({
   },
 });
 
+function ThemedMantine({ children }: { children: ReactNode }) {
+  const { isDark } = useTheme();
+  return (
+    <MantineProvider theme={theme} forceColorScheme={isDark ? 'dark' : 'light'}>
+      {children}
+    </MantineProvider>
+  );
+}
+
 createRoot(document.getElementById('root')!).render(
-  <MantineProvider theme={theme}>
-    <ThemeProvider>
+  <ThemeProvider>
+    <ThemedMantine>
       <ErrorBoundary>
         <App />
       </ErrorBoundary>
-    </ThemeProvider>
-  </MantineProvider>,
+    </ThemedMantine>
+  </ThemeProvider>,
 );

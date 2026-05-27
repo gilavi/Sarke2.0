@@ -58,14 +58,15 @@ describe('Account — cancel subscription', () => {
       isLoading: false,
     } as never);
     vi.mocked(cancelSubscription).mockResolvedValue({ active_until: '2026-12-01' } as never);
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
 
     renderPage(<Account />);
-    const cancelBtn = screen.getByRole('button', { name: 'გაუქმება' });
-    fireEvent.click(cancelBtn);
+    // Click the trigger — AlertDialog opens.
+    fireEvent.click(screen.getByRole('button', { name: 'გაუქმება' }));
+    // Wait for the dialog action button, then click it.
+    const confirmBtn = await screen.findByRole('button', { name: 'გამოწერის გაუქმება' });
+    fireEvent.click(confirmBtn);
     await waitFor(() => expect(cancelSubscription).toHaveBeenCalledWith('u1'));
     expect(await screen.findByText(/წვდომა გაგრძელდება/)).toBeInTheDocument();
-    confirmSpy.mockRestore();
   });
 
   it('clicking the active-state "გაუქმება" with confirm=false does NOT call cancelSubscription', async () => {
@@ -74,11 +75,13 @@ describe('Account — cancel subscription', () => {
         expiresAt: '2026-12-01', cancelledAt: null },
       isLoading: false,
     } as never);
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
-
     renderPage(<Account />);
+    // Click trigger to open dialog, then dismiss without confirming.
     fireEvent.click(screen.getByRole('button', { name: 'გაუქმება' }));
+    // Wait for dialog to open (action button appears), then click the cancel button.
+    await screen.findByRole('button', { name: 'გამოწერის გაუქმება' });
+    const allCancelBtns = screen.getAllByRole('button', { name: 'გაუქმება' });
+    fireEvent.click(allCancelBtns[allCancelBtns.length - 1]);
     expect(cancelSubscription).not.toHaveBeenCalled();
-    confirmSpy.mockRestore();
   });
 });

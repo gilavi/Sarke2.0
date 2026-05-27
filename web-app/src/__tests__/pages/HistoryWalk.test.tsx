@@ -114,14 +114,13 @@ describe('History', () => {
     vi.mocked(listCargoPlatformInspections).mockResolvedValue([]);
     vi.mocked(deleteInspection).mockResolvedValue(undefined);
 
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     renderPage(<History />);
     await screen.findByText('tpl');
     const trash = document.body.querySelectorAll('[class*="lucide-trash"]');
     expect(trash.length).toBeGreaterThan(0);
     fireEvent.click(trash[0].closest('button')!);
+    fireEvent.click(await screen.findByRole('button', { name: 'წაშლა' }));
     await waitFor(() => expect(deleteInspection).toHaveBeenCalled());
     expect(vi.mocked(deleteInspection).mock.calls[0][0]).toBe('h1');
-    confirmSpy.mockRestore();
   });
 });

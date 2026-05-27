@@ -129,7 +129,7 @@ export function SignersSection({ projectId, onError }: Props) {
             {signers.map((s) => (
               <li key={s.id} className="flex items-start justify-between gap-3 py-2 text-sm">
                 <div>
-                  <div className="font-medium text-neutral-900">{s.full_name}</div>
+                  <div className="font-medium text-neutral-900 dark:text-neutral-100">{s.full_name}</div>
                   <div className="text-xs text-neutral-500">
                     {s.position || '—'}
                     {s.phone ? ` · ${s.phone}` : ''}

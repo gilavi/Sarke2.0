@@ -63,7 +63,7 @@ export default function NewProject() {
         <Link to="/projects" className="text-sm text-brand-600 hover:underline">
           ← პროექტები
         </Link>
-        <h1 className="mt-2 font-display text-3xl font-bold text-neutral-900">ახალი პროექტი</h1>
+        <h1 className="mt-2 font-display text-3xl font-bold text-neutral-900 dark:text-neutral-100">ახალი პროექტი</h1>
         <p className="mt-1 text-sm text-neutral-500">
           შეიყვანეთ პროექტის ძირითადი ინფორმაცია. მონაცემები იქვე გამოჩნდება მობილურ აპში.
         </p>

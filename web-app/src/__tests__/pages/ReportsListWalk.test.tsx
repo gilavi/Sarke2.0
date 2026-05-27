@@ -55,12 +55,11 @@ describe('Reports list', () => {
         created_at: '2026-05-01', slides: [] } as never,
     ]);
     vi.mocked(deleteReport).mockResolvedValue(undefined);
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     renderPage(<Reports />);
     await screen.findByText('რეპ.1');
     const trash = document.body.querySelectorAll('[class*="lucide-trash"]');
     fireEvent.click(trash[0].closest('button')!);
+    fireEvent.click(await screen.findByRole('button', { name: 'წაშლა' }));
     await waitFor(() => expect(deleteReport).toHaveBeenCalled());
-    confirmSpy.mockRestore();
   });
 });

@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -65,6 +65,12 @@ export default function Reset() {
             <Button type="submit" disabled={busy} className="w-full">
               {busy ? 'ინახება…' : 'შენახვა'}
             </Button>
+            <p className="pt-1 text-center text-sm text-neutral-500">
+              ბმული ამოიწურა?{' '}
+              <Link to="/forgot-password" className="text-brand-600 hover:underline">
+                ხელახლა გაგზავნა
+              </Link>
+            </p>
           </form>
         </CardContent>
       </Card>

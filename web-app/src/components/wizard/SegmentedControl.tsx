@@ -30,7 +30,7 @@ export function SegmentedControl({
   return (
     <div
       className={fullWidth ? 'flex w-full overflow-hidden' : 'flex shrink-0 overflow-hidden'}
-      style={{ borderRadius: 8, border: '1px solid #E8E6E0' }}
+      style={{ borderRadius: 8, border: '1px solid var(--border-default)' }}
     >
       {options.map((o, i) => {
         const isSel = selected === o.value;
@@ -45,9 +45,9 @@ export function SegmentedControl({
               fontWeight: 500,
               flex: fullWidth ? 1 : undefined,
               width: fullWidth ? undefined : 56,
-              borderLeft: i > 0 ? '1px solid #E8E6E0' : undefined,
-              background: isSel ? o.selectedBg : '#F5F4F1',
-              color: isSel ? '#fff' : '#6B7280',
+              borderLeft: i > 0 ? '1px solid var(--border-default)' : undefined,
+              background: isSel ? o.selectedBg : 'var(--bg-hover)',
+              color: isSel ? '#fff' : 'var(--text-secondary)',
               transition: 'background-color 0.12s, color 0.12s',
             }}
           >

@@ -17,12 +17,12 @@ const getPasswordStrength = (password: string): { score: number; label: string; 
   if (/[^A-Za-z0-9]/.test(password)) score++;
 
   const levels = [
-    { label: 'Too weak', color: 'text-red-500' },
-    { label: 'Weak', color: 'text-orange-500' },
-    { label: 'Fair', color: 'text-yellow-500' },
-    { label: 'Good', color: 'text-blue-500' },
-    { label: 'Strong', color: 'text-green-500' },
-    { label: 'Very strong', color: 'text-green-600' },
+    { label: 'ძალიან სუსტი', color: 'text-red-500' },
+    { label: 'სუსტი',        color: 'text-orange-500' },
+    { label: 'საშუალო',      color: 'text-yellow-500' },
+    { label: 'კარგი',        color: 'text-blue-500' },
+    { label: 'ძლიერი',       color: 'text-green-500' },
+    { label: 'ძალიან ძლიერი', color: 'text-green-600' },
   ];
   return { score, ...levels[score] };
 };

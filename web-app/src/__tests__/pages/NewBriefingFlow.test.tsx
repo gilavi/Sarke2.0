@@ -23,7 +23,7 @@ describe('NewBriefing — step walkthrough', () => {
   it('renders step 0 with the project + inspector inputs', () => {
     renderPage(<NewBriefing />, '/briefings/new?project=p1');
     expect(screen.getByText('ახალი ინსტრუქტაჟი')).toBeInTheDocument();
-    expect(screen.getByText('ინსტრუქტორი *')).toBeInTheDocument();
+    expect(screen.getByText(/ინსტრუქტორი/)).toBeInTheDocument();
   });
 
   it('advances step 0 → step 1 once inspectorName is filled', () => {

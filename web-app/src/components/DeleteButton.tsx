@@ -19,26 +19,38 @@ interface Props {
   onDelete: () => void;
   isPending?: boolean;
   label?: string;
+  description?: string;
+  iconOnly?: boolean;
 }
 
-export default function DeleteButton({ onDelete, isPending = false, label = 'წაშლა' }: Props) {
+export default function DeleteButton({ onDelete, isPending = false, label = 'წაშლა', description, iconOnly = false }: Props) {
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className="text-red-600 hover:border-red-300 hover:bg-red-50"
-          disabled={isPending}
-        >
-          <Trash2 size={14} className="mr-1" />
-          {label}
-        </Button>
+        {iconOnly ? (
+          <button
+            type="button"
+            className="rounded p-1 text-neutral-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30"
+            disabled={isPending}
+          >
+            <Trash2 size={14} />
+          </button>
+        ) : (
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-red-600 hover:border-red-300 hover:bg-red-50"
+            disabled={isPending}
+          >
+            <Trash2 size={14} className="mr-1" />
+            {label}
+          </Button>
+        )}
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogTitle>ჩანაწერის წაშლა</AlertDialogTitle>
         <AlertDialogDescription>
-          ეს მოქმედება შეუქცევადია. ჩანაწერი სამუდამოდ წაიშლება.
+          {description ?? 'ეს მოქმედება შეუქცევადია. ჩანაწერი სამუდამოდ წაიშლება.'}
         </AlertDialogDescription>
         <AlertDialogFooter>
           <AlertDialogCancel asChild>

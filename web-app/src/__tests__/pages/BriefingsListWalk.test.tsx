@@ -50,12 +50,11 @@ describe('Briefings list', () => {
         createdAt: '2026-05-01' } as never,
     ]);
     vi.mocked(deleteBriefing).mockResolvedValue(undefined);
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     renderPage(<Briefings />);
     await screen.findByText('დრაფტი');
     const trash = document.body.querySelectorAll('[class*="lucide-trash"]');
     fireEvent.click(trash[0].closest('button')!);
+    fireEvent.click(await screen.findByRole('button', { name: 'წაშლა' }));
     await waitFor(() => expect(deleteBriefing).toHaveBeenCalled());
-    confirmSpy.mockRestore();
   });
 });

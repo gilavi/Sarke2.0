@@ -116,16 +116,16 @@ export default function PhotoUploadZone({
           }}
           className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed text-center outline-none transition-colors focus-visible:border-brand-500"
           style={{
-            borderColor: dragOver ? '#1D9E75' : '#E8E6E0',
-            background: dragOver ? '#F0FBF7' : '#FAFAF8',
+            borderColor: dragOver ? 'var(--brand-500)' : 'var(--border-default)',
+            background: dragOver ? 'var(--brand-50)' : 'var(--bg-body)',
             padding: '28px 16px',
           }}
         >
-          <Upload size={20} color="#9CA3AF" />
-          <p style={{ fontSize: 13, color: '#6B7280', fontWeight: 500 }}>
+          <Upload size={20} color="var(--text-muted)" />
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>
             {uploading ? 'იტვირთება...' : 'ჩააგდეთ ფოტოები ან დააჭირეთ ასარჩევად'}
           </p>
-          {placeholder && <p style={{ fontSize: 12, color: '#9CA3AF' }}>{placeholder}</p>}
+          {placeholder && <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>{placeholder}</p>}
         </div>
       )}
 
@@ -158,12 +158,12 @@ export default function PhotoUploadZone({
                 width: 120,
                 height: 120,
                 borderRadius: 8,
-                borderColor: dragOver ? '#1D9E75' : '#E8E6E0',
-                background: dragOver ? '#F0FBF7' : '#FAFAF8',
+                borderColor: dragOver ? 'var(--brand-500)' : 'var(--border-default)',
+                background: dragOver ? 'var(--brand-50)' : 'var(--bg-body)',
               }}
             >
-              <Upload size={20} color="#9CA3AF" />
-              <span style={{ fontSize: 12, color: '#6B7280', fontWeight: 500 }}>
+              <Upload size={20} color="var(--text-muted)" />
+              <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500 }}>
                 {uploading ? 'იტვირთება...' : 'დამატება'}
               </span>
             </div>

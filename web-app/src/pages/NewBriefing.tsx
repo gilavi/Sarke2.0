@@ -121,7 +121,7 @@ export default function NewBriefing() {
           {prefilledProjectId ? (
             <div className="space-y-1">
               <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">პროექტი</p>
-              <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm text-neutral-700">
+              <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm text-neutral-700 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300">
                 {(projects ?? []).find((p) => p.id === projectId)?.name ?? '…'}
               </div>
             </div>
@@ -143,7 +143,8 @@ export default function NewBriefing() {
           />
 
           <FloatingLabelInput
-            label="ინსტრუქტორი *"
+            label="ინსტრუქტორი"
+            required
             value={inspectorName}
             onChange={(e) => setInspectorName(e.target.value)}
           />
@@ -164,7 +165,7 @@ export default function NewBriefing() {
                 className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
                   topics.includes(key)
                     ? 'border-brand-600 bg-brand-600 text-white'
-                    : 'border-neutral-300 bg-white text-neutral-700 hover:border-brand-400'
+                    : 'border-neutral-300 bg-white text-neutral-700 hover:border-brand-400 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:border-brand-500'
                 }`}
               >
                 {topicLabel(key)}

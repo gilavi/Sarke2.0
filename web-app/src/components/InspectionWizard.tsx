@@ -723,19 +723,19 @@ function ProjectCardGrid({
             onClick={() => setProjectId(p.id)}
             className="flex items-center gap-3 rounded-xl p-3 text-left transition-colors"
             style={{
-              border: selected ? '2px solid #1D9E75' : '1px solid #E8E6E0',
-              background: selected ? '#F0FBF7' : '#fff',
+              border: selected ? '2px solid var(--brand-500)' : '1px solid var(--border-default)',
+              background: selected ? 'var(--brand-50)' : 'var(--bg-card)',
             }}
           >
             <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-neutral-100 text-xs font-semibold text-neutral-500">
               {p.logo ? <img src={p.logo} alt={p.name} className="h-full w-full object-cover" /> : initials || '?'}
             </div>
             <div className="min-w-0">
-              <div className="truncate" style={{ fontSize: 14, fontWeight: 600, color: '#1A1A1A' }}>
+              <div className="truncate" style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
                 {p.name}
               </div>
               {p.company_name && (
-                <div className="truncate" style={{ fontSize: 12, color: '#9CA3AF' }}>
+                <div className="truncate" style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                   {p.company_name}
                 </div>
               )}
@@ -848,8 +848,8 @@ function ConclusionStepRenderer({
       {summary && (
         <div
           style={{
-            background: '#F9F8F6',
-            border: '1px solid #F0EFEC',
+            background: 'var(--bg-hover)',
+            border: '1px solid var(--border-subtle)',
             borderRadius: '8px',
             padding: '12px 16px',
             display: 'flex',
@@ -859,17 +859,17 @@ function ConclusionStepRenderer({
             marginBottom: '20px',
           }}
         >
-          <span style={{ color: '#6B7280' }}>შეჯამება:</span>
+          <span style={{ color: 'var(--text-secondary)' }}>შეჯამება:</span>
           <span style={{ fontWeight: 500 }}>{summary.total} ქამარი</span>
-          <span style={{ color: '#9CA3AF' }}>·</span>
-          <span style={{ color: '#1D9E75', fontWeight: 500 }}>{summary.ok} კარგია</span>
-          <span style={{ color: '#9CA3AF' }}>·</span>
-          <span style={{ color: '#DC2626', fontWeight: 500 }}>{summary.bad} პრობლემა</span>
+          <span style={{ color: 'var(--text-muted)' }}>·</span>
+          <span style={{ color: 'var(--brand-500)', fontWeight: 500 }}>{summary.ok} კარგია</span>
+          <span style={{ color: 'var(--text-muted)' }}>·</span>
+          <span style={{ color: 'var(--danger)', fontWeight: 500 }}>{summary.bad} პრობლემა</span>
         </div>
       )}
 
       {/* 2 — Divider */}
-      <div style={{ borderTop: '1px solid #F0EFEC' }} />
+      <div style={{ borderTop: '1px solid var(--border-subtle)' }} />
 
       {/* 3 — Verdict (hero) */}
       <div>

@@ -1,10 +1,11 @@
 import { motion } from 'framer-motion';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil } from 'lucide-react';
+import DeleteButton from '@/components/DeleteButton';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { SkeletonList } from '@/components/SkeletonCard';
-import { listBriefings, deleteBriefing } from '@/lib/data/briefings';
+import { listBriefings, deleteBriefing, topicLabel } from '@/lib/data/briefings';
 import { listProjects } from '@/lib/data/projects';
 import { fmtDateKa } from '@/lib/utils';
 import { projectKeys, briefingKeys } from '@/app/queryKeys';
@@ -39,11 +40,6 @@ export default function Briefings() {
     onSuccess: () => qc.invalidateQueries({ queryKey: briefingKeys.lists() }),
   });
 
-  function handleDelete(id: string) {
-    const ok = window.confirm('წავშალოთ ეს ინსტრუქტაჟი?');
-    if (!ok) return;
-    deleteMutation.mutate(id);
-  }
 
   return (
     <div className="space-y-8">
@@ -97,20 +93,21 @@ export default function Briefings() {
                     <span className="text-xl leading-none">📋</span>
                   </div>
                   <div className="min-w-0">
-                    <p className="truncate font-medium text-neutral-900 dark:text-neutral-100">{fmtDateKa(b.dateTime)}</p>
+                    <p className="truncate font-medium text-neutral-900 dark:text-neutral-100">
+                      {b.topics.length > 0 ? topicLabel(b.topics[0]) : 'ინსტრუქტაჟი'}
+                      {b.topics.length > 1 && (
+                        <span className="ml-1.5 text-xs font-normal text-neutral-400">+{b.topics.length - 1}</span>
+                      )}
+                    </p>
                     <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
-                      {proj?.name ?? '—'}
+                      {fmtDateKa(b.dateTime)}
+                      {proj ? ` · ${proj.name}` : ''}
                       {' · '}
                       {b.participants.length} მონაწილე
                     </p>
                   </div>
                 </Link>
                 <div className="flex shrink-0 items-center gap-2">
-                  {b.topics.length > 0 && (
-                    <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300">
-                      {b.topics.length} თემა
-                    </span>
-                  )}
                   <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                     b.status === 'completed'
                       ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400'
@@ -122,12 +119,7 @@ export default function Briefings() {
                     <Link to={`/briefings/${b.id}`} className="rounded p-1 text-neutral-400 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-950/30">
                       <Pencil size={14} />
                     </Link>
-                    <button
-                      onClick={() => handleDelete(b.id)}
-                      className="rounded p-1 text-neutral-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                    <DeleteButton iconOnly onDelete={() => deleteMutation.mutate(b.id)} />
                   </div>
                 </div>
               </motion.div>

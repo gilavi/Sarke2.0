@@ -1,5 +1,5 @@
 import { Modal, Group, Text } from '@mantine/core';
-import { createContext, useContext, type ReactNode, cloneElement, isValidElement } from 'react';
+import { createContext, useContext, useState, type ReactNode, cloneElement, isValidElement } from 'react';
 
 interface AlertDialogCtx {
   open: boolean;
@@ -19,12 +19,15 @@ interface AlertDialogProps {
 }
 
 export function AlertDialog({ open: controlledOpen, onOpenChange, children, defaultOpen: _defaultOpen }: AlertDialogProps) {
-  // Support both controlled (open/onOpenChange) and uncontrolled (internal state).
-  // For uncontrolled use, the Trigger manages a local state via context.
-  // We use a simple controlled wrapper here; for the uncontrolled case
-  // callers must pass open+onOpenChange or rely on AlertDialogTrigger.
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const handleOpenChange = (v: boolean) => {
+    if (!isControlled) setInternalOpen(v);
+    onOpenChange?.(v);
+  };
   return (
-    <AlertDialogContext.Provider value={{ open: controlledOpen ?? false, onOpenChange: onOpenChange ?? (() => {}) }}>
+    <AlertDialogContext.Provider value={{ open, onOpenChange: handleOpenChange }}>
       {children}
     </AlertDialogContext.Provider>
   );
@@ -58,6 +61,7 @@ export function AlertDialogContent({
       withCloseButton={false}
       radius="md"
       centered
+      withinPortal={false}
       classNames={{ content: className ?? '' }}
     >
       {children}

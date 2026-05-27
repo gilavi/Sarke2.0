@@ -27,13 +27,13 @@ describe('SegmentedControl', () => {
     const selected = screen.getByText('კარგი');
     const unselected = screen.getByText('N/A');
     expect(selected).toHaveStyle({ color: 'rgb(255, 255, 255)' });
-    expect(unselected).toHaveStyle({ background: '#F5F4F1' });
+    expect(unselected).toHaveStyle({ background: 'var(--bg-hover)' });
   });
 
   it('shows nothing selected when selected is null', () => {
     render(<SegmentedControl options={options} selected={null} onSelect={() => {}} />);
     for (const o of options) {
-      expect(screen.getByText(o.label)).toHaveStyle({ background: '#F5F4F1' });
+      expect(screen.getByText(o.label)).toHaveStyle({ background: 'var(--bg-hover)' });
     }
   });
 });

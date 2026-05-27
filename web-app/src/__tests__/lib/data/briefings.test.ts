@@ -57,7 +57,7 @@ describe('listBriefings', () => {
       projectId: 'p1',
       dateTime: '2026-05-01T09:00:00Z',
       topics: ['ppe'],
-      participants: [{ fullName: 'ნ. ნოზაძე' }],
+      participants: [{ fullName: 'ნ. ნოზაძე', position: null, signature: null }],
       inspectorName: 'ინსპექტორი',
       status: 'draft',
       createdAt: '2026-05-01T09:00:00Z',

@@ -52,8 +52,6 @@ beforeEach(() => {
   } as never);
   vi.mocked(updateOrder).mockResolvedValue(undefined);
   vi.mocked(deleteOrder).mockResolvedValue(undefined);
-  // Stub confirm so handleDelete doesn't block on user input.
-  vi.stubGlobal('confirm', () => true);
 });
 
 describe('OrderDetail (fire safety)', () => {
@@ -125,6 +123,10 @@ describe('OrderDetail (fire safety)', () => {
     );
     await screen.findByRole('heading', { level: 1 });
     fireEvent.click(screen.getByRole('button', { name: /^წაშლა$/ }));
+    // Wait for the AlertDialog title, then click the confirm button.
+    await screen.findByText('ჩანაწერის წაშლა');
+    const allBtns = screen.getAllByRole('button', { name: /^წაშლა$/ });
+    fireEvent.click(allBtns[allBtns.length - 1]);
     await waitFor(() => expect(deleteOrder).toHaveBeenCalledWith('o1'));
   });
 });

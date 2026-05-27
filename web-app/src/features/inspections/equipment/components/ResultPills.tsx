@@ -23,7 +23,8 @@ const TONE_SELECTED: Record<ResultTone, string> = {
   neutral: 'border-neutral-500 bg-neutral-500 text-white',
 };
 
-const UNSELECTED = 'border-neutral-300 bg-white text-neutral-700 hover:border-brand-400';
+const UNSELECTED =
+  'border-neutral-300 bg-white text-neutral-700 hover:border-brand-400 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:border-brand-500';
 
 interface ResultPillsProps<V extends string> {
   options: ResultOption<V>[];

@@ -178,7 +178,7 @@ export default function ReportDetail() {
               {reportDisplayName(item.title)}
             </span>
           </nav>
-          <h1 className="mt-2 font-display text-3xl font-bold text-neutral-900">
+          <h1 className="mt-2 font-display text-3xl font-bold text-neutral-900 dark:text-neutral-100">
             {reportDisplayName(item.title)}
           </h1>
           <p className="mt-1 text-sm text-neutral-500">სტატუსი: {item.status === 'completed' ? 'დასრულდა' : 'დრაფტი'}</p>
@@ -205,7 +205,7 @@ export default function ReportDetail() {
       {/* Slides */}
       <section>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="font-display text-lg font-semibold text-neutral-900">
+          <h2 className="font-display text-lg font-semibold text-neutral-900 dark:text-neutral-100">
             სლაიდები
             <span className="ml-2 text-sm font-normal text-neutral-400">({slides.length})</span>
           </h2>

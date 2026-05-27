@@ -348,7 +348,7 @@ export default function ExcavatorDetail() {
                     ({ id: m.id, answer: null, date: null } as ExcavatorMaintenanceItemState);
                   return (
                     <li key={m.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-                      <div className="text-sm text-neutral-900">{m.label}</div>
+                      <div className="text-sm text-neutral-900 dark:text-neutral-100">{m.label}</div>
                       <div className="flex items-center gap-2">
                         <div style={{ width: 140 }}>
                           <SegmentedControl

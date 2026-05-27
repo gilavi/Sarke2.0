@@ -74,7 +74,6 @@ describe('ProjectFiles page', () => {
         mime_type: null, storage_path: 'files/doc.pdf', created_at: '2026-05-01' } as never,
     ]);
     vi.mocked(deleteProjectFile).mockResolvedValue(undefined);
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     renderPage(
       <Routes><Route path="/projects/:id/files" element={<ProjectFiles />} /></Routes>,
       '/projects/p1/files',
@@ -83,7 +82,10 @@ describe('ProjectFiles page', () => {
     // Trash button — find by lucide-trash class.
     const trash = document.body.querySelectorAll('[class*="lucide-trash"]');
     fireEvent.click(trash[0].closest('button')!);
+    // Wait for the AlertDialog to appear, then click the confirm button.
+    await screen.findByText('ჩანაწერის წაშლა');
+    const allBtns = screen.getAllByRole('button', { name: /^წაშლა$/ });
+    fireEvent.click(allBtns[allBtns.length - 1]);
     await waitFor(() => expect(deleteProjectFile).toHaveBeenCalled());
-    confirmSpy.mockRestore();
   });
 });
