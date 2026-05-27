@@ -105,6 +105,7 @@ function toDb(patch: ForkliftPatch): Record<string, unknown> {
 const base = makeInspectionService<ForkliftInspection, ForkliftPatch>({
   table: 'forklift_inspections',
   pathPrefix: 'forklift',
+  inspectionType: 'forklift_inspection',
   toModel,
   toDb,
   createColumns: (args) => ({

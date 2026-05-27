@@ -97,6 +97,7 @@ function toDb(patch: BobcatPatch): Record<string, unknown> {
 const base = makeInspectionService<BobcatInspection, BobcatPatch>({
   table: 'bobcat_inspections',
   pathPrefix: 'bobcat',
+  inspectionType: 'bobcat',
   toModel,
   toDb,
   createColumns: (args) => ({

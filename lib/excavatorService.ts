@@ -125,6 +125,7 @@ function toDb(patch: ExcavatorPatch): Record<string, unknown> {
 const base = makeInspectionService<ExcavatorInspection, ExcavatorPatch>({
   table: 'excavator_inspections',
   pathPrefix: 'excavator',
+  inspectionType: 'excavator',
   toModel,
   toDb,
   createColumns: (args) => {

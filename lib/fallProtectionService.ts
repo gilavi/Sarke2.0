@@ -124,6 +124,7 @@ function toDb(patch: FallProtectionPatch): Record<string, unknown> {
 const base = makeInspectionService<FallProtectionInspection, FallProtectionPatch>({
   table: 'fall_protection_inspections',
   pathPrefix: 'fall-protection',
+  inspectionType: 'fall_protection_inspection',
   toModel,
   toDb,
   createColumns: () => {

@@ -152,6 +152,7 @@ function toDb(patch: SafetyNetPatch): Record<string, unknown> {
 const base = makeInspectionService<SafetyNetInspection, SafetyNetPatch>({
   table: 'safety_net_inspections',
   pathPrefix: 'safety-net',
+  inspectionType: 'safety_net_inspection',
   toModel,
   toDb,
   createColumns: (args) => {

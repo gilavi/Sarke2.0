@@ -130,6 +130,7 @@ function toDb(patch: MobileLadderPatch): Record<string, unknown> {
 const base = makeInspectionService<MobileLadderInspection, MobileLadderPatch>({
   table: 'mobile_ladder_inspections',
   pathPrefix: 'mobile-ladder',
+  inspectionType: 'mobile_ladder_inspection',
   toModel,
   toDb,
   createColumns: (args) => ({

@@ -102,6 +102,7 @@ function toDb(patch: GeneralEquipmentPatch): Record<string, unknown> {
 const base = makeInspectionService<GeneralEquipmentInspection, GeneralEquipmentPatch>({
   table: 'general_equipment_inspections',
   pathPrefix: 'general_equipment',
+  inspectionType: 'general_equipment',
   toModel,
   toDb,
   createColumns: (args) => {

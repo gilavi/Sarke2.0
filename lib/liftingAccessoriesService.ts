@@ -148,6 +148,7 @@ function toDb(patch: LiftingAccessoriesPatch): Record<string, unknown> {
 const base = makeInspectionService<LiftingAccessoriesInspection, LiftingAccessoriesPatch>({
   table: 'lifting_accessories_inspections',
   pathPrefix: 'lifting-accessories',
+  inspectionType: 'lifting_accessories_inspection',
   toModel,
   toDb,
   createColumns: (args) => {

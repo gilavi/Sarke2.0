@@ -133,6 +133,7 @@ function toDb(patch: CargoPlatformPatch): Record<string, unknown> {
 const base = makeInspectionService<CargoPlatformInspection, CargoPlatformPatch>({
   table: 'cargo_platform_inspections',
   pathPrefix: 'cargo-platform',
+  inspectionType: 'cargo_platform',
   toModel,
   toDb,
   createColumns: (args) => {

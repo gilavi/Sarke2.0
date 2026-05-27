@@ -38,6 +38,12 @@ export interface InspectionServiceConfig<T, P extends object> {
   table: string;
   /** Storage path prefix under the answer-photos bucket (e.g. 'excavator'). */
   pathPrefix: string;
+  /**
+   * `inspections.type` tag used when creating the parent row via the
+   * create_equipment_inspection RPC. Matches the value the migration's
+   * Step 2 backfill assigned (e.g. 'bobcat', 'safety_net_inspection').
+   */
+  inspectionType: string;
   /** DB row → domain model (snake → camel, with any length-guard fallbacks). */
   toModel: (row: any) => T;
   /** Domain patch → DB columns (camel → snake; only present keys). */
@@ -76,7 +82,28 @@ export function makeInspectionService<T, P extends object = Record<string, unkno
       } = await supabase.auth.getUser();
       if (!user) throw new Error('Not signed in');
 
+      // Generate the id app-side so the parent row and the equipment row
+      // share the same UUID. The equipment table's PK column has a
+      // gen_random_uuid() default but we override it on insert.
+      const id = Crypto.randomUUID();
+
+      // Step 1: parent row in public.inspections via the RPC.
+      // Idempotent on the DB side (ON CONFLICT (id) DO NOTHING) so a retry
+      // after a transient network error is safe.
+      const { error: rpcError } = await supabase.rpc('create_equipment_inspection', {
+        p_type: cfg.inspectionType,
+        p_id: id,
+        p_project_id: projectId,
+        p_user_id: user.id,
+        p_template_id: templateId,
+      });
+      if (rpcError) throw new Error(rpcError.message);
+
+      // Step 2: equipment-table row with the same id. The FK added in
+      // 20260527001240_unify_inspection_identity.sql enforces that the
+      // parent row exists.
       const insert: Record<string, unknown> = {
+        id,
         project_id: projectId,
         template_id: templateId,
         user_id: user.id,
