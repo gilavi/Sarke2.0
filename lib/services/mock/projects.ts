@@ -120,6 +120,10 @@ export const projectsApi = {
     }
     return map;
   },
+  overdueCounts: async (): Promise<Record<string, number>> => {
+    // Mock mode has no schedule data, so nothing is overdue by definition.
+    return {};
+  },
 };
 
 export const projectFilesApi = {

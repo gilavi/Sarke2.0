@@ -266,6 +266,9 @@ const styles = StyleSheet.create({
     margin: 0,
     padding: 0,
     paddingLeft: 14,
+    // Prevent Android from painting its own white background over the themed
+    // container surface — without this, light text is invisible in dark mode.
+    backgroundColor: 'transparent',
   },
   inputMultiline: {
     paddingBottom: 10,

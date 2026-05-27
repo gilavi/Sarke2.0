@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { SectionEmptyState } from '../../../components/EmptyState';
 import { IncidentRow, ViewMoreRow } from '../../../components/projects/ProjectRowHelpers';
+import { SkeletonRow } from '../../../components/Skeleton';
 import { useTheme } from '../../../lib/theme';
 import type { Incident } from '../../../types/models';
 import { getStyles } from '../styles';
@@ -14,9 +15,11 @@ import { getStyles } from '../styles';
 export function IncidentsSection({
   id,
   incidents,
+  loading = false,
 }: {
   id: string | undefined;
   incidents: Incident[];
+  loading?: boolean;
 }) {
   const { theme } = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
@@ -42,7 +45,12 @@ export function IncidentsSection({
         </Pressable>
       </View>
 
-      {incidents.length === 0 ? (
+      {loading && incidents.length === 0 ? (
+        <View style={{ gap: 8, marginTop: 10 }}>
+          <SkeletonRow />
+          <SkeletonRow />
+        </View>
+      ) : incidents.length === 0 ? (
         <SectionEmptyState type="incidents" />
       ) : (
         <View style={{ gap: 8, marginTop: 10 }}>

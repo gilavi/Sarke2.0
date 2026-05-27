@@ -4,6 +4,14 @@ export function friendlyError(err: unknown, fallback = 'უცნობი შ�
   const msg = toErrorMessage(err);
   const lower = msg.toLowerCase();
 
+  // Tagged sentinels thrown by lib/session.tsx signIn() after probing
+  // email_exists(). Caught here so friendlyError() callers that don't
+  // need to discriminate still get a localized fallback.
+  if (lower === 'accountnotfound')
+    return 'ანგარიში ვერ მოიძებნა — შეამოწმეთ ელ-ფოსტა';
+  if (lower === 'wrongpassword')
+    return 'პაროლი არასწორია';
+
   if (lower.includes('invalid login credentials') || lower.includes('invalid credentials'))
     return 'არასწორი ელ-ფოსტა ან პაროლი';
   if (lower.includes('email not confirmed'))
@@ -38,4 +46,15 @@ export function isEmailTakenError(err: unknown): boolean {
 export function isCancelledError(err: unknown): boolean {
   const lower = toErrorMessage(err).toLowerCase();
   return lower.includes('cancelled') || lower.includes('canceled');
+}
+
+/** Thrown by session.signIn() when email_exists() returned false. */
+export function isAccountNotFoundError(err: unknown): boolean {
+  return toErrorMessage(err).toLowerCase() === 'accountnotfound';
+}
+
+/** Thrown by session.signIn() when email_exists() returned true but the
+ *  password was wrong. */
+export function isWrongPasswordError(err: unknown): boolean {
+  return toErrorMessage(err).toLowerCase() === 'wrongpassword';
 }

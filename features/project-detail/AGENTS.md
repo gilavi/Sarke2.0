@@ -25,13 +25,27 @@ Backs the `app/projects/[id].tsx` route.
   `useProjectMapModal(currentProject)` hook owning its
   visibility/selected/cardAnim/allProjects state. The orchestrator
   passes the returned state object to the component.
-- `useProjectDetailData.ts` — single hook owning the ~14 useState
-  declarations, 17 React Query hooks, 12 useEffect state-syncs, and
-  the 11-query `loaded` aggregator. Returns one big object the
-  component destructures.
-- `unifiedInspections.ts` — `UnifiedInspection` discriminated union,
-  `buildUnifiedInspections` mapper, and `deleteUnifiedInspection`
-  swipe-delete dispatch (pure helper, no JSX).
+- `useProjectDetailData.ts` — single hook owning 3 useState
+  declarations (project / templates / files mirrors for mutation
+  paths), 8 React Query hooks, 3 useEffect state-syncs, and the
+  `loaded` + `pending` exposure. `loaded` flips true as soon as
+  `projectQ` resolves (hero + arch animate immediately). `pending`
+  is a per-section flag object (`project`, `inspections`,
+  `incidents`, `briefings`, `reports`, `files`, `orders`,
+  `breathalyzer`) consumed by each section so they render their own
+  `SkeletonRow`s while their own query is in flight. The inspection
+  list now comes from a single RPC
+  (`useUnifiedInspectionsByProject`) rather than 10 parallel per-type
+  queries — see the `unifiedInspections.ts` note below.
+- `unifiedInspections.ts` — re-exports the `UnifiedInspection` type
+  alias and owns `deleteUnifiedInspection` (swipe-delete dispatch).
+  `buildUnifiedInspections` was removed — the unified list now comes
+  pre-merged from `get_project_inspections_unified()` (one RPC vs.
+  10 per-type queries), keyed off `inspections.type` from the
+  identity-unification migration. `deleteUnifiedInspection` takes a
+  `removeFromCache(id)` callback so the project-detail screen can
+  optimistically mutate the unified-query cache via
+  `queryClient.setQueryData`.
 - `styles.ts` — `getStyles(theme)` factory.
 - `sections/InspectionsSection.tsx` — header + 3-item preview +
   view-more + swipe-delete for the unified inspection list.
@@ -54,10 +68,13 @@ Backs the `app/projects/[id].tsx` route.
   upload/delete, swipe-delete in inspection sections) keep working
   via setters. Switching to pure query-cache mutations is a separate
   change.
-- `UnifiedInspection` discriminated union → adding a new equipment
-  inspection type requires three places: the per-source useState in
-  `useProjectDetailData`, the source branch in `buildUnifiedInspections`,
-  and the source branch in `deleteUnifiedInspection`.
+- Adding a new equipment inspection type now only requires the
+  parent `inspections.type` tag to be in sync (set by
+  `create_equipment_inspection` RPC and the unify-identity migration)
+  — the per-source useState / merge-builder / per-source delete
+  switch are all gone. `routeForInspection` still needs a new branch
+  per type, and `lib/inspection/registry.ts` still needs the create
+  entry.
 - The hero is anchored to an SVG arch path. `SCREEN_W / SVG_H /
   SVG_EDGE_Y` and the `logoContainer` `marginTop: -86` are tuned to
   the bezier peak — change either and the avatar will float off the

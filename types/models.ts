@@ -183,6 +183,8 @@ export interface Question {
   unit: string | null;
   grid_rows: string[] | null;
   grid_cols: string[] | null;
+  /** Parallel to grid_rows: per-row guidance text shown in ScaffoldRowStep. Null entries = no hint. */
+  grid_row_hints?: (string | null)[] | null;
 }
 
 /**
@@ -200,6 +202,8 @@ export interface Inspection {
   harness_name: string | null;
   conclusion_text: string | null;
   is_safe_for_use: boolean | null;
+  /** 3-state verdict: 'safe' | 'caution' | 'unsafe'. Null = not yet set. */
+  safety_verdict?: 'safe' | 'caution' | 'unsafe' | null;
   conclusion_photo_paths: string[];
   created_at: string;
   updated_at?: string;
@@ -315,6 +319,7 @@ export interface Certificate {
   template_id: string;
   pdf_url: string;
   is_safe_for_use: boolean | null;
+  safety_verdict?: 'safe' | 'caution' | 'unsafe' | null;
   conclusion_text: string | null;
   /** Template parameters snapshotted at generation time. */
   params: CertificateParams;

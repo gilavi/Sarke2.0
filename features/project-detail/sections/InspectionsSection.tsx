@@ -16,6 +16,7 @@ import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { InspectionTypeAvatar } from '../../../components/InspectionTypeAvatar';
 import { RecordTypePill } from '../../../components/RecordTypePill';
 import { EmptyState, ViewMoreRow } from '../../../components/projects/ProjectRowHelpers';
+import { SkeletonRow } from '../../../components/Skeleton';
 import { useTheme } from '../../../lib/theme';
 import { a11y } from '../../../lib/accessibility';
 import { formatShortDateTime } from '../../../lib/formatDate';
@@ -29,12 +30,14 @@ export function InspectionsSection({
   id,
   allInspections,
   templates,
+  loading = false,
   onAdd,
   onDelete,
 }: {
   id: string | undefined;
   allInspections: UnifiedInspection[];
   templates: Template[];
+  loading?: boolean;
   onAdd: () => void;
   onDelete: (item: UnifiedInspection) => void;
 }) {
@@ -59,7 +62,12 @@ export function InspectionsSection({
         </Pressable>
       </View>
 
-      {allInspections.length === 0 ? (
+      {loading && allInspections.length === 0 ? (
+        <View style={{ gap: 8, marginTop: 10 }}>
+          <SkeletonRow />
+          <SkeletonRow />
+        </View>
+      ) : allInspections.length === 0 ? (
         <EmptyState text={t('projects.noCompletedInspections')} />
       ) : (
         <View style={{ gap: 8, marginTop: 10 }}>
@@ -83,7 +91,7 @@ export function InspectionsSection({
                   {...a11y(inspectionDisplayName(tpl?.name), isCompleted ? 'დასრულებული შემოწმების აქტს ნახვა' : 'დრაფტის გასაგრძელებლად დააჭირეთ', 'button')}
                 >
                   <InspectionTypeAvatar
-                    category={item.source === 'generic' ? tpl?.category : item.source}
+                    category={item.source ?? tpl?.category}
                     size={36}
                     status={isCompleted ? 'completed' : 'draft'}
                   />
@@ -103,7 +111,7 @@ export function InspectionsSection({
             <ViewMoreRow
               items={overflow.map(item => {
                 const tpl = templates.find(tt => tt.id === item.template_id);
-                return { category: item.source === 'generic' ? (tpl?.category ?? null) : item.source };
+                return { category: item.source ?? tpl?.category ?? null };
               })}
               total={overflow.length}
               onPress={() => router.push(`/projects/${id}/inspections` as any)}

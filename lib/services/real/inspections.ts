@@ -42,6 +42,20 @@ export const inspectionsApi = {
     if (error) throw error;
     return data ?? [];
   },
+  // Lightweight unified list for the project-detail screen. Replaces the
+  // 10 per-source `listByProject` calls (generic + 9 equipment types). Backed
+  // by the get_project_inspections_unified() RPC + the unify-identity
+  // migration's `inspections.type` column. Returns only the four columns the
+  // screen actually consumes — full equipment payloads are never needed here.
+  unifiedByProject: async (
+    projectId: string,
+  ): Promise<Array<{ id: string; source: string; template_id: string; status: 'draft' | 'completed'; created_at: string }>> => {
+    const { data, error } = await supabase.rpc('get_project_inspections_unified', {
+      p_project_id: projectId,
+    });
+    if (error) throw error;
+    return (data ?? []) as Array<{ id: string; source: string; template_id: string; status: 'draft' | 'completed'; created_at: string }>;
+  },
   create: async (args: {
     projectId: string;
     templateId: string;

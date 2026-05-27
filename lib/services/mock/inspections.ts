@@ -18,6 +18,21 @@ export const inspectionsApi = {
       .filter(i => i.project_id === projectId)
       .sort((a, b) => b.created_at.localeCompare(a.created_at));
   },
+  unifiedByProject: async (
+    projectId: string,
+  ): Promise<Array<{ id: string; source: string; template_id: string; status: 'draft' | 'completed'; created_at: string }>> => {
+    const db = await load();
+    return db.inspections
+      .filter(i => i.project_id === projectId)
+      .sort((a, b) => b.created_at.localeCompare(a.created_at))
+      .map(i => ({
+        id: i.id,
+        source: 'harness',
+        template_id: i.template_id,
+        status: i.status,
+        created_at: i.created_at,
+      }));
+  },
   create: async (args: {
     projectId: string;
     templateId: string;

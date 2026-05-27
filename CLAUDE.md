@@ -79,6 +79,21 @@ Enforced limits. If a change would push a file over its target, split it into si
 
 A few files currently exceed these targets (`features/project-detail/ProjectDetail.tsx`, `features/inspection-wizard/useWizardState.ts`, `lib/pdf/inspection/template.css.ts`) — they're documented in [REFACTOR_SUMMARY_V2.md](REFACTOR_SUMMARY_V2.md) along with the reasons each remaining residue was deferred. Don't grow them further.
 
+## Loading states (skeleton vs empty vs data)
+
+Three-state UI rule for any screen that reads from React Query: **skeleton while the query has not yet produced a real answer, empty state only once the query settles with `[]`, data otherwise.** Bare `isLoading` / `isPending` flags are not enough — they only flip true on the very first fetch and skip background refetches that are replacing a stale cached `[]`. The canonical guard is:
+
+```ts
+const loading = (q.isFetching || !q.isFetched) && data.length === 0;
+```
+
+This way a racy empty result from a previous session (e.g. a prefetch that fired before the JWT propagated, then got cached as "fresh" for `staleTime`) is masked by the skeleton until the in-flight refetch lands, instead of flashing the empty-state card. See `app/(tabs)/home.tsx`, `app/(tabs)/projects.tsx`, and the post-login `prefetchQuery({ staleTime: 0 })` in `lib/session.tsx` for the canonical wiring.
+
+When adding a new "list screen", do all three of:
+1. Use the `(isFetching || !isFetched) && data.length === 0` skeleton guard, not `isLoading`.
+2. If the data is user-scoped, prefer adding the key to the post-login warm-up in `lib/session.tsx` (with `staleTime: 0`) over relying on cache rehydration alone.
+3. Empty state copy + CTA is for the **confirmed empty** branch only — never the loading branch.
+
 ## Web codebases
 
 There are three separate web codebases in this repo. None share code with the Expo mobile app — only Supabase.

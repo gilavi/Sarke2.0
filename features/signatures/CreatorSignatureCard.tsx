@@ -15,14 +15,10 @@ import { A11yText as Text } from '../../components/primitives/A11yText';
 import { useTheme, type Theme } from '../../lib/theme';
 import { a11y } from '../../lib/accessibility';
 import type { SignatureData } from './types';
-
-const KA_MONTHS_LONG = [
-  'იანვარი', 'თებერვალი', 'მარტი', 'აპრილი', 'მაისი', 'ივნისი',
-  'ივლისი', 'აგვისტო', 'სექტემბერი', 'ოქტომბერი', 'ნოემბერი', 'დეკემბერი',
-];
+import { KA_MONTH_FULL } from '../../lib/homeUtils';
 
 function formatGeorgianDate(d: Date): string {
-  return `${d.getDate()} ${KA_MONTHS_LONG[d.getMonth()]}`;
+  return `${d.getDate()} ${KA_MONTH_FULL[d.getMonth()]}`;
 }
 
 interface Props {

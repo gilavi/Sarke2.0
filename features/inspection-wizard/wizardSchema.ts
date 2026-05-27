@@ -99,13 +99,13 @@ export function hasAnswer(
   answers: Record<string, Answer>,
   photos: Record<string, AnswerPhoto[]>,
   conclusion: string,
-  isSafe: boolean | null,
+  safetyVerdict: 'safe' | 'caution' | 'unsafe' | null,
   harnessName: string,
   template: Template | null,
 ): boolean {
   if (step.kind === 'conclusion') {
     const harnessOk = template?.category !== 'harness' || harnessName.trim().length > 0;
-    return isSafe !== null && conclusion.trim().length > 0 && harnessOk;
+    return safetyVerdict !== null && conclusion.trim().length > 0 && harnessOk;
   }
   // harnessFlow manages its own completion internally — always considered answered.
   if (step.kind === 'harnessFlow') return true;

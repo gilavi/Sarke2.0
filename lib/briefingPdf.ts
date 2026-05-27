@@ -1,5 +1,6 @@
 import type { Briefing } from '../types/models';
 import type { Project } from '../types/models';
+import { KA_MONTH_FULL } from './homeUtils';
 
 /** Predefined topic labels (matches the setup screen chips). */
 const TOPIC_LABELS: Record<string, string> = {
@@ -18,12 +19,8 @@ function topicLabel(t: string): string {
 
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
-  const KA_MONTHS = [
-    'იანვარი', 'თებერვალი', 'მარტი', 'აპრილი', 'მაისი', 'ივნისი',
-    'ივლისი', 'აგვისტო', 'სექტემბერი', 'ოქტომბერი', 'ნოემბერი', 'დეკემბერი',
-  ];
   const day = d.getDate();
-  const month = KA_MONTHS[d.getMonth()];
+  const month = KA_MONTH_FULL[d.getMonth()];
   const year = d.getFullYear();
   const hh = String(d.getHours()).padStart(2, '0');
   const mm = String(d.getMinutes()).padStart(2, '0');

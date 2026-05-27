@@ -76,14 +76,14 @@ function catalogFor(insp: BobcatInspection): BobcatChecklistEntry[] {
 }
 
 function resultPill(result: string | null, entry?: BobcatChecklistEntry): string {
-  if (result === 'good')      return '<span class="pill pill-good">✓ კარგია</span>';
-  if (result === 'deficient') return '<span class="pill pill-def">⚠ ნაკლი</span>';
+  if (result === 'good')      return '<span class="pill pill-good">1 — კარგია</span>';
+  if (result === 'deficient') return '<span class="pill pill-def">2 — ნაკლი</span>';
   if (result === 'unusable') {
     if (entry?.unusableIsNeutral) {
       const label = entry.unusableLabel ?? 'არ გააჩნია';
       return `<span class="pill pill-neutral">— ${escapeHtml(label)}</span>`;
     }
-    return '<span class="pill pill-bad">✗ გამოუსადეგ.</span>';
+    return '<span class="pill pill-bad">3 — გამოუსადეგ.</span>';
   }
   return '<span class="pill pill-null">—</span>';
 }
@@ -186,9 +186,9 @@ function renderSectionIII(insp: BobcatInspection, photos: PhotoMap): string {
   return `
     <div class="section-title">III — შემოწმების ჩეკლისტი</div>
     <div class="legend">
-      <span class="legend-item"><span class="dot dot-good"></span>✓ კარგი — ნორმაში</span>
-      <span class="legend-item"><span class="dot dot-def"></span>⚠ ნაკლი — საჭიროებს მომსახურებას</span>
-      <span class="legend-item"><span class="dot dot-bad"></span>✗ გამოუსადეგარი</span>
+      <span class="legend-item"><span class="dot dot-good"></span><strong>1</strong> — კარგია (ნორმაშია)</span>
+      <span class="legend-item"><span class="dot dot-def"></span><strong>2</strong> — ნაკლი (საჭიროებს მომსახურებას)</span>
+      <span class="legend-item"><span class="dot dot-bad"></span><strong>3</strong> — გამოუსადეგარია</span>
     </div>
     <table class="cl-table">
       <thead>
@@ -228,9 +228,9 @@ function renderSectionIV(insp: BobcatInspection, photos: PhotoMap): string {
       <thead>
         <tr>
           <th>კატეგორია</th>
-          <th>კარგი ✓</th>
-          <th>ნაკლი ⚠</th>
-          <th>გამოუსად. ✗</th>
+          <th>1 — კარგია</th>
+          <th>2 — ნაკლი</th>
+          <th>3 — გამოუსად.</th>
         </tr>
       </thead>
       <tbody>${sumRows}</tbody>
@@ -251,10 +251,8 @@ function renderSectionIV(insp: BobcatInspection, photos: PhotoMap): string {
       </div>
     </div>
 
-    ${insp.notes ? `
-      <div class="notes-label" style="margin-top:14px;">შენიშვნები / ხარვეზები</div>
-      <div class="notes-block">${escapeHtml(insp.notes)}</div>
-    ` : ''}
+    <div class="notes-label" style="margin-top:14px;">შენიშვნები / ხარვეზები</div>
+    <div class="notes-block" style="background:#fff;color:#1A1A1A;">${escapeHtml(insp.notes ?? '')}</div>
     ${(insp.summaryPhotos ?? []).length > 0 ? `
       <div class="notes-label" style="margin-top:14px;">ფოტოები</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">

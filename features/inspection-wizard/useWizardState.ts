@@ -73,7 +73,7 @@ export function useWizardState(id: string | undefined) {
   const [harnessRowCount, setHarnessRowCount] = useState(5);
   const [photoUploadCount, setPhotoUploadCount] = useState(0);
   const [conclusion, setConclusion] = useState('');
-  const [isSafe, setIsSafe] = useState<boolean | null>(null);
+  const [safetyVerdict, setSafetyVerdict] = useState<'safe' | 'caution' | 'unsafe' | null>(null);
   const [harnessName, setHarnessName] = useState('');
   // Guards saveConclusionAndGo against double-tap.
   const [finishing, setFinishing] = useState(false);
@@ -123,7 +123,7 @@ export function useWizardState(id: string | undefined) {
       if (ctrl.cancelled) return;
       setTemplate(t);
       setConclusion(qMerged.conclusion_text ?? '');
-      setIsSafe(qMerged.is_safe_for_use ?? null);
+      setSafetyVerdict(qMerged.safety_verdict ?? (qMerged.is_safe_for_use === true ? 'safe' : qMerged.is_safe_for_use === false ? 'unsafe' : null));
       setHarnessName(qMerged.harness_name ?? '');
       if (t) {
         const qs = await templatesApi.questions(t.id);
@@ -196,8 +196,10 @@ export function useWizardState(id: string | undefined) {
         }
       }
       if (savedConclusion != null) setConclusion(savedConclusion);
-      if (savedSafety === 'true') setIsSafe(true);
-      else if (savedSafety === 'false') setIsSafe(false);
+      // Accept new values ('safe'/'caution'/'unsafe') and old boolean strings for backwards compat.
+      if (savedSafety === 'safe' || savedSafety === 'true') setSafetyVerdict('safe');
+      else if (savedSafety === 'caution') setSafetyVerdict('caution');
+      else if (savedSafety === 'unsafe' || savedSafety === 'false') setSafetyVerdict('unsafe');
       if (savedHarnessName != null) setHarnessName(savedHarnessName);
     } catch (e) {
       if (!ctrl.cancelled) {
@@ -209,11 +211,11 @@ export function useWizardState(id: string | undefined) {
         setLoading(false);
       }
     }
-  }, [id, toast]);
+  }, [id, toast, offline]);
 
   // Per-field AsyncStorage write-through. See ./hooks/useWizardPersistence.
   useWizardPersistence({
-    id, loading, stepIndex, harnessRowCount, conclusion, isSafe, harnessName,
+    id, loading, stepIndex, harnessRowCount, conclusion, safetyVerdict, harnessName,
   });
 
   // Initial + focus loads. The cancellation token in load() handles benign double-fire.
@@ -372,6 +374,12 @@ export function useWizardState(id: string | undefined) {
         showPhotoLocationAlert(project, location, setProject).catch(() => {});
       }
     } catch (e) {
+      // If the inspection was completed while this upload was in flight the DB
+      // trigger rejects the answer write. The completion already succeeded, so
+      // there is nothing to recover — swallow silently instead of alarming the
+      // user with a red toast on the success screen.
+      const msg = toErrorMessage(e, '');
+      if (msg.includes('is completed')) return;
       toast.error(`ფოტო ვერ აიტვირთა: ${toErrorMessage(e, 'ქსელის შეცდომა')}`);
     } finally {
       setPhotoUploadCount(c => Math.max(0, c - 1));
@@ -431,9 +439,13 @@ export function useWizardState(id: string | undefined) {
   const saveConclusionAndGo = useCallback(async () => {
     if (!questionnaire) return;
     if (finishing) return;
+    if (photoUploadCount > 0) {
+      toast.error('ფოტო ატვირთვა მიმდინარეობს. გთხოვთ მოიცადოთ და სცადოთ თავიდან');
+      return;
+    }
     haptic.medium();
     const missing: string[] = [];
-    if (isSafe === null) missing.push('უსაფრთხოების სტატუსი');
+    if (safetyVerdict === null) missing.push('უსაფრთხოების სტატუსი');
     if (!conclusion.trim()) missing.push('დასკვნა');
     if (template?.category === 'harness' && !harnessName.trim()) missing.push('ღვედის დასახელება');
     if (missing.length > 0) {
@@ -445,7 +457,8 @@ export function useWizardState(id: string | undefined) {
       await offline.enqueueQuestionnaireUpdate({
         id: questionnaire.id,
         conclusion_text: conclusion,
-        is_safe_for_use: isSafe,
+        safety_verdict: safetyVerdict,
+        is_safe_for_use: safetyVerdict === 'safe',
         harness_name: harnessName || null,
         status: 'completed',
         completed_at: new Date().toISOString(),
@@ -475,7 +488,7 @@ export function useWizardState(id: string | undefined) {
       toast.error(`შემოწმების აქტის დასრულება ვერ მოხერხდა: ${toErrorMessage(e, 'ქსელის შეცდომა')}`);
       setFinishing(false);
     }
-  }, [questionnaire, finishing, isSafe, conclusion, template, harnessName, offline, queryClient, router, toast]);
+  }, [questionnaire, finishing, photoUploadCount, safetyVerdict, conclusion, template, harnessName, offline, queryClient, router, toast]);
 
   const removeInspection = useCallback(async () => {
     if (!id) return false;
@@ -520,8 +533,8 @@ export function useWizardState(id: string | undefined) {
     // form fields
     conclusion,
     setConclusion,
-    isSafe,
-    setIsSafe,
+    safetyVerdict,
+    setSafetyVerdict,
     harnessName,
     setHarnessName,
     finishing,

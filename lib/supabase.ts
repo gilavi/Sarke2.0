@@ -2,10 +2,10 @@
 // generate the code verifier. This polyfill must load before @supabase/supabase-js.
 import 'react-native-get-random-values';
 import 'react-native-url-polyfill/auto';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
 import Constants from 'expo-constants';
 import { AppState, type AppStateStatus } from 'react-native';
+import { secureSessionStorage } from './secureSessionStorage';
 
 const extra = Constants.expoConfig?.extra ?? {};
 export const SUPABASE_URL = extra.supabaseUrl as string;
@@ -17,7 +17,11 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
-    storage: AsyncStorage,
+    // Keychain (iOS) / EncryptedSharedPreferences-backed SQLite (Android) via
+    // expo-secure-store, with a one-shot migration from AsyncStorage so
+    // pre-existing sessions are lifted forward instead of being wiped. See
+    // lib/secureSessionStorage.ts for the chunking + fallback story.
+    storage: secureSessionStorage,
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,

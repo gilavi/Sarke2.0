@@ -22,15 +22,28 @@ export function greetingFor(name: string, t: (key: string) => string) {
   return name ? `${base}, ${name}` : base;
 }
 
+export const KA_MONTH_FULL = [
+  'იანვარი', 'თებერვალი', 'მარტი', 'აპრილი', 'მაისი', 'ივნისი',
+  'ივლისი', 'აგვისტო', 'სექტემბერი', 'ოქტომბერი', 'ნოემბერი', 'დეკემბერი',
+];
+export const KA_MONTH_SHORT = [
+  'იან', 'თებ', 'მარ', 'აპრ', 'მაი', 'ივნ',
+  'ივლ', 'აგვ', 'სექ', 'ოქტ', 'ნოე', 'დეკ',
+];
+// JS getDay(): 0=Sunday … 6=Saturday
+export const KA_WEEKDAY_FULL = [
+  'კვირა', 'ორშაბათი', 'სამშაბათი', 'ოთხშაბათი',
+  'ხუთშაბათი', 'პარასკევი', 'შაბათი',
+];
+
 export function todayFormatted(lang: string) {
-  try {
-    const locale = lang.startsWith('en') ? 'en-US' : 'ka-GE';
-    return new Date().toLocaleDateString(locale, {
-      weekday: 'long', day: 'numeric', month: 'long',
-    });
-  } catch {
-    return '';
+  const d = new Date();
+  if (lang.startsWith('en')) {
+    try {
+      return d.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' });
+    } catch { return ''; }
   }
+  return `${KA_WEEKDAY_FULL[d.getDay()]} ${d.getDate()} ${KA_MONTH_FULL[d.getMonth()]}`;
 }
 
 export function relativeTime(
@@ -47,8 +60,10 @@ export function relativeTime(
   if (h < 24) return t('home.relHourAgo', { n: h });
   const days = Math.floor(h / 24);
   if (days < 7) return t('home.relDayAgo', { n: days });
-  const locale = lang.startsWith('en') ? 'en-US' : 'ka-GE';
-  return d.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
+  if (lang.startsWith('en')) {
+    try { return d.toLocaleDateString('en-US', { day: 'numeric', month: 'short' }); } catch { return ''; }
+  }
+  return `${d.getDate()} ${KA_MONTH_SHORT[d.getMonth()]}`;
 }
 
 export function tipOfTheDay(t: (key: string) => string) {
@@ -62,10 +77,12 @@ function dateGroupLabel(iso: string, lang: string): string {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const diff = Math.round((today.getTime() - d.getTime()) / 86400000);
-  if (diff === 0) return 'დღეს';
-  if (diff === 1) return 'გუშინ';
-  const locale = lang.startsWith('en') ? 'en-US' : 'ka-GE';
-  return d.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
+  if (diff === 0) return lang.startsWith('en') ? 'Today' : 'დღეს';
+  if (diff === 1) return lang.startsWith('en') ? 'Yesterday' : 'გუშინ';
+  if (lang.startsWith('en')) {
+    try { return d.toLocaleDateString('en-US', { day: 'numeric', month: 'short' }); } catch { return ''; }
+  }
+  return `${d.getDate()} ${KA_MONTH_SHORT[d.getMonth()]}`;
 }
 
 export function groupByDate<T extends { created_at: string }>(

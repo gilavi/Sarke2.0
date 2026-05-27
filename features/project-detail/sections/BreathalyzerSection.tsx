@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { SectionEmptyState } from '../../../components/EmptyState';
 import { ViewMoreRow } from '../../../components/projects/ProjectRowHelpers';
+import { SkeletonRow } from '../../../components/Skeleton';
 import { useTheme } from '../../../lib/theme';
 import { a11y } from '../../../lib/accessibility';
 import { BL_RESULT_COLORS, countsByStatus, formatBlDate } from '../../../types/breathalyzerLog';
@@ -16,9 +17,11 @@ import { getStyles } from '../styles';
 export function BreathalyzerSection({
   id,
   breathalyzerLogs,
+  loading = false,
 }: {
   id: string | undefined;
   breathalyzerLogs: BreathalizerLog[];
+  loading?: boolean;
 }) {
   const { theme } = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
@@ -41,8 +44,13 @@ export function BreathalyzerSection({
         </Pressable>
       </View>
 
-      {breathalyzerLogs.length === 0 ? (
-        <SectionEmptyState type="documents" />
+      {loading && breathalyzerLogs.length === 0 ? (
+        <View style={{ gap: 8, marginTop: 10 }}>
+          <SkeletonRow />
+          <SkeletonRow />
+        </View>
+      ) : breathalyzerLogs.length === 0 ? (
+        <SectionEmptyState type="documents" subtitle="ალკოტესტი ჩაწერილი არ არის" />
       ) : (
         <View style={{ gap: 8, marginTop: 10 }}>
           {breathalyzerLogs.slice(0, 3).map(log => {

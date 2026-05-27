@@ -171,15 +171,20 @@ export function buildInspectionPdfTemplate(args: PdfTemplateArgs): string {
       : '';
 
   // ── Status hero (full-width banner) ──
-  const isSafe = questionnaire.is_safe_for_use === true;
-  const isUnsafe = questionnaire.is_safe_for_use === false;
-  const heroClass = isSafe ? 'hero-pass' : isUnsafe ? 'hero-fail' : 'hero-pending';
-  const heroIcon = isSafe ? '✓' : isUnsafe ? '⚠' : '…';
-  const heroLabel = isSafe
+  // Use safety_verdict (3-state) when present; fall back to is_safe_for_use bool.
+  const verdict = questionnaire.safety_verdict
+    ?? (questionnaire.is_safe_for_use === true ? 'safe'
+      : questionnaire.is_safe_for_use === false ? 'unsafe'
+      : null);
+  const heroClass = verdict === 'safe' ? 'hero-pass' : verdict === 'unsafe' ? 'hero-fail' : 'hero-pending';
+  const heroIcon = verdict === 'safe' ? '✓' : verdict === 'unsafe' ? '✗' : verdict === 'caution' ? '⚠' : '…';
+  const heroLabel = verdict === 'safe'
     ? t('pdf.statusSafe')
-    : isUnsafe
-      ? t('pdf.statusNotSafe')
-      : t('pdf.statusIncomplete');
+    : verdict === 'caution'
+      ? t('pdf.statusCaution')
+      : verdict === 'unsafe'
+        ? t('pdf.statusNotSafe')
+        : t('pdf.statusIncomplete');
   const statusHero = `
     <div class="status-hero ${heroClass}">
       <span class="status-hero-icon">${heroIcon}</span>
@@ -188,11 +193,13 @@ export function buildInspectionPdfTemplate(args: PdfTemplateArgs): string {
   `;
 
   // Small badge reused inside conclusion card.
-  const statusBadge = isUnsafe
+  const statusBadge = verdict === 'unsafe'
     ? `<span class="status-badge status-fail">${t('pdf.statusNotSafe')}</span>`
-    : isSafe
-      ? `<span class="status-badge status-pass">${t('pdf.statusSafe')}</span>`
-      : `<span class="status-badge status-pending">${t('pdf.statusIncomplete')}</span>`;
+    : verdict === 'caution'
+      ? `<span class="status-badge status-pending">${t('pdf.statusCaution')}</span>`
+      : verdict === 'safe'
+        ? `<span class="status-badge status-pass">${t('pdf.statusSafe')}</span>`
+        : `<span class="status-badge status-pending">${t('pdf.statusIncomplete')}</span>`;
 
   // ── Watermark ──
   const watermark = isDraft

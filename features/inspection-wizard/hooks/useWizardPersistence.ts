@@ -29,10 +29,10 @@ export function useWizardPersistence(args: {
   stepIndex: number;
   harnessRowCount: number;
   conclusion: string;
-  isSafe: boolean | null;
+  safetyVerdict: 'safe' | 'caution' | 'unsafe' | null;
   harnessName: string;
 }) {
-  const { id, loading, stepIndex, harnessRowCount, conclusion, isSafe, harnessName } = args;
+  const { id, loading, stepIndex, harnessRowCount, conclusion, safetyVerdict, harnessName } = args;
 
   // Persist step index
   useEffect(() => {
@@ -58,14 +58,14 @@ export function useWizardPersistence(args: {
 
   useEffect(() => {
     if (!id || loading) return;
-    if (isSafe === null) {
+    if (safetyVerdict === null) {
       AsyncStorage.removeItem(safetyKey(id)).catch(() => {});
     } else {
-      AsyncStorage.setItem(safetyKey(id), String(isSafe)).catch((e) =>
+      AsyncStorage.setItem(safetyKey(id), safetyVerdict).catch((e) =>
         logError(e, 'wizard.persistSafety'),
       );
     }
-  }, [id, isSafe, loading]);
+  }, [id, safetyVerdict, loading]);
 
   useEffect(() => {
     if (!id || loading) return;

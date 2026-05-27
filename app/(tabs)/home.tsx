@@ -115,6 +115,18 @@ export default function HomeScreen() {
   const loaded = !certsQ.isLoading && !templatesQ.isLoading && !recentQ.isLoading && !projectsQ.isLoading;
   const loadError = certsQ.isError && templatesQ.isError && recentQ.isError && projectsQ.isError;
 
+  // Per-section "show skeleton" flags. We can't rely on `isLoading` alone:
+  // it only flips true on the very first fetch and stays false during background
+  // refetches — including the post-login refetch triggered after a stale empty
+  // result. Use `isFetching && data.length === 0` so we keep showing the
+  // skeleton until the in-flight fetch actually returns rows (or settles empty),
+  // instead of flashing the empty state in between. The `!isFetched` arm covers
+  // the very first render where `isFetching` may not have flipped on yet.
+  const projectsLoading =
+    (projectsQ.isFetching || !projectsQ.isFetched) && projects.length === 0;
+  const recentLoading =
+    (recentQ.isFetching || !recentQ.isFetched) && recent.length === 0;
+
 
   const [refreshing, setRefreshing] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -472,7 +484,7 @@ export default function HomeScreen() {
           </Pressable>
         </View>
 
-        {!loaded && projects.length === 0 ? (
+        {projectsLoading ? (
           <View style={staticStyles.projectRowWrap}>
             {PROJECT_SKELETONS.map((i) => (
               <View key={`skeleton-${i}`} style={[styles.projectCard, { width: (screenWidth - HPAD * 2 - GAP) / 2, gap: 10 }]}>
@@ -540,7 +552,7 @@ export default function HomeScreen() {
         )}
 
         {/* ───────── RECENT ACTIVITY ───────── */}
-        {!loaded && recent.length === 0 ? (
+        {recentLoading ? (
           <>
             <View style={[styles.sectionHeaderRow, staticStyles.sectionHeaderMargin]}>
               <Ionicons name="time-outline" size={14} color={theme.colors.inkSoft} style={{ marginRight: 5 }} />

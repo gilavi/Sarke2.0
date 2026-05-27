@@ -13,6 +13,7 @@
 // If both parts are empty the section is omitted entirely.
 
 import { escapeHtml, tPdf } from './_shared';
+import { KA_MONTH_FULL } from '../../homeUtils';
 
 /** Lightweight value shape consumed by this renderer. The structure
  *  mirrors what the inspection result screen produces from its
@@ -29,15 +30,10 @@ export interface SignaturesSectionData {
   additionalRowsCount: number;
 }
 
-const KA_MONTHS_LONG = [
-  'იანვარი', 'თებერვალი', 'მარტი', 'აპრილი', 'მაისი', 'ივნისი',
-  'ივლისი', 'აგვისტო', 'სექტემბერი', 'ოქტომბერი', 'ნოემბერი', 'დეკემბერი',
-];
-
 function formatGeorgianDate(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
-  return `${d.getDate()} ${KA_MONTHS_LONG[d.getMonth()]} ${d.getFullYear()}`;
+  return `${d.getDate()} ${KA_MONTH_FULL[d.getMonth()]} ${d.getFullYear()}`;
 }
 
 export function renderSignaturesSection(data: SignaturesSectionData | null | undefined): string {

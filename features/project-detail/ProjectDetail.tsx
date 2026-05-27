@@ -24,7 +24,9 @@ import {
   questionnairesApi,
 } from '../../lib/services';
 import { inspectionRegistry } from '../../lib/inspection/registry';
-import { buildUnifiedInspections, deleteUnifiedInspection, type UnifiedInspection } from './unifiedInspections';
+import { useQueryClient } from '@tanstack/react-query';
+import { qk, type UnifiedInspectionPreview } from '../../lib/apiHooks';
+import { deleteUnifiedInspection, type UnifiedInspection } from './unifiedInspections';
 import { useToast } from '../../lib/toast';
 import { useTheme } from '../../lib/theme';
 import { toErrorMessage } from '../../lib/logError';
@@ -75,17 +77,9 @@ export default function ProjectDetail() {
 
   const {
     loaded,
+    pending,
     project, setProject,
-    questionnaires, setQuestionnaires,
-    bobcatInspections, setBobcatInspections,
-    excavatorInspections, setExcavatorInspections,
-    generalEquipmentInspections, setGeneralEquipmentInspections,
-    cpInspections, setCpInspections,
-    snInspections, setSnInspections,
-    mlInspections, setMlInspections,
-    fpInspections, setFpInspections,
-    laInspections, setLaInspections,
-    fkInspections, setFkInspections,
+    inspections: allInspections,
     templates, setTemplates,
     files, setFiles,
     incidents,
@@ -94,6 +88,7 @@ export default function ProjectDetail() {
     orders,
     breathalyzerLogs,
   } = useProjectDetailData(id);
+  const queryClient = useQueryClient();
 
   const [filesBusy, setFilesBusy] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -175,16 +170,6 @@ export default function ProjectDetail() {
     [project, toast],
   );
 
-  // Cross-source inspection helpers live in ./unifiedInspections.
-  const allInspections = useMemo<UnifiedInspection[]>(
-    () => buildUnifiedInspections({
-      questionnaires, bobcatInspections, excavatorInspections,
-      generalEquipmentInspections, cpInspections, snInspections,
-      mlInspections, fpInspections, laInspections, fkInspections,
-    }),
-    [questionnaires, bobcatInspections, excavatorInspections, generalEquipmentInspections, cpInspections, snInspections, mlInspections, fpInspections, laInspections, fkInspections],
-  );
-
   const startNewInspection = () => {
     if (!id || typeof id !== 'string') {
       toast.error(t('errors.sessionLost', 'სესია არ მუშაობს, ხელახლა გახსენით პროექტი'));
@@ -230,17 +215,12 @@ export default function ProjectDetail() {
         if (deletingInspIdsRef.current.has(item.id)) return;
         deletingInspIdsRef.current.add(item.id);
         try {
-          await deleteUnifiedInspection(item, {
-            setBobcatInspections,
-            setExcavatorInspections,
-            setGeneralEquipmentInspections,
-            setCpInspections,
-            setSnInspections,
-            setMlInspections,
-            setFpInspections,
-            setLaInspections,
-            setFkInspections,
-            setQuestionnaires,
+          await deleteUnifiedInspection(item, (removedId) => {
+            if (!id) return;
+            queryClient.setQueryData<UnifiedInspectionPreview[]>(
+              qk.inspections.unifiedByProject(id),
+              prev => prev?.filter(x => x.id !== removedId) ?? [],
+            );
           });
           toast.success(t('notifications.deleted'));
         } catch (e) {
@@ -534,6 +514,7 @@ export default function ProjectDetail() {
               id={id}
               allInspections={allInspections}
               templates={templates}
+              loading={pending.inspections}
               onAdd={startNewInspection}
               onDelete={deleteInspection}
             />
@@ -541,17 +522,17 @@ export default function ProjectDetail() {
 
           {/* ── ინციდენტები ── */}
           <View style={styles.sectionCard}>
-            <IncidentsSection id={id} incidents={incidents} />
+            <IncidentsSection id={id} incidents={incidents} loading={pending.incidents} />
           </View>
 
           {/* ── ინსტრუქტაჟი ── */}
           <View style={styles.sectionCard}>
-            <BriefingsSection id={id} briefings={briefings} />
+            <BriefingsSection id={id} briefings={briefings} loading={pending.briefings} />
           </View>
 
           {/* ── რეპორტები ── */}
           <View style={styles.sectionCard}>
-            <ReportsSection id={id} reports={reports} />
+            <ReportsSection id={id} reports={reports} loading={pending.reports} />
           </View>
 
           {/* ── ბრძანებები ── */}
@@ -561,6 +542,7 @@ export default function ProjectDetail() {
               files={files}
               orders={orders}
               filesBusy={filesBusy}
+              loading={pending.files || pending.orders}
               onUpload={uploadFile}
               onOpenFile={openFile}
               onDeleteFile={deleteFile}
@@ -569,7 +551,7 @@ export default function ProjectDetail() {
 
           {/* ── ჟურნალები ── */}
           <View style={styles.sectionCard}>
-            <BreathalyzerSection id={id} breathalyzerLogs={breathalyzerLogs} />
+            <BreathalyzerSection id={id} breathalyzerLogs={breathalyzerLogs} loading={pending.breathalyzer} />
           </View>
 
           {/* ── მონაწილეები (merged: inspector + crew) ── */}

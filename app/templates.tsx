@@ -9,6 +9,7 @@ import { ScaffoldTour } from '../components/ScaffoldTour';
 import { useTemplates } from '../lib/apiHooks';
 import { useTheme } from '../lib/theme';
 import { inspectionDisplayName } from '../lib/shared/documentName';
+import { labelForSource } from '../lib/inspectionRouting';
 
 import type { Template } from '../types/models';
 import { SIGNER_ROLE_LABEL } from '../types/models';
@@ -19,7 +20,7 @@ const MemoizedTemplateItem = memo(function TemplateItem({ item, onHelpPress }: {
     <Card padding={14}>
       <A11yText size="base" weight="bold">{inspectionDisplayName(item.name)}</A11yText>
       <A11yText size="xs" color={theme.colors.inkSoft} style={{ marginTop: 4 }}>
-        {item.is_system ? 'სისტემური' : 'ჩემი'} · {item.category ?? '—'}
+        {item.is_system ? 'სისტემური' : 'ჩემი'} · {labelForSource(item.category)}
       </A11yText>
       <A11yText size="xs" color={theme.colors.inkSoft} style={{ marginTop: 4 }}>
         საჭირო: {item.required_signer_roles.map(r => SIGNER_ROLE_LABEL[r]).join(', ')}

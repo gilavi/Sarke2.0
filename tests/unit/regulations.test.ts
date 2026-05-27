@@ -43,6 +43,17 @@ describe('REGULATIONS constant', () => {
       expect(r.url).toMatch(/^https?:\/\//);
     }
   });
+
+  // Guards the bug fix in more.tsx where the count was hardcoded as "3".
+  // String(REGULATIONS.length) is what the More tab now renders.
+  it('has 5 entries — matches the count shown in the More tab', () => {
+    expect(REGULATIONS.length).toBe(5);
+  });
+
+  it('String(REGULATIONS.length) is not "3" (regression guard for hardcoded count)', () => {
+    expect(String(REGULATIONS.length)).not.toBe('3');
+    expect(String(REGULATIONS.length)).toBe('5');
+  });
 });
 
 describe('loadRegulationStates', () => {

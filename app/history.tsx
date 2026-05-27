@@ -16,6 +16,7 @@ import { useTheme } from '../lib/theme';
 import { friendlyError } from '../lib/errorMap';
 import { a11y } from '../lib/accessibility';
 import { inspectionDisplayName } from '../lib/shared/documentName';
+import { routeForInspection } from '../lib/inspectionRouting';
 import {
   useRecentInspections,
   useTemplates,
@@ -90,17 +91,7 @@ const MemoizedHistoryItem = memo(function HistoryItem({
     >
       <Pressable
         onPress={() => {
-          if (q.status === 'completed') {
-            router.push(`/inspections/${q.id}` as any);
-          } else if (tpl?.category === 'bobcat') {
-            router.push(`/inspections/bobcat/${q.id}` as any);
-          } else if (tpl?.category === 'excavator') {
-            router.push(`/inspections/excavator/${q.id}` as any);
-          } else if (tpl?.category === 'general_equipment') {
-            router.push(`/inspections/general-equipment/${q.id}` as any);
-          } else {
-            router.push(`/inspections/${q.id}/wizard` as any);
-          }
+          router.push(routeForInspection(tpl?.category, q.id, q.status === 'completed') as any);
         }}
         style={({ pressed }) => pressed ? { opacity: 0.7 } : undefined}
         {...a11y(
@@ -174,7 +165,7 @@ export default function HistoryScreen() {
       completed.forEach(q => out.push({ kind: 'row', q }));
     }
     return out;
-  }, [qs]);
+  }, [qs, t]);
 
   const queryClient = useQueryClient();
 

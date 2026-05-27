@@ -16,6 +16,7 @@ import { toErrorMessage } from '../../lib/logError';
 import { a11y } from '../../lib/accessibility';
 import { useTranslation } from 'react-i18next';
 import { FloatingLabelInput } from '../../components/inputs/FloatingLabelInput';
+import { isEmail } from '../../lib/validators';
 
 export default function ForgotPasswordScreen() {
   const { theme } = useTheme();
@@ -28,6 +29,10 @@ export default function ForgotPasswordScreen() {
 
   const submit = async () => {
     Keyboard.dismiss();
+    if (!isEmail(email.trim())) {
+      setError(t('auth.enterValidEmail'));
+      return;
+    }
     setBusy(true);
     setError(null);
     try {

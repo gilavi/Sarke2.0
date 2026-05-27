@@ -5,18 +5,18 @@ import { A11yText as Text } from '../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../components/inputs/FloatingLabelInput';
 import { QuestionAvatar } from '../../components/QuestionAvatar';
 import { useTheme } from '../../lib/theme';
-import { haptic } from '../../lib/haptics';
 import { a11y } from '../../lib/accessibility';
 import type { AnswerPhoto, Question, Template } from '../../types/models';
 import { getstyles, staticStyles } from './styles';
 import { PhotoThumb } from './PhotoThumb';
 import { PhotoPreviewModal } from './PhotoPreviewModal';
+import { VerdictSelector, type SafetyVerdict } from './VerdictSelector';
 
 export const ConclusionStep = memo(function ConclusionStep({
   conclusion,
   onConclusion,
-  isSafe,
-  onIsSafe,
+  safetyVerdict,
+  onSafetyVerdict,
   template,
   harnessName,
   onHarnessName,
@@ -28,8 +28,8 @@ export const ConclusionStep = memo(function ConclusionStep({
 }: {
   conclusion: string;
   onConclusion: (s: string) => void;
-  isSafe: boolean | null;
-  onIsSafe: (b: boolean) => void;
+  safetyVerdict: SafetyVerdict | null;
+  onSafetyVerdict: (v: SafetyVerdict) => void;
   template: Template | null;
   harnessName: string;
   onHarnessName: (s: string) => void;
@@ -50,6 +50,7 @@ export const ConclusionStep = memo(function ConclusionStep({
   const conclusionEmpty = !conclusion.trim();
   // Don't surface "required" errors until the user has engaged with the step.
   const [interacted, setInteracted] = useState(false);
+  const markInteracted = () => setInteracted(true);
   const [previewPhoto, setPreviewPhoto] = useState<AnswerPhoto | null>(null);
   const hasPhotos = photos.length > 0;
   const accessoryId = 'wizardConclusionAccessory';
@@ -85,70 +86,12 @@ export const ConclusionStep = memo(function ConclusionStep({
           inputAccessoryViewID={Platform.OS === 'ios' ? accessoryId : undefined}
         />
       ) : null}
-      <View style={staticStyles.gap10}>
-        <Text style={styles.decisionHeader}>გადაწყვეტილება</Text>
-        <View style={{ flexDirection: 'row', gap: 12 }}>
-          <Pressable
-            onPress={() => {
-              haptic.light();
-              setInteracted(true);
-              onIsSafe(true);
-            }}
-            style={[
-              styles.decisionButton,
-              isSafe === true
-                ? { backgroundColor: theme.colors.accent, borderColor: theme.colors.accent }
-                : { backgroundColor: theme.colors.accentSoft, borderColor: theme.colors.accentSoft },
-            ]}
-            {...a11y('უსაფრთხოა', 'შეეხეთ თუ ობიექტი უსაფრთხოა', 'button')}
-          >
-            <Ionicons
-              name="shield-checkmark"
-              size={28}
-              color={isSafe === true ? theme.colors.white : theme.colors.accent}
-            />
-            <Text
-              style={[
-                styles.decisionLabel,
-                { color: isSafe === true ? theme.colors.white : theme.colors.accent },
-              ]}
-            >
-              უსაფრთხოა
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => {
-              haptic.light();
-              setInteracted(true);
-              onIsSafe(false);
-            }}
-            style={[
-              styles.decisionButton,
-              isSafe === false
-                ? { backgroundColor: theme.colors.danger, borderColor: theme.colors.danger }
-                : { backgroundColor: theme.colors.dangerSoft, borderColor: theme.colors.dangerSoft },
-            ]}
-            {...a11y('არ არის უსაფრთხო', 'შეეხეთ თუ ობიექტი არ არის უსაფრთხო', 'button')}
-          >
-            <Ionicons
-              name="warning"
-              size={28}
-              color={isSafe === false ? theme.colors.white : theme.colors.danger}
-            />
-            <Text
-              style={[
-                styles.decisionLabel,
-                { color: isSafe === false ? theme.colors.white : theme.colors.danger },
-              ]}
-            >
-              არ არის უსაფრთხო
-            </Text>
-          </Pressable>
-        </View>
-        {interacted && isSafe === null ? (
-          <Text style={styles.fieldError}>აუცილებლად აირჩიეთ სტატუსი.</Text>
-        ) : null}
-      </View>
+      <VerdictSelector
+        value={safetyVerdict}
+        onChange={onSafetyVerdict}
+        onInteract={markInteracted}
+        showError={interacted && safetyVerdict === null}
+      />
       {photoQuestion ? (
         <View style={staticStyles.gap8}>
           <Text style={styles.label}>საერთო ფოტოები</Text>

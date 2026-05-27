@@ -37,6 +37,8 @@ export const ScaffoldRowStep = memo(function ScaffoldRowStep({
   const styles = useMemo(() => getstyles(theme), [theme]);
 
   const values: Record<string, string> = (answer?.grid_values ?? {})[row] ?? {};
+  const rowIndex = (question.grid_rows ?? []).indexOf(row);
+  const rowHint = rowIndex >= 0 ? (question.grid_row_hints?.[rowIndex] ?? null) : null;
   const allAnswerPhotos = answer ? photosByAnswer[answer.id] ?? [] : [];
   const rowTag = `row:${row}`;
   const answerPhotos = allAnswerPhotos.filter(p => p.caption === rowTag);
@@ -77,6 +79,11 @@ export const ScaffoldRowStep = memo(function ScaffoldRowStep({
         <Text style={{ fontSize: 22, fontWeight: '800', color: theme.colors.ink, textAlign: 'center' }}>
           {row}
         </Text>
+        {rowHint ? (
+          <Text style={{ fontSize: 13, color: theme.colors.inkSoft, textAlign: 'center', paddingHorizontal: 16, lineHeight: 18 }}>
+            {rowHint}
+          </Text>
+        ) : null}
       </View>
 
       {hasPhotos ? (

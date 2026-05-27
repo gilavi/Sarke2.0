@@ -284,10 +284,13 @@ export default function NewIncident() {
     }
     setSaving(true);
     let savedId = incidentId;
+    let incidentCommitted = false;
+    let uploadedPhotoPaths: string[] = [];
     try {
       // 1. upload photos
       const uploaded = await uploadPhotos();
-      const photoPaths = uploaded.map(u => u.path);
+      uploadedPhotoPaths = uploaded.map(u => u.path);
+      const photoPaths = uploadedPhotoPaths;
 
       // 2. create incident record
       const saved = await incidentsApi.create({
@@ -308,6 +311,7 @@ export default function NewIncident() {
         pdf_url: null,
       });
       savedId = saved.id;
+      incidentCommitted = true;
 
       // 3. load signature data URL — strict so we never embed a signed URL
       // the print WebView can't fetch.
@@ -397,6 +401,14 @@ export default function NewIncident() {
       }
     } catch (e) {
       if (e instanceof PdfLimitReachedError) { setPaywallVisible(true); return; }
+      if (!incidentCommitted) {
+        // Incident was never written to DB — clean up any photos that made it to storage
+        for (const path of uploadedPhotoPaths) {
+          storageApi.remove(STORAGE_BUCKETS.incidentPhotos, path).catch(() => {});
+        }
+        toast.error(friendlyError(e, 'ინციდენტის შექმნა ვერ მოხერხდა'));
+        return;
+      }
       console.warn('[incident] PDF generation failed', e);
       toast.error(friendlyError(e, 'PDF-ის შექმნა ვერ მოხერხდა — ინციდენტი შენახულია'));
       router.replace(`/incidents/${savedId}` as any);

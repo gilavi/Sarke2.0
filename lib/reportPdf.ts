@@ -1,4 +1,5 @@
 import type { Project, Report, ReportSlide } from '../types/models';
+import { KA_MONTH_FULL } from './homeUtils';
 
 interface ReportPdfArgs {
   report: Report;
@@ -9,14 +10,9 @@ interface ReportPdfArgs {
   slideImageDataUrls: Record<string, string>;
 }
 
-const KA_MONTHS = [
-  'იანვარი', 'თებერვალი', 'მარტი', 'აპრილი', 'მაისი', 'ივნისი',
-  'ივლისი', 'აგვისტო', 'სექტემბერი', 'ოქტომბერი', 'ნოემბერი', 'დეკემბერი',
-];
-
 function formatDate(iso: string): string {
   const d = new Date(iso);
-  return `${d.getDate()} ${KA_MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+  return `${d.getDate()} ${KA_MONTH_FULL[d.getMonth()]} ${d.getFullYear()}`;
 }
 
 function escapeHtml(s: string): string {

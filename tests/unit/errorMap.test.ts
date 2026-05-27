@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { friendlyError, isEmailTakenError, isCancelledError } from '../../lib/errorMap';
+import {
+  friendlyError,
+  isAccountNotFoundError,
+  isCancelledError,
+  isEmailTakenError,
+  isWrongPasswordError,
+} from '../../lib/errorMap';
 
 describe('errorMap', () => {
   describe('friendlyError', () => {
@@ -66,6 +72,40 @@ describe('errorMap', () => {
       expect(isCancelledError(new Error('Operation was cancelled'))).toBe(true);
       expect(isCancelledError(new Error('Operation was canceled'))).toBe(true);
       expect(isCancelledError(new Error('Something else'))).toBe(false);
+    });
+  });
+
+  describe('isAccountNotFoundError', () => {
+    it('detects the AccountNotFound sentinel exactly', () => {
+      expect(isAccountNotFoundError(new Error('AccountNotFound'))).toBe(true);
+      expect(isAccountNotFoundError('accountnotfound')).toBe(true);
+    });
+    it('does not match unrelated errors', () => {
+      expect(isAccountNotFoundError(new Error('Not found'))).toBe(false);
+      expect(isAccountNotFoundError(new Error('Invalid credentials'))).toBe(false);
+      expect(isAccountNotFoundError(new Error('WrongPassword'))).toBe(false);
+    });
+  });
+
+  describe('isWrongPasswordError', () => {
+    it('detects the WrongPassword sentinel exactly', () => {
+      expect(isWrongPasswordError(new Error('WrongPassword'))).toBe(true);
+      expect(isWrongPasswordError('wrongpassword')).toBe(true);
+    });
+    it('does not match unrelated errors', () => {
+      expect(isWrongPasswordError(new Error('Invalid credentials'))).toBe(false);
+      expect(isWrongPasswordError(new Error('AccountNotFound'))).toBe(false);
+    });
+  });
+
+  describe('friendlyError — login sentinels', () => {
+    it('translates AccountNotFound to a Georgian message', () => {
+      expect(friendlyError(new Error('AccountNotFound'))).toBe(
+        'ანგარიში ვერ მოიძებნა — შეამოწმეთ ელ-ფოსტა',
+      );
+    });
+    it('translates WrongPassword to a Georgian message', () => {
+      expect(friendlyError(new Error('WrongPassword'))).toBe('პაროლი არასწორია');
     });
   });
 });

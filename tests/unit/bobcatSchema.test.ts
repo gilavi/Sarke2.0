@@ -8,6 +8,7 @@ import {
   BOBCAT_TEMPLATE_ID,
   LARGE_LOADER_TEMPLATE_ID,
   VERDICT_LABEL,
+  BOBCAT_CATEGORY_LABELS,
   type BobcatInspection,
 } from '../../types/bobcat';
 
@@ -158,5 +159,131 @@ describe('buildInspectionPdf — bobcat empty/null state', () => {
 
   it('renders null pills for unfilled items', () => {
     expect(html).toContain('pill-null');
+  });
+});
+
+describe('buildInspectionPdf — bobcat specific fixes', () => {
+  describe('numbered result pills', () => {
+    const html = buildInspectionPdf(
+      bobcatSchema,
+      { inspection: buildInspection(), projectName: 'P' },
+      {},
+    );
+
+    it('pill-good renders "1 — კარგია"', () => {
+      expect(html).toContain('1 — კარგია');
+    });
+
+    it('pill-def renders "2 — ნაკლი"', () => {
+      expect(html).toContain('2 — ნაკლი');
+    });
+
+    it('pill-bad renders "3 — გამოუსადეგ."', () => {
+      expect(html).toContain('3 — გამოუსადეგ.');
+    });
+
+    it('result pill spans do not contain legacy icon characters ✓, ⚠, or ✗', () => {
+      // Extract only pill spans so the base CSS (content:'✓') does not false-positive
+      const pillMatches = html.match(/<span class="pill[^"]*">[^<]+<\/span>/g) ?? [];
+      const pillText = pillMatches.join('');
+      expect(pillText).not.toContain('✓');
+      expect(pillText).not.toContain('⚠');
+      expect(pillText).not.toContain('✗');
+    });
+  });
+
+  describe('notes block always visible', () => {
+    it('when notes is a non-empty string, the label and text are both present', () => {
+      const html = buildInspectionPdf(
+        bobcatSchema,
+        { inspection: buildInspection({ notes: 'ტესტური შენიშვნა' }), projectName: 'P' },
+        {},
+      );
+      expect(html).toContain('შენიშვნები / ხარვეზები');
+      expect(html).toContain('ტესტური შენიშვნა');
+    });
+
+    it('when notes is null, the notes label is still present', () => {
+      const html = buildInspectionPdf(
+        bobcatSchema,
+        { inspection: buildInspection({ notes: null }), projectName: 'P' },
+        {},
+      );
+      expect(html).toContain('შენიშვნები / ხარვეზები');
+    });
+
+    it('when notes is an empty string, the notes label is still present', () => {
+      const html = buildInspectionPdf(
+        bobcatSchema,
+        { inspection: buildInspection({ notes: '' }), projectName: 'P' },
+        {},
+      );
+      expect(html).toContain('შენიშვნები / ხარვეზები');
+    });
+  });
+
+  describe('legend content', () => {
+    const html = buildInspectionPdf(
+      bobcatSchema,
+      { inspection: buildInspection(), projectName: 'P' },
+      {},
+    );
+
+    it('legend contains "1" and "კარგია"', () => {
+      expect(html).toContain('1');
+      expect(html).toContain('კარგია');
+    });
+
+    it('legend contains "2" and "ნაკლი"', () => {
+      expect(html).toContain('2');
+      expect(html).toContain('ნაკლი');
+    });
+
+    it('legend contains "3" and "გამოუსადეგარია"', () => {
+      expect(html).toContain('3');
+      expect(html).toContain('გამოუსადეგარია');
+    });
+  });
+
+  describe('neutral unusable pill (unusableIsNeutral)', () => {
+    const htmlNeutral = buildInspectionPdf(
+      bobcatSchema,
+      {
+        inspection: buildInspection({
+          templateId: LARGE_LOADER_TEMPLATE_ID,
+          items: buildDefaultItems(LARGE_LOADER_ITEMS).map(it =>
+            it.id === 40 ? { ...it, result: 'unusable' } : it,
+          ),
+        }),
+        projectName: 'P',
+      },
+      {},
+    );
+
+    it('item #40 with result "unusable" renders pill-neutral (not a pill-bad span)', () => {
+      // pill-neutral span should be present
+      expect(htmlNeutral).toContain('class="pill pill-neutral"');
+      // no <span class="pill pill-bad"> element should be rendered (CSS class definition is fine)
+      expect(htmlNeutral).not.toContain('class="pill pill-bad"');
+    });
+
+    it('the neutral pill text contains "არ გააჩნია"', () => {
+      expect(htmlNeutral).toContain('არ გააჩნია');
+    });
+  });
+
+  describe('category label headers', () => {
+    const html = buildInspectionPdf(
+      bobcatSchema,
+      { inspection: buildInspection(), projectName: 'P' },
+      {},
+    );
+
+    it('Section III contains all four BOBCAT_CATEGORY_LABELS', () => {
+      expect(html).toContain(BOBCAT_CATEGORY_LABELS['A']);
+      expect(html).toContain(BOBCAT_CATEGORY_LABELS['B']);
+      expect(html).toContain(BOBCAT_CATEGORY_LABELS['C']);
+      expect(html).toContain(BOBCAT_CATEGORY_LABELS['D']);
+    });
   });
 });

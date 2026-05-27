@@ -24,7 +24,7 @@ import { Button, Card, Screen } from '../../components/ui';
 import { Skeleton } from '../../components/Skeleton';
 import { haptic } from '../../lib/haptics';
 import { isExpiringSoon, qualificationsApi, storageApi } from '../../lib/services';
-import { useQualifications } from '../../lib/apiHooks';
+import { qk, useQualifications } from '../../lib/apiHooks';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { useTheme } from '../../lib/theme';
 
@@ -34,6 +34,7 @@ import { a11y } from '../../lib/accessibility';
 import type { Qualification } from '../../types/models';
 import { REQUIRED_TYPES, REQUIRED_TYPE_VALUES, labelForType } from '../../lib/qualificationTypes';
 import AddQualificationSheet from '../../components/qualifications/AddQualificationSheet';
+import { useTranslation } from 'react-i18next';
 
 type QualWithThumb = Qualification & { thumbUrl?: string | null };
 
@@ -86,7 +87,7 @@ export default function QualificationsScreen() {
     try {
       await qualificationsApi.remove(deleteTarget.id);
       haptic.success();
-      qc.invalidateQueries({ queryKey: ['qualifications', 'list'] });
+      qc.invalidateQueries({ queryKey: qk.qualifications.list });
     } catch (e) {
       haptic.error();
       Alert.alert('წაშლა ვერ მოხერხდა', toErrorMessage(e, 'ქსელის შეცდომა'));
@@ -162,7 +163,7 @@ export default function QualificationsScreen() {
         visible={addSheetVisible}
         initialType={addInitialType}
         onClose={() => setAddSheetVisible(false)}
-        onSaved={() => { setAddSheetVisible(false); qc.invalidateQueries({ queryKey: ['qualifications', 'list'] }); }}
+        onSaved={() => { setAddSheetVisible(false); qc.invalidateQueries({ queryKey: qk.qualifications.list }); }}
       />
 
       <Pressable
@@ -228,6 +229,7 @@ function QualThumb({ uri }: { uri?: string | null }) {
 
 function FilledCard({ qual, onDelete }: { qual: QualWithThumb; onDelete: () => void }) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const qStyles = useMemo(() => getqStyles(theme), [theme]);
 
   const status = statusOf(qual);
@@ -244,7 +246,7 @@ function FilledCard({ qual, onDelete }: { qual: QualWithThumb; onDelete: () => v
           ) : null}
           {qual.expires_at ? (
             <Text style={{ fontSize: 12, color: theme.colors.inkSoft, marginTop: 2 }}>
-              ვადა: {new Date(qual.expires_at).toLocaleDateString('ka')}
+              ვადა: {new Date(qual.expires_at).toLocaleDateString(t('common.localeTag'))}
             </Text>
           ) : null}
         </View>

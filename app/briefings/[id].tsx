@@ -37,6 +37,8 @@ export default function BriefingDetailScreen() {
   useEffect(() => {
     if (briefing && project) {
       setPreviewHtml(buildBriefingPreviewHtml(briefing, project));
+    } else {
+      setPreviewHtml(null);
     }
   }, [briefing, project]);
 

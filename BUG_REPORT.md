@@ -9,6 +9,22 @@
 
 One real bug found — a **P0** infinite redirect loop between the wizard and the inspection-detail screen — root-caused and fixed. The other items in my initial pass turned out to be either downstream effects of the loop, simulator artifacts, or a misobservation. No code changes needed for the rest.
 
+## P1 — Home shows empty projects after first login (data appears only after manual pull-to-refresh) · FIXED 2026-05-27
+
+**Repro:** Fresh sign-in on an account that has projects → Home tab opens with the "ახალი პროექტი / შექმენით პირველი" empty-state card instead of the user's project cards. Same on the Projects tab. Pulling the screen down to refresh fetches the rows and shows them.
+
+**Root cause — two layered bugs:**
+
+1. **Race between login and the warming prefetch.** [`lib/session.tsx`](lib/session.tsx) fired a fire-and-forget `prefetchQuery(['projects','list'])` immediately after `safeLoadUser`. If that prefetch reached Supabase before the JWT was bound onto the client (a millisecond-scale race that is much wider on cold launch), the RLS policy returned `[]`. React Query stored the empty array, and the default `staleTime: 5 * 60 * 1000` from [`lib/queryClient.ts`](lib/queryClient.ts) marked it "fresh" — every subsequent mount within five minutes reused the empty cache without refetching. Pull-to-refresh worked because `refetch()` bypasses staleTime.
+2. **Loading flags treated empty-cached data as "loaded".** The home screen used `loaded = !certsQ.isLoading && !templatesQ.isLoading && !recentQ.isLoading && !projectsQ.isLoading` and rendered the empty state when `loaded && projects.length === 0`. Once the racy empty fetch settled, `isLoading` flipped to false, the empty-state card replaced the skeleton, and the in-flight refetch (if any) never re-armed the skeleton — `isLoading` only ever covers the first ever fetch, never background refetches. `app/(tabs)/projects.tsx` had the same shape (`projectsQ.isPending && !projectsQ.data`).
+
+**Fix:**
+- [`lib/session.tsx`](lib/session.tsx): pass `staleTime: 0` to the post-login `prefetchQuery` so the warming call always hits the network even if a previous racy empty value is sitting in cache.
+- [`app/(tabs)/home.tsx`](app/(tabs)/home.tsx): replaced the `!loaded && data.length === 0` guards for the projects and recent sections with per-section `(isFetching || !isFetched) && data.length === 0` flags. Skeleton now stays up through background refetches when the cache still holds an empty array.
+- [`app/(tabs)/projects.tsx`](app/(tabs)/projects.tsx): same swap — `loading = (projectsQ.isFetching || !projectsQ.isFetched) && projects.length === 0`.
+
+Net effect: the user sees a skeleton from mount through the first response that actually has rows (or settles confirmedly empty), and a stale racy `[]` no longer sticks until pull-to-refresh.
+
 ## P1 — SignaturesScreen header chrome missing on equipment-type result screens · FIXED 2026-05-27 (commit `19443f6`)
 
 **Repro:** Open a bobcat / excavator / general-equipment / cargo-platform / safety-net / mobile-ladder / forklift / fall-protection / lifting-accessories inspection, complete it, reach the result screen, tap `ხელმოწერები`.
@@ -686,6 +702,18 @@ Ran five parallel read-only verifiers over **all ~156 detailed entries** in `Sar
 A follow-up migration ([20260525190000_dedupe_user_fkeys.sql](supabase/migrations/20260525190000_dedupe_user_fkeys.sql)) dropped duplicate `*_auth_users_fkey` constraints that were added in cases where an equivalent CASCADE FK already existed but was hidden from the existence check by the same `information_schema` blind spot.
 
 **Verified:** Deleting a test account in TestFlight after both migrations removes the auth row plus every row in public that references it. No orphans remain.
+
+## P2 — Photo-location modal spammed users on every upload · FIXED 2026-05-27
+
+**Repro:** Open any inspection (facade scaffolding flow is the most painful), upload a photo from a location >500m from the project's saved address. Tap "კი, სწორია" or "პროექტის ლოკაცია შევცვალო" on the GPS-mismatch alert. Take another photo from the same place — the modal fires again. And again. And again.
+
+**Symptom:** Inspectors working off-site (typical for facade scaffolding) saw the "განსხვავებული ლოკაცია" alert pop up on **every single photo** in the flow, even after explicitly confirming the project was correct or updating the location.
+
+**Root cause:** `showPhotoLocationAlert` ([lib/photoLocationAlert.ts](lib/photoLocationAlert.ts)) had no memory. Every photo re-ran the distance check from scratch and re-fired the modal. Worse, even the "Update project location" path had a brief race window: the next photo could fire before the project state propagated through React.
+
+**Fix:** added a per-project, 24h AsyncStorage-backed suppression flag. Either button on either branch of the alert sets the flag. Subsequent photos short-circuit before reverseGeocode for 24 hours. The flag expires the next day, so genuine site changes still surface a prompt eventually. Helpers + reset function exported for tests.
+
+**Verified:** new unit test [tests/unit/photoLocationAlertSuppress.test.ts](tests/unit/photoLocationAlertSuppress.test.ts) covers the storage helpers and TTL math.
 
 ## P3 — Duplicate "პაროლის შეცვლა" row on More tab · FIXED 2026-05-25
 

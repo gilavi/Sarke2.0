@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { SectionEmptyState } from '../../../components/EmptyState';
 import { ViewMoreRow } from '../../../components/projects/ProjectRowHelpers';
+import { SkeletonRow } from '../../../components/Skeleton';
 import { useTheme } from '../../../lib/theme';
 import { a11y } from '../../../lib/accessibility';
 import { formatShortDateTime } from '../../../lib/formatDate';
@@ -16,9 +17,11 @@ import { getStyles } from '../styles';
 export function BriefingsSection({
   id,
   briefings,
+  loading = false,
 }: {
   id: string | undefined;
   briefings: Briefing[];
+  loading?: boolean;
 }) {
   const { theme } = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
@@ -44,7 +47,12 @@ export function BriefingsSection({
         </Pressable>
       </View>
 
-      {briefings.length === 0 ? (
+      {loading && briefings.length === 0 ? (
+        <View style={{ gap: 8, marginTop: 10 }}>
+          <SkeletonRow />
+          <SkeletonRow />
+        </View>
+      ) : briefings.length === 0 ? (
         <SectionEmptyState type="briefings" />
       ) : (
         <View style={{ gap: 8, marginTop: 10 }}>

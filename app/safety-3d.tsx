@@ -1,4 +1,4 @@
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { WebView } from 'react-native-webview';
 import { Screen } from '../components/ui';
@@ -39,7 +39,7 @@ export default function Safety3DScreen() {
           startInLoadingState
           renderLoading={() => (
             <View style={styles.loader}>
-              <View style={[styles.spinner, { borderTopColor: theme.colors.accent }]} />
+              <ActivityIndicator size="large" color={theme.colors.accent} />
             </View>
           )}
         />
@@ -69,13 +69,6 @@ function getStyles(theme: any) {
       alignItems: 'center',
       justifyContent: 'center',
       zIndex: 10,
-    },
-    spinner: {
-      width: 32,
-      height: 32,
-      borderWidth: 3,
-      borderColor: theme.colors.hairline,
-      borderRadius: 16,
     },
   });
 }

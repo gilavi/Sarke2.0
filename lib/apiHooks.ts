@@ -61,6 +61,7 @@ export const qk = {
   projects: {
     list: ['projects', 'list'] as const,
     stats: ['projects', 'stats'] as const,
+    overdueCounts: ['projects', 'overdueCounts'] as const,
     byId: (id: string) => ['projects', 'detail', id] as const,
     files: (id: string) => ['projects', 'files', id] as const,
     items: (id: string) => ['projects', 'items', id] as const,
@@ -79,6 +80,7 @@ export const qk = {
     recent: (limit: number) => ['inspections', 'recent', limit] as const,
     byId: (id: string) => ['inspections', 'detail', id] as const,
     byProject: (projectId: string) => ['inspections', 'byProject', projectId] as const,
+    unifiedByProject: (id: string) => ['inspections', 'unifiedByProject', id] as const,
     answers: (id: string) => ['inspections', 'answers', id] as const,
     photos: (id: string) => ['inspections', 'photos', id] as const,
   },
@@ -238,6 +240,27 @@ export function useInspectionsByProject(projectId: string | undefined) {
     queryKey: projectId ? qk.inspections.byProject(projectId) : ['inspections', 'byProject', 'none'],
     queryFn: () => (projectId ? inspectionsApi.listByProject(projectId) : Promise.resolve([])),
     enabled: !!projectId,
+  });
+}
+
+// Unified per-project inspection list. Backed by the
+// get_project_inspections_unified() RPC — one row per inspection across
+// generic + all 9 equipment-type tables. The project-detail screen uses this
+// instead of firing 10 parallel `useXxxInspectionsByProject` queries.
+export type UnifiedInspectionPreview = {
+  id: string;
+  source: string;
+  template_id: string;
+  status: 'draft' | 'completed';
+  created_at: string;
+};
+
+export function useUnifiedInspectionsByProject(projectId: string | undefined) {
+  return useQuery<UnifiedInspectionPreview[]>({
+    queryKey: projectId ? qk.inspections.unifiedByProject(projectId) : ['inspections', 'unifiedByProject', 'none'],
+    queryFn: () => (projectId ? inspectionsApi.unifiedByProject(projectId) : Promise.resolve([])),
+    enabled: !!projectId,
+    staleTime: 2 * 60 * 1000,
   });
 }
 

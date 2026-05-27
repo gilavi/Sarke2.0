@@ -12,14 +12,19 @@ renamed in Phase 1 to clarify its role vs `inspection-parts/`.
   handling, sync pill, and the back/close affordance.
 - `ProjectPickerStep` — initial step where the user picks the
   project + project item the inspection is attached to.
-- `ChecklistStep` — generic "list of checks" step (yes/no per row,
-  with comments and photos).
+- `ChecklistStep` — generic "list of checks" step (1/2/3 verdict per
+  row, with comments and photos). Manages scroll state + section
+  headers; delegates row rendering to `ChecklistRow`.
 - `ConclusionStep` — final step with safety verdict + conclusion
   text + signatures.
 
 ## Internal files
-- `InspectionShell.tsx`, `ProjectPickerStep.tsx`, `ChecklistStep.tsx`,
-  `ConclusionStep.tsx`.
+- `InspectionShell.tsx`, `ProjectPickerStep.tsx`
+- `ChecklistStep.tsx` (88 lines) — scroll container + section headers.
+- `ChecklistRow.tsx` (185 lines) — single checklist row: verdict
+  buttons 1/2/3, comment toggle, photo badge, inline comment input.
+  Also owns the exported item types (re-exported via ChecklistStep).
+- `ConclusionStep.tsx`
 
 ## Gotchas / non-obvious things
 - This is the equipment-route shell, NOT the generic harness wizard.
@@ -27,9 +32,12 @@ renamed in Phase 1 to clarify its role vs `inspection-parts/`.
   Equipment routes (bobcat, excavator, ...) own their own step
   arrays + state and use these step components as reusable
   building blocks.
-- `ChecklistStep` exports `ChecklistItem` / `ChecklistItemState` /
-  `ChecklistResult` types that equipment route reducers cast to —
-  changing them is a breaking change for every equipment route.
+- `ChecklistStep` re-exports `ChecklistItem` / `ChecklistItemState` /
+  `ChecklistResult` from `ChecklistRow` for backward compatibility.
+  Changing these types is a breaking change for every equipment route.
+- Verdict buttons use **numbers** (1=good, 2=deficient, 3=unusable)
+  throughout — do not change to symbols. The PDF renderer and the
+  `bobcatSchema` legend also use 1/2/3 to match.
 
 ## Canonical helpers used
 - `components/inspection-parts` — the smaller atoms.

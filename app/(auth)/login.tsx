@@ -1,4 +1,4 @@
-import { useState , useMemo, useRef} from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -25,7 +25,13 @@ import { saveLanguage } from '../../lib/i18n';
 
 import { a11y } from '../../lib/accessibility';
 import { isEmail } from '../../lib/validators';
-import { friendlyError, isCancelledError, isEmailTakenError } from '../../lib/errorMap';
+import {
+  friendlyError,
+  isAccountNotFoundError,
+  isCancelledError,
+  isEmailTakenError,
+  isWrongPasswordError,
+} from '../../lib/errorMap';
 import { Button, Card } from '../../components/ui';
 import { FloatingLabelInput } from '../../components/inputs/FloatingLabelInput';
 
@@ -40,6 +46,12 @@ export default function AuthScreen() {
   const styles = useMemo(() => getstyles(theme), [theme]);
   const [mode, setMode] = useState<Mode>('login');
   const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotInitialEmail, setForgotInitialEmail] = useState('');
+
+  const openForgot = (email?: string) => {
+    setForgotInitialEmail(email ?? '');
+    setForgotOpen(true);
+  };
 
   return (
     <View style={{ flex: 1 }}>
@@ -52,7 +64,7 @@ export default function AuthScreen() {
             <ModePicker mode={mode} onChange={setMode} />
             <View style={{ height: 18 }} />
             {mode === 'login' ? (
-              <LoginForm onForgotPassword={() => setForgotOpen(true)} />
+              <LoginForm onForgotPassword={openForgot} />
             ) : (
               <RegisterForm
                 onVerificationSent={(email) =>
@@ -64,14 +76,26 @@ export default function AuthScreen() {
           </Card>
         </KeyboardSafeArea>
       </SafeAreaView>
-      <ForgotPasswordModal visible={forgotOpen} onClose={() => setForgotOpen(false)} />
+      <ForgotPasswordModal
+        visible={forgotOpen}
+        initialEmail={forgotInitialEmail}
+        onClose={() => setForgotOpen(false)}
+      />
     </View>
   );
 }
 
 /* ─── Forgot Password Modal ─── */
 
-function ForgotPasswordModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+function ForgotPasswordModal({
+  visible,
+  initialEmail,
+  onClose,
+}: {
+  visible: boolean;
+  initialEmail?: string;
+  onClose: () => void;
+}) {
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
   const { resetPassword } = useSession();
@@ -81,6 +105,11 @@ function ForgotPasswordModal({ visible, onClose }: { visible: boolean; onClose: 
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
 
+  // Pre-fill the field whenever the modal opens with an email from the login form.
+  useEffect(() => {
+    if (visible) setEmail(initialEmail ?? '');
+  }, [visible, initialEmail]);
+
   const handleClose = () => {
     setEmail('');
     setSent(false);
@@ -88,6 +117,10 @@ function ForgotPasswordModal({ visible, onClose }: { visible: boolean; onClose: 
   };
 
   const submit = async () => {
+    if (!isEmail(email.trim())) {
+      toast.error(t('auth.enterValidEmail'));
+      return;
+    }
     setBusy(true);
     try {
       await resetPassword(email.trim());
@@ -144,7 +177,9 @@ function ForgotPasswordModal({ visible, onClose }: { visible: boolean; onClose: 
 
 /* ─── Login Form ─── */
 
-function LoginForm({ onForgotPassword }: { onForgotPassword: () => void }) {
+const RESET_PROMPT_AFTER = 3;
+
+function LoginForm({ onForgotPassword }: { onForgotPassword: (email?: string) => void }) {
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
   const { signIn, signInWithGoogle } = useSession();
@@ -155,7 +190,20 @@ function LoginForm({ onForgotPassword }: { onForgotPassword: () => void }) {
   const [busy, setBusy] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Counts consecutive wrong-password failures for the CURRENT email. Resets
+  // whenever the email changes or a sign-in succeeds. AccountNotFound failures
+  // (typo'd email) do NOT increment — a different problem, different remedy.
+  const [wrongPwCount, setWrongPwCount] = useState(0);
   const passwordRef = useRef<TextInput>(null);
+
+  const showResetPrompt = wrongPwCount >= RESET_PROMPT_AFTER;
+
+  const onEmailChange = (next: string) => {
+    setEmail(next);
+    // New email = new attempt sequence; clear stale state.
+    if (wrongPwCount > 0) setWrongPwCount(0);
+    if (error) setError(null);
+  };
 
   const handleSignIn = async () => {
     Keyboard.dismiss();
@@ -172,8 +220,18 @@ function LoginForm({ onForgotPassword }: { onForgotPassword: () => void }) {
     setError(null);
     try {
       await signIn(trimmed, password);
+      setWrongPwCount(0);
     } catch (e) {
-      setError(friendlyError(e));
+      if (isWrongPasswordError(e)) {
+        setError(t('auth.passwordWrong'));
+        setWrongPwCount(n => n + 1);
+      } else if (isAccountNotFoundError(e)) {
+        setError(t('auth.accountNotFound'));
+        // Different problem (wrong email, not wrong password) — don't count
+        // toward the reset-password CTA threshold.
+      } else {
+        setError(friendlyError(e));
+      }
     } finally {
       setBusy(false);
     }
@@ -196,7 +254,7 @@ function LoginForm({ onForgotPassword }: { onForgotPassword: () => void }) {
       <FloatingLabelInput
         label={t('common.email')}
         value={email}
-        onChangeText={setEmail}
+        onChangeText={onEmailChange}
         keyboardType="email-address"
         autoCapitalize="none"
         autoCorrect={false}
@@ -212,7 +270,7 @@ function LoginForm({ onForgotPassword }: { onForgotPassword: () => void }) {
         value={password}
         onChangeText={setPassword}
         secureTextEntry={!showPw}
-        rightIcon={showPw ? 'eye-off' : 'eye'}
+        rightIcon={showPw ? 'eye-off-outline' : 'eye-outline'}
         onRightIconPress={() => setShowPw(v => !v)}
         textContentType="password"
         autoComplete="current-password"
@@ -220,13 +278,16 @@ function LoginForm({ onForgotPassword }: { onForgotPassword: () => void }) {
         onSubmitEditing={handleSignIn}
       />
       <Pressable
-        onPress={onForgotPassword}
+        onPress={() => onForgotPassword(email.trim() || undefined)}
         style={{ alignSelf: 'flex-end', marginTop: -4 }}
         hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
       >
         <Text style={styles.linkText}>{t('auth.forgotPassword')}</Text>
       </Pressable>
       {error ? <InlineError>{error}</InlineError> : null}
+      {showResetPrompt ? (
+        <ResetPasswordPrompt onReset={() => onForgotPassword(email.trim() || undefined)} />
+      ) : null}
       <Button
         title={t('auth.login')}
         onPress={handleSignIn}
@@ -235,6 +296,32 @@ function LoginForm({ onForgotPassword }: { onForgotPassword: () => void }) {
       />
       <Divider />
       <GoogleButton onPress={handleGoogle} loading={googleBusy} />
+    </View>
+  );
+}
+
+/* ─── Reset password CTA (shown after N wrong-password attempts) ─── */
+
+function ResetPasswordPrompt({ onReset }: { onReset: () => void }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getstyles(theme), [theme]);
+  const { t } = useTranslation();
+  return (
+    <View style={styles.resetPromptBox}>
+      <Ionicons name="key-outline" size={18} color={theme.colors.accent} />
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={{ fontSize: 13, fontWeight: '700', color: theme.colors.ink }}>
+          {t('auth.tooManyAttemptsTitle')}
+        </Text>
+        <Text style={{ fontSize: 12, color: theme.colors.inkSoft, lineHeight: 17 }}>
+          {t('auth.tooManyAttemptsBody')}
+        </Text>
+      </View>
+      <Pressable onPress={onReset} hitSlop={8}>
+        <Text style={{ color: theme.colors.accent, fontSize: 13, fontWeight: '700' }}>
+          {t('auth.resetCta')}
+        </Text>
+      </Pressable>
     </View>
   );
 }
@@ -601,6 +688,14 @@ function getstyles(theme: any) {
     backgroundColor: theme.colors.dangerSoft,
     borderRadius: 10,
     padding: 10,
+  },
+  resetPromptBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: theme.colors.accentSoft,
+    borderRadius: 10,
+    padding: 12,
   },
   googleBtn: {
     flexDirection: 'row',

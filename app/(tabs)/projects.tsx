@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { qk } from '../../lib/apiHooks';
 import {
   Animated,
   Dimensions,
@@ -34,7 +35,6 @@ import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { projectsApi } from '../../lib/services';
 import { useToast } from '../../lib/toast';
 import { useTheme } from '../../lib/theme';
-import { useCalendarEvents } from '../../lib/apiHooks';
 import { useBottomSheet } from '../../components/BottomSheet';
 import { friendlyError } from '../../lib/errorMap';
 import { haptic } from '../../lib/haptics';
@@ -43,11 +43,6 @@ import { TourGuide, type TourStep } from '../../components/TourGuide';
 import { useTranslation } from 'react-i18next';
 
 type Stats = Record<string, { drafts: number; completed: number }>;
-
-// Query keys exposed so the create flow + session prefetch can invalidate
-// or seed the cache without re-defining the keys inline.
-export const PROJECTS_LIST_QK = ['projects', 'list'] as const;
-export const PROJECTS_STATS_QK = ['projects', 'stats'] as const;
 
 export default function ProjectsScreen() {
   const { theme } = useTheme();
@@ -84,29 +79,36 @@ export default function ProjectsScreen() {
   // warm across app launches so the first tap after cold start doesn't have
   // to wait for the network either.
   const projectsQ = useQuery<Project[]>({
-    queryKey: PROJECTS_LIST_QK,
+    queryKey: qk.projects.list,
     queryFn: () => projectsApi.list(),
+    staleTime: 5 * 60 * 1000,
   });
 
   const statsQ = useQuery<Stats>({
-    queryKey: PROJECTS_STATS_QK,
+    queryKey: qk.projects.stats,
     queryFn: () => projectsApi.stats(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Backed by the get_overdue_counts() RPC — one tiny query instead of three
+  // full-table SELECTs (useAllInspections + useAllBriefings + useTemplates)
+  // that used to fire on this screen via useCalendarEvents().
+  const overdueQ = useQuery<Record<string, number>>({
+    queryKey: qk.projects.overdueCounts,
+    queryFn: () => projectsApi.overdueCounts(),
+    staleTime: 5 * 60 * 1000,
   });
 
   const projects = projectsQ.data ?? [];
   const stats = statsQ.data ?? {};
-  const loading = projectsQ.isPending && !projectsQ.data;
-
-  const calendarEvents = useCalendarEvents();
-  const overdueByProject = useMemo(() => {
-    const map: Record<string, number> = {};
-    for (const e of calendarEvents) {
-      if (e.status === 'overdue') {
-        map[e.projectId] = (map[e.projectId] ?? 0) + 1;
-      }
-    }
-    return map;
-  }, [calendarEvents]);
+  const overdueByProject = overdueQ.data ?? {};
+  // Show the skeleton both on the very first fetch AND while a background
+  // refetch is replacing a stale empty result. Relying on `isPending && !data`
+  // would skip the skeleton whenever the cache already held `[]` from a
+  // previous race (e.g. a fetch fired before the JWT propagated), forcing the
+  // user to pull-to-refresh to discover their projects.
+  const loading =
+    (projectsQ.isFetching || !projectsQ.isFetched) && projects.length === 0;
 
   const onDelete = useCallback((project: Project) => {
     showActionSheet(
@@ -123,10 +125,10 @@ export default function ProjectsScreen() {
           // Optimistically prune the local cache; let stats refresh in the
           // background so the badge counts reflect the deletion.
           qc.setQueryData<Project[]>(
-            PROJECTS_LIST_QK,
+            qk.projects.list,
             prev => prev?.filter(p => p.id !== project.id) ?? [],
           );
-          qc.invalidateQueries({ queryKey: PROJECTS_STATS_QK });
+          qc.invalidateQueries({ queryKey: qk.projects.stats });
           toast.success(t('notifications.deleted'));
         } catch (e) {
           toast.error(friendlyError(e, t('errors.deleteFailed')));
@@ -253,8 +255,13 @@ export default function ProjectsScreen() {
             onRefresh={async () => {
               haptic.medium();
               setRefreshing(true);
-              await Promise.all([projectsQ.refetch(), statsQ.refetch()]);
-              setRefreshing(false);
+              try {
+                await Promise.all([projectsQ.refetch(), statsQ.refetch(), overdueQ.refetch()]);
+              } catch {
+                // individual query errors are surfaced by each query's own error state
+              } finally {
+                setRefreshing(false);
+              }
             }}
             tintColor={theme.colors.accent}
           />
@@ -300,7 +307,7 @@ export default function ProjectsScreen() {
           // next natural refresh — a brand new project has no inspections so
           // its badge would be 0/0 anyway.
           qc.setQueryData<Project[]>(
-            PROJECTS_LIST_QK,
+            qk.projects.list,
             prev => [p, ...((prev ?? []).filter(x => x.id !== p.id))],
           );
           setCreating(false);
@@ -472,65 +479,6 @@ function CreateProjectSheet({
         )}
       </View>
     </Modal>
-  );
-}
-
-// ── Compact location row (shows preview or picker prompt) ──
-function LocationRow({
-  pin,
-  address,
-  onPress,
-}: {
-  pin: LatLng | null;
-  address: string;
-  onPress: () => void;
-}) {
-  const { theme } = useTheme();
-
-  if (!pin) {
-    return (
-      <Pressable
-        onPress={onPress}
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 10,
-          paddingVertical: 14,
-          paddingHorizontal: 16,
-          backgroundColor: theme.colors.surfaceSecondary,
-          borderRadius: 12,
-          borderWidth: 1,
-          borderColor: theme.colors.hairline,
-          borderStyle: 'dashed',
-        }}
-      >
-        <Ionicons name="location-outline" size={20} color={theme.colors.accent} />
-        <Text style={{ fontSize: 14, color: theme.colors.inkSoft, fontWeight: '500' }}>
-          დააჭირეთ მდებარეობის ასარჩევად
-        </Text>
-      </Pressable>
-    );
-  }
-
-  return (
-    <Pressable onPress={onPress}>
-      <View style={{ gap: 8 }}>
-        <MapPreview
-          latitude={pin.latitude}
-          longitude={pin.longitude}
-          pinColor={theme.colors.accent}
-          style={{ height: 120, borderRadius: 12, overflow: 'hidden' }}
-        />
-        {address ? (
-          <Text style={{ fontSize: 13, color: theme.colors.inkSoft }} numberOfLines={2}>
-            {address}
-          </Text>
-        ) : null}
-        <Text style={{ fontSize: 13, color: theme.colors.accent, fontWeight: '600' }}>
-          შეცვლა
-        </Text>
-      </View>
-    </Pressable>
   );
 }
 

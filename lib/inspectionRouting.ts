@@ -1,5 +1,5 @@
 /**
- * Canonical helper for resolving inspection routes.
+ * Canonical helper for resolving inspection routes and display labels.
  *
  * Both `template.category` (when creating) and `item.source` (when viewing
  * a unified inspection from the project screen) use the same value set, so a
@@ -19,6 +19,28 @@ export type InspectionSource =
   | string   // generic / fallback
   | null
   | undefined;
+
+const CATEGORY_LABEL: Record<string, string> = {
+  xaracho:                        'ხარაჩო',
+  harness:                        'სამაგრი ქამარი',
+  bobcat:                         'ციცხვიანი დამტვირთველი',
+  excavator:                      'ექსკავატორი',
+  general_equipment:              'ტექნიკური აღჭურვილობა',
+  cargo_platform:                 'ტვირთის მიმღები პლატფორმა',
+  safety_net_inspection:          'უსაფრთხოების ბადე',
+  mobile_ladder_inspection:       'მობილური კიბე',
+  fall_protection_inspection:     'ვარდნისგან დაცვა',
+  lifting_accessories_inspection: 'სამაღლო საიერიშო',
+  forklift_inspection:            'ამწე',
+};
+
+/**
+ * Returns the human-readable Georgian label for an inspection category/source.
+ * Falls back to the raw identifier for unknown types, or '—' when null/undefined.
+ */
+export function labelForSource(source: InspectionSource): string {
+  return CATEGORY_LABEL[source ?? ''] ?? source ?? '—';
+}
 
 /**
  * Returns the expo-router `href` string for an inspection.

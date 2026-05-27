@@ -106,7 +106,7 @@ Sarke 2.0/
 │   ├── forklift.ts                   # FORKLIFT_ITEMS, ForkliftResult, ForkliftInspection
 │   └── liftingAccessories.ts         # LA_ITEMS, LAResult, LiftingAccessoriesInspection
 │
-├── supabase/migrations/              # 0001–0052; NOTE duplicate-numbered files at 0044/0045/0046 (branch merge)
+├── supabase/migrations/              # 0001–0053 + timestamp-prefixed migrations from 2026-05-25 onward; NOTE duplicate-numbered files at 0044/0045/0046 (branch merge)
 │
 ├── web-app/                          # Dashboard (Vite + React)
 │   └── src/
@@ -225,8 +225,9 @@ npm run lint        # tsc --noEmit + check-primitives.mjs
 | Typecheck failing | Expected. See CLAUDE.md. Note new failures but don't block on them. |
 | Adding page transitions in `AppShell` | Keep `<AnimatePresence mode="wait" initial={false}>`. Never branch with two `motion.div`s sharing the same `key` — exits never reconcile and the DOM accumulates one ghost copy per navigation (BUG-20, fixed 2026-05-26). One `motion.div` per `AnimatePresence`; vary props with conditionals, not separate elements. |
 | Scaffold vs harness in inspections-table rows | The `inspections` table holds 4 categories (`harness`, `xaracho`, `mobile_scaffold`, `mobile_scaffold_n3`). Always read `template[0]?.category` from the joined `template:templates(category)` to set the row type — hardcoding `'harness'` (or `'inspection'`) gives every scaffold row a harness badge. Pattern in `History.tsx`, `Inspections.tsx`, `InspectionsSection.tsx`, `ProjectActivityWidget.tsx`. |
+| Empty-state flashes on a screen the user has data on | Use `(q.isFetching \|\| !q.isFetched) && data.length === 0` for the skeleton guard, not `q.isLoading` or `q.isPending`. `isLoading` only covers the *very first* fetch and skips background refetches replacing a stale `[]`. For user-scoped queries also add a `staleTime: 0` prefetch in `lib/session.tsx` so a racy empty value from a previous boot can't outlive login. See `app/(tabs)/home.tsx`, `app/(tabs)/projects.tsx` for the canonical wiring, and BUG_REPORT.md ("Home shows empty projects after first login"). |
 
 ---
 
 **Full context → [`ONBOARDING.md`](../ONBOARDING.md)**  
-**Last sync:** 2026-05-26
+**Last sync:** 2026-05-27

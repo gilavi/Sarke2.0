@@ -70,8 +70,8 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
     photoUploadCount,
     conclusion,
     setConclusion,
-    isSafe,
-    setIsSafe,
+    safetyVerdict,
+    setSafetyVerdict,
     harnessName,
     setHarnessName,
     finishing,
@@ -208,12 +208,12 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
     }
   }
 
-  const stepAnswered = hasAnswer(step, answers, photos, conclusion, isSafe, harnessName, template);
+  const stepAnswered = hasAnswer(step, answers, photos, conclusion, safetyVerdict, harnessName, template);
   const hasAnyProgress =
     stepIndex > 0 ||
     Object.keys(answers).length > 0 ||
     conclusion.trim().length > 0 ||
-    isSafe !== null ||
+    safetyVerdict !== null ||
     harnessName.trim().length > 0;
   const isYesNo = step.kind === 'question' && step.question.type === 'yesno';
   const isLast = stepIndex === steps.length - 1;
@@ -351,8 +351,8 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
                   <ConclusionStep
                     conclusion={conclusion}
                     onConclusion={setConclusion}
-                    isSafe={isSafe}
-                    onIsSafe={setIsSafe}
+                    safetyVerdict={safetyVerdict}
+                    onSafetyVerdict={setSafetyVerdict}
                     template={template}
                     harnessName={harnessName}
                     onHarnessName={setHarnessName}

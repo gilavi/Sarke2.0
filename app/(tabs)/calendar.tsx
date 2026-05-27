@@ -8,7 +8,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { Skeleton } from '../../components/Skeleton';
@@ -29,6 +29,7 @@ import {
 } from '../../lib/calendarEvents';
 import { runMigrationIfNeeded } from '../../lib/calendarSchedule';
 import type { CalendarEvent } from '../../lib/calendarEvents';
+import { KA_MONTH_FULL, KA_MONTH_SHORT } from '../../lib/homeUtils';
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
 
@@ -61,6 +62,8 @@ function weekOffsetForDate(date: Date): number {
   return Math.floor(diff / (7 * 86_400_000));
 }
 
+// Mon-first weekday arrays for the week strip (getDay()+6)%7 maps to index 0=Mon…6=Sun.
+// homeUtils exports Sun-first KA_WEEKDAY_FULL; keep these local for different ordering.
 const WEEKDAY_SHORT = ['ორშ.', 'სამ.', 'ოთხ.', 'ხუთ.', 'პარ.', 'შაბ.', 'კვ.'];
 
 const WEEKDAY_FULL = [
@@ -68,28 +71,18 @@ const WEEKDAY_FULL = [
   'პარასკევი', 'შაბათი', 'კვირა',
 ];
 
-const MONTH_FULL = [
-  'იანვარი', 'თებერვალი', 'მარტი', 'აპრილი', 'მაისი', 'ივნისი',
-  'ივლისი', 'აგვისტო', 'სექტემბერი', 'ოქტომბერი', 'ნოემბერი', 'დეკემბერი',
-];
-
-const MONTH_SHORT = [
-  'იან', 'თებ', 'მარ', 'აპრ', 'მაი', 'ივნ',
-  'ივლ', 'აგვ', 'სექ', 'ოქტ', 'ნოე', 'დეკ',
-];
-
 function formatWeekLabel(weekDays: Date[]): string {
   const first = weekDays[0];
   const last = weekDays[6];
   if (first.getMonth() === last.getMonth()) {
-    return `${first.getDate()}–${last.getDate()} ${MONTH_SHORT[first.getMonth()]} ${first.getFullYear()}`;
+    return `${first.getDate()}–${last.getDate()} ${KA_MONTH_SHORT[first.getMonth()]} ${first.getFullYear()}`;
   }
-  return `${first.getDate()} ${MONTH_SHORT[first.getMonth()]} – ${last.getDate()} ${MONTH_SHORT[last.getMonth()]}`;
+  return `${first.getDate()} ${KA_MONTH_SHORT[first.getMonth()]} – ${last.getDate()} ${KA_MONTH_SHORT[last.getMonth()]}`;
 }
 
 function formatDayLabel(date: Date): string {
   const dow = (date.getDay() + 6) % 7;
-  return `${date.getDate()} ${MONTH_FULL[date.getMonth()]}, ${WEEKDAY_FULL[dow]}`;
+  return `${date.getDate()} ${KA_MONTH_FULL[date.getMonth()]}, ${WEEKDAY_FULL[dow]}`;
 }
 
 function relativeDayLabel(date: Date): string {
@@ -115,12 +108,13 @@ type DaySection = {
 function buildSections(events: CalendarEvent[]): DaySection[] {
   const map = new Map<string, DaySection>();
   for (const event of events) {
-    const key = startOfDay(event.date).toDateString();
+    const sod = startOfDay(event.date);
+    const key = sod.toDateString();
     if (!map.has(key)) {
       map.set(key, {
         dateKey: key,
-        date: startOfDay(event.date),
-        label: formatDayLabel(startOfDay(event.date)),
+        date: sod,
+        label: formatDayLabel(sod),
         overdue: [],
         rest: [],
       });
@@ -170,6 +164,11 @@ export default function CalendarScreen() {
   const { data: allBriefings = [], isLoading: loadingBrief } = useAllBriefings();
   const { data: templates = [] } = useTemplates();
   const events = useCalendarEvents();
+  const { projectId } = useLocalSearchParams<{ projectId?: string }>();
+  const filteredEvents = useMemo(
+    () => (projectId ? events.filter(e => e.projectId === projectId) : events),
+    [events, projectId],
+  );
   const isLoading = loadingInsp || loadingBrief;
 
   const templateCategoryMap = useMemo(
@@ -203,10 +202,17 @@ export default function CalendarScreen() {
 
   const headerMonth = useMemo(() => {
     const rep = weekDays[3];
-    return `${MONTH_FULL[rep.getMonth()]} ${rep.getFullYear()}`;
+    return `${KA_MONTH_FULL[rep.getMonth()]} ${rep.getFullYear()}`;
   }, [weekDays]);
 
-  const sections = useMemo(() => buildSections(events), [events]);
+  const sections = useMemo(() => buildSections(filteredEvents), [filteredEvents]);
+
+  // Pre-compute dot sets for each day in the strip — called on every scroll
+  // event otherwise, and filteredEvents + weekDays are already memoized.
+  const weekDots = useMemo(
+    () => weekDays.map(d => dotStatusesForDay(filteredEvents, d)),
+    [filteredEvents, weekDays],
+  );
 
   // Scroll to today (or nearest future section) once sections + layout are ready
   useEffect(() => {
@@ -307,7 +313,7 @@ export default function CalendarScreen() {
             {weekDays.map((day, idx) => {
               const isToday = isSameDay(day, today);
               const isSelected = isSameDay(day, selectedDay);
-              const dots = dotStatusesForDay(events, day);
+              const dots = weekDots[idx]!;
               return (
                 <Pressable
                   key={idx}
@@ -406,7 +412,7 @@ export default function CalendarScreen() {
                 )}
               </View>
 
-              <View style={styles.sectionEvents}>
+              <>
                 {section.overdue.length > 0 && (
                   <>
                     <View style={styles.overdueHeader}>
@@ -430,7 +436,7 @@ export default function CalendarScreen() {
                     templateCategoryMap={templateCategoryMap}
                   />
                 ))}
-              </View>
+              </>
             </View>
           ))}
         </ScrollView>
@@ -458,21 +464,15 @@ function EventRow({
     ? (templateCategoryMap[event.templateId ?? ''] ?? null)
     : null;
 
-  const badgeStatus = useMemo((): InspectionStatus | null => {
-    if (event.isPast || event.status === 'completed') return 'completed';
-    if (event.status === 'overdue') return 'overdue';
-    if (event.status === 'due_today') return 'due_today';
-    if (event.status === 'upcoming') return 'due_soon';
-    return null;
-  }, [event]);
+  const badgeStatus: InspectionStatus | null =
+    event.isPast || event.status === 'completed' ? 'completed' :
+    event.status === 'overdue'   ? 'overdue'   :
+    event.status === 'due_today' ? 'due_today' :
+    event.status === 'upcoming'  ? 'due_soon'  : null;
 
-  const timeLabel = useMemo(() => {
-    if (event.isPast) {
-      const d = event.date;
-      return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-    }
-    return relativeDayLabel(event.date);
-  }, [event]);
+  const timeLabel = event.isPast
+    ? `${String(event.date.getHours()).padStart(2, '0')}:${String(event.date.getMinutes()).padStart(2, '0')}`
+    : relativeDayLabel(event.date);
 
   const handlePress = useCallback(() => {
     if (event.type === 'inspection') {
@@ -697,9 +697,6 @@ function getStyles(theme: any) {
       fontSize: 11,
       fontWeight: '700',
       color: theme.colors.accent,
-    },
-    sectionEvents: {
-      // rows handle their own paddingHorizontal to match home screen
     },
     // ── Overdue sub-header ──
     overdueHeader: {

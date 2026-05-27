@@ -148,6 +148,18 @@ export const projectsApi = {
     }
     return map;
   },
+  // Per-project overdue counts for the projects-list badge. Backed by the
+  // get_overdue_counts() RPC so the projects tab doesn't have to pull every
+  // completed inspection + briefing + every template just to render badges.
+  overdueCounts: async (): Promise<Record<string, number>> => {
+    const { data, error } = await supabase.rpc('get_overdue_counts');
+    if (error) throw error;
+    const map: Record<string, number> = {};
+    for (const row of (data ?? []) as Array<{ project_id: string; overdue_count: number }>) {
+      map[row.project_id] = Number(row.overdue_count);
+    }
+    return map;
+  },
 };
 
 export const projectFilesApi = {
@@ -223,15 +235,17 @@ export const projectFilesApi = {
     );
   },
   remove: async (file: ProjectFile): Promise<void> => {
-    await supabase.storage
-      .from(STORAGE_BUCKETS.projectFiles)
-      .remove([file.storage_path])
-      .catch((e) => logError(e, 'projectFilesApi.remove.storage'));
+    // Delete the DB record first — if this throws, we leave storage untouched
+    // so nothing is orphaned. Storage cleanup is best-effort after commit.
     const { error } = await supabase
       .from('project_files')
       .delete()
       .eq('id', file.id);
     if (error) throw error;
+    await supabase.storage
+      .from(STORAGE_BUCKETS.projectFiles)
+      .remove([file.storage_path])
+      .catch((e) => logError(e, 'projectFilesApi.remove.storage'));
   },
   signedUrl: async (file: ProjectFile, expiresIn = 3600): Promise<string> => {
     const { data, error } = await supabase.storage

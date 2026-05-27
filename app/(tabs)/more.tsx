@@ -36,6 +36,8 @@ import { a11y } from '../../lib/accessibility';
 import { useTranslation } from 'react-i18next';
 import { saveLanguage } from '../../lib/i18n';
 import i18n from '../../lib/i18n';
+import { REGULATIONS } from '../../lib/regulations';
+import { relativeTime } from '../../lib/homeUtils';
 import type { PaymentRecord, Project, Qualification, Template } from '../../types/models';
 
 export default function MoreScreen() {
@@ -67,7 +69,7 @@ export default function MoreScreen() {
   const completed = counts.completed;
   const drafts = counts.drafts;
   const expiring = certs.filter(isExpiringSoon).length;
-  const systemTpl = templates.filter(t => t.is_system).length;
+  const systemTpl = templates.filter(tpl => tpl.is_system).length;
   const avatarSeed = encodeURIComponent(user?.id ?? user?.email ?? 'guest');
   const avatarUrl = `https://api.dicebear.com/9.x/adventurer/png?seed=${avatarSeed}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf&size=128`;
 
@@ -83,7 +85,7 @@ export default function MoreScreen() {
   const handleLogout = () => {
     if (signingOutGuard.current || signingOut) return;
     Alert.alert(t('more.signOutConfirmTitle'), t('more.signOutConfirmBody'), [
-      { text: t('common.cancel'), style: 'cancel', onPress: () => { signingOutGuard.current = false; } },
+      { text: t('common.cancel'), style: 'cancel' },
       {
         text: t('more.signOut'),
         style: 'destructive',
@@ -158,7 +160,7 @@ export default function MoreScreen() {
             tint={theme.colors.accent}
             bg={theme.colors.accentSoft}
             primary={loaded ? `${counts.total}` : null}
-            secondary={loaded ? (counts.latestCreatedAt ? `${t('more.lastInspection', { date: relativeTime(counts.latestCreatedAt, t) })}` : t('more.emptyLast')) : null}
+            secondary={loaded ? (counts.latestCreatedAt ? `${t('more.lastInspection', { date: relativeTime(counts.latestCreatedAt, t, i18n.language) })}` : t('more.emptyLast')) : null}
             onPress={() => router.push('/history')}
           />
           <HubTile
@@ -185,7 +187,7 @@ export default function MoreScreen() {
             icon="book"
             tint={theme.colors.regsTint}
             bg={theme.colors.regsSoft}
-            primary="3"
+            primary={String(REGULATIONS.length)}
             secondary={t('more.document')}
             onPress={() => router.push('/(tabs)/regulations')}
           />
@@ -496,31 +498,6 @@ function ProgressBar({ value, max, locked }: { value: number; max: number; locke
 
 // ───────── HELPERS ─────────
 
-function StatPill({ value, label, tint, theme }: { value: number | null; label: string; tint: string; theme: Theme }) {
-  const styles = useMemo(() => getStyles(theme), [theme]);
-
-  return (
-    <View style={[styles.statPill, { backgroundColor: theme.colors.card, borderColor: theme.colors.hairline }]}>
-      {value === null ? (
-        <Skeleton width={30} height={22} />
-      ) : (
-        <Text style={{ fontSize: 22, fontWeight: '800', fontFamily: theme.typography.fontFamily.display, color: tint }}>{value}</Text>
-      )}
-      <Text
-        style={{
-          fontSize: 10,
-          fontWeight: '600',
-          color: theme.colors.inkSoft,
-          textTransform: 'uppercase',
-          letterSpacing: 0.5,
-        }}
-      >
-        {label}
-      </Text>
-    </View>
-  );
-}
-
 function HubTile({
   title,
   icon,
@@ -574,18 +551,6 @@ function HubTile({
   );
 }
 
-function relativeTime(iso: string, t: (key: string, opts?: any) => string) {
-  const date = new Date(iso);
-  const diff = Date.now() - date.getTime();
-  const m = Math.floor(diff / 60000);
-  if (m < 1) return t('home.relNow');
-  if (m < 60) return t('home.relMinAgo', { n: m });
-  const h = Math.floor(m / 60);
-  if (h < 24) return t('home.relHourAgo', { n: h });
-  const d = Math.floor(h / 24);
-  return t('home.relDayAgo', { n: d });
-}
-
 function getStyles(theme: Theme) {
   return StyleSheet.create({
     avatar: {
@@ -593,13 +558,6 @@ function getStyles(theme: Theme) {
       height: 56,
       borderRadius: 28,
       backgroundColor: theme.colors.subtleSurface,
-    },
-    statPill: {
-      flex: 1,
-      borderRadius: theme.radius.cardInner,
-      borderWidth: 1,
-      padding: 14,
-      gap: 3,
     },
     grid: {
       flexDirection: 'row',

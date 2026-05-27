@@ -16,6 +16,7 @@ import { useRouter } from 'expo-router';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { SectionEmptyState } from '../../../components/EmptyState';
 import { FileThumbnail, ViewMoreRow } from '../../../components/projects/ProjectRowHelpers';
+import { SkeletonRow } from '../../../components/Skeleton';
 import { useTheme } from '../../../lib/theme';
 import { a11y } from '../../../lib/accessibility';
 import { formatShortDateTime } from '../../../lib/formatDate';
@@ -28,6 +29,7 @@ export function FilesAndOrdersSection({
   files,
   orders,
   filesBusy,
+  loading = false,
   onUpload,
   onOpenFile,
   onDeleteFile,
@@ -36,6 +38,7 @@ export function FilesAndOrdersSection({
   files: ProjectFile[];
   orders: Order[];
   filesBusy: boolean;
+  loading?: boolean;
   onUpload: () => void;
   onOpenFile: (f: ProjectFile) => void;
   onDeleteFile: (f: ProjectFile) => void;
@@ -102,7 +105,12 @@ export function FilesAndOrdersSection({
       ) : null}
 
       {/* Uploaded files */}
-      {files.length === 0 && orders.length === 0 ? (
+      {loading && files.length === 0 && orders.length === 0 ? (
+        <View style={{ gap: 8, marginTop: 10 }}>
+          <SkeletonRow />
+          <SkeletonRow />
+        </View>
+      ) : files.length === 0 && orders.length === 0 ? (
         <SectionEmptyState type="documents" />
       ) : files.length === 0 ? null : (
         <View style={{ gap: 8, marginTop: orders.length > 0 ? 8 : 10 }}>

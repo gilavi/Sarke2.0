@@ -4,6 +4,138 @@
 
 ---
 
+## 2026-05-27 — Home & Projects show skeleton until fetch settles (no more empty-state flash on first login)
+
+Two-layer fix for the "I have projects but Home says I don't until I pull-to-refresh" bug — see [`BUG_REPORT.md`](../BUG_REPORT.md).
+
+- **Force a fresh fetch after sign-in** ([lib/session.tsx](../lib/session.tsx)): the post-login warming `prefetchQuery` now passes `staleTime: 0`, so a racy empty result from a previous session can't sit in the React Query cache for 5 minutes and starve out the real data. The first prefetch after every sign-in is guaranteed to hit the network.
+- **Skeleton stays up through background refetches** ([app/(tabs)/home.tsx](../app/(tabs)/home.tsx), [app/(tabs)/projects.tsx](../app/(tabs)/projects.tsx)): replaced `!isLoading && data.length === 0` style empty-state guards with `(isFetching || !isFetched) && data.length === 0`. Empty state now only renders after the query has actually settled empty — never as a flash while a refetch is replacing a stale `[]` from cache. Same fix applied to the Recent activity section on Home.
+
+---
+
+## 2026-05-27 — Bobcat inspection form & PDF fixes
+
+Three fixes to the "ციცხვიანი დამტვირთველის შემოწმების აქტი" (Bobcat / Large Loader inspection):
+
+- **Numbered verdict marks throughout** ([components/inspection-steps/ChecklistStep.tsx](../components/inspection-steps/ChecklistStep.tsx), [lib/inspection/schemas/bobcat.ts](../lib/inspection/schemas/bobcat.ts)): verdict buttons on the form now show **1 / 2 / 3** (was ✓/⚠/✗). The PDF result pills, legend, and summary table headers likewise switched to the numbered format (`1 — კარგია`, `2 — ნაკლი`, `3 — გამოუსადეგ.`) — matching the standard Georgian inspection document convention.
+- **Conclusion block always visible in PDF** ([lib/inspection/schemas/bobcat.ts](../lib/inspection/schemas/bobcat.ts)): the "შენიშვნები / ხარვეზები" block was wrapped in `insp.notes ? …` so it disappeared when the notes field was empty. Now always rendered (empty notes → blank box). Added explicit `background:#fff;color:#1A1A1A` inline styles to guarantee readability in PDF rendering contexts where CSS custom properties may not resolve.
+- **Georgian text corrections** ([types/bobcat.ts](../types/bobcat.ts)): 15+ checklist item descriptions corrected in both `BOBCAT_ITEMS` and `LARGE_LOADER_ITEMS`. The main fixes: items that described the defect state without negation now use "არ ჩანს" / "არ აღენიშნება" (e.g. `'ბზარი, მოხრა ჩანს'` → `'ბზარი, მოხრა არ ჩანს'`); expanded `'ჰიდ.'` abbreviations to `'ჰიდრავლიკური'`; fixed `'ვიბრირება'` → `'ვიბრაცია'`; `'ფუნქციონარი'` → `'ფუნქციონალი'`; added missing state descriptions to bare-label items.
+
+---
+
+## 2026-05-27 — Inspection wizard UX improvements
+
+Three fixes to the inspection conclusion/verdict flow:
+
+- **Invisible text in dark mode fixed** ([components/inputs/FloatingLabelInput.tsx](../components/inputs/FloatingLabelInput.tsx)): Android injected a white `backgroundColor` onto `TextInput`, making typed text invisible on dark-themed devices. Fixed by adding `backgroundColor: 'transparent'` to the input stylesheet.
+- **3-state safety verdict** ([features/inspection-wizard/VerdictSelector.tsx](../features/inspection-wizard/VerdictSelector.tsx), [features/inspection-wizard/ConclusionStep.tsx](../features/inspection-wizard/ConclusionStep.tsx), [supabase/migrations/20260527150000_safety_verdict.sql](../supabase/migrations/20260527150000_safety_verdict.sql)): the verdict UI now offers three options — ✓ უსაფრთხოა (green), ⚠ დასაშვებია/საჭიროებს დაკვირვებას (amber), ✗ დაუშვებელია გამოყენება (red) — stored as `safety_verdict text CHECK ('safe','caution','unsafe')` in `questionnaires`. PDF hero banner shows the correct amber `hero-pending` style for caution.
+- **Scaffold row guidance hints** ([features/inspection-wizard/ScaffoldRowStep.tsx](../features/inspection-wizard/ScaffoldRowStep.tsx), [supabase/migrations/20260527150100_scaffold_row_hints.sql](../supabase/migrations/20260527150100_scaffold_row_hints.sql)): the `questions` table now has a `grid_row_hints jsonb` column. For the facade scaffold template each of the 8 criteria rows shows a brief standard-text description below the row title. Populated via migration and seed update.
+
+### Pending — manual SQL apply (user)
+- `20260527150000_safety_verdict.sql` — adds `safety_verdict` column to `questionnaires`, backfills from `is_safe_for_use`.
+- `20260527150100_scaffold_row_hints.sql` — adds `grid_row_hints` column to `questions`, populates facade scaffold hints.
+
+---
+
+## 2026-05-27 — Photo-location modal: stop spamming users
+
+Fixed the "GPS mismatch" modal that fired on **every** photo upload when the user's location was >500m from the project's saved address — a major annoyance on facade-scaffolding and other off-site inspections.
+
+- **Per-project 24h suppression** ([lib/photoLocationAlert.ts](../lib/photoLocationAlert.ts)): added AsyncStorage-backed `isRecentlyDismissed` / `markDismissed` helpers keyed by project ID. Any button tap (including "კი, სწორია", "პროექტის ლოკაცია შევცვალო", "არა", and "სხვა პროექტზე გადასვლა") sets the flag. Subsequent photos for the same project short-circuit before reverseGeocode for 24 hours. Naturally expires next day if the user resumes at a different site.
+- **Behavior:** the user gets at most ONE prompt per project per day, regardless of how many photos they upload. The fix also closes a race where tapping "Update project location" briefly re-prompted before the project's state propagated through React.
+
+---
+
+## 2026-05-27 — Login / registration UX
+
+Three login-screen improvements driven by user feedback. Adds one DB migration that exposes a deliberate user-enumeration vector — accepted trade-off for modern login UX (same approach Apple/Google now use).
+
+- **Register with existing email now surfaces a real error** ([lib/session.tsx](../lib/session.tsx)): Supabase's default behavior is to silently return success with an empty `identities` array when the email is already registered (to prevent enumeration). `register()` now detects that response and throws `User already registered`, which the existing `isEmailTakenError` path surfaces as an Alert with title "ესეთი უზერი არსებობს უკვე" and an action to switch to Sign In.
+- **Distinct messages for "wrong password" vs "no account"** ([lib/session.tsx](../lib/session.tsx), [lib/errorMap.ts](../lib/errorMap.ts), [supabase/migrations/20260527150000_email_exists_rpc.sql](../supabase/migrations/20260527150000_email_exists_rpc.sql)): on a failed sign-in, `signIn()` now probes a new `email_exists(p_email)` RPC (SECURITY DEFINER, granted to anon) and re-throws a tagged `WrongPassword` or `AccountNotFound` error. `friendlyError()` translates each to its own Georgian message ("პაროლი არასწორია" / "ანგარიში ვერ მოიძებნა — შეამოწმეთ ელ-ფოსტა"). New discriminators `isWrongPasswordError` / `isAccountNotFoundError` in `errorMap`.
+- **Password-reset suggestion after 3 failed attempts** ([app/(auth)/login.tsx](../app/(auth)/login.tsx)): the LoginForm now counts consecutive wrong-password failures (resets on email change or successful sign-in). After 3, a prominent banner appears under the password field suggesting reset — and tapping it opens the existing `ForgotPasswordModal` pre-filled with the entered email. `AccountNotFound` failures (typo'd email) do **not** count toward the threshold, because the remedy there is to fix the email, not reset the password.
+
+### Pending — manual SQL apply (user)
+- `20260527150000_email_exists_rpc.sql` — creates `public.email_exists(text)`. Until applied, sign-in errors fall back to the generic "Invalid email or password" message and the 3-attempt reset banner won't surface.
+
+---
+
+## 2026-05-27 — Bug fixes (second audit pass)
+
+Ten bugs found via Expo-web interactive test, all fixed in the same commit.
+
+- **Project-detail inspection stats RPC missing** ([supabase/migrations/20260527120000_get_inspection_stats_rpc.sql](../supabase/migrations/20260527120000_get_inspection_stats_rpc.sql)): the projects list fetched per-project draft/completed counts via a `get_inspection_stats()` RPC that was never created, causing a 404 error on every projects-tab load. Migration now creates the function with `SECURITY INVOKER` so RLS scopes results to the caller automatically.
+- **Breathalyzer empty-state showed wrong message** ([features/project-detail/sections/BreathalyzerSection.tsx](../features/project-detail/sections/BreathalyzerSection.tsx)): displayed "ფაილები არ არის ატვირთული" (files not uploaded) instead of breathalyzer-specific copy. Fixed by passing the correct `subtitle` override to `SectionEmptyState`.
+- **History screen headers didn't re-translate on language switch** ([app/history.tsx](../app/history.tsx)): the `useMemo` that builds draft/completed section labels was missing `t` in its dependency array; switching language left stale Georgian/English headers. Added `t` to deps.
+- **Certificate expiry dates always formatted in Georgian** ([app/qualifications/index.tsx](../app/qualifications/index.tsx)): the `FilledCard` component used hardcoded `'ka'` locale. Now reads `t('common.localeTag')` so dates render in the active UI language.
+- **More tab showed hardcoded regulation count "3"** ([app/(tabs)/more.tsx](../app/(tabs)/more.tsx)): the count chip displayed `"3"` regardless of the actual `REGULATIONS` array length (currently 5). Now derived from `REGULATIONS.length`.
+- **Templates screen showed raw category identifiers** ([app/templates.tsx](../app/templates.tsx)): categories rendered as `xaracho`, `bobcat`, `general_equipment`, etc. Added a `CATEGORY_LABEL` map covering all 11 equipment types; unknown/future categories fall back to the raw identifier.
+- **Home screen date unreadable in English locale on web** ([lib/homeUtils.ts](../lib/homeUtils.ts)): `todayFormatted()` passed `'ka-GE'` to `toLocaleDateString()` — Chromium web builds don't ship the Georgian ICU data and returned the date in English regardless of the UI language. Now constructs the Georgian string manually from arrays (`KA_WEEKDAY_FULL`, `KA_MONTH_FULL`); English uses `'en-US'` as before.
+- **Calendar screen ignored `projectId` search param** ([app/(tabs)/calendar.tsx](../app/(tabs)/calendar.tsx)): the "ყველა" (all) link in `UpcomingSection` navigates to `/calendar?projectId=<uuid>`, but `CalendarScreen` never read the param. Added `useLocalSearchParams`, derived a `filteredEvents` list, and updated both section building and week-strip dot rendering to use it.
+- **History routing broke for 7 of 10 inspection types** ([app/history.tsx](../app/history.tsx)): the inline `onPress` logic only handled `bobcat`, `excavator`, and `general_equipment`; all other categories (harness, cargo_platform, safety_net_inspection, mobile_ladder_inspection, fall_protection_inspection, lifting_accessories_inspection, forklift_inspection) fell through to a non-existent generic route. Replaced with the canonical `routeForInspection()` from `lib/inspectionRouting.ts`.
+- **Home grouping labels "Today"/"Yesterday" always in Georgian** ([lib/homeUtils.ts](../lib/homeUtils.ts)): `dateGroupLabel()` hardcoded `'დღეს'`/`'გუშინ'` regardless of the `lang` parameter; dates beyond 7 days also used `'ka-GE'` locale (same ICU gap as Bug 7). Both paths now branch on `lang` and construct Georgian strings manually.
+
+### Pending — manual SQL apply (user)
+- `20260527120000_get_inspection_stats_rpc.sql` — defines `get_inspection_stats()`. Until applied, the projects list will fail to load inspection counts.
+
+---
+
+## 2026-05-27 — Bug fixes (audit pass)
+
+Ten bugs found via code audit + Expo-web run, all fixed in the same commit.
+
+- **Incident save — navigation to non-existent page on pre-create failure** ([app/incidents/new.tsx](../app/incidents/new.tsx)): if `uploadPhotos()` or `incidentsApi.create()` throws, the catch block previously navigated to `/incidents/${incidentId}` using the client-generated UUID — which was never written to the DB. Now a `incidentCommitted` flag gates the navigation; a pre-create failure shows an error toast and stays on the form.
+- **Incident save — orphaned storage photos on create failure** ([app/incidents/new.tsx](../app/incidents/new.tsx)): if photos uploaded successfully but the DB create subsequently failed, those photos were left in the `incident-photos` bucket with no incident row referencing them. On a pre-create failure the catch now calls `storageApi.remove` for each uploaded path.
+- **Forgot-password — no email format validation** ([app/(auth)/login.tsx](../app/(auth)/login.tsx), [app/(auth)/forgot.tsx](../app/(auth)/forgot.tsx)): both the inline modal and the standalone screen only disabled the submit button on empty input, so typing `"test"` would fire the Supabase API and surface a confusing auth error. Both now run `isEmail()` before the API call.
+- **Pull-to-refresh could get permanently stuck** ([app/(tabs)/projects.tsx](../app/(tabs)/projects.tsx)): `Promise.all([...refetch()])` was not wrapped in try/catch; if any refetch threw, `setRefreshing(false)` was skipped. Wrapped in try/finally.
+- **File delete — wrong operation order leaving orphaned storage** ([lib/services/real/projects.ts](../lib/services/real/projects.ts)): storage was deleted first (failure silently swallowed), then the DB record. If storage failed, the DB record was still removed — creating an unreachable file. Now the DB record is deleted first (throw on failure), then storage is cleaned up best-effort.
+- **Session storage — corrupt partial read on mid-write crash** ([lib/secureSessionStorage.ts](../lib/secureSessionStorage.ts)): a WIP flag (`__wip`) is now set before clearing old chunks and cleared after the new write commits. If the app is force-killed mid-write, `readChunked` detects the flag and returns null (clean sign-out) instead of assembling a partial blob.
+- **Safety-3D loading spinner didn't spin** ([app/safety-3d.tsx](../app/safety-3d.tsx)): the "spinner" View had circular border styles but no rotation animation. Replaced with `ActivityIndicator`.
+- **Eye icon style inconsistency on login vs. register** ([app/(auth)/login.tsx](../app/(auth)/login.tsx)): LoginForm used solid `eye`/`eye-off`; RegisterForm used outline variants. Now both use `eye-outline`/`eye-off-outline`.
+- **Briefing detail — stale preview HTML not cleared on re-navigation** ([app/briefings/[id].tsx](../app/briefings/%5Bid%5D.tsx)): `previewHtml` was only set when both `briefing` and `project` were loaded, never reset to null when either became undefined. Added the `else` branch.
+- **Inspection wizard — `offline` missing from `load` dependency array** ([features/inspection-wizard/useWizardState.ts](../features/inspection-wizard/useWizardState.ts)): `load` called `offline.hydrateQuestionnairePatch/hydrateAnswers/cacheAnswers` but `offline` was not listed in the `useCallback` deps. Added.
+
+---
+
+## 2026-05-27 — Project detail: 10 inspection queries → 1 RPC
+
+Before: the project-detail screen fired 10 parallel inspection queries (one per equipment type plus the generic `inspections` table), mirrored each result into local state via 10 `useState`s + 10 `useEffect`s, then merged them into one chronological list with `buildUnifiedInspections`.
+
+Now: a single RPC [`get_project_inspections_unified(p_project_id)`](../supabase/migrations/20260527091308_project_inspections_unified_rpc.sql) returns the pre-merged preview list — possible because the 2026-05-27 identity unification migration backfilled parent rows in `public.inspections` for every equipment-type inspection and tagged them with `inspections.type`. The screen consumes [`useUnifiedInspectionsByProject`](../lib/apiHooks.ts) directly; [`useProjectDetailData`](../features/project-detail/useProjectDetailData.ts) is ~80 lines lighter (no per-source state, setters, or effects); [`unifiedInspections.ts`](../features/project-detail/unifiedInspections.ts) loses `buildUnifiedInspections` and `UnifiedSetters` entirely. Swipe-delete mutates the unified-query cache directly via `queryClient.setQueryData`.
+
+[`deleteInspectionBySource`](../lib/inspectionDelete.ts) now always deletes from `public.inspections` (rather than the equipment-specific table); the `<type>_inspections.id → inspections.id` cascade FK kills the equipment row. This fixes a latent orphan-parent bug that would have caused deleted equipment rows to silently re-surface in the unified RPC list on the next refetch.
+
+### Pending — manual SQL apply (user)
+- `20260527091308_project_inspections_unified_rpc.sql` — RPC + composite index `idx_inspections_project_created`. Until applied, the project-detail screen's inspection section will surface an error / show empty (the React Query falls back to `[]`).
+
+---
+
+## 2026-05-27 — Project detail: per-section loading
+
+Before: the project detail screen aggregated `isLoading` across 11 queries (project + 10 inspection types + templates) into one `loaded` flag, then blanked the whole screen behind `LoadingSkeletonScreen` until the slowest one finished. A user opening a project waited on equipment-type queries that mostly return empty just to see the basic project info.
+
+Now: [`useProjectDetailData`](../features/project-detail/useProjectDetailData.ts) flips `loaded` true as soon as `projectQ` resolves, so the hero (logo, name, address, map, arch animation) paints immediately. A new `pending` object exposes per-section flags (`inspections`, `incidents`, `briefings`, `reports`, `files`, `orders`, `breathalyzer`); each section component takes a `loading` prop and renders 2 `SkeletonRow`s while its own query is in flight, then transitions to either the row list or `EmptyState` based on the resolved data. Slow sections never block fast ones from painting, and the empty-state CTA no longer flashes mid-fetch.
+
+Touched: [features/project-detail/useProjectDetailData.ts](../features/project-detail/useProjectDetailData.ts), [features/project-detail/ProjectDetail.tsx](../features/project-detail/ProjectDetail.tsx), all six sections under [features/project-detail/sections/](../features/project-detail/sections/), [features/project-detail/AGENTS.md](../features/project-detail/AGENTS.md).
+
+---
+
+## 2026-05-27 — Projects-tab cold-start fix + session storage moved to Keychain
+
+### Fixed — slow projects fetch on TestFlight first launch / first update
+The projects tab used to fire **5 queries in parallel** on mount: `projects.list`, `projects.stats`, plus `useAllInspections`/`useAllBriefings`/`useTemplates` (the three sources behind `useCalendarEvents()` — only consumed for the "⚠ N ვადაგადაცილებული" badge). The three calendar queries each did a `select('*')` against full tables and competed with the actual projects list for cold-start bandwidth, which is why the tab felt slow after every install/update.
+
+Now the projects screen calls a single tiny RPC, `get_overdue_counts()`, that computes per-project overdue counts server-side. The three heavy queries are no longer mounted on this screen. `useCalendarEvents()` is unchanged for the screens that genuinely need the full event list (home, calendar widget). ([supabase/migrations/20260527083000_overdue_counts_rpc.sql](../supabase/migrations/20260527083000_overdue_counts_rpc.sql), [app/(tabs)/projects.tsx](../app/(tabs)/projects.tsx), [lib/services/real/projects.ts](../lib/services/real/projects.ts))
+
+### Changed — Supabase session persisted in Keychain/Keystore instead of AsyncStorage
+Auth session storage swapped from `AsyncStorage` to a SecureStore-backed adapter ([lib/secureSessionStorage.ts](../lib/secureSessionStorage.ts)). Keychain (iOS) / EncryptedSharedPreferences-backed SQLite (Android) survives more OS edge cases than AsyncStorage and should reduce the "logged out after the update" pattern in production App Store builds. SecureStore caps values at ~2 KB on Android, so the session blob is chunked (1.8 KB chunks + a companion `__count` key); iOS uses the same path for consistency. Existing logged-in users are migrated on first read — `getItem` falls back to AsyncStorage on a SecureStore miss and lifts the prior session forward, so this change does not bounce anyone to the login screen.
+
+> TestFlight builds may still log users out across updates if the test signing identity rotates — that's an iOS-level keychain behavior and is not something the app code can prevent. App Store production builds use a stable identity, so sessions persist across updates.
+
+### Pending — manual SQL apply (user)
+- `20260527083000_overdue_counts_rpc.sql` — defines `get_overdue_counts()` + composite indexes on `inspections (project_id, template_id, completed_at desc) WHERE status='completed'` and `briefings (project_id, date_time desc) WHERE status='completed'`. SECURITY INVOKER (RLS scopes results to the caller).
+
+---
+
 ## 2026-05-27 — Inspection identity unification + signatures header fix
 
 ### Architecture — unified inspection identity across all 10 inspection types

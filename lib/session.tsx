@@ -85,6 +85,10 @@ interface SessionCtx {
   resendSignupOtp: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  /** Returns true if an account with this email exists in auth.users.
+   *  Backed by the email_exists() RPC; used by the login UI to distinguish
+   *  "no such account" from "wrong password". */
+  emailExists: (email: string) => Promise<boolean>;
   refreshUser: () => Promise<void>;
   acceptTerms: (version: string) => Promise<void>;
 }
@@ -128,13 +132,23 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           .maybeSingle();
         if (cancelled || myEpoch !== epoch) return;
         setState({ status: 'signedIn', session, user: (data as AppUser | null) ?? null });
-        // Warm the projects-list cache in the background. The user is most
+        // Warm the home-screen caches in the background. The user is most
         // likely heading for either home or the projects tab next; either way,
-        // this saves them the cold-fetch wait on first arrival. Fire-and-forget
-        // so a network blip here can't delay the post-auth navigation.
+        // this saves them the cold-fetch wait on first arrival.
+        //
+        // `staleTime: 0` forces a network round-trip even if a cached value
+        // exists for these keys. Without it, a previous prefetch that raced
+        // the JWT propagation and returned `[]` (RLS rejected the call before
+        // the token was set on the Supabase client) would stick around for
+        // the default 5-minute staleTime, leaving the home screen empty
+        // until the user pulled-to-refresh. See `BUG_REPORT.md` ("Home shows
+        // empty projects after first login").
+        //
+        // Fire-and-forget so a network blip here can't delay post-auth nav.
         queryClient.prefetchQuery({
           queryKey: ['projects', 'list'],
           queryFn: () => projectsApi.list(),
+          staleTime: 0,
         }).catch(() => undefined);
       } catch (e) {
         if (cancelled || myEpoch !== epoch) return;
@@ -210,7 +224,29 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       state,
       signIn: async (email, password) => {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
+        if (!error) return;
+        // Supabase deliberately returns the same "Invalid login credentials"
+        // string for both "email not found" and "wrong password" to prevent
+        // user enumeration. The login screen wants distinct UX, so we probe
+        // email_exists() and re-throw a tagged error the UI can discriminate
+        // (see lib/errorMap.ts: isAccountNotFoundError / isWrongPasswordError).
+        const lower = (error.message ?? '').toLowerCase();
+        if (lower.includes('invalid login credentials') || lower.includes('invalid credentials')) {
+          try {
+            const { data } = await supabase.rpc('email_exists', { p_email: email });
+            if (data === false) throw new Error('AccountNotFound');
+            throw new Error('WrongPassword');
+          } catch (e) {
+            // If the RPC itself fails (network / not deployed yet), fall back
+            // to the original error message — better generic-but-correct than
+            // wrongly claiming "wrong password" when we can't actually tell.
+            if (e instanceof Error && (e.message === 'AccountNotFound' || e.message === 'WrongPassword')) {
+              throw e;
+            }
+            throw error;
+          }
+        }
+        throw error;
       },
       signInWithGoogle: async () => {
         const redirectUrl = Linking.createURL('auth/callback');
@@ -238,6 +274,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           },
         });
         if (error) throw error;
+        // Supabase's no-enumeration default: when "Confirm email" is on and the
+        // email is already registered, signUp returns success with a user that
+        // has an EMPTY identities array (no auth methods linked) instead of an
+        // error. Translate that into a real "User already registered" error so
+        // the UI can show the right message (isEmailTakenError in errorMap).
+        if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+          throw new Error('User already registered');
+        }
         if (!data.session) {
           return { needsEmailVerification: true };
         }
@@ -267,6 +311,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         const redirectTo = Linking.createURL('/reset');
         const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
         if (error) throw error;
+      },
+      emailExists: async email => {
+        const trimmed = email.trim();
+        if (!trimmed) return false;
+        const { data, error } = await supabase.rpc('email_exists', { p_email: trimmed });
+        if (error) throw error;
+        return data === true;
       },
       refreshUser: async () => {
         const { data } = await supabase.auth.getSession();
