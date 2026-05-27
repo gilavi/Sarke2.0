@@ -25,6 +25,13 @@ Two migrations to apply after the prior session's `20260526002032_remove_persist
 
 Before applying, the **[LIVE-DB]** queries in `INSPECTION_ARCHITECTURE_NOTES.md` §1A–§1C confirm the live schema matches the discovery assumptions.
 
+### Migration application status (2026-05-27)
+All migrations applied to production Supabase via SQL Editor in order:
+1. `20260526002032_remove_persisted_inspection_signatures.sql` — schema changes applied; storage cleanup deferred (BUG_REPORT P3 entry).
+2. `20260527001240_unify_inspection_identity.sql` — 69 equipment-type parent rows backfilled across 9 types, 9 CASCADE FKs added.
+3. `20260527001241_create_equipment_inspection_rpc.sql` — RPC live and callable from `authenticated`.
+4. `20260527033302_inspections_type_default.sql` — hotfix added during this push session to unblock the legacy harness/xaracho create path that did not specify `type`.
+
 ---
 
 ## 2026-05-27 — Web-app: architectural refactor — native inputs (complete), AsyncBoundary isolation, store rename

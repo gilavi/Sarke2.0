@@ -19,7 +19,7 @@ One real bug found — a **P0** infinite redirect loop between the wizard and th
 
 **Fix:** harden the component so the header chrome is robust regardless of mount context. The modal now sets `statusBarTranslucent`, wraps its tree in a fresh `<SafeAreaProvider>`, and applies safe-area insets manually via `useSafeAreaInsets()`. The component is fully self-contained — both the generic and equipment paths get correct chrome.
 
-## P1 — Certificate save fails with FK violation on equipment-type inspections · FIXED 2026-05-27 (commits `faa6b6f`, `b14b8d4`, `2781cad`; DB migrations PENDING manual apply)
+## P1 — Certificate save fails with FK violation on equipment-type inspections · FIXED 2026-05-27 (commits `faa6b6f`, `b14b8d4`, `2781cad`)
 
 **Repro:** Open any equipment-type inspection (bobcat, excavator, …) → result screen → `სერტიფიკატები` → fill the form → Save. Red FK error appears.
 
@@ -27,20 +27,47 @@ One real bug found — a **P0** infinite redirect loop between the wizard and th
 
 **Fix — architectural, not a constraint drop.** Every equipment inspection now has a parent row in `public.inspections` keyed by the same UUID. A new `inspections.type` column tags the variant. The application creates both rows atomically via the `create_equipment_inspection` RPC + the equipment-table insert. New FK with `ON DELETE CASCADE` from `<type>_inspections.id` to `inspections.id` keeps deletes coherent.
 
-**Pending manual apply (user):**
-1. [`supabase/migrations/20260527001240_unify_inspection_identity.sql`](supabase/migrations/20260527001240_unify_inspection_identity.sql) — schema + backfill (idempotent, transactional).
-2. [`supabase/migrations/20260527001241_create_equipment_inspection_rpc.sql`](supabase/migrations/20260527001241_create_equipment_inspection_rpc.sql) — RPC the app now calls on every equipment-inspection create.
+**Resolved 2026-05-27.** Migrations applied to production Supabase via SQL Editor:
+1. [`supabase/migrations/20260527001240_unify_inspection_identity.sql`](supabase/migrations/20260527001240_unify_inspection_identity.sql) — schema + backfill (idempotent, transactional). 69 equipment-type parent rows backfilled across 9 types; 9 CASCADE FKs added.
+2. [`supabase/migrations/20260527001241_create_equipment_inspection_rpc.sql`](supabase/migrations/20260527001241_create_equipment_inspection_rpc.sql) — RPC the app now calls on every equipment-inspection create; live and callable from `authenticated`.
+3. [`supabase/migrations/20260527033302_inspections_type_default.sql`](supabase/migrations/20260527033302_inspections_type_default.sql) — hotfix applied after the unify migration's NOT NULL added; sets default `'harness'` to unblock the legacy harness/xaracho create path that did not specify `type`.
 
-Verification queries are embedded in the unify migration as comments. Run after applying.
+## P1 — RPC "Could not find function `create_equipment_inspection`" error on equipment create · FIXED 2026-05-27
 
-## Architectural — inspection identity unified · 2026-05-27
+Transient symptom that appeared between `20260527001240_unify_inspection_identity.sql` and the companion RPC migration: the app's equipment service factory called `supabase.rpc('create_equipment_inspection', ...)` but the function was not yet defined in the live DB. **Resolved 2026-05-27** by applying [`20260527001241_create_equipment_inspection_rpc.sql`](supabase/migrations/20260527001241_create_equipment_inspection_rpc.sql).
+
+## Architectural — inspection identity unified · Resolved 2026-05-27 (commits `29e760f`, `faa6b6f`, `b14b8d4`, `2781cad`)
 
 Until 2026-05-27, equipment inspections were polymorphic without a unified identity layer: 9 separate tables, no parent row, shared dependencies (`inspection_attachments`) FK'ing only to the harness/scaffold master. The certificate-save FK violation above was the first user-visible failure; future cross-cutting concerns (signing audit, attachments, history, etc.) would have hit the same wall.
 
 Now every equipment-type row also exists in `public.inspections` with `type` tagging the variant. Shared dependents FK to `inspections.id` and work uniformly across all 10 types. Equipment-specific payload (items, verdicts, summary photos, type-specific signatures) stays in `<type>_inspections`. See [`INSPECTION_ARCHITECTURE_NOTES.md`](INSPECTION_ARCHITECTURE_NOTES.md) and [`INSPECTION_ARCHITECTURE_REPORT.md`](INSPECTION_ARCHITECTURE_REPORT.md).
 
+## P3 — Orphaned signature files in `signatures` storage bucket — 2026-05-27
 
-## P0 — Inspection signatures persisted in violation of the regulatory no-save rule · FIXED 2026-05-26 (code), MIGRATION PENDING (DB)
+After [`20260526002032_remove_persisted_inspection_signatures.sql`](supabase/migrations/20260526002032_remove_persisted_inspection_signatures.sql) ran, ~69 folders (UUID-named + a legacy `questionnaire/` folder) remain in the `signatures` storage bucket. Direct SQL delete was blocked by the `storage.protect_delete` trigger, so the migration's step 4 was commented out before applying.
+
+**Approach:** service-role API script using the Storage SDK. Keep only `expert/` and `project/` top folders. Estimated 60–80 files total. Not affecting functionality — the code path that wrote them is gone after the signature redesign.
+
+## P3 — Inspection service does not set `type` from template category — 2026-05-27
+
+The harness/xaracho create paths in [`lib/services/real/inspections.ts`](lib/services/real/inspections.ts) and [`lib/services/mock/inspections.ts`](lib/services/mock/inspections.ts) insert into `public.inspections` without specifying the `type` column. The DB default `'harness'` from [`20260527033302_inspections_type_default.sql`](supabase/migrations/20260527033302_inspections_type_default.sql) papers over this, but new xaracho-template inspections are silently tagged `'harness'` instead of `'xaracho'`.
+
+**Fix:** inspection service should read `templates.category` and pass `type` explicitly on insert. Equipment-type creates are already correct via the `create_equipment_inspection` RPC.
+
+## P2 — Incident and briefing signature flows still persist signatures — 2026-05-27
+
+The 2026-05-27 inspection signature redesign applied the no-save rule (signatures live only in component state, never persisted) only to inspection-type signatures. The incident report and pre-shift briefing flows still use the reusable expert signature pattern (an expert saves their own signature once and it auto-applies to their documents — DocuSign-style self-applied).
+
+This has a different legal basis (self-applied with consent vs capturing third-party signatures), but the user has requested a future redesign for consistency with the inspection regulatory rule.
+
+**Affected surfaces:**
+- `incidents.inspector_signature` (text)
+- `incidents.signatories` (jsonb)
+- `briefings.inspector_signature` (text)
+- `briefings.signatories` (jsonb)
+- `signatures/expert/` storage folder (5 files at audit time)
+
+## P0 — Inspection signatures persisted in violation of the regulatory no-save rule · FIXED 2026-05-26 (code), MIGRATION APPLIED 2026-05-27 (DB)
 
 **Audit context:** the no-persistence rule for captured inspection signatures was not held across the codebase. [SIGNATURE_AUDIT.md](SIGNATURE_AUDIT.md) catalogs the surface that violated it:
 
@@ -50,7 +77,9 @@ Now every equipment-type row also exists in `public.inspections` with `type` tag
 
 **Code fix (landed 2026-05-26):** the signature redesign across the wizard and post-completion screens removes every UI path that wrote signature data anywhere except wizard component state and an in-memory cross-screen session store. Captured signatures now live only in RAM and are cleared after PDF generation. Old patterns removed: `SignaturesActionSheet`, `SignatureSheet`, `SignatureBlock`, the per-inspection-screen `renderSignaturesSheet` blocks, `EphemeralSignatureSheet` in the generic result screen, the `signaturesApi` (real + mock), the `useSignatures` query hook, and the dead `lib/localSignatures.ts`. The unified replacement lives at [`features/signatures/`](features/signatures/).
 
-**DB fix (pending manual application):** [`supabase/migrations/20260526002032_remove_persisted_inspection_signatures.sql`](supabase/migrations/20260526002032_remove_persisted_inspection_signatures.sql) drops every table/column/storage object listed above. Out-of-scope flows preserved unchanged (project signers' `project/...` storage paths, the `signatures` Postgres table is dropped entirely because it only ever held inspection-scoped rows, `users.saved_signature_url` and `expert/<userId>.png` stay for the incident/briefing reusable expert signature, the `remote-signatures` bucket and `remote_signings` table are untouched). The migration is not executed from Claude Code — apply manually after review via `supabase db query --linked` or the Management API.
+**DB fix (applied 2026-05-27):** [`supabase/migrations/20260526002032_remove_persisted_inspection_signatures.sql`](supabase/migrations/20260526002032_remove_persisted_inspection_signatures.sql) dropped the `signatures` table, the `signature_status` enum, and the `inspector_signature` + `signatories` columns from inspections and the four equipment tables. Out-of-scope flows preserved unchanged (project signers' `project/...` storage paths, `users.saved_signature_url` and `expert/<userId>.png` for the incident/briefing reusable expert signature, the `remote-signatures` bucket and `remote_signings` table).
+
+**Storage cleanup deferred (P3):** the migration's step 4 (`DELETE FROM storage.objects WHERE bucket_id = 'signatures' AND split_part(name, '/', 1) NOT IN ('expert', 'project')`) was commented out before applying because the `storage.protect_delete` trigger blocked the SQL-side delete. ~69 orphan folders remain in the bucket and need a service-role Storage SDK cleanup script. Tracked separately in the P3 entry above.
 
 ## P0 — Wizard ↔ detail-screen ping-pong loop · FIXED
 
