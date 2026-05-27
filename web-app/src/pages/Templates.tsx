@@ -4,6 +4,7 @@ import { listTemplates, SIGNER_ROLE_LABEL, type Template } from '@/lib/data/temp
 import { templateKeys } from '@/app/queryKeys';
 import { SkeletonGrid } from '@/components/SkeletonCard';
 import { inspectionDisplayName } from '@/lib/documentNames';
+import { ErrorMessage } from '@/components/ui/error-message';
 
 const CATEGORY_LABEL: Record<string, string> = {
   harness:            'დამცავი ქამარი',
@@ -41,9 +42,7 @@ export default function Templates() {
       {q.isLoading ? (
         <SkeletonGrid count={6} />
       ) : q.error ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {q.error instanceof Error ? q.error.message : String(q.error)}
-        </div>
+        <ErrorMessage>{q.error instanceof Error ? q.error.message : String(q.error)}</ErrorMessage>
       ) : items.length === 0 ? (
         <p className="text-sm text-neutral-500 dark:text-neutral-400">შაბლონები ჯერ არ არის.</p>
       ) : (

@@ -9,6 +9,7 @@ import { listProjects } from '@/lib/data/projects';
 import { equipmentInspectionName } from '@/lib/documentNames';
 import { projectKeys } from '@/app/queryKeys';
 import { createGeneralEquipmentInspection, type GEInspectionType } from '@/lib/data/generalEquipment';
+import { VERDICT_GOOD } from '@/lib/verdictColors';
 
 const TYPE_LABELS: Record<GEInspectionType, string> = {
   initial: 'პირველადი',
@@ -92,7 +93,7 @@ export default function NewGeneralEquipmentInspection() {
             options={(Object.entries(TYPE_LABELS) as [GEInspectionType, string][]).map(([key, label]) => ({
               label,
               value: key,
-              selectedBg: '#1D9E75',
+              selectedBg: VERDICT_GOOD,
             }))}
             selected={inspectionType}
             onSelect={(v) => setInspectionType(v as GEInspectionType)}

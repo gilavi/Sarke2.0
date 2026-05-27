@@ -14,6 +14,7 @@ import {
   type Project,
 } from '@/lib/data/projects';
 import { projectKeys } from '@/app/queryKeys';
+import { ErrorMessage } from '@/components/ui/error-message';
 
 /* ── Phone helpers ── */
 function normalizePhone(raw: string) {
@@ -200,9 +201,9 @@ export function ProjectModal({ open, onClose, projectId }: Props) {
         />
 
         {mutation.error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <ErrorMessage compact>
             {mutation.error instanceof Error ? mutation.error.message : String(mutation.error)}
-          </div>
+          </ErrorMessage>
         )}
 
         {/* Actions */}

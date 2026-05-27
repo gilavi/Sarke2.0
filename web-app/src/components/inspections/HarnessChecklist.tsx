@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { Textarea } from '@/components/ui/textarea';
 import { SegmentedControl } from '@/components/wizard/SegmentedControl';
+import { VERDICT_GOOD, VERDICT_BAD, VERDICT_NEUTRAL } from '@/lib/verdictColors';
 
 /**
  * Per-item checklist content (one harness/item at a time). Rendered inside the
@@ -10,9 +11,9 @@ type GridValues = Record<string, Record<string, string>>;
 type CellOpt = 'ok' | 'bad' | 'na';
 
 const STATUS_OPTIONS = [
-  { label: 'კი', value: 'ok', selectedBg: '#1D9E75' },
-  { label: 'არა', value: 'bad', selectedBg: '#EF4444' },
-  { label: 'N/A', value: 'na', selectedBg: '#94A3B8' },
+  { label: 'კი', value: 'ok', selectedBg: VERDICT_GOOD },
+  { label: 'არა', value: 'bad', selectedBg: VERDICT_BAD },
+  { label: 'N/A', value: 'na', selectedBg: VERDICT_NEUTRAL },
 ];
 
 export function HarnessChecklist({

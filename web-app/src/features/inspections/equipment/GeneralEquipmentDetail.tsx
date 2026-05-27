@@ -42,12 +42,13 @@ import {
 } from '@/lib/data/generalEquipment';
 import { useEquipmentDetail } from './useEquipmentDetail';
 import { type ResultOption, type ResultTone } from './components/ResultPills';
+import { VERDICT_GOOD, VERDICT_WARN, VERDICT_BAD, VERDICT_NEUTRAL } from '@/lib/verdictColors';
 
 const TONE_BG: Record<ResultTone, string> = {
-  good: '#1D9E75',
-  warn: '#D97706',
-  bad: '#EF4444',
-  neutral: '#94A3B8',
+  good: VERDICT_GOOD,
+  warn: VERDICT_WARN,
+  bad: VERDICT_BAD,
+  neutral: VERDICT_NEUTRAL,
 };
 
 const CONDITION_OPTIONS: ResultOption<GECondition>[] = [
@@ -219,7 +220,7 @@ export default function GeneralEquipmentDetail() {
                 <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">შემოწმების სახეობა</p>
                 <SegmentedControl
                   fullWidth
-                  options={INSPECTION_TYPES.map(([val, label]) => ({ label, value: val, selectedBg: '#1D9E75' }))}
+                  options={INSPECTION_TYPES.map(([val, label]) => ({ label, value: val, selectedBg: VERDICT_GOOD }))}
                   selected={effectiveItem.inspectionType}
                   onSelect={(val) => { if (isDraft) d.save({ inspectionType: effectiveItem.inspectionType === val ? null : (val as GEInspectionType) }); }}
                 />
@@ -387,7 +388,7 @@ export default function GeneralEquipmentDetail() {
                 <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">როლი</p>
                 <SegmentedControl
                   fullWidth
-                  options={SIGNER_ROLES.map(([val, label]) => ({ label, value: val, selectedBg: '#1D9E75' }))}
+                  options={SIGNER_ROLES.map(([val, label]) => ({ label, value: val, selectedBg: VERDICT_GOOD }))}
                   selected={effectiveItem.signerRole}
                   onSelect={(val) => { if (isDraft) d.save({ signerRole: effectiveItem.signerRole === val ? null : (val as GESignerRole) }); }}
                 />

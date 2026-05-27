@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/auth';
 import { listCertificates, signedCertificatePdfUrl, uploadCertificate } from '@/lib/data/certificates';
 import { certificateDisplayName } from '@/lib/documentNames';
 import { certificateKeys } from '@/app/queryKeys';
+import { ErrorMessage } from '@/components/ui/error-message';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -90,9 +91,7 @@ export default function Certificates() {
       </header>
 
       {displayError && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {displayError}
-        </div>
+        <ErrorMessage>{displayError}</ErrorMessage>
       )}
 
       {isLoading && <SkeletonList count={4} />}

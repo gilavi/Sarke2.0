@@ -8,6 +8,7 @@ import { SkeletonList } from '@/components/SkeletonCard';
 import { listIncidents, deleteIncident, INCIDENT_TYPE_LABEL } from '@/lib/data/incidents';
 import { listProjects } from '@/lib/data/projects';
 import { projectKeys, incidentKeys } from '@/app/queryKeys';
+import { ErrorMessage } from '@/components/ui/error-message';
 
 const INCIDENT_AVATAR: Record<string, { emoji: string; bg: string }> = {
   fatal:    { emoji: '🚨', bg: 'bg-red-50 dark:bg-red-950/20' },
@@ -60,9 +61,7 @@ export default function Incidents() {
       </header>
 
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error instanceof Error ? error.message : String(error)}
-        </div>
+        <ErrorMessage>{error instanceof Error ? error.message : String(error)}</ErrorMessage>
       )}
 
       {!items && !error && <SkeletonList />}

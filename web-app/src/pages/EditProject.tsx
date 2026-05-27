@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { getProject, updateProject, updateProjectLogo } from '@/lib/data/projects';
 import { AddressInput } from '@/components/AddressInput';
 import { projectKeys } from '@/app/queryKeys';
+import { ErrorMessage } from '@/components/ui/error-message';
 
 export default function EditProject() {
   const { id } = useParams();
@@ -88,7 +89,7 @@ export default function EditProject() {
           <ArrowLeft size={14} className="mr-1 inline" />
           {project.name}
         </Link>
-        <h1 className="mt-2 font-display text-3xl font-bold text-neutral-900 dark:text-neutral-100">პროექტის რედაქტირება</h1>
+        <h1 className="mt-2 font-display text-heading-1 text-neutral-900 dark:text-neutral-100">პროექტის რედაქტირება</h1>
       </header>
 
       <Card>
@@ -168,9 +169,9 @@ export default function EditProject() {
             />
 
             {mutation.error && (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              <ErrorMessage compact>
                 {mutation.error instanceof Error ? mutation.error.message : String(mutation.error)}
-              </div>
+              </ErrorMessage>
             )}
 
             <div className="flex gap-2 pt-2">

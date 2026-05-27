@@ -20,6 +20,7 @@ import { fmtDateKa } from '@/lib/utils';
 import { getProject } from '@/lib/data/projects';
 import { routes } from '@/app/routes';
 import { projectKeys, briefingKeys } from '@/app/queryKeys';
+import { ErrorMessage } from '@/components/ui/error-message';
 
 export default function BriefingDetail() {
   const { id } = useParams();
@@ -59,11 +60,7 @@ export default function BriefingDetail() {
 
   if (isLoading) return <SkeletonDetailPage />;
   if (error)
-    return (
-      <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-        {error instanceof Error ? error.message : String(error)}
-      </div>
-    );
+    return <ErrorMessage>{error instanceof Error ? error.message : String(error)}</ErrorMessage>;
   if (!b) return <p className="text-sm text-neutral-500">ინსტრუქტაჟი ვერ მოიძებნა.</p>;
 
   const isDraft = b.status === 'draft';
@@ -110,7 +107,7 @@ export default function BriefingDetail() {
               {b.topics.length > 0 ? topicLabel(b.topics[0]) : fmtDateKa(b.dateTime)}
             </span>
           </nav>
-          <h1 className="mt-2 font-display text-3xl font-bold text-neutral-900 dark:text-neutral-100">
+          <h1 className="mt-2 font-display text-heading-1 text-neutral-900 dark:text-neutral-100">
             ინსტრუქტაჟი — {fmtDateKa(b.dateTime)}
           </h1>
           <p className="mt-1 text-sm text-neutral-500">სტატუსი: {b.status === 'completed' ? 'დასრულდა' : 'დრაფტი'}</p>
@@ -129,9 +126,7 @@ export default function BriefingDetail() {
       </header>
 
       {actionError && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          {actionError}
-        </div>
+        <ErrorMessage compact>{actionError}</ErrorMessage>
       )}
 
       {/* General info */}

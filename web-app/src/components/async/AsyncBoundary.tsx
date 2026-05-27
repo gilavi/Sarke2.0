@@ -23,6 +23,7 @@
 import { Component, type ReactNode } from 'react';
 import type { UseQueryResult } from '@tanstack/react-query';
 import { SkeletonList, SkeletonDetailPage } from '@/components/SkeletonCard';
+import { ErrorMessage } from '@/components/ui/error-message';
 
 function defaultErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -30,9 +31,7 @@ function defaultErrorMessage(error: unknown): string {
 
 export function ErrorView({ error }: { error: unknown }) {
   return (
-    <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
-      {defaultErrorMessage(error)}
-    </div>
+    <ErrorMessage>{defaultErrorMessage(error)}</ErrorMessage>
   );
 }
 

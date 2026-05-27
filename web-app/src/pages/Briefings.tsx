@@ -9,6 +9,7 @@ import { listBriefings, deleteBriefing, topicLabel } from '@/lib/data/briefings'
 import { listProjects } from '@/lib/data/projects';
 import { fmtDateKa } from '@/lib/utils';
 import { projectKeys, briefingKeys } from '@/app/queryKeys';
+import { ErrorMessage } from '@/components/ui/error-message';
 
 const STATUS_LABEL: Record<string, string> = {
   draft: 'დრაფტი',
@@ -59,9 +60,7 @@ export default function Briefings() {
       </header>
 
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error instanceof Error ? error.message : String(error)}
-        </div>
+        <ErrorMessage>{error instanceof Error ? error.message : String(error)}</ErrorMessage>
       )}
 
       {!filtered && !error && <SkeletonList />}

@@ -10,6 +10,7 @@ import { WizardShell } from '@/components/ui/wizard-shell';
 import { listProjects } from '@/lib/data/projects';
 import { projectKeys, incidentKeys } from '@/app/queryKeys';
 import { createIncident, INCIDENT_TYPE_LABEL, type IncidentType, type Incident } from '@/lib/data/incidents';
+import { ErrorMessage } from '@/components/ui/error-message';
 
 const STEPS = ['ინციდენტი', 'დეტალები'];
 const TYPES = Object.entries(INCIDENT_TYPE_LABEL) as [IncidentType, string][];
@@ -242,9 +243,9 @@ export default function NewIncident() {
           </div>
 
           {mutation.error && (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            <ErrorMessage compact>
               {mutation.error instanceof Error ? mutation.error.message : String(mutation.error)}
-            </div>
+            </ErrorMessage>
           )}
         </div>
       )}

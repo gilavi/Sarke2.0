@@ -126,7 +126,7 @@ export default function HarnessInspectionDetail() {
               {inspectionName(inspection.template_id)}
             </span>
           </nav>
-          <h1 className="mt-2 font-display text-3xl font-bold text-neutral-900 dark:text-neutral-100">
+          <h1 className="mt-2 font-display text-heading-1 text-neutral-900 dark:text-neutral-100">
             {inspectionName(inspection.template_id)}
           </h1>
           <p className="mt-1 text-sm text-neutral-500">

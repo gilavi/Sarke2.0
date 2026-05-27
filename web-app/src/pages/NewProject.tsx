@@ -8,6 +8,7 @@ import { EditableProjectAvatar } from '@/components/ProjectAvatar';
 import { useAuth } from '@/lib/auth';
 import { createProject, updateProjectLogo, type Project } from '@/lib/data/projects';
 import { AddressInput } from '@/components/AddressInput';
+import { ErrorMessage } from '@/components/ui/error-message';
 
 export default function NewProject() {
   const { user } = useAuth();
@@ -63,7 +64,7 @@ export default function NewProject() {
         <Link to="/projects" className="text-sm text-brand-600 hover:underline">
           ← პროექტები
         </Link>
-        <h1 className="mt-2 font-display text-3xl font-bold text-neutral-900 dark:text-neutral-100">ახალი პროექტი</h1>
+        <h1 className="mt-2 font-display text-heading-1 text-neutral-900 dark:text-neutral-100">ახალი პროექტი</h1>
         <p className="mt-1 text-sm text-neutral-500">
           შეიყვანეთ პროექტის ძირითადი ინფორმაცია. მონაცემები იქვე გამოჩნდება მობილურ აპში.
         </p>
@@ -128,9 +129,9 @@ export default function NewProject() {
             />
 
             {mutation.error && (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              <ErrorMessage compact>
                 {mutation.error instanceof Error ? mutation.error.message : String(mutation.error)}
-              </div>
+              </ErrorMessage>
             )}
 
             <div className="flex gap-2 pt-2">

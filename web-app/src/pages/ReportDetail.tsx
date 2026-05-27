@@ -24,6 +24,7 @@ import { getProject } from '@/lib/data/projects';
 import { reportDisplayName } from '@/lib/documentNames';
 import { routes } from '@/app/routes';
 import { projectKeys, reportKeys } from '@/app/queryKeys';
+import { ErrorMessage } from '@/components/ui/error-message';
 
 export default function ReportDetail() {
   const { id } = useParams();
@@ -150,9 +151,7 @@ export default function ReportDetail() {
 
   if (isLoading) return <SkeletonDetailPage />;
   if (error)
-    return (
-      <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
-    );
+    return <ErrorMessage>{error}</ErrorMessage>;
   if (!item) return <p className="text-sm text-neutral-500">რეპორტი ვერ მოიძებნა.</p>;
 
   const slides = [...(item.slides ?? [])].sort((a, b) => a.order - b.order);
@@ -178,7 +177,7 @@ export default function ReportDetail() {
               {reportDisplayName(item.title)}
             </span>
           </nav>
-          <h1 className="mt-2 font-display text-3xl font-bold text-neutral-900 dark:text-neutral-100">
+          <h1 className="mt-2 font-display text-heading-1 text-neutral-900 dark:text-neutral-100">
             {reportDisplayName(item.title)}
           </h1>
           <p className="mt-1 text-sm text-neutral-500">სტატუსი: {item.status === 'completed' ? 'დასრულდა' : 'დრაფტი'}</p>
@@ -258,11 +257,11 @@ export default function ReportDetail() {
                 </div>
 
                 {addSlideMutation.error && (
-                  <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                  <ErrorMessage compact>
                     {addSlideMutation.error instanceof Error
                       ? addSlideMutation.error.message
                       : String(addSlideMutation.error)}
-                  </div>
+                  </ErrorMessage>
                 )}
 
                 <div className="flex gap-2">

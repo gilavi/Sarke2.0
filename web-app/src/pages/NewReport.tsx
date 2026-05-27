@@ -7,6 +7,7 @@ import { WizardShell } from '@/components/ui/wizard-shell';
 import { listProjects } from '@/lib/data/projects';
 import { projectKeys, reportKeys } from '@/app/queryKeys';
 import { createReport, type Report } from '@/lib/data/reports';
+import { ErrorMessage } from '@/components/ui/error-message';
 
 const STEPS = ['ძირითადი'];
 
@@ -78,9 +79,9 @@ export default function NewReport() {
         />
 
         {mutation.error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <ErrorMessage compact>
             {mutation.error instanceof Error ? mutation.error.message : String(mutation.error)}
-          </div>
+          </ErrorMessage>
         )}
       </div>
     </WizardShell>

@@ -21,6 +21,7 @@ import { listProjects } from '@/lib/data/projects';
 import { SkeletonList } from '@/components/SkeletonCard';
 import { useInspectionName, equipmentInspectionName } from '@/lib/documentNames';
 import { projectKeys, inspectionKeys, bobcatKeys, excavatorKeys, generalEquipmentKeys, briefingKeys, incidentKeys } from '@/app/queryKeys';
+import { ErrorMessage } from '@/components/ui/error-message';
 
 /* ─── Types ─── */
 
@@ -308,7 +309,7 @@ export default function Calendar() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-display text-3xl font-bold text-neutral-900 dark:text-neutral-100">კალენდარი</h1>
+          <h1 className="font-display text-heading-1 text-neutral-900 dark:text-neutral-100">კალენდარი</h1>
           <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
             {monthEventsCount > 0 ? `${monthEventsCount} ჩანაწერი ამ თვეში` : 'შემოწმებები, ინსტრუქტაჟები და ინციდენტები'}
           </p>
@@ -341,9 +342,9 @@ export default function Calendar() {
       </div>
 
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/20 dark:text-red-400">
+        <ErrorMessage className="rounded-xl">
           {error instanceof Error ? error.message : String(error)}
-        </div>
+        </ErrorMessage>
       )}
 
       {isLoading && <SkeletonList />}

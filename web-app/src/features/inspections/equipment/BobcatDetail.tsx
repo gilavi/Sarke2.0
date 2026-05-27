@@ -24,6 +24,7 @@ import { ErrorView, EmptyView } from '@/components/async/AsyncBoundary';
 import { routes } from '@/app/routes';
 import { bobcatKeys } from '@/app/queryKeys';
 import { equipmentInspectionName } from '@/lib/documentNames';
+import { VERDICT_GOOD, VERDICT_WARN, VERDICT_BAD } from '@/lib/verdictColors';
 import {
   BOBCAT_ITEMS,
   BOBCAT_TEMPLATE_ID,
@@ -58,9 +59,9 @@ const VERDICT_LABEL: Record<BobcatVerdict, string> = {
 };
 
 const VERDICT_BG: Record<BobcatVerdict, string> = {
-  approved: '#1D9E75',
-  limited: '#D97706',
-  rejected: '#EF4444',
+  approved: VERDICT_GOOD,
+  limited: VERDICT_WARN,
+  rejected: VERDICT_BAD,
 };
 
 const STEP_LABELS = ['ინფო', 'შემოწმება', 'დასკვნა'];

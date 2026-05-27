@@ -15,7 +15,7 @@ export default function Terms() {
           <FileText size={26} className="text-brand-600" />
         </div>
         <div>
-          <h1 className="font-display text-3xl font-bold text-neutral-900">{body.heading}</h1>
+          <h1 className="font-display text-heading-1 text-neutral-900">{body.heading}</h1>
           <p className="mt-1 text-sm text-neutral-500">{body.updated}</p>
         </div>
         <div className="inline-flex rounded-full bg-neutral-100 p-1">

@@ -29,6 +29,7 @@ import {
 import { listProjects } from '@/lib/data/projects';
 import { listTemplates } from '@/lib/data/templates';
 import { projectKeys, inspectionKeys, templateKeys } from '@/app/queryKeys';
+import { VERDICT_GOOD, VERDICT_BAD } from '@/lib/verdictColors';
 
 /* ─── Types ─── */
 
@@ -881,8 +882,8 @@ function ConclusionStepRenderer({
           height={48}
           fontSize={15}
           options={[
-            { label: '✓ გამოყენებადია', value: 'yes', selectedBg: '#1D9E75' },
-            { label: '✗ არა ვარგისი', value: 'no', selectedBg: '#EF4444' },
+            { label: '✓ გამოყენებადია', value: 'yes', selectedBg: VERDICT_GOOD },
+            { label: '✗ არა ვარგისი', value: 'no', selectedBg: VERDICT_BAD },
           ]}
           selected={conclusion.isSafe === true ? 'yes' : conclusion.isSafe === false ? 'no' : null}
           onSelect={(v) => onChange({ ...conclusion, isSafe: v === 'yes' })}

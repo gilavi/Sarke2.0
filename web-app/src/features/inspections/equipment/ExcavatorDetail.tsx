@@ -25,6 +25,7 @@ import { ErrorView, EmptyView } from '@/components/async/AsyncBoundary';
 import { routes } from '@/app/routes';
 import { excavatorKeys } from '@/app/queryKeys';
 import { equipmentInspectionName } from '@/lib/documentNames';
+import { VERDICT_GOOD, VERDICT_WARN, VERDICT_BAD, VERDICT_NEUTRAL } from '@/lib/verdictColors';
 import {
   CABIN_ITEMS,
   ENGINE_ITEMS,
@@ -57,7 +58,7 @@ const RESULT_OPTIONS: ResultOption<ExcavatorResult>[] = [
   { value: 'unusable', label: 'გამოუსადეგ.', tone: 'bad' },
 ];
 
-const VERDICT_BG = ['#1D9E75', '#D97706', '#EF4444', '#94A3B8'];
+const VERDICT_BG = [VERDICT_GOOD, VERDICT_WARN, VERDICT_BAD, VERDICT_NEUTRAL];
 const STEP_LABELS = ['ინფო', 'შემოწმება', 'დასკვნა'];
 
 interface SectionDef {
@@ -354,8 +355,8 @@ export default function ExcavatorDetail() {
                           <SegmentedControl
                             fullWidth
                             options={[
-                              { label: 'კი', value: 'yes', selectedBg: '#1D9E75' },
-                              { label: 'არა', value: 'no', selectedBg: '#EF4444' },
+                              { label: 'კი', value: 'yes', selectedBg: VERDICT_GOOD },
+                              { label: 'არა', value: 'no', selectedBg: VERDICT_BAD },
                             ]}
                             selected={st.answer}
                             onSelect={(a) => { if (isDraft) patchMaintenance(m.id, { answer: a === st.answer ? null : (a as 'yes' | 'no') }); }}
@@ -448,7 +449,7 @@ export default function ExcavatorDetail() {
                       options={(Object.keys(EXCAVATOR_VERDICT_LABEL) as ExcavatorVerdict[]).map((v, i) => ({
                         label: EXCAVATOR_VERDICT_LABEL[v],
                         value: v,
-                        selectedBg: VERDICT_BG[i] ?? '#94A3B8',
+                        selectedBg: VERDICT_BG[i] ?? VERDICT_NEUTRAL,
                       }))}
                       selected={effectiveItem.verdict}
                       onSelect={(v) => d.save({ verdict: v === effectiveItem.verdict ? null : (v as ExcavatorVerdict) })}

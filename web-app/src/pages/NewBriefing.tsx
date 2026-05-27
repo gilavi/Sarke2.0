@@ -15,6 +15,7 @@ import {
   type Briefing,
   type BriefingParticipant,
 } from '@/lib/data/briefings';
+import { ErrorMessage } from '@/components/ui/error-message';
 
 const STEPS = ['ძირითადი', 'თემები', 'მონაწილეები'];
 
@@ -237,9 +238,9 @@ export default function NewBriefing() {
           )}
 
           {mutation.error && (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            <ErrorMessage compact>
               {mutation.error instanceof Error ? mutation.error.message : String(mutation.error)}
-            </div>
+            </ErrorMessage>
           )}
         </div>
       )}

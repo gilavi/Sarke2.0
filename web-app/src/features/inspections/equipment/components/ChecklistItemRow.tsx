@@ -10,12 +10,13 @@ import { Input } from '@/components/ui/input';
 import PhotoUploadZone from '@/components/PhotoUploadZone';
 import { SegmentedControl } from '@/components/wizard';
 import type { ResultOption, ResultTone } from './ResultPills';
+import { VERDICT_GOOD, VERDICT_WARN, VERDICT_BAD, VERDICT_NEUTRAL } from '@/lib/verdictColors';
 
 const TONE_BG: Record<ResultTone, string> = {
-  good: '#1D9E75',
-  warn: '#D97706',
-  bad: '#EF4444',
-  neutral: '#94A3B8',
+  good: VERDICT_GOOD,
+  warn: VERDICT_WARN,
+  bad: VERDICT_BAD,
+  neutral: VERDICT_NEUTRAL,
 };
 
 interface ChecklistItemRowProps<V extends string> {

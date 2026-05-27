@@ -27,6 +27,7 @@ import {
   buildAlcoholControlOrderHtml,
   openOrderPdfPreview,
 } from '@/lib/orderPdf';
+import { ErrorMessage } from '@/components/ui/error-message';
 
 export default function OrderDetail() {
   const { id } = useParams<{ id: string }>();
@@ -62,9 +63,7 @@ export default function OrderDetail() {
 
   if (isLoading) return <SkeletonDetailPage />;
   if (error) return (
-    <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-      {error instanceof Error ? error.message : String(error)}
-    </div>
+    <ErrorMessage>{error instanceof Error ? error.message : String(error)}</ErrorMessage>
   );
   if (!order) return <p className="text-sm text-neutral-500">ბრძანება ვერ მოიძებნა.</p>;
 

@@ -14,6 +14,7 @@ import {
   createBobcatInspection,
   type BobcatInspectionType,
 } from '@/lib/data/bobcat';
+import { VERDICT_GOOD } from '@/lib/verdictColors';
 
 const TYPE_LABELS: Record<BobcatInspectionType, string> = {
   pre_work: 'მუშაობის წინ',
@@ -97,8 +98,8 @@ export default function NewBobcatInspection() {
           <SegmentedControl
             fullWidth
             options={[
-              { label: 'ციცხვიანი (30 პუნქტი)', value: 'bobcat', selectedBg: '#1D9E75' },
-              { label: 'დიდი დამტვირთველი (33 პუნქტი)', value: 'large_loader', selectedBg: '#1D9E75' },
+              { label: 'ციცხვიანი (30 პუნქტი)', value: 'bobcat', selectedBg: VERDICT_GOOD },
+              { label: 'დიდი დამტვირთველი (33 პუნქტი)', value: 'large_loader', selectedBg: VERDICT_GOOD },
             ]}
             selected={variant}
             onSelect={(v) => setVariant(v as 'bobcat' | 'large_loader')}
@@ -112,7 +113,7 @@ export default function NewBobcatInspection() {
             options={(Object.entries(TYPE_LABELS) as [BobcatInspectionType, string][]).map(([key, label]) => ({
               label,
               value: key,
-              selectedBg: '#1D9E75',
+              selectedBg: VERDICT_GOOD,
             }))}
             selected={inspectionType}
             onSelect={(v) => setInspectionType(v as BobcatInspectionType)}

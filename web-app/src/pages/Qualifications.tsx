@@ -11,6 +11,7 @@ import {
 } from '@/lib/data/qualifications';
 import { SkeletonList } from '@/components/SkeletonCard';
 import { qualificationKeys } from '@/app/queryKeys';
+import { ErrorMessage } from '@/components/ui/error-message';
 
 export default function Qualifications() {
   const { data: items, error: queryError, isLoading } = useQuery({
@@ -46,9 +47,7 @@ export default function Qualifications() {
       </header>
 
       {displayError && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {displayError}
-        </div>
+        <ErrorMessage>{displayError}</ErrorMessage>
       )}
       {isLoading && <SkeletonList count={4} />}
       {items && items.length === 0 && (

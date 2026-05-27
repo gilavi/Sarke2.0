@@ -44,17 +44,18 @@ import {
   type CPItemState,
 } from '@/lib/data/cargoPlatform';
 import { useEquipmentDetail } from './useEquipmentDetail';
+import { VERDICT_GOOD, VERDICT_WARN, VERDICT_BAD, VERDICT_NEUTRAL } from '@/lib/verdictColors';
 
 const VERDICT_BG: Record<CPVerdict, string> = {
-  approved: '#1D9E75',
-  conditional: '#D97706',
-  rejected: '#EF4444',
+  approved: VERDICT_GOOD,
+  conditional: VERDICT_WARN,
+  rejected: VERDICT_BAD,
 };
 
 const RESULT_BG: Record<CPResult, string> = {
-  good: '#1D9E75',
-  fix: '#D97706',
-  na: '#94A3B8',
+  good: VERDICT_GOOD,
+  fix: VERDICT_WARN,
+  na: VERDICT_NEUTRAL,
 };
 
 const STEP_LABELS = ['ინფო', 'პლატფ.', 'ტვირთი', 'შემოწმება', 'დასკვნა', 'ხელმოწ.'];
@@ -489,7 +490,7 @@ function PillPair<T extends string>({
       <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">{label}</p>
       <SegmentedControl
         fullWidth
-        options={options.map(([val, lbl]) => ({ label: lbl, value: val, selectedBg: '#1D9E75' }))}
+        options={options.map(([val, lbl]) => ({ label: lbl, value: val, selectedBg: VERDICT_GOOD }))}
         selected={value}
         onSelect={(v) => { if (!disabled) onChange(v === value ? null : (v as T)); }}
       />

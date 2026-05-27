@@ -9,6 +9,7 @@ import { listReports, deleteReport } from '@/lib/data/reports';
 import { listProjects } from '@/lib/data/projects';
 import { reportDisplayName } from '@/lib/documentNames';
 import { projectKeys, reportKeys } from '@/app/queryKeys';
+import { ErrorMessage } from '@/components/ui/error-message';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -45,9 +46,7 @@ export default function Reports() {
       </header>
 
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error instanceof Error ? error.message : String(error)}
-        </div>
+        <ErrorMessage>{error instanceof Error ? error.message : String(error)}</ErrorMessage>
       )}
 
       {!items && !error && <SkeletonList />}

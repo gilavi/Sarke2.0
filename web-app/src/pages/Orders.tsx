@@ -7,6 +7,7 @@ import { listOrders } from '@/lib/data/orders';
 import { listProjects } from '@/lib/data/projects';
 import { ORDER_DOCUMENT_TYPE_LABEL } from '@/lib/data/orders';
 import { projectKeys, orderKeys } from '@/app/queryKeys';
+import { ErrorMessage } from '@/components/ui/error-message';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -59,9 +60,7 @@ export default function Orders() {
       </header>
 
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error instanceof Error ? error.message : String(error)}
-        </div>
+        <ErrorMessage>{error instanceof Error ? error.message : String(error)}</ErrorMessage>
       )}
 
       {!filtered && !error && <SkeletonList />}

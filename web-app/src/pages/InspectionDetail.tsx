@@ -35,6 +35,7 @@ import { getProject } from '@/lib/data/projects';
 import { useInspectionName } from '@/lib/documentNames';
 import { routes } from '@/app/routes';
 import { projectKeys, inspectionKeys } from '@/app/queryKeys';
+import { ErrorMessage } from '@/components/ui/error-message';
 
 type PendingInspection = Parameters<typeof createInspection>[0];
 // photoUpload imported dynamically inside QuestionRow to keep top-level bundle lean
@@ -238,11 +239,7 @@ export default function InspectionDetail() {
 
   if (inspectionQ.isLoading) return <SkeletonDetailPage />;
   if (error)
-    return (
-      <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-        {error}
-      </div>
-    );
+    return <ErrorMessage>{error}</ErrorMessage>;
   if (!inspection) {
     return (
       <div className="space-y-3">
@@ -310,7 +307,7 @@ export default function InspectionDetail() {
               {inspectionName(templateId)}
             </span>
           </nav>
-          <h1 className="mt-2 font-display text-3xl font-bold text-neutral-900 dark:text-neutral-100">
+          <h1 className="mt-2 font-display text-heading-1 text-neutral-900 dark:text-neutral-100">
             {inspectionName(templateId)}
           </h1>
           <p className="mt-1 text-sm text-neutral-500">სტატუსი: {inspection.status === 'completed' ? 'დასრულდა' : 'დრაფტი'}</p>

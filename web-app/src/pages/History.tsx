@@ -188,7 +188,7 @@ export default function History() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="font-display text-3xl font-bold text-neutral-900 dark:text-neutral-100">ისტორია</h1>
+        <h1 className="font-display text-heading-1 text-neutral-900 dark:text-neutral-100">ისტორია</h1>
         <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">ბოლო ჩანაწერები ყველა ტიპიდან.</p>
       </header>
 

@@ -19,6 +19,7 @@ import { SkeletonList } from '@/components/SkeletonCard';
 import { ProjectModal } from '@/components/ProjectModal';
 import { projectKeys } from '@/app/queryKeys';
 import { routes } from '@/app/routes';
+import { ErrorMessage } from '@/components/ui/error-message';
 
 
 function projectInitials(name: string | null | undefined): string {
@@ -211,9 +212,7 @@ export default function Projects() {
       </header>
 
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error instanceof Error ? error.message : String(error)}
-        </div>
+        <ErrorMessage>{error instanceof Error ? error.message : String(error)}</ErrorMessage>
       )}
 
       {isLoading && <SkeletonList />}

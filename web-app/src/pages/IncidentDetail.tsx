@@ -24,6 +24,7 @@ import { signedUrl, STORAGE_BUCKETS } from '@/lib/db/storage';
 import { getProject } from '@/lib/data/projects';
 import { routes } from '@/app/routes';
 import { projectKeys, incidentKeys } from '@/app/queryKeys';
+import { ErrorMessage } from '@/components/ui/error-message';
 
 export default function IncidentDetail() {
   const { id } = useParams();
@@ -113,11 +114,7 @@ export default function IncidentDetail() {
 
   if (isLoading) return <SkeletonDetailPage />;
   if (error)
-    return (
-      <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-        {error}
-      </div>
-    );
+    return <ErrorMessage>{error}</ErrorMessage>;
   if (!item) return <p className="text-sm text-neutral-500">ინციდენტი ვერ მოიძებნა.</p>;
 
   return (
@@ -141,7 +138,7 @@ export default function IncidentDetail() {
               {INCIDENT_TYPE_LABEL[item.type] ?? item.type}
             </span>
           </nav>
-          <h1 className="mt-2 font-display text-3xl font-bold text-neutral-900 dark:text-neutral-100">
+          <h1 className="mt-2 font-display text-heading-1 text-neutral-900 dark:text-neutral-100">
             {INCIDENT_TYPE_LABEL[item.type] ?? item.type}
           </h1>
           <p className="mt-1 text-sm text-neutral-500">

@@ -17,6 +17,7 @@ import { ReportsSection } from './ReportsSection';
 import { FilesSection } from './FilesSection';
 import { OrdersSection } from './OrdersSection';
 import { DangerZoneSection } from './DangerZoneSection';
+import { ErrorMessage } from '@/components/ui/error-message';
 
 function SectionGroup({ label }: { label: string }) {
   return (
@@ -51,11 +52,7 @@ export default function ProjectDetail() {
     (queryError instanceof Error ? queryError.message : queryError ? String(queryError) : null);
 
   if (error) {
-    return (
-      <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-        {error}
-      </div>
-    );
+    return <ErrorMessage>{error}</ErrorMessage>;
   }
 
   if (!project) {
