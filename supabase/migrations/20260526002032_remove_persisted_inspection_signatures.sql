@@ -78,11 +78,11 @@ ALTER TABLE public.cargo_platform_inspections    DROP COLUMN IF EXISTS signature
 --
 -- Filter: keep anything whose first path segment is `expert` or `project`;
 -- delete everything else.
-
+/*
 DELETE FROM storage.objects
 WHERE bucket_id = 'signatures'
   AND split_part(name, '/', 1) NOT IN ('expert', 'project');
-
+*/
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 5. Optional — wipe in-row signature fields from JSONB columns on
 --    multi-device equipment inspections (safety-net, mobile-ladder,
