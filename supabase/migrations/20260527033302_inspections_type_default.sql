@@ -1,0 +1,21 @@
+-- Set a default for inspections.type to unblock the legacy harness/xaracho
+-- create path. The unify-inspection-identity migration
+-- (20260527001240_unify_inspection_identity.sql) added the `type` column
+-- and made it NOT NULL after backfilling. That broke the create paths in
+-- lib/services/real/inspections.ts and lib/services/mock/inspections.ts —
+-- they insert into public.inspections without specifying `type`.
+--
+-- Equipment-type creates are unaffected. They go through the
+-- create_equipment_inspection RPC (20260527001241_*) which sets `p_type`
+-- explicitly from the per-type service factory.
+--
+-- TRADE-OFF: new xaracho-template inspections will currently land with
+-- type='harness' instead of type='xaracho'. The inspection service should
+-- read templates.category and set type explicitly on insert. Tracked as a
+-- P3 deferred item in BUG_REPORT.md ("Inspection service does not set
+-- `type` from template category — 2026-05-27").
+--
+-- This migration captures a hotfix applied manually in the Supabase SQL
+-- Editor on 2026-05-27 so repo migration history matches the live DB.
+
+ALTER TABLE public.inspections ALTER COLUMN type SET DEFAULT 'harness';
