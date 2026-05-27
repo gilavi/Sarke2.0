@@ -66,6 +66,7 @@ const ReportDetail = lazy(() => import('@/pages/ReportDetail'));
 const Qualifications = lazy(() => import('@/pages/Qualifications'));
 const Templates = lazy(() => import('@/pages/Templates'));
 const Terms = lazy(() => import('@/pages/Terms'));
+const Privacy = lazy(() => import('@/pages/Privacy'));
 const SafetyGuidePage = lazy(() => import('@/pages/SafetyGuidePage'));
 const History = lazy(() => import('@/pages/History'));
 const Orders = lazy(() => import('@/pages/Orders'));
@@ -160,6 +161,7 @@ export function AppRouter() {
             <Route path={routePattern.subscribeSuccess} element={<SubscribeSuccess />} />
             <Route path={routePattern.subscribeFail} element={<SubscribeFail />} />
             <Route path={routePattern.safetyStandalone} element={<SafetyGuidePage standalone />} />
+            <Route path={routePattern.privacy} element={<Privacy />} />
           </Route>
 
           {/* Protected — full app shell */}

@@ -37,6 +37,7 @@ export const routePattern = {
   reset: '/reset',
   verifyEmail: '/verify-email',
   terms: '/terms',
+  privacy: '/privacy',
 
   // Subscription
   subscribe: '/subscribe',
@@ -115,6 +116,7 @@ export const routes = {
   verifyEmail: (email?: string) =>
     email ? `/verify-email?email=${encodeURIComponent(email)}` : '/verify-email',
   terms: '/terms' as const,
+  privacy: '/privacy' as const,
 
   subscribe: {
     index: '/subscribe' as const,

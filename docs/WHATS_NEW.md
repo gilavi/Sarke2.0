@@ -4,6 +4,30 @@
 
 ---
 
+## 2026-05-27 — App Store submission prep (branch `app-store`)
+
+Code-side changes required before pressing "Submit for Review" — full checklist + reviewer notes in [`docs/APP_STORE_SUBMISSION.md`](APP_STORE_SUBMISSION.md).
+
+- **Privacy Manifest data types populated** ([app.json](../app.json) under `expo.ios.privacyManifests`): was an empty `NSPrivacyCollectedDataTypes` array even though we collect name, email, phone, GPS, photos, signatures, user ID, and Sentry crash data — that mismatch alone is an Apple rejection. Now declares all nine types, all linked-to-identity, none used for tracking. Lives in `app.json` rather than a hand-edited `ios/Sarke/PrivacyInfo.xcprivacy` because `ios/` is gitignored and EAS Build regenerates it from prebuild; the app.json block is the source-controlled source of truth. Matches what the App Privacy nutrition labels must claim in App Store Connect.
+- **iOS permission strings bilingual + pruned** ([app.json](../app.json)): camera / photo-library / location-when-in-use strings are now Georgian + English with concrete purpose statements (`"… / The camera is used to take photos of scaffolding, harnesses…"`). Dropped three unused/deprecated keys that would have raised "collects more data than necessary" flags: `NSMicrophoneUsageDescription` (we don't record audio), `NSLocationAlwaysUsageDescription` (deprecated, foreground-only is enough), `NSPhotoLibraryAddUsageDescription` (we don't save photos back to the library). Android `RECORD_AUDIO` permission dropped for the same reason. `expo-image-picker` plugin strings aligned with the infoPlist values.
+- **`userInterfaceStyle: "light"`** ([app.json](../app.json)): locked away from `automatic` until dark mode is verified end-to-end across the wizard, so a reviewer running iOS dark mode can't trip a broken contrast state.
+- **Version aligned to `1.0.0`** ([app.json](../app.json), [package.json](../package.json)): both were drifting (1.1.0 vs 1.0.0).
+- **Sentry `sendDefaultPii: false` explicit** ([lib/crashReporting.ts](../lib/crashReporting.ts)): we already strip frame variables in `beforeSend`, but the flag is now declared explicitly so the nutrition-label "Crash Data is not linked to identity" claim is provably correct from the init config alone.
+- **Privacy Policy page** ([web-app/src/pages/Privacy.tsx](../web-app/src/pages/Privacy.tsx) + [web-app/src/lib/privacy.ts](../web-app/src/lib/privacy.ts)): bilingual standalone privacy policy, wired as a **public** route (`/privacy`, no auth required) in [web-app/src/app/router.tsx](../web-app/src/app/router.tsx). Apple's reviewer fetches the URL field cold — terms was previously inside the protected shell and unreachable without login. Final URL: `https://gilavi.github.io/Sarke2.0/app/#/privacy` once web-app deploys from main.
+- **`eas.json` submit profile template** ([eas.json](../eas.json)): the `submit.production` block was `{}` — `eas submit` would have failed instantly. Now templated with `appleId` / `ascAppId` / `appleTeamId` placeholders to fill in.
+
+### Risk accepted by product
+The BOG / Bank-of-Georgia external subscription flow stays as-is. Rationale: the web is the primary purchase channel and the iOS app is a free 30-PDF companion that honors web-bought higher limits. Reviewer notes in [`docs/APP_STORE_SUBMISSION.md`](APP_STORE_SUBMISSION.md) frame it that way explicitly. Fallback plan if 3.1.1 rejects: hide the Subscribe CTA on iOS only.
+
+### Pending (not in this branch, can't be done in code)
+- Fill the three Apple credential placeholders in [eas.json](../eas.json).
+- Create the App Store Connect app shell + a dedicated demo Supabase account.
+- Capture 6.9" iPhone screenshots from TestFlight.
+- Fill App Privacy nutrition labels + metadata in App Store Connect to match the Privacy Manifest.
+- Merge `app-store` → main so the `/privacy` page actually deploys.
+
+---
+
 ## 2026-05-27 — Home & Projects show skeleton until fetch settles (no more empty-state flash on first login)
 
 Two-layer fix for the "I have projects but Home says I don't until I pull-to-refresh" bug — see [`BUG_REPORT.md`](../BUG_REPORT.md).

@@ -9,6 +9,7 @@ export function initCrashReporting() {
   Sentry.init({
     dsn: SENTRY_DSN,
     environment: 'production',
+    sendDefaultPii: false,
     beforeSend: (event) => {
       if (event.exception?.values) {
         event.exception.values.forEach((v) => {

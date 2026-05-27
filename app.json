@@ -2,10 +2,10 @@
   "expo": {
     "name": "Sarke 2.0",
     "slug": "sarke2",
-    "version": "1.1.0",
+    "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "scheme": "sarke2",
     "newArchEnabled": true,
     "splash": {
@@ -22,13 +22,91 @@
       "bundleIdentifier": "ge.sarke2.app",
       "buildNumber": "1",
       "infoPlist": {
-        "NSCameraUsageDescription": "კამერა გამოიყენება ხარაჩოს და ქამრების ფოტოების ატვირთვისთვის.",
-        "NSPhotoLibraryUsageDescription": "ფოტოების არჩევა სისტემის ბიბლიოთეკიდან.",
-        "NSPhotoLibraryAddUsageDescription": "საჭიროა ფოტოების შესანახად",
-        "NSMicrophoneUsageDescription": "საჭიროა ვიდეოს ჩასაწერად",
-        "NSLocationWhenInUseUsageDescription": "საჭიროა ფოტოების გეოლოკაციისთვის",
-        "NSLocationAlwaysUsageDescription": "საჭიროა ფოტოების გეოლოკაციისთვის",
+        "NSCameraUsageDescription": "კამერა გამოიყენება ხარაჩოს, ქამრებისა და სხვა უსაფრთხოების აღჭურვილობის ფოტოების გადასაღებად, რომლებიც აისახება შემოწმების PDF ანგარიშებში. / The camera is used to take photos of scaffolding, harnesses, and other safety equipment that are embedded into inspection PDF reports.",
+        "NSPhotoLibraryUsageDescription": "გალერეიდან ფოტოების შერჩევა შემოწმების აქტებში მისამაგრებლად. / Used to select photos from your library to attach to inspection reports.",
+        "NSLocationWhenInUseUsageDescription": "თქვენი ადგილმდებარეობა გამოიყენება შემოწმების ფოტოების გეო-მონიშვნისთვის, რათა PDF ანგარიშში დაფიქსირდეს, სად ჩატარდა შემოწმება. / Your location is used to geotag inspection photos so the PDF report can record where the inspection took place.",
         "ITSAppUsesNonExemptEncryption": false
+      },
+      "privacyManifests": {
+        "NSPrivacyAccessedAPITypes": [
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryFileTimestamp",
+            "NSPrivacyAccessedAPITypeReasons": ["C617.1", "0A2A.1", "3B52.1"]
+          },
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+            "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]
+          },
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryDiskSpace",
+            "NSPrivacyAccessedAPITypeReasons": ["E174.1", "85F4.1"]
+          },
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategorySystemBootTime",
+            "NSPrivacyAccessedAPITypeReasons": ["35F9.1"]
+          }
+        ],
+        "NSPrivacyCollectedDataTypes": [
+          {
+            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeName",
+            "NSPrivacyCollectedDataTypeLinked": true,
+            "NSPrivacyCollectedDataTypeTracking": false,
+            "NSPrivacyCollectedDataTypePurposes": ["NSPrivacyCollectedDataTypePurposeAppFunctionality"]
+          },
+          {
+            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeEmailAddress",
+            "NSPrivacyCollectedDataTypeLinked": true,
+            "NSPrivacyCollectedDataTypeTracking": false,
+            "NSPrivacyCollectedDataTypePurposes": [
+              "NSPrivacyCollectedDataTypePurposeAppFunctionality",
+              "NSPrivacyCollectedDataTypePurposeAccountManagement"
+            ]
+          },
+          {
+            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypePhoneNumber",
+            "NSPrivacyCollectedDataTypeLinked": true,
+            "NSPrivacyCollectedDataTypeTracking": false,
+            "NSPrivacyCollectedDataTypePurposes": ["NSPrivacyCollectedDataTypePurposeAppFunctionality"]
+          },
+          {
+            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypePreciseLocation",
+            "NSPrivacyCollectedDataTypeLinked": true,
+            "NSPrivacyCollectedDataTypeTracking": false,
+            "NSPrivacyCollectedDataTypePurposes": ["NSPrivacyCollectedDataTypePurposeAppFunctionality"]
+          },
+          {
+            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypePhotosorVideos",
+            "NSPrivacyCollectedDataTypeLinked": true,
+            "NSPrivacyCollectedDataTypeTracking": false,
+            "NSPrivacyCollectedDataTypePurposes": ["NSPrivacyCollectedDataTypePurposeAppFunctionality"]
+          },
+          {
+            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeOtherUserContent",
+            "NSPrivacyCollectedDataTypeLinked": true,
+            "NSPrivacyCollectedDataTypeTracking": false,
+            "NSPrivacyCollectedDataTypePurposes": ["NSPrivacyCollectedDataTypePurposeAppFunctionality"]
+          },
+          {
+            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeUserID",
+            "NSPrivacyCollectedDataTypeLinked": true,
+            "NSPrivacyCollectedDataTypeTracking": false,
+            "NSPrivacyCollectedDataTypePurposes": ["NSPrivacyCollectedDataTypePurposeAppFunctionality"]
+          },
+          {
+            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeCrashData",
+            "NSPrivacyCollectedDataTypeLinked": false,
+            "NSPrivacyCollectedDataTypeTracking": false,
+            "NSPrivacyCollectedDataTypePurposes": ["NSPrivacyCollectedDataTypePurposeAppFunctionality"]
+          },
+          {
+            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypePerformanceData",
+            "NSPrivacyCollectedDataTypeLinked": false,
+            "NSPrivacyCollectedDataTypeTracking": false,
+            "NSPrivacyCollectedDataTypePurposes": ["NSPrivacyCollectedDataTypePurposeAppFunctionality"]
+          }
+        ],
+        "NSPrivacyTracking": false,
+        "NSPrivacyTrackingDomains": []
       }
     },
     "android": {
@@ -42,8 +120,7 @@
       "softwareKeyboardLayoutMode": "resize",
       "permissions": [
         "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.ACCESS_COARSE_LOCATION"
       ]
     },
     "web": {
@@ -54,8 +131,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "აპი ითხოვს წვდომას გალერეაზე ფოტოების ასატვირთად.",
-          "cameraPermission": "კამერა გამოიყენება ფოტოების გადასაღებად."
+          "photosPermission": "გალერეიდან ფოტოების არჩევა შემოწმების აქტებში მისამაგრებლად. / Used to pick photos from your library to attach to inspection reports.",
+          "cameraPermission": "კამერა გამოიყენება ხარაჩოს, ქამრებისა და სხვა უსაფრთხოების აღჭურვილობის ფოტოების გადასაღებად. / Used to take photos of scaffolding, harnesses, and other safety equipment for inspection reports."
         }
       ],
       "expo-secure-store",
