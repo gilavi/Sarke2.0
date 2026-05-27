@@ -9,6 +9,37 @@
 
 One real bug found — a **P0** infinite redirect loop between the wizard and the inspection-detail screen — root-caused and fixed. The other items in my initial pass turned out to be either downstream effects of the loop, simulator artifacts, or a misobservation. No code changes needed for the rest.
 
+## P1 — SignaturesScreen header chrome missing on equipment-type result screens · FIXED 2026-05-27 (commit `19443f6`)
+
+**Repro:** Open a bobcat / excavator / general-equipment / cargo-platform / safety-net / mobile-ladder / forklift / fall-protection / lifting-accessories inspection, complete it, reach the result screen, tap `ხელმოწერები`.
+
+**Symptom:** The body of the SignaturesScreen renders (capture card, add-row button), but the `უკან` back and X close buttons in the header are not visible. The harness/generic flow at [app/inspections/[id].tsx](app/inspections/%5Bid%5D.tsx) is unaffected.
+
+**Root cause:** `SignaturesScreen` used `<SafeAreaView edges={['top', 'bottom']}>` from `react-native-safe-area-context`. When mounted inside `components/InspectionResultView.tsx` (the equipment-type result shell), the modal's nearest safe-area provider had already been consumed by the outer `<Screen>` wrapper. The inner SafeAreaView's reported top inset was 0, so the header rendered flush under the iOS status bar and looked missing.
+
+**Fix:** harden the component so the header chrome is robust regardless of mount context. The modal now sets `statusBarTranslucent`, wraps its tree in a fresh `<SafeAreaProvider>`, and applies safe-area insets manually via `useSafeAreaInsets()`. The component is fully self-contained — both the generic and equipment paths get correct chrome.
+
+## P1 — Certificate save fails with FK violation on equipment-type inspections · FIXED 2026-05-27 (commits `faa6b6f`, `b14b8d4`, `2781cad`; DB migrations PENDING manual apply)
+
+**Repro:** Open any equipment-type inspection (bobcat, excavator, …) → result screen → `სერტიფიკატები` → fill the form → Save. Red FK error appears.
+
+**Root cause:** `inspection_attachments.inspection_id` FKs to `public.inspections(id)` (per [`0021_inspection_attachments.sql`](supabase/migrations/0021_inspection_attachments.sql)), but the 9 equipment-type inspections store rows in `<type>_inspections` tables — not in the `inspections` master table. The FK has nothing to point at for equipment rows. This blocks not just certificates but any future shared dependency on `inspections.id`.
+
+**Fix — architectural, not a constraint drop.** Every equipment inspection now has a parent row in `public.inspections` keyed by the same UUID. A new `inspections.type` column tags the variant. The application creates both rows atomically via the `create_equipment_inspection` RPC + the equipment-table insert. New FK with `ON DELETE CASCADE` from `<type>_inspections.id` to `inspections.id` keeps deletes coherent.
+
+**Pending manual apply (user):**
+1. [`supabase/migrations/20260527001240_unify_inspection_identity.sql`](supabase/migrations/20260527001240_unify_inspection_identity.sql) — schema + backfill (idempotent, transactional).
+2. [`supabase/migrations/20260527001241_create_equipment_inspection_rpc.sql`](supabase/migrations/20260527001241_create_equipment_inspection_rpc.sql) — RPC the app now calls on every equipment-inspection create.
+
+Verification queries are embedded in the unify migration as comments. Run after applying.
+
+## Architectural — inspection identity unified · 2026-05-27
+
+Until 2026-05-27, equipment inspections were polymorphic without a unified identity layer: 9 separate tables, no parent row, shared dependencies (`inspection_attachments`) FK'ing only to the harness/scaffold master. The certificate-save FK violation above was the first user-visible failure; future cross-cutting concerns (signing audit, attachments, history, etc.) would have hit the same wall.
+
+Now every equipment-type row also exists in `public.inspections` with `type` tagging the variant. Shared dependents FK to `inspections.id` and work uniformly across all 10 types. Equipment-specific payload (items, verdicts, summary photos, type-specific signatures) stays in `<type>_inspections`. See [`INSPECTION_ARCHITECTURE_NOTES.md`](INSPECTION_ARCHITECTURE_NOTES.md) and [`INSPECTION_ARCHITECTURE_REPORT.md`](INSPECTION_ARCHITECTURE_REPORT.md).
+
+
 ## P0 — Inspection signatures persisted in violation of the regulatory no-save rule · FIXED 2026-05-26 (code), MIGRATION PENDING (DB)
 
 **Audit context:** the no-persistence rule for captured inspection signatures was not held across the codebase. [SIGNATURE_AUDIT.md](SIGNATURE_AUDIT.md) catalogs the surface that violated it:

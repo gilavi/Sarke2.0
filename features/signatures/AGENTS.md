@@ -79,6 +79,18 @@ NOT from the wizard.
   would fragment the state across navigation and tempt someone to
   wire up a shared cache (which would be a persistence violation).
 
+- **Self-contained header chrome.** `SignaturesScreen` renders its
+  own `უკან` back button + title + X close inside the modal, wraps
+  its body in its own `<SafeAreaProvider>`, and applies safe-area
+  insets manually via `useSafeAreaInsets()`. **Do NOT** rewrap with
+  a `<SafeAreaView edges={['top', 'bottom']}>` from a parent screen
+  context — that's exactly the pattern that caused the
+  equipment-path header-missing bug (2026-05-27): nested SafeAreaView
+  reported a top inset of 0 when the modal's nearest provider was
+  already consumed, and the header rendered flush under the status
+  bar. The current self-contained approach kills that bug class
+  regardless of mount context.
+
 ## Canonical helpers used (from lib/ and components/)
 - `components/SignatureCanvas` — the canvas + capture buttons.
 - `components/primitives/A11yText` — accessible text.

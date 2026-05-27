@@ -4,6 +4,29 @@
 
 ---
 
+## 2026-05-27 — Inspection identity unification + signatures header fix
+
+### Architecture — unified inspection identity across all 10 inspection types
+Every equipment-type inspection (bobcat, excavator, general-equipment, cargo-platform, safety-net, mobile-ladder, forklift, fall-protection, lifting-accessories) now has a parent row in `public.inspections` keyed by the same UUID. A new `inspections.type` column tags the variant. Shared tables that FK to `inspections.id` — currently `inspection_attachments`, plus anything else the live-FK check surfaces — work uniformly across all 10 types. Equipment-specific payload (items, verdicts, summary photos, per-type signatures) stays in `<type>_inspections`. See [`INSPECTION_ARCHITECTURE_NOTES.md`](../INSPECTION_ARCHITECTURE_NOTES.md) for the discovery + design and [`INSPECTION_ARCHITECTURE_REPORT.md`](../INSPECTION_ARCHITECTURE_REPORT.md) for the per-phase summary.
+
+### Fixed — certificate save no longer FK-blocked on equipment types
+`inspection_attachments.inspection_id` FK violations on bobcat/excavator/etc. are gone once the unify migration is applied. The certificate-save flow on every equipment result screen now succeeds because each equipment inspection has a matching parent row in `inspections`.
+
+### Fixed — SignaturesScreen header chrome consistent across mount sites
+The `უკან` back button + X close button now render correctly on every inspection-type result screen. The harness/generic path was always fine; the 9 equipment paths were silently rendering the header flush under the status bar because the modal's nearest `SafeAreaProvider` had been consumed by the parent `<Screen>` wrapper. The component now wraps its body in its own `SafeAreaProvider` + applies safe-area insets manually via `useSafeAreaInsets()`, making the chrome robust regardless of mount context. ([features/signatures/SignaturesScreen.tsx](../features/signatures/SignaturesScreen.tsx))
+
+### New — `create_equipment_inspection` RPC
+[`supabase/migrations/20260527001241_create_equipment_inspection_rpc.sql`](../supabase/migrations/20260527001241_create_equipment_inspection_rpc.sql) — atomic parent-row creation in `public.inspections` with the given UUID, type tag, and shared fields. Idempotent via `ON CONFLICT (id) DO NOTHING`. The shared [`makeInspectionService`](../lib/inspection/service.ts) factory calls this RPC before inserting into the equipment table, generating one UUID client-side that both inserts share. Each per-type service now declares its `inspectionType` (e.g. `'bobcat'`, `'fall_protection_inspection'`) to match the migration's backfill tags.
+
+### Pending — manual SQL apply (user)
+Two migrations to apply after the prior session's `20260526002032_remove_persisted_inspection_signatures.sql`:
+1. `20260527001240_unify_inspection_identity.sql` — backfill + FKs (idempotent, transactional). Embedded verification queries to run afterwards.
+2. `20260527001241_create_equipment_inspection_rpc.sql` — the RPC the app now calls on every equipment-inspection create.
+
+Before applying, the **[LIVE-DB]** queries in `INSPECTION_ARCHITECTURE_NOTES.md` §1A–§1C confirm the live schema matches the discovery assumptions.
+
+---
+
 ## 2026-05-27 — Web-app: architectural refactor — native inputs (complete), AsyncBoundary isolation, store rename
 
 - **Native Input/Textarea complete migration**: All Mantine `TextInput` and `Textarea` usages across the web-app replaced with native Tailwind-only `<Input>`/`<Textarea>` components. Migrated ~35 files covering auth pages, project detail sections, inspection detail/wizard, equipment detail pages, briefing/incident/report detail pages, and shared components (FieldInput, ChecklistItemRow, InspectionSignatures, HarnessChecklist, InspectionInfoView). Mantine is kept only for UI components (Modal, NumberInput, PasswordInput, Badge, Card, etc.).
