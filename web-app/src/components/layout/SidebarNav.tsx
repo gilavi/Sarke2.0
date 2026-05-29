@@ -1,10 +1,10 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, MoreHorizontal, User, LogOut } from 'lucide-react';
-import { useAuth } from '@/lib/auth';
+import { ChevronDown, MoreHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { topNavItems, moreNavItems, type NavItemDef } from './navItems';
+import { NavGem } from './NavGem';
 
 /* ── Tooltip Component ──────────────────────────────── */
 
@@ -71,33 +71,39 @@ export function RailNavItem({
       <NavLink
         to={item.to}
         onClick={onNavigate}
+        style={{ '--tint': 'var(--brand-500)' } as React.CSSProperties}
         className={({ isActive: navActive }) =>
           cn(
-            'relative flex items-center rounded-lg transition-colors duration-200',
-            'mx-1.5 h-10 w-full px-3 gap-3',
+            'rail-link relative flex items-center rounded-lg transition-colors duration-200',
+            'mx-2 h-10 w-[calc(100%-1rem)]',
+            isExpanded ? 'px-3 gap-3' : 'justify-center',
             navActive
-              ? 'bg-brand-100 text-brand-700 dark:bg-brand-900/50 dark:text-brand-300'
-              : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200',
+              ? 'rail-item-active-bg font-medium text-[#0C5236] dark:text-brand-300'
+              : 'text-[#3f5247] hover:bg-white/40 hover:text-[#274b3c] dark:text-neutral-300 dark:hover:bg-white/[0.08] dark:hover:text-neutral-100',
           )
         }
         aria-label={item.label}
       >
-        {(() => { const ItemIcon = item.icon; return <ItemIcon size={20} className="shrink-0" strokeWidth={isActive ? 2.5 : 1.75} />; })()}
+        {({ isActive: navActive }) => (
+          <>
+            <NavGem icon={item.icon} active={navActive} />
 
-        {/* Label — only visible when expanded */}
-        <AnimatePresence initial={false}>
-          {isExpanded && (
-            <motion.span
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15, ease: 'easeOut' }}
-              className="whitespace-nowrap text-[13px] font-medium"
-            >
-              {item.label}
-            </motion.span>
-          )}
-        </AnimatePresence>
+            {/* Label — only visible when expanded */}
+            <AnimatePresence initial={false}>
+              {isExpanded && (
+                <motion.span
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15, ease: 'easeOut' }}
+                  className="whitespace-nowrap text-[13px] font-medium"
+                >
+                  {item.label}
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </>
+        )}
       </NavLink>
     </Tooltip>
   );
@@ -126,15 +132,17 @@ function MoreGroup({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
+        style={{ '--tint': 'var(--brand-500)' } as React.CSSProperties}
         className={cn(
           'relative flex items-center rounded-lg transition-colors duration-200',
-          'mx-1.5 h-10 w-full px-3 gap-3',
+          'mx-2 h-10 w-[calc(100%-1rem)]',
+          isExpanded ? 'px-3 gap-3' : 'justify-center',
           hasActive && !open
-            ? 'text-brand-500 dark:text-brand-400'
-            : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200',
+            ? 'rail-item-active-bg font-medium text-[#0C5236] dark:text-brand-300'
+            : 'text-[#3f5247] hover:bg-white/40 hover:text-[#274b3c] dark:text-neutral-300 dark:hover:bg-white/[0.08] dark:hover:text-neutral-100',
         )}
       >
-        <MoreHorizontal size={20} className="shrink-0" />
+        <MoreHorizontal size={20} className="shrink-0" strokeWidth={hasActive && !open ? 2.5 : 1.75} />
         <AnimatePresence initial={false}>
           {isExpanded && (
             <motion.div
@@ -196,7 +204,7 @@ export function SidebarNavList({
   onNavigate?: () => void;
 }) {
   return (
-    <nav className="flex-1 overflow-y-auto overflow-x-hidden py-2">
+    <nav className="sidebar-middle flex-1 overflow-y-auto overflow-x-hidden py-2">
       <ul className="space-y-0.5">
         {topNavItems.map((item) => (
           <li key={item.to}>
@@ -208,89 +216,5 @@ export function SidebarNavList({
         </li>
       </ul>
     </nav>
-  );
-}
-
-/* ── Shared footer (account + sign out) ─────────────── */
-
-export function SidebarFooter({
-  isExpanded,
-  onNavigate,
-}: {
-  isExpanded: boolean;
-  onNavigate?: () => void;
-}) {
-  const { user, signOut } = useAuth();
-
-  return (
-    <>
-      {/* Divider */}
-      <div className="mx-3 border-t border-neutral-200 dark:border-neutral-800" />
-
-      <div className="py-2 space-y-0.5">
-        {/* Account */}
-        <NavLink
-          to="/account"
-          onClick={onNavigate}
-          className={({ isActive }) =>
-            cn(
-              'relative flex items-center rounded-lg transition-colors duration-200 mx-1.5',
-              'h-10 w-full px-3 gap-3',
-              isActive
-                ? 'bg-brand-100 text-brand-700 dark:bg-brand-900/50 dark:text-brand-300'
-                : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200',
-            )
-          }
-          aria-label="პროფილი"
-        >
-          {user?.user_metadata?.avatar_url ? (
-            <img src={user.user_metadata.avatar_url} alt="" className="h-6 w-6 rounded-full object-cover shrink-0" />
-          ) : (
-            <User size={20} className="shrink-0" />
-          )}
-          <AnimatePresence initial={false}>
-            {isExpanded && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.15 }}
-                className="min-w-0 overflow-hidden"
-              >
-                <div className="truncate text-[13px] font-medium">პროფილი</div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </NavLink>
-
-        {/* Sign Out */}
-        <button
-          type="button"
-          onClick={() => void signOut()}
-          className={cn(
-            'relative flex items-center rounded-lg transition-colors duration-200 mx-1.5',
-            'h-10 w-full px-3 gap-3',
-            'text-neutral-500 hover:bg-red-50 hover:text-red-600',
-            'dark:text-neutral-400 dark:hover:bg-red-950/30 dark:hover:text-red-400',
-          )}
-          aria-label="გასვლა"
-        >
-          <LogOut size={20} className="shrink-0" />
-          <AnimatePresence initial={false}>
-            {isExpanded && (
-              <motion.span
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.15 }}
-                className="whitespace-nowrap text-[13px] font-medium"
-              >
-                გასვლა
-              </motion.span>
-            )}
-          </AnimatePresence>
-        </button>
-      </div>
-    </>
   );
 }

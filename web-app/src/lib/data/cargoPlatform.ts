@@ -143,7 +143,7 @@ interface DbRow {
 }
 
 const COLS =
-  'id, project_id, template_id, user_id, status, company, address, inspector_name, floor_zone, inspection_date, platform_type_model, platform_length_m, platform_width_m, platform_color_desc, side_guardrail, front_guardrail, guardrail_height, cargo, items, verdict, verdict_comment, summary_photos, signatures, signatories, completed_at, created_at, updated_at';
+  'id, project_id, template_id, user_id, status, company, address, inspector_name, floor_zone, inspection_date, platform_type_model, platform_length_m, platform_width_m, platform_color_desc, side_guardrail, front_guardrail, guardrail_height, cargo, items, verdict, verdict_comment, summary_photos, completed_at, created_at, updated_at';
 
 function emptySignatory(): CPSignatory {
   return { name: '', position: '', organization: '', signature: null, date: null };
@@ -177,8 +177,8 @@ function toModel(r: DbRow): CargoPlatformInspection {
     verdict: r.verdict,
     verdictComment: r.verdict_comment ?? '',
     summaryPhotos: r.summary_photos ?? [],
-    signatures: r.signatures ?? [emptySignatory(), emptySignatory()],
-    signatories: r.signatories ?? [],
+    signatures: [emptySignatory(), emptySignatory()],
+    signatories: [],
     completedAt: r.completed_at,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
@@ -226,7 +226,6 @@ const repo = makeRepository<CargoPlatformInspection, DbRow, CreateCargoPlatformA
     status: 'draft',
     cargo: [],
     items: defaultItems(),
-    signatures: [emptySignatory(), emptySignatory()],
   }),
   toUpdate: (patch) => {
     const row = mapDefined(patch, {
@@ -247,8 +246,6 @@ const repo = makeRepository<CargoPlatformInspection, DbRow, CreateCargoPlatformA
       verdict: 'verdict',
       verdictComment: 'verdict_comment',
       summaryPhotos: 'summary_photos',
-      signatures: 'signatures',
-      signatories: 'signatories',
     });
     if (patch.status !== undefined) {
       row.status = patch.status;

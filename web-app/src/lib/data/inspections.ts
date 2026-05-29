@@ -38,14 +38,15 @@ export async function listInspections(projectId?: string): Promise<Inspection[]>
   let q = supabase
     .from('inspections')
     .select(
-      'id, project_id, user_id, template_id, status, harness_name, department, inspector_name, conclusion_text, is_safe_for_use, inspector_signature, conclusion_photo_paths, signatories, created_at, completed_at, template:templates(category)',
+      'id, project_id, user_id, template_id, status, harness_name, department, inspector_name, conclusion_text, is_safe_for_use, conclusion_photo_paths, created_at, completed_at, template:templates(category)',
     )
     .order('created_at', { ascending: false })
     .limit(50);
   if (projectId) q = q.eq('project_id', projectId);
   const { data, error } = await q;
   if (error) throw new Error(error.message);
-  return (data ?? []) as unknown as Inspection[];
+  // Signatures are no longer persisted (regulatory) — surface safe defaults.
+  return (data ?? []).map((d) => ({ ...d, inspector_signature: null, signatories: [] })) as unknown as Inspection[];
 }
 
 export async function countInspections(): Promise<number> {
@@ -60,12 +61,12 @@ export async function getInspection(id: string): Promise<Inspection | null> {
   const { data, error } = await supabase
     .from('inspections')
     .select(
-      'id, project_id, user_id, template_id, status, harness_name, department, inspector_name, conclusion_text, is_safe_for_use, inspector_signature, conclusion_photo_paths, signatories, created_at, completed_at',
+      'id, project_id, user_id, template_id, status, harness_name, department, inspector_name, conclusion_text, is_safe_for_use, conclusion_photo_paths, created_at, completed_at',
     )
     .eq('id', id)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  return (data as Inspection | null) ?? null;
+  return data ? ({ ...data, inspector_signature: null, signatories: [] } as unknown as Inspection) : null;
 }
 
 interface CertRow {
@@ -112,11 +113,11 @@ export async function createInspection(input: CreateInspectionInput): Promise<In
       status: 'draft',
     })
     .select(
-      'id, project_id, user_id, template_id, status, harness_name, department, inspector_name, conclusion_text, is_safe_for_use, inspector_signature, conclusion_photo_paths, signatories, created_at, completed_at',
+      'id, project_id, user_id, template_id, status, harness_name, department, inspector_name, conclusion_text, is_safe_for_use, conclusion_photo_paths, created_at, completed_at',
     )
     .single();
   if (error) throw new Error(error.message);
-  return data as InspectionRow as unknown as Inspection;
+  return { ...(data as InspectionRow), inspector_signature: null, signatories: [] } as unknown as Inspection;
 }
 
 export async function deleteInspection(id: string): Promise<void> {
@@ -277,9 +278,7 @@ export async function updateInspection(
     inspector_name?: string | null;
     conclusion_text?: string | null;
     is_safe_for_use?: boolean | null;
-    inspector_signature?: string | null;
     conclusion_photo_paths?: string[];
-    signatories?: SignatoryEntry[];
     status?: 'draft' | 'completed';
   },
 ): Promise<void> {

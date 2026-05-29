@@ -72,7 +72,7 @@ interface DbRow {
 }
 
 const COLS =
-  'id, project_id, template_id, user_id, status, object_name, address, activity_type, inspection_date, act_number, inspection_type, department, inspector_name, equipment, conclusion, signer_name, signer_role, signer_role_custom, inspector_signature, signatories, summary_photos, completed_at, created_at, updated_at';
+  'id, project_id, template_id, user_id, status, object_name, address, activity_type, inspection_date, act_number, inspection_type, department, inspector_name, equipment, conclusion, signer_name, signer_role, signer_role_custom, summary_photos, completed_at, created_at, updated_at';
 
 function toModel(r: DbRow): GeneralEquipmentInspection {
   return {
@@ -94,8 +94,8 @@ function toModel(r: DbRow): GeneralEquipmentInspection {
     signerName: r.signer_name,
     signerRole: r.signer_role,
     signerRoleCustom: r.signer_role_custom,
-    inspectorSignature: r.inspector_signature,
-    signatories: r.signatories ?? [],
+    inspectorSignature: null,
+    signatories: [],
     summaryPhotos: r.summary_photos ?? [],
     completedAt: r.completed_at,
     createdAt: r.created_at,
@@ -172,8 +172,6 @@ const repo = makeRepository<
       signerName: 'signer_name',
       signerRole: 'signer_role',
       signerRoleCustom: 'signer_role_custom',
-      inspectorSignature: 'inspector_signature',
-      signatories: 'signatories',
       summaryPhotos: 'summary_photos',
     });
     if (patch.status !== undefined) {

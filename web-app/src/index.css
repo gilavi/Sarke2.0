@@ -41,6 +41,72 @@
   border-radius: 0 2px 2px 0;
 }
 
+/* ── Sidebar middle nav: frosted-glass active item + flush green bar ──
+   Scoped to .sidebar-middle so the header/footer never get the glass. The
+   accent bar uses left:-8px to cancel the item's 8px (mx-2) inset, sitting
+   flush against the rail's left wall instead of floating. */
+/* The middle nav matches the main page background (--bg-body) so it blends into
+   the content area; active/hover items are soft white frosted cards on top. */
+.sidebar-middle {
+  background: var(--bg-body);
+}
+
+.sidebar-middle .rail-item-active-bg {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 2px 6px rgba(12, 82, 54, 0.1);
+}
+.dark .sidebar-middle .rail-item-active-bg {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+/* ── Sidebar rail: flat tinted icon (refined-flat + glass) ──
+   One Phosphor glyph: muted outline at rest, tinted solid (weight="fill") when
+   active, and tint + a gentle spring lift on hover. No tile / extrusion — depth
+   comes from the glass rail, the row wash and the accent bar. */
+.nav-gem {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 28px;
+  width: 28px;
+  flex-shrink: 0;
+}
+.nav-gem__icon {
+  color: #5c7368;
+  transition: color 0.18s ease, transform 0.24s cubic-bezier(0.34, 1.5, 0.5, 1);
+}
+.dark .nav-gem__icon {
+  color: #8aa396;
+}
+/* Hover (inactive): gentle lift only — colour stays neutral (monochrome) */
+.rail-link:hover .nav-gem__icon {
+  transform: scale(1.12);
+}
+.rail-link:active .nav-gem__icon {
+  transform: scale(0.96);
+}
+/* Active: dark-green glyph on the white frosted card */
+.nav-gem[data-active] .nav-gem__icon {
+  color: #0c5236;
+}
+.dark .nav-gem[data-active] .nav-gem__icon {
+  color: var(--brand-500);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-gem__icon {
+    transition: color 0.12s linear;
+    transform: none !important;
+  }
+}
+
 html,
 body,
 #root {

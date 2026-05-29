@@ -19,7 +19,6 @@ import type {
   Project as MobileProject,
   Question as MobileQuestion,
   Answer as MobileAnswer,
-  SignatureRecord,
 } from '@root/types/models';
 
 export default function InspectionPrint() {
@@ -111,23 +110,8 @@ export default function InspectionPrint() {
   const questions = questionsQ.data ?? [];
   const answers = answersQ.data ?? [];
 
-  // Convert web Inspection.signatories (JSONB SignatoryEntry[]) → SignatureRecord[]
-  // The web stores signatures as full data-URLs already.
-  const signatures: SignatureRecord[] = (inspection.signatories ?? []).map(s => ({
-    id: '',
-    inspection_id: inspection.id,
-    signer_role: s.role as any,
-    full_name: s.name,
-    phone: null,
-    position: null,
-    // Ensure full data URL (web stores it as-is, already prefixed)
-    signature_png_url: s.signature.startsWith('data:')
-      ? s.signature
-      : `data:image/png;base64,${s.signature}`,
-    signed_at: s.signed_at,
-    status: 'signed' as const,
-    person_name: null,
-  }));
+  // Signatures are no longer persisted or passed in (regulatory). The shared
+  // inspection PDF template renders empty signature blocks to be signed by hand.
 
   // Build a fallback template object when the DB row couldn't be fetched
   // (edge case: template deleted after inspection was created).
@@ -149,7 +133,6 @@ export default function InspectionPrint() {
     project: project as unknown as MobileProject,
     questions: questions as unknown as MobileQuestion[],
     answers: answers as unknown as MobileAnswer[],
-    signatures,
     photosByAnswer: photosByAnswer as any,
     mode: 'pdf',
   });

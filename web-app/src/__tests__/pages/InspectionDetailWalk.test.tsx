@@ -168,21 +168,10 @@ describe('InspectionDetail (deep interactions)', () => {
     );
   });
 
-  it('signature add: click "+ ხელმოწერის დამატება" → SignatureCanvas → fake-sign saves', async () => {
-    renderPage(
-      <Routes><Route path="/inspections/:id" element={<InspectionDetail />} /></Routes>,
-      '/inspections/i1',
-    );
-    await screen.findByText('ინსპექტორის ხელმოწერა');
-    fireEvent.click(screen.getByRole('button', { name: /\+ ხელმოწერის დამატება/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'fake-sign-inspect' }));
-    await waitFor(() =>
-      expect(updateInspection).toHaveBeenCalledWith(
-        'i1',
-        expect.objectContaining({ inspector_signature: 'c2lnbg==' }),
-      ),
-    );
-  });
+  // NOTE: the inline inspector-signature capture was removed for the regulatory
+  // no-persist rule (signatures are never saved to the DB). The former
+  // "signature add → fake-sign → updateInspection({inspector_signature})" test
+  // was deleted with that feature.
 
   it('completed inspection shows the PDF list when present', async () => {
     vi.mocked(getInspection).mockResolvedValue({

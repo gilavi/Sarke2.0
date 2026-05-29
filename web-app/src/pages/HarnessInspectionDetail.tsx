@@ -5,7 +5,6 @@ import { FileText } from 'lucide-react';
 import { SkeletonDetailPage } from '@/components/SkeletonCard';
 import { toast } from 'sonner';
 import DeleteButton from '@/components/DeleteButton';
-import InspectionSignatures from '@/components/InspectionSignatures';
 import InspectionInfoView from '@/components/InspectionInfoView';
 import SuccessModal, { type SuccessModalData } from '@/components/web/SuccessModal';
 import { useInspectionName } from '@/lib/documentNames';
@@ -17,7 +16,6 @@ import {
   listQuestions,
   updateInspection,
   type Answer,
-  type SignatoryEntry,
 } from '@/lib/data/inspections';
 import { getProject } from '@/lib/data/projects';
 import { routes } from '@/app/routes';
@@ -148,13 +146,6 @@ export default function HarnessInspectionDetail() {
           />
         </div>
       </header>
-
-      {/* ── Signatures ── */}
-      <InspectionSignatures
-        inspection={inspection}
-        canEdit={inspection.status === 'completed'}
-        onUpdate={(sigs: SignatoryEntry[]) => updateMutation.mutate({ signatories: sigs })}
-      />
 
       {/* ── Inspection info ── */}
       <InspectionInfoView

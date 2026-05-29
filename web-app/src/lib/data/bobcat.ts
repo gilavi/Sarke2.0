@@ -49,7 +49,7 @@ interface DbRow {
 }
 
 const COLS =
-  'id, project_id, template_id, user_id, status, company, address, equipment_model, registration_number, inspection_date, inspection_type, department, inspector_name, items, verdict, notes, inspector_signature, signatories, summary_photos, completed_at, created_at, updated_at';
+  'id, project_id, template_id, user_id, status, company, address, equipment_model, registration_number, inspection_date, inspection_type, department, inspector_name, items, verdict, notes, summary_photos, completed_at, created_at, updated_at';
 
 function toModel(r: DbRow): BobcatInspection {
   return {
@@ -69,8 +69,8 @@ function toModel(r: DbRow): BobcatInspection {
     items: r.items ?? [],
     verdict: r.verdict,
     notes: r.notes,
-    inspectorSignature: r.inspector_signature,
-    signatories: r.signatories ?? [],
+    inspectorSignature: null,
+    signatories: [],
     summaryPhotos: r.summary_photos ?? [],
     completedAt: r.completed_at,
     createdAt: r.created_at,
@@ -146,8 +146,6 @@ const repo = makeRepository<BobcatInspection, DbRow, CreateBobcatArgs, BobcatPat
       items: 'items',
       verdict: 'verdict',
       notes: 'notes',
-      inspectorSignature: 'inspector_signature',
-      signatories: 'signatories',
       summaryPhotos: 'summary_photos',
     });
     if (patch.status !== undefined) {

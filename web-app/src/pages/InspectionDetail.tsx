@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Camera, FileText, X } from 'lucide-react';
 import InspectionWizard from '@/components/InspectionWizard';
 import { SkeletonDetailPage } from '@/components/SkeletonCard';
+import SuccessModal, { type SuccessModalData } from '@/components/web/SuccessModal';
 import { toast } from 'sonner';
 import { usePendingCreate } from '@/lib/usePendingCreate';
 import DeleteButton from '@/components/DeleteButton';
-import SignatureCanvas from '@/components/SignatureCanvas';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { NumberInput } from '@mantine/core';
@@ -51,6 +51,18 @@ export default function InspectionDetail() {
   const inspectionName = useInspectionName();
   const { pendingCreate, lazyCreate } = usePendingCreate<PendingInspection>();
   const isPending = id === 'draft';
+
+  /* Success modal, shown when the create wizard navigates here after completion */
+  const location = useLocation();
+  const [successData, setSuccessData] = useState<SuccessModalData | null>(
+    () => (location.state as { inspectionSuccess?: SuccessModalData } | null)?.inspectionSuccess ?? null,
+  );
+  const closeSuccess = () => {
+    setSuccessData(null);
+    if ((location.state as { inspectionSuccess?: SuccessModalData } | null)?.inspectionSuccess) {
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  };
 
   useEffect(() => {
     if (isPending && !pendingCreate) {
@@ -117,7 +129,6 @@ export default function InspectionDetail() {
   const [justCompleted, setJustCompleted] = useState(false);
   const [conclusionDraft, setConclusionDraft] = useState<string | null>(null);
   const [safeDraft, setSafeDraft] = useState<boolean | null | undefined>(undefined);
-  const [signingOpen, setSigningOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
   const userClosedWizard = useRef(false);
 
@@ -145,7 +156,7 @@ export default function InspectionDetail() {
   const error = queryError instanceof Error
     ? queryError.message
     : queryError && typeof queryError === 'object' && 'message' in queryError
-    ? String((queryError as any).message)
+    ? String((queryError as { message?: unknown }).message)
     : queryError
     ? JSON.stringify(queryError)
     : null;
@@ -256,25 +267,12 @@ export default function InspectionDetail() {
 
   return (
     <div className="space-y-6">
-      {justCompleted && (
-        <div className="rounded-lg bg-green-50 border border-green-200 px-5 py-4 flex items-center justify-between gap-4">
-          <div>
-            <p className="font-semibold text-green-800">შემოწმების აქტი დასრულებულია ✓</p>
-            <p className="text-sm text-green-700 mt-0.5">შეგიძლიათ PDF ვერსია გახსნათ ან სიაში დაბრუნდეთ.</p>
-          </div>
-          <div className="flex gap-2 shrink-0">
-            <button
-              onClick={() => window.open(`#/inspections/${inspection.id}/print`, '_blank')}
-              className="rounded-md bg-green-700 px-4 py-2 text-sm font-medium text-white hover:bg-green-800"
-            >
-              PDF ნახვა
-            </button>
-            <Link to="/inspections" className="rounded-md border border-green-300 px-4 py-2 text-sm font-medium text-green-800 hover:bg-green-100">
-              სიაში დაბრუნება
-            </Link>
-          </div>
-        </div>
-      )}
+      <SuccessModal
+        isOpen={!!successData}
+        onClose={closeSuccess}
+        onGeneratePDF={() => window.open(`#/inspections/${inspection.id}/print`, '_blank')}
+        data={successData ?? { totalCount: 0, safeCount: 0, problemCount: 0, inspectionName: '', projectName: '', itemLabel: '' }}
+      />
       <InspectionWizard
         open={wizardOpen}
         onClose={handleWizardClose}
@@ -458,40 +456,9 @@ export default function InspectionDetail() {
               </div>
               <div className="space-y-1">
                 <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">ინსპექტორის ხელმოწერა</p>
-                {inspection.inspector_signature ? (
-                  <div className="flex items-center gap-3">
-                    <img
-                      src={`data:image/png;base64,${inspection.inspector_signature}`}
-                      alt="ხელმოწერა"
-                      className="h-16 rounded border border-neutral-200 bg-white p-1"
-                    />
-                    <button
-                      className="text-xs text-neutral-500 hover:text-red-600"
-                      onClick={() => { if (!isPending) updateInspection(id!, { inspector_signature: null }).then(() => qc.invalidateQueries({ queryKey: inspectionKeys.detail(id) })); }}
-                    >
-                      წაშლა
-                    </button>
-                  </div>
-                ) : signingOpen ? (
-                  <SignatureCanvas
-                    onCancel={() => setSigningOpen(false)}
-                    onSave={(dataUrl) => {
-                      if (isPending) { setSigningOpen(false); return; }
-                      const base64 = dataUrl.replace(/^data:image\/png;base64,/, '');
-                      updateInspection(id!, { inspector_signature: base64 }).then(() => {
-                        qc.invalidateQueries({ queryKey: inspectionKeys.detail(id) });
-                        setSigningOpen(false);
-                      });
-                    }}
-                  />
-                ) : (
-                  <button
-                    className="rounded-md border border-dashed border-neutral-300 px-4 py-2 text-sm text-neutral-500 hover:border-brand-400 hover:text-brand-600"
-                    onClick={() => setSigningOpen(true)}
-                  >
-                    + ხელმოწერის დამატება
-                  </button>
-                )}
+                {/* Regulatory: signatures are never captured/stored here. The
+                    generated PDF carries an empty signature block to sign by hand. */}
+                <p className="text-xs text-neutral-400">ხელმოწერისთვის ადგილი დაერთვება PDF-ს — ხელით ხელმოსაწერად.</p>
               </div>
               <div className="flex flex-wrap gap-2 pt-2">
                 <Button

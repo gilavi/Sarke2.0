@@ -70,7 +70,7 @@ interface DbRow {
 }
 
 const COLS =
-  'id, project_id, template_id, user_id, status, machine_specs, serial_number, inventory_number, project_name, department, inspection_date, moto_hours, inspector_name, last_inspection_date, engine_items, undercarriage_items, cabin_items, safety_items, maintenance_items, verdict, notes, inspector_position, inspector_signature, signatories, summary_photos, completed_at, created_at, updated_at';
+  'id, project_id, template_id, user_id, status, machine_specs, serial_number, inventory_number, project_name, department, inspection_date, moto_hours, inspector_name, last_inspection_date, engine_items, undercarriage_items, cabin_items, safety_items, maintenance_items, verdict, notes, inspector_position, summary_photos, completed_at, created_at, updated_at';
 
 function emptyChecklist(catalog: { id: number }[]): ExcavatorChecklistItemState[] {
   return catalog.map((c) => ({ id: c.id, result: null, comment: null, photo_paths: [] }));
@@ -105,8 +105,8 @@ function toModel(r: DbRow): ExcavatorInspection {
     verdict: r.verdict,
     notes: r.notes,
     inspectorPosition: r.inspector_position,
-    inspectorSignature: r.inspector_signature,
-    signatories: r.signatories ?? [],
+    inspectorSignature: null,
+    signatories: [],
     summaryPhotos: r.summary_photos ?? [],
     completedAt: r.completed_at,
     createdAt: r.created_at,
@@ -187,8 +187,6 @@ const repo = makeRepository<ExcavatorInspection, DbRow, CreateExcavatorArgs, Exc
       verdict: 'verdict',
       notes: 'notes',
       inspectorPosition: 'inspector_position',
-      inspectorSignature: 'inspector_signature',
-      signatories: 'signatories',
       summaryPhotos: 'summary_photos',
     });
     if (patch.status !== undefined) {

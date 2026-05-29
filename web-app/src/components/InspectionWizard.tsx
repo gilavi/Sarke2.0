@@ -29,6 +29,7 @@ import {
 import { listProjects } from '@/lib/data/projects';
 import { listTemplates } from '@/lib/data/templates';
 import { projectKeys, inspectionKeys, templateKeys } from '@/app/queryKeys';
+import { routes } from '@/app/routes';
 import { VERDICT_GOOD, VERDICT_BAD } from '@/lib/verdictColors';
 
 /* ─── Types ─── */
@@ -295,8 +296,13 @@ export default function InspectionWizard({
           // confirmation appears on top of the completed inspection.
           onClose();
           navigate(preset.successDetailRoute(insId), { state: { inspectionSuccess: successPayload } });
+        } else if (mode === 'create') {
+          // Generic create: land on the inspection's detail page with the success
+          // modal — uniform with the harness/equipment flows.
+          onClose();
+          navigate(routes.inspections.detail(insId), { state: { inspectionSuccess: successPayload } });
         } else {
-          // No detail route — show the modal in place over the list/project screen.
+          // Edit-in-place (detail-page wizard) — show the success modal over the detail.
           setCompletedId(insId);
           setSuccessData(successPayload);
           setSuccessOpen(true);
@@ -362,7 +368,7 @@ export default function InspectionWizard({
     effectiveInspection, conclusion, conclusionPhotos, currentQuestion, currentAnswer,
     projectId, templateId, harnessName, department, inspectorName,
     answerMutation, qc, totalSteps, preset, profileName,
-    onComplete, gridSummary, projectName, onClose, navigate,
+    onComplete, gridSummary, projectName, onClose, navigate, mode,
   ]);
 
   const goPrev = useCallback(() => {
