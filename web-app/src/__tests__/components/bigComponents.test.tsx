@@ -19,6 +19,9 @@ vi.mock('@/lib/auth', () => ({
     signOut: vi.fn(),
   })),
 }));
+vi.mock('@/lib/usePdfUsage', () => ({
+  usePdfUsage: vi.fn(() => ({ data: { status: 'free' } })),
+}));
 
 import { useCommandStore } from '@/store/commandStore';
 import InspectionInfoView from '@/components/InspectionInfoView';
@@ -27,7 +30,8 @@ import PhotoUploadWidget from '@/components/PhotoUploadWidget';
 import InspectionSignatures from '@/components/InspectionSignatures';
 import { WizardSidebar } from '@/components/wizard/WizardSidebar';
 import { CommandPalette } from '@/components/cmdk/CommandPalette';
-import { SidebarNavList, SidebarFooter } from '@/components/layout/SidebarNav';
+import { SidebarNavList } from '@/components/layout/SidebarNav';
+import { SidebarFooter } from '@/components/layout/SidebarFooter';
 
 const renderInRouter = (ui: React.ReactElement) => render(<MemoryRouter>{ui}</MemoryRouter>);
 
@@ -238,14 +242,14 @@ describe('CommandPalette', () => {
 
 describe('SidebarNavList + SidebarFooter', () => {
   it('SidebarNavList renders all top nav items when expanded', () => {
-    renderInRouter(<SidebarNavList isExpanded onNavigate={() => {}} />);
+    renderInRouter(<SidebarNavList onNavigate={() => {}} />);
     expect(screen.getByText('მთავარი')).toBeInTheDocument();
     expect(screen.getByText('პროექტები')).toBeInTheDocument();
     expect(screen.getByText('კალენდარი')).toBeInTheDocument();
   });
 
   it('SidebarFooter renders the user avatar / footer chrome', () => {
-    const { container } = renderInRouter(<SidebarFooter isExpanded />);
+    const { container } = renderInRouter(<SidebarFooter />);
     expect(container.firstChild).toBeTruthy();
   });
 });

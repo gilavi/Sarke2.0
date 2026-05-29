@@ -22,7 +22,7 @@ export const AppShell = memo(function AppShell({ children }: { children: ReactNo
   }, [location.pathname]);
 
   return (
-    <div className="flex h-full min-h-screen bg-neutral-50 dark:bg-neutral-950">
+    <div className="flex h-full min-h-screen bg-[var(--bg-body)]">
       {/* Ambient mesh background — desktop only */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden hidden sm:block">
         <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-brand-500/5 blur-3xl animate-mesh-1" />
@@ -41,7 +41,12 @@ export const AppShell = memo(function AppShell({ children }: { children: ReactNo
 
       <Sidebar open={sidebarOpen} onClose={handleCloseSidebar} />
 
-      <div className="flex flex-1 flex-col overflow-hidden">
+      {/* Content as a floating card on the canvas (rounded, hairline border,
+          soft shadow, even gutter all around on desktop). */}
+      <div
+        className="flex flex-1 flex-col overflow-hidden bg-[var(--bg-card)] lg:my-4 lg:mr-4 lg:rounded-[18px] lg:border lg:border-[var(--border-default)]"
+        style={{ boxShadow: 'var(--card-shadow)' }}
+      >
         {/* Mobile top bar */}
         <header className="flex items-center justify-between gap-3 border-b border-neutral-200 bg-white px-4 py-3 dark:border-neutral-800 dark:bg-neutral-900 lg:hidden">
           <div className="flex items-center gap-3">
@@ -78,7 +83,7 @@ export const AppShell = memo(function AppShell({ children }: { children: ReactNo
           კონტენტზე გადასვლა
         </a>
 
-        <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto bg-neutral-50 outline-none dark:bg-neutral-950">
+        <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto bg-transparent outline-none">
           {/*
             `mode="wait"` is REQUIRED here. Without it, the previous attempt
             (concurrent crossfade with two ternary branches sharing

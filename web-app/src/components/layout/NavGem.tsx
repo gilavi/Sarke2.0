@@ -13,7 +13,7 @@ import type { NavIcon } from './navItems';
 export function NavGem({ icon: Icon, active }: { icon: NavIcon; active: boolean }) {
   return (
     <span className="nav-gem" data-active={active ? '' : undefined} aria-hidden="true">
-      <Icon className="nav-gem__icon" size={21} weight={active ? 'fill' : 'regular'} />
+      <Icon className="nav-gem__icon" size={20} weight={active ? 'fill' : 'regular'} />
     </span>
   );
 }
