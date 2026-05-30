@@ -2,13 +2,18 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen } from '@/test-utils';
 import { renderPage } from '../helpers/renderPage';
 
+// InspectionWizard calls useAuth(); stub it so the list page renders without an
+// AuthProvider in the test tree.
+vi.mock('@/components/InspectionWizard', () => ({ default: () => null }));
+vi.mock('@/lib/documentNames', async (io) => ({
+  ...(await io<object>()),
+  useInspectionName: () => (id: string | null | undefined) => `tpl-${id ?? ''}`,
+}));
+
 // The Inspections list is data-driven over the structured-act registry, which
 // dispatches to the per-type list functions exported from lib/data/*. Mocking
-// those exports therefore covers both the generic and the structured queries.
-vi.mock('@/lib/data/inspections', async (io) => ({
-  ...(await io<object>()),
-  listInspections: vi.fn(),
-}));
+// those exports covers both the generic and the structured queries.
+vi.mock('@/lib/data/inspections', async (io) => ({ ...(await io<object>()), listInspections: vi.fn() }));
 vi.mock('@/lib/data/bobcat', async (io) => ({ ...(await io<object>()), listBobcatInspections: vi.fn() }));
 vi.mock('@/lib/data/excavator', async (io) => ({ ...(await io<object>()), listExcavatorInspections: vi.fn() }));
 vi.mock('@/lib/data/generalEquipment', async (io) => ({ ...(await io<object>()), listGeneralEquipmentInspections: vi.fn() }));
@@ -60,14 +65,12 @@ describe('Inspections list page', () => {
     expect(screen.getByText('+ ახალი შემოწმება')).toBeInTheDocument();
   });
 
-  it('opens the type dropdown and lists generic + structured categories', async () => {
+  it('renders an equipment inspection row from the registry', async () => {
+    vi.mocked(listBobcatInspections).mockResolvedValue([
+      { id: 'b1', projectId: 'p1', status: 'completed', createdAt: '2026-05-01' },
+    ] as never);
     renderPage(<Inspections />);
-    const trigger = await screen.findByText('+ ახალი შემოწმება');
-    trigger.click();
-    expect(await screen.findByText('ფასადის ხარაჩოს შემოწმების აქტი')).toBeInTheDocument();
-    expect(screen.getByText('დამცავი ქამრების შემოწმების აქტი')).toBeInTheDocument();
-    // Structured acts are listed from the registry (e.g. the 4 newest ones).
-    expect(screen.getByText('მობილური კიბის შემოწმების აქტი')).toBeInTheDocument();
-    expect(screen.getByText('ჩანგლიანი დამტვირთველის შემოწმების აქტი')).toBeInTheDocument();
+    // The data-driven page renders one <a href="/bobcat/b1"> row.
+    await vi.waitFor(() => expect(document.querySelector('a[href="/bobcat/b1"]')).toBeInTheDocument());
   });
 });

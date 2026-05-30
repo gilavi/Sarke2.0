@@ -84,37 +84,35 @@ beforeEach(() => {
 });
 
 describe('Inspections list', () => {
-  it('renders rows from all 5 inspection types', async () => {
+  it('renders rows from all inspection types (data-driven)', async () => {
     renderPage(<Inspections />);
-    // Generic harness row + 4 equipment rows.
-    expect(await screen.findByText('eq-bobcat')).toBeInTheDocument();
-    expect(screen.getByText('eq-excavator')).toBeInTheDocument();
-    expect(screen.getByText('eq-general')).toBeInTheDocument();
-    expect(screen.getByText('eq-cargo_platform')).toBeInTheDocument();
+    // One <a href> row per seeded type — generic harness + 4 structured equipment.
+    await waitFor(() => expect(document.querySelector('a[href="/bobcat/b1"]')).toBeInTheDocument());
+    expect(document.querySelector('a[href="/excavator/e1"]')).toBeInTheDocument();
+    expect(document.querySelector('a[href="/general-equipment/g1"]')).toBeInTheDocument();
+    expect(document.querySelector('a[href="/cargo-platform/c1"]')).toBeInTheDocument();
+    expect(document.querySelector('a[href="/harness/h1"]')).toBeInTheDocument();
   });
 
   it('the project filter pills filter rows', async () => {
     renderPage(<Inspections />);
-    await screen.findByText('eq-bobcat');
-    // Click "პროექტი ბეტა" pill — only e1 + g1 remain.
+    await waitFor(() => expect(document.querySelector('a[href="/bobcat/b1"]')).toBeInTheDocument());
+    // Filter to პროექტი ბეტა (p2) — bobcat (p1) hides, excavator (p2) stays.
     fireEvent.click(screen.getByRole('button', { name: 'პროექტი ბეტა' }));
-    // Verifying by absence is more robust; the count went down. Just check the bobcat (p1) row is hidden.
-    // Actually the rows are filtered in JSX — verify the excavator (p2) remains visible.
-    expect(screen.getByText('eq-excavator')).toBeInTheDocument();
+    await waitFor(() => expect(document.querySelector('a[href="/bobcat/b1"]')).not.toBeInTheDocument());
+    expect(document.querySelector('a[href="/excavator/e1"]')).toBeInTheDocument();
   });
 
-  it('clicking the trash → confirm modal → confirm fires deleteInspection', async () => {
+  it('clicking the trash → confirm modal → confirm fires the delete', async () => {
     vi.mocked(deleteInspection).mockResolvedValue(undefined);
     renderPage(<Inspections />);
-    await screen.findByText('eq-bobcat');
-    // Find the trash button via the lucide trash icon class (truncated to `lucide-trash`).
+    await waitFor(() => expect(document.querySelector('a[href="/harness/h1"]')).toBeInTheDocument());
+    // First row (sorted by date, generic harness leads) — click its trash button.
     const allTrash = document.body.querySelectorAll('[class*="lucide-trash"]');
     expect(allTrash.length).toBeGreaterThan(0);
-    // Click the parent button (each trash icon's parent is a <button>).
     const trashBtn = allTrash[0].closest('button');
     expect(trashBtn).toBeTruthy();
     fireEvent.click(trashBtn!);
-    // Confirm modal opens with a "წაშლა" button.
     const confirmBtn = await screen.findByRole('button', { name: 'წაშლა' });
     fireEvent.click(confirmBtn);
     await waitFor(() => expect(deleteInspection).toHaveBeenCalled());
