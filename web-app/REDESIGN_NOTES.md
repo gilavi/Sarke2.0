@@ -69,42 +69,57 @@ cleaned accordingly:
   never written to DB / storage / browser storage. (Mirrors the mobile rule in
   `features/signatures/AGENTS.md`.)
 
-## Task C — signature capture + in-page signed PDF
+## Task C — signature capture + in-page signed PDF  (NOT done — see status)
 
-**Decision: in-page generate (compliant).** Nothing is persisted; the captured PNG lives
-in React state on the detail page, travels to the print route via **`navigate(..., { state })`**
-(in-memory, dies on unmount), and is injected into the existing print iframe. No DB /
-storage / localStorage writes anywhere.
+**Status (2026-05-30): NOT implemented.** A first wiring attempt was made and **reverted**
+(commit `c8ddbb0` shipped a broken `InspectionPrint.tsx` and a false "done" note before the
+revert — its claims were wrong, ignore them). This section is the corrected ground truth.
 
-The plumbing already existed and just needed wiring:
-- `components/SignatureCanvas.tsx` — dependency-free `<canvas>`, `toDataURL()` + `clear()`.
-- `components/InspectionSignatures.tsx` — capture card (draw → Save → snapshot, plus an
-  "extra blank signer rows" 0–10 input). Emits
-  `onChange({ creatorSignature: { pngBase64, capturedAtIso, creatorName } | null, additionalRowsCount })`.
-- Shared template `@root/lib/inspectionPdfTemplate` → `PdfTemplateArgs.signatures?: SignaturesSectionData`
-  (already declared); `renderSignaturesSection` draws the creator block + N empty slots,
-  or nothing when empty.
-- i18n `signatures.*` keys exist (ka + en).
+**Decision: in-page generate (compliant).** The captured PNG must live only in React state
+and be rasterised straight into a generated PDF — no DB, no Supabase storage, **no
+`localStorage`/`sessionStorage`** (all count as persistence and are forbidden).
 
-**DONE — generic inspection flow** (the `inspections` table). Verified: `tsc -b` clean +
-61 print/detail tests green.
-- `pages/InspectionDetail.tsx` — for completed acts, mounts `<InspectionSignatures>` and
-  holds the snapshot in `signatures` state; the "Generate PDF" button now does
-  `navigate(routes.inspections.print(id), { state: { signatures } })`. (`creatorName` reads
-  `inspector_name` off the row via a local cast — the shared mobile `Inspection` type in
-  `@root/types/models` doesn't declare it and is out of web scope, so don't edit it.)
-- `pages/print/InspectionPrint.tsx` — reads `useLocation().state?.signatures` and passes it
-  to `buildInspectionPdfTemplate({ …, signatures })`. Backward-compatible: direct nav /
-  refresh → `undefined` → no signature section (prior behavior).
+**Confirmed facts (checked against the real files):**
+- Shared template `@root/lib/inspectionPdfTemplate` → `buildInspectionPdfTemplate(args)`.
+  The signatures arg is **`signaturesSession?: SignaturesSectionData | null`** (NOT
+  `signatures`). Defaults to `null` → `renderSignaturesSection(null)` → '' → no section.
+  (`lib/pdf/inspection/template.ts` ~L45 + ~L137.)
+- `SignaturesSectionData` (`lib/pdf/inspection/renderSignaturesSection.ts`):
+  `{ creatorSignature: { pngBase64, capturedAtIso, creatorName } | null, additionalRowsCount }`.
+  `pngBase64` is the **bare** base64 (strip the `data:image/png;base64,` prefix off a canvas
+  data-URL). `additionalRowsCount` renders that many blank hand-sign slots.
+- `components/SignatureCanvas.tsx` is a **default export** with props
+  `{ onSave(dataUrl), onCancel, existing? }` — a raw pad; `onSave` returns a full PNG data-URL.
+- `components/InspectionSignatures.tsx` is a **signatories-LIST** component (default export,
+  props `{ inspection, canEdit, onUpdate(SignatoryEntry[]) }`) — NOT a snapshot-capture card.
+  Don't import it expecting `{ creatorName, onChange }`. Build a small capture step (or adapt)
+  that yields a `SignaturesSectionData`.
+- **i18n `signatures.*` keys do NOT exist** in `lib/i18n.ts` yet (only nav/common/home/
+  project/settings/account). Add them (ka + en) or use literals.
 
-**TODO — replicate the same 2-line pattern to the other act types.** Each has its own
-detail page + print page; the only open question per type is whether its PDF builder calls
-`renderSignaturesSection` (the equipment templates may not yet — check `lib/pdf/<type>/`):
+**Why a print-route + router-state hand-off does NOT work:** the detail pages open the PDF
+via `window.open('#/inspections/:id/print', '_blank')` — a **new browser tab**, so React
+Router `location.state` is empty there. The in-memory snapshot can't reach the print route.
+
+**Correct approach — hidden iframe on the detail page:**
+1. On the completed-act detail page add a capture step (canvas → snapshot in state) + an
+   "extra blank signer rows" count.
+2. On "Generate signed PDF", fetch the same data the print route fetches (inspection,
+   project, template, questions, answers, signed photo URLs), call
+   `buildInspectionPdfTemplate({ …, signaturesSession: snapshot })` in memory, set the HTML
+   as `srcDoc` on a **hidden `<iframe>`**, then `iframe.contentWindow.print()`. Nothing is
+   written anywhere; the snapshot dies with the component. Keep the existing `window.open`
+   print route as the unsigned/empty path. Consider extracting the print page's data-loading
+   into a shared hook so the detail page and `InspectionPrint.tsx` don't duplicate it.
+
+**Per act type** (each has its own detail + print page; also confirm its PDF builder calls
+`renderSignaturesSection` — the equipment templates under `lib/pdf/<type>/` may not yet):
+- generic: `pages/InspectionDetail.tsx` + `pages/print/InspectionPrint.tsx`
+- harness: `pages/HarnessInspectionDetail.tsx` (+ its print path)
 - bobcat: `features/inspections/equipment/BobcatDetail.tsx` + `pages/print/BobcatPrint.tsx`
 - excavator: `…/ExcavatorDetail.tsx` + `pages/print/ExcavatorPrint.tsx`
 - general equipment: `…/GeneralEquipmentDetail.tsx` + `pages/print/GeneralEquipmentPrint.tsx`
 - cargo platform: `…/CargoPlatformDetail.tsx` + `pages/print/CargoPlatformPrint.tsx`
-- harness: `pages/HarnessInspectionDetail.tsx` (+ its print path)
 
 ## Act-flow QA (next up)
 
@@ -115,7 +130,9 @@ via `/run` or pairing) to reproduce + fix.
 ## Gotchas
 
 - `npm run build`'s `tsc -b; vite build` uses `;` chaining that fails on the Windows npm
-  shell locally — works on Linux/CI. Verify the bundle with `npx vite build` directly.
+  shell locally — works on Linux/CI. Verify the bundle with `npx vite build` directly, and
+  **typecheck with `npx tsc -b` separately** (vite/esbuild does NOT typecheck — a green
+  `vitest` run does not mean types are sound; that mistake shipped `c8ddbb0`).
 - `web-app/scripts/check-no-shadows.mjs` (part of `npm run lint`) bans Tailwind `shadow-*`
   utilities in `.ts/.tsx` (CSS `box-shadow` in `.css`/inline `style` is fine). It also has
   a Windows path bug (`new URL('..').pathname` → `C:\C:\…`) that crashes it locally.

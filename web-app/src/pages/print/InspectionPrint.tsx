@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useParams, useSearchParams, useLocation } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   getInspection,
@@ -12,7 +12,7 @@ import { getProject } from '@/lib/data/projects';
 import { projectKeys, inspectionKeys } from '@/app/queryKeys';
 import { getTemplate } from '@/lib/data/templates';
 import { signedInspectionPhotoUrl } from '@/lib/photoUpload';
-import { buildInspectionPdfTemplate, type PdfTemplateArgs } from '@root/lib/inspectionPdfTemplate';
+import { buildInspectionPdfTemplate } from '@root/lib/inspectionPdfTemplate';
 import type {
   Inspection as MobileInspection,
   Template as MobileTemplate,
@@ -25,10 +25,6 @@ export default function InspectionPrint() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const isPreview = searchParams.get('preview') === '1';
-  // Signatures captured in memory on the detail page, passed via router state.
-  // Never persisted (regulatory); undefined on direct navigation/refresh.
-  const location = useLocation();
-  const signatures = (location.state as { signatures?: PdfTemplateArgs['signatures'] } | null)?.signatures;
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const inspQ = useQuery({
@@ -114,6 +110,9 @@ export default function InspectionPrint() {
   const questions = questionsQ.data ?? [];
   const answers = answersQ.data ?? [];
 
+  // Signatures are no longer persisted or passed in (regulatory). The shared
+  // inspection PDF template renders empty signature blocks to be signed by hand.
+
   // Build a fallback template object when the DB row couldn't be fetched
   // (edge case: template deleted after inspection was created).
   const tpl: MobileTemplate = template
@@ -131,7 +130,6 @@ export default function InspectionPrint() {
   const html = buildInspectionPdfTemplate({
     questionnaire: inspection as unknown as MobileInspection,
     template: tpl,
-    signatures,
     project: project as unknown as MobileProject,
     questions: questions as unknown as MobileQuestion[],
     answers: answers as unknown as MobileAnswer[],
