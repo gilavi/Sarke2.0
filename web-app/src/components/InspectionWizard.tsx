@@ -73,6 +73,12 @@ function filterQuestions(qs: Question[]): Question[] {
   return hasGrid ? qs.filter((q) => q.type !== 'freetext' && q.type !== 'photo_upload') : qs;
 }
 
+/* Categories whose flow is a plain yes/no questionnaire — the repeatable
+   `component_grid` step is not part of the act (unlike harness, where the grid IS
+   the inspection). The façade-scaffold family inspects via the section questions
+   shown on the detail screen, so the grid step is dropped from their wizard. */
+const GRID_DROP_CATEGORIES = new Set(['xaracho', 'mobile_scaffold', 'mobile_scaffold_n3']);
+
 /* Repeatable-grid item noun per template category. Harness = belts ("ქამარი");
    the façade-scaffold family inspects scaffolds ("ხარაჩო"). Unknown categories
    fall back to a neutral noun at the callsite. */
@@ -359,8 +365,13 @@ export default function InspectionWizard({
         });
         qc.invalidateQueries({ queryKey: inspectionKeys.lists() });
         const qs = await listQuestions(created.template_id);
+        const cat = (templates ?? []).find((t) => t.id === created.template_id)?.category ?? defaultCategory;
+        let qsFiltered = filterQuestions(qs);
+        if (GRID_DROP_CATEGORIES.has(cat)) {
+          qsFiltered = qsFiltered.filter((q) => q.type !== 'component_grid');
+        }
         setCreatedInspection(created);
-        setQuestions(filterQuestions(qs));
+        setQuestions(qsFiltered);
         setDirection(1);
         setStepIndex(1);
       } catch (e) {
@@ -379,6 +390,7 @@ export default function InspectionWizard({
     projectId, templateId, harnessName, department, inspectorName,
     answerMutation, qc, totalSteps, preset, profileName,
     onComplete, gridSummary, projectName, onClose, navigate, mode,
+    templates, defaultCategory,
   ]);
 
   const goPrev = useCallback(() => {
