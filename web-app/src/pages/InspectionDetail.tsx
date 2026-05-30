@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Camera, FileText, X } from 'lucide-react';
 import InspectionWizard from '@/components/InspectionWizard';
+import SignatureCapture from '@/components/SignatureCapture';
 import { SkeletonDetailPage } from '@/components/SkeletonCard';
 import SuccessModal, { type SuccessModalData } from '@/components/web/SuccessModal';
 import { toast } from 'sonner';
@@ -507,6 +508,15 @@ export default function InspectionDetail() {
           )}
         </CardContent>
       </Card>
+
+      {!isDraft && (
+        <SignatureCapture
+          creatorName={inspection.inspector_name ?? ''}
+          onGenerate={(session) =>
+            navigate(`/inspections/${inspection.id}/print`, { state: { signaturesSession: session } })
+          }
+        />
+      )}
 
       <section>
         <h2 className="mb-3 font-display text-lg font-semibold">PDF რეპორტები</h2>

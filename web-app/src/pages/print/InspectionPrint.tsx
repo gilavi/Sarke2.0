@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   getInspection,
@@ -13,6 +13,7 @@ import { projectKeys, inspectionKeys } from '@/app/queryKeys';
 import { getTemplate } from '@/lib/data/templates';
 import { signedInspectionPhotoUrl } from '@/lib/photoUpload';
 import { buildInspectionPdfTemplate } from '@root/lib/inspectionPdfTemplate';
+import type { SignaturesSectionData } from '@root/lib/inspectionPdfTemplate';
 import type {
   Inspection as MobileInspection,
   Template as MobileTemplate,
@@ -25,6 +26,11 @@ export default function InspectionPrint() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const isPreview = searchParams.get('preview') === '1';
+  // Signature snapshot captured in memory on the detail page and handed over via
+  // router state — never persisted (regulatory). Null on direct nav / refresh.
+  const location = useLocation();
+  const signaturesSession =
+    (location.state as { signaturesSession?: SignaturesSectionData } | null)?.signaturesSession ?? null;
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const inspQ = useQuery({
@@ -110,9 +116,6 @@ export default function InspectionPrint() {
   const questions = questionsQ.data ?? [];
   const answers = answersQ.data ?? [];
 
-  // Signatures are no longer persisted or passed in (regulatory). The shared
-  // inspection PDF template renders empty signature blocks to be signed by hand.
-
   // Build a fallback template object when the DB row couldn't be fetched
   // (edge case: template deleted after inspection was created).
   const tpl: MobileTemplate = template
@@ -130,6 +133,7 @@ export default function InspectionPrint() {
   const html = buildInspectionPdfTemplate({
     questionnaire: inspection as unknown as MobileInspection,
     template: tpl,
+    signaturesSession,
     project: project as unknown as MobileProject,
     questions: questions as unknown as MobileQuestion[],
     answers: answers as unknown as MobileAnswer[],

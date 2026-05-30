@@ -71,51 +71,41 @@ cleaned accordingly:
 
 ## Task C — signature capture + in-page signed PDF  (NOT done — see status)
 
-**Status (2026-05-30): NOT implemented.** A first wiring attempt was made and **reverted**
-(commit `c8ddbb0` shipped a broken `InspectionPrint.tsx` and a false "done" note before the
-revert — its claims were wrong, ignore them). This section is the corrected ground truth.
+**Status (2026-05-30): generic inspection flow DONE; other act types pending.** (An earlier
+attempt — commit `c8ddbb0` — was broken and reverted; ignore its claims. The working version
+is verified: `tsc -b` clean + 129 detail/print tests + `vite build` green.)
 
-**Decision: in-page generate (compliant).** The captured PNG must live only in React state
-and be rasterised straight into a generated PDF — no DB, no Supabase storage, **no
-`localStorage`/`sessionStorage`** (all count as persistence and are forbidden).
+**How it works (compliant, no persistence).** The captured PNG lives only in React state and
+travels to the print route via in-memory **router state** — no DB, no Supabase storage, **no
+`localStorage`/`sessionStorage`**. This works because the print routes are **standalone
+full-screen routes** (`app/routes.tsx` ~L48-57, matched *before* the `/` AppShell route), so
+the detail page can `navigate(...)` to them **in-page** (no new tab) and `location.state`
+survives. The print page's "დახურვა" button (`window.history.back()`) returns to the detail.
 
-**Confirmed facts (checked against the real files):**
-- Shared template `@root/lib/inspectionPdfTemplate` → `buildInspectionPdfTemplate(args)`.
-  The signatures arg is **`signaturesSession?: SignaturesSectionData | null`** (NOT
-  `signatures`). Defaults to `null` → `renderSignaturesSection(null)` → '' → no section.
-  (`lib/pdf/inspection/template.ts` ~L45 + ~L137.)
+**Confirmed facts (real files):**
+- Template arg is **`signaturesSession?: SignaturesSectionData | null`** (NOT `signatures`).
+  `null`/absent → `renderSignaturesSection(null)` → '' → no section. (`lib/pdf/inspection/template.ts`.)
 - `SignaturesSectionData` (`lib/pdf/inspection/renderSignaturesSection.ts`):
   `{ creatorSignature: { pngBase64, capturedAtIso, creatorName } | null, additionalRowsCount }`.
-  `pngBase64` is the **bare** base64 (strip the `data:image/png;base64,` prefix off a canvas
-  data-URL). `additionalRowsCount` renders that many blank hand-sign slots.
-- `components/SignatureCanvas.tsx` is a **default export** with props
-  `{ onSave(dataUrl), onCancel, existing? }` — a raw pad; `onSave` returns a full PNG data-URL.
-- `components/InspectionSignatures.tsx` is a **signatories-LIST** component (default export,
-  props `{ inspection, canEdit, onUpdate(SignatoryEntry[]) }`) — NOT a snapshot-capture card.
-  Don't import it expecting `{ creatorName, onChange }`. Build a small capture step (or adapt)
-  that yields a `SignaturesSectionData`.
-- **i18n `signatures.*` keys do NOT exist** in `lib/i18n.ts` yet (only nav/common/home/
-  project/settings/account). Add them (ka + en) or use literals.
+  `pngBase64` is **bare** base64 (strip the `data:image/png;base64,` prefix).
+- `components/SignatureCanvas.tsx` — default export, `{ onSave(dataUrl), onCancel, existing? }`.
+- `components/InspectionSignatures.tsx` — a signatories-LIST component (different data model),
+  NOT used here.
 
-**Why a print-route + router-state hand-off does NOT work:** the detail pages open the PDF
-via `window.open('#/inspections/:id/print', '_blank')` — a **new browser tab**, so React
-Router `location.state` is empty there. The in-memory snapshot can't reach the print route.
+**Generic flow — files (reference implementation):**
+- `components/SignatureCapture.tsx` (new) — pad (reuses `SignatureCanvas`) + "extra blank
+  signer rows" (0-10); builds a `SignaturesSectionData` and calls `onGenerate`.
+- `pages/InspectionDetail.tsx` — for completed acts, mounts `<SignatureCapture>` and
+  `navigate('/inspections/:id/print', { state: { signaturesSession } })`.
+- `pages/print/InspectionPrint.tsx` — reads `useLocation().state?.signaturesSession` → passes
+  to `buildInspectionPdfTemplate({ …, signaturesSession })`. Backward-compatible (direct
+  nav / refresh → null → no section).
 
-**Correct approach — hidden iframe on the detail page:**
-1. On the completed-act detail page add a capture step (canvas → snapshot in state) + an
-   "extra blank signer rows" count.
-2. On "Generate signed PDF", fetch the same data the print route fetches (inspection,
-   project, template, questions, answers, signed photo URLs), call
-   `buildInspectionPdfTemplate({ …, signaturesSession: snapshot })` in memory, set the HTML
-   as `srcDoc` on a **hidden `<iframe>`**, then `iframe.contentWindow.print()`. Nothing is
-   written anywhere; the snapshot dies with the component. Keep the existing `window.open`
-   print route as the unsigned/empty path. Consider extracting the print page's data-loading
-   into a shared hook so the detail page and `InspectionPrint.tsx` don't duplicate it.
-
-**Per act type** (each has its own detail + print page; also confirm its PDF builder calls
-`renderSignaturesSection` — the equipment templates under `lib/pdf/<type>/` may not yet):
-- generic: `pages/InspectionDetail.tsx` + `pages/print/InspectionPrint.tsx`
-- harness: `pages/HarnessInspectionDetail.tsx` (+ its print path)
+**TODO — other act types.** Replicate the same pattern. Each has its own detail + print page;
+first confirm the type's PDF builder calls `renderSignaturesSection` (equipment templates
+under `lib/pdf/<type>/` may not yet — if not, add the section there too):
+- harness: `pages/HarnessInspectionDetail.tsx` (already prints via `/harness/:id/print`,
+  also a standalone route → likely a 1-line mount + navigate).
 - bobcat: `features/inspections/equipment/BobcatDetail.tsx` + `pages/print/BobcatPrint.tsx`
 - excavator: `…/ExcavatorDetail.tsx` + `pages/print/ExcavatorPrint.tsx`
 - general equipment: `…/GeneralEquipmentDetail.tsx` + `pages/print/GeneralEquipmentPrint.tsx`
