@@ -80,6 +80,34 @@ body,
   height: 100%;
 }
 
+/* ── Slim, theme-matched scrollbars (app-wide, both themes) ──
+   Kept visible (no display:none) so the "more below" cue stays. Colours come
+   from --scrollbar-thumb / --scrollbar-thumb-hover, which flip with the theme. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 99px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+html,
+#main-content {
+  scrollbar-gutter: stable;
+}
+
 :root {
   /* Canvas + floating content card (redesign tokens) */
   --bg-body: #f5f5f4;        /* flat canvas the sidebar sits on */
@@ -101,6 +129,8 @@ body,
   --nav-active-bg: #e8f6ee;
   --nav-active-text: #166534;
   --card-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 10px 26px rgba(16, 24, 40, 0.06);
+  --scrollbar-thumb: #d4d2cd;
+  --scrollbar-thumb-hover: #bdbab4;
   --danger: #DC2626;
   --danger-bg: #FEF2F2;
 }
@@ -139,6 +169,8 @@ body,
   --nav-active-bg: #19271e;
   --nav-active-text: #56d98a;
   --card-shadow: 0 1px 2px rgba(0,0,0,0.4), 0 10px 30px rgba(0,0,0,0.5);
+  --scrollbar-thumb: #34302a;
+  --scrollbar-thumb-hover: #423c33;
   --danger: #EF4444;
   --danger-bg: #450A0A;
 }

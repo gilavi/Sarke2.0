@@ -12,7 +12,9 @@ import { usePdfUsage, useInvalidatePdfUsage } from '@/lib/usePdfUsage';
 import { makeBuilder } from '../helpers/supabaseChain';
 
 const from = supabase.from as unknown as Mock;
-const NOW = new Date('2026-05-26T00:00:00Z').getTime();
+// Relative to the real clock so the +1d "future" / -1d "past" fixtures never
+// go stale (a fixed date here became flaky once the wall clock passed it).
+const NOW = Date.now();
 
 function wrapper({ children }: { children: ReactNode }) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });

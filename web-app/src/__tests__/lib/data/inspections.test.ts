@@ -40,7 +40,7 @@ describe('listInspections', () => {
     const b = makeBuilder({ data: [{ id: 'i1' }], error: null });
     from.mockReturnValue(b);
     const result = await listInspections();
-    expect(result).toEqual([{ id: 'i1' }]);
+    expect(result).toEqual([{ id: 'i1', inspector_signature: null, signatories: [] }]);
     expect(from).toHaveBeenCalledWith('inspections');
     expect(b.order).toHaveBeenCalledWith('created_at', { ascending: false });
     expect(b.limit).toHaveBeenCalledWith(50);
@@ -82,7 +82,7 @@ describe('getInspection', () => {
   it('returns the row via maybeSingle', async () => {
     const b = makeBuilder({ data: { id: 'i1' }, error: null });
     from.mockReturnValue(b);
-    expect(await getInspection('i1')).toEqual({ id: 'i1' });
+    expect(await getInspection('i1')).toEqual({ id: 'i1', inspector_signature: null, signatories: [] });
     expect(b.eq).toHaveBeenCalledWith('id', 'i1');
   });
 
@@ -134,7 +134,7 @@ describe('createInspection', () => {
       inspector_name: null,
       status: 'draft',
     });
-    expect(result).toEqual({ id: 'new' });
+    expect(result).toEqual({ id: 'new', inspector_signature: null, signatories: [] });
   });
 
   it('throws არაავტორიზებული when not signed in', async () => {

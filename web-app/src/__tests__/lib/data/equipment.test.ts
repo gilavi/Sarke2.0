@@ -181,15 +181,16 @@ describe('general-equipment data module', () => {
 });
 
 describe('cargo-platform data module', () => {
-  it('createCargoPlatformInspection seeds items, empty cargo, two signatories', async () => {
+  it('createCargoPlatformInspection seeds items + empty cargo (no persisted signatures)', async () => {
     const b = makeBuilder({ data: { id: 'new' }, error: null });
     from.mockReturnValue(b);
     await createCargoPlatformInspection({ projectId: 'p1' });
-    const arg = b.insert.mock.calls[0][0] as { template_id: string; cargo: unknown[]; items: unknown[]; signatures: unknown[] };
+    const arg = b.insert.mock.calls[0][0] as { template_id: string; cargo: unknown[]; items: unknown[]; signatures?: unknown[] };
     expect(arg.template_id).toBe(CARGO_PLATFORM_TEMPLATE_ID);
     expect(arg.cargo).toEqual([]);
     expect(arg.items).toHaveLength(CP_ITEMS.length);
-    expect(arg.signatures).toHaveLength(2);
+    // Signatures are never persisted (regulatory) — not seeded on insert.
+    expect(arg.signatures).toBeUndefined();
   });
 
   it('list is intentionally unlimited (no .limit call)', async () => {
