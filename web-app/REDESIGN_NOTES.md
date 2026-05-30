@@ -71,9 +71,9 @@ cleaned accordingly:
 
 ## Task C — signature capture + in-page signed PDF  (NOT done — see status)
 
-**Status (2026-05-30): generic inspection flow DONE; other act types pending.** (An earlier
+**Status (2026-05-30): generic + harness flows DONE; equipment types pending.** (An earlier
 attempt — commit `c8ddbb0` — was broken and reverted; ignore its claims. The working version
-is verified: `tsc -b` clean + 129 detail/print tests + `vite build` green.)
+is verified: `tsc -b` clean + detail/print tests + `vite build` green.)
 
 **How it works (compliant, no persistence).** The captured PNG lives only in React state and
 travels to the print route via in-memory **router state** — no DB, no Supabase storage, **no
@@ -104,8 +104,8 @@ survives. The print page's "დახურვა" button (`window.history.back(
 **TODO — other act types.** Replicate the same pattern. Each has its own detail + print page;
 first confirm the type's PDF builder calls `renderSignaturesSection` (equipment templates
 under `lib/pdf/<type>/` may not yet — if not, add the section there too):
-- harness: `pages/HarnessInspectionDetail.tsx` (already prints via `/harness/:id/print`,
-  also a standalone route → likely a 1-line mount + navigate).
+- harness: ✅ DONE — `pages/HarnessInspectionDetail.tsx` mounts `<SignatureCapture>` →
+  `navigate('/harness/:id/print', { state: { signaturesSession } })`; reuses InspectionPrint.
 - bobcat: `features/inspections/equipment/BobcatDetail.tsx` + `pages/print/BobcatPrint.tsx`
 - excavator: `…/ExcavatorDetail.tsx` + `pages/print/ExcavatorPrint.tsx`
 - general equipment: `…/GeneralEquipmentDetail.tsx` + `pages/print/GeneralEquipmentPrint.tsx`
