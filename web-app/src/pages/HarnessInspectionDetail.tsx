@@ -6,6 +6,7 @@ import { SkeletonDetailPage } from '@/components/SkeletonCard';
 import { toast } from 'sonner';
 import DeleteButton from '@/components/DeleteButton';
 import InspectionInfoView from '@/components/InspectionInfoView';
+import SignatureCapture from '@/components/SignatureCapture';
 import SuccessModal, { type SuccessModalData } from '@/components/web/SuccessModal';
 import { useInspectionName } from '@/lib/documentNames';
 import { Button } from '@/components/ui/button';
@@ -155,6 +156,15 @@ export default function HarnessInspectionDetail() {
         gridQuestion={gridQuestion}
         onFieldSave={(patch) => updateMutation.mutate(patch)}
       />
+
+      {!isDraft && (
+        <SignatureCapture
+          creatorName={inspection.inspector_name ?? ''}
+          onGenerate={(session) =>
+            navigate(`/inspections/${inspection.id}/print`, { state: { signaturesSession: session } })
+          }
+        />
+      )}
     </div>
   );
 }
