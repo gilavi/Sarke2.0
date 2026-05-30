@@ -8,16 +8,19 @@ _Last updated: 2026-05-30._
 
 ## Where we are (branch + restore point)
 
-- Working branch: **`feat/sidebar-modernize`** (local; not yet pushed at time of writing).
-- **Restore tag: `checkpoint-light-sidebar`** — the *pre content-card-redesign* state
-  (light sidebar, green-tinted middle, no inset card). To roll back the redesign:
-  `git reset --hard checkpoint-light-sidebar`.
-- Intended commit sequence on the branch:
+- Working branch: **`feat/sidebar-modernize`** — **pushed to `origin`** (2026-05-30).
+  Only `main` is the mobile app's line; this is a separate feature branch, so the push
+  never touched `main` or the Expo app. Open a PR when ready:
+  `https://github.com/gilavi/Sarke2.0/pull/new/feat/sidebar-modernize`.
+- **Restore tag: `checkpoint-light-sidebar`** (also pushed to `origin`) — the
+  *pre content-card-redesign* state (light sidebar, green-tinted middle, no inset card).
+  To roll back the redesign: `git reset --hard checkpoint-light-sidebar`.
+- Commit sequence on the branch:
   1. `checkpoint: light sidebar …` (the restore tag points here)
   2. `redesign: single-state sidebar + canvas/floating-card shell + light/dark tokens`
   3. `feat: slim theme-aware scrollbars + fix tests for signature-shape changes`
-  - ⚠️ At last check the shell tooling was returning garbled git output, so verify the
-    log in a trusted terminal before pushing. All changed files are under `web-app/`.
+  4. `docs(web-app): add redesign + state notes` (this file)
+  - Every changed file is under `web-app/` (verified: `git diff --name-only origin/main..HEAD`).
 
 ## Done (web)
 
@@ -66,19 +69,48 @@ cleaned accordingly:
   never written to DB / storage / browser storage. (Mirrors the mobile rule in
   `features/signatures/AGENTS.md`.)
 
-## NOT done yet (next up)
+## Task C — signature capture + in-page signed PDF
 
-- **Task C — signature capture + in-page signed PDF.** Decision: **in-page generate**
-  (compliant). Plan: on the completed-act detail page add "Add my signature" (canvas →
-  in-memory) + "Add empty signer cards" (count); generate the PDF by rendering the print
-  template into a **hidden iframe** with the in-memory signature + empty-card count
-  injected, then print — so it never persists. The web reuses the shared mobile template
-  `@root/lib/inspectionPdfTemplate` (`buildInspectionPdfTemplate`), whose `PdfTemplateArgs`
-  expects the mobile `{ creatorSignature, additionalRowsCount }` snapshot (NOT the old
-  `signatures` array, which was removed from the web print call).
-- **Act-flow QA.** Reported: some newer act types not showing / start flow lands in empty
-  space; some existing acts error mid-flow. Needs an interactive start→finish run-through
-  of every act type (best via `/run` or pairing) to reproduce + fix.
+**Decision: in-page generate (compliant).** Nothing is persisted; the captured PNG lives
+in React state on the detail page, travels to the print route via **`navigate(..., { state })`**
+(in-memory, dies on unmount), and is injected into the existing print iframe. No DB /
+storage / localStorage writes anywhere.
+
+The plumbing already existed and just needed wiring:
+- `components/SignatureCanvas.tsx` — dependency-free `<canvas>`, `toDataURL()` + `clear()`.
+- `components/InspectionSignatures.tsx` — capture card (draw → Save → snapshot, plus an
+  "extra blank signer rows" 0–10 input). Emits
+  `onChange({ creatorSignature: { pngBase64, capturedAtIso, creatorName } | null, additionalRowsCount })`.
+- Shared template `@root/lib/inspectionPdfTemplate` → `PdfTemplateArgs.signatures?: SignaturesSectionData`
+  (already declared); `renderSignaturesSection` draws the creator block + N empty slots,
+  or nothing when empty.
+- i18n `signatures.*` keys exist (ka + en).
+
+**DONE — generic inspection flow** (the `inspections` table). Verified: `tsc -b` clean +
+61 print/detail tests green.
+- `pages/InspectionDetail.tsx` — for completed acts, mounts `<InspectionSignatures>` and
+  holds the snapshot in `signatures` state; the "Generate PDF" button now does
+  `navigate(routes.inspections.print(id), { state: { signatures } })`. (`creatorName` reads
+  `inspector_name` off the row via a local cast — the shared mobile `Inspection` type in
+  `@root/types/models` doesn't declare it and is out of web scope, so don't edit it.)
+- `pages/print/InspectionPrint.tsx` — reads `useLocation().state?.signatures` and passes it
+  to `buildInspectionPdfTemplate({ …, signatures })`. Backward-compatible: direct nav /
+  refresh → `undefined` → no signature section (prior behavior).
+
+**TODO — replicate the same 2-line pattern to the other act types.** Each has its own
+detail page + print page; the only open question per type is whether its PDF builder calls
+`renderSignaturesSection` (the equipment templates may not yet — check `lib/pdf/<type>/`):
+- bobcat: `features/inspections/equipment/BobcatDetail.tsx` + `pages/print/BobcatPrint.tsx`
+- excavator: `…/ExcavatorDetail.tsx` + `pages/print/ExcavatorPrint.tsx`
+- general equipment: `…/GeneralEquipmentDetail.tsx` + `pages/print/GeneralEquipmentPrint.tsx`
+- cargo platform: `…/CargoPlatformDetail.tsx` + `pages/print/CargoPlatformPrint.tsx`
+- harness: `pages/HarnessInspectionDetail.tsx` (+ its print path)
+
+## Act-flow QA (next up)
+
+Reported: some newer act types not showing / start flow lands in empty space; some existing
+acts error mid-flow. Needs an interactive start→finish run-through of every act type (best
+via `/run` or pairing) to reproduce + fix.
 
 ## Gotchas
 
