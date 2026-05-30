@@ -137,12 +137,15 @@ export interface WizardDescriptor<T extends { id: string; status: string }, P, C
 
   // ── Data layer (mirrors lib/data/<type>.ts) ──
   get: (id: string) => Promise<T | null>;
+  list: (projectId?: string) => Promise<T[]>;
   create: (args: C) => Promise<T>;
   update: (id: string, patch: P) => Promise<void>;
   remove: (id: string) => Promise<void>;
   detailKey: (id: string | null | undefined) => QueryKey;
   listKey: () => QueryKey;
   getProjectId: (m: T) => string | null | undefined;
+  /** When set, used as the row's createdAt for the inspections list sort/date. */
+  getCreatedAt?: (m: T) => string;
 
   /** Build create args from the chosen project + inspector + spec form values. */
   buildCreateArgs: (input: {

@@ -17,6 +17,7 @@ import {
 } from '@/lib/types/excavator';
 import {
   getExcavatorInspection,
+  listExcavatorInspections,
   createExcavatorInspection,
   updateExcavatorInspection,
   deleteExcavatorInspection,
@@ -56,6 +57,7 @@ export const excavatorDescriptor: WizardDescriptor<ExcavatorInspection, Excavato
   itemLabel: 'პუნქტი',
 
   get: getExcavatorInspection,
+  list: listExcavatorInspections,
   create: createExcavatorInspection,
   update: updateExcavatorInspection,
   remove: deleteExcavatorInspection,

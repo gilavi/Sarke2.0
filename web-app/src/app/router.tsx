@@ -186,6 +186,18 @@ export function AppRouter() {
             <Route path={routePattern.safetyNetNew} element={<StructuredActPage category="safety_net_inspection" />} />
             <Route path={routePattern.safetyNetDetail} element={<StructuredActPage category="safety_net_inspection" />} />
 
+            <Route path={routePattern.mobileLadderNew} element={<StructuredActPage category="mobile_ladder_inspection" />} />
+            <Route path={routePattern.mobileLadderDetail} element={<StructuredActPage category="mobile_ladder_inspection" />} />
+
+            <Route path={routePattern.forkliftNew} element={<StructuredActPage category="forklift_inspection" />} />
+            <Route path={routePattern.forkliftDetail} element={<StructuredActPage category="forklift_inspection" />} />
+
+            <Route path={routePattern.liftingAccessoriesNew} element={<StructuredActPage category="lifting_accessories_inspection" />} />
+            <Route path={routePattern.liftingAccessoriesDetail} element={<StructuredActPage category="lifting_accessories_inspection" />} />
+
+            <Route path={routePattern.fallProtectionNew} element={<StructuredActPage category="fall_protection_inspection" />} />
+            <Route path={routePattern.fallProtectionDetail} element={<StructuredActPage category="fall_protection_inspection" />} />
+
             <Route path={routePattern.generalEquipmentNew} element={<StructuredActPage category="general_equipment" />} />
             <Route path="/general-equipment/draft" element={<Navigate to={routes.inspections.list()} replace />} />
             <Route path={routePattern.generalEquipmentDetail} element={<StructuredActPage category="general_equipment" />} />
@@ -226,6 +238,10 @@ export function AppRouter() {
             <Route path={routePattern.inspectionPrint} element={<InspectionPrint />} />
             <Route path={routePattern.bobcatPrint} element={<StructuredInspectionPrint category="bobcat" />} />
             <Route path={routePattern.safetyNetPrint} element={<StructuredInspectionPrint category="safety_net_inspection" />} />
+            <Route path={routePattern.mobileLadderPrint} element={<StructuredInspectionPrint category="mobile_ladder_inspection" />} />
+            <Route path={routePattern.forkliftPrint} element={<StructuredInspectionPrint category="forklift_inspection" />} />
+            <Route path={routePattern.liftingAccessoriesPrint} element={<StructuredInspectionPrint category="lifting_accessories_inspection" />} />
+            <Route path={routePattern.fallProtectionPrint} element={<StructuredInspectionPrint category="fall_protection_inspection" />} />
             <Route path={routePattern.generalEquipmentPrint} element={<StructuredInspectionPrint category="general_equipment" />} />
             <Route path={routePattern.excavatorPrint} element={<StructuredInspectionPrint category="excavator" />} />
             <Route path={routePattern.cargoPlatformPrint} element={<StructuredInspectionPrint category="cargo_platform" />} />

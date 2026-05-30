@@ -79,3 +79,27 @@ export function getStructuredAct(category: string | null | undefined): Structure
   if (!category) return null;
   return STRUCTURED_ACTS[category] ?? null;
 }
+
+/** A structured-act row flattened for the inspections list (data-driven). */
+export interface StructuredRow {
+  id: string;
+  label: string;
+  category: string;
+  projectId: string;
+  status: string;
+  date: string;
+  href: string;
+}
+
+/** Map one act's rows to the flat list shape used by the Inspections page. */
+export function actRows(act: StructuredAct, items: Array<{ id: string; status: string; createdAt?: string }>): StructuredRow[] {
+  return items.map((i) => ({
+    id: i.id,
+    label: act.menuLabel,
+    category: act.category,
+    projectId: (act.descriptor.getProjectId(i as never) ?? '') as string,
+    status: i.status,
+    date: act.descriptor.getCreatedAt ? act.descriptor.getCreatedAt(i as never) : (i.createdAt ?? ''),
+    href: act.detail(i.id),
+  }));
+}

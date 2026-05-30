@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
+import { useQuery, useQueries, useQueryClient, useMutation } from '@tanstack/react-query';
 import { Pencil, Trash2 } from 'lucide-react';
 import { Modal } from '@mantine/core';
 import { Button } from '@/components/ui/button';
@@ -13,40 +13,45 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { listInspections, deleteInspection } from '@/lib/data/inspections';
-import { listBobcatInspections, deleteBobcatInspection } from '@/lib/data/bobcat';
-import { listGeneralEquipmentInspections, deleteGeneralEquipmentInspection } from '@/lib/data/generalEquipment';
-import { listExcavatorInspections, deleteExcavatorInspection } from '@/lib/data/excavator';
-import { listCargoPlatformInspections, deleteCargoPlatformInspection } from '@/lib/data/cargoPlatform';
-import { listSafetyNetInspections, deleteSafetyNetInspection } from '@/lib/data/safetyNet';
 import { listProjects } from '@/lib/data/projects';
 import InspectionWizard from '@/components/InspectionWizard';
 import { harnessWizardPreset } from '@/components/inspections/harnessPreset';
-import { useInspectionName, equipmentInspectionName } from '@/lib/documentNames';
-import { projectKeys, inspectionKeys, bobcatKeys, excavatorKeys, generalEquipmentKeys, cargoPlatformKeys, safetyNetKeys } from '@/app/queryKeys';
-import { routes } from '@/app/routes';
+import { useInspectionName } from '@/lib/documentNames';
+import { projectKeys, inspectionKeys } from '@/app/queryKeys';
+import {
+  STRUCTURED_ACT_LIST,
+  getStructuredAct,
+  actRows,
+  type StructuredRow,
+} from '@/features/inspections/structured/acts';
 
-const TYPE_LABEL: Record<string, string> = {
-  harness:            '🦺 დამც. ქამარი',
-  xaracho:            '🏗️ ფასადის ხარაჩო',
-  mobile_scaffold:    '🏗️ მობ. ხარაჩო',
+/* Generic (inspections-table) types still handled by the legacy InspectionWizard.
+   Structured acts (bobcat … fall-protection) are data-driven from the registry. */
+const GENERIC_TYPE_LABEL: Record<string, string> = {
+  harness: '🦺 დამც. ქამარი',
+  xaracho: '🏗️ ფასადის ხარაჩო',
+  mobile_scaffold: '🏗️ მობ. ხარაჩო',
   mobile_scaffold_n3: '🏗️ მობ. ხარაჩო N3',
-  bobcat:             '🚜 ციცხვიანი',
-  excavator:          '🚧 ექსკავატორი',
-  general:            '⚙️ ტექ. აღჭურვილობა',
-  cargo_platform:     '📦 ტვირთის პლატფორმა',
-  safety_net:         '🕸️ უსაფრთხ. ბადე',
 };
 
-const TYPE_AVATAR: Record<string, { emoji: string; bg: string }> = {
-  xaracho:            { emoji: '🏗️', bg: 'bg-yellow-50 dark:bg-yellow-950/20' },
-  mobile_scaffold:    { emoji: '🏗️', bg: 'bg-yellow-50 dark:bg-yellow-950/20' },
+const GENERIC_TYPE_AVATAR: Record<string, { emoji: string; bg: string }> = {
+  xaracho: { emoji: '🏗️', bg: 'bg-yellow-50 dark:bg-yellow-950/20' },
+  mobile_scaffold: { emoji: '🏗️', bg: 'bg-yellow-50 dark:bg-yellow-950/20' },
   mobile_scaffold_n3: { emoji: '🏗️', bg: 'bg-yellow-50 dark:bg-yellow-950/20' },
-  harness:            { emoji: '🦺', bg: 'bg-blue-50 dark:bg-blue-950/20' },
-  bobcat:             { emoji: '🚜', bg: 'bg-amber-50 dark:bg-amber-950/20' },
-  excavator:          { emoji: '🚧', bg: 'bg-orange-50 dark:bg-orange-950/20' },
-  general:            { emoji: '⚙️', bg: 'bg-emerald-50 dark:bg-emerald-950/20' },
-  cargo_platform:     { emoji: '📦', bg: 'bg-sky-50 dark:bg-sky-950/20' },
-  safety_net:         { emoji: '🕸️', bg: 'bg-indigo-50 dark:bg-indigo-950/20' },
+  harness: { emoji: '🦺', bg: 'bg-blue-50 dark:bg-blue-950/20' },
+};
+
+/* Per-category emoji for the structured-act rows (visual only). */
+const STRUCTURED_AVATAR: Record<string, string> = {
+  bobcat: '🚜',
+  excavator: '🚧',
+  general_equipment: '⚙️',
+  cargo_platform: '📦',
+  safety_net_inspection: '🕸️',
+  mobile_ladder_inspection: '🪜',
+  fall_protection_inspection: '🛡️',
+  forklift_inspection: '🏭',
+  lifting_accessories_inspection: '🔗',
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -57,10 +62,7 @@ const STATUS_LABEL: Record<string, string> = {
 
 const containerVariants = {
   hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.04 },
-  },
+  visible: { opacity: 1, transition: { staggerChildren: 0.04 } },
 };
 
 const itemVariants = {
@@ -76,6 +78,8 @@ interface Row {
   status: string;
   date: string;
   href: string;
+  emoji: string;
+  badge: string;
 }
 
 function genericInspectionType(template: { category: string | null }[] | null | undefined): string {
@@ -96,88 +100,90 @@ export default function Inspections() {
   const [harnessOpen, setHarnessOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Row | null>(null);
 
-  const { data: genericInspections, isLoading: l1 } = useQuery({ queryKey: inspectionKeys.lists(), queryFn: () => listInspections() });
-  const { data: bobcats, isLoading: l2 } = useQuery({ queryKey: bobcatKeys.lists(), queryFn: () => listBobcatInspections() });
-  const { data: generalEq, isLoading: l3 } = useQuery({ queryKey: generalEquipmentKeys.lists(), queryFn: () => listGeneralEquipmentInspections() });
-  const { data: excavators, isLoading: l4 } = useQuery({ queryKey: excavatorKeys.lists(), queryFn: () => listExcavatorInspections() });
-  const { data: cargoPlatforms, isLoading: l5 } = useQuery({ queryKey: cargoPlatformKeys.lists(), queryFn: () => listCargoPlatformInspections() });
-  const { data: safetyNets, isLoading: l6 } = useQuery({ queryKey: safetyNetKeys.lists(), queryFn: () => listSafetyNetInspections() });
+  const { data: genericInspections, isLoading: genericLoading } = useQuery({
+    queryKey: inspectionKeys.lists(),
+    queryFn: () => listInspections(),
+  });
   const { data: projectList } = useQuery({ queryKey: projectKeys.lists(), queryFn: listProjects });
+
+  // One query per structured act — data-driven from the registry so adding an act
+  // lights it up here automatically (no per-type wiring).
+  const structuredQueries = useQueries({
+    queries: STRUCTURED_ACT_LIST.map((act) => ({
+      queryKey: act.descriptor.listKey(),
+      queryFn: () => act.descriptor.list(),
+    })),
+  });
 
   const projects = projectList ? Object.fromEntries(projectList.map((p) => [p.id, p])) : {};
   const inspectionName = useInspectionName();
   const [filter, setFilter] = useState<string>(projectParam);
 
-  const isLoading = l1 || l2 || l3 || l4 || l5 || l6;
+  const structuredLoading = structuredQueries.some((q) => q.isLoading);
+  const isLoading = genericLoading || structuredLoading;
 
-  const delInspection = useMutation({ mutationFn: deleteInspection, onSuccess: () => qc.invalidateQueries({ queryKey: inspectionKeys.lists() }) });
-  const delBobcat = useMutation({ mutationFn: deleteBobcatInspection, onSuccess: () => qc.invalidateQueries({ queryKey: bobcatKeys.lists() }) });
-  const delExcavator = useMutation({ mutationFn: deleteExcavatorInspection, onSuccess: () => qc.invalidateQueries({ queryKey: excavatorKeys.lists() }) });
-  const delGeneral = useMutation({ mutationFn: deleteGeneralEquipmentInspection, onSuccess: () => qc.invalidateQueries({ queryKey: generalEquipmentKeys.lists() }) });
-  const delCargo = useMutation({ mutationFn: deleteCargoPlatformInspection, onSuccess: () => qc.invalidateQueries({ queryKey: cargoPlatformKeys.lists() }) });
-  const delSafetyNet = useMutation({ mutationFn: deleteSafetyNetInspection, onSuccess: () => qc.invalidateQueries({ queryKey: safetyNetKeys.lists() }) });
+  const delInspection = useMutation({
+    mutationFn: deleteInspection,
+    onSuccess: () => qc.invalidateQueries({ queryKey: inspectionKeys.lists() }),
+  });
+  const delStructured = useMutation({
+    mutationFn: async (row: Row) => {
+      const act = getStructuredAct(row.type);
+      if (act) await act.descriptor.remove(row.id);
+    },
+    onSuccess: (_d, row) => {
+      const act = getStructuredAct(row.type);
+      if (act) qc.invalidateQueries({ queryKey: act.descriptor.listKey() });
+    },
+  });
 
   function confirmDelete() {
     if (!pendingDelete) return;
-    // harness + scaffold types all live in the inspections table
     if (['harness', 'xaracho', 'mobile_scaffold', 'mobile_scaffold_n3'].includes(pendingDelete.type)) {
       delInspection.mutate(pendingDelete.id);
-    } else if (pendingDelete.type === 'bobcat') {
-      delBobcat.mutate(pendingDelete.id);
-    } else if (pendingDelete.type === 'excavator') {
-      delExcavator.mutate(pendingDelete.id);
-    } else if (pendingDelete.type === 'general') {
-      delGeneral.mutate(pendingDelete.id);
-    } else if (pendingDelete.type === 'cargo_platform') {
-      delCargo.mutate(pendingDelete.id);
-    } else if (pendingDelete.type === 'safety_net') {
-      delSafetyNet.mutate(pendingDelete.id);
+    } else {
+      delStructured.mutate(pendingDelete);
     }
     setPendingDelete(null);
   }
 
-  const isDeleting = delInspection.isPending || delBobcat.isPending || delExcavator.isPending || delGeneral.isPending || delCargo.isPending || delSafetyNet.isPending;
+  const isDeleting = delInspection.isPending || delStructured.isPending;
 
-  const allRows: Row[] = [
-    ...(genericInspections ?? []).map((i): Row => {
-      const type = genericInspectionType(i.template);
-      return {
-        id: i.id, label: inspectionName(i.template_id),
-        projectId: i.project_id,
-        type,
-        status: i.status,
-        date: i.created_at ?? '',
-        href: type === 'harness' ? `/harness/${i.id}` : `/inspections/${i.id}`,
-      };
-    }),
-    ...(bobcats ?? []).map((i): Row => ({
-      id: i.id, label: equipmentInspectionName('bobcat'),
-      projectId: i.projectId, type: 'bobcat', status: i.status,
-      date: i.createdAt, href: `/bobcat/${i.id}`,
-    })),
-    ...(excavators ?? []).map((i): Row => ({
-      id: i.id, label: equipmentInspectionName('excavator'),
-      projectId: i.projectId, type: 'excavator', status: i.status,
-      date: i.createdAt, href: `/excavator/${i.id}`,
-    })),
-    ...(generalEq ?? []).map((i): Row => ({
-      id: i.id, label: equipmentInspectionName('general'),
-      projectId: i.projectId, type: 'general', status: i.status,
-      date: i.createdAt, href: `/general-equipment/${i.id}`,
-    })),
-    ...(cargoPlatforms ?? []).map((i): Row => ({
-      id: i.id, label: equipmentInspectionName('cargo_platform'),
-      projectId: i.projectId, type: 'cargo_platform', status: i.status,
-      date: i.createdAt, href: `/cargo-platform/${i.id}`,
-    })),
-    ...(safetyNets ?? []).map((i): Row => ({
-      id: i.id, label: 'უსაფრთხოების ბადის შემოწმების აქტი',
-      projectId: i.projectId, type: 'safety_net', status: i.status,
-      date: i.createdAt, href: routes.safetyNet.detail(i.id),
-    })),
-  ]
+  const genericRows: Row[] = (genericInspections ?? []).map((i): Row => {
+    const type = genericInspectionType(i.template);
+    return {
+      id: i.id,
+      label: inspectionName(i.template_id),
+      projectId: i.project_id,
+      type,
+      status: i.status,
+      date: i.created_at ?? '',
+      href: type === 'harness' ? `/harness/${i.id}` : `/inspections/${i.id}`,
+      emoji: GENERIC_TYPE_AVATAR[type]?.emoji ?? '📋',
+      badge: GENERIC_TYPE_LABEL[type] ?? type,
+    };
+  });
+
+  const structuredRows: Row[] = STRUCTURED_ACT_LIST.flatMap((act, idx) => {
+    const data = (structuredQueries[idx]?.data ?? []) as Array<{ id: string; status: string; createdAt?: string }>;
+    return actRows(act, data).map((r: StructuredRow): Row => ({
+      id: r.id,
+      label: r.label,
+      projectId: r.projectId,
+      type: r.category,
+      status: r.status,
+      date: r.date,
+      href: r.href,
+      emoji: STRUCTURED_AVATAR[r.category] ?? '📋',
+      badge: r.label,
+    }));
+  });
+
+  const allRows: Row[] = [...genericRows, ...structuredRows]
     .filter((r) => !filter || r.projectId === filter)
     .sort((a, b) => b.date.localeCompare(a.date));
+
+  const newQuery = filter ? `?project=${filter}` : '';
 
   return (
     <div className="space-y-8">
@@ -195,28 +201,20 @@ export default function Inspections() {
           <DropdownMenuTrigger asChild>
             <Button>+ ახალი შემოწმება</Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align="end" className="max-h-[70vh] overflow-y-auto">
+            {/* Generic (inspections-table) acts via the legacy questionnaire wizard */}
             <DropdownMenuItem onSelect={() => { setNewInspectionCategory('xaracho'); setNewInspectionOpen(true); }}>
               ფასადის ხარაჩოს შემოწმების აქტი
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => setHarnessOpen(true)}>
               დამცავი ქამრების შემოწმების აქტი
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => navigate(`/bobcat/new${filter ? `?project=${filter}` : ''}`)}>
-              ციცხვიანი დამტვირთველის შემოწმების აქტი
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => navigate(`/excavator/new${filter ? `?project=${filter}` : ''}`)}>
-              ექსკავატორის ტექნიკური შემოწმების აქტი
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => navigate(`/general-equipment/new${filter ? `?project=${filter}` : ''}`)}>
-              ტექნიკური აღჭურვილობის შემოწმების აქტი
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => navigate(`/cargo-platform/new${filter ? `?project=${filter}` : ''}`)}>
-              ტვირთის მიმღები პლატფორმის შემოწმების აქტი
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => navigate(`${routes.safetyNet.new}${filter ? `?project=${filter}` : ''}`)}>
-              უსაფრთხოების ბადის შემოწმების აქტი
-            </DropdownMenuItem>
+            {/* Structured acts — data-driven from the registry */}
+            {STRUCTURED_ACT_LIST.map((act) => (
+              <DropdownMenuItem key={act.category} onSelect={() => navigate(`${act.newRoute}${newQuery}`)}>
+                {act.menuLabel}
+              </DropdownMenuItem>
+            ))}
           </DropdownMenuContent>
         </DropdownMenu>
       </header>
@@ -249,7 +247,7 @@ export default function Inspections() {
             {filter ? 'ამ პროექტში აქტები ვერ მოიძებნა.' : 'შემოწმების აქტები ჯერ არ გაქვთ.'}
           </p>
           {!filter && (
-            <Button size="sm" onClick={() => setNewInspectionOpen(true)}>+ ახალი აქტი</Button>
+            <Button size="sm" onClick={() => setHarnessOpen(true)}>+ ახალი აქტი</Button>
           )}
         </div>
       )}
@@ -261,27 +259,26 @@ export default function Inspections() {
         <motion.div initial="hidden" animate="visible" variants={containerVariants} className="divide-y divide-neutral-100 rounded-xl border border-neutral-200 bg-white dark:divide-neutral-800 dark:border-neutral-700 dark:bg-neutral-900">
           {allRows.map((row) => (
             <motion.div
-              key={row.id}
+              key={`${row.type}:${row.id}`}
               variants={itemVariants}
               className="group flex items-center justify-between gap-3 px-6 py-4 hover:bg-neutral-50 transition-colors dark:hover:bg-neutral-800/60"
             >
               <Link to={row.href} className="flex flex-1 items-center gap-3 min-w-0">
-                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${TYPE_AVATAR[row.type]?.bg ?? 'bg-neutral-100 dark:bg-neutral-800'}`}>
-                  <span className="text-xl leading-none">{TYPE_AVATAR[row.type]?.emoji ?? '📋'}</span>
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-neutral-100 dark:bg-neutral-800">
+                  <span className="text-xl leading-none">{row.emoji}</span>
                 </div>
                 <div className="min-w-0">
                   <p className="truncate font-medium text-neutral-900 dark:text-neutral-100">{row.label}</p>
                   <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
                     {projects[row.projectId]?.name ?? '—'}
                     {' · '}
-                    <span className="font-mono text-xs tabular-nums text-neutral-400 dark:text-neutral-500">{new Date(row.date).toLocaleDateString('ka-GE')}</span>
+                    <span className="font-mono text-xs tabular-nums text-neutral-400 dark:text-neutral-500">
+                      {row.date ? new Date(row.date).toLocaleDateString('ka-GE') : '—'}
+                    </span>
                   </p>
                 </div>
               </Link>
               <div className="flex shrink-0 items-center gap-2">
-                <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300">
-                  {TYPE_LABEL[row.type]}
-                </span>
                 <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                   row.status === 'completed'
                     ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400'

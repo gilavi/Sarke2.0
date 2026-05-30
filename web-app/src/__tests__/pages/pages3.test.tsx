@@ -99,10 +99,6 @@ import { listTemplates } from '@/lib/data/templates';
 import Calendar from '@/pages/Calendar';
 import NewIncident from '@/pages/NewIncident';
 import NewOrder from '@/pages/NewOrder';
-import NewBobcatInspection from '@/pages/NewBobcatInspection';
-import NewExcavatorInspection from '@/pages/NewExcavatorInspection';
-import NewGeneralEquipmentInspection from '@/pages/NewGeneralEquipmentInspection';
-import NewCargoPlatformInspection from '@/pages/NewCargoPlatformInspection';
 import NewInspection from '@/pages/NewInspection';
 import InspectionDetail from '@/pages/InspectionDetail';
 import ReportDetail from '@/pages/ReportDetail';
@@ -148,33 +144,9 @@ describe('NewOrder', () => {
   });
 });
 
-describe('NewBobcatInspection', () => {
-  it('renders the bobcat creation form', () => {
-    renderPage(<NewBobcatInspection />, '/bobcat/new');
-    expect(screen.getByText('ციცხვიანი დამტვირთველი')).toBeInTheDocument();
-  });
-});
-
-describe('NewExcavatorInspection', () => {
-  it('renders the excavator creation form', () => {
-    renderPage(<NewExcavatorInspection />, '/excavator/new');
-    expect(screen.getByText('ექსკავატორი')).toBeInTheDocument();
-  });
-});
-
-describe('NewGeneralEquipmentInspection', () => {
-  it('renders the general-equipment creation form', () => {
-    renderPage(<NewGeneralEquipmentInspection />, '/general-equipment/new');
-    expect(screen.getByText('ტექნიკური აღჭურვილობა')).toBeInTheDocument();
-  });
-});
-
-describe('NewCargoPlatformInspection', () => {
-  it('renders the cargo-platform creation form', () => {
-    renderPage(<NewCargoPlatformInspection />, '/cargo-platform/new');
-    expect(screen.getByText('ტვირთის მიმღები პლატფორმა')).toBeInTheDocument();
-  });
-});
+// The per-type New*Inspection pages were removed when all equipment acts moved to
+// the unified structured engine (StructuredActPage); their create flow is now the
+// structured wizard, covered by its own tests.
 
 describe('NewInspection', () => {
   it('renders the generic-inspection wizard', () => {

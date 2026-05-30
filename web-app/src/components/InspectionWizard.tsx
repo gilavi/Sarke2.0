@@ -604,7 +604,7 @@ export default function InspectionWizard({
             setDepartment={setDepartment}
             inspectorName={inspectorName}
             setInspectorName={setInspectorName}
-            lockTemplate={!!preset}
+            lockTemplate={!!preset || !!defaultCategory}
             projects={projects ?? []}
             templates={templates ?? []}
           />

@@ -17,6 +17,7 @@ import {
 } from '@/lib/types/bobcat';
 import {
   getBobcatInspection,
+  listBobcatInspections,
   createBobcatInspection,
   updateBobcatInspection,
   deleteBobcatInspection,
@@ -55,6 +56,7 @@ export const bobcatDescriptor: WizardDescriptor<BobcatInspection, BobcatPatch, C
   itemLabel: 'პუნქტი',
 
   get: getBobcatInspection,
+  list: listBobcatInspections,
   create: createBobcatInspection,
   update: updateBobcatInspection,
   remove: deleteBobcatInspection,

@@ -133,9 +133,23 @@ export default function InspectionDetail() {
   const [wizardOpen, setWizardOpen] = useState(false);
   const userClosedWizard = useRef(false);
 
+  /* If we arrived right after completing the create wizard (router state carries
+     the success payload), never auto-open the wizard — otherwise a stale list-cache
+     copy still reading `draft` would re-open it on the last step instead of showing
+     the completed detail. Captured once at mount so it survives the modal closing. */
+  const arrivedFromSuccessRef = useRef(
+    !!(location.state as { inspectionSuccess?: SuccessModalData } | null)?.inspectionSuccess,
+  );
+
   /* Auto-open wizard for draft inspections */
   useEffect(() => {
-    if (inspection?.status === 'draft' && !wizardOpen && !justCompleted && !userClosedWizard.current) {
+    if (
+      inspection?.status === 'draft' &&
+      !wizardOpen &&
+      !justCompleted &&
+      !userClosedWizard.current &&
+      !arrivedFromSuccessRef.current
+    ) {
       setWizardOpen(true);
     }
   }, [inspection?.status, wizardOpen, justCompleted]);

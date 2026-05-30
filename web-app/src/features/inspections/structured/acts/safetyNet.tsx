@@ -18,6 +18,7 @@ import {
 } from '@/lib/types/safetyNet';
 import {
   getSafetyNetInspection,
+  listSafetyNetInspections,
   createSafetyNetInspection,
   updateSafetyNetInspection,
   deleteSafetyNetInspection,
@@ -50,6 +51,7 @@ export const safetyNetDescriptor: WizardDescriptor<SafetyNetInspection, SafetyNe
   itemLabel: 'პუნქტი',
 
   get: getSafetyNetInspection,
+  list: listSafetyNetInspections,
   create: createSafetyNetInspection,
   update: updateSafetyNetInspection,
   remove: deleteSafetyNetInspection,

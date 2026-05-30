@@ -19,6 +19,10 @@ const excavator = '/excavator';
 const generalEquipment = '/general-equipment';
 const cargoPlatform = '/cargo-platform';
 const safetyNet = '/safety-net';
+const mobileLadder = '/mobile-ladder';
+const forklift = '/forklift';
+const liftingAccessories = '/lifting-accessories';
+const fallProtection = '/fall-protection';
 const harness = '/harness';
 const order = '/orders';
 const briefing = '/briefings';
@@ -84,6 +88,18 @@ export const routePattern = {
   safetyNetNew: `${safetyNet}/new`,
   safetyNetDetail: `${safetyNet}/:id`,
   safetyNetPrint: `${safetyNet}/:id/print`,
+  mobileLadderNew: `${mobileLadder}/new`,
+  mobileLadderDetail: `${mobileLadder}/:id`,
+  mobileLadderPrint: `${mobileLadder}/:id/print`,
+  forkliftNew: `${forklift}/new`,
+  forkliftDetail: `${forklift}/:id`,
+  forkliftPrint: `${forklift}/:id/print`,
+  liftingAccessoriesNew: `${liftingAccessories}/new`,
+  liftingAccessoriesDetail: `${liftingAccessories}/:id`,
+  liftingAccessoriesPrint: `${liftingAccessories}/:id/print`,
+  fallProtectionNew: `${fallProtection}/new`,
+  fallProtectionDetail: `${fallProtection}/:id`,
+  fallProtectionPrint: `${fallProtection}/:id/print`,
   harnessDetail: `${harness}/:id`,
 
   // Orders
@@ -175,6 +191,26 @@ export const routes = {
     new: `${safetyNet}/new`,
     detail: (id: string) => `${safetyNet}/${id}`,
     print: (id: string) => `${safetyNet}/${id}/print`,
+  },
+  mobileLadder: {
+    new: `${mobileLadder}/new`,
+    detail: (id: string) => `${mobileLadder}/${id}`,
+    print: (id: string) => `${mobileLadder}/${id}/print`,
+  },
+  forklift: {
+    new: `${forklift}/new`,
+    detail: (id: string) => `${forklift}/${id}`,
+    print: (id: string) => `${forklift}/${id}/print`,
+  },
+  liftingAccessories: {
+    new: `${liftingAccessories}/new`,
+    detail: (id: string) => `${liftingAccessories}/${id}`,
+    print: (id: string) => `${liftingAccessories}/${id}/print`,
+  },
+  fallProtection: {
+    new: `${fallProtection}/new`,
+    detail: (id: string) => `${fallProtection}/${id}`,
+    print: (id: string) => `${fallProtection}/${id}/print`,
   },
   harness: {
     detail: (id: string) => `${harness}/${id}`,

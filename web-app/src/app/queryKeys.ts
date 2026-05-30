@@ -71,6 +71,30 @@ export const safetyNetKeys = {
   detail: (id: string | null | undefined) => ['safetyNetInspection', id] as const,
 } as const;
 
+export const mobileLadderKeys = {
+  lists: () => ['mobileLadderInspections'] as const,
+  list: (projectId?: string | null) => listKey('mobileLadderInspections', projectId),
+  detail: (id: string | null | undefined) => ['mobileLadderInspection', id] as const,
+} as const;
+
+export const forkliftKeys = {
+  lists: () => ['forkliftInspections'] as const,
+  list: (projectId?: string | null) => listKey('forkliftInspections', projectId),
+  detail: (id: string | null | undefined) => ['forkliftInspection', id] as const,
+} as const;
+
+export const liftingAccessoriesKeys = {
+  lists: () => ['liftingAccessoriesInspections'] as const,
+  list: (projectId?: string | null) => listKey('liftingAccessoriesInspections', projectId),
+  detail: (id: string | null | undefined) => ['liftingAccessoriesInspection', id] as const,
+} as const;
+
+export const fallProtectionKeys = {
+  lists: () => ['fallProtectionInspections'] as const,
+  list: (projectId?: string | null) => listKey('fallProtectionInspections', projectId),
+  detail: (id: string | null | undefined) => ['fallProtectionInspection', id] as const,
+} as const;
+
 export const briefingKeys = {
   lists: () => ['briefings'] as const,
   list: (projectId?: string | null) => listKey('briefings', projectId),

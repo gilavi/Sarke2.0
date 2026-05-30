@@ -7,6 +7,7 @@
  */
 import {
   getGeneralEquipmentInspection,
+  listGeneralEquipmentInspections,
   createGeneralEquipmentInspection,
   updateGeneralEquipmentInspection,
   deleteGeneralEquipmentInspection,
@@ -29,6 +30,7 @@ export const generalEquipmentDescriptor: WizardDescriptor<
   itemLabel: 'ერთეული',
 
   get: getGeneralEquipmentInspection,
+  list: listGeneralEquipmentInspections,
   create: createGeneralEquipmentInspection,
   update: updateGeneralEquipmentInspection,
   remove: deleteGeneralEquipmentInspection,
