@@ -28,25 +28,18 @@ const EditProject = lazy(() => import('@/pages/EditProject'));
 const NewIncident = lazy(() => import('@/pages/NewIncident'));
 const NewBriefing = lazy(() => import('@/pages/NewBriefing'));
 const NewReport = lazy(() => import('@/pages/NewReport'));
-const NewBobcatInspection = lazy(() => import('@/pages/NewBobcatInspection'));
-const BobcatInspectionDetail = lazy(() => import('@/features/inspections/equipment/BobcatDetail'));
-const NewGeneralEquipmentInspection = lazy(() => import('@/pages/NewGeneralEquipmentInspection'));
-const GeneralEquipmentInspectionDetail = lazy(() => import('@/features/inspections/equipment/GeneralEquipmentDetail'));
-const NewExcavatorInspection = lazy(() => import('@/pages/NewExcavatorInspection'));
-const ExcavatorInspectionDetail = lazy(() => import('@/features/inspections/equipment/ExcavatorDetail'));
-const NewCargoPlatformInspection = lazy(() => import('@/pages/NewCargoPlatformInspection'));
-const CargoPlatformInspectionDetail = lazy(() => import('@/features/inspections/equipment/CargoPlatformDetail'));
+// All structured equipment acts (bobcat, excavator, general-equipment,
+// cargo-platform, safety-net) run through ONE unified engine: StructuredActPage
+// for create/edit/result, StructuredInspectionPrint for the descriptor-driven PDF.
+const StructuredActPage = lazy(() => import('@/features/inspections/structured/StructuredActPage'));
+const StructuredInspectionPrint = lazy(() => import('@/pages/print/StructuredInspectionPrint'));
 const HarnessInspectionDetail = lazy(() => import('@/pages/HarnessInspectionDetail'));
-const CargoPlatformPrint = lazy(() => import('@/pages/print/CargoPlatformPrint'));
 const NewOrder = lazy(() => import('@/pages/NewOrder'));
 const OrderDetail = lazy(() => import('@/pages/OrderDetail'));
 const IncidentPrint = lazy(() => import('@/pages/print/IncidentPrint'));
 const BriefingPrint = lazy(() => import('@/pages/print/BriefingPrint'));
 const ReportPrint = lazy(() => import('@/pages/print/ReportPrint'));
 const InspectionPrint = lazy(() => import('@/pages/print/InspectionPrint'));
-const BobcatPrint = lazy(() => import('@/pages/print/BobcatPrint'));
-const GeneralEquipmentPrint = lazy(() => import('@/pages/print/GeneralEquipmentPrint'));
-const ExcavatorPrint = lazy(() => import('@/pages/print/ExcavatorPrint'));
 
 const Subscribe = lazy(() => import('@/pages/Subscribe'));
 const SubscribeSuccess = lazy(() => import('@/pages/SubscribeSuccess'));
@@ -186,21 +179,24 @@ export function AppRouter() {
             <Route path="/inspections/draft" element={<Navigate to={routes.inspections.list()} replace />} />
             <Route path={routePattern.inspectionDetail} element={<InspectionDetail />} />
 
-            <Route path={routePattern.bobcatNew} element={<NewBobcatInspection />} />
+            <Route path={routePattern.bobcatNew} element={<StructuredActPage category="bobcat" />} />
             <Route path="/bobcat/draft" element={<Navigate to={routes.inspections.list()} replace />} />
-            <Route path={routePattern.bobcatDetail} element={<BobcatInspectionDetail />} />
+            <Route path={routePattern.bobcatDetail} element={<StructuredActPage category="bobcat" />} />
 
-            <Route path={routePattern.generalEquipmentNew} element={<NewGeneralEquipmentInspection />} />
+            <Route path={routePattern.safetyNetNew} element={<StructuredActPage category="safety_net_inspection" />} />
+            <Route path={routePattern.safetyNetDetail} element={<StructuredActPage category="safety_net_inspection" />} />
+
+            <Route path={routePattern.generalEquipmentNew} element={<StructuredActPage category="general_equipment" />} />
             <Route path="/general-equipment/draft" element={<Navigate to={routes.inspections.list()} replace />} />
-            <Route path={routePattern.generalEquipmentDetail} element={<GeneralEquipmentInspectionDetail />} />
+            <Route path={routePattern.generalEquipmentDetail} element={<StructuredActPage category="general_equipment" />} />
 
-            <Route path={routePattern.excavatorNew} element={<NewExcavatorInspection />} />
+            <Route path={routePattern.excavatorNew} element={<StructuredActPage category="excavator" />} />
             <Route path="/excavator/draft" element={<Navigate to={routes.inspections.list()} replace />} />
-            <Route path={routePattern.excavatorDetail} element={<ExcavatorInspectionDetail />} />
+            <Route path={routePattern.excavatorDetail} element={<StructuredActPage category="excavator" />} />
 
-            <Route path={routePattern.cargoPlatformNew} element={<NewCargoPlatformInspection />} />
+            <Route path={routePattern.cargoPlatformNew} element={<StructuredActPage category="cargo_platform" />} />
             <Route path="/cargo-platform/draft" element={<Navigate to={routes.inspections.list()} replace />} />
-            <Route path={routePattern.cargoPlatformDetail} element={<CargoPlatformInspectionDetail />} />
+            <Route path={routePattern.cargoPlatformDetail} element={<StructuredActPage category="cargo_platform" />} />
 
             <Route path="/harness/draft" element={<Navigate to={routes.inspections.list()} replace />} />
             <Route path={routePattern.harnessDetail} element={<HarnessInspectionDetail />} />
@@ -228,10 +224,11 @@ export function AppRouter() {
             <Route path={routePattern.briefingPrint} element={<BriefingPrint />} />
             <Route path={routePattern.reportPrint} element={<ReportPrint />} />
             <Route path={routePattern.inspectionPrint} element={<InspectionPrint />} />
-            <Route path={routePattern.bobcatPrint} element={<BobcatPrint />} />
-            <Route path={routePattern.generalEquipmentPrint} element={<GeneralEquipmentPrint />} />
-            <Route path={routePattern.excavatorPrint} element={<ExcavatorPrint />} />
-            <Route path={routePattern.cargoPlatformPrint} element={<CargoPlatformPrint />} />
+            <Route path={routePattern.bobcatPrint} element={<StructuredInspectionPrint category="bobcat" />} />
+            <Route path={routePattern.safetyNetPrint} element={<StructuredInspectionPrint category="safety_net_inspection" />} />
+            <Route path={routePattern.generalEquipmentPrint} element={<StructuredInspectionPrint category="general_equipment" />} />
+            <Route path={routePattern.excavatorPrint} element={<StructuredInspectionPrint category="excavator" />} />
+            <Route path={routePattern.cargoPlatformPrint} element={<StructuredInspectionPrint category="cargo_platform" />} />
           </Route>
 
           <Route path="*" element={<NotFound />} />

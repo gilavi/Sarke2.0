@@ -18,6 +18,7 @@ const bobcat = '/bobcat';
 const excavator = '/excavator';
 const generalEquipment = '/general-equipment';
 const cargoPlatform = '/cargo-platform';
+const safetyNet = '/safety-net';
 const harness = '/harness';
 const order = '/orders';
 const briefing = '/briefings';
@@ -80,6 +81,9 @@ export const routePattern = {
   cargoPlatformNew: `${cargoPlatform}/new`,
   cargoPlatformDetail: `${cargoPlatform}/:id`,
   cargoPlatformPrint: `${cargoPlatform}/:id/print`,
+  safetyNetNew: `${safetyNet}/new`,
+  safetyNetDetail: `${safetyNet}/:id`,
+  safetyNetPrint: `${safetyNet}/:id/print`,
   harnessDetail: `${harness}/:id`,
 
   // Orders
@@ -166,6 +170,11 @@ export const routes = {
     new: `${cargoPlatform}/new`,
     detail: (id: string) => `${cargoPlatform}/${id}`,
     print: (id: string) => `${cargoPlatform}/${id}/print`,
+  },
+  safetyNet: {
+    new: `${safetyNet}/new`,
+    detail: (id: string) => `${safetyNet}/${id}`,
+    print: (id: string) => `${safetyNet}/${id}/print`,
   },
   harness: {
     detail: (id: string) => `${harness}/${id}`,

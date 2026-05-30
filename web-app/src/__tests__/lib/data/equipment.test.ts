@@ -8,7 +8,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest';
 
 vi.mock('@/lib/supabase', () => ({
-  supabase: { from: vi.fn(), auth: { getUser: vi.fn() } },
+  supabase: { from: vi.fn(), auth: { getUser: vi.fn() }, rpc: vi.fn() },
 }));
 
 import { supabase } from '@/lib/supabase';
@@ -53,10 +53,14 @@ import {
 
 const from = supabase.from as unknown as Mock;
 const getUser = supabase.auth.getUser as unknown as Mock;
+const rpc = supabase.rpc as unknown as Mock;
 
 beforeEach(() => {
   vi.clearAllMocks();
   getUser.mockResolvedValue(authedUser('u1'));
+  // Equipment types that opt into a parent inspections row (bobcat, safety-net)
+  // call create_equipment_inspection before the type-table insert. Default ok.
+  rpc.mockResolvedValue({ data: null, error: null });
 });
 afterEach(() => vi.restoreAllMocks());
 
@@ -71,6 +75,12 @@ describe('bobcat data module', () => {
     expect(arg.template_id).toBe('tpl');
     expect(arg.user_id).toBe('u1');
     expect(arg.items).toHaveLength(BOBCAT_ITEMS.length);
+    // Round-trip: also creates the parent public.inspections row via the RPC,
+    // tagging inspections.type so the unified mobile list dispatches correctly.
+    expect(rpc).toHaveBeenCalledWith(
+      'create_equipment_inspection',
+      expect.objectContaining({ p_type: 'bobcat', p_project_id: 'p1', p_template_id: 'tpl' }),
+    );
   });
 
   it('listBobcatInspections maps rows (items default to [])', async () => {

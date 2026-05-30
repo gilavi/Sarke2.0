@@ -17,11 +17,13 @@ import { listBobcatInspections, deleteBobcatInspection } from '@/lib/data/bobcat
 import { listGeneralEquipmentInspections, deleteGeneralEquipmentInspection } from '@/lib/data/generalEquipment';
 import { listExcavatorInspections, deleteExcavatorInspection } from '@/lib/data/excavator';
 import { listCargoPlatformInspections, deleteCargoPlatformInspection } from '@/lib/data/cargoPlatform';
+import { listSafetyNetInspections, deleteSafetyNetInspection } from '@/lib/data/safetyNet';
 import { listProjects } from '@/lib/data/projects';
 import InspectionWizard from '@/components/InspectionWizard';
 import { harnessWizardPreset } from '@/components/inspections/harnessPreset';
 import { useInspectionName, equipmentInspectionName } from '@/lib/documentNames';
-import { projectKeys, inspectionKeys, bobcatKeys, excavatorKeys, generalEquipmentKeys, cargoPlatformKeys } from '@/app/queryKeys';
+import { projectKeys, inspectionKeys, bobcatKeys, excavatorKeys, generalEquipmentKeys, cargoPlatformKeys, safetyNetKeys } from '@/app/queryKeys';
+import { routes } from '@/app/routes';
 
 const TYPE_LABEL: Record<string, string> = {
   harness:            '🦺 დამც. ქამარი',
@@ -32,6 +34,7 @@ const TYPE_LABEL: Record<string, string> = {
   excavator:          '🚧 ექსკავატორი',
   general:            '⚙️ ტექ. აღჭურვილობა',
   cargo_platform:     '📦 ტვირთის პლატფორმა',
+  safety_net:         '🕸️ უსაფრთხ. ბადე',
 };
 
 const TYPE_AVATAR: Record<string, { emoji: string; bg: string }> = {
@@ -43,6 +46,7 @@ const TYPE_AVATAR: Record<string, { emoji: string; bg: string }> = {
   excavator:          { emoji: '🚧', bg: 'bg-orange-50 dark:bg-orange-950/20' },
   general:            { emoji: '⚙️', bg: 'bg-emerald-50 dark:bg-emerald-950/20' },
   cargo_platform:     { emoji: '📦', bg: 'bg-sky-50 dark:bg-sky-950/20' },
+  safety_net:         { emoji: '🕸️', bg: 'bg-indigo-50 dark:bg-indigo-950/20' },
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -97,19 +101,21 @@ export default function Inspections() {
   const { data: generalEq, isLoading: l3 } = useQuery({ queryKey: generalEquipmentKeys.lists(), queryFn: () => listGeneralEquipmentInspections() });
   const { data: excavators, isLoading: l4 } = useQuery({ queryKey: excavatorKeys.lists(), queryFn: () => listExcavatorInspections() });
   const { data: cargoPlatforms, isLoading: l5 } = useQuery({ queryKey: cargoPlatformKeys.lists(), queryFn: () => listCargoPlatformInspections() });
+  const { data: safetyNets, isLoading: l6 } = useQuery({ queryKey: safetyNetKeys.lists(), queryFn: () => listSafetyNetInspections() });
   const { data: projectList } = useQuery({ queryKey: projectKeys.lists(), queryFn: listProjects });
 
   const projects = projectList ? Object.fromEntries(projectList.map((p) => [p.id, p])) : {};
   const inspectionName = useInspectionName();
   const [filter, setFilter] = useState<string>(projectParam);
 
-  const isLoading = l1 || l2 || l3 || l4 || l5;
+  const isLoading = l1 || l2 || l3 || l4 || l5 || l6;
 
   const delInspection = useMutation({ mutationFn: deleteInspection, onSuccess: () => qc.invalidateQueries({ queryKey: inspectionKeys.lists() }) });
   const delBobcat = useMutation({ mutationFn: deleteBobcatInspection, onSuccess: () => qc.invalidateQueries({ queryKey: bobcatKeys.lists() }) });
   const delExcavator = useMutation({ mutationFn: deleteExcavatorInspection, onSuccess: () => qc.invalidateQueries({ queryKey: excavatorKeys.lists() }) });
   const delGeneral = useMutation({ mutationFn: deleteGeneralEquipmentInspection, onSuccess: () => qc.invalidateQueries({ queryKey: generalEquipmentKeys.lists() }) });
   const delCargo = useMutation({ mutationFn: deleteCargoPlatformInspection, onSuccess: () => qc.invalidateQueries({ queryKey: cargoPlatformKeys.lists() }) });
+  const delSafetyNet = useMutation({ mutationFn: deleteSafetyNetInspection, onSuccess: () => qc.invalidateQueries({ queryKey: safetyNetKeys.lists() }) });
 
   function confirmDelete() {
     if (!pendingDelete) return;
@@ -124,11 +130,13 @@ export default function Inspections() {
       delGeneral.mutate(pendingDelete.id);
     } else if (pendingDelete.type === 'cargo_platform') {
       delCargo.mutate(pendingDelete.id);
+    } else if (pendingDelete.type === 'safety_net') {
+      delSafetyNet.mutate(pendingDelete.id);
     }
     setPendingDelete(null);
   }
 
-  const isDeleting = delInspection.isPending || delBobcat.isPending || delExcavator.isPending || delGeneral.isPending || delCargo.isPending;
+  const isDeleting = delInspection.isPending || delBobcat.isPending || delExcavator.isPending || delGeneral.isPending || delCargo.isPending || delSafetyNet.isPending;
 
   const allRows: Row[] = [
     ...(genericInspections ?? []).map((i): Row => {
@@ -161,6 +169,11 @@ export default function Inspections() {
       id: i.id, label: equipmentInspectionName('cargo_platform'),
       projectId: i.projectId, type: 'cargo_platform', status: i.status,
       date: i.createdAt, href: `/cargo-platform/${i.id}`,
+    })),
+    ...(safetyNets ?? []).map((i): Row => ({
+      id: i.id, label: 'უსაფრთხოების ბადის შემოწმების აქტი',
+      projectId: i.projectId, type: 'safety_net', status: i.status,
+      date: i.createdAt, href: routes.safetyNet.detail(i.id),
     })),
   ]
     .filter((r) => !filter || r.projectId === filter)
@@ -200,6 +213,9 @@ export default function Inspections() {
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => navigate(`/cargo-platform/new${filter ? `?project=${filter}` : ''}`)}>
               ტვირთის მიმღები პლატფორმის შემოწმების აქტი
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => navigate(`${routes.safetyNet.new}${filter ? `?project=${filter}` : ''}`)}>
+              უსაფრთხოების ბადის შემოწმების აქტი
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

@@ -215,6 +215,7 @@ export type CargoPlatformPatch = Partial<{
 const repo = makeRepository<CargoPlatformInspection, DbRow, CreateCargoPlatformArgs, CargoPlatformPatch>({
   table: 'cargo_platform_inspections',
   columns: COLS,
+  parentInspection: { type: 'cargo_platform' },
   // Preserve the original behaviour: cargo-platform list is intentionally
   // unlimited (the other equipment lists cap at 50).
   listLimit: null,

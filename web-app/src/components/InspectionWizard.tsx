@@ -73,6 +73,16 @@ function filterQuestions(qs: Question[]): Question[] {
   return hasGrid ? qs.filter((q) => q.type !== 'freetext' && q.type !== 'photo_upload') : qs;
 }
 
+/* Repeatable-grid item noun per template category. Harness = belts ("ქამარი");
+   the façade-scaffold family inspects scaffolds ("ხარაჩო"). Unknown categories
+   fall back to a neutral noun at the callsite. */
+const GRID_ITEM_NOUN: Record<string, string> = {
+  harness: 'ქამარი',
+  xaracho: 'ხარაჩო',
+  mobile_scaffold: 'ხარაჩო',
+  mobile_scaffold_n3: 'ხარაჩო',
+};
+
 /* ─── Component ─── */
 
 export default function InspectionWizard({
@@ -442,7 +452,14 @@ export default function InspectionWizard({
     [gridQuestion, answerMap],
   );
 
-  const harnessItemLabel = preset?.itemLabel ?? 'ქამარი';
+  /* Item noun for the repeatable-grid sidebar. Harness inspects belts ("ქამარი");
+     the generic façade-scaffold (xaracho) family inspects scaffolds, so derive
+     the noun from the template category instead of leaking belt terminology. */
+  const gridCategory = preset
+    ? 'harness'
+    : ((templates ?? []).find((t) => t.id === templateId)?.category ?? defaultCategory);
+  const harnessItemLabel = preset?.itemLabel ?? GRID_ITEM_NOUN[gridCategory] ?? 'ერთეული';
+  const harnessItemPlural = harnessItemLabel === 'ქამარი' ? 'ქამრები' : `${harnessItemLabel}ები`;
   const harnessCanAddMore = harnessAddedCount < harnessRows.length;
   const showSidebar = !!gridQuestion && isHarnessGridStep;
   const gridStepIndex = useMemo(() => {
@@ -540,8 +557,8 @@ export default function InspectionWizard({
         sidebar={
           showSidebar ? (
             <WizardSidebar
-              heading="ქამარები"
-              addLabel="ახალი ქამარი"
+              heading={harnessItemPlural}
+              addLabel={`ახალი ${harnessItemLabel}`}
               itemLabel={harnessItemLabel}
               rows={harnessRows}
               addedCount={harnessAddedCount}
@@ -612,6 +629,7 @@ export default function InspectionWizard({
             conclusion={conclusion}
             onChange={setConclusion}
             summary={gridSummary}
+            itemLabel={harnessItemLabel}
             inspectionId={effectiveInspection!.id}
             photos={conclusionPhotos}
             onPhotoAdd={(path) => setConclusionPhotos((prev) => [...prev, path])}
@@ -834,7 +852,7 @@ function QuestionStepRenderer({
 /* ─── Conclusion Step ─── */
 
 function ConclusionStepRenderer({
-  conclusion, onChange, inspectionId, photos, onPhotoAdd, onPhotoRemove, summary,
+  conclusion, onChange, inspectionId, photos, onPhotoAdd, onPhotoRemove, summary, itemLabel,
 }: {
   conclusion: { isSafe: boolean | null; text: string };
   onChange: (c: { isSafe: boolean | null; text: string }) => void;
@@ -843,6 +861,7 @@ function ConclusionStepRenderer({
   onPhotoAdd: (path: string) => void;
   onPhotoRemove: (path: string) => void;
   summary: { total: number; ok: number; bad: number } | null;
+  itemLabel: string;
 }) {
   return (
     <div className="space-y-6">
@@ -867,7 +886,7 @@ function ConclusionStepRenderer({
           }}
         >
           <span style={{ color: 'var(--text-secondary)' }}>შეჯამება:</span>
-          <span style={{ fontWeight: 500 }}>{summary.total} ქამარი</span>
+          <span style={{ fontWeight: 500 }}>{summary.total} {itemLabel}</span>
           <span style={{ color: 'var(--text-muted)' }}>·</span>
           <span style={{ color: 'var(--brand-500)', fontWeight: 500 }}>{summary.ok} კარგია</span>
           <span style={{ color: 'var(--text-muted)' }}>·</span>

@@ -150,6 +150,7 @@ export type ExcavatorPatch = Partial<{
 const repo = makeRepository<ExcavatorInspection, DbRow, CreateExcavatorArgs, ExcavatorPatch>({
   table: 'excavator_inspections',
   columns: COLS,
+  parentInspection: { type: 'excavator' },
   toModel,
   toInsert: (args, userId) => ({
     project_id: args.projectId,

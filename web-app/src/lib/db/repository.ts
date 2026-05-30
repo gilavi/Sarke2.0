@@ -53,6 +53,17 @@ export interface RepositoryConfig<TModel, TRow, TCreate, TPatch> {
   orderAscending?: boolean;
   /** Max rows returned by `list`. Default 50; pass `null` for no limit. */
   listLimit?: number | null;
+  /**
+   * When set, `create()` also inserts a parent row in `public.inspections` via
+   * the `create_equipment_inspection` RPC, sharing the same UUID as the type
+   * row. This mirrors the Expo app's create path so equipment inspections
+   * round-trip: the unified inspections list dispatches on `inspections.type`,
+   * and the FK `<type>_inspections.id → inspections.id` requires the parent row.
+   * `type` is the category tag (e.g. 'bobcat', 'safety_net_inspection') and must
+   * match the schema's `category`. The type row's `toInsert` must yield
+   * `project_id` + `template_id` (both required by the RPC / parent table).
+   */
+  parentInspection?: { type: string };
 }
 
 export function makeRepository<TModel, TRow, TCreate, TPatch>(
@@ -89,9 +100,31 @@ export function makeRepository<TModel, TRow, TCreate, TPatch>(
     async create(input) {
       const { data: userData, error: userErr } = await supabase.auth.getUser();
       if (userErr || !userData.user) throw userErr ?? new Error(NOT_AUTHENTICATED);
+      const userId = userData.user.id;
+      const payload = cfg.toInsert(input, userId);
+
+      // Equipment inspections also need a parent row in public.inspections,
+      // keyed by the same UUID (see RepositoryConfig.parentInspection). Generate
+      // the id client-side so both rows share it, create the parent via the RPC
+      // (idempotent: ON CONFLICT DO NOTHING), then insert the type row with `id`.
+      if (cfg.parentInspection) {
+        const id = crypto.randomUUID();
+        const projectId = payload.project_id as string | undefined;
+        const templateId = payload.template_id as string | undefined;
+        const { error: rpcErr } = await db.rpc('create_equipment_inspection', {
+          p_type: cfg.parentInspection.type,
+          p_id: id,
+          p_project_id: projectId,
+          p_user_id: userId,
+          p_template_id: templateId,
+        });
+        if (rpcErr) throw new Error(rpcErr.message);
+        payload.id = id;
+      }
+
       const { data, error } = await db
         .from(cfg.table)
-        .insert(cfg.toInsert(input, userData.user.id))
+        .insert(payload)
         .select(cfg.columns)
         .single();
       if (error) throw new Error(error.message);

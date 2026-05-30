@@ -119,6 +119,7 @@ export type BobcatPatch = Partial<{
 const repo = makeRepository<BobcatInspection, DbRow, CreateBobcatArgs, BobcatPatch>({
   table: 'bobcat_inspections',
   columns: COLS,
+  parentInspection: { type: 'bobcat' },
   toModel,
   toInsert: (args, userId) => ({
     project_id: args.projectId,

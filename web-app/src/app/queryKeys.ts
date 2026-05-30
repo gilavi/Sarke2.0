@@ -65,6 +65,12 @@ export const cargoPlatformKeys = {
   detail: (id: string | null | undefined) => ['cargoPlatformInspection', id] as const,
 } as const;
 
+export const safetyNetKeys = {
+  lists: () => ['safetyNetInspections'] as const,
+  list: (projectId?: string | null) => listKey('safetyNetInspections', projectId),
+  detail: (id: string | null | undefined) => ['safetyNetInspection', id] as const,
+} as const;
+
 export const briefingKeys = {
   lists: () => ['briefings'] as const,
   list: (projectId?: string | null) => listKey('briefings', projectId),

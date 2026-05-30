@@ -142,6 +142,7 @@ const repo = makeRepository<
 >({
   table: 'general_equipment_inspections',
   columns: COLS,
+  parentInspection: { type: 'general_equipment' },
   toModel,
   toInsert: (args, userId) => ({
     project_id: args.projectId,
