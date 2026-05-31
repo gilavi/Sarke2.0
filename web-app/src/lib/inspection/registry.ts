@@ -15,6 +15,10 @@ import { safetyNetSchema } from './schemas/safetyNet';
 import { excavatorSchema } from './schemas/excavator';
 import { cargoPlatformSchema } from './schemas/cargoPlatform';
 import { generalEquipmentSchema } from './schemas/generalEquipment';
+import { mobileLadderSchema } from './schemas/mobileLadder';
+import { forkliftSchema } from './schemas/forklift';
+import { liftingAccessoriesSchema } from './schemas/liftingAccessories';
+import { fallProtectionSchema } from './schemas/fallProtection';
 
 const SCHEMAS: AnyInspectionSchema[] = [
   bobcatSchema,
