@@ -28,10 +28,6 @@ schema, and registry coverage.)
 ### Pre-existing issues (NOT introduced here, left as-is)
 - `npm run lint` (the wrapper) crashes on **Windows** inside `scripts/check-no-shadows.mjs`
   (`import.meta.url` → doubled drive `C:\C:\…\src`). It passes on CI Linux. On Windows lint the
-
-### Pre-existing issues (NOT introduced here, left as-is)
-- `npm run lint` (the wrapper) crashes on **Windows** inside `scripts/check-no-shadows.mjs`
-  (`import.meta.url` → doubled drive `C:\C:\…\src`). It passes on CI Linux. On Windows lint the
   changed files directly: `npx eslint <paths>`.
 - `eslint .` reports ~20 errors in files unrelated to inspections (strict `react-hooks` plugin:
   `set-state-in-effect`, `no-explicit-any` in `components/ui/*`, `Scene3D`, `auth.tsx`,
