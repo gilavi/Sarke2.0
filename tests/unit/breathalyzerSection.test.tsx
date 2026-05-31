@@ -67,8 +67,25 @@ vi.mock('../../components/primitives/A11yText', () => ({
 // ── Component under test ───────────────────────────────────────────────────
 
 import { BreathalyzerSection } from '../../features/project-detail/sections/BreathalyzerSection';
+import type { BreathalizerLog } from '../../types/breathalyzerLog';
 
 const PROJECT_ID = 'proj-abc';
+
+/** Build a complete BreathalizerLog for tests; override only what each case cares about. */
+function makeLog(partial: Partial<BreathalizerLog> & Pick<BreathalizerLog, 'id'>): BreathalizerLog {
+  return {
+    projectId: PROJECT_ID,
+    date: '2026-05-26',
+    deviceSerialNumber: 'SN-0001',
+    responsiblePerson: { name: 'ტესტ ტესტაძე', signature: null },
+    status: 'open',
+    entries: [],
+    createdAt: '2026-05-26T00:00:00.000Z',
+    updatedAt: '2026-05-26T00:00:00.000Z',
+    pdfUri: null,
+    ...partial,
+  };
+}
 
 afterEach(() => {
   cleanup();
@@ -112,12 +129,7 @@ describe('BreathalyzerSection — empty state', () => {
   });
 
   it('does NOT render the empty state when logs are present', () => {
-    const log = {
-      id: 'log1',
-      date: '2026-05-26',
-      status: 'open' as const,
-      entries: [],
-    };
+    const log = makeLog({ id: 'log1', date: '2026-05-26', status: 'open' });
     const { queryByTestId } = render(
       React.createElement(BreathalyzerSection, {
         id: PROJECT_ID,
@@ -154,8 +166,8 @@ describe('BreathalyzerSection — section header', () => {
 
   it('renders log count when logs are present', () => {
     const logs = [
-      { id: 'l1', date: '2026-05-26', status: 'open' as const, entries: [] },
-      { id: 'l2', date: '2026-05-25', status: 'closed' as const, entries: [] },
+      makeLog({ id: 'l1', date: '2026-05-26', status: 'open' }),
+      makeLog({ id: 'l2', date: '2026-05-25', status: 'closed' }),
     ];
     const { getByText } = render(
       React.createElement(BreathalyzerSection, {
