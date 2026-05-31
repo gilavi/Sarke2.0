@@ -10,7 +10,18 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@/test-utils';
 
 vi.mock('@/lib/data/projects', async (io) => ({ ...(await io<object>()), getProject: vi.fn() }));
-vi.mock('@/lib/data/bobcat', async (io) => ({ ...(await io<object>()), getBobcatInspection: vi.fn() }));
+// Explicit (non-async) factory: an `async (io) => ({ ...(await io()) })` spread of
+// @/lib/data/bobcat re-imports its module subtree and corrupts the eager
+// structured-act registry build under vitest (the 4 schemas registered after bobcat
+// go missing -> "No PDF schema registered for category mobile_ladder_inspection").
+// @/lib/data/bobcat only exports these 5 fns at runtime (the rest are types).
+vi.mock('@/lib/data/bobcat', () => ({
+  getBobcatInspection: vi.fn(),
+  listBobcatInspections: vi.fn(),
+  createBobcatInspection: vi.fn(),
+  updateBobcatInspection: vi.fn(),
+  deleteBobcatInspection: vi.fn(),
+}));
 vi.mock('@/lib/photoUpload', () => ({ signedInspectionPhotoUrl: vi.fn(() => Promise.resolve('https://x/y.jpg')) }));
 
 import { getProject } from '@/lib/data/projects';
@@ -45,7 +56,7 @@ describe('StructuredInspectionPrint (bobcat)', () => {
       status: 'completed', items: [], summaryPhotos: [],
       inspectionDate: ISO, createdAt: ISO, updatedAt: ISO, completedAt: ISO,
     } as never);
-    setup('/bobcat/b1/print', '/bobcat/:id/print', <StructuredInspectionPrint category="bobcat" />);
+    setup('/bobcat/b1/print', '/bobcat/:id/print', <StructuredInspectionPrint actKey="bobcat" />);
     // Smoke test: the route mounts without crashing on import and shows its
     // loading state. (Full render is gated on a project fetch; this guards the
     // descriptor-driven print bundle against import/runtime regressions.)
