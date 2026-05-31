@@ -41,6 +41,7 @@ import {
   briefingKeys,
 } from '@/app/queryKeys';
 import { routes } from '@/app/routes';
+import { STRUCTURED_ACT_LIST } from '@/features/inspections/structured/acts';
 
 /* ─── Quick action tile ─── */
 function QuickActionTile({ to, icon: Icon, label, color, darkColor }: {
@@ -133,12 +134,14 @@ export default function Home() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-64">
+            {/* Generic (inspections-table) acts via the legacy questionnaire wizard */}
             <DropdownMenuItem onSelect={() => setNewInspectionOpen(true)}>ფასადის ხარაჩოს შემოწმება</DropdownMenuItem>
             <DropdownMenuItem onSelect={() => setHarnessOpen(true)}>დამცავი ქამრების შემოწმება</DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => navigate(routes.bobcat.new)}>ციცხვიანი დამტვირთველი</DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => navigate(routes.excavator.new)}>ექსკავატორის შემოწმება</DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => navigate(routes.generalEquipment.new)}>ტექ. აღჭურვილობა</DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => navigate(routes.cargoPlatform.new)}>ტვირთის პლატფორმა</DropdownMenuItem>
+            {/* Structured acts — data-driven from the registry (same source as the
+                Inspections page picker, so the two menus never drift apart) */}
+            {STRUCTURED_ACT_LIST.map((act) => (
+              <DropdownMenuItem key={act.key} onSelect={() => navigate(act.newRoute)}>{act.menuLabel}</DropdownMenuItem>
+            ))}
           </DropdownMenuContent>
         </DropdownMenu>
         <InspectionWizard open={newInspectionOpen} onClose={() => setNewInspectionOpen(false)} />
