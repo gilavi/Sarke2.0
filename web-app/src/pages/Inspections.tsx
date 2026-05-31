@@ -28,13 +28,6 @@ import {
 
 /* Generic (inspections-table) types still handled by the legacy InspectionWizard.
    Structured acts (bobcat … fall-protection) are data-driven from the registry. */
-const GENERIC_TYPE_LABEL: Record<string, string> = {
-  harness: '🦺 დამც. ქამარი',
-  xaracho: '🏗️ ფასადის ხარაჩო',
-  mobile_scaffold: '🏗️ მობ. ხარაჩო',
-  mobile_scaffold_n3: '🏗️ მობ. ხარაჩო N3',
-};
-
 const GENERIC_TYPE_AVATAR: Record<string, { emoji: string; bg: string }> = {
   xaracho: { emoji: '🏗️', bg: 'bg-yellow-50 dark:bg-yellow-950/20' },
   mobile_scaffold: { emoji: '🏗️', bg: 'bg-yellow-50 dark:bg-yellow-950/20' },

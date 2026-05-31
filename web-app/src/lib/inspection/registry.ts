@@ -26,6 +26,10 @@ const SCHEMAS: AnyInspectionSchema[] = [
   excavatorSchema,
   cargoPlatformSchema,
   generalEquipmentSchema,
+  mobileLadderSchema,
+  forkliftSchema,
+  liftingAccessoriesSchema,
+  fallProtectionSchema,
 ];
 
 export const INSPECTION_SCHEMAS: Record<string, AnyInspectionSchema> = Object.fromEntries(
