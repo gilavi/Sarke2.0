@@ -6,10 +6,28 @@
 
 ## Status
 
-**Phase 1 (shared engine) + Phase 2 (Bobcat re-expressed, Safety Net new) — DONE.**
-- `npm run typecheck` → **green**
-- `eslint` over all touched/new files → **clean (exit 0)**
-- `npm test` → **737 passed / 0 failed / 1 skipped**
+**ALL PHASES DONE.** All 9 structured acts run through ONE descriptor-driven engine
+(`lib/inspection` PDF + `features/inspections/structured` wizard/result + one print route), plus the
+generic harness / façade-scaffold (xaracho) questionnaire flow:
+
+- bobcat, excavator, general_equipment, cargo_platform — migrated off the (now deleted) per-type pages
+- safety_net_inspection — new
+- mobile_ladder_inspection, forklift_inspection, lifting_accessories_inspection,
+  fall_protection_inspection — new
+
+The Inspections **list + new-inspection picker are data-driven** over the structured-act registry
+(`STRUCTURED_ACT_LIST` + `useQueries`), so a new act lights up everywhere by adding one registry row.
+`fall_protection` is flattened to a single device on web (packed into `device_data[0]`); round-trips
+with mobile's array shape.
+
+Verified (run from `web-app/`): `npx tsc --noEmit` green · `npm test` **692 passed / 1 skipped** ·
+scoped `npx eslint` over new/changed files clean. (The test count dropped from 737 because the dead
+per-type equipment pages + their tests were deleted; the bug-fix/Phase-3 commits then re-added list,
+schema, and registry coverage.)
+
+### Pre-existing issues (NOT introduced here, left as-is)
+- `npm run lint` (the wrapper) crashes on **Windows** inside `scripts/check-no-shadows.mjs`
+  (`import.meta.url` → doubled drive `C:\C:\…\src`). It passes on CI Linux. On Windows lint the
 
 ### Pre-existing issues (NOT introduced here, left as-is)
 - `npm run lint` (the wrapper) crashes on **Windows** inside `scripts/check-no-shadows.mjs`
