@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { listInspections, deleteInspection } from '@/lib/data/inspections';
+import { LARGE_LOADER_TEMPLATE_ID } from '@/lib/types/bobcat';
 import { listProjects } from '@/lib/data/projects';
 import InspectionWizard from '@/components/InspectionWizard';
 import { harnessWizardPreset } from '@/components/inspections/harnessPreset';
@@ -41,9 +42,10 @@ const GENERIC_TYPE_AVATAR: Record<string, { emoji: string; bg: string }> = {
   harness: { emoji: '🦺', bg: 'bg-blue-50 dark:bg-blue-950/20' },
 };
 
-/* Per-category emoji for the structured-act rows (visual only). */
+/* Per-act-key emoji for the structured-act rows (visual only). */
 const STRUCTURED_AVATAR: Record<string, string> = {
   bobcat: '🚜',
+  large_loader: '🚜',
   excavator: '🚧',
   general_equipment: '⚙️',
   cargo_platform: '📦',
@@ -74,12 +76,14 @@ interface Row {
   id: string;
   label: string;
   projectId: string;
+  /** Generic category (harness/xaracho/…) OR structured act key (bobcat/large_loader/…). */
   type: string;
+  /** True for structured-act rows (delete dispatches through the act registry). */
+  structured: boolean;
   status: string;
   date: string;
   href: string;
   emoji: string;
-  badge: string;
 }
 
 function genericInspectionType(template: { category: string | null }[] | null | undefined): string {
@@ -106,10 +110,12 @@ export default function Inspections() {
   });
   const { data: projectList } = useQuery({ queryKey: projectKeys.lists(), queryFn: listProjects });
 
-  // One query per structured act — data-driven from the registry so adding an act
-  // lights it up here automatically (no per-type wiring).
+  // One query per row-sourcing structured act — data-driven from the registry so
+  // adding an act lights it up here automatically. Acts flagged excludeFromList
+  // (e.g. large_loader, which shares the bobcat table) are not queried separately.
+  const listActs = STRUCTURED_ACT_LIST.filter((a) => !a.excludeFromList);
   const structuredQueries = useQueries({
-    queries: STRUCTURED_ACT_LIST.map((act) => ({
+    queries: listActs.map((act) => ({
       queryKey: act.descriptor.listKey(),
       queryFn: () => act.descriptor.list(),
     })),
@@ -139,10 +145,10 @@ export default function Inspections() {
 
   function confirmDelete() {
     if (!pendingDelete) return;
-    if (['harness', 'xaracho', 'mobile_scaffold', 'mobile_scaffold_n3'].includes(pendingDelete.type)) {
-      delInspection.mutate(pendingDelete.id);
-    } else {
+    if (pendingDelete.structured) {
       delStructured.mutate(pendingDelete);
+    } else {
+      delInspection.mutate(pendingDelete.id);
     }
     setPendingDelete(null);
   }
@@ -156,26 +162,34 @@ export default function Inspections() {
       label: inspectionName(i.template_id),
       projectId: i.project_id,
       type,
+      structured: false,
       status: i.status,
       date: i.created_at ?? '',
       href: type === 'harness' ? `/harness/${i.id}` : `/inspections/${i.id}`,
       emoji: GENERIC_TYPE_AVATAR[type]?.emoji ?? '📋',
-      badge: GENERIC_TYPE_LABEL[type] ?? type,
     };
   });
 
-  const structuredRows: Row[] = STRUCTURED_ACT_LIST.flatMap((act, idx) => {
-    const data = (structuredQueries[idx]?.data ?? []) as Array<{ id: string; status: string; createdAt?: string }>;
+  const structuredRows: Row[] = listActs.flatMap((act, idx) => {
+    const data = (structuredQueries[idx]?.data ?? []) as Array<{ id: string; status: string; createdAt?: string; templateId?: string | null }>;
+    // The bobcat query feeds two acts: rows whose templateId is the large-loader
+    // template render under the large_loader act (own label/route); the rest stay
+    // bobcat. Other acts map straight through.
+    if (act.key === 'bobcat') {
+      return data.flatMap((row) => {
+        const isLarge = row.templateId === LARGE_LOADER_TEMPLATE_ID;
+        const target = isLarge ? getStructuredAct('large_loader')! : act;
+        return actRows(target, [row]).map((r: StructuredRow): Row => ({
+          id: r.id, label: r.label, projectId: r.projectId, type: r.actKey,
+          structured: true, status: r.status, date: r.date, href: r.href,
+          emoji: STRUCTURED_AVATAR[r.actKey] ?? '📋',
+        }));
+      });
+    }
     return actRows(act, data).map((r: StructuredRow): Row => ({
-      id: r.id,
-      label: r.label,
-      projectId: r.projectId,
-      type: r.category,
-      status: r.status,
-      date: r.date,
-      href: r.href,
-      emoji: STRUCTURED_AVATAR[r.category] ?? '📋',
-      badge: r.label,
+      id: r.id, label: r.label, projectId: r.projectId, type: r.actKey,
+      structured: true, status: r.status, date: r.date, href: r.href,
+      emoji: STRUCTURED_AVATAR[r.actKey] ?? '📋',
     }));
   });
 
@@ -209,9 +223,9 @@ export default function Inspections() {
             <DropdownMenuItem onSelect={() => setHarnessOpen(true)}>
               დამცავი ქამრების შემოწმების აქტი
             </DropdownMenuItem>
-            {/* Structured acts — data-driven from the registry */}
+            {/* Structured acts — data-driven from the registry (incl. large-loader) */}
             {STRUCTURED_ACT_LIST.map((act) => (
-              <DropdownMenuItem key={act.category} onSelect={() => navigate(`${act.newRoute}${newQuery}`)}>
+              <DropdownMenuItem key={act.key} onSelect={() => navigate(`${act.newRoute}${newQuery}`)}>
                 {act.menuLabel}
               </DropdownMenuItem>
             ))}

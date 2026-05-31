@@ -18,6 +18,7 @@ const bobcat = '/bobcat';
 const excavator = '/excavator';
 const generalEquipment = '/general-equipment';
 const cargoPlatform = '/cargo-platform';
+const largeLoader = '/large-loader';
 const safetyNet = '/safety-net';
 const mobileLadder = '/mobile-ladder';
 const forklift = '/forklift';
@@ -85,6 +86,9 @@ export const routePattern = {
   cargoPlatformNew: `${cargoPlatform}/new`,
   cargoPlatformDetail: `${cargoPlatform}/:id`,
   cargoPlatformPrint: `${cargoPlatform}/:id/print`,
+  largeLoaderNew: `${largeLoader}/new`,
+  largeLoaderDetail: `${largeLoader}/:id`,
+  largeLoaderPrint: `${largeLoader}/:id/print`,
   safetyNetNew: `${safetyNet}/new`,
   safetyNetDetail: `${safetyNet}/:id`,
   safetyNetPrint: `${safetyNet}/:id/print`,
@@ -186,6 +190,11 @@ export const routes = {
     new: `${cargoPlatform}/new`,
     detail: (id: string) => `${cargoPlatform}/${id}`,
     print: (id: string) => `${cargoPlatform}/${id}/print`,
+  },
+  largeLoader: {
+    new: `${largeLoader}/new`,
+    detail: (id: string) => `${largeLoader}/${id}`,
+    print: (id: string) => `${largeLoader}/${id}/print`,
   },
   safetyNet: {
     new: `${safetyNet}/new`,

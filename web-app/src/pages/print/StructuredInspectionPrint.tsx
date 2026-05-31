@@ -19,7 +19,7 @@ import type { SignaturesSectionData } from '@/lib/inspection/renderSignaturesSec
 import { signedInspectionPhotoUrl } from '@/lib/photoUpload';
 import { getStructuredAct } from '@/features/inspections/structured/acts';
 
-export default function StructuredInspectionPrint({ category }: { category: string }) {
+export default function StructuredInspectionPrint({ actKey }: { actKey: string }) {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const isPreview = searchParams.get('preview') === '1';
@@ -28,7 +28,7 @@ export default function StructuredInspectionPrint({ category }: { category: stri
     (location.state as { signaturesSession?: SignaturesSectionData } | null)?.signaturesSession ?? null;
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  const act = getStructuredAct(category);
+  const act = getStructuredAct(actKey);
 
   const inspQ = useQuery({
     queryKey: act ? act.descriptor.detailKey(id) : ['structured-print-missing', id],

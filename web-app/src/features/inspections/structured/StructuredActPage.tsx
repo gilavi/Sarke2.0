@@ -17,8 +17,8 @@ import { getStructuredAct } from './acts';
 import { StructuredInspectionWizard } from './StructuredInspectionWizard';
 import { StructuredInspectionResult } from './StructuredInspectionResult';
 
-export default function StructuredActPage({ category }: { category: string }) {
-  const act = getStructuredAct(category);
+export default function StructuredActPage({ actKey }: { actKey: string }) {
+  const act = getStructuredAct(actKey);
   const { id } = useParams();
   const isNew = !id || id === 'new';
 

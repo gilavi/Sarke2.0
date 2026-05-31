@@ -156,15 +156,26 @@ export default function InspectionWizard({
   const { data: projects } = useQuery({ queryKey: projectKeys.lists(), queryFn: listProjects, enabled: open && mode === 'create' });
   const { data: templates } = useQuery({ queryKey: templateKeys.lists(), queryFn: listTemplates, enabled: open && mode === 'create' });
 
-  /* ── Auto-select template from defaultCategory ── */
-  useEffect(() => {
-    if (mode === 'create' && defaultCategory && templates && templates.length > 0 && !templateId) {
-      const match = templates.find((t) => t.category === defaultCategory);
-      if (match) {
-        setTemplateId(match.id);
-      }
+  /* Resolve the template for a defaultCategory (e.g. xaracho façade scaffold) flow.
+     Matches the category first; falls back to a façade name-match because the live
+     façade-scaffold template's category may not be the literal 'xaracho' string
+     (the mobile-scaffold templates also contain "ხარაჩო", so we key on "ფასად"). */
+  const defaultCategoryTemplateId = useMemo(() => {
+    if (!defaultCategory || !templates || templates.length === 0) return '';
+    const byCategory = templates.find((t) => t.category === defaultCategory);
+    if (byCategory) return byCategory.id;
+    if (defaultCategory === 'xaracho') {
+      const byName = templates.find((t) => /ფასად/.test(t.name));
+      if (byName) return byName.id;
     }
-  }, [mode, defaultCategory, templates, templateId]);
+    return '';
+  }, [defaultCategory, templates]);
+
+  /* The template the info step will actually create with: an explicitly-picked
+     one, else the preset's, else the resolved default-category one. Derived (no
+     effect/setState) so a defaultCategory flow needs no extra render and the
+     "next" button is enabled as soon as the project is chosen. */
+  const resolvedTemplateId = templateId || preset?.templateId || defaultCategoryTemplateId;
 
   const effectiveInspection = createdInspection;
 
@@ -353,12 +364,13 @@ export default function InspectionWizard({
 
     // Creation: step 0 → create inspection + fetch questions
     if (isInfoStep) {
-      if (!projectId || !templateId) return;
+      const createTemplateId = resolvedTemplateId;
+      if (!projectId || !createTemplateId) return;
       setCreating(true);
       try {
         const created = await createInspection({
           projectId,
-          templateId,
+          templateId: createTemplateId,
           harnessName: harnessName.trim() || null,
           department: department.trim() || null,
           inspectorName: preset ? (profileName ?? null) : (inspectorName.trim() || null),
@@ -390,7 +402,7 @@ export default function InspectionWizard({
     projectId, templateId, harnessName, department, inspectorName,
     answerMutation, qc, totalSteps, preset, profileName,
     onComplete, gridSummary, projectName, onClose, navigate, mode,
-    templates, defaultCategory,
+    templates, defaultCategory, resolvedTemplateId,
   ]);
 
   const goPrev = useCallback(() => {
@@ -410,7 +422,7 @@ export default function InspectionWizard({
   /* ── Step validation ── */
   const canGoNext = useMemo(() => {
     if (isConclusionStep) return conclusion.isSafe !== null && (!preset?.requireConclusionText || conclusion.text.trim().length > 0);
-    if (isInfoStep) return !!projectId && !!templateId;
+    if (isInfoStep) return !!projectId && !!resolvedTemplateId;
     if (!currentQuestion) return false;
     const a = answerMap[currentQuestion.id];
     if (!a) return false;
@@ -422,7 +434,7 @@ export default function InspectionWizard({
       case 'component_grid': return !!a.grid_values && Object.keys(a.grid_values).length > 0;
       default: return false;
     }
-  }, [isConclusionStep, isInfoStep, currentQuestion, answerMap, conclusion, projectId, templateId, preset]);
+  }, [isConclusionStep, isInfoStep, currentQuestion, answerMap, conclusion, projectId, templateId, resolvedTemplateId, preset]);
 
   /* ── Photo handling ── */
   const photosQ = useQuery({
@@ -526,7 +538,7 @@ export default function InspectionWizard({
   };
 
   /* ── Header context (project · inspection · step) ── */
-  const templateName = (templates ?? []).find((t) => t.id === templateId)?.name;
+  const templateName = (templates ?? []).find((t) => t.id === resolvedTemplateId)?.name;
   const inspectionName = inspectionDisplayName(templateName || preset?.title);
   const stepName = useMemo(() => {
     const base = isInfoStep
@@ -604,7 +616,7 @@ export default function InspectionWizard({
             setDepartment={setDepartment}
             inspectorName={inspectorName}
             setInspectorName={setInspectorName}
-            lockTemplate={!!preset || !!defaultCategory}
+            lockTemplate={!!preset || (!!defaultCategory && !!resolvedTemplateId)}
             projects={projects ?? []}
             templates={templates ?? []}
           />
