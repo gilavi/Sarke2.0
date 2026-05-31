@@ -1,6 +1,19 @@
 # What's New — Sarke 2.0 Changelog
 
-**Updated:** 2026-05-27 | Branch: `main`
+**Updated:** 2026-05-31 | Branch: `main`
+
+---
+
+## 2026-05-31 — Web dashboard: unified inspections complete (`web-app/`)
+
+All inspection acts in the web dashboard now run on ONE shared descriptor-driven flow (specs → checklist → verdict → result screen with signature → PDF), matching the harness act. 10 structured acts + 2 generic acts = 12 picker entries, matching the Expo app. **Scope: `web-app/` only — the Expo mobile app is untouched; the two share only Supabase.**
+
+- Added the **large-loader** variant ("დიდი ციცხვიანი დამტვირთველი") as its own act. It shares `bobcat_inspections` + category `bobcat` but uses a distinct template UUID + 33-item catalog, so the structured-act registry is now keyed by a unique act key (not category), letting two acts share a table.
+- Both the **Home** and **Inspections** "new inspection" menus are now data-driven from the same registry (`STRUCTURED_ACT_LIST`), so they always show the identical 12 acts and can't drift apart.
+- Fixed the project-only create flow (façade scaffold / `defaultCategory`) so the "next" button proceeds — the template is now derived, not selected via an effect.
+- Fixed a white screen ("No PDF schema registered for category …") by registering the four structured PDF schemas (mobile-ladder, forklift, lifting-accessories, fall-protection) in the schema registry.
+
+Captured inspection signatures remain result-screen-only and are never persisted (regulatory). Equipment rows round-trip with mobile via the `create_equipment_inspection` RPC. See [`web-app/UNIFIED_INSPECTIONS_PLAN.md`](../web-app/UNIFIED_INSPECTIONS_PLAN.md) for the full architecture.
 
 ---
 
