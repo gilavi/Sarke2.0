@@ -47,7 +47,9 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://seskuthiopywrgntsgfw.supabase.co' }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'sb_publishable_OF_L2E27-Uv8MMw87fWfSA_znD7moYY' }}
-        run: npm run build
+        # The preview is served from /app/preview/, so assets must be based there
+        # (vite.config.ts hard-codes /app/ for the production /app/ deploy).
+        run: npm run build -- --base=/app/preview/
 
       - name: Deploy to gh-pages /app/preview/
         uses: peaceiris/actions-gh-pages@v3
