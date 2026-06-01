@@ -129,6 +129,10 @@ All three deploy to the same `gh-pages` branch under different `destination_dir`
 
 **Don't change the base path of `web/`** — in-flight SMS links from `lib/sms.ts` + `supabase/functions/send-signing-sms/` would break.
 
+### Public marketing site (multi-page)
+
+The logged-out landing is a multi-page marketing site sharing one `MarketingLayout` (navbar / footer / overlays); logged-in visitors are redirected to `/home`. Pages: `/#/` (Home), `/#/about`, `/#/pricing`, `/#/legislation` (public regulations/blog — **distinct** from the protected `/#/regulations` dashboard page), `/#/contact`. The Contact page hosts a **live AI support chatbot** backed by the `ai-chat` Edge Function (Anthropic proxy; `verify_jwt = false`). Sections live in `web-app/src/pages/landing/`.
+
 ### Dashboard routes
 
 | Route | Description |

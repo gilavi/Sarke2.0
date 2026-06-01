@@ -1,6 +1,21 @@
 # What's New — Sarke 2.0 Changelog
 
-**Updated:** 2026-05-31 | Branch: `main`
+**Updated:** 2026-06-01 | Branch: `main`
+
+---
+
+## 2026-06-01 — Marketing site goes multi-page + live AI support chat (`web-app/`)
+
+The logged-out landing page was split from one long scroll into a proper multi-page marketing site, all sharing one `MarketingLayout` (navbar / footer / overlays). **Scope: `web-app/` only.**
+
+- **Pages:** `/#/` (Home), `/#/about`, `/#/pricing`, `/#/legislation`, `/#/contact`. The navbar uses route links (not anchor-scroll). Logged-in visitors are still redirected to `/home`.
+- **Home** now has the four product pillars (აქტები / ინციდენტი / ინსტრუქტაჟი / რეპორტები), a "ვისთვის" audiences section, and price + regulations teasers that deep-link to the dedicated pages.
+- **`/legislation`** is the **public** regulations/blog page (Georgian labor-safety law + articles). It uses a path distinct from the **protected** `/regulations` dashboard route — no collision.
+- **`/contact`** hosts a **live AI support chatbot**. Because the static GitHub-Pages site can't hold an API key, it calls a new `ai-chat` Edge Function that proxies the Anthropic Messages API (model `claude-haiku-4-5`, `max_tokens: 512`, Georgian system prompt scoped to HUBBLE / labor safety). Abuse guards: input/turn caps + best-effort per-IP throttle. Runs with `verify_jwt = false` (visitors are unauthenticated).
+- Sections were split out of the old `landing/sections.tsx` (459 lines) into per-page files under `web-app/src/pages/landing/` (`chrome.tsx`, `faq.tsx`, `home*.tsx`, `about.tsx`, `pricing.tsx`, `legislation.tsx`, `contact.tsx`) to satisfy the file-size targets.
+- Fixed HashRouter hazards: store/CTA `#anchor` hrefs that would have been hijacked into route changes now point at `/register` or the external store URL.
+
+> **Deploy note (manual):** the marketing pages ship with the normal `deploy-web-app.yml` push, but the Edge Function does **not** — `deploy-web-app.yml` ignores `supabase/functions/**`. After merging, run `supabase functions deploy ai-chat` and `supabase secrets set ANTHROPIC_API_KEY=…` (mirrors the `fetch-regulation-dates` precedent). Until then the chatbot returns `not_configured`.
 
 ---
 

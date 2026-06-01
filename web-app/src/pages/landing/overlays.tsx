@@ -2,6 +2,7 @@ import { useState, useEffect, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShieldCheck, X, Check, Cookie } from 'lucide-react';
+import { routes } from '@/app/routes';
 import { appleIcon } from './shared';
 
 // ─── Sticky mobile bar ────────────────────────────────────────────────────────
@@ -28,13 +29,13 @@ export function StickyMobileBar() {
             <ShieldCheck size={18} className="text-white" />
           </div>
           <p className="flex-1 min-w-0 text-sm font-semibold text-neutral-900 truncate">HUBBLE — გადმოწერე უფასოდ</p>
-          <a
-            href="#"
+          <Link
+            to={routes.register}
             className="shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-black px-3 py-2 text-xs font-semibold text-white"
           >
             <svg viewBox="0 0 24 24" className="w-4 h-4 fill-white"><path d={appleIcon} /></svg>
-            App Store
-          </a>
+            სცადე
+          </Link>
         </motion.div>
       )}
     </AnimatePresence>

@@ -5,6 +5,7 @@ import { AuthProvider } from '@/lib/auth';
 import { listProjects } from '@/lib/data/projects';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { AppShell } from '@/components/layout/AppShell';
+import { MarketingLayout } from '@/components/layout/MarketingLayout';
 import { SkeletonList } from '@/components/SkeletonCard';
 import { CommandPalette } from '@/components/cmdk';
 import { WelcomeModal } from '@/components/onboarding/WelcomeModal';
@@ -40,6 +41,13 @@ const IncidentPrint = lazy(() => import('@/pages/print/IncidentPrint'));
 const BriefingPrint = lazy(() => import('@/pages/print/BriefingPrint'));
 const ReportPrint = lazy(() => import('@/pages/print/ReportPrint'));
 const InspectionPrint = lazy(() => import('@/pages/print/InspectionPrint'));
+
+// Public marketing pages (the landing is multi-page). Landing stays eager
+// (first paint); the rest are lazy under MarketingLayout's Suspense boundary.
+const About = lazy(() => import('@/pages/About'));
+const Contact = lazy(() => import('@/pages/Contact'));
+const PricingPage = lazy(() => import('@/pages/Pricing'));
+const Legislation = lazy(() => import('@/pages/Legislation'));
 
 const Subscribe = lazy(() => import('@/pages/Subscribe'));
 const SubscribeSuccess = lazy(() => import('@/pages/SubscribeSuccess'));
@@ -139,8 +147,18 @@ export function AppRouter() {
         <CommandPalette />
         <WelcomeModal />
         <Routes>
+          {/* Public marketing — shared MarketingLayout (navbar/footer/overlays).
+              Landing is eager; About/Contact/Pricing/Legislation lazy-load via
+              the layout's own Suspense boundary. */}
+          <Route element={<MarketingLayout />}>
+            <Route path={routePattern.landing} element={<Landing />} />
+            <Route path={routePattern.about} element={<About />} />
+            <Route path={routePattern.contact} element={<Contact />} />
+            <Route path={routePattern.pricing} element={<PricingPage />} />
+            <Route path={routePattern.legislation} element={<Legislation />} />
+          </Route>
+
           {/* Public — eager (auth shells are small) */}
-          <Route path={routePattern.landing} element={<Landing />} />
           <Route path={routePattern.login} element={<Login />} />
           <Route path={routePattern.register} element={<Register />} />
           <Route path={routePattern.forgot} element={<Forgot />} />
