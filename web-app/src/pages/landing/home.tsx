@@ -1,19 +1,19 @@
 import { motion } from 'framer-motion';
-import { ChevronDown, Smartphone, Star } from 'lucide-react';
+import { Smartphone, Star } from 'lucide-react';
 import { fadeUp, stagger, AppStoreBadge, PhoneMockup, APP_STORE_URL } from './shared';
 import { painPoints, steps } from './marketing-data';
 
 // ─── Hero ─────────────────────────────────────────────────────────────────────
 export function Hero() {
   return (
-    <section className="relative min-h-screen overflow-hidden bg-[#F5F3EE] pt-24 pb-20">
+    <section className="relative overflow-hidden bg-[#F5F3EE] pt-32 pb-20">
       {/* Ambient blobs */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-32 w-[560px] h-[560px] rounded-full bg-brand-50 opacity-70 blur-3xl" />
         <div className="absolute bottom-0 -left-24 w-[400px] h-[400px] rounded-full bg-brand-100 opacity-40 blur-3xl" />
       </div>
 
-      <div className="relative mx-auto flex max-w-6xl flex-col md:flex-row items-center gap-12 px-5 min-h-[calc(100vh-6rem)]">
+      <div className="relative mx-auto flex max-w-6xl flex-col md:flex-row items-center gap-12 px-5">
         {/* Text */}
         <motion.div variants={stagger} initial="hidden" animate="show" className="flex-[3] flex flex-col items-start text-left">
           <motion.div variants={fadeUp}>
@@ -72,17 +72,6 @@ export function Hero() {
           </div>
         </motion.div>
       </div>
-
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1.5 }}
-        className="absolute bottom-8 left-1/2 -translate-x-1/2 text-neutral-400"
-      >
-        <motion.div animate={{ y: [0, 6, 0] }} transition={{ repeat: Infinity, duration: 1.6, ease: 'easeInOut' }}>
-          <ChevronDown size={22} />
-        </motion.div>
-      </motion.div>
     </section>
   );
 }

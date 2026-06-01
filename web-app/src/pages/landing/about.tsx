@@ -1,7 +1,43 @@
 import { motion } from 'framer-motion';
-import { Target, Heart } from 'lucide-react';
+import { Target, Heart, Zap, ShieldCheck, MapPin, type LucideIcon } from 'lucide-react';
 import { fadeUp, stagger } from './shared';
 import { teamMembers, socialLinks } from './marketing-data';
+
+const VALUES: { Icon: LucideIcon; title: string; desc: string }[] = [
+  { Icon: Zap, title: 'სიმარტივე', desc: 'ხელსაწყო, რომელსაც სპეციალისტი წუთებში ითვისებს — ზედმეტი ნაბიჯების გარეშე.' },
+  { Icon: ShieldCheck, title: 'კანონიერება', desc: 'ყველაფერი აგებულია ქართულ კანონმდებლობაზე — დოკუმენტი ინსპექციისთვის მზადაა.' },
+  { Icon: Heart, title: 'ნდობა', desc: 'მონაცემი შენია. დაცული, კონფიდენციალური და ყოველთვის ხელმისაწვდომი.' },
+  { Icon: MapPin, title: 'ადგილობრივი', desc: 'ქართველი გუნდი, ქართული ბაზრის რეალური საჭიროებებიდან.' },
+];
+
+// ─── Values ─────────────────────────────────────────────────────────────────────
+export function Values() {
+  return (
+    <section className="py-24 px-5 bg-[#F5F3EE]">
+      <div className="mx-auto max-w-5xl">
+        <motion.h2
+          initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+          className="text-center text-2xl sm:text-3xl font-bold text-neutral-900 mb-14"
+        >
+          რა გვმართავს
+        </motion.h2>
+        <motion.div variants={stagger} initial="hidden" whileInView="show" viewport={{ once: true }}
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+        >
+          {VALUES.map(({ Icon, title, desc }) => (
+            <motion.div key={title} variants={fadeUp} className="rounded-2xl border border-neutral-200 bg-white p-6">
+              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50">
+                <Icon size={20} className="text-brand-600" />
+              </div>
+              <h3 className="font-bold text-neutral-900 mb-1 text-sm">{title}</h3>
+              <p className="text-sm text-neutral-500 leading-relaxed">{desc}</p>
+            </motion.div>
+          ))}
+        </motion.div>
+      </div>
+    </section>
+  );
+}
 
 // ─── Mission (რატო ვაკეთებთ) ──────────────────────────────────────────────────────
 export function Mission() {

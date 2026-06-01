@@ -16,6 +16,10 @@ import {
   Instagram,
   Linkedin,
   Youtube,
+  Fingerprint,
+  Server,
+  Zap,
+  CloudOff,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -115,6 +119,63 @@ export const socialLinks: { Icon: LucideIcon; label: string; href: string }[] = 
   { Icon: Linkedin, label: 'LinkedIn', href: '#' }, // TODO: real
   { Icon: Youtube, label: 'YouTube', href: '#' }, // TODO: real
 ];
+
+/** Headline metrics for the Home stats band. */
+export const stats: { value: string; label: string }[] = [
+  { value: '10+', label: 'შემოწმების შაბლონი' },
+  { value: '30წმ', label: 'PDF გენერაცია' },
+  { value: '15+', label: 'კომპანია ენდობა' },
+  { value: '100%', label: 'ქართულ კანონზე მორგებული' },
+];
+
+/** Logo-cloud company names — TODO: real client logos/names. */
+export const companies = ['ალიანს ჯგუფი', 'მშენებელი+', 'საქ-ინფრა', 'ვერტექს', 'ბილდ კო', 'ტერა'];
+
+/** "რატომ HUBBLE" deep value props — alternating showcase rows on Home. */
+export const valueProps: { Icon: LucideIcon; eyebrow: string; title: string; desc: string; bullets: string[] }[] = [
+  {
+    Icon: Zap,
+    eyebrow: 'სიჩქარე',
+    title: 'შემოწმებიდან PDF-მდე — 30 წამში',
+    desc: 'აღარ დაბრუნდე ოფისში დოკუმენტის გასაფორმებლად. შეავსე ჩეკლისტი ობიექტზევე და მიიღე მზა, ხელმოწერილი PDF მყისიერად.',
+    bullets: ['10+ მზა შაბლონი', 'ავტომატური ფორმატირება', 'ერთი შეხებით გაზიარება'],
+  },
+  {
+    Icon: MapPin,
+    eyebrow: 'მტკიცებულება',
+    title: 'ყოველი ფოტო — ლოკაციითა და დროით',
+    desc: 'GPS კოორდინატები და დროის ნიშნული ავტომატურად ერთვის ფოტოს. ინსპექციისას გაქვს უტყუარი მტკიცებულება, რომ სამუშაო შესრულდა.',
+    bullets: ['GPS ტეგირება', 'დროის ნიშნული', 'ფოტო-არქივი ობიექტის მიხედვით'],
+  },
+  {
+    Icon: CloudOff,
+    eyebrow: 'საიმედოობა',
+    title: 'მუშაობს ინტერნეტის გარეშეც',
+    desc: 'შეავსე ფორმები ოფლაინ რეჟიმში — კავშირის აღდგენისთანავე ყველაფერი ავტომატურად დასინქრონდება. სამშენებლო მოედანი ხშირად ცუდი ქსელია.',
+    bullets: ['ოფლაინ შევსება', 'ავტომატური სინქი', 'მონაცემი არ იკარგება'],
+  },
+];
+
+/** Security / compliance points for the dark Trust band. */
+export const trustPoints: { Icon: LucideIcon; title: string; desc: string }[] = [
+  { Icon: Fingerprint, title: 'SHA256 ჰეში', desc: 'ყოველ PDF-ს აქვს უნიკალური ციფრული ანაბეჭდი — გაყალბება გამორიცხულია.' },
+  { Icon: Lock, title: 'დაცული წვდომა (RLS)', desc: 'Row Level Security — შენი ორგანიზაციის მონაცემი სხვისთვის მიუწვდომელია.' },
+  { Icon: Server, title: 'EU მონაცემთა ზონა', desc: 'ყველა მონაცემი ინახება ევროკავშირის სერვერებზე.' },
+  { Icon: PenLine, title: 'ციფრული ხელმოწერა', desc: 'ხელმოწერა ჩაშენებულია PDF-ში და იცავს დოკუმენტის მთლიანობას.' },
+];
+
+/** Customer testimonials — TODO: replace with real quotes/names/photos. */
+export const testimonials: { quote: string; name: string; role: string; initials: string }[] = [
+  { quote: 'ადრე ერთ ობიექტზე დღეს ვკარგავდი ქაღალდებში. ახლა შემოწმება და PDF რამდენიმე წუთია — და ინსპექციისთვის ყველაფერი მზადაა.', name: 'სახელი გვარი', role: 'უსაფრთხოების სპეციალისტი', initials: 'სგ' },
+  { quote: 'GPS ფოტოები და ხელმოწერები ერთ ფაილში — ეს ზუსტად ის მტკიცებულებაა, რასაც ინსპექცია ითხოვს.', name: 'სახელი გვარი', role: 'ობიექტის მენეჯერი', initials: 'სგ' },
+  { quote: 'რამდენიმე ობიექტს ერთი ანგარიშიდან ვმართავ. დანერგვა ერთ დღეში მოხდა, გუნდმა მაშინვე აიტაცა.', name: 'სახელი გვარი', role: 'აუთსორს კონსულტანტი', initials: 'სგ' },
+];
+
+/** Final CTA band copy. */
+export const ctaBand = {
+  title: 'მზად ხარ ქაღალდი ციფრულით ჩაანაცვლო?',
+  subtitle: '3 PDF უფასოდ. საკრედიტო ბარათი არ გჭირდება. დანერგვა — წუთებში.',
+};
 
 /** Placeholder blog articles for the Legislation page — TODO: real articles. */
 export const blogArticles: { title: string; excerpt: string; date: string; url: string }[] = [

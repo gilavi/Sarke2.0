@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import { Check, BookOpen, ArrowRight } from 'lucide-react';
 import { routes } from '@/app/routes';
 import { REGULATIONS } from '@/lib/data/regulations';
-import { AppStoreBadge, PlayStoreBadge, APP_STORE_URL } from './shared';
 import { freeFeatures } from './marketing-data';
 
 // ─── Price teaser ───────────────────────────────────────────────────────────────
@@ -44,28 +43,6 @@ export function PriceTeaser() {
         >
           სრული ფასები <ArrowRight size={16} />
         </Link>
-      </div>
-    </section>
-  );
-}
-
-// ─── Download CTA ────────────────────────────────────────────────────────────────
-export function DownloadCTA() {
-  return (
-    <section id="download" className="py-28 px-5 bg-brand-700">
-      <div className="mx-auto max-w-3xl text-center">
-        <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
-          <h2 className="text-3xl sm:text-5xl font-bold text-white mb-4 leading-tight">
-            დაიწყე უფასოდ დღესვე
-          </h2>
-          <p className="text-brand-200 text-lg mb-10">
-            3 PDF — გადახდის გარეშე. საკრედიტო ბარათი არ გჭირდება.
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-4">
-            <AppStoreBadge href={APP_STORE_URL} light />
-            <PlayStoreBadge light />
-          </div>
-        </motion.div>
       </div>
     </section>
   );
