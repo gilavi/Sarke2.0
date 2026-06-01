@@ -1,37 +1,25 @@
 import { memo } from 'react';
-import { Navigate } from 'react-router-dom';
-import { useAuth } from '@/lib/auth';
-import {
-  Navbar,
-  Hero,
-  PainSection,
-  HowItWorks,
-  FeaturesGrid,
-  Pricing,
-  FAQ,
-  FinalCTA,
-  Footer,
-} from './landing/sections';
-import { StickyMobileBar, ExitIntentPopup, CookieBanner } from './landing/overlays';
+import { Hero, PainSection, Transition, HowItWorks } from './landing/home';
+import { FeaturesGrid, ForWho } from './landing/home-features';
+import { PriceTeaser, DownloadCTA, RegulationsTeaser } from './landing/home-cta';
 
+/**
+ * Home page sections. Navbar, Footer and overlays come from <MarketingLayout>;
+ * this component is just the ordered list of home sections (the layout's auth
+ * guard already redirects logged-in users to /home).
+ */
 export default memo(function Landing() {
-  const { session } = useAuth();
-  if (session) return <Navigate to="/home" replace />;
-
   return (
-    <div className="font-sans antialiased">
-      <Navbar />
+    <>
       <Hero />
       <PainSection />
+      <Transition />
       <HowItWorks />
       <FeaturesGrid />
-      <Pricing />
-      <FAQ />
-      <FinalCTA />
-      <Footer />
-      <StickyMobileBar />
-      <ExitIntentPopup />
-      <CookieBanner />
-    </div>
+      <ForWho />
+      <PriceTeaser />
+      <DownloadCTA />
+      <RegulationsTeaser />
+    </>
   );
 });

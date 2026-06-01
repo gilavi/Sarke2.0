@@ -14,6 +14,7 @@
 **Backend:** Supabase (Postgres + Auth + Storage) — single project shared by all three frontends  
 **Architecture:** Feature-sliced. Modules live in `features/<name>/` with co-located `AGENTS.md` per folder; `app/` route files for large flows are thin orchestrators that re-export from `features/`.  
 **Account deletion:** Implemented end-to-end via Edge Function `delete-account` + `ON DELETE CASCADE` FKs on all user-owned tables. App Store Review Guideline 5.1.1(v) compliant on the data-deletion axis.
+**Marketing site (`web-app/`):** The logged-out landing is a multi-page marketing site (`/`, `/about`, `/pricing`, `/legislation`, `/contact`) sharing one `MarketingLayout`; logged-in users redirect to `/home`. `/legislation` is the PUBLIC regulations/blog page — distinct from the PROTECTED `/regulations` dashboard route. The `/contact` page has a live AI support chatbot backed by the `ai-chat` Edge Function (Anthropic Haiku proxy, `verify_jwt = false`, needs the `ANTHROPIC_API_KEY` secret + manual `supabase functions deploy ai-chat`).
 **Function search_path:** All public Postgres functions have `SET search_path = public, pg_catalog`. Functions invoked from `auth.admin` operations run with restricted search_path and fail to resolve unqualified public-schema types without this pin — see migration `supabase/migrations/20260525180000_pin_function_search_paths.sql` for the precedent and the bug it fixed.
 **Signatures:** Single unified flow on the **inspection result screen** (post-completion). One creator signature (captured digitally, never persisted) + N empty hand-sign slots rendered in the PDF for printed-page signing. Captured base64 lives in component state only — never to Supabase storage, any DB column, AsyncStorage, MMKV, SecureStore, or the file system. See [`features/signatures/AGENTS.md`](../features/signatures/AGENTS.md) and the cleanup migration `supabase/migrations/20260526002032_remove_persisted_inspection_signatures.sql`.
 **Inspection identity:** All 10 inspection types share a parent row in `public.inspections` (keyed by UUID, `type` column tags the variant). Equipment-specific data lives in `<type>_inspections` with FK to the parent (ON DELETE CASCADE). Shared tables (`inspection_attachments`, etc.) FK to `inspections.id` only. New equipment creates go through the `create_equipment_inspection` RPC for the parent row + a regular insert for the equipment row. Migrations `20260527001240_unify_inspection_identity.sql` + `20260527001241_create_equipment_inspection_rpc.sql` (pending manual apply).
@@ -108,12 +109,13 @@ Sarke 2.0/
 │
 ├── supabase/migrations/              # 0001–0053 + timestamp-prefixed migrations from 2026-05-25 onward; NOTE duplicate-numbered files at 0044/0045/0046 (branch merge)
 │
-├── web-app/                          # Dashboard (Vite + React)
+├── web-app/                          # Dashboard + public marketing site (Vite + React)
 │   └── src/
 │       ├── pages/                    # 35+ page components
+│       ├── pages/landing/            # Multi-page marketing site sections (Home/About/Pricing/Legislation/Contact); MarketingLayout wraps them with shared navbar/footer/overlays
 │       ├── features/inspections/     # equipment detail engine (useEquipmentDetail + shared widgets)
-│       ├── lib/data/                 # Data layer (one file per entity)
-│       └── components/              # UI components incl. SkeletonCard.tsx
+│       ├── lib/data/                 # Data layer (one file per entity); ai-chat.ts → ai-chat Edge Function
+│       └── components/              # UI components incl. SkeletonCard.tsx, marketing/ChatWidget.tsx
 │
 ├── web/                              # Signing page (Vite + React)
 │

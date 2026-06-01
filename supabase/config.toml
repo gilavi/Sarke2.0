@@ -385,6 +385,12 @@ deno_version = 2
 [functions.bog-payment-callback]
 verify_jwt = false
 
+# Public marketing-site support chatbot. Visitors are unauthenticated (no JWT),
+# so JWT verification is disabled; abuse is mitigated inside the function
+# (cheap model, small max_tokens, input cap, per-IP throttle).
+[functions.ai-chat]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

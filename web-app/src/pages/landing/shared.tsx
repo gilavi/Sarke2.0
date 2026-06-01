@@ -1,5 +1,10 @@
 import { cn } from '@/lib/utils';
 
+// External App Store listing. Placeholder until the real listing URL exists.
+// Kept as an absolute-ish external link (NOT a "#anchor", which HashRouter would
+// hijack into a route change). TODO: replace with the real App Store URL.
+export const APP_STORE_URL = '#';
+
 // ─── Animation helpers ────────────────────────────────────────────────────────
 export const fadeUp = {
   hidden: { opacity: 0, y: 24 },
