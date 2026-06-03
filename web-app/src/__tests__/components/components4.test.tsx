@@ -52,7 +52,7 @@ describe('WelcomeModal', () => {
   });
 
   it('stays closed when the modal has already been seen', () => {
-    localStorage.setItem('sarke-welcome-seen', '1');
+    localStorage.setItem('hubble-welcome-seen', '1');
     renderInRouter(<WelcomeModal />);
     expect(screen.queryByText('მოგესალმებით Hubble-ში')).not.toBeInTheDocument();
   });
@@ -68,7 +68,7 @@ describe('QuickWinChecklist', () => {
   });
 
   it('hides itself when the user has dismissed it', () => {
-    localStorage.setItem('sarke-checklist-dismissed', '1');
+    localStorage.setItem('hubble-checklist-dismissed', '1');
     renderInRouter(<QuickWinChecklist />);
     expect(screen.queryByText('დასრულეთ პროფილი')).not.toBeInTheDocument();
   });

@@ -19,7 +19,7 @@ describe('ThemeProvider / useTheme', () => {
     act(() => result.current.toggleMode());
     expect(result.current.isDark).toBe(true);
     expect(document.documentElement.classList.contains('dark')).toBe(true);
-    expect(localStorage.getItem('sarke-theme')).toBe('dark');
+    expect(localStorage.getItem('hubble-theme')).toBe('dark');
   });
 
   it('setMode switches mode explicitly and clears the dark class', () => {
@@ -32,7 +32,7 @@ describe('ThemeProvider / useTheme', () => {
   });
 
   it('reads the initial mode from localStorage', () => {
-    localStorage.setItem('sarke-theme', 'dark');
+    localStorage.setItem('hubble-theme', 'dark');
     const { result } = renderHook(() => useTheme(), { wrapper: ThemeProvider });
     expect(result.current.mode).toBe('dark');
   });

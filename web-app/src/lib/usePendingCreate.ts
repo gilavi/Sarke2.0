@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 
-const STORAGE_KEY = 'sarke-pending-create';
+const STORAGE_KEY = 'hubble-pending-create';
 
 function readStored<T>(): T | null {
   try {

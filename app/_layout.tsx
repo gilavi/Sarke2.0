@@ -31,8 +31,12 @@ import i18n from '../lib/i18n';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from '../lib/queryClient';
 import { initCrashReporting } from '../lib/crashReporting';
+import { migrateLegacyStorage } from '../lib/storageMigration';
 
 initCrashReporting();
+// Rebrand: carry legacy `sarke.*` storage keys over to `hubble.*` once on boot
+// (preserves Google Calendar tokens + scheduled-reminder map). Fire-and-forget.
+void migrateLegacyStorage();
 
 // Codes we've already tried to exchange. Prevents a double-exchange when both
 // `getInitialURL()` (cold start) and the `url` listener (warm app) fire for the

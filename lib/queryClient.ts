@@ -23,7 +23,7 @@ const persister = createAsyncStoragePersister({
   // serializing the cache to AsyncStorage on every keystroke would be
   // wasteful. 1s coalesces bursts.
   throttleTime: 5_000,
-  key: 'sarke.rq.cache.v1',
+  key: 'hubble.rq.cache.v1',
 });
 
 // Bump on cache-shape changes so a stale persisted blob from a previous

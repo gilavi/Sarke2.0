@@ -10,10 +10,10 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
   const { isDark, toggleMode } = useTheme();
 
   const setLanguage = (lang: string) => {
-    localStorage.setItem('sarke-lang', lang);
+    localStorage.setItem('hubble-lang', lang);
     window.location.reload();
   };
-  const currentLang = localStorage.getItem('sarke-lang') || 'ka';
+  const currentLang = localStorage.getItem('hubble-lang') || 'ka';
 
   return (
     <Modal

@@ -28,7 +28,7 @@ const MOCK_SESSION = {
   user: {
     id: MOCK_USER_ID,
     aud: 'authenticated',
-    email: 'mock@sarke.dev',
+    email: 'mock@hubble.dev',
     user_metadata: { first_name: 'Mock', last_name: 'User' },
     app_metadata: {},
     created_at: new Date().toISOString(),
@@ -36,7 +36,7 @@ const MOCK_SESSION = {
 } as unknown as Session;
 const MOCK_USER: AppUser = {
   id: MOCK_USER_ID,
-  email: 'mock@sarke.dev',
+  email: 'mock@hubble.dev',
   first_name: 'Mock',
   last_name: 'User',
   created_at: new Date().toISOString(),

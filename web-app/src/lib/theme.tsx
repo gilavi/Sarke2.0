@@ -19,7 +19,7 @@ const ThemeContext = createContext<ThemeContextValue>({
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [mode, setModeState] = useState<ThemeMode>(() => {
     if (typeof window === 'undefined') return 'light';
-    return (localStorage.getItem('sarke-theme') as ThemeMode) || 'light';
+    return (localStorage.getItem('hubble-theme') as ThemeMode) || 'light';
   });
 
   const isDark = mode === 'dark';
@@ -31,7 +31,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     } else {
       root.classList.remove('dark');
     }
-    localStorage.setItem('sarke-theme', mode);
+    localStorage.setItem('hubble-theme', mode);
   }, [isDark, mode]);
 
   const toggleMode = useCallback(() => setModeState((m) => (m === 'light' ? 'dark' : 'light')), []);

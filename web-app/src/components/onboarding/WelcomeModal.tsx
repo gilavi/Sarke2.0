@@ -20,12 +20,12 @@ export function WelcomeModal() {
 
   useEffect(() => {
     if (!session) return;
-    const seen = localStorage.getItem('sarke-welcome-seen');
+    const seen = localStorage.getItem('hubble-welcome-seen');
     if (!seen) setOpen(true);
   }, [session]);
 
   function close() {
-    localStorage.setItem('sarke-welcome-seen', '1');
+    localStorage.setItem('hubble-welcome-seen', '1');
     setOpen(false);
     if (step === STEPS.length - 1) fireConfetti();
   }

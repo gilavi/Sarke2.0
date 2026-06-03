@@ -2,7 +2,7 @@
 // prompted to re-accept on next sign-in.
 export const TERMS_VERSION = '2026-04-22';
 
-export const TERMS_PUBLIC_URL = 'https://sarke.ge/terms';
+export const TERMS_PUBLIC_URL = 'https://hubble.ge/terms';
 
 export interface TermsBody {
   heading: string;
@@ -68,7 +68,7 @@ export const termsKa: TermsBody = {
     {
       title: '8. საკონტაქტო',
       body:
-        'კითხვებისთვის: support@sarke.ge',
+        'კითხვებისთვის: support@hubble.ge',
     },
   ],
 };
@@ -126,7 +126,7 @@ export const termsEn: TermsBody = {
     },
     {
       title: '8. Contact',
-      body: 'Questions: support@sarke.ge',
+      body: 'Questions: support@hubble.ge',
     },
   ],
 };

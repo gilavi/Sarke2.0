@@ -4,9 +4,14 @@ import { createRoot } from 'react-dom/client';
 import { MantineProvider, createTheme } from '@mantine/core';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ThemeProvider, useTheme } from '@/lib/theme';
+import { migrateLegacyStorage } from '@/lib/migrateLegacyStorage';
 import '@/lib/i18n';
 import './index.css';
 import App from './App';
+
+// Rebrand: carry legacy `sarke-*` localStorage keys over to `hubble-*` before
+// anything reads them, so existing users keep their theme/lang/onboarding state.
+migrateLegacyStorage();
 
 const theme = createTheme({
   primaryColor: 'brand',

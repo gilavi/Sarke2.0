@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import React from 'react';
 import { setPendingCreate, usePendingCreate } from '@/lib/usePendingCreate';
 
-const STORAGE_KEY = 'sarke-pending-create';
+const STORAGE_KEY = 'hubble-pending-create';
 
 beforeEach(() => {
   sessionStorage.clear();

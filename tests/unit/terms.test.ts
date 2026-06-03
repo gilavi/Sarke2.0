@@ -7,8 +7,8 @@ describe('terms', () => {
       expect(TERMS_VERSION).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     });
 
-    it('TERMS_PUBLIC_URL is the canonical sarke.ge URL', () => {
-      expect(TERMS_PUBLIC_URL).toBe('https://sarke.ge/terms');
+    it('TERMS_PUBLIC_URL is the canonical hubble.ge URL', () => {
+      expect(TERMS_PUBLIC_URL).toBe('https://hubble.ge/terms');
     });
   });
 

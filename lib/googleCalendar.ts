@@ -7,9 +7,9 @@ import Constants from 'expo-constants';
 import { schedulesApi } from './services';
 import type { ScheduleWithItem } from '../types/models';
 
-const TOKEN_KEY = 'sarke.google.accessToken';
-const REFRESH_KEY = 'sarke.google.refreshToken';
-const EXPIRY_KEY = 'sarke.google.expiresAt';
+const TOKEN_KEY = 'hubble.google.accessToken';
+const REFRESH_KEY = 'hubble.google.refreshToken';
+const EXPIRY_KEY = 'hubble.google.expiresAt';
 const SCOPES = ['https://www.googleapis.com/auth/calendar.events'];
 
 const discovery: AuthSession.DiscoveryDocument = {

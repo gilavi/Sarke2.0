@@ -16,21 +16,21 @@ export function QuickWinChecklist() {
   const fireConfetti = useConfetti();
 
   useEffect(() => {
-    const saved = localStorage.getItem('sarke-checklist');
+    const saved = localStorage.getItem('hubble-checklist');
     if (saved) {
       try { setChecked(JSON.parse(saved)); } catch {}
     }
-    const d = localStorage.getItem('sarke-checklist-dismissed');
+    const d = localStorage.getItem('hubble-checklist-dismissed');
     if (d) setDismissed(true);
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('sarke-checklist', JSON.stringify(checked));
+    localStorage.setItem('hubble-checklist', JSON.stringify(checked));
     const allDone = ITEMS.every((i) => checked[i.id]);
     if (allDone && Object.keys(checked).length > 0) {
       fireConfetti();
       setTimeout(() => setDismissed(true), 2000);
-      localStorage.setItem('sarke-checklist-dismissed', '1');
+      localStorage.setItem('hubble-checklist-dismissed', '1');
     }
   }, [checked, fireConfetti]);
 
@@ -47,7 +47,7 @@ export function QuickWinChecklist() {
     >
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-semibold text-neutral-900 dark:text-neutral-100">საწყისი ნაბიჯები</h3>
-        <button onClick={() => { setDismissed(true); localStorage.setItem('sarke-checklist-dismissed', '1'); }} className="rounded p-1 text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800">
+        <button onClick={() => { setDismissed(true); localStorage.setItem('hubble-checklist-dismissed', '1'); }} className="rounded p-1 text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800">
           <X size={14} />
         </button>
       </div>
