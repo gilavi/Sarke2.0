@@ -34,12 +34,20 @@ bar / exit popup use it white-on-`safety-500` tiles. `public/favicon.svg` is the
 as the orange app-icon tile. To replace with an official vector, swap the single `<path d>`
 in `HubbleLogo` (keep the `0 0 120 112` viewBox or update both call sites' aspect).
 
+**Pattern system:** `components/marketing/BrandPattern.tsx` — the board's "orbital paths"
+motif. `OrbitRings` (concentric rings + orange/hi-vis orbiting dots, `currentColor`),
+`DotGrid` (dot texture, `currentColor`, pass a unique `id` per instance), and the sticker
+badges `HazardSticker` / `RoundSticker`. All decorative + `aria-hidden`; the caller tints
+rings/grids via text color (`text-graphite-900/[0.06]` on light, `text-white/[0.06]` on dark)
+and positions them absolutely inside a `relative overflow-hidden` section.
+
 ## Public API (section exports, consumed by the page wrappers)
 - `chrome.tsx` → `Navbar`, `Footer` — route-link navbar (NavLink) + footer; used by `MarketingLayout`.
 - `faq.tsx` → `FAQ({ items, title? })` — reusable accordion; each page passes its own array.
 - `home.tsx` → `Hero`, `PainSection`, `Transition`, `HowItWorks`.
 - `home-features.tsx` → `FeaturesGrid` (incl. the 4 product pillars), `ForWho`.
 - `home-cta.tsx` → `PriceTeaser`, `DownloadCTA`, `RegulationsTeaser`.
+- `home-statement.tsx` → `BrandStatement` — editorial graphite band ("safety isn't a slogan…") with the orbital motif + a hazard sticker.
 - `about.tsx` → `Mission`, `WhoWeAre`, `Team`, `Social`.
 - `pricing.tsx` → `Pricing` (cards), `PricingComparison` (table).
 - `legislation.tsx` → `LegislationHero`, `ArticleList` (reuses `REGULATIONS` from `lib/data/regulations`).

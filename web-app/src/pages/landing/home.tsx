@@ -1,16 +1,18 @@
 import { motion } from 'framer-motion';
 import { Smartphone, Star } from 'lucide-react';
 import { fadeUp, stagger, AppStoreBadge, PhoneMockup, APP_STORE_URL } from './shared';
+import { OrbitRings } from '@/components/marketing/BrandPattern';
 import { painPoints, steps } from './marketing-data';
 
 // ─── Hero ─────────────────────────────────────────────────────────────────────
 export function Hero() {
   return (
     <section className="relative overflow-hidden bg-offwhite pt-32 pb-20">
-      {/* Ambient blobs */}
+      {/* Ambient blobs + orbital motif */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-32 w-[560px] h-[560px] rounded-full bg-safety-50 opacity-70 blur-3xl" />
         <div className="absolute bottom-0 -left-24 w-[400px] h-[400px] rounded-full bg-safety-100 opacity-40 blur-3xl" />
+        <OrbitRings className="absolute -top-28 -right-44 h-[640px] w-[640px] text-graphite-900/[0.07]" />
       </div>
 
       <div className="relative mx-auto flex max-w-6xl flex-col md:flex-row items-center gap-12 px-5">

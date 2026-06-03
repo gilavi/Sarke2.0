@@ -4,6 +4,7 @@ import { LogoCloud, StatsBand, Testimonials } from './landing/home-proof';
 import { ValueShowcase } from './landing/home-showcase';
 import { FeaturesGrid, ForWho } from './landing/home-features';
 import { TrustSecurity } from './landing/trust';
+import { BrandStatement } from './landing/home-statement';
 import { PriceTeaser, RegulationsTeaser } from './landing/home-cta';
 import { CTABand } from './landing/cta';
 
@@ -26,6 +27,7 @@ export default memo(function Landing() {
       <TrustSecurity />
       <Testimonials />
       <ForWho />
+      <BrandStatement />
       <PriceTeaser />
       <RegulationsTeaser />
       <CTABand variant="download" />

@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { ShieldCheck } from 'lucide-react';
 import { fadeUp, stagger } from './shared';
+import { OrbitRings } from '@/components/marketing/BrandPattern';
 import { trustPoints } from './marketing-data';
 
 /**
@@ -8,8 +9,9 @@ import { trustPoints } from './marketing-data';
  */
 export function TrustSecurity() {
   return (
-    <section className="bg-graphite-900 py-24 px-5">
-      <div className="mx-auto max-w-5xl">
+    <section className="relative overflow-hidden bg-graphite-900 py-24 px-5">
+      <OrbitRings dotted className="pointer-events-none absolute top-1/2 -left-48 h-[620px] w-[620px] -translate-y-1/2 text-white/[0.06]" />
+      <div className="relative mx-auto max-w-5xl">
         <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-14">
           <span className="inline-flex items-center gap-2 rounded-full bg-hivis px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-graphite-900 mb-5">
             <ShieldCheck size={14} /> უსაფრთხოება და კანონიერება

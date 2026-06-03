@@ -43,7 +43,7 @@ export function Navbar() {
       <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
         <Link to={routes.landing} className="flex items-center gap-2.5">
           <HubbleLogo className="h-8 w-auto text-graphite-900" />
-          <span className="text-xl font-bold tracking-tight text-neutral-900">HUBBLE</span>
+          <span className="font-display text-xl font-bold tracking-tight text-neutral-900">HUBBLE</span>
         </Link>
 
         <nav className="hidden md:flex items-center gap-6">
@@ -121,7 +121,7 @@ export function Footer() {
           <div className="max-w-xs">
             <div className="flex items-center gap-2 mb-2">
               <HubbleLogo className="h-7 w-auto text-graphite-900" />
-              <span className="text-lg font-bold text-neutral-900">HUBBLE</span>
+              <span className="font-display text-lg font-bold tracking-tight text-neutral-900">HUBBLE</span>
             </div>
             <p className="text-sm text-neutral-500">შრომის უსაფრთხოების ციფრული პლათფორმა</p>
           </div>

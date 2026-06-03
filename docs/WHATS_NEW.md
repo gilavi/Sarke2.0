@@ -4,6 +4,26 @@
 
 ---
 
+## 2026-06-03 — Marketing brand expression: orbital motif, editorial statement, stickers (`web-app/`)
+
+Stage 2 of the rebrand — moving past color into the board's visual language.
+
+- **Pattern system** (`components/marketing/BrandPattern.tsx`): the "orbital paths" motif
+  (`OrbitRings` — concentric rings + orange/hi-vis orbiting dots) + `DotGrid` texture +
+  `HazardSticker` / `RoundSticker` from the board's sticker system. Decorative, recolorable,
+  `aria-hidden`. Woven into the hero (phone "in orbit"), the dark trust band, and the CTA
+  (dot-grid + orbit).
+- **Editorial brand-statement band** (`landing/home-statement.tsx` → `BrandStatement`):
+  full-bleed graphite "უსაფრთხოება არ არის ლოზუნგი. ეს არის **სისტემა**." with the orbital
+  motif + a hi-vis hazard sticker — the board's poster moment, in Georgian. Placed before
+  the pricing teaser on Home.
+- **Display type**: the `HUBBLE` wordmark (navbar/footer) and the stat numbers now use the
+  `font-display` grotesk for the board's bolder feel.
+- Verified: `tsc --noEmit` clean, eslint clean, no-shadow guard clean, **`vite build` green**,
+  and confirmed in-browser (hero / statement / trust / CTA).
+
+---
+
 ## 2026-06-03 — Marketing site rebrand to the Hubble brand board (`web-app/`)
 
 The public marketing site (`hubble.ge` → `web-app/src/pages/landing/`) was repainted from

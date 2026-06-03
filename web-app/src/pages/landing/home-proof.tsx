@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { Star, Quote } from 'lucide-react';
 import { fadeUp, stagger } from './shared';
+import { DotGrid } from '@/components/marketing/BrandPattern';
 import { stats, companies, testimonials } from './marketing-data';
 
 // ─── Logo cloud ─────────────────────────────────────────────────────────────────
@@ -24,8 +25,9 @@ export function LogoCloud() {
 // ─── Stats band ─────────────────────────────────────────────────────────────────
 export function StatsBand() {
   return (
-    <section className="bg-graphite-900 py-16 px-5">
-      <div className="mx-auto max-w-5xl grid grid-cols-2 md:grid-cols-4 gap-8">
+    <section className="relative overflow-hidden bg-graphite-900 py-16 px-5">
+      <DotGrid id="stats-dots" className="pointer-events-none absolute inset-0 h-full w-full text-white/[0.05]" />
+      <div className="relative mx-auto max-w-5xl grid grid-cols-2 md:grid-cols-4 gap-8">
         {stats.map((s, i) => (
           <motion.div
             key={s.label}
@@ -33,7 +35,7 @@ export function StatsBand() {
             transition={{ delay: i * 0.08 }}
             className="text-center"
           >
-            <div className="text-4xl sm:text-5xl font-black text-hivis tracking-tight">{s.value}</div>
+            <div className="font-display text-4xl sm:text-5xl font-black text-hivis tracking-tight">{s.value}</div>
             <div className="mt-2 text-sm text-concrete leading-snug">{s.label}</div>
           </motion.div>
         ))}

@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
 import { routes } from '@/app/routes';
 import { AppStoreBadge, PlayStoreBadge, APP_STORE_URL } from './shared';
+import { DotGrid, OrbitRings } from '@/components/marketing/BrandPattern';
 import { ctaBand } from './marketing-data';
 
 /**
@@ -11,8 +12,10 @@ import { ctaBand } from './marketing-data';
  */
 export function CTABand({ variant = 'default' }: { variant?: 'default' | 'download' }) {
   return (
-    <section className="bg-safety-700 py-24 px-5">
-      <div className="mx-auto max-w-3xl text-center">
+    <section className="relative overflow-hidden bg-safety-700 py-24 px-5">
+      <DotGrid id="cta-dots" className="pointer-events-none absolute inset-0 h-full w-full text-white/[0.13]" />
+      <OrbitRings className="pointer-events-none absolute -top-40 -right-40 h-[460px] w-[460px] text-white/[0.10]" />
+      <div className="relative mx-auto max-w-3xl text-center">
         <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
           <h2 className="text-3xl sm:text-5xl font-bold text-white mb-4 leading-tight">{ctaBand.title}</h2>
           <p className="text-white/80 text-lg mb-10">{ctaBand.subtitle}</p>
