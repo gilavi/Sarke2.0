@@ -1,4 +1,4 @@
-# Sarke 2.0
+# Hubble
 
 Expo (React Native) app for occupational safety experts in Georgia. An expert creates a project, fills a checklist-style inspection on their phone, collects worker signatures, and generates a PDF report. All UI copy is in Georgian (ქართული).
 
@@ -75,7 +75,7 @@ Top-level folders, one line each.
 | `scripts/` | Repo scripts including `check-primitives.mjs` (lint guard). |
 | `supabase/` | `migrations/` SQL files (0001–0053 plus timestamp-prefixed migrations from 2026-05-25 onward; numbers 0044/0045/0046 are each used by two files — see Migrations note), `seed/` system templates, `functions/` Edge Functions, `.temp/` local CLI cache. |
 | `docs/` | Project documentation — `AI_BRIEFING.md`, `WHATS_NEW.md`, `primitives.md`, `payments.md`, `design-system-audit-*.md`, `prompts/`. |
-| `web/` | `sarke-sign` tokenized signing page (Vite + React). Deployed to `https://gilavi.github.io/Sarke2.0/`. |
+| `web/` | `hubble-sign` tokenized signing page (Vite + React). Deployed to `https://gilavi.github.io/Sarke2.0/`. |
 | `web-app/` | Public dashboard (Vite + React + TS + Tailwind). Deployed to `https://gilavi.github.io/Sarke2.0/app/`. |
 | `website/` | Docusaurus documentation site. Deployed via `.github/workflows/docs.yml`. |
 | `public/` | Static assets for the web bundles. |
@@ -121,7 +121,7 @@ Two static bundles in this repo plus a Docusaurus site. None share code with the
 
 | Path | Purpose | URL | Deploy workflow |
 |---|---|---|---|
-| `web/` (sarke-sign) | Tokenized signing page recipients open from an SMS link | `https://gilavi.github.io/Sarke2.0/` | `deploy-web.yml` |
+| `web/` (hubble-sign) | Tokenized signing page recipients open from an SMS link | `https://gilavi.github.io/Sarke2.0/` | `deploy-web.yml` |
 | `web-app/` (dashboard) | Public dashboard with full BOG payment parity | `https://gilavi.github.io/Sarke2.0/app/` | `deploy-web-app.yml` (+ `-preview.yml` for PR previews under `/app/preview/`) |
 | `website/` (Docusaurus) | Documentation site | published via `docs.yml` | `docs.yml` |
 

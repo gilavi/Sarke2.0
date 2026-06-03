@@ -1,10 +1,10 @@
-# Payments — Sarke Pro subscriptions
+# Payments — Hubble Pro subscriptions
 
 Single source of truth for the BOG payment / subscription flow shared by the mobile app and the `web-app/` dashboard.
 
 ## Pricing
 
-- **Sarke Pro:** ₾19 / month. Charged via Bank of Georgia (BOG) e-commerce.
+- **Hubble Pro:** ₾19 / month. Charged via Bank of Georgia (BOG) e-commerce.
 - **Free tier:** `PDF_FREE_LIMIT = 30` lifetime PDFs (intentionally generous during soft launch — tighten when BOG payment is fully approved).
 
 ## Backend

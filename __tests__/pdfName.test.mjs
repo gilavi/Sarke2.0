@@ -65,7 +65,7 @@ test('generatePdfName: output always ends with .pdf', () => {
 // ── Georgian transliteration ──────────────────────────────────────────────────
 
 test('generatePdfName: transliterates Georgian project name to Latin', () => {
-  // სარკე → sarke
+  // სარკე → Hubble
   const result = generatePdfName('სარკე', 'Report', new Date(2026, 0, 1), 'abcd');
   assert.ok(result.startsWith('sarke_'), `got: ${result}`);
 });

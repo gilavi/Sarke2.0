@@ -103,7 +103,7 @@ own:
 - Project-signer witness signatures (`project_signers` table, the
   `signatures` storage bucket's `project/...` paths,
   `components/RoleSlot*`).
-- Tokenized remote signing (`web/` sarke-sign, `remote_signings`
+- Tokenized remote signing (`web/` hubble-sign, `remote_signings`
   table, `remote-signatures` bucket, `send-signing-sms` Edge Function).
 - Order signatures (embedded in `orders.form_data`).
 - Incident / briefing reusable expert signature

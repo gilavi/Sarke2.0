@@ -152,8 +152,8 @@ export default function TermsScreen() {
                     </Text>
                     <Text style={styles.cardDescription}>
                       {lang === 'ka'
-                        ? 'Sarke 2.0 არ იზიარებს თქვენს პერსონალურ მონაცემებს მესამე მხარესთან. ფოტოები და ხელმოწერები ინახება მხოლოდ თქვენს პირად ანგარიშში. PDF ანგარიშები ხელმისაწვდომია მხოლოდ თქვენთვის და თქვენი ორგანიზაციისთვის. მონაცემთა წაშლა შესაძლებელია აპლიკაციის პარამეტრებიდან. ყველა მონაცემი დაცულია Supabase-ის უსაფრთხო სერვერებზე.'
-                        : 'Sarke 2.0 does not share your personal data with third parties. Photos and signatures are stored only in your personal account. PDF reports are available only to you and your organization. Data deletion is available from app settings. All data is secured on Supabase servers.'}
+                        ? 'Hubble არ იზიარებს თქვენს პერსონალურ მონაცემებს მესამე მხარესთან. ფოტოები და ხელმოწერები ინახება მხოლოდ თქვენს პირად ანგარიშში. PDF ანგარიშები ხელმისაწვდომია მხოლოდ თქვენთვის და თქვენი ორგანიზაციისთვის. მონაცემთა წაშლა შესაძლებელია აპლიკაციის პარამეტრებიდან. ყველა მონაცემი დაცულია Supabase-ის უსაფრთხო სერვერებზე.'
+                        : 'Hubble does not share your personal data with third parties. Photos and signatures are stored only in your personal account. PDF reports are available only to you and your organization. Data deletion is available from app settings. All data is secured on Supabase servers.'}
                     </Text>
                   </View>
                 </View>
@@ -169,7 +169,7 @@ export default function TermsScreen() {
 
             {/* Copyright */}
             <Text style={{ fontSize: 11, color: theme.colors.inkFaint, textAlign: 'center', marginTop: 4 }}>
-              © 2026 Sarke 2.0 · {lang === 'ka' ? 'ყველა უფლება დაცულია' : 'All rights reserved'}
+              © 2026 Hubble · {lang === 'ka' ? 'ყველა უფლება დაცულია' : 'All rights reserved'}
             </Text>
           </View>
 

@@ -1,4 +1,4 @@
-# Sarke 2.0 — Claude Code Instructions
+# Hubble — Claude Code Instructions
 
 This file is read automatically at the start of every Claude Code session in this repo. Rules here override Claude's defaults.
 
@@ -98,7 +98,7 @@ When adding a new "list screen", do all three of:
 
 There are three separate web codebases in this repo. None share code with the Expo mobile app — only Supabase.
 
-- **`web/` (sarke-sign):** tokenized signing page hosted at `https://gilavi.github.io/Sarke2.0/` (root). Linked from SMS in `lib/sms.ts` + `supabase/functions/send-signing-sms/`. Hash routing (`#/sign/<token>`). Don't change its base path — it would break in-flight SMS links.
+- **`web/` (hubble-sign):** tokenized signing page hosted at `https://gilavi.github.io/Sarke2.0/` (root). Linked from SMS in `lib/sms.ts` + `supabase/functions/send-signing-sms/`. Hash routing (`#/sign/<token>`). Don't change its base path — it would break in-flight SMS links.
 - **`web-app/` (dashboard):** public dashboard at `https://gilavi.github.io/Sarke2.0/app/`. Vite + React + TypeScript + Tailwind. Reimplements features in HTML/CSS — no Expo, no React Native. **Mobile parity is generally not a goal** — most changes here don't need to track the Expo app. **Exception — inspection acts:** the unified inspection engine (`web-app/src/lib/inspection/` + `web-app/src/features/inspections/structured/`) **does** track the mobile app — web schemas/catalogs are hand-mirrored from the Expo `lib/inspection/` + `types/<type>.ts` (the `@root` import is eslint-banned), and equipment rows must round-trip with mobile (web creates the parent `public.inspections` row via the `create_equipment_inspection` RPC; see `lib/db/repository.ts` `parentInspection`). See [web-app/UNIFIED_INSPECTIONS_PLAN.md](web-app/UNIFIED_INSPECTIONS_PLAN.md).
 - **`website/` (Docusaurus):** documentation site, deployed via `.github/workflows/docs.yml`.
 

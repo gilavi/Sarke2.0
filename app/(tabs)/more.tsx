@@ -395,7 +395,7 @@ function SubscriptionSection({
             <View style={s.proBadge}>
               <Text style={s.proBadgeText}>PRO ✓</Text>
             </View>
-            <Text style={{ fontSize: 15, fontWeight: '700', color: theme.colors.ink }}>Sarke Pro</Text>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: theme.colors.ink }}>Hubble Pro</Text>
           </View>
 
           {/* Expiry */}
@@ -471,7 +471,7 @@ function SubscriptionSection({
           <Pressable
             style={({ pressed }) => [s.proBtn, pressed && { opacity: 0.85 }]}
             onPress={onOpenPaywall}
-            {...a11y('PRO-ზე გადასვლა', 'Sarke Pro-ს გამოწერა', 'button')}
+            {...a11y('PRO-ზე გადასვლა', 'Hubble Pro-ს გამოწერა', 'button')}
           >
             <Text style={s.proBtnText}>PRO-ზე გადასვლა ₾19/თვე</Text>
           </Pressable>

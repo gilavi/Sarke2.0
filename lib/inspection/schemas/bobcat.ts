@@ -312,7 +312,7 @@ export const bobcatSchema: InspectionSchema<BobcatInspection> = {
   docSubtitle: (d) =>
     d.templateId === LARGE_LOADER_TEMPLATE_ID ? 'Large Loader Inspection' : 'Bobcat / Skid-Steer Loader Inspection',
   pdfFooterLabel: (d) =>
-    `Sarke 2.0 — ${d.templateId === LARGE_LOADER_TEMPLATE_ID ? 'დიდი ციცხვიანი დამტვირთველის შემოწმების აქტი' : 'ციცხვიანი დამტვირთველის შემოწმების აქტი'}`,
+    `Hubble — ${d.templateId === LARGE_LOADER_TEMPLATE_ID ? 'დიდი ციცხვიანი დამტვირთველის შემოწმების აქტი' : 'ციცხვიანი დამტვირთველის შემოწმების აქტი'}`,
   pdfNameLabel: 'BobcatInspection',
   extraCss: EXTRA_CSS,
 

@@ -349,7 +349,7 @@ export const safetyNetSchema: InspectionSchema<SafetyNetInspection> = {
 
   docTitle: 'უსაფრთხოების ბადის შემოწმების აქტი',
   docSubtitle: 'Safety Net Inspection & Acceptance Act',
-  pdfFooterLabel: 'Sarke 2.0 — შრომის უსაფრთხოება',
+  pdfFooterLabel: 'Hubble — შრომის უსაფრთხოება',
   pdfNameLabel: 'SafetyNetInspection',
   extraCss: EXTRA_CSS,
 

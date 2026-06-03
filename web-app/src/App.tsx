@@ -4,7 +4,7 @@ import { AppRouter } from '@/app/router';
 
 // HashRouter is required because GitHub Pages only honors 404.html at the
 // site root, not in subdirectories like /Sarke2.0/app/. Hash routing keeps
-// the entire URL after `#` client-side. Same pattern as web/sarke-sign.
+// the entire URL after `#` client-side. Same pattern as web/hubble-sign.
 
 const queryClient = new QueryClient({
   defaultOptions: {

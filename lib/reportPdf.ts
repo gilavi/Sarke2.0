@@ -106,7 +106,7 @@ export function buildReportPdfHtml(args: ReportPdfArgs): string {
     .join('<hr class="slide-divider" />');
 
   const initials = projectInitials(projectName);
-  const footerLine = `SARKE · ${reportTitle} · ${dateStr}${projectName ? ` · ${escapeHtml(projectName)}` : ''}`;
+  const footerLine = `HUBBLE · ${reportTitle} · ${dateStr}${projectName ? ` · ${escapeHtml(projectName)}` : ''}`;
 
   return `<!DOCTYPE html>
 <html lang="ka">

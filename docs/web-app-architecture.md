@@ -1,6 +1,6 @@
 # web-app Architecture & Conventions
 
-The Sarke dashboard (`web-app/`) — a Vite + React 19 + TypeScript SPA on GitHub
+The Hubble dashboard (`web-app/`) — a Vite + React 19 + TypeScript SPA on GitHub
 Pages, sharing only the Supabase backend with the Expo app (no shared code; see
 [CLAUDE.md](../CLAUDE.md)). This is the web-app equivalent of
 [`primitives.md`](primitives.md): the canonical owners and the rules that keep

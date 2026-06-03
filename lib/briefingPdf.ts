@@ -248,7 +248,7 @@ export function buildBriefingPdfHtml(briefing: Briefing, project: Project): stri
   </div>
 
   <div class="footer">
-    დოკუმენტი შედგენილია SARKE აპლიკაციის მეშვეობით
+    დოკუმენტი შედგენილია HUBBLE აპლიკაციის მეშვეობით
   </div>
 </body>
 </html>`;

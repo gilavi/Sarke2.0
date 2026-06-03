@@ -79,7 +79,7 @@ describe('buildInspectionPdf — excavator', () => {
     expect(html).toContain('VI — ტექნიკური მომსახურება');
     expect(html).toContain('IV — დასკვნა');
     expect(html).toContain('V — შემომწმებელი');
-    expect(html).toContain('Sarke 2.0 — ექსკავატორის ტექნიკური შემოწმების აქტი');
+    expect(html).toContain('Hubble — ექსკავატორის ტექნიკური შემოწმების აქტი');
   });
 
   it('renders machine specs and identification values', () => {

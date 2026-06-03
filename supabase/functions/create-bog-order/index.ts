@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
               quantity: 1,
               unit_price: 19,
               product_id: 'sarke_pro_monthly',
-              description: 'Sarke Pro — ყოველთვიური გამოწერა',
+              description: 'Hubble Pro — ყოველთვიური გამოწერა',
             },
           ],
         },

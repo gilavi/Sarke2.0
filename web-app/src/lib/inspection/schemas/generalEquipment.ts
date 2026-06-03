@@ -161,7 +161,7 @@ export const generalEquipmentSchema: InspectionSchema<GeneralEquipmentInspection
   docTitle: 'ტექნიკური აღჭურვილობის<br>შემოწმების აქტი',
   docSubtitle: 'Technical Equipment Inspection Report',
   internalBadge: 'INTERNAL',
-  pdfFooterLabel: 'Sarke — ტექნიკური ინსპ.',
+  pdfFooterLabel: 'Hubble — ტექნიკური ინსპ.',
   pdfNameLabel: 'EquipmentInspection',
   extraCss: EXTRA_CSS,
 

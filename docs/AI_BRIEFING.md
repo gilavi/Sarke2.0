@@ -1,4 +1,4 @@
-# AI Agent Briefing — Sarke 2.0
+# AI Agent Briefing — Hubble
 
 **Purpose:** Quick reference for AI agents working on this codebase  
 **Updated:** 2026-05-27 | Branch: `main`  
@@ -60,7 +60,7 @@ Web (signing page):
 ## Directory Structure
 
 ```
-Sarke 2.0/
+Hubble/
 ├── app/                              # expo-router routes (mobile)
 │   ├── (auth)/                       # login, register, forgot, reset
 │   ├── (tabs)/                       # home, projects, regulations, more

@@ -10,7 +10,7 @@
  */
 import { supabase } from '@/lib/supabase';
 
-/** The fixed set of storage buckets shared with the Sarke mobile app. */
+/** The fixed set of storage buckets shared with the Hubble mobile app. */
 export const STORAGE_BUCKETS = {
   certificates: 'certificates',
   answerPhotos: 'answer-photos',

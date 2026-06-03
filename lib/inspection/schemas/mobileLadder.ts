@@ -291,7 +291,7 @@ export const mobileLadderSchema: InspectionSchema<MobileLadderInspection> = {
 
   docTitle: 'სამუშაო სივრცეში არსებული კიბეების<br>ტექნიკური შემოწმების აქტი',
   docSubtitle: 'Mobile Ladder Technical Inspection',
-  pdfFooterLabel: 'Sarke 2.0 — შრომის უსაფრთხოება',
+  pdfFooterLabel: 'Hubble — შრომის უსაფრთხოება',
   pdfNameLabel: 'MobileLadderInspection',
   extraCss: EXTRA_CSS,
 

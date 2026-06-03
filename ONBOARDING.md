@@ -1,4 +1,4 @@
-# Sarke 2.0 — AI Onboarding Guide
+# Hubble — AI Onboarding Guide
 
 > Complete context for any AI agent joining this codebase cold.
 > Updated: 2026-05-25 | Branch: `main` (the `after-testflight` work has been merged into `main`; the branch should be considered historical)
@@ -7,7 +7,7 @@
 
 ## What This Project Is
 
-Sarke 2.0 is a **safety inspection platform** used by Georgian construction safety experts. It lets an expert create a project, conduct specialized equipment/safety inspections on their phone, collect digital signatures from workers, and generate legally formatted PDF reports in Georgian.
+Hubble is a **safety inspection platform** used by Georgian construction safety experts. It lets an expert create a project, conduct specialized equipment/safety inspections on their phone, collect digital signatures from workers, and generate legally formatted PDF reports in Georgian.
 
 **Primary users:** safety experts (`expert` role) and workers who sign (`worker` / `signer_role`)  
 **UI language:** Georgian (ქართული) — all strings are inline, no i18n file  

@@ -151,7 +151,7 @@ export const liftingAccessoriesSchema: InspectionSchema<LiftingAccessoriesInspec
 
   docTitle: 'ტვირთის გადასატანი თასმების /<br>ჩამჭიდების შემოწმების აქტი',
   docSubtitle: 'Lifting Accessories Inspection Record',
-  pdfFooterLabel: 'Sarke 2.0 — შრომის უსაფრთხოება',
+  pdfFooterLabel: 'Hubble — შრომის უსაფრთხოება',
   pdfNameLabel: 'LiftingAccessoriesInspection',
   extraCss: EXTRA_CSS,
 

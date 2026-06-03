@@ -356,7 +356,7 @@ export const cargoPlatformSchema: InspectionSchema<CargoPlatformInspection> = {
 
   docTitle: 'ტვირთის მიმღები პლატფორმის<br>შემოწმების აქტი',
   docSubtitle: 'Cargo Receiving Platform — Technical Inspection & Safety Acceptance Act',
-  pdfFooterLabel: 'Sarke 2.0 — ტვირთის მიმღები პლატფორმის შემოწმების აქტი',
+  pdfFooterLabel: 'Hubble — ტვირთის მიმღები პლატფორმის შემოწმების აქტი',
   pdfNameLabel: 'CargoPlatformInspection',
   extraCss: EXTRA_CSS,
 

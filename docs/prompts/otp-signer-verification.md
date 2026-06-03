@@ -1,6 +1,6 @@
-# Prompt: OTP-verified signer flow (Sarke 2.0)
+# Prompt: OTP-verified signer flow (Hubble)
 
-You are working on **Sarke 2.0**, a Georgian-language React Native / Expo app
+You are working on **Hubble**, a Georgian-language React Native / Expo app
 for workplace-safety inspections. Backend is Supabase (Postgres + Storage +
 Auth + Edge Functions). See `CLAUDE.md` / `README.md` at the repo root for
 conventions.
@@ -110,7 +110,7 @@ SMS provider: default to **Twilio** (`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`,
 function so a Georgian gateway can be swapped in later without touching
 anything else.
 
-SMS body (Georgian): `"თქვენი კოდი: 123456. Sarke. არ გაუზიაროთ არავის."`
+SMS body (Georgian): `"თქვენი კოდი: 123456. Hubble. არ გაუზიაროთ არავის."`
 
 ### 3. Client library — `lib/otp.ts` (new)
 

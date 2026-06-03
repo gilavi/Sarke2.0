@@ -508,7 +508,7 @@ export function buildCargoPlatformPdfTemplate(args: {
 
   const footerHtml = `
     <div class="footer">
-      <span>Sarke 2.0 — ტვირთის მიმღები პლატფორმის შემოწმების აქტი</span>
+      <span>Hubble — ტვირთის მიმღები პლატფორმის შემოწმების აქტი</span>
       <span>${escHtml(docDate)} · ID ${escHtml(docId)}</span>
     </div>
   `;

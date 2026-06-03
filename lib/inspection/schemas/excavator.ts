@@ -68,7 +68,7 @@ export const excavatorSchema: InspectionSchema<ExcavatorInspection> = {
 
   docTitle: 'ექსკავატორის ტექნიკური<br>შემოწმების აქტი',
   docSubtitle: 'Excavator Technical Inspection Report',
-  pdfFooterLabel: 'Sarke 2.0 — ექსკავატორის ტექნიკური შემოწმების აქტი',
+  pdfFooterLabel: 'Hubble — ექსკავატორის ტექნიკური შემოწმების აქტი',
   pdfNameLabel: 'ExcavatorInspection',
   extraCss: EXTRA_CSS,
 

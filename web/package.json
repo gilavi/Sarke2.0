@@ -1,9 +1,9 @@
 {
-  "name": "sarke-sign",
+  "name": "hubble-sign",
   "private": true,
   "version": "0.0.1",
   "type": "module",
-  "description": "Static web app for remote signature collection — receives a tokenized link from the Sarke mobile app, lets the recipient view inspection summary + PDF and sign on a canvas.",
+  "description": "Static web app for remote signature collection — receives a tokenized link from the Hubble mobile app, lets the recipient view inspection summary + PDF and sign on a canvas.",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

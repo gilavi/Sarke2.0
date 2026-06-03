@@ -1,9 +1,9 @@
 {
   "openapi": "3.0.0",
   "info": {
-    "title": "Sarke 2.0 — Supabase REST API",
+    "title": "Hubble — Supabase REST API",
     "version": "2.0.0",
-    "description": "PostgREST auto-generated API for the Sarke 2.0 Supabase project. All endpoints are RLS-scoped to the authenticated user. To refresh this spec from the live database run:\n\n```\nSUPABASE_SERVICE_ROLE_KEY=<key> node website/scripts/fetch-openapi.mjs\n```\n\nThe service role key is in your Supabase dashboard under Settings → API. **Never commit it.**\n\nLast manually updated: 2026-05-14 (migrations 0001–0042 applied)."
+    "description": "PostgREST auto-generated API for the Hubble Supabase project. All endpoints are RLS-scoped to the authenticated user. To refresh this spec from the live database run:\n\n```\nSUPABASE_SERVICE_ROLE_KEY=<key> node website/scripts/fetch-openapi.mjs\n```\n\nThe service role key is in your Supabase dashboard under Settings → API. **Never commit it.**\n\nLast manually updated: 2026-05-14 (migrations 0001–0042 applied)."
   },
   "servers": [
     {

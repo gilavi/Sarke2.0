@@ -60,7 +60,7 @@ export default function SwaggerPage(): React.ReactElement {
   return (
     <Layout
       title="Swagger UI"
-      description="Auto-generated Supabase REST API for Sarke 2.0">
+      description="Auto-generated Supabase REST API for Hubble">
       <main style={{padding: '1rem'}}>
         <BrowserOnly fallback={<div>Loading Swagger UI…</div>}>
           {() => <SwaggerInline specUrl={specUrl} />}

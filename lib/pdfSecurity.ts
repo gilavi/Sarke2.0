@@ -68,7 +68,7 @@ export function injectSecurityMarkup(
 <meta name="author" content="${escAttr(opts.author ?? '')}">
 <meta name="title" content="${escAttr(opts.title ?? '')}">
 <meta name="created" content="${isoNow}">
-<meta name="generator" content="SARKE Safety App v1.0">
+<meta name="generator" content="HUBBLE Safety App v1.0">
 <meta name="description" content="${escAttr(opts.subject ?? opts.title ?? '')}">`;
 
   const securityCss = `
@@ -82,7 +82,7 @@ export function injectSecurityMarkup(
 <div style="position:fixed;bottom:8px;left:0;right:0;text-align:center;
             font-size:8px;color:#9CA3AF;font-family:sans-serif;
             letter-spacing:0.02em;">
-  შედგენილია SARKE-ის მეშვეობით${opts.author ? ' · ' + escHtml(opts.author) : ''}${
+  შედგენილია HUBBLE-ის მეშვეობით${opts.author ? ' · ' + escHtml(opts.author) : ''}${
     timestamp ? ' · ' + timestamp : ''
   }${shortId ? ' · ID: ' + shortId : ''}
 </div>`;
@@ -139,11 +139,11 @@ export async function lockPdf(
     if (opts.title) pdfDoc.setTitle(opts.title);
     if (opts.author) pdfDoc.setAuthor(opts.author);
     if (opts.subject) pdfDoc.setSubject(opts.subject);
-    pdfDoc.setProducer('SARKE Safety Inspection System');
-    pdfDoc.setCreator('SARKE App');
+    pdfDoc.setProducer('HUBBLE Safety Inspection System');
+    pdfDoc.setCreator('HUBBLE App');
     pdfDoc.setCreationDate(now);
     pdfDoc.setModificationDate(now);
-    pdfDoc.setKeywords(['SARKE', 'safety', 'inspection', 'Georgia']);
+    pdfDoc.setKeywords(['HUBBLE', 'safety', 'inspection', 'Georgia']);
 
     const lockedBytes = await pdfDoc.save({ useObjectStreams: false });
     const lockedB64 = uint8ArrayToBase64(lockedBytes);

@@ -23,7 +23,7 @@ export const termsKa: TermsBody = {
     {
       title: '1. მომსახურების აღწერა',
       body:
-        'Sarke 2.0 არის შრომის უსაფრთხოების ექსპერტის აპლიკაცია ხარაჩოებისა და ' +
+        'Hubble არის შრომის უსაფრთხოების ექსპერტის აპლიკაცია ხარაჩოებისა და ' +
         'ინდივიდუალური დაცვის საშუალებების ინსპექტირებისთვის. აპლიკაცია შეიცავს ' +
         'კითხვარებს, ფოტო/ხელმოწერების შეგროვებას და PDF ანგარიშების გენერაციას.',
     },
@@ -83,7 +83,7 @@ export const termsEn: TermsBody = {
     {
       title: '1. Service description',
       body:
-        'Sarke 2.0 is an occupational safety inspection app for scaffolding and ' +
+        'Hubble is an occupational safety inspection app for scaffolding and ' +
         'personal fall-protection equipment. It provides inspection questionnaires, ' +
         'photo and signature capture, and PDF report generation.',
     },

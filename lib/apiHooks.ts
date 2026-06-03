@@ -1,5 +1,5 @@
 /**
- * Reusable TanStack Query hooks for the Sarke API.
+ * Reusable TanStack Query hooks for the Hubble API.
  *
  * These wrap the raw API calls with caching, deduplication, stale-time
  * management, and background revalidation. Converting screens from raw

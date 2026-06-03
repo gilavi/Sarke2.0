@@ -1,9 +1,9 @@
 {
-  "name": "sarke-web",
+  "name": "hubble-web",
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Sarke web app — desktop dashboard hosted on GitHub Pages, sharing the Sarke Supabase backend with the Expo mobile app.",
+  "description": "Hubble web app — desktop dashboard hosted on GitHub Pages, sharing the Hubble Supabase backend with the Expo mobile app.",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b; vite build",

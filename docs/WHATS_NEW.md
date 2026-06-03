@@ -1,4 +1,4 @@
-# What's New — Sarke 2.0 Changelog
+# What's New — Hubble Changelog
 
 **Updated:** 2026-06-01 | Branch: `main`
 

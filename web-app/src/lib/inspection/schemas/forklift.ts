@@ -132,7 +132,7 @@ export const forkliftSchema: InspectionSchema<ForkliftInspection> = {
 
   docTitle: 'ჩანგლიანი დამტვირთველის<br>შემოწმების აქტი',
   docSubtitle: 'Forklift Technical Inspection Act',
-  pdfFooterLabel: 'Sarke 2.0 — ჩანგლიანი დამტვირთველის შემოწმების აქტი',
+  pdfFooterLabel: 'Hubble — ჩანგლიანი დამტვირთველის შემოწმების აქტი',
   pdfNameLabel: 'ForkliftInspection',
   extraCss: EXTRA_CSS,
 

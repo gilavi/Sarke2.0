@@ -132,7 +132,7 @@ export interface InspectionSchema<T = unknown> {
   docSubtitle?: string | ((d: T) => string);
   /** Top-right badge text; defaults to the standard internal-document label. */
   internalBadge?: string | ((d: T) => string);
-  /** Footer left label (e.g. 'Sarke 2.0 — ექსკავატორის …'). */
+  /** Footer left label (e.g. 'Hubble — ექსკავატორის …'). */
   pdfFooterLabel: string | ((d: T) => string);
   /** Stable label for generatePdfName (ASCII, e.g. 'ExcavatorInspection'). */
   pdfNameLabel: string;

@@ -17,7 +17,7 @@
  *     slot for it, so it is rendered as the first body block instead (same text,
  *     same `regulation-badge` styling, slightly lower placement).
  *   - The page footer now uses the engine's unified format ("<label>" / "<date>
- *     · ID <id>") instead of the old three-span "Sarke — … / ID: <id> / <date>".
+ *     · ID <id>") instead of the old three-span "Hubble — … / ID: <id> / <date>".
  */
 import { escapeHtml, fmtDate } from '../escape';
 import type { InspectionSchema, PhotoMap } from '../schema';
@@ -416,7 +416,7 @@ export const safetyNetSchema: InspectionSchema<SafetyNetInspection> = {
 
   docTitle: 'უსაფრთხოების ბადის შემოწმების აქტი',
   docSubtitle: 'Safety Net Inspection & Acceptance Act',
-  pdfFooterLabel: 'Sarke 2.0 — შრომის უსაფრთხოება',
+  pdfFooterLabel: 'Hubble — შრომის უსაფრთხოება',
   pdfNameLabel: 'SafetyNetInspection',
   extraCss: EXTRA_CSS,
 
