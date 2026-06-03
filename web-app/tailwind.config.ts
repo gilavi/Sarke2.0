@@ -7,6 +7,9 @@ export default {
     extend: {
       colors: {
         // Brand palette — mirrors mobile primary scale (lib/theme.ts).
+        // NOTE: `brand` (green) is the DASHBOARD identity. The public
+        // marketing site (pages/landing) uses the Hubble brand-board palette
+        // below (`safety`/`hivis`/`graphite`/`offwhite`/`concrete`) instead.
         brand: {
           50: '#E8F5F0',
           100: '#D1EBE1',
@@ -20,6 +23,43 @@ export default {
           900: '#041810',
           950: '#020A07',
         },
+        // ─── Hubble brand board (marketing site) ───────────────────────────
+        // SAFETY ORANGE #FF5A1F — primary action / accent (scale around it).
+        safety: {
+          50: '#FFF3EE',
+          100: '#FFE3D6',
+          200: '#FFC4AC',
+          300: '#FF9E78',
+          400: '#FF7A47',
+          500: '#FF5A1F',
+          600: '#E84709',
+          700: '#BE380C',
+          800: '#972F11',
+          900: '#7B2913',
+          950: '#421106',
+        },
+        // HI-VIS YELLOW #E6FF4D — high-energy spotlight (numbers, sticker pills).
+        hivis: {
+          DEFAULT: '#E6FF4D',
+          300: '#EEFF85',
+          400: '#E6FF4D',
+          500: '#D2F500',
+          600: '#A8C400',
+          700: '#7E9300',
+        },
+        // GRAPHITE #1A1A1A — dark sections + ink (warm near-black scale).
+        graphite: {
+          DEFAULT: '#1A1A1A',
+          400: '#6E6E66',
+          500: '#52524C',
+          600: '#3A3A36',
+          700: '#2A2A27',
+          800: '#1E1E1C',
+          900: '#161614',
+          950: '#0D0D0C',
+        },
+        offwhite: '#F2F1EC', // OFF-WHITE — warm page background
+        concrete: '#D6D6D1', // CONCRETE — borders / muted text on dark
         neutral: {
           50: '#FAFAF8',
           100: '#F5F5F0',

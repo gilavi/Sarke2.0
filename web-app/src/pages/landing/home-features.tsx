@@ -5,7 +5,7 @@ import { features, subModules, audiences } from './marketing-data';
 // ─── Features grid ────────────────────────────────────────────────────────────
 export function FeaturesGrid() {
   return (
-    <section id="features" className="py-24 px-5 bg-[#F5F3EE]">
+    <section id="features" className="py-24 px-5 bg-offwhite">
       <div className="mx-auto max-w-5xl">
         <motion.h2
           initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
@@ -20,10 +20,10 @@ export function FeaturesGrid() {
           {features.map(({ Icon, title, desc }) => (
             <motion.div
               key={title} variants={fadeUp}
-              className="rounded-2xl border border-neutral-200 bg-white p-6 hover:border-brand-200 transition-colors duration-200"
+              className="rounded-2xl border border-neutral-200 bg-white p-6 hover:border-safety-200 transition-colors duration-200"
             >
-              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50">
-                <Icon size={20} className="text-brand-600" />
+              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-safety-50">
+                <Icon size={20} className="text-safety-600" />
               </div>
               <h3 className="font-bold text-neutral-900 mb-1">{title}</h3>
               <p className="text-sm text-neutral-500 leading-relaxed">{desc}</p>
@@ -37,8 +37,8 @@ export function FeaturesGrid() {
           className="mt-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
         >
           {subModules.map(({ Icon, title, desc }) => (
-            <div key={title} className="rounded-2xl border border-brand-100 bg-brand-50/40 p-6">
-              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-brand-500">
+            <div key={title} className="rounded-2xl border border-safety-100 bg-safety-50/40 p-6">
+              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-safety-500">
                 <Icon size={20} className="text-white" />
               </div>
               <h3 className="font-bold text-neutral-900 mb-1">{title}</h3>
@@ -74,8 +74,8 @@ export function ForWho() {
         >
           {audiences.map(({ Icon, title, desc }) => (
             <motion.div key={title} variants={fadeUp} className="rounded-2xl border border-neutral-200 bg-white p-6">
-              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50">
-                <Icon size={20} className="text-brand-600" />
+              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-safety-50">
+                <Icon size={20} className="text-safety-600" />
               </div>
               <h3 className="font-bold text-neutral-900 mb-1 text-sm">{title}</h3>
               <p className="text-sm text-neutral-500 leading-relaxed">{desc}</p>

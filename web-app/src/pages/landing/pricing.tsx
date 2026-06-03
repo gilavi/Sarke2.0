@@ -28,11 +28,11 @@ export function Pricing() {
             <ul className="space-y-3 mb-8">
               {freeFeatures.map(f => (
                 <li key={f} className="flex items-center gap-3 text-sm text-neutral-700">
-                  <Check size={16} className="text-brand-500 shrink-0" />{f}
+                  <Check size={16} className="text-safety-500 shrink-0" />{f}
                 </li>
               ))}
             </ul>
-            <Link to={routes.register} className="block w-full rounded-xl border-2 border-neutral-200 py-3 text-center text-sm font-semibold text-neutral-700 hover:border-brand-300 hover:text-brand-700 transition-colors">
+            <Link to={routes.register} className="block w-full rounded-xl border-2 border-neutral-200 py-3 text-center text-sm font-semibold text-neutral-700 hover:border-safety-300 hover:text-safety-700 transition-colors">
               დაიწყე უფასოდ
             </Link>
           </motion.div>
@@ -40,27 +40,27 @@ export function Pricing() {
           {/* Pro */}
           <motion.div
             initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.1 }}
-            className="rounded-2xl border-2 border-brand-500 bg-brand-500 p-8 relative overflow-hidden"
+            className="rounded-2xl border-2 border-safety-500 bg-safety-500 p-8 relative overflow-hidden"
           >
             <span className="absolute top-4 right-4 rounded-full bg-white/20 px-3 py-1 text-xs font-bold text-white uppercase tracking-wide">
               პოპულარული
             </span>
-            <p className="text-sm font-semibold text-brand-200 uppercase tracking-wide mb-1">PRO</p>
+            <p className="text-sm font-semibold text-safety-200 uppercase tracking-wide mb-1">PRO</p>
             <div className="flex items-baseline gap-1 mb-6">
               <span className="text-4xl font-black text-white">₾19</span>
-              <span className="text-brand-200 text-sm">/ თვეში</span>
+              <span className="text-safety-200 text-sm">/ თვეში</span>
             </div>
             <ul className="space-y-3 mb-8">
               {proFeatures.map(f => (
                 <li key={f} className="flex items-center gap-3 text-sm text-white">
-                  <Check size={16} className="text-brand-200 shrink-0" />{f}
+                  <Check size={16} className="text-safety-200 shrink-0" />{f}
                 </li>
               ))}
             </ul>
-            <Link to={routes.register} className="block w-full rounded-xl bg-white py-3 text-center text-sm font-semibold text-brand-700 hover:bg-brand-50 transition-colors">
+            <Link to={routes.register} className="block w-full rounded-xl bg-white py-3 text-center text-sm font-semibold text-safety-700 hover:bg-safety-50 transition-colors">
               PRO-ს სცადე
             </Link>
-            <p className="mt-3 text-center text-xs text-brand-200">BOG-ით გადახდა</p>
+            <p className="mt-3 text-center text-xs text-safety-200">BOG-ით გადახდა</p>
           </motion.div>
         </div>
       </div>
@@ -70,14 +70,14 @@ export function Pricing() {
 
 // ─── Comparison table ─────────────────────────────────────────────────────────────
 function Cell({ value }: { value: boolean | string }) {
-  if (value === true) return <Check size={16} className="mx-auto text-brand-500" />;
+  if (value === true) return <Check size={16} className="mx-auto text-safety-500" />;
   if (value === false) return <Minus size={16} className="mx-auto text-neutral-300" />;
   return <span className="text-sm text-neutral-700">{value}</span>;
 }
 
 export function PricingComparison() {
   return (
-    <section className="py-24 px-5 bg-[#F5F3EE]">
+    <section className="py-24 px-5 bg-offwhite">
       <div className="mx-auto max-w-3xl">
         <motion.h2
           initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
@@ -92,7 +92,7 @@ export function PricingComparison() {
               <tr className="border-b border-neutral-200 bg-neutral-50">
                 <th className="px-5 py-4 text-left font-semibold text-neutral-700">ფუნქცია</th>
                 <th className="px-5 py-4 text-center font-semibold text-neutral-700 w-28">უფასო</th>
-                <th className="px-5 py-4 text-center font-semibold text-brand-700 w-28">PRO</th>
+                <th className="px-5 py-4 text-center font-semibold text-safety-700 w-28">PRO</th>
               </tr>
             </thead>
             <tbody>
@@ -108,7 +108,7 @@ export function PricingComparison() {
         </div>
         <p className="mt-6 text-center text-sm text-neutral-500">
           <X size={14} className="inline -mt-0.5 mr-1 text-neutral-400" />
-          5-ზე მეტი სპეციალისტისთვის — <a href="mailto:hello@hubble.ge" className="text-brand-600 hover:underline">კორპორატიული ტარიფი</a>
+          5-ზე მეტი სპეციალისტისთვის — <a href="mailto:hello@hubble.ge" className="text-safety-600 hover:underline">კორპორატიული ტარიფი</a>
         </p>
       </div>
     </section>

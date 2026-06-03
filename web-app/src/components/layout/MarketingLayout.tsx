@@ -19,7 +19,7 @@ export function MarketingLayout() {
   return (
     <div className="font-sans antialiased">
       <Navbar />
-      <Suspense fallback={<div className="min-h-screen bg-[#F5F3EE]" />}>
+      <Suspense fallback={<div className="min-h-screen bg-offwhite" />}>
         <Outlet />
       </Suspense>
       <Footer />

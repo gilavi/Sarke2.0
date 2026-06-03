@@ -18,13 +18,13 @@ function ChatRow({ msg }: { msg: ChatMessage }) {
     <div className={cn('flex gap-3', isUser && 'flex-row-reverse')}>
       <div className={cn(
         'flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
-        isUser ? 'bg-neutral-200 text-neutral-600' : 'bg-brand-500 text-white',
+        isUser ? 'bg-neutral-200 text-neutral-600' : 'bg-safety-500 text-white',
       )}>
         {isUser ? <User size={15} /> : <Bot size={15} />}
       </div>
       <div className={cn(
         'max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap',
-        isUser ? 'bg-brand-500 text-white' : 'bg-neutral-100 text-neutral-700',
+        isUser ? 'bg-safety-500 text-white' : 'bg-neutral-100 text-neutral-700',
       )}>
         {msg.content}
       </div>
@@ -64,22 +64,22 @@ export function ChatWidget() {
   const onSubmit = (e: FormEvent) => { e.preventDefault(); ask(input); };
 
   return (
-    <section className="bg-[#0F2318] py-24 px-5">
+    <section className="bg-graphite-900 py-24 px-5">
       <div className="mx-auto max-w-2xl">
         <div className="text-center mb-8">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-500 mb-4">
+          <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-safety-500 mb-4">
             <Bot size={22} className="text-white" />
           </div>
           <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">AI ასისტენტი</h2>
-          <p className="text-[#A3D7C3]">მყისიერი პასუხები HUBBLE-ზე — ნებისმიერ დროს.</p>
+          <p className="text-concrete">მყისიერი პასუხები HUBBLE-ზე — ნებისმიერ დროს.</p>
         </div>
 
-        <div className="rounded-3xl border border-[#1E4030] bg-white overflow-hidden">
+        <div className="rounded-3xl border border-graphite-700 bg-white overflow-hidden">
           <div ref={scrollRef} className="h-80 overflow-y-auto p-5 flex flex-col gap-4">
             {messages.map((m, i) => <ChatRow key={i} msg={m} />)}
             {loading && (
               <div className="flex gap-3">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-500 text-white">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-safety-500 text-white">
                   <Bot size={15} />
                 </div>
                 <div className="flex items-center gap-1 rounded-2xl bg-neutral-100 px-4 py-3">
@@ -102,7 +102,7 @@ export function ChatWidget() {
                 <button
                   key={s}
                   onClick={() => ask(s)}
-                  className="rounded-full border border-neutral-200 px-3 py-1.5 text-xs font-medium text-neutral-600 hover:border-brand-300 hover:text-brand-600 transition-colors"
+                  className="rounded-full border border-neutral-200 px-3 py-1.5 text-xs font-medium text-neutral-600 hover:border-safety-300 hover:text-safety-600 transition-colors"
                 >
                   {s}
                 </button>
@@ -116,12 +116,12 @@ export function ChatWidget() {
               onChange={e => setInput(e.target.value)}
               maxLength={MAX_INPUT_CHARS}
               placeholder="დაწერეთ შეკითხვა..."
-              className="flex-1 rounded-xl border border-neutral-200 px-4 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+              className="flex-1 rounded-xl border border-neutral-200 px-4 py-2.5 text-sm outline-none focus:border-safety-500 focus:ring-2 focus:ring-safety-100"
             />
             <button
               type="submit"
               disabled={loading || !input.trim()}
-              className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-500 text-white hover:bg-brand-600 disabled:opacity-40 transition-colors"
+              className="flex h-10 w-10 items-center justify-center rounded-xl bg-safety-500 text-white hover:bg-safety-600 disabled:opacity-40 transition-colors"
               aria-label="გაგზავნა"
             >
               <Send size={17} />

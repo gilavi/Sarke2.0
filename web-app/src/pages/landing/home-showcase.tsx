@@ -21,7 +21,7 @@ export function ValueShowcase() {
                 transition={{ duration: 0.5 }}
                 className={cn(flip && 'md:order-2')}
               >
-                <span className="inline-flex items-center gap-2 rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-brand-700 mb-4">
+                <span className="inline-flex items-center gap-2 rounded-full bg-safety-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-safety-700 mb-4">
                   <Icon size={14} /> {eyebrow}
                 </span>
                 <h3 className="text-2xl sm:text-3xl font-bold text-neutral-900 mb-3 leading-tight">{title}</h3>
@@ -29,8 +29,8 @@ export function ValueShowcase() {
                 <ul className="space-y-2.5">
                   {bullets.map(b => (
                     <li key={b} className="flex items-center gap-3 text-sm font-medium text-neutral-700">
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-100 shrink-0">
-                        <Check size={12} className="text-brand-600" />
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-safety-100 shrink-0">
+                        <Check size={12} className="text-safety-600" />
                       </span>
                       {b}
                     </li>
@@ -44,15 +44,15 @@ export function ValueShowcase() {
                 transition={{ duration: 0.5 }}
                 className={cn('relative', flip && 'md:order-1')}
               >
-                <div className="absolute inset-0 scale-95 rounded-3xl bg-brand-200/40 blur-2xl" />
-                <div className="relative aspect-[4/3] rounded-3xl border border-brand-100 bg-gradient-to-br from-[#F5F3EE] to-brand-50 overflow-hidden flex items-center justify-center">
-                  <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-brand-500">
+                <div className="absolute inset-0 scale-95 rounded-3xl bg-safety-200/40 blur-2xl" />
+                <div className="relative aspect-[4/3] rounded-3xl border border-safety-100 bg-gradient-to-br from-offwhite to-safety-50 overflow-hidden flex items-center justify-center">
+                  <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-safety-500">
                     <Icon size={36} className="text-white" />
                   </div>
                   {/* decorative tiles */}
-                  <div className="absolute top-6 left-6 h-3 w-24 rounded-full bg-brand-200/70" />
-                  <div className="absolute top-12 left-6 h-3 w-16 rounded-full bg-brand-200/50" />
-                  <div className="absolute bottom-6 right-6 h-10 w-28 rounded-xl border border-brand-200 bg-white/70" />
+                  <div className="absolute top-6 left-6 h-3 w-24 rounded-full bg-safety-200/70" />
+                  <div className="absolute top-12 left-6 h-3 w-16 rounded-full bg-safety-200/50" />
+                  <div className="absolute bottom-6 right-6 h-10 w-28 rounded-xl border border-safety-200 bg-white/70" />
                 </div>
               </motion.div>
             </div>

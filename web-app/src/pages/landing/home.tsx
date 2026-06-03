@@ -6,25 +6,25 @@ import { painPoints, steps } from './marketing-data';
 // ─── Hero ─────────────────────────────────────────────────────────────────────
 export function Hero() {
   return (
-    <section className="relative overflow-hidden bg-[#F5F3EE] pt-32 pb-20">
+    <section className="relative overflow-hidden bg-offwhite pt-32 pb-20">
       {/* Ambient blobs */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-32 w-[560px] h-[560px] rounded-full bg-brand-50 opacity-70 blur-3xl" />
-        <div className="absolute bottom-0 -left-24 w-[400px] h-[400px] rounded-full bg-brand-100 opacity-40 blur-3xl" />
+        <div className="absolute -top-40 -right-32 w-[560px] h-[560px] rounded-full bg-safety-50 opacity-70 blur-3xl" />
+        <div className="absolute bottom-0 -left-24 w-[400px] h-[400px] rounded-full bg-safety-100 opacity-40 blur-3xl" />
       </div>
 
       <div className="relative mx-auto flex max-w-6xl flex-col md:flex-row items-center gap-12 px-5">
         {/* Text */}
         <motion.div variants={stagger} initial="hidden" animate="show" className="flex-[3] flex flex-col items-start text-left">
           <motion.div variants={fadeUp}>
-            <span className="inline-block rounded-full border border-brand-200 bg-brand-50 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-brand-700 mb-6">
+            <span className="inline-block rounded-full bg-hivis px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-graphite-900 mb-6">
               შრომის უსაფრთხოების პლათფორმა
             </span>
           </motion.div>
 
           <motion.h1 variants={fadeUp} className="text-[2.5rem] sm:text-5xl lg:text-[3.5rem] font-bold leading-[1.1] tracking-tight text-neutral-900 mb-6">
             შემოწმება სწრაფად.{' '}
-            <span className="text-brand-500">PDF — წამებში.</span>
+            <span className="text-safety-600">PDF — წამებში.</span>
             {' '}ყველა კანონის შესაბამისად.
           </motion.h1>
 
@@ -37,7 +37,7 @@ export function Hero() {
             <AppStoreBadge href={APP_STORE_URL} />
             <button
               onClick={() => document.querySelector('#how-it-works')?.scrollIntoView({ behavior: 'smooth' })}
-              className="inline-flex items-center gap-2 rounded-2xl border border-neutral-300 bg-white px-5 py-3 text-sm font-semibold text-neutral-700 hover:border-brand-300 hover:text-brand-700 transition-colors"
+              className="inline-flex items-center gap-2 rounded-2xl border border-neutral-300 bg-white px-5 py-3 text-sm font-semibold text-neutral-700 hover:border-safety-300 hover:text-safety-700 transition-colors"
             >
               ნახე როგორ მუშაობს ↓
             </button>
@@ -61,7 +61,7 @@ export function Hero() {
           className="flex-[2] flex items-center justify-center w-full"
         >
           <div className="relative">
-            <div className="absolute inset-0 scale-90 rounded-[60px] bg-brand-400 opacity-20 blur-3xl" />
+            <div className="absolute inset-0 scale-90 rounded-[60px] bg-safety-400 opacity-20 blur-3xl" />
             <motion.div
               animate={{ y: [0, -12, 0] }}
               transition={{ repeat: Infinity, duration: 4, ease: 'easeInOut' }}
@@ -79,7 +79,7 @@ export function Hero() {
 // ─── Pain section ─────────────────────────────────────────────────────────────
 export function PainSection() {
   return (
-    <section className="bg-[#0F2318] py-24 px-5">
+    <section className="bg-graphite-900 py-24 px-5">
       <div className="mx-auto max-w-5xl">
         <motion.h2
           initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
@@ -92,9 +92,9 @@ export function PainSection() {
           className="grid grid-cols-1 md:grid-cols-3 gap-4"
         >
           {painPoints.map(p => (
-            <motion.div key={p.text} variants={fadeUp} className="rounded-2xl border border-[#1E4030] bg-[#0A1C12] p-7">
+            <motion.div key={p.text} variants={fadeUp} className="rounded-2xl border border-graphite-700 bg-graphite-800 p-7">
               <div className="text-4xl mb-4">{p.emoji}</div>
-              <p className="text-[#A3D7C3] text-base leading-relaxed font-medium">{p.text}</p>
+              <p className="text-concrete text-base leading-relaxed font-medium">{p.text}</p>
             </motion.div>
           ))}
         </motion.div>
@@ -106,15 +106,15 @@ export function PainSection() {
 // ─── Transition to solutions ────────────────────────────────────────────────────
 export function Transition() {
   return (
-    <section className="bg-[#0F2318] pb-24 px-5">
+    <section className="bg-graphite-900 pb-24 px-5">
       <div className="mx-auto max-w-5xl">
         <motion.div
           initial={{ opacity: 0, scaleX: 0 }} whileInView={{ opacity: 1, scaleX: 1 }} viewport={{ once: true }}
-          className="h-px bg-gradient-to-r from-transparent via-brand-500 to-transparent mb-8"
+          className="h-px bg-gradient-to-r from-transparent via-safety-500 to-transparent mb-8"
         />
         <motion.p
           initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-          className="text-center text-xl font-semibold text-[#75C3A5]"
+          className="text-center text-xl font-semibold text-safety-400"
         >
           HUBBLE ამოხსნის ამ პრობლემებს
         </motion.p>
@@ -143,14 +143,14 @@ export function HowItWorks() {
               transition={{ duration: 0.5, delay: i * 0.12 }}
               className="flex flex-col gap-4"
             >
-              <div className="text-6xl font-black text-brand-100 leading-none select-none">{s.n}</div>
+              <div className="text-6xl font-black text-safety-100 leading-none select-none">{s.n}</div>
               <div>
                 <h3 className="text-lg font-bold text-neutral-900 mb-1">{s.title}</h3>
                 <p className="text-sm text-neutral-500 leading-relaxed">{s.desc}</p>
               </div>
               <div className="rounded-2xl bg-neutral-50 border border-neutral-100 aspect-video flex flex-col items-center justify-center gap-2 p-4">
-                <div className="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center">
-                  <Smartphone size={18} className="text-brand-600" />
+                <div className="w-10 h-10 rounded-full bg-safety-100 flex items-center justify-center">
+                  <Smartphone size={18} className="text-safety-600" />
                 </div>
                 <span className="text-xs text-neutral-400 font-mono text-center">[screenshot: {s.label}]</span>
               </div>

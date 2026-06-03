@@ -8,7 +8,7 @@ import { freeFeatures } from './marketing-data';
 // ─── Price teaser ───────────────────────────────────────────────────────────────
 export function PriceTeaser() {
   return (
-    <section className="py-24 px-5 bg-[#F5F3EE]">
+    <section className="py-24 px-5 bg-offwhite">
       <div className="mx-auto max-w-3xl text-center">
         <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
           <h2 className="text-3xl sm:text-4xl font-bold text-neutral-900 mb-3">მარტივი, გამჭვირვალე ფასი</h2>
@@ -25,21 +25,21 @@ export function PriceTeaser() {
             <ul className="space-y-2">
               {freeFeatures.slice(0, 3).map(f => (
                 <li key={f} className="flex items-center gap-2 text-sm text-neutral-600">
-                  <Check size={15} className="text-brand-500 shrink-0" />{f}
+                  <Check size={15} className="text-safety-500 shrink-0" />{f}
                 </li>
               ))}
             </ul>
           </div>
-          <div className="rounded-2xl border-2 border-brand-500 bg-brand-500 p-6 text-white">
-            <p className="text-sm font-semibold text-brand-200 uppercase tracking-wide mb-1">PRO</p>
-            <p className="text-3xl font-black mb-4">₾19<span className="text-sm font-normal text-brand-200"> / თვეში</span></p>
-            <p className="text-sm text-brand-50">შეუზღუდავი PDF, ისტორია და პრიორიტეტული მხარდაჭერა.</p>
+          <div className="rounded-2xl border-2 border-safety-500 bg-safety-500 p-6 text-white">
+            <p className="text-sm font-semibold text-white/80 uppercase tracking-wide mb-1">PRO</p>
+            <p className="text-3xl font-black mb-4">₾19<span className="text-sm font-normal text-white/80"> / თვეში</span></p>
+            <p className="text-sm text-white/90">შეუზღუდავი PDF, ისტორია და პრიორიტეტული მხარდაჭერა.</p>
           </div>
         </motion.div>
 
         <Link
           to={routes.pricing}
-          className="inline-flex items-center gap-2 text-sm font-semibold text-brand-600 hover:text-brand-700 transition-colors"
+          className="inline-flex items-center gap-2 text-sm font-semibold text-safety-600 hover:text-safety-700 transition-colors"
         >
           სრული ფასები <ArrowRight size={16} />
         </Link>
@@ -60,7 +60,7 @@ export function RegulationsTeaser() {
         >
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <BookOpen size={20} className="text-brand-600" />
+              <BookOpen size={20} className="text-safety-600" />
               <h2 className="text-3xl sm:text-4xl font-bold text-neutral-900">რეგულაციები</h2>
             </div>
             <p className="text-neutral-500 max-w-xl">
@@ -69,7 +69,7 @@ export function RegulationsTeaser() {
           </div>
           <Link
             to={routes.legislation}
-            className="inline-flex items-center gap-2 text-sm font-semibold text-brand-600 hover:text-brand-700 transition-colors shrink-0"
+            className="inline-flex items-center gap-2 text-sm font-semibold text-safety-600 hover:text-safety-700 transition-colors shrink-0"
           >
             ყველა კანონი <ArrowRight size={16} />
           </Link>
@@ -83,7 +83,7 @@ export function RegulationsTeaser() {
               transition={{ delay: i * 0.08 }}
               className="rounded-2xl border border-neutral-200 bg-white p-6"
             >
-              <div className="h-0.5 w-10 bg-brand-500 rounded mb-4" />
+              <div className="h-0.5 w-10 bg-safety-500 rounded mb-4" />
               <h3 className="text-sm font-semibold text-neutral-900 leading-snug mb-2">{item.title}</h3>
               <p className="text-xs text-neutral-500 leading-relaxed">{item.description}</p>
             </motion.div>

@@ -13,7 +13,7 @@ const VALUES: { Icon: LucideIcon; title: string; desc: string }[] = [
 // ─── Values ─────────────────────────────────────────────────────────────────────
 export function Values() {
   return (
-    <section className="py-24 px-5 bg-[#F5F3EE]">
+    <section className="py-24 px-5 bg-offwhite">
       <div className="mx-auto max-w-5xl">
         <motion.h2
           initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
@@ -26,8 +26,8 @@ export function Values() {
         >
           {VALUES.map(({ Icon, title, desc }) => (
             <motion.div key={title} variants={fadeUp} className="rounded-2xl border border-neutral-200 bg-white p-6">
-              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50">
-                <Icon size={20} className="text-brand-600" />
+              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-safety-50">
+                <Icon size={20} className="text-safety-600" />
               </div>
               <h3 className="font-bold text-neutral-900 mb-1 text-sm">{title}</h3>
               <p className="text-sm text-neutral-500 leading-relaxed">{desc}</p>
@@ -42,10 +42,10 @@ export function Values() {
 // ─── Mission (რატო ვაკეთებთ) ──────────────────────────────────────────────────────
 export function Mission() {
   return (
-    <section className="bg-[#F5F3EE] pt-32 pb-24 px-5">
+    <section className="bg-offwhite pt-32 pb-24 px-5">
       <div className="mx-auto max-w-3xl text-center">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-500 mb-6">
+          <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-safety-500 mb-6">
             <Target size={22} className="text-white" />
           </div>
           <h1 className="text-3xl sm:text-5xl font-bold text-neutral-900 mb-6 leading-tight">
@@ -69,7 +69,7 @@ export function WhoWeAre() {
       <div className="mx-auto max-w-3xl">
         <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
           <div className="flex items-center gap-2 mb-4">
-            <Heart size={20} className="text-brand-600" />
+            <Heart size={20} className="text-safety-600" />
             <h2 className="text-2xl sm:text-3xl font-bold text-neutral-900">ვინ ვართ</h2>
           </div>
           <div className="space-y-4 text-neutral-500 leading-relaxed">
@@ -92,7 +92,7 @@ export function WhoWeAre() {
 // ─── Team (თიმი) — placeholder cards ─────────────────────────────────────────────────
 export function Team() {
   return (
-    <section className="py-24 px-5 bg-[#F5F3EE]">
+    <section className="py-24 px-5 bg-offwhite">
       <div className="mx-auto max-w-5xl">
         <motion.h2
           initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
@@ -105,7 +105,7 @@ export function Team() {
         >
           {teamMembers.map((m, i) => (
             <motion.div key={i} variants={fadeUp} className="rounded-2xl border border-neutral-200 bg-white p-6 text-center">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-brand-100 text-lg font-bold text-brand-700">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-safety-100 text-lg font-bold text-safety-700">
                 {m.initials}
               </div>
               <p className="font-semibold text-neutral-900 text-sm">{m.name}</p>
@@ -138,7 +138,7 @@ export function Social() {
               target="_blank"
               rel="noreferrer"
               aria-label={label}
-              className="flex h-12 w-12 items-center justify-center rounded-2xl border border-neutral-200 bg-white text-neutral-600 hover:border-brand-300 hover:text-brand-600 transition-colors"
+              className="flex h-12 w-12 items-center justify-center rounded-2xl border border-neutral-200 bg-white text-neutral-600 hover:border-safety-300 hover:text-safety-600 transition-colors"
             >
               <Icon size={20} />
             </a>

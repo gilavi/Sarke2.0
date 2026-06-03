@@ -1,6 +1,34 @@
 # What's New — Hubble Changelog
 
-**Updated:** 2026-06-01 | Branch: `main`
+**Updated:** 2026-06-03 | Branch: `main`
+
+---
+
+## 2026-06-03 — Marketing site rebrand to the Hubble brand board (`web-app/`)
+
+The public marketing site (`hubble.ge` → `web-app/src/pages/landing/`) was repainted from
+the legacy emerald onto the **Hubble brand-board** palette. **Scope: the marketing site
+only** — the logged-in dashboard keeps its emerald `brand` scale (untouched).
+
+- **New Tailwind tokens** (additive, in `web-app/tailwind.config.ts`): `safety` (SAFETY
+  ORANGE `#FF5A1F`), `hivis` (HI-VIS YELLOW `#E6FF4D`), `graphite` (`#1A1A1A`), `offwhite`
+  (`#F2F1EC`), `concrete` (`#D6D6D1`). `brand`/`neutral` are unchanged, so the dashboard
+  and `web/` are unaffected.
+- **Recolor:** green `brand-*` → orange `safety-*`; the dark-green sections (`#0F2318`
+  family) → graphite; cream `#F5F3EE` → `offwhite`; the hero phone-mockup SVG → graphite +
+  orange with a hi-vis "+PDF" chip. Hi-vis is reserved for spotlights: the hero/trust
+  eyebrow "sticker" pills and the graphite stats numbers.
+- **Logo:** the placeholder shield was replaced with the **Hubble H-monogram** (rounded
+  square + diagonal wave) as a recolorable SVG (`HubbleLogo` in `landing/shared.tsx`) —
+  graphite in the navbar/footer, white-on-orange tiles in the mobile bar/popup. Also added
+  the missing `web-app/public/favicon.svg` (orange app-icon tile) and fixed the index.html
+  favicon path (`/app/favicon.svg` → `/favicon.svg`, which Vite was double-prefixing to
+  `/app/app/…` → 404).
+- Verified: `tsc --noEmit` clean, eslint clean (no new errors), no-shadow guard clean, and
+  the result confirmed in-browser across hero / stats / pain / trust / pricing / CTA + the
+  mobile chrome.
+- See [`web-app/src/pages/landing/AGENTS.md`](../web-app/src/pages/landing/AGENTS.md) for
+  the palette reference.
 
 ---
 

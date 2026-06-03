@@ -10,7 +10,7 @@ import type { FAQItem } from './marketing-data';
 export function FAQ({ items, title = 'ხშირი კითხვები' }: { items: FAQItem[]; title?: string }) {
   const [openIdx, setOpenIdx] = useState<number | null>(null);
   return (
-    <section id="faq" className="py-24 px-5 bg-[#F5F3EE]">
+    <section id="faq" className="py-24 px-5 bg-offwhite">
       <div className="mx-auto max-w-2xl">
         <motion.h2
           initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}

@@ -1,9 +1,9 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShieldCheck, X, Check, Cookie } from 'lucide-react';
+import { X, Check, Cookie } from 'lucide-react';
 import { routes } from '@/app/routes';
-import { appleIcon } from './shared';
+import { appleIcon, HubbleLogo } from './shared';
 
 // ─── Sticky mobile bar ────────────────────────────────────────────────────────
 export function StickyMobileBar() {
@@ -25,8 +25,8 @@ export function StickyMobileBar() {
           transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
           className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white border-t border-neutral-200 px-4 py-3 flex items-center gap-3"
         >
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-500 shrink-0">
-            <ShieldCheck size={18} className="text-white" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-safety-500 shrink-0">
+            <HubbleLogo className="h-5 w-auto text-white" />
           </div>
           <p className="flex-1 min-w-0 text-sm font-semibold text-neutral-900 truncate">HUBBLE — გადმოწერე უფასოდ</p>
           <Link
@@ -84,8 +84,8 @@ export function ExitIntentPopup() {
               <X size={16} />
             </button>
             <div className="flex items-center gap-3 mb-5">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-500 shrink-0">
-                <ShieldCheck size={20} className="text-white" />
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-safety-500 shrink-0">
+                <HubbleLogo className="h-6 w-auto text-white" />
               </div>
               <div>
                 <p className="font-bold text-neutral-900">დაველოდე!</p>
@@ -98,16 +98,16 @@ export function ExitIntentPopup() {
                 <input
                   type="email" value={email} onChange={e => setEmail(e.target.value)}
                   placeholder="შენი ელ.ფოსტა" required
-                  className="w-full rounded-xl border border-neutral-200 px-4 py-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                  className="w-full rounded-xl border border-neutral-200 px-4 py-3 text-sm outline-none focus:border-safety-500 focus:ring-2 focus:ring-safety-100"
                 />
-                <button type="submit" className="w-full rounded-xl bg-brand-500 py-3 text-sm font-semibold text-white hover:bg-brand-600 transition-colors">
+                <button type="submit" className="w-full rounded-xl bg-safety-500 py-3 text-sm font-semibold text-white hover:bg-safety-600 transition-colors">
                   გამომიგზავნე
                 </button>
               </form>
             ) : (
               <div className="flex flex-col items-center gap-2 py-4 text-center">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-50 mb-1">
-                  <Check size={22} className="text-brand-600" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-safety-50 mb-1">
+                  <Check size={22} className="text-safety-600" />
                 </div>
                 <p className="font-semibold text-neutral-900">მადლობა!</p>
                 <p className="text-sm text-neutral-500">ჩვენ გამოგიგზავნით განახლებებს</p>
@@ -132,10 +132,10 @@ export function CookieBanner() {
         <div className="flex-1 min-w-0">
           <p className="text-sm text-neutral-600 mb-3">
             ვებ-გვერდი იყენებს Cookies-ებს სერვისის გასაუმჯობესებლად.{' '}
-            <Link to="/terms" className="text-brand-600 hover:underline">დაწვრილებით</Link>
+            <Link to="/terms" className="text-safety-600 hover:underline">დაწვრილებით</Link>
           </p>
           <div className="flex gap-2">
-            <button onClick={accept} className="rounded-lg bg-brand-500 px-4 py-1.5 text-xs font-semibold text-white hover:bg-brand-600 transition-colors">
+            <button onClick={accept} className="rounded-lg bg-safety-500 px-4 py-1.5 text-xs font-semibold text-white hover:bg-safety-600 transition-colors">
               მიღება
             </button>
             <button onClick={accept} className="rounded-lg px-3 py-1.5 text-xs text-neutral-500 hover:text-neutral-700 transition-colors">

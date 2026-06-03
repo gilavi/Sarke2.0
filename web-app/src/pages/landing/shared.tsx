@@ -5,6 +5,21 @@ import { cn } from '@/lib/utils';
 // hijack into a route change). TODO: replace with the real App Store URL.
 export const APP_STORE_URL = '#';
 
+// ─── Brand mark ───────────────────────────────────────────────────────────────
+/**
+ * Hubble logo — the chunky rounded "H" monogram with a diagonal wave carved
+ * through the middle. Single-color, `fill="currentColor"` so it inherits the
+ * surrounding text color (graphite on light, white on the orange chip, …).
+ * evenodd path: rounded square minus a top notch, bottom notch, and the wave.
+ */
+export function HubbleLogo({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 120 112" fill="currentColor" xmlns="http://www.w3.org/2000/svg" className={className} aria-hidden="true" role="img">
+      <path fillRule="evenodd" clipRule="evenodd" d="M32 6H88Q114 6 114 32V80Q114 106 88 106H32Q6 106 6 80V32Q6 6 32 6ZM44 6V30Q44 44 60 44Q76 44 76 30V6ZM44 106V82Q44 74 60 74Q76 74 76 82V106ZM6 54C30 50 48 54 60 50C80 45 96 37 114 31L114 49C96 55 80 64 60 68C48 72 30 70 6 72Z" />
+    </svg>
+  );
+}
+
 // ─── Animation helpers ────────────────────────────────────────────────────────
 export const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -30,8 +45,8 @@ export function PhoneMockup() {
     >
       <defs>
         <linearGradient id="sg" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#0F2318" />
-          <stop offset="100%" stopColor="#071410" />
+          <stop offset="0%" stopColor="#1E1E1C" />
+          <stop offset="100%" stopColor="#141412" />
         </linearGradient>
       </defs>
       {/* Frame */}
@@ -47,35 +62,35 @@ export function PhoneMockup() {
       {/* Status bar */}
       <text x="24" y="40" fill="rgba(255,255,255,0.4)" fontSize="11" fontFamily="system-ui">9:41</text>
       {/* Header */}
-      <rect x="20" y="58" width="240" height="48" rx="12" fill="#1A2F22" />
+      <rect x="20" y="58" width="240" height="48" rx="12" fill="#2A2A27" />
       <text x="36" y="88" fill="white" fontSize="14" fontFamily="system-ui,sans-serif" fontWeight="700">HUBBLE</text>
-      <rect x="180" y="70" width="68" height="24" rx="8" fill="#147A4F" />
-      <text x="214" y="86" fill="white" fontSize="10" fontFamily="system-ui" fontWeight="600" textAnchor="middle">+ PDF</text>
+      <rect x="180" y="70" width="68" height="24" rx="8" fill="#E6FF4D" />
+      <text x="214" y="86" fill="#161614" fontSize="10" fontFamily="system-ui" fontWeight="700" textAnchor="middle">+ PDF</text>
       {/* Checklist rows */}
       {rows.map((r, i) => (
         <g key={i} transform={`translate(20,${118 + i * 50})`}>
-          <rect width="240" height="42" rx="10" fill={r.done ? '#162B1E' : '#121F16'} />
-          <rect x="8" y="9" width="24" height="24" rx="7" fill={r.done ? '#147A4F' : '#1E3527'} />
+          <rect width="240" height="42" rx="10" fill={r.done ? '#242422' : '#1A1A18'} />
+          <rect x="8" y="9" width="24" height="24" rx="7" fill={r.done ? '#FF5A1F' : '#33332F'} />
           {r.done && (
             <path d="M13 21 L17 25 L25 16" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
           )}
-          <rect x="42" y="12" width={r.done ? 140 : 110} height="8" rx="4" fill={r.done ? '#75C3A5' : '#2D4A38'} opacity="0.9" />
-          <rect x="42" y="24" width={r.done ? 90 : 75} height="6" rx="3" fill="#1E3527" />
+          <rect x="42" y="12" width={r.done ? 140 : 110} height="8" rx="4" fill={r.done ? '#C7C5BD' : '#3A3A36'} opacity="0.9" />
+          <rect x="42" y="24" width={r.done ? 90 : 75} height="6" rx="3" fill="#2E2E2B" />
         </g>
       ))}
       {/* Generate button */}
-      <rect x="20" y="378" width="240" height="52" rx="15" fill="#147A4F" />
+      <rect x="20" y="378" width="240" height="52" rx="15" fill="#FF5A1F" />
       <text x="140" y="409" fill="white" fontSize="15" fontFamily="system-ui,sans-serif" fontWeight="700" textAnchor="middle">PDF გენერაცია ↗</text>
       {/* PDF preview card */}
-      <rect x="20" y="442" width="240" height="96" rx="12" fill="#0F2318" />
-      <rect x="28" y="450" width="60" height="80" rx="8" fill="#1A3525" />
-      <rect x="34" y="460" width="48" height="4" rx="2" fill="#147A4F" opacity="0.8" />
+      <rect x="20" y="442" width="240" height="96" rx="12" fill="#1E1E1C" />
+      <rect x="28" y="450" width="60" height="80" rx="8" fill="#2A2A27" />
+      <rect x="34" y="460" width="48" height="4" rx="2" fill="#FF5A1F" opacity="0.8" />
       {[470, 477, 484, 498, 505].map((y, i) => (
-        <rect key={i} x="34" y={y} width={i % 2 === 0 ? 44 : 38} height="3" rx="1.5" fill="#2A4A35" />
+        <rect key={i} x="34" y={y} width={i % 2 === 0 ? 44 : 38} height="3" rx="1.5" fill="#3A3A36" />
       ))}
-      <text x="100" y="462" fill="#75C3A5" fontSize="9" fontFamily="system-ui" fontWeight="600">ინსპექციის აქტი</text>
+      <text x="100" y="462" fill="#FF7A47" fontSize="9" fontFamily="system-ui" fontWeight="600">ინსპექციის აქტი</text>
       {[466, 473, 480, 493].map((y, i) => (
-        <rect key={i} x="100" y={y} width={[80, 72, 88, 60][i]} height="3" rx="1.5" fill={i === 3 ? '#147A4F' : '#1E3527'} opacity={i === 3 ? 0.5 : 1} />
+        <rect key={i} x="100" y={y} width={[80, 72, 88, 60][i]} height="3" rx="1.5" fill={i === 3 ? '#FF5A1F' : '#2E2E2B'} opacity={i === 3 ? 0.5 : 1} />
       ))}
       <text x="100" y="513" fill="rgba(255,255,255,0.3)" fontSize="8" fontFamily="system-ui">SHA256 ✓</text>
       {/* Home indicator */}
