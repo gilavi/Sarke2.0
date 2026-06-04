@@ -147,7 +147,7 @@ describe('ReportDetail (draft interactions)', () => {
     expect(await screen.findByText(/სტატუსი: დასრულდა/)).toBeInTheDocument();
     // No editable title input in completed mode → just text titles.
     expect(screen.queryByDisplayValue('ხარაჩო 1')).not.toBeInTheDocument();
-    // PDF button visible.
-    expect(screen.getByRole('button', { name: /PDF-ის ნახვა/ })).toBeInTheDocument();
+    // Saved-PDF button visible (renamed from "PDF-ის ნახვა" to disambiguate from print).
+    expect(screen.getByRole('button', { name: /შენახული PDF/ })).toBeInTheDocument();
   });
 });

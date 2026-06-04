@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileText, Plus, X } from 'lucide-react';
+import { FileText, Plus } from 'lucide-react';
 import { SkeletonDetailPage } from '@/components/SkeletonCard';
 import { toast } from 'sonner';
 import DeleteButton from '@/components/DeleteButton';
@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import PhotoGallery from '@/components/PhotoGallery';
+import { SlideCard } from '@/components/reports/SlideCard';
 import {
   addReportSlide,
   deleteReport,
@@ -25,6 +26,7 @@ import { reportDisplayName } from '@/lib/documentNames';
 import { routes } from '@/app/routes';
 import { projectKeys, reportKeys } from '@/app/queryKeys';
 import { ErrorMessage } from '@/components/ui/error-message';
+import { humanizeError, toastError } from '@/lib/errors';
 
 export default function ReportDetail() {
   const { id } = useParams();
@@ -42,16 +44,17 @@ export default function ReportDetail() {
     queryFn: () => getProject(projectId!),
     enabled: !!projectId,
   });
+  // Photo paths that actually need a signed URL — stable string key so the query
+  // doesn't re-run (and regenerate 10-min signed URLs) on every refetch just because
+  // `item.slides` is a fresh array reference.
+  const slidePaths = (item?.slides ?? [])
+    .map((s) => s.annotated_image_path || s.image_path)
+    .filter((p): p is string => !!p);
   const { data: imageUrls = {} } = useQuery({
-    queryKey: ['reportPhotos', id, item?.slides],
+    queryKey: ['reportPhotos', id, slidePaths.join('|')],
     queryFn: async () => {
-      const paths: string[] = [];
-      for (const s of item?.slides ?? []) {
-        const p = s.annotated_image_path || s.image_path;
-        if (p) paths.push(p);
-      }
       const entries = await Promise.all(
-        paths.map((p) =>
+        slidePaths.map((p) =>
           signedReportPhotoUrl(p)
             .then((u) => [p, u] as const)
             .catch(() => [p, ''] as const),
@@ -59,19 +62,32 @@ export default function ReportDetail() {
       );
       return Object.fromEntries(entries) as Record<string, string>;
     },
-    enabled: !!item?.slides && item.slides.length > 0,
+    enabled: slidePaths.length > 0,
   });
 
   const [opening, setOpening] = useState(false);
 
   const [addingSlide, setAddingSlide] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const titleInputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-open the add-slide form when a fresh draft has no slides yet (mirrors mobile UX)
+  // Auto-open the add-slide form ONCE for a fresh empty draft (mirrors mobile UX).
+  // Gated on the report id + a one-shot ref so it never re-opens after the user
+  // closes it (the old effect depended on the whole `item` object and re-fired on
+  // every refetch).
+  const autoOpenedFor = useRef<string | null>(null);
   useEffect(() => {
-    if (item && (item.slides ?? []).length === 0 && item.status === 'draft') {
-      setAddingSlide(true);
-    }
+    if (!item || item.status !== 'draft') return;
+    if (autoOpenedFor.current === item.id) return;
+    autoOpenedFor.current = item.id;
+    if ((item.slides ?? []).length === 0) setAddingSlide(true);
   }, [item]);
+
+  // Move focus into the title field when the form opens.
+  useEffect(() => {
+    if (addingSlide) titleInputRef.current?.focus();
+  }, [addingSlide]);
+
   const [slideTitle, setSlideTitle] = useState('');
   const [slideDescription, setSlideDescription] = useState('');
   const [slidePhoto, setSlidePhoto] = useState<File | null>(null);
@@ -88,16 +104,29 @@ export default function ReportDetail() {
       });
     },
     onSuccess: (next: Report) => {
-      qc.setQueryData(['report', id], next);
+      qc.setQueryData(reportKeys.detail(id), next);
       qc.invalidateQueries({ queryKey: reportKeys.lists() });
       setSlideTitle('');
       setSlideDescription('');
       setSlidePhoto(null);
+      setValidationError(null);
       if (photoInputRef.current) photoInputRef.current.value = '';
       setAddingSlide(false);
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
+    // Form-submission failures surface INLINE (below the form), not as a toast — the
+    // app-wide rule is inline-for-forms, toast-for-standalone-actions.
   });
+
+  // At least one of {title, photo} must be present — a blank slide is not submittable.
+  function submitSlide() {
+    if (addSlideMutation.isPending) return;
+    if (!slideTitle.trim() && !slidePhoto) {
+      setValidationError('მიუთითეთ სათაური ან დაამატეთ ფოტო.');
+      return;
+    }
+    setValidationError(null);
+    addSlideMutation.mutate();
+  }
 
   const removeSlideMutation = useMutation({
     mutationFn: (slideId: string) => {
@@ -105,10 +134,10 @@ export default function ReportDetail() {
       return removeReportSlide(item, slideId);
     },
     onSuccess: (next: Report) => {
-      qc.setQueryData(['report', id], next);
+      qc.setQueryData(reportKeys.detail(id), next);
       qc.invalidateQueries({ queryKey: reportKeys.lists() });
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
+    onError: (e) => toastError(e),
   });
 
   const updateSlideMutation = useMutation({
@@ -117,9 +146,10 @@ export default function ReportDetail() {
       return updateReportSlide(item, slideId, patch);
     },
     onSuccess: (next: Report) => {
-      qc.setQueryData(['report', id], next);
+      qc.setQueryData(reportKeys.detail(id), next);
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
+    // No onError toast here: SlideCard awaits this mutation, reverts the field to the
+    // last-saved value on failure, and shows the toast itself (single surface).
   });
 
   const deleteMutation = useMutation({
@@ -131,19 +161,29 @@ export default function ReportDetail() {
       qc.invalidateQueries({ queryKey: reportKeys.lists() });
       navigate('/reports');
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
+    onError: (e) => toastError(e),
   });
 
-  const error = queryError instanceof Error ? queryError.message : queryError ? String(queryError) : null;
+  const error = queryError ? humanizeError(queryError) : null;
 
-  async function openPdf() {
+  /** Open the in-app print/preview view. Falls back to same-tab nav if popups are blocked. */
+  function openPrintView() {
+    if (!item) return;
+    const url = `#/reports/${item.id}/print`;
+    const win = window.open(url, '_blank');
+    if (!win) navigate(`/reports/${item.id}/print`);
+  }
+
+  /** Open the saved, signed PDF. Falls back to a toast if the popup is blocked. */
+  async function openSignedPdf() {
     if (!item?.pdf_url) return;
     try {
       setOpening(true);
       const url = await signedReportPdfUrl(item.pdf_url);
-      window.open(url, '_blank', 'noopener,noreferrer');
+      const win = window.open(url, '_blank', 'noopener,noreferrer');
+      if (!win) toast.error('ფანჯრის გახსნა დაიბლოკა — დაუშვით pop-up ფანჯრები.');
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
+      toastError(e);
     } finally {
       setOpening(false);
     }
@@ -183,23 +223,18 @@ export default function ReportDetail() {
           <p className="mt-1 text-sm text-neutral-500">სტატუსი: {item.status === 'completed' ? 'დასრულდა' : 'დრაფტი'}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => window.open(`#/reports/${item.id}/print`, '_blank')}
-          >
+          <Button variant="outline" size="sm" onClick={openPrintView}>
             <FileText size={14} className="mr-1" />
-            PDF
+            ბეჭდვა / PDF
           </Button>
+          {item.pdf_url && (
+            <Button type="button" size="sm" onClick={() => void openSignedPdf()} disabled={opening}>
+              {opening ? 'იხსნება…' : 'შენახული PDF'}
+            </Button>
+          )}
           <DeleteButton onDelete={() => deleteMutation.mutate()} isPending={deleteMutation.isPending} />
         </div>
       </header>
-
-      {item.pdf_url && (
-        <Button type="button" onClick={() => void openPdf()} disabled={opening}>
-          {opening ? 'იხსნება…' : 'PDF-ის ნახვა'}
-        </Button>
-      )}
 
       {/* Slides */}
       <section>
@@ -226,13 +261,17 @@ export default function ReportDetail() {
                 className="space-y-3"
                 onSubmit={(e) => {
                   e.preventDefault();
-                  if (!addSlideMutation.isPending) addSlideMutation.mutate();
+                  submitSlide();
                 }}
               >
                 <Input
+                  ref={titleInputRef}
                   id="slide-title"
                   value={slideTitle}
-                  onChange={(e) => setSlideTitle(e.target.value)}
+                  onChange={(e) => {
+                    setSlideTitle(e.target.value);
+                    if (validationError) setValidationError(null);
+                  }}
                   placeholder="მაგ: ხარაჩოს ბოძი — დაუცველი"
                 />
                 <Textarea
@@ -248,7 +287,10 @@ export default function ReportDetail() {
                     ref={photoInputRef}
                     type="file"
                     accept="image/*"
-                    onChange={(e) => setSlidePhoto(e.target.files?.[0] ?? null)}
+                    onChange={(e) => {
+                      setSlidePhoto(e.target.files?.[0] ?? null);
+                      if (validationError) setValidationError(null);
+                    }}
                     className="block text-sm text-neutral-700 file:mr-3 file:rounded-md file:border-0 file:bg-brand-500 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white hover:file:bg-brand-600"
                   />
                   {slidePhoto && (
@@ -256,12 +298,11 @@ export default function ReportDetail() {
                   )}
                 </div>
 
+                {/* Client-side validation (inline) */}
+                {validationError && <ErrorMessage compact>{validationError}</ErrorMessage>}
+                {/* Submission failure (inline, per the inline-for-forms rule) */}
                 {addSlideMutation.error && (
-                  <ErrorMessage compact>
-                    {addSlideMutation.error instanceof Error
-                      ? addSlideMutation.error.message
-                      : String(addSlideMutation.error)}
-                  </ErrorMessage>
+                  <ErrorMessage compact>{humanizeError(addSlideMutation.error)}</ErrorMessage>
                 )}
 
                 <div className="flex gap-2">
@@ -276,6 +317,7 @@ export default function ReportDetail() {
                       setSlideTitle('');
                       setSlideDescription('');
                       setSlidePhoto(null);
+                      setValidationError(null);
                       if (photoInputRef.current) photoInputRef.current.value = '';
                     }}
                     disabled={addSlideMutation.isPending}
@@ -293,68 +335,19 @@ export default function ReportDetail() {
         ) : (
           <div className="space-y-3">
             {slides.map((s, idx) => (
-              <Card key={s.id}>
-                <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-                  <div className="flex-1 pr-2">
-                    {item.status === 'draft' ? (
-                      <Input
-                        defaultValue={s.title}
-                        placeholder={`სლაიდი ${idx + 1}`}
-                        className="font-semibold"
-                        onBlur={(e) => {
-                          const v = e.target.value.trim();
-                          if (v !== s.title)
-                            updateSlideMutation.mutate({ slideId: s.id, patch: { title: v } });
-                        }}
-                      />
-                    ) : (
-                      <CardTitle className="text-base">
-                        {idx + 1}. {s.title || 'სლაიდი'}
-                      </CardTitle>
-                    )}
-                  </div>
-                  <div className="flex items-start gap-2 shrink-0 ml-2">
-                    {(() => {
-                      const path = s.annotated_image_path || s.image_path;
-                      const url = path ? imageUrls[path] : '';
-                      return url ? (
-                        <img
-                          src={url}
-                          alt={s.title || `სლაიდი ${idx + 1}`}
-                          className="h-16 w-16 rounded-lg object-cover border border-neutral-200"
-                        />
-                      ) : null;
-                    })()}
-                    {item.status === 'draft' && (
-                      <button
-                        type="button"
-                        onClick={() => removeSlideMutation.mutate(s.id)}
-                        disabled={removeSlideMutation.isPending}
-                        className="mt-1 text-neutral-400 hover:text-red-500 disabled:opacity-50"
-                        title="სლაიდის წაშლა"
-                      >
-                        <X size={16} />
-                      </button>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {item.status === 'draft' ? (
-                    <Textarea
-                      rows={2}
-                      defaultValue={s.description}
-                      placeholder="აღწერა"
-                      onBlur={(e) => {
-                        const v = e.target.value;
-                        if (v !== s.description)
-                          updateSlideMutation.mutate({ slideId: s.id, patch: { description: v } });
-                      }}
-                    />
-                  ) : (
-                    s.description && <p className="text-sm text-neutral-700">{s.description}</p>
-                  )}
-                </CardContent>
-              </Card>
+              <SlideCard
+                key={s.id}
+                slide={s}
+                index={idx}
+                editable={item.status === 'draft'}
+                imageUrl={(() => {
+                  const path = s.annotated_image_path || s.image_path;
+                  return path ? imageUrls[path] : undefined;
+                })()}
+                onSave={(patch) => updateSlideMutation.mutateAsync({ slideId: s.id, patch })}
+                onRemove={() => removeSlideMutation.mutate(s.id)}
+                isRemoving={removeSlideMutation.isPending}
+              />
             ))}
           </div>
         )}
