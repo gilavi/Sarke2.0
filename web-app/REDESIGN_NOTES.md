@@ -124,7 +124,8 @@ via `/run` or pairing) to reproduce + fix.
   **typecheck with `npx tsc -b` separately** (vite/esbuild does NOT typecheck — a green
   `vitest` run does not mean types are sound; that mistake shipped `c8ddbb0`).
 - `web-app/scripts/check-no-shadows.mjs` (part of `npm run lint`) bans Tailwind `shadow-*`
-  utilities in `.ts/.tsx` (CSS `box-shadow` in `.css`/inline `style` is fine). It also has
-  a Windows path bug (`new URL('..').pathname` → `C:\C:\…`) that crashes it locally.
+  utilities in `.ts/.tsx` (CSS `box-shadow` in `.css`/inline `style` is fine). (It used to
+  have a Windows path bug — `new URL('..').pathname` → `C:\C:\…` — that crashed it locally;
+  fixed 2026-06-04 by switching to `fileURLToPath`, so `npm run lint` now runs on Windows too.)
 - `navItems.ts` still carries a now-unused per-item `tint` field (harmless; nav is
   monochrome/brand now). Safe to delete later.

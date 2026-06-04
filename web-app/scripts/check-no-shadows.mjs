@@ -13,8 +13,12 @@
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = decodeURIComponent(new URL('..', import.meta.url).pathname);
+// `new URL('..', import.meta.url).pathname` yields a leading-slash, percent-encoded
+// path that breaks on Windows (`/C:/…` → `path.join` produces `C:\C:\…`). `fileURLToPath`
+// decodes correctly and handles drive letters on every platform.
+const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const SCAN = join(ROOT, 'src');
 const SKIP_FILES = new Set(['Scene3D.tsx']); // react-three-fiber shadow-* light props
 const EXTS = new Set(['.ts', '.tsx']);
