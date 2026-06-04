@@ -129,3 +129,24 @@ via `/run` or pairing) to reproduce + fix.
   fixed 2026-06-04 by switching to `fileURLToPath`, so `npm run lint` now runs on Windows too.)
 - `navItems.ts` still carries a now-unused per-item `tint` field (harmless; nav is
   monochrome/brand now). Safe to delete later.
+
+## Conventions added in the 2026-06-04 audit
+
+See [AUDIT_FIXES_REPORT.md](AUDIT_FIXES_REPORT.md) for the full pass. Two conventions worth
+remembering before touching error display or animation:
+
+- **Error display goes through `lib/errors.ts`.** Raw Supabase/Postgres/network messages are
+  English jargon to our Georgian users. Use `humanizeError(e)` for inline display and
+  `toastError(e)` for toasts (it logs the raw error to the console and toasts the humanized
+  copy). Add new mappings to the i18n `errors.*` namespace, not hardcoded strings. The central
+  chokepoints (`useEntityMutation`, `AsyncBoundary`/`ErrorView`) already route through it.
+  **Rule:** form-submission errors → inline `<ErrorMessage>`; standalone actions
+  (delete/complete/row mutations) → toast. Never both for one failure.
+- **Animations respect reduced motion globally.** The app root is wrapped in
+  `<MotionConfig reducedMotion="user">` (`App.tsx`), so any framer-motion component honors
+  `prefers-reduced-motion` automatically — you do not need a per-component `useReducedMotion`
+  for transform/layout animations. For NON-framer effects (canvas-confetti, raw CSS
+  transitions) still gate manually. Motion tokens live in `lib/animations.ts`.
+- **Mutations retry transient network errors only** (`isTransientError` in `lib/errors.ts`,
+  wired into the QueryClient `defaultOptions.mutations`). Never make a mutation retry on
+  RLS/duplicate/validation — for a non-idempotent create that risks a double write.
