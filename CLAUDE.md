@@ -40,7 +40,7 @@ Rules:
 - **Native iOS legacy:** `ios-legacy` branch — do not modify from main.
 - **Storage buckets:** `certificates`, `answer-photos`, `pdfs`, `signatures`, `incident-photos`, `report-photos`, `project-files`, `remote-signatures`.
 - **Languages:** UI strings are in Georgian (ქართული). Do not auto-translate them to English.
-- **Migrations:** range is currently `0001`–`0053` plus timestamp-prefixed migrations from 2026-05-25 onward (`YYYYMMDDHHMMSS_*.sql`). Numbers `0044`/`0045`/`0046` are each used by two files (merged branches) — do **not** renumber them (it desyncs the hosted migration history); new numeric migrations would continue from `0053`. The full list with one-line descriptions is in [README.md](README.md#migrations-supabasemigrations).
+- **Migrations:** range is currently `0001`–`0054` plus timestamp-prefixed migrations from 2026-05-25 onward (`YYYYMMDDHHMMSS_*.sql`). Numbers `0044`/`0045`/`0046` are each used by two files (merged branches) — do **not** renumber them (it desyncs the hosted migration history); new numeric migrations would continue from `0054`. The full list with one-line descriptions is in [README.md](README.md#migrations-supabasemigrations).
 
 ## Per-module context
 

@@ -73,7 +73,7 @@ Top-level folders, one line each.
 | `locales/` | UI strings (Georgian baseline). |
 | `shims/` | Web stubs (worklets, keyboard-controller) loaded via `metro.config.js` aliases. |
 | `scripts/` | Repo scripts including `check-primitives.mjs` (lint guard). |
-| `supabase/` | `migrations/` SQL files (0001–0053 plus timestamp-prefixed migrations from 2026-05-25 onward; numbers 0044/0045/0046 are each used by two files — see Migrations note), `seed/` system templates, `functions/` Edge Functions, `.temp/` local CLI cache. |
+| `supabase/` | `migrations/` SQL files (0001–0054 plus timestamp-prefixed migrations from 2026-05-25 onward; numbers 0044/0045/0046 are each used by two files — see Migrations note), `seed/` system templates, `functions/` Edge Functions, `.temp/` local CLI cache. |
 | `docs/` | Project documentation — `AI_BRIEFING.md`, `WHATS_NEW.md`, `primitives.md`, `payments.md`, `design-system-audit-*.md`, `prompts/`. |
 | `web/` | `hubble-sign` tokenized signing page (Vite + React). Deployed to `https://gilavi.github.io/Sarke2.0/`. |
 | `web-app/` | Public dashboard (Vite + React + TS + Tailwind). Deployed to `https://gilavi.github.io/Sarke2.0/app/`. |
@@ -189,7 +189,7 @@ Outbound email uses **Resend** via custom SMTP (configured in the Supabase dashb
 
 ### Migrations (`supabase/migrations/`)
 
-> **Duplicate numbers:** `0044`, `0045`, `0046` each have **two files** — inspection tables from one branch and reports-RLS fixes from another, merged together. Both halves are applied to the hosted DB. **Do not renumber them** — it would desync the migration history. Numeric migrations continue from `0053`; **migrations from 2026-05-25 onward use timestamp-prefixed names** (`YYYYMMDDHHMMSS_...sql`) for SQL that originated in Supabase Studio and was captured to the repo after the fact. Both naming conventions coexist.
+> **Duplicate numbers:** `0044`, `0045`, `0046` each have **two files** — inspection tables from one branch and reports-RLS fixes from another, merged together. Both halves are applied to the hosted DB. **Do not renumber them** — it would desync the migration history. Numeric migrations continue from `0054`; **migrations from 2026-05-25 onward use timestamp-prefixed names** (`YYYYMMDDHHMMSS_...sql`) for SQL that originated in Supabase Studio and was captured to the repo after the fact. Both naming conventions coexist.
 
 | File | Purpose |
 |---|---|
@@ -249,6 +249,7 @@ Outbound email uses **Resend** via custom SMTP (configured in the Supabase dashb
 | `0051_equipment_signatories.sql` | Same `signatories JSONB NOT NULL DEFAULT '[]'` column added to `bobcat_inspections`, `excavator_inspections`, `cargo_platform_inspections`, `general_equipment_inspections` |
 | `0052_inspection_conclusion_photos.sql` | `conclusion_photo_paths text[]` column on `inspections` — storage paths for conclusion-step photos. (Renamed from a colliding `0047_…` to `0052`.) |
 | `0053_storage_rls_owner_scoping.sql` | Owner-scopes storage RLS on `certificates` / `answer-photos` / `pdfs` / `signatures` — drops the permissive dashboard `sarke_*` policies (bucket-id-only) and replaces them with per-bucket `owner = auth.uid()` SELECT/UPDATE/DELETE policies (INSERT stays auth-only). Companion to `0020`. Closes the write/delete half of the storage-RLS P0; the read half is gated on a separate bucket-privacy follow-up (these buckets are currently `public`). Applied via Management API. |
+| `0054_report_photos_authonly.sql` | Switches all three `report-photos` storage policies (INSERT/SELECT/DELETE) to **auth-only**. Fixes report slide photos failing to save/read/delete: the deployed policies (drift from `0020`) required the report id as the first path folder, but uploads use `${project_id}/${report_id}/file`, so the id never matched. Applied to prod & verified 2026-06-04 via the SQL editor; idempotent. |
 | `20260525180000_pin_function_search_paths.sql` | Pins `search_path = public, pg_catalog` on every public function. Fixes the TestFlight `auth.admin.deleteUser` 500 caused by trigger functions referencing the `questionnaire_status` enum without schema qualification. |
 | `20260525183000_cascade_user_deletion.sql` | Adds `ON DELETE CASCADE` FKs from every user-owned public column (`%user_id%` / `%owner_id%` / `%created_by%` / `%uploaded_by%`) to `auth.users(id)`. Required for App Store Review Guideline 5.1.1(v). |
 | `20260525190000_dedupe_user_fkeys.sql` | Drops duplicate `*_auth_users_fkey` constraints produced by the prior migration's `information_schema` blind spot. |
