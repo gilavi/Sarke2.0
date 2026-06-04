@@ -9,6 +9,7 @@ import { cancelSubscription } from '@/lib/subscription';
 import { PdfUsageBar } from './PdfUsageBar';
 import { useNavigate } from 'react-router-dom';
 import { fmtDateKa } from '@/lib/utils';
+import { humanizeError } from '@/lib/errors';
 
 const PaywallModal = lazy(() =>
   import('./PaywallModal').then((m) => ({ default: m.PaywallModal })),
@@ -50,7 +51,7 @@ export function SubscriptionCard() {
           : 'გამოწერა გაუქმდა',
       );
     } catch (e) {
-      setCancelMsg(`შეცდომა: ${e instanceof Error ? e.message : String(e)}`);
+      setCancelMsg(`შეცდომა: ${humanizeError(e)}`);
     } finally {
       setCancelling(false);
     }

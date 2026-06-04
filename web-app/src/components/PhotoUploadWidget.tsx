@@ -22,6 +22,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Camera, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ActionIcon, Modal } from '@mantine/core';
 import { signedInspectionPhotoUrl, uploadInspectionPhoto, deleteInspectionPhoto } from '@/lib/photoUpload';
+import { humanizeError } from '@/lib/errors';
 
 interface Props {
   paths: string[];
@@ -107,7 +108,7 @@ export default function PhotoUploadWidget({
         onAdd(path);
       }
     } catch (e) {
-      setUploadError(e instanceof Error ? e.message : String(e));
+      setUploadError(humanizeError(e));
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = '';

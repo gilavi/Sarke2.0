@@ -7,7 +7,7 @@ import { NumberInput } from '@mantine/core';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select } from '@/components/ui/select';
-import { toast } from 'sonner';
+
 import PhotoUploadZone from '@/components/PhotoUploadZone';
 import SuccessModal, { type SuccessModalData } from '@/components/web/SuccessModal';
 import { inspectionDisplayName } from '@/lib/documentNames';
@@ -31,6 +31,7 @@ import { listTemplates } from '@/lib/data/templates';
 import { projectKeys, inspectionKeys, templateKeys } from '@/app/queryKeys';
 import { routes } from '@/app/routes';
 import { VERDICT_GOOD, VERDICT_BAD } from '@/lib/verdictColors';
+import { toastError } from '@/lib/errors';
 
 /* ─── Types ─── */
 
@@ -261,7 +262,7 @@ export default function InspectionWizard({
     onSuccess: (answer) => {
       setAnswerMap((prev) => ({ ...prev, [answer.question_id]: answer }));
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
+    onError: (e) => toastError(e),
   });
 
   /* ── Grid summary (ok/bad counts) — shown for any component_grid inspection ── */
@@ -335,7 +336,7 @@ export default function InspectionWizard({
           setSuccessOpen(true);
         }
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : String(e));
+        toastError(e);
       } finally {
         setSubmitting(false);
       }
@@ -387,7 +388,7 @@ export default function InspectionWizard({
         setDirection(1);
         setStepIndex(1);
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : String(e));
+        toastError(e);
       } finally {
         setCreating(false);
       }

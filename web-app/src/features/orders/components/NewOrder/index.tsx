@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { toastError } from '@/lib/errors';
 import { WizardShell } from '@/components/ui/wizard-shell';
 import {
   createOrder,
@@ -133,7 +134,7 @@ export default function NewOrder() {
     onError: (e) => {
       pdfWinRef.current?.close();
       pdfWinRef.current = null;
-      toast.error(e instanceof Error ? e.message : 'შეცდომა');
+      toastError(e);
     },
   });
 

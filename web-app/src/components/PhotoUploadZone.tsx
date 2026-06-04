@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Upload, X } from 'lucide-react';
 import { signedInspectionPhotoUrl, uploadInspectionPhoto, deleteInspectionPhoto } from '@/lib/photoUpload';
+import { humanizeError } from '@/lib/errors';
 
 interface Props {
   paths: string[];
@@ -72,7 +73,7 @@ export default function PhotoUploadZone({
         onAdd(path);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(humanizeError(e));
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = '';

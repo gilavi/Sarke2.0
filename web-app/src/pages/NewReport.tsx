@@ -8,6 +8,7 @@ import { listProjects } from '@/lib/data/projects';
 import { projectKeys, reportKeys } from '@/app/queryKeys';
 import { createReport, type Report } from '@/lib/data/reports';
 import { ErrorMessage } from '@/components/ui/error-message';
+import { humanizeError } from '@/lib/errors';
 
 const STEPS = ['ძირითადი'];
 
@@ -80,7 +81,7 @@ export default function NewReport() {
 
         {mutation.error && (
           <ErrorMessage compact>
-            {mutation.error instanceof Error ? mutation.error.message : String(mutation.error)}
+            {humanizeError(mutation.error)}
           </ErrorMessage>
         )}
       </div>

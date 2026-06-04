@@ -21,6 +21,7 @@ import { getProject } from '@/lib/data/projects';
 import { routes } from '@/app/routes';
 import { projectKeys, briefingKeys } from '@/app/queryKeys';
 import { ErrorMessage } from '@/components/ui/error-message';
+import { humanizeError } from '@/lib/errors';
 
 export default function BriefingDetail() {
   const { id } = useParams();
@@ -46,7 +47,7 @@ export default function BriefingDetail() {
       qc.invalidateQueries({ queryKey: briefingKeys.detail(id) });
       qc.invalidateQueries({ queryKey: briefingKeys.lists() });
     },
-    onError: (e) => setActionError(e instanceof Error ? e.message : String(e)),
+    onError: (e) => setActionError(humanizeError(e)),
   });
 
   const delMutation = useMutation({
@@ -55,12 +56,12 @@ export default function BriefingDetail() {
       qc.invalidateQueries({ queryKey: briefingKeys.lists() });
       navigate('/briefings');
     },
-    onError: (e) => setActionError(e instanceof Error ? e.message : String(e)),
+    onError: (e) => setActionError(humanizeError(e)),
   });
 
   if (isLoading) return <SkeletonDetailPage />;
   if (error)
-    return <ErrorMessage>{error instanceof Error ? error.message : String(error)}</ErrorMessage>;
+    return <ErrorMessage>{humanizeError(error)}</ErrorMessage>;
   if (!b) return <p className="text-sm text-neutral-500">ინსტრუქტაჟი ვერ მოიძებნა.</p>;
 
   const isDraft = b.status === 'draft';

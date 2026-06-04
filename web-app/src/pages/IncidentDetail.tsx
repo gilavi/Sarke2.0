@@ -25,6 +25,7 @@ import { getProject } from '@/lib/data/projects';
 import { routes } from '@/app/routes';
 import { projectKeys, incidentKeys } from '@/app/queryKeys';
 import { ErrorMessage } from '@/components/ui/error-message';
+import { humanizeError } from '@/lib/errors';
 
 export default function IncidentDetail() {
   const { id } = useParams();
@@ -82,7 +83,7 @@ export default function IncidentDetail() {
       qc.invalidateQueries({ queryKey: incidentKeys.lists() });
       setEditing(false);
     },
-    onError: (e) => setActionError(e instanceof Error ? e.message : String(e)),
+    onError: (e) => setActionError(humanizeError(e)),
   });
 
   const delMutation = useMutation({
@@ -94,10 +95,10 @@ export default function IncidentDetail() {
       qc.invalidateQueries({ queryKey: incidentKeys.lists() });
       navigate('/incidents');
     },
-    onError: (e) => setActionError(e instanceof Error ? e.message : String(e)),
+    onError: (e) => setActionError(humanizeError(e)),
   });
 
-  const error = actionError ?? (queryError instanceof Error ? queryError.message : queryError ? String(queryError) : null);
+  const error = actionError ?? (queryError ? humanizeError(queryError) : null);
 
   async function openPdf() {
     if (!item?.pdf_url) return;
@@ -106,7 +107,7 @@ export default function IncidentDetail() {
       const url = await signedIncidentPdfUrl(item.pdf_url);
       window.open(url, '_blank', 'noopener,noreferrer');
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : String(e));
+      setActionError(humanizeError(e));
     } finally {
       setOpening(false);
     }

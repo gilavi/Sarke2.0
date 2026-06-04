@@ -24,14 +24,11 @@ import { Component, type ReactNode } from 'react';
 import type { UseQueryResult } from '@tanstack/react-query';
 import { SkeletonList, SkeletonDetailPage } from '@/components/SkeletonCard';
 import { ErrorMessage } from '@/components/ui/error-message';
-
-function defaultErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
+import { humanizeError } from '@/lib/errors';
 
 export function ErrorView({ error }: { error: unknown }) {
   return (
-    <ErrorMessage>{defaultErrorMessage(error)}</ErrorMessage>
+    <ErrorMessage>{humanizeError(error)}</ErrorMessage>
   );
 }
 

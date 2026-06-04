@@ -11,6 +11,7 @@ import {
   type ProjectSigner,
 } from '@/lib/data/projects';
 import { projectKeys } from '@/app/queryKeys';
+import { humanizeError } from '@/lib/errors';
 
 interface Props {
   projectId: string;
@@ -46,7 +47,7 @@ export function SignersSection({ projectId, onError }: Props) {
       setForm({ full_name: '', position: '', phone: '' });
       setAdding(false);
     } catch (e) {
-      onError(e instanceof Error ? e.message : String(e));
+      onError(humanizeError(e));
     } finally {
       setBusy(false);
     }
@@ -60,7 +61,7 @@ export function SignersSection({ projectId, onError }: Props) {
         (prev ?? []).filter((x) => x.id !== s.id),
       );
     } catch (e) {
-      onError(e instanceof Error ? e.message : String(e));
+      onError(humanizeError(e));
     } finally {
       setRemovingId(null);
     }

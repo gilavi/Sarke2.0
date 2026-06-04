@@ -9,6 +9,7 @@ import { getProject, updateProject, updateProjectLogo } from '@/lib/data/project
 import { AddressInput } from '@/components/AddressInput';
 import { projectKeys } from '@/app/queryKeys';
 import { ErrorMessage } from '@/components/ui/error-message';
+import { humanizeError } from '@/lib/errors';
 
 export default function EditProject() {
   const { id } = useParams();
@@ -170,7 +171,7 @@ export default function EditProject() {
 
             {mutation.error && (
               <ErrorMessage compact>
-                {mutation.error instanceof Error ? mutation.error.message : String(mutation.error)}
+                {humanizeError(mutation.error)}
               </ErrorMessage>
             )}
 

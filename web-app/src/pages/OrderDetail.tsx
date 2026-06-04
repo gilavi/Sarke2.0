@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileText, Pencil, RotateCcw } from 'lucide-react';
 import DeleteButton from '@/components/DeleteButton';
-import { toast } from 'sonner';
+
 import { SkeletonDetailPage } from '@/components/SkeletonCard';
 import { Button } from '@/components/ui/button';
 import SignatureCanvas from '@/components/SignatureCanvas';
@@ -28,6 +28,7 @@ import {
   openOrderPdfPreview,
 } from '@/lib/orderPdf';
 import { ErrorMessage } from '@/components/ui/error-message';
+import { humanizeError, toastError } from '@/lib/errors';
 
 export default function OrderDetail() {
   const { id } = useParams<{ id: string }>();
@@ -52,18 +53,18 @@ export default function OrderDetail() {
   const updateMutation = useMutation({
     mutationFn: (patch: Parameters<typeof updateOrder>[1]) => updateOrder(id!, patch),
     onSuccess: () => qc.invalidateQueries({ queryKey: orderKeys.detail(id) }),
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'შეცდომა'),
+    onError: (e) => toastError(e),
   });
 
   const deleteMutation = useMutation({
     mutationFn: () => deleteOrder(id!),
     onSuccess: () => { qc.invalidateQueries({ queryKey: orderKeys.lists() }); navigate(-1); },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'წაშლა ვერ მოხერხდა'),
+    onError: (e) => toastError(e),
   });
 
   if (isLoading) return <SkeletonDetailPage />;
   if (error) return (
-    <ErrorMessage>{error instanceof Error ? error.message : String(error)}</ErrorMessage>
+    <ErrorMessage>{humanizeError(error)}</ErrorMessage>
   );
   if (!order) return <p className="text-sm text-neutral-500">ბრძანება ვერ მოიძებნა.</p>;
 

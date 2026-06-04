@@ -31,6 +31,7 @@ import { listCertificates } from '@/lib/data/certificates';
 import { listQualifications, qualificationLabel } from '@/lib/data/qualifications';
 import { certificateDisplayName } from '@/lib/documentNames';
 import { certificateKeys, qualificationKeys } from '@/app/queryKeys';
+import { humanizeError } from '@/lib/errors';
 
 const STATUS_LABEL: Record<PaymentRecord['status'], string> = {
   success: 'წარმატებული',
@@ -87,7 +88,7 @@ function ProfileModal({ open, onClose }: { open: boolean; onClose: () => void })
           <Input label="გვარი" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
         </div>
         <Input label="ელ-ფოსტა" value={user?.email ?? ''} disabled />
-        {mutation.error && <p className="text-sm text-red-600">{mutation.error instanceof Error ? mutation.error.message : String(mutation.error)}</p>}
+        {mutation.error && <p className="text-sm text-red-600">{humanizeError(mutation.error)}</p>}
         {info && <p className="flex items-center gap-1 text-sm text-brand-600"><Check size={14} />{info}</p>}
         <div className="flex justify-end gap-2 pt-1">
           <Button type="button" variant="outline" onClick={onClose}>გაუქმება</Button>
@@ -124,7 +125,7 @@ function PasswordModal({ open, onClose }: { open: boolean; onClose: () => void }
         <PasswordInput label="ახალი პაროლი" autoComplete="new-password" minLength={8} value={pw} onChange={(e) => setPw(e.target.value)} placeholder="მინ. 8 სიმბოლო" radius="md" />
         <PasswordInput label="გაიმეორეთ" autoComplete="new-password" value={pw2} onChange={(e) => setPw2(e.target.value)} radius="md" />
         {pw && pw2 && pw !== pw2 && <p className="text-sm text-red-600">პაროლები არ ემთხვევა.</p>}
-        {mutation.error && <p className="text-sm text-red-600">{mutation.error instanceof Error ? mutation.error.message : String(mutation.error)}</p>}
+        {mutation.error && <p className="text-sm text-red-600">{humanizeError(mutation.error)}</p>}
         {info && <p className="flex items-center gap-1 text-sm text-brand-600"><Check size={14} />{info}</p>}
         <div className="flex justify-end gap-2 pt-1">
           <Button type="button" variant="outline" onClick={onClose}>გაუქმება</Button>
@@ -217,7 +218,7 @@ export default function Account() {
       invalidate();
       setCancelMsg(res.active_until ? `წვდომა გაგრძელდება ${fmtDateKa(res.active_until)}-მდე` : 'გამოწერა გაუქმდა');
     } catch (e) {
-      setCancelMsg(`შეცდომა: ${e instanceof Error ? e.message : String(e)}`);
+      setCancelMsg(`შეცდომა: ${humanizeError(e)}`);
     } finally {
       setCancelling(false);
     }

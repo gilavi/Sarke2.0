@@ -8,6 +8,7 @@ import { Select } from '@/components/ui/select';
 import { setProjectCrew, type CrewMember, type Project } from '@/lib/data/projects';
 import { projectKeys } from '@/app/queryKeys';
 import { CREW_ROLE_LABEL } from './_shared';
+import { humanizeError } from '@/lib/errors';
 
 interface Props {
   project: Project;
@@ -47,7 +48,7 @@ export function CrewSection({ project, onError }: Props) {
       setForm({ name: '', roleKey: 'expert' });
       setAdding(false);
     } catch (e) {
-      onError(e instanceof Error ? e.message : String(e));
+      onError(humanizeError(e));
     } finally {
       setBusy(false);
     }
@@ -57,7 +58,7 @@ export function CrewSection({ project, onError }: Props) {
     try {
       await commitCrew(crew.filter((m) => m.id !== memberId));
     } catch (e) {
-      onError(e instanceof Error ? e.message : String(e));
+      onError(humanizeError(e));
     }
   }
 

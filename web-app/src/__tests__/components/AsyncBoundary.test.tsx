@@ -31,13 +31,14 @@ describe('AsyncBoundary', () => {
     expect(container.firstChild).toBeTruthy();
   });
 
-  it('renders ErrorView when isError is true', () => {
+  it('renders ErrorView (humanized) when isError is true', () => {
     render(
       <AsyncBoundary query={makeQuery({ isError: true, error: new Error('boom') })}>
         {() => null}
       </AsyncBoundary>,
     );
-    expect(screen.getByText('boom')).toBeInTheDocument();
+    // Unknown raw errors are mapped to the localized fallback, not shown verbatim.
+    expect(screen.getByText('დაფიქსირდა შეცდომა. სცადეთ თავიდან.')).toBeInTheDocument();
   });
 
   it('renders the default EmptyView when data is null', () => {
@@ -82,9 +83,13 @@ describe('AsyncBoundary', () => {
 });
 
 describe('ErrorView / EmptyView', () => {
-  it('ErrorView coerces non-Error errors via String()', () => {
-    render(<ErrorView error="just a string" />);
-    expect(screen.getByText('just a string')).toBeInTheDocument();
+  it('ErrorView humanizes errors to localized copy', () => {
+    const { unmount } = render(<ErrorView error="just a string" />);
+    expect(screen.getByText('დაფიქსირდა შეცდომა. სცადეთ თავიდან.')).toBeInTheDocument();
+    unmount();
+    // RLS / permission errors map to the "no permission" message.
+    render(<ErrorView error={new Error('new row violates row-level security policy')} />);
+    expect(screen.getByText('ამ მოქმედების ნებართვა არ გაქვთ.')).toBeInTheDocument();
   });
 
   it('EmptyView default message', () => {

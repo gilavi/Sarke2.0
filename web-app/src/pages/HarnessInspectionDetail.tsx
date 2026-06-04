@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileText } from 'lucide-react';
 import { SkeletonDetailPage } from '@/components/SkeletonCard';
-import { toast } from 'sonner';
+
 import DeleteButton from '@/components/DeleteButton';
 import InspectionInfoView from '@/components/InspectionInfoView';
 import SignatureCapture from '@/components/SignatureCapture';
@@ -21,6 +21,7 @@ import {
 import { getProject } from '@/lib/data/projects';
 import { routes } from '@/app/routes';
 import { projectKeys, inspectionKeys } from '@/app/queryKeys';
+import { toastError } from '@/lib/errors';
 
 export default function HarnessInspectionDetail() {
   const { id } = useParams();
@@ -76,7 +77,7 @@ export default function HarnessInspectionDetail() {
       qc.invalidateQueries({ queryKey: inspectionKeys.detail(id) });
       qc.invalidateQueries({ queryKey: inspectionKeys.lists() });
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
+    onError: (e) => toastError(e),
   });
 
   const deleteMutation = useMutation({
@@ -85,7 +86,7 @@ export default function HarnessInspectionDetail() {
       qc.invalidateQueries({ queryKey: inspectionKeys.lists() });
       navigate('/inspections');
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
+    onError: (e) => toastError(e),
   });
 
   const successModal = (

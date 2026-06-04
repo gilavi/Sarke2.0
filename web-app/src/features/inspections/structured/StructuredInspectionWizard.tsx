@@ -16,7 +16,7 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { toastError } from '@/lib/errors';
 import { SkeletonDetailPage } from '@/components/SkeletonCard';
 import { ErrorView, EmptyView } from '@/components/async/AsyncBoundary';
 import type { SuccessModalData } from '@/components/web/SuccessModal';
@@ -25,7 +25,6 @@ import { useAuth } from '@/lib/auth';
 import { listProjects } from '@/lib/data/projects';
 import { projectKeys } from '@/app/queryKeys';
 import { routes } from '@/app/routes';
-import { errorMessage } from '@/lib/query/useEntityMutation';
 import { useStructuredInspection } from './useStructuredInspection';
 import { SpecStep } from './steps/SpecStep';
 import { StepBody } from './steps/StepBody';
@@ -86,7 +85,7 @@ export function StructuredInspectionWizard<T extends { id: string; status: strin
         };
         navigate(detailRoute(itemId), { state: { inspectionSuccess: successData }, replace: true });
       } catch (e) {
-        toast.error(errorMessage(e));
+        toastError(e);
       } finally {
         setSubmitting(false);
       }

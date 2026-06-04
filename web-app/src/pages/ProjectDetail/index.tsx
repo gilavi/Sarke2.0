@@ -18,6 +18,7 @@ import { FilesSection } from './FilesSection';
 import { OrdersSection } from './OrdersSection';
 import { DangerZoneSection } from './DangerZoneSection';
 import { ErrorMessage } from '@/components/ui/error-message';
+import { humanizeError } from '@/lib/errors';
 
 function SectionGroup({ label }: { label: string }) {
   return (
@@ -49,7 +50,7 @@ export default function ProjectDetail() {
 
   const error =
     actionError ??
-    (queryError instanceof Error ? queryError.message : queryError ? String(queryError) : null);
+    (queryError ? humanizeError(queryError) : null);
 
   if (error) {
     return <ErrorMessage>{error}</ErrorMessage>;

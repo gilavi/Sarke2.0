@@ -20,6 +20,7 @@ import { ProjectModal } from '@/components/ProjectModal';
 import { projectKeys } from '@/app/queryKeys';
 import { routes } from '@/app/routes';
 import { ErrorMessage } from '@/components/ui/error-message';
+import { humanizeError } from '@/lib/errors';
 
 
 function projectInitials(name: string | null | undefined): string {
@@ -212,7 +213,7 @@ export default function Projects() {
       </header>
 
       {error && (
-        <ErrorMessage>{error instanceof Error ? error.message : String(error)}</ErrorMessage>
+        <ErrorMessage>{humanizeError(error)}</ErrorMessage>
       )}
 
       {isLoading && <SkeletonList />}

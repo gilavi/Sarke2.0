@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/auth';
 import { createProject, updateProjectLogo, type Project } from '@/lib/data/projects';
 import { AddressInput } from '@/components/AddressInput';
 import { ErrorMessage } from '@/components/ui/error-message';
+import { humanizeError } from '@/lib/errors';
 
 export default function NewProject() {
   const { user } = useAuth();
@@ -130,7 +131,7 @@ export default function NewProject() {
 
             {mutation.error && (
               <ErrorMessage compact>
-                {mutation.error instanceof Error ? mutation.error.message : String(mutation.error)}
+                {humanizeError(mutation.error)}
               </ErrorMessage>
             )}
 

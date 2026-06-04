@@ -8,6 +8,7 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AuthLayout } from './auth/AuthLayout';
+import { humanizeError } from '@/lib/errors';
 
 const SUCCESS_URL_DESKTOP = 'https://hubble.ge/app/#/subscribe/success';
 const SUCCESS_URL_MOBILE = 'https://hubble.ge/app/#/subscribe/success?mobile=1';
@@ -105,7 +106,7 @@ export default function Subscribe() {
       window.location.href = data.redirect_url;
     } catch (e) {
       console.error('Pay error:', e);
-      const msg = e instanceof Error ? e.message : String(e);
+      const msg = humanizeError(e);
       setPayError(`შეცდომა: ${msg}`);
       setPayStatus('error');
     }

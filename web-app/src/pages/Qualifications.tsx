@@ -12,6 +12,7 @@ import {
 import { SkeletonList } from '@/components/SkeletonCard';
 import { qualificationKeys } from '@/app/queryKeys';
 import { ErrorMessage } from '@/components/ui/error-message';
+import { humanizeError } from '@/lib/errors';
 
 export default function Qualifications() {
   const { data: items, error: queryError, isLoading } = useQuery({
@@ -27,13 +28,13 @@ export default function Qualifications() {
       const url = await signedQualificationFileUrl(path);
       window.open(url, '_blank', 'noopener,noreferrer');
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(humanizeError(e));
     } finally {
       setOpening(null);
     }
   }
 
-  const displayError = error ?? (queryError instanceof Error ? queryError.message : queryError ? String(queryError) : null);
+  const displayError = error ?? (queryError ? humanizeError(queryError) : null);
 
   return (
     <div className="space-y-8">

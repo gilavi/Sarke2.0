@@ -72,14 +72,15 @@ describe('ProjectDetailsCard (editing)', () => {
     await waitFor(() => expect(onSaved).toHaveBeenCalled());
   });
 
-  it('surfaces errors via onError', async () => {
+  it('surfaces errors via onError (humanized)', async () => {
     vi.mocked(updateProject).mockRejectedValue(new Error('save failed'));
     const onError = vi.fn();
     renderSection(
       <ProjectDetailsCard project={project} editing onCancel={() => {}} onSaved={() => {}} onError={onError} />,
     );
     fireEvent.click(screen.getByRole('button', { name: /შენახვა/ }));
-    await waitFor(() => expect(onError).toHaveBeenCalledWith('save failed'));
+    // Raw backend messages are humanized before reaching the inline error banner.
+    await waitFor(() => expect(onError).toHaveBeenCalledWith('დაფიქსირდა შეცდომა. სცადეთ თავიდან.'));
   });
 
   it('fires onCancel when cancel is clicked', () => {

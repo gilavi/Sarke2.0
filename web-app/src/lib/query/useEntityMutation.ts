@@ -15,6 +15,7 @@
  */
 import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { humanizeError } from '@/lib/errors';
 
 export type QueryKey = readonly unknown[];
 
@@ -32,6 +33,7 @@ export interface EntityMutationOptions<TArgs, TData> {
   onFail?: (error: unknown, args: TArgs) => void;
 }
 
+/** Raw message extractor (no translation). Prefer `humanizeError` for user-facing copy. */
 export function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
@@ -56,7 +58,9 @@ export function useEntityMutation<TArgs = void, TData = unknown>(
       onDone?.(data, args);
     },
     onError: (error, args) => {
-      if (errorToast) toast.error(errorMessage(error));
+      // Always log the raw error for developers; show humanized copy to users.
+      console.error(error);
+      if (errorToast) toast.error(humanizeError(error));
       onFail?.(error, args);
     },
   });

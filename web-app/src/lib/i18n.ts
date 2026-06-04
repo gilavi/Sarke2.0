@@ -69,6 +69,18 @@ const resources = {
         planPro: 'PRO',
         planFree: 'Free',
       },
+      // User-facing error copy. Raw Postgres/Supabase/network messages are mapped
+      // to these via lib/errors.ts → humanizeError(). Keep them short and actionable.
+      errors: {
+        notAuthorized: 'ამ მოქმედების ნებართვა არ გაქვთ.',
+        notAuthenticated: 'სესია ამოიწურა — გთხოვთ, თავიდან შეხვიდეთ.',
+        payloadTooLarge: 'ფაილი ძალიან დიდია — სცადეთ უფრო პატარა ფაილი.',
+        network: 'ქსელთან დაკავშირება ვერ მოხერხდა. შეამოწმეთ ინტერნეტი და სცადეთ თავიდან.',
+        duplicate: 'ასეთი ჩანაწერი უკვე არსებობს.',
+        rateLimit: 'ძალიან ბევრი მცდელობა — ცადეთ ცოტა ხანში.',
+        notFound: 'მონაცემი ვერ მოიძებნა.',
+        fallback: 'დაფიქსირდა შეცდომა. სცადეთ თავიდან.',
+      },
     },
   },
   en: {
@@ -137,6 +149,16 @@ const resources = {
         signOut: 'Sign out',
         planPro: 'PRO',
         planFree: 'Free',
+      },
+      errors: {
+        notAuthorized: "You don't have permission for this action.",
+        notAuthenticated: 'Your session expired — please sign in again.',
+        payloadTooLarge: 'The file is too large — try a smaller one.',
+        network: "Couldn't reach the server. Check your connection and try again.",
+        duplicate: 'A record like this already exists.',
+        rateLimit: 'Too many attempts — please try again shortly.',
+        notFound: 'Not found.',
+        fallback: 'Something went wrong. Please try again.',
       },
     },
   },

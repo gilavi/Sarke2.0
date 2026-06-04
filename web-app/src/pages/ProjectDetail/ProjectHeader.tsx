@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { updateProjectLogo, type Project } from '@/lib/data/projects';
 import { projectKeys } from '@/app/queryKeys';
 import { routes } from '@/app/routes';
+import { humanizeError } from '@/lib/errors';
 
 interface Props {
   project: Project;
@@ -34,7 +35,7 @@ export function ProjectHeader({ project, onEdit, editing, onError }: Props) {
       qc.setQueryData(projectKeys.detail(project.id), { ...project, logo: dataUrl });
       void qc.invalidateQueries({ queryKey: projectKeys.lists() });
     } catch (e) {
-      onError(e instanceof Error ? e.message : String(e));
+      onError(humanizeError(e));
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = '';

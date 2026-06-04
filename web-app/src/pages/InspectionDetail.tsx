@@ -6,7 +6,7 @@ import InspectionWizard from '@/components/InspectionWizard';
 import SignatureCapture from '@/components/SignatureCapture';
 import { SkeletonDetailPage } from '@/components/SkeletonCard';
 import SuccessModal, { type SuccessModalData } from '@/components/web/SuccessModal';
-import { toast } from 'sonner';
+
 import { usePendingCreate } from '@/lib/usePendingCreate';
 import DeleteButton from '@/components/DeleteButton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -37,6 +37,7 @@ import { useInspectionName } from '@/lib/documentNames';
 import { routes } from '@/app/routes';
 import { projectKeys, inspectionKeys } from '@/app/queryKeys';
 import { ErrorMessage } from '@/components/ui/error-message';
+import { humanizeError, toastError } from '@/lib/errors';
 
 type PendingInspection = Parameters<typeof createInspection>[0];
 // photoUpload imported dynamically inside QuestionRow to keep top-level bundle lean
@@ -168,13 +169,7 @@ export default function InspectionDetail() {
   };
 
   const queryError = inspectionQ.error ?? pdfsQ.error ?? questionsQ.error ?? answersQ.error;
-  const error = queryError instanceof Error
-    ? queryError.message
-    : queryError && typeof queryError === 'object' && 'message' in queryError
-    ? String((queryError as { message?: unknown }).message)
-    : queryError
-    ? JSON.stringify(queryError)
-    : null;
+  const error = queryError ? humanizeError(queryError) : null;
 
   const answerMutation = useMutation({
     mutationFn: upsertAnswer,
@@ -188,7 +183,7 @@ export default function InspectionDetail() {
         return copy;
       });
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
+    onError: (e) => toastError(e),
   });
 
   const completeMutation = useMutation({
@@ -203,7 +198,7 @@ export default function InspectionDetail() {
       qc.invalidateQueries({ queryKey: inspectionKeys.lists() });
       setJustCompleted(true);
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
+    onError: (e) => toastError(e),
   });
 
   const conclusionMutation = useMutation({
@@ -217,7 +212,7 @@ export default function InspectionDetail() {
       setConclusionDraft(null);
       setSafeDraft(undefined);
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
+    onError: (e) => toastError(e),
   });
 
   const deleteMutation = useMutation({
@@ -226,7 +221,7 @@ export default function InspectionDetail() {
       qc.invalidateQueries({ queryKey: inspectionKeys.lists() });
       navigate('/inspections');
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
+    onError: (e) => toastError(e),
   });
 
   async function openPdf(path: string, key: string) {
@@ -235,7 +230,7 @@ export default function InspectionDetail() {
       const url = await signedPdfUrl(path);
       window.open(url, '_blank', 'noopener,noreferrer');
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
+      toastError(e);
     } finally {
       setOpening(null);
     }
@@ -256,7 +251,7 @@ export default function InspectionDetail() {
         qc.invalidateQueries({ queryKey: inspectionKeys.lists() });
         navigate(`/inspections/${realId}`, { replace: true, state: {} });
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : String(e));
+        toastError(e);
         return;
       }
     }
@@ -679,7 +674,7 @@ function QuestionRow({
       }
       qc.invalidateQueries({ queryKey: inspectionKeys.answerPhotos(answerId) });
     } catch (e) {
-      setPhotoError(e instanceof Error ? e.message : String(e));
+      setPhotoError(humanizeError(e));
     } finally {
       setPhotoUploading(false);
       if (fileRef.current) fileRef.current.value = '';

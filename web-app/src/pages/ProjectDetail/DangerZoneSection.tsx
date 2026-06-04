@@ -4,6 +4,7 @@ import DeleteButton from '@/components/DeleteButton';
 import { deleteProject, type Project } from '@/lib/data/projects';
 import { projectKeys } from '@/app/queryKeys';
 import { routes } from '@/app/routes';
+import { humanizeError } from '@/lib/errors';
 
 interface Props {
   project: Project;
@@ -21,7 +22,7 @@ export function DangerZoneSection({ project, onError }: Props) {
       qc.removeQueries({ queryKey: projectKeys.detail(project.id) });
       navigate(routes.projects.list);
     },
-    onError: (e) => onError(e instanceof Error ? e.message : String(e)),
+    onError: (e) => onError(humanizeError(e)),
   });
 
   return (

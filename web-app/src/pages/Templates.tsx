@@ -5,6 +5,7 @@ import { templateKeys } from '@/app/queryKeys';
 import { SkeletonGrid } from '@/components/SkeletonCard';
 import { inspectionDisplayName } from '@/lib/documentNames';
 import { ErrorMessage } from '@/components/ui/error-message';
+import { humanizeError } from '@/lib/errors';
 
 const CATEGORY_LABEL: Record<string, string> = {
   harness:            'დამცავი ქამარი',
@@ -42,7 +43,7 @@ export default function Templates() {
       {q.isLoading ? (
         <SkeletonGrid count={6} />
       ) : q.error ? (
-        <ErrorMessage>{q.error instanceof Error ? q.error.message : String(q.error)}</ErrorMessage>
+        <ErrorMessage>{humanizeError(q.error)}</ErrorMessage>
       ) : items.length === 0 ? (
         <p className="text-sm text-neutral-500 dark:text-neutral-400">შაბლონები ჯერ არ არის.</p>
       ) : (

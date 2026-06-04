@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import ProjectMap from '@/components/ProjectMap';
 import { updateProject, type Project } from '@/lib/data/projects';
 import { projectKeys } from '@/app/queryKeys';
+import { humanizeError } from '@/lib/errors';
 
 interface Props {
   project: Project;
@@ -45,7 +46,7 @@ export function ProjectDetailsCard({ project, editing, onCancel, onSaved, onErro
       void qc.invalidateQueries({ queryKey: projectKeys.lists() });
       onSaved();
     } catch (e) {
-      onError(e instanceof Error ? e.message : String(e));
+      onError(humanizeError(e));
     } finally {
       setSaving(false);
     }

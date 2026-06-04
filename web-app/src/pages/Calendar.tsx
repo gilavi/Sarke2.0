@@ -22,6 +22,7 @@ import { SkeletonList } from '@/components/SkeletonCard';
 import { useInspectionName, equipmentInspectionName } from '@/lib/documentNames';
 import { projectKeys, inspectionKeys, bobcatKeys, excavatorKeys, generalEquipmentKeys, briefingKeys, incidentKeys } from '@/app/queryKeys';
 import { ErrorMessage } from '@/components/ui/error-message';
+import { humanizeError } from '@/lib/errors';
 
 /* ─── Types ─── */
 
@@ -343,7 +344,7 @@ export default function Calendar() {
 
       {error && (
         <ErrorMessage className="rounded-xl">
-          {error instanceof Error ? error.message : String(error)}
+          {humanizeError(error)}
         </ErrorMessage>
       )}
 

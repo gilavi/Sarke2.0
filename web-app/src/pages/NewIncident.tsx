@@ -11,6 +11,7 @@ import { listProjects } from '@/lib/data/projects';
 import { projectKeys, incidentKeys } from '@/app/queryKeys';
 import { createIncident, INCIDENT_TYPE_LABEL, type IncidentType, type Incident } from '@/lib/data/incidents';
 import { ErrorMessage } from '@/components/ui/error-message';
+import { humanizeError } from '@/lib/errors';
 
 const STEPS = ['ინციდენტი', 'დეტალები'];
 const TYPES = Object.entries(INCIDENT_TYPE_LABEL) as [IncidentType, string][];
@@ -244,7 +245,7 @@ export default function NewIncident() {
 
           {mutation.error && (
             <ErrorMessage compact>
-              {mutation.error instanceof Error ? mutation.error.message : String(mutation.error)}
+              {humanizeError(mutation.error)}
             </ErrorMessage>
           )}
         </div>

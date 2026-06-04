@@ -1,7 +1,7 @@
 import { Link, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { Download } from 'lucide-react';
-import { toast } from 'sonner';
+
 import { Button } from '@/components/ui/button';
 import DeleteButton from '@/components/DeleteButton';
 import { listProjectFiles, signedFileUrl, deleteProjectFile, formatSize, type ProjectFile } from '@/lib/data/projectFiles';
@@ -9,6 +9,7 @@ import { getProject } from '@/lib/data/projects';
 import { projectKeys } from '@/app/queryKeys';
 import { SkeletonList } from '@/components/SkeletonCard';
 import { useState } from 'react';
+import { toastError } from '@/lib/errors';
 
 export default function ProjectFiles() {
   const { id } = useParams();
@@ -41,7 +42,7 @@ export default function ProjectFiles() {
     mutationFn: deleteProjectFile,
     onMutate: (f) => setDeletingId(f.id),
     onSuccess: () => { setDeletingId(null); qc.invalidateQueries({ queryKey: projectKeys.files(id) }); },
-    onError: (e) => { setDeletingId(null); toast.error(e instanceof Error ? e.message : String(e)); },
+    onError: (e) => { setDeletingId(null); toastError(e); },
   });
 
   return (

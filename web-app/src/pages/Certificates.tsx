@@ -9,6 +9,7 @@ import { listCertificates, signedCertificatePdfUrl, uploadCertificate } from '@/
 import { certificateDisplayName } from '@/lib/documentNames';
 import { certificateKeys } from '@/app/queryKeys';
 import { ErrorMessage } from '@/components/ui/error-message';
+import { humanizeError } from '@/lib/errors';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -56,15 +57,15 @@ export default function Certificates() {
       const url = await signedCertificatePdfUrl(path);
       window.open(url, '_blank', 'noopener,noreferrer');
     } catch (e) {
-      setOpenError(e instanceof Error ? e.message : String(e));
+      setOpenError(humanizeError(e));
     } finally {
       setOpeningId(null);
     }
   }
 
   const displayError = openError
-    ?? (queryError instanceof Error ? queryError.message : queryError ? String(queryError) : null)
-    ?? (uploadMutation.error instanceof Error ? uploadMutation.error.message : uploadMutation.error ? String(uploadMutation.error) : null);
+    ?? (queryError ? humanizeError(queryError) : null)
+    ?? (uploadMutation.error ? humanizeError(uploadMutation.error) : null);
 
   return (
     <div className="space-y-8">

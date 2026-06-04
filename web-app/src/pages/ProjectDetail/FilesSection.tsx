@@ -15,6 +15,7 @@ import {
 } from '@/lib/data/projectFiles';
 import { projectKeys } from '@/app/queryKeys';
 import { routes } from '@/app/routes';
+import { humanizeError } from '@/lib/errors';
 
 interface Props {
   projectId: string;
@@ -40,7 +41,7 @@ export function FilesSection({ projectId, onError }: Props) {
       const url = await signedFileUrl(f.storage_path);
       window.open(url, '_blank', 'noopener,noreferrer');
     } catch (e) {
-      onError(e instanceof Error ? e.message : String(e));
+      onError(humanizeError(e));
     } finally {
       setOpening(null);
     }
@@ -54,7 +55,7 @@ export function FilesSection({ projectId, onError }: Props) {
         (prev ?? []).filter((x) => x.id !== f.id),
       );
     } catch (e) {
-      onError(e instanceof Error ? e.message : String(e));
+      onError(humanizeError(e));
     } finally {
       setDeleting(null);
     }
@@ -71,7 +72,7 @@ export function FilesSection({ projectId, onError }: Props) {
         ...(prev ?? []),
       ]);
     } catch (err) {
-      onError(err instanceof Error ? err.message : String(err));
+      onError(humanizeError(err));
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = '';
