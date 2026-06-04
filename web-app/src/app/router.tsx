@@ -1,5 +1,7 @@
 import { HashRouter, Routes, Route, Navigate, useLocation, Outlet } from 'react-router-dom';
 import { lazy, Suspense, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { DURATION, EASE } from '@/lib/animations';
 import { useQueryClient } from '@tanstack/react-query';
 import { AuthProvider } from '@/lib/auth';
 import { listProjects } from '@/lib/data/projects';
@@ -86,11 +88,22 @@ function PageFallback() {
  * render into <Outlet />. Replaces ~30 inline <Shell><Page/></Shell> wrappers.
  */
 function ProtectedShellLayout() {
+  const { pathname } = useLocation();
   return (
     <ProtectedRoute>
       <AppShell>
         <Suspense fallback={<PageFallback />}>
-          <Outlet />
+          {/* Crossfade between pages. Keyed on pathname so each navigation re-mounts
+              and fades/slides in. MotionConfig reducedMotion="user" reduces this to a
+              plain opacity fade for users who ask for reduced motion. */}
+          <motion.div
+            key={pathname}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: DURATION.normal, ease: EASE.easeOut }}
+          >
+            <Outlet />
+          </motion.div>
         </Suspense>
       </AppShell>
     </ProtectedRoute>

@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
+import { MotionConfig } from 'framer-motion';
 import { AppRouter } from '@/app/router';
 import { isTransientError } from '@/lib/errors';
 
@@ -30,8 +31,13 @@ const queryClient = new QueryClient({
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Toaster position="bottom-right" richColors />
-      <AppRouter />
+      {/* reducedMotion="user" makes EVERY framer-motion component honor the OS
+          prefers-reduced-motion setting automatically (transform/layout animations
+          are skipped; opacity still fades). One switch for the whole app. */}
+      <MotionConfig reducedMotion="user">
+        <Toaster position="bottom-right" richColors />
+        <AppRouter />
+      </MotionConfig>
     </QueryClientProvider>
   );
 }

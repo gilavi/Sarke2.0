@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { SubscriptionCard } from '@/components/SubscriptionCard';
 import { Sparkline } from '@/components/charts/Sparkline';
+import { AnimatedNumber } from '@/components/AnimatedNumber';
 import { HeatmapCalendar } from '@/components/charts/HeatmapCalendar';
 import { ProjectActivityWidget } from '@/components/ProjectActivityWidget';
 import { useAuth } from '@/lib/auth';
@@ -29,7 +30,7 @@ import { listBriefings } from '@/lib/data/briefings';
 import InspectionWizard from '@/components/InspectionWizard';
 import { harnessWizardPreset } from '@/components/inspections/harnessPreset';
 import { useInspectionName, equipmentInspectionName } from '@/lib/documentNames';
-import { staggerContainer, fadeUpItem, STAGGER } from '@/lib/animations';
+import { staggerContainer, fadeUpItem, hoverLift, STAGGER } from '@/lib/animations';
 import {
   inspectionKeys,
   bobcatKeys,
@@ -44,22 +45,37 @@ import { routes } from '@/app/routes';
 import { STRUCTURED_ACT_LIST } from '@/features/inspections/structured/acts';
 
 /* ─── Quick action tile ─── */
+const MotionLink = motion.create(Link);
+
+// Hovering the tile lifts it (spring) and scales its icon. Both are framer-motion,
+// so MotionConfig reducedMotion="user" disables the movement for users who ask for it.
+const tileVariants = { rest: {}, hover: hoverLift };
+const tileIconVariants = { rest: { scale: 1 }, hover: { scale: 1.12 } };
+
 function QuickActionTile({ to, icon: Icon, label, color, darkColor }: {
   to: string; icon: LucideIcon; label: string; color: string; darkColor: string;
 }) {
   return (
-    <Link
+    <MotionLink
       to={to}
+      initial="rest"
+      animate="rest"
+      whileHover="hover"
+      whileTap={{ scale: 0.98 }}
+      variants={tileVariants}
       className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white p-4 transition-colors hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:bg-neutral-800/60"
     >
-      <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${color} ${darkColor}`}>
+      <motion.div
+        variants={tileIconVariants}
+        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${color} ${darkColor}`}
+      >
         <Icon size={20} />
-      </div>
+      </motion.div>
       <div>
         <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{label}</p>
         <p className="text-[11px] text-neutral-400 dark:text-neutral-500">ახლავე დაიწყეთ</p>
       </div>
-    </Link>
+    </MotionLink>
   );
 }
 
@@ -210,7 +226,10 @@ export default function Home() {
                   ].map(({ title, value, href, sparklineData }) => (
                     <Link key={href} to={href} className="group flex flex-col justify-between p-5 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/40">
                       <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">{title}</p>
-                      <p className="mt-2 text-3xl font-bold text-neutral-900 dark:text-neutral-100">{value}</p>
+                      <AnimatedNumber
+                        value={value}
+                        className="mt-2 text-3xl font-bold text-neutral-900 dark:text-neutral-100"
+                      />
                       <Sparkline data={sparklineData} />
                     </Link>
                   ))}
