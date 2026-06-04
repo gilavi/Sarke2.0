@@ -114,6 +114,10 @@ export default function Home() {
   const totalInspections = useMemo(() => (inspections?.length ?? 0) + (bobcats?.length ?? 0) + (generalEq?.length ?? 0) + (excavators?.length ?? 0) + (cargoPlatforms?.length ?? 0), [inspections, bobcats, generalEq, excavators, cargoPlatforms]);
 
   const [newInspectionOpen, setNewInspectionOpen] = useState(false);
+  // Category for the generic InspectionWizard. 'xaracho' presets + locks the façade
+  // template (skips the template-picker step), matching the Inspections-page flow;
+  // '' opens the generic picker (used by the per-project "new act" button).
+  const [newInspectionCategory, setNewInspectionCategory] = useState('');
   const [harnessOpen, setHarnessOpen] = useState(false);
 
   const heatmapData = useMemo(() => {
@@ -151,7 +155,7 @@ export default function Home() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-64">
             {/* Generic (inspections-table) acts via the legacy questionnaire wizard */}
-            <DropdownMenuItem onSelect={() => setNewInspectionOpen(true)}>ფასადის ხარაჩოს შემოწმება</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => { setNewInspectionCategory('xaracho'); setNewInspectionOpen(true); }}>ფასადის ხარაჩოს შემოწმება</DropdownMenuItem>
             <DropdownMenuItem onSelect={() => setHarnessOpen(true)}>დამცავი ქამრების შემოწმება</DropdownMenuItem>
             {/* Structured acts — data-driven from the registry (same source as the
                 Inspections page picker, so the two menus never drift apart) */}
@@ -160,7 +164,7 @@ export default function Home() {
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
-        <InspectionWizard open={newInspectionOpen} onClose={() => setNewInspectionOpen(false)} />
+        <InspectionWizard open={newInspectionOpen} onClose={() => { setNewInspectionOpen(false); setNewInspectionCategory(''); }} defaultCategory={newInspectionCategory} />
         <InspectionWizard open={harnessOpen} onClose={() => setHarnessOpen(false)} preset={harnessWizardPreset} />
       </motion.header>
 
