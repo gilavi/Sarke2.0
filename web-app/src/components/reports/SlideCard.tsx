@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 import { X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toastError } from '@/lib/errors';
+import { SPRING } from '@/lib/animations';
 import type { ReportSlide } from '@/lib/data/reports';
 
 interface SlideCardProps {
@@ -63,6 +65,13 @@ export function SlideCard({
   const label = slide.title || `სლაიდი ${index + 1}`;
 
   return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.96 }}
+      transition={{ type: 'spring', ...SPRING.listItem }}
+    >
     <Card>
       <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
         <div className="flex-1 pr-2">
@@ -122,5 +131,6 @@ export function SlideCard({
         )}
       </CardContent>
     </Card>
+    </motion.div>
   );
 }

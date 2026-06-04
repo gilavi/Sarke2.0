@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { AnimatePresence, motion } from 'framer-motion';
 import { FileText, Plus } from 'lucide-react';
 import { SkeletonDetailPage } from '@/components/SkeletonCard';
 import { toast } from 'sonner';
@@ -69,6 +70,9 @@ export default function ReportDetail() {
 
   const [addingSlide, setAddingSlide] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
+  // Slides the user has asked to delete but can still undo (hidden from the list
+  // during the undo window; the real delete commits when the toast closes).
+  const [pendingDeleteIds, setPendingDeleteIds] = useState<Set<string>>(new Set());
   const titleInputRef = useRef<HTMLInputElement>(null);
 
   // Auto-open the add-slide form ONCE for a fresh empty draft (mirrors mobile UX).
@@ -140,6 +144,37 @@ export default function ReportDetail() {
     onError: (e) => toastError(e),
   });
 
+  /**
+   * Hide the slide immediately and show an undo toast. The destructive delete (which
+   * also removes the storage blob) only commits when the toast closes without an undo.
+   */
+  function requestRemoveSlide(slideId: string) {
+    setPendingDeleteIds((prev) => new Set(prev).add(slideId));
+    let undone = false;
+    const unhide = () =>
+      setPendingDeleteIds((prev) => {
+        const next = new Set(prev);
+        next.delete(slideId);
+        return next;
+      });
+    toast('სლაიდი წაიშლება', {
+      duration: 5000,
+      action: {
+        label: 'დაბრუნება',
+        onClick: () => {
+          undone = true;
+          unhide();
+        },
+      },
+      onAutoClose: () => {
+        if (!undone) removeSlideMutation.mutate(slideId, { onError: unhide });
+      },
+      onDismiss: () => {
+        if (!undone) removeSlideMutation.mutate(slideId, { onError: unhide });
+      },
+    });
+  }
+
   const updateSlideMutation = useMutation({
     mutationFn: ({ slideId, patch }: { slideId: string; patch: { title?: string; description?: string } }) => {
       if (!item) throw new Error('not loaded');
@@ -194,7 +229,9 @@ export default function ReportDetail() {
     return <ErrorMessage>{error}</ErrorMessage>;
   if (!item) return <p className="text-sm text-neutral-500">რეპორტი ვერ მოიძებნა.</p>;
 
-  const slides = [...(item.slides ?? [])].sort((a, b) => a.order - b.order);
+  const slides = [...(item.slides ?? [])]
+    .sort((a, b) => a.order - b.order)
+    .filter((s) => !pendingDeleteIds.has(s.id));
 
   return (
     <div className="space-y-6">
@@ -330,26 +367,40 @@ export default function ReportDetail() {
           </Card>
         )}
 
-        {slides.length === 0 && !addingSlide ? (
+        {slides.length === 0 && !addingSlide && !addSlideMutation.isPending ? (
           <p className="text-sm text-neutral-500">სლაიდები არ არის.</p>
         ) : (
-          <div className="space-y-3">
-            {slides.map((s, idx) => (
-              <SlideCard
-                key={s.id}
-                slide={s}
-                index={idx}
-                editable={item.status === 'draft'}
-                imageUrl={(() => {
-                  const path = s.annotated_image_path || s.image_path;
-                  return path ? imageUrls[path] : undefined;
-                })()}
-                onSave={(patch) => updateSlideMutation.mutateAsync({ slideId: s.id, patch })}
-                onRemove={() => removeSlideMutation.mutate(s.id)}
-                isRemoving={removeSlideMutation.isPending}
-              />
-            ))}
-          </div>
+          <motion.div layout className="space-y-3">
+            <AnimatePresence initial={false} mode="popLayout">
+              {slides.map((s, idx) => (
+                <SlideCard
+                  key={s.id}
+                  slide={s}
+                  index={idx}
+                  editable={item.status === 'draft'}
+                  imageUrl={(() => {
+                    const path = s.annotated_image_path || s.image_path;
+                    return path ? imageUrls[path] : undefined;
+                  })()}
+                  onSave={(patch) => updateSlideMutation.mutateAsync({ slideId: s.id, patch })}
+                  onRemove={() => requestRemoveSlide(s.id)}
+                  isRemoving={removeSlideMutation.isPending}
+                />
+              ))}
+              {/* Optimistic shimmer placeholder while a new slide is being saved */}
+              {addSlideMutation.isPending && (
+                <motion.div
+                  key="__adding"
+                  layout
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="h-24 animate-pulse rounded-xl border border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-800/60"
+                  aria-hidden
+                />
+              )}
+            </AnimatePresence>
+          </motion.div>
         )}
 
         {/* Photo gallery */}

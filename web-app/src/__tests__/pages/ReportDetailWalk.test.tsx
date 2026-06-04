@@ -19,6 +19,16 @@ vi.mock('@/components/DeleteButton', () => ({
     <button type="button" aria-label="delete-report" onClick={onDelete}>delete</button>
   ),
 }));
+// Slide deletion now goes through an undo toast: the real delete commits when the
+// toast's undo window elapses (onAutoClose). Mock sonner so that window elapses
+// synchronously, so the delete commits in the test exactly as the assertion expects.
+vi.mock('sonner', () => {
+  const toast = Object.assign(
+    (_msg: string, opts?: { onAutoClose?: () => void }) => opts?.onAutoClose?.(),
+    { error: vi.fn(), success: vi.fn() },
+  );
+  return { toast };
+});
 vi.mock('@/lib/data/projects', async (io) => ({ ...(await io<object>()), getProject: vi.fn() }));
 vi.mock('@/lib/data/reports', async (io) => ({
   ...(await io<object>()),
