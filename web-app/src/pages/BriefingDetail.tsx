@@ -139,6 +139,7 @@ export default function BriefingDetail() {
           <Input
             label="ინსპექტორი"
             disabled={!isDraft}
+            key={b.inspectorName}
             defaultValue={b.inspectorName}
             onBlur={(e) => {
               const v = e.target.value.trim();
@@ -149,6 +150,7 @@ export default function BriefingDetail() {
             label="თარიღი და დრო"
             type="datetime-local"
             disabled={!isDraft}
+            key={b.dateTime}
             defaultValue={new Date(b.dateTime).toISOString().slice(0, 16)}
             onBlur={(e) => {
               const v = e.target.value;

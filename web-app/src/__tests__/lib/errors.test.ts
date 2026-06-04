@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
 import { toast } from 'sonner';
-import { humanizeError, rawErrorMessage, toastError } from '@/lib/errors';
+import { humanizeError, isTransientError, rawErrorMessage, toastError } from '@/lib/errors';
 
 describe('rawErrorMessage', () => {
   it('extracts Error.message and stringifies non-errors', () => {
@@ -34,6 +34,19 @@ describe('humanizeError', () => {
     expect(humanizeError(new Error('something weird'))).toBe('დაფიქსირდა შეცდომა. სცადეთ თავიდან.');
     expect(humanizeError(new Error(''))).toBe('დაფიქსირდა შეცდომა. სცადეთ თავიდან.');
     expect(humanizeError(null)).toBe('დაფიქსირდა შეცდომა. სცადეთ თავიდან.');
+  });
+});
+
+describe('isTransientError', () => {
+  it('is true for network/timeout/5xx failures', () => {
+    expect(isTransientError(new Error('Failed to fetch'))).toBe(true);
+    expect(isTransientError(new Error('request timed out'))).toBe(true);
+    expect(isTransientError(new Error('503 Service Unavailable'))).toBe(true);
+  });
+  it('is false for RLS / duplicate / validation errors (must not retry)', () => {
+    expect(isTransientError(new Error('new row violates row-level security policy'))).toBe(false);
+    expect(isTransientError(new Error('duplicate key value violates unique constraint'))).toBe(false);
+    expect(isTransientError(new Error('არაავტორიზებული'))).toBe(false);
   });
 });
 

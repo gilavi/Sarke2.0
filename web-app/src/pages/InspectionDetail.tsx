@@ -349,9 +349,11 @@ export default function InspectionDetail() {
                   if (isPending) return;
                   const v = e.target.value.trim() || null;
                   if (v !== inspection.department)
-                    updateInspection(id!, { department: v }).then(() =>
-                      qc.invalidateQueries({ queryKey: inspectionKeys.detail(id) })
-                    );
+                    updateInspection(id!, { department: v })
+                      .catch(toastError)
+                      .finally(() =>
+                        qc.invalidateQueries({ queryKey: inspectionKeys.detail(id) }),
+                      );
                 }}
                 placeholder="დეპარტამენტის დასახელება"
               />
@@ -372,9 +374,11 @@ export default function InspectionDetail() {
                   if (isPending) return;
                   const v = e.target.value.trim() || null;
                   if (v !== inspection.inspector_name)
-                    updateInspection(id!, { inspector_name: v }).then(() =>
-                      qc.invalidateQueries({ queryKey: inspectionKeys.detail(id) })
-                    );
+                    updateInspection(id!, { inspector_name: v })
+                      .catch(toastError)
+                      .finally(() =>
+                        qc.invalidateQueries({ queryKey: inspectionKeys.detail(id) }),
+                      );
                 }}
                 placeholder="სახელი გვარი"
               />

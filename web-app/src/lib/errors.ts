@@ -26,6 +26,28 @@ export function rawErrorMessage(e: unknown): string {
 }
 
 /**
+ * True for transient network/connectivity failures that are worth retrying
+ * (construction-site Wi-Fi drops). Deliberately does NOT match RLS, duplicate-key,
+ * validation or other 4xx errors — retrying those is pointless and, for a
+ * non-idempotent create, risks a double write.
+ */
+export function isTransientError(e: unknown): boolean {
+  const lower = rawErrorMessage(e).toLowerCase();
+  return (
+    lower.includes('failed to fetch') ||
+    lower.includes('networkerror') ||
+    lower.includes('network error') ||
+    lower.includes('load failed') ||
+    lower.includes('err_network') ||
+    lower.includes('timeout') ||
+    lower.includes('timed out') ||
+    lower.includes('502') ||
+    lower.includes('503') ||
+    lower.includes('504')
+  );
+}
+
+/**
  * Map a thrown value to a short, actionable, localized message.
  * Pure — safe to call during render. Order matters: more specific cases first.
  */
