@@ -4,11 +4,11 @@ import type { User } from '@supabase/supabase-js';
 vi.mock('@/lib/supabase', () => ({ supabase: { from: vi.fn() } }));
 vi.mock('@/lib/db/storage', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/db/storage')>();
-  return { ...actual, signedUrl: vi.fn(), upload: vi.fn() };
+  return { ...actual, signedUrl: vi.fn(), upload: vi.fn(), removeObjects: vi.fn() };
 });
 
 import { supabase } from '@/lib/supabase';
-import { signedUrl, upload, STORAGE_BUCKETS } from '@/lib/db/storage';
+import { signedUrl, upload, removeObjects, STORAGE_BUCKETS } from '@/lib/db/storage';
 import {
   countCertificates,
   listCertificates,
@@ -73,5 +73,15 @@ describe('uploadCertificate', () => {
         conclusion_text: 'Act 12',
       }),
     );
+  });
+
+  it('rolls back the uploaded PDF when the row insert fails', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(1717000000000);
+    from.mockReturnValue(makeBuilder({ data: null, error: { message: 'rls' } }));
+    const f = new File(['x'], 'Act 12.pdf', { type: 'application/pdf' });
+    await expect(uploadCertificate(f, { id: 'u1' } as User)).rejects.toThrow('rls');
+    expect(removeObjects).toHaveBeenCalledWith(STORAGE_BUCKETS.pdfs, [
+      'certificates/u1/1717000000000.pdf',
+    ]);
   });
 });

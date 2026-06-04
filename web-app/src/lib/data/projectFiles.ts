@@ -45,7 +45,11 @@ export async function uploadProjectFile(
     } as TablesInsert<'project_files'>)
     .select('id, project_id, name, storage_path, size_bytes, mime_type, created_at')
     .single();
-  if (error) throw new Error(error.message);
+  if (error) {
+    // Roll back the just-uploaded file so a failed row insert doesn't orphan it.
+    await removeObjects(STORAGE_BUCKETS.projectFiles, [path]);
+    throw new Error(error.message);
+  }
   return data as ProjectFile;
 }
 

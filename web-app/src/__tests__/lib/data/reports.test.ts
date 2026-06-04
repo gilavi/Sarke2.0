@@ -120,6 +120,24 @@ describe('addReportSlide', () => {
     const arg = b.update.mock.calls[0][0] as { slides: ReportSlide[] };
     expect(typeof arg.slides[0].image_path).toBe('string');
   });
+
+  it('rolls back the uploaded photo when the row update fails', async () => {
+    from.mockReturnValue(makeBuilder({ data: null, error: { message: 'rls' } }));
+    const photo = new File(['x'], 'p.png', { type: 'image/png' });
+    await expect(
+      addReportSlide({ report: report(), title: 't', description: 'd', photo }),
+    ).rejects.toThrow('rls');
+    expect(removeObjects).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(removeObjects).mock.calls[0][0]).toBe(STORAGE_BUCKETS.reportPhotos);
+  });
+
+  it('does not remove anything when a photo-less slide update fails', async () => {
+    from.mockReturnValue(makeBuilder({ data: null, error: { message: 'rls' } }));
+    await expect(
+      addReportSlide({ report: report(), title: 't', description: 'd' }),
+    ).rejects.toThrow('rls');
+    expect(removeObjects).not.toHaveBeenCalled();
+  });
 });
 
 describe('updateReportSlide', () => {

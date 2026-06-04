@@ -111,7 +111,12 @@ export async function addReportSlide(args: {
     .eq('id', args.report.id)
     .select(COLS)
     .single();
-  if (error) throw new Error(error.message);
+  if (error) {
+    // The photo was uploaded before the row write; if the row write fails the blob is
+    // orphaned in the bucket. Roll it back (best-effort) before surfacing the error.
+    if (imagePath) await removeObjects(STORAGE_BUCKETS.reportPhotos, [imagePath]);
+    throw new Error(error.message);
+  }
   return data as Report;
 }
 

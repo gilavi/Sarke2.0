@@ -667,7 +667,15 @@ function QuestionRow({
       });
       for (const file of Array.from(files)) {
         const path = await upload('inspections', inspectionId, q.id, file);
-        await addAnswerPhoto(answerId, path, null, geo ?? undefined);
+        try {
+          await addAnswerPhoto(answerId, path, null, geo ?? undefined);
+        } catch (rowErr) {
+          // Photo blob uploaded but the answer-photo row write failed — roll the
+          // orphaned blob back (best-effort) before surfacing the error.
+          const { deleteInspectionPhoto } = await import('@/lib/photoUpload');
+          await deleteInspectionPhoto(path);
+          throw rowErr;
+        }
       }
       qc.invalidateQueries({ queryKey: inspectionKeys.answerPhotos(answerId) });
     } catch (e) {

@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import { STORAGE_BUCKETS, signedUrl, upload } from '@/lib/db/storage';
+import { STORAGE_BUCKETS, signedUrl, upload, removeObjects } from '@/lib/db/storage';
 import type { TablesInsert } from '@/types/database';
 import type { User } from '@supabase/supabase-js';
 
@@ -51,6 +51,10 @@ export async function uploadCertificate(file: File, user: User): Promise<Certifi
     } as TablesInsert<'certificates'>)
     .select()
     .single();
-  if (error) throw new Error(error.message);
+  if (error) {
+    // Roll back the just-uploaded PDF so a failed row insert doesn't orphan it.
+    await removeObjects(STORAGE_BUCKETS.pdfs, [path]);
+    throw new Error(error.message);
+  }
   return data as Certificate;
 }

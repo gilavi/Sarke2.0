@@ -80,7 +80,11 @@ export async function addIncidentPhoto(
 
   const next = [...incident.photos, path];
   const { error } = await supabase.from('incidents').update({ photos: next }).eq('id', incident.id);
-  if (error) throw new Error(error.message);
+  if (error) {
+    // Roll back the just-uploaded blob so a failed row write doesn't orphan it.
+    await removeObjects(STORAGE_BUCKETS.incidentPhotos, [path]);
+    throw new Error(error.message);
+  }
   return path;
 }
 
@@ -170,6 +174,11 @@ export async function createIncident(input: CreateIncidentInput): Promise<Incide
     } as TablesInsert<'incidents'>)
     .select(COLS)
     .single();
-  if (error) throw new Error(error.message);
+  if (error) {
+    // Attachments were uploaded before the row insert; if the insert fails the blobs
+    // are orphaned in the bucket. Roll them all back (best-effort) before re-throwing.
+    if (photos.length) await removeObjects(STORAGE_BUCKETS.incidentPhotos, photos);
+    throw new Error(error.message);
+  }
   return data as Incident;
 }

@@ -75,6 +75,16 @@ describe('uploadProjectFile', () => {
       }),
     );
   });
+
+  it('rolls back the uploaded file when the row insert fails', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(1717000000000);
+    from.mockReturnValue(makeBuilder({ data: null, error: { message: 'rls' } }));
+    const f = new File(['data'], 'report.pdf', { type: 'application/pdf' });
+    await expect(uploadProjectFile('p1', 'u1', f)).rejects.toThrow('rls');
+    expect(removeObjects).toHaveBeenCalledWith(STORAGE_BUCKETS.projectFiles, [
+      'u1/p1/1717000000000_report.pdf',
+    ]);
+  });
 });
 
 describe('deleteProjectFile', () => {

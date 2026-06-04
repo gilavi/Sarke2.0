@@ -114,6 +114,16 @@ describe('addIncidentPhoto', () => {
     expect(b.update).toHaveBeenCalledWith({ photos: ['old.png', 'p1/inc1_1717000000000.png'] });
     expect(b.eq).toHaveBeenCalledWith('id', 'inc1');
   });
+
+  it('rolls back the uploaded blob when the row update fails', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(1717000000000);
+    from.mockReturnValue(makeBuilder({ error: { message: 'rls' } }));
+    const file = new File(['x'], 'a.png', { type: 'image/png' });
+    await expect(addIncidentPhoto(incident(), file)).rejects.toThrow('rls');
+    expect(removeObjects).toHaveBeenCalledWith(STORAGE_BUCKETS.incidentPhotos, [
+      'p1/inc1_1717000000000.png',
+    ]);
+  });
 });
 
 describe('removeIncidentPhoto', () => {
@@ -198,5 +208,25 @@ describe('createIncident', () => {
     expect(upload).toHaveBeenCalledTimes(1);
     const insertArg = b.insert.mock.calls[0][0] as { photos: string[] };
     expect(insertArg.photos).toHaveLength(1);
+  });
+
+  it('rolls back uploaded attachments when the insert fails', async () => {
+    from.mockReturnValue(makeBuilder({ data: null, error: { message: 'rls' } }));
+    const file = new File(['x'], 'a.jpg', { type: 'image/jpeg' });
+    await expect(
+      createIncident({
+        projectId: 'p1',
+        type: 'minor',
+        dateTime: 't',
+        description: 'd',
+        cause: 'c',
+        actionsTaken: 'a',
+        witnesses: [],
+        attachments: [file],
+      }),
+    ).rejects.toThrow('rls');
+    expect(removeObjects).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(removeObjects).mock.calls[0][0]).toBe(STORAGE_BUCKETS.incidentPhotos);
+    expect((vi.mocked(removeObjects).mock.calls[0][1] as string[])).toHaveLength(1);
   });
 });
