@@ -3,12 +3,13 @@ import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { Pencil } from 'lucide-react';
 import DeleteButton from '@/components/DeleteButton';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { SkeletonList } from '@/components/SkeletonCard';
 import { listIncidents, deleteIncident, INCIDENT_TYPE_LABEL } from '@/lib/data/incidents';
 import { listProjects } from '@/lib/data/projects';
 import { projectKeys, incidentKeys } from '@/app/queryKeys';
 import { ErrorMessage } from '@/components/ui/error-message';
+import { humanizeError } from '@/lib/errors';
 
 const INCIDENT_AVATAR: Record<string, { emoji: string; bg: string }> = {
   fatal:    { emoji: '🚨', bg: 'bg-red-50 dark:bg-red-950/20' },
@@ -61,7 +62,7 @@ export default function Incidents() {
       </header>
 
       {error && (
-        <ErrorMessage>{error instanceof Error ? error.message : String(error)}</ErrorMessage>
+        <ErrorMessage>{humanizeError(error)}</ErrorMessage>
       )}
 
       {!items && !error && <SkeletonList />}
@@ -69,7 +70,7 @@ export default function Incidents() {
       {items && items.length === 0 && (
         <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-neutral-200 bg-white py-16 text-center dark:border-neutral-700 dark:bg-neutral-900">
           <p className="text-sm text-neutral-500">ინციდენტები ჯერ არ გაქვთ.</p>
-          <Link to="/incidents/new" className={buttonVariants({ size: 'sm' })}>+ ახალი ინციდენტი</Link>
+          <Button component={Link} to="/incidents/new" size="sm">+ ახალი ინციდენტი</Button>
         </div>
       )}
 

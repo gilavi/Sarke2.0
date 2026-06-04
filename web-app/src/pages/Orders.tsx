@@ -1,13 +1,14 @@
 import { motion } from 'framer-motion';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { SkeletonList } from '@/components/SkeletonCard';
 import { listOrders } from '@/lib/data/orders';
 import { listProjects } from '@/lib/data/projects';
 import { ORDER_DOCUMENT_TYPE_LABEL } from '@/lib/data/orders';
 import { projectKeys, orderKeys } from '@/app/queryKeys';
 import { ErrorMessage } from '@/components/ui/error-message';
+import { humanizeError } from '@/lib/errors';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -60,14 +61,14 @@ export default function Orders() {
       </header>
 
       {error && (
-        <ErrorMessage>{error instanceof Error ? error.message : String(error)}</ErrorMessage>
+        <ErrorMessage>{humanizeError(error)}</ErrorMessage>
       )}
 
       {!filtered && !error && <SkeletonList />}
       {filtered && filtered.length === 0 && (
         <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-neutral-200 bg-white py-16 text-center dark:border-neutral-700 dark:bg-neutral-900">
           <p className="text-sm text-neutral-500 dark:text-neutral-400">ბრძანებები ჯერ არ გაქვთ.</p>
-          <Link to="/orders/new" className={buttonVariants({ size: 'sm' })}>+ ახალი ბრძანება</Link>
+          <Button component={Link} to="/orders/new" size="sm">+ ახალი ბრძანება</Button>
         </div>
       )}
 

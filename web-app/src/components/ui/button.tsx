@@ -1,5 +1,5 @@
 import { Button as MantineButton, type ButtonProps as MantineButtonProps } from '@mantine/core';
-import { forwardRef, type ComponentPropsWithoutRef } from 'react';
+import { forwardRef, type ComponentPropsWithoutRef, type CSSProperties, type ElementType } from 'react';
 
 type Variant = 'default' | 'secondary' | 'ghost' | 'outline' | 'danger' | 'link' | 'destructive';
 type Size = 'sm' | 'md' | 'default' | 'lg' | 'icon';
@@ -12,6 +12,10 @@ export interface ButtonProps
   variant?: Variant;
   size?: Size;
   asChild?: boolean;
+  /** Render as another element (e.g. a react-router `Link`) while keeping button styling. */
+  component?: ElementType;
+  /** Pass-through for `component={Link}` usage. */
+  to?: string;
 }
 
 const variantMap: Record<Variant, MantineButtonProps['variant']> = {
@@ -29,15 +33,18 @@ const sizeMap: Record<string, MantineButtonProps['size']> = {
   md: 'md',
   default: 'md',
   lg: 'lg',
-  icon: 'md',
+  icon: 'sm',
 };
 
-// Re-export buttonVariants stub for any importer that uses it
-export const buttonVariants = (_opts?: { variant?: Variant; size?: Size }) => '';
+// An icon-only button must be SQUARE — `size="icon"` previously fell through to the
+// 'md' height with default horizontal padding, so it rendered as a wide pill. Force
+// equal width/height and remove the padding so the glyph sits centered.
+const ICON_SQUARE: CSSProperties = { width: 36, height: 36, padding: 0 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ variant = 'default', size = 'default', color, className, asChild: _asChild, ...props }, ref) => {
+  ({ variant = 'default', size = 'default', color, className, style, asChild: _asChild, ...props }, ref) => {
     const isDanger = variant === 'danger' || variant === 'destructive';
+    const isIcon = size === 'icon';
     return (
       <MantineButton
         ref={ref}
@@ -45,6 +52,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         size={sizeMap[size] ?? 'md'}
         color={isDanger ? 'red' : (color ?? 'brand')}
         className={className}
+        style={isIcon ? { ...ICON_SQUARE, ...(style as CSSProperties) } : style}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Mantine polymorphic props
         {...(props as any)}
       />
     );

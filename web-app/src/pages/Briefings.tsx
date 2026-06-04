@@ -3,13 +3,14 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { Pencil } from 'lucide-react';
 import DeleteButton from '@/components/DeleteButton';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { SkeletonList } from '@/components/SkeletonCard';
 import { listBriefings, deleteBriefing, topicLabel } from '@/lib/data/briefings';
 import { listProjects } from '@/lib/data/projects';
 import { fmtDateKa } from '@/lib/utils';
 import { projectKeys, briefingKeys } from '@/app/queryKeys';
 import { ErrorMessage } from '@/components/ui/error-message';
+import { humanizeError } from '@/lib/errors';
 
 const STATUS_LABEL: Record<string, string> = {
   draft: 'დრაფტი',
@@ -60,7 +61,7 @@ export default function Briefings() {
       </header>
 
       {error && (
-        <ErrorMessage>{error instanceof Error ? error.message : String(error)}</ErrorMessage>
+        <ErrorMessage>{humanizeError(error)}</ErrorMessage>
       )}
 
       {!filtered && !error && <SkeletonList />}
@@ -68,7 +69,7 @@ export default function Briefings() {
       {filtered && filtered.length === 0 && (
         <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-neutral-200 bg-white py-16 text-center dark:border-neutral-700 dark:bg-neutral-900">
           <p className="text-sm text-neutral-500">ინსტრუქტაჟები ჯერ არ გაქვთ.</p>
-          <Link to="/briefings/new" className={buttonVariants({ size: 'sm' })}>+ ახალი ინსტრუქტაჟი</Link>
+          <Button component={Link} to="/briefings/new" size="sm">+ ახალი ინსტრუქტაჟი</Button>
         </div>
       )}
 

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@/test-utils';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { Link, MemoryRouter } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 
 describe('Button', () => {
@@ -19,8 +20,23 @@ describe('Button', () => {
     expect(screen.getByRole('button', { name: 'ბმული' })).toBeInTheDocument();
   });
 
-  it('buttonVariants stub returns an empty string', () => {
-    expect(buttonVariants({ variant: 'ghost', size: 'sm' })).toBe('');
+  it('renders an icon-only button as a square', () => {
+    render(<Button size="icon" aria-label="close">×</Button>);
+    const btn = screen.getByRole('button', { name: 'close' });
+    expect(btn.style.width).toBe('36px');
+    expect(btn.style.height).toBe('36px');
+  });
+
+  it('renders as a router Link when given component={Link}', () => {
+    render(
+      <MemoryRouter>
+        <Button component={Link} to="/orders/new" size="sm">
+          + ახალი
+        </Button>
+      </MemoryRouter>,
+    );
+    const link = screen.getByRole('link', { name: '+ ახალი' });
+    expect(link).toHaveAttribute('href', '/orders/new');
   });
 });
 
