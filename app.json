@@ -80,12 +80,12 @@
       "useMockData": false,
       "router": {},
       "eas": {
-        "projectId": "c50f3e11-27fb-4477-ba82-13df9179134f"
+        "projectId": "ab800403-36c4-4673-8dd8-dfc75b66d14b"
       }
     },
     "experiments": {
       "typedRoutes": false
     },
-    "owner": "gilavi2000"
+    "owner": "x4ylee"
   }
 }
