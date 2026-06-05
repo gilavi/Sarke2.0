@@ -107,8 +107,11 @@ const MemoizedAssetItem = memo(function AssetItem({
 export default function PhotoPickerScreen() {
   const { theme } = useTheme();
   const router = useRouter();
-  const params = useLocalSearchParams<{ multi?: string }>();
+  const params = useLocalSearchParams<{ multi?: string; skip?: string }>();
   const multiMode = params.multi === '1';
+  // When the caller skips annotation, a pick won't trigger the annotator's
+  // router.replace, so the picker must dismiss itself after resolving.
+  const skipAnnotate = params.skip === '1';
   const [camPerm, requestCamPerm] = useCameraPermissions();
   const [libPerm, requestLibPerm] = MediaLibrary.usePermissions();
   const cameraRef = useRef<CameraView>(null);
@@ -230,14 +233,20 @@ export default function PhotoPickerScreen() {
         getCurrentLocation(),
       ]);
       setLastPhotoLocation(location);
-      if (photo?.uri) finish([photo.uri], true);
+      if (photo?.uri) {
+        finish([photo.uri], true);
+        // A live capture is annotated (and the annotator replaces this screen) UNLESS
+        // the caller skips annotation — in which case the hook adds it directly and we
+        // must dismiss ourselves.
+        if (skipAnnotate) close();
+      }
       resetZoom(); // next shot starts wide
     } catch (e) {
       console.warn('[photo-picker] capture failed', e);
     } finally {
       setCapturing(false);
     }
-  }, [capturing, finish, resetZoom]);
+  }, [capturing, close, finish, resetZoom, skipAnnotate]);
 
   // Single-mode strip tap: resolve immediately with the one chosen photo.
   const pickAsset = useCallback(
@@ -249,11 +258,14 @@ export default function PhotoPickerScreen() {
         const location = await getCurrentLocation();
         setLastPhotoLocation(location);
         finish([uri], false);
+        // Single-mode strip pick: annotated unless the caller skips it, in which case
+        // the hook resolves directly (no replace) so we dismiss ourselves.
+        if (skipAnnotate) close();
       } finally {
         setSelecting(false);
       }
     },
-    [finish, selecting],
+    [close, finish, selecting, skipAnnotate],
   );
 
   // Multi-mode strip tap: toggle the asset in the ordered selection.
@@ -318,14 +330,14 @@ export default function PhotoPickerScreen() {
       const location = await getCurrentLocation();
       setLastPhotoLocation(location);
       finish(uris, false);
-      // In multi mode the hook adds the batch directly (no annotator), so it won't
-      // replace this screen — dismiss it ourselves. In single mode the existing
-      // annotate flow replaces/handles the screen, so leave it (unchanged behavior).
-      if (multiMode) close();
+      // The hook adds these directly (no annotator) when it's a multi-mode batch OR an
+      // annotation-skipping caller — in both cases it won't replace this screen, so we
+      // dismiss it. A single-mode annotated pick is replaced by the annotator instead.
+      if (multiMode || skipAnnotate) close();
     } catch {
       setSelecting(false);
     }
-  }, [close, finish, multiMode, selecting]);
+  }, [close, finish, multiMode, selecting, skipAnnotate]);
 
   const selectionIndexFor = useCallback(
     (id: string) => selectedIds.indexOf(id) + 1,

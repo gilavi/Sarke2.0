@@ -86,7 +86,9 @@ export function usePhotoWithLocation() {
           );
         });
 
-        router.push('/photo-picker' as never);
+        // `skip=1` tells the picker that picks won't be annotated (so it must dismiss
+        // itself after resolving, since the annotate `router.replace` never runs).
+        router.push((opts.skipAnnotate ? '/photo-picker?skip=1' : '/photo-picker') as never);
       });
     },
     [router],
@@ -132,7 +134,9 @@ export function usePhotoWithLocation() {
           resolve(uris.map((uri) => ({ uri, timestamp, location })));
         });
 
-        router.push('/photo-picker?multi=1' as never);
+        router.push(
+          (opts.skipAnnotate ? '/photo-picker?multi=1&skip=1' : '/photo-picker?multi=1') as never,
+        );
       });
     },
     [router],

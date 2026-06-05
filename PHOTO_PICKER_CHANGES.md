@@ -111,11 +111,13 @@ so they are completely unchanged.
   focus behavior in Expo Go on iOS is inconsistent; not shipped to avoid jank.
 - **`selectionLimit` = 10** for the system library (the task suggested a "sane cap like 10";
   say the word if you'd prefer unlimited).
-- **Edge case (matches pre-existing behavior):** a single shutter capture taken *inside* a
-  `skipAnnotate` multi flow (i.e. incidents, capturing via the shutter instead of selecting
-  from the strip) resolves directly without the annotator and does not auto-dismiss the
-  picker — the same no-dismiss behavior the pre-existing `skipAnnotate` single flow had.
-  The dominant incident path (strip select → Done, or library multi) dismisses cleanly.
+- **Picker dismissal (fixed):** when a pick won't be annotated, the annotator's
+  `router.replace` never runs, so the picker must dismiss itself. The hook passes `skip=1`
+  to the picker for `skipAnnotate` callers, and the picker dismisses after any resolve that
+  isn't annotated — a capture/strip/library pick when `skipAnnotate`, or any multi-mode
+  batch. (Annotated single-mode picks are still replaced by the annotator as before.) This
+  fixes the incidents case where a shutter capture attached the photo but left the picker
+  open until manually closed.
 - **Tooling finding (not fixed):** `scripts/check-primitives.mjs` uses
   `new URL('..').pathname`, which yields a `C:\C:\…` path on Windows; `readdirSync` then
   throws, the walker swallows it, and the check scans **zero files** and prints
