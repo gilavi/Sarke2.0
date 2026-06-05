@@ -102,7 +102,7 @@ function getTypeBadge(theme: any, isDark: boolean): Record<IncidentType, { bg: s
 
 export default function NewIncident() {
   const insets = useSafeAreaInsets();
-  const { pickPhotoWithAnnotation } = usePhotoWithLocation();
+  const { pickPhotosWithAnnotation } = usePhotoWithLocation();
   const { theme, isDark } = useTheme();
   const s = useMemo(() => makeStyles(theme), [theme]);
   const router = useRouter();
@@ -180,12 +180,12 @@ export default function NewIncident() {
   // ── photo handling ──────────────────────────────────────────────────────────
 
   const addPhoto = async () => {
-    const result = await pickPhotoWithAnnotation({ skipAnnotate: true });
-    if (!result) return;
-    const photo: IncidentPhoto = { uri: result.uri, location: result.location };
-    setForm(f => ({ ...f, photos: [...f.photos, photo] }));
+    const results = await pickPhotosWithAnnotation({ skipAnnotate: true });
+    if (results.length === 0) return;
+    const newPhotos: IncidentPhoto[] = results.map(r => ({ uri: r.uri, location: r.location }));
+    setForm(f => ({ ...f, photos: [...f.photos, ...newPhotos] }));
     if (project) {
-      showPhotoLocationAlert(project, result.location, setProject).catch(() => {});
+      showPhotoLocationAlert(project, results[0].location, setProject).catch(() => {});
     }
   };
 

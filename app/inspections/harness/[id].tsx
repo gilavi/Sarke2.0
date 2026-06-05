@@ -91,7 +91,7 @@ export default function HarnessInspectionScreen() {
   const session = useSession();
   const offline = useOffline();
   const queryClient = useQueryClient();
-  const { pickPhotoWithAnnotation } = usePhotoWithLocation();
+  const { pickPhotosWithAnnotation } = usePhotoWithLocation();
 
   const [inspection, setInspection] = useState<Inspection | null>(null);
   const [project, setProject] = useState<Project | null>(null);
@@ -370,10 +370,12 @@ export default function HarnessInspectionScreen() {
     col: string,
   ) => {
     haptic.light();
-    const result = await pickPhotoWithAnnotation();
-    if (!result) return;
-    doUpload(result.uri, question, `${row}:col:${col}`, result.location);
-  }, [pickPhotoWithAnnotation, doUpload]);
+    const results = await pickPhotosWithAnnotation();
+    if (results.length === 0) return;
+    for (const result of results) {
+      await doUpload(result.uri, question, `${row}:col:${col}`, result.location);
+    }
+  }, [pickPhotosWithAnnotation, doUpload]);
 
   const deletePhoto = useCallback(async (photo: AnswerPhoto) => {
     haptic.medium();

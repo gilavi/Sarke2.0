@@ -72,7 +72,7 @@ export default function ProjectDetail() {
   const showActionSheetWithOptions = useBottomSheet();
   const toast = useToast();
   const session = useSession();
-  const { pickPhotoWithAnnotation } = usePhotoWithLocation();
+  const { pickPhotosWithAnnotation } = usePhotoWithLocation();
   const insets = useSafeAreaInsets();
 
   const {
@@ -278,14 +278,16 @@ export default function ProjectDetail() {
   };
 
   const pickPhotoWithPicker = async () => {
-    const result = await pickPhotoWithAnnotation();
-    if (!result) return;
-    await uploadAssets([{
-      uri: result.uri,
-      name: `photo-${Date.now()}.jpg`,
-      mimeType: 'image/jpeg',
-      sizeBytes: null,
-    }]);
+    const results = await pickPhotosWithAnnotation();
+    if (results.length === 0) return;
+    await uploadAssets(
+      results.map((r, i) => ({
+        uri: r.uri,
+        name: `photo-${Date.now()}_${i}.jpg`,
+        mimeType: 'image/jpeg',
+        sizeBytes: null,
+      })),
+    );
   };
 
   const pickDocuments = async () => {

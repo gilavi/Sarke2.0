@@ -99,7 +99,7 @@ const TOTAL_STEPS     = 5;
 
 export default function ExcavatorInspectionScreen() {
   const { theme } = useTheme();
-  const { pickPhotoWithAnnotation } = usePhotoWithLocation();
+  const { pickPhotosWithAnnotation } = usePhotoWithLocation();
   const styles = useMemo(() => getstyles(theme), [theme]);
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -248,26 +248,28 @@ export default function ExcavatorInspectionScreen() {
   // ── Photo handling ─────────────────────────────────────────────────────────
 
   const handleAddPhoto = useCallback(async (section: Section, itemId: number) => {
-    const result = await pickPhotoWithAnnotation();
-    if (!result) return;
+    const results = await pickPhotosWithAnnotation();
+    if (results.length === 0) return;
     const insp = inspectionRef.current;
     if (!insp) return;
-    try {
-      const path = await excavatorApi.uploadPhoto(insp.id, section, itemId, result.uri);
-      setInspection(prev => {
-        if (!prev) return prev;
-        const key = sectionKey(section);
-        const arr = [...(prev[key] as ExcavatorChecklistItemState[])];
-        const idx = arr.findIndex(i => i.id === itemId);
-        if (idx >= 0) arr[idx] = { ...arr[idx], photo_paths: [...(arr[idx].photo_paths ?? []), path] };
-        const next = { ...prev, [key]: arr };
-        scheduleSave(next);
-        return next;
-      });
-    } catch (e) {
-      toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
+    for (const result of results) {
+      try {
+        const path = await excavatorApi.uploadPhoto(insp.id, section, itemId, result.uri);
+        setInspection(prev => {
+          if (!prev) return prev;
+          const key = sectionKey(section);
+          const arr = [...(prev[key] as ExcavatorChecklistItemState[])];
+          const idx = arr.findIndex(i => i.id === itemId);
+          if (idx >= 0) arr[idx] = { ...arr[idx], photo_paths: [...(arr[idx].photo_paths ?? []), path] };
+          const next = { ...prev, [key]: arr };
+          scheduleSave(next);
+          return next;
+        });
+      } catch (e) {
+        toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
+      }
     }
-  }, [pickPhotoWithAnnotation, scheduleSave, toast, inspectionRef, setInspection]);
+  }, [pickPhotosWithAnnotation, scheduleSave, toast, inspectionRef, setInspection]);
 
   const handleDeletePhoto = useCallback(async (section: Section, itemId: number, path: string) => {
     try {
@@ -291,22 +293,24 @@ export default function ExcavatorInspectionScreen() {
   // ── Summary Photos ─────────────────────────────────────────────────────────
 
   const handleAddSummaryPhoto = useCallback(async () => {
-    const result = await pickPhotoWithAnnotation();
-    if (!result) return;
+    const results = await pickPhotosWithAnnotation();
+    if (results.length === 0) return;
     const insp = inspectionRef.current;
     if (!insp) return;
-    try {
-      const path = await excavatorApi.uploadSummaryPhoto(insp.id, result.uri);
-      setInspection(prev => {
-        if (!prev) return prev;
-        const next = { ...prev, summaryPhotos: [...(prev.summaryPhotos ?? []), path] };
-        AsyncStorage.setItem(summaryPhotosKey, JSON.stringify(next.summaryPhotos)).catch(() => {});
-        return next;
-      });
-    } catch (e) {
-      toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
+    for (const result of results) {
+      try {
+        const path = await excavatorApi.uploadSummaryPhoto(insp.id, result.uri);
+        setInspection(prev => {
+          if (!prev) return prev;
+          const next = { ...prev, summaryPhotos: [...(prev.summaryPhotos ?? []), path] };
+          AsyncStorage.setItem(summaryPhotosKey, JSON.stringify(next.summaryPhotos)).catch(() => {});
+          return next;
+        });
+      } catch (e) {
+        toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
+      }
     }
-  }, [pickPhotoWithAnnotation, toast, inspectionRef, setInspection, summaryPhotosKey]);
+  }, [pickPhotosWithAnnotation, toast, inspectionRef, setInspection, summaryPhotosKey]);
 
   const handleDeleteSummaryPhoto = useCallback(async (path: string) => {
     try {

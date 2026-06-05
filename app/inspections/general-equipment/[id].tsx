@@ -51,7 +51,7 @@ const TOTAL_STEPS     = 4;
 export default function GeneralEquipmentScreen() {
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
-  const { pickPhotoWithAnnotation } = usePhotoWithLocation();
+  const { pickPhotosWithAnnotation } = usePhotoWithLocation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const toast = useToast();
@@ -173,22 +173,24 @@ export default function GeneralEquipmentScreen() {
   // ── Photo handling — summary ──────────────────────────────────────────────
 
   const handleAddSummaryPhoto = useCallback(async () => {
-    const result = await pickPhotoWithAnnotation();
-    if (!result) return;
+    const results = await pickPhotosWithAnnotation();
+    if (results.length === 0) return;
     const insp = inspectionRef.current;
     if (!insp) return;
-    try {
-      const path = await generalEquipmentApi.uploadPhoto(insp.id, 'summary', 'summary', result.uri);
-      setInspection(prev => {
-        if (!prev) return prev;
-        const next = { ...prev, summaryPhotos: [...prev.summaryPhotos, path] };
-        scheduleSave(next);
-        return next;
-      });
-    } catch (e) {
-      toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
+    for (const result of results) {
+      try {
+        const path = await generalEquipmentApi.uploadPhoto(insp.id, 'summary', 'summary', result.uri);
+        setInspection(prev => {
+          if (!prev) return prev;
+          const next = { ...prev, summaryPhotos: [...prev.summaryPhotos, path] };
+          scheduleSave(next);
+          return next;
+        });
+      } catch (e) {
+        toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
+      }
     }
-  }, [pickPhotoWithAnnotation, scheduleSave, toast, inspectionRef, setInspection]);
+  }, [pickPhotosWithAnnotation, scheduleSave, toast, inspectionRef, setInspection]);
 
   const handleDeleteSummaryPhoto = useCallback(async (path: string) => {
     try {

@@ -58,7 +58,7 @@ export function useWizardState(id: string | undefined) {
   const toast = useToast();
   const offline = useOffline();
   const queryClient = useQueryClient();
-  const { pickPhotoWithAnnotation } = usePhotoWithLocation();
+  const { pickPhotosWithAnnotation } = usePhotoWithLocation();
 
   const [questionnaire, setQuestionnaire] = useState<Inspection | null>(null);
   const [project, setProject] = useState<Project | null>(null);
@@ -389,13 +389,17 @@ export function useWizardState(id: string | undefined) {
   const pickPhoto = useCallback(async (question: Question, rowKey?: string) => {
     if (!questionnaire) return;
     haptic.light();
-    const result = await pickPhotoWithAnnotation();
-    if (!result) return;
+    const results = await pickPhotosWithAnnotation();
+    if (results.length === 0) return;
     const mime = 'image/jpeg';
     const ext = 'jpg';
-    const path = `${questionnaire.id}/${question.id}/${Date.now()}.${ext}`;
-    await doUpload(result.uri, question, rowKey, mime, ext, path, result.location);
-  }, [questionnaire, pickPhotoWithAnnotation, doUpload]);
+    // Upload sequentially; unique path per photo so a batch can't collide on Date.now().
+    for (let i = 0; i < results.length; i++) {
+      const result = results[i];
+      const path = `${questionnaire.id}/${question.id}/${Date.now()}_${i}.${ext}`;
+      await doUpload(result.uri, question, rowKey, mime, ext, path, result.location);
+    }
+  }, [questionnaire, pickPhotosWithAnnotation, doUpload]);
 
   const deletePhoto = useCallback(async (photo: AnswerPhoto) => {
     haptic.medium();

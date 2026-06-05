@@ -57,7 +57,7 @@ export default function MobileLadderInspectionScreen() {
   const router = useRouter();
   const toast = useToast();
   const insets = useSafeAreaInsets();
-  const { pickPhotoWithAnnotation } = usePhotoWithLocation();
+  const { pickPhotosWithAnnotation } = usePhotoWithLocation();
 
   // Shared orchestration: loading, step+persist, autosave, complete, celebration,
   // PDF preview/download, paywall. Type-specific bits are passed as callbacks so
@@ -150,25 +150,27 @@ export default function MobileLadderInspectionScreen() {
   // ── Photos ──────────────────────────────────────────────────────────────────
 
   const handleAddItemPhoto = useCallback(async (itemId: number) => {
-    const result = await pickPhotoWithAnnotation();
-    if (!result) return;
+    const results = await pickPhotosWithAnnotation();
+    if (results.length === 0) return;
     const insp = inspectionRef.current;
     if (!insp) return;
-    try {
-      const path = await mobileLadderApi.uploadPhoto(insp.id, itemId, result.uri);
-      setInspection(prev => {
-        if (!prev) return prev;
-        const items = prev.items.map(i =>
-          i.id === itemId ? { ...i, photo_paths: [...(i.photo_paths ?? []), path] } : i,
-        );
-        const next = { ...prev, items };
-        scheduleSave(next);
-        return next;
-      });
-    } catch (e) {
-      toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
+    for (const result of results) {
+      try {
+        const path = await mobileLadderApi.uploadPhoto(insp.id, itemId, result.uri);
+        setInspection(prev => {
+          if (!prev) return prev;
+          const items = prev.items.map(i =>
+            i.id === itemId ? { ...i, photo_paths: [...(i.photo_paths ?? []), path] } : i,
+          );
+          const next = { ...prev, items };
+          scheduleSave(next);
+          return next;
+        });
+      } catch (e) {
+        toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
+      }
     }
-  }, [pickPhotoWithAnnotation, scheduleSave, toast, inspectionRef, setInspection]);
+  }, [pickPhotosWithAnnotation, scheduleSave, toast, inspectionRef, setInspection]);
 
   const handleDeleteItemPhoto = useCallback(async (itemId: number, path: string) => {
     try {

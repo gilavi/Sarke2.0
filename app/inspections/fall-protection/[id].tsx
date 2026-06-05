@@ -79,7 +79,7 @@ export default function FallProtectionInspectionScreen() {
   const router = useRouter();
   const toast = useToast();
   const insets = useSafeAreaInsets();
-  const { pickPhotoWithAnnotation } = usePhotoWithLocation();
+  const { pickPhotosWithAnnotation } = usePhotoWithLocation();
 
   const [activeDeviceIdx, setActiveDeviceIdx] = useState(0);
 
@@ -223,34 +223,36 @@ export default function FallProtectionInspectionScreen() {
 
   const handleAddItemPhoto = useCallback(
     async (devIdx: number, itemId: number) => {
-      const result = await pickPhotoWithAnnotation();
-      if (!result) return;
+      const results = await pickPhotosWithAnnotation();
+      if (results.length === 0) return;
       const insp = inspectionRef.current;
       if (!insp) return;
-      try {
-        const path = await fallProtectionApi.uploadPhoto(insp.id, devIdx, itemId, result.uri);
-        updateDeviceData(devIdx, data => {
-          if (itemId === 0) {
-            return {
-              ...data,
-              customItem: {
-                ...data.customItem,
-                photo_paths: [...(data.customItem.photo_paths ?? []), path],
-              },
-            };
-          }
-          const items = data.items.map(i =>
-            i.id === itemId
-              ? { ...i, photo_paths: [...(i.photo_paths ?? []), path] }
-              : i,
-          );
-          return { ...data, items };
-        });
-      } catch (e) {
-        toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
+      for (const result of results) {
+        try {
+          const path = await fallProtectionApi.uploadPhoto(insp.id, devIdx, itemId, result.uri);
+          updateDeviceData(devIdx, data => {
+            if (itemId === 0) {
+              return {
+                ...data,
+                customItem: {
+                  ...data.customItem,
+                  photo_paths: [...(data.customItem.photo_paths ?? []), path],
+                },
+              };
+            }
+            const items = data.items.map(i =>
+              i.id === itemId
+                ? { ...i, photo_paths: [...(i.photo_paths ?? []), path] }
+                : i,
+            );
+            return { ...data, items };
+          });
+        } catch (e) {
+          toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
+        }
       }
     },
-    [pickPhotoWithAnnotation, updateDeviceData, toast, inspectionRef],
+    [pickPhotosWithAnnotation, updateDeviceData, toast, inspectionRef],
   );
 
   const handleDeleteItemPhoto = useCallback(
@@ -284,21 +286,23 @@ export default function FallProtectionInspectionScreen() {
 
   const handleAddDevicePhoto = useCallback(
     async (devIdx: number) => {
-      const result = await pickPhotoWithAnnotation();
-      if (!result) return;
+      const results = await pickPhotosWithAnnotation();
+      if (results.length === 0) return;
       const insp = inspectionRef.current;
       if (!insp) return;
-      try {
-        const path = await fallProtectionApi.uploadDevicePhoto(insp.id, devIdx, result.uri);
-        updateDeviceData(devIdx, data => ({
-          ...data,
-          photoPaths: [...(data.photoPaths ?? []), path],
-        }));
-      } catch (e) {
-        toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
+      for (const result of results) {
+        try {
+          const path = await fallProtectionApi.uploadDevicePhoto(insp.id, devIdx, result.uri);
+          updateDeviceData(devIdx, data => ({
+            ...data,
+            photoPaths: [...(data.photoPaths ?? []), path],
+          }));
+        } catch (e) {
+          toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
+        }
       }
     },
-    [pickPhotoWithAnnotation, updateDeviceData, toast, inspectionRef],
+    [pickPhotosWithAnnotation, updateDeviceData, toast, inspectionRef],
   );
 
   const handleDeleteDevicePhoto = useCallback(
