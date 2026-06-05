@@ -113,4 +113,4 @@ captured on the **inspection result screen** post-completion (via
 - `lib/calendarSchedule` — `recordCompletion`.
 - `lib/apiHooks` — `qk` (cache key roots).
 - `lib/photoLocationAlert` — `showPhotoLocationAlert`.
-- `hooks/usePhotoWithLocation` — `pickPhotoWithAnnotation`.
+- `hooks/usePhotoWithLocation` — `pickPhotosWithAnnotation` (answer photos are a gallery; supports multi-select).

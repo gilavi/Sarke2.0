@@ -70,10 +70,11 @@ One file: [`hooks/usePhotoWithLocation.ts`](../hooks/usePhotoWithLocation.ts). T
 
 | Use case | Export |
 |---|---|
-| Open picker → optional annotate → return URI + location | `pickPhotoWithAnnotation(opts?)` — use everywhere. Pass `{ skipAnnotate: true }` only for non-markup contexts (incidents, certificates, qualifications). |
+| Open picker → optional annotate → return ONE photo (URI + location) | `pickPhotoWithAnnotation(opts?)` — single-slot fields. Pass `{ skipAnnotate: true }` for non-markup contexts. Returns `PhotoWithLocation \| null`. |
+| Open picker (batch mode) → return MANY photos | `pickPhotosWithAnnotation(opts?)` — galleries (inspection item/summary photos, answer photos, incident photos, project files). Returns `PhotoWithLocation[]` (`[]` if cancelled). A single live capture still annotates → one photo; a recent-strip / system-library batch skips annotation → all photos, sharing one location+timestamp. **Upload sequentially or with a small concurrency cap — never an unbounded `Promise.all` over full-res photos.** |
 | Re-annotate an already-uploaded photo URI | `pickPhotoWithAnnotationFromUri(sourceUri, location)` |
 
-The picker opens `/photo-picker` (live camera + gallery + GPS via `photoPickerBus`). The annotator opens `/photo-annotate` — the user may save without drawing. Never call `ImagePicker.launchCameraAsync` or `ImagePicker.launchImageLibraryAsync` directly outside this hook or `app/photo-picker.tsx` — the lint check blocks it.
+The picker opens `/photo-picker` (live camera + gallery + GPS via `photoPickerBus`); `pickPhotosWithAnnotation` opens it with `?multi=1` for the multi-select UX (pinch-to-zoom on capture, recent-strip multi-select with a "დასრულება (n)" bar, multi-select system library). The bus callback delivers `string[] | null`. The annotator opens `/photo-annotate` — the user may save without drawing. Never call `ImagePicker.launchCameraAsync` or `ImagePicker.launchImageLibraryAsync` directly outside this hook or `app/photo-picker.tsx` — the lint check blocks it.
 
 ## Web dashboard photo upload (answer-photos bucket)
 
