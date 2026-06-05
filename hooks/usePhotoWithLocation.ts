@@ -6,6 +6,7 @@ import type { PhotoLocation } from '../utils/location';
 import {
   cancelPhotoAnnotate,
   cancelPhotoPicker,
+  getLastPhotoFromCapture,
   getLastPhotoLocation,
   setPhotoAnnotateCallback,
   setPhotoPickerCallback,
@@ -20,11 +21,19 @@ export interface PhotoWithLocation {
 /**
  * Hook for all photo-pick flows.
  *
- * - `pickPhotoWithAnnotation` — the canonical mobile entry point.
+ * - `pickPhotoWithAnnotation` — the canonical SINGLE-photo entry point.
  *   Opens /photo-picker (live camera + gallery + GPS), then /photo-annotate.
  *   The annotation step is always presented; the user may save without drawing.
  *   Pass `skipAnnotate: true` for contexts where markup is not useful (incidents,
- *   certificates, qualifications).
+ *   certificates, qualifications). Returns one photo (or null).
+ *
+ * - `pickPhotosWithAnnotation` — the MULTI-photo entry point (galleries: inspection
+ *   item/summary photos, answer photos, incident photos, project files). Opens
+ *   /photo-picker in batch mode. A single live capture still annotates and returns
+ *   one photo; a recent-strip / system-library batch skips annotation and returns
+ *   all selected photos (sharing one location + timestamp). Returns `[]` if cancelled.
+ *   Callers should upload sequentially (or with a small concurrency cap) — never an
+ *   unbounded Promise.all over many full-res photos.
  *
  * - `pickPhotoWithAnnotationFromUri` — re-annotate an existing stored photo.
  *   Opens /photo-annotate directly. Returns the annotated URI, or null if cancelled.
@@ -52,8 +61,11 @@ export function usePhotoWithLocation() {
         if (pickerTokenRef.current !== null) cancelPhotoPicker(pickerTokenRef.current);
         if (annotateTokenRef.current !== null) cancelPhotoAnnotate(annotateTokenRef.current);
 
-        pickerTokenRef.current = setPhotoPickerCallback((uri) => {
+        pickerTokenRef.current = setPhotoPickerCallback((uris) => {
           pickerTokenRef.current = null;
+          // Single-photo entry: the bus now delivers an array, but this flow only
+          // ever opens the picker in single mode, so take the first (if any).
+          const uri = uris && uris.length > 0 ? uris[0] : null;
           if (!uri) { resolve(null); return; }
 
           const location = getLastPhotoLocation();
@@ -75,6 +87,52 @@ export function usePhotoWithLocation() {
         });
 
         router.push('/photo-picker' as never);
+      });
+    },
+    [router],
+  );
+
+  /**
+   * Multi-photo entry point. Opens /photo-picker in batch mode (recent-strip
+   * multi-select + system-library multi-select). Returns an array:
+   *   - a single shutter capture keeps the annotate step (unless `skipAnnotate`)
+   *     and resolves with one photo;
+   *   - a strip/library batch skips annotation and resolves with all of them,
+   *     sharing one location + timestamp for the whole batch.
+   * Resolves with `[]` when cancelled.
+   */
+  const pickPhotosWithAnnotation = useCallback(
+    (opts: { skipAnnotate?: boolean } = {}): Promise<PhotoWithLocation[]> => {
+      return new Promise((resolve) => {
+        if (pickerTokenRef.current !== null) cancelPhotoPicker(pickerTokenRef.current);
+        if (annotateTokenRef.current !== null) cancelPhotoAnnotate(annotateTokenRef.current);
+
+        pickerTokenRef.current = setPhotoPickerCallback((uris) => {
+          pickerTokenRef.current = null;
+          if (!uris || uris.length === 0) { resolve([]); return; }
+
+          const location = getLastPhotoLocation();
+          const timestamp = new Date();
+          const fromCapture = getLastPhotoFromCapture();
+
+          // Only a single live capture goes through the annotator; strip/library
+          // batches are added directly.
+          if (fromCapture && !opts.skipAnnotate && uris.length === 1) {
+            const captured = uris[0];
+            annotateTokenRef.current = setPhotoAnnotateCallback((annotatedUri) => {
+              annotateTokenRef.current = null;
+              resolve([{ uri: annotatedUri ?? captured, timestamp, location }]);
+            });
+            router.replace(
+              `/photo-annotate?uri=${encodeURIComponent(captured)}` as never,
+            );
+            return;
+          }
+
+          resolve(uris.map((uri) => ({ uri, timestamp, location })));
+        });
+
+        router.push('/photo-picker?multi=1' as never);
       });
     },
     [router],
@@ -185,6 +243,7 @@ export function usePhotoWithLocation() {
 
   return {
     pickPhotoWithAnnotation,
+    pickPhotosWithAnnotation,
     pickPhotoWithAnnotationFromUri,
     takePhoto,
     pickPhoto,
