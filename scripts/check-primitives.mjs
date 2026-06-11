@@ -39,8 +39,8 @@ const RULES = [
     name: 'direct-image-picker',
     pattern: /ImagePicker\.(launchCameraAsync|launchImageLibraryAsync)\s*\(/,
     message:
-      'Call usePhotoWithLocation().pickPhotoWithAnnotation() instead of invoking ImagePicker directly. ' +
-      'Only hooks/usePhotoWithLocation.ts and app/photo-picker.tsx may call ImagePicker directly. ' +
+      'Call usePhotoPicker().pickPhotoWithAnnotation() instead of invoking ImagePicker directly. ' +
+      'Only hooks/usePhotoPicker.ts and app/photo-picker.tsx may call ImagePicker directly. ' +
       'See docs/primitives.md → "Mobile photo picker + annotation".',
   },
   {
@@ -93,7 +93,7 @@ for (const dir of SCAN_DIRS) {
       rel === 'lib/imageUrl.ts' ||
       rel === 'lib/pdfLanguagePref.ts' ||
       rel === 'lib/projectLogo.ts' ||
-      rel === 'hooks/usePhotoWithLocation.ts' ||
+      rel === 'hooks/usePhotoPicker.ts' ||
       rel === 'app/photo-picker.tsx'
     ) continue;
 

@@ -34,7 +34,7 @@ import {
 } from '../../lib/orderPdf';
 import { storageApi, projectsApi } from '../../lib/services';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
-import { usePhotoWithLocation } from '../../hooks/usePhotoWithLocation';
+import { usePhotoPicker } from '../../hooks/usePhotoPicker';
 
 import type {
   AlcoholControlOrderFormData,
@@ -115,7 +115,7 @@ export default function NewOrderScreen() {
   const [saving, setSaving] = useState(false);
   const [limitNoticeVisible, setLimitNoticeVisible] = useState(false);
   const [photoSessionId] = useState(() => Crypto.randomUUID());
-  const { pickPhotoWithAnnotation } = usePhotoWithLocation();
+  const { pickPhotoWithAnnotation } = usePhotoPicker();
 
   const { data: pdfUsage } = usePdfUsage();
   const invalidatePdfUsage = useInvalidatePdfUsage();

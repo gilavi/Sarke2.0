@@ -5,11 +5,8 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { usePhotoWithLocation } from '../../hooks/usePhotoWithLocation';
+import { usePhotoPicker } from '../../hooks/usePhotoPicker';
 import * as Crypto from 'expo-crypto';
-import { getCurrentLocation, reverseGeocode } from '../../utils/location';
-import type { PhotoLocation } from '../../utils/location';
-import { showPhotoLocationAlert } from '../../lib/photoLocationAlert';
 import { generateAndSharePdf, PdfLimitReachedError } from '../../lib/pdfOpen';
 import { hashPdf } from '../../lib/pdfSecurity';
 import { SubscriptionNotice } from '../../components/SubscriptionNotice';
@@ -50,7 +47,6 @@ type Step = 1 | 2 | 3 | 4;
 
 interface IncidentPhoto {
   uri: string;
-  location: PhotoLocation | null;
 }
 
 interface FormData {
@@ -102,7 +98,7 @@ function getTypeBadge(theme: any, isDark: boolean): Record<IncidentType, { bg: s
 
 export default function NewIncident() {
   const insets = useSafeAreaInsets();
-  const { pickPhotosWithAnnotation } = usePhotoWithLocation();
+  const { pickPhotosWithAnnotation } = usePhotoPicker();
   const { theme, isDark } = useTheme();
   const s = useMemo(() => makeStyles(theme), [theme]);
   const router = useRouter();
@@ -182,11 +178,8 @@ export default function NewIncident() {
   const addPhoto = async () => {
     const results = await pickPhotosWithAnnotation({ skipAnnotate: true });
     if (results.length === 0) return;
-    const newPhotos: IncidentPhoto[] = results.map(r => ({ uri: r.uri, location: r.location }));
+    const newPhotos: IncidentPhoto[] = results.map(r => ({ uri: r.uri }));
     setForm(f => ({ ...f, photos: [...f.photos, ...newPhotos] }));
-    if (project) {
-      showPhotoLocationAlert(project, results[0].location, setProject).catch(() => {});
-    }
   };
 
   const removePhoto = (idx: number) => {
@@ -211,8 +204,8 @@ export default function NewIncident() {
 
   // ── upload helpers ──────────────────────────────────────────────────────────
 
-  const uploadPhotos = async (): Promise<{ path: string; location: PhotoLocation | null }[]> => {
-    const results: { path: string; location: PhotoLocation | null }[] = [];
+  const uploadPhotos = async (): Promise<{ path: string }[]> => {
+    const results: { path: string }[] = [];
     for (const photo of form.photos) {
       const photoId = Crypto.randomUUID();
       const ext = photo.uri.split('.').pop()?.toLowerCase() ?? 'jpg';
@@ -225,7 +218,7 @@ export default function NewIncident() {
           'image/jpeg',
           'incident',
         );
-        results.push({ path, location: photo.location });
+        results.push({ path });
       } catch (e) {
         console.warn('[incident] photo upload failed', e);
       }
@@ -333,14 +326,6 @@ export default function NewIncident() {
         ),
       ).then(urls => urls.filter(Boolean));
 
-      // Resolve addresses for photos that have location data.
-      const photoAddresses = await Promise.all(
-        uploaded.map(async u => {
-          if (!u.location) return null;
-          return reverseGeocode(u.location.latitude, u.location.longitude).catch(() => null);
-        }),
-      );
-
       // 5. build HTML
       const html = buildIncidentPdfHtml({
         incident: saved,
@@ -348,7 +333,6 @@ export default function NewIncident() {
         inspectorName: inspector.name,
         inspectorSignatureDataUrl: sigDataUrl,
         photoDataUrls,
-        photoAddresses,
       });
 
       // 6. open/share PDF instantly; keep the pretty-named copy for background upload

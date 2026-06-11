@@ -28,7 +28,7 @@ import { PdfLockedBanner } from '../../../components/PdfLockedBanner';
 import { friendlyError } from '../../../lib/errorMap';
 import { a11y } from '../../../lib/accessibility';
 import { CelebrationBurst } from '../../../components/animations';
-import { usePhotoWithLocation } from '../../../hooks/usePhotoWithLocation';
+import { usePhotoPicker } from '../../../hooks/usePhotoPicker';
 
 import {
   LA_CHECKLIST_ITEMS,
@@ -62,7 +62,7 @@ export default function LiftingAccessoriesInspectionScreen() {
   const router = useRouter();
   const toast = useToast();
   const insets = useSafeAreaInsets();
-  const { pickPhotosWithAnnotation } = usePhotoWithLocation();
+  const { pickPhotosWithAnnotation } = usePhotoPicker();
 
   // Shared orchestration: loading, step+persist, autosave, complete, celebration,
   // PDF preview/download, limit notice. Type-specific bits are passed as callbacks so

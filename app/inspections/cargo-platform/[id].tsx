@@ -32,7 +32,7 @@ import { friendlyError } from '../../../lib/errorMap';
 import { a11y } from '../../../lib/accessibility';
 import { haptic } from '../../../lib/haptics';
 import { CelebrationBurst } from '../../../components/animations';
-import { usePhotoWithLocation } from '../../../hooks/usePhotoWithLocation';
+import { usePhotoPicker } from '../../../hooks/usePhotoPicker';
 
 import {
   CP_ITEMS,
@@ -101,7 +101,7 @@ export default function CargoPlatformInspectionScreen() {
   const router = useRouter();
   const toast = useToast();
   const insets = useSafeAreaInsets();
-  const { pickPhotosWithAnnotation } = usePhotoWithLocation();
+  const { pickPhotosWithAnnotation } = usePhotoPicker();
 
   // Shared orchestration: loading, step+persist, autosave, complete, celebration,
   // PDF preview/download, limit notice. Type-specific bits are passed as callbacks so

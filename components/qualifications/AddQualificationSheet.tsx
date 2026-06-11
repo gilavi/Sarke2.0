@@ -17,7 +17,7 @@ import { FloatingLabelInput } from '../inputs/FloatingLabelInput';
 import { qualificationsApi, storageApi } from '../../lib/services';
 import { STORAGE_BUCKETS, supabase } from '../../lib/supabase';
 import { useTheme } from '../../lib/theme';
-import { usePhotoWithLocation } from '../../hooks/usePhotoWithLocation';
+import { usePhotoPicker } from '../../hooks/usePhotoPicker';
 
 import { toErrorMessage } from '../../lib/logError';
 import { a11y } from '../../lib/accessibility';
@@ -48,7 +48,7 @@ export default function AddQualificationSheet({
 }) {
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
-  const { pickPhoto: pickPhotoFromLibrary } = usePhotoWithLocation();
+  const { pickPhoto: pickPhotoFromLibrary } = usePhotoPicker();
 
   const [type, setType] = useState(initialType ?? 'xaracho_inspector');
   const [number, setNumber] = useState('');

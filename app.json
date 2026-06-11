@@ -26,9 +26,6 @@
         "NSCameraUsageDescription": "კამერა გამოიყენება ხარაჩოს და ქამრების ფოტოების ატვირთვისთვის.",
         "NSPhotoLibraryUsageDescription": "ფოტოების არჩევა სისტემის ბიბლიოთეკიდან.",
         "NSPhotoLibraryAddUsageDescription": "საჭიროა ფოტოების შესანახად",
-        "NSMicrophoneUsageDescription": "საჭიროა ვიდეოს ჩასაწერად",
-        "NSLocationWhenInUseUsageDescription": "საჭიროა ფოტოების გეოლოკაციისთვის",
-        "NSLocationAlwaysUsageDescription": "საჭიროა ფოტოების გეოლოკაციისთვის",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -41,11 +38,7 @@
       "versionCode": 1,
       "edgeToEdgeEnabled": true,
       "softwareKeyboardLayoutMode": "resize",
-      "permissions": [
-        "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.RECORD_AUDIO"
-      ]
+      "permissions": []
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -70,7 +63,6 @@
       "@sentry/react-native",
       "expo-font",
       "expo-web-browser",
-      "expo-location",
       "expo-apple-authentication"
     ],
     "extra": {

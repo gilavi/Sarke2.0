@@ -33,10 +33,7 @@ import {
 } from '../../../lib/services';
 import { friendlyError } from '../../../lib/errorMap';
 import { logError, toErrorMessage } from '../../../lib/logError';
-import { usePhotoWithLocation } from '../../../hooks/usePhotoWithLocation';
-import { reverseGeocode } from '../../../utils/location';
-import type { PhotoLocation } from '../../../utils/location';
-import { showPhotoLocationAlert } from '../../../lib/photoLocationAlert';
+import { usePhotoPicker } from '../../../hooks/usePhotoPicker';
 import { recordCompletion } from '../../../lib/calendarSchedule';
 import { useQueryClient } from '@tanstack/react-query';
 import { qk } from '../../../lib/apiHooks';
@@ -91,7 +88,7 @@ export default function HarnessInspectionScreen() {
   const session = useSession();
   const offline = useOffline();
   const queryClient = useQueryClient();
-  const { pickPhotosWithAnnotation } = usePhotoWithLocation();
+  const { pickPhotosWithAnnotation } = usePhotoPicker();
 
   const [inspection, setInspection] = useState<Inspection | null>(null);
   const [project, setProject] = useState<Project | null>(null);
@@ -294,7 +291,6 @@ export default function HarnessInspectionScreen() {
     uri: string,
     question: Question,
     rowKey?: string,
-    location?: PhotoLocation | null,
   ) => {
     if (!inspection) return;
     setPhotoUploadCount(c => c + 1);
@@ -330,8 +326,8 @@ export default function HarnessInspectionScreen() {
           answerId,
           inspectionId: inspection.id,
           caption: captionStr,
-          latitude: location?.latitude ?? null,
-          longitude: location?.longitude ?? null,
+          latitude: null,
+          longitude: null,
           address: null,
         });
         setPhotos(prev => ({ ...prev, [answerId]: [...(prev[answerId] ?? []), optimistic] }));
@@ -341,22 +337,15 @@ export default function HarnessInspectionScreen() {
       await storageApi.uploadFromUri(STORAGE_BUCKETS.answerPhotos, path, uri, 'image/jpeg', 'inspection');
       const answer = await answersApi.upsert(baseAnswer);
       if (!existing) setAnswers(prev => ({ ...prev, [question.id]: answer }));
-      let photoAddress: string | null = null;
-      if (!rowKey && location) {
-        photoAddress = await reverseGeocode(location.latitude, location.longitude).catch(
-          () => `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`,
-        );
-      }
       const photo = await answersApi.addPhoto(answer.id, path, {
         caption: captionStr,
-        latitude: location?.latitude ?? null,
-        longitude: location?.longitude ?? null,
-        address: photoAddress,
+        latitude: null,
+        longitude: null,
+        address: null,
       });
       setPhotos(prev => ({ ...prev, [answer.id]: [...(prev[answer.id] ?? []), photo] }));
       pdfPhotoEmbed(STORAGE_BUCKETS.answerPhotos, path).catch(() => undefined);
       toast.success('ფოტო აიტვირთა');
-      if (project && location) showPhotoLocationAlert(project, location, setProject).catch(() => {});
     } catch (e) {
       toast.error(`ფოტო ვერ აიტვირთა: ${toErrorMessage(e, 'ქსელის შეცდომა')}`);
     } finally {
@@ -373,7 +362,7 @@ export default function HarnessInspectionScreen() {
     const results = await pickPhotosWithAnnotation();
     if (results.length === 0) return;
     for (const result of results) {
-      await doUpload(result.uri, question, `${row}:col:${col}`, result.location);
+      await doUpload(result.uri, question, `${row}:col:${col}`);
     }
   }, [pickPhotosWithAnnotation, doUpload]);
 

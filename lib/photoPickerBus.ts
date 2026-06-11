@@ -17,21 +17,9 @@
 //   resolvePhotoPicker([uri]);   // or [uri1, uri2, …], or null to cancel
 //   router.back();
 //
-// Side-channels (read immediately after the callback fires, before another pick):
-//   - location:    the GPS fix captured alongside the photos (one per batch).
+// Side-channel (read immediately after the callback fires, before another pick):
 //   - fromCapture: true when the batch came from a live shutter capture (the
 //     hook annotates those); false for strip/library batches (skip annotation).
-import type { PhotoLocation } from '../utils/location';
-
-let _lastPhotoLocation: PhotoLocation | null = null;
-
-export function setLastPhotoLocation(loc: PhotoLocation | null): void {
-  _lastPhotoLocation = loc;
-}
-
-export function getLastPhotoLocation(): PhotoLocation | null {
-  return _lastPhotoLocation;
-}
 
 // Whether the most recent resolve came from a live shutter capture (annotate it)
 // vs a strip/library batch (skip annotation).

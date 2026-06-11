@@ -24,10 +24,7 @@ import {
 import { pdfPhotoEmbed } from '../../lib/imageUrl';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { haptic } from '../../lib/haptics';
-import { usePhotoWithLocation } from '../../hooks/usePhotoWithLocation';
-import { reverseGeocode } from '../../utils/location';
-import type { PhotoLocation } from '../../utils/location';
-import { showPhotoLocationAlert } from '../../lib/photoLocationAlert';
+import { usePhotoPicker } from '../../hooks/usePhotoPicker';
 import { useOffline, stripServerFields } from '../../lib/offline';
 import { logError, toErrorMessage } from '../../lib/logError';
 import { useToast } from '../../lib/toast';
@@ -58,7 +55,7 @@ export function useWizardState(id: string | undefined) {
   const toast = useToast();
   const offline = useOffline();
   const queryClient = useQueryClient();
-  const { pickPhotosWithAnnotation } = usePhotoWithLocation();
+  const { pickPhotosWithAnnotation } = usePhotoPicker();
 
   const [questionnaire, setQuestionnaire] = useState<Inspection | null>(null);
   const [project, setProject] = useState<Project | null>(null);
@@ -306,7 +303,6 @@ export function useWizardState(id: string | undefined) {
     mime?: string,
     ext?: string,
     path?: string,
-    location?: PhotoLocation | null,
   ) => {
     if (!questionnaire) return;
     setPhotoUploadCount(c => c + 1);
@@ -315,12 +311,6 @@ export function useWizardState(id: string | undefined) {
     const actualPath = path ?? `${questionnaire.id}/${question.id}/${Date.now()}.${actualExt}`;
 
     const captionStr: string | null = rowKey ? `row:${rowKey}` : null;
-    let photoAddress: string | null = null;
-    if (!rowKey && location) {
-      photoAddress = await reverseGeocode(location.latitude, location.longitude).catch(
-        () => `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`,
-      );
-    }
 
     const existing = answers[question.id];
     const answerId = existing?.id ?? crypto.randomUUID();
@@ -350,9 +340,9 @@ export function useWizardState(id: string | undefined) {
           answerId,
           inspectionId: questionnaire.id,
           caption: captionStr,
-          latitude: location?.latitude ?? null,
-          longitude: location?.longitude ?? null,
-          address: photoAddress,
+          latitude: null,
+          longitude: null,
+          address: null,
         });
         setPhotos(prev => ({ ...prev, [answerId]: [...(prev[answerId] ?? []), optimistic] }));
         toast.success('ფოტო შენახულია — აიტვირთება ქსელის დაბრუნებისას');
@@ -363,16 +353,13 @@ export function useWizardState(id: string | undefined) {
       if (!existing) setAnswers(prev => ({ ...prev, [question.id]: answer }));
       const photo = await answersApi.addPhoto(answer.id, actualPath, {
         caption: captionStr,
-        latitude: location?.latitude ?? null,
-        longitude: location?.longitude ?? null,
-        address: photoAddress,
+        latitude: null,
+        longitude: null,
+        address: null,
       });
       setPhotos(prev => ({ ...prev, [answer.id]: [...(prev[answer.id] ?? []), photo] }));
       pdfPhotoEmbed(STORAGE_BUCKETS.answerPhotos, actualPath).catch(() => undefined);
       toast.success('ფოტო აიტვირთა');
-      if (project && location) {
-        showPhotoLocationAlert(project, location, setProject).catch(() => {});
-      }
     } catch (e) {
       // If the inspection was completed while this upload was in flight the DB
       // trigger rejects the answer write. The completion already succeeded, so
@@ -397,7 +384,7 @@ export function useWizardState(id: string | undefined) {
     for (let i = 0; i < results.length; i++) {
       const result = results[i];
       const path = `${questionnaire.id}/${question.id}/${Date.now()}_${i}.${ext}`;
-      await doUpload(result.uri, question, rowKey, mime, ext, path, result.location);
+      await doUpload(result.uri, question, rowKey, mime, ext, path);
     }
   }, [questionnaire, pickPhotosWithAnnotation, doUpload]);
 

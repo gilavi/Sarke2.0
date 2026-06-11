@@ -42,10 +42,8 @@ import { useTheme } from '../lib/theme';
 import {
   resolvePhotoPicker,
   cancelPhotoPicker,
-  setLastPhotoLocation,
   setLastPhotoFromCapture,
 } from '../lib/photoPickerBus';
-import { getCurrentLocation } from '../utils/location';
 
 // Pinch sensitivity: a 2× finger spread adds ~0.5 to the 0–1 zoom range.
 const ZOOM_SENSITIVITY = 0.5;
@@ -228,11 +226,7 @@ export default function PhotoPickerScreen() {
     if (capturing) return;
     setCapturing(true);
     try {
-      const [photo, location] = await Promise.all([
-        cameraRef.current?.takePictureAsync({ quality: 0.7 }),
-        getCurrentLocation(),
-      ]);
-      setLastPhotoLocation(location);
+      const photo = await cameraRef.current?.takePictureAsync({ quality: 0.7 });
       if (photo?.uri) {
         finish([photo.uri], true);
         // A live capture is annotated (and the annotator replaces this screen) UNLESS
@@ -255,8 +249,6 @@ export default function PhotoPickerScreen() {
       setSelecting(true);
       try {
         const uri = await resolveAssetUri(asset);
-        const location = await getCurrentLocation();
-        setLastPhotoLocation(location);
         finish([uri], false);
         // Single-mode strip pick: annotated unless the caller skips it, in which case
         // the hook resolves directly (no replace) so we dismiss ourselves.
@@ -291,8 +283,6 @@ export default function PhotoPickerScreen() {
         setSelecting(false);
         return;
       }
-      const location = await getCurrentLocation();
-      setLastPhotoLocation(location);
       finish(uris, false);
       // A batch never routes to the annotator (no router.replace), so dismiss here.
       close();
@@ -327,8 +317,6 @@ export default function PhotoPickerScreen() {
         setSelecting(false);
         return;
       }
-      const location = await getCurrentLocation();
-      setLastPhotoLocation(location);
       finish(uris, false);
       // The hook adds these directly (no annotator) when it's a multi-mode batch OR an
       // annotation-skipping caller — in both cases it won't replace this screen, so we

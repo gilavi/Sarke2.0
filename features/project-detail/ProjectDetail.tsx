@@ -40,7 +40,7 @@ import { useSession } from '../../lib/session';
 import { a11y } from '../../lib/accessibility';
 import { TourGuide, type TourStep } from '../../components/TourGuide';
 import { useTranslation } from 'react-i18next';
-import { usePhotoWithLocation } from '../../hooks/usePhotoWithLocation';
+import { usePhotoPicker } from '../../hooks/usePhotoPicker';
 import { QuickActions, type QuickAction } from '../../components/QuickActions';
 import { InspectionTypeAvatar } from '../../components/InspectionTypeAvatar';
 import { CustomDropdown } from '../../components/ui/CustomDropdown';
@@ -72,7 +72,7 @@ export default function ProjectDetail() {
   const showActionSheetWithOptions = useBottomSheet();
   const toast = useToast();
   const session = useSession();
-  const { pickPhotosWithAnnotation } = usePhotoWithLocation();
+  const { pickPhotosWithAnnotation } = usePhotoPicker();
   const insets = useSafeAreaInsets();
 
   const {

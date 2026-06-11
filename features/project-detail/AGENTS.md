@@ -95,4 +95,4 @@ Backs the `app/projects/[id].tsx` route.
 - `lib/projectLogo` — `pickProjectLogo`.
 - `lib/theme`, `lib/toast`, `lib/session`, `lib/errorMap`,
   `lib/formatDate`, `lib/logError`, `lib/accessibility`.
-- `hooks/usePhotoWithLocation`.
+- `hooks/usePhotoPicker`.

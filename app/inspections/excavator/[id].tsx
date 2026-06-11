@@ -35,7 +35,7 @@ import { a11y } from '../../../lib/accessibility';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SuggestionPills } from '../../../components/SuggestionPills';
 import { useFieldHistory } from '../../../hooks/useFieldHistory';
-import { usePhotoWithLocation } from '../../../hooks/usePhotoWithLocation';
+import { usePhotoPicker } from '../../../hooks/usePhotoPicker';
 import { useSession } from '../../../lib/session';
 import { CelebrationBurst } from '../../../components/animations';
 import {
@@ -99,7 +99,7 @@ const TOTAL_STEPS     = 5;
 
 export default function ExcavatorInspectionScreen() {
   const { theme } = useTheme();
-  const { pickPhotosWithAnnotation } = usePhotoWithLocation();
+  const { pickPhotosWithAnnotation } = usePhotoPicker();
   const styles = useMemo(() => getstyles(theme), [theme]);
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();

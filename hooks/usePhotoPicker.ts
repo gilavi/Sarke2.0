@@ -1,28 +1,26 @@
 import { useCallback, useEffect, useRef } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import { getCurrentLocation } from '../utils/location';
-import type { PhotoLocation } from '../utils/location';
 import {
   cancelPhotoAnnotate,
   cancelPhotoPicker,
   getLastPhotoFromCapture,
-  getLastPhotoLocation,
   setPhotoAnnotateCallback,
   setPhotoPickerCallback,
 } from '../lib/photoPickerBus';
 
-export interface PhotoWithLocation {
+export interface PickedPhoto {
   uri: string;
   timestamp: Date;
-  location: PhotoLocation | null;
 }
 
 /**
- * Hook for all photo-pick flows.
+ * Hook for all photo-pick flows. (Formerly `usePhotoWithLocation` — photo
+ * geotagging was dropped in 2026-06 with the location permission; payloads
+ * that still carry latitude/longitude/address columns now always receive null.)
  *
  * - `pickPhotoWithAnnotation` — the canonical SINGLE-photo entry point.
- *   Opens /photo-picker (live camera + gallery + GPS), then /photo-annotate.
+ *   Opens /photo-picker (live camera + gallery), then /photo-annotate.
  *   The annotation step is always presented; the user may save without drawing.
  *   Pass `skipAnnotate: true` for contexts where markup is not useful (incidents,
  *   certificates, qualifications). Returns one photo (or null).
@@ -31,7 +29,7 @@ export interface PhotoWithLocation {
  *   item/summary photos, answer photos, incident photos, project files). Opens
  *   /photo-picker in batch mode. A single live capture still annotates and returns
  *   one photo; a recent-strip / system-library batch skips annotation and returns
- *   all selected photos (sharing one location + timestamp). Returns `[]` if cancelled.
+ *   all selected photos (sharing one timestamp). Returns `[]` if cancelled.
  *   Callers should upload sequentially (or with a small concurrency cap) — never an
  *   unbounded Promise.all over many full-res photos.
  *
@@ -42,7 +40,7 @@ export interface PhotoWithLocation {
  *   direct ImagePicker access (only app/photo-picker.tsx and this hook may use
  *   ImagePicker directly; all other screens must call pickPhotoWithAnnotation).
  */
-export function usePhotoWithLocation() {
+export function usePhotoPicker() {
   const router = useRouter();
   const pickerTokenRef = useRef<number | null>(null);
   const annotateTokenRef = useRef<number | null>(null);
@@ -56,7 +54,7 @@ export function usePhotoWithLocation() {
   }, []);
 
   const pickPhotoWithAnnotation = useCallback(
-    (opts: { skipAnnotate?: boolean } = {}): Promise<PhotoWithLocation | null> => {
+    (opts: { skipAnnotate?: boolean } = {}): Promise<PickedPhoto | null> => {
       return new Promise((resolve) => {
         if (pickerTokenRef.current !== null) cancelPhotoPicker(pickerTokenRef.current);
         if (annotateTokenRef.current !== null) cancelPhotoAnnotate(annotateTokenRef.current);
@@ -68,17 +66,15 @@ export function usePhotoWithLocation() {
           const uri = uris && uris.length > 0 ? uris[0] : null;
           if (!uri) { resolve(null); return; }
 
-          const location = getLastPhotoLocation();
-
           if (opts.skipAnnotate) {
-            resolve({ uri, timestamp: new Date(), location });
+            resolve({ uri, timestamp: new Date() });
             return;
           }
 
           annotateTokenRef.current = setPhotoAnnotateCallback((annotatedUri) => {
             annotateTokenRef.current = null;
             // If user cancels the annotator, fall back to the raw URI.
-            resolve({ uri: annotatedUri ?? uri, timestamp: new Date(), location });
+            resolve({ uri: annotatedUri ?? uri, timestamp: new Date() });
           });
 
           router.replace(
@@ -100,11 +96,11 @@ export function usePhotoWithLocation() {
    *   - a single shutter capture keeps the annotate step (unless `skipAnnotate`)
    *     and resolves with one photo;
    *   - a strip/library batch skips annotation and resolves with all of them,
-   *     sharing one location + timestamp for the whole batch.
+   *     sharing one timestamp for the whole batch.
    * Resolves with `[]` when cancelled.
    */
   const pickPhotosWithAnnotation = useCallback(
-    (opts: { skipAnnotate?: boolean } = {}): Promise<PhotoWithLocation[]> => {
+    (opts: { skipAnnotate?: boolean } = {}): Promise<PickedPhoto[]> => {
       return new Promise((resolve) => {
         if (pickerTokenRef.current !== null) cancelPhotoPicker(pickerTokenRef.current);
         if (annotateTokenRef.current !== null) cancelPhotoAnnotate(annotateTokenRef.current);
@@ -113,7 +109,6 @@ export function usePhotoWithLocation() {
           pickerTokenRef.current = null;
           if (!uris || uris.length === 0) { resolve([]); return; }
 
-          const location = getLastPhotoLocation();
           const timestamp = new Date();
           const fromCapture = getLastPhotoFromCapture();
 
@@ -123,7 +118,7 @@ export function usePhotoWithLocation() {
             const captured = uris[0];
             annotateTokenRef.current = setPhotoAnnotateCallback((annotatedUri) => {
               annotateTokenRef.current = null;
-              resolve([{ uri: annotatedUri ?? captured, timestamp, location }]);
+              resolve([{ uri: annotatedUri ?? captured, timestamp }]);
             });
             router.replace(
               `/photo-annotate?uri=${encodeURIComponent(captured)}` as never,
@@ -131,7 +126,7 @@ export function usePhotoWithLocation() {
             return;
           }
 
-          resolve(uris.map((uri) => ({ uri, timestamp, location })));
+          resolve(uris.map((uri) => ({ uri, timestamp })));
         });
 
         router.push(
@@ -143,7 +138,7 @@ export function usePhotoWithLocation() {
   );
 
   const pickPhotoWithAnnotationFromUri = useCallback(
-    (sourceUri: string, location: PhotoLocation | null): Promise<string | null> => {
+    (sourceUri: string): Promise<string | null> => {
       return new Promise((resolve) => {
         if (annotateTokenRef.current !== null) cancelPhotoAnnotate(annotateTokenRef.current);
 
@@ -155,10 +150,6 @@ export function usePhotoWithLocation() {
         router.push(
           `/photo-annotate?uri=${encodeURIComponent(sourceUri)}` as never,
         );
-
-        // location is available to the caller immediately via closure if needed;
-        // the annotate screen doesn't need it.
-        void location;
       });
     },
     [router],
@@ -167,25 +158,21 @@ export function usePhotoWithLocation() {
   const takePhoto = useCallback(
     async (
       options: Partial<ImagePicker.ImagePickerOptions> = {},
-    ): Promise<PhotoWithLocation | null> => {
+    ): Promise<PickedPhoto | null> => {
       const perm = await ImagePicker.requestCameraPermissionsAsync();
       if (!perm.granted) return null;
 
-      const [result, location] = await Promise.all([
-        ImagePicker.launchCameraAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          quality: 0.8,
-          ...options,
-        }),
-        getCurrentLocation(),
-      ]);
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.8,
+        ...options,
+      });
 
       if (result.canceled || !result.assets?.[0]) return null;
 
       return {
         uri: result.assets[0].uri,
         timestamp: new Date(),
-        location,
       };
     },
     [],
@@ -194,7 +181,7 @@ export function usePhotoWithLocation() {
   const pickPhoto = useCallback(
     async (
       options: Partial<ImagePicker.ImagePickerOptions> = {},
-    ): Promise<PhotoWithLocation | null> => {
+    ): Promise<PickedPhoto | null> => {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) return null;
 
@@ -206,12 +193,9 @@ export function usePhotoWithLocation() {
 
       if (result.canceled || !result.assets?.[0]) return null;
 
-      const location = await getCurrentLocation();
-
       return {
         uri: result.assets[0].uri,
         timestamp: new Date(),
-        location,
       };
     },
     [],
@@ -220,7 +204,7 @@ export function usePhotoWithLocation() {
   const pickMultiplePhotos = useCallback(
     async (
       options: Partial<ImagePicker.ImagePickerOptions> = {},
-    ): Promise<PhotoWithLocation[]> => {
+    ): Promise<PickedPhoto[]> => {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) return [];
 
@@ -233,13 +217,11 @@ export function usePhotoWithLocation() {
 
       if (result.canceled || !result.assets?.length) return [];
 
-      const location = await getCurrentLocation();
       const timestamp = new Date();
 
       return result.assets.map(a => ({
         uri: a.uri,
         timestamp,
-        location,
       }));
     },
     [],

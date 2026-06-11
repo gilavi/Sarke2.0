@@ -26,7 +26,7 @@ import { inspectionAttachmentsApi } from '../lib/services';
 import { ATTACHMENT_TYPE_PRESETS, type InspectionAttachment } from '../types/models';
 import { useTheme } from '../lib/theme';
 import { useToast } from '../lib/toast';
-import { usePhotoWithLocation } from '../hooks/usePhotoWithLocation';
+import { usePhotoPicker } from '../hooks/usePhotoPicker';
 import { friendlyError } from '../lib/errorMap';
 import { haptic } from '../lib/haptics';
 import { imageForDisplay } from '../lib/imageUrl';
@@ -182,7 +182,7 @@ function CertEditView({
 }) {
   const { theme } = useTheme();
   const toast = useToast();
-  const { pickPhoto: pickPhotoFromLibrary } = usePhotoWithLocation();
+  const { pickPhoto: pickPhotoFromLibrary } = usePhotoPicker();
   const [type, setType] = useState<string>(existing?.cert_type ?? ATTACHMENT_TYPE_PRESETS[0]);
   const [customType, setCustomType] = useState<string>(
     existing && !ATTACHMENT_TYPE_PRESETS.includes(existing.cert_type as any)

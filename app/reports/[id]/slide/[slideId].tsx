@@ -24,7 +24,7 @@ import { STORAGE_BUCKETS } from '../../../../lib/supabase';
 import { imageForDisplay } from '../../../../lib/imageUrl';
 import { qk } from '../../../../lib/apiHooks';
 import { useQueryClient } from '@tanstack/react-query';
-import { usePhotoWithLocation } from '../../../../hooks/usePhotoWithLocation';
+import { usePhotoPicker } from '../../../../hooks/usePhotoPicker';
 import type { Report, ReportSlide } from '../../../../types/models';
 
 export default function ReportSlideEditor() {
@@ -36,7 +36,7 @@ export default function ReportSlideEditor() {
   const showSheet = useBottomSheet();
   const queryClient = useQueryClient();
   const { id, slideId } = useLocalSearchParams<{ id: string; slideId: string }>();
-  const { pickPhotoWithAnnotation, pickPhotoWithAnnotationFromUri } = usePhotoWithLocation();
+  const { pickPhotoWithAnnotation, pickPhotoWithAnnotationFromUri } = usePhotoPicker();
 
   const [report, setReport] = useState<Report | null>(null);
   const [slide, setSlide] = useState<ReportSlide | null>(null);
@@ -128,7 +128,7 @@ export default function ReportSlideEditor() {
     setImageUploading(true);
     try {
       const signed = await imageForDisplay(STORAGE_BUCKETS.reportPhotos, path);
-      const annotatedUri = await pickPhotoWithAnnotationFromUri(signed, null);
+      const annotatedUri = await pickPhotoWithAnnotationFromUri(signed);
       if (annotatedUri) {
         const newPath = await uploadLocalUri(annotatedUri, 'annotated');
         if (newPath) setImagePath(newPath);

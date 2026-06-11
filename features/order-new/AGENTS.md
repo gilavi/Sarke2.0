@@ -67,6 +67,6 @@ Backs the `app/orders/new.tsx` route.
 - `lib/supabase` — `STORAGE_BUCKETS`.
 - `lib/theme`, `lib/toast`, `lib/session`, `lib/logError`,
   `lib/errorMap`.
-- `hooks/usePhotoWithLocation` — photo picker for crane cert images.
+- `hooks/usePhotoPicker` — photo picker for crane cert images.
 - `components/ui` — `Button`; `components/inspection-parts` — `QualDoc`;
   `components/SignatureCanvas`.

@@ -112,5 +112,4 @@ captured on the **inspection result screen** post-completion (via
 - `lib/navigationGuard` — `isOscillating`, `recordRedirect`.
 - `lib/calendarSchedule` — `recordCompletion`.
 - `lib/apiHooks` — `qk` (cache key roots).
-- `lib/photoLocationAlert` — `showPhotoLocationAlert`.
-- `hooks/usePhotoWithLocation` — `pickPhotosWithAnnotation` (answer photos are a gallery; supports multi-select).
+- `hooks/usePhotoPicker` — `pickPhotosWithAnnotation` (answer photos are a gallery; supports multi-select). Geotagging + the photo-location alert were removed 2026-06; photo payload lat/lon/address are always null.

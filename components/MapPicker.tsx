@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState , useMemo} from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import {
-  ActivityIndicator,
   Pressable,
   StyleSheet,
   TextInput,
@@ -9,10 +8,8 @@ import {
 import { A11yText as Text } from './primitives/A11yText';
 import MapView, { Marker, type Region, PROVIDER_DEFAULT } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
-import * as Location from 'expo-location';
 import { useTheme } from '../lib/theme';
 
-import { logError } from '../lib/logError';
 import { a11y } from '../lib/accessibility';
 
 export type LatLng = { latitude: number; longitude: number };
@@ -47,31 +44,6 @@ export function MapPicker({ value, onChange, address, onAddressChange, height = 
   const styles = useMemo(() => getstyles(theme), [theme]);
 
   const mapRef = useRef<MapView | null>(null);
-  const [searching, setSearching] = useState(false);
-  const [searchError, setSearchError] = useState<string | null>(null);
-  const [hasLocationPermission, setHasLocationPermission] = useState<boolean | null>(null);
-  const [userLocation, setUserLocation] = useState<LatLng | null>(null);
-  // Strings we wrote into `address` ourselves (via reverse-geocode) — don't
-  // re-forward-geocode them or we ping-pong: pin → text → pin → text.
-  const skipNextSearch = useRef<string | null>(null);
-  // Track the last query we actually geocoded so we don't repeat work as the
-  // user types past a string we already looked up.
-  const lastGeocoded = useRef<string>('');
-
-  // Request location permission before map mount
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (cancelled) return;
-      setHasLocationPermission(status === 'granted');
-      if (status === 'granted') {
-        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-        setUserLocation({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
 
   // When `value` changes from outside, animate the map to it.
   useEffect(() => {
@@ -80,70 +52,16 @@ export function MapPicker({ value, onChange, address, onAddressChange, height = 
     }
   }, [value]);
 
-  const reverseGeocode = async (coord: LatLng) => {
-    try {
-      const results = await Location.reverseGeocodeAsync(coord);
-      if (!results.length) return;
-      const r = results[0];
-      const parts = [r.street, r.name, r.city, r.region]
-        .filter((p): p is string => !!p && p !== r.street);
-      const formatted = [r.street, ...parts].filter(Boolean).join(', ');
-      if (formatted) {
-        skipNextSearch.current = formatted;
-        lastGeocoded.current = formatted;
-        onAddressChange(formatted);
-      }
-    } catch (e) {
-      logError(e, 'MapPicker.reverseGeocode');
-    }
-  };
-
+  // Geocoding was removed with the expo-location dependency (2026-06 —
+  // location permission dropped app-wide). The address field is plain text;
+  // the pin is set by tapping/dragging the map.
   const handleMapPress = (e: { nativeEvent: { coordinate: LatLng } }) => {
     onChange(e.nativeEvent.coordinate);
-    void reverseGeocode(e.nativeEvent.coordinate);
   };
 
   const handleDragEnd = (e: { nativeEvent: { coordinate: LatLng } }) => {
     onChange(e.nativeEvent.coordinate);
-    void reverseGeocode(e.nativeEvent.coordinate);
   };
-
-  const runSearch = async (q: string) => {
-    setSearching(true);
-    setSearchError(null);
-    try {
-      const results = await Location.geocodeAsync(q);
-      if (!results.length) {
-        setSearchError('მისამართი ვერ მოიძებნა');
-        return;
-      }
-      const { latitude, longitude } = results[0];
-      onChange({ latitude, longitude });
-    } catch (e) {
-      logError(e, 'MapPicker.geocode');
-      setSearchError('ძებნა ვერ მოხერხდა');
-    } finally {
-      setSearching(false);
-    }
-  };
-
-  // Debounced auto-geocode as the user types. Skips strings we just wrote
-  // ourselves from reverse-geocoding, and skips repeats / very short input.
-  useEffect(() => {
-    const q = (address ?? '').trim();
-    if (q.length < 3) return;
-    if (skipNextSearch.current === address) {
-      skipNextSearch.current = null;
-      return;
-    }
-    if (q === lastGeocoded.current) return;
-    const handle = setTimeout(() => {
-      lastGeocoded.current = q;
-      void runSearch(q);
-    }, 600);
-    return () => clearTimeout(handle);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [address]);
 
   const initialRegion: Region = value
     ? { ...value, ...PIN_DELTA }
@@ -152,22 +70,15 @@ export function MapPicker({ value, onChange, address, onAddressChange, height = 
   return (
     <View style={styles.wrap}>
       <View style={styles.searchRow}>
-        <Ionicons name="search" size={16} color={theme.colors.inkFaint} />
+        <Ionicons name="location-outline" size={16} color={theme.colors.inkFaint} />
         <TextInput
           value={address}
-          onChangeText={(t) => {
-            onAddressChange(t);
-            if (searchError) setSearchError(null);
-          }}
+          onChangeText={onAddressChange}
           placeholder="მისამართი"
           placeholderTextColor={theme.colors.inkFaint}
           style={styles.searchInput}
         />
-        {searching ? <ActivityIndicator size="small" color={theme.colors.accent} /> : null}
       </View>
-      {searchError ? (
-        <Text style={styles.searchErr}>{searchError}</Text>
-      ) : null}
       <View style={[styles.mapWrap, { height }]} collapsable={false}>
         <MapView
           ref={mapRef}
@@ -183,13 +94,6 @@ export function MapPicker({ value, onChange, address, onAddressChange, height = 
               draggable
               onDragEnd={handleDragEnd}
               pinColor={theme.colors.accent}
-            />
-          ) : null}
-          {hasLocationPermission && userLocation && !value ? (
-            <Marker
-              coordinate={userLocation}
-              pinColor="#007AFF"
-              title="შენი მდებარეობა"
             />
           ) : null}
         </MapView>

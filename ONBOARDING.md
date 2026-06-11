@@ -237,7 +237,7 @@ Never informal: `შეიყვანე`, `აირჩიე`, `დააჭ�
 | Keyboard (regular screens) | `components/KeyboardSafeArea.tsx` | Wraps content, handles keyboard avoidance |
 | Keyboard (bottom sheets) | `lib/useSheetKeyboardMargin.ts` | Hook for modal-based sheets |
 | Image for display | canonical helper in `lib/` | Do not add new image helpers |
-| Photo + location | `hooks/usePhotoWithLocation.ts` | ImagePicker + GPS |
+| Photo picking | `hooks/usePhotoPicker.ts` | ImagePicker flows (geotagging removed 2026-06) |
 | PDF embed photo | `lib/pdfShared.ts` → `embedInspectionPhotos` | Resizes + base64 encodes for PDF |
 | Storage bucket names | `STORAGE_BUCKETS` constant | Never hardcode bucket strings |
 

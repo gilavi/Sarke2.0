@@ -30,7 +30,7 @@ import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SuggestionPills } from '../../../components/SuggestionPills';
 import { useFieldHistory } from '../../../hooks/useFieldHistory';
-import { usePhotoWithLocation } from '../../../hooks/usePhotoWithLocation';
+import { usePhotoPicker } from '../../../hooks/usePhotoPicker';
 import { CelebrationBurst } from '../../../components/animations';
 import {
   buildDefaultEquipmentRow,
@@ -51,7 +51,7 @@ const TOTAL_STEPS     = 4;
 export default function GeneralEquipmentScreen() {
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
-  const { pickPhotosWithAnnotation } = usePhotoWithLocation();
+  const { pickPhotosWithAnnotation } = usePhotoPicker();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const toast = useToast();

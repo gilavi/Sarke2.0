@@ -27,7 +27,7 @@ import { SubscriptionNotice } from '../../../components/SubscriptionNotice';
 import { useInspectionFlow } from '../../../lib/inspection/useInspectionFlow';
 import { SuggestionPills } from '../../../components/SuggestionPills';
 import { useFieldHistory } from '../../../hooks/useFieldHistory';
-import { usePhotoWithLocation } from '../../../hooks/usePhotoWithLocation';
+import { usePhotoPicker } from '../../../hooks/usePhotoPicker';
 import { useSession } from '../../../lib/session';
 import { friendlyError } from '../../../lib/errorMap';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -66,7 +66,7 @@ export default function BobcatInspectionScreen() {
   const toast = useToast();
   const session = useSession();
 
-  const { pickPhotosWithAnnotation } = usePhotoWithLocation();
+  const { pickPhotosWithAnnotation } = usePhotoPicker();
 
   const userId = session?.state?.status === 'signedIn' ? session.state.session.user.id : null;
 
