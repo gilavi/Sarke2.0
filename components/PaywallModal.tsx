@@ -146,7 +146,7 @@ export function PaywallModal({ visible, onClose }: Props) {
 
           {/* Price */}
           <View style={s.priceBlock}>
-            <Text style={s.price}>₾19 / თვეში</Text>
+            <Text style={s.price}>₾1 / თვეში</Text>
             <Text style={s.priceNote}>გამოწერის გაუქმება ნებისმიერ დროს</Text>
           </View>
         </ScrollView>

@@ -138,7 +138,7 @@ export default function Subscribe() {
               </ul>
 
               <div className="border-t border-neutral-200 pt-4 text-center">
-                <div className="font-display text-4xl font-bold text-neutral-900">₾19</div>
+                <div className="font-display text-4xl font-bold text-neutral-900">₾1</div>
                 <div className="mt-1 text-sm text-neutral-500">თვეში</div>
                 <div className="mt-2 text-xs text-neutral-500">გამოწერის გაუქმება ნებისმიერ დროს</div>
               </div>
@@ -153,7 +153,7 @@ export default function Subscribe() {
                 ) : payStatus === 'redirecting' ? (
                   <span className="flex items-center justify-center gap-2"><Spinner /> გადამისამართება…</span>
                 ) : (
-                  'გადახდა ₾19'
+                  'გადახდა ₾1'
                 )}
               </Button>
 

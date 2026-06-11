@@ -92,11 +92,11 @@ Deno.serve(async (req) => {
         external_order_id: user.id,
         purchase_units: {
           currency: 'GEL',
-          total_amount: 19,
+          total_amount: 1,
           basket: [
             {
               quantity: 1,
-              unit_price: 19,
+              unit_price: 1,
               product_id: 'sarke_pro_monthly',
               description: 'Hubble Pro — ყოველთვიური გამოწერა',
             },
