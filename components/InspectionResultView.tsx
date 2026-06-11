@@ -5,7 +5,7 @@
 // full-width green Download button. The caller is responsible for building
 // the preview HTML (each flow has its own PDF builder) and for the actual
 // download action — this component only owns the UI shell, the
-// certificates action sheet, the signatures modal + state, and the paywall
+// certificates action sheet, the signatures modal + state, and the limit-notice
 // modal.
 //
 // Signatures are owned here, not by the wizard. `useSignaturesState` lives
@@ -33,7 +33,7 @@ import { A11yText as Text } from './primitives/A11yText';
 import { Screen } from './ui';
 import { CertificatesActionSheet } from './CertificatesActionSheet';
 import { useBottomSheet } from './BottomSheet';
-import { PaywallModal } from './PaywallModal';
+import { SubscriptionNotice } from './SubscriptionNotice';
 import { useTheme } from '../lib/theme';
 import {
   SignaturesScreen,
@@ -61,11 +61,11 @@ type Props = {
    */
   hideSheets?: boolean;
   downloading?: boolean;
-  paywallVisible: boolean;
+  limitNoticeVisible: boolean;
   /** Inspection creator's full name, pulled from the user profile by the
    *  parent. Shown above the signature canvas; never editable here. */
   creatorName: string;
-  onPaywallClose: () => void;
+  onLimitNoticeClose: () => void;
   /** Tap handler for the green download button. Receives the current
    *  signatures snapshot; the parent passes it into its PDF builder. */
   onDownloadPdf: (signatures: SignaturesSnapshot) => void;
@@ -85,9 +85,9 @@ export function InspectionResultView(props: Props) {
     pdfLocked,
     hideSheets,
     downloading,
-    paywallVisible,
+    limitNoticeVisible,
     creatorName,
-    onPaywallClose,
+    onLimitNoticeClose,
     onDownloadPdf,
     onSheetSaved,
   } = props;
@@ -213,7 +213,7 @@ export function InspectionResultView(props: Props) {
         </View>
       </View>
 
-      <PaywallModal visible={paywallVisible} onClose={onPaywallClose} />
+      <SubscriptionNotice visible={limitNoticeVisible} onClose={onLimitNoticeClose} />
 
       <SignaturesScreen
         visible={signaturesOpen}

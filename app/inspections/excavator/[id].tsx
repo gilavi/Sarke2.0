@@ -28,7 +28,7 @@ import { STORAGE_BUCKETS } from '../../../lib/supabase';
 
 import { excavatorSchema } from '../../../lib/inspection/schemas/excavator';
 import { useInspectionFlow } from '../../../lib/inspection/useInspectionFlow';
-import { PaywallModal } from '../../../components/PaywallModal';
+import { SubscriptionNotice } from '../../../components/SubscriptionNotice';
 import { PdfLockedBanner } from '../../../components/PdfLockedBanner';
 import { friendlyError } from '../../../lib/errorMap';
 import { a11y } from '../../../lib/accessibility';
@@ -131,7 +131,7 @@ export default function ExcavatorInspectionScreen() {
     saving, loading, completing, celebrating, generatingPdf,
     previewHtml, previewBusy,
     step, setStep, direction, animateSteps,
-    paywallVisible, setPaywallVisible, pdfLocked,
+    limitNoticeVisible, setLimitNoticeVisible, pdfLocked,
     update, scheduleSave,
     complete, handlePdf, buildPreview, exit, creatorName,
   } = useInspectionFlow<ExcavatorInspection>({
@@ -444,8 +444,8 @@ export default function ExcavatorInspectionScreen() {
         attachmentCount={attachmentCount}
         pdfLocked={pdfLocked}
         downloading={generatingPdf}
-        paywallVisible={paywallVisible}
-        onPaywallClose={() => setPaywallVisible(false)}
+        limitNoticeVisible={limitNoticeVisible}
+        onLimitNoticeClose={() => setLimitNoticeVisible(false)}
         creatorName={creatorName}
         onDownloadPdf={(sig) => void handlePdf(sig)}
         onSheetSaved={() => {
@@ -594,8 +594,8 @@ export default function ExcavatorInspectionScreen() {
         )}
       </InspectionShell>
 
-      {pdfLocked && <PdfLockedBanner onSubscribe={() => setPaywallVisible(true)} />}
-      <PaywallModal visible={paywallVisible} onClose={() => setPaywallVisible(false)} />
+      {pdfLocked && <PdfLockedBanner onDetails={() => setLimitNoticeVisible(true)} />}
+      <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
       {celebrating && (
         <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
           <CelebrationBurst />

@@ -23,7 +23,7 @@ import { inspectionAttachmentsApi } from '../../../lib/services';
 import { imageForDisplay } from '../../../lib/imageUrl';
 import { generalEquipmentSchema } from '../../../lib/inspection/schemas/generalEquipment';
 import { useInspectionFlow } from '../../../lib/inspection/useInspectionFlow';
-import { PaywallModal } from '../../../components/PaywallModal';
+import { SubscriptionNotice } from '../../../components/SubscriptionNotice';
 import { friendlyError } from '../../../lib/errorMap';
 import { a11y } from '../../../lib/accessibility';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
@@ -75,7 +75,7 @@ export default function GeneralEquipmentScreen() {
     saving, loading, completing, celebrating, generatingPdf,
     previewHtml, previewBusy,
     step, setStep, direction, animateSteps,
-    paywallVisible, setPaywallVisible, pdfLocked,
+    limitNoticeVisible, setLimitNoticeVisible, pdfLocked,
     update, scheduleSave,
     complete, handlePdf, buildPreview, exit, creatorName,
   } = useInspectionFlow<GeneralEquipmentInspection>({
@@ -291,8 +291,8 @@ export default function GeneralEquipmentScreen() {
         attachmentCount={attachmentCount}
         pdfLocked={pdfLocked}
         downloading={generatingPdf}
-        paywallVisible={paywallVisible}
-        onPaywallClose={() => setPaywallVisible(false)}
+        limitNoticeVisible={limitNoticeVisible}
+        onLimitNoticeClose={() => setLimitNoticeVisible(false)}
         creatorName={creatorName}
         onDownloadPdf={(sig) => void handlePdf(sig)}
         onSheetSaved={() => {
@@ -485,7 +485,7 @@ export default function GeneralEquipmentScreen() {
         )}
       </InspectionShell>
 
-      <PaywallModal visible={paywallVisible} onClose={() => setPaywallVisible(false)} />
+      <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
       {celebrating && (
         <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
           <CelebrationBurst />

@@ -26,7 +26,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { cargoPlatformApi } from '../../../lib/cargoPlatformService';
 import { cargoPlatformSchema } from '../../../lib/inspection/schemas/cargoPlatform';
 import { useInspectionFlow } from '../../../lib/inspection/useInspectionFlow';
-import { PaywallModal } from '../../../components/PaywallModal';
+import { SubscriptionNotice } from '../../../components/SubscriptionNotice';
 import { PdfLockedBanner } from '../../../components/PdfLockedBanner';
 import { friendlyError } from '../../../lib/errorMap';
 import { a11y } from '../../../lib/accessibility';
@@ -104,14 +104,14 @@ export default function CargoPlatformInspectionScreen() {
   const { pickPhotosWithAnnotation } = usePhotoWithLocation();
 
   // Shared orchestration: loading, step+persist, autosave, complete, celebration,
-  // PDF preview/download, paywall. Type-specific bits are passed as callbacks so
+  // PDF preview/download, limit notice. Type-specific bits are passed as callbacks so
   // behaviour matches the pre-refactor screen exactly.
   const {
     inspection, setInspection, inspectionRef,
     projectName, saving, loading, completing, celebrating, generatingPdf,
     previewHtml, previewBusy,
     step, setStep, direction, animateSteps,
-    paywallVisible, setPaywallVisible, pdfLocked,
+    limitNoticeVisible, setLimitNoticeVisible, pdfLocked,
     update, scheduleSave,
     complete, handlePdf, buildPreview, exit, creatorName,
   } = useInspectionFlow<CargoPlatformInspection>({
@@ -348,8 +348,8 @@ export default function CargoPlatformInspectionScreen() {
         attachmentCount={0}
         pdfLocked={pdfLocked}
         downloading={generatingPdf}
-        paywallVisible={paywallVisible}
-        onPaywallClose={() => setPaywallVisible(false)}
+        limitNoticeVisible={limitNoticeVisible}
+        onLimitNoticeClose={() => setLimitNoticeVisible(false)}
         creatorName={creatorName}
         onDownloadPdf={(sig) => void handlePdf(sig)}
         onSheetSaved={() => void buildPreview()}
@@ -391,7 +391,7 @@ export default function CargoPlatformInspectionScreen() {
 
       {saving && <Text style={styles.savingHint}>შენახვა…</Text>}
 
-      {pdfLocked && <PdfLockedBanner onSubscribe={() => setPaywallVisible(true)} />}
+      {pdfLocked && <PdfLockedBanner onDetails={() => setLimitNoticeVisible(true)} />}
 
       <View style={{ flex: 1 }}>
         <WizardStepTransition stepKey={step} direction={direction} animate={animateSteps}>
@@ -639,7 +639,7 @@ export default function CargoPlatformInspectionScreen() {
         </View>
       </View>
 
-      <PaywallModal visible={paywallVisible} onClose={() => setPaywallVisible(false)} />
+      <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
       {celebrating && (
         <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
           <CelebrationBurst />

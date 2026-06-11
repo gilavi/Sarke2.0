@@ -28,7 +28,6 @@ import { useToast } from '../../lib/toast';
 import { useTheme, type Theme } from '../../lib/theme';
 import { CustomDropdown } from '../../components/ui/CustomDropdown';
 import { usePdfUsage, useInvalidatePdfUsage, type PdfUsage } from '../../lib/usePdfUsage';
-import { PaywallModal } from '../../components/PaywallModal';
 import { formatShortDate } from '../../lib/formatDate';
 import { supabase } from '../../lib/supabase';
 
@@ -50,7 +49,6 @@ export default function MoreScreen() {
   const toast = useToast();
   const [langPickerOpen, setLangPickerOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
-  const [paywallVisible, setPaywallVisible] = useState(false);
   const signingOutGuard = useRef(false);
   const pdfUsage = usePdfUsage().data;
   const countsQ = useInspectionCounts();
@@ -133,11 +131,8 @@ export default function MoreScreen() {
           </View>
         </Card>
 
-        {/* Subscription management */}
-        <SubscriptionSection
-          pdfUsage={pdfUsage}
-          onOpenPaywall={() => setPaywallVisible(true)}
-        />
+        {/* Subscription status (read-only — no purchase UI, Apple guideline 3.1.1) */}
+        <SubscriptionSection pdfUsage={pdfUsage} />
 
         {/* Payment history */}
         <PaymentHistoryCard records={paymentHistoryQ.data ?? []} loading={paymentHistoryQ.isLoading} />
@@ -256,7 +251,6 @@ export default function MoreScreen() {
           </Pressable>
         </Card>
       </ScrollView>
-      <PaywallModal visible={paywallVisible} onClose={() => setPaywallVisible(false)} />
     </SafeAreaView>
   );
 }
@@ -333,13 +327,7 @@ function PaymentHistoryCard({
 
 // ───────── SUBSCRIPTION SECTION ─────────
 
-function SubscriptionSection({
-  pdfUsage,
-  onOpenPaywall,
-}: {
-  pdfUsage: PdfUsage | undefined;
-  onOpenPaywall: () => void;
-}) {
+function SubscriptionSection({ pdfUsage }: { pdfUsage: PdfUsage | undefined }) {
   const { theme } = useTheme();
   const toast = useToast();
   const s = useMemo(() => getStyles(theme), [theme]);
@@ -444,15 +432,6 @@ function SubscriptionSection({
             </View>
             <ProgressBar value={count} max={limit} locked />
           </View>
-
-          {/* Renew button */}
-          <Pressable
-            style={({ pressed }) => [s.proBtn, pressed && { opacity: 0.85 }]}
-            onPress={onOpenPaywall}
-            {...a11y('განახლება', 'გამოწერის განახლება', 'button')}
-          >
-            <Text style={s.proBtnText}>განახლება ₾19/თვე</Text>
-          </Pressable>
         </Card>
       ) : (
         /* free */
@@ -466,15 +445,6 @@ function SubscriptionSection({
           </View>
 
           <ProgressBar value={count} max={limit} locked={count >= limit} />
-
-          {/* Upgrade button */}
-          <Pressable
-            style={({ pressed }) => [s.proBtn, pressed && { opacity: 0.85 }]}
-            onPress={onOpenPaywall}
-            {...a11y('PRO-ზე გადასვლა', 'Hubble Pro-ს გამოწერა', 'button')}
-          >
-            <Text style={s.proBtnText}>PRO-ზე გადასვლა ₾19/თვე</Text>
-          </Pressable>
         </Card>
       )}
     </View>
@@ -645,17 +615,6 @@ function getStyles(theme: Theme) {
       fontSize: 13,
       fontWeight: '700',
       color: theme.colors.warn,
-    },
-    proBtn: {
-      backgroundColor: theme.colors.accent,
-      borderRadius: 10,
-      paddingVertical: 13,
-      alignItems: 'center' as const,
-    },
-    proBtnText: {
-      color: theme.colors.white,
-      fontSize: 15,
-      fontWeight: '700',
     },
     emptyScaffold: {
       alignItems: 'center' as const,

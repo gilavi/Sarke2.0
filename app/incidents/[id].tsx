@@ -11,7 +11,7 @@ import {
 import { Image } from 'expo-image';
 import { generateAndSharePdf, PdfLimitReachedError } from '../../lib/pdfOpen';
 import { hashPdf } from '../../lib/pdfSecurity';
-import { PaywallModal } from '../../components/PaywallModal';
+import { SubscriptionNotice } from '../../components/SubscriptionNotice';
 import { usePdfUsage, useInvalidatePdfUsage } from '../../lib/usePdfUsage';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -82,7 +82,7 @@ export default function IncidentDetail() {
   const [photoDisplayUrls, setPhotoDisplayUrls] = useState<string[]>([]);
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [pdfPhase, setPdfPhase] = useState<string | null>(null);
-  const [paywallVisible, setPaywallVisible] = useState(false);
+  const [limitNoticeVisible, setLimitNoticeVisible] = useState(false);
   const { data: pdfUsage } = usePdfUsage();
   const invalidatePdfUsage = useInvalidatePdfUsage();
 
@@ -137,7 +137,7 @@ export default function IncidentDetail() {
 
   const generatePdf = async () => {
     if (!incident || !project) return;
-    if (pdfUsage?.isLocked) { setPaywallVisible(true); return; }
+    if (pdfUsage?.isLocked) { setLimitNoticeVisible(true); return; }
     setGeneratingPdf(true);
     setPdfPhase('მზადდება...');
     try {
@@ -216,7 +216,7 @@ export default function IncidentDetail() {
         toast.success('PDF შექმნილია');
       }
     } catch (e) {
-      if (e instanceof PdfLimitReachedError) { setPaywallVisible(true); return; }
+      if (e instanceof PdfLimitReachedError) { setLimitNoticeVisible(true); return; }
       toast.error(friendlyError(e, 'PDF-ის შექმნა ვერ მოხერხდა'));
     } finally {
       setGeneratingPdf(false);
@@ -468,7 +468,7 @@ export default function IncidentDetail() {
           </View>
         ) : null}
       </View>
-      <PaywallModal visible={paywallVisible} onClose={() => setPaywallVisible(false)} />
+      <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
     </View>
   );
 }

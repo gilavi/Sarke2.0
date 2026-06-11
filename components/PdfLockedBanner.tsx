@@ -1,31 +1,34 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from './primitives/A11yText';
 import { useTheme } from '../lib/theme';
 
 interface Props {
-  onSubscribe: () => void;
+  onDetails: () => void;
 }
 
 /**
  * Inline amber banner shown at the top of screens when the user's PDF limit
- * is exhausted. Tapping the subscribe button opens the PaywallModal.
+ * is exhausted. Tapping the details button opens the SubscriptionNotice.
+ * Deliberately contains no purchase wording (Apple guideline 3.1.1).
  */
-export function PdfLockedBanner({ onSubscribe }: Props) {
+export function PdfLockedBanner({ onDetails }: Props) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const s = useMemo(() => makeStyles(theme), [theme]);
 
   return (
     <View style={s.banner}>
-      <Text style={s.label}>🔒 PDF ლიმიტი ამოიწურა · გამოიწერე პრო</Text>
+      <Text style={s.label}>{`🔒 ${t('components.pdfLockedBanner.label')}`}</Text>
       <Pressable
-        onPress={onSubscribe}
+        onPress={onDetails}
         style={({ pressed }) => [s.btn, pressed && s.pressed]}
         accessibilityRole="button"
-        accessibilityLabel="გამოწერა"
+        accessibilityLabel={t('components.pdfLockedBanner.details')}
         hitSlop={8}
       >
-        <Text style={s.btnText}>გამოწერა →</Text>
+        <Text style={s.btnText}>{t('components.pdfLockedBanner.details')}</Text>
       </Pressable>
     </View>
   );

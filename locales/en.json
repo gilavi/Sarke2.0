@@ -604,6 +604,15 @@
     "signatureAlt": "Signature"
   },
   "components": {
+    "subscriptionNotice": {
+      "title": "Free limit reached",
+      "body": "Subscriptions can't be purchased in the app.",
+      "usage": "PDF: {{used}} / {{limit}}"
+    },
+    "pdfLockedBanner": {
+      "label": "PDF limit reached",
+      "details": "Details"
+    },
     "statusBadgePass": "Safe",
     "statusBadgeFail": "Not safe",
     "statusBadgePending": "Pending",

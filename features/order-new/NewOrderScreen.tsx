@@ -11,7 +11,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { FlowHeader } from '../../components/FlowHeader';
 import { Button } from '../../components/ui';
 import { KeyboardSafeArea } from '../../components/layout/KeyboardSafeArea';
-import { PaywallModal } from '../../components/PaywallModal';
+import { SubscriptionNotice } from '../../components/SubscriptionNotice';
 
 import { useTheme } from '../../lib/theme';
 import { useSession } from '../../lib/session';
@@ -113,7 +113,7 @@ export default function NewOrderScreen() {
   const [form, setForm] = useState<CombinedForm>(INITIAL_FORM);
   const [project, setProject] = useState<Project | null>(null);
   const [saving, setSaving] = useState(false);
-  const [paywallVisible, setPaywallVisible] = useState(false);
+  const [limitNoticeVisible, setLimitNoticeVisible] = useState(false);
   const [photoSessionId] = useState(() => Crypto.randomUUID());
   const { pickPhotoWithAnnotation } = usePhotoWithLocation();
 
@@ -220,7 +220,7 @@ export default function NewOrderScreen() {
       toast.error('პროექტი ვერ მოიძებნა');
       return;
     }
-    if (pdfUsage?.isLocked) { setPaywallVisible(true); return; }
+    if (pdfUsage?.isLocked) { setLimitNoticeVisible(true); return; }
 
     // Validate signatures for types that require them
     if (isFireSafetyVariant(docType) && (!form.directorSignature || !form.appointedSignature)) {
@@ -286,7 +286,7 @@ export default function NewOrderScreen() {
         })();
       }
     } catch (e) {
-      if (e instanceof PdfLimitReachedError) { setPaywallVisible(true); return; }
+      if (e instanceof PdfLimitReachedError) { setLimitNoticeVisible(true); return; }
       toast.error(friendlyError(e, 'PDF-ის შექმნა ვერ მოხერხდა'));
       if (savedId) router.replace(`/orders/${savedId}/success` as any);
     } finally {
@@ -400,7 +400,7 @@ export default function NewOrderScreen() {
         )}
       </View>
 
-      <PaywallModal visible={paywallVisible} onClose={() => setPaywallVisible(false)} />
+      <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
     </View>
   );
 }

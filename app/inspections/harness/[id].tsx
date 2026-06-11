@@ -504,9 +504,9 @@ export default function HarnessInspectionScreen() {
         attachmentCount={0}
         pdfLocked={false}
         downloading={false}
-        paywallVisible={false}
+        limitNoticeVisible={false}
         creatorName={creatorName}
-        onPaywallClose={() => {}}
+        onLimitNoticeClose={() => {}}
         onDownloadPdf={() => {}}
         onSheetSaved={() => {}}
       />

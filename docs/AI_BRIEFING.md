@@ -9,7 +9,7 @@
 ## Core Facts
 
 **Project Type:** Expo (React Native) mobile inspection app + two web codebases  
-**Primary Language:** Georgian (ქართული) UI — all strings inline, no i18n file  
+**Primary Language:** Georgian (ქართული) UI — i18n via react-i18next (`locales/ka.json` + `locales/en.json`, `lib/i18n.ts`); ka is primary/fallback. Older screens still carry inline Georgian strings; new user-facing text goes through i18n  
 **Target Users:** Safety experts conducting equipment/scaffolding inspections on Georgian construction sites  
 **Backend:** Supabase (Postgres + Auth + Storage) — single project shared by all three frontends  
 **Architecture:** Feature-sliced. Modules live in `features/<name>/` with co-located `AGENTS.md` per folder; `app/` route files for large flows are thin orchestrators that re-export from `features/`.  
@@ -18,7 +18,7 @@
 **Function search_path:** All public Postgres functions have `SET search_path = public, pg_catalog`. Functions invoked from `auth.admin` operations run with restricted search_path and fail to resolve unqualified public-schema types without this pin — see migration `supabase/migrations/20260525180000_pin_function_search_paths.sql` for the precedent and the bug it fixed.
 **Signatures:** Single unified flow on the **inspection result screen** (post-completion). One creator signature (captured digitally, never persisted) + N empty hand-sign slots rendered in the PDF for printed-page signing. Captured base64 lives in component state only — never to Supabase storage, any DB column, AsyncStorage, MMKV, SecureStore, or the file system. See [`features/signatures/AGENTS.md`](../features/signatures/AGENTS.md) and the cleanup migration `supabase/migrations/20260526002032_remove_persisted_inspection_signatures.sql`.
 **Inspection identity:** All 10 inspection types share a parent row in `public.inspections` (keyed by UUID, `type` column tags the variant). Equipment-specific data lives in `<type>_inspections` with FK to the parent (ON DELETE CASCADE). Shared tables (`inspection_attachments`, etc.) FK to `inspections.id` only. New equipment creates go through the `create_equipment_inspection` RPC for the parent row + a regular insert for the equipment row. Migrations `20260527001240_unify_inspection_identity.sql` + `20260527001241_create_equipment_inspection_rpc.sql` (pending manual apply).
-**Payments:** BOG (Bank of Georgia) e-commerce subscription live with production keys as of 2026-06-11. Price is currently ₾1/month (test rate). Flow: mobile PaywallModal → `https://hubble.ge/app/#/subscribe` → `create-bog-order` Edge Function → BOG gateway → `bog-payment-callback` webhook. See [docs/payments.md](payments.md).  
+**Payments:** BOG (Bank of Georgia) e-commerce subscription live with production keys as of 2026-06-11. Price is currently ₾1/month (test rate). Purchasing is **web-only**: `https://hubble.ge/app/#/subscribe` → `create-bog-order` Edge Function → BOG gateway → `bog-payment-callback` webhook. The mobile app contains **no purchase UI** (Apple guideline 3.1.1 / Google Play — stripped 2026-06-12): at the free limit it shows the neutral `SubscriptionNotice` and auto-unlocks when `users.subscription_status` flips to `active` (`lib/usePdfUsage.ts`). See [docs/payments.md](payments.md).  
 **Source:** https://github.com/gilavi/Sarke2.0
 
 ---

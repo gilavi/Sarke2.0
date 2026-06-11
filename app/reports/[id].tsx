@@ -23,7 +23,7 @@ import { reportsApi } from '../../lib/services';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { pdfPhotoEmbed, imageForDisplay } from '../../lib/imageUrl';
 import { generateAndSharePdf, PdfLimitReachedError } from '../../lib/pdfOpen';
-import { PaywallModal } from '../../components/PaywallModal';
+import { SubscriptionNotice } from '../../components/SubscriptionNotice';
 import { usePdfUsage, useInvalidatePdfUsage } from '../../lib/usePdfUsage';
 import { buildReportPdfHtml } from '../../lib/reportPdf';
 import { generatePdfName } from '../../lib/pdfName';
@@ -45,7 +45,7 @@ export default function ReportDetailScreen() {
   const { data: report } = useReport(id);
   const { data: project } = useProject(report?.project_id);
   const [generating, setGenerating] = useState(false);
-  const [paywallVisible, setPaywallVisible] = useState(false);
+  const [limitNoticeVisible, setLimitNoticeVisible] = useState(false);
   const { data: pdfUsage } = usePdfUsage();
   const invalidatePdfUsage = useInvalidatePdfUsage();
 
@@ -62,7 +62,7 @@ export default function ReportDetailScreen() {
 
   const generatePdf = async () => {
     if (!report) return;
-    if (pdfUsage?.isLocked) { setPaywallVisible(true); return; }
+    if (pdfUsage?.isLocked) { setLimitNoticeVisible(true); return; }
     setGenerating(true);
     try {
       const slidesWithImages = report.slides.filter(s => s.image_path || s.annotated_image_path);
@@ -97,7 +97,7 @@ export default function ReportDetailScreen() {
       });
       invalidatePdfUsage();
     } catch (e) {
-      if (e instanceof PdfLimitReachedError) { setPaywallVisible(true); return; }
+      if (e instanceof PdfLimitReachedError) { setLimitNoticeVisible(true); return; }
       toast.error(friendlyError(e, 'PDF გენერაცია ვერ მოხერხდა'));
     } finally {
       setGenerating(false);
@@ -184,7 +184,7 @@ export default function ReportDetailScreen() {
       <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
         <Button title={pdfUsage?.isLocked ? '🔒 PDF გენერირება' : 'PDF გენერირება'} onPress={generatePdf} loading={generating} />
       </View>
-      <PaywallModal visible={paywallVisible} onClose={() => setPaywallVisible(false)} />
+      <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
     </View>
   );
 }

@@ -4,7 +4,7 @@
  * Every per-type screen (bobcat, excavator, mobile-ladder, …) repeated the same
  * ~250 lines: load + autofill, step index + AsyncStorage persistence, debounced
  * autosave, the complete handler (validate → patch → complete → recordCompletion
- * → status → celebration), PDF preview + share, and paywall state. This hook
+ * → status → celebration), PDF preview + share, and limit-notice state. This hook
  * owns all of that ("when"); each screen supplies only the genuinely type-specific
  * parts ("what") via callbacks — so behaviour is preserved exactly while the
  * boilerplate is shared.
@@ -94,8 +94,8 @@ export interface InspectionFlowResult<T extends BaseInspection> {
   setStep: React.Dispatch<React.SetStateAction<number>>;
   direction: 'next' | 'prev';
   animateSteps: boolean;
-  paywallVisible: boolean;
-  setPaywallVisible: React.Dispatch<React.SetStateAction<boolean>>;
+  limitNoticeVisible: boolean;
+  setLimitNoticeVisible: React.Dispatch<React.SetStateAction<boolean>>;
   pdfLocked: boolean;
   /** Update one field, debounced-save. */
   update: <K extends keyof T>(key: K, value: T[K]) => void;
@@ -129,7 +129,7 @@ export function useInspectionFlow<T extends BaseInspection>(
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewBusy, setPreviewBusy] = useState(false);
-  const [paywallVisible, setPaywallVisible] = useState(false);
+  const [limitNoticeVisible, setLimitNoticeVisible] = useState(false);
 
   const [step, setStep] = useState(cfg.firstStep);
   const [animateSteps, setAnimateSteps] = useState(false);
@@ -305,7 +305,7 @@ export function useInspectionFlow<T extends BaseInspection>(
   const handlePdf = useCallback(async (signatures?: SignaturesSnapshot | null) => {
     const insp = inspectionRef.current;
     if (!insp) return;
-    if (pdfUsage?.isLocked) { setPaywallVisible(true); return; }
+    if (pdfUsage?.isLocked) { setLimitNoticeVisible(true); return; }
     setGeneratingPdf(true);
     try {
       const html = await renderInspectionPdf(schema, {
@@ -330,7 +330,7 @@ export function useInspectionFlow<T extends BaseInspection>(
       // state and dies when the screen unmounts.
       invalidatePdfUsage();
     } catch (e) {
-      if (e instanceof PdfLimitReachedError) { setPaywallVisible(true); return; }
+      if (e instanceof PdfLimitReachedError) { setLimitNoticeVisible(true); return; }
       toast.error(friendlyError(e, 'PDF ვერ შეიქმნა'));
     } finally {
       setGeneratingPdf(false);
@@ -381,7 +381,7 @@ export function useInspectionFlow<T extends BaseInspection>(
     loading, saving, completing, celebrating, generatingPdf,
     previewHtml, previewBusy,
     step, setStep, direction, animateSteps,
-    paywallVisible, setPaywallVisible, pdfLocked: !!pdfUsage?.isLocked,
+    limitNoticeVisible, setLimitNoticeVisible, pdfLocked: !!pdfUsage?.isLocked,
     update, updateMany, scheduleSave,
     complete, handlePdf, buildPreview, exit,
   };

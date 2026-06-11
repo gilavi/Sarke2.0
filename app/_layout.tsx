@@ -88,21 +88,10 @@ function AuthGate() {
   // Handle deep links:
   //   sarke2://reset?code=...        — password-recovery PKCE exchange
   //   sarke2://verify-email?code=... — email-verification PKCE exchange
-  //   sarke2://payment/success       — BOG payment success cold-start fallback
-  //                                    (warm case is handled by WebBrowser.openAuthSessionAsync)
   useEffect(() => {
     const handle = async (url: string | null) => {
       if (!url) return;
       const parsed = Linking.parse(url);
-
-      // BOG payment success cold-start: user was kicked out of in-app browser
-      // and the OS opened the app via the deep link instead.
-      const isPaymentSuccess =
-        parsed.hostname === 'payment' && parsed.path === 'success';
-      if (isPaymentSuccess) {
-        queryClient.invalidateQueries({ queryKey: ['pdf-usage'] });
-        return;
-      }
 
       const code = (parsed.queryParams?.code as string | undefined) ?? undefined;
 

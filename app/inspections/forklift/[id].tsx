@@ -29,7 +29,7 @@ import {
 } from '../../../components/inspection-parts';
 
 import { forkliftSchema } from '../../../lib/inspection/schemas/forklift';
-import { PaywallModal } from '../../../components/PaywallModal';
+import { SubscriptionNotice } from '../../../components/SubscriptionNotice';
 import { PdfLockedBanner } from '../../../components/PdfLockedBanner';
 import { friendlyError } from '../../../lib/errorMap';
 import { a11y } from '../../../lib/accessibility';
@@ -73,13 +73,13 @@ export default function ForkliftInspectionScreen() {
   const { pickPhotoWithAnnotation, pickPhotosWithAnnotation } = usePhotoWithLocation();
 
   // Shared orchestration: loading, step+persist, autosave, complete, celebration,
-  // PDF preview/download, paywall. Type-specific bits are passed as callbacks.
+  // PDF preview/download, limit notice. Type-specific bits are passed as callbacks.
   const {
     inspection, setInspection, inspectionRef,
     projectName, saving, loading, completing, celebrating, generatingPdf,
     previewHtml, previewBusy,
     step, setStep, direction, animateSteps,
-    paywallVisible, setPaywallVisible, pdfLocked,
+    limitNoticeVisible, setLimitNoticeVisible, pdfLocked,
     update, scheduleSave,
     complete, handlePdf, buildPreview, exit, creatorName,
   } = useInspectionFlow<ForkliftInspection>({
@@ -344,8 +344,8 @@ export default function ForkliftInspectionScreen() {
         attachmentCount={0}
         pdfLocked={pdfLocked}
         downloading={generatingPdf}
-        paywallVisible={paywallVisible}
-        onPaywallClose={() => setPaywallVisible(false)}
+        limitNoticeVisible={limitNoticeVisible}
+        onLimitNoticeClose={() => setLimitNoticeVisible(false)}
         creatorName={creatorName}
         onDownloadPdf={(sig) => void handlePdf(sig)}
         onSheetSaved={() => void buildPreview()}
@@ -384,7 +384,7 @@ export default function ForkliftInspectionScreen() {
 
       {saving && <Text style={styles.savingHint}>შენახვა…</Text>}
 
-      {pdfLocked && <PdfLockedBanner onSubscribe={() => setPaywallVisible(true)} />}
+      {pdfLocked && <PdfLockedBanner onDetails={() => setLimitNoticeVisible(true)} />}
 
       <View style={{ flex: 1 }}>
         <WizardStepTransition stepKey={step} direction={direction} animate={animateSteps}>
@@ -582,7 +582,7 @@ export default function ForkliftInspectionScreen() {
         </View>
       </View>
 
-      <PaywallModal visible={paywallVisible} onClose={() => setPaywallVisible(false)} />
+      <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
       {celebrating && (
         <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
           <CelebrationBurst />

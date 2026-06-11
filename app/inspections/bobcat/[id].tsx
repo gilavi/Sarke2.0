@@ -23,7 +23,7 @@ import { inspectionAttachmentsApi } from '../../../lib/services';
 import { PhotoSection } from '../../../components/inspection-parts';
 
 import { bobcatSchema } from '../../../lib/inspection/schemas/bobcat';
-import { PaywallModal } from '../../../components/PaywallModal';
+import { SubscriptionNotice } from '../../../components/SubscriptionNotice';
 import { useInspectionFlow } from '../../../lib/inspection/useInspectionFlow';
 import { SuggestionPills } from '../../../components/SuggestionPills';
 import { useFieldHistory } from '../../../hooks/useFieldHistory';
@@ -91,7 +91,7 @@ export default function BobcatInspectionScreen() {
     saving, loading, completing,
     previewHtml, previewBusy,
     step, setStep, direction, animateSteps,
-    paywallVisible, setPaywallVisible, pdfLocked,
+    limitNoticeVisible, setLimitNoticeVisible, pdfLocked,
     update, scheduleSave,
     complete, handlePdf, buildPreview, exit,
     generatingPdf, creatorName,
@@ -336,8 +336,8 @@ export default function BobcatInspectionScreen() {
         attachmentCount={attachmentCount}
         pdfLocked={pdfLocked}
         downloading={generatingPdf}
-        paywallVisible={paywallVisible}
-        onPaywallClose={() => setPaywallVisible(false)}
+        limitNoticeVisible={limitNoticeVisible}
+        onLimitNoticeClose={() => setLimitNoticeVisible(false)}
         creatorName={creatorName}
         onDownloadPdf={(sig) => void handlePdf(sig)}
         onSheetSaved={() => {

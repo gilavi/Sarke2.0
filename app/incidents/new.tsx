@@ -12,7 +12,7 @@ import type { PhotoLocation } from '../../utils/location';
 import { showPhotoLocationAlert } from '../../lib/photoLocationAlert';
 import { generateAndSharePdf, PdfLimitReachedError } from '../../lib/pdfOpen';
 import { hashPdf } from '../../lib/pdfSecurity';
-import { PaywallModal } from '../../components/PaywallModal';
+import { SubscriptionNotice } from '../../components/SubscriptionNotice';
 import { usePdfUsage, useInvalidatePdfUsage } from '../../lib/usePdfUsage';
 import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
@@ -114,7 +114,7 @@ export default function NewIncident() {
   const [form, setForm] = useState<FormData>(INITIAL_FORM);
   const [project, setProject] = useState<Project | null>(null);
   const [saving, setSaving] = useState(false);
-  const [paywallVisible, setPaywallVisible] = useState(false);
+  const [limitNoticeVisible, setLimitNoticeVisible] = useState(false);
   const { data: pdfUsage } = usePdfUsage();
   const invalidatePdfUsage = useInvalidatePdfUsage();
   // stable incident id — lets us upload photos before the row is created
@@ -277,7 +277,7 @@ export default function NewIncident() {
       toast.error('პროექტი ვერ მოიძებნა');
       return;
     }
-    if (pdfUsage?.isLocked) { setPaywallVisible(true); return; }
+    if (pdfUsage?.isLocked) { setLimitNoticeVisible(true); return; }
     if (!form.type) {
       toast.error('აირჩიეთ ინციდენტის ტიპი');
       return;
@@ -400,7 +400,7 @@ export default function NewIncident() {
         router.replace(`/incidents/${savedId}/success` as any);
       }
     } catch (e) {
-      if (e instanceof PdfLimitReachedError) { setPaywallVisible(true); return; }
+      if (e instanceof PdfLimitReachedError) { setLimitNoticeVisible(true); return; }
       if (!incidentCommitted) {
         // Incident was never written to DB — clean up any photos that made it to storage
         for (const path of uploadedPhotoPaths) {
@@ -498,7 +498,7 @@ export default function NewIncident() {
           </View>
         )}
       </View>
-      <PaywallModal visible={paywallVisible} onClose={() => setPaywallVisible(false)} />
+      <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
     </View>
   );
 }

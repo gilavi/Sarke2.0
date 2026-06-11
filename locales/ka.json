@@ -621,6 +621,15 @@
     "signatureAlt": "ხელმოწერა"
   },
   "components": {
+    "subscriptionNotice": {
+      "title": "უფასო ლიმიტი ამოიწურა",
+      "body": "გამოწერის შეძენა აპლიკაციიდან შეუძლებელია.",
+      "usage": "PDF: {{used}} / {{limit}}"
+    },
+    "pdfLockedBanner": {
+      "label": "PDF ლიმიტი ამოიწურა",
+      "details": "დეტალები"
+    },
     "statusBadgePass": "უსაფრთხოა",
     "statusBadgeFail": "არ არის უსაფრთხო",
     "statusBadgePending": "მოლოდინში",

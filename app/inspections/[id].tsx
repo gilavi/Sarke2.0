@@ -59,7 +59,7 @@ import { useSession } from '../../lib/session';
 import { useToast } from '../../lib/toast';
 import { recordRedirect, isOscillating } from '../../lib/navigationGuard';
 import { friendlyError } from '../../lib/errorMap';
-import { PaywallModal } from '../../components/PaywallModal';
+import { SubscriptionNotice } from '../../components/SubscriptionNotice';
 import { usePdfUsage, useInvalidatePdfUsage } from '../../lib/usePdfUsage';
 import { toErrorMessage } from '../../lib/logError';
 import { haptic } from '../../lib/haptics';
@@ -97,7 +97,7 @@ export default function InspectionResultScreen() {
   const [loadError, setLoadError] = useState<unknown>(null);
   const [notFound, setNotFound] = useState(false);
   const [downloading, setDownloading] = useState(false);
-  const [paywallVisible, setPaywallVisible] = useState(false);
+  const [limitNoticeVisible, setLimitNoticeVisible] = useState(false);
   const { data: pdfUsage } = usePdfUsage();
   const invalidatePdfUsage = useInvalidatePdfUsage();
   const [redirectBlocked, setRedirectBlocked] = useState(false);
@@ -344,7 +344,7 @@ export default function InspectionResultScreen() {
 
   const downloadPdf = useCallback(async () => {
     if (!inspection || !template || !project || downloading) return;
-    if (pdfUsage?.isLocked) { setPaywallVisible(true); return; }
+    if (pdfUsage?.isLocked) { setLimitNoticeVisible(true); return; }
     setDownloading(true);
     try {
       // Re-embed everything fresh — signatures or attachments may have been
@@ -435,7 +435,7 @@ export default function InspectionResultScreen() {
       haptic.success();
       invalidatePdfUsage();
     } catch (e) {
-      if (e instanceof PdfLimitReachedError) { setPaywallVisible(true); return; }
+      if (e instanceof PdfLimitReachedError) { setLimitNoticeVisible(true); return; }
       toast.error(friendlyError(e, 'PDF-ის გენერირება ვერ მოხერხდა'));
     } finally {
       setDownloading(false);
@@ -571,7 +571,7 @@ export default function InspectionResultScreen() {
           </Pressable>
         </View>
       </View>
-      <PaywallModal visible={paywallVisible} onClose={() => setPaywallVisible(false)} />
+      <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
       <SignaturesScreen
         visible={signaturesOpen}
         onClose={() => setSignaturesOpen(false)}

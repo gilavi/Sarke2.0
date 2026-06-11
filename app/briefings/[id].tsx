@@ -9,7 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../lib/theme';
 import { useSession } from '../../lib/session';
 import { generateAndSharePdf, PdfLimitReachedError } from '../../lib/pdfOpen';
-import { PaywallModal } from '../../components/PaywallModal';
+import { SubscriptionNotice } from '../../components/SubscriptionNotice';
 import { usePdfUsage, useInvalidatePdfUsage } from '../../lib/usePdfUsage';
 import { useBriefing, useProject } from '../../lib/apiHooks';
 import { buildBriefingPreviewHtml, buildBriefingPdfHtml } from '../../lib/briefingPdf';
@@ -28,7 +28,7 @@ export default function BriefingDetailScreen() {
   const { data: briefing, isLoading: loading } = useBriefing(id);
   const { data: project } = useProject(briefing?.projectId);
   const [sharing, setSharing] = useState(false);
-  const [paywallVisible, setPaywallVisible] = useState(false);
+  const [limitNoticeVisible, setLimitNoticeVisible] = useState(false);
   const { data: pdfUsage } = usePdfUsage();
   const invalidatePdfUsage = useInvalidatePdfUsage();
   const [webviewLoading, setWebviewLoading] = useState(true);
@@ -44,7 +44,7 @@ export default function BriefingDetailScreen() {
 
   const sharePdf = useCallback(async () => {
     if (!briefing || !project) return;
-    if (pdfUsage?.isLocked) { setPaywallVisible(true); return; }
+    if (pdfUsage?.isLocked) { setLimitNoticeVisible(true); return; }
     setSharing(true);
     try {
       const html = buildBriefingPdfHtml(briefing, project);
@@ -58,7 +58,7 @@ export default function BriefingDetailScreen() {
       });
       invalidatePdfUsage();
     } catch (e) {
-      if (e instanceof PdfLimitReachedError) { setPaywallVisible(true); return; }
+      if (e instanceof PdfLimitReachedError) { setLimitNoticeVisible(true); return; }
       Alert.alert('შეცდომა', 'PDF გენერირება ვერ მოხერხდა');
     } finally {
       setSharing(false);
@@ -151,7 +151,7 @@ export default function BriefingDetailScreen() {
           </Text>
         </Pressable>
       </View>
-      <PaywallModal visible={paywallVisible} onClose={() => setPaywallVisible(false)} />
+      <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
     </View>
   );
 }

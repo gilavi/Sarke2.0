@@ -12,7 +12,7 @@ export interface PdfGateResult {
 /**
  * Thrown by checkAndIncrementPdfCount when the user has exhausted their
  * free-tier PDF allowance and does not have an active subscription.
- * Callers should catch this specifically and show the paywall UI.
+ * Callers should catch this specifically and show the subscription-limit notice.
  */
 export class PdfLimitReachedError extends Error {
   readonly count: number;

@@ -11,7 +11,7 @@ import { useToast } from '../../../lib/toast';
 import { useSession } from '../../../lib/session';
 import { pdfPhotoEmbed } from '../../../lib/imageUrl';
 import { generateAndSharePdf, PdfLimitReachedError } from '../../../lib/pdfOpen';
-import { PaywallModal } from '../../../components/PaywallModal';
+import { SubscriptionNotice } from '../../../components/SubscriptionNotice';
 import { usePdfUsage, useInvalidatePdfUsage } from '../../../lib/usePdfUsage';
 import { buildReportPdfHtml } from '../../../lib/reportPdf';
 import { generatePdfName } from '../../../lib/pdfName';
@@ -34,7 +34,7 @@ export default function ReportSuccessScreen() {
   const { data: report } = useReport(id);
   const { data: project } = useProject(report?.project_id);
   const [sharing, setSharing] = useState(false);
-  const [paywallVisible, setPaywallVisible] = useState(false);
+  const [limitNoticeVisible, setLimitNoticeVisible] = useState(false);
   const { data: pdfUsage } = usePdfUsage();
   const invalidatePdfUsage = useInvalidatePdfUsage();
 
@@ -51,7 +51,7 @@ export default function ReportSuccessScreen() {
 
   const sharePdf = async () => {
     if (!report) return;
-    if (pdfUsage?.isLocked) { setPaywallVisible(true); return; }
+    if (pdfUsage?.isLocked) { setLimitNoticeVisible(true); return; }
     setSharing(true);
     try {
       const slidesWithImages = report.slides.filter(s => s.image_path || s.annotated_image_path);
@@ -86,7 +86,7 @@ export default function ReportSuccessScreen() {
       });
       invalidatePdfUsage();
     } catch (e) {
-      if (e instanceof PdfLimitReachedError) { setPaywallVisible(true); return; }
+      if (e instanceof PdfLimitReachedError) { setLimitNoticeVisible(true); return; }
       toast.error(friendlyError(e, 'PDF გენერაცია ვერ მოხერხდა'));
     } finally {
       setSharing(false);
@@ -130,7 +130,7 @@ export default function ReportSuccessScreen() {
           </Text>
         </Pressable>
       </View>
-      <PaywallModal visible={paywallVisible} onClose={() => setPaywallVisible(false)} />
+      <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
     </View>
   );
 }

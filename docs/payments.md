@@ -44,15 +44,18 @@ Unique index on `(bog_order_id, status)` deduplicates webhook retries.
 
 ## Flow
 
+> **Mobile sells nothing (2026-06-12).** Apple guideline 3.1.1 / Google Play policy forbid
+> non-IAP purchase flows for digital subscriptions, so the mobile app contains **zero purchase
+> UI** — no prices, no payment links, no subscribe buttons, no payment deep links. Purchasing is
+> **web-only**. Mobile shows subscription *status* (allowed) and unlocks automatically when
+> `users.subscription_status` flips to `active` (`lib/usePdfUsage.ts` re-reads it). At the free
+> limit, mobile shows the neutral `SubscriptionNotice` (no price/URL/CTA).
+
 ```
-mobile More tab           web /account
-       │                       │
-       └────► PaywallModal ◄───┘
-                  │
-                  ▼
-        /subscribe (web — same page from both clients;
-                    mobile opens it in SFAuthenticationSession,
-                    web stays in-tab)
+                          web /account
+                               │
+                               ▼
+        /subscribe (web only — mobile has no purchase entry point)
                   │
                   ▼
         invoke create-bog-order ──► BOG redirect URL
@@ -63,8 +66,7 @@ mobile More tab           web /account
                 ┌─────────────────────────┴────────────────────────┐
                 ▼                                                  ▼
    /subscribe/success                                  /subscribe/fail
-   (deep links sarke2://payment/success                 (deep links sarke2://payment/fail
-    on mobile; invalidates pdf-usage                    on mobile; web shows retry CTA)
+   (invalidates pdf-usage                              (web shows retry CTA)
     + payment-history caches on web)
                 │
                 │  (asynchronously, BOG hits the webhook)
@@ -74,12 +76,13 @@ mobile More tab           web /account
 
 ## Clients
 
-### Mobile (`app/`, `lib/`, `components/`)
+### Mobile (`app/`, `lib/`, `components/`) — status display only, no purchasing
 
-- [components/PaywallModal.tsx](../components/PaywallModal.tsx) — full-screen paywall, opens web `/subscribe` in `WebBrowser.openAuthSessionAsync` (Apple guideline 3.1.1 — IAP isn't an option for first-party SaaS). Tokens passed via URL hash `?at=…&rt=…`.
-- [app/(tabs)/more.tsx](../app/(tabs)/more.tsx) — `SubscriptionSection`. Cancel calls `cancel_subscription` RPC.
-- [lib/usePdfUsage.ts](../lib/usePdfUsage.ts) — React Query hook that reads `users.pdf_count + subscription_*`. Mirrors auto-expiry locally.
-- [lib/pdfGate.ts](../lib/pdfGate.ts) — `checkAndIncrementPdfCount(userId)`. Throws `PdfLimitReachedError` → caller opens `<PaywallModal>`.
+- [components/SubscriptionNotice.tsx](../components/SubscriptionNotice.tsx) — neutral limit-reached modal (title + body + usage + dismiss; deliberately no price, no URL, no purchase wording — Apple guideline 3.1.1).
+- [components/PdfLockedBanner.tsx](../components/PdfLockedBanner.tsx) — inline amber "limit reached" banner; its Details button opens `SubscriptionNotice`.
+- [app/(tabs)/more.tsx](../app/(tabs)/more.tsx) — `SubscriptionSection`: plan/usage/expiry display. Cancel calls `cancel_subscription` RPC (account management — allowed).
+- [lib/usePdfUsage.ts](../lib/usePdfUsage.ts) — React Query hook that reads `users.pdf_count + subscription_*`. Mirrors auto-expiry locally. This is also the auto-unlock path after a web purchase.
+- [lib/pdfGate.ts](../lib/pdfGate.ts) — `checkAndIncrementPdfCount(userId)`. Throws `PdfLimitReachedError` → caller shows `<SubscriptionNotice>`.
 
 ### Web dashboard (`web-app/`)
 
