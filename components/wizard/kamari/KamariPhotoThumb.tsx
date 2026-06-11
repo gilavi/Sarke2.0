@@ -33,7 +33,7 @@ export const KamariPhotoThumb = memo(function KamariPhotoThumb({
   return (
     <View>
       <View style={styles.thumb}>
-        {uri ? <Image source={{ uri }} style={styles.thumbImg} contentFit="cover" /> : null}
+        {uri ? <Image source={{ uri }} style={styles.thumbImg} contentFit="cover" transition={200} /> : null}
       </View>
       <Pressable onPress={onDelete} style={styles.thumbDelete} hitSlop={12}>
         <Ionicons name="close" size={12} color="#fff" />

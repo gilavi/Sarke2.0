@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Linking,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   View,
@@ -18,6 +18,7 @@ import { projectFilesApi } from '../../../lib/services';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import { imageForDisplay } from '../../../lib/imageUrl';
 import { useProject, useProjectFiles } from '../../../lib/apiHooks';
+import { SkeletonRow } from '../../../components/Skeleton';
 import type { ProjectFile } from '../../../types/models';
 
 function formatGeorgianDate(isoDate: string): string {
@@ -54,7 +55,16 @@ export default function ProjectFilesList() {
   const toast = useToast();
 
   const { data: project } = useProject(id);
-  const { data: items = [], isLoading: loading } = useProjectFiles(id);
+  const filesQ = useProjectFiles(id);
+  const items = filesQ.data ?? [];
+  // Canonical three-state guard (see CLAUDE.md): skeleton until the query
+  // has produced a real answer; never flash empty state over a stale [].
+  const loading = (filesQ.isFetching || !filesQ.isFetched) && items.length === 0;
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try { await filesQ.refetch(); } finally { setRefreshing(false); }
+  }, [filesQ]);
 
   const grouped = useMemo(() => groupByDateDesc(items, f => f.created_at), [items]);
 
@@ -74,6 +84,10 @@ export default function ProjectFilesList() {
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 }}
+      
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.accent} />
+        }
       >
         <View style={styles.pageHeader}>
           <Text style={styles.pageTitle}>ბრძანებები</Text>
@@ -83,8 +97,10 @@ export default function ProjectFilesList() {
         </View>
 
         {loading ? (
-          <View style={styles.centered}>
-            <ActivityIndicator color={theme.colors.accent} />
+          <View style={{ gap: 10 }}>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <SkeletonRow key={i} style={styles.skeletonRow} />
+            ))}
           </View>
         ) : items.length === 0 ? (
           <View style={styles.emptyState}>
@@ -157,7 +173,7 @@ function FileThumbnail({ file }: { file: ProjectFile }) {
   if (isImage && uri) {
     return (
       <View style={tile}>
-        <Image source={{ uri }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+        <Image source={{ uri }} style={{ width: '100%', height: '100%' }} contentFit="cover" transition={200} />
       </View>
     );
   }
@@ -203,7 +219,12 @@ function makeStyles(theme: any) {
       color: theme.colors.inkFaint,
       marginTop: 3,
     },
-    centered: { paddingVertical: 60, alignItems: 'center', justifyContent: 'center' },
+    skeletonRow: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: 12,
+      paddingVertical: 13,
+      paddingHorizontal: 14,
+    },
     emptyState: {
       paddingVertical: 60,
       alignItems: 'center',

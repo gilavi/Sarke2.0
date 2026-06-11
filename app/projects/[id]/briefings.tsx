@@ -1,7 +1,7 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   View,
@@ -12,6 +12,7 @@ import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { useTheme } from '../../../lib/theme';
 import { formatShortDateTime } from '../../../lib/formatDate';
 import { useProject, useBriefingsByProject } from '../../../lib/apiHooks';
+import { SkeletonRow } from '../../../components/Skeleton';
 import type { Briefing } from '../../../types/models';
 
 function formatGeorgianDate(isoDate: string): string {
@@ -34,7 +35,16 @@ export default function ProjectBriefingsList() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const { data: project } = useProject(id);
-  const { data: items = [], isLoading: loading } = useBriefingsByProject(id);
+  const briefingsQ = useBriefingsByProject(id);
+  const items = briefingsQ.data ?? [];
+  // Canonical three-state guard (see CLAUDE.md): skeleton until the query has
+  // produced a real answer; never flash the empty state over a stale [].
+  const loading = (briefingsQ.isFetching || !briefingsQ.isFetched) && items.length === 0;
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try { await briefingsQ.refetch(); } finally { setRefreshing(false); }
+  }, [briefingsQ]);
 
   const grouped = useMemo(() => groupByDateDesc(items, b => b.dateTime), [items]);
 
@@ -45,6 +55,9 @@ export default function ProjectBriefingsList() {
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.accent} />
+        }
       >
         <View style={styles.pageHeader}>
           <Text style={styles.pageTitle}>ინსტრუქტაჟი</Text>
@@ -54,8 +67,10 @@ export default function ProjectBriefingsList() {
         </View>
 
         {loading ? (
-          <View style={styles.centered}>
-            <ActivityIndicator color={theme.colors.accent} />
+          <View style={{ gap: 10 }}>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <SkeletonRow key={i} style={styles.skeletonRow} />
+            ))}
           </View>
         ) : items.length === 0 ? (
           <View style={styles.emptyState}>
@@ -147,7 +162,12 @@ function makeStyles(theme: any) {
       color: theme.colors.inkFaint,
       marginTop: 3,
     },
-    centered: { paddingVertical: 60, alignItems: 'center', justifyContent: 'center' },
+    skeletonRow: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: 12,
+      paddingVertical: 13,
+      paddingHorizontal: 14,
+    },
     emptyState: {
       paddingVertical: 60,
       alignItems: 'center',

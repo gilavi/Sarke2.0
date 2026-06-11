@@ -49,7 +49,7 @@ function PhotoThumbCell({ photo, onView, onDelete, styles, theme }: {
             <Ionicons name="refresh" size={22} color={theme.colors.inkFaint} />
           </Pressable>
         ) : uri ? (
-          <Image source={{ uri }} style={styles.thumb} contentFit="cover" />
+          <Image source={{ uri }} style={styles.thumb} contentFit="cover" transition={200} />
         ) : (
           <View style={[styles.thumb, { alignItems: 'center', justifyContent: 'center' }]}>
             <ActivityIndicator color={theme.colors.inkSoft} />

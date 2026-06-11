@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   Linking,
   Pressable,
@@ -20,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { Button } from '../../components/ui';
 import { useTheme } from '../../lib/theme';
+import { SkeletonListCard } from '../../components/Skeleton';
 import { useSession } from '../../lib/session';
 import { useToast } from '../../lib/toast';
 import { incidentsApi, projectsApi, storageApi } from '../../lib/services';
@@ -252,9 +252,9 @@ export default function IncidentDetail() {
 
   if (!loaded) {
     return (
-      <View style={{ flex: 1, backgroundColor: theme.colors.background, alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ flex: 1, backgroundColor: theme.colors.background, padding: 16 }}>
         <Stack.Screen options={{ headerShown: true, title: 'ინციდენტი' }} />
-        <ActivityIndicator color={theme.colors.accent} size="large" />
+        <SkeletonListCard rows={5} />
       </View>
     );
   }
@@ -406,6 +406,7 @@ export default function IncidentDetail() {
                     source={{ uri }}
                     style={{ width: '100%', height: '100%' }}
                     contentFit="cover"
+                    transition={200}
                   />
                 </View>
               ))}

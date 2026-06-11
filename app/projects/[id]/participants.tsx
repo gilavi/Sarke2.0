@@ -1,5 +1,5 @@
-import { useCallback, useMemo } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
@@ -10,6 +10,7 @@ import { useSession } from '../../../lib/session';
 import { friendlyError } from '../../../lib/errorMap';
 import { projectsApi } from '../../../lib/services';
 import { useProject, qk } from '../../../lib/apiHooks';
+import { SkeletonRow } from '../../../components/Skeleton';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { CrewMember } from '../../../types/models';
 import { useTranslation } from 'react-i18next';
@@ -22,7 +23,16 @@ export default function ProjectParticipantsList() {
   const toast = useToast();
   const session = useSession();
 
-  const { data: project, isLoading: loading } = useProject(id);
+  const projectQ = useProject(id);
+  const project = projectQ.data;
+  // Single-object detail: skeleton until the row arrives (cached data renders
+  // instantly on return visits — isPending stays false then).
+  const loading = projectQ.isPending;
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try { await projectQ.refetch(); } finally { setRefreshing(false); }
+  }, [projectQ]);
   const queryClient = useQueryClient();
 
   const inspector = useMemo<InspectorRow | null>(() => {
@@ -77,6 +87,9 @@ export default function ProjectParticipantsList() {
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.accent} />
+        }
       >
         <View style={styles.pageHeader}>
           <Text style={styles.pageTitle}>მონაწილეები</Text>
@@ -84,8 +97,10 @@ export default function ProjectParticipantsList() {
         </View>
 
         {loading || !project ? (
-          <View style={styles.centered}>
-            <ActivityIndicator color={theme.colors.accent} />
+          <View style={{ gap: 10 }}>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <SkeletonRow key={i} style={styles.skeletonRow} />
+            ))}
           </View>
         ) : (
           <RoleSlotList
@@ -112,7 +127,12 @@ function makeStyles(theme: any) {
     pageHeader: { marginBottom: 24 },
     pageTitle: { fontSize: 26, fontWeight: '700', color: theme.colors.ink },
     pageSubtitle: { fontSize: 13, color: theme.colors.inkFaint, marginTop: 3 },
-    centered: { paddingVertical: 60, alignItems: 'center', justifyContent: 'center' },
+    skeletonRow: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: 12,
+      paddingVertical: 13,
+      paddingHorizontal: 14,
+    },
     emptyState: {
       paddingVertical: 60,
       alignItems: 'center',

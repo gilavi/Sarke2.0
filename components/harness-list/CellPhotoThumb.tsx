@@ -1,5 +1,6 @@
 ﻿import { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, View } from 'react-native';
+import { ActivityIndicator, Pressable, View } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../lib/theme';
 import { imageForDisplay } from '../../lib/imageUrl';
@@ -41,7 +42,7 @@ export const CellPhotoThumb = memo(function CellPhotoThumb({
           <Ionicons name="refresh" size={18} color={theme.colors.inkFaint} />
         </Pressable>
       ) : uri ? (
-        <Image source={{ uri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+        <Image source={{ uri }} style={{ width: '100%', height: '100%' }} contentFit="cover" transition={200} />
       ) : (
         <ActivityIndicator color={theme.colors.inkSoft} />
       )}

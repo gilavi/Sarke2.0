@@ -11,6 +11,7 @@ import {
   Easing,
   Modal,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   View,
@@ -44,6 +45,12 @@ export default function QualificationsScreen() {
   const qStyles = useMemo(() => getqStyles(theme), [theme]);
   const qualsQ = useQualifications();
   const [loaded, setLoaded] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try { await qualsQ.refetch(); } finally { setRefreshing(false); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qualsQ.refetch]);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Qualification | null>(null);
   const [addSheetVisible, setAddSheetVisible] = useState(false);
@@ -110,6 +117,9 @@ export default function QualificationsScreen() {
         <ScrollView
           contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 8, paddingBottom: 100, gap: 20 }}
           contentInsetAdjustmentBehavior="automatic"
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.accent} />
+          }
         >
           {/* Required section */}
           <View style={{ gap: 10 }}>

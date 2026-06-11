@@ -16,6 +16,7 @@ import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { HeaderBackPill } from '../../../components/HeaderBackPill';
 import { useBottomSheet } from '../../../components/BottomSheet';
 import { useTheme } from '../../../lib/theme';
+import { SkeletonListCard } from '../../../components/Skeleton';
 import { useToast } from '../../../lib/toast';
 import { a11y } from '../../../lib/accessibility';
 import { reportDisplayName } from '../../../lib/shared/documentName';
@@ -153,8 +154,8 @@ export default function ReportSlidesEditor() {
 
   if (!report) {
     return (
-      <View style={[styles.centered, { flex: 1, backgroundColor: theme.colors.background }]}>
-        <ActivityIndicator color={theme.colors.accent} />
+      <View style={{ flex: 1, backgroundColor: theme.colors.background, padding: 16 }}>
+        <SkeletonListCard rows={4} />
       </View>
     );
   }

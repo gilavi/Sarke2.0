@@ -1,8 +1,9 @@
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { A11yText as Text } from '../primitives/A11yText';
 import { ProjectAvatar } from '../ProjectAvatar';
 import { useProjects } from '../../lib/apiHooks';
 import { useTheme } from '../../lib/theme';
+import { SkeletonRow } from '../Skeleton';
 import type { Project } from '../../types/models';
 
 interface ProjectPickerStepProps {
@@ -12,12 +13,18 @@ interface ProjectPickerStepProps {
 
 export function ProjectPickerStep({ selectedId, onSelect }: ProjectPickerStepProps) {
   const { theme } = useTheme();
-  const { data: projects = [], isLoading } = useProjects();
+  const projectsQ = useProjects();
+  const projects = projectsQ.data ?? [];
+  // Canonical three-state guard (see CLAUDE.md) — skeleton rows, never a
+  // flashed empty state over a stale [].
+  const loading = (projectsQ.isFetching || !projectsQ.isFetched) && projects.length === 0;
 
-  if (isLoading) {
+  if (loading) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color={theme.colors.accent} />
+      <View style={{ flex: 1, gap: 10, paddingTop: 4 }}>
+        {Array.from({ length: 5 }).map((_, i) => (
+          <SkeletonRow key={i} style={{ backgroundColor: theme.colors.surface, borderRadius: 12, paddingVertical: 13, paddingHorizontal: 14 }} />
+        ))}
       </View>
     );
   }

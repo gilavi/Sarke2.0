@@ -18,6 +18,7 @@ import type { VerdictOption } from '../../../components/inspection-steps';
 import { InspectionResultView } from '../../../components/InspectionResultView';
 import { HarnessListFlow } from '../../../components/HarnessListFlow';
 import { useTheme } from '../../../lib/theme';
+import { SkeletonWizard } from '../../../components/Skeleton';
 import { useSession } from '../../../lib/session';
 import { useToast } from '../../../lib/toast';
 import { useOffline } from '../../../lib/offline';
@@ -470,9 +471,7 @@ export default function HarnessInspectionScreen() {
     return (
       <Screen edgeToEdge edges={['top']} style={{ backgroundColor: theme.colors.background }}>
         <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={theme.colors.semantic.success} />
-        </View>
+        <SkeletonWizard />
       </Screen>
     );
   }

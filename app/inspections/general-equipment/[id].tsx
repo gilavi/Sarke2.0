@@ -550,7 +550,7 @@ const SummaryThumb = memo(function SummaryThumb({
   }, [path]);
   return (
     <View style={styles.thumb}>
-      <Image source={{ uri }} style={styles.thumbImg} contentFit="cover" />
+      <Image source={{ uri }} style={styles.thumbImg} contentFit="cover" transition={200} />
       <Pressable style={styles.thumbDelete} onPress={onDelete} hitSlop={8} {...a11y('ფოტოს წაშლა', undefined, 'button')}>
         <Ionicons name="close-circle" size={18} color={theme.colors.white} />
       </Pressable>

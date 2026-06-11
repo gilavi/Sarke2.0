@@ -17,6 +17,7 @@ import { Button } from '../../../../components/ui';
 import { FloatingLabelInput } from '../../../../components/inputs/FloatingLabelInput';
 import { HeaderBackPill } from '../../../../components/HeaderBackPill';
 import { useTheme } from '../../../../lib/theme';
+import { SkeletonPreview } from '../../../../components/Skeleton';
 import { useToast } from '../../../../lib/toast';
 import { friendlyError } from '../../../../lib/errorMap';
 import { reportsApi, storageApi } from '../../../../lib/services';
@@ -204,8 +205,8 @@ export default function ReportSlideEditor() {
 
   if (!report || !slide) {
     return (
-      <View style={[styles.centered, { flex: 1, backgroundColor: theme.colors.background }]}>
-        <ActivityIndicator color={theme.colors.accent} />
+      <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+        <SkeletonPreview />
       </View>
     );
   }

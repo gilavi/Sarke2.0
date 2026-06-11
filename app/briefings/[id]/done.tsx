@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
@@ -10,6 +10,7 @@ import { useSession } from '../../../lib/session';
 import { SubscriptionNotice } from '../../../components/SubscriptionNotice';
 import { usePdfUsage, useInvalidatePdfUsage } from '../../../lib/usePdfUsage';
 import { useTheme } from '../../../lib/theme';
+import { Skeleton } from '../../../components/Skeleton';
 import { briefingsApi } from '../../../lib/briefingsApi';
 import { buildBriefingPdfHtml } from '../../../lib/briefingPdf';
 import { generatePdfName } from '../../../lib/pdfName';
@@ -117,7 +118,10 @@ export default function BriefingDoneScreen() {
             ) : null}
           </View>
         ) : (
-          <ActivityIndicator color={theme.colors.accent} style={{ marginTop: 24 }} />
+          <View style={{ marginTop: 24, gap: 8, alignItems: 'center' }}>
+            <Skeleton width={160} height={16} />
+            <Skeleton width={110} height={12} />
+          </View>
         )}
       </View>
 

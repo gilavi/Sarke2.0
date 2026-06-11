@@ -9,7 +9,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   Pressable,
   StyleSheet,
@@ -25,6 +24,7 @@ import { BottomSheetScrollView } from './BottomSheet';
 import { inspectionAttachmentsApi } from '../lib/services';
 import { ATTACHMENT_TYPE_PRESETS, type InspectionAttachment } from '../types/models';
 import { useTheme } from '../lib/theme';
+import { SkeletonRow } from './Skeleton';
 import { useToast } from '../lib/toast';
 import { usePhotoPicker } from '../hooks/usePhotoPicker';
 import { friendlyError } from '../lib/errorMap';
@@ -103,8 +103,10 @@ export function CertificatesActionSheet({ inspectionId, onClose, onChanged }: Pr
       ScrollComponent={BottomSheetScrollView}
     >
       {loading ? (
-        <View style={styles.loadingBox}>
-          <ActivityIndicator color={theme.colors.accent} />
+        <View style={{ gap: 8 }}>
+          {Array.from({ length: 3 }).map((_, i) => (
+            <SkeletonRow key={i} style={{ backgroundColor: theme.colors.subtleSurface, borderRadius: 12 }} />
+          ))}
         </View>
       ) : items.length === 0 ? (
         <Text style={styles.emptyText}>სერტიფიკატი ჯერ არ დამატებულა</Text>

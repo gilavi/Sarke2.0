@@ -1,6 +1,6 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   View,
@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { useTheme } from '../../../lib/theme';
 import { formatShortDateTime } from '../../../lib/formatDate';
+import { SkeletonRow } from '../../../components/Skeleton';
 import { inspectionDisplayName } from '../../../lib/shared/documentName';
 import {
   useProject,
@@ -39,12 +40,28 @@ export default function ProjectInspectionsList() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const { data: project } = useProject(id);
-  const { data: genericItems = [], isLoading: genericLoading } = useInspectionsByProject(id);
-  const { data: bobcatItems = [], isLoading: bobcatLoading } = useBobcatInspectionsByProject(id);
-  const { data: excavatorItems = [], isLoading: excavatorLoading } = useExcavatorInspectionsByProject(id);
-  const { data: geItems = [], isLoading: geLoading } = useGeneralEquipmentInspectionsByProject(id);
-  const { data: templates = [], isLoading: tplsLoading } = useTemplates();
-  const loading = genericLoading || bobcatLoading || excavatorLoading || geLoading || tplsLoading;
+  const genericQ = useInspectionsByProject(id);
+  const bobcatQ = useBobcatInspectionsByProject(id);
+  const excavatorQ = useExcavatorInspectionsByProject(id);
+  const geQ = useGeneralEquipmentInspectionsByProject(id);
+  const templatesQ = useTemplates();
+  const genericItems = genericQ.data ?? [];
+  const bobcatItems = bobcatQ.data ?? [];
+  const excavatorItems = excavatorQ.data ?? [];
+  const geItems = geQ.data ?? [];
+  const templates = templatesQ.data ?? [];
+  // Canonical three-state guard (see CLAUDE.md), unioned across the source
+  // queries: skeleton while any source hasn't produced a real answer and the
+  // merged list is still empty — never flash empty state over a stale [].
+  const anyUnsettled = [genericQ, bobcatQ, excavatorQ, geQ, templatesQ].some(q => q.isFetching || !q.isFetched);
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([genericQ.refetch(), bobcatQ.refetch(), excavatorQ.refetch(), geQ.refetch(), templatesQ.refetch()]);
+    } finally { setRefreshing(false); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [genericQ.refetch, bobcatQ.refetch, excavatorQ.refetch, geQ.refetch, templatesQ.refetch]);
 
   type UnifiedItem = {
     id: string;
@@ -65,6 +82,7 @@ export default function ProjectInspectionsList() {
   }, [genericItems, bobcatItems, excavatorItems, geItems]);
 
   const grouped = useMemo(() => groupByDateDesc(items, q => q.created_at), [items]);
+  const loading = anyUnsettled && items.length === 0;
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
@@ -73,6 +91,9 @@ export default function ProjectInspectionsList() {
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingBottom: 40 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.accent} />
+        }
       >
         <View style={styles.pageHeader}>
           <Text style={styles.pageTitle}>შემოწმების აქტები</Text>
@@ -82,8 +103,10 @@ export default function ProjectInspectionsList() {
         </View>
 
         {loading ? (
-          <View style={styles.centered}>
-            <ActivityIndicator color={theme.colors.accent} />
+          <View style={{ gap: 10, paddingHorizontal: 20 }}>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <SkeletonRow key={i} style={styles.skeletonRow} />
+            ))}
           </View>
         ) : items.length === 0 ? (
           <View style={styles.emptyState}>
@@ -167,10 +190,11 @@ function makeStyles(theme: any) {
       color: theme.colors.inkFaint,
       marginTop: 3,
     },
-    centered: {
-      paddingVertical: 60,
-      alignItems: 'center',
-      justifyContent: 'center',
+    skeletonRow: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: 12,
+      paddingVertical: 13,
+      paddingHorizontal: 14,
     },
     emptyState: {
       paddingVertical: 60,

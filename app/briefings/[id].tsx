@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../lib/theme';
+import { SkeletonPreview } from '../../components/Skeleton';
 import { useSession } from '../../lib/session';
 import { generateAndSharePdf, PdfLimitReachedError } from '../../lib/pdfOpen';
 import { SubscriptionNotice } from '../../components/SubscriptionNotice';
@@ -71,9 +72,9 @@ export default function BriefingDetailScreen() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: theme.colors.background, alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
         <Stack.Screen options={{ headerShown: true, title: 'ინსტრუქტაჟი' }} />
-        <ActivityIndicator color={theme.colors.accent} />
+        <SkeletonPreview />
       </View>
     );
   }

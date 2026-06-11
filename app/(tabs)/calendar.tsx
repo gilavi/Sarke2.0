@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   View,
@@ -160,10 +161,26 @@ export default function CalendarScreen() {
   const suppressScrollSync = useRef(false);
   const didInitialScroll = useRef(false);
 
-  const { data: allInspections = [], isLoading: loadingInsp } = useAllInspections();
-  const { data: allBriefings = [], isLoading: loadingBrief } = useAllBriefings();
+  const inspectionsQ = useAllInspections();
+  const briefingsQ = useAllBriefings();
+  const allInspections = inspectionsQ.data ?? [];
+  const allBriefings = briefingsQ.data ?? [];
+  const loadingInsp = inspectionsQ.isLoading;
+  const loadingBrief = briefingsQ.isLoading;
   const { data: templates = [] } = useTemplates();
   const events = useCalendarEvents();
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        inspectionsQ.refetch(),
+        briefingsQ.refetch(),
+        queryClient.invalidateQueries({ queryKey: ['schedules'] }),
+      ]);
+    } finally { setRefreshing(false); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inspectionsQ.refetch, briefingsQ.refetch, queryClient]);
   const { projectId } = useLocalSearchParams<{ projectId?: string }>();
   const filteredEvents = useMemo(
     () => (projectId ? events.filter(e => e.projectId === projectId) : events),
@@ -386,6 +403,9 @@ export default function CalendarScreen() {
           onScroll={e => handleScroll(e.nativeEvent.contentOffset.y)}
           scrollEventThrottle={16}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.accent} />
+          }
         >
           {sections.map(section => (
             <View

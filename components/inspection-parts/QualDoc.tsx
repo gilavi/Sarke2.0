@@ -37,7 +37,7 @@ export function QualDoc({
   if (photoPath && uri) {
     return (
       <View style={styles.photoContainer}>
-        <Image source={{ uri }} style={styles.photo} contentFit="cover" />
+        <Image source={{ uri }} style={styles.photo} contentFit="cover" transition={200} />
         <Pressable
           style={styles.deleteBtn}
           onPress={onDelete}

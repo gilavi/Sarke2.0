@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Image,
   Pressable,
   ScrollView,
@@ -15,6 +14,7 @@ import { Button } from '../../components/ui';
 import { HeaderBackPill } from '../../components/HeaderBackPill';
 import { useBottomSheet } from '../../components/BottomSheet';
 import { useTheme } from '../../lib/theme';
+import { SkeletonPreview } from '../../components/Skeleton';
 import { useToast } from '../../lib/toast';
 import { useSession } from '../../lib/session';
 import { reportDisplayName } from '../../lib/shared/documentName';
@@ -132,8 +132,8 @@ export default function ReportDetailScreen() {
 
   if (!report) {
     return (
-      <View style={[styles.centered, { flex: 1, backgroundColor: theme.colors.background }]}>
-        <ActivityIndicator color={theme.colors.accent} />
+      <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+        <SkeletonPreview />
       </View>
     );
   }

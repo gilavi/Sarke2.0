@@ -299,7 +299,7 @@ const PhotoThumb = memo(function PhotoThumb({
 
   return (
     <View style={styles.thumb}>
-      <Image source={{ uri }} style={styles.thumbImg} contentFit="cover" />
+      <Image source={{ uri }} style={styles.thumbImg} contentFit="cover" transition={200} />
       <Pressable
         style={styles.thumbDelete}
         onPress={onDelete}

@@ -56,6 +56,12 @@ export default function TemplatesScreen() {
   const templates = templatesQ.data ?? [];
   const loaded = !templatesQ.isLoading;
   const [tourVisible, setTourVisible] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try { await templatesQ.refetch(); } finally { setRefreshing(false); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [templatesQ.refetch]);
 
   const handleHelpPress = useCallback(() => setTourVisible(true), []);
   const renderItem = useCallback(({ item }: { item: Template }) => (
@@ -69,6 +75,8 @@ export default function TemplatesScreen() {
         <FlatList
           data={templates}
           keyExtractor={t => t.id}
+          refreshing={refreshing}
+          onRefresh={onRefresh}
           contentContainerStyle={{ padding: 16, gap: 12 }}
           ListEmptyComponent={
             !loaded ? (

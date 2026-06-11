@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Linking,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   View,
@@ -48,6 +49,7 @@ export default function RegulationsScreen() {
   const [lastFetch, setLastFetch] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const refreshing = useRef(false);
+  const [pullRefreshing, setPullRefreshing] = useState(false);
 
   const refresh = useCallback(async (force = false) => {
     if (refreshing.current) return;
@@ -70,6 +72,11 @@ export default function RegulationsScreen() {
       refresh(false);
     }, [refresh])
   );
+
+  const onPullRefresh = useCallback(async () => {
+    setPullRefreshing(true);
+    try { await refresh(true); } finally { setPullRefreshing(false); }
+  }, [refresh]);
 
   const stateById = (id: string) => states.find((s) => s.id === id);
 
@@ -94,6 +101,9 @@ export default function RegulationsScreen() {
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 40, gap: 12 }}
+        refreshControl={
+          <RefreshControl refreshing={pullRefreshing} onRefresh={onPullRefresh} tintColor={theme.colors.regsTint} />
+        }
       >
         {REGULATIONS.map((item, index) => {
           const st = stateById(item.id);

@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   View,
@@ -12,6 +12,7 @@ import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { useTheme } from '../../../lib/theme';
 import { formatShortDateTime } from '../../../lib/formatDate';
 import { useProject, useReportsByProject } from '../../../lib/apiHooks';
+import { SkeletonRow } from '../../../components/Skeleton';
 import type { Report, ReportStatus } from '../../../types/models';
 
 type Filter = 'all' | ReportStatus;
@@ -33,7 +34,16 @@ export default function ProjectReportsList() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const { data: project } = useProject(id);
-  const { data: items = [], isLoading: loading } = useReportsByProject(id);
+  const reportsQ = useReportsByProject(id);
+  const items = reportsQ.data ?? [];
+  // Canonical three-state guard (see CLAUDE.md): skeleton until the query
+  // has produced a real answer; never flash empty state over a stale [].
+  const loading = (reportsQ.isFetching || !reportsQ.isFetched) && items.length === 0;
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try { await reportsQ.refetch(); } finally { setRefreshing(false); }
+  }, [reportsQ]);
   const [filter, setFilter] = useState<Filter>('all');
 
   const filtered = useMemo(() => {
@@ -59,6 +69,10 @@ export default function ProjectReportsList() {
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 }}
+      
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.accent} />
+        }
       >
         {project?.name ? <Text style={styles.pageSubtitle}>{project.name}</Text> : null}
 
@@ -69,8 +83,10 @@ export default function ProjectReportsList() {
         </View>
 
         {loading ? (
-          <View style={styles.centered}>
-            <ActivityIndicator color={theme.colors.accent} />
+          <View style={{ gap: 10 }}>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <SkeletonRow key={i} style={styles.skeletonRow} />
+            ))}
           </View>
         ) : filtered.length === 0 ? (
           <View style={styles.emptyState}>
@@ -186,7 +202,12 @@ function makeStyles(theme: any) {
     pageTitle: { fontSize: 26, fontWeight: '700', color: theme.colors.ink },
     pageSubtitle: { fontSize: 13, color: theme.colors.inkFaint, marginTop: 3 },
     filterRow: { flexDirection: 'row', gap: 8, marginBottom: 12, flexWrap: 'wrap' },
-    centered: { paddingVertical: 60, alignItems: 'center', justifyContent: 'center' },
+    skeletonRow: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: 12,
+      paddingVertical: 13,
+      paddingHorizontal: 14,
+    },
     emptyState: {
       paddingVertical: 60,
       alignItems: 'center',

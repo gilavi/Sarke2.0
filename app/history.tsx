@@ -143,8 +143,18 @@ export default function HistoryScreen() {
   const styles = useMemo(() => getstyles(theme), [theme]);
   const router = useRouter();
   const toast = useToast();
-  const { data: qs = [], isLoading: qsLoading } = useRecentInspections(200);
-  const { data: templates = [], isLoading: tplsLoading } = useTemplates();
+  const recentQ = useRecentInspections(200);
+  const templatesQ = useTemplates();
+  const qs = recentQ.data ?? [];
+  const templates = templatesQ.data ?? [];
+  const qsLoading = recentQ.isLoading;
+  const tplsLoading = templatesQ.isLoading;
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try { await Promise.all([recentQ.refetch(), templatesQ.refetch()]); } finally { setRefreshing(false); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recentQ.refetch, templatesQ.refetch]);
   const { data: projects = [], isLoading: projectsLoading } = useProjects();
   const completedIds = useMemo(() => qs.filter(i => i.status === 'completed').map(i => i.id), [qs]);
   const { data: certCounts = {}, isLoading: countsLoading } = useCertificateCounts(completedIds);
@@ -210,6 +220,8 @@ export default function HistoryScreen() {
       <FlatList
           data={items}
           keyExtractor={(item) => (item.kind === 'header' ? `h-${item.label}` : item.q.id)}
+          refreshing={refreshing}
+          onRefresh={onRefresh}
           contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 12, paddingBottom: 32, gap: 8 }}
           renderItem={renderItem}
           initialNumToRender={10}

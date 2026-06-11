@@ -64,6 +64,7 @@ import { usePdfUsage, useInvalidatePdfUsage } from '../../lib/usePdfUsage';
 import { toErrorMessage } from '../../lib/logError';
 import { haptic } from '../../lib/haptics';
 import { useTheme } from '../../lib/theme';
+import { SkeletonPreview } from '../../components/Skeleton';
 import type {
   Answer,
   AnswerPhoto,
@@ -494,10 +495,7 @@ export default function InspectionResultScreen() {
       />
       <View style={styles.previewWrap}>
         {previewBusy && !previewHtml ? (
-          <View style={styles.previewState}>
-            <ActivityIndicator size="large" color={theme.colors.accent} />
-            <Text style={{ color: theme.colors.inkSoft, marginTop: 12 }}>პრევიუ იტვირთება…</Text>
-          </View>
+          <SkeletonPreview />
         ) : previewError && !previewHtml ? (
           <View style={styles.previewState}>
             <Ionicons name="alert-circle" size={36} color={theme.colors.danger} />

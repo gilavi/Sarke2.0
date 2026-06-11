@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { AnimatedSuccessIcon, CelebrationBurst } from '../../../components/animations';
 import { haptic } from '../../../lib/haptics';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { Button } from '../../../components/ui';
 import { useTheme } from '../../../lib/theme';
+import { SkeletonCard } from '../../../components/Skeleton';
 import { useToast } from '../../../lib/toast';
 import { useSession } from '../../../lib/session';
 import { pdfPhotoEmbed } from '../../../lib/imageUrl';
@@ -95,8 +96,8 @@ export default function ReportSuccessScreen() {
 
   if (!report) {
     return (
-      <View style={[styles.centered, { flex: 1, backgroundColor: theme.colors.background }]}>
-        <ActivityIndicator color={theme.colors.accent} />
+      <View style={{ flex: 1, backgroundColor: theme.colors.background, padding: 16, justifyContent: 'center' }}>
+        <SkeletonCard />
       </View>
     );
   }

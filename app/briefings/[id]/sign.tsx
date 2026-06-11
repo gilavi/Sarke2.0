@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
@@ -8,6 +8,7 @@ import SignatureScreen, { type SignatureViewRef } from 'react-native-signature-c
 import { Button } from '../../../components/ui';
 import { useBottomSheet } from '../../../components/BottomSheet';
 import { useTheme } from '../../../lib/theme';
+import { SkeletonListCard } from '../../../components/Skeleton';
 import { briefingsApi } from '../../../lib/briefingsApi';
 import { a11y } from '../../../lib/accessibility';
 import { useQueryClient } from '@tanstack/react-query';
@@ -268,9 +269,9 @@ export default function BriefingSignScreen() {
 
   if (!briefing) {
     return (
-      <View style={{ flex: 1, backgroundColor: theme.colors.background, alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ flex: 1, backgroundColor: theme.colors.background, padding: 16, justifyContent: 'center' }}>
         <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
-        <ActivityIndicator size="large" color={theme.colors.accent} />
+        <SkeletonListCard rows={4} />
       </View>
     );
   }

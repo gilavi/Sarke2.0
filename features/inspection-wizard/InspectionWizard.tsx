@@ -20,6 +20,7 @@ import { TOUR_SEEN_KEY } from '../../lib/scaffoldHelp';
 import { WizardStepTransition, AnswerButtons } from '../../components/wizard';
 import { HarnessListFlow } from '../../components/HarnessListFlow';
 import { useTheme } from '../../lib/theme';
+import { SkeletonWizard } from '../../components/Skeleton';
 import { haptic } from '../../lib/haptics';
 import { isOscillating } from '../../lib/navigationGuard';
 import { useToast } from '../../lib/toast';
@@ -195,9 +196,7 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
     return (
       <Screen edgeToEdge edges={['top']} style={{ backgroundColor: theme.colors.background }}>
         <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={theme.colors.semantic.success} />
-        </View>
+        <SkeletonWizard />
       </Screen>
     );
   }

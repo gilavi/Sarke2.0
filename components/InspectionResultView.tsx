@@ -35,6 +35,7 @@ import { CertificatesActionSheet } from './CertificatesActionSheet';
 import { useBottomSheet } from './BottomSheet';
 import { SubscriptionNotice } from './SubscriptionNotice';
 import { useTheme } from '../lib/theme';
+import { SkeletonPreview } from './Skeleton';
 import {
   SignaturesScreen,
   useSignaturesState,
@@ -133,10 +134,7 @@ export function InspectionResultView(props: Props) {
       />
       <View style={styles.previewWrap}>
         {previewBusy && !previewHtml ? (
-          <View style={styles.previewState}>
-            <ActivityIndicator size="large" color={theme.colors.accent} />
-            <Text style={{ color: theme.colors.inkSoft, marginTop: 12 }}>პრევიუ იტვირთება…</Text>
-          </View>
+          <SkeletonPreview />
         ) : previewError && !previewHtml ? (
           <View style={styles.previewState}>
             <Ionicons name="alert-circle" size={36} color={theme.colors.danger} />

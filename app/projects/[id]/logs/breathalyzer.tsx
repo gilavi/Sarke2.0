@@ -6,7 +6,6 @@ import {
   useState,
 } from 'react';
 import {
-  ActivityIndicator,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
@@ -18,6 +17,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SkeletonListCard } from '../../../../components/Skeleton';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
@@ -406,8 +406,8 @@ export default function BreathalizerJournalScreen() {
       />
 
       {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator color={theme.colors.accent} />
+        <View style={{ padding: 16 }}>
+          <SkeletonListCard rows={5} />
         </View>
       ) : !log ? (
         // ── No log for today ───────────────────────────────────────────────
