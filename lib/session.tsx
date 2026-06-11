@@ -4,6 +4,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import * as Crypto from 'expo-crypto';
 import { supabase } from './supabase';
 import { purgeUserScopedStorage } from './storage-purge';
 import { logError } from './logError';
@@ -75,6 +77,11 @@ interface SessionCtx {
   state: SessionState;
   signIn: (email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
+  /** Native Sign in with Apple (iOS only — Apple guideline 4.8). Resolves
+   *  silently when the user dismisses the sheet. On first authorization Apple
+   *  returns the full name once; it is persisted to the users row + auth
+   *  metadata immediately or it is lost forever. */
+  signInWithApple: () => Promise<void>;
   register: (args: {
     email: string;
     password: string;
@@ -262,6 +269,57 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           if (sessionError) throw sessionError;
         } else if (result.type !== 'dismiss') {
           throw new Error('Google sign-in failed');
+        }
+      },
+      signInWithApple: async () => {
+        // Replay-protection nonce: Apple signs the SHA-256 hash, Supabase
+        // verifies the raw value against the token's nonce claim.
+        const rawNonce = Crypto.randomUUID();
+        const hashedNonce = await Crypto.digestStringAsync(
+          Crypto.CryptoDigestAlgorithm.SHA256,
+          rawNonce,
+        );
+        let credential: AppleAuthentication.AppleAuthenticationCredential;
+        try {
+          credential = await AppleAuthentication.signInAsync({
+            requestedScopes: [
+              AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+              AppleAuthentication.AppleAuthenticationScope.EMAIL,
+            ],
+            nonce: hashedNonce,
+          });
+        } catch (e) {
+          // User dismissed the native sheet — not an error.
+          if ((e as { code?: string })?.code === 'ERR_REQUEST_CANCELED') return;
+          throw e;
+        }
+        if (!credential.identityToken) throw new Error('No identity token');
+        const { data, error } = await supabase.auth.signInWithIdToken({
+          provider: 'apple',
+          token: credential.identityToken,
+          nonce: rawNonce,
+        });
+        if (error) throw error;
+
+        // Apple returns fullName ONLY on the very first authorization. The
+        // handle_new_user trigger has already inserted the users row with
+        // empty names (no metadata at insert time), so patch both the row
+        // and the auth metadata now — best-effort, never block sign-in.
+        const firstName = credential.fullName?.givenName?.trim() ?? '';
+        const lastName = credential.fullName?.familyName?.trim() ?? '';
+        if ((firstName || lastName) && data.user) {
+          const patch: Record<string, string> = {};
+          if (firstName) patch.first_name = firstName;
+          if (lastName) patch.last_name = lastName;
+          await supabase.auth.updateUser({ data: patch }).catch(() => {});
+          const { error: nameError } = await supabase
+            .from('users')
+            .update(patch)
+            .eq('id', data.user.id);
+          if (nameError) logError(nameError, 'session.signInWithApple.persistName');
+          // The SIGNED_IN listener may have fetched the row before the patch
+          // landed — re-read so the UI shows the name immediately.
+          if (data.session) await loadUser(data.session).catch(() => {});
         }
       },
       register: async ({ email, password, firstName, lastName }) => {

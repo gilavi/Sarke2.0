@@ -1,10 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   Keyboard,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -30,12 +28,12 @@ import { isEmail } from '../../lib/validators';
 import {
   friendlyError,
   isAccountNotFoundError,
-  isCancelledError,
   isEmailTakenError,
   isWrongPasswordError,
 } from '../../lib/errorMap';
 import { Button, Card } from '../../components/ui';
 import { FloatingLabelInput } from '../../components/inputs/FloatingLabelInput';
+import { SocialAuthButtons } from '../../components/auth/SocialAuthButtons';
 
 const MIN_PASSWORD_LEN = 6;
 
@@ -184,13 +182,12 @@ const RESET_PROMPT_AFTER = 3;
 function LoginForm({ onForgotPassword }: { onForgotPassword: (email?: string) => void }) {
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
-  const { signIn, signInWithGoogle } = useSession();
+  const { signIn } = useSession();
   const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [googleBusy, setGoogleBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Counts consecutive wrong-password failures for the CURRENT email. Resets
   // whenever the email changes or a sign-in succeeds. AccountNotFound failures
@@ -236,18 +233,6 @@ function LoginForm({ onForgotPassword }: { onForgotPassword: (email?: string) =>
       }
     } finally {
       setBusy(false);
-    }
-  };
-
-  const handleGoogle = async () => {
-    setGoogleBusy(true);
-    setError(null);
-    try {
-      await signInWithGoogle();
-    } catch (e) {
-      if (!isCancelledError(e)) setError(friendlyError(e));
-    } finally {
-      setGoogleBusy(false);
     }
   };
 
@@ -297,7 +282,7 @@ function LoginForm({ onForgotPassword }: { onForgotPassword: (email?: string) =>
         disabled={!isEmail(email.trim()) || password.length < MIN_PASSWORD_LEN}
       />
       <Divider />
-      <GoogleButton onPress={handleGoogle} loading={googleBusy} />
+      <SocialAuthButtons mode="login" onError={setError} />
     </View>
   );
 }
@@ -339,7 +324,7 @@ function RegisterForm({
 }) {
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
-  const { register, signInWithGoogle } = useSession();
+  const { register } = useSession();
   const { t } = useTranslation();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -347,7 +332,6 @@ function RegisterForm({
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [googleBusy, setGoogleBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const lastNameRef = useRef<TextInput>(null);
   const emailRef = useRef<TextInput>(null);
@@ -388,18 +372,6 @@ function RegisterForm({
       }
     } finally {
       setBusy(false);
-    }
-  };
-
-  const handleGoogle = async () => {
-    setGoogleBusy(true);
-    setError(null);
-    try {
-      await signInWithGoogle();
-    } catch (e) {
-      if (!isCancelledError(e)) setError(friendlyError(e));
-    } finally {
-      setGoogleBusy(false);
     }
   };
 
@@ -462,7 +434,7 @@ function RegisterForm({
       {error ? <InlineError>{error}</InlineError> : null}
       <Button title={t('auth.register')} onPress={handleRegister} loading={busy} disabled={!canSubmit} />
       <Divider />
-      <GoogleButton onPress={handleGoogle} loading={googleBusy} label={t('auth.registerWithGoogle')} />
+      <SocialAuthButtons mode="register" onError={setError} />
     </View>
   );
 }
@@ -507,37 +479,6 @@ function Divider() {
       <Text style={{ color: theme.colors.inkFaint, fontSize: 12, fontWeight: '500' }}>{t('auth.or')}</Text>
       <View style={{ flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: theme.colors.hairline }} />
     </View>
-  );
-}
-
-function GoogleButton({ onPress, loading, label, ...rest }: { onPress: () => void; loading?: boolean; label?: string } & Record<string, any>) {
-  const { theme } = useTheme();
-  const styles = useMemo(() => getstyles(theme), [theme]);
-  const { t } = useTranslation();
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={loading}
-      style={({ pressed }) => [
-        styles.googleBtn,
-        pressed && { opacity: 0.82 },
-        loading && { opacity: 0.6 },
-      ]}
-      {...rest}
-    >
-      {loading ? (
-        <ActivityIndicator color={theme.colors.inkSoft} />
-      ) : (
-        <>
-          <View style={styles.googleLogoWrap}>
-            <Text style={styles.googleLogoText}>G</Text>
-          </View>
-          <Text style={{ fontWeight: '600', fontSize: 15, color: theme.colors.ink }}>
-            {label ?? t('auth.loginWithGoogle')}
-          </Text>
-        </>
-      )}
-    </Pressable>
   );
 }
 
@@ -706,26 +647,6 @@ function getstyles(theme: any) {
     borderRadius: 10,
     padding: 12,
   },
-  googleBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    paddingVertical: 13,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: theme.colors.hairline,
-    backgroundColor: theme.colors.card,
-  },
-  googleLogoWrap: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: '#4285F4',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  googleLogoText: { color: '#fff', fontSize: 13, fontWeight: '900' },
   overlay: {
     flex: 1,
     backgroundColor: theme.colors.overlay,

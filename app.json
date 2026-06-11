@@ -21,6 +21,7 @@
       "requireFullScreen": true,
       "bundleIdentifier": "ge.sarke2.app",
       "buildNumber": "1",
+      "usesAppleSignIn": true,
       "infoPlist": {
         "NSCameraUsageDescription": "კამერა გამოიყენება ხარაჩოს და ქამრების ფოტოების ატვირთვისთვის.",
         "NSPhotoLibraryUsageDescription": "ფოტოების არჩევა სისტემის ბიბლიოთეკიდან.",
@@ -69,7 +70,8 @@
       "@sentry/react-native",
       "expo-font",
       "expo-web-browser",
-      "expo-location"
+      "expo-location",
+      "expo-apple-authentication"
     ],
     "extra": {
       "supabaseUrl": "https://seskuthiopywrgntsgfw.supabase.co",
