@@ -75,8 +75,8 @@ Top-level folders, one line each.
 | `scripts/` | Repo scripts including `check-primitives.mjs` (lint guard). |
 | `supabase/` | `migrations/` SQL files (0001–0054 plus timestamp-prefixed migrations from 2026-05-25 onward; numbers 0044/0045/0046 are each used by two files — see Migrations note), `seed/` system templates, `functions/` Edge Functions, `.temp/` local CLI cache. |
 | `docs/` | Project documentation — `AI_BRIEFING.md`, `WHATS_NEW.md`, `primitives.md`, `payments.md`, `design-system-audit-*.md`, `prompts/`. |
-| `web/` | `hubble-sign` tokenized signing page (Vite + React). Deployed to `https://gilavi.github.io/Sarke2.0/`. |
-| `web-app/` | Public dashboard (Vite + React + TS + Tailwind). Deployed to `https://gilavi.github.io/Sarke2.0/app/`. |
+| `web/` | `hubble-sign` tokenized signing page (Vite + React). Deployed to `https://hubble.ge/` (GitHub Pages with CNAME). |
+| `web-app/` | Public dashboard (Vite + React + TS + Tailwind). Deployed to `https://hubble.ge/app/`. |
 | `website/` | Docusaurus documentation site. Deployed via `.github/workflows/docs.yml`. |
 | `public/` | Static assets for the web bundles. |
 | `tests/` | Vitest unit tests under `tests/unit/` (canonical location; config in [vitest.config.ts](vitest.config.ts)) plus live-Supabase integration tests under `tests/integration/`. |
@@ -121,13 +121,13 @@ Two static bundles in this repo plus a Docusaurus site. None share code with the
 
 | Path | Purpose | URL | Deploy workflow |
 |---|---|---|---|
-| `web/` (hubble-sign) | Tokenized signing page recipients open from an SMS link | `https://gilavi.github.io/Sarke2.0/` | `deploy-web.yml` |
-| `web-app/` (dashboard) | Public dashboard with full BOG payment parity | `https://gilavi.github.io/Sarke2.0/app/` | `deploy-web-app.yml` (+ `-preview.yml` for PR previews under `/app/preview/`) |
+| `web/` (hubble-sign) | Tokenized signing page recipients open from an SMS link | `https://hubble.ge/` | `deploy-web.yml` |
+| `web-app/` (dashboard) | Public dashboard with full BOG payment parity | `https://hubble.ge/app/` | `deploy-web-app.yml` (+ `-preview.yml` for PR previews under `/app/preview/`) |
 | `website/` (Docusaurus) | Documentation site | published via `docs.yml` | `docs.yml` |
 
 All three deploy to the same `gh-pages` branch under different `destination_dir` values; `keep_files: true` preserves the other trees.
 
-**Don't change the base path of `web/`** — in-flight SMS links from `lib/sms.ts` + `supabase/functions/send-signing-sms/` would break.
+**Don't change the base path of `web/`** — in-flight SMS links from `lib/sms.ts` + `supabase/functions/send-signing-sms/` would break (the path after the domain must stay `/`; the `hubble.ge` CNAME can change without affecting links).
 
 ### Public marketing site (multi-page)
 
@@ -262,7 +262,7 @@ Outbound email uses **Resend** via custom SMTP (configured in the Supabase dashb
 | `20260527120000_get_inspection_stats_rpc.sql` | `get_inspection_stats()` RPC — per-project draft/completed counts for the projects list. SECURITY INVOKER so RLS scopes results to the caller automatically. **Apply manually**. |
 | `20260527150000_email_exists_rpc.sql` | `email_exists(p_email text)` RPC — boolean lookup of `auth.users`. Backs the login screen's distinct error messages ("wrong password" vs "no account") and the after-3-attempts password-reset prompt. SECURITY DEFINER (RLS hides `auth.users` from anon/authenticated). Deliberate user-enumeration trade-off accepted for modern login UX. Granted to `anon` so the unauthenticated login screen can call it. **Apply manually**. |
 
-> Migration `0028_pdf_usage_tracking.sql` and the free-tier limit are noted in memory — the function currently allows 30 free PDFs (soft-launch). Tighten when BOG payment is fully wired.
+> Free-tier PDF limit: `increment_pdf_count` allows 30 free PDFs (intentional soft-launch setting). BOG payment is now live with production keys — tighten this limit when ready to enforce it. See [docs/payments.md](docs/payments.md).
 
 ### Storage buckets
 
@@ -303,10 +303,8 @@ git grep -nE "იმეილი|გაიცანი |სცადე[^თ]|�
 
 ## Known Issues
 
-1. **Storage RLS gap (open).** Dashboard-created policies named `sarke_*_authenticated` on the `certificates`, `answer-photos`, `pdfs`, and `signatures` buckets gate only on `bucket_id = ANY(...)`. Any authenticated user can read or delete files in those buckets. They aren't in version control because they were created via the Supabase dashboard. `incident-photos` and `report-photos` were tightened in migration 0020; the rest still need owner-scoped policies. See `BUG_REPORT.md`.
+1. **Web build (`expo start --web`) worklets workaround.** `react-native-worklets@0.5.x` reads `globalThis.__RUNTIME_KIND` at module-init to decide native vs web mode, but seeds that global later in a different module — so on web the native path runs and crashes at boot ([reanimated#8285](https://github.com/software-mansion/react-native-reanimated/issues/8285)). Worked around with Metro `resolveRequest` aliases in [metro.config.js](metro.config.js) that redirect `react-native-worklets/.../PlatformChecker` and `react-native-keyboard-controller` to web stubs in [shims/](shims/). Auth on the web bundle currently cannot log in with iOS-simulator credentials — investigate before relying on web for QA.
 
-2. **Web build (`expo start --web`) worklets workaround.** `react-native-worklets@0.5.x` reads `globalThis.__RUNTIME_KIND` at module-init to decide native vs web mode, but seeds that global later in a different module — so on web the native path runs and crashes at boot ([reanimated#8285](https://github.com/software-mansion/react-native-reanimated/issues/8285)). Worked around with Metro `resolveRequest` aliases in [metro.config.js](metro.config.js) that redirect `react-native-worklets/.../PlatformChecker` and `react-native-keyboard-controller` to web stubs in [shims/](shims/). Auth on the web bundle currently cannot log in with iOS-simulator credentials — investigate before relying on web for QA.
+2. **Offline queue is lost on uninstall.** Offline photo capture is queued under `documentDirectory/offline-photos/` and flushes on reconnect. If the user uninstalls the app before reconnecting, the queue is gone.
 
-3. **Offline queue is lost on uninstall.** Offline photo capture is queued under `documentDirectory/offline-photos/` and flushes on reconnect. If the user uninstalls the app before reconnecting, the queue is gone.
-
-4. **PDF export is fast for typical cases but not instant.** Multi-photo reports went ~10× faster after the resize+cache pipeline landed (2026-04-30). A 30-photo inspection still takes a beat.
+3. **PDF export is fast for typical cases but not instant.** Multi-photo reports went ~10× faster after the resize+cache pipeline landed (2026-04-30). A 30-photo inspection still takes a beat.

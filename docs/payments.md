@@ -4,7 +4,7 @@ Single source of truth for the BOG payment / subscription flow shared by the mob
 
 ## Pricing
 
-- **Hubble Pro:** ₾19 / month. Charged via Bank of Georgia (BOG) e-commerce.
+- **Hubble Pro:** ₾1 / month (testing rate as of 2026-06-11 — change back to ₾19 before full launch). Charged via Bank of Georgia (BOG) e-commerce.
 - **Free tier:** `PDF_FREE_LIMIT = 30` lifetime PDFs (intentionally generous during soft launch — tighten when BOG payment is fully approved).
 
 ## Backend
