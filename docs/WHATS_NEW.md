@@ -1,6 +1,25 @@
 # What's New — Hubble Changelog
 
-**Updated:** 2026-06-03 | Branch: `main`
+**Updated:** 2026-06-11 | Branch: `main`
+
+---
+
+## 2026-06-11 — Payments unbroken after the hubble.ge move + production BOG keys
+
+Web payments had been failing with `400 invalid redirect url` since the hubble.ge
+rebrand: the subscribe page sends `https://hubble.ge/app/…` success/fail URLs, but the
+deployed `create-bog-order` (last deployed 2026-05-05, pre-rebrand) only allowed
+`sarke2://` and the old `gilavi.github.io` prefix.
+
+- **`supabase/functions/create-bog-order/index.ts`** — `ALLOWED_PREFIXES` now includes
+  `https://hubble.ge/` (github.io kept for shipped mobile builds, which 301 to the CNAME).
+- **`components/PaywallModal.tsx`** — `SUBSCRIBE_BASE_URL` → `https://hubble.ge/app/#/subscribe`
+  directly (no more reliance on the 301); takes effect on the next mobile build.
+- Both BOG edge functions redeployed; `BOG_CLIENT_ID`/`BOG_CLIENT_SECRET` switched to the
+  production pair + `BOG_ENV=production` (set via the Supabase dashboard, never in-repo).
+- **`docs/payments.md`** — new "Secrets & deployment" section (where keys live, manual
+  function deploys, the allowlist gotcha); migration-state section updated to
+  verified-live-2026-06-11.
 
 ---
 

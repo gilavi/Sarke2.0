@@ -39,7 +39,7 @@ Unique index on `(bog_order_id, status)` deduplicates webhook retries.
 
 ### Edge Functions
 
-- **`create-bog-order`** ([source](../supabase/functions/create-bog-order/index.ts)) — auth'd. Validates redirect URLs (allows `sarke2://` and `https://gilavi.github.io/Sarke2.0/app/...`). Calls BOG, returns `{ order_id, redirect_url }`.
+- **`create-bog-order`** ([source](../supabase/functions/create-bog-order/index.ts)) — auth'd. Validates redirect URLs (allows `sarke2://`, `https://hubble.ge/...`, and the legacy `https://gilavi.github.io/Sarke2.0/...` which 301s to the CNAME). Calls BOG, returns `{ order_id, redirect_url }`.
 - **`bog-payment-callback`** ([source](../supabase/functions/bog-payment-callback/index.ts)) — public webhook (BOG calls it). Re-verifies status server-side, upserts a `payment_records` row, and on `completed` flips the user to `active` for 30 days, clearing `subscription_cancelled_at`.
 
 ## Flow
@@ -110,11 +110,27 @@ try {
 
 Same shape as [app/reports/[id]/success.tsx](../app/reports/%5Bid%5D/success.tsx).
 
-## Migration state
+## Secrets & deployment
 
-Per `~/.claude/projects/-Users-gkheladze-Sarke-2-0/memory/`, migrations 0028 / 0029 / 0031 may not yet be applied to the live Supabase project — verify before testing.
+BOG credentials live **only** in Supabase Edge Function secrets (Dashboard → project → Edge Functions → Secrets, or `supabase secrets set`). Never in the repo, `web-app/` env files, or the app bundle — BOG auth is server-side OAuth (`client_id` + `client_secret` → Basic auth token request), so the client never needs a key.
+
+| Secret | Value |
+|---|---|
+| `BOG_CLIENT_ID` / `BOG_CLIENT_SECRET` | BOG e-commerce OAuth pair (sandbox or production). |
+| `BOG_ENV` | `production` for live keys; anything else (or unset) selects the sandbox BOG endpoints. |
+| `BOG_CALLBACK_URL` | `https://<project-ref>.supabase.co/functions/v1/bog-payment-callback` |
+
+For local dev, put sandbox values in `supabase/.env.local` (gitignored).
+
+No CI deploys edge functions — after changing function code, deploy manually:
 
 ```sh
-supabase db push                    # local CLI
-# or paste into the SQL editor at https://supabase.com/dashboard
+supabase functions deploy create-bog-order
+supabase functions deploy bog-payment-callback
 ```
+
+**Gotcha (2026-06):** payments were broken because the deployed `create-bog-order` predated the hubble.ge rebrand — its redirect-URL allowlist rejected the new domain with `400 invalid redirect url`. If the subscribe page's domain ever changes again, update `ALLOWED_PREFIXES` in the function **and redeploy it**.
+
+## Migration state
+
+Verified live on 2026-06-11: `payment_records` and the `users` subscription columns all exist on the hosted project (checked via `supabase db query --linked` — prefer that over `supabase db push`, which would apply the whole unapplied-migration backlog).

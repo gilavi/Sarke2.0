@@ -66,7 +66,9 @@ Deno.serve(async (req) => {
     let body: { success_url?: string; fail_url?: string } = {};
     try { body = await req.json(); } catch { /* no body — mobile path */ }
 
-    const ALLOWED_PREFIXES = ['sarke2://', 'https://gilavi.github.io/Sarke2.0/'];
+    // github.io kept alongside hubble.ge: shipped mobile builds still open the
+    // old URL, which 301s to the hubble.ge CNAME.
+    const ALLOWED_PREFIXES = ['sarke2://', 'https://hubble.ge/', 'https://gilavi.github.io/Sarke2.0/'];
     const isAllowed = (u: string) => ALLOWED_PREFIXES.some((p) => u.startsWith(p));
 
     const successUrl = body.success_url ?? 'sarke2://payment/success';

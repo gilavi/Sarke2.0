@@ -12,10 +12,11 @@ import { PDF_FREE_LIMIT } from '../lib/pdfGate';
 import { supabase } from '../lib/supabase';
 import { useInvalidatePdfUsage } from '../lib/usePdfUsage';
 
-// Hosted on GitHub Pages alongside the dashboard. The web subscribe page
-// authenticates via tokens passed in the URL hash, then drives the BOG order.
+// Hosted on GitHub Pages (hubble.ge CNAME) alongside the dashboard. The web
+// subscribe page authenticates via tokens passed in the URL hash, then drives
+// the BOG order.
 // Selling subscriptions through Apple's app would require IAP (Apple guideline 3.1.1).
-const SUBSCRIBE_BASE_URL = 'https://gilavi.github.io/Sarke2.0/app/#/subscribe';
+const SUBSCRIBE_BASE_URL = 'https://hubble.ge/app/#/subscribe';
 
 interface Props {
   visible: boolean;
