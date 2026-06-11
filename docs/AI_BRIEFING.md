@@ -123,7 +123,7 @@ Hubble/
 ├── ONBOARDING.md                     # Full AI guide (read this first)
 ├── CLAUDE.md                         # Dev workflow rules
 ├── README.md                         # Project overview
-├── BUG_REPORT.md                     # Known issues + resolutions
+├── docs/reports/                     # Historical session/QA/bug reports (BUG_REPORT.md etc.)
 └── docs/
     ├── AI_BRIEFING.md                # This file
     ├── WHATS_NEW.md                  # Changelog
@@ -180,7 +180,7 @@ between sub-items.
 - Run `npm run lint` before committing (tsc + check-primitives.mjs)
 - Read `docs/primitives.md` before adding any new `lib/` file or component wrapper
 - Fix the canonical primitive instead of adding a sibling
-- Mark bugs resolved in `BUG_REPORT.md` — never delete entries
+- Mark bugs resolved in `docs/reports/BUG_REPORT.md` — never delete entries
 
 ---
 
@@ -228,7 +228,7 @@ npm run lint        # tsc --noEmit + check-primitives.mjs
 | Typecheck failing | Expected. See CLAUDE.md. Note new failures but don't block on them. |
 | Adding page transitions in `AppShell` | Keep `<AnimatePresence mode="wait" initial={false}>`. Never branch with two `motion.div`s sharing the same `key` — exits never reconcile and the DOM accumulates one ghost copy per navigation (BUG-20, fixed 2026-05-26). One `motion.div` per `AnimatePresence`; vary props with conditionals, not separate elements. |
 | Scaffold vs harness in inspections-table rows | The `inspections` table holds 4 categories (`harness`, `xaracho`, `mobile_scaffold`, `mobile_scaffold_n3`). Always read `template[0]?.category` from the joined `template:templates(category)` to set the row type — hardcoding `'harness'` (or `'inspection'`) gives every scaffold row a harness badge. Pattern in `History.tsx`, `Inspections.tsx`, `InspectionsSection.tsx`, `ProjectActivityWidget.tsx`. |
-| Empty-state flashes on a screen the user has data on | Use `(q.isFetching \|\| !q.isFetched) && data.length === 0` for the skeleton guard, not `q.isLoading` or `q.isPending`. `isLoading` only covers the *very first* fetch and skips background refetches replacing a stale `[]`. For user-scoped queries also add a `staleTime: 0` prefetch in `lib/session.tsx` so a racy empty value from a previous boot can't outlive login. See `app/(tabs)/home.tsx`, `app/(tabs)/projects.tsx` for the canonical wiring, and BUG_REPORT.md ("Home shows empty projects after first login"). |
+| Empty-state flashes on a screen the user has data on | Use `(q.isFetching \|\| !q.isFetched) && data.length === 0` for the skeleton guard, not `q.isLoading` or `q.isPending`. `isLoading` only covers the *very first* fetch and skips background refetches replacing a stale `[]`. For user-scoped queries also add a `staleTime: 0` prefetch in `lib/session.tsx` so a racy empty value from a previous boot can't outlive login. See `app/(tabs)/home.tsx`, `app/(tabs)/projects.tsx` for the canonical wiring, and docs/reports/BUG_REPORT.md ("Home shows empty projects after first login"). |
 
 ---
 

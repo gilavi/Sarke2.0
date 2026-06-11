@@ -25,7 +25,7 @@ navigating into a project detail screen.
   false the moment the very first fetch settles (even with `[]` from
   a racy pre-JWT call) and the empty-state card flashes in place of
   the skeleton until pull-to-refresh. See CLAUDE.md "Loading states"
-  and BUG_REPORT.md "Home shows empty projects after first login".
+  and docs/reports/BUG_REPORT.md "Home shows empty projects after first login".
 
 ## Canonical helpers used
 - `lib/theme`, `lib/services`.

@@ -167,7 +167,7 @@ Captured inspection signatures remain result-screen-only and are never persisted
 
 ## 2026-05-27 — Home & Projects show skeleton until fetch settles (no more empty-state flash on first login)
 
-Two-layer fix for the "I have projects but Home says I don't until I pull-to-refresh" bug — see [`BUG_REPORT.md`](../BUG_REPORT.md).
+Two-layer fix for the "I have projects but Home says I don't until I pull-to-refresh" bug — see [`BUG_REPORT.md`](reports/BUG_REPORT.md).
 
 - **Force a fresh fetch after sign-in** ([lib/session.tsx](../lib/session.tsx)): the post-login warming `prefetchQuery` now passes `staleTime: 0`, so a racy empty result from a previous session can't sit in the React Query cache for 5 minutes and starve out the real data. The first prefetch after every sign-in is guaranteed to hit the network.
 - **Skeleton stays up through background refetches** ([app/(tabs)/home.tsx](../app/(tabs)/home.tsx), [app/(tabs)/projects.tsx](../app/(tabs)/projects.tsx)): replaced `!isLoading && data.length === 0` style empty-state guards with `(isFetching || !isFetched) && data.length === 0`. Empty state now only renders after the query has actually settled empty — never as a flash while a refetch is replacing a stale `[]` from cache. Same fix applied to the Recent activity section on Home.
@@ -300,7 +300,7 @@ Auth session storage swapped from `AsyncStorage` to a SecureStore-backed adapter
 ## 2026-05-27 — Inspection identity unification + signatures header fix
 
 ### Architecture — unified inspection identity across all 10 inspection types
-Every equipment-type inspection (bobcat, excavator, general-equipment, cargo-platform, safety-net, mobile-ladder, forklift, fall-protection, lifting-accessories) now has a parent row in `public.inspections` keyed by the same UUID. A new `inspections.type` column tags the variant. Shared tables that FK to `inspections.id` — currently `inspection_attachments`, plus anything else the live-FK check surfaces — work uniformly across all 10 types. Equipment-specific payload (items, verdicts, summary photos, per-type signatures) stays in `<type>_inspections`. See [`INSPECTION_ARCHITECTURE_NOTES.md`](../INSPECTION_ARCHITECTURE_NOTES.md) for the discovery + design and [`INSPECTION_ARCHITECTURE_REPORT.md`](../INSPECTION_ARCHITECTURE_REPORT.md) for the per-phase summary.
+Every equipment-type inspection (bobcat, excavator, general-equipment, cargo-platform, safety-net, mobile-ladder, forklift, fall-protection, lifting-accessories) now has a parent row in `public.inspections` keyed by the same UUID. A new `inspections.type` column tags the variant. Shared tables that FK to `inspections.id` — currently `inspection_attachments`, plus anything else the live-FK check surfaces — work uniformly across all 10 types. Equipment-specific payload (items, verdicts, summary photos, per-type signatures) stays in `<type>_inspections`. See [`INSPECTION_ARCHITECTURE_NOTES.md`](reports/INSPECTION_ARCHITECTURE_NOTES.md) for the discovery + design and [`INSPECTION_ARCHITECTURE_REPORT.md`](reports/INSPECTION_ARCHITECTURE_REPORT.md) for the per-phase summary.
 
 ### Fixed — certificate save no longer FK-blocked on equipment types
 `inspection_attachments.inspection_id` FK violations on bobcat/excavator/etc. are gone once the unify migration is applied. The certificate-save flow on every equipment result screen now succeeds because each equipment inspection has a matching parent row in `inspections`.
@@ -316,7 +316,7 @@ Two migrations to apply after the prior session's `20260526002032_remove_persist
 1. `20260527001240_unify_inspection_identity.sql` — backfill + FKs (idempotent, transactional). Embedded verification queries to run afterwards.
 2. `20260527001241_create_equipment_inspection_rpc.sql` — the RPC the app now calls on every equipment-inspection create.
 
-Before applying, the **[LIVE-DB]** queries in `INSPECTION_ARCHITECTURE_NOTES.md` §1A–§1C confirm the live schema matches the discovery assumptions.
+Before applying, the **[LIVE-DB]** queries in `reports/INSPECTION_ARCHITECTURE_NOTES.md` §1A–§1C confirm the live schema matches the discovery assumptions.
 
 ### Migration application status (2026-05-27)
 All migrations applied to production Supabase via SQL Editor in order:
@@ -439,7 +439,7 @@ Wizard-scope signature state lives only in component memory and bridges to the r
 - The per-screen `handleSign` / `handleSignChange` / `handleSignerChange` / `handleSignatoryChange` / `handleSignatorySign` callbacks across the six screens that defined them.
 
 ### Audit artifact
-[SIGNATURE_AUDIT.md](../SIGNATURE_AUDIT.md) catalogs every file, table, column, bucket, and AsyncStorage key the old inspection signature surface reached, with the scope split (in vs. out) the redesign was bounded by.
+[SIGNATURE_AUDIT.md](reports/SIGNATURE_AUDIT.md) catalogs every file, table, column, bucket, and AsyncStorage key the old inspection signature surface reached, with the scope split (in vs. out) the redesign was bounded by.
 
 ---
 
@@ -533,7 +533,7 @@ Suites added across every layer: data layer (inspections, orders, projects, inci
 ### Security
 - **Closed the "any authenticated user can delete/overwrite anyone's files" hole** on the `certificates`, `answer-photos`, `pdfs`, and `signatures` buckets. They were guarded only by dashboard-created `sarke_*` policies that gated on `bucket_id` alone (no per-row owner check). New migration [0053_storage_rls_owner_scoping.sql](../supabase/migrations/0053_storage_rls_owner_scoping.sql) replaces them with per-bucket `owner = auth.uid()` policies for SELECT/UPDATE/DELETE (INSERT stays auth-only). Owner-based scoping was chosen over path-based because upload-path schemes are inconsistent across the mobile and web codebases; pre-flight confirmed every existing file already has an owner set. Companion to `0020`.
 - **Read paths migrated to signed URLs (prep for making the buckets private).** Every read of these four buckets now resolves through `createSignedUrl` (which works on both public and private buckets): the mobile helpers in [lib/imageUrl.ts](../lib/imageUrl.ts) already did, and the two direct `getPublicUrl` readers were converted — [lib/sharePdf.ts](../lib/sharePdf.ts) (PDF share) and [web-app/src/pages/IncidentDetail.tsx](../web-app/src/pages/IncidentDetail.tsx) (incident signature). The orphaned `publicUrl` helper was dropped from the web dashboard's storage module.
-- **Buckets flipped to private — read exposure closed.** The four buckets are now `public = false`; the public download endpoint returns `400 Bucket not found`, so reads no longer bypass RLS. Note: this landed before the signed-URL read fixes reach clients, so the web dashboard's incident-signature display (until 618655a redeploys) and mobile PDF sharing (until a new build is adopted) are temporarily broken — push + build to clear it. Tracked in the P0 entry in [BUG_REPORT.md](../BUG_REPORT.md).
+- **Buckets flipped to private — read exposure closed.** The four buckets are now `public = false`; the public download endpoint returns `400 Bucket not found`, so reads no longer bypass RLS. Note: this landed before the signed-URL read fixes reach clients, so the web dashboard's incident-signature display (until 618655a redeploys) and mobile PDF sharing (until a new build is adopted) are temporarily broken — push + build to clear it. Tracked in the P0 entry in [BUG_REPORT.md](reports/BUG_REPORT.md).
 
 ---
 
@@ -575,7 +575,7 @@ Web list/detail screens showed raw id slices (e.g. `ქამარი #0c9537aa
   - [`20260525190000_dedupe_user_fkeys.sql`](../supabase/migrations/20260525190000_dedupe_user_fkeys.sql) — cleanup pass that drops duplicate `*_auth_users_fkey` constraints produced by the prior migration's blind spot.
 
 ### Fixed
-- **FK violation creating inspection from project page.** The project-page entry path was not propagating `project_id` reliably to the inspection-create call, producing the legacy `questionnaires_project_id_fkey` Postgres error. Wired `project_id` through the navigation, coerced `useLocalSearchParams<{ id }>` to a single string at the route boundary, and added a UUID guard at the service layer so the failure mode now surfaces as a clear Georgian toast. Diagnosis in [TASK2_DIAGNOSIS.md](../TASK2_DIAGNOSIS.md). (commit `8486713`)
+- **FK violation creating inspection from project page.** The project-page entry path was not propagating `project_id` reliably to the inspection-create call, producing the legacy `questionnaires_project_id_fkey` Postgres error. Wired `project_id` through the navigation, coerced `useLocalSearchParams<{ id }>` to a single string at the route boundary, and added a UUID guard at the service layer so the failure mode now surfaces as a clear Georgian toast. Diagnosis in [TASK2_DIAGNOSIS.md](reports/TASK2_DIAGNOSIS.md). (commit `8486713`)
 - **Account deletion blocked by trigger search_path resolution.** Two trigger functions referenced the `questionnaire_status` public enum without schema qualification; `auth.admin.deleteUser` runs with restricted `search_path` and failed to resolve the type, returning a 500 "Database error deleting user" in TestFlight. Pinned `search_path` on every public function. See migration [`20260525180000_pin_function_search_paths.sql`](../supabase/migrations/20260525180000_pin_function_search_paths.sql).
 - **Account deletion left user data orphaned.** No FKs existed from public user-owned tables to `auth.users(id)`, so deleting an auth row left 22+ tables worth of rows behind. Added `ON DELETE CASCADE` FKs across the matching columns. See migrations [`20260525183000_cascade_user_deletion.sql`](../supabase/migrations/20260525183000_cascade_user_deletion.sql) and [`20260525190000_dedupe_user_fkeys.sql`](../supabase/migrations/20260525190000_dedupe_user_fkeys.sql).
 
@@ -589,7 +589,7 @@ Web list/detail screens showed raw id slices (e.g. `ქამარი #0c9537aa
 
 ## 2026-05-25 — Polish-pass refactor: god-file slimming and conditional-hook fix (mobile)
 
-Follow-up to the 2026-05-24 feature-sliced refactor. Five phases of structural polish, plus one bonus extraction in Phase 4; commits `4247d48`…`489d544`. Full audit trail in [REFACTOR_SUMMARY_V2.md](../REFACTOR_SUMMARY_V2.md).
+Follow-up to the 2026-05-24 feature-sliced refactor. Five phases of structural polish, plus one bonus extraction in Phase 4; commits `4247d48`…`489d544`. Full audit trail in [REFACTOR_SUMMARY_V2.md](reports/REFACTOR_SUMMARY_V2.md).
 
 ### Fixed — `features/inspection-wizard/GridRowStep`
 The non-harness branch called `useState` and `useRef` after a conditional `return`, violating the rules of hooks. Split into [HarnessRowStep.tsx](../features/inspection-wizard/HarnessRowStep.tsx) (169 lines) + [ScaffoldRowStep.tsx](../features/inspection-wizard/ScaffoldRowStep.tsx) (146 lines); the `grid_rows[0] === 'N1'` dispatch moved up to `InspectionWizard.tsx`. Each new file calls its hooks unconditionally. Was latent because `WizardStepTransition` unmounts on every step change — a future change that keeps step components mounted across transitions would have crashed.
@@ -607,13 +607,13 @@ The non-harness branch called `useState` and `useRef` after a conditional `retur
 `useMemo(() => getstyles(theme), [theme])` was called and the result discarded (carried over from the pre-refactor god-file). Removed; file is 91 → 86 lines.
 
 ### Verified — New Architecture is ON
-`app.json` declares `newArchEnabled: true`; no per-platform overrides; `react-native-reanimated@4.1.1` is in use (which requires New Arch at runtime). Compat check passes for all native libs (gesture-handler, screens, safe-area-context, maps, webview, svg, sentry, keyboard-controller). Diagnosis in [NEWARCH_REPORT.md](../NEWARCH_REPORT.md).
+`app.json` declares `newArchEnabled: true`; no per-platform overrides; `react-native-reanimated@4.1.1` is in use (which requires New Arch at runtime). Compat check passes for all native libs (gesture-handler, screens, safe-area-context, maps, webview, svg, sentry, keyboard-controller). Diagnosis in [NEWARCH_REPORT.md](reports/NEWARCH_REPORT.md).
 
 ---
 
 ## 2026-05-24 — Feature-sliced refactor: god-file → module split (mobile)
 
-A multi-phase structural refactor: convert god-files in a mixed flat/folder layout into a feature-sliced architecture with co-located `AGENTS.md` per module. Commits `49e1325`…`0802de7`. Full audit trail in [REFACTOR_SUMMARY.md](../REFACTOR_SUMMARY.md).
+A multi-phase structural refactor: convert god-files in a mixed flat/folder layout into a feature-sliced architecture with co-located `AGENTS.md` per module. Commits `49e1325`…`0802de7`. Full audit trail in [REFACTOR_SUMMARY.md](reports/REFACTOR_SUMMARY.md).
 
 ### New — `features/` folder with per-module `AGENTS.md`
 Three feature modules created at the new top-level `features/` slot. Each carries its own `AGENTS.md` documenting public API, internal files, gotchas, and canonical helpers it consumes:
@@ -634,7 +634,7 @@ Three feature modules created at the new top-level `features/` slot. Each carrie
 `__strings.txt` and the unused `src/` folder deleted. `components/ui.tsx` deduped to a `components/ui/` folder. The `components/inspection` vs `components/inspections` naming collision resolved by renaming the inspection-parts/inspection-steps folders.
 
 ### Spotted but not fixed (carried into v2)
-Three bugs/oddities surfaced during the structural pass and were logged in `REFACTOR_NOTES.md` instead of patched mid-refactor: conditional-hook calls in `features/inspection-wizard/GridRowStep.tsx` (fixed in v2 — see the 2026-05-25 entry above), dead `useMemo(getstyles)` in `features/inspection-wizard/MeasureInput.tsx` (fixed in v2), and `app/orders/new.tsx` dead step components (intentionally dropped — they had no callers).
+Three bugs/oddities surfaced during the structural pass and were logged in `reports/REFACTOR_NOTES.md` instead of patched mid-refactor: conditional-hook calls in `features/inspection-wizard/GridRowStep.tsx` (fixed in v2 — see the 2026-05-25 entry above), dead `useMemo(getstyles)` in `features/inspection-wizard/MeasureInput.tsx` (fixed in v2), and `app/orders/new.tsx` dead step components (intentionally dropped — they had no callers).
 
 ### Verified
 `npm run typecheck` and `npm run check:primitives` clean after every commit. [scripts/check-primitives.mjs](../scripts/check-primitives.mjs) `SCAN_DIRS` extended to include `features/` so the wrong-default guardrails apply inside the new feature folders.
@@ -678,7 +678,7 @@ Audited all ~156 detailed entries in the 10-agent beta report against current so
 - **Correctness:** order success screen shows the right document type + order number instead of a hardcoded label (§1.15/1.24); MapPreview recenters when the location pin changes (§2.33); `deleteInspection` guards against double-trigger (§2.41).
 - **UX/polish:** Kamari detail input no longer hidden by the keyboard (§2.11); scaffold help tour resets to the first slide on re-open (§2.13); conclusion-step "required" errors only appear after interaction (§2.25); annotated photos save as JPEG not PNG (§2.16); RoleSlotSheet respects dark mode (§3.16); fixed an English word in a Georgian screen-reader label (§3.48); capped an unbounded Set (§4.1).
 
-The vast majority of report items were false, already-handled, or device-only; a few of its proposed fixes would have regressed working code. Deferred (real but larger): incident edit-mode duplicate (§1.16), harness PDF preview (§3.13), annotator coord clamp (§2.43), tappable order rows (§3.17 — needs an order-detail screen that doesn't exist yet). Per-item evidence in [BUG_REPORT.md](../BUG_REPORT.md).
+The vast majority of report items were false, already-handled, or device-only; a few of its proposed fixes would have regressed working code. Deferred (real but larger): incident edit-mode duplicate (§1.16), harness PDF preview (§3.13), annotator coord clamp (§2.43), tappable order rows (§3.17 — needs an order-detail screen that doesn't exist yet). Per-item evidence in [BUG_REPORT.md](reports/BUG_REPORT.md).
 
 ---
 
@@ -687,7 +687,7 @@ The vast majority of report items were false, already-handled, or device-only; a
 ### Improvement — return-key flow + password-manager autofill on auth screens
 Login, register, forgot-password, and reset-password inputs now support return-key field chaining (email→password→submit, name→name→email→password on register), submit-on-return, and iOS/Android autofill hints (`textContentType` / `autoComplete`) for email, current/new password, and name fields. `FloatingLabelInput` now forwards those props (plus `blurOnSubmit`) to the underlying `TextInput`. ([components/inputs/FloatingLabelInput.tsx](../components/inputs/FloatingLabelInput.tsx), [app/(auth)/login.tsx](../app/(auth)/login.tsx), [forgot.tsx](../app/(auth)/forgot.tsx), [reset.tsx](../app/(auth)/reset.tsx))
 
-This was §2.1–2.3 of the 10-agent beta report (Sprint 3). Other Sprint-3 items were assessed: AuthGate redirect oscillation (§1.18) is already prevented by expo-router segment guards (not a bug); SignatureBlock's index keys (§2.21) are genuinely fragile but need stable ids threaded through callers (deferred); photo/OOM items (§2.15–2.19) need on-device profiling. See [BUG_REPORT.md](../BUG_REPORT.md) for details.
+This was §2.1–2.3 of the 10-agent beta report (Sprint 3). Other Sprint-3 items were assessed: AuthGate redirect oscillation (§1.18) is already prevented by expo-router segment guards (not a bug); SignatureBlock's index keys (§2.21) are genuinely fragile but need stable ids threaded through callers (deferred); photo/OOM items (§2.15–2.19) need on-device profiling. See [BUG_REPORT.md](reports/BUG_REPORT.md) for details.
 
 ---
 
@@ -696,7 +696,7 @@ This was §2.1–2.3 of the 10-agent beta report (Sprint 3). Other Sprint-3 item
 ### Fix — no more duplicate certificate rows
 `flushPendingPdfUploads()` is called from three places that can fire near-simultaneously on app start (app mount + the NetInfo seed and reconnect listener). With no concurrency guard, two flushes could both pass the check-then-create dedup before either inserted — and `certificates` has no DB unique constraint — producing duplicate certificate rows. Added a module-level single-flight guard so concurrent calls are no-ops while one flush runs. ([lib/pdfUploadQueue.ts](../lib/pdfUploadQueue.ts))
 
-This was §1.14 of the 10-agent beta report (Sprint 2). The other Sprint-2 items — offline photo-queue "FK violation / permanent loss" (§1.12), AsyncStorage "queue corruption" (§1.13), wizard `patchAnswer` "race" (§1.20), and GridRowStep comment "keyboard regression" (§2.4) — were verified against source and found to be already-handled or non-existent; no code change. See [BUG_REPORT.md](../BUG_REPORT.md) for per-item evidence.
+This was §1.14 of the 10-agent beta report (Sprint 2). The other Sprint-2 items — offline photo-queue "FK violation / permanent loss" (§1.12), AsyncStorage "queue corruption" (§1.13), wizard `patchAnswer` "race" (§1.20), and GridRowStep comment "keyboard regression" (§2.4) — were verified against source and found to be already-handled or non-existent; no code change. See [BUG_REPORT.md](reports/BUG_REPORT.md) for per-item evidence.
 
 ---
 
@@ -705,7 +705,7 @@ This was §1.14 of the 10-agent beta report (Sprint 2). The other Sprint-2 items
 ### Fix — inspection now created under the right project
 The project-detail template picker passed the selected **template** id where `createInspectionForTemplate` expects the **project** id (a shadowed `id` callback param). Picking a template on a project with 2+ system templates created the inspection against the wrong `project_id`. Renamed the callback param to `templateId` and pass the route project `id`. ([app/projects/[id].tsx](../app/projects/[id].tsx))
 
-This was §1.4 of the 10-agent beta report (Sprint 1). The other Sprint-1 items in that report — BottomSheet/SheetLayout keyboard "double handling" (§1.1–1.2), three "missing done screens" (§1.5–1.7), and fall-protection/forklift "undefined `inspectionRef`" (§1.8–1.9) — were verified against source and found to be already-fixed or non-existent; no code change. See [BUG_REPORT.md](../BUG_REPORT.md) for the per-item evidence.
+This was §1.4 of the 10-agent beta report (Sprint 1). The other Sprint-1 items in that report — BottomSheet/SheetLayout keyboard "double handling" (§1.1–1.2), three "missing done screens" (§1.5–1.7), and fall-protection/forklift "undefined `inspectionRef`" (§1.8–1.9) — were verified against source and found to be already-fixed or non-existent; no code change. See [BUG_REPORT.md](reports/BUG_REPORT.md) for the per-item evidence.
 
 ---
 
@@ -1097,7 +1097,7 @@ All 9 equipment inspection types (excavator, forklift, bobcat, cargo-platform, s
 
 1. Signature canvas breaks on phone rotation
 2. Web build (`expo start --web`) crashes at boot — worklets shim issue (see README Known Issues #6)
-3. Storage RLS gap: `certificates`, `answer-photos`, `pdfs`, `signatures` buckets allow any authenticated user to read/delete (see BUG_REPORT.md)
+3. Storage RLS gap: `certificates`, `answer-photos`, `pdfs`, `signatures` buckets allow any authenticated user to read/delete (see reports/BUG_REPORT.md)
 4. Typecheck fails — expected; note new failures but don't block on them
 
 ---

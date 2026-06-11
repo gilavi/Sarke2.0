@@ -141,7 +141,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         // the JWT propagation and returned `[]` (RLS rejected the call before
         // the token was set on the Supabase client) would stick around for
         // the default 5-minute staleTime, leaving the home screen empty
-        // until the user pulled-to-refresh. See `BUG_REPORT.md` ("Home shows
+        // until the user pulled-to-refresh. See `docs/reports/BUG_REPORT.md` ("Home shows
         // empty projects after first login").
         //
         // Fire-and-forget so a network blip here can't delay post-auth nav.

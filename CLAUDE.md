@@ -8,8 +8,8 @@ After completing **any** feature, fix, refactor, or significant change, update t
 
 - **`README.md`** — keep the Stack, Directory Layout, Running Locally, and Known Issues sections in sync with reality. If you add/remove a top-level folder, change the dev command, bump a major dep (Expo, React Native, Supabase), or introduce/remove a Known Issue, update README.md.
 - **`docs/`** — if the change touches a flow that has a doc under `docs/` (e.g. `docs/prompts/otp-signer-verification.md`), update that doc too. The repo's working overview lives in [docs/AI_BRIEFING.md](docs/AI_BRIEFING.md) and recent changes in [docs/WHATS_NEW.md](docs/WHATS_NEW.md) — keep both reasonably current.
-- **`BUG_REPORT.md`** — when fixing a bug listed there, mark it resolved (with date + commit ref) instead of silently deleting.
-- **`QA_REPORT_*.md`** — do not edit historical QA reports. If QA findings change, create a new dated report.
+- **`docs/reports/BUG_REPORT.md`** — when fixing a bug listed there, mark it resolved (with date + commit ref) instead of silently deleting.
+- **`docs/reports/QA_REPORT_*.md`** — do not edit historical QA reports. If QA findings change, create a new dated report in `docs/reports/`.
 - **Inline JSDoc / TSDoc** — for new exported functions in `lib/` and `components/`, add a short doc comment describing inputs, outputs, and side effects (especially Supabase calls).
 - **Supabase schema changes** — if you add a migration in `supabase/migrations/`, also update the schema description in README.md (Supabase section) and the relevant types in `types/models.ts`.
 
@@ -24,7 +24,7 @@ If a change has zero user-facing or developer-facing impact (pure internal renam
 
 ## Before adding a util or wrapper
 
-Before adding a new file in `lib/`, a new wrapper in `components/`, or a new variant of an existing helper, **read [docs/primitives.md](docs/primitives.md) first**. The single most common bug class in this repo is the same primitive getting reinvented in two or three places with different defaults — keyboard wrappers, image helpers, `pdf_language` writers all bit us this way (see `BUG_REPORT.md`).
+Before adding a new file in `lib/`, a new wrapper in `components/`, or a new variant of an existing helper, **read [docs/primitives.md](docs/primitives.md) first**. The single most common bug class in this repo is the same primitive getting reinvented in two or three places with different defaults — keyboard wrappers, image helpers, `pdf_language` writers all bit us this way (see `docs/reports/BUG_REPORT.md`).
 
 Rules:
 - If a canonical owner exists and is wrong for your use case, **fix the owner** instead of adding a sibling. Add an `opts` parameter or a new purpose-named export inside the same file.
@@ -77,7 +77,7 @@ Enforced limits. If a change would push a file over its target, split it into si
 - **Route file (`app/**/*.tsx`):** < 300 lines, orchestration only — delegate to a feature module under `features/`
 - **Service file (`lib/**/*.ts`):** < 500 lines
 
-A few files currently exceed these targets (`features/project-detail/ProjectDetail.tsx`, `features/inspection-wizard/useWizardState.ts`, `lib/pdf/inspection/template.css.ts`) — they're documented in [REFACTOR_SUMMARY_V2.md](REFACTOR_SUMMARY_V2.md) along with the reasons each remaining residue was deferred. Don't grow them further.
+A few files currently exceed these targets (`features/project-detail/ProjectDetail.tsx`, `features/inspection-wizard/useWizardState.ts`, `lib/pdf/inspection/template.css.ts`) — they're documented in [REFACTOR_SUMMARY_V2.md](docs/reports/REFACTOR_SUMMARY_V2.md) along with the reasons each remaining residue was deferred. Don't grow them further.
 
 ## Loading states (skeleton vs empty vs data)
 
@@ -108,9 +108,9 @@ All three deploy to the same `gh-pages` branch under different `destination_dir`
 
 - Don't add new top-level folders without updating the Directory Layout in README.md.
 - Don't bump Expo/RN/React major versions without an accompanying README note.
-- Don't delete entries from `BUG_REPORT.md` — mark them resolved.
-- Don't edit historical `QA_REPORT_YYYY-MM-DD.md` files.
+- Don't delete entries from `docs/reports/BUG_REPORT.md` — mark them resolved.
+- Don't edit historical `docs/reports/QA_REPORT_YYYY-MM-DD.md` files.
 - Don't re-consolidate the domain-split files (`lib/services/`, `lib/pdf/`, `features/`). The split is intentional and enforced by the File-size targets above.
 - Don't create public Postgres functions without `SET search_path = public, pg_catalog`. Functions invoked from `auth.admin` contexts (notably `deleteUser`) run with an empty search_path and fail to resolve unqualified public-schema types. See migration `supabase/migrations/20260525180000_pin_function_search_paths.sql` for the precedent and the TestFlight 500 it fixed.
 - Do not persist captured inspection signature data in any form (Supabase storage, DB column, AsyncStorage, MMKV, SecureStore, file system). Regulatory requirement. Captured signatures live in result-screen component state only and exist for one purpose: rasterization into the generated PDF. The state dies when the screen unmounts. Out-of-scope flows (project signers, tokenized remote signing, order signatures, incident/briefing reusable expert signature) are preserved and unrelated to this rule. See [`features/signatures/AGENTS.md`](features/signatures/AGENTS.md).
-- When creating any new inspection type, always insert into `public.inspections` first (or via the `create_equipment_inspection` RPC) before writing the type-specific row. Shared tables (`inspection_attachments`, etc.) FK to `inspections.id` only. The `makeInspectionService` factory in `lib/inspection/service.ts` already does this — every per-type config needs to set `inspectionType` to the tag the unify migration backfilled (e.g. `'bobcat'`, `'fall_protection_inspection'`). See [`INSPECTION_ARCHITECTURE_NOTES.md`](INSPECTION_ARCHITECTURE_NOTES.md).
+- When creating any new inspection type, always insert into `public.inspections` first (or via the `create_equipment_inspection` RPC) before writing the type-specific row. Shared tables (`inspection_attachments`, etc.) FK to `inspections.id` only. The `makeInspectionService` factory in `lib/inspection/service.ts` already does this — every per-type config needs to set `inspectionType` to the tag the unify migration backfilled (e.g. `'bobcat'`, `'fall_protection_inspection'`). See [`INSPECTION_ARCHITECTURE_NOTES.md`](docs/reports/INSPECTION_ARCHITECTURE_NOTES.md).

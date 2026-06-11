@@ -42,7 +42,7 @@ Backs the `app/orders/new.tsx` route.
 - The original god-file also defined `StepSignDirector`,
   `StepSignAppointed`, and `StepSignCraneOperator` — those were dead
   code (replaced by the combined sig steps) and were not carried over.
-  Logged in `REFACTOR_NOTES.md`.
+  Logged in `docs/reports/REFACTOR_NOTES.md`.
 - Steps 3 for `crane_operator_order` and `crane_technical_order`
   share `Step3CraneOperator.tsx` with `positionLabel` /
   `positionField` / `stepTitle` props. Don't fork into two files —

@@ -275,7 +275,7 @@ npm run lint                     # tsc + check-primitives.mjs
 **Before every commit:**
 1. `npm run lint` — note new failures, don't add to them
 2. Update docs in the same commit (see CLAUDE.md for rules)
-3. Update `BUG_REPORT.md` if fixing a listed bug
+3. Update `docs/reports/BUG_REPORT.md` if fixing a listed bug
 
 ---
 
@@ -298,7 +298,7 @@ npm run lint                     # tsc + check-primitives.mjs
 | See mobile routing | `app/_layout.tsx` + expo-router file convention |
 | See signature flow for orders | `app/orders/new.tsx` (step 4/5) + `web-app/src/pages/OrderDetail.tsx` |
 | Find Georgian copy rules | `README.md` → Copy Style Guide section |
-| Find known bugs | `BUG_REPORT.md` |
+| Find known bugs | `docs/reports/BUG_REPORT.md` |
 
 ---
 
@@ -343,10 +343,10 @@ Replace `if (isLoading) return <p>იტვირთება…</p>` with the a
 
 ### Fix a bug
 
-1. Find the entry in `BUG_REPORT.md`
+1. Find the entry in `docs/reports/BUG_REPORT.md`
 2. Fix the code
-3. Mark it resolved in `BUG_REPORT.md` with date + commit ref — do not delete the entry
-4. Include the `BUG_REPORT.md` update in the same commit
+3. Mark it resolved in `docs/reports/BUG_REPORT.md` with date + commit ref — do not delete the entry
+4. Include the `docs/reports/BUG_REPORT.md` update in the same commit
 
 ---
 

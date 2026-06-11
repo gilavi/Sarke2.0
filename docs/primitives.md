@@ -2,7 +2,7 @@
 
 This is the index of cross-cutting helpers that have a **single canonical owner**. If you need behavior that one of these primitives covers, use the listed export. Don't reach for the underlying RN/Expo/Supabase API directly, and don't add a parallel helper next to it — fix the canonical one.
 
-The single most common bug pattern in this repo (see [BUG_REPORT.md](../BUG_REPORT.md)) is the same primitive getting reinvented in two or three places, each with a slightly different default. Every duplicate is a future bug.
+The single most common bug pattern in this repo (see [BUG_REPORT.md](reports/BUG_REPORT.md)) is the same primitive getting reinvented in two or three places, each with a slightly different default. Every duplicate is a future bug.
 
 `scripts/check-primitives.mjs` enforces a small subset of these via `npm run lint`. Whenever an entry below would benefit from automated enforcement, add a rule there.
 
