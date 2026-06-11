@@ -17,8 +17,11 @@ There is also a public web dashboard ([`web-app/`](web-app/)) and a tokenized si
 - **`react-native-keyboard-controller`** — wired at the root via `<KeyboardProvider>`. Always import `KeyboardAvoidingView` / `KeyboardAwareScrollView` from this package, not from `react-native`.
 - **`expo-image-picker`**, **`expo-document-picker`**, **`expo-print`**, **`expo-sharing`** — media + PDF generation.
 - **`react-native-signature-canvas`** — signature capture.
+- **`expo-apple-authentication`** — Sign in with Apple (iOS only; Google sign-in is Android-only per Apple guideline 4.8). Added 2026-06-12.
+- **`expo-updates`** — EAS Update (OTA) on the `production`/`preview` channels; `runtimeVersion.policy = appVersion`. Only applies to builds created after 2026-06-12.
 - **`qrcode`** — inspection QR embedded in the PDF header (SVG data URL).
-- **Sentry** — crash reporting via [lib/crashReporting.ts](lib/crashReporting.ts). Set `EXPO_PUBLIC_SENTRY_DSN` to enable; otherwise crashes log to console.
+- **Sentry** — crash reporting via [lib/crashReporting.ts](lib/crashReporting.ts). Set `EXPO_PUBLIC_SENTRY_DSN` to enable; otherwise crashes log to console. Production builds upload source maps (the `@sentry/react-native/expo` plugin org/project are TODO placeholders in `app.json` — fill before the next build).
+- **No location/microphone**: `expo-location` was removed 2026-06-12 (photo geotagging dropped; map pin is manual). The app records no audio/video.
 
 The native SwiftUI port lives on the [`ios-legacy`](https://github.com/gilavi/Sarke2.0/tree/ios-legacy) branch and is not maintained from `main`.
 
@@ -74,7 +77,7 @@ Top-level folders, one line each.
 | `shims/` | Web stubs (worklets, keyboard-controller) loaded via `metro.config.js` aliases. |
 | `scripts/` | Repo scripts including `check-primitives.mjs` (lint guard). |
 | `supabase/` | `migrations/` SQL files (0001–0054 plus timestamp-prefixed migrations from 2026-05-25 onward; numbers 0044/0045/0046 are each used by two files — see Migrations note), `seed/` system templates, `functions/` Edge Functions, `.temp/` local CLI cache. |
-| `docs/` | Project documentation — `AI_BRIEFING.md`, `WHATS_NEW.md`, `primitives.md`, `payments.md`, `design-system-audit-*.md`, `prompts/`. |
+| `docs/` | Project documentation — `AI_BRIEFING.md`, `WHATS_NEW.md`, `primitives.md`, `payments.md`, `APP_STORE_REVIEW.md`, `design-system-audit-*.md`, `prompts/`, and `reports/` (historical session/QA/bug reports — the repo root keeps only README/CLAUDE/ONBOARDING/TESTING). |
 | `web/` | `hubble-sign` tokenized signing page (Vite + React). Deployed to `https://hubble.ge/` (GitHub Pages with CNAME). |
 | `web-app/` | Public dashboard (Vite + React + TS + Tailwind). Deployed to `https://hubble.ge/app/`. |
 | `website/` | Docusaurus documentation site. Deployed via `.github/workflows/docs.yml`. |

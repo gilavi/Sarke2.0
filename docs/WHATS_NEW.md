@@ -1,6 +1,22 @@
 # What's New — Hubble Changelog
 
-**Updated:** 2026-06-11 | Branch: `main`
+**Updated:** 2026-06-12 | Branch: `main`
+
+---
+
+## 2026-06-12 — Launch prep: App Store compliance, Apple sign-in, permissions diet, skeletons, OTA
+
+Eight-workstream mobile launch-prep pass (phase-1 … phase-8 commits). Full report:
+[reports/LAUNCH_PREP_2026-06-12.md](reports/LAUNCH_PREP_2026-06-12.md).
+
+- **Repo hygiene** — 22 root session/QA/refactor reports moved to `docs/reports/`; all references updated.
+- **Storage RLS** — prompt premise was stale: `0053` owner-scoping verified live against production `pg_policies` (all four buckets private, no `sarke_*` policies). Added cross-user storage RLS integration tests to `tests/integration/rls/policies.test.ts`.
+- **Zero purchase UI (Apple 3.1.1 / Google Play)** — `PaywallModal` + `lib/bogPayment.ts` deleted; neutral `SubscriptionNotice` (i18n, no price/URL/CTA) at every `PdfLimitReachedError` site; `PdfLockedBanner` neutralized; ₾19 buttons removed from More; `sarke2://payment/*` deep links removed. Server gate (`pdfGate`/`usePdfUsage`) untouched — web purchase still auto-unlocks the app.
+- **Sign in with Apple (4.8)** — native button on iOS via new `components/auth/SocialAuthButtons.tsx`; Google hidden on iOS (its client id was empty anyway); first-auth full name persisted to the users row.
+- **Permissions diet** — location + microphone permissions removed; `expo-location` uninstalled; `usePhotoWithLocation` → `usePhotoPicker`; photo geotagging dropped (payload lat/lon/address now always null); MapPicker is manual pan/zoom + pin (geocode search removed with the dependency).
+- **Sentry + OTA** — `@sentry/react-native/expo` plugin configured (org/project TODO placeholders), production source-map upload enabled; `expo-updates` added with `production`/`preview` channels.
+- **Skeletons + pull-to-refresh** — per-section skeletons (canonical `(isFetching || !isFetched) && empty` guard) across project sub-lists, detail screens, PDF previews, wizards; theme-tinted `RefreshControl` on calendar/regulations/history/templates/qualifications + six project sub-lists; `expo-image` `transition={200}` on photo-grid thumbnails.
+- **App Review artifacts** — `scripts/seed-demo-account.mjs` (idempotent, env-keyed) + `docs/APP_STORE_REVIEW.md` (review notes, privacy labels, permission list).
 
 ---
 
