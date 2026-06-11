@@ -17,10 +17,7 @@ const ThemeContext = createContext<ThemeContextValue>({
 });
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [mode, setModeState] = useState<ThemeMode>(() => {
-    if (typeof window === 'undefined') return 'light';
-    return (localStorage.getItem('hubble-theme') as ThemeMode) || 'light';
-  });
+  const [mode, setModeState] = useState<ThemeMode>('light');
 
   const isDark = mode === 'dark';
 
