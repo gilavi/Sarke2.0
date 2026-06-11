@@ -626,7 +626,9 @@ Ran five parallel read-only verifiers over **all ~156 detailed entries** in `Sar
 
 **Verified:** `npm run lint` typecheck clean for all 13 changed files (only the pre-existing `lib/services.mock.ts` + web-app `src/` failures remain). Not exercised on a device this session.
 
-## P0 (SECURITY, OPEN) — Storage RLS gap on 4 buckets · remediation recipe · 2026-05-22
+## P0 (SECURITY) — Storage RLS gap on 4 buckets · remediation recipe · 2026-05-22 · RESOLVED 2026-05-26
+
+> **RESOLVED 2026-05-26** by `0053_storage_rls_owner_scoping.sql` + bucket privacy flip + signed-URL reads (commit `618655a`) — see the FIXED entry above. Live policies re-verified against production `pg_policies` on 2026-06-12 (launch prep): all four buckets private, owner-scoped read/update/delete + auth-only insert, no `sarke_*` policies remain. Storage RLS integration tests added in `tests/integration/rls/policies.test.ts` (2026-06-12).
 
 **Severity: HIGH.** The `certificates`, `answer-photos`, `pdfs`, `signatures` storage buckets have dashboard-created policies (`sarke_*_authenticated`) that gate **only** on `bucket_id` — so **any authenticated user can read or delete every other user's files**. Migration `0020` tightened `incident-photos`/`report-photos` with owner-scoped policies; these four were never done. (Also flagged in README "Storage RLS gap (open)".)
 
