@@ -60,9 +60,9 @@ export function Navbar() {
           </Link>
           <Link
             to={routes.register}
-            className="hidden md:inline-flex items-center rounded-xl bg-safety-500 px-4 py-2 text-sm font-semibold text-white hover:bg-safety-600 transition-colors"
+            className="hidden md:inline-flex items-center rounded-xl bg-graphite-900 px-4 py-2 text-sm font-semibold text-offwhite hover:bg-graphite-800 transition-colors"
           >
-            უფასოდ სცადე
+            დაიწყე უფასოდ
           </Link>
           <button
             onClick={() => setOpen(v => !v)}

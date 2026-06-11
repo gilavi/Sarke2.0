@@ -96,9 +96,9 @@ export default function Regulations() {
               className="cursor-pointer overflow-hidden transition hover:border-brand-300"
               onClick={() => handleOpen(item.id, item.url)}
             >
-              <div className="h-0.5 bg-emerald-600 opacity-70" />
+              <div className="h-0.5 bg-brand-600 opacity-70" />
               <CardContent className="flex items-start gap-4 py-4">
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-xs font-bold text-emerald-700">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-bold text-brand-700">
                   {index + 1}
                 </div>
                 <div className="min-w-0 flex-1">
@@ -107,7 +107,7 @@ export default function Regulations() {
                       {item.title}
                     </span>
                     {st?.isUpdated && (
-                      <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                      <span className="shrink-0 rounded-full bg-brand-100 px-2 py-0.5 text-[11px] font-semibold text-brand-700">
                         განახლდა
                       </span>
                     )}

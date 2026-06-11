@@ -98,7 +98,7 @@ export default function Reports() {
                   </span>
                   <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                     r.status === 'completed'
-                      ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400'
+                      ? 'bg-brand-100 text-brand-700 dark:bg-brand-950 dark:text-brand-400'
                       : 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400'
                   }`}>
                     {r.status === 'completed' ? 'დასრულდა' : 'დრაფტი'}

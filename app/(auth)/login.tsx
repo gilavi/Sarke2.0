@@ -17,6 +17,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardSafeArea } from '../../components/layout/KeyboardSafeArea';
 import { Ionicons } from '@expo/vector-icons';
+import { HubbleMark } from '../../components/HubbleMark';
+import { OrbitField } from '../../components/OrbitField';
 import { useSession } from '../../lib/session';
 import { useToast } from '../../lib/toast';
 import { useTheme } from '../../lib/theme';
@@ -544,12 +546,19 @@ function GradientBackdrop() {
   const styles = useMemo(() => getstyles(theme), [theme]);
 
   return (
-    <LinearGradient
-      colors={[theme.colors.accentSoft, theme.colors.background]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={StyleSheet.absoluteFillObject}
-    />
+    <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+      <LinearGradient
+        colors={[theme.colors.accentSoft, theme.colors.background]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFillObject}
+      />
+      <OrbitField
+        size={560}
+        color={theme.colors.ink}
+        style={{ position: 'absolute', top: -150, right: -190, opacity: 0.55 }}
+      />
+    </View>
   );
 }
 
@@ -561,7 +570,7 @@ function Header() {
   return (
     <View style={{ alignItems: 'center', gap: 8 }}>
       <View style={styles.logoBadge}>
-        <Ionicons name="shield-checkmark" size={42} color={theme.colors.white} />
+        <HubbleMark size={44} color={theme.colors.white} />
       </View>
       <Text style={{ fontSize: 36, fontWeight: '900', fontFamily: theme.typography.fontFamily.display, color: theme.colors.ink }}>Hubble</Text>
       <Text style={{ color: theme.colors.inkSoft }}>{t('auth.tagline')}</Text>

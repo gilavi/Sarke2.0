@@ -2,8 +2,8 @@
    surface, not a third-party tool. Keep the variable names aligned. */
 
 :root {
-  --accent: #147a4f;
-  --accent-soft: #ddf0e7;
+  --accent: #ff5a1f;
+  --accent-soft: #fff3ee;
   --warn: #e08a1b;
   --warn-soft: #fcefd9;
   --danger: #c0433c;

@@ -6,22 +6,20 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Brand palette — mirrors mobile primary scale (lib/theme.ts).
-        // NOTE: `brand` (green) is the DASHBOARD identity. The public
-        // marketing site (pages/landing) uses the Hubble brand-board palette
-        // below (`safety`/`hivis`/`graphite`/`offwhite`/`concrete`) instead.
+        // Brand palette — Safety Orange, unified with mobile (lib/theme.ts)
+        // and the marketing landing page.
         brand: {
-          50: '#E8F5F0',
-          100: '#D1EBE1',
-          200: '#A3D7C3',
-          300: '#75C3A5',
-          400: '#47AF87',
-          500: '#147A4F',
-          600: '#106240',
-          700: '#0C4930',
-          800: '#083120',
-          900: '#041810',
-          950: '#020A07',
+          50: '#FFF3EE',
+          100: '#FFE3D6',
+          200: '#FFC4AC',
+          300: '#FF9E78',
+          400: '#FF7A47',
+          500: '#FF5A1F',
+          600: '#E84709',
+          700: '#BE380C',
+          800: '#972F11',
+          900: '#7B2913',
+          950: '#421106',
         },
         // ─── Hubble brand board (marketing site) ───────────────────────────
         // SAFETY ORANGE #FF5A1F — primary action / accent (scale around it).
@@ -85,12 +83,12 @@ export default {
         mono: ['"JetBrains Mono"', 'monospace'],
       },
       boxShadow: {
-        'glow-sm': '0 0 0 1px rgba(20,122,79,0.06), 0 1px 2px rgba(20,122,79,0.04)',
-        'glow-md': '0 0 0 1px rgba(20,122,79,0.08), 0 2px 8px rgba(20,122,79,0.06), 0 4px 16px rgba(20,122,79,0.03)',
-        'glow-lg': '0 0 0 1px rgba(20,122,79,0.10), 0 4px 12px rgba(20,122,79,0.08), 0 8px 24px rgba(20,122,79,0.04)',
-        'glow-dark-sm': '0 0 0 1px rgba(71,175,135,0.10), 0 0 8px rgba(71,175,135,0.06)',
-        'glow-dark-md': '0 0 0 1px rgba(71,175,135,0.15), 0 0 16px rgba(71,175,135,0.12), 0 0 32px rgba(71,175,135,0.06)',
-        'glow-dark-lg': '0 0 0 1px rgba(71,175,135,0.20), 0 0 24px rgba(71,175,135,0.18), 0 0 48px rgba(71,175,135,0.10)',
+        'glow-sm': '0 0 0 1px rgba(255,90,31,0.06), 0 1px 2px rgba(255,90,31,0.04)',
+        'glow-md': '0 0 0 1px rgba(255,90,31,0.08), 0 2px 8px rgba(255,90,31,0.06), 0 4px 16px rgba(255,90,31,0.03)',
+        'glow-lg': '0 0 0 1px rgba(255,90,31,0.10), 0 4px 12px rgba(255,90,31,0.08), 0 8px 24px rgba(255,90,31,0.04)',
+        'glow-dark-sm': '0 0 0 1px rgba(255,122,71,0.10), 0 0 8px rgba(255,122,71,0.06)',
+        'glow-dark-md': '0 0 0 1px rgba(255,122,71,0.15), 0 0 16px rgba(255,122,71,0.12), 0 0 32px rgba(255,122,71,0.06)',
+        'glow-dark-lg': '0 0 0 1px rgba(255,122,71,0.20), 0 0 24px rgba(255,122,71,0.18), 0 0 48px rgba(255,122,71,0.10)',
       },
       borderRadius: {
         lg: '12px',

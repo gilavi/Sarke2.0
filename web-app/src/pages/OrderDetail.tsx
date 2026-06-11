@@ -176,7 +176,7 @@ export default function OrderDetail() {
           <p className="mt-1 text-sm text-neutral-500">
             {new Date(order.createdAt).toLocaleDateString('ka-GE')}
             {' · '}
-            <span className={`font-medium ${order.status === 'completed' ? 'text-green-700' : 'text-amber-700'}`}>
+            <span className={`font-medium ${order.status === 'completed' ? 'text-brand-700' : 'text-amber-700'}`}>
               {order.status === 'completed' ? 'დასრულდა' : 'დრაფტი'}
             </span>
           </p>
@@ -229,7 +229,7 @@ export default function OrderDetail() {
                   alt="დირექტორის ხელმოწერა"
                   className="h-14 rounded border border-neutral-200 bg-white p-1"
                 />
-                <span className="text-xs text-green-700 font-medium">
+                <span className="text-xs text-brand-700 font-medium">
                   ✓ {fd.directorSignedAt ? new Date(fd.directorSignedAt).toLocaleDateString('ka-GE') : ''}
                 </span>
               </div>
@@ -273,7 +273,7 @@ export default function OrderDetail() {
                   alt="დანიშნული პირის ხელმოწერა"
                   className="h-14 rounded border border-neutral-200 bg-white p-1"
                 />
-                <span className="text-xs text-green-700 font-medium">
+                <span className="text-xs text-brand-700 font-medium">
                   ✓ {fd.appointedSignedAt ? new Date(fd.appointedSignedAt).toLocaleDateString('ka-GE') : ''}
                 </span>
               </div>

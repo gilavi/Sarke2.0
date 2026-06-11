@@ -4,6 +4,28 @@
 
 ---
 
+## 2026-06-11 — Landing page hero redesign (mockup-focused, Awwwards-level)
+
+Full redesign of `web-app/src/pages/landing/` hero and app-screens band, based on
+the "01 + 03 merge" direction (warm orbital off-white + real product front and center).
+
+- **`web-app/src/pages/landing/home.tsx`** — complete rewrite of `Hero` and new
+  `AppScreensBand` export. Hero: 2-col grid, orbital-ring backdrop, left copy with
+  staggered framer-motion entrance, right col with floating phone (`PhoneMockup`),
+  web dashboard panel (bar chart + stats), and "ინსტრუქტაჟი დასრულდა" toast.
+  AppScreensBand: dark graphite rounded panel with blueprint-grid background, 3 app-
+  screen phones (ინსტრუქტაჟი / რისკის რუკა / დოკუმენტები) with staggered fade-in.
+- **`web-app/src/pages/landing/shared.tsx`** — `PhoneMockup` rebuilt as a fully
+  rendered HTML app home screen (status bar, greeting, safety-status card with
+  spinning hi-vis ring, quick-action cards, next-instruction row, bottom nav).
+- **`web-app/src/pages/landing/chrome.tsx`** — navbar CTA changed to dark
+  "დაიწყე უფასოდ" (graphite-900) per design spec.
+- **`web-app/src/pages/Landing.tsx`** — `AppScreensBand` added after `<Hero />`.
+- **`web-app/src/index.css`** — added keyframes + classes: `hub-spin`, `hub-spin-rev`,
+  `hub-float`, `hub-float-b`, `hub-blink` for orbital and floating animations.
+
+---
+
 ## 2026-06-11 — Payments unbroken after the hubble.ge move + production BOG keys
 
 Web payments had been failing with `400 invalid redirect url` since the hubble.ge
@@ -20,6 +42,50 @@ deployed `create-bog-order` (last deployed 2026-05-05, pre-rebrand) only allowed
 - **`docs/payments.md`** — new "Secrets & deployment" section (where keys live, manual
   function deploys, the allowlist gotcha); migration-state section updated to
   verified-live-2026-06-11.
+
+---
+
+## 2026-06-03 — Official Hubble logo applied everywhere + app icons regenerated
+
+The placeholder/recreated H-monogram was replaced with the **official logo vector**
+(`Khelogo.svg`, archived at `assets/images/hubble-logo.svg`) across every surface:
+
+- **Web landing** — `HubbleLogo` (`web-app/src/pages/landing/shared.tsx`) now uses the real
+  two-path 250×250 mark (navbar, footer, mobile bar, exit popup) + `public/favicon.svg`.
+- **Mobile app** — `components/HubbleMark.tsx` (login badge) updated to the real mark.
+- **`web/` sign app** — `Brand.tsx` text-"H" → the real SVG mark; accent flipped to orange
+  (`--accent` `#147a4f` → `#ff5a1f`) so the SMS-signing page is on-brand too.
+- **App icons** — regenerated `assets/{icon,adaptive-icon,splash-icon,favicon}.png` (1024px,
+  rendered from the vector via an HTML canvas): orange tile + white mark for the icon,
+  orange mark on transparent for the splash. `app.json` adaptive `backgroundColor` → `#FF5A1F`.
+- Verified in-browser: web landing navbar, app login (Expo web), and the generated icon/splash.
+
+---
+
+## 2026-06-03 — Mobile app rebrand to the Hubble brand board (Expo)
+
+The mobile app now matches the web brand. Because every app color flows through
+`lib/theme.ts`, this was almost entirely a theme retune (no hardcoded brand hexes
+exist in screens/components).
+
+- **`lib/theme.ts`**: `primary` green → SAFETY ORANGE (`#FF5A1F`); `neutral` retuned to
+  the warm OFF-WHITE (`#F2F1EC`) / CONCRETE (`#D6D6D1`) / GRAPHITE (`#1A1A1A`) ramp; new
+  `highlight` = HI-VIS YELLOW (`#E6FF4D`). Dark-mode green `rgba(20,122,79,…)` accent/action
+  literals → orange. Everything reading `accent`/`ink`/`border`/glow rebrands automatically.
+- **Logo**: new `components/HubbleMark.tsx` (the H-monogram via `react-native-svg`, mirrors
+  the web `HubbleLogo`); the login screen's placeholder `shield-checkmark` badge now shows it.
+- **Orbital motif**: new `components/OrbitField.tsx` (the board's "orbital paths" pattern) sits
+  subtly behind the login/auth backdrop — matching the web hero. Verified in both light and dark
+  via the Expo-web build (`react-native-web`).
+- **`app.json`**: splash + adaptive-icon background → `#F2F1EC`; notification color → `#FF5A1F`.
+- **PDF templates**: briefing/report header rules, bands, and headings rebranded to orange
+  (`lib/briefingPdf.ts`, `lib/reportPdf.ts`). **Kept green:** the inspection template's
+  `--green-*` vars (`lib/pdf/inspection/template.css.ts`) — those mean PASS/success status,
+  not brand, so recoloring them would change the document's meaning.
+- **Not yet regenerated**: the raster app-icon/splash PNGs (`assets/icon.png`,
+  `adaptive-icon.png`, `splash-icon.png`, `favicon.png`) still show the old mark — they're
+  build-time only (invisible in Expo Go) and need an SVG→PNG render pass.
+- Verified: `tsc --noEmit` clean, `check-primitives` clean.
 
 ---
 

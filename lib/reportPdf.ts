@@ -132,7 +132,7 @@ export function buildReportPdfHtml(args: ReportPdfArgs): string {
     margin: 0;
   }
   .header {
-    border-bottom: 3px solid #147A4F;
+    border-bottom: 3px solid #FF5A1F;
     padding-bottom: 14px;
     margin-bottom: 24px;
     display: flex;
@@ -143,7 +143,7 @@ export function buildReportPdfHtml(args: ReportPdfArgs): string {
     width: 56px;
     height: 56px;
     border-radius: 10px;
-    background: #147A4F;
+    background: #C4350A;
     color: #fff;
     font-size: 22px;
     font-weight: 800;
@@ -162,7 +162,7 @@ export function buildReportPdfHtml(args: ReportPdfArgs): string {
   .header-title {
     font-size: 22px;
     font-weight: 800;
-    color: #0C4930;
+    color: #BE380C;
     margin: 0 0 4px 0;
     letter-spacing: -0.3px;
   }
@@ -190,7 +190,7 @@ export function buildReportPdfHtml(args: ReportPdfArgs): string {
     width: 22px;
     height: 22px;
     border-radius: 11px;
-    background: #147A4F;
+    background: #C4350A;
     color: #fff;
     font-size: 11px;
     font-weight: 800;

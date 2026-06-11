@@ -14,8 +14,9 @@ export const APP_STORE_URL = '#';
  */
 export function HubbleLogo({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 120 112" fill="currentColor" xmlns="http://www.w3.org/2000/svg" className={className} aria-hidden="true" role="img">
-      <path fillRule="evenodd" clipRule="evenodd" d="M32 6H88Q114 6 114 32V80Q114 106 88 106H32Q6 106 6 80V32Q6 6 32 6ZM44 6V30Q44 44 60 44Q76 44 76 30V6ZM44 106V82Q44 74 60 74Q76 74 76 82V106ZM6 54C30 50 48 54 60 50C80 45 96 37 114 31L114 49C96 55 80 64 60 68C48 72 30 70 6 72Z" />
+    <svg viewBox="0 0 250 250" fill="currentColor" xmlns="http://www.w3.org/2000/svg" className={className} aria-hidden="true" role="img">
+      <path d="M247.5442,81.6993c-1.3564,0-2.4558,1.0994-2.4558,2.4558,0,7.9693-1.1761,15.8193-3.4966,23.3344-7.7204,25.0928-27.3102,44.6825-52.4025,52.4025l-.0019.001c-7.5122,2.3196-15.365,3.4957-23.3425,3.4957H43.3007c-23.8759,0-43.3007,19.4291-43.3007,43.3107s19.4248,43.3007,43.3007,43.3007,43.3103-19.4248,43.3103-43.3007c0-21.1736,17.2213-38.3991,38.3891-38.3991s38.3891,17.2256,38.3891,38.3991c0,23.8759,19.4286,43.3007,43.3103,43.3007s43.3007-19.4248,43.3007-43.3007v-122.5442c0-1.3564-1.0994-2.4558-2.4558-2.4558Z" />
+      <path d="M2.4558,168.3002c1.3564,0,2.4558-1.0994,2.4558-2.4558,0-7.9722,1.1761-15.8221,3.4966-23.3358,3.7624-12.2507,10.5791-23.5541,19.7126-32.688,9.1056-9.1052,20.3745-15.9094,32.5959-19.6814.0393-.0101.0767-.0206.1151-.0326,7.5122-2.3196,15.3593-3.4957,23.3233-3.4957h122.5442c23.8759,0,43.3007-19.4291,43.3007-43.3107S230.5752,0,206.6993,0s-43.3103,19.4243-43.3103,43.3002c0,21.1736-17.2213,38.3991-38.3891,38.3991s-38.3891-17.2256-38.3891-38.3991C86.6109,19.4243,67.1823,0,43.3007,0S0,19.4243,0,43.3002v122.5442c0,1.3564,1.0994,2.4558,2.4558,2.4558Z" />
     </svg>
   );
 }
@@ -27,75 +28,75 @@ export const fadeUp = {
 };
 export const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.1 } } };
 
-// ─── Phone mockup ─────────────────────────────────────────────────────────────
-export function PhoneMockup() {
-  const rows = [
-    { text: 'ხარაჩო — ზედა სართული', done: true },
-    { text: 'სავარძლის ქამრები', done: true },
-    { text: 'ელ. გამავლობა', done: true },
-    { text: 'სახანძრო მოწყობ.', done: false },
-    { text: 'ევაკუაციის გეგმა', done: false },
-  ];
+// ─── Phone mockup — app home screen ──────────────────────────────────────────
+export function PhoneMockup({ className }: { className?: string }) {
   return (
-    <svg
-      viewBox="0 0 280 560"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className="w-full max-w-[260px]"
+    <div
+      className={cn('relative flex-shrink-0', className)}
+      style={{ width: 280, height: 572, borderRadius: 46, background: '#141414', padding: 10, boxShadow: '0 50px 90px rgba(20,20,20,.28)' }}
     >
-      <defs>
-        <linearGradient id="sg" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#1E1E1C" />
-          <stop offset="100%" stopColor="#141412" />
-        </linearGradient>
-      </defs>
-      {/* Frame */}
-      <rect width="280" height="560" rx="44" fill="#1A1A1A" />
-      {/* Side buttons */}
-      <rect x="-3" y="120" width="5" height="36" rx="2" fill="#2A2A2A" />
-      <rect x="-3" y="168" width="5" height="36" rx="2" fill="#2A2A2A" />
-      <rect x="278" y="144" width="5" height="64" rx="2" fill="#2A2A2A" />
-      {/* Screen */}
-      <rect x="8" y="8" width="264" height="544" rx="38" fill="url(#sg)" />
       {/* Dynamic island */}
-      <rect x="96" y="18" width="88" height="30" rx="15" fill="#0A0A0A" />
-      {/* Status bar */}
-      <text x="24" y="40" fill="rgba(255,255,255,0.4)" fontSize="11" fontFamily="system-ui">9:41</text>
-      {/* Header */}
-      <rect x="20" y="58" width="240" height="48" rx="12" fill="#2A2A27" />
-      <text x="36" y="88" fill="white" fontSize="14" fontFamily="system-ui,sans-serif" fontWeight="700">HUBBLE</text>
-      <rect x="180" y="70" width="68" height="24" rx="8" fill="#E6FF4D" />
-      <text x="214" y="86" fill="#161614" fontSize="10" fontFamily="system-ui" fontWeight="700" textAnchor="middle">+ PDF</text>
-      {/* Checklist rows */}
-      {rows.map((r, i) => (
-        <g key={i} transform={`translate(20,${118 + i * 50})`}>
-          <rect width="240" height="42" rx="10" fill={r.done ? '#242422' : '#1A1A18'} />
-          <rect x="8" y="9" width="24" height="24" rx="7" fill={r.done ? '#FF5A1F' : '#33332F'} />
-          {r.done && (
-            <path d="M13 21 L17 25 L25 16" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-          )}
-          <rect x="42" y="12" width={r.done ? 140 : 110} height="8" rx="4" fill={r.done ? '#C7C5BD' : '#3A3A36'} opacity="0.9" />
-          <rect x="42" y="24" width={r.done ? 90 : 75} height="6" rx="3" fill="#2E2E2B" />
-        </g>
-      ))}
-      {/* Generate button */}
-      <rect x="20" y="378" width="240" height="52" rx="15" fill="#FF5A1F" />
-      <text x="140" y="409" fill="white" fontSize="15" fontFamily="system-ui,sans-serif" fontWeight="700" textAnchor="middle">PDF გენერაცია ↗</text>
-      {/* PDF preview card */}
-      <rect x="20" y="442" width="240" height="96" rx="12" fill="#1E1E1C" />
-      <rect x="28" y="450" width="60" height="80" rx="8" fill="#2A2A27" />
-      <rect x="34" y="460" width="48" height="4" rx="2" fill="#FF5A1F" opacity="0.8" />
-      {[470, 477, 484, 498, 505].map((y, i) => (
-        <rect key={i} x="34" y={y} width={i % 2 === 0 ? 44 : 38} height="3" rx="1.5" fill="#3A3A36" />
-      ))}
-      <text x="100" y="462" fill="#FF7A47" fontSize="9" fontFamily="system-ui" fontWeight="600">ინსპექციის აქტი</text>
-      {[466, 473, 480, 493].map((y, i) => (
-        <rect key={i} x="100" y={y} width={[80, 72, 88, 60][i]} height="3" rx="1.5" fill={i === 3 ? '#FF5A1F' : '#2E2E2B'} opacity={i === 3 ? 0.5 : 1} />
-      ))}
-      <text x="100" y="513" fill="rgba(255,255,255,0.3)" fontSize="8" fontFamily="system-ui">SHA256 ✓</text>
-      {/* Home indicator */}
-      <rect x="106" y="548" width="68" height="4" rx="2" fill="rgba(255,255,255,0.25)" />
-    </svg>
+      <div style={{ position: 'absolute', top: 20, left: '50%', transform: 'translateX(-50%)', width: 96, height: 22, background: '#141414', borderRadius: '0 0 14px 14px', zIndex: 10 }} />
+      {/* Screen */}
+      <div style={{ width: '100%', height: '100%', borderRadius: 38, overflow: 'hidden', background: '#F2F1EC', display: 'flex', flexDirection: 'column' }}>
+        {/* Status bar */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px 4px', fontSize: 12, fontWeight: 700, color: '#141414' }}>
+          <span>9:41</span>
+          <span style={{ fontSize: 10 }}>▮▮▮ ▾</span>
+        </div>
+        {/* App header */}
+        <div style={{ padding: '6px 16px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontSize: 11, color: '#7a7a72' }}>გამარჯობა,</div>
+            <div style={{ fontSize: 17, fontWeight: 900, color: '#141414', letterSpacing: '-0.02em' }}>გიორგი მ.</div>
+          </div>
+          <div style={{ width: 36, height: 36, borderRadius: 11, background: '#1A1A1A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <HubbleLogo className="w-[18px] h-[18px] text-white" />
+          </div>
+        </div>
+        {/* Safety status card */}
+        <div style={{ margin: '12px 14px 0', background: '#1A1A1A', borderRadius: 18, padding: 15, color: '#F2F1EC', position: 'relative', overflow: 'hidden' }}>
+          <div className="animate-hub-spin" style={{ position: 'absolute', right: -24, top: -24, width: 100, height: 100, border: '1.5px dashed rgba(230,255,77,.4)', borderRadius: '50%' }} />
+          <div style={{ fontSize: 11, color: '#b8b8b0', marginBottom: 7 }}>დღევანდელი სტატუსი</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ width: 28, height: 28, borderRadius: '50%', background: '#E6FF4D', color: '#1A1A1A', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 15 }}>✓</span>
+            <span style={{ fontSize: 18, fontWeight: 900 }}>უსაფრთხო</span>
+          </div>
+          <div style={{ marginTop: 12, height: 5, borderRadius: 99, background: 'rgba(255,255,255,.14)', overflow: 'hidden' }}>
+            <div style={{ width: '95%', height: '100%', background: '#E6FF4D' }} />
+          </div>
+          <div style={{ fontSize: 10, color: '#b8b8b0', marginTop: 6 }}>38/40 ინსტრუქტაჟი ჩატარდა</div>
+        </div>
+        {/* Quick actions */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, padding: '12px 14px 0' }}>
+          <div style={{ background: '#fff', border: '1px solid rgba(20,20,20,.07)', borderRadius: 14, padding: 11 }}>
+            <div style={{ width: 26, height: 26, borderRadius: 8, background: 'rgba(255,90,31,.12)', color: '#FF5A1F', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, marginBottom: 8, fontSize: 13 }}>⚠</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#141414', lineHeight: 1.2 }}>რისკის შეფასება</div>
+            <div style={{ fontSize: 10, color: '#9a9a93' }}>3 ღია</div>
+          </div>
+          <div style={{ background: '#fff', border: '1px solid rgba(20,20,20,.07)', borderRadius: 14, padding: 11 }}>
+            <div style={{ width: 26, height: 26, borderRadius: 8, background: 'rgba(20,20,20,.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, marginBottom: 8, fontSize: 13, color: '#141414' }}>▤</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#141414', lineHeight: 1.2 }}>დოკუმენტები</div>
+            <div style={{ fontSize: 10, color: '#9a9a93' }}>ყველა ხელთ</div>
+          </div>
+        </div>
+        {/* Next instruction */}
+        <div style={{ margin: '10px 14px 0', background: '#fff', border: '1px solid rgba(20,20,20,.07)', borderRadius: 14, padding: '10px 11px', display: 'flex', alignItems: 'center', gap: 9 }}>
+          <span style={{ width: 34, height: 34, borderRadius: 10, background: '#E6FF4D', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, color: '#1A1A1A', fontSize: 16 }}>↗</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#141414' }}>სიმაღლეზე მუშაობა</div>
+            <div style={{ fontSize: 10, color: '#9a9a93' }}>შემდეგი ინსტრუქტაჟი · 10:30</div>
+          </div>
+          <span style={{ fontSize: 16, color: '#c4c3bd' }}>›</span>
+        </div>
+        {/* Bottom nav */}
+        <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-around', padding: '11px 16px 16px', borderTop: '1px solid rgba(20,20,20,.06)', background: '#F7F6F2' }}>
+          {['#1A1A1A', '#d8d7cf', '#d8d7cf', '#d8d7cf'].map((bg, i) => (
+            <span key={i} style={{ width: 22, height: 22, borderRadius: 6, background: bg }} />
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 

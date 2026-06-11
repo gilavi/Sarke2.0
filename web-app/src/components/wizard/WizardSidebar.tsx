@@ -138,7 +138,7 @@ function StatusLabel({
   }
   if (status === 'done') {
     return (
-      <div className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+      <div className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-brand-600 dark:text-brand-400">
         <CheckCircle2 size={11} />
         დასრულდა
       </div>

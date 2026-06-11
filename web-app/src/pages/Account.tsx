@@ -40,7 +40,7 @@ const STATUS_LABEL: Record<PaymentRecord['status'], string> = {
   refunded: 'დაბრუნებული',
 };
 const STATUS_CLASS: Record<PaymentRecord['status'], string> = {
-  success: 'bg-emerald-50 text-emerald-700',
+  success: 'bg-brand-50 text-brand-700',
   failed: 'bg-red-50 text-red-700',
   pending: 'bg-neutral-100 text-neutral-600',
   refunded: 'bg-amber-50 text-amber-700',

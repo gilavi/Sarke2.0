@@ -17,7 +17,7 @@ export interface ResultOption<V extends string> {
 }
 
 const TONE_SELECTED: Record<ResultTone, string> = {
-  good: 'border-emerald-600 bg-emerald-600 text-white',
+  good: 'border-brand-600 bg-brand-600 text-white',
   warn: 'border-amber-600 bg-amber-600 text-white',
   bad: 'border-red-600 bg-red-600 text-white',
   neutral: 'border-neutral-500 bg-neutral-500 text-white',

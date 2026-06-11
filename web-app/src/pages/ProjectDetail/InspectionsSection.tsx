@@ -33,7 +33,7 @@ const TYPE_AVATAR: Record<string, { emoji: string; bg: string }> = {
   harness:            { emoji: '🦺', bg: 'bg-blue-50 dark:bg-blue-950/20' },
   bobcat:             { emoji: '🚜', bg: 'bg-amber-50 dark:bg-amber-950/20' },
   excavator:          { emoji: '🚧', bg: 'bg-orange-50 dark:bg-orange-950/20' },
-  general:            { emoji: '⚙️', bg: 'bg-emerald-50 dark:bg-emerald-950/20' },
+  general:            { emoji: '⚙️', bg: 'bg-brand-50 dark:bg-brand-950/20' },
   cargo_platform:     { emoji: '📦', bg: 'bg-sky-50 dark:bg-sky-950/20' },
 };
 

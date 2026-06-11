@@ -27,12 +27,13 @@ Do **not** reintroduce `brand-*` (green) or the old dark-green hexes (`#0F2318`,
 Only this folder + `components/layout/MarketingLayout` + `components/marketing/ChatWidget`
 carry the board palette.
 
-**Logo:** `HubbleLogo` (in `shared.tsx`) — the Hubble H-monogram (rounded square + diagonal
-wave), a single `fill="currentColor"` evenodd SVG path so it recolors via text color.
-Navbar/footer render it in `text-graphite-900` next to the `HUBBLE` wordmark; the mobile
-bar / exit popup use it white-on-`safety-500` tiles. `public/favicon.svg` is the same mark
-as the orange app-icon tile. To replace with an official vector, swap the single `<path d>`
-in `HubbleLogo` (keep the `0 0 120 112` viewBox or update both call sites' aspect).
+**Logo:** `HubbleLogo` (in `shared.tsx`) — the **official** Hubble H-monogram (two rounded
+"blob" paths whose negative space forms the H + orbital wave; viewBox `0 0 250 250`,
+`fill="currentColor"`). Source vector: `assets/images/hubble-logo.svg` (Khelogo). It's
+mirrored 1:1 by the mobile `components/HubbleMark.tsx`, the `web/` sign app's `Brand.tsx`,
+and `public/favicon.svg` (orange app-icon tile). Navbar/footer render it `text-graphite-900`
+next to the `HUBBLE` wordmark; the mobile bar / exit popup use it white-on-`safety-500`.
+If the brand mark ever changes, update all four call sites together (keep them identical).
 
 **Pattern system:** `components/marketing/BrandPattern.tsx` — the board's "orbital paths"
 motif. `OrbitRings` (concentric rings + orange/hi-vis orbiting dots, `currentColor`),

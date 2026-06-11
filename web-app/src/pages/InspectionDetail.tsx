@@ -911,7 +911,7 @@ function ComponentGridReadOnly({ question, answer }: { question: Question; answe
               {statusCols.map((col) => (
                 <td key={col} className="px-3 py-2 text-center">
                   <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                    values[row]?.[col] === 'კი' ? 'bg-emerald-100 text-emerald-700' :
+                    values[row]?.[col] === 'კი' ? 'bg-brand-100 text-brand-700' :
                     values[row]?.[col] === 'არა' ? 'bg-red-100 text-red-700' :
                     values[row]?.[col] ? 'bg-neutral-100 text-neutral-600' :
                     'text-neutral-300'

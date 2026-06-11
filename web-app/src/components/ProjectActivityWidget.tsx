@@ -45,7 +45,7 @@ const ACTIVITY_TYPE_AVATAR: Record<ActivityItem['type'], { emoji: string; bg: st
   mobile_scaffold:    { emoji: '🏗️', bg: 'bg-yellow-50 dark:bg-yellow-950/20', label: 'მობ. ხარაჩო' },
   mobile_scaffold_n3: { emoji: '🏗️', bg: 'bg-yellow-50 dark:bg-yellow-950/20', label: 'მობ. ხარაჩო N3' },
   bobcat:             { emoji: '🚜', bg: 'bg-amber-50 dark:bg-amber-950/20',   label: 'ციცხვიანი' },
-  general:            { emoji: '⚙️', bg: 'bg-emerald-50 dark:bg-emerald-950/20', label: 'ტექ. აღჭ.' },
+  general:            { emoji: '⚙️', bg: 'bg-brand-50 dark:bg-brand-950/20', label: 'ტექ. აღჭ.' },
   excavator:          { emoji: '🚧', bg: 'bg-orange-50 dark:bg-orange-950/20', label: 'ექსკავ.' },
   cargo_platform:     { emoji: '📦', bg: 'bg-sky-50 dark:bg-sky-950/20',       label: 'ტვირთის პლატფ.' },
 };
@@ -150,7 +150,7 @@ export function ProjectActivityWidget({ project, onNewAct }: Props) {
                   <span className={cn(
                     'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold',
                     item.status === 'completed'
-                      ? 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400'
+                      ? 'bg-brand-100 text-brand-700 dark:bg-brand-950/40 dark:text-brand-400'
                       : 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400',
                   )}>
                     {item.status === 'completed' ? 'დასრულდა' : 'დრაფტი'}

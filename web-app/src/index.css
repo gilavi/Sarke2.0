@@ -10,23 +10,36 @@
 .animate-mesh-2 { animation: mesh-2 25s ease-in-out infinite; }
 .animate-mesh-3 { animation: mesh-3 30s ease-in-out infinite; }
 
+/* ── Hero mockup animations ── */
+@keyframes hub-spin { to { transform: rotate(360deg); } }
+@keyframes hub-spin-rev { to { transform: rotate(-360deg); } }
+@keyframes hub-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }
+@keyframes hub-float-b { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(10px); } }
+@keyframes hub-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+.animate-hub-spin { animation: hub-spin 40s linear infinite; }
+.animate-hub-spin-rev { animation: hub-spin-rev 30s linear infinite; }
+.animate-hub-float { animation: hub-float 7s ease-in-out infinite; }
+.animate-hub-float-b { animation: hub-float-b 8s ease-in-out infinite; }
+.animate-hub-blink { animation: hub-blink 1.6s ease-in-out infinite; }
+
 @media (prefers-reduced-motion: reduce) {
   .animate-mesh-1, .animate-mesh-2, .animate-mesh-3 { animation: none; }
 }
 
 .dark .btn-primary-glow {
-  box-shadow: 0 0 0 1px rgba(71, 175, 135, 0.2), 0 0 16px rgba(71, 175, 135, 0.15);
+  box-shadow: 0 0 0 1px rgba(255, 122, 71, 0.2), 0 0 16px rgba(255, 122, 71, 0.15);
 }
 .dark .btn-primary-glow:hover {
-  box-shadow: 0 0 0 1px rgba(71, 175, 135, 0.3), 0 0 24px rgba(71, 175, 135, 0.25), 0 0 48px rgba(71, 175, 135, 0.1);
+  box-shadow: 0 0 0 1px rgba(255, 122, 71, 0.3), 0 0 24px rgba(255, 122, 71, 0.25), 0 0 48px rgba(255, 122, 71, 0.1);
 }
 .dark .border-glow {
-  border-color: rgba(71, 175, 135, 0.2);
-  box-shadow: inset 0 0 0 1px rgba(71, 175, 135, 0.05);
+  border-color: rgba(255, 122, 71, 0.2);
+  box-shadow: inset 0 0 0 1px rgba(255, 122, 71, 0.05);
 }
 .nav-active {
   position: relative;
-  background: linear-gradient(90deg, rgba(20,122,79,0.08), transparent);
+  background: linear-gradient(90deg, rgba(255,90,31,0.08), transparent);
   font-weight: 600;
 }
 .nav-active::before {
@@ -37,12 +50,12 @@
   transform: translateY(-50%);
   width: 3px;
   height: 20px;
-  background: linear-gradient(180deg, #47AF87, #75C3A5);
+  background: linear-gradient(180deg, #FF7A47, #FF9E78);
   border-radius: 0 2px 2px 0;
 }
 
 /* ── Sidebar nav icon (single-state, sits on the canvas) ──
-   One Phosphor glyph: muted at rest, brand-green when active, a subtle spring on
+   One Phosphor glyph: muted at rest, brand-orange when active, a subtle spring on
    hover. The active row's pill + text colour are token Tailwind classes on the
    item itself (bg-[var(--nav-active-bg)] / text-[var(--nav-active-text)]). */
 .nav-gem {
@@ -113,7 +126,7 @@ html,
   --bg-body: #f5f5f4;        /* flat canvas the sidebar sits on */
   --bg-card: #ffffff;        /* floating content card + inner surfaces */
   --bg-hover: #f0f0ee;
-  --bg-active: #e8f6ee;
+  --bg-active: #fff3ee;
   --surface: #f7f7f5;        /* stat / metric surface */
   --track: #eeeeec;          /* progress track */
   --text-primary: #1c1b1a;
@@ -122,12 +135,12 @@ html,
   --border-color: #ebebe8;
   --border-subtle: #f0f0ee;
   --border-default: #ebebe8;
-  --brand-50: #e8f6ee;
-  --brand-500: #166534;
-  --brand-600: #166534;
-  --brand-700: #0f4a26;
-  --nav-active-bg: #e8f6ee;
-  --nav-active-text: #166534;
+  --brand-50: #fff3ee;
+  --brand-500: #ff5a1f;
+  --brand-600: #e84709;
+  --brand-700: #be380c;
+  --nav-active-bg: #fff3ee;
+  --nav-active-text: #be380c;
   --card-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 10px 26px rgba(16, 24, 40, 0.06);
   --scrollbar-thumb: #d4d2cd;
   --scrollbar-thumb-hover: #bdbab4;
@@ -141,7 +154,7 @@ html,
   --bg-sidebar: #161614;
   --bg-card: #211f1c;
   --bg-hover: #26241f;
-  --bg-active: #19271e;
+  --bg-active: #2a1a10;
   --bg-elevated: #26241f;
   --bg-overlay: #2a2823;
   --surface: #26241f;
@@ -161,13 +174,13 @@ html,
   --border-active: #44423c;
 
   /* Brand — more vibrant in dark */
-  --brand-50: #19271e;
-  --brand-500: #16a34a;
-  --brand-600: #166534;
-  --brand-700: #56d98a;
-  --brand-glow: rgba(22,163,74,0.18);
-  --nav-active-bg: #19271e;
-  --nav-active-text: #56d98a;
+  --brand-50: #2a1a10;
+  --brand-500: #ff5a1f;
+  --brand-600: #e84709;
+  --brand-700: #ff7a47;
+  --brand-glow: rgba(255,90,31,0.18);
+  --nav-active-bg: #2a1a10;
+  --nav-active-text: #ff7a47;
   --card-shadow: 0 1px 2px rgba(0,0,0,0.4), 0 10px 30px rgba(0,0,0,0.5);
   --scrollbar-thumb: #34302a;
   --scrollbar-thumb-hover: #423c33;

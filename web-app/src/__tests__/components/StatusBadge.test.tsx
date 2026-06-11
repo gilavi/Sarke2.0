@@ -6,7 +6,7 @@ describe('StatusBadge — known statuses', () => {
   it('completed → "დასრულდა" with green styling', () => {
     const { container } = render(<StatusBadge status="completed" />);
     expect(screen.getByText('დასრულდა')).toBeInTheDocument();
-    // StatusBadge maps "completed" to a Mantine <Badge color="green">, whose
+    // StatusBadge maps "completed" to a Mantine <Badge color="brand">, whose
     // color is applied as an inline CSS variable referencing the green palette.
     const badge = container.querySelector('.mantine-Badge-root');
     expect(badge?.getAttribute('style') ?? '').toContain('green');

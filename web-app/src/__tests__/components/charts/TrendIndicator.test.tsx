@@ -8,7 +8,7 @@ describe('TrendIndicator', () => {
       <TrendIndicator current={120} previous={100} label="vs last month" />,
     );
     expect(screen.getByText('20%')).toBeInTheDocument();
-    expect(screen.getByText('20%')).toHaveClass('text-green-600');
+    expect(screen.getByText('20%')).toHaveClass('text-brand-600');
     // ArrowUp svg should be present
     expect(container.querySelector('svg')).toBeInTheDocument();
   });

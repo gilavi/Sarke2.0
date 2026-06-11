@@ -135,8 +135,8 @@ export default function Certificates() {
                 className="group flex items-center justify-between gap-3 px-6 py-4 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/60"
               >
                 <div className="flex flex-1 items-center gap-3 min-w-0">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-50 dark:bg-teal-950/20">
-                    <FileText size={18} className="text-teal-600 dark:text-teal-400" />
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 dark:bg-brand-950/20">
+                    <FileText size={18} className="text-brand-600 dark:text-brand-400" />
                   </div>
                   <div className="min-w-0">
                     <p className="truncate font-medium text-neutral-900 dark:text-neutral-100">{name}</p>

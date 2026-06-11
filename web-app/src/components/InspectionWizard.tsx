@@ -972,7 +972,7 @@ function AnswerButton({ selected, onClick, icon, label, variant }: {
   selected: boolean; onClick: () => void; icon: React.ReactNode; label: string; variant: 'yes' | 'no';
 }) {
   const base = variant === 'yes'
-    ? selected ? 'bg-emerald-500 text-white ring-2 ring-emerald-500 ring-offset-2' : 'bg-white text-neutral-600 hover:bg-emerald-50 hover:text-emerald-600 border border-neutral-200'
+    ? selected ? 'bg-brand-500 text-white ring-2 ring-brand-500 ring-offset-2' : 'bg-white text-neutral-600 hover:bg-brand-50 hover:text-brand-600 border border-neutral-200'
     : selected ? 'bg-red-500 text-white ring-2 ring-red-500 ring-offset-2' : 'bg-white text-neutral-600 hover:bg-red-50 hover:text-red-600 border border-neutral-200';
   return (
     <motion.button type="button" whileTap={{ scale: 0.96 }} onClick={onClick}

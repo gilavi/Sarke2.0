@@ -74,7 +74,7 @@ export default function InspectionInfoView({
   const gridCols = (gridQuestion?.grid_cols ?? []).filter((c) => c !== 'კომენტარი');
 
   function statusCell(value: string | undefined) {
-    if (value === 'ok')  return <span className="font-semibold text-emerald-600 dark:text-emerald-400">კი</span>;
+    if (value === 'ok')  return <span className="font-semibold text-brand-600 dark:text-brand-400">კი</span>;
     if (value === 'bad') return <span className="font-semibold text-red-500 dark:text-red-400">არა</span>;
     return <span className="text-neutral-400">—</span>;
   }
@@ -168,8 +168,8 @@ export default function InspectionInfoView({
                   onClick={() => setIsSafe(true)}
                   className={`${safeChipBase} ${
                     isSafe === true
-                      ? 'border-emerald-500 bg-emerald-500 text-white'
-                      : 'border-neutral-200 text-neutral-600 hover:border-emerald-400 dark:border-neutral-600 dark:text-neutral-300'
+                      ? 'border-brand-500 bg-brand-500 text-white'
+                      : 'border-neutral-200 text-neutral-600 hover:border-brand-400 dark:border-neutral-600 dark:text-neutral-300'
                   }`}
                 >
                   უსაფრთხოა
@@ -191,7 +191,7 @@ export default function InspectionInfoView({
                 className={[
                   'inline-block rounded-full px-4 py-1.5 text-sm font-semibold',
                   inspection.is_safe_for_use === true
-                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400'
+                    ? 'bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-400'
                     : inspection.is_safe_for_use === false
                     ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'
                     : 'bg-neutral-100 text-neutral-500 dark:bg-neutral-700',

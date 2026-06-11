@@ -37,7 +37,7 @@ const TYPE_AVATAR: Record<string, { emoji: string; bg: string }> = {
   mobile_scaffold_n3: { emoji: '🏗️', bg: 'bg-yellow-50 dark:bg-yellow-950/20' },
   bobcat:             { emoji: '🚜', bg: 'bg-amber-50 dark:bg-amber-950/20' },
   excavator:          { emoji: '🚧', bg: 'bg-orange-50 dark:bg-orange-950/20' },
-  general:            { emoji: '⚙️', bg: 'bg-emerald-50 dark:bg-emerald-950/20' },
+  general:            { emoji: '⚙️', bg: 'bg-brand-50 dark:bg-brand-950/20' },
   cargo_platform:     { emoji: '📦', bg: 'bg-sky-50 dark:bg-sky-950/20' },
 };
 
@@ -233,7 +233,7 @@ export default function History() {
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                         row.status === 'completed'
-                          ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                          ? 'bg-brand-100 text-brand-700 dark:bg-brand-900/30 dark:text-brand-400'
                           : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
                       }`}
                     >

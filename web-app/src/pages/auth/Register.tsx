@@ -21,8 +21,8 @@ const getPasswordStrength = (password: string): { score: number; label: string; 
     { label: 'სუსტი',        color: 'text-orange-500' },
     { label: 'საშუალო',      color: 'text-yellow-500' },
     { label: 'კარგი',        color: 'text-blue-500' },
-    { label: 'ძლიერი',       color: 'text-green-500' },
-    { label: 'ძალიან ძლიერი', color: 'text-green-600' },
+    { label: 'ძლიერი',       color: 'text-brand-500' },
+    { label: 'ძალიან ძლიერი', color: 'text-brand-600' },
   ];
   return { score, ...levels[score] };
 };

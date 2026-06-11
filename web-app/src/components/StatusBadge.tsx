@@ -6,7 +6,7 @@ type LucideIcon = ComponentType<LucideProps>;
 type Status = 'draft' | 'completed' | 'in_progress' | 'overdue' | 'due_today' | 'upcoming' | string;
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; Icon: LucideIcon | null }> = {
-  completed:   { label: 'დასრულდა',   color: 'green',  Icon: CheckCircle2 },
+  completed:   { label: 'დასრულდა',   color: 'brand',  Icon: CheckCircle2 },
   draft:       { label: 'დრაფტი',     color: 'yellow', Icon: Hourglass    },
   in_progress: { label: 'მიმდინარე',  color: 'blue',   Icon: Clock        },
   overdue:     { label: 'ვადაგასული', color: 'red',    Icon: AlertCircle  },

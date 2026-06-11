@@ -72,14 +72,14 @@ export function buildBriefingPdfHtml(briefing: Briefing, project: Project): stri
   }
   .header {
     text-align: center;
-    border-bottom: 3px solid #147A4F;
+    border-bottom: 3px solid #FF5A1F;
     padding-bottom: 16px;
     margin-bottom: 24px;
   }
   .header h1 {
     font-size: 18px;
     font-weight: 800;
-    color: #0C4930;
+    color: #BE380C;
     margin: 0 0 4px 0;
     letter-spacing: -0.3px;
   }
@@ -111,7 +111,7 @@ export function buildBriefingPdfHtml(briefing: Briefing, project: Project): stri
   .section-title {
     font-size: 14px;
     font-weight: 800;
-    color: #0C4930;
+    color: #BE380C;
     margin: 0 0 12px 0;
     padding-bottom: 6px;
     border-bottom: 1px solid #E8E6E0;
@@ -124,7 +124,7 @@ export function buildBriefingPdfHtml(briefing: Briefing, project: Project): stri
     margin-bottom: 32px;
   }
   .participants-table th {
-    background: #147A4F;
+    background: #C4350A;
     color: #fff;
     padding: 10px;
     text-align: left;
@@ -136,7 +136,7 @@ export function buildBriefingPdfHtml(briefing: Briefing, project: Project): stri
   .participants-table th:last-child { width: 180px; }
   .participants-table tr:nth-child(even) td { background: #FAFAF8; }
   .inspector-block {
-    border: 2px solid #147A4F;
+    border: 2px solid #FF5A1F;
     border-radius: 10px;
     padding: 20px;
     margin-bottom: 32px;
@@ -145,7 +145,7 @@ export function buildBriefingPdfHtml(briefing: Briefing, project: Project): stri
   .inspector-title {
     font-size: 13px;
     font-weight: 800;
-    color: #0C4930;
+    color: #BE380C;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     margin-bottom: 12px;

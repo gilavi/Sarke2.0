@@ -19,7 +19,7 @@ export default function FieldInput({ label, value, disabled, onSave }: Props) {
       label={label}
       disabled={disabled}
       defaultValue={value ?? ''}
-      className={cn('transition duration-300', saved && 'ring-2 ring-green-400 ring-offset-1')}
+      className={cn('transition duration-300', saved && 'ring-2 ring-brand-400 ring-offset-1')}
       onBlur={(e) => {
         const v = e.target.value.trim() || null;
         if (v !== (value ?? null)) {

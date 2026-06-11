@@ -56,8 +56,8 @@ describe('InspectionInfoView (draft)', () => {
     );
     const yesBtn = screen.getByRole('button', { name: 'უსაფრთხოა' });
     fireEvent.click(yesBtn);
-    // The pill now has the selected emerald-500 class.
-    expect(yesBtn.className).toContain('bg-emerald-500');
+    // The pill now has the selected brand-500 class.
+    expect(yesBtn.className).toContain('bg-brand-500');
   });
 
   it('clicking the "არ არის უსაფრთხო" chip sets isSafe to false', () => {

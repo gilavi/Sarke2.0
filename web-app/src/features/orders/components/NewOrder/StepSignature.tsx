@@ -17,16 +17,16 @@ export function StepSignDirector({ form, signingOpen, setSigningOpen, onSave, on
       <h2 className="text-base font-semibold text-neutral-800">დირექტორის ხელმოწერა</h2>
       <p className="text-sm text-neutral-500">{form.directorName || 'დირექტორი'}</p>
       {form.directorSignature ? (
-        <div className="flex items-center gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3">
+        <div className="flex items-center gap-3 rounded-lg border border-brand-200 bg-brand-50 px-4 py-3">
           <img
             src={`data:image/png;base64,${form.directorSignature}`}
             alt="Director signature"
             className="h-12 rounded border border-neutral-200 bg-white p-1"
           />
           <div className="flex-1">
-            <p className="text-sm font-medium text-green-800">ხელმოწერა დადებულია</p>
+            <p className="text-sm font-medium text-brand-800">ხელმოწერა დადებულია</p>
             {form.directorSignedAt && (
-              <p className="text-xs text-green-600">{new Date(form.directorSignedAt).toLocaleString('ka-GE')}</p>
+              <p className="text-xs text-brand-600">{new Date(form.directorSignedAt).toLocaleString('ka-GE')}</p>
             )}
           </div>
           <Button variant="ghost" size="sm" onClick={onClear} className="text-neutral-500">
@@ -51,16 +51,16 @@ export function StepSignAppointed({ form, signingOpen, setSigningOpen, onSave, o
       <h2 className="text-base font-semibold text-neutral-800">პასუხისმგებელი პირის ხელმოწერა</h2>
       <p className="text-sm text-neutral-500">{form.appointedName || 'დანიშნული პირი'}</p>
       {form.appointedSignature ? (
-        <div className="flex items-center gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3">
+        <div className="flex items-center gap-3 rounded-lg border border-brand-200 bg-brand-50 px-4 py-3">
           <img
             src={`data:image/png;base64,${form.appointedSignature}`}
             alt="Appointed signature"
             className="h-12 rounded border border-neutral-200 bg-white p-1"
           />
           <div className="flex-1">
-            <p className="text-sm font-medium text-green-800">ხელმოწერა დადებულია</p>
+            <p className="text-sm font-medium text-brand-800">ხელმოწერა დადებულია</p>
             {form.appointedSignedAt && (
-              <p className="text-xs text-green-600">{new Date(form.appointedSignedAt).toLocaleString('ka-GE')}</p>
+              <p className="text-xs text-brand-600">{new Date(form.appointedSignedAt).toLocaleString('ka-GE')}</p>
             )}
           </div>
           <Button variant="ghost" size="sm" onClick={onClear} className="text-neutral-500">

@@ -9,31 +9,37 @@ import { useWindowDimensions } from 'react-native';
 
 // ── Color Primitives ───────────────────────────────────────────────────────
 
+// Hubble brand board — SAFETY ORANGE (#FF5A1F) primary scale.
 const primary = {
-  50: '#E8F5F0',
-  100: '#D1EBE1',
-  200: '#A3D7C3',
-  300: '#75C3A5',
-  400: '#47AF87',
-  500: '#147A4F',
-  600: '#106240',
-  700: '#0C4930',
-  800: '#083120',
-  900: '#041810',
+  50: '#FFF3EE',
+  100: '#FFE3D6',
+  200: '#FFC4AC',
+  300: '#FF9E78',
+  400: '#FF7A47',
+  500: '#FF5A1F',
+  600: '#E84709',
+  700: '#BE380C',
+  800: '#972F11',
+  900: '#7B2913',
 } as const;
 
+// Hubble brand board — warm neutrals anchored on OFF-WHITE (#F2F1EC),
+// CONCRETE (#D6D6D1, used for borders) and GRAPHITE (#1A1A1A, ink).
 const neutral = {
-  50: '#FAFAF8',
-  100: '#F5F5F0',
-  200: '#E8E6E0',
-  300: '#D4D0C8',
-  400: '#A8A49C',
-  500: '#7C7870',
-  600: '#504C44',
-  700: '#3A3630',
-  800: '#242018',
-  900: '#0E0C08',
+  50: '#F2F1EC',
+  100: '#E9E7E0',
+  200: '#D6D6D1',
+  300: '#C2BEB6',
+  400: '#9C988F',
+  500: '#736F67',
+  600: '#4E4A44',
+  700: '#363230',
+  800: '#221F1C',
+  900: '#1A1A1A',
 } as const;
+
+// HI-VIS YELLOW (#E6FF4D) — high-energy spotlight accent (use sparingly).
+const highlight = '#E6FF4D';
 
 const semantic = {
   success: '#10B981',
@@ -68,6 +74,8 @@ export const lightTheme = {
     accent: primary[500],
     accentSoft: primary[50],
     accentGhost: primary[100],
+    highlight,
+    highlightSoft: '#F6FFC9',
     overlay: 'rgba(0,0,0,0.45)',
     scrim: 'rgba(0,0,0,0.25)',
     inverse: {
@@ -276,8 +284,10 @@ export const darkTheme = {
     border: '#2A2A2A',
     borderStrong: '#3A3A3A',
     accent: primary[400],
-    accentSoft: 'rgba(20,122,79,0.15)',
-    accentGhost: 'rgba(20,122,79,0.08)',
+    accentSoft: 'rgba(255,90,31,0.15)',
+    accentGhost: 'rgba(255,90,31,0.08)',
+    highlight,
+    highlightSoft: 'rgba(230,255,77,0.16)',
     overlay: 'rgba(0,0,0,0.65)',
     scrim: 'rgba(0,0,0,0.50)',
     inverse: {
@@ -318,7 +328,7 @@ export const darkTheme = {
     regsSoft: '#221A40',
 
     actionColors: {
-      inspection:  { bg: 'rgba(20,122,79,0.15)', icon: primary[400] },
+      inspection:  { bg: 'rgba(255,90,31,0.15)', icon: primary[400] },
       incident:    { bg: '#3F2E0F',              icon: semantic.warning },
       briefing:    { bg: '#1A2E3A',              icon: semantic.info },
       report:      { bg: '#3A1F1F',              icon: semantic.danger },
