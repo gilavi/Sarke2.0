@@ -8,6 +8,12 @@
     "userInterfaceStyle": "automatic",
     "scheme": "sarke2",
     "newArchEnabled": true,
+    "updates": {
+      "url": "https://u.expo.dev/ab800403-36c4-4673-8dd8-dfc75b66d14b"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -60,7 +66,14 @@
           "color": "#147A4F"
         }
       ],
-      "@sentry/react-native",
+      [
+        "@sentry/react-native/expo",
+        {
+          "organization": "<TODO_SENTRY_ORG>",
+          "project": "<TODO_SENTRY_PROJECT>",
+          "url": "https://sentry.io/"
+        }
+      ],
       "expo-font",
       "expo-web-browser",
       "expo-apple-authentication"
