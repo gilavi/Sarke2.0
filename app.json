@@ -69,8 +69,8 @@
       [
         "@sentry/react-native/expo",
         {
-          "organization": "<TODO_SENTRY_ORG>",
-          "project": "<TODO_SENTRY_PROJECT>",
+          "organization": "hubble-pk",
+          "project": "hubble-mobile",
           "url": "https://sentry.io/"
         }
       ],
