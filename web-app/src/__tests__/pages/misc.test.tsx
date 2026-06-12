@@ -10,6 +10,7 @@ vi.mock('@/lib/supabase', () => ({
 
 import { supabase } from '@/lib/supabase';
 import Terms from '@/pages/Terms';
+import Privacy from '@/pages/Privacy';
 import NotFound from '@/pages/NotFound';
 import SafetyGuidePage from '@/pages/SafetyGuidePage';
 import Subscribe from '@/pages/Subscribe';
@@ -22,6 +23,15 @@ describe('Terms', () => {
   it('renders the language toggle and footer', () => {
     renderPage(<Terms />);
     expect(screen.getByRole('button', { name: 'ქართული' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'English' })).toBeInTheDocument();
+    expect(screen.getByText(/© 2026 Hubble/)).toBeInTheDocument();
+  });
+});
+
+describe('Privacy', () => {
+  it('renders the Georgian heading, language toggle, and footer', () => {
+    renderPage(<Privacy />);
+    expect(screen.getByText('კონფიდენციალურობის პოლიტიკა')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'English' })).toBeInTheDocument();
     expect(screen.getByText(/© 2026 Hubble/)).toBeInTheDocument();
   });

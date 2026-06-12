@@ -8,7 +8,7 @@ describe('terms', () => {
     });
 
     it('TERMS_PUBLIC_URL is the canonical hubble.ge URL', () => {
-      expect(TERMS_PUBLIC_URL).toBe('https://hubble.ge/terms');
+      expect(TERMS_PUBLIC_URL).toBe('https://hubble.ge/app/#/terms');
     });
   });
 

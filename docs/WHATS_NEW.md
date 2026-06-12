@@ -4,6 +4,27 @@
 
 ---
 
+## 2026-06-12 — Public privacy policy page + legal-page fixes (submission blocker)
+
+- **New public privacy policy** at `https://hubble.ge/app/#/privacy` — the URL App
+  Store Connect requires. Content (`web-app/src/lib/privacy.ts`, ka+en) mirrors the
+  App Privacy labels in [APP_STORE_REVIEW.md](APP_STORE_REVIEW.md): account data,
+  user content, phone numbers, Sentry crash diagnostics; no location/tracking/ads;
+  in-app account deletion.
+- **`/terms` + `/privacy` are now public routes** (web-app `PublicLazyLayout`) —
+  previously `/terms` sat behind the login wall; both render via the new shared
+  `components/LegalDocPage.tsx`.
+- **Broken `hubble.ge/terms` link fixed** — `TERMS_PUBLIC_URL` (mobile `lib/terms.ts`
+  + web-app copy) now points at the live `https://hubble.ge/app/#/terms`; the old
+  path 404'd on gh-pages. Terms §5 copy updated for Apple sign-in (no version bump).
+- **Web-app deploy unblocked** — 4 unit tests had been failing on CI since the
+  rebrand, blocking every gh-pages deploy: StatusBadge green→`brand` token, Subscribe
+  ₾19→price-agnostic assertions, and a real `ThemeProvider` regression (dark mode no
+  longer persisted across reloads — localStorage read restored).
+- Marketing footer now links კონფიდენციალურობა (privacy) next to პირობები.
+
+---
+
 ## 2026-06-12 — Launch prep: App Store compliance, Apple sign-in, permissions diet, skeletons, OTA
 
 Eight-workstream mobile launch-prep pass (phase-1 … phase-8 commits). Full report:

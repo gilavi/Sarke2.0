@@ -2,7 +2,9 @@
 // prompted to re-accept on next sign-in.
 export const TERMS_VERSION = '2026-04-22';
 
-export const TERMS_PUBLIC_URL = 'https://hubble.ge/terms';
+// The live public terms page (web-app hash route — hubble.ge/terms does not
+// exist; the gh-pages root is owned by the signing app).
+export const TERMS_PUBLIC_URL = 'https://hubble.ge/app/#/terms';
 
 export interface TermsBody {
   heading: string;
@@ -49,8 +51,9 @@ export const termsKa: TermsBody = {
     {
       title: '5. ავთენტიფიკაცია',
       body:
-        'აპლიკაცია იყენებს ელ-ფოსტით ან Google-ით შესვლის მეთოდებს Supabase Auth-ის ' +
-        'საშუალებით. თქვენი პაროლი არცერთ შემთხვევაში არ ინახება აპლიკაციის სერვერებზე.',
+        'აპლიკაცია იყენებს ელ-ფოსტით, Google-ით ან Apple-ით შესვლის მეთოდებს ' +
+        'Supabase Auth-ის საშუალებით. თქვენი პაროლი არცერთ შემთხვევაში არ ინახება ' +
+        'აპლიკაციის სერვერებზე.',
     },
     {
       title: '6. კანონთან შესაბამისობა',
@@ -109,8 +112,8 @@ export const termsEn: TermsBody = {
     {
       title: '5. Authentication',
       body:
-        'Sign-in uses email or Google via Supabase Auth. Your password is never ' +
-        'stored on our servers.',
+        'Sign-in uses email, Google, or Apple via Supabase Auth. Your password ' +
+        'is never stored on our servers.',
     },
     {
       title: '6. Legal compliance',

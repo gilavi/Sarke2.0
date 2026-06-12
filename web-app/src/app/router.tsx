@@ -69,6 +69,7 @@ const ReportDetail = lazy(() => import('@/pages/ReportDetail'));
 const Qualifications = lazy(() => import('@/pages/Qualifications'));
 const Templates = lazy(() => import('@/pages/Templates'));
 const Terms = lazy(() => import('@/pages/Terms'));
+const Privacy = lazy(() => import('@/pages/Privacy'));
 const SafetyGuidePage = lazy(() => import('@/pages/SafetyGuidePage'));
 const History = lazy(() => import('@/pages/History'));
 const Orders = lazy(() => import('@/pages/Orders'));
@@ -178,12 +179,18 @@ export function AppRouter() {
           <Route path={routePattern.reset} element={<Reset />} />
           <Route path={routePattern.verifyEmail} element={<VerifyEmail />} />
 
-          {/* Public — lazy */}
+          {/* Public — lazy. Terms + Privacy must stay reachable logged-OUT
+              (App Store Connect links the privacy policy URL directly) and
+              logged-IN (Account links /terms), so they live here rather than
+              under MarketingLayout (which bounces sessions to /home) or the
+              protected shell. */}
           <Route element={<PublicLazyLayout />}>
             <Route path={routePattern.subscribe} element={<Subscribe />} />
             <Route path={routePattern.subscribeSuccess} element={<SubscribeSuccess />} />
             <Route path={routePattern.subscribeFail} element={<SubscribeFail />} />
             <Route path={routePattern.safetyStandalone} element={<SafetyGuidePage standalone />} />
+            <Route path={routePattern.terms} element={<Terms />} />
+            <Route path={routePattern.privacy} element={<Privacy />} />
           </Route>
 
           {/* Protected — full app shell */}
@@ -195,7 +202,6 @@ export function AppRouter() {
             <Route path={routePattern.regulations} element={<Regulations />} />
             <Route path={routePattern.qualifications} element={<Qualifications />} />
             <Route path={routePattern.templates} element={<Templates />} />
-            <Route path={routePattern.terms} element={<Terms />} />
             <Route path={routePattern.history} element={<History />} />
             <Route path={routePattern.safety} element={<SafetyGuidePage />} />
 

@@ -3,13 +3,14 @@ import { render, screen } from '@/test-utils';
 import StatusBadge from '@/components/StatusBadge';
 
 describe('StatusBadge — known statuses', () => {
-  it('completed → "დასრულდა" with green styling', () => {
+  it('completed → "დასრულდა" with brand styling', () => {
     const { container } = render(<StatusBadge status="completed" />);
     expect(screen.getByText('დასრულდა')).toBeInTheDocument();
-    // StatusBadge maps "completed" to a Mantine <Badge color="brand">, whose
-    // color is applied as an inline CSS variable referencing the green palette.
+    // StatusBadge maps "completed" to a Mantine <Badge color="brand"> (the
+    // Hubble brand palette, registered in main.tsx). test-utils wraps in a
+    // bare MantineProvider, so the token appears verbatim in the style attr.
     const badge = container.querySelector('.mantine-Badge-root');
-    expect(badge?.getAttribute('style') ?? '').toContain('green');
+    expect(badge?.getAttribute('style') ?? '').toContain('brand');
   });
 
   it('draft → "დრაფტი"', () => {

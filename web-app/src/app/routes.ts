@@ -43,6 +43,7 @@ export const routePattern = {
   reset: '/reset',
   verifyEmail: '/verify-email',
   terms: '/terms',
+  privacy: '/privacy',
 
   // Public marketing pages (multi-page landing). `legislation` is the PUBLIC
   // regulations/blog page — distinct from the protected `/regulations` dashboard.
@@ -146,6 +147,7 @@ export const routes = {
   verifyEmail: (email?: string) =>
     email ? `/verify-email?email=${encodeURIComponent(email)}` : '/verify-email',
   terms: '/terms' as const,
+  privacy: '/privacy' as const,
 
   about: '/about' as const,
   contact: '/contact' as const,

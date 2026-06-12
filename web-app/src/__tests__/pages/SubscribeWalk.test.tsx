@@ -56,7 +56,9 @@ describe('Subscribe — auth states', () => {
     renderPage('/subscribe');
     expect(await screen.findByText('Hubble Pro')).toBeInTheDocument();
     expect(screen.getByText('შეუზღუდავი PDF გენერაცია')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /გადახდა ₾19/ })).toBeInTheDocument();
+    // Price-agnostic: the amount is ₾1 during the test-price window and ₾19
+    // at launch — the test must survive the flip (docs/payments.md).
+    expect(screen.getByRole('button', { name: /გადახდა ₾\d+/ })).toBeInTheDocument();
   });
 
   it('clicking "გადახდა" with a bad session shows the pay error', async () => {
@@ -68,7 +70,7 @@ describe('Subscribe — auth states', () => {
       data: { session: null }, error: null,
     } as never);
     renderPage('/subscribe');
-    const payBtn = await screen.findByRole('button', { name: /გადახდა ₾19/ });
+    const payBtn = await screen.findByRole('button', { name: /გადახდა ₾\d+/ });
     fireEvent.click(payBtn);
     // After clicking, payStatus → "creating" or → "error". Just verify the button
     // changed state — disabled + state was set.
