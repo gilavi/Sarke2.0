@@ -4,6 +4,17 @@
 
 ---
 
+## 2026-06-12 — More tab: payment-history/invoices cards hidden (TestFlight smoke finding)
+
+`app/(tabs)/more.tsx`: the empty "გადახდის ისტორია" card and the
+"ანგარიშ-ფაქტურები" scaffold ("available after company registration") were
+still visible after phase-3's purchase-UI removal. `PaymentHistoryCard` now
+renders only when records exist (web-side purchases); the invoices scaffold is
+deleted. Free accounts — including the App Review demo — see no payment
+surfaces at all.
+
+---
+
 ## 2026-06-12 — Public privacy policy page + legal-page fixes (submission blocker)
 
 - **New public privacy policy** at `https://hubble.ge/app/#/privacy` — the URL App

@@ -134,18 +134,11 @@ export default function MoreScreen() {
         {/* Subscription status (read-only — no purchase UI, Apple guideline 3.1.1) */}
         <SubscriptionSection pdfUsage={pdfUsage} />
 
-        {/* Payment history */}
-        <PaymentHistoryCard records={paymentHistoryQ.data ?? []} loading={paymentHistoryQ.isLoading} />
-
-        {/* Invoices — scaffold */}
-        <Card style={{ marginHorizontal: 16 }}>
-          <Text style={styles.sectionHeader}>ანგარიშ-ფაქტურები</Text>
-          {/* TODO: generate VAT invoices once company registration is complete */}
-          <View style={styles.emptyScaffold}>
-            <Ionicons name="document-outline" size={28} color={theme.colors.inkFaint} />
-            <Text style={styles.emptyScaffoldText}>ხელმისაწვდომი იქნება კომპანიის{'\n'}რეგისტრაციის შემდეგ</Text>
-          </View>
-        </Card>
+        {/* Payment history — renders only when records exist (web-side
+            purchases). Free accounts and App Review see no payment surfaces
+            at all (guideline 3.1.1); the VAT-invoices scaffold was removed
+            with the purchase UI. */}
+        <PaymentHistoryCard records={paymentHistoryQ.data ?? []} />
 
         {/* Hub tiles */}
         <View style={styles.grid}>
@@ -270,57 +263,42 @@ const STATUS_LABEL: Record<PaymentRecord['status'], string> = {
   refunded: 'დაბრუნებულია',
 };
 
-function PaymentHistoryCard({
-  records,
-  loading,
-}: {
-  records: PaymentRecord[];
-  loading: boolean;
-}) {
+function PaymentHistoryCard({ records }: { records: PaymentRecord[] }) {
   const { theme } = useTheme();
   const s = useMemo(() => getStyles(theme), [theme]);
+  // No records (the common case — payments happen on the web platform):
+  // render nothing rather than an empty "payment history" card.
+  if (records.length === 0) return null;
   return (
     <Card style={{ marginHorizontal: 16 }}>
       <Text style={s.sectionHeader}>გადახდის ისტორია</Text>
-      {loading ? (
-        <View style={{ gap: 10, paddingTop: 4 }}>
-          <Skeleton width="100%" height={20} />
-          <Skeleton width="80%" height={20} />
-        </View>
-      ) : records.length === 0 ? (
-        <View style={s.emptyScaffold}>
-          <Ionicons name="receipt-outline" size={28} color={theme.colors.inkFaint} />
-          <Text style={s.emptyScaffoldText}>ჩანაწერები არ არის</Text>
-        </View>
-      ) : (
-        <View style={{ gap: 0 }}>
-          {records.map((rec, idx) => (
-            <View key={rec.id}>
-              {idx > 0 && <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: theme.colors.hairline, marginLeft: 0 }} />}
-              <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: 10 }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '500', color: theme.colors.ink }}>
-                    {rec.amount != null ? `${rec.amount} ${rec.currency ?? ''}` : '—'}
-                  </Text>
-                  <Text style={{ fontSize: 12, color: theme.colors.inkSoft, marginTop: 2 }}>
-                    {formatShortDate(rec.created_at)}
-                  </Text>
-                </View>
-                <View style={{
-                  backgroundColor: `${STATUS_COLOR[rec.status]}20`,
-                  borderRadius: 6,
-                  paddingHorizontal: 8,
-                  paddingVertical: 3,
-                }}>
-                  <Text style={{ fontSize: 12, fontWeight: '600', color: STATUS_COLOR[rec.status] }}>
-                    {STATUS_LABEL[rec.status]}
-                  </Text>
-                </View>
+      <View style={{ gap: 0 }}>
+        {records.map((rec, idx) => (
+          <View key={rec.id}>
+            {idx > 0 && <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: theme.colors.hairline, marginLeft: 0 }} />}
+            <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: 10 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, fontWeight: '500', color: theme.colors.ink }}>
+                  {rec.amount != null ? `${rec.amount} ${rec.currency ?? ''}` : '—'}
+                </Text>
+                <Text style={{ fontSize: 12, color: theme.colors.inkSoft, marginTop: 2 }}>
+                  {formatShortDate(rec.created_at)}
+                </Text>
+              </View>
+              <View style={{
+                backgroundColor: `${STATUS_COLOR[rec.status]}20`,
+                borderRadius: 6,
+                paddingHorizontal: 8,
+                paddingVertical: 3,
+              }}>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: STATUS_COLOR[rec.status] }}>
+                  {STATUS_LABEL[rec.status]}
+                </Text>
               </View>
             </View>
-          ))}
-        </View>
-      )}
+          </View>
+        ))}
+      </View>
     </Card>
   );
 }

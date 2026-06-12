@@ -80,7 +80,7 @@ Unique index on `(bog_order_id, status)` deduplicates webhook retries.
 
 - [components/SubscriptionNotice.tsx](../components/SubscriptionNotice.tsx) — neutral limit-reached modal (title + body + usage + dismiss; deliberately no price, no URL, no purchase wording — Apple guideline 3.1.1).
 - [components/PdfLockedBanner.tsx](../components/PdfLockedBanner.tsx) — inline amber "limit reached" banner; its Details button opens `SubscriptionNotice`.
-- [app/(tabs)/more.tsx](../app/(tabs)/more.tsx) — `SubscriptionSection`: plan/usage/expiry display. Cancel calls `cancel_subscription` RPC (account management — allowed).
+- [app/(tabs)/more.tsx](../app/(tabs)/more.tsx) — `SubscriptionSection`: plan/usage/expiry display. Cancel calls `cancel_subscription` RPC (account management — allowed). `PaymentHistoryCard` renders **only when records exist** (2026-06-12); the empty payment-history card and the VAT-invoices scaffold were removed so free accounts/App Review see no payment surfaces at all.
 - [lib/usePdfUsage.ts](../lib/usePdfUsage.ts) — React Query hook that reads `users.pdf_count + subscription_*`. Mirrors auto-expiry locally. This is also the auto-unlock path after a web purchase.
 - [lib/pdfGate.ts](../lib/pdfGate.ts) — `checkAndIncrementPdfCount(userId)`. Throws `PdfLimitReachedError` → caller shows `<SubscriptionNotice>`.
 
