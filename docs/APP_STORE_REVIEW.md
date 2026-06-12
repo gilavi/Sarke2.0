@@ -62,9 +62,10 @@ image-picker plugin; location and `RECORD_AUDIO` were removed.
 
 ## Privacy policy
 
-URL: `<TODO — must be LIVE before submission>` (suggested:
-`https://hubble.ge/privacy`). App Store Connect requires a reachable privacy
-policy URL; the app also links terms in-app (Profile → წესები და პირობები).
+URL: `https://hubble.ge/app/#/privacy` — live since 2026-06-12 (public,
+reachable logged-out; ka+en). Content source: `web-app/src/lib/privacy.ts`.
+App Store Connect requires a reachable privacy policy URL; the app also links
+terms in-app (Profile → წესები და პირობები → `https://hubble.ge/app/#/terms`).
 
 ## Demo data seeding
 
