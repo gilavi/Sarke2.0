@@ -27,7 +27,9 @@ type DbRow = {
   verdict: string | null;
   verdict_comment: string | null;
   summary_photos: string[];
-  signatures: CPSignatory[];
+  // Column dropped by 20260526002032_remove_persisted_inspection_signatures —
+  // old clients may still see it absent; toModel synthesizes an empty slot.
+  signatures?: CPSignatory[];
   completed_at: string | null;
   created_at: string;
   updated_at: string;
@@ -136,17 +138,15 @@ const base = makeInspectionService<CargoPlatformInspection, CargoPlatformPatch>(
   inspectionType: 'cargo_platform',
   toModel,
   toDb,
-  createColumns: (args) => {
-    const emptySignatory = (): CPSignatory => ({
-      name: args.inspectorName ?? '', position: '', organization: '', signature: null, date: null,
-    });
-    return {
-      inspector_name: args.inspectorName ?? null,
-      items: buildDefaultCPItems(),
-      cargo: [buildDefaultCargoRow(), buildDefaultCargoRow(), buildDefaultCargoRow()],
-      signatures: [emptySignatory()],
-    };
-  },
+  // NOTE: no `signatures` here — the column was dropped from
+  // cargo_platform_inspections (20260526002032); sending it makes PostgREST
+  // reject the whole insert ("could not find the 'signatures' column").
+  // Signatures are memory-only (toModel synthesizes an empty slot).
+  createColumns: (args) => ({
+    inspector_name: args.inspectorName ?? null,
+    items: buildDefaultCPItems(),
+    cargo: [buildDefaultCargoRow(), buildDefaultCargoRow(), buildDefaultCargoRow()],
+  }),
 });
 
 export const cargoPlatformApi = {

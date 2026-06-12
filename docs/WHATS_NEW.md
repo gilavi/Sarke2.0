@@ -4,6 +4,20 @@
 
 ---
 
+## 2026-06-12 — Cargo-platform create fixed (production bug, TestFlight smoke finding)
+
+Creating a cargo-platform inspection failed with "Could not find the
+'signatures' column of 'cargo_platform_inspections' in the schema cache" —
+broken in production since 2026-05-26, when `20260526002032` dropped the
+column but `lib/cargoPlatformService.ts` `createColumns` kept sending
+`signatures` in the INSERT (the patch path was cleaned, the create path was
+missed). Fix: stop sending it; `toModel` already synthesizes the memory-only
+empty slot. Web-app repo (`web-app/src/lib/data/cargoPlatform.ts`) was already
+clean. Also: More-tab section header "გამოწერა" → "გეგმა" (accurate for free
+accounts; no purchase vocabulary).
+
+---
+
 ## 2026-06-12 — More tab: payment-history/invoices cards hidden (TestFlight smoke finding)
 
 `app/(tabs)/more.tsx`: the empty "გადახდის ისტორია" card and the

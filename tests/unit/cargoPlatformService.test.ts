@@ -65,19 +65,21 @@ describe('cargoPlatformService config', () => {
     expect(captured!.pathPrefix).toBe('cargo-platform');
   });
 
-  it('createColumns seeds items, cargo (3 rows), one signatory', () => {
+  it('createColumns seeds items + cargo (3 rows)', () => {
     const cols = captured!.createColumns({ inspectorName: 'Gio' });
     expect(cols.inspector_name).toBe('Gio');
     expect((cols.items as any[]).length).toBe(9);
     expect((cols.cargo as any[]).length).toBe(3);
-    expect((cols.signatures as any[]).length).toBe(1);
-    expect((cols.signatures as any[])[0].name).toBe('Gio');
+  });
+
+  it('createColumns never sends signatures (column dropped 20260526002032 — sending it breaks the INSERT)', () => {
+    const cols = captured!.createColumns({ inspectorName: 'Gio' });
+    expect('signatures' in cols).toBe(false);
   });
 
   it('createColumns nulls inspector_name when omitted', () => {
     const cols = captured!.createColumns({});
     expect(cols.inspector_name).toBeNull();
-    expect((cols.signatures as any[])[0].name).toBe('');
   });
 });
 

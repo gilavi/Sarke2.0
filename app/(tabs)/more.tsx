@@ -351,8 +351,10 @@ function SubscriptionSection({ pdfUsage }: { pdfUsage: PdfUsage | undefined }) {
 
   return (
     <View style={{ marginHorizontal: 16, gap: 0 }}>
-      {/* Section label */}
-      <Text style={[s.sectionHeader, { marginBottom: 8 }]}>გამოწერა</Text>
+      {/* Section label — "გეგმა" (plan), not "გამოწერა" (subscription): accurate
+          for free users and keeps the More tab free of purchase vocabulary
+          (Apple guideline 3.1.1). */}
+      <Text style={[s.sectionHeader, { marginBottom: 8 }]}>გეგმა</Text>
 
       {status === 'active' ? (
         <Card style={{ gap: 12 }}>
