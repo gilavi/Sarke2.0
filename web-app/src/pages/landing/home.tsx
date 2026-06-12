@@ -7,7 +7,7 @@ import { painPoints, steps } from './marketing-data';
 export function Hero() {
   return (
     <section className="relative overflow-hidden bg-offwhite" style={{ paddingTop: 112, paddingBottom: 80 }}>
-      {/* Orbital rings backdrop — positioned on right half */}
+      {/* Orbital rings backdrop positioned on right half */}
       <div className="pointer-events-none absolute" style={{ right: 'calc(50% - 500px)', top: '50%', transform: 'translateY(-50%)', width: 760, height: 760 }}>
         <div className="absolute inset-0 rounded-full animate-hub-spin" style={{ border: '1.5px dashed rgba(20,20,20,.12)' }} />
         <div className="animate-hub-spin-rev" style={{ position: 'absolute', inset: 90, border: '1.5px solid rgba(20,20,20,.09)', borderRadius: '50%' }} />
@@ -40,12 +40,12 @@ export function Hero() {
             style={{ margin: '0 0 22px', fontSize: 58, lineHeight: 1.02, fontWeight: 900, letterSpacing: '-0.035em', color: '#141414' }}
           >
             მთელი<br />
-            უსაფრთხოება —<br />
+            უსაფრთხოება <br />
             <span className="text-safety-500">ერთ აპში.</span>
           </motion.h1>
 
           <motion.p variants={fadeUp} style={{ margin: '0 0 34px', fontSize: 19, lineHeight: 1.6, color: '#56564f', maxWidth: '42ch' }}>
-            ინსტრუქტაჟი, რისკის შეფასება და დოკუმენტები — ველზე მომუშავე ადამიანის ხელში. მარტივად, ქართულად, ყოველდღე.
+            ინსტრუქტაჟი, რისკის შეფასება და დოკუმენტები ველზე მომუშავე ადამიანის ხელში. მარტივად, ქართულად, ყოველდღე.
           </motion.p>
 
           <motion.div variants={fadeUp} className="flex gap-3.5 items-center mb-10">
@@ -181,7 +181,7 @@ export function AppScreensBand() {
               </div>
             </AppScreenPhone>
             <div className="mt-5 text-white text-base font-extrabold">ინსტრუქტაჟი</div>
-            <div style={{ color: '#8a8a82', fontSize: 13, maxWidth: 230, margin: '6px auto 0' }}>ციფრული ჩეკლისტი, ხელმოწერით — ქაღალდის გარეშე.</div>
+            <div style={{ color: '#8a8a82', fontSize: 13, maxWidth: 230, margin: '6px auto 0' }}>ციფრული ჩეკლისტი, ხელმოწერით ქაღალდის გარეშე.</div>
           </motion.div>
 
           {/* Screen B: Risk map (staggered up) */}
@@ -194,8 +194,8 @@ export function AppScreensBand() {
               </div>
               <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {[
-                  { color: '#FF5A1F', text: 'მაღალი — ელ. კვანძი', time: 'ახლა' },
-                  { color: '#E6FF4D', text: 'საშუალო — სველი იატაკი', time: '1სთ' },
+                  { color: '#FF5A1F', text: 'მაღალი ელ. კვანძი', time: 'ახლა' },
+                  { color: '#E6FF4D', text: 'საშუალო სველი იატაკი', time: '1სთ' },
                 ].map((r, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 9, background: '#fff', border: '1px solid rgba(20,20,20,.07)', borderRadius: 12, padding: 10 }}>
                     <span style={{ width: 10, height: 10, borderRadius: '50%', background: r.color, flexShrink: 0 }} />
@@ -206,7 +206,7 @@ export function AppScreensBand() {
               </div>
             </AppScreenPhone>
             <div className="mt-5 text-white text-base font-extrabold">რისკის შეფასება</div>
-            <div style={{ color: '#8a8a82', fontSize: 13, maxWidth: 230, margin: '6px auto 0' }}>ცოცხალი რუკა — სად, რა, რამდენად საშიში.</div>
+            <div style={{ color: '#8a8a82', fontSize: 13, maxWidth: 230, margin: '6px auto 0' }}>ცოცხალი რუკა სად, რა, რამდენად საშიში.</div>
           </motion.div>
 
           {/* Screen C: Documents */}
@@ -230,7 +230,7 @@ export function AppScreensBand() {
               </div>
             </AppScreenPhone>
             <div className="mt-5 text-white text-base font-extrabold">დოკუმენტები</div>
-            <div style={{ color: '#8a8a82', fontSize: 13, maxWidth: 230, margin: '6px auto 0' }}>ყველაფერი ერთ ადგილას — ინსპექციისთვის მზად.</div>
+            <div style={{ color: '#8a8a82', fontSize: 13, maxWidth: 230, margin: '6px auto 0' }}>ყველაფერი ერთ ადგილას ინსპექციისთვის მზად.</div>
           </motion.div>
         </div>
       </div>

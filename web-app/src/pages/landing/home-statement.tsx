@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { OrbitRings, HazardSticker } from '@/components/marketing/BrandPattern';
 
 /**
- * Editorial brand-statement band — the board's bold "Safety isn't a slogan.
+ * Editorial brand-statement band the board's bold "Safety isn't a slogan.
  * It's a system." poster, rendered in Georgian over the graphite + orbital
  * motif. A dark punctuation moment between the lighter product sections.
  */
@@ -27,7 +27,7 @@ export function BrandStatement() {
             ეს არის <span className="text-safety-500">სისტემა.</span>
           </h2>
           <p className="mt-7 max-w-xl text-lg leading-relaxed text-concrete">
-            უფრო უსაფრთხო ობიექტი. ძლიერი გუნდი. უკეთესი შედეგი — HUBBLE ყოველდღიურ
+            უფრო უსაფრთხო ობიექტი. ძლიერი გუნდი. უკეთესი შედეგი HUBBLE ყოველდღიურ
             შემოწმებას აქცევს სანდო სისტემად, რომელიც მუშაობს მაშინაც, როცა ვერავინ უყურებს.
           </p>
         </motion.div>

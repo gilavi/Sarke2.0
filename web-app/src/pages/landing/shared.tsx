@@ -7,7 +7,7 @@ export const APP_STORE_URL = '#';
 
 // ─── Brand mark ───────────────────────────────────────────────────────────────
 /**
- * Hubble logo — the chunky rounded "H" monogram with a diagonal wave carved
+ * Hubble logo the chunky rounded "H" monogram with a diagonal wave carved
  * through the middle. Single-color, `fill="currentColor"` so it inherits the
  * surrounding text color (graphite on light, white on the orange chip, …).
  * evenodd path: rounded square minus a top notch, bottom notch, and the wave.
@@ -28,7 +28,7 @@ export const fadeUp = {
 };
 export const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.1 } } };
 
-// ─── Phone mockup — app home screen ──────────────────────────────────────────
+// ─── Phone mockup app home screen ──────────────────────────────────────────
 export function PhoneMockup({ className }: { className?: string }) {
   return (
     <div
@@ -141,7 +141,7 @@ export function PlayStoreBadge({ light = false, className }: { light?: boolean; 
       <div className="text-left">
         <div className={cn('text-[10px] leading-none', light ? 'text-neutral-500' : 'text-white/70')}>Get it on</div>
         <div className={cn('text-base font-semibold leading-tight', light ? 'text-neutral-900' : 'text-white')}>
-          Google Play <span className="text-xs font-normal opacity-60">— მალე</span>
+          Google Play <span className="text-xs font-normal opacity-60"> მალე</span>
         </div>
       </div>
     </div>

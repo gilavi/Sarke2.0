@@ -12,7 +12,7 @@ export function PriceTeaser() {
       <div className="mx-auto max-w-3xl text-center">
         <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
           <h2 className="text-3xl sm:text-4xl font-bold text-neutral-900 mb-3">მარტივი, გამჭვირვალე ფასი</h2>
-          <p className="text-neutral-500 mb-8">დაიწყე უფასოდ — გადაიხადე მხოლოდ მაშინ, როცა გაიზრდები.</p>
+          <p className="text-neutral-500 mb-8">დაიწყე უფასოდ გადაიხადე მხოლოდ მაშინ, როცა გაიზრდები.</p>
         </motion.div>
 
         <motion.div
@@ -64,7 +64,7 @@ export function RegulationsTeaser() {
               <h2 className="text-3xl sm:text-4xl font-bold text-neutral-900">რეგულაციები</h2>
             </div>
             <p className="text-neutral-500 max-w-xl">
-              ქართული შრომის უსაფრთხოების კანონმდებლობა — ერთ ადგილას, ყოველთვის განახლებული.
+              ქართული შრომის უსაფრთხოების კანონმდებლობა ერთ ადგილას, ყოველთვის განახლებული.
             </p>
           </div>
           <Link

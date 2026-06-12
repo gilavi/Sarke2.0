@@ -32,7 +32,7 @@ function ChatRow({ msg }: { msg: ChatMessage }) {
   );
 }
 
-/** Live AI support chat — talks to the `ai-chat` edge function. */
+/** Live AI support chat talks to the `ai-chat` edge function. */
 export function ChatWidget() {
   const [messages, setMessages] = useState<ChatMessage[]>([GREETING]);
   const [input, setInput] = useState('');
@@ -71,7 +71,7 @@ export function ChatWidget() {
             <Bot size={22} className="text-white" />
           </div>
           <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">AI ასისტენტი</h2>
-          <p className="text-concrete">მყისიერი პასუხები HUBBLE-ზე — ნებისმიერ დროს.</p>
+          <p className="text-concrete">მყისიერი პასუხები HUBBLE-ზე ნებისმიერ დროს.</p>
         </div>
 
         <div className="rounded-3xl border border-graphite-700 bg-white overflow-hidden">

@@ -28,7 +28,7 @@ export function StickyMobileBar() {
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-safety-500 shrink-0">
             <HubbleLogo className="h-5 w-auto text-white" />
           </div>
-          <p className="flex-1 min-w-0 text-sm font-semibold text-neutral-900 truncate">HUBBLE — გადმოწერე უფასოდ</p>
+          <p className="flex-1 min-w-0 text-sm font-semibold text-neutral-900 truncate">HUBBLE გადმოწერე უფასოდ</p>
           <Link
             to={routes.register}
             className="shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-black px-3 py-2 text-xs font-semibold text-white"

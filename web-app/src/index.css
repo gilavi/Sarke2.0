@@ -10,6 +10,10 @@
 .animate-mesh-2 { animation: mesh-2 25s ease-in-out infinite; }
 .animate-mesh-3 { animation: mesh-3 30s ease-in-out infinite; }
 
+/* ── Mess Section scroll animation ── */
+@keyframes ms-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(7px); } }
+.animate-ms-bob { animation: ms-bob 1.6s ease-in-out infinite; }
+
 /* ── Hero mockup animations ── */
 @keyframes hub-spin { to { transform: rotate(360deg); } }
 @keyframes hub-spin-rev { to { transform: rotate(-360deg); } }

@@ -1,5 +1,7 @@
 import { memo } from 'react';
-import { Hero, PainSection, Transition, HowItWorks } from './landing/home';
+import { HeroSection } from '@/components/marketing/HeroSection';
+import { MessSection } from '@/components/marketing/MessSection';
+import { PainSection, Transition, HowItWorks } from './landing/home';
 import { LogoCloud, StatsBand, Testimonials } from './landing/home-proof';
 import { ValueShowcase } from './landing/home-showcase';
 import { FeaturesGrid, ForWho } from './landing/home-features';
@@ -16,7 +18,8 @@ import { CTABand } from './landing/cta';
 export default memo(function Landing() {
   return (
     <>
-      <Hero />
+      <HeroSection />
+      <MessSection />
       <LogoCloud />
       <StatsBand />
       <PainSection />

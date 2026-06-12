@@ -18,7 +18,7 @@ export function TrustSecurity() {
           </span>
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3">დოკუმენტი, რომელსაც ენდობა ინსპექცია</h2>
           <p className="text-concrete max-w-xl mx-auto">
-            ყოველი PDF დაცული, დათარიღებული და კანონიერი ძალის მქონეა — ნაგებია ქართულ კანონმდებლობაზე.
+            ყოველი PDF დაცული, დათარიღებული და კანონიერი ძალის მქონეა ნაგებია ქართულ კანონმდებლობაზე.
           </p>
         </motion.div>
 

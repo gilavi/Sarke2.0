@@ -108,7 +108,7 @@ export function PricingComparison() {
         </div>
         <p className="mt-6 text-center text-sm text-neutral-500">
           <X size={14} className="inline -mt-0.5 mr-1 text-neutral-400" />
-          5-ზე მეტი სპეციალისტისთვის — <a href="mailto:hello@hubble.ge" className="text-safety-600 hover:underline">კორპორატიული ტარიფი</a>
+          5-ზე მეტი სპეციალისტისთვის <a href="mailto:hello@hubble.ge" className="text-safety-600 hover:underline">კორპორატიული ტარიფი</a>
         </p>
       </div>
     </section>
