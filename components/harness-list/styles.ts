@@ -7,7 +7,7 @@ export function gets(theme: Theme) {
       paddingHorizontal: 16,
       paddingTop: 10,
       paddingBottom: 12,
-      backgroundColor: theme.colors.card,
+      backgroundColor: theme.colors.background,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.colors.hairline,
     },
@@ -128,7 +128,7 @@ export function gets(theme: Theme) {
     footer: {
       paddingHorizontal: 16,
       paddingTop: 8,
-      backgroundColor: theme.colors.card,
+      backgroundColor: theme.colors.background,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: theme.colors.hairline,
     },

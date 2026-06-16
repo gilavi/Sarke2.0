@@ -217,7 +217,7 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
   // ── Step 1: count picker ────────────────────────────────────────────────────
   if (step === 'count') {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.card }} edges={['top']}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top']}>
         <View style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 12, flexDirection: 'row', alignItems: 'center' }}>
           <Text style={s.eyebrow}>ქამრების შემოწმება</Text>
           <View style={{ flex: 1 }} />
@@ -311,7 +311,7 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
 
   return (
     <TourGuide tourId="harness_list_v2" steps={tourSteps}>
-      <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.card }} edges={['top']}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top']}>
         <View ref={headerRef} collapsable={false} style={s.header}>
           <View style={s.headerRow}>
             <View style={{ flex: 1 }}>
