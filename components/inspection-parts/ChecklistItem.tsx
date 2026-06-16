@@ -73,20 +73,6 @@ export const ChecklistItem = memo(function ChecklistItem({
     !isBinary &&
     (value === options.b || (!!options.c && value === options.c));
 
-  // Accordion style:
-  //   four_state: b → red, c → amber
-  //   three_state: b → amber, c neutral → gray, c non-neutral → red
-  const accordionStyle = useMemo(() => {
-    if (isFourState) {
-      if (value === options.b) return styles.accordionBad;
-      if (value === options.c) return styles.accordionDef;
-      return styles.accordionNeutral;
-    }
-    if (value === options.b) return styles.accordionDef;
-    if (value === options.c && cIsNeutral) return styles.accordionNeutral;
-    return styles.accordionBad;
-  }, [isFourState, value, options.b, options.c, cIsNeutral, styles]);
-
   const setChip = useCallback((v: string) => {
     haptic.light();
     if (value === v) {
@@ -122,80 +108,52 @@ export const ChecklistItem = memo(function ChecklistItem({
           {!!description && <Text style={styles.descText}>{description}</Text>}
         </View>
 
-        {/* Chips */}
+        {/* Chips — monochrome: active = ink, inactive = neutral. Icon per role carries meaning. */}
         <View style={styles.chips}>
-          {/* A — green (good / yes / pass) */}
+          {/* A — good / yes / pass */}
           <Pressable
-            style={[styles.chip, styles.chipGood, aActive && styles.chipGoodActive]}
+            style={[styles.chip, aActive && styles.chipActive]}
             onPress={() => setChip(options.a)}
             hitSlop={8}
-            {...a11y(options.a, `✓ ${options.a}`, 'button')}
+            {...a11y(options.a, `✓ ${options.a}`, 'button', { selected: aActive })}
           >
             <Ionicons
               name="checkmark"
               size={14}
-              color={aActive ? theme.colors.white : theme.colors.semantic.success}
+              color={aActive ? theme.colors.ink : theme.colors.inkFaint}
             />
           </Pressable>
 
-          {/* B — amber (deficient/fix), red (binary), or red critical (four_state) */}
+          {/* B — deficient/fix, fail (binary), or critical (four_state) */}
           <Pressable
-            style={[
-              styles.chip,
-              isFourState || isBinary ? styles.chipBad : styles.chipDef,
-              bActive && (isFourState || isBinary ? styles.chipBadActive : styles.chipDefActive),
-            ]}
+            style={[styles.chip, bActive && styles.chipActive]}
             onPress={() => setChip(options.b)}
             hitSlop={8}
-            {...a11y(options.b, `✗ ${options.b}`, 'button')}
+            {...a11y(options.b, `✗ ${options.b}`, 'button', { selected: bActive })}
           >
             {isFourState ? (
-              <Text style={[styles.chipNAText, bActive && { color: theme.colors.white }]}>
+              <Text style={[styles.chipNAText, bActive && styles.chipNATextActive]}>
                 {options.b}
               </Text>
             ) : (
               <Ionicons
                 name={isBinary ? 'close' : 'warning-outline'}
                 size={isBinary ? 14 : 13}
-                color={
-                  bActive
-                    ? theme.colors.white
-                    : isBinary
-                    ? theme.colors.danger
-                    : theme.colors.warn
-                }
+                color={bActive ? theme.colors.ink : theme.colors.inkFaint}
               />
             )}
           </Pressable>
 
-          {/* C — neutral/red (three_state) or amber minor (four_state) */}
+          {/* C — third option (three_state) or minor (four_state) */}
           {!isBinary && !!options.c && (
             <Pressable
-              style={[
-                styles.chip,
-                isFourState
-                  ? styles.chipDef
-                  : cIsNeutral
-                  ? styles.chipNA
-                  : styles.chipBad,
-                cActive &&
-                  (isFourState
-                    ? styles.chipDefActive
-                    : cIsNeutral
-                    ? styles.chipNAActive
-                    : styles.chipBadActive),
-              ]}
+              style={[styles.chip, cActive && styles.chipActive]}
               onPress={() => setChip(options.c!)}
               hitSlop={8}
-              {...a11y(options.c, `Z ${options.c}`, 'button')}
+              {...a11y(options.c, `Z ${options.c}`, 'button', { selected: cActive })}
             >
               {isFourState ? (
-                <Text
-                  style={[
-                    styles.chipNAText,
-                    { color: cActive ? theme.colors.white : theme.colors.warn },
-                  ]}
-                >
+                <Text style={[styles.chipNAText, cActive && styles.chipNATextActive]}>
                   {options.c}
                 </Text>
               ) : cIsNeutral ? (
@@ -206,19 +164,19 @@ export const ChecklistItem = memo(function ChecklistItem({
                 <Ionicons
                   name="close"
                   size={14}
-                  color={cActive ? theme.colors.white : theme.colors.danger}
+                  color={cActive ? theme.colors.ink : theme.colors.inkFaint}
                 />
               )}
             </Pressable>
           )}
 
-          {/* D — optional 4th chip (four_state only, neutral gray "not checked") */}
+          {/* D — optional 4th chip (four_state only, "not checked") */}
           {isFourState && !!options.d && (
             <Pressable
-              style={[styles.chip, styles.chipNA, dActive && styles.chipNAActive]}
+              style={[styles.chip, dActive && styles.chipActive]}
               onPress={() => setChip(options.d!)}
               hitSlop={8}
-              {...a11y(options.d, `N ${options.d}`, 'button')}
+              {...a11y(options.d, `N ${options.d}`, 'button', { selected: dActive })}
             >
               <Text style={[styles.chipNAText, dActive && styles.chipNATextActive]}>
                 {options.d}
@@ -233,7 +191,7 @@ export const ChecklistItem = memo(function ChecklistItem({
         <Animated.View
           entering={reduceMotion ? undefined : FadeInDown.duration(160)}
           exiting={reduceMotion ? undefined : FadeOut.duration(100)}
-          style={[styles.accordion, accordionStyle]}
+          style={[styles.accordion, styles.accordionNeutral]}
         >
           {onCommentChange && (
             <FloatingLabelInput
@@ -347,6 +305,7 @@ function getstyles(theme: Theme) {
     labelText: { fontSize: 12, fontWeight: '700', color: theme.colors.ink },
     descText: { fontSize: 11, color: theme.colors.inkSoft, lineHeight: 15 },
     chips: { flexDirection: 'row', gap: 4, paddingTop: 2 },
+    // Monochrome chip: neutral by default, ink when selected.
     chip: {
       width: 28,
       height: 28,
@@ -354,34 +313,16 @@ function getstyles(theme: Theme) {
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: 1.5,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.surface,
     },
-    // A — green
-    chipGood: {
-      borderColor: theme.colors.semantic.success,
-      backgroundColor: theme.colors.semantic.successSoft,
-    },
-    chipGoodActive: { backgroundColor: theme.colors.semantic.success },
-    // B — amber (deficient/fix) or red (fail in binary)
-    chipDef: {
-      borderColor: theme.colors.warn,
-      backgroundColor: theme.colors.warnSoft,
-    },
-    chipDefActive: { backgroundColor: theme.colors.warn },
-    // C non-neutral — red
-    chipBad: {
-      borderColor: theme.colors.danger,
-      backgroundColor: theme.colors.dangerSoft,
-    },
-    chipBadActive: { backgroundColor: theme.colors.danger },
-    // C neutral — gray
-    chipNA: {
-      borderColor: theme.colors.hairline,
+    chipActive: {
+      borderColor: theme.colors.ink,
       backgroundColor: theme.colors.subtleSurface,
     },
-    chipNAActive: { backgroundColor: theme.colors.inkSoft, borderColor: theme.colors.inkSoft },
     chipNAText: { fontSize: 8, fontWeight: '700', color: theme.colors.inkSoft },
-    chipNATextActive: { color: theme.colors.white },
-    // Accordion bases
+    chipNATextActive: { color: theme.colors.ink },
+    // Accordion base + neutral fill
     accordion: {
       padding: 12,
       gap: 10,
@@ -390,16 +331,8 @@ function getstyles(theme: Theme) {
       borderBottomLeftRadius: 10,
       borderBottomRightRadius: 10,
     },
-    accordionDef: {
-      borderColor: theme.colors.warn,
-      backgroundColor: theme.colors.warnSoft,
-    },
-    accordionBad: {
-      borderColor: theme.colors.dangerBorder,
-      backgroundColor: theme.colors.dangerTint,
-    },
     accordionNeutral: {
-      borderColor: theme.colors.hairline,
+      borderColor: theme.colors.border,
       backgroundColor: theme.colors.subtleSurface,
     },
     // Photos

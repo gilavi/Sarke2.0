@@ -27,13 +27,19 @@ export interface InspectionShellProps {
   direction: 'next' | 'prev';
   animate: boolean;
   canGoNext: boolean;
-  /** When true, renders "შენახვა და დასრულება" instead of "შემდეგი" */
+  /** When true, renders the finish button instead of "შემდეგი" */
   isLastStep?: boolean;
+  /** Custom finish-button label (defaults to "შენახვა და დასრულება"). */
+  finishLabel?: string;
+  /** When true, the non-last Next button is disabled while `canGoNext` is false (no skip). */
+  blockNext?: boolean;
   saving?: boolean;
   completing?: boolean;
   /** Whether to show the PDF icon in the header trailing slot */
   showPdfIcon?: boolean;
   generatingPdf?: boolean;
+  /** Optional banner rendered between the header and the step content (e.g. PdfLockedBanner). */
+  banner?: ReactNode;
   onNext: () => void;
   onPrev: () => void;
   onClose: () => void;
@@ -55,6 +61,9 @@ export function InspectionShell({
   completing = false,
   showPdfIcon = false,
   generatingPdf = false,
+  finishLabel,
+  blockNext = false,
+  banner,
   onNext,
   onPrev,
   onClose,
@@ -102,6 +111,8 @@ export function InspectionShell({
         <Text style={[styles.savingHint, { color: theme.colors.inkFaint }]}>შენახვა…</Text>
       )}
 
+      {banner ?? null}
+
       <View style={{ flex: 1 }}>
         <WizardStepTransition stepKey={step} direction={direction} animate={animate}>
           {children}
@@ -110,7 +121,7 @@ export function InspectionShell({
         <View style={styles.footer}>
           {isLastStep ? (
             <Button
-              title="შენახვა და დასრულება"
+              title={finishLabel ?? 'შენახვა და დასრულება'}
               style={{ paddingVertical: 14 }}
               iconRight={<Ionicons name="checkmark" size={20} color={theme.colors.white} />}
               loading={completing}
@@ -119,15 +130,16 @@ export function InspectionShell({
             />
           ) : (
             <Button
-              title={canGoNext ? 'შემდეგი' : 'გაგრძელება'}
-              variant={canGoNext ? 'primary' : 'secondary'}
+              title={!blockNext && !canGoNext ? 'გაგრძელება' : 'შემდეგი'}
+              variant={blockNext || canGoNext ? 'primary' : 'secondary'}
               size="lg"
               style={styles.nextBtn}
               iconRight={
-                canGoNext ? (
+                blockNext || canGoNext ? (
                   <Ionicons name="chevron-forward" size={18} color={theme.colors.white} />
                 ) : undefined
               }
+              disabled={blockNext && !canGoNext}
               onPress={onNext}
             />
           )}

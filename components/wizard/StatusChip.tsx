@@ -1,0 +1,133 @@
+import React, { useMemo } from 'react';
+import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSequence,
+  withTiming,
+  withSpring,
+} from 'react-native-reanimated';
+import { Ionicons } from '@expo/vector-icons';
+import { A11yText as Text } from '../primitives/A11yText';
+import { useTheme } from '../../lib/theme';
+import { useAccessibilitySettings, a11y } from '../../lib/accessibility';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+type IconName = React.ComponentProps<typeof Ionicons>['name'];
+
+export interface StatusChipProps {
+  selected: boolean;
+  label: string;
+  icon?: IconName;
+  onPress: () => void;
+  /** 'pill' stacks the icon above the label (large yes/no); 'chip' is a compact inline row. */
+  layout?: 'pill' | 'chip';
+  disabled?: boolean;
+  /** Overrides the accessible label (defaults to `label`). */
+  a11yLabel?: string;
+  a11yHint?: string;
+  style?: StyleProp<ViewStyle>;
+}
+
+/**
+ * Monochrome, single-select control shared by every inspection answer surface
+ * (binary yes/no, 3-state good/deficient/unusable, harness chips, verdict pills).
+ * Selected = ink outline + subtle fill + ink content; unselected = hairline
+ * outline + muted content. Severity is carried by `icon` + `label`, never color.
+ *
+ * Side effects: press-scale animation (skipped under reduce-motion). Haptics and
+ * state changes are the caller's responsibility via `onPress`.
+ */
+export function StatusChip({
+  selected,
+  label,
+  icon,
+  onPress,
+  layout = 'chip',
+  disabled = false,
+  a11yLabel,
+  a11yHint,
+  style,
+}: StatusChipProps) {
+  const { theme } = useTheme();
+  const { reduceMotion } = useAccessibilitySettings();
+  const styles = useMemo(() => getStyles(theme), [theme]);
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+
+  const handlePress = () => {
+    if (disabled) return;
+    if (!reduceMotion) {
+      scale.value = withSequence(
+        withTiming(0.94, { duration: 80 }),
+        withSpring(1, theme.motion.spring.bouncy)
+      );
+    }
+    onPress();
+  };
+
+  const contentColor = selected ? theme.colors.ink : theme.colors.inkSoft;
+  const iconColor = selected ? theme.colors.ink : theme.colors.inkFaint;
+
+  return (
+    <AnimatedPressable
+      onPress={handlePress}
+      disabled={disabled}
+      style={[
+        layout === 'pill' ? styles.pill : styles.chip,
+        {
+          borderColor: selected ? theme.colors.ink : theme.colors.border,
+          backgroundColor: selected ? theme.colors.subtleSurface : theme.colors.surface,
+        },
+        disabled && { opacity: 0.4 },
+        animatedStyle,
+        style,
+      ]}
+      {...a11y(a11yLabel ?? label, a11yHint, 'button', { selected })}
+    >
+      {icon ? (
+        <Ionicons
+          name={icon}
+          size={layout === 'pill' ? 20 : 18}
+          color={iconColor}
+          style={layout === 'pill' ? styles.pillIcon : undefined}
+        />
+      ) : null}
+      <Text style={[layout === 'pill' ? styles.pillLabel : styles.chipLabel, { color: contentColor }]}>
+        {label}
+      </Text>
+    </AnimatedPressable>
+  );
+}
+
+function getStyles(theme: ReturnType<typeof useTheme>['theme']) {
+  return StyleSheet.create({
+    pill: {
+      flex: 1,
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 14,
+      borderWidth: 1.5,
+      borderRadius: theme.radius.lg,
+      minHeight: 54,
+    },
+    chip: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      paddingVertical: 10,
+      paddingHorizontal: 10,
+      borderWidth: 1.5,
+      borderRadius: theme.radius.md,
+      minHeight: 44,
+    },
+    pillIcon: { marginBottom: 4 },
+    pillLabel: { fontSize: 15, fontWeight: '700' },
+    chipLabel: { fontSize: 14, fontWeight: '600' },
+  });
+}

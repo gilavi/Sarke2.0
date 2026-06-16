@@ -39,53 +39,53 @@ export const VerdictSelector = memo(function VerdictSelector({
     <View style={staticStyles.gap10}>
       <Text style={styles.decisionHeader}>გადაწყვეტილება</Text>
       <View style={{ flexDirection: 'row', gap: 8 }}>
-        {/* Safe — green */}
+        {/* Safe */}
         <Pressable
           onPress={() => press('safe')}
           style={[
             styles.decisionButton,
             value === 'safe'
-              ? { backgroundColor: theme.colors.accent, borderColor: theme.colors.accent }
-              : { backgroundColor: theme.colors.accentSoft, borderColor: theme.colors.accentSoft },
+              ? { backgroundColor: theme.colors.subtleSurface, borderColor: theme.colors.ink }
+              : { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
           ]}
-          {...a11y('უსაფრთხოა', 'შეეხეთ თუ ობიექტი უსაფრთხოა', 'button')}
+          {...a11y('უსაფრთხოა', 'შეეხეთ თუ ობიექტი უსაფრთხოა', 'button', { selected: value === 'safe' })}
         >
-          <Ionicons name="shield-checkmark" size={24} color={value === 'safe' ? theme.colors.white : theme.colors.accent} />
-          <Text style={[styles.decisionLabel, { color: value === 'safe' ? theme.colors.white : theme.colors.accent, fontSize: 12 }]}>
+          <Ionicons name="shield-checkmark" size={24} color={value === 'safe' ? theme.colors.ink : theme.colors.inkFaint} />
+          <Text style={[styles.decisionLabel, { color: value === 'safe' ? theme.colors.ink : theme.colors.inkSoft, fontSize: 12 }]}>
             უსაფრთხოა
           </Text>
         </Pressable>
 
-        {/* Caution — amber/yellow */}
+        {/* Caution */}
         <Pressable
           onPress={() => press('caution')}
           style={[
             styles.decisionButton,
             value === 'caution'
-              ? { backgroundColor: theme.colors.warn, borderColor: theme.colors.warn }
-              : { backgroundColor: theme.colors.warnSoft, borderColor: theme.colors.warnSoft },
+              ? { backgroundColor: theme.colors.subtleSurface, borderColor: theme.colors.ink }
+              : { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
           ]}
-          {...a11y('დასაშვებია, საჭიროებს დაკვირვებას', 'შეეხეთ თუ გამოყენება დასაშვებია დაკვირვებით', 'button')}
+          {...a11y('დასაშვებია, საჭიროებს დაკვირვებას', 'შეეხეთ თუ გამოყენება დასაშვებია დაკვირვებით', 'button', { selected: value === 'caution' })}
         >
-          <Ionicons name="eye-outline" size={24} color={value === 'caution' ? theme.colors.white : theme.colors.warn} />
-          <Text style={[styles.decisionLabel, { color: value === 'caution' ? theme.colors.white : theme.colors.warn, fontSize: 12 }]}>
+          <Ionicons name="eye-outline" size={24} color={value === 'caution' ? theme.colors.ink : theme.colors.inkFaint} />
+          <Text style={[styles.decisionLabel, { color: value === 'caution' ? theme.colors.ink : theme.colors.inkSoft, fontSize: 12 }]}>
             {'დასაშვებია,\nდასაჭიროებს'}
           </Text>
         </Pressable>
 
-        {/* Unsafe — red */}
+        {/* Unsafe */}
         <Pressable
           onPress={() => press('unsafe')}
           style={[
             styles.decisionButton,
             value === 'unsafe'
-              ? { backgroundColor: theme.colors.danger, borderColor: theme.colors.danger }
-              : { backgroundColor: theme.colors.dangerSoft, borderColor: theme.colors.dangerSoft },
+              ? { backgroundColor: theme.colors.subtleSurface, borderColor: theme.colors.ink }
+              : { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
           ]}
-          {...a11y('დაუშვებელია გამოყენება', 'შეეხეთ თუ ობიექტის გამოყენება დაუშვებელია', 'button')}
+          {...a11y('დაუშვებელია გამოყენება', 'შეეხეთ თუ ობიექტის გამოყენება დაუშვებელია', 'button', { selected: value === 'unsafe' })}
         >
-          <Ionicons name="warning" size={24} color={value === 'unsafe' ? theme.colors.white : theme.colors.danger} />
-          <Text style={[styles.decisionLabel, { color: value === 'unsafe' ? theme.colors.white : theme.colors.danger, fontSize: 12 }]}>
+          <Ionicons name="warning" size={24} color={value === 'unsafe' ? theme.colors.ink : theme.colors.inkFaint} />
+          <Text style={[styles.decisionLabel, { color: value === 'unsafe' ? theme.colors.ink : theme.colors.inkSoft, fontSize: 12 }]}>
             {'დაუშვებელია\nგამოყენება'}
           </Text>
         </Pressable>

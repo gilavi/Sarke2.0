@@ -1,14 +1,12 @@
 ﻿import { useCallback, useMemo, useState } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
-import { Button } from '../../../components/ui';
 import { DateTimeField } from '../../../components/DateTimeField';
-import { WizardStepTransition } from '../../../components/wizard/WizardStepTransition';
-import { FlowHeader } from '../../../components/FlowHeader';
+import { InspectionShell } from '../../../components/inspection-steps/InspectionShell';
 import { InspectionResultView } from '../../../components/InspectionResultView';
 import { SectionHeader } from '../../../components/SectionHeader';
 import {
@@ -23,7 +21,6 @@ import {
 } from '../../../components/inspection-parts';
 import { useTheme, type Theme } from '../../../lib/theme';
 import { useToast } from '../../../lib/toast';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { fallProtectionApi } from '../../../lib/fallProtectionService';
 import { fallProtectionSchema } from '../../../lib/inspection/schemas/fallProtection';
 import { SubscriptionNotice } from '../../../components/SubscriptionNotice';
@@ -78,7 +75,6 @@ export default function FallProtectionInspectionScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const toast = useToast();
-  const insets = useSafeAreaInsets();
   const { pickPhotosWithAnnotation } = usePhotoPicker();
 
   const [activeDeviceIdx, setActiveDeviceIdx] = useState(0);
@@ -400,46 +396,27 @@ export default function FallProtectionInspectionScreen() {
 
   return (
     <View style={styles.root}>
-      <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
-
-      <FlowHeader
-        flowTitle="დამჭერი მოწყობილობა"
-        project={projectName ? { name: projectName } : null}
-        step={step + 1}
+      <InspectionShell
+        title="დამჭერი მოწყობილობა"
+        projectName={projectName ?? ''}
+        step={step}
         totalSteps={TOTAL_STEPS}
-        leading="back"
-        trailing="close"
+        direction={direction}
+        animate={animateSteps}
+        canGoNext={canGoNext}
+        isLastStep={step === DEVICES_STEP}
+        blockNext
+        saving={saving}
+        completing={completing}
+        showPdfIcon={step > 0}
+        generatingPdf={generatingPdf}
+        finishLabel="შემოწმება დასრულდა"
+        banner={pdfLocked ? <PdfLockedBanner onDetails={() => setLimitNoticeVisible(true)} /> : undefined}
+        onNext={handleNext}
+        onPrev={handlePrev}
         onClose={() => router.back()}
-        trailingElement={
-          step > 0 ? (
-            <Pressable
-              onPress={() => handlePdf()}
-              disabled={generatingPdf}
-              hitSlop={10}
-              {...a11y('PDF', 'PDF დოკუმენტის გენერირება', 'button')}
-            >
-              <Ionicons
-                name={generatingPdf ? 'hourglass-outline' : 'document-text-outline'}
-                size={22}
-                color={theme.colors.accent}
-              />
-            </Pressable>
-          ) : null
-        }
-        onBack={handlePrev}
-        backDisabled={false}
-      />
-
-      {saving && (
-        <Text style={styles.savingHint}>შენახვა…</Text>
-      )}
-
-      {pdfLocked && (
-        <PdfLockedBanner onDetails={() => setLimitNoticeVisible(true)} />
-      )}
-
-      <View style={{ flex: 1 }}>
-        <WizardStepTransition stepKey={step} direction={direction} animate={animateSteps}>
+        onPdf={() => void handlePdf()}
+      >
 
           {/* ── Step 0: Equipment Registry ──────────────────────────────────── */}
           {step === REGISTRY_STEP && (
@@ -671,30 +648,7 @@ export default function FallProtectionInspectionScreen() {
             </View>
           )}
 
-        </WizardStepTransition>
-
-        {/* Footer */}
-        <View style={[styles.footer, { paddingBottom: 16 + insets.bottom }]}>
-          {step === DEVICES_STEP ? (
-            <Button
-              title="შემოწმება დასრულდა"
-              style={{ paddingVertical: 14 }}
-              iconRight={<Ionicons name="checkmark" size={20} color={theme.colors.white} />}
-              loading={completing}
-              disabled={!canGoNext || completing}
-              onPress={handleNext}
-            />
-          ) : (
-            <Button
-              title="შემდეგი"
-              style={{ paddingVertical: 14 }}
-              iconRight={<Ionicons name="chevron-forward" size={20} color={theme.colors.white} />}
-              disabled={!canGoNext}
-              onPress={handleNext}
-            />
-          )}
-        </View>
-      </View>
+        </InspectionShell>
 
       <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
       {celebrating && (

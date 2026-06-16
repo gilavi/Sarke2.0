@@ -57,8 +57,6 @@ export const ExcavatorChecklistItem = memo(function ExcavatorChecklistItem({
   const defActive      = state.result === 'deficient';
   const unusableActive = state.result === 'unusable';
 
-  const accordionStyle = defActive ? styles.accordionDef : styles.accordionBad;
-
   return (
     <View style={styles.container}>
       <View style={[styles.row, expanded && styles.rowExpanded]}>
@@ -73,34 +71,34 @@ export const ExcavatorChecklistItem = memo(function ExcavatorChecklistItem({
 
         <View style={styles.chips}>
           <Pressable
-            style={[styles.chip, styles.chipGood, goodActive && styles.chipGoodActive]}
+            style={[styles.chip, goodActive ? styles.chipActive : styles.chipInactive]}
             onPress={() => setResult('good')}
             hitSlop={8}
-            {...a11y('კარგია', '✓ კარგია', 'button')}
+            {...a11y('კარგია', '✓ კარგია', 'button', { selected: goodActive })}
           >
-            <Ionicons name="checkmark" size={14} color={goodActive ? theme.colors.white : theme.colors.semantic.success} />
+            <Ionicons name="checkmark" size={14} color={goodActive ? theme.colors.ink : theme.colors.inkFaint} />
           </Pressable>
 
           <Pressable
-            style={[styles.chip, styles.chipDef, defActive && styles.chipDefActive]}
+            style={[styles.chip, defActive ? styles.chipActive : styles.chipInactive]}
             onPress={() => setResult('deficient')}
             hitSlop={8}
-            {...a11y('ნაკლი', '⚠ ნაკლი', 'button')}
+            {...a11y('ნაკლი', '⚠ ნაკლი', 'button', { selected: defActive })}
           >
             <Ionicons
               name="warning-outline"
               size={13}
-              color={defActive ? theme.colors.white : theme.colors.warn}
+              color={defActive ? theme.colors.ink : theme.colors.inkFaint}
             />
           </Pressable>
 
           <Pressable
-            style={[styles.chip, styles.chipBad, unusableActive && styles.chipBadActive]}
+            style={[styles.chip, unusableActive ? styles.chipActive : styles.chipInactive]}
             onPress={() => setResult('unusable')}
             hitSlop={8}
-            {...a11y('გამოუსადეგარია', '✗ გამოუსადეგარია', 'button')}
+            {...a11y('გამოუსადეგარია', '✗ გამოუსადეგარია', 'button', { selected: unusableActive })}
           >
-            <Ionicons name="close" size={14} color={unusableActive ? theme.colors.white : theme.colors.danger} />
+            <Ionicons name="close" size={14} color={unusableActive ? theme.colors.ink : theme.colors.inkFaint} />
           </Pressable>
         </View>
       </View>
@@ -109,7 +107,7 @@ export const ExcavatorChecklistItem = memo(function ExcavatorChecklistItem({
         <Animated.View
           entering={reduceMotion ? undefined : FadeInDown.duration(160)}
           exiting={reduceMotion ? undefined : FadeOut.duration(100)}
-          style={[styles.accordion, accordionStyle]}
+          style={[styles.accordion, styles.accordionNeutral]}
         >
           <FloatingLabelInput
             label="ხარვეზის აღწერა"
@@ -191,18 +189,16 @@ function getstyles(theme: Theme) {
       width: 28, height: 28, borderRadius: 8,
       alignItems: 'center', justifyContent: 'center', borderWidth: 1.5,
     },
-    chipGood:       { borderColor: theme.colors.semantic.success,     backgroundColor: theme.colors.semantic.successSoft },
-    chipGoodActive: { backgroundColor: theme.colors.semantic.success },
-    chipDef:        { borderColor: theme.colors.warn,     backgroundColor: theme.colors.warnSoft },
-    chipDefActive:  { backgroundColor: theme.colors.warn },
-    chipBad:        { borderColor: theme.colors.danger,   backgroundColor: theme.colors.dangerSoft },
-    chipBadActive:  { backgroundColor: theme.colors.danger },
+    // Selected — monochrome (severity is carried by the icon, not color)
+    chipActive:   { borderColor: theme.colors.ink,    backgroundColor: theme.colors.subtleSurface },
+    // Unselected — neutral
+    chipInactive: { borderColor: theme.colors.border, backgroundColor: theme.colors.surface },
     accordion: {
       padding: 12, gap: 10, borderWidth: 1, borderTopWidth: 0,
       borderBottomLeftRadius: 10, borderBottomRightRadius: 10,
     },
-    accordionDef: { borderColor: theme.colors.warn,        backgroundColor: theme.colors.warnSoft },
-    accordionBad: { borderColor: theme.colors.dangerBorder, backgroundColor: theme.colors.dangerTint },
+    // Accordion — neutral
+    accordionNeutral: { borderColor: theme.colors.border, backgroundColor: theme.colors.subtleSurface },
     photoStrip: { gap: 8, paddingVertical: 2 },
     addPhoto: {
       width: 64, height: 64, borderRadius: 8,

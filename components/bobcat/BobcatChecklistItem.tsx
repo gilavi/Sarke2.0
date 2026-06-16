@@ -66,13 +66,6 @@ export const BobcatChecklistItem = memo(function BobcatChecklistItem({
   const defActive      = state.result === 'deficient';
   const unusableActive = state.result === 'unusable';
 
-  // Accordion background: neutral for "not applicable" items, red for genuinely unusable
-  const accordionStyle = defActive
-    ? styles.accordionDef
-    : unusableIsNeutral
-    ? styles.accordionNeutral
-    : styles.accordionBad;
-
   return (
     <View style={styles.container}>
       {/* Row: number + label + description + chips */}
@@ -91,52 +84,42 @@ export const BobcatChecklistItem = memo(function BobcatChecklistItem({
         {/* Status chips */}
         <View style={styles.chips}>
           <Pressable
-            style={[styles.chip, styles.chipGood, goodActive && styles.chipGoodActive]}
+            style={[styles.chip, goodActive ? styles.chipActive : styles.chipInactive]}
             onPress={() => setResult('good')}
             hitSlop={8}
-            {...a11y('კარგია', '✓ კარგია', 'button')}
+            {...a11y('კარგია', '✓ კარგია', 'button', { selected: goodActive })}
           >
             <Ionicons
               name="checkmark"
               size={14}
-              color={goodActive ? theme.colors.white : theme.colors.semantic.success}
+              color={goodActive ? theme.colors.ink : theme.colors.inkFaint}
             />
           </Pressable>
 
           <Pressable
-            style={[styles.chip, styles.chipDef, defActive && styles.chipDefActive]}
+            style={[styles.chip, defActive ? styles.chipActive : styles.chipInactive]}
             onPress={() => setResult('deficient')}
             hitSlop={8}
-            {...a11y('ნაკლი', '⚠ ნაკლი', 'button')}
+            {...a11y('ნაკლი', '⚠ ნაკლი', 'button', { selected: defActive })}
           >
             <Ionicons
               name="warning-outline"
               size={13}
-              color={defActive ? theme.colors.white : theme.colors.warn}
+              color={defActive ? theme.colors.ink : theme.colors.inkFaint}
             />
           </Pressable>
 
           {/* 3rd chip: either "გამოუსადეგ." or a custom label (e.g. "არ გააჩნია") */}
           <Pressable
-            style={[
-              styles.chip,
-              unusableIsNeutral ? styles.chipNA : styles.chipBad,
-              unusableActive && (unusableIsNeutral ? styles.chipNAActive : styles.chipBadActive),
-            ]}
+            style={[styles.chip, unusableActive ? styles.chipActive : styles.chipInactive]}
             onPress={() => setResult('unusable')}
             hitSlop={8}
-            {...a11y(unusableLabel, `✗ ${unusableLabel}`, 'button')}
+            {...a11y(unusableLabel, `✗ ${unusableLabel}`, 'button', { selected: unusableActive })}
           >
             <Ionicons
               name={unusableIsNeutral ? 'remove' : 'close'}
               size={14}
-              color={
-                unusableActive
-                  ? theme.colors.white
-                  : unusableIsNeutral
-                  ? theme.colors.inkSoft
-                  : theme.colors.danger
-              }
+              color={unusableActive ? theme.colors.ink : theme.colors.inkFaint}
             />
           </Pressable>
         </View>
@@ -147,7 +130,7 @@ export const BobcatChecklistItem = memo(function BobcatChecklistItem({
         <Animated.View
           entering={reduceMotion ? undefined : FadeInDown.duration(160)}
           exiting={reduceMotion ? undefined : FadeOut.duration(100)}
-          style={[styles.accordion, accordionStyle]}
+          style={[styles.accordion, styles.accordionNeutral]}
         >
           <FloatingLabelInput
             label="ხარვეზის აღწერა"
@@ -281,39 +264,17 @@ function getstyles(theme: Theme) {
       justifyContent: 'center',
       borderWidth: 1.5,
     },
-    // Good (green)
-    chipGood: {
-      borderColor: theme.colors.semantic.success,
-      backgroundColor: theme.colors.semantic.successSoft,
-    },
-    chipGoodActive: {
-      backgroundColor: theme.colors.semantic.success,
-    },
-    // Deficient (amber)
-    chipDef: {
-      borderColor: theme.colors.warn,
-      backgroundColor: theme.colors.warnSoft,
-    },
-    chipDefActive: {
-      backgroundColor: theme.colors.warn,
-    },
-    // Unusable / genuinely bad (red)
-    chipBad: {
-      borderColor: theme.colors.danger,
-      backgroundColor: theme.colors.dangerSoft,
-    },
-    chipBadActive: {
-      backgroundColor: theme.colors.danger,
-    },
-    // Not-applicable neutral (gray) — for items where "unusable" means "not present"
-    chipNA: {
-      borderColor: theme.colors.hairline,
+    // Selected — monochrome (severity is carried by the icon, not color)
+    chipActive: {
+      borderColor: theme.colors.ink,
       backgroundColor: theme.colors.subtleSurface,
     },
-    chipNAActive: {
-      backgroundColor: theme.colors.inkSoft,
+    // Unselected — neutral
+    chipInactive: {
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.surface,
     },
-    // Accordions
+    // Accordion — neutral
     accordion: {
       padding: 12,
       gap: 10,
@@ -322,17 +283,8 @@ function getstyles(theme: Theme) {
       borderBottomLeftRadius: 10,
       borderBottomRightRadius: 10,
     },
-    accordionDef: {
-      borderColor: theme.colors.warn,
-      backgroundColor: theme.colors.warnSoft,
-    },
-    accordionBad: {
-      borderColor: theme.colors.dangerBorder,
-      backgroundColor: theme.colors.dangerTint,
-    },
-    // Neutral accordion — gray, for "not applicable" items
     accordionNeutral: {
-      borderColor: theme.colors.hairline,
+      borderColor: theme.colors.border,
       backgroundColor: theme.colors.subtleSurface,
     },
     photoStrip: {

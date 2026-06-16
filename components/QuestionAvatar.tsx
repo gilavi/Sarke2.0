@@ -40,14 +40,23 @@ function Passport() {
   const c = useContext(SvgCtx);
   return (
     <Svg viewBox="0 0 72 72" width="100%" height="100%">
-      <Rect x={12} y={8} width={48} height={56} rx={3} fill={c.tint} stroke={c.stroke} strokeWidth={1.5} />
-      <Rect x={12} y={8} width={11} height={56} rx={2} fill={c.stroke} />
-      <Rect x={25} y={15} width={28} height={9} rx={1.5} fill={c.stroke} opacity={0.2} />
-      <SvgText x={39} y={22} textAnchor="middle" fontSize={6.5} fontWeight="700" fill="#0F6E56">GEO</SvgText>
-      <Line x1={25} y1={33} x2={54} y2={33} stroke="#D3D1C7" strokeWidth={2.5} strokeLinecap="round" />
-      <Line x1={25} y1={42} x2={48} y2={42} stroke="#D3D1C7" strokeWidth={2.5} strokeLinecap="round" />
-      <Line x1={25} y1={51} x2={51} y2={51} stroke="#D3D1C7" strokeWidth={2.5} strokeLinecap="round" />
-      <Line x1={25} y1={59} x2={42} y2={59} stroke="#D3D1C7" strokeWidth={2.5} strokeLinecap="round" />
+      {/* data page */}
+      <Rect x={10} y={9} width={52} height={54} rx={4} fill={c.tint} stroke={c.stroke} strokeWidth={1.5} />
+      {/* portrait photo */}
+      <Rect x={15} y={17} width={18} height={22} rx={2} fill="#FFFFFF" stroke={c.stroke} strokeWidth={1} />
+      <Circle cx={24} cy={25} r={3.6} fill={c.stroke} opacity={0.5} />
+      <Path d="M18 38 C18 32.5 21 30 24 30 C27 30 30 32.5 30 38 Z" fill={c.stroke} opacity={0.5} />
+      {/* data lines */}
+      <Line x1={37} y1={20} x2={56} y2={20} stroke="#C2BEB6" strokeWidth={2} strokeLinecap="round" />
+      <Line x1={37} y1={26} x2={56} y2={26} stroke="#D3D1C7" strokeWidth={2} strokeLinecap="round" />
+      <Line x1={37} y1={32} x2={50} y2={32} stroke="#D3D1C7" strokeWidth={2} strokeLinecap="round" />
+      {/* GEO language stamp */}
+      <Rect x={37} y={36} width={15} height={6} rx={3} fill={c.stroke} />
+      <SvgText x={44.5} y={40.6} textAnchor="middle" fontSize={4.2} fontWeight="700" fill="#FFFFFF">GEO</SvgText>
+      {/* machine-readable zone */}
+      <Rect x={14} y={47} width={44} height={12} rx={2} fill="#FFFFFF" stroke="#E9E7E0" strokeWidth={0.8} />
+      <Line x1={17} y1={51} x2={55} y2={51} stroke="#C2BEB6" strokeWidth={1.6} strokeDasharray="2,1.4" strokeLinecap="round" />
+      <Line x1={17} y1={55} x2={49} y2={55} stroke="#D3D1C7" strokeWidth={1.6} strokeDasharray="2,1.4" strokeLinecap="round" />
     </Svg>
   );
 }
@@ -57,14 +66,14 @@ function Certificate() {
   return (
     <Svg viewBox="0 0 72 72" width="100%" height="100%">
       <Rect x={12} y={6} width={48} height={58} rx={3} fill={c.tint} stroke={c.stroke} strokeWidth={1.5} />
-      <Path d="M48 6 L60 18 L48 18 Z" fill="#9FE1CB" />
+      <Path d="M48 6 L60 18 L48 18 Z" fill={c.stroke} opacity={0.25} />
       <Path d="M48 6 L48 18 L60 18" fill="none" stroke={c.stroke} strokeWidth={1.5} />
       <Line x1={18} y1={27} x2={54} y2={27} stroke="#D3D1C7" strokeWidth={2.5} strokeLinecap="round" />
       <Line x1={18} y1={35} x2={46} y2={35} stroke="#D3D1C7" strokeWidth={2.5} strokeLinecap="round" />
       <Circle cx={36} cy={53} r={13} fill="none" stroke={c.stroke} strokeWidth={1.5} />
       <Circle cx={36} cy={53} r={9} fill={c.stroke} opacity={0.12} />
       <Path d="M30 53 L34 58 L43 46" fill="none" stroke={c.stroke} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
-      <SvgText x={36} y={46} textAnchor="middle" fontSize={5} fill="#0F6E56">GEO</SvgText>
+      <SvgText x={36} y={46} textAnchor="middle" fontSize={5} fill={c.stroke}>GEO</SvgText>
     </Svg>
   );
 }

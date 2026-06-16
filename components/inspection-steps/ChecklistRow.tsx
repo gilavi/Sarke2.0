@@ -61,37 +61,41 @@ export function ChecklistRow({
         </View>
 
         <View style={styles.rowActions}>
-          {/* 1 — კარგია */}
+          {/* 1 — ვარგისია */}
           <Pressable
             style={[
               styles.verdictBtn,
-              { borderColor: theme.colors.semantic.success },
-              active === 'good' && { backgroundColor: theme.colors.semantic.success },
+              {
+                borderColor: active === 'good' ? theme.colors.ink : theme.colors.border,
+                backgroundColor: active === 'good' ? theme.colors.subtleSurface : theme.colors.surface,
+              },
             ]}
             onPress={() => onStateChange({ result: active === 'good' ? null : 'good' })}
             hitSlop={6}
-            {...a11y('1 — ვარგისია', undefined, 'radio')}
+            {...a11y('1 — ვარგისია', undefined, 'radio', { selected: active === 'good' })}
           >
             <Text style={[
               styles.verdictBtnText,
-              { color: active === 'good' ? '#fff' : theme.colors.semantic.success },
+              { color: active === 'good' ? theme.colors.ink : theme.colors.inkSoft },
             ]}>1</Text>
           </Pressable>
 
-          {/* 2 — ნაკლი */}
+          {/* 2 — ხარვეზი */}
           <Pressable
             style={[
               styles.verdictBtn,
-              { borderColor: theme.colors.semantic.warning },
-              active === 'deficient' && { backgroundColor: theme.colors.semantic.warning },
+              {
+                borderColor: active === 'deficient' ? theme.colors.ink : theme.colors.border,
+                backgroundColor: active === 'deficient' ? theme.colors.subtleSurface : theme.colors.surface,
+              },
             ]}
             onPress={() => onStateChange({ result: active === 'deficient' ? null : 'deficient' })}
             hitSlop={6}
-            {...a11y('2 — ხარვეზი', undefined, 'radio')}
+            {...a11y('2 — ხარვეზი', undefined, 'radio', { selected: active === 'deficient' })}
           >
             <Text style={[
               styles.verdictBtnText,
-              { color: active === 'deficient' ? '#fff' : theme.colors.semantic.warning },
+              { color: active === 'deficient' ? theme.colors.ink : theme.colors.inkSoft },
             ]}>2</Text>
           </Pressable>
 
@@ -99,16 +103,18 @@ export function ChecklistRow({
           <Pressable
             style={[
               styles.verdictBtn,
-              { borderColor: theme.colors.danger },
-              active === 'unusable' && { backgroundColor: theme.colors.danger },
+              {
+                borderColor: active === 'unusable' ? theme.colors.ink : theme.colors.border,
+                backgroundColor: active === 'unusable' ? theme.colors.subtleSurface : theme.colors.surface,
+              },
             ]}
             onPress={() => onStateChange({ result: active === 'unusable' ? null : 'unusable' })}
             hitSlop={6}
-            {...a11y('3 — გამოუსადეგარია', undefined, 'radio')}
+            {...a11y('3 — გამოუსადეგარია', undefined, 'radio', { selected: active === 'unusable' })}
           >
             <Text style={[
               styles.verdictBtnText,
-              { color: active === 'unusable' ? '#fff' : theme.colors.danger },
+              { color: active === 'unusable' ? theme.colors.ink : theme.colors.inkSoft },
             ]}>3</Text>
           </Pressable>
 

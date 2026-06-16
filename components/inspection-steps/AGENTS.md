@@ -7,9 +7,14 @@ the harness inspection. Previously `components/inspections/`;
 renamed in Phase 1 to clarify its role vs `inspection-parts/`.
 
 ## Public API (from index.ts)
-- `InspectionShell` — full-screen wrapper (header, footer, progress).
-  Equipment routes wrap their step content in this to share keyboard
-  handling, sync pill, and the back/close affordance.
+- `InspectionShell` — full-screen wrapper (FlowHeader + progress,
+  WizardStepTransition, saving hint, optional `banner` slot, and the
+  footer next/skip/finish button). EVERY equipment route wraps its
+  step content in this. Key props: `step` (0-based — the shell adds
+  +1 for the header counter), `isLastStep`, `finishLabel` (custom
+  finish-button text), `blockNext` (disable the non-last button while
+  `canGoNext` is false — no skip), `showPdfIcon`/`generatingPdf`/`onPdf`
+  (PDF icon shown beside the close ✕), `banner` (e.g. PdfLockedBanner).
 - `ProjectPickerStep` — initial step where the user picks the
   project + project item the inspection is attached to.
 - `ChecklistStep` — generic "list of checks" step (1/2/3 verdict per

@@ -9,10 +9,8 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
-import { Button } from '../../../components/ui';
 import { DateTimeField } from '../../../components/DateTimeField';
-import { WizardStepTransition } from '../../../components/wizard/WizardStepTransition';
-import { FlowHeader } from '../../../components/FlowHeader';
+import { InspectionShell } from '../../../components/inspection-steps/InspectionShell';
 import { InspectionResultView } from '../../../components/InspectionResultView';
 import {
   ChecklistSection,
@@ -22,14 +20,12 @@ import {
 } from '../../../components/inspection-parts';
 import { useTheme, type Theme } from '../../../lib/theme';
 import { useToast } from '../../../lib/toast';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { cargoPlatformApi } from '../../../lib/cargoPlatformService';
 import { cargoPlatformSchema } from '../../../lib/inspection/schemas/cargoPlatform';
 import { useInspectionFlow } from '../../../lib/inspection/useInspectionFlow';
 import { SubscriptionNotice } from '../../../components/SubscriptionNotice';
 import { PdfLockedBanner } from '../../../components/PdfLockedBanner';
 import { friendlyError } from '../../../lib/errorMap';
-import { a11y } from '../../../lib/accessibility';
 import { haptic } from '../../../lib/haptics';
 import { CelebrationBurst } from '../../../components/animations';
 import { usePhotoPicker } from '../../../hooks/usePhotoPicker';
@@ -100,7 +96,6 @@ export default function CargoPlatformInspectionScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const toast = useToast();
-  const insets = useSafeAreaInsets();
   const { pickPhotosWithAnnotation } = usePhotoPicker();
 
   // Shared orchestration: loading, step+persist, autosave, complete, celebration,
@@ -359,42 +354,25 @@ export default function CargoPlatformInspectionScreen() {
 
   return (
     <View style={styles.root}>
-      <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
-
-      <FlowHeader
-        flowTitle="პლატფორმის შემოწმება"
-        project={projectName ? { name: projectName } : null}
-        step={step}
+      <InspectionShell
+        title="პლატფორმის შემოწმება"
+        projectName={projectName ?? ''}
+        step={step - 1}
         totalSteps={TOTAL_STEPS - 1}
-        leading="back"
-        trailing="close"
+        direction={direction}
+        animate={animateSteps}
+        canGoNext={canGoNext}
+        isLastStep={step === CONCLUSION_STEP}
+        saving={saving}
+        completing={completing}
+        showPdfIcon={step > INFO_STEP}
+        generatingPdf={generatingPdf}
+        banner={pdfLocked ? <PdfLockedBanner onDetails={() => setLimitNoticeVisible(true)} /> : undefined}
+        onNext={handleNext}
+        onPrev={handlePrev}
         onClose={() => router.back()}
-        trailingElement={
-          step > INFO_STEP ? (
-            <Pressable
-              onPress={() => handlePdf()}
-              disabled={generatingPdf}
-              hitSlop={10}
-              {...a11y('PDF', 'PDF დოკუმენტის გენერირება', 'button')}
-            >
-              <Ionicons
-                name={generatingPdf ? 'hourglass-outline' : 'document-text-outline'}
-                size={22}
-                color={theme.colors.accent}
-              />
-            </Pressable>
-          ) : null
-        }
-        onBack={handlePrev}
-        backDisabled={false}
-      />
-
-      {saving && <Text style={styles.savingHint}>შენახვა…</Text>}
-
-      {pdfLocked && <PdfLockedBanner onDetails={() => setLimitNoticeVisible(true)} />}
-
-      <View style={{ flex: 1 }}>
-        <WizardStepTransition stepKey={step} direction={direction} animate={animateSteps}>
+        onPdf={() => void handlePdf()}
+      >
 
           {/* ── Step 1: Platform ID ──────────────────────────────────────────── */}
           {step === PLATFORM_STEP && (
@@ -609,35 +587,7 @@ export default function CargoPlatformInspectionScreen() {
             </KeyboardAwareScrollView>
           )}
 
-        </WizardStepTransition>
-
-        {/* Footer */}
-        <View style={[styles.footer, { paddingBottom: 16 + insets.bottom }]}>
-          {step === CONCLUSION_STEP ? (
-            <Button
-              title="შენახვა და დასრულება"
-              style={{ paddingVertical: 14 }}
-              iconRight={<Ionicons name="checkmark" size={20} color={theme.colors.white} />}
-              loading={completing}
-              disabled={!canGoNext || completing}
-              onPress={handleNext}
-            />
-          ) : (
-            <Button
-              title={canGoNext ? 'შემდეგი' : 'გაგრძელება'}
-              variant={canGoNext ? 'primary' : 'secondary'}
-              size="lg"
-              style={{ alignSelf: 'stretch', paddingVertical: 16, justifyContent: 'center' }}
-              iconRight={
-                canGoNext
-                  ? <Ionicons name="chevron-forward" size={18} color={theme.colors.white} />
-                  : undefined
-              }
-              onPress={handleNext}
-            />
-          )}
-        </View>
-      </View>
+        </InspectionShell>
 
       <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
       {celebrating && (

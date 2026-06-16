@@ -4,6 +4,26 @@
 
 ---
 
+## 2026-06-17 — Fix: loading skeletons clipped under the notch
+
+Two loading states painted their skeletons under the status bar / Dynamic Island because they bypassed iOS's automatic `ScrollView` content inset without re-adding a manual one. The **project detail** skeleton ([`LoadingSkeletonScreen`](../features/project-detail/LoadingSkeletonScreen.tsx)) copied the loaded screen's edge-to-edge config (`contentInsetAdjustmentBehavior="never"`) — which is correct there only because its first element is a full-bleed map hero — and now adds `insets.top` to its top padding. The **report viewer** ([`reports/[id]`](../app/reports/[id].tsx)) loading branch renders its `SkeletonPreview` in a bare `View` (no auto-inset) and now applies `paddingTop: insets.top`. Pure UI; no other screens changed (home, wizards, tab screens, and native-header detail screens already inset correctly).
+
+---
+
+## 2026-06-17 — Inspection redesign: monochrome answers, shared header, dashed attachments
+
+A consistency pass so no single inspection screen looks bespoke — built by changing the shared chrome, not by forking per-screen styles.
+
+- **One shared header** ([`FlowHeader`](../components/FlowHeader.tsx)) — the `< უკან` text pill became a circular back icon button (mirroring the close `✕`), the small project logo was dropped (project name stays as a subtitle), and the progress indicator is now a thin **brand-orange** bar + a `step / total` counter. Every inspection / briefing / incident flow renders `FlowHeader`, so the new header + progress reach all of them at once.
+- **Monochrome answer controls** — the green/red "looks like a quiz" yes/no buttons and the green/amber/red 3-state equipment ratings (bobcat, excavator, general-equipment, cargo-platform, harness chips, checklist rows, verdict pills) are now black-and-white via the new [`StatusChip`](../components/wizard/StatusChip.tsx): selected = ink outline + subtle fill, severity carried by the `✓/⚠/✗` icon + label, never color. See [primitives.md](primitives.md#inspection-wizard-shared-ui).
+- **Dashed photo + note bars** — the wizard `QuestionStep` / `ConclusionStep` photo & note inputs became two quiet dashed bars via [`AttachmentBars`](../features/inspection-wizard/AttachmentBars.tsx): the photo bar stays put and shows thumbnails as they're added, the note bar morphs into the notes textarea on tap.
+- **Illustration refresh** — the passport question illustration was redrawn (portrait box + GEO language stamp + machine-readable strip) and the certificate de-greened; both follow the brand palette.
+- No Supabase / PDF / schema changes — pure UI. The smart "გამოტოვება → შემდეგი" footer button (skip until answered) is unchanged.
+- **Equipment-route dedup (done):** the 6 formerly inline-chrome equipment routes (cargo-platform, forklift, safety-net, mobile-ladder, fall-protection, lifting-accessories) now render through the shared [`InspectionShell`](../components/inspection-steps/InspectionShell.tsx) — which gained `finishLabel`, `banner`, and `blockNext` props, and `FlowHeader` now shows a trailing element (the PDF icon) alongside the close ✕. ~490 lines of duplicated header/footer chrome removed; every equipment flow now shares one shell. fall-protection keeps its custom finish label (`შემოწმება დასრულდა`) and its "can't proceed without a device" block via `blockNext`.
+- **Still follow-ups:** applying `AttachmentBars` inside the equipment checklist accordions + consolidating the duplicate `PhotoThumb` copies, and a fuller refresh of the remaining 14 SVG illustrations — best done with on-device verification.
+
+---
+
 ## 2026-06-17 — Harness count: one-tap chip selector replaces the +/- stepper
 
 The "რამდენი ქამარი სულ?" step in the harness flow ([`HarnessListFlow`](../components/harness-list/HarnessListFlow.tsx)) swapped its +/- stepper for a new reusable **[`QuantitySelector`](../components/inputs/QuantitySelector.tsx)**: a wrap-grid of preset chips (1, 2, 3, 4, 5, 6, 8, 10, 12, 15) for one-tap selection, plus a custom numeric field for in-between values. The field is clamped to the harness max (15 — the template defines a fixed N1–N15 grid and the legal PDF renders exactly those rows, so the count can't exceed it). New input primitive; see [primitives.md](primitives.md#count--quantity-selector). No Supabase/PDF changes.

@@ -3,11 +3,17 @@
 
 import { ScrollView, View } from 'react-native';
 import { Stack } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Skeleton, SkeletonCard, SkeletonListCard } from '../../components/Skeleton';
 import { useTheme } from '../../lib/theme';
 
 export function LoadingSkeletonScreen() {
   const { theme } = useTheme();
+  // This screen disables the automatic content inset (to mirror the loaded
+  // ProjectDetail, whose first element is a full-bleed map hero), so it must
+  // add the safe-area top inset manually — otherwise the first skeleton card
+  // clips under the status bar / Dynamic Island.
+  const insets = useSafeAreaInsets();
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Stack.Screen options={{ headerShown: false }} />
@@ -18,7 +24,7 @@ export function LoadingSkeletonScreen() {
         contentInset={{ top: 0, bottom: 0, left: 0, right: 0 }}
         contentContainerStyle={{
           paddingHorizontal: 24,
-          paddingTop: 12,
+          paddingTop: insets.top + 12,
           paddingBottom: 32,
           gap: 14,
         }}

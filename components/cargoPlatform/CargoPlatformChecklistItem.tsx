@@ -77,9 +77,9 @@ export const CargoPlatformChecklistItem = memo(function CargoPlatformChecklistIt
             style={[styles.chip, styles.chipGood, goodActive && styles.chipGoodActive]}
             onPress={() => setResult('good')}
             hitSlop={8}
-            {...a11y('კარგი', '✓ კარგი', 'button')}
+            {...a11y('კარგი', '✓ კარგი', 'button', { selected: goodActive })}
           >
-            <Ionicons name="checkmark" size={14} color={goodActive ? theme.colors.white : theme.colors.semantic.success} />
+            <Ionicons name="checkmark" size={14} color={goodActive ? theme.colors.ink : theme.colors.inkFaint} />
           </Pressable>
 
           {/* ⚠ გამოსასწ. */}
@@ -87,9 +87,9 @@ export const CargoPlatformChecklistItem = memo(function CargoPlatformChecklistIt
             style={[styles.chip, styles.chipFix, fixActive && styles.chipFixActive]}
             onPress={() => setResult('fix')}
             hitSlop={8}
-            {...a11y('გამოსასწ.', '⚠ გამოსასწორებელი', 'button')}
+            {...a11y('გამოსასწ.', '⚠ გამოსასწორებელი', 'button', { selected: fixActive })}
           >
-            <Ionicons name="warning-outline" size={13} color={fixActive ? theme.colors.white : theme.colors.warn} />
+            <Ionicons name="warning-outline" size={13} color={fixActive ? theme.colors.ink : theme.colors.inkFaint} />
           </Pressable>
 
           {/* N/A */}
@@ -97,7 +97,7 @@ export const CargoPlatformChecklistItem = memo(function CargoPlatformChecklistIt
             style={[styles.chip, styles.chipNA, naActive && styles.chipNAActive]}
             onPress={() => setResult('na')}
             hitSlop={8}
-            {...a11y('N/A', 'არ ვრცელდება', 'button')}
+            {...a11y('N/A', 'არ ვრცელდება', 'button', { selected: naActive })}
           >
             <Text style={[styles.chipNAText, naActive && styles.chipNATextActive]}>N/A</Text>
           </Pressable>
@@ -189,27 +189,27 @@ function getstyles(theme: Theme) {
     chips: { flexDirection: 'row', gap: 4, paddingTop: 2 },
     chip: { width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5 },
 
-    // Good — green
-    chipGood: { borderColor: theme.colors.semantic.success, backgroundColor: theme.colors.semantic.successSoft },
-    chipGoodActive: { backgroundColor: theme.colors.semantic.success },
+    // Good — monochrome (icon carries the meaning)
+    chipGood: { borderColor: theme.colors.border, backgroundColor: theme.colors.surface },
+    chipGoodActive: { borderColor: theme.colors.ink, backgroundColor: theme.colors.subtleSurface },
 
-    // Fix — amber (fixable, not red)
-    chipFix: { borderColor: theme.colors.warn, backgroundColor: theme.colors.warnSoft },
-    chipFixActive: { backgroundColor: theme.colors.warn },
+    // Fix — monochrome
+    chipFix: { borderColor: theme.colors.border, backgroundColor: theme.colors.surface },
+    chipFixActive: { borderColor: theme.colors.ink, backgroundColor: theme.colors.subtleSurface },
 
-    // N/A — gray
-    chipNA: { borderColor: theme.colors.hairline, backgroundColor: theme.colors.subtleSurface },
-    chipNAActive: { backgroundColor: theme.colors.inkSoft, borderColor: theme.colors.inkSoft },
-    chipNAText: { fontSize: 8, fontWeight: '700', color: theme.colors.inkSoft },
-    chipNATextActive: { color: theme.colors.white },
+    // N/A — monochrome
+    chipNA: { borderColor: theme.colors.border, backgroundColor: theme.colors.surface },
+    chipNAActive: { borderColor: theme.colors.ink, backgroundColor: theme.colors.subtleSurface },
+    chipNAText: { fontSize: 8, fontWeight: '700', color: theme.colors.inkFaint },
+    chipNATextActive: { color: theme.colors.ink },
 
-    // Accordion — amber tint (fixable)
+    // Accordion — neutral tint
     accordion: {
       padding: 12, gap: 10,
       borderWidth: 1, borderTopWidth: 0,
       borderBottomLeftRadius: 10, borderBottomRightRadius: 10,
-      borderColor: theme.colors.warn,
-      backgroundColor: theme.colors.warnSoft,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.subtleSurface,
     },
 
     photoStrip: { gap: 8, paddingVertical: 2 },

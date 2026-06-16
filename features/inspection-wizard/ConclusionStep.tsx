@@ -1,6 +1,5 @@
 import { memo, useMemo, useState } from 'react';
-import { InputAccessoryView, Keyboard, Platform, Pressable, ScrollView, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { InputAccessoryView, Keyboard, Platform, Pressable, View } from 'react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../components/inputs/FloatingLabelInput';
 import { QuestionAvatar } from '../../components/QuestionAvatar';
@@ -8,7 +7,7 @@ import { useTheme } from '../../lib/theme';
 import { a11y } from '../../lib/accessibility';
 import type { AnswerPhoto, Question, Template } from '../../types/models';
 import { getstyles, staticStyles } from './styles';
-import { PhotoThumb } from './PhotoThumb';
+import { AttachmentBars } from './AttachmentBars';
 import { PhotoPreviewModal } from './PhotoPreviewModal';
 import { VerdictSelector, type SafetyVerdict } from './VerdictSelector';
 
@@ -52,7 +51,6 @@ export const ConclusionStep = memo(function ConclusionStep({
   const [interacted, setInteracted] = useState(false);
   const markInteracted = () => setInteracted(true);
   const [previewPhoto, setPreviewPhoto] = useState<AnswerPhoto | null>(null);
-  const hasPhotos = photos.length > 0;
   const accessoryId = 'wizardConclusionAccessory';
 
   return (
@@ -95,29 +93,12 @@ export const ConclusionStep = memo(function ConclusionStep({
       {photoQuestion ? (
         <View style={staticStyles.gap8}>
           <Text style={styles.label}>საერთო ფოტოები</Text>
-          {hasPhotos ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={[staticStyles.gap10, staticStyles.padV8]}
-            >
-              {photos.map(p => (
-                <Pressable key={p.id} onPress={() => setPreviewPhoto(p)} style={styles.photoTile} {...a11y('ფოტოს ნახვა', 'შეეხეთ ფოტოს დიდად სანახავად', 'button')}>
-                  <PhotoThumb photo={p} size={120} />
-                </Pressable>
-              ))}
-              <Pressable onPress={onPickPhoto} style={styles.addPhotoTile} {...a11y('ფოტოს დამატება', 'შეეხეთ ახალი ფოტოს ასატვირთად', 'button')}>
-                <Ionicons name="add" size={32} color={theme.colors.inkSoft} />
-              </Pressable>
-            </ScrollView>
-          ) : (
-            <View style={styles.chipRow}>
-              <Pressable onPress={onPickPhoto} style={styles.assistChip} {...a11y('ფოტოს დამატება', 'შეეხეთ ახალი ფოტოს ასატვირთად', 'button')}>
-                <Ionicons name="camera-outline" size={18} color={theme.colors.inkSoft} />
-                <Text style={styles.assistChipText}>ფოტო</Text>
-              </Pressable>
-            </View>
-          )}
+          <AttachmentBars
+            photos={photos}
+            onPickPhoto={onPickPhoto}
+            onDeletePhoto={onDeletePhoto}
+            onViewPhoto={setPreviewPhoto}
+          />
           <PhotoPreviewModal
             photo={previewPhoto}
             visible={!!previewPhoto}

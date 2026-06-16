@@ -45,7 +45,7 @@ export function VerdictSelector({
                 haptic.light();
                 onChange(value === opt.value ? null : opt.value);
               }}
-              {...a11y(opt.label, undefined, 'radio')}
+              {...a11y(opt.label, undefined, 'radio', { selected: active })}
             >
               <Text style={[styles.chipText, active && styles.chipTextActive]}>
                 {opt.label}
@@ -79,14 +79,14 @@ function getstyles(theme: Theme) {
       paddingVertical: 10,
       borderRadius: 20,
       borderWidth: 1.5,
-      borderColor: theme.colors.hairline,
-      backgroundColor: theme.colors.card,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.surface,
     },
     chipActive: {
-      borderColor: theme.colors.accent,
-      backgroundColor: theme.colors.accentSoft,
+      borderColor: theme.colors.ink,
+      backgroundColor: theme.colors.subtleSurface,
     },
     chipText: { fontSize: 13, color: theme.colors.inkSoft },
-    chipTextActive: { color: theme.colors.accent, fontWeight: '700' },
+    chipTextActive: { color: theme.colors.ink, fontWeight: '700' },
   });
 }

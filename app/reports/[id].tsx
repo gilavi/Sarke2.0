@@ -131,8 +131,12 @@ export default function ReportDetailScreen() {
   }
 
   if (!report) {
+    // No native header in the loading branch (the stack default is
+    // headerShown: false) and a bare View doesn't auto-inset like a ScrollView,
+    // so apply the safe-area top inset manually to keep the skeleton below the
+    // status bar / Dynamic Island.
     return (
-      <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      <View style={{ flex: 1, backgroundColor: theme.colors.background, paddingTop: insets.top }}>
         <SkeletonPreview />
       </View>
     );

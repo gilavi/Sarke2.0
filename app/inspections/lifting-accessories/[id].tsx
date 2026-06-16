@@ -4,11 +4,8 @@ import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
-import { Button } from '../../../components/ui';
-import { DateTimeField } from '../../../components/DateTimeField';
-import { WizardStepTransition } from '../../../components/wizard/WizardStepTransition';
-import { FlowHeader } from '../../../components/FlowHeader';
 import { InspectionResultView } from '../../../components/InspectionResultView';
+import { InspectionShell } from '../../../components/inspection-steps/InspectionShell';
 import {
   ChecklistSection,
   DynamicTable,
@@ -19,14 +16,12 @@ import {
 } from '../../../components/inspection-parts';
 import { useTheme, type Theme } from '../../../lib/theme';
 import { useToast } from '../../../lib/toast';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { liftingAccessoriesApi } from '../../../lib/liftingAccessoriesService';
 import { liftingAccessoriesSchema } from '../../../lib/inspection/schemas/liftingAccessories';
 import { useInspectionFlow } from '../../../lib/inspection/useInspectionFlow';
 import { SubscriptionNotice } from '../../../components/SubscriptionNotice';
 import { PdfLockedBanner } from '../../../components/PdfLockedBanner';
 import { friendlyError } from '../../../lib/errorMap';
-import { a11y } from '../../../lib/accessibility';
 import { CelebrationBurst } from '../../../components/animations';
 import { usePhotoPicker } from '../../../hooks/usePhotoPicker';
 
@@ -61,7 +56,6 @@ export default function LiftingAccessoriesInspectionScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const toast = useToast();
-  const insets = useSafeAreaInsets();
   const { pickPhotosWithAnnotation } = usePhotoPicker();
 
   // Shared orchestration: loading, step+persist, autosave, complete, celebration,
@@ -340,40 +334,25 @@ export default function LiftingAccessoriesInspectionScreen() {
 
   return (
     <View style={styles.root}>
-      <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
-
-      <FlowHeader
-        flowTitle="სლინგ. / ჩამჭ. შემოწ."
-        project={projectName ? { name: projectName } : null}
-        step={step}
+      <InspectionShell
+        title="სლინგ. / ჩამჭ. შემოწ."
+        projectName={projectName ?? ''}
+        step={step - 1}
         totalSteps={TOTAL_STEPS}
-        leading="back"
-        trailing="close"
+        direction={direction}
+        animate={animateSteps}
+        canGoNext={canGoNext}
+        isLastStep={step === CONCLUSION_STEP}
+        saving={saving}
+        completing={completing}
+        showPdfIcon
+        generatingPdf={generatingPdf}
+        banner={pdfLocked ? <PdfLockedBanner onDetails={() => setLimitNoticeVisible(true)} /> : undefined}
+        onNext={handleNext}
+        onPrev={handlePrev}
         onClose={() => router.back()}
-        trailingElement={(
-          <Pressable
-            onPress={() => handlePdf()}
-            disabled={generatingPdf}
-            hitSlop={10}
-            {...a11y('PDF', 'PDF დოკუმენტის გენერირება', 'button')}
-          >
-            <Ionicons
-              name={generatingPdf ? 'hourglass-outline' : 'document-text-outline'}
-              size={22}
-              color={theme.colors.accent}
-            />
-          </Pressable>
-        )}
-        onBack={handlePrev}
-        backDisabled={false}
-      />
-
-      {saving && <Text style={styles.savingHint}>შენახვა…</Text>}
-
-      {pdfLocked && <PdfLockedBanner onDetails={() => setLimitNoticeVisible(true)} />}
-
-      <View style={{ flex: 1 }}>
-        <WizardStepTransition stepKey={step} direction={direction} animate={animateSteps}>
+        onPdf={() => void handlePdf()}
+      >
 
           {/* ── Step 1: Equipment Identification ────────────────────────────── */}
           {step === IDENTIFICATION_STEP && (
@@ -492,30 +471,7 @@ export default function LiftingAccessoriesInspectionScreen() {
             </KeyboardAwareScrollView>
           )}
 
-        </WizardStepTransition>
-
-        {/* Footer */}
-        <View style={[styles.footer, { paddingBottom: 16 + insets.bottom }]}>
-          {step === CONCLUSION_STEP ? (
-            <Button
-              title="შენახვა და დასრულება"
-              style={{ paddingVertical: 14 }}
-              iconRight={<Ionicons name="checkmark" size={20} color={theme.colors.white} />}
-              loading={completing}
-              disabled={!canGoNext || completing}
-              onPress={handleNext}
-            />
-          ) : (
-            <Button
-              title="შემდეგი"
-              style={{ paddingVertical: 14 }}
-              iconRight={<Ionicons name="chevron-forward" size={20} color={theme.colors.white} />}
-              disabled={!canGoNext}
-              onPress={handleNext}
-            />
-          )}
-        </View>
-      </View>
+      </InspectionShell>
 
       <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
       {celebrating && (

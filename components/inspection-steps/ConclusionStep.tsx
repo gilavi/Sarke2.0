@@ -78,16 +78,16 @@ export function ConclusionStep<T extends string = string>({
               key={opt.value}
               style={[
                 styles.chip,
-                { borderColor: theme.colors.hairline, backgroundColor: theme.colors.subtleSurface },
-                active && { borderColor: theme.colors.accent, backgroundColor: theme.colors.accentSoft },
+                { borderColor: theme.colors.border, backgroundColor: theme.colors.surface },
+                active && { borderColor: theme.colors.ink, backgroundColor: theme.colors.subtleSurface },
               ]}
               onPress={() => onVerdictChange(active ? null : opt.value)}
-              {...a11y(opt.label, undefined, 'radio')}
+              {...a11y(opt.label, undefined, 'radio', { selected: active })}
             >
               <Text style={[
                 styles.chipText,
                 { color: theme.colors.inkSoft },
-                active && { color: theme.colors.accent, fontWeight: '700' },
+                active && { color: theme.colors.ink, fontWeight: '700' },
               ]}>
                 {opt.label}
               </Text>

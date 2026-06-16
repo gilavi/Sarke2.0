@@ -3,7 +3,6 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { A11yText as Text } from './primitives/A11yText';
-import { ProjectAvatar } from './ProjectAvatar';
 import { useTheme } from '../lib/theme';
 import { a11y } from '../lib/accessibility';
 import { ExitConfirmationModal } from './wizard/ExitModal';
@@ -94,47 +93,34 @@ export function FlowHeader({
     >
       <View style={styles.row}>
         {leading === 'back' ? (
-          <>
-            <Pressable
-              hitSlop={11}
-              disabled={backDisabled}
-              onPress={onBack}
-              style={({ pressed }) => [
-                styles.backBtn,
-                backDisabled && { opacity: 0.35 },
-                pressed && !backDisabled && { opacity: 0.6 },
-              ]}
-              {...a11y('უკან', 'წინა ეკრანზე დაბრუნება', 'button')}
-            >
-              <Ionicons
-                name="chevron-back"
-                size={18}
-                color={backDisabled ? theme.colors.inkFaint : theme.colors.accent}
-              />
-              <Text
-                style={[
-                  styles.backText,
-                  { color: backDisabled ? theme.colors.inkFaint : theme.colors.accent },
-                ]}
-              >
-                უკან
-              </Text>
-            </Pressable>
-            <View style={[styles.divider, { backgroundColor: theme.colors.hairline }]} />
-          </>
+          <Pressable
+            hitSlop={11}
+            disabled={backDisabled}
+            onPress={onBack}
+            style={({ pressed }) => [
+              styles.circleBtn,
+              { backgroundColor: theme.colors.subtleSurface },
+              backDisabled && { opacity: 0.35 },
+              pressed && !backDisabled && { opacity: 0.6 },
+            ]}
+            {...a11y('უკან', 'წინა ეკრანზე დაბრუნება', 'button')}
+          >
+            <Ionicons
+              name="chevron-back"
+              size={22}
+              color={backDisabled ? theme.colors.inkFaint : theme.colors.ink}
+            />
+          </Pressable>
         ) : null}
 
         <View style={styles.titleBlock}>
           {project?.name ? (
-            <View style={styles.projectRow}>
-              <ProjectAvatar project={project} size={14} />
-              <Text
-                style={[styles.projectName, { color: theme.colors.inkFaint }]}
-                numberOfLines={1}
-              >
-                {project.name}
-              </Text>
-            </View>
+            <Text
+              style={[styles.projectName, { color: theme.colors.inkFaint }]}
+              numberOfLines={1}
+            >
+              {project.name}
+            </Text>
           ) : null}
           <Text
             style={[styles.flowTitle, { color: theme.colors.ink }]}
@@ -158,20 +144,25 @@ export function FlowHeader({
             >
               <Text style={[styles.helpText, { color: theme.colors.accent }]}>?</Text>
             </Pressable>
-          ) : trailing === 'close' ? (
-            <Pressable
-              hitSlop={4}
-              onPress={wrapExit(onClose)}
-              style={({ pressed }) => [
-                styles.closeBtn,
-                { backgroundColor: theme.colors.subtleSurface },
-                pressed && { opacity: 0.6 },
-              ]}
-              {...a11y('დახურვა', 'შეეხეთ დასახურად', 'button')}
-            >
-              <Ionicons name="close" size={22} color={theme.colors.ink} />
-            </Pressable>
-          ) : trailingElement ?? null}
+          ) : (
+            <>
+              {trailingElement ?? null}
+              {trailing === 'close' ? (
+                <Pressable
+                  hitSlop={4}
+                  onPress={wrapExit(onClose)}
+                  style={({ pressed }) => [
+                    styles.closeBtn,
+                    { backgroundColor: theme.colors.subtleSurface },
+                    pressed && { opacity: 0.6 },
+                  ]}
+                  {...a11y('დახურვა', 'შეეხეთ დასახურად', 'button')}
+                >
+                  <Ionicons name="close" size={22} color={theme.colors.ink} />
+                </Pressable>
+              ) : null}
+            </>
+          )}
         </View>
       </View>
 
@@ -180,19 +171,24 @@ export function FlowHeader({
           step={step!}
           totalSteps={totalSteps!}
           labels={stepLabels}
-          successColor={theme.colors.semantic.success}
+          fillColor={theme.colors.accent}
           inkColor={theme.colors.ink}
           inkFaintColor={theme.colors.inkFaint}
           trackColor={theme.colors.subtleSurface}
         />
       ) : showProgress ? (
-        <View style={[styles.progressTrack, { backgroundColor: theme.colors.subtleSurface }]}>
-          <View
-            style={[
-              styles.progressFill,
-              { width: `${progress * 100}%`, backgroundColor: theme.colors.semantic.success },
-            ]}
-          />
+        <View style={styles.progressRow}>
+          <View style={[styles.progressTrack, { backgroundColor: theme.colors.subtleSurface }]}>
+            <View
+              style={[
+                styles.progressFill,
+                { width: `${progress * 100}%`, backgroundColor: theme.colors.accent },
+              ]}
+            />
+          </View>
+          <Text style={[styles.progressCount, { color: theme.colors.inkFaint }]}>
+            {`${Math.max(1, Math.min(step!, totalSteps!))} / ${totalSteps}`}
+          </Text>
         </View>
       ) : null}
 
@@ -217,7 +213,7 @@ function SegmentedStepper({
   step,
   totalSteps,
   labels,
-  successColor,
+  fillColor,
   inkColor,
   inkFaintColor,
   trackColor,
@@ -225,7 +221,7 @@ function SegmentedStepper({
   step: number;
   totalSteps: number;
   labels: string[];
-  successColor: string;
+  fillColor: string;
   inkColor: string;
   inkFaintColor: string;
   trackColor: string;
@@ -240,7 +236,7 @@ function SegmentedStepper({
               flex: 1,
               height: 3,
               marginLeft: i > 0 ? 1.5 : 0,
-              backgroundColor: i < step ? successColor : trackColor,
+              backgroundColor: i < step ? fillColor : trackColor,
             }}
           />
         ))}
@@ -253,7 +249,7 @@ function SegmentedStepper({
               flex: 1,
               textAlign: 'center',
               fontSize: 9,
-              color: i < step ? successColor : i === step - 1 ? inkColor : inkFaintColor,
+              color: i < step ? fillColor : i === step - 1 ? inkColor : inkFaintColor,
               fontWeight: i === step - 1 ? '600' : '400',
             }}
             numberOfLines={1}
@@ -273,7 +269,7 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 38,
+    minHeight: 44,
     paddingLeft: 12,
     paddingRight: 12,
     paddingBottom: 4,
@@ -284,36 +280,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',
+    gap: 6,
     zIndex: 1,
   },
-  backBtn: {
-    flexDirection: 'row',
+  circleBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: 'center',
-    paddingVertical: 4,
-    paddingLeft: 0,
-    paddingRight: 4,
-    marginLeft: -2,
-  },
-  backText: { fontSize: 15, fontWeight: '500', marginLeft: 1 },
-  divider: {
-    width: StyleSheet.hairlineWidth,
-    alignSelf: 'stretch',
-    marginVertical: 6,
+    justifyContent: 'center',
   },
   titleBlock: {
     flex: 1,
     minWidth: 0,
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'center',
   },
-  projectRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    maxWidth: '100%',
-  },
   projectName: { fontSize: 11, fontWeight: '500' },
-  flowTitle: { fontSize: 14, fontWeight: '700', marginTop: 1 },
+  flowTitle: { fontSize: 15, fontWeight: '700', marginTop: 1 },
   helpBtn: {
     width: 26,
     height: 26,
@@ -324,18 +308,29 @@ const styles = StyleSheet.create({
   },
   helpText: { fontSize: 13, fontWeight: '800', lineHeight: 15 },
   closeBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  progressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingTop: 2,
+    paddingBottom: 8,
+  },
   progressTrack: {
-    height: 3,
-    width: '100%',
+    flex: 1,
+    height: 5,
+    borderRadius: 999,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
+    borderRadius: 999,
   },
+  progressCount: { fontSize: 11, fontWeight: '600' },
 });
