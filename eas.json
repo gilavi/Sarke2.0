@@ -6,7 +6,10 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "APP_ENV": "development"
+      }
     },
     "preview": {
       "distribution": "internal",
@@ -21,9 +24,26 @@
         "simulator": false
       }
     },
+    "staging": {
+      "distribution": "internal",
+      "channel": "staging",
+      "env": {
+        "APP_ENV": "staging",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
+      },
+      "android": {
+        "buildType": "apk"
+      },
+      "ios": {
+        "simulator": false
+      }
+    },
     "production": {
       "autoIncrement": true,
       "channel": "production",
+      "env": {
+        "APP_ENV": "production"
+      },
       "ios": {
         "distribution": "store"
       }

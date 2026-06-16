@@ -27,7 +27,14 @@
     "coverage": "vitest run --coverage",
     "supabase:start": "npx supabase start",
     "supabase:stop": "npx supabase stop",
-    "supabase:reset": "npx supabase db reset"
+    "supabase:reset": "npx supabase db reset",
+    "start:dev": "cross-env APP_ENV=development expo start --dev-client",
+    "start:staging": "cross-env APP_ENV=staging expo start",
+    "build:dev": "cross-env APP_ENV=development eas build --profile development",
+    "build:staging": "cross-env APP_ENV=staging eas build --profile staging",
+    "build:production": "cross-env APP_ENV=production eas build --profile production",
+    "update:staging": "cross-env APP_ENV=staging eas update --branch staging",
+    "update:production": "cross-env APP_ENV=production eas update --branch production"
   },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",

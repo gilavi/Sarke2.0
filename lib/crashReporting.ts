@@ -1,6 +1,11 @@
 import * as Sentry from '@sentry/react-native';
+import Constants from 'expo-constants';
 
 const SENTRY_DSN = process.env.EXPO_PUBLIC_SENTRY_DSN || '';
+// Tag events with the active tier (development | staging | production) so
+// staging noise never pollutes the production issue stream. Sourced from the
+// env-driven app.config.ts `extra.appEnv`; defaults to production (fail-safe).
+const APP_ENV = (Constants.expoConfig?.extra?.appEnv as string) || 'production';
 const isEnabled = !__DEV__ && !!SENTRY_DSN;
 
 export function initCrashReporting() {
@@ -8,7 +13,7 @@ export function initCrashReporting() {
 
   Sentry.init({
     dsn: SENTRY_DSN,
-    environment: 'production',
+    environment: APP_ENV,
     beforeSend: (event) => {
       if (event.exception?.values) {
         event.exception.values.forEach((v) => {

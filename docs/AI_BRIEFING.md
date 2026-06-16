@@ -1,7 +1,7 @@
 # AI Agent Briefing — Hubble
 
 **Purpose:** Quick reference for AI agents working on this codebase  
-**Updated:** 2026-06-11 | Branch: `main`  
+**Updated:** 2026-06-17 | Branch: `main`  
 **Full context:** See [`ONBOARDING.md`](../ONBOARDING.md) in the repo root for the complete guide.
 
 ---
@@ -11,7 +11,7 @@
 **Project Type:** Expo (React Native) mobile inspection app + two web codebases  
 **Primary Language:** Georgian (ქართული) UI — i18n via react-i18next (`locales/ka.json` + `locales/en.json`, `lib/i18n.ts`); ka is primary/fallback. Older screens still carry inline Georgian strings; new user-facing text goes through i18n  
 **Target Users:** Safety experts conducting equipment/scaffolding inspections on Georgian construction sites  
-**Backend:** Supabase (Postgres + Auth + Storage) — single project shared by all three frontends  
+**Backend:** Supabase (Postgres + Auth + Storage). Production project `seskuthiopywrgntsgfw` is shared by all three frontends. A **staging** tier (second Supabase project + `APP_ENV`-driven `app.config.ts` + `develop`/`main` branch model) is mid-rollout — see [ENVIRONMENTS.md](ENVIRONMENTS.md); staging is not live until the external setup steps there are done.  
 **Architecture:** Feature-sliced. Modules live in `features/<name>/` with co-located `AGENTS.md` per folder; `app/` route files for large flows are thin orchestrators that re-export from `features/`.  
 **Account deletion:** Implemented end-to-end via Edge Function `delete-account` + `ON DELETE CASCADE` FKs on all user-owned tables. App Store Review Guideline 5.1.1(v) compliant on the data-deletion axis.
 **Marketing site (`web-app/`):** The logged-out landing is a multi-page marketing site (`/`, `/about`, `/pricing`, `/legislation`, `/contact`) sharing one `MarketingLayout`; logged-in users redirect to `/home`. `/legislation` is the PUBLIC regulations/blog page — distinct from the PROTECTED `/regulations` dashboard route. The `/contact` page has a live AI support chatbot backed by the `ai-chat` Edge Function (Anthropic Haiku proxy, `verify_jwt = false`, needs the `ANTHROPIC_API_KEY` secret + manual `supabase functions deploy ai-chat`).

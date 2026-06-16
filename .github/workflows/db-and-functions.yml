@@ -1,0 +1,67 @@
+name: Supabase deploy (migrations + functions)
+
+# Deploys database migrations and edge functions to a Supabase project.
+#
+#   - Push to `develop` touching supabase/**  -> auto-deploy to STAGING.
+#   - Manual run (workflow_dispatch)          -> deploy to the chosen target.
+#       Selecting `production` pauses on the `production` GitHub Environment's
+#       required-reviewer gate. Production migrations are NEVER auto-applied on
+#       a push — they always go through this manual, approved path.
+#
+# Required GitHub *Environment* secrets (Settings -> Environments -> staging|production):
+#   SUPABASE_PROJECT_REF   - the target project ref
+#   SUPABASE_DB_PASSWORD   - the target project's database password
+# Required repo-level secret (shared, scoped by --project-ref):
+#   SUPABASE_ACCESS_TOKEN  - a Supabase CLI access token
+#
+# NOTE: this workflow only RUNS once the `develop` branch exists and the
+# environment secrets are set. Until then it is inert (no matching triggers).
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - 'supabase/migrations/**'
+      - 'supabase/functions/**'
+      - 'supabase/config.toml'
+      - '.github/workflows/db-and-functions.yml'
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Target environment
+        type: choice
+        options: [staging, production]
+        default: staging
+
+concurrency:
+  group: supabase-deploy-${{ github.event.inputs.target || 'staging' }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # push(develop) -> staging; workflow_dispatch -> chosen target.
+    # The `production` environment carries the required-reviewer protection rule,
+    # so a production run pauses for manual approval before any step executes.
+    environment: ${{ github.event.inputs.target || 'staging' }}
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link to target project
+        run: supabase link --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}"
+
+      - name: Migration plan (dry run)
+        run: supabase db push --dry-run
+
+      - name: Apply migrations
+        run: supabase db push
+
+      - name: Deploy edge functions
+        run: supabase functions deploy --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}"

@@ -20,6 +20,11 @@ const BOG_ORDERS_URL = isSandbox
   ? 'https://api-sandbox.bog.ge/payments/v1/ecommerce/orders'
   : 'https://api.bog.ge/payments/v1/ecommerce/orders';
 
+// Deep-link scheme for the payment success/fail redirects. Defaults to the prod
+// app scheme; the staging project overrides via APP_SCHEME=sarke2staging so
+// staging payments deep-link back into the staging app instead of prod.
+const APP_SCHEME = Deno.env.get('APP_SCHEME') ?? 'sarke2';
+
 async function getBogToken(): Promise<string> {
   const clientId = Deno.env.get('BOG_CLIENT_ID')!;
   const clientSecret = Deno.env.get('BOG_CLIENT_SECRET')!;
@@ -68,11 +73,20 @@ Deno.serve(async (req) => {
 
     // github.io kept alongside hubble.ge: shipped mobile builds still open the
     // old URL, which 301s to the hubble.ge CNAME.
-    const ALLOWED_PREFIXES = ['sarke2://', 'https://hubble.ge/', 'https://gilavi.github.io/Sarke2.0/'];
+    // Defaults reproduce the prod allow-list exactly (a prod redeploy is a
+    // no-op). The staging project overrides via APP_SCHEME and, optionally, a
+    // comma-separated BOG_REDIRECT_ALLOWLIST secret.
+    const ALLOWED_PREFIXES = (
+      Deno.env.get('BOG_REDIRECT_ALLOWLIST') ??
+      `${APP_SCHEME}://,https://hubble.ge/,https://gilavi.github.io/Sarke2.0/`
+    )
+      .split(',')
+      .map((p) => p.trim())
+      .filter(Boolean);
     const isAllowed = (u: string) => ALLOWED_PREFIXES.some((p) => u.startsWith(p));
 
-    const successUrl = body.success_url ?? 'sarke2://payment/success';
-    const failUrl = body.fail_url ?? 'sarke2://payment/fail';
+    const successUrl = body.success_url ?? `${APP_SCHEME}://payment/success`;
+    const failUrl = body.fail_url ?? `${APP_SCHEME}://payment/fail`;
     if (!isAllowed(successUrl) || !isAllowed(failUrl)) {
       return json({ error: 'invalid redirect url' }, 400);
     }

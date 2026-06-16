@@ -1,0 +1,74 @@
+name: Deploy web-app (staging)
+
+# Builds web-app/ from the `develop` branch and publishes it to gh-pages under
+# /app-staging/, wired to the STAGING Supabase project. Additive and isolated:
+# it never writes /app/ (prod) and uses its own concurrency group. The prod
+# /app/ deploy (deploy-web-app.yml) and the WEBversion2 -> /app/preview/ deploy
+# are untouched.
+#
+# Supabase credentials come from the `staging` GitHub Environment's scoped
+# secrets — there is intentionally NO prod fallback, so a missing staging secret
+# fails this (staging-only) build instead of silently shipping prod config.
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - 'web-app/**'
+      - 'lib/**'
+      - 'types/**'
+      - '.github/workflows/deploy-web-app-staging.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gh-pages-deploy-staging
+  cancel-in-progress: false
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    environment: staging
+    defaults:
+      run:
+        working-directory: web-app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: web-app/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci --legacy-peer-deps
+          else
+            npm install --legacy-peer-deps --no-audit --no-fund
+          fi
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build (staging, base /app-staging/)
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        # Served from /app-staging/, so assets must be based there (vite.config.ts
+        # hard-codes /app/ for the production deploy).
+        run: npm run build -- --base=/app-staging/
+
+      - name: Deploy to gh-pages /app-staging/
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./web-app/dist
+          destination_dir: app-staging
+          keep_files: true

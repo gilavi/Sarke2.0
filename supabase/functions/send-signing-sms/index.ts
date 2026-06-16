@@ -13,7 +13,10 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const SIGN_WEB_URL = 'https://gilavi.github.io/Sarke2.0';
+// Web signing page base URL. Defaults to the legacy github.io host (which 301s
+// to the hubble.ge CNAME) so in-flight SMS links keep working; override per
+// environment via the SIGN_WEB_URL secret (staging points at the staging page).
+const SIGN_WEB_URL = Deno.env.get('SIGN_WEB_URL') ?? 'https://gilavi.github.io/Sarke2.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

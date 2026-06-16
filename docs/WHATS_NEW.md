@@ -1,6 +1,20 @@
 # What's New — Hubble Changelog
 
-**Updated:** 2026-06-12 | Branch: `main`
+**Updated:** 2026-06-17 | Branch: `main`
+
+---
+
+## 2026-06-17 — Staging vs production environment separation (code + CI plumbing)
+
+Post-App-Store-launch work to give every change an isolated place to run before it touches real users. Full design + remaining manual steps: [ENVIRONMENTS.md](ENVIRONMENTS.md).
+
+- **Mobile app variants** — static `app.json` → dynamic `app.config.ts` driven by `APP_ENV` (development | staging | production, defaulting to production). Per-tier bundle id (`ge.sarke2.app` / `.staging` / `.dev`), scheme, name, Supabase URL/key, and Sentry environment. Production output verified **byte-identical** to the old `app.json` (only `extra.appEnv` added). Two fail-closed guardrails: build aborts if `EAS_BUILD_PROFILE` ≠ `APP_ENV`, or if a non-prod build lacks Supabase creds.
+- **EAS** — new `staging` build profile + `staging` channel (added alongside the legacy `preview`; `production` untouched). Env-pinned npm scripts (`build:staging`, `update:production`, …) so no one ever runs a bare `eas update` (which re-embeds `extra` and could ship the wrong backend).
+- **Sentry** — `environment` tag is now the active `APP_ENV` instead of hardcoded `'production'`.
+- **Edge functions** — `send-signing-sms` (`SIGN_WEB_URL`) and `create-bog-order` (`APP_SCHEME`, redirect allow-list) are now env-driven; defaults reproduce current prod values exactly (prod redeploy is a no-op).
+- **CI** — new `db-and-functions.yml` (develop → staging migrations + functions auto; production via gated manual run) and `deploy-web-app-staging.yml` (develop → `/app-staging/`). Existing prod web/docs workflows untouched. The prod-web GitHub-Environments rewiring is deliberately deferred until the Environments exist.
+- **Supabase** — fixed the `config.toml` seed path so `db reset` actually seeds (`./seed/01_system_templates.sql`).
+- **Pending (external):** EAS account access from the `x4ylee` owner, the second Supabase project, the `ge.sarke2.app.staging` Apple App ID, the GitHub `staging`/`production` Environments, and the one-time prod migration reconciliation + baseline squash (four colliding version tokens). Tracked in [ENVIRONMENTS.md](ENVIRONMENTS.md).
 
 ---
 
