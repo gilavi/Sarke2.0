@@ -333,6 +333,7 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
           items={harnessChips}
           activeIndex={safeRowIdx}
           onSelect={setCurrentRowIdx}
+          tone="neutral"
         />
 
         <ScrollView

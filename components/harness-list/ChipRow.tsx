@@ -61,7 +61,7 @@ export const ChipRow = memo(function ChipRow({
       <View
         style={[
           s.chipRowWrap,
-          isBad && { backgroundColor: theme.colors.dangerTint, borderColor: theme.colors.dangerBorder },
+          isBad && { borderColor: theme.colors.border },
         ]}
       >
         <Text style={s.itemLabel} numberOfLines={2}>
@@ -74,14 +74,15 @@ export const ChipRow = memo(function ChipRow({
             onPress={() => onSet(item, row, 'ok')}
             style={[
               s.chip,
-              isOk && { backgroundColor: theme.colors.accentSoft, borderColor: theme.colors.accent },
+              isOk && { backgroundColor: theme.colors.subtleSurface, borderColor: theme.colors.ink },
             ]}
             accessibilityLabel={`${item.label} — კარგი`}
+            accessibilityState={{ selected: isOk }}
           >
             <Ionicons
               name="checkmark"
               size={18}
-              color={isOk ? theme.colors.accent : theme.colors.inkSoft}
+              color={isOk ? theme.colors.ink : theme.colors.inkFaint}
             />
           </Pressable>
           {/* ✗ chip */}
@@ -89,14 +90,15 @@ export const ChipRow = memo(function ChipRow({
             onPress={() => onSet(item, row, 'bad')}
             style={[
               s.chip,
-              isBad && { backgroundColor: theme.colors.dangerSoft, borderColor: theme.colors.danger },
+              isBad && { backgroundColor: theme.colors.subtleSurface, borderColor: theme.colors.ink },
             ]}
             accessibilityLabel={`${item.label} — პრობლემა`}
+            accessibilityState={{ selected: isBad }}
           >
             <Ionicons
               name="close"
               size={18}
-              color={isBad ? theme.colors.danger : theme.colors.inkSoft}
+              color={isBad ? theme.colors.ink : theme.colors.inkFaint}
             />
           </Pressable>
         </View>
@@ -127,7 +129,7 @@ export const ChipRow = memo(function ChipRow({
               <CellPhotoThumb key={p.id} photo={p} onDelete={() => onDeletePhoto(p)} />
             ))}
             <Pressable onPress={() => onPickPhoto(item, row)} style={s.addPhotoSmall} accessibilityLabel="ფოტოს დამატება">
-              <Ionicons name="camera-outline" size={20} color={theme.colors.danger} />
+              <Ionicons name="camera-outline" size={20} color={theme.colors.inkSoft} />
               <Text style={s.addPhotoText}>+ ფოტოს დამატება</Text>
             </Pressable>
           </ScrollView>

@@ -43,11 +43,16 @@ export interface ChipNavStripProps {
   items: ChipNavItem[];
   activeIndex: number;
   onSelect: (index: number) => void;
+  /** 'status' (default) colors the active chip by state (accent / green / red).
+   *  'neutral' keeps the active chip ink-gray and conveys state only via the
+   *  small status dot — used where a colored selection competes with the UI. */
+  tone?: 'status' | 'neutral';
 }
 
-export function ChipNavStrip({ items, activeIndex, onSelect }: ChipNavStripProps) {
+export function ChipNavStrip({ items, activeIndex, onSelect, tone = 'status' }: ChipNavStripProps) {
   const { theme } = useTheme();
   const styles = getStyles(theme);
+  const neutral = tone === 'neutral';
   return (
     <ScrollView
       horizontal
@@ -61,20 +66,27 @@ export function ChipNavStrip({ items, activeIndex, onSelect }: ChipNavStripProps
         // so the user can always see where they are.
         const effective: ChipNavState =
           isActive && item.state === 'pending' ? 'active' : item.state;
-        const color = stateColor(effective, theme);
+        // Dot always reflects real status; in neutral tone an active item never
+        // tints the dot accent (raw state → a clean active chip stays gray).
+        const dotColor = stateColor(neutral ? item.state : effective, theme);
+        const borderColor = neutral
+          ? isActive ? theme.colors.ink : theme.colors.border
+          : stateColor(effective, theme);
+        const activeBg = neutral ? theme.colors.subtleSurface : stateBg(effective, theme);
+        const labelColor = neutral ? theme.colors.ink : stateColor(effective, theme);
         return (
           <Pressable
             key={item.key}
             style={[
               styles.tab,
-              { borderColor: color },
-              isActive && { backgroundColor: stateBg(effective, theme) },
+              { borderColor },
+              isActive && { backgroundColor: activeBg },
             ]}
             onPress={() => { haptic.light(); onSelect(idx); }}
             {...a11y(item.label, item.a11yHint ?? item.label, 'tab')}
           >
-            <View style={[styles.dot, { backgroundColor: color }]} />
-            <Text style={[styles.label, isActive && { color, fontWeight: '800' }]}>
+            <View style={[styles.dot, { backgroundColor: dotColor }]} />
+            <Text style={[styles.label, isActive && { color: labelColor, fontWeight: '800' }]}>
               {item.label}
             </Text>
           </Pressable>

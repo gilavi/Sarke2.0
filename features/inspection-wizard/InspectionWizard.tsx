@@ -246,7 +246,7 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
   // HarnessListFlow: full-screen takeover for harness templates.
   if (step.kind === 'harnessFlow') {
     return (
-      <View style={{ flex: 1, backgroundColor: theme.colors.card }}>
+      <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
         <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
         <HarnessListFlow
           inspectionId={questionnaire!.id}
