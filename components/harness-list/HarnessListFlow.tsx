@@ -9,6 +9,7 @@ import type { Answer, AnswerPhoto, GridValues, Question, Template } from '../../
 import { TourGuide, type TourStep } from '../TourGuide';
 import { useScaffoldHelpSheet } from '../ScaffoldHelpSheet';
 import { ChipNavStrip, type ChipNavItem } from '../inspection-parts/ChipNavStrip';
+import { QuantitySelector } from '../inputs/QuantitySelector';
 import {
   buildItems,
   captionFor,
@@ -26,6 +27,11 @@ const flowPos = new Map<string, { step: 'count' | 'list'; rowIdx: number }>();
 function cloneGrid(g?: GridValues | null): GridValues {
   return g ? JSON.parse(JSON.stringify(g)) : {};
 }
+
+// The harness template defines a fixed N1–N15 grid and the legal PDF renders
+// exactly those rows, so the count is capped at 15 (see rowLabelsFor).
+const HARNESS_MAX = 15;
+const HARNESS_COUNT_PRESETS = [1, 2, 3, 4, 5, 6, 8, 10, 12, 15];
 
 export type HarnessListFlowProps = {
   inspectionId: string;
@@ -220,31 +226,18 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
           </Pressable>
         </View>
 
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 32 }}>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 28, paddingHorizontal: 24 }}>
           <Text style={{ fontSize: 20, fontWeight: '700', color: theme.colors.ink }}>
             რამდენი ქამარი სულ?
           </Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 28 }}>
-            <Pressable
-              onPress={() => setHarnessRowCount(Math.max(1, harnessRowCount - 1))}
-              hitSlop={12}
-              disabled={harnessRowCount <= 1}
-              style={harnessRowCount <= 1 ? { opacity: 0.35 } : undefined}
-            >
-              <Ionicons name="remove-circle" size={52} color={theme.colors.accent} />
-            </Pressable>
-            <Text style={{ fontSize: 72, fontWeight: '800', color: theme.colors.ink, minWidth: 80, textAlign: 'center' }}>
-              {harnessRowCount}
-            </Text>
-            <Pressable
-              onPress={() => setHarnessRowCount(Math.min(15, harnessRowCount + 1))}
-              hitSlop={12}
-              disabled={harnessRowCount >= 15}
-              style={harnessRowCount >= 15 ? { opacity: 0.35 } : undefined}
-            >
-              <Ionicons name="add-circle" size={52} color={theme.colors.accent} />
-            </Pressable>
-          </View>
+          <QuantitySelector
+            value={harnessRowCount}
+            onChange={setHarnessRowCount}
+            presets={HARNESS_COUNT_PRESETS}
+            min={1}
+            max={HARNESS_MAX}
+            accessibilityLabelPrefix="ქამრების რაოდენობა"
+          />
         </View>
 
         <View style={[s.footer, { paddingBottom: 16 + insets.bottom }]}>

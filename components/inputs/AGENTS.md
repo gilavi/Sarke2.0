@@ -13,9 +13,14 @@ rather than a bare `<TextInput>`.
 - `SerialKeypad` — modal numeric keypad for entering equipment
   serial numbers when the user can't easily type the standard keyboard
   layout (gloves on a worksite, etc.).
+- `QuantitySelector` — one-tap count picker: a wrap-grid of preset
+  chips + a custom numeric field, clamped to `[min, max]`. The
+  reusable replacement for inline +/- steppers on "how many?" prompts
+  (e.g. the harness count step). Caller supplies `presets`/`min`/`max`.
 
 ## Internal files
-- `FloatingLabelInput.tsx`, `PlateInput.tsx`, `SerialKeypad.tsx`.
+- `FloatingLabelInput.tsx`, `PlateInput.tsx`, `SerialKeypad.tsx`,
+  `QuantitySelector.tsx`.
 
 ## Gotchas / non-obvious things
 - `FloatingLabelInput` accepts `inputAccessoryViewID` and is the

@@ -138,6 +138,14 @@ One folder: [`components/success/`](../components/success/). The check-mark + su
 
 **Terminology:** the inspection document is a **"შემოწმების აქტი"**, never "ინსპექცია" (a wrong term). Keep "ინსპექცია" out of every user-facing string. `reports/[id]/success.tsx` intentionally stays separate — it's a full-bleed PDF-share layout, not the card scaffold.
 
+## Count / quantity selector
+
+One file: [`components/inputs/QuantitySelector.tsx`](../components/inputs/QuantitySelector.tsx). A one-tap count picker — a wrap-grid of preset chips plus a custom numeric field, clamped to `[min, max]`. Use it for any "how many?" prompt instead of rolling another inline `remove-circle`/`add-circle` stepper (the harness count step uses it).
+
+Props: `value`, `onChange`, `presets?`, `min?`, `max?`, `accessibilityLabelPrefix?`. The caller supplies domain presets + bounds; the component owns the chip/typing UX and the clamp, so a typed entry can never go out of range.
+
+**For new count prompts, prefer `QuantitySelector`** over a hand-rolled stepper. (Several older steppers predate it — `app/qualifications`, `app/reports/[id]/edit`, `DynamicTable`, etc. — and can migrate opportunistically.)
+
 ## PDF security / integrity
 
 One file: [lib/pdfSecurity.ts](../lib/pdfSecurity.ts). Exports `injectSecurityMarkup`, `lockPdf`, `hashPdf`, `verifyPdf`, and `PdfSecurityOptions`.

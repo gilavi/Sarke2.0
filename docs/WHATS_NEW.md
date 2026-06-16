@@ -4,6 +4,12 @@
 
 ---
 
+## 2026-06-17 — Harness count: one-tap chip selector replaces the +/- stepper
+
+The "რამდენი ქამარი სულ?" step in the harness flow ([`HarnessListFlow`](../components/harness-list/HarnessListFlow.tsx)) swapped its +/- stepper for a new reusable **[`QuantitySelector`](../components/inputs/QuantitySelector.tsx)**: a wrap-grid of preset chips (1, 2, 3, 4, 5, 6, 8, 10, 12, 15) for one-tap selection, plus a custom numeric field for in-between values. The field is clamped to the harness max (15 — the template defines a fixed N1–N15 grid and the legal PDF renders exactly those rows, so the count can't exceed it). New input primitive; see [primitives.md](primitives.md#count--quantity-selector). No Supabase/PDF changes.
+
+---
+
 ## 2026-06-17 — Success screens: corrected wording + one reusable scaffold
 
 Terminology + design pass on every post-save success screen, plus the de-duplication that made it safe.
