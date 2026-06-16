@@ -4,6 +4,16 @@
 
 ---
 
+## 2026-06-17 — Success screens: corrected wording + one reusable scaffold
+
+Terminology + design pass on every post-save success screen, plus the de-duplication that made it safe.
+
+- **Wording (`ინსპექცია` → `შემოწმების აქტი`)** — "ინსპექცია" is the wrong term for the document; it's a **შემოწმების აქტი**. All five inspection done screens now read "შემოწმების აქტი შენახულია!", the summary shows the full act name (e.g. "ექსკავატორის შემოწმების აქტი", "დამცავი ქამრების შემოწმების აქტი"), and the subtitle points at "აქტის გვერდიდან". Also fixed the two remaining user-facing uses outside the success screens (crane-cert field label in `order-new`, wizard navigation-recovery message).
+- **Buttons** — primary CTA renamed "ინსპექციის ნახვა" → **"PDF-ის ნახვა"**; the dead **"PDF პრევიუ და ჩამოტვირთვა"** card (it just re-fired the same action) was removed; the home card is now **"მთავარ გვერდზე დაბრუნება"**.
+- **One reusable scaffold** — new [`components/success/`](../components/success/): `SuccessScreen` (the check-mark + summary + CTA + action-card shell, owns the completion haptic) and `InspectionDoneView` (the inspection body with the corrected wording baked in). The five `done.tsx` routes dropped from ~250 lines each to ~60–80 (thin data-loaders); the incident + order success screens were moved onto the same scaffold too, deleting ~6 byte-identical copies of the old `ActionCard` + `StyleSheet`. `reports/[id]/success.tsx` stays separate (different full-bleed PDF-share layout). See [primitives.md](primitives.md#post-save-success-screens).
+
+---
+
 ## 2026-06-17 — Staging vs production environment separation (code + CI plumbing)
 
 Post-App-Store-launch work to give every change an isolated place to run before it touches real users. Full design + remaining manual steps: [ENVIRONMENTS.md](ENVIRONMENTS.md).

@@ -25,7 +25,7 @@ export function NavigationRecovery({
           ჩატვირთვა ვერ მოხერხდა
         </Text>
         <Text style={{ fontSize: 14, color: theme.colors.inkSoft, marginBottom: 24, textAlign: 'center' }}>
-          ინსპექციის მონაცემების ჩატვირთვა ძალიან დიდხანს გრძელდება. სცადეთ თავიდან ან გადადით უკან.
+          შემოწმების მონაცემების ჩატვირთვა ძალიან დიდხანს გრძელდება. სცადეთ თავიდან ან გადადით უკან.
         </Text>
         <View style={{ flexDirection: 'row', gap: 12 }}>
           <Button variant="secondary" onPress={() => router.back()} title="უკან" />

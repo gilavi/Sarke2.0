@@ -125,6 +125,19 @@ Shared step-flow chrome lives in [`components/wizard/`](../components/wizard/). 
 
 **Don't** define a local `StepBar` or `StepSectionLabel` inline in a screen file — that's exactly the duplication pattern that was cleaned up (two copy-pasted `StepBar` + `slStyles` blocks in bobcat and excavator). **Don't** hardcode `'#10B981'` or `'#1D9E75'` for inspection green — use `theme.colors.semantic.success` and `theme.colors.semantic.successSoft`.
 
+## Post-save success screens
+
+One folder: [`components/success/`](../components/success/). The check-mark + summary card + primary CTA + secondary action-card screen reached after a document is saved. This replaced ~6 byte-identical copies of the same `Screen` + `CelebrationBurst` + `AnimatedSuccessIcon` + `ActionCard` + `StyleSheet`.
+
+| Use case | Owner |
+|---|---|
+| Generic success scaffold (header, burst, check-mark, CTA, action cards, completion haptic) | `SuccessScreen` — [components/success/SuccessScreen.tsx](../components/success/SuccessScreen.tsx) |
+| Inspection "act saved" body (corrected wording baked in) | `InspectionDoneView` — [components/success/InspectionDoneView.tsx](../components/success/InspectionDoneView.tsx) |
+
+**Don't** rebuild the success scaffold inline in a new `done.tsx` / `success.tsx` — render `<SuccessScreen>` with a summary card as `children`, or `<InspectionDoneView>` for inspection acts. **Don't** fire `haptic.inspectionComplete()` in a consumer — `SuccessScreen` already does it once on mount.
+
+**Terminology:** the inspection document is a **"შემოწმების აქტი"**, never "ინსპექცია" (a wrong term). Keep "ინსპექცია" out of every user-facing string. `reports/[id]/success.tsx` intentionally stays separate — it's a full-bleed PDF-share layout, not the card scaffold.
+
 ## PDF security / integrity
 
 One file: [lib/pdfSecurity.ts](../lib/pdfSecurity.ts). Exports `injectSecurityMarkup`, `lockPdf`, `hashPdf`, `verifyPdf`, and `PdfSecurityOptions`.
