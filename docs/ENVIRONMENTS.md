@@ -59,8 +59,8 @@ npm run update:production  # APP_ENV=production eas update --branch production
 
 ## 3. Manual setup checklist (the remaining work, in order)
 
-### 0.A — EAS account access (blocks all mobile staging builds)
-The EAS project (`ab800403-…`, owner **`x4ylee`**) is owned by someone else, and the working CLI account (`gilavi2000`) can't administer it. Ask the owner to either (a) transfer the project into a shared Expo **org** both accounts admin, or (b) add `gilavi2000` as a member with admin role. Until then: no staging build, no `eas env`, no `eas update:configure`.
+### 0.A — EAS account access (blocks all mobile staging builds) — ✅ DONE (2026-06-18)
+The EAS project (`ab800403-…`) was transferred from the personal account `x4ylee` into a shared Expo **org `hubble-ge`** that both maintainers admin (`gilavi2000` added as an org Admin). The project ref/id is unchanged by the transfer, so EAS Update channels and continuity are preserved. The config `owner` field in `app.config.ts` was updated `x4ylee` → `hubble-ge` accordingly. Staging builds, `eas env`, and `eas update:configure` are now unblocked.
 
 ### 0.B — Create the staging Supabase project
 Dashboard → New project, **same region as prod**. Capture:
