@@ -9,16 +9,16 @@ import { useWindowDimensions } from 'react-native';
 
 // ── Color Primitives ───────────────────────────────────────────────────────
 
-// Hubble brand board — SAFETY ORANGE (#FF5A1F) primary scale.
+// Hubble brand board — BRAND ORANGE (#FF6D2E) primary scale.
 const primary = {
   50: '#FFF3EE',
   100: '#FFE3D6',
   200: '#FFC4AC',
   300: '#FF9E78',
-  400: '#FF7A47',
-  500: '#FF5A1F',
-  600: '#E84709',
-  700: '#BE380C',
+  400: '#FF8A57',
+  500: '#FF6D2E',
+  600: '#E85510',
+  700: '#BE3F0B',
   800: '#972F11',
   900: '#7B2913',
 } as const;
