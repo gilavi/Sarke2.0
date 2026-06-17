@@ -62,7 +62,7 @@ export const lightTheme = {
     semantic,
 
     // ── New semantic surfaces ──
-    background: neutral[50],
+    background: '#FFFFFF',
     surface: '#FFFFFF',
     surfaceElevated: '#FFFFFF',
     surfaceSecondary: neutral[100],

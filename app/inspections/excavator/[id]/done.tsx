@@ -62,7 +62,7 @@ export default function ExcavatorInspectionDoneScreen() {
     <InspectionDoneView
       loading={loading}
       loaded={!!inspection}
-      typeLabel="ექსკავატორის შემოწმების აქტი"
+      typeLabel="ექსკავატორი"
       projectName={projectName || undefined}
       dateText={
         inspection

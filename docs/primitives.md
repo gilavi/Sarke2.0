@@ -6,6 +6,14 @@ The single most common bug pattern in this repo (see [BUG_REPORT.md](reports/BUG
 
 `scripts/check-primitives.mjs` enforces a small subset of these via `npm run lint`. Whenever an entry below would benefit from automated enforcement, add a rule there.
 
+## Primary action button
+
+One component: [`components/primitives/Button.tsx`](../components/primitives/Button.tsx), re-exported from `components/ui`.
+
+Use `<Button variant="primary" size="lg" title="..." onPress={...} style={{ width: '100%' }} />` for all full-width CTA / bottom-of-screen action buttons. Shape is pill (radius 1000), text is black, background is `theme.colors.accent` (orange).
+
+**Don't** inline a `Pressable` + manual styling for a CTA button — that was the bug this consolidation fixed (WizardNav had a bespoke `nextBtn`; InspectionShell used deprecated `iconRight` ReactNodes). **Don't** pass `iconRight={<Ionicons color={theme.colors.white}>}` — use the string-based `rightIcon="icon-name"` prop so the colour inherits from the button's `color` token automatically.
+
 ## Storage images
 
 One file: [lib/imageUrl.ts](../lib/imageUrl.ts). Three exports, named by purpose so picking the right name picks the right defaults:
@@ -128,6 +136,12 @@ Shared step-flow chrome lives in [`components/wizard/`](../components/wizard/). 
 | [components/wizard/WizardNav.tsx](../components/wizard/WizardNav.tsx) | `WizardNav` | Fixed-footer "წინა / შემდეგი / ✓ დასრულება" row. Shared by all five inspection flows. |
 
 **Don't** define a local `StepBar` or `StepSectionLabel` inline in a screen file — that's exactly the duplication pattern that was cleaned up (two copy-pasted `StepBar` + `slStyles` blocks in bobcat and excavator). **For any "several items on one page" checklist, render `ChecklistItemRow`** — don't hand-roll a row + verdict-chip cluster (that's what the now-deleted per-equipment `*ChecklistItem` copies did). **Inspection answer / rating controls are monochrome** (decided 2026-06-17; solid-fill selected state same day): build them with `StatusChip`, or apply its token treatment directly — selected = **solid `theme.colors.inverse.background` fill + `inverse.ink` content**; unselected = `border` + `surface` + `inkSoft`/`inkFaint`. Don't use `semantic.success/warning/danger` or `accent` as a fill/border on an answer control, and never hardcode `'#10B981'`/`'#1D9E75'` greens there — color is reserved for non-answer affordances (badges, toasts, step checkmarks, destructive actions). Per-row notes/photos were removed from all checklists — problem detail + photos live on the conclusion step.
+
+## Flow-entry project picker
+
+When a document flow (incident, briefing, report) is launched **without** a project — i.e. from Home rather than a project screen — it shows the project picker as a full-screen first step, not a bottom sheet. One owner: [components/FlowProjectPicker.tsx](../components/FlowProjectPicker.tsx) (`FlowProjectPicker`). It composes `FlowHeader` + a dashed "ახალი პროექტი" row + the canonical [`ProjectPickerStep`](../components/inspection-steps/ProjectPickerStep.tsx) list + a "გაგრძელება" button, and reuses [`ProjectPickerSheet`](../components/home/ProjectPickerSheet.tsx) (`initialView="new"`) for create-a-project.
+
+The host `new` screen gates on the project: `const projectId = paramProjectId ?? pickedProject?.id;` — render `<FlowProjectPicker>` when it's missing, the real form otherwise. The inspection flow keeps its own equivalent inside [`app/inspections/new.tsx`](../app/inspections/new.tsx) (wrapped in `InspectionShell`, since it then creates a record and routes on). **Don't** reintroduce a per-flow project bottom sheet, and **don't** hand-roll another project list — render `ProjectPickerStep` (it owns the `useProjects()` three-state guard).
 
 ## Post-save success screens
 

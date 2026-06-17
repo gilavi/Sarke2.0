@@ -7,6 +7,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useTheme, withOpacity } from '../../lib/theme';
 import { useTranslation } from 'react-i18next';
 import { useOverdueCount, qk } from '../../lib/apiHooks';
+import { OfflineBanner } from '../../components/OfflineBanner';
 
 // ─── Tab Configuration ──────────────────────────────────────────
 type TabConfig = {
@@ -35,17 +36,17 @@ function TabIcon({
   config: TabConfig;
   theme: ReturnType<typeof useTheme>['theme'];
 }) {
-  const activeColor = theme.colors.accent;
+  const activeColor = theme.colors.ink;
   const inactiveColor = theme.colors.inkSoft;
 
   return (
     <View style={styles.iconContainer}>
-      {/* Active background glow */}
+      {/* Active background indicator */}
       {focused && (
         <View
           style={[
             styles.activeGlow,
-            { backgroundColor: withOpacity(theme.colors.accent, isDark ? 0.15 : 0.1) },
+            { backgroundColor: withOpacity(theme.colors.ink, isDark ? 0.08 : 0.06) },
           ]}
         />
       )}
@@ -72,7 +73,7 @@ function TabLabel({
   theme: ReturnType<typeof useTheme>['theme'];
 }) {
   const { t } = useTranslation();
-  const activeColor = theme.colors.accent;
+  const activeColor = theme.colors.ink;
   const inactiveColor = theme.colors.inkSoft;
 
   return (
@@ -117,12 +118,14 @@ export default function TabsLayout() {
   }, [queryClient]);
 
   return (
+    <View style={{ flex: 1 }}>
+      <OfflineBanner />
     <Tabs
       screenOptions={({ route }) => {
         const config = TAB_CONFIG[route.name as keyof typeof TAB_CONFIG];
         return {
           headerShown: false,
-          tabBarActiveTintColor: theme.colors.accent,
+          tabBarActiveTintColor: theme.colors.ink,
           tabBarInactiveTintColor: theme.colors.inkSoft,
           tabBarStyle: {
             position: 'absolute',
@@ -205,6 +208,7 @@ export default function TabsLayout() {
       {/* Hidden routes */}
       <Tabs.Screen name="certificates" options={{ tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
     </Tabs>
+    </View>
   );
 }
 

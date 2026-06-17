@@ -6,6 +6,7 @@ import { KeyboardSafeArea } from '../../components/layout/KeyboardSafeArea';
 import { Button } from '../../components/ui';
 import { FloatingLabelInput } from '../../components/inputs/FloatingLabelInput';
 import { FlowHeader } from '../../components/FlowHeader';
+import { FlowProjectPicker } from '../../components/FlowProjectPicker';
 import { useTheme } from '../../lib/theme';
 import { useToast } from '../../lib/toast';
 import { friendlyError } from '../../lib/errorMap';
@@ -17,18 +18,20 @@ export default function NewReportTitleScreen() {
   const { theme } = useTheme();
   const router = useRouter();
   const toast = useToast();
-  const { projectId } = useLocalSearchParams<{ projectId: string }>();
+  const { projectId: paramProjectId } = useLocalSearchParams<{ projectId?: string }>();
+  const [pickedProject, setPickedProject] = useState<Project | null>(null);
+  const projectId = paramProjectId ?? pickedProject?.id;
 
   const [project, setProject] = useState<Project | null>(null);
   const [title, setTitle] = useState('');
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!projectId) return;
+    if (!projectId || project) return;
     let mounted = true;
     projectsApi.getById(projectId).then(p => { if (mounted) setProject(p); }).catch(() => null);
     return () => { mounted = false; };
-  }, [projectId]);
+  }, [projectId, project]);
 
   const trimmed = title.trim();
   const canStart = trimmed.length > 0 && !busy && !!projectId;
@@ -44,6 +47,18 @@ export default function NewReportTitleScreen() {
       setBusy(false);
     }
   };
+
+  // Launched from Home without a project — pick one as the first full-screen step.
+  if (!projectId) {
+    return (
+      <FlowProjectPicker
+        flowTitle="რეპორტი"
+        action="report"
+        onBack={() => router.back()}
+        onPicked={(p) => { setPickedProject(p); setProject(p); }}
+      />
+    );
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>

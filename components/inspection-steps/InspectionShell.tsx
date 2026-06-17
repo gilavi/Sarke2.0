@@ -5,13 +5,13 @@
  */
 import { type ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { A11yText as Text } from '../primitives/A11yText';
 import { Button } from '../ui';
 import { FlowHeader } from '../FlowHeader';
 import { WizardStepTransition } from '../wizard/WizardStepTransition';
+import { OfflineBanner } from '../OfflineBanner';
 import { useTheme } from '../../lib/theme';
 import { a11y } from '../../lib/accessibility';
 
@@ -88,6 +88,8 @@ export function InspectionShell({
         surfaceColor={theme.colors.surface}
       />
 
+      <OfflineBanner variant="inline" />
+
       {banner ?? null}
 
       <View style={{ flex: 1 }}>
@@ -100,7 +102,7 @@ export function InspectionShell({
             <Button
               title={finishLabel ?? 'შენახვა და დასრულება'}
               style={{ paddingVertical: 14 }}
-              iconRight={<Ionicons name="checkmark" size={20} color={theme.colors.white} />}
+              rightIcon="checkmark"
               loading={completing}
               disabled={!canGoNext || completing}
               onPress={onNext}
@@ -111,11 +113,7 @@ export function InspectionShell({
               variant={blockNext || canGoNext ? 'primary' : 'secondary'}
               size="lg"
               style={styles.nextBtn}
-              iconRight={
-                blockNext || canGoNext ? (
-                  <Ionicons name="chevron-forward" size={18} color={theme.colors.white} />
-                ) : undefined
-              }
+              rightIcon={blockNext || canGoNext ? 'chevron-forward' : undefined}
               disabled={blockNext && !canGoNext}
               onPress={onNext}
             />

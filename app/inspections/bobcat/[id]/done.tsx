@@ -61,7 +61,7 @@ export default function BobcatInspectionDoneScreen() {
     <InspectionDoneView
       loading={loading}
       loaded={!!inspection}
-      typeLabel="ბობკატის შემოწმების აქტი"
+      typeLabel="ბობკატი"
       projectName={projectName || undefined}
       dateText={
         inspection

@@ -18,6 +18,7 @@ import { KeyboardSafeArea } from '../../components/layout/KeyboardSafeArea';
 
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { FlowHeader } from '../../components/FlowHeader';
+import { FlowProjectPicker } from '../../components/FlowProjectPicker';
 import { DateTimeField } from '../../components/DateTimeField';
 import { Button } from '../../components/ui';
 import { FloatingLabelInput } from '../../components/inputs/FloatingLabelInput';
@@ -104,7 +105,9 @@ export default function NewIncident() {
   const router = useRouter();
   const toast = useToast();
   const session = useSession();
-  const { projectId } = useLocalSearchParams<{ projectId: string }>();
+  const { projectId: paramProjectId } = useLocalSearchParams<{ projectId?: string }>();
+  const [pickedProject, setPickedProject] = useState<Project | null>(null);
+  const projectId = paramProjectId ?? pickedProject?.id;
 
   const [step, setStep] = useState<Step>(1);
   const [form, setForm] = useState<FormData>(INITIAL_FORM);
@@ -402,6 +405,18 @@ export default function NewIncident() {
   };
 
   // ── render ──────────────────────────────────────────────────────────────────
+
+  // Launched from Home without a project — pick one as the first full-screen step.
+  if (!projectId) {
+    return (
+      <FlowProjectPicker
+        flowTitle="ინციდენტი"
+        action="incident"
+        onBack={() => router.back()}
+        onPicked={(p) => { setPickedProject(p); setProject(p); }}
+      />
+    );
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>

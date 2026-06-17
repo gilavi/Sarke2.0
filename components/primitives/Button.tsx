@@ -105,10 +105,10 @@ export function Button({
   };
 
   const sizeStyles = {
-    sm: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: theme.radius.sm },
-    md: { paddingVertical: 12, paddingHorizontal: 16, borderRadius: theme.radius.md },
-    lg: { paddingVertical: 14, paddingHorizontal: 20, borderRadius: theme.radius.lg },
-    xl: { paddingVertical: 16, paddingHorizontal: 24, borderRadius: theme.radius.xl },
+    sm: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 1000 },
+    md: { paddingVertical: 12, paddingHorizontal: 16, borderRadius: 1000 },
+    lg: { paddingVertical: 14, paddingHorizontal: 20, borderRadius: 1000 },
+    xl: { paddingVertical: 16, paddingHorizontal: 24, borderRadius: 1000 },
   };
 
   const textSizes = {
@@ -121,7 +121,7 @@ export function Button({
   const variantStyles = {
     primary: {
       backgroundColor: theme.colors.accent,
-      color: '#FFFFFF',
+      color: '#000000',
       shadow: theme.shadows.glow,
       borderColor: undefined as string | undefined,
       borderWidth: undefined as number | undefined,
@@ -232,7 +232,7 @@ export function Button({
                 borderRadius: rippleRadius,
                 left: ripplePos.x - rippleRadius,
                 top: ripplePos.y - rippleRadius,
-                backgroundColor: variant === 'primary' || variant === 'danger' ? '#FFFFFF' : v.color,
+                backgroundColor: variant === 'danger' ? '#FFFFFF' : variant === 'primary' ? 'rgba(0,0,0,0.12)' : v.color,
               },
               rippleAnimatedStyle,
             ]}

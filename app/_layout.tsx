@@ -20,7 +20,6 @@ import { flushPendingPdfUploads } from '../lib/pdfUploadQueue';
 import { TERMS_VERSION } from '../lib/terms';
 import { ToastProvider } from '../lib/toast';
 import { OfflineProvider } from '../lib/offline';
-import { OfflineBanner } from '../components/OfflineBanner';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { logError } from '../lib/logError';
 import { isOscillating, recordRedirect } from '../lib/navigationGuard';
@@ -251,7 +250,6 @@ export default function RootLayout() {
                     <OfflineProvider>
                       <SessionProvider>
                         <ThemedStatusBar />
-                        <OfflineBanner />
                         <ErrorBoundary>
                           <AuthGate />
                         </ErrorBoundary>

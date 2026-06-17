@@ -16,6 +16,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from '../../components/ui';
 import { FlowHeader } from '../../components/FlowHeader';
+import { FlowProjectPicker } from '../../components/FlowProjectPicker';
 import { useTheme } from '../../lib/theme';
 import { useSession } from '../../lib/session';
 import { briefingsApi } from '../../lib/briefingsApi';
@@ -42,18 +43,20 @@ export default function NewBriefingScreen() {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
-  const { projectId } = useLocalSearchParams<{ projectId: string }>();
+  const { projectId: paramProjectId } = useLocalSearchParams<{ projectId?: string }>();
   const router = useRouter();
   const session = useSession();
 
   // ── Project (for header context) ──
+  const [pickedProject, setPickedProject] = useState<Project | null>(null);
+  const projectId = paramProjectId ?? pickedProject?.id;
   const [project, setProject] = useState<Project | null>(null);
   useEffect(() => {
-    if (!projectId) return;
+    if (!projectId || project) return;
     let mounted = true;
     projectsApi.getById(projectId).then(p => { if (mounted) setProject(p); }).catch(() => null);
     return () => { mounted = false; };
-  }, [projectId]);
+  }, [projectId, project]);
 
   // ── Date/time state ──
   const [dateTime, setDateTime] = useState(() => new Date());
@@ -132,6 +135,18 @@ export default function NewBriefingScreen() {
       setBusy(false);
     }
   }, [projectId, dateTime, participants, builtTopics, inspectorName, canStart]);
+
+  // Launched from Home without a project — pick one as the first full-screen step.
+  if (!projectId) {
+    return (
+      <FlowProjectPicker
+        flowTitle="ინსტრუქტაჟი"
+        action="briefing"
+        onBack={() => router.back()}
+        onPicked={(p) => { setPickedProject(p); setProject(p); }}
+      />
+    );
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>

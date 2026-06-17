@@ -132,7 +132,6 @@ export default function HomeScreen() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pickerInitialView, setPickerInitialView] = useState<'list' | 'new'>('list');
-  const [pickerAction, setPickerAction] = useState<'inspection' | 'incident' | 'briefing' | 'report'>('inspection');
   const [tplPickerVisible, setTplPickerVisible] = useState(false);
   const [tplPickerTemplates, setTplPickerTemplates] = useState<Template[]>([]);
 
@@ -447,29 +446,17 @@ export default function HomeScreen() {
               {
                 label: 'ინციდენტი',
                 colorKey: 'incident',
-                onPress: () => {
-                  setPickerAction('incident');
-                  setPickerInitialView('list');
-                  setPickerVisible(true);
-                },
+                onPress: () => router.push('/incidents/new' as any),
               },
               {
                 label: 'ინსტრუქტაჟი',
                 colorKey: 'briefing',
-                onPress: () => {
-                  setPickerAction('briefing');
-                  setPickerInitialView('list');
-                  setPickerVisible(true);
-                },
+                onPress: () => router.push('/briefings/new' as any),
               },
               {
                 label: 'რეპორტი',
                 colorKey: 'report',
-                onPress: () => {
-                  setPickerAction('report');
-                  setPickerInitialView('list');
-                  setPickerVisible(true);
-                },
+                onPress: () => router.push('/reports/new' as any),
               },
             ]}
           />
@@ -708,7 +695,7 @@ export default function HomeScreen() {
       <CustomDropdown
         label={t('home.chooseTemplate')}
         options={tplPickerTemplates.map(tpl => ({
-          label: tpl.name,
+          label: inspectionDisplayName(tpl.name),
           value: tpl.id,
           icon: <InspectionTypeAvatar category={tpl.category} size={36} />,
         }))}
@@ -729,7 +716,7 @@ export default function HomeScreen() {
       <ProjectPickerSheet
         visible={pickerVisible}
         initialView={pickerInitialView}
-        action={pickerAction}
+        action="inspection"
         projects={projects}
         templates={templates}
         preselectedTemplateId={null}

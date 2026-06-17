@@ -1,6 +1,28 @@
 # What's New — Hubble Changelog
 
-**Updated:** 2026-06-17 | Branch: `main`
+**Updated:** 2026-06-17 | Branch: `gio-design-update`
+
+---
+
+## 2026-06-17 — Global design refresh: white background, monochrome nav, pill buttons
+
+Unified the core visual language across the app.
+
+- **White app background** — `theme.colors.background` is now pure `#FFFFFF` (was warm off-white `#F2F1EC`). Cards/surfaces remain white and stay visible via existing shadows and borders.
+- **Monochrome navigation** — tab bar active tint and icon colour changed from orange to `theme.colors.ink` (near-black `#1A1A1A`). Active glow background updated to a subtle grey. The orange brand colour no longer bleeds into chrome.
+- **Pill-shaped buttons (radius 1000)** — all `Button` sizes now use `borderRadius: 1000` (true pill). Text colour on the primary (orange) variant changed from white to black for legibility.
+- **Unified CTA button** — [`WizardNav`](../components/wizard/WizardNav.tsx) replaced its bespoke `nextBtn` Pressable with the canonical [`Button`](../components/primitives/Button.tsx) component. [`InspectionShell`](../components/inspection-steps/InspectionShell.tsx) migrated from deprecated `iconRight={<Ionicons>}` nodes to the string-based `rightIcon` prop so icon colour inherits from the button's text colour automatically.
+
+---
+
+## 2026-06-17 — Incident / briefing / report: full-screen project pick, no bottom sheet
+
+The four Home quick actions now behave consistently. **ინციდენტი**, **ინსტრუქტაჟი**, and **რეპორტი** used to open the `ProjectPickerSheet` bottom sheet (confusingly titled "შემოწმების აქტის დაწყება" for all three) before navigating into the flow. They now route straight to `/incidents/new` · `/briefings/new` · `/reports/new`, and each screen renders the project picker as a **full-screen first step** when launched without a `projectId` — exactly like the inspection (`შემოწმება`) flow.
+
+- **New shared first step** ([`FlowProjectPicker`](../components/FlowProjectPicker.tsx)) — `FlowHeader` + a dashed "ახალი პროექტი" row + the canonical [`ProjectPickerStep`](../components/inspection-steps/ProjectPickerStep.tsx) list + a "გაგრძელება" button. Creating a project reuses [`ProjectPickerSheet`](../components/home/ProjectPickerSheet.tsx) (`initialView="new"`) and re-enters the flow with the new id. See [primitives.md](primitives.md#flow-entry-project-picker).
+- **Each `new` screen gates on the project** ([`incidents/new`](../app/incidents/new.tsx), [`briefings/new`](../app/briefings/new.tsx), [`reports/new`](../app/reports/new.tsx)) — `projectId = paramProjectId ?? pickedProject?.id`; no param + nothing picked → show the picker, otherwise the existing form (unchanged).
+- **Project-detail entries unchanged** — those already pass `?projectId=`, so they skip the picker and open the form directly.
+- **Home cleanup** ([`home.tsx`](../app/(tabs)/home.tsx)) — dropped the now-unused `pickerAction` state; the Home `ProjectPickerSheet` stays only for the empty-projects "create first project" case.
 
 ---
 

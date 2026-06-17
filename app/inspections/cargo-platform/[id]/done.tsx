@@ -51,7 +51,7 @@ export default function CargoPlatformDoneScreen() {
     <InspectionDoneView
       loading={loading}
       loaded={!!inspection}
-      typeLabel="ტვირთის მიმღები პლატფორმის შემოწმების აქტი"
+      typeLabel="ტვირთის მიმღები პლატფორმა"
       projectName={projectName || undefined}
       dateText={
         inspection

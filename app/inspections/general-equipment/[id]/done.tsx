@@ -40,7 +40,7 @@ export default function GeneralEquipmentInspectionDoneScreen() {
     <InspectionDoneView
       loading={loading}
       loaded={!!inspection}
-      typeLabel="ტექნიკის შემოწმების აქტი"
+      typeLabel="ტექნიკური აღჭურვილობა"
       projectName={projectName || undefined}
       dateText={
         inspection

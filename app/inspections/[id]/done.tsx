@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { InspectionDoneView } from '../../../components/success';
 import { inspectionsApi, projectsApi, templatesApi } from '../../../lib/services';
+import { inspectionDisplayName } from '../../../lib/shared/documentName';
 import type { Inspection, Project, Template } from '../../../types/models';
 
 export default function InspectionDoneScreen() {
@@ -45,8 +46,7 @@ export default function InspectionDoneScreen() {
     <InspectionDoneView
       loading={loading}
       loaded={!!inspection}
-      // Full formal act name (e.g. "დამცავი ქამრების შემოწმების აქტი").
-      typeLabel={template?.name?.trim() || 'შემოწმების აქტი'}
+      typeLabel={inspectionDisplayName(template?.name)}
       projectName={project?.name}
       dateText={
         inspection
