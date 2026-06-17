@@ -13,7 +13,7 @@ import { hashPdf } from '../../lib/pdfSecurity';
 import { SubscriptionNotice } from '../../components/SubscriptionNotice';
 import { usePdfUsage, useInvalidatePdfUsage } from '../../lib/usePdfUsage';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { CircleAlert, Hourglass, User, Briefcase, MapPin, Building2, Users, TriangleAlert, type LucideIcon } from 'lucide-react-native';
+import { CircleAlert, Hourglass, User, Briefcase, MapPin, Building2, Users, TriangleAlert, Share2, FileText, type LucideIcon } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { A11yText as Text } from '../../components/primitives/A11yText';
@@ -438,7 +438,7 @@ export default function IncidentDetail() {
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <Button
               title="PDF გაზიარება"
-              leftIcon="share-outline"
+              leftIcon={Share2}
               variant="ghost"
               onPress={sharePdf}
               style={{ flex: 1 }}
@@ -455,7 +455,7 @@ export default function IncidentDetail() {
           <View style={{ gap: 10 }}>
             <Button
               title={generatingPdf && pdfPhase ? pdfPhase : pdfUsage?.isLocked ? '🔒 PDF გენერირება' : 'PDF გენერირება'}
-              leftIcon="document-text"
+              leftIcon={FileText}
               loading={generatingPdf}
               onPress={generatePdf}
               style={{ width: '100%' }}

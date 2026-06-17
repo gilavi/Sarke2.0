@@ -13,7 +13,7 @@ import { SubscriptionNotice } from '../../components/SubscriptionNotice';
 import { usePdfUsage, useInvalidatePdfUsage } from '../../lib/usePdfUsage';
 import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { CircleCheck, Check, Info, User, CircleX, Plus, Camera, Pencil, TriangleAlert } from 'lucide-react-native';
+import { CircleCheck, Check, Info, User, CircleX, Plus, Camera, Pencil, TriangleAlert, ArrowRight, FileText } from 'lucide-react-native';
 import { KeyboardSafeArea } from '../../components/layout/KeyboardSafeArea';
 
 import { A11yText as Text } from '../../components/primitives/A11yText';
@@ -477,7 +477,7 @@ export default function NewIncident() {
         {step < 4 ? (
           <Button
             title="შემდეგი"
-            rightIcon="arrow-forward"
+            rightIcon={ArrowRight}
             onPress={goNext}
             disabled={!canAdvance}
             style={{ width: '100%' }}
@@ -486,7 +486,7 @@ export default function NewIncident() {
           <View style={{ gap: 10 }}>
             <Button
               title={pdfUsage?.isLocked ? '🔒 PDF გენერირება' : 'PDF გენერირება'}
-              leftIcon="document-text"
+              leftIcon={FileText}
               loading={saving}
               onPress={saveAndGeneratePdf}
               style={{ width: '100%' }}

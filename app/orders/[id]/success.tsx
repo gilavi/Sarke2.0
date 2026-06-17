@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet } from 'react-native';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Home, Folder } from 'lucide-react-native';
 import { Card } from '../../../components/ui';
 import { SuccessScreen } from '../../../components/success';
 import { useTheme } from '../../../lib/theme';
@@ -34,12 +35,12 @@ export default function OrderSuccessScreen() {
       subtitle="PDF ბრძანება გაიზიარა. ასლი ავტომატურად ატვირთება."
       primary={{
         title: 'მთავარ გვერდზე',
-        icon: 'home',
+        icon: Home,
         onPress: () => router.replace('/(tabs)/home' as any),
       }}
       actions={[
         {
-          icon: 'folder-outline',
+          icon: Folder,
           title: 'პროექტებზე დაბრუნება',
           subtitle: 'ნახე ყველა პროექტი',
           onPress: () => router.replace('/(tabs)/projects' as any),

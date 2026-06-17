@@ -13,7 +13,7 @@ import { A11yText as Text } from '../../components/primitives/A11yText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
-import { FileText, Trash2, User, Award, ChevronRight } from 'lucide-react-native';
+import { FileText, Trash2, User, Award, ChevronRight, PlusCircle } from 'lucide-react-native';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { Card } from '../../components/ui';
 import { Skeleton } from '../../components/Skeleton';
@@ -285,7 +285,7 @@ export default function CertificatesScreen() {
               subtitle={t('certificates.emptyHint')}
               action={{
                 label: t('certificates.emptyAction'),
-                icon: 'add-circle-outline',
+                icon: PlusCircle,
                 onPress: () => router.push('/(tabs)/home'),
               }}
             />

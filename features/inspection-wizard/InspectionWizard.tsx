@@ -9,7 +9,7 @@ import { KeyboardAwareScrollView, KeyboardStickyView, KeyboardController, useKey
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Stack, useRouter } from 'expo-router';
-import { ChevronRight } from 'lucide-react-native';
+import { Check, ChevronRight } from 'lucide-react-native';
 
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { Button, Screen } from '../../components/ui';
@@ -395,7 +395,7 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
               <Button
                 title="დასრულება"
                 style={{ paddingVertical: 14 }}
-                rightIcon="checkmark"
+                rightIcon={Check}
                 loading={finishing}
                 disabled={finishing}
                 onPress={() => {

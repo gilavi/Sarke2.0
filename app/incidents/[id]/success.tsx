@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { FileText, Home } from 'lucide-react-native';
 import { Card } from '../../../components/ui';
 import { SuccessScreen } from '../../../components/success';
 import { useTheme } from '../../../lib/theme';
@@ -45,12 +46,12 @@ export default function IncidentSuccessScreen() {
       subtitle="ყველა მონაცემი შენახულია. PDF ოქმის ნახვა და გაზიარება შეგიძლიათ ინციდენტის გვერდიდან."
       primary={{
         title: 'ინციდენტის ნახვა',
-        icon: 'document-text',
+        icon: FileText,
         onPress: () => router.replace(`/incidents/${id}` as any),
       }}
       actions={[
         {
-          icon: 'home-outline',
+          icon: Home,
           title: 'მთავარ გვერდზე',
           subtitle: 'დაბრუნდი საწყის გვერდზე',
           onPress: () => router.replace('/(tabs)/home' as any),

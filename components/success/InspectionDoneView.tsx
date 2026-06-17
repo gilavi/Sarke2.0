@@ -11,6 +11,7 @@
 import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { FileText, Home } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
 import { Card } from '../ui';
 import { Skeleton, SkeletonCard } from '../Skeleton';
@@ -67,10 +68,10 @@ export function InspectionDoneView({
     <SuccessScreen
       title="შემოწმების აქტი შენახულია!"
       subtitle={SUBTITLE}
-      primary={{ title: 'PDF-ის ნახვა', icon: 'document-text', onPress: onViewPdf }}
+      primary={{ title: 'PDF-ის ნახვა', icon: FileText, onPress: onViewPdf }}
       actions={[
         {
-          icon: 'home-outline',
+          icon: Home,
           title: 'მთავარ გვერდზე დაბრუნება',
           onPress: () => router.replace('/(tabs)/home' as any),
         },

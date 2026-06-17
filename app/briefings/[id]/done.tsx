@@ -3,7 +3,7 @@ import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { CircleCheck, FileText } from 'lucide-react-native';
+import { CircleCheck, FileText, Share2 } from 'lucide-react-native';
 import { Button } from '../../../components/ui';
 import { generateAndSharePdf, PdfLimitReachedError } from '../../../lib/pdfOpen';
 import { useSession } from '../../../lib/session';
@@ -130,7 +130,7 @@ export default function BriefingDoneScreen() {
         <Button
           title={sharing ? 'PDF მზადდება...' : pdfUsage?.isLocked ? '🔒 PDF გაზიარება' : 'PDF გაზიარება'}
           size="lg"
-          leftIcon="share-outline"
+          leftIcon={Share2}
           onPress={sharePdf}
           loading={sharing}
           disabled={!briefing || !project || sharing}

@@ -8,6 +8,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import * as Crypto from 'expo-crypto';
 import * as FileSystem from 'expo-file-system/legacy';
 
+import { ArrowRight, FileText } from 'lucide-react-native';
 import { FlowHeader } from '../../components/FlowHeader';
 import { Button } from '../../components/ui';
 import { KeyboardSafeArea } from '../../components/layout/KeyboardSafeArea';
@@ -374,7 +375,7 @@ export default function NewOrderScreen() {
         {step < getTotalSteps(docType) ? (
           <Button
             title="შემდეგი"
-            rightIcon="arrow-forward"
+            rightIcon={ArrowRight}
             onPress={goNext}
             disabled={!canAdvance}
             style={{ width: '100%' }}
@@ -383,7 +384,7 @@ export default function NewOrderScreen() {
           <View style={{ gap: 10 }}>
             <Button
               title={pdfUsage?.isLocked ? '🔒 PDF გენერირება' : 'PDF გენერირება'}
-              leftIcon="document-text"
+              leftIcon={FileText}
               loading={saving}
               disabled={!canAdvance}
               onPress={saveAndGeneratePdf}

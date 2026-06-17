@@ -2,7 +2,7 @@ import { memo, useCallback, useMemo, useRef, useState } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { A11yText as Text } from '../components/primitives/A11yText';
 import { Stack, useRouter } from 'expo-router';
-import { Trash2, FileText, ChevronRight } from 'lucide-react-native';
+import { Trash2, FileText, ChevronRight, PlayCircle } from 'lucide-react-native';
 import Swipeable, { type SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { Card, Screen } from '../components/ui';
 import { Skeleton } from '../components/Skeleton';
@@ -250,7 +250,7 @@ export default function HistoryScreen() {
                 subtitle={t('history.emptyHint')}
                 action={{
                   label: t('history.startInspection'),
-                  icon: 'play-circle-outline',
+                  icon: PlayCircle,
                   onPress: () => router.push('/(tabs)/home'),
                 }}
               />
