@@ -7,11 +7,11 @@ import {
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { Image } from 'expo-image';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { IdentificationGrid } from '../../../components/inspection-parts/IdentificationGrid';
-import { InspectionShell, ChecklistStep, ConclusionStep } from '../../../components/inspection-steps';
+import { InspectionShell, InspectionShellSkeleton, ChecklistStep, ConclusionStep } from '../../../components/inspection-steps';
 import type { VerdictOption, ChecklistResult } from '../../../components/inspection-steps';
 import { InspectionResultView } from '../../../components/InspectionResultView';
 import { useTheme, type Theme } from '../../../lib/theme';
@@ -274,10 +274,12 @@ export default function GeneralEquipmentScreen() {
 
   if (loading || !inspection) {
     return (
-      <View style={[styles.root, styles.centred]}>
-        <Stack.Screen options={{ headerShown: true, title: 'შემოწმება' }} />
-        <Text style={{ color: theme.colors.inkSoft }}>იტვირთება…</Text>
-      </View>
+      <InspectionShellSkeleton
+        title="ტექ. აღჭ."
+        projectName={projectName ?? ''}
+        totalSteps={TOTAL_STEPS - 1}
+        onClose={() => router.back()}
+      />
     );
   }
 
@@ -501,7 +503,6 @@ const SummaryThumb = memo(function SummaryThumb({
 function getstyles(theme: Theme) {
   return StyleSheet.create({
     root:    { flex: 1, backgroundColor: theme.colors.background },
-    centred: { alignItems: 'center', justifyContent: 'center' },
 
     fieldLabel: { fontSize: 12, fontWeight: '600', color: theme.colors.inkSoft, marginBottom: 6 },
 

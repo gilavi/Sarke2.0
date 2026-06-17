@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 12,
-    gap: 10,
+    gap: 12,
   },
   footerWrap: {
     paddingHorizontal: 20,

@@ -4,6 +4,41 @@
 
 ---
 
+## 2026-06-17 — Equipment flow loading state: flow skeleton, not a generic loader
+
+Entering an equipment inspection (which blocks ~2–3s on the initial fetch in [`useInspectionFlow`](../lib/inspection/useInspectionFlow.ts)) used to flash a native iOS header + centered "იტვირთება…" text on an off-white screen, then swap to the real [`InspectionShell`](../components/inspection-steps/InspectionShell.tsx) chrome once data landed — header style and background both changed, reading as a generic loader rather than the flow.
+
+- **New** [`InspectionShellSkeleton`](../components/inspection-steps/InspectionShellSkeleton.tsx) — the loading twin of `InspectionShell`. Reuses the **real `FlowHeader`** (same `card` background, same back/close + progress strip) over a form-shaped body skeleton + footer-button placeholder, built on the existing [`Skeleton`](../components/Skeleton.tsx) primitive. Only the body morphs skeleton → content; the header no longer flashes or shifts.
+- **All 9 equipment flows** (bobcat, excavator, cargo-platform, general-equipment, forklift, fall-protection, lifting-accessories, mobile-ladder, safety-net) swapped their `if (loading || !inspection)` gate from the centered-text view to `<InspectionShellSkeleton title=… totalSteps=… onClose={() => router.back()} />`. The orphaned native `Stack.Screen` header, `styles.centred`, and `Stack` imports were removed.
+- Non-equipment flows already used flow-shaped skeletons (incidents → `SkeletonListCard`, briefings/reports → `SkeletonPreview`, harness → `SkeletonWizard`) and were left unchanged.
+
+---
+
+## 2026-06-17 — ინციდენტი / რეპორტი: header + footer parity with შემოწმება
+
+Cheap consistency fixes carried over from the briefing rework to [`incidents/new.tsx`](../app/incidents/new.tsx) and [`reports/new.tsx`](../app/reports/new.tsx):
+
+- **`card` background** (was `theme.colors.background`) + `surfaceColor={theme.colors.surface}` on `FlowHeader`.
+- **X close button** added (`leading="back" trailing="close"`, `onClose` → `router.back()`) — both flows were missing it.
+- **Exit confirmation** — incidents now passes `confirmExit={isFormDirty}` (was `step === 1 && isFormDirty`, so steps 2–4 exited with no `გასვლა` modal). The X-close is the confirmed-exit affordance; the back arrow still navigates steps.
+- **Footer** — dropped the top border / `surface` fill so it matches the inspection footer (just padding).
+- **Incident type selector → hybrid** — the type cards (Step 1) and the Step-4 summary chip are now monochrome for selection chrome (ink fill + `inverse.ink` content when selected, like `StatusChip`) while severity stays color-coded via a small dot (`getTypeBadge[...].border`: amber/orange/red/purple). Severity color is meaningful (escalation scale), so it's preserved as a secondary cue rather than flattened. The redundant short-label colored pill (`INCIDENT_TYPE_LABEL`) was dropped — the full label already states the type.
+
+---
+
+## 2026-06-17 — ინსტრუქტაჟი flow: aligned with შემოწმება / ქამრები
+
+Reworked the briefing (ინსტრუქტაჟი) flow so it reads as one coherent flow that matches the inspection (შემოწმება) and harness (ქამრები) flows. Code-only briefing changes — no shared-flow behaviour changed except an additive [`ChipNavStrip`](../components/inspection-parts/ChipNavStrip.tsx) option.
+
+- **3-step wizard** — split into `თემები` (date/time + topics) → `მონაწილეები` (participants) → `ხელმოწერა` (signing). All three screens pass `step` + `totalSteps={3}` to [`FlowHeader`](../components/FlowHeader.tsx) and use the **standard plain progress bar + `N/3` count** (same as every other flow — no bespoke segmented/labelled stepper). [`new.tsx`](../app/briefings/new.tsx) drives steps 1–2 from internal state; [`sign.tsx`](../app/briefings/[id]/sign.tsx) is step 3.
+- **Shell parity** — `card` background, `leading="back" trailing="close"` (the X was previously missing), `surfaceColor={theme.colors.surface}`, and the canonical [`გასვლა` bottom-sheet](../components/wizard/ExitModal.tsx) via `confirmExit` (the signing screen previously used a native `Alert.alert` system dialog). Footer matches the inspection footer (no top border, just padding).
+- **Monochrome selectors (low-contrast)** — topic rows, participant chips, count badge and the "დამატება" button moved off green/orange. Selected state is intentionally **low-contrast**: a `subtleSurface` (beige) fill + a strong `ink` border + an `ink` check — not a solid ink fill (too heavy for full-width rows).
+- **Signing = secondary tab navigation** — the hand-rolled status pill + roster bottom sheet are gone; the signing screen keeps the `FlowHeader` and renders a [`ChipNavStrip`](../components/inspection-parts/ChipNavStrip.tsx) roster (one chip per participant + a trailing `ინსპექტორი` chip) for jump-to navigation, exactly like the harness flow. The phase is now driven by where `currentIdx` points, so you can jump back to re-sign any worker.
+- **`ChipNavStrip` gained `dotMode`** — new opt-in `dotMode?: 'color' | 'mono' | 'check'` (default `'color'` = unchanged). Briefings use `'check'` (✓ for signed, monochrome dots otherwise) to avoid green; the harness flow keeps the default and is byte-for-byte unchanged. Added a `'skipped'` `ChipNavState`.
+- **New module** [`components/briefings/`](../components/briefings/AGENTS.md) — `TopicSelector`, `ParticipantsStep`, `SignatureStage` extracted from the (oversized) route files.
+
+---
+
 ## 2026-06-17 — Global design refresh: white background, monochrome nav, pill buttons
 
 Unified the core visual language across the app.

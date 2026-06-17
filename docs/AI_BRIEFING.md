@@ -170,7 +170,8 @@ screen where project selection is the first full-screen step; it creates the row
 lazily once a project is chosen (via `lib/inspection/registry.ts`), then
 `router.replace`s into the real flow. Multi-item flows (fall-protection devices,
 harnesses) share `components/inspection-parts/ChipNavStrip` for jump-navigation
-between sub-items.
+between sub-items. The briefing (ინსტრუქტაჟი) signing screen reuses the same strip
+as a per-participant signing roster (`dotMode="check"` for monochrome status).
 
 ---
 

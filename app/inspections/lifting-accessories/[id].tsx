@@ -1,11 +1,12 @@
 ﻿import { useCallback, useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { InspectionResultView } from '../../../components/InspectionResultView';
 import { InspectionShell } from '../../../components/inspection-steps/InspectionShell';
+import { InspectionShellSkeleton } from '../../../components/inspection-steps/InspectionShellSkeleton';
 import {
   ChecklistSection,
   DynamicTable,
@@ -303,10 +304,12 @@ export default function LiftingAccessoriesInspectionScreen() {
 
   if (loading || !inspection) {
     return (
-      <View style={[styles.root, styles.centred]}>
-        <Stack.Screen options={{ headerShown: true, title: 'სლინგის შემოწმება' }} />
-        <Text style={{ color: theme.colors.inkSoft }}>იტვირთება…</Text>
-      </View>
+      <InspectionShellSkeleton
+        title="სლინგ. / ჩამჭ. შემოწ."
+        projectName={projectName ?? ''}
+        totalSteps={TOTAL_STEPS}
+        onClose={() => router.back()}
+      />
     );
   }
 
@@ -488,7 +491,6 @@ export default function LiftingAccessoriesInspectionScreen() {
 function getstyles(theme: Theme) {
   return StyleSheet.create({
     root:    { flex: 1, backgroundColor: theme.colors.background },
-    centred: { alignItems: 'center', justifyContent: 'center' },
     savingHint: {
       textAlign: 'center', fontSize: 11,
       color: theme.colors.inkFaint, paddingVertical: 2,

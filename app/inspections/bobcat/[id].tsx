@@ -6,13 +6,13 @@ import {
 } from 'react-native';
 
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
 import { PlateInput, type PlateInputHandle } from '../../../components/inputs/PlateInput';
 import { SerialKeypad } from '../../../components/inputs/SerialKeypad';
-import { InspectionShell, ChecklistStep, ConclusionStep } from '../../../components/inspection-steps';
+import { InspectionShell, InspectionShellSkeleton, ChecklistStep, ConclusionStep } from '../../../components/inspection-steps';
 import type { VerdictOption } from '../../../components/inspection-steps';
 import { InspectionResultView } from '../../../components/InspectionResultView';
 import { useTheme, type Theme } from '../../../lib/theme';
@@ -317,10 +317,12 @@ export default function BobcatInspectionScreen() {
 
   if (loading || !inspection) {
     return (
-      <View style={[styles.root, styles.centred]}>
-        <Stack.Screen options={{ headerShown: true, title: 'შემოწმება' }} />
-        <Text style={{ color: theme.colors.inkSoft }}>იტვირთება…</Text>
-      </View>
+      <InspectionShellSkeleton
+        title={screenTitle}
+        projectName={projectName ?? ''}
+        totalSteps={TOTAL_STEPS - 1}
+        onClose={() => router.back()}
+      />
     );
   }
 
@@ -476,7 +478,6 @@ export default function BobcatInspectionScreen() {
 function getstyles(theme: Theme) {
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: theme.colors.background },
-    centred: { alignItems: 'center', justifyContent: 'center' },
     fieldLabel: { fontSize: 12, fontWeight: '600', color: theme.colors.inkSoft },
   });
 }

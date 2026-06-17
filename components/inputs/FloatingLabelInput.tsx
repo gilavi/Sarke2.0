@@ -241,7 +241,7 @@ FloatingLabelInput.displayName = 'FloatingLabelInput';
 
 const styles = StyleSheet.create({
   wrapper: {
-    marginBottom: 16,
+    marginBottom: 0,
   },
   container: {
     position: 'relative',

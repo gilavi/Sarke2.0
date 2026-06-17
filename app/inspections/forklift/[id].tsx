@@ -6,11 +6,12 @@ import {
 } from 'react-native';
 
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { InspectionResultView } from '../../../components/InspectionResultView';
 import { InspectionShell } from '../../../components/inspection-steps/InspectionShell';
+import { InspectionShellSkeleton } from '../../../components/inspection-steps/InspectionShellSkeleton';
 import { useTheme, type Theme } from '../../../lib/theme';
 import { useToast } from '../../../lib/toast';
 import { forkliftApi } from '../../../lib/forkliftService';
@@ -319,10 +320,12 @@ export default function ForkliftInspectionScreen() {
 
   if (loading || !inspection) {
     return (
-      <View style={[styles.root, styles.centred]}>
-        <Stack.Screen options={{ headerShown: true, title: 'შემოწმება' }} />
-        <Text style={{ color: theme.colors.inkSoft }}>იტვირთება…</Text>
-      </View>
+      <InspectionShellSkeleton
+        title="ჩანგლიანი დამტვირთველი"
+        projectName={projectName ?? ''}
+        totalSteps={TOTAL_STEPS}
+        onClose={() => router.back()}
+      />
     );
   }
 
@@ -553,7 +556,6 @@ export default function ForkliftInspectionScreen() {
 function getstyles(theme: Theme) {
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: theme.colors.background },
-    centred: { alignItems: 'center', justifyContent: 'center' },
     savingHint: { fontSize: 11, color: theme.colors.inkFaint, textAlign: 'right', paddingHorizontal: 24, paddingTop: 4 },
     scrollContent: { flexGrow: 1, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24, gap: 12 },
     footer: {

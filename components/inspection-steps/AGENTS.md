@@ -15,6 +15,15 @@ renamed in Phase 1 to clarify its role vs `inspection-parts/`.
   finish-button text), `blockNext` (disable the non-last button while
   `canGoNext` is false — no skip), `showPdfIcon`/`generatingPdf`/`onPdf`
   (PDF icon shown beside the close ✕), `banner` (e.g. PdfLockedBanner).
+- `InspectionShellSkeleton` — the **canonical loading state** for every
+  equipment route. Renders the **real `FlowHeader`** (same `card` bg, same
+  back/close + progress strip as `InspectionShell`) over a form-shaped body
+  skeleton + footer-button placeholder, so only the body morphs skeleton →
+  content. Each route renders it from its `if (loading || !inspection)` gate,
+  passing the same `title` it gives `InspectionShell` (+ `totalSteps`,
+  `onClose={() => router.back()}`). Do NOT fall back to a native
+  `<Stack.Screen headerShown>` + centered "იტვირთება…" text — that swaps the
+  header chrome and background mid-load and reads as a generic loader.
 - `ProjectPickerStep` — initial step where the user picks the
   project + project item the inspection is attached to.
 - `ChecklistStep` — generic "list of checks" step. Renders a
@@ -26,7 +35,7 @@ renamed in Phase 1 to clarify its role vs `inspection-parts/`.
   text + signatures.
 
 ## Internal files
-- `InspectionShell.tsx`, `ProjectPickerStep.tsx`
+- `InspectionShell.tsx`, `InspectionShellSkeleton.tsx`, `ProjectPickerStep.tsx`
 - `ChecklistStep.tsx` — legend + scroll container + section headers.
 - `ChecklistRow.tsx` — thin adapter over `ChecklistItemRow`: three
   result chips (ვარგისია / ხარვეზი / გამოუსადეგარია), no comment/photo.

@@ -61,7 +61,7 @@ export default function NewReportTitleScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.card }}>
       <Stack.Screen options={{ headerShown: false }} />
 
       <FlowHeader
@@ -69,8 +69,12 @@ export default function NewReportTitleScreen() {
         project={project}
         step={1}
         totalSteps={2}
+        leading="back"
+        trailing="close"
         onBack={() => router.back()}
+        onClose={() => router.back()}
         confirmExit={trimmed.length > 0}
+        surfaceColor={theme.colors.surface}
       />
 
       <KeyboardSafeArea headerHeight={44} contentStyle={{ padding: 16 }}>
@@ -85,7 +89,7 @@ export default function NewReportTitleScreen() {
         />
       </KeyboardSafeArea>
 
-      <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: insets.bottom + 8, borderTopWidth: 1, borderTopColor: theme.colors.hairline }}>
+      <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 16 + insets.bottom }}>
         <Button
           title="შემდეგი →"
           onPress={onNext}

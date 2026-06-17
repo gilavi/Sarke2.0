@@ -40,7 +40,7 @@ import {
 import { friendlyError } from '../../lib/errorMap';
 import { formatShortDateTime } from '../../lib/formatDate';
 import type { IncidentType, Project } from '../../types/models';
-import { INCIDENT_TYPE_FULL_LABEL, INCIDENT_TYPE_LABEL } from '../../types/models';
+import { INCIDENT_TYPE_FULL_LABEL } from '../../types/models';
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
@@ -419,7 +419,7 @@ export default function NewIncident() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.card }}>
       <Stack.Screen options={{ headerShown: false }} />
 
       <FlowHeader
@@ -427,8 +427,12 @@ export default function NewIncident() {
         project={project}
         step={step}
         totalSteps={4}
+        leading="back"
+        trailing="close"
         onBack={goBack}
-        confirmExit={step === 1 && isFormDirty}
+        onClose={() => router.back()}
+        confirmExit={isFormDirty}
+        surfaceColor={theme.colors.surface}
       />
 
       <KeyboardSafeArea headerHeight={44} contentStyle={{ padding: 16 }}>
@@ -530,29 +534,21 @@ function Step1({
             style={[
               s.typeCard,
               selected && {
-                borderColor: badge.border,
-                backgroundColor: badge.bg,
+                borderColor: theme.colors.ink,
+                backgroundColor: theme.colors.subtleSurface,
               },
             ]}
           >
-            <View
-              style={[
-                s.typeCardBadge,
-                { backgroundColor: badge.bg, borderColor: badge.border },
-              ]}
-            >
-              <Text style={[s.typeCardBadgeText, { color: badge.text }]}>
-                {INCIDENT_TYPE_LABEL[t]}
-              </Text>
-            </View>
-            <Text style={[s.typeCardLabel, selected && { color: badge.text, fontWeight: '700' }]}>
+            {/* Severity stays color-coded via a small dot; selection chrome is monochrome + low-contrast. */}
+            <View style={[s.typeCardDot, { backgroundColor: badge.border }]} />
+            <Text style={[s.typeCardLabel, selected && { color: theme.colors.ink, fontWeight: '700' }]}>
               {INCIDENT_TYPE_FULL_LABEL[t]}
             </Text>
             {selected && (
               <Ionicons
                 name="checkmark-circle"
                 size={22}
-                color={badge.border}
+                color={theme.colors.ink}
                 style={{ marginLeft: 'auto' }}
               />
             )}
@@ -770,13 +766,9 @@ function Step4({
       {/* Summary card */}
       <View style={s.summaryCard}>
         {form.type && badge && (
-          <View
-            style={[
-              s.summaryBadge,
-              { backgroundColor: badge.bg, borderColor: badge.border },
-            ]}
-          >
-            <Text style={[s.summaryBadgeText, { color: badge.text }]}>
+          <View style={s.summaryBadge}>
+            <View style={[s.summaryBadgeDot, { backgroundColor: badge.border }]} />
+            <Text style={s.summaryBadgeText}>
               {INCIDENT_TYPE_FULL_LABEL[form.type]}
             </Text>
           </View>
@@ -901,15 +893,10 @@ function makeStyles(theme: any) {
       borderWidth: 1.5,
       borderColor: theme.colors.border,
     },
-    typeCardBadge: {
-      borderRadius: 6,
-      borderWidth: 1,
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-    },
-    typeCardBadgeText: {
-      fontSize: 11,
-      fontWeight: '700',
+    typeCardDot: {
+      width: 10,
+      height: 10,
+      borderRadius: 5,
     },
     typeCardLabel: {
       flex: 1,
@@ -1036,16 +1023,27 @@ function makeStyles(theme: any) {
       gap: 10,
     },
     summaryBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
       alignSelf: 'flex-start',
       borderRadius: 8,
       borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.subtleSurface,
       paddingHorizontal: 10,
-      paddingVertical: 4,
+      paddingVertical: 6,
       marginBottom: 4,
+    },
+    summaryBadgeDot: {
+      width: 9,
+      height: 9,
+      borderRadius: 4.5,
     },
     summaryBadgeText: {
       fontSize: 12,
       fontWeight: '700',
+      color: theme.colors.ink,
     },
     summaryRow: {
       flexDirection: 'row',
@@ -1113,9 +1111,6 @@ function makeStyles(theme: any) {
 
     // bottom bar
     bottomBar: {
-      backgroundColor: theme.colors.surface,
-      borderTopWidth: 1,
-      borderTopColor: theme.colors.border,
       paddingTop: 12,
       paddingHorizontal: 16,
     },

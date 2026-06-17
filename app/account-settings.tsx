@@ -198,6 +198,7 @@ function getstyles(theme: any) {
     content: {
       paddingHorizontal: theme.space(4),
       paddingVertical: theme.space(4),
+      gap: 12,
     },
     footer: {
       borderTopWidth: 1,
