@@ -7,7 +7,6 @@ import {
 
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
 import { PlateInput, type PlateInputHandle } from '../../../components/inputs/PlateInput';
@@ -150,7 +149,7 @@ export default function BobcatInspectionScreen() {
     loadingTitle: 'შემოწმება',
   });
 
-  // ── Template-derived catalog (local — template bounds must stay in screen) ──
+  // ── Template-derived catalog (local - template bounds must stay in screen) ──
 
   const catalog: BobcatChecklistEntry[] = useMemo(
     () => inspection?.templateId === LARGE_LOADER_TEMPLATE_ID ? LARGE_LOADER_ITEMS : BOBCAT_ITEMS,
@@ -320,7 +319,15 @@ export default function BobcatInspectionScreen() {
       <InspectionShellSkeleton
         title={screenTitle}
         projectName={projectName ?? ''}
+        step={step - 1}
         totalSteps={TOTAL_STEPS - 1}
+        variant={
+          step === SERIAL_STEP ? 'keypad'
+            : step === CHECKLIST_STEP ? 'checklist'
+            : step === CONCLUSION_STEP ? 'conclusion'
+            : 'form'
+        }
+        fields={1}
         onClose={() => router.back()}
       />
     );
@@ -361,14 +368,10 @@ export default function BobcatInspectionScreen() {
       animate={animateSteps}
       canGoNext={canGoNext}
       isLastStep={step === CONCLUSION_STEP}
-      saving={saving}
       completing={completing}
-      showPdfIcon={step > PROJECT_STEP}
-      generatingPdf={generatingPdf}
       onNext={handleNext}
       onPrev={handlePrev}
       onClose={() => router.back()}
-      onPdf={() => handlePdf()}
     >
           {/* ── Step 1: Equipment model ─────────────────────────────────── */}
           {step === INFO_STEP && (

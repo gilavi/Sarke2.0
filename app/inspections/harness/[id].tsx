@@ -4,21 +4,20 @@ import {
   Alert,
   Pressable,
   StyleSheet,
+  TextInput,
   View,
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
-import { Button, Screen } from '../../../components/ui';
-import { InspectionShell, ConclusionStep } from '../../../components/inspection-steps';
+import { Button } from '../../../components/ui';
+import { InspectionShell, InspectionShellSkeleton, ConclusionStep } from '../../../components/inspection-steps';
 import type { VerdictOption } from '../../../components/inspection-steps';
 import { InspectionResultView } from '../../../components/InspectionResultView';
 import { HarnessListFlow } from '../../../components/HarnessListFlow';
 import { useTheme } from '../../../lib/theme';
-import { SkeletonWizard } from '../../../components/Skeleton';
 import { useSession } from '../../../lib/session';
 import { useToast } from '../../../lib/toast';
 import { useOffline } from '../../../lib/offline';
@@ -102,6 +101,7 @@ export default function HarnessInspectionScreen() {
 
   const [step, setStep] = useState(INFO_STEP);
   const prevStepRef = useRef(INFO_STEP);
+  const harnessNameRef = useRef<TextInput>(null);
   const [animateSteps, setAnimateSteps] = useState(false);
 
   const [harnessRowCount, setHarnessRowCount] = useState(5);
@@ -219,6 +219,13 @@ export default function HarnessInspectionScreen() {
     if (!loading) setAnimateSteps(true);
   }, [loading]);
 
+  // Auto-focus harness name input when landing on INFO_STEP
+  useEffect(() => {
+    if (step !== INFO_STEP || loading) return;
+    const t = setTimeout(() => harnessNameRef.current?.focus(), 300);
+    return () => clearTimeout(t);
+  }, [step, loading]);
+
   // ── Persist mid-session state ──────────────────────────────────────────────
   useEffect(() => {
     if (!id || loading) return;
@@ -332,7 +339,7 @@ export default function HarnessInspectionScreen() {
           address: null,
         });
         setPhotos(prev => ({ ...prev, [answerId]: [...(prev[answerId] ?? []), optimistic] }));
-        toast.success('ფოტო შენახულია — აიტვირთება ქსელის დაბრუნებისას');
+        toast.success('ფოტო შენახულია - აიტვირთება ქსელის დაბრუნებისას');
         return;
       }
       await storageApi.uploadFromUri(STORAGE_BUCKETS.answerPhotos, path, uri, 'image/jpeg', 'inspection');
@@ -469,10 +476,19 @@ export default function HarnessInspectionScreen() {
   // ── Loading ────────────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <Screen edgeToEdge edges={['top']} style={{ backgroundColor: theme.colors.background }}>
-        <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
-        <SkeletonWizard />
-      </Screen>
+      <InspectionShellSkeleton
+        title="დამცავი ქამრები"
+        projectName={project?.company_name || project?.name || ''}
+        step={step}
+        totalSteps={TOTAL_STEPS}
+        variant={
+          step === CONCLUSION_STEP ? 'conclusion'
+            : step === HARNESS_STEP ? 'checklist'
+            : 'form'
+        }
+        fields={1}
+        onClose={() => router.back()}
+      />
     );
   }
 
@@ -566,6 +582,7 @@ export default function HarnessInspectionScreen() {
           bottomOffset={120}
         >
           <FloatingLabelInput
+            ref={harnessNameRef}
             label="ღვედის სახელი / N *"
             value={harnessName}
             onChangeText={setHarnessName}

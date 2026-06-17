@@ -7,7 +7,7 @@ import {
 
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Lightbulb } from 'lucide-react-native';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { InspectionResultView } from '../../../components/InspectionResultView';
 import { InspectionShell } from '../../../components/inspection-steps/InspectionShell';
@@ -323,7 +323,14 @@ export default function ForkliftInspectionScreen() {
       <InspectionShellSkeleton
         title="ჩანგლიანი დამტვირთველი"
         projectName={projectName ?? ''}
+        step={step}
         totalSteps={TOTAL_STEPS}
+        variant={
+          step === CHECKLIST_STEP ? 'checklist'
+            : step === CONCLUSION_STEP ? 'conclusion'
+            : 'form'
+        }
+        fields={3}
         onClose={() => router.back()}
       />
     );
@@ -364,15 +371,11 @@ export default function ForkliftInspectionScreen() {
         animate={animateSteps}
         canGoNext={canGoNext}
         isLastStep={step === CONCLUSION_STEP}
-        saving={saving}
         completing={completing}
-        showPdfIcon={step > 0}
-        generatingPdf={generatingPdf}
         banner={pdfLocked ? <PdfLockedBanner onDetails={() => setLimitNoticeVisible(true)} /> : undefined}
         onNext={handleNext}
         onPrev={handlePrev}
         onClose={() => router.back()}
-        onPdf={() => void handlePdf()}
       >
 
           {/* ── Step 0: Identification ──────────────────────────────────── */}
@@ -426,7 +429,7 @@ export default function ForkliftInspectionScreen() {
               showsVerticalScrollIndicator={false}
               bottomOffset={120}
             >
-              {/* Component diagram — static info card */}
+              {/* Component diagram - static info card */}
               <View style={styles.compCard}>
                 <Text style={styles.compCardTitle}>კომპონენტები (A–K)</Text>
                 <View style={styles.compGrid}>
@@ -483,9 +486,9 @@ export default function ForkliftInspectionScreen() {
                   return (
                     <View key={cat.label} style={styles.sumRow}>
                       <Text style={[styles.sumCell, styles.sumCatCell]}>{cat.label}</Text>
-                      <Text style={[styles.sumCountCell, c.good > 0 && styles.cntGood]}>{c.good > 0 ? c.good : '—'}</Text>
-                      <Text style={[styles.sumCountCell, c.deficient > 0 && styles.cntDef]}>{c.deficient > 0 ? c.deficient : '—'}</Text>
-                      <Text style={[styles.sumCountCell, c.unusable > 0 && styles.cntBad]}>{c.unusable > 0 ? c.unusable : '—'}</Text>
+                      <Text style={[styles.sumCountCell, c.good > 0 && styles.cntGood]}>{c.good > 0 ? c.good : '-'}</Text>
+                      <Text style={[styles.sumCountCell, c.deficient > 0 && styles.cntDef]}>{c.deficient > 0 ? c.deficient : '-'}</Text>
+                      <Text style={[styles.sumCountCell, c.unusable > 0 && styles.cntBad]}>{c.unusable > 0 ? c.unusable : '-'}</Text>
                     </View>
                   );
                 })}
@@ -495,7 +498,7 @@ export default function ForkliftInspectionScreen() {
               <Text style={styles.sectionLabel}>დასკვნა *</Text>
               {verdictSuggestion && verdictSuggestion !== inspection.verdict && (
                 <View style={styles.suggestionBanner}>
-                  <Ionicons name="bulb-outline" size={14} color={theme.colors.warn} />
+                  <Lightbulb size={14} color={theme.colors.warn} strokeWidth={1.5} />
                   <Text style={styles.suggestionText}>
                     შემოწმების შედეგები: «{FORKLIFT_VERDICT_LABEL[verdictSuggestion]}»
                   </Text>

@@ -139,9 +139,11 @@ Shared step-flow chrome lives in [`components/wizard/`](../components/wizard/). 
 
 ## Inspection flow loading state
 
-Every equipment inspection route blocks on an initial data fetch (see [`lib/inspection/useInspectionFlow.ts`](../lib/inspection/useInspectionFlow.ts)). During that window render [`InspectionShellSkeleton`](../components/inspection-steps/InspectionShellSkeleton.tsx) from the `if (loading || !inspection)` gate — it reuses the **real `FlowHeader`** (same `card` background, same back/close + progress strip) over a form-shaped body skeleton + footer-button placeholder, so only the body morphs skeleton → content. Pass the same `title` the route hands `InspectionShell`, plus `totalSteps` and `onClose={() => router.back()}`.
+Every inspection flow blocks on an initial data fetch (equipment routes via [`lib/inspection/useInspectionFlow.ts`](../lib/inspection/useInspectionFlow.ts); the generic scaffold wizard + harness load their own). During that window render [`InspectionShellSkeleton`](../components/inspection-steps/InspectionShellSkeleton.tsx) from the `if (loading || !inspection)` gate — it reuses the **real `FlowHeader`** (same `card` background, same back/close **and the live progress bar**) over a body skeleton + footer-button placeholder, so the header and progress strip **never wait on loading**; only the body morphs skeleton → content. Pass the same `title`, `projectName`, **0-based `step`**, `totalSteps` and `stepLabels` the route hands `InspectionShell` so the progress bar lands in its final position with no jump, plus `onClose={() => router.back()}`.
 
-**Don't** fall back to a native `<Stack.Screen headerShown title=… />` + centered "იტვირთება…" `Text` — that was the pattern in all 9 equipment flows; it shows a native iOS header on a `background`-colored screen, then swaps to the `InspectionShell` chrome (`headerShown:false` + `FlowHeader` + `card` bg) once data lands, which reads as a generic loader rather than the flow. Non-equipment flows already use the shared skeletons (`SkeletonListCard` / `SkeletonPreview` / `SkeletonWizard`); the harness step-0 takeover keeps `SkeletonWizard` since it has no `FlowHeader`.
+The body placeholder is chosen by **`variant`** so each step shows a shape matching the content it is about to become — `form` (input bars, with `fields` count), `keypad`, `checklist`, `conclusion`, `table`, or `question` (generic wizard). Map the current `step` → `variant` in the route's loading gate (mirror the route's `step` transform). Variants live in [`StepSkeletons.tsx`](../components/inspection-steps/StepSkeletons.tsx) (`StepBodySkeleton`) and are all built from the shared [`Skeleton`](../components/Skeleton.tsx) atom, so the shimmer colour + animation stay identical across every flow. Omit `totalSteps` to hide the progress bar (the generic wizard does this — its step count isn't known until questions load).
+
+**Don't** fall back to a native `<Stack.Screen headerShown title=… />` + centered "იტვირთება…" `Text` — that was the pattern in all 9 equipment flows; it shows a native iOS header on a `background`-colored screen, then swaps to the `InspectionShell` chrome (`headerShown:false` + `FlowHeader` + `card` bg) once data lands, which reads as a generic loader rather than the flow. **Don't** reintroduce a single generic body skeleton (the removed `SkeletonWizard`) for every step — pick the matching `variant`. Other non-flow screens still use the shared list/preview skeletons (`SkeletonListCard` / `SkeletonPreview`).
 
 ## Flow-entry project picker
 
@@ -184,6 +186,24 @@ Pass `PdfSecurityOptions` as the 5th argument to `generateAndSharePdf` (from `li
 | `lockPdf(uri, opts)` | Stamps pdf-lib metadata (title, author, subject, producer, dates) into the PDF at `uri` in place |
 | `hashPdf(uri)` | SHA-256 digest of the PDF Base64 — deterministic for the same bytes |
 | `verifyPdf(uri, storedHash)` | Compares current hash to a previously stored value; returns `false` if the file was modified |
+
+## Illustration palette (monochrome SVG art)
+
+One file: [lib/illustrationPalette.ts](../lib/illustrationPalette.ts). Export: `useIllustrationPalette()` → `IllustrationPalette`.
+
+Hubble's hand-drawn SVG illustrations are strictly **monochrome**: shades of the primary (brand orange `#FF6D2E`), the secondary (electric/hi-vis yellow), and black / warm neutrals. **No green, no blue, no amber** — those were pre-rebrand leftovers that read as "wrong" against the current identity (the green hard hat, green scaffold avatars, green blueprint were all this bug).
+
+Any illustration component (`QuestionAvatar`, `EmptyState`, `ErrorScreen`, `SkeletonMap`, `InspectionTypeAvatar`, …) must source its colors from this hook (or the named tokens below) instead of hardcoding hex values, so the system stays cohesive and can't drift back to off-brand colors.
+
+| Token | Meaning |
+|---|---|
+| `line` / `lineDeep` / `lineDeepest` | Primary orange stroke + its darker shades (faces, recesses) |
+| `fill` / `fillStrong` | Soft primary washes (tile backgrounds, large fills) |
+| `pop` / `popSoft` | Secondary electric-yellow accent — sparingly, for stamps/sparks/stars/flash on a darker backing |
+| `ink` | Black (adapts to theme) |
+| `hardware` / `material` / `materialLine` / `metal` / `metalDark` / `ground` | Fixed neutral grays for steel, decks, base bars |
+
+**Don't** reintroduce per-category color coding (the old `InspectionTypeAvatar` pastel rainbow, `EmptyState`'s blue/amber category tints). Differentiate with shape/emoji, not off-brand hues. Semantic status colors (`semantic.success` green for "completed", verdict greens/reds) are a **separate** system in [lib/statusColors.ts](../lib/statusColors.ts) and are intentionally not monochrome.
 
 ## PDF usage gate
 

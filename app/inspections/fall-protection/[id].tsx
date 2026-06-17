@@ -2,7 +2,7 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Lightbulb } from 'lucide-react-native';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
 import { DateTimeField } from '../../../components/DateTimeField';
@@ -360,7 +360,10 @@ export default function FallProtectionInspectionScreen() {
       <InspectionShellSkeleton
         title="დამჭერი მოწყობილობა"
         projectName={projectName ?? ''}
+        step={step}
         totalSteps={TOTAL_STEPS}
+        variant={step === DEVICES_STEP ? 'checklist' : 'form'}
+        fields={4}
         onClose={() => router.back()}
       />
     );
@@ -411,16 +414,12 @@ export default function FallProtectionInspectionScreen() {
         canGoNext={canGoNext}
         isLastStep={step === DEVICES_STEP}
         blockNext
-        saving={saving}
         completing={completing}
-        showPdfIcon={step > 0}
-        generatingPdf={generatingPdf}
         finishLabel="შემოწმება დასრულდა"
         banner={pdfLocked ? <PdfLockedBanner onDetails={() => setLimitNoticeVisible(true)} /> : undefined}
         onNext={handleNext}
         onPrev={handlePrev}
         onClose={() => router.back()}
-        onPdf={() => void handlePdf()}
       >
 
           {/* ── Step 0: Equipment Registry ──────────────────────────────────── */}
@@ -508,7 +507,7 @@ export default function FallProtectionInspectionScreen() {
                   key: d.id,
                   label: d.id,
                   state: tabStates[idx] ?? 'pending',
-                  a11yHint: `${d.id} — ${d.type || 'მოწყობილობა'}`,
+                  a11yHint: `${d.id} - ${d.type || 'მოწყობილობა'}`,
                 }))}
                 activeIndex={safeDeviceIdx}
                 onSelect={setActiveDeviceIdx}
@@ -615,7 +614,7 @@ export default function FallProtectionInspectionScreen() {
                       style={styles.suggestBanner}
                       onPress={() => handleVerdictChange(safeDeviceIdx, suggestedVerdict)}
                     >
-                      <Ionicons name="bulb-outline" size={16} color={theme.colors.warn} />
+                      <Lightbulb size={16} color={theme.colors.warn} strokeWidth={1.5} />
                       <Text style={styles.suggestText}>
                         შემოთავაზება: {FP_VERDICT_LABELS[suggestedVerdict]}
                       </Text>

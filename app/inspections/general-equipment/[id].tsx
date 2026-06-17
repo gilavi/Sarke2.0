@@ -8,11 +8,13 @@ import {
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { CirclePlus, Info, Camera, CircleX } from 'lucide-react-native';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { IdentificationGrid } from '../../../components/inspection-parts/IdentificationGrid';
-import { InspectionShell, InspectionShellSkeleton, ChecklistStep, ConclusionStep } from '../../../components/inspection-steps';
-import type { VerdictOption, ChecklistResult } from '../../../components/inspection-steps';
+import { InspectionShell, InspectionShellSkeleton, ConclusionStep } from '../../../components/inspection-steps';
+import type { VerdictOption } from '../../../components/inspection-steps';
+import { ChecklistItemRow, ChecklistLegend } from '../../../components/inspection-parts';
+import type { ChecklistRowOption } from '../../../components/inspection-parts';
 import { InspectionResultView } from '../../../components/InspectionResultView';
 import { useTheme, type Theme } from '../../../lib/theme';
 import { useToast } from '../../../lib/toast';
@@ -45,6 +47,18 @@ const CHECKLIST_STEP  = 2;
 const CONCLUSION_STEP = 3;
 const TOTAL_STEPS     = 4;
 
+const GE_OPTIONS: ChecklistRowOption[] = [
+  { value: 'good',      icon: 'checkmark',       a11yLabel: 'ვარგისია' },
+  { value: 'deficient', icon: 'warning-outline', a11yLabel: 'ხარვეზი' },
+  { value: 'unusable',  icon: 'close',            a11yLabel: 'გამოუსადეგარია' },
+];
+
+const GE_LEGEND = [
+  { icon: 'checkmark' as const,       label: 'ვარგისია' },
+  { icon: 'warning-outline' as const, label: 'ხარვეზი' },
+  { icon: 'close' as const,           label: 'გამოუსადეგარია' },
+];
+
 export default function GeneralEquipmentScreen() {
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
@@ -65,7 +79,7 @@ export default function GeneralEquipmentScreen() {
   const {
     inspection, setInspection, inspectionRef,
     projectName,
-    saving, loading, completing, celebrating, generatingPdf,
+    loading, completing, celebrating, generatingPdf,
     previewHtml, previewBusy,
     step, setStep, direction, animateSteps,
     limitNoticeVisible, setLimitNoticeVisible, pdfLocked,
@@ -119,7 +133,7 @@ export default function GeneralEquipmentScreen() {
         }
       }
       if (project) {
-        // Object name + address are sourced from the project — no manual entry.
+        // Object name + address are sourced from the project - no manual entry.
         if (!next.objectName?.trim()) {
           const v = project.company_name || project.name;
           if (v) {
@@ -173,7 +187,17 @@ export default function GeneralEquipmentScreen() {
     });
   }, [scheduleSave, setInspection]);
 
-  // ── Photo handling — summary ──────────────────────────────────────────────
+  const updateEquipmentName = useCallback((itemId: string, name: string) => {
+    setInspection(prev => {
+      if (!prev) return prev;
+      const equipment = prev.equipment.map(r => r.id === itemId ? { ...r, name } : r);
+      const next = { ...prev, equipment };
+      scheduleSave(next);
+      return next;
+    });
+  }, [scheduleSave, setInspection]);
+
+  // ── Photo handling - summary ──────────────────────────────────────────────
 
   const handleAddSummaryPhoto = useCallback(async () => {
     const results = await pickPhotosWithAnnotation();
@@ -239,34 +263,15 @@ export default function GeneralEquipmentScreen() {
     }
   }, [step, exit, setStep]);
 
-  // ── Checklist data ────────────────────────────────────────────────────────
-
-  const checklistItems = useMemo(() =>
-    (inspection?.equipment ?? []).map(item => ({
-      id: item.id,
-      description: [item.name, item.model, item.serialNumber].filter(Boolean).join(' · ') || '—',
-    })),
-  [inspection?.equipment]);
-
-  const checklistStates = useMemo(() =>
-    (inspection?.equipment ?? []).map(item => ({
-      id: item.id,
-      result: (item.condition === 'needs_service' ? 'deficient' : item.condition) as ChecklistResult,
-      comment: item.note,
-      photo_paths: item.photo_paths,
-    })),
-  [inspection?.equipment]);
-
   const verdictOptions = useMemo<VerdictOption[]>(() => [], []);
 
-  const handleChecklistStateChange = useCallback((itemId: string, patch: { result?: ChecklistResult }) => {
-    if (patch.result === undefined) return;
+  const handleConditionChange = useCallback((itemId: string, result: string | null) => {
     const conditionMap: Record<string, EquipmentItem['condition']> = {
       good: 'good',
       deficient: 'needs_service',
       unusable: 'unusable',
     };
-    const newCondition = patch.result !== null ? (conditionMap[patch.result] ?? null) : null;
+    const newCondition = result !== null ? (conditionMap[result] ?? null) : null;
     updateCondition(itemId, newCondition);
   }, [updateCondition]);
 
@@ -277,7 +282,14 @@ export default function GeneralEquipmentScreen() {
       <InspectionShellSkeleton
         title="ტექ. აღჭ."
         projectName={projectName ?? ''}
+        step={step - 1}
         totalSteps={TOTAL_STEPS - 1}
+        variant={
+          step === CHECKLIST_STEP ? 'checklist'
+            : step === CONCLUSION_STEP ? 'conclusion'
+            : 'form'
+        }
+        fields={2}
         onClose={() => router.back()}
       />
     );
@@ -324,18 +336,12 @@ export default function GeneralEquipmentScreen() {
         animate={animateSteps}
         canGoNext={canGoNext}
         isLastStep={step === CONCLUSION_STEP}
-        saving={saving}
         completing={completing}
-        showPdfIcon={step > INFO_STEP}
-        generatingPdf={generatingPdf}
         onNext={handleNext}
         onPrev={handlePrev}
         onClose={() => router.back()}
-        onPdf={() => handlePdf()}
       >
         {/* ── Step 1: Inspection details ─────────────────────────────────── */}
-        {/* Object name, date and act № are sourced from the project / auto-
-            generated at creation — only the inspection type is chosen here. */}
         {step === DETAILS_STEP && (
           <KeyboardAwareScrollView
             style={{ flex: 1 }}
@@ -367,33 +373,51 @@ export default function GeneralEquipmentScreen() {
 
         {/* ── Step 2: Equipment list ─────────────────────────────────────── */}
         {step === CHECKLIST_STEP && (
-          <ChecklistStep
-            items={checklistItems}
-            states={checklistStates}
-            onStateChange={handleChecklistStateChange}
-            showSectionHeaders={false}
-            showCommentButton={false}
-            footer={
-              <View style={{ paddingHorizontal: 8, paddingTop: 4 }}>
-                <Pressable
-                  style={styles.addRowBtn}
-                  onPress={addEquipmentRow}
-                  {...a11y('აღჭ. დამატება', '+ აღჭურვილობის სტრიქონის დამატება', 'button')}
-                >
-                  <Ionicons name="add-circle-outline" size={18} color={theme.colors.accent} />
-                  <Text style={styles.addRowText}>+ აღჭურვილობის დამატება</Text>
-                </Pressable>
-                {filledCount === 0 && (
-                  <View style={styles.emptyHint}>
-                    <Ionicons name="information-circle-outline" size={18} color={theme.colors.inkFaint} />
-                    <Text style={styles.emptyHintText}>
-                      შეავსეთ მინიმუმ ერთი აღჭურვილობის სტრიქონი
-                    </Text>
-                  </View>
-                )}
-              </View>
-            }
-          />
+          <KeyboardAwareScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{ flexGrow: 1, paddingTop: 8, paddingBottom: 24, paddingHorizontal: 16, gap: 8 }}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
+            showsVerticalScrollIndicator={false}
+            bottomOffset={120}
+          >
+            <View style={{ paddingBottom: 2 }}>
+              <ChecklistLegend items={GE_LEGEND} />
+            </View>
+            {inspection.equipment.map(item => (
+              <ChecklistItemRow
+                key={item.id}
+                label={item.name || '-'}
+                editableLabel={{
+                  value: item.name,
+                  onChange: name => updateEquipmentName(item.id, name),
+                  placeholder: 'დასახელება...',
+                }}
+                options={GE_OPTIONS}
+                value={item.condition === 'needs_service' ? 'deficient' : item.condition}
+                onChange={v => handleConditionChange(item.id, v)}
+                dense
+              />
+            ))}
+            <View style={{ paddingHorizontal: 8, paddingTop: 4 }}>
+              <Pressable
+                style={styles.addRowBtn}
+                onPress={addEquipmentRow}
+                {...a11y('აღჭ. დამატება', '+ აღჭურვილობის სტრიქონის დამატება', 'button')}
+              >
+                <CirclePlus size={18} color={theme.colors.accent} strokeWidth={1.5} />
+                <Text style={styles.addRowText}>+ აღჭურვილობის დამატება</Text>
+              </Pressable>
+              {filledCount === 0 && (
+                <View style={styles.emptyHint}>
+                  <Info size={18} color={theme.colors.inkFaint} strokeWidth={1.5} />
+                  <Text style={styles.emptyHintText}>
+                    შეავსეთ მინიმუმ ერთი აღჭურვილობის სტრიქონი
+                  </Text>
+                </View>
+              )}
+            </View>
+          </KeyboardAwareScrollView>
         )}
 
         {/* ── Step 3: Conclusion ─────────────────────────────────────────── */}
@@ -463,7 +487,7 @@ function SummaryPhotoStrip({
         onPress={onAdd}
         {...a11y('ფოტოს დამატება', 'ფოტოს გადაღება ან ბიბლიოთეკიდან', 'button')}
       >
-        <Ionicons name="camera-outline" size={20} color={theme.colors.inkSoft} />
+        <Camera size={20} color={theme.colors.inkSoft} strokeWidth={1.5} />
         <Text style={styles.addPhotoLabel}>+ ფოტო</Text>
       </Pressable>
     </ScrollView>
@@ -492,7 +516,7 @@ const SummaryThumb = memo(function SummaryThumb({
     <View style={styles.thumb}>
       <Image source={{ uri }} style={styles.thumbImg} contentFit="cover" transition={200} />
       <Pressable style={styles.thumbDelete} onPress={onDelete} hitSlop={8} {...a11y('ფოტოს წაშლა', undefined, 'button')}>
-        <Ionicons name="close-circle" size={18} color={theme.colors.white} />
+        <CircleX size={18} color={theme.colors.white} strokeWidth={2} />
       </Pressable>
     </View>
   );
@@ -506,19 +530,6 @@ function getstyles(theme: Theme) {
 
     fieldLabel: { fontSize: 12, fontWeight: '600', color: theme.colors.inkSoft, marginBottom: 6 },
 
-    progressPill: {
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-      borderRadius: 12,
-      backgroundColor: theme.colors.subtleSurface,
-      borderWidth: 1,
-      borderColor: theme.colors.hairline,
-    },
-    progressPillText: {
-      fontSize: 11,
-      fontWeight: '600',
-      color: theme.colors.inkSoft,
-    },
     addRowBtn: {
       flexDirection: 'row', alignItems: 'center', gap: 8,
       paddingVertical: 14, paddingHorizontal: 12,

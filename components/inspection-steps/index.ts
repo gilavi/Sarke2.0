@@ -1,5 +1,7 @@
 export { InspectionShell } from './InspectionShell';
 export { InspectionShellSkeleton } from './InspectionShellSkeleton';
+export { StepBodySkeleton } from './StepSkeletons';
+export type { StepSkeletonVariant } from './StepSkeletons';
 export { ChecklistStep } from './ChecklistStep';
 export { ConclusionStep } from './ConclusionStep';
 export { VerdictSelector } from './VerdictSelector';

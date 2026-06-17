@@ -2,7 +2,7 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Lightbulb } from 'lucide-react-native';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { InspectionShell } from '../../../components/inspection-steps/InspectionShell';
 import { InspectionShellSkeleton } from '../../../components/inspection-steps/InspectionShellSkeleton';
@@ -321,7 +321,15 @@ export default function SafetyNetInspectionScreen() {
       <InspectionShellSkeleton
         title="ბადის შემოწმება"
         projectName={projectName ?? ''}
+        step={step - 1}
         totalSteps={TOTAL_STEPS}
+        variant={
+          step === INSPECTION_STEP ? 'checklist'
+            : step === CONCLUSION_STEP ? 'conclusion'
+            : step === DOCS_STEP ? 'table'
+            : 'form'
+        }
+        fields={5}
         onClose={() => router.back()}
       />
     );
@@ -360,15 +368,11 @@ export default function SafetyNetInspectionScreen() {
         animate={animateSteps}
         canGoNext={canGoNext}
         isLastStep={step === DOCS_STEP}
-        saving={saving}
         completing={completing}
-        showPdfIcon
-        generatingPdf={generatingPdf}
         banner={pdfLocked ? <PdfLockedBanner onDetails={() => setLimitNoticeVisible(true)} /> : undefined}
         onNext={handleNext}
         onPrev={handlePrev}
         onClose={() => router.back()}
-        onPdf={() => void handlePdf()}
       >
 
           {/* ── Step 1: Net ID ───────────────────────────────────────────────── */}
@@ -446,7 +450,7 @@ export default function SafetyNetInspectionScreen() {
               />
 
               <Text style={styles.loadInstruction}>
-                180კგ-ის სიმძიმე 1მ სიმაღლიდან — №477 დადგენილება
+                180კგ-ის სიმძიმე 1მ სიმაღლიდან - №477 დადგენილება
               </Text>
 
               <DynamicTable
@@ -508,7 +512,7 @@ export default function SafetyNetInspectionScreen() {
                   style={styles.suggestBanner}
                   onPress={() => update('verdict', suggestedVerdict)}
                 >
-                  <Ionicons name="bulb-outline" size={16} color={theme.colors.warn} />
+                  <Lightbulb size={16} color={theme.colors.warn} strokeWidth={1.5} />
                   <Text style={styles.suggestText}>
                     შემოთავაზება: {SN_VERDICT_LABEL[suggestedVerdict]}
                   </Text>

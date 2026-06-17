@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Lightbulb } from 'lucide-react-native';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
 import { DateTimeField } from '../../../components/DateTimeField';
@@ -329,7 +329,15 @@ export default function CargoPlatformInspectionScreen() {
       <InspectionShellSkeleton
         title="პლატფორმის შემოწმება"
         projectName={projectName ?? ''}
+        step={step - 1}
         totalSteps={TOTAL_STEPS - 1}
+        variant={
+          step === CARGO_STEP ? 'table'
+            : step === CHECKLIST_STEP ? 'checklist'
+            : step === CONCLUSION_STEP ? 'conclusion'
+            : 'form'
+        }
+        fields={5}
         onClose={() => router.back()}
       />
     );
@@ -366,15 +374,11 @@ export default function CargoPlatformInspectionScreen() {
         animate={animateSteps}
         canGoNext={canGoNext}
         isLastStep={step === CONCLUSION_STEP}
-        saving={saving}
         completing={completing}
-        showPdfIcon={step > INFO_STEP}
-        generatingPdf={generatingPdf}
         banner={pdfLocked ? <PdfLockedBanner onDetails={() => setLimitNoticeVisible(true)} /> : undefined}
         onNext={handleNext}
         onPrev={handlePrev}
         onClose={() => router.back()}
-        onPdf={() => void handlePdf()}
       >
 
           {/* ── Step 1: Platform ID ──────────────────────────────────────────── */}
@@ -560,7 +564,7 @@ export default function CargoPlatformInspectionScreen() {
                   style={styles.suggestBanner}
                   onPress={() => update('verdict', suggestedVerdict)}
                 >
-                  <Ionicons name="bulb-outline" size={16} color={theme.colors.warn} />
+                  <Lightbulb size={16} color={theme.colors.warn} strokeWidth={1.5} />
                   <Text style={styles.suggestText}>
                     შემოთავაზება: {CP_VERDICT_LABEL[suggestedVerdict]}
                   </Text>

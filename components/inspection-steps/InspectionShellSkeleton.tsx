@@ -1,20 +1,22 @@
 /**
- * Loading twin of {@link InspectionShell}. Shown while an equipment flow blocks
- * on its initial data fetch (see `lib/inspection/useInspectionFlow.ts`).
+ * Loading twin of {@link InspectionShell}. Shown while a flow blocks on its
+ * initial data fetch (see `lib/inspection/useInspectionFlow.ts`).
  *
  * It mirrors `InspectionShell`'s scaffold exactly — same `card` background, the
- * real `FlowHeader`, and a footer slot — so only the body morphs from skeleton
- * to content. Reusing the real header is the whole point: the previous loading
- * gate showed a native iOS stack header on a different background, then swapped
- * to this chrome once data landed, which read as a generic loader rather than
- * the flow. The body is a form-shaped placeholder because every equipment flow
- * opens on an info/ID form of `FloatingLabelInput` fields.
+ * real `FlowHeader` (back/close + the live progress bar) and a footer slot — so
+ * the header and progress strip NEVER wait on loading; only the body morphs from
+ * skeleton to content. The body is chosen by `variant` so each step shows a
+ * placeholder shaped like the content it is about to become
+ * (see {@link StepBodySkeleton}); pass the same 0-based `step`, `totalSteps`,
+ * `stepLabels` and `projectName` the route hands `InspectionShell` so the
+ * progress bar lands in its final position with no jump when data arrives.
  */
 import { StyleSheet, View } from 'react-native';
 import { Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FlowHeader } from '../FlowHeader';
 import { Skeleton } from '../Skeleton';
+import { StepBodySkeleton, type StepSkeletonVariant } from './StepSkeletons';
 import { useTheme } from '../../lib/theme';
 
 export interface InspectionShellSkeletonProps {
@@ -22,9 +24,15 @@ export interface InspectionShellSkeletonProps {
   title: string;
   /** Project name if already known (usually not yet, at load time). */
   projectName?: string;
-  /** Total wizard steps — matches the `InspectionShell` `totalSteps` prop. */
+  /** 0-based current step — mirrors `InspectionShell`'s `step` prop. */
+  step?: number;
+  /** Total wizard steps. Omit to hide the progress bar (e.g. generic wizard). */
   totalSteps?: number;
-  /** Number of input-box placeholders in the body. */
+  /** Optional segmented-stepper labels, mirrors `InspectionShell`. */
+  stepLabels?: string[];
+  /** Which body placeholder to render. Defaults to `form`. */
+  variant?: StepSkeletonVariant;
+  /** Number of input-box placeholders (only used by the `form` variant). */
   fields?: number;
   onClose?: () => void;
 }
@@ -32,8 +40,11 @@ export interface InspectionShellSkeletonProps {
 export function InspectionShellSkeleton({
   title,
   projectName,
+  step = 0,
   totalSteps,
-  fields = 4,
+  stepLabels,
+  variant = 'form',
+  fields,
   onClose,
 }: InspectionShellSkeletonProps) {
   const { theme } = useTheme();
@@ -47,8 +58,9 @@ export function InspectionShellSkeleton({
       <FlowHeader
         flowTitle={title}
         project={projectName ? { name: projectName } : null}
-        step={1}
-        totalSteps={totalSteps ?? 1}
+        step={totalSteps !== undefined ? step + 1 : undefined}
+        totalSteps={totalSteps}
+        stepLabels={stepLabels}
         leading="back"
         trailing="close"
         onClose={onClose}
@@ -57,10 +69,8 @@ export function InspectionShellSkeleton({
       />
 
       <View style={{ flex: 1 }}>
-        <View style={styles.body}>
-          {Array.from({ length: fields }).map((_, i) => (
-            <Skeleton key={i} width={'100%'} height={56} radius={theme.radius.input} />
-          ))}
+        <View style={{ flex: 1 }}>
+          <StepBodySkeleton variant={variant} fields={fields} />
         </View>
 
         <View style={styles.footer}>
@@ -76,11 +86,6 @@ function getStyles(theme: ReturnType<typeof useTheme>['theme'], bottomInset: num
     root: {
       flex: 1,
       backgroundColor: theme.colors.card,
-    },
-    body: {
-      flex: 1,
-      padding: 16,
-      gap: 16,
     },
     footer: {
       paddingHorizontal: 16,

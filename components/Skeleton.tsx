@@ -7,7 +7,7 @@
 // loop on a pill shape.
 //
 // Layout components below mirror the shape of real screens so the content
-// stays anchored when skeletons swap out — no layout shift.
+// stays anchored when skeletons swap out - no layout shift.
 
 import { ReactNode, memo, useEffect, useRef, useMemo } from 'react';
 import { Animated, Easing, StyleSheet, View, ViewStyle } from 'react-native';
@@ -134,39 +134,6 @@ export const SkeletonPreview = memo(function SkeletonPreview() {
       <Skeleton width={'80%'} height={14} />
       <Skeleton width={'60%'} height={14} />
       <Skeleton width={'90%'} height={14} />
-    </View>
-  );
-});
-
-// Step-form wizard skeleton (question → options) — mirrors QuestionStep.
-export const SkeletonWizard = memo(function SkeletonWizard() {
-  return (
-    <View style={{ padding: 16, gap: 24 }}>
-      {/* Progress bar placeholder — subtle, just fills the top strip */}
-      <Skeleton width={'100%'} height={6} radius={3} />
-      {/* Question title */}
-      <View style={{ gap: 10 }}>
-        <Skeleton width={'85%'} height={20} />
-        <Skeleton width={'55%'} height={20} />
-      </View>
-      {/* Two answer options */}
-      <View style={{ flexDirection: 'row', gap: 12 }}>
-        <Skeleton width={'48%'} height={54} radius={14} />
-        <Skeleton width={'48%'} height={54} radius={14} />
-      </View>
-      {/* Photos row */}
-      <View style={{ gap: 8 }}>
-        <Skeleton width={110} height={12} />
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          <Skeleton width={120} height={120} radius={12} />
-          <Skeleton width={120} height={120} radius={12} />
-        </View>
-      </View>
-      {/* Notes */}
-      <View style={{ gap: 8 }}>
-        <Skeleton width={80} height={10} />
-        <Skeleton width={'100%'} height={100} radius={12} />
-      </View>
     </View>
   );
 });

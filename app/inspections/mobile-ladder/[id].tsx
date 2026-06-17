@@ -2,7 +2,7 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Lightbulb } from 'lucide-react-native';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { DateTimeField } from '../../../components/DateTimeField';
 import { InspectionResultView } from '../../../components/InspectionResultView';
@@ -229,7 +229,14 @@ export default function MobileLadderInspectionScreen() {
       <InspectionShellSkeleton
         title="კიბის შემოწმება"
         projectName={projectName ?? ''}
+        step={step - 1}
         totalSteps={TOTAL_STEPS}
+        variant={
+          step === CHECKLIST_STEP ? 'checklist'
+            : step === CONCLUSION_STEP ? 'conclusion'
+            : 'form'
+        }
+        fields={4}
         onClose={() => router.back()}
       />
     );
@@ -331,15 +338,11 @@ export default function MobileLadderInspectionScreen() {
         animate={animateSteps}
         canGoNext={canGoNext}
         isLastStep={step === CONCLUSION_STEP}
-        saving={saving}
         completing={completing}
-        showPdfIcon
-        generatingPdf={generatingPdf}
         banner={pdfLocked ? <PdfLockedBanner onDetails={() => setLimitNoticeVisible(true)} /> : undefined}
         onNext={handleNext}
         onPrev={handlePrev}
         onClose={() => router.back()}
-        onPdf={() => void handlePdf()}
       >
 
           {/* ── Step 1: Ladder Identification ───────────────────────────────── */}
@@ -388,7 +391,7 @@ export default function MobileLadderInspectionScreen() {
               bottomOffset={120}
             >
               <ChecklistSection
-                title="A — სტრუქტურული მდგომარეობა"
+                title="A - სტრუქტურული მდგომარეობა"
                 items={checklistItemsForSection('A')}
                 onItemChange={handleChecklistChange}
                 onAddPhoto={handleAddItemPhoto}
@@ -396,7 +399,7 @@ export default function MobileLadderInspectionScreen() {
               />
 
               <ChecklistSection
-                title="B — სამობილო სისტემა"
+                title="B - სამობილო სისტემა"
                 items={checklistItemsForSection('B')}
                 onItemChange={handleChecklistChange}
                 onAddPhoto={handleAddItemPhoto}
@@ -420,7 +423,7 @@ export default function MobileLadderInspectionScreen() {
                   style={styles.suggestBanner}
                   onPress={() => update('verdict', suggestedVerdict)}
                 >
-                  <Ionicons name="bulb-outline" size={16} color={theme.colors.warn} />
+                  <Lightbulb size={16} color={theme.colors.warn} strokeWidth={1.5} />
                   <Text style={styles.suggestText}>
                     შემოთავაზება: {ML_VERDICT_LABELS[suggestedVerdict]}
                   </Text>

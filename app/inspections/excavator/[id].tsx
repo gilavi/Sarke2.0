@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Camera, CircleX } from 'lucide-react-native';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
 import { PlateInput, type PlateInputHandle } from '../../../components/inputs/PlateInput';
@@ -428,7 +428,15 @@ export default function ExcavatorInspectionScreen() {
       <InspectionShellSkeleton
         title="ექსკავატორი"
         projectName={projectName ?? ''}
+        step={step - 1}
         totalSteps={TOTAL_STEPS - 1}
+        variant={
+          step === PLATE_STEP ? 'keypad'
+            : step === CHECKLIST_STEP ? 'checklist'
+            : step === CONCLUSION_STEP ? 'conclusion'
+            : 'form'
+        }
+        fields={1}
         onClose={() => router.back()}
       />
     );
@@ -470,14 +478,10 @@ export default function ExcavatorInspectionScreen() {
         animate={animateSteps}
         canGoNext={canGoNext}
         isLastStep={step === CONCLUSION_STEP}
-        saving={saving}
         completing={completing}
-        showPdfIcon={step > INFO_STEP}
-        generatingPdf={generatingPdf}
         onNext={handleNext}
         onPrev={handlePrev}
         onClose={() => router.back()}
-        onPdf={() => handlePdf()}
       >
         {/* ── Step 1: Plate / registration number (custom keypad) ─────── */}
         {step === PLATE_STEP && (
@@ -686,7 +690,7 @@ function SummaryPhotoStrip({
         onPress={onAdd}
         accessible accessibilityLabel="ფოტოს დამატება" accessibilityRole="button"
       >
-        <Ionicons name="camera-outline" size={20} color={theme.colors.inkSoft} />
+        <Camera size={20} color={theme.colors.inkSoft} strokeWidth={1.5} />
         <Text style={styles.addPhotoLabel}>+ ფოტო</Text>
       </Pressable>
     </ScrollView>
@@ -715,7 +719,7 @@ const SummaryThumb = memo(function SummaryThumb({
     <View style={styles.thumb}>
       <Image source={{ uri }} style={styles.thumbImg} resizeMode="cover" />
       <Pressable style={styles.thumbDelete} onPress={onDelete} hitSlop={8} accessible accessibilityLabel="ფოტოს წაშლა" accessibilityRole="button">
-        <Ionicons name="close-circle" size={18} color={theme.colors.white} />
+        <CircleX size={18} color={theme.colors.white} strokeWidth={2} />
       </Pressable>
     </View>
   );

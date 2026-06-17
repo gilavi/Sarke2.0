@@ -1,4 +1,4 @@
-// InspectionWizard.tsx — top-level orchestrator for the multi-step inspection
+// InspectionWizard.tsx - top-level orchestrator for the multi-step inspection
 // questionnaire flow. All non-render logic lives in useWizardState; the
 // individual step renderers live in sibling files.
 
@@ -9,7 +9,6 @@ import { KeyboardAwareScrollView, KeyboardStickyView, KeyboardController, useKey
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Stack, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { Button, Screen } from '../../components/ui';
@@ -20,7 +19,8 @@ import { TOUR_SEEN_KEY } from '../../lib/scaffoldHelp';
 import { WizardStepTransition, AnswerButtons } from '../../components/wizard';
 import { HarnessListFlow } from '../../components/HarnessListFlow';
 import { useTheme } from '../../lib/theme';
-import { SkeletonWizard } from '../../components/Skeleton';
+import { InspectionShellSkeleton } from '../../components/inspection-steps';
+import { inspectionDisplayName } from '../../lib/shared/documentName';
 import { haptic } from '../../lib/haptics';
 import { isOscillating } from '../../lib/navigationGuard';
 import { useToast } from '../../lib/toast';
@@ -102,7 +102,7 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
   const [showTour, setShowTour] = useState(false);
 
   useEffect(() => {
-    // Tour shows facade scaffold component illustrations — only relevant for
+    // Tour shows facade scaffold component illustrations - only relevant for
     // the xaracho template. Skip for mobile_scaffold and all other categories.
     if (!template || template.category !== 'xaracho') return;
     let cancelled = false;
@@ -130,7 +130,7 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
     prevStepIndexRef.current = stepIndex;
   }, [stepIndex]);
 
-  // First-render fade out of the skeleton — kicks in once data is ready.
+  // First-render fade out of the skeleton - kicks in once data is ready.
   const enterAnim = useRef(new Animated.Value(0)).current;
   const enteredRef = useRef(false);
 
@@ -197,10 +197,12 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
       return <CompletedRedirect id={questionnaire.id} />;
     }
     return (
-      <Screen edgeToEdge edges={['top']} style={{ backgroundColor: theme.colors.background }}>
-        <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
-        <SkeletonWizard />
-      </Screen>
+      <InspectionShellSkeleton
+        title={template?.name ? inspectionDisplayName(template.name) : 'კითხვარი'}
+        projectName={project?.name ?? ''}
+        variant="question"
+        onClose={() => router.back()}
+      />
     );
   }
 
@@ -221,7 +223,7 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
   const isLast = stepIndex === steps.length - 1;
   const isScaffoldRow = step.kind === 'gridRow' && (step.question.grid_rows?.[0] ?? '') !== 'N1';
   // A yes/no question with a photo or note attached but no კი/არა chosen must
-  // not be skippable — the user clearly engaged, so make them answer.
+  // not be skippable - the user clearly engaged, so make them answer.
   const curAnswer = step.kind === 'question' ? answers[step.question.id] : undefined;
   const photoCount = curAnswer?.id ? photos[curAnswer.id]?.length ?? 0 : 0;
   const hasAttachment = photoCount > 0 || !!curAnswer?.notes?.trim();
@@ -392,7 +394,7 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
               <Button
                 title="დასრულება"
                 style={{ paddingVertical: 14 }}
-                iconRight={<Ionicons name="checkmark" size={20} color={theme.colors.white} />}
+                rightIcon="checkmark"
                 loading={finishing}
                 disabled={finishing}
                 onPress={() => {
@@ -416,11 +418,7 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
                 size="lg"
                 disabled={lockUnanswered}
                 style={{ alignSelf: 'stretch', paddingVertical: 16, justifyContent: 'center' }}
-                iconRight={
-                  stepAnswered ? (
-                    <Ionicons name="chevron-forward" size={18} color={theme.colors.white} />
-                  ) : undefined
-                }
+                rightIcon={stepAnswered ? 'chevron-forward' : undefined}
                 onPress={goNext}
               />
             )}

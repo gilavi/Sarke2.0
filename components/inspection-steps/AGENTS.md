@@ -16,14 +16,26 @@ renamed in Phase 1 to clarify its role vs `inspection-parts/`.
   `canGoNext` is false — no skip), `showPdfIcon`/`generatingPdf`/`onPdf`
   (PDF icon shown beside the close ✕), `banner` (e.g. PdfLockedBanner).
 - `InspectionShellSkeleton` — the **canonical loading state** for every
-  equipment route. Renders the **real `FlowHeader`** (same `card` bg, same
-  back/close + progress strip as `InspectionShell`) over a form-shaped body
-  skeleton + footer-button placeholder, so only the body morphs skeleton →
-  content. Each route renders it from its `if (loading || !inspection)` gate,
-  passing the same `title` it gives `InspectionShell` (+ `totalSteps`,
-  `onClose={() => router.back()}`). Do NOT fall back to a native
-  `<Stack.Screen headerShown>` + centered "იტვირთება…" text — that swaps the
-  header chrome and background mid-load and reads as a generic loader.
+  inspection flow (equipment routes, the generic scaffold wizard, and
+  harness). Renders the **real `FlowHeader`** (same `card` bg, same
+  back/close **and the live progress bar** as `InspectionShell`) over a
+  per-step body skeleton + footer-button placeholder, so the header +
+  progress strip **never wait on loading** — only the body morphs
+  skeleton → content. Each route renders it from its
+  `if (loading || !inspection)` gate, passing the same `title`,
+  `projectName`, 0-based `step`, `totalSteps` and `stepLabels` it gives
+  `InspectionShell` (so the progress bar lands without a jump), plus
+  `variant` (see `StepBodySkeleton`) mapped from the current step, and
+  `onClose={() => router.back()}`. Omit `totalSteps` to hide the progress
+  bar (the generic wizard does this — its step count isn't known at load).
+  Do NOT fall back to a native `<Stack.Screen headerShown>` + centered
+  "იტვირთება…" text, and do NOT show one generic body for every step.
+- `StepBodySkeleton` (from `StepSkeletons.tsx`) — the body-only step
+  skeletons, one per `StepSkeletonVariant`: `form` (input bars; `fields`
+  count), `keypad`, `checklist`, `conclusion`, `table`, `question`. All
+  built from the shared `Skeleton` atom so shimmer colour + animation stay
+  identical everywhere. Add a new variant here (not a per-route skeleton)
+  when a step shape isn't covered; reuse the closest variant otherwise.
 - `ProjectPickerStep` — initial step where the user picks the
   project + project item the inspection is attached to.
 - `ChecklistStep` — generic "list of checks" step. Renders a
@@ -46,6 +58,9 @@ renamed in Phase 1 to clarify its role vs `inspection-parts/`.
 
 ## Internal files
 - `InspectionShell.tsx`, `InspectionShellSkeleton.tsx`, `ProjectPickerStep.tsx`
+- `StepSkeletons.tsx` — `StepBodySkeleton` + the per-variant body
+  skeletons consumed by `InspectionShellSkeleton`. Pure presentational,
+  built only from the shared `Skeleton` atom.
 - `ChecklistStep.tsx` — legend + scroll container + section headers.
 - `ChecklistRow.tsx` — thin adapter over `ChecklistItemRow`: three
   result chips (ვარგისია / ხარვეზი / გამოუსადეგარია), no comment/photo.

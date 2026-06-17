@@ -14,6 +14,9 @@ queue.
 ## Internal files
 - `InspectionWizard.tsx` — orchestrator. Renders header/footer + the
   current step. Owns local UI state (tour, swipe gesture, entrance anim).
+  Its initial-load gate renders the shared `InspectionShellSkeleton`
+  (`variant="question"`, no `totalSteps` — step count isn't known until
+  questions load), keeping the real header on screen during the fetch.
 - `useWizardState.ts` — single hook owning wizard state, load,
   answer/photo mutations and finish flow. Larger than the 150-line
   "hook" target on purpose — see "Gotchas".
