@@ -29,6 +29,8 @@
       "channel": "staging",
       "env": {
         "APP_ENV": "staging",
+        "STAGING_SUPABASE_URL": "https://oiwkfzadftmgmshidyqx.supabase.co",
+        "STAGING_SUPABASE_ANON_KEY": "sb_publishable_if2XIf1WB03rHEC0PQKNSg_eJ4frwNu",
         "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       },
       "android": {

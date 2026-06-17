@@ -62,22 +62,14 @@ npm run update:production  # APP_ENV=production eas update --branch production
 ### 0.A — EAS account access (blocks all mobile staging builds)
 The EAS project (`ab800403-…`, owner **`x4ylee`**) is owned by someone else, and the working CLI account (`gilavi2000`) can't administer it. Ask the owner to either (a) transfer the project into a shared Expo **org** both accounts admin, or (b) add `gilavi2000` as a member with admin role. Until then: no staging build, no `eas env`, no `eas update:configure`.
 
-### 0.B — Create the staging Supabase project
-Dashboard → New project, **same region as prod**. Capture:
-- project ref (e.g. `abcdwxyz…`), project URL, **publishable anon key**, **service-role key**.
-Then enable the **Apple** auth provider and add staging redirect URLs / the `sarke2staging://` scheme to Auth → URL Configuration (otherwise staging logins fail silently).
+### 0.B — Create the staging Supabase project — ✅ DONE (2026-06-18)
+Created. Ref `oiwkfzadftmgmshidyqx`, URL `https://oiwkfzadftmgmshidyqx.supabase.co`, anon key `sb_publishable_if2XIf1WB03rHEC0PQKNSg_eJ4frwNu` (publishable, safe to commit). Apple auth provider enabled with Client IDs `ge.sarke2.app.staging,ge.sarke2.app.dev`; redirect URLs `sarke2staging://` + `sarke2dev://` added. The service-role key + DB password are held privately for the GitHub `staging` Environment (Step 0.E). The project is empty — schema gets populated after the prod reconciliation (Phase 1/2).
 
 ### 0.C — Apple App ID for the staging app
 Apple Developer portal → Identifiers → new App ID `ge.sarke2.app.staging` (or let EAS auto-create credentials on the first `npm run build:staging`). **No** new App Store Connect listing — staging is internal distribution only.
 
-### 0.D — Wire the staging Supabase creds into the mobile build
-Once 0.B is done, add the publishable values to the `staging` profile in `eas.json` (anon key is safe to commit) **or** create them as EAS env vars:
-```jsonc
-// eas.json → build.staging.env
-"APP_ENV": "staging",
-"STAGING_SUPABASE_URL": "https://<STAGING_REF>.supabase.co",
-"STAGING_SUPABASE_ANON_KEY": "sb_publishable_<staging>"
-```
+### 0.D — Wire the staging Supabase creds into the mobile build — ✅ DONE (2026-06-18)
+The publishable values are committed to the `staging` profile in `eas.json` (`build.staging.env.STAGING_SUPABASE_URL` / `STAGING_SUPABASE_ANON_KEY`); anon key is safe to commit.
 For local `npm run start:staging`, put the same two vars in a git-ignored `.env` (loaded by `dotenv`) or export them in your shell.
 
 ### 0.E — GitHub Environments (fixes the global-secret hazard)
