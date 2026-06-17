@@ -14,7 +14,7 @@ import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardSafeArea } from '../../components/layout/KeyboardSafeArea';
-import { MailOpen, X, CircleAlert, Key, Globe } from 'lucide-react-native';
+import { MailOpen, X, CircleAlert, Key, Globe, Eye, EyeOff } from 'lucide-react-native';
 import { HubbleMark } from '../../components/HubbleMark';
 import { OrbitField } from '../../components/OrbitField';
 import { useSession } from '../../lib/session';
@@ -257,7 +257,7 @@ function LoginForm({ onForgotPassword }: { onForgotPassword: (email?: string) =>
         value={password}
         onChangeText={setPassword}
         secureTextEntry={!showPw}
-        rightIcon={showPw ? 'eye-off-outline' : 'eye-outline'}
+        rightIcon={showPw ? EyeOff : Eye}
         onRightIconPress={() => setShowPw(v => !v)}
         textContentType="password"
         autoComplete="current-password"
@@ -424,7 +424,7 @@ function RegisterForm({
         value={password}
         onChangeText={setPassword}
         secureTextEntry={!showPw}
-        rightIcon={showPw ? 'eye-off-outline' : 'eye-outline'}
+        rightIcon={showPw ? EyeOff : Eye}
         onRightIconPress={() => setShowPw(v => !v)}
         textContentType="newPassword"
         autoComplete="new-password"

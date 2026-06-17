@@ -437,7 +437,7 @@ function CreateProjectSheet({
                   label={t('common.address')}
                   value={address}
                   onChangeText={setAddress}
-                  rightIcon={pin ? 'location' : 'location-outline'}
+                  rightIcon={MapPin}
                   onRightIconPress={() => { Keyboard.dismiss(); setMapVisible(true); }}
                 />
 
