@@ -4,6 +4,15 @@
 
 ---
 
+## 2026-06-17 — Equipment details step: fewer inputs, monochrome type selector
+
+Trimmed redundant data entry from the general-equipment inspection and made the inspection-type selector consistent everywhere.
+
+- **General-equipment details step** ([`general-equipment/[id]`](../app/inspections/general-equipment/[id].tsx)) — dropped the *object name*, *activity type*, *date*, and *act №* inputs. Object name + address now autofill from the project (`company_name || name`); the date and act № are already set automatically at creation. The step now shows only the inspection-type selector. The `activity_type` column is untouched (kept in the type/patch, just no longer entered by hand) — no Supabase changes.
+- **Monochrome type selector, reused** — fall-protection ([`fall-protection/[id]`](../app/inspections/fall-protection/[id].tsx)) replaced its bespoke orange `typeChip` row with the shared monochrome [`IdentificationGrid`](../components/inspection-parts/IdentificationGrid.tsx) `select`, matching general-equipment and the other equipment screens.
+
+---
+
 ## 2026-06-17 — One checklist design across every inspection
 
 Made the harness/belt flow match the rest of the monochrome inspection UI and unified every "several-items-on-one-page" checklist onto one reusable row — a design-system consolidation, not per-screen forks.

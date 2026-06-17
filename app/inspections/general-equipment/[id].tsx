@@ -10,9 +10,7 @@ import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
-import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
 import { IdentificationGrid } from '../../../components/inspection-parts/IdentificationGrid';
-import { DateTimeField } from '../../../components/DateTimeField';
 import { InspectionShell, ChecklistStep, ConclusionStep } from '../../../components/inspection-steps';
 import type { VerdictOption, ChecklistResult } from '../../../components/inspection-steps';
 import { InspectionResultView } from '../../../components/InspectionResultView';
@@ -28,7 +26,6 @@ import { friendlyError } from '../../../lib/errorMap';
 import { a11y } from '../../../lib/accessibility';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { SuggestionPills } from '../../../components/SuggestionPills';
 import { useFieldHistory } from '../../../hooks/useFieldHistory';
 import { usePhotoPicker } from '../../../hooks/usePhotoPicker';
 import { CelebrationBurst } from '../../../components/animations';
@@ -60,12 +57,8 @@ export default function GeneralEquipmentScreen() {
   const userId = session?.state?.status === 'signedIn' ? session.state.session.user.id : null;
 
   // ── Field suggestion histories ────────────────────────────────────────────
-  const objectNameHistory  = useFieldHistory(userId, 'ge:objectName');
-  const activityTypeHistory = useFieldHistory(userId, 'ge:activityType');
-  const actNumberHistory   = useFieldHistory(userId, 'ge:actNumber');
   const conclusionHistory  = useFieldHistory(userId, 'ge:conclusion');
 
-  const [focusedField, setFocusedField] = useState<string | null>(null);
   const [attachmentCount, setAttachmentCount] = useState(0);
 
   // ── Shared orchestration ──────────────────────────────────────────────────
@@ -125,9 +118,19 @@ export default function GeneralEquipmentScreen() {
           patch.signerName = inspectorName;
         }
       }
-      if (project && !next.address?.trim() && project.address) {
-        next = { ...next, address: project.address };
-        patch.address = project.address;
+      if (project) {
+        // Object name + address are sourced from the project — no manual entry.
+        if (!next.objectName?.trim()) {
+          const v = project.company_name || project.name;
+          if (v) {
+            next = { ...next, objectName: v };
+            patch.objectName = v;
+          }
+        }
+        if (!next.address?.trim() && project.address) {
+          next = { ...next, address: project.address };
+          patch.address = project.address;
+        }
       }
       return { next, patch: Object.keys(patch).length ? patch : null };
     },
@@ -329,6 +332,8 @@ export default function GeneralEquipmentScreen() {
         onPdf={() => handlePdf()}
       >
         {/* ── Step 1: Inspection details ─────────────────────────────────── */}
+        {/* Object name, date and act № are sourced from the project / auto-
+            generated at creation — only the inspection type is chosen here. */}
         {step === DETAILS_STEP && (
           <KeyboardAwareScrollView
             style={{ flex: 1 }}
@@ -338,65 +343,6 @@ export default function GeneralEquipmentScreen() {
             showsVerticalScrollIndicator={false}
             bottomOffset={120}
           >
-            <FloatingLabelInput
-              label="ობიექტის დასახელება *"
-              value={inspection.objectName ?? ''}
-              onChangeText={v => update('objectName', v || null)}
-              onFocus={() => setFocusedField('objectName')}
-              onBlur={() => {
-                setFocusedField(null);
-                if (inspection.objectName?.trim()) objectNameHistory.addToHistory(inspection.objectName.trim());
-              }}
-              required
-            />
-            <SuggestionPills
-              suggestions={objectNameHistory.suggestions}
-              onSelect={v => update('objectName', v)}
-              visible={focusedField === 'objectName' || (!inspection.objectName?.trim() && objectNameHistory.suggestions.length > 0)}
-            />
-
-            <FloatingLabelInput
-              label="საქმიანობის სახე"
-              value={inspection.activityType ?? ''}
-              onChangeText={v => update('activityType', v || null)}
-              onFocus={() => setFocusedField('activityType')}
-              onBlur={() => {
-                setFocusedField(null);
-                if (inspection.activityType?.trim()) activityTypeHistory.addToHistory(inspection.activityType.trim());
-              }}
-            />
-            <SuggestionPills
-              suggestions={activityTypeHistory.suggestions}
-              onSelect={v => update('activityType', v)}
-              visible={focusedField === 'activityType' || (!inspection.activityType?.trim() && activityTypeHistory.suggestions.length > 0)}
-            />
-
-            <View style={styles.fieldRow}>
-              <Text style={styles.fieldLabel}>შემოწმების თარიღი</Text>
-              <DateTimeField
-                mode="date"
-                value={new Date(inspection.inspectionDate)}
-                onChange={d => update('inspectionDate', d.toLocaleDateString('en-CA'))}
-                maxDate={new Date()}
-              />
-            </View>
-
-            <FloatingLabelInput
-              label="აქტის №"
-              value={inspection.actNumber ?? ''}
-              onChangeText={v => update('actNumber', v || null)}
-              onFocus={() => setFocusedField('actNumber')}
-              onBlur={() => {
-                setFocusedField(null);
-                if (inspection.actNumber?.trim()) actNumberHistory.addToHistory(inspection.actNumber.trim());
-              }}
-            />
-            <SuggestionPills
-              suggestions={actNumberHistory.suggestions}
-              onSelect={v => update('actNumber', v)}
-              visible={focusedField === 'actNumber' || (!inspection.actNumber?.trim() && actNumberHistory.suggestions.length > 0)}
-            />
-
             <IdentificationGrid
               columns={1}
               fields={[
@@ -557,7 +503,6 @@ function getstyles(theme: Theme) {
     root:    { flex: 1, backgroundColor: theme.colors.background },
     centred: { alignItems: 'center', justifyContent: 'center' },
 
-    fieldRow:   { marginBottom: 4, gap: 6 },
     fieldLabel: { fontSize: 12, fontWeight: '600', color: theme.colors.inkSoft, marginBottom: 6 },
 
     progressPill: {

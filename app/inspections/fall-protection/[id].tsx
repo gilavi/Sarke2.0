@@ -7,6 +7,7 @@ import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
 import { DateTimeField } from '../../../components/DateTimeField';
 import { InspectionShell } from '../../../components/inspection-steps/InspectionShell';
+import { IdentificationGrid } from '../../../components/inspection-parts/IdentificationGrid';
 import { InspectionResultView } from '../../../components/InspectionResultView';
 import { SectionHeader } from '../../../components/SectionHeader';
 import {
@@ -48,6 +49,7 @@ import {
   type FPDeviceData,
   type FPVerdict,
   type FPResult,
+  type FPInspectionType,
 } from '../../../types/fallProtection';
 
 // ── Step constants ────────────────────────────────────────────────────────────
@@ -466,27 +468,19 @@ export default function FallProtectionInspectionScreen() {
                 keyboardType="phone-pad"
               />
 
-              <View style={{ gap: 6 }}>
-                <Text style={styles.fieldLabel}>შემოწმების სახე</Text>
-                <View style={styles.chipRow}>
-                  {(['primary', 'secondary'] as const).map(type => {
-                    const label = type === 'primary' ? 'პირველადი' : 'განმეორებითი';
-                    const active = inspection.inspectionType === type;
-                    return (
-                      <Pressable
-                        key={type}
-                        style={[styles.typeChip, active && styles.typeChipActive]}
-                        onPress={() => { haptic.light(); update('inspectionType', type); }}
-                        {...a11y(label, undefined, 'radio')}
-                      >
-                        <Text style={[styles.typeChipText, active && styles.typeChipTextActive]}>
-                          {label}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              </View>
+              <IdentificationGrid
+                columns={1}
+                fields={[
+                  {
+                    label: 'შემოწმების სახე',
+                    type: 'select',
+                    value: inspection.inspectionType ?? '',
+                    onChange: v => update('inspectionType', (v || null) as FPInspectionType | null),
+                    options: ['primary', 'secondary'],
+                    optionLabels: ['პირველადი', 'განმეორებითი'],
+                  },
+                ]}
+              />
 
               <View style={{ gap: 6 }}>
                 <SectionHeader title="მოწყობილობების რეესტრი" />
@@ -686,19 +680,6 @@ function getstyles(theme: Theme) {
       fontSize: 12, fontWeight: '600',
       color: theme.colors.inkSoft, marginBottom: 4,
     },
-    chipRow: { flexDirection: 'row', gap: 8 },
-    typeChip: {
-      paddingHorizontal: 16, paddingVertical: 10,
-      borderRadius: 20, borderWidth: 1.5,
-      borderColor: theme.colors.hairline,
-      backgroundColor: theme.colors.card,
-    },
-    typeChipActive: {
-      borderColor: theme.colors.accent,
-      backgroundColor: theme.colors.accentSoft,
-    },
-    typeChipText: { fontSize: 13, color: theme.colors.inkSoft },
-    typeChipTextActive: { color: theme.colors.accent, fontWeight: '700' },
     // Device tabs
     deviceMeta: {
       fontSize: 11, color: theme.colors.inkSoft,
