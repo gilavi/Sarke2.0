@@ -394,7 +394,7 @@ export default function SafetyNetInspectionScreen() {
                     value: inspection.certificate ?? '',
                     type: 'chips',
                     options: ['none', 'active', 'expired'],
-                    optionLabels: ['სერტ. არ გააჩნია', 'მოქმედი სერტ.', 'ვადაგასული'],
+                    optionLabels: ['არ გააჩნია', 'მოქმედია', 'ვადაგასულია'],
                     onChange: v => update('certificate', v as SafetyNetInspection['certificate']),
                     isProblematic: inspection.certificate === 'expired' || inspection.certificate === 'none',
                   },

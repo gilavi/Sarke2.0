@@ -57,7 +57,6 @@ export function InspectionShell({
   animate,
   canGoNext,
   isLastStep = false,
-  saving = false,
   completing = false,
   showPdfIcon = false,
   generatingPdf = false,
@@ -107,10 +106,6 @@ export function InspectionShell({
         backDisabled={false}
         surfaceColor={theme.colors.surface}
       />
-
-      {saving && (
-        <Text style={[styles.savingHint, { color: theme.colors.inkFaint }]}>შენახვა…</Text>
-      )}
 
       {banner ?? null}
 
