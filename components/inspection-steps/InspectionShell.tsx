@@ -58,15 +58,12 @@ export function InspectionShell({
   canGoNext,
   isLastStep = false,
   completing = false,
-  showPdfIcon = false,
-  generatingPdf = false,
   finishLabel,
   blockNext = false,
   banner,
   onNext,
   onPrev,
   onClose,
-  onPdf,
   children,
 }: InspectionShellProps) {
   const { theme } = useTheme();
@@ -86,22 +83,6 @@ export function InspectionShell({
         leading="back"
         trailing="close"
         onClose={onClose}
-        trailingElement={
-          showPdfIcon && onPdf ? (
-            <Pressable
-              onPress={onPdf}
-              disabled={generatingPdf}
-              hitSlop={10}
-              {...a11y('PDF', 'PDF დოკუმენტის გენერირება', 'button')}
-            >
-              <Ionicons
-                name={generatingPdf ? 'hourglass-outline' : 'document-text-outline'}
-                size={22}
-                color={theme.colors.accent}
-              />
-            </Pressable>
-          ) : null
-        }
         onBack={onPrev}
         backDisabled={false}
         surfaceColor={theme.colors.surface}
