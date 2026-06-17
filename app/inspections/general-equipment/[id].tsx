@@ -8,7 +8,7 @@ import {
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { CirclePlus, Info, Camera, CircleX } from 'lucide-react-native';
+import { CirclePlus, Info, Camera, CircleX, Check, X, TriangleAlert } from 'lucide-react-native';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { IdentificationGrid } from '../../../components/inspection-parts/IdentificationGrid';
 import { InspectionShell, InspectionShellSkeleton, ConclusionStep } from '../../../components/inspection-steps';
@@ -48,15 +48,15 @@ const CONCLUSION_STEP = 3;
 const TOTAL_STEPS     = 4;
 
 const GE_OPTIONS: ChecklistRowOption[] = [
-  { value: 'good',      icon: 'checkmark',       a11yLabel: 'ვარგისია' },
-  { value: 'deficient', icon: 'warning-outline', a11yLabel: 'ხარვეზი' },
-  { value: 'unusable',  icon: 'close',            a11yLabel: 'გამოუსადეგარია' },
+  { value: 'good',      icon: Check,         a11yLabel: 'ვარგისია' },
+  { value: 'deficient', icon: TriangleAlert, a11yLabel: 'ხარვეზი' },
+  { value: 'unusable',  icon: X,             a11yLabel: 'გამოუსადეგარია' },
 ];
 
 const GE_LEGEND = [
-  { icon: 'checkmark' as const,       label: 'ვარგისია' },
-  { icon: 'warning-outline' as const, label: 'ხარვეზი' },
-  { icon: 'close' as const,           label: 'გამოუსადეგარია' },
+  { icon: Check,         label: 'ვარგისია' },
+  { icon: TriangleAlert, label: 'ხარვეზი' },
+  { icon: X,             label: 'გამოუსადეგარია' },
 ];
 
 export default function GeneralEquipmentScreen() {

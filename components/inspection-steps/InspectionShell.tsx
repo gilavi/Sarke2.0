@@ -8,6 +8,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
+import { Check, ChevronRight } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
 import { Button } from '../ui';
 import { FlowHeader } from '../FlowHeader';
@@ -99,7 +100,7 @@ export function InspectionShell({
               <Button
                 title={finishLabel ?? 'შენახვა და დასრულება'}
                 style={{ paddingVertical: 14 }}
-                rightIcon="checkmark"
+                rightIcon={Check}
                 loading={completing}
                 disabled={!canGoNext || completing}
                 onPress={onNext}
@@ -110,7 +111,7 @@ export function InspectionShell({
                 variant={blockNext || canGoNext ? 'primary' : 'secondary'}
                 size="lg"
                 style={styles.nextBtn}
-                rightIcon={blockNext || canGoNext ? 'chevron-forward' : undefined}
+                rightIcon={blockNext || canGoNext ? ChevronRight : undefined}
                 disabled={blockNext && !canGoNext}
                 onPress={onNext}
               />

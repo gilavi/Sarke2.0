@@ -11,6 +11,7 @@ import { DateTimeField } from '../../components/DateTimeField';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { KeyboardSafeArea } from '../../components/layout/KeyboardSafeArea';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { ChevronRight } from 'lucide-react-native';
 import { Button } from '../../components/ui';
 import { FlowHeader } from '../../components/FlowHeader';
 import { FlowProjectPicker } from '../../components/FlowProjectPicker';
@@ -200,7 +201,7 @@ export default function NewBriefingScreen() {
             <Button
               title="შემდეგი"
               size="lg"
-              rightIcon="chevron-forward"
+              rightIcon={ChevronRight}
               onPress={() => setStep(2)}
               disabled={!hasTopics}
               style={{ width: '100%' }}
