@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { InputAccessoryView, Platform, Pressable, View } from 'react-native';
-import { KeyboardController } from 'react-native-keyboard-controller';
+import { View } from 'react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../components/inputs/FloatingLabelInput';
 import { useTheme } from '../../lib/theme';
@@ -18,7 +17,6 @@ export function DebouncedNotes({
   const [text, setText] = useState(initial ?? '');
   const lastCommitted = useRef(initial ?? '');
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const accessoryId = Platform.OS === 'ios' ? 'wizard-notes-accessory' : undefined;
 
   useEffect(() => {
     const nextInitial = initial ?? '';
@@ -54,6 +52,8 @@ export function DebouncedNotes({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // No iOS "Done" accessory bar here — on a yes/no step the keyboard is
+  // dismissed by tapping კი/არა (see InspectionWizard) or by dragging.
   return (
     <View>
       <FloatingLabelInput
@@ -64,23 +64,10 @@ export function DebouncedNotes({
         multiline
         maxLength={500}
         style={{ marginBottom: 4 }}
-        inputAccessoryViewID={accessoryId}
       />
       <Text style={[styles.label, { textAlign: 'right', marginBottom: 0 }]}>
         {text.length}/500
       </Text>
-      {Platform.OS === 'ios' && (
-        <InputAccessoryView nativeID={accessoryId}>
-          <View style={[styles.accessoryBar, { backgroundColor: theme.colors.card, borderTopColor: theme.colors.hairline }]}>
-            <Pressable
-              onPress={() => KeyboardController.dismiss()}
-              style={styles.accessoryBtn}
-            >
-              <Text style={[styles.accessoryBtnText, { color: theme.colors.accent }]}>მზადაა</Text>
-            </Pressable>
-          </View>
-        </InputAccessoryView>
-      )}
     </View>
   );
 }

@@ -1,6 +1,12 @@
 export { ChecklistItem } from './ChecklistItem';
 export type { ChecklistItemProps, ChecklistItemOptions } from './ChecklistItem';
 
+export { ChecklistItemRow } from './ChecklistItemRow';
+export type { ChecklistItemRowProps, ChecklistRowOption } from './ChecklistItemRow';
+
+export { ChecklistLegend } from './ChecklistLegend';
+export type { ChecklistLegendItem } from './ChecklistLegend';
+
 export { ChecklistSection } from './ChecklistSection';
 export type { ChecklistSectionProps, ChecklistItemData } from './ChecklistSection';
 

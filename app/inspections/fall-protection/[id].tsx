@@ -515,6 +515,7 @@ export default function FallProtectionInspectionScreen() {
                 }))}
                 activeIndex={safeDeviceIdx}
                 onSelect={setActiveDeviceIdx}
+                tone="neutral"
               />
 
               {/* Device details */}

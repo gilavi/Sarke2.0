@@ -6,15 +6,16 @@ import { A11yText } from './primitives/A11yText';
 import { a11y } from '../lib/accessibility';
 
 /**
- * Initials-avatar palette. Low-contrast on purpose: a soft green-tinted
- * background with muted brand-green text, so the avatar reads as a quiet
- * placeholder rather than competing with the project name. Locked here so
- * list, header, picker, and PDF stay in sync.
+ * Initials-avatar palette. Low-contrast on purpose: a soft secondary-yellow
+ * tinted background with muted olive text, so the avatar reads as a quiet
+ * placeholder rather than competing with the project name. (Brand secondary is
+ * electric yellow; green is retired.) Locked here so list, header, picker, and
+ * PDF stay in sync.
  */
-export const PROJECT_AVATAR_BG = '#E8F5F0';
-export const PROJECT_AVATAR_FG = '#1D9E75';
-/** Saturated brand green — used only for the editable-overlay badge. */
-const PROJECT_AVATAR_BADGE = '#1D9E75';
+export const PROJECT_AVATAR_BG = '#F4F7CE';
+export const PROJECT_AVATAR_FG = '#7F861F';
+/** Primary orange — used only for the editable-overlay action badge. */
+const PROJECT_AVATAR_BADGE = '#FF5A1F';
 
 /**
  * First two characters of the project name, uppercased with the Georgian

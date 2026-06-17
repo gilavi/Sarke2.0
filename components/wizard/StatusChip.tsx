@@ -68,8 +68,11 @@ export function StatusChip({
     onPress();
   };
 
-  const contentColor = selected ? theme.colors.ink : theme.colors.inkSoft;
-  const iconColor = selected ? theme.colors.ink : theme.colors.inkFaint;
+  // Selected = solid ink fill with inverted (light) content; unselected = quiet
+  // surface + muted content. The `inverse` palette flips correctly in dark mode
+  // (light chip + dark content), so this stays legible in both themes.
+  const contentColor = selected ? theme.colors.inverse.ink : theme.colors.inkSoft;
+  const iconColor = selected ? theme.colors.inverse.ink : theme.colors.inkFaint;
 
   return (
     <AnimatedPressable
@@ -78,8 +81,8 @@ export function StatusChip({
       style={[
         layout === 'pill' ? styles.pill : styles.chip,
         {
-          borderColor: selected ? theme.colors.ink : theme.colors.border,
-          backgroundColor: selected ? theme.colors.subtleSurface : theme.colors.surface,
+          borderColor: selected ? theme.colors.inverse.background : theme.colors.border,
+          backgroundColor: selected ? theme.colors.inverse.background : theme.colors.surface,
         },
         disabled && { opacity: 0.4 },
         animatedStyle,
@@ -95,9 +98,11 @@ export function StatusChip({
           style={layout === 'pill' ? styles.pillIcon : undefined}
         />
       ) : null}
-      <Text style={[layout === 'pill' ? styles.pillLabel : styles.chipLabel, { color: contentColor }]}>
-        {label}
-      </Text>
+      {label ? (
+        <Text style={[layout === 'pill' ? styles.pillLabel : styles.chipLabel, { color: contentColor }]}>
+          {label}
+        </Text>
+      ) : null}
     </AnimatedPressable>
   );
 }

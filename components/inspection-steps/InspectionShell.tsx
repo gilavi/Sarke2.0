@@ -105,6 +105,7 @@ export function InspectionShell({
         }
         onBack={onPrev}
         backDisabled={false}
+        surfaceColor={theme.colors.surface}
       />
 
       {saving && (

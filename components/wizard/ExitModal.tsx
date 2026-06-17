@@ -94,6 +94,7 @@ function makeStyles(theme: any) {
     content: {
       paddingTop: 4,
       paddingBottom: 24,
+      paddingHorizontal: 20,
       gap: 16,
     },
     title: {

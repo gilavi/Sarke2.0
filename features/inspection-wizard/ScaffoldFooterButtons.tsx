@@ -52,7 +52,7 @@ export function ScaffoldFooterButtons({
 
   const renderStatusButton = (col: string) => {
     const isSelected = selectedStatus === col;
-    const { tint, bg, icon } = scaffoldColStyle(col, theme);
+    const { icon } = scaffoldColStyle(col, theme);
     const isNone = col === noneCol;
     return (
       <Pressable
@@ -64,26 +64,23 @@ export function ScaffoldFooterButtons({
         }}
         style={[
           styles.statusOption,
-          isSelected && { backgroundColor: bg, borderColor: tint },
+          isSelected && { borderColor: theme.colors.ink },
         ]}
         {...a11y('სტატუსი: ' + col, 'შეეხეთ ამ სტატუსის ასარჩევად', 'button')}
       >
         <Ionicons
           name={isSelected ? (icon as any) : 'ellipse-outline'}
           size={22}
-          color={isSelected ? tint : theme.colors.inkFaint}
+          color={isSelected ? theme.colors.ink : theme.colors.inkFaint}
         />
         <Text
           style={[
             staticStyles.statusOptionText,
-            { color: isSelected ? tint : theme.colors.ink },
+            { color: theme.colors.ink },
           ]}
         >
           {col}
         </Text>
-        {isSelected && (
-          <Ionicons name="checkmark-circle" size={18} color={tint} />
-        )}
       </Pressable>
     );
   };

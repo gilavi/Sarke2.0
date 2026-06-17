@@ -4,6 +4,19 @@
 
 ---
 
+## 2026-06-17 — One checklist design across every inspection
+
+Made the harness/belt flow match the rest of the monochrome inspection UI and unified every "several-items-on-one-page" checklist onto one reusable row — a design-system consolidation, not per-screen forks.
+
+- **Canonical checklist row** — new [`ChecklistItemRow`](../components/inspection-parts/ChecklistItemRow.tsx) (+ [`ChecklistLegend`](../components/inspection-parts/ChecklistLegend.tsx)): label + inline help `?` + a cluster of monochrome [`StatusChip`](../components/wizard/StatusChip.tsx)s (2 options for the harness ✓/✗; 3–4 for equipment ratings incl. N/A), neutral until tapped. The harness [`ChipRow`](../components/harness-list/ChipRow.tsx), equipment [`ChecklistRow`](../components/inspection-steps/ChecklistRow.tsx), and [`ChecklistItem`](../components/inspection-parts/ChecklistItem.tsx) are now thin adapters over it.
+- **Solid-ink selected state** — `StatusChip` selection went from a subtle outline-fill to a **solid ink fill** (via the theme `inverse` palette, so it stays legible in dark mode). This bolder, clearer state reaches yes/no, equipment ratings, and harness chips at once.
+- **Ink progress bar** — `FlowHeader`'s progress bar is now ink (monochrome) instead of brand-orange, across every inspection / briefing / incident / report / order flow.
+- **Harness flow on the shared header** — [`HarnessListFlow`](../components/harness-list/HarnessListFlow.tsx) dropped its bespoke header for `FlowHeader` (circular back/close, `step / total` counter), added a `ChecklistLegend`, and rows now start neutral (an untouched belt still auto-fills ✓ on confirm, so the PDF is unchanged).
+- **Per-row notes/photos removed** from every checklist (harness + equipment) — problem detail + photos belong on the conclusion step. **No schema or PDF changes**: the multi-state `result` still drives the regulatory PDF's pills, category counts, and verdict; the now-unused `comment`/`photo_paths` fields simply render empty.
+- **Cleanup** — deleted three dead duplicate row components (`BobcatChecklistItem`, `ExcavatorChecklistItem`, `CargoPlatformChecklistItem`) and the harness `CellPhotoThumb`.
+
+---
+
 ## 2026-06-17 — Fix: loading skeletons clipped under the notch
 
 Two loading states painted their skeletons under the status bar / Dynamic Island because they bypassed iOS's automatic `ScrollView` content inset without re-adding a manual one. The **project detail** skeleton ([`LoadingSkeletonScreen`](../features/project-detail/LoadingSkeletonScreen.tsx)) copied the loaded screen's edge-to-edge config (`contentInsetAdjustmentBehavior="never"`) — which is correct there only because its first element is a full-bleed map hero — and now adds `insets.top` to its top padding. The **report viewer** ([`reports/[id]`](../app/reports/[id].tsx)) loading branch renders its `SkeletonPreview` in a bare `View` (no auto-inset) and now applies `paddingTop: insets.top`. Pure UI; no other screens changed (home, wizards, tab screens, and native-header detail screens already inset correctly).

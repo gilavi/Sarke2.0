@@ -38,6 +38,8 @@ interface FlowHeaderProps {
   confirmExit?: boolean;
   /** Custom trailing element rendered when `trailing` is 'none'. */
   trailingElement?: ReactNode;
+  /** Header surface color. Defaults to the app background; inspection flows pass white. */
+  surfaceColor?: string;
 }
 
 /**
@@ -59,6 +61,7 @@ export function FlowHeader({
   backDisabled,
   confirmExit,
   trailingElement,
+  surfaceColor,
 }: FlowHeaderProps) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
@@ -86,8 +89,7 @@ export function FlowHeader({
         styles.wrap,
         {
           paddingTop: insets.top,
-          backgroundColor: theme.colors.background,
-          borderBottomColor: theme.colors.hairline,
+          backgroundColor: surfaceColor ?? theme.colors.background,
         },
       ]}
     >
@@ -99,7 +101,7 @@ export function FlowHeader({
             onPress={onBack}
             style={({ pressed }) => [
               styles.circleBtn,
-              { backgroundColor: theme.colors.subtleSurface },
+              { borderWidth: 1.5, borderColor: theme.colors.border },
               backDisabled && { opacity: 0.35 },
               pressed && !backDisabled && { opacity: 0.6 },
             ]}
@@ -153,7 +155,7 @@ export function FlowHeader({
                   onPress={wrapExit(onClose)}
                   style={({ pressed }) => [
                     styles.closeBtn,
-                    { backgroundColor: theme.colors.subtleSurface },
+                    { borderWidth: 1.5, borderColor: theme.colors.border },
                     pressed && { opacity: 0.6 },
                   ]}
                   {...a11y('დახურვა', 'შეეხეთ დასახურად', 'button')}
@@ -171,7 +173,7 @@ export function FlowHeader({
           step={step!}
           totalSteps={totalSteps!}
           labels={stepLabels}
-          fillColor={theme.colors.accent}
+          fillColor={theme.colors.ink}
           inkColor={theme.colors.ink}
           inkFaintColor={theme.colors.inkFaint}
           trackColor={theme.colors.subtleSurface}
@@ -182,7 +184,7 @@ export function FlowHeader({
             <View
               style={[
                 styles.progressFill,
-                { width: `${progress * 100}%`, backgroundColor: theme.colors.accent },
+                { width: `${progress * 100}%`, backgroundColor: theme.colors.ink },
               ]}
             />
           </View>
@@ -264,7 +266,7 @@ function SegmentedStepper({
 
 const styles = StyleSheet.create({
   wrap: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: 0,
   },
   row: {
     flexDirection: 'row',

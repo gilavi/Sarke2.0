@@ -305,7 +305,6 @@ export default function GeneralEquipmentScreen() {
   }
 
   const filledCount = inspection.equipment.filter(r => r.name.trim()).length;
-  const totalCount  = inspection.equipment.length;
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -428,13 +427,6 @@ export default function GeneralEquipmentScreen() {
             showCommentButton={false}
             footer={
               <View style={{ paddingHorizontal: 8, paddingTop: 4 }}>
-                <View style={{ alignItems: 'flex-end', marginBottom: 8 }}>
-                  <View style={styles.progressPill}>
-                    <Text style={styles.progressPillText}>
-                      შევსებულია {filledCount} / {totalCount}
-                    </Text>
-                  </View>
-                </View>
                 <Pressable
                   style={styles.addRowBtn}
                   onPress={addEquipmentRow}

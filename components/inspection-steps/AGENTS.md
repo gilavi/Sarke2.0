@@ -17,18 +17,21 @@ renamed in Phase 1 to clarify its role vs `inspection-parts/`.
   (PDF icon shown beside the close ✕), `banner` (e.g. PdfLockedBanner).
 - `ProjectPickerStep` — initial step where the user picks the
   project + project item the inspection is attached to.
-- `ChecklistStep` — generic "list of checks" step (1/2/3 verdict per
-  row, with comments and photos). Manages scroll state + section
-  headers; delegates row rendering to `ChecklistRow`.
+- `ChecklistStep` — generic "list of checks" step. Renders a
+  `ChecklistLegend` + the list; manages scroll state + section headers.
+  Row rendering delegates to `ChecklistRow` → the shared
+  `ChecklistItemRow`. No per-row comments/photos (flag the result only;
+  detail lives on the conclusion step).
 - `ConclusionStep` — final step with safety verdict + conclusion
   text + signatures.
 
 ## Internal files
 - `InspectionShell.tsx`, `ProjectPickerStep.tsx`
-- `ChecklistStep.tsx` (88 lines) — scroll container + section headers.
-- `ChecklistRow.tsx` (185 lines) — single checklist row: verdict
-  buttons 1/2/3, comment toggle, photo badge, inline comment input.
-  Also owns the exported item types (re-exported via ChecklistStep).
+- `ChecklistStep.tsx` — legend + scroll container + section headers.
+- `ChecklistRow.tsx` — thin adapter over `ChecklistItemRow`: three
+  result chips (ვარგისია / ხარვეზი / გამოუსადეგარია), no comment/photo.
+  Owns the exported item types (re-exported via ChecklistStep) +
+  `CHECKLIST_LEGEND`.
 - `ConclusionStep.tsx`
 
 ## Gotchas / non-obvious things
@@ -40,9 +43,14 @@ renamed in Phase 1 to clarify its role vs `inspection-parts/`.
 - `ChecklistStep` re-exports `ChecklistItem` / `ChecklistItemState` /
   `ChecklistResult` from `ChecklistRow` for backward compatibility.
   Changing these types is a breaking change for every equipment route.
-- Verdict buttons use **numbers** (1=good, 2=deficient, 3=unusable)
-  throughout — do not change to symbols. The PDF renderer and the
-  `bobcatSchema` legend also use 1/2/3 to match.
+- Verdict chips are now monochrome **icons** via `ChecklistItemRow`
+  (✓ good / ⚠ deficient / ✗ unusable), explained by the `ChecklistLegend`
+  at the top. The result *values* are still `good`/`deficient`/`unusable`
+  — the PDF renderer + `bobcatSchema` read those unchanged.
+- Per-row notes/photos were removed (decided 2026-06-18). The
+  `comment`/`photo_paths` state fields and the `onPhotoPress`/
+  `showCommentButton` props remain on the types (PDF reads them, render
+  empty) but are no longer captured in the UI.
 
 ## Canonical helpers used
 - `components/inspection-parts` — the smaller atoms.

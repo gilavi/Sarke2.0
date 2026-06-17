@@ -520,15 +520,16 @@ export default function HarnessInspectionScreen() {
         )}
         <HarnessListFlow
           inspectionId={id}
-          template={{ category: 'harness' } as any}
+          template={{ category: 'harness', name: 'დამცავი ქამრები' } as any}
+          project={{ name: project?.company_name || project?.name || '' }}
           questions={questions}
           answers={answers}
-          photos={photos}
           harnessRowCount={harnessRowCount}
           setHarnessRowCount={setHarnessRowCount}
+          stepIndex={step}
+          totalSteps={TOTAL_STEPS}
           onPatchAnswer={patchAnswer}
-          onPickItemPhoto={pickItemPhoto}
-          onDeletePhoto={deletePhoto}
+          onBack={() => setStep(INFO_STEP)}
           onClose={() => setStep(INFO_STEP)}
           onConclude={() => setStep(CONCLUSION_STEP)}
         />

@@ -1,21 +1,17 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import { A11yText as Text } from '../primitives/A11yText';
 import { useTheme } from '../../lib/theme';
 import { haptic } from '../../lib/haptics';
-import type { Answer, AnswerPhoto, GridValues, Question, Template } from '../../types/models';
-import { TourGuide, type TourStep } from '../TourGuide';
+import type { Answer, GridValues, Question, Template } from '../../types/models';
+import { inspectionDisplayName } from '../../lib/shared/documentName';
+import { FlowHeader } from '../FlowHeader';
 import { useScaffoldHelpSheet } from '../ScaffoldHelpSheet';
 import { ChipNavStrip, type ChipNavItem } from '../inspection-parts/ChipNavStrip';
+import { ChecklistLegend } from '../inspection-parts/ChecklistLegend';
 import { QuantitySelector } from '../inputs/QuantitySelector';
-import {
-  buildItems,
-  captionFor,
-  rowLabelsFor,
-  type HarnessItem,
-} from './_shared';
+import { buildItems, rowLabelsFor, type HarnessItem } from './_shared';
 import { gets } from './styles';
 import { ChipRow } from './ChipRow';
 
@@ -33,17 +29,26 @@ function cloneGrid(g?: GridValues | null): GridValues {
 const HARNESS_MAX = 15;
 const HARNESS_COUNT_PRESETS = [1, 2, 3, 4, 5, 6, 8, 10, 12, 15];
 
+const LEGEND = [
+  { icon: 'checkmark' as const, label: 'გამართული' },
+  { icon: 'close' as const, label: 'დაზიანებული' },
+];
+
 export type HarnessListFlowProps = {
   inspectionId: string;
   template: Template;
+  /** Only the name is shown (header subtitle) — kept loose so callers can pass a partial. */
+  project: { name: string; logo?: string | null } | null;
   questions: Question[];
   answers: Record<string, Answer>;
-  photos: Record<string, AnswerPhoto[]>;
   harnessRowCount: number;
   setHarnessRowCount: (n: number) => void;
+  /** 1-based position of the harness step in the overall wizard (for the header counter). */
+  stepIndex: number;
+  totalSteps: number;
   onPatchAnswer: (q: Question, m: (a: Answer) => Answer) => Promise<void>;
-  onPickItemPhoto: (q: Question, row: string, col: string) => void;
-  onDeletePhoto: (p: AnswerPhoto) => Promise<void>;
+  /** Wizard "go to previous step" — used by the header back from the count screen. */
+  onBack: () => void;
   onClose: () => void;
   onConclude: () => void;
 };
@@ -53,14 +58,16 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
   const s = useMemo(() => gets(theme), [theme]);
   const {
     inspectionId,
+    template,
+    project,
     questions,
     answers,
-    photos,
     harnessRowCount,
     setHarnessRowCount,
+    stepIndex,
+    totalSteps,
     onPatchAnswer,
-    onPickItemPhoto,
-    onDeletePhoto,
+    onBack,
     onClose,
     onConclude,
   } = props;
@@ -81,11 +88,9 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
   }, [inspectionId, step, currentRowIdx]);
   const showHelp = useScaffoldHelpSheet();
 
-  // Local draft of grid values (row → col → value), keyed by question id,
-  // seeded from the persisted answers. ✓/✗ taps and comment edits mutate this
-  // ONLY — we persist to the server (onPatchAnswer) when the user advances or
-  // leaves, never on every tap/keystroke. Persisting per interaction re-rendered
-  // the parent wizard and reloaded the whole screen.
+  // Local draft of grid values (row → col → value), keyed by question id, seeded
+  // from the persisted answers. ✓/✗ taps mutate this ONLY — we persist to the
+  // server (onPatchAnswer) when the user advances or leaves, never on every tap.
   const [draft, setDraft] = useState<Record<string, GridValues>>(() => {
     const d: Record<string, GridValues> = {};
     for (const it of items) {
@@ -95,10 +100,6 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
   });
   const draftRef = useRef(draft);
   draftRef.current = draft;
-  const answersRef = useRef(answers);
-  answersRef.current = answers;
-  const photosRef = useRef(photos);
-  photosRef.current = photos;
 
   const draftStateOf = (item: HarnessItem, r: string): 'ok' | 'bad' | undefined => {
     const v = draft[item.question.id]?.[r]?.[item.col];
@@ -106,38 +107,20 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
     if (v === 'ok' || v === 'ვარგისია') return 'ok';
     return undefined;
   };
-  const draftCommentOf = (item: HarnessItem, r: string): string =>
-    draft[item.question.id]?.[r]?.[`კომენტარი_${item.col}`] ?? '';
 
-  // Stable handlers (item/row passed in) so memoized ChipRows only re-render
-  // when their own row's data changes.
-  const handleSet = useCallback((item: HarnessItem, r: string, value: 'ok' | 'bad') => {
+  // Stable handler (item/row passed in) so memoized ChipRows only re-render when
+  // their own row's data changes. `null` clears the cell back to unanswered.
+  const handleSet = useCallback((item: HarnessItem, r: string, value: 'ok' | 'bad' | null) => {
     haptic.light();
     setDraft(prev => {
       const grid: GridValues = { ...(prev[item.question.id] ?? {}) };
       const cur: Record<string, string> = { ...(grid[r] ?? {}) };
-      cur[item.col] = value;
-      if (value === 'ok') delete cur[`კომენტარი_${item.col}`];
+      if (value === null) delete cur[item.col];
+      else cur[item.col] = value;
       grid[r] = cur;
       return { ...prev, [item.question.id]: grid };
     });
   }, []);
-
-  const handleComment = useCallback((item: HarnessItem, r: string, text: string) => {
-    setDraft(prev => {
-      const grid: GridValues = { ...(prev[item.question.id] ?? {}) };
-      const cur: Record<string, string> = { ...(grid[r] ?? {}) };
-      if (text.trim()) cur[`კომენტარი_${item.col}`] = text;
-      else delete cur[`კომენტარი_${item.col}`];
-      grid[r] = cur;
-      return { ...prev, [item.question.id]: grid };
-    });
-  }, []);
-
-  const handlePickPhoto = useCallback(
-    (item: HarnessItem, r: string) => onPickItemPhoto(item.question, r, item.col),
-    [onPickItemPhoto],
-  );
 
   const handleHelp = useCallback((item: HarnessItem) => showHelp(item.label), [showHelp]);
 
@@ -152,50 +135,23 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
         if (!q) continue;
         await onPatchAnswer(q, a => ({ ...a, grid_values: grid }));
       }
-      // Drop photos for cells that ended up marked good.
-      for (const it of items) {
-        const grid = snap[it.question.id];
-        if (!grid) continue;
-        for (const r of Object.keys(grid)) {
-          const v = grid[r]?.[it.col];
-          if (v !== 'ok' && v !== 'ვარგისია') continue;
-          const a = answersRef.current[it.question.id];
-          const cellPhotos = a ? photosRef.current[a.id] ?? [] : [];
-          const tag = captionFor(r, it.col);
-          for (const p of cellPhotos) if (p.caption === tag) void onDeletePhoto(p);
-        }
-      }
     },
-    [items, onPatchAnswer, onDeletePhoto],
+    [items, onPatchAnswer],
   );
 
-  // Tour refs
-  const headerRef = useRef<View>(null);
-  const firstRowRef = useRef<View>(null);
-  const confirmRef = useRef<View>(null);
-  const tourSteps: TourStep[] = useMemo(
-    () => [
-      {
-        targetRef: headerRef,
-        title: 'კომპონენტების შემოწმება',
-        body: 'ყოველი ქამარისთვის მონიშნეთ ✓ (კარგი) ან ✗ (პრობლემა)',
-        position: 'bottom',
-      },
-      {
-        targetRef: firstRowRef,
-        title: 'სტატუსი',
-        body: 'შეეხეთ ✓ ან ✗ — ✗ გახსნის კომენტარის ველს',
-        position: 'bottom',
-      },
-      {
-        targetRef: confirmRef,
-        title: 'დადასტურება',
-        body: 'დასრულებისას დააჭირეთ — გამოუმჩინებელი ავტომატურად კარგად ჩაითვლება',
-        position: 'top',
-      },
-    ],
-    [],
-  );
+  const flowTitle = template.name ? inspectionDisplayName(template.name) : 'ქამრების შემოწმება';
+
+  // Leaving the flow persists whatever's been entered so far.
+  const handleClose = useCallback(() => {
+    void flush();
+    onClose();
+  }, [flush, onClose]);
+
+  // Back from the count screen exits the harness step (persist first).
+  const handleExit = useCallback(() => {
+    void flush();
+    onBack();
+  }, [flush, onBack]);
 
   if (items.length === 0) {
     return (
@@ -217,15 +173,19 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
   // ── Step 1: count picker ────────────────────────────────────────────────────
   if (step === 'count') {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top']}>
-        <View style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 12, flexDirection: 'row', alignItems: 'center' }}>
-          <Text style={s.eyebrow}>ქამრების შემოწმება</Text>
-          <View style={{ flex: 1 }} />
-          <Pressable hitSlop={12} onPress={onClose} style={s.closeBtn} accessibilityLabel="დახურვა">
-            <Ionicons name="close" size={22} color={theme.colors.ink} />
-          </Pressable>
-        </View>
-
+      <View style={{ flex: 1, backgroundColor: theme.colors.surface }}>
+        <FlowHeader
+          flowTitle={flowTitle}
+          project={project}
+          step={stepIndex + 1}
+          totalSteps={totalSteps}
+          leading="back"
+          trailing="close"
+          backDisabled={stepIndex === 0}
+          onBack={handleExit}
+          onClose={handleClose}
+          surfaceColor={theme.colors.surface}
+        />
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 28, paddingHorizontal: 24 }}>
           <Text style={{ fontSize: 20, fontWeight: '700', color: theme.colors.ink }}>
             რამდენი ქამარი სულ?
@@ -251,7 +211,7 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
             <Text style={s.bigCtaText}>დაწყება →</Text>
           </Pressable>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -259,8 +219,8 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
   const safeRowIdx = Math.min(currentRowIdx, rowLabels.length - 1);
   const row = rowLabels[safeRowIdx];
 
-  // Snapshot of the draft with every unanswered cell in the current row
-  // defaulted to 'ok' (the harness convention).
+  // Snapshot of the draft with every unanswered cell in the current row defaulted
+  // to 'ok' — the harness convention so the legal PDF has a value for every cell.
   const buildAutoOkSnapshot = (): Record<string, GridValues> => {
     const snap: Record<string, GridValues> = {};
     for (const [qid, g] of Object.entries(draftRef.current)) snap[qid] = cloneGrid(g);
@@ -282,18 +242,11 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
       setDraft(snap);
       void flush(snap).then(onConclude);
     } else {
-      // Advancing between harnesses is purely local — only the list (middle)
-      // re-renders; the header stays put and nothing is sent to the server,
-      // so there's no full-screen reload. Persistence happens on conclude/close.
+      // Advancing between harnesses is purely local — persistence happens on
+      // conclude/close, so there's no full-screen reload.
       setDraft(snap);
       setCurrentRowIdx(safeRowIdx + 1);
     }
-  };
-
-  // Leaving the flow persists whatever's been entered so far.
-  const handleClose = () => {
-    void flush();
-    onClose();
   };
 
   const badCountThisRow = items.reduce(
@@ -310,74 +263,55 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
   });
 
   return (
-    <TourGuide tourId="harness_list_v2" steps={tourSteps}>
-      <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top']}>
-        <View ref={headerRef} collapsable={false} style={s.header}>
-          <View style={s.headerRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={s.eyebrow}>ქამრების შემოწმება</Text>
-              <Text style={s.title}>
-                ქამარი {safeRowIdx + 1} / {rowLabels.length}
-              </Text>
-            </View>
-            <Pressable hitSlop={12} onPress={handleClose} style={s.closeBtn} accessibilityLabel="დახურვა">
-              <Ionicons name="close" size={22} color={theme.colors.ink} />
-            </Pressable>
-          </View>
-          <Text style={s.helpHint}>
-            ყველა კომპონენტი ✓-ადაა. სადაც პრობლემაა — მონიშნეთ ✗.
-          </Text>
-        </View>
+    <View style={{ flex: 1, backgroundColor: theme.colors.surface }}>
+      <FlowHeader
+        flowTitle={flowTitle}
+        project={project}
+        step={stepIndex + 1}
+        totalSteps={totalSteps}
+        leading="back"
+        trailing="close"
+        onBack={() => setStep('count')}
+        onClose={handleClose}
+        surfaceColor={theme.colors.surface}
+      />
 
-        <ChipNavStrip
-          items={harnessChips}
-          activeIndex={safeRowIdx}
-          onSelect={setCurrentRowIdx}
-          tone="neutral"
-        />
+      <ChipNavStrip
+        items={harnessChips}
+        activeIndex={safeRowIdx}
+        onSelect={setCurrentRowIdx}
+        tone="neutral"
+      />
 
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{ padding: 16, gap: 8, paddingBottom: 24 }}
-          keyboardShouldPersistTaps="handled"
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ padding: 16, gap: 8, paddingBottom: 24 }}
+        keyboardShouldPersistTaps="handled"
+      >
+        <ChecklistLegend items={LEGEND} />
+        {items.map(item => (
+          <ChipRow
+            key={item.itemKey}
+            item={item}
+            row={row}
+            state={draftStateOf(item, row)}
+            onSet={handleSet}
+            onHelp={handleHelp}
+          />
+        ))}
+      </ScrollView>
+
+      <View style={[s.footer, { paddingBottom: 16 + insets.bottom }]}>
+        <Pressable
+          onPress={confirmCurrentRow}
+          style={({ pressed }) => [s.bigCta, pressed && { opacity: 0.88 }]}
+          accessibilityLabel={`ქამარი ${safeRowIdx + 1} დადასტურება`}
         >
-          {items.map((item, idx) => {
-            const state = draftStateOf(item, row);
-            const comment = draftCommentOf(item, row);
-            const a = answers[item.question.id];
-            const allPhotos = a ? photos[a.id] ?? [] : [];
-            const cellPhotos = allPhotos.filter(p => p.caption === captionFor(row, item.col));
-            return (
-              <ChipRow
-                key={item.itemKey}
-                item={item}
-                row={row}
-                state={state}
-                comment={comment}
-                cellPhotos={cellPhotos}
-                onSet={handleSet}
-                onCommentChange={handleComment}
-                onPickPhoto={handlePickPhoto}
-                onDeletePhoto={onDeletePhoto}
-                onHelp={handleHelp}
-                rowRef={idx === 0 ? firstRowRef : undefined}
-              />
-            );
-          })}
-        </ScrollView>
-
-        <View ref={confirmRef} collapsable={false} style={[s.footer, { paddingBottom: 16 + insets.bottom }]}>
-          <Pressable
-            onPress={confirmCurrentRow}
-            style={({ pressed }) => [s.bigCta, pressed && { opacity: 0.88 }]}
-            accessibilityLabel={`ქამარი ${safeRowIdx + 1} დადასტურება`}
-          >
-            <Text style={s.bigCtaText}>
-              {`ქამარი ${safeRowIdx + 1}${badCountThisRow > 0 ? ` · ${badCountThisRow} პრობლემა` : ''} — დადასტურება →`}
-            </Text>
-          </Pressable>
-        </View>
-      </SafeAreaView>
-    </TourGuide>
+          <Text style={s.bigCtaText}>
+            {`ქამარი ${safeRowIdx + 1}${badCountThisRow > 0 ? ` · ${badCountThisRow} პრობლემა` : ''} — დადასტურება →`}
+          </Text>
+        </Pressable>
+      </View>
+    </View>
   );
 }

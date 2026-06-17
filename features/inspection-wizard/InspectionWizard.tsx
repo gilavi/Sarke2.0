@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { KeyboardAwareScrollView, KeyboardStickyView } from 'react-native-keyboard-controller';
+import { KeyboardAwareScrollView, KeyboardStickyView, KeyboardController, useKeyboardState } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Stack, useRouter } from 'expo-router';
@@ -47,6 +47,9 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const toast = useToast();
+  // Drives the compact footer while typing. Must run unconditionally (before
+  // the early returns below) to satisfy the Rules of Hooks.
+  const keyboardOpen = useKeyboardState(s => s.isVisible);
 
   const ws = useWizardState(inspectionId);
 
@@ -217,6 +220,12 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
   const isYesNo = step.kind === 'question' && step.question.type === 'yesno';
   const isLast = stepIndex === steps.length - 1;
   const isScaffoldRow = step.kind === 'gridRow' && (step.question.grid_rows?.[0] ?? '') !== 'N1';
+  // A yes/no question with a photo or note attached but no კი/არა chosen must
+  // not be skippable — the user clearly engaged, so make them answer.
+  const curAnswer = step.kind === 'question' ? answers[step.question.id] : undefined;
+  const photoCount = curAnswer?.id ? photos[curAnswer.id]?.length ?? 0 : 0;
+  const hasAttachment = photoCount > 0 || !!curAnswer?.notes?.trim();
+  const lockUnanswered = isYesNo && hasAttachment && !stepAnswered;
 
   if (step.kind === 'empty') {
     return (
@@ -246,19 +255,20 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
   // HarnessListFlow: full-screen takeover for harness templates.
   if (step.kind === 'harnessFlow') {
     return (
-      <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      <View style={{ flex: 1, backgroundColor: theme.colors.surface }}>
         <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
         <HarnessListFlow
           inspectionId={questionnaire!.id}
           template={template!}
+          project={project}
           questions={questions}
           answers={answers}
-          photos={photos}
           harnessRowCount={harnessRowCount}
           setHarnessRowCount={setHarnessRowCount}
+          stepIndex={stepIndex}
+          totalSteps={steps.length}
           onPatchAnswer={patchAnswer}
-          onPickItemPhoto={(q, row, col) => pickPhoto(q, `${row}:col:${col}`)}
-          onDeletePhoto={deletePhoto}
+          onBack={goBack}
           onClose={() => router.back()}
           onConclude={goNext}
         />
@@ -367,11 +377,15 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
           </WizardStepTransition>
 
           <KeyboardStickyView offset={{ closed: 0, opened: insets.bottom }}>
-          <View style={[styles.footer, { paddingBottom: 16 + insets.bottom }]}>
+          <View style={[styles.footer, keyboardOpen ? { paddingTop: 6, gap: 8, paddingBottom: 8 } : { paddingBottom: 16 + insets.bottom }]}>
             {isYesNo && step.kind === 'question' ? (
               <AnswerButtons
+                compact={keyboardOpen}
                 value={answers[step.question.id]?.value_bool ?? null}
-                onChange={(v) => patchAnswer(step.question, a => ({ ...a, value_bool: v }))}
+                onChange={(v) => {
+                  patchAnswer(step.question, a => ({ ...a, value_bool: v }));
+                  if (keyboardOpen) KeyboardController.dismiss();
+                }}
               />
             ) : null}
             {isLast ? (
@@ -395,11 +409,12 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
                 onAnswer={patchAnswer}
                 onAdvance={goNext}
               />
-            ) : (
+            ) : keyboardOpen ? null : (
               <Button
                 title={stepAnswered ? 'შემდეგი' : 'გამოტოვება'}
                 variant={stepAnswered ? 'primary' : 'secondary'}
                 size="lg"
+                disabled={lockUnanswered}
                 style={{ alignSelf: 'stretch', paddingVertical: 16, justifyContent: 'center' }}
                 iconRight={
                   stepAnswered ? (
