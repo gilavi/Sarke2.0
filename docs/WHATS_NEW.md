@@ -4,6 +4,16 @@
 
 ---
 
+## 2026-06-17 — One verdict picker on every შემოწმება conclusion step
+
+The conclusion (`დასკვნა`) step looked different depending on which flow you entered: the scaffold (ხარაჩო) wizard used a tall, icon-based decision selector (`გადაწყვეტილება` — shield / eye / warning buttons), while the equipment routes and the harness (დამცავი ქამრები) flow showed flat pill chips (`უსაფრთხოა` / `არ არის უსაფრთხო`). Same decision, two looks.
+
+- **New shared component** [`VerdictSelector`](../components/inspection-steps/VerdictSelector.tsx) — the scaffold's icon-button picker, now **dynamic**: pass any 2–3 `VerdictOption`s and it renders one icon + label button each, generic over the verdict value type. Icons resolve from an explicit `option.icon`, else a semantic `option.tone` (`success`/`caution`/`danger`), else **by position** (first = shield, last = warning, middle = eye) — every flow orders its verdicts positive → negative, so no per-route wiring was needed.
+- **`ConclusionStep`** (the reusable equipment + harness step) now renders `VerdictSelector` instead of pill chips, so **all 8 equipment flows** (bobcat, excavator, cargo-platform, forklift, fall-protection, lifting-accessories, mobile-ladder, safety-net) and the harness flow pick up the scaffold look automatically. The empty-`verdictOptions` case (general-equipment, no verdict) now renders nothing instead of an orphaned `დასკვნა *` label.
+- **Consolidation** — the bespoke `features/inspection-wizard/VerdictSelector` was deleted; the scaffold wizard's `ConclusionStep` now imports the shared one and supplies the 3-option `SafetyVerdict` set. The old pill-chip styles and the wizard's dead `decision*`/`fieldError` styles were removed. Added to [primitives.md](primitives.md) as the canonical verdict picker.
+
+---
+
 ## 2026-06-17 — Equipment flow loading state: flow skeleton, not a generic loader
 
 Entering an equipment inspection (which blocks ~2–3s on the initial fetch in [`useInspectionFlow`](../lib/inspection/useInspectionFlow.ts)) used to flash a native iOS header + centered "იტვირთება…" text on an off-white screen, then swap to the real [`InspectionShell`](../components/inspection-steps/InspectionShell.tsx) chrome once data landed — header style and background both changed, reading as a generic loader rather than the flow.

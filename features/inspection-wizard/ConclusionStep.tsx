@@ -9,7 +9,19 @@ import type { AnswerPhoto, Question, Template } from '../../types/models';
 import { getstyles, staticStyles } from './styles';
 import { AttachmentBars } from './AttachmentBars';
 import { PhotoPreviewModal } from './PhotoPreviewModal';
-import { VerdictSelector, type SafetyVerdict } from './VerdictSelector';
+import { VerdictSelector, type VerdictOption } from '../../components/inspection-steps/VerdictSelector';
+
+export type SafetyVerdict = 'safe' | 'caution' | 'unsafe';
+
+// Verdict values map to comment #11 from ClickUp "ფასადის ხარაჩოს შემოწმების აქტი":
+//   safe    → green  (უსაფრთხოა)
+//   caution → yellow (დასაშვებია, საჭიროებს დაკვირვებას)
+//   unsafe  → red    (დაუშვებელია გამოყენება)
+const SAFETY_VERDICT_OPTIONS: VerdictOption<SafetyVerdict>[] = [
+  { value: 'safe', label: 'უსაფრთხოა', tone: 'success' },
+  { value: 'caution', label: 'დასაშვებია,\nდასაჭიროებს', tone: 'caution' },
+  { value: 'unsafe', label: 'დაუშვებელია\nგამოყენება', tone: 'danger' },
+];
 
 export const ConclusionStep = memo(function ConclusionStep({
   conclusion,
@@ -86,8 +98,8 @@ export const ConclusionStep = memo(function ConclusionStep({
       ) : null}
       <VerdictSelector
         value={safetyVerdict}
-        onChange={onSafetyVerdict}
-        onInteract={markInteracted}
+        options={SAFETY_VERDICT_OPTIONS}
+        onChange={(v) => { markInteracted(); onSafetyVerdict(v); }}
         showError={interacted && safetyVerdict === null}
       />
       {photoQuestion ? (

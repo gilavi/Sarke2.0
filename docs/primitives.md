@@ -234,6 +234,16 @@ When you add a new template in `supabase/migrations/`, add its full→short pair
 
 **Don't** reintroduce `harness_name || "#" + id.slice(0,8)` style fallbacks in either codebase — that drift (web showing `ქამარი #0c9537aa` while mobile showed the template name) is exactly what this primitive removes. Equipment inspections on web have no template row, so `web-app/src/lib/documentNames.ts` maps their type to a constant full name and routes it through `inspectionDisplayName`.
 
+## Inspection verdict selector
+
+One component: [`components/inspection-steps/VerdictSelector.tsx`](../components/inspection-steps/VerdictSelector.tsx), re-exported from `components/inspection-steps`.
+
+The `გადაწყვეტილება` (decision) picker on **every** inspection conclusion step — equipment routes (bobcat, excavator, forklift, …), the harness flow, and the scaffold wizard. Dynamic: pass `options: VerdictOption[]` (any 2–3 verdicts) and it renders one icon + label button each. Generic over the verdict value type. The icon for each option resolves from an explicit `option.icon`, else a semantic `option.tone` (`success`/`caution`/`danger`), else **by position** (first = `shield-checkmark`, last = `warning`, middle = `eye-outline`) — every flow orders options positive → negative, so most flows wire nothing extra.
+
+`ConclusionStep` (equipment routes + harness) renders it from its `verdictOptions` prop. The scaffold wizard's `features/inspection-wizard/ConclusionStep.tsx` feeds it the 3-option `SafetyVerdict` set.
+
+**Don't** hand-roll verdict chips/buttons in a flow (the old pill chips in `ConclusionStep` and the bespoke `features/inspection-wizard/VerdictSelector` are exactly what this consolidated). If a flow needs a different verdict set, pass different `options`; if it needs a different icon, set `icon`/`tone` on the option rather than reordering or forking the component.
+
 ## Adding a new primitive
 
 If you're about to add a util in `lib/` or a wrapper in `components/`:

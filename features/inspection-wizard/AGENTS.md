@@ -38,9 +38,12 @@ queue.
 - `ScaffoldRowStep.tsx` — non-harness `component_grid` row step:
   big status buttons rendered by `ScaffoldFooterButtons` in the
   global footer + an optional comment field.
-- `ConclusionStep.tsx` — final step with monochrome safety verdict
-  (`VerdictSelector`), harness name, general photos (`AttachmentBars`,
-  photo-only), and conclusion textarea.
+- `ConclusionStep.tsx` — final step with the shared monochrome safety
+  verdict picker (`VerdictSelector` from `components/inspection-steps`,
+  fed the 3-option `SafetyVerdict` set defined in this file), harness
+  name, general photos (`AttachmentBars`, photo-only), and conclusion
+  textarea. The bespoke local `VerdictSelector` was removed when the
+  selector was unified across every inspection flow.
 - `MeasureInput.tsx`, `DebouncedFreetext.tsx`, `DebouncedNotes.tsx` —
   debounced text/number inputs that commit through `patchAnswer`.
 - `ScaffoldFooterButtons.tsx` — the action bar rendered in the global

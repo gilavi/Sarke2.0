@@ -32,7 +32,17 @@ renamed in Phase 1 to clarify its role vs `inspection-parts/`.
   `ChecklistItemRow`. No per-row comments/photos (flag the result only;
   detail lives on the conclusion step).
 - `ConclusionStep` — final step with safety verdict + conclusion
-  text + signatures.
+  text + signatures. Renders the shared `VerdictSelector` for the
+  verdict (only when `verdictOptions` is non-empty).
+- `VerdictSelector` — the **canonical, dynamic** verdict picker for
+  every inspection conclusion step (equipment routes, harness, and the
+  scaffold wizard). One icon + label button per `VerdictOption`, in the
+  scaffold's `გადაწყვეტილება` style. Icon resolves from an explicit
+  `option.icon`, else a semantic `option.tone`
+  (`success`/`caution`/`danger`), else by position (first = shield,
+  last = warning, middle = eye). Generic over the verdict value type.
+  This replaced the bespoke per-flow selectors (the old pill chips in
+  `ConclusionStep` and the local one in `features/inspection-wizard`).
 
 ## Internal files
 - `InspectionShell.tsx`, `InspectionShellSkeleton.tsx`, `ProjectPickerStep.tsx`
@@ -42,8 +52,15 @@ renamed in Phase 1 to clarify its role vs `inspection-parts/`.
   Owns the exported item types (re-exported via ChecklistStep) +
   `CHECKLIST_LEGEND`.
 - `ConclusionStep.tsx`
+- `VerdictSelector.tsx` — owns the `VerdictOption` / `VerdictTone` types
+  (re-exported via `ConclusionStep` for back-compat).
 
 ## Gotchas / non-obvious things
+- `VerdictSelector` is the single canonical verdict picker — don't add a
+  per-flow variant. Every consuming flow orders its options
+  positive → negative, which is what the positional icon default keys
+  off; if you ever need a different order, set `tone` (or `icon`)
+  explicitly on the option rather than reordering.
 - This is the equipment-route shell, NOT the generic harness wizard.
   The generic wizard lives at `features/inspection-wizard/`.
   Equipment routes (bobcat, excavator, ...) own their own step
