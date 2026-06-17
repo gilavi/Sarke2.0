@@ -1,19 +1,17 @@
-import { memo, useMemo, type ComponentProps } from 'react';
+import { memo, useMemo } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import type { LucideIcon } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
 import { useTheme, type Theme } from '../../lib/theme';
 import { haptic } from '../../lib/haptics';
 import { StatusChip } from '../wizard/StatusChip';
 import { HelpIcon } from '../ScaffoldHelpSheet';
 
-type IconName = ComponentProps<typeof Ionicons>['name'];
-
 export interface ChecklistRowOption {
   /** Stored value (e.g. 'ok' | 'bad' | 'good' | 'na'). */
   value: string;
   /** Icon-only chip (✓ / ✗ / ⚠). Omit when using `shortLabel`. */
-  icon?: IconName;
+  icon?: LucideIcon;
   /** Text chip (e.g. 'N/A') - rendered when there is no `icon`. */
   shortLabel?: string;
   /** Georgian accessibility label, e.g. "მხრის ღვედები - გამართული". */

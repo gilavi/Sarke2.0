@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
+import { Check, X } from 'lucide-react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { A11yText as Text } from '../primitives/A11yText';
 import { useTheme } from '../../lib/theme';
@@ -30,8 +31,8 @@ const HARNESS_MAX = 15;
 const HARNESS_COUNT_PRESETS = [1, 2, 3, 4, 5, 6, 8, 10, 12, 15];
 
 const LEGEND = [
-  { icon: 'checkmark' as const, label: 'გამართული' },
-  { icon: 'close' as const, label: 'დაზიანებული' },
+  { icon: Check, label: 'გამართული' },
+  { icon: X, label: 'დაზიანებული' },
 ];
 
 export type HarnessListFlowProps = {

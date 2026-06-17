@@ -1,4 +1,5 @@
 import { memo, useMemo } from 'react';
+import { Check, X, TriangleAlert } from 'lucide-react-native';
 import { ChecklistItemRow, type ChecklistRowOption } from './ChecklistItemRow';
 
 export interface ChecklistItemOptions {
@@ -68,10 +69,10 @@ function buildOptions(
     a11yLabel: `${label} - ${value}`,
     ...extra,
   });
-  const out: ChecklistRowOption[] = [mk(options.a, { icon: 'checkmark' })];
+  const out: ChecklistRowOption[] = [mk(options.a, { icon: Check })];
 
   if (type === 'binary') {
-    out.push(mk(options.b, { icon: 'close' }));
+    out.push(mk(options.b, { icon: X }));
   } else if (type === 'four_state') {
     // a=good (icon), b=critical, c=minor, d=not-checked - severity short labels.
     out.push(mk(options.b, { shortLabel: options.b }));
@@ -79,12 +80,12 @@ function buildOptions(
     if (options.d) out.push(mk(options.d, { shortLabel: options.d }));
   } else {
     // three_state: a=good, b=deficient (⚠), c=N/A (text) or fail (✗).
-    out.push(mk(options.b, { icon: 'warning-outline' }));
+    out.push(mk(options.b, { icon: TriangleAlert }));
     if (options.c) {
       out.push(
         options.cIsNeutral
           ? mk(options.c, { shortLabel: options.c.length <= 3 ? options.c : 'N/A' })
-          : mk(options.c, { icon: 'close' }),
+          : mk(options.c, { icon: X }),
       );
     }
   }

@@ -1,13 +1,11 @@
-import { useMemo, type ComponentProps } from 'react';
+import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import type { LucideIcon } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
 import { useTheme, type Theme } from '../../lib/theme';
 
-type IconName = ComponentProps<typeof Ionicons>['name'];
-
 export interface ChecklistLegendItem {
-  icon?: IconName;
+  icon?: LucideIcon;
   shortLabel?: string;
   label: string;
 }
@@ -26,7 +24,7 @@ export function ChecklistLegend({ items }: { items: ChecklistLegendItem[] }) {
         <View key={i} style={styles.item}>
           <View style={styles.tile}>
             {it.icon ? (
-              <Ionicons name={it.icon} size={14} color={theme.colors.inverse.ink} />
+              (() => { const Icon = it.icon!; return <Icon size={14} color={theme.colors.inverse.ink} strokeWidth={1.5} />; })()
             ) : (
               <Text style={styles.tileText}>{it.shortLabel}</Text>
             )}

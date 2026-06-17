@@ -1,4 +1,5 @@
 import { memo } from 'react';
+import { Check, X } from 'lucide-react-native';
 import { ChecklistItemRow, type ChecklistRowOption } from '../inspection-parts/ChecklistItemRow';
 import type { HarnessItem } from './_shared';
 
@@ -7,8 +8,8 @@ import type { HarnessItem } from './_shared';
 // any photos go on the conclusion step.
 function optionsFor(label: string): ChecklistRowOption[] {
   return [
-    { value: 'ok', icon: 'checkmark', a11yLabel: `${label} - გამართული` },
-    { value: 'bad', icon: 'close', a11yLabel: `${label} - დაზიანებული` },
+    { value: 'ok', icon: Check, a11yLabel: `${label} - გამართული` },
+    { value: 'bad', icon: X, a11yLabel: `${label} - დაზიანებული` },
   ];
 }
 

@@ -9,7 +9,7 @@
 import { useMemo } from 'react';
 import { Pressable, View } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
-import { Ionicons } from '@expo/vector-icons';
+import { ChevronRight, ShieldCheck, Trash2 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
@@ -53,7 +53,7 @@ export function InspectionsSection({
     <>
       <View style={styles.sectionHeader}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Ionicons name="shield-checkmark-outline" size={16} color={theme.colors.inkSoft} />
+          <ShieldCheck size={16} color={theme.colors.inkSoft} strokeWidth={1.5} />
           <Text style={styles.sectionTitle}>{t('projects.questionnairesSection')}</Text>
           <Text style={styles.sectionCount}>{allInspections.length}</Text>
         </View>
@@ -80,7 +80,7 @@ export function InspectionsSection({
                 key={`${item.source}-${item.id}`}
                 renderRightActions={() => (
                   <Pressable onPress={() => onDelete(item)} style={styles.swipeDelete} {...a11y('შემოწმების აქტს წაშლა', 'შემოწმების აქტს წაშლა', 'button')}>
-                    <Ionicons name="trash" size={18} color={theme.colors.white} />
+                    <Trash2 size={18} color={theme.colors.white} strokeWidth={1.5} />
                   </Pressable>
                 )}
                 overshootRight={false}
@@ -102,7 +102,7 @@ export function InspectionsSection({
                       {formatShortDateTime(item.created_at)}
                     </Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={18} color={theme.colors.borderStrong} />
+                  <ChevronRight size={18} color={theme.colors.borderStrong} strokeWidth={1.5} />
                 </Pressable>
               </Swipeable>
             );

@@ -50,8 +50,8 @@ function TabIcon({
       <config.Icon
         size={22}
         color={focused ? theme.colors.ink : theme.colors.inkSoft}
-        fill={focused ? theme.colors.ink : 'none'}
-        strokeWidth={focused ? 0 : 1.5}
+        fill={focused ? theme.colors.ink : 'transparent'}
+        strokeWidth={focused ? 2 : 1.5}
       />
     </View>
   );

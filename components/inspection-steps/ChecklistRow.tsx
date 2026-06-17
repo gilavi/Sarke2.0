@@ -6,6 +6,7 @@
  * type for the PDF/schema but are no longer captured here.
  */
 import { useMemo } from 'react';
+import { Check, X, TriangleAlert } from 'lucide-react-native';
 import { ChecklistItemRow, type ChecklistRowOption } from '../inspection-parts/ChecklistItemRow';
 import type { ChecklistLegendItem } from '../inspection-parts/ChecklistLegend';
 
@@ -26,16 +27,16 @@ export interface ChecklistItemState {
 }
 
 const OPTIONS: ChecklistRowOption[] = [
-  { value: 'good', icon: 'checkmark', a11yLabel: 'ვარგისია' },
-  { value: 'deficient', icon: 'warning-outline', a11yLabel: 'ხარვეზი' },
-  { value: 'unusable', icon: 'close', a11yLabel: 'გამოუსადეგარია' },
+  { value: 'good', icon: Check, a11yLabel: 'ვარგისია' },
+  { value: 'deficient', icon: TriangleAlert, a11yLabel: 'ხარვეზი' },
+  { value: 'unusable', icon: X, a11yLabel: 'გამოუსადეგარია' },
 ];
 
 /** Legend explaining the three monochrome result chips (rendered by ChecklistStep). */
 export const CHECKLIST_LEGEND: ChecklistLegendItem[] = [
-  { icon: 'checkmark', label: 'ვარგისია' },
-  { icon: 'warning-outline', label: 'ხარვეზი' },
-  { icon: 'close', label: 'გამოუსადეგარია' },
+  { icon: Check, label: 'ვარგისია' },
+  { icon: TriangleAlert, label: 'ხარვეზი' },
+  { icon: X, label: 'გამოუსადეგარია' },
 ];
 
 export interface ChecklistRowProps {
